@@ -28,7 +28,7 @@
 		"@microsoft/kiota-authentication-azure": "1.0.0-preview.90",
 		"@microsoft/kiota-bundle": "1.0.0-preview.90",
 		"@microsoft/kiota-http-fetchlibrary": "1.0.0-preview.90",
-		"@microsoft/kiota-serialization-json": "1.0.0-preview.90",
+		"@microsoft/kiota-serialization-json": "1.0.0-preview.92",
 		"@microsoft/kiota-serialization-text": "1.0.0-preview.90",
 		"@modelcontextprotocol/sdk": "^1.7.0",
 		"zod": "^3.24.2"
