@@ -49,7 +49,7 @@
 		"@microsoft/kiota-bundle": "1.0.0-preview.92",
 		"@microsoft/kiota-http-fetchlibrary": "1.0.0-preview.92",
 		"@microsoft/kiota-serialization-json": "1.0.0-preview.92",
-		"@microsoft/kiota-serialization-text": "1.0.0-preview.92",
+		"@microsoft/kiota-serialization-text": "1.0.0-preview.93",
 		"@modelcontextprotocol/sdk": "^1.8.0",
 		"uuid": "^11.1.0",
 		"zod": "^3.24.2"
