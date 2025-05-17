@@ -24,7 +24,7 @@
 		"build:client": "kiota generate -l typescript -d openapi-spec.json -c HevyClient -o ./src/generated/client --log-level error --clean-output --clear-cache",
 		"start": "node dist/index.js",
 		"dev": "tsx watch --clear-screen=false src/index.ts",
-		"check": "biome check --fix ",
+		"check": "biome check --fix --unsafe",
 		"version:patch": "npm version patch",
 		"version:minor": "npm version minor",
 		"version:major": "npm version major",
