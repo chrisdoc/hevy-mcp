@@ -1,22 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createClient } from "./hevyClient";
 
-// Mock the imported modules
-vi.mock("@microsoft/kiota-abstractions", () => ({
-	ApiKeyAuthenticationProvider: vi.fn(),
-	ApiKeyLocation: {
-		Header: "header",
-	},
-}));
-
-vi.mock("@microsoft/kiota-http-fetchlibrary", () => ({
-	FetchRequestAdapter: vi.fn(() => ({
-		baseUrl: "",
-	})),
-}));
-
-vi.mock("../generated/client/hevyClient.js", () => ({
-	createHevyClient: vi.fn().mockReturnValue({ mockedClient: true }),
+// Mock the Kubb client
+vi.mock("./hevyClientKubb.js", () => ({
+	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
 }));
 
 describe("hevyClient", () => {
