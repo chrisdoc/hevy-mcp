@@ -7,7 +7,7 @@ import { workoutSchema } from './workoutSchema.ts'
 import { z } from 'zod'
 
 export const getV1WorkoutsWorkoutidPathParamsSchema = z.object({
-  workoutId: z.any(),
+  workoutId: z.string().describe('The id of the workout'),
 })
 
 export const getV1WorkoutsWorkoutidHeaderParamsSchema = z.object({
