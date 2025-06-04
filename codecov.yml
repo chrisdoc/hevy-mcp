@@ -1,0 +1,15 @@
+codecov:
+  require_ci_to_pass: yes
+
+coverage:
+  status:
+    project:
+      default:
+        # basic
+        target: auto
+        threshold: 0%
+        base: auto
+    patch: yes
+
+ignore:
+  - "src/generated/**/*"  # Ignore all files in the generated directory
