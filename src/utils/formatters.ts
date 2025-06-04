@@ -5,7 +5,7 @@ import type {
 	Routine,
 	RoutineFolder,
 	Workout,
-} from "../generated/client/models/index.js";
+} from "./models.js";
 
 /**
  * Formatted workout set interface

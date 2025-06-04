@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { HevyClient } from "../generated/client/hevyClient.js";
-import type { RoutineFolder } from "../generated/client/models/index.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
 
 /**
