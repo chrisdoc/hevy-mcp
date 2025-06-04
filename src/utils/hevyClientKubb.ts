@@ -1,24 +1,28 @@
 import axios from "axios";
+import type { AxiosInstance } from "axios";
 import * as api from "../generated/client/api";
-import type { 
-	GetV1WorkoutsQueryParams,
-	PostV1WorkoutsMutationRequest,
-	PutV1WorkoutsWorkoutidMutationRequest,
-	GetV1WorkoutsEventsQueryParams,
-	GetV1RoutinesQueryParams,
-	PostV1RoutinesMutationRequest,
-	PutV1RoutinesRoutineidMutationRequest,
+import type {
 	GetV1ExerciseTemplatesQueryParams,
 	GetV1RoutineFoldersQueryParams,
-	PostV1RoutineFoldersMutationRequest
+	GetV1RoutinesQueryParams,
+	GetV1WorkoutsEventsQueryParams,
+	GetV1WorkoutsQueryParams,
+	PostV1RoutineFoldersMutationRequest,
+	PostV1RoutinesMutationRequest,
+	PostV1WorkoutsMutationRequest,
+	PutV1RoutinesRoutineidMutationRequest,
+	PutV1WorkoutsWorkoutidMutationRequest,
 } from "../generated/client/types";
-import type { AxiosInstance } from "axios";
 
 // Define a type that matches the expected client interface
 type KubbClient = {
-	<TData, TError = unknown, TVariables = unknown>(config: any): Promise<any>;
-	getConfig: () => Partial<any>;
-	setConfig: (config: any) => Partial<any>;
+	<TData, TError = unknown, TVariables = unknown>(
+		config: Record<string, unknown>,
+	): Promise<unknown>;
+	getConfig: () => Partial<Record<string, unknown>>;
+	setConfig: (
+		config: Record<string, unknown>,
+	) => Partial<Record<string, unknown>>;
 };
 
 export function createClient(
@@ -50,12 +54,14 @@ export function createClient(
 			api.getV1WorkoutsWorkoutid(workoutId, headers, { client }),
 		createWorkout: (data: PostV1WorkoutsMutationRequest) =>
 			api.postV1Workouts(headers, data, { client }),
-		updateWorkout: (workoutId: string, data: PutV1WorkoutsWorkoutidMutationRequest) =>
+		updateWorkout: (
+			workoutId: string,
+			data: PutV1WorkoutsWorkoutidMutationRequest,
+		) =>
 			api.putV1WorkoutsWorkoutid(workoutId, headers, data, {
 				client,
 			}),
-		getWorkoutCount: () =>
-			api.getV1WorkoutsCount(headers, { client }),
+		getWorkoutCount: () => api.getV1WorkoutsCount(headers, { client }),
 		getWorkoutEvents: (params?: GetV1WorkoutsEventsQueryParams) =>
 			api.getV1WorkoutsEvents(headers, params, { client }),
 
@@ -64,7 +70,10 @@ export function createClient(
 			api.getV1Routines(headers, params, { client }),
 		createRoutine: (data: PostV1RoutinesMutationRequest) =>
 			api.postV1Routines(headers, data, { client }),
-		updateRoutine: (routineId: string, data: PutV1RoutinesRoutineidMutationRequest) =>
+		updateRoutine: (
+			routineId: string,
+			data: PutV1RoutinesRoutineidMutationRequest,
+		) =>
 			api.putV1RoutinesRoutineid(routineId, headers, data, {
 				client,
 			}),

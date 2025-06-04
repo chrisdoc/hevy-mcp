@@ -240,7 +240,10 @@
 						"name": "workoutId",
 						"in": "path",
 						"description": "The id of the workout",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -276,7 +279,10 @@
 						"in": "path",
 						"name": "workoutId",
 						"description": "The id of the workout",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"requestBody": {
@@ -474,7 +480,10 @@
 						"in": "path",
 						"name": "routineId",
 						"description": "The id of the routine",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"requestBody": {
@@ -619,7 +628,10 @@
 						"name": "exerciseTemplateId",
 						"in": "path",
 						"description": "The id of the exercise template",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -778,7 +790,10 @@
 						"name": "folderId",
 						"in": "path",
 						"description": "The id of the routine folder",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
