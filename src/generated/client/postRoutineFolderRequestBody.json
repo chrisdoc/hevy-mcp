@@ -1,0 +1,1 @@
+{"type":"object","properties":{"routine_folder":{"type":"object","properties":{"title":{"type":"string","description":"The title of the routine folder.","example":"Push Pull 🏋️‍♂️"}}}},"x-readme-ref-name":"PostRoutineFolderRequestBody"}
