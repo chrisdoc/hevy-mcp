@@ -1,0 +1,80 @@
+# -*- mode: yaml -*-
+# GitStream configuration for automatic dependabot merges
+# This configuration provides automated approval and merging of dependabot PRs
+
+manifest:
+  version: 1.0
+
+automations:
+  # Automatically approve and merge dependabot patch updates
+  merge_dependabot_patch:
+    on:
+      - pr_created
+      - commit
+    if:
+      - "{{ branch.name | includes(term=\"dependabot\") }}"
+      - "{{ branch.author | includes(term=\"dependabot\") }}"
+      - "{{ pr.author | includes(term=\"dependabot\") }}"
+    run:
+      - action: approve@v1
+      - action: add-label@v1
+        args:
+          label: "approved-dependabot"
+          color: "0e8a16"
+      - action: merge@v1
+        args:
+          wait_for_all_checks: true
+          squash_on_merge: true
+      - action: add-comment@v1
+        args:
+          comment: |
+            🤖 Dependabot PR automatically approved and merged by GitStream.
+            
+            This PR has been automatically:
+            - ✅ Approved
+            - 🏷️ Labeled as `approved-dependabot`
+            - 🔀 Merged (squash merge)
+            
+            All status checks were required to pass before merging.
+
+  # Add estimated review time label for all PRs
+  estimated_time_to_review:
+    if:
+      - "{{ not is.bot }}"
+    run:
+      - action: add-label@v1
+        args:
+          label: "{{ calc.etr }} min review"
+          color: "{{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}"
+
+  # Add safe changes label for low-risk changes
+  label_safe_changes:
+    if:
+      - "{{ calc.safe_changes }}"
+      - "{{ not is.bot }}"
+    run:
+      - action: add-label@v1
+        args:
+          label: "safe-changes"
+          color: "0e8a16"
+
+# +----------------------------------------------------------------------------+
+# | Custom Expressions                                                         |
+# | https://docs.gitstream.cm/how-it-works/#custom-expressions                 |
+# +----------------------------------------------------------------------------+
+
+calc:
+  etr: "{{ branch | estimatedReviewTime }}"
+  safe_changes: "{{ is.formatting or is.docs or is.tests or is.image }}"
+
+colors:
+  red: 'b60205'
+  yellow: 'fbca04'
+  green: '0e8a16'
+
+is:
+  formatting: "{{ source.diff.files | isFormattingChange }}"
+  docs: "{{ files | allDocs }}"
+  tests: "{{ files | allTests }}"
+  image: "{{ files | allImages }}"
+  bot: "{{ pr.author | match(list=['github-actions', '_bot_', '[bot]', 'dependabot']) | some }}"
