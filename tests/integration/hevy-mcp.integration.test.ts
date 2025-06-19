@@ -59,13 +59,24 @@ describe("Hevy MCP Server Integration Tests", () => {
 	beforeAll(() => {
 		hevyApiKey = process.env.HEVY_API_KEY || "";
 		hasApiKey = !!hevyApiKey;
+
+		if (!hasApiKey) {
+			throw new Error(
+				"HEVY_API_KEY is not set in environment variables. Integration tests cannot run without a valid API key.\n\n" +
+					"For local development:\n" +
+					"1. Create a .env file in the project root\n" +
+					"2. Add HEVY_API_KEY=your_api_key to the file\n\n" +
+					"For GitHub Actions:\n" +
+					"1. Go to your GitHub repository\n" +
+					"2. Click on Settings > Secrets and variables > Actions\n" +
+					"3. Click on New repository secret\n" +
+					"4. Set the name to HEVY_API_KEY and the value to your Hevy API key\n" +
+					"5. Click Add secret",
+			);
+		}
 	});
 
 	beforeEach(async () => {
-		if (!hasApiKey) {
-			return; // Skip setup if no API key
-		}
-
 		// Create server instance
 		server = new McpServer({
 			name: "hevy-mcp-test",
@@ -107,22 +118,6 @@ describe("Hevy MCP Server Integration Tests", () => {
 
 	describe("Get Workouts", () => {
 		it("should be able to get workouts", async () => {
-			if (!hasApiKey) {
-				console.log(
-					"HEVY_API_KEY is not set in environment variables. Integration tests cannot run without a valid API key.\n\n" +
-						"For local development:\n" +
-						"1. Create a .env file in the project root\n" +
-						"2. Add HEVY_API_KEY=your_api_key to the file\n\n" +
-						"For GitHub Actions:\n" +
-						"1. Go to your GitHub repository\n" +
-						"2. Click on Settings > Secrets and variables > Actions\n" +
-						"3. Click on New repository secret\n" +
-						"4. Set the name to HEVY_API_KEY and the value to your Hevy API key\n" +
-						"5. Click Add secret",
-				);
-				return; // Skip the test
-			}
-
 			const args = {
 				page: 1,
 				pageSize: 5,
