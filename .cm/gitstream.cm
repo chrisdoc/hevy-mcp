@@ -6,6 +6,32 @@ manifest:
   version: 1.0
 
 automations:
+  # Use LinearB's AI service to review the changes
+  linearb_ai_review:
+    on:
+      - pr_created
+      - commit
+    if:
+      - "{{ not pr.draft }}"
+      - "{{ not is.bot }}"
+    run:
+      - action: code-review@v1
+        args:
+          approve_on_LGTM: "{{ calc.safe_changes }}"
+
+  # Use LinearB's AI service to add a description to the PR
+  linearb_ai_description:
+    on:
+      - pr_created
+      - commit
+    if:
+      - "{{ not pr.draft }}"
+      - "{{ not is.bot }}"
+    run:
+      - action: describe-changes@v1
+        args:
+          concat_mode: append
+
   # Automatically approve and merge dependabot patch updates
   merge_dependabot_patch:
     on:
