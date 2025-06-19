@@ -1,11 +1,9 @@
 import type {
-	Routine_exercises as Exercise,
-	Routine_exercises_sets as ExerciseSet,
 	ExerciseTemplate,
 	Routine,
 	RoutineFolder,
 	Workout,
-} from "../generated/client/models/index.js";
+} from "../generated/client/types/index.js";
 
 /**
  * Formatted workout set interface
@@ -109,22 +107,25 @@ export interface FormattedExerciseTemplate {
 export function formatWorkout(workout: Workout): FormattedWorkout {
 	return {
 		id: workout.id,
-		date: workout.createdAt,
+		date: workout.created_at,
 		name: workout.title,
 		description: workout.description,
-		duration: calculateDuration(workout.startTime || "", workout.endTime || ""),
-		exercises: workout.exercises?.map((exercise: Exercise) => {
+		duration: calculateDuration(
+			workout.start_time || "",
+			workout.end_time || "",
+		),
+		exercises: workout.exercises?.map((exercise) => {
 			return {
 				name: exercise.title,
 				notes: exercise.notes,
-				sets: exercise.sets?.map((set: ExerciseSet) => ({
+				sets: exercise.sets?.map((set) => ({
 					type: set.type,
-					weight: set.weightKg,
+					weight: set.weight_kg,
 					reps: set.reps,
-					distance: set.distanceMeters,
-					duration: set.durationSeconds,
+					distance: set.distance_meters,
+					duration: set.duration_seconds,
 					rpe: set.rpe,
-					customMetric: set.customMetric,
+					customMetric: set.custom_metric,
 				})),
 			};
 		}),
@@ -141,24 +142,24 @@ export function formatRoutine(routine: Routine): FormattedRoutine {
 	return {
 		id: routine.id,
 		title: routine.title,
-		folderId: routine.folderId,
-		createdAt: routine.createdAt,
-		updatedAt: routine.updatedAt,
-		exercises: routine.exercises?.map((exercise: Exercise) => {
+		folderId: routine.folder_id,
+		createdAt: routine.created_at,
+		updatedAt: routine.updated_at,
+		exercises: routine.exercises?.map((exercise) => {
 			return {
 				name: exercise.title,
 				index: exercise.index,
-				exerciseTemplateId: exercise.exerciseTemplateId,
+				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
-				supersetId: exercise.supersetsId,
-				sets: exercise.sets?.map((set: ExerciseSet) => ({
+				supersetId: exercise.supersets_id,
+				sets: exercise.sets?.map((set) => ({
 					index: set.index,
 					type: set.type,
-					weight: set.weightKg,
+					weight: set.weight_kg,
 					reps: set.reps,
-					distance: set.distanceMeters,
-					duration: set.durationSeconds,
-					customMetric: set.customMetric,
+					distance: set.distance_meters,
+					duration: set.duration_seconds,
+					customMetric: set.custom_metric,
 				})),
 			};
 		}),
@@ -177,8 +178,8 @@ export function formatRoutineFolder(
 	return {
 		id: folder.id,
 		title: folder.title,
-		createdAt: folder.createdAt,
-		updatedAt: folder.updatedAt,
+		createdAt: folder.created_at,
+		updatedAt: folder.updated_at,
 	};
 }
 

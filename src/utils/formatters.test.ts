@@ -19,11 +19,11 @@ describe("Formatters", () => {
 			const workoutId = crypto.randomUUID();
 			const workout = {
 				id: workoutId,
-				createdAt: "2025-03-27T07:00:00Z",
+				created_at: "2025-03-27T07:00:00Z",
 				title: "Morning Workout",
 				description: "Great session",
-				startTime: 1711522800000,
-				endTime: 1711526400000,
+				start_time: 1711522800000,
+				end_time: 1711526400000,
 				exercises: [],
 			};
 
@@ -42,11 +42,11 @@ describe("Formatters", () => {
 			const workoutId = crypto.randomUUID();
 			const workout = {
 				id: workoutId,
-				createdAt: "2025-03-27T07:00:00Z",
+				created_at: "2025-03-27T07:00:00Z",
 				title: "Morning Workout",
 				description: "Great session",
-				startTime: 1711522800000,
-				endTime: 1711526400000,
+				start_time: 1711522800000,
+				end_time: 1711526400000,
 				exercises: [
 					{
 						title: "Bench Press",
@@ -54,21 +54,21 @@ describe("Formatters", () => {
 						sets: [
 							{
 								type: "warmup",
-								weightKg: 60,
+								weight_kg: 60,
 								reps: 10,
-								distanceMeters: null,
-								durationSeconds: null,
+								distance_meters: null,
+								duration_seconds: null,
 								rpe: 6,
-								customMetric: null,
+								custom_metric: null,
 							},
 							{
 								type: "normal",
-								weightKg: 80,
+								weight_kg: 80,
 								reps: 8,
-								distanceMeters: null,
-								durationSeconds: null,
+								distance_meters: null,
+								duration_seconds: null,
 								rpe: 8,
-								customMetric: null,
+								custom_metric: null,
 							},
 						],
 					},
@@ -119,9 +119,9 @@ describe("Formatters", () => {
 			const routine = {
 				id: routineId,
 				title: "Evening Routine",
-				folderId: folderId,
-				createdAt: "2025-03-26T19:00:00Z",
-				updatedAt: "2025-03-26T19:30:00Z",
+				folder_id: folderId,
+				created_at: "2025-03-26T19:00:00Z",
+				updated_at: "2025-03-26T19:30:00Z",
 				exercises: [],
 			};
 
@@ -143,34 +143,34 @@ describe("Formatters", () => {
 			const routine = {
 				id: routineId,
 				title: "Evening Routine",
-				folderId: folderId,
-				createdAt: "2025-03-26T19:00:00Z",
-				updatedAt: "2025-03-26T19:30:00Z",
+				folder_id: folderId,
+				created_at: "2025-03-26T19:00:00Z",
+				updated_at: "2025-03-26T19:30:00Z",
 				exercises: [
 					{
 						title: "Squat",
 						index: 1,
-						exerciseTemplateId: templateId,
+						exercise_template_id: templateId,
 						notes: "Focus on form",
-						supersetsId: 1,
+						supersets_id: 1,
 						sets: [
 							{
 								index: 1,
 								type: "normal",
-								weightKg: 100,
+								weight_kg: 100,
 								reps: 5,
-								distanceMeters: null,
-								durationSeconds: null,
-								customMetric: null,
+								distance_meters: null,
+								duration_seconds: null,
+								custom_metric: null,
 							},
 							{
 								index: 2,
 								type: "normal",
-								weightKg: 110,
+								weight_kg: 110,
 								reps: 3,
-								distanceMeters: null,
-								durationSeconds: null,
-								customMetric: null,
+								distance_meters: null,
+								duration_seconds: null,
+								custom_metric: null,
 							},
 						],
 					},
@@ -223,8 +223,8 @@ describe("Formatters", () => {
 			const folder = {
 				id: folderId,
 				title: "Cardio",
-				createdAt: "2025-03-25T10:00:00Z",
-				updatedAt: "2025-03-25T10:15:00Z",
+				created_at: "2025-03-25T10:00:00Z",
+				updated_at: "2025-03-25T10:15:00Z",
 			};
 
 			const result = formatRoutineFolder(folder as RoutineFolder);
