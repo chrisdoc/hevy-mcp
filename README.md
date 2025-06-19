@@ -130,7 +130,11 @@ hevy-mcp/
 │   │   ├── templates.ts   # Exercise template tools
 │   │   └── folders.ts     # Routine folder tools
 │   ├── generated/         # API client (generated code)
-│   │   ├── client/        # Kiota-generated client
+│   │   ├── client/        # Kubb-generated client
+│   │   │   ├── api/       # API client methods
+│   │   │   ├── types/     # TypeScript types
+│   │   │   ├── schemas/   # Zod schemas
+│   │   │   └── mocks/     # Mock data
 │   └── utils/             # Helper utilities
 │       ├── formatters.ts  # Data formatting helpers
 │       └── validators.ts  # Input validation helpers
@@ -205,12 +209,14 @@ If the secret is not set, the integration tests step will be skipped with a mess
 
 ### Generating API Client
 
-The API client is generated from the OpenAPI specification using [Kiota](https://github.com/microsoft/kiota):
+The API client is generated from the OpenAPI specification using [Kubb](https://kubb.dev/):
 
 ```bash
 npm run export-specs
 npm run build:client
 ```
+
+Kubb generates TypeScript types, API clients, Zod schemas, and mock data from the OpenAPI specification.
 
 ## License
 

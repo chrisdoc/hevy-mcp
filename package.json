@@ -4,10 +4,7 @@
 	"main": "dist/index.js",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"files": [
-		"dist",
-		"README.md"
-	],
+	"files": ["dist", "README.md"],
 	"access": "public",
 	"bugs": {
 		"url": "https://github.com/chrisdoc/hevy-mcp/issues"
@@ -21,7 +18,7 @@
 		"test": "vitest",
 		"export-specs": "node ./scripts/export-openapi-spec.js",
 		"build": "tsup",
-		"build:client": "kiota generate -l typescript -d openapi-spec.json -c HevyClient -o ./src/generated/client --log-level error --clean-output --clear-cache",
+		"build:client": "kubb generate",
 		"start": "node dist/index.js",
 		"dev": "tsx watch --clear-screen=false src/index.ts",
 		"check": "biome check --fix",
@@ -32,25 +29,14 @@
 		"commit": "commit"
 	},
 	"type": "module",
-	"keywords": [
-		"mcp",
-		"hevy",
-		"fitness",
-		"api",
-		"model context protocol"
-	],
+	"keywords": ["mcp", "hevy", "fitness", "api", "model context protocol"],
 	"author": "Christoph Kieslich",
 	"license": "MIT",
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"dependencies": {
 		"@dotenvx/dotenvx": "^1.44.0",
-		"@microsoft/kiota-abstractions": "1.0.0-preview.95",
-		"@microsoft/kiota-authentication-azure": "1.0.0-preview.95",
-		"@microsoft/kiota-bundle": "1.0.0-preview.95",
-		"@microsoft/kiota-http-fetchlibrary": "1.0.0-preview.95",
-		"@microsoft/kiota-serialization-json": "1.0.0-preview.95",
-		"@microsoft/kiota-serialization-text": "1.0.0-preview.95",
 		"@modelcontextprotocol/sdk": "^1.11.3",
+		"axios": "^1.6.7",
 		"uuid": "^11.1.0",
 		"zod": "^3.24.4"
 	},
@@ -59,11 +45,19 @@
 		"@commitlint/cli": "^19.8.0",
 		"@commitlint/config-conventional": "^19.8.0",
 		"@commitlint/prompt-cli": "^19.8.0",
+		"@kubb/cli": "^3.10.12",
+		"@kubb/core": "^3.10.12",
+		"@kubb/plugin-client": "^3.10.12",
+		"@kubb/plugin-faker": "^3.10.12",
+		"@kubb/plugin-oas": "^3.10.12",
+		"@kubb/plugin-ts": "^3.10.12",
+		"@kubb/plugin-zod": "^3.10.12",
 		"@semantic-release/changelog": "^6.0.3",
 		"@semantic-release/git": "^10.0.1",
 		"@types/node": "^24.0.1",
 		"@vitest/coverage-v8": "^3.1.1",
 		"abstract-syntax-tree": "^2.22.0",
+		"kubb": "^3.0.77",
 		"lefthook": "^1.11.5",
 		"semantic-release": "^24.2.3",
 		"tsup": "^8.4.0",
