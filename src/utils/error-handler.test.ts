@@ -1,11 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
 
 describe("Error Handler", () => {
 	describe("createErrorResponse", () => {
 		// Mock console.error to prevent test output pollution
-		const originalConsoleError = console.error;
-		const originalConsoleDebug = console.debug;
+		const _originalConsoleError = console.error;
+		const _originalConsoleDebug = console.debug;
 
 		// Setup mocks before each test
 		vi.spyOn(console, "error").mockImplementation(() => {});

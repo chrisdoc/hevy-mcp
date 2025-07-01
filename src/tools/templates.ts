@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { HevyClient } from "../generated/client/hevyClient.js";
-import type { ExerciseTemplate } from "../generated/client/models/index.js";
 import { formatExerciseTemplate } from "../utils/formatters.js";
 
 /**
@@ -21,13 +20,12 @@ export function registerTemplateTools(
 		},
 		async ({ page, pageSize }) => {
 			try {
-				const data = await hevyClient.v1.exercise_templates.get({
+				const data = await hevyClient.exercise_templates.get({
 					queryParameters: {
 						page,
 						pageSize,
 					},
 				});
-
 				// Process exercise templates to extract relevant information
 				const templates =
 					data?.exerciseTemplates?.map((template) =>
@@ -66,7 +64,7 @@ export function registerTemplateTools(
 		},
 		async ({ exerciseTemplateId }) => {
 			try {
-				const data = await hevyClient.v1.exercise_templates
+				const data = await hevyClient.exercise_templates
 					.byExerciseTemplateId(exerciseTemplateId)
 					.get();
 

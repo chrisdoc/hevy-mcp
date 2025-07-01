@@ -13,7 +13,7 @@ export const postWorkoutsRequestSetSchema = z.object({
   duration_seconds: z.number().int().describe('The duration in seconds.').nullable().nullish(),
   custom_metric: z.number().describe('A custom metric for the set. Currently used for steps and floors.').nullable().nullish(),
   rpe: z
-    .union([z.literal(6), z.literal(7), z.literal(7), z.literal(8), z.literal(8), z.literal(9), z.literal(9), z.literal(10)])
+    .union([z.literal(6), z.literal(7), z.literal(7.5), z.literal(8), z.literal(8.5), z.literal(9), z.literal(9.5), z.literal(10)])
     .describe('The Rating of Perceived Exertion (RPE).')
     .nullable()
     .nullish(),

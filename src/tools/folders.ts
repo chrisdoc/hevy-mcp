@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { HevyClient } from "../generated/client/hevyClient.js";
-import type { RoutineFolder } from "../generated/client/models/index.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
 
 /**
@@ -18,7 +17,7 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 		},
 		async ({ page, pageSize }) => {
 			try {
-				const data = await hevyClient.v1.routine_folders.get({
+				const data = await hevyClient.routine_folders.get({
 					queryParameters: {
 						page,
 						pageSize,
@@ -62,7 +61,7 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 		},
 		async ({ folderId }) => {
 			try {
-				const data = await hevyClient.v1.routine_folders
+				const data = await hevyClient.routine_folders
 					.byFolderId(folderId.toString())
 					.get();
 
@@ -111,7 +110,7 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 		},
 		async ({ title }) => {
 			try {
-				const data = await hevyClient.v1.routine_folders.post({
+				const data = await hevyClient.routine_folders.post({
 					routineFolder: {
 						title,
 					},

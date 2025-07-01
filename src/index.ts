@@ -2,15 +2,13 @@
 import "@dotenvx/dotenvx/config";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-
+import { name, version } from "../package.json";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
 // Import tool registration functions
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { createClient } from "./utils/hevyClient.js";
-
-import { name, version } from "../package.json";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 

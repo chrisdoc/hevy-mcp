@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { HevyClient } from "../generated/client/hevyClient.js";
-import type { Routine } from "../generated/client/models/index.js";
 import { formatRoutine } from "../utils/formatters.js";
 
 /**
@@ -21,7 +20,7 @@ export function registerRoutineTools(
 		},
 		async ({ page, pageSize }) => {
 			try {
-				const data = await hevyClient.v1.routines.get({
+				const data = await hevyClient.routines.get({
 					queryParameters: {
 						page,
 						pageSize,
@@ -65,7 +64,7 @@ export function registerRoutineTools(
 		async ({ routineId }) => {
 			try {
 				// Since the Kiota client doesn't have a get() method for routine by ID, we need to use the list endpoint and filter
-				const data = await hevyClient.v1.routines.byRoutineId(routineId).put({
+				const data = await hevyClient.routines.byRoutineId(routineId).put({
 					routine: {
 						title: "", // We're providing a minimal body as required by the API
 					},
@@ -138,7 +137,7 @@ export function registerRoutineTools(
 		},
 		async ({ title, folderId, notes, exercises }) => {
 			try {
-				const data = await hevyClient.v1.routines.post({
+				const data = await hevyClient.routines.post({
 					routine: {
 						title,
 						folderId: folderId || null,
@@ -227,7 +226,7 @@ export function registerRoutineTools(
 		},
 		async ({ routineId, title, notes, exercises }) => {
 			try {
-				const data = await hevyClient.v1.routines.byRoutineId(routineId).put({
+				const data = await hevyClient.routines.byRoutineId(routineId).put({
 					routine: {
 						title,
 						notes: notes || null,

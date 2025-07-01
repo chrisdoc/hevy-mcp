@@ -4,7 +4,10 @@
 	"main": "dist/index.js",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"files": ["dist", "README.md"],
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"access": "public",
 	"bugs": {
 		"url": "https://github.com/chrisdoc/hevy-mcp/issues"
@@ -21,7 +24,7 @@
 		"build:client": "kubb generate",
 		"start": "node dist/index.js",
 		"dev": "tsx watch --clear-screen=false src/index.ts",
-		"check": "biome check --fix",
+		"check": "biome check --write --unsafe",
 		"version:patch": "npm version patch",
 		"version:minor": "npm version minor",
 		"version:major": "npm version major",
@@ -29,41 +32,46 @@
 		"commit": "commit"
 	},
 	"type": "module",
-	"keywords": ["mcp", "hevy", "fitness", "api", "model context protocol"],
+	"keywords": [
+		"mcp",
+		"hevy",
+		"fitness",
+		"api",
+		"model context protocol"
+	],
 	"author": "Christoph Kieslich",
 	"license": "MIT",
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"dependencies": {
-		"@dotenvx/dotenvx": "^1.44.0",
-		"@kubb/cli": "^3.10.12",
-		"@kubb/core": "^3.10.12",
-		"@kubb/plugin-client": "^3.10.12",
-		"@kubb/plugin-faker": "^3.10.12",
-		"@kubb/plugin-oas": "^3.10.12",
-		"@kubb/plugin-ts": "^3.10.12",
-		"@kubb/plugin-zod": "^3.10.12",
-		"@modelcontextprotocol/sdk": "^1.11.3",
-		"axios": "^1.6.7",
-		"kubb": "^3.0.77",
+		"@dotenvx/dotenvx": "^1.45.1",
+		"@kubb/cli": "^3.12.1",
+		"@kubb/core": "^3.12.1",
+		"@kubb/plugin-client": "^3.12.1",
+		"@kubb/plugin-faker": "^3.12.1",
+		"@kubb/plugin-oas": "^3.12.1",
+		"@kubb/plugin-ts": "^3.12.1",
+		"@kubb/plugin-zod": "^3.12.1",
+		"@modelcontextprotocol/sdk": "^1.13.3",
+		"axios": "^1.10.0",
 		"uuid": "^11.1.0",
-		"zod": "^3.24.4"
+		"zod": "^3.25.67"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
-		"@commitlint/cli": "^19.8.0",
-		"@commitlint/config-conventional": "^19.8.0",
-		"@commitlint/prompt-cli": "^19.8.0",
+		"@biomejs/biome": "2.0.6",
+		"@commitlint/cli": "^19.8.1",
+		"@commitlint/config-conventional": "^19.8.1",
+		"@commitlint/prompt-cli": "^19.8.1",
 		"@semantic-release/changelog": "^6.0.3",
 		"@semantic-release/git": "^10.0.1",
-		"@types/node": "^24.0.1",
-		"@vitest/coverage-v8": "^3.1.1",
+		"@types/node": "^24.0.9",
+		"@vitest/coverage-v8": "^3.2.4",
 		"abstract-syntax-tree": "^2.22.0",
-		"lefthook": "^1.11.5",
-		"semantic-release": "^24.2.3",
-		"tsup": "^8.4.0",
-		"tsx": "^4.19.3",
+		"lefthook": "^1.11.14",
+		"semantic-release": "^24.2.6",
+		"tsup": "^8.5.0",
+		"tsx": "^4.20.3",
 		"typescript": "^5.8.3",
-		"vitest": "^3.1.1"
+		"vitest": "^3.2.4"
 	},
 	"engines": {
 		"node": ">=20.0.0"

@@ -1,5 +1,4 @@
 import axios from "axios";
-import type { AxiosInstance } from "axios";
 import * as api from "../generated/client/api";
 import type {
 	GetV1ExerciseTemplatesQueryParams,
@@ -16,7 +15,7 @@ import type {
 
 // Define a type that matches the expected client interface
 type KubbClient = {
-	<TData, TError = unknown, TVariables = unknown>(
+	<_TData, _TError = unknown, _TVariables = unknown>(
 		config: Record<string, unknown>,
 	): Promise<unknown>;
 	getConfig: () => Partial<Record<string, unknown>>;
