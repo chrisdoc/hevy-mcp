@@ -110,14 +110,31 @@ export function registerRoutineTools(
 			routineId: z.string().min(1),
 		},
 		withErrorHandling(async ({ routineId }: { routineId: string }) => {
-			// Since there's no direct get routine by ID endpoint, we need to use the list endpoint and filter
-			const data = await hevyClient.getRoutines();
+			// Since there's no direct get routine by ID endpoint, we need to search across all pages
+			let page = 1;
+			const pageSize = 10; // Use maximum page size for efficiency
+			let routine = null;
 
-			if (!data?.routines) {
-				return createEmptyResponse("No routines found");
+			while (!routine) {
+				const data = await hevyClient.getRoutines({
+					page,
+					pageSize,
+				});
+
+				if (!data?.routines || data.routines.length === 0) {
+					// No more routines to check
+					break;
+				}
+
+				routine = data.routines.find((r) => r.id === routineId);
+
+				if (!routine && data.routines.length < pageSize) {
+					// We've reached the last page and didn't find the routine
+					break;
+				}
+
+				page++;
 			}
-
-			const routine = data.routines.find((r) => r.id === routineId);
 			if (!routine) {
 				return createEmptyResponse(`Routine with ID ${routineId} not found`);
 			}

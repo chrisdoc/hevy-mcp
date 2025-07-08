@@ -59,19 +59,22 @@ export function registerTemplateTools(
 		"get-exercise-template",
 		"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
 		{
-			templateId: z.string().min(1),
+			exerciseTemplateId: z.string().min(1),
 		},
-		withErrorHandling(async ({ templateId }: { templateId: string }) => {
-			const data = await hevyClient.getExerciseTemplate(templateId);
+		withErrorHandling(
+			async ({ exerciseTemplateId }: { exerciseTemplateId: string }) => {
+				const data = await hevyClient.getExerciseTemplate(exerciseTemplateId);
 
-			if (!data) {
-				return createEmptyResponse(
-					`Exercise template with ID ${templateId} not found`,
-				);
-			}
+				if (!data) {
+					return createEmptyResponse(
+						`Exercise template with ID ${exerciseTemplateId} not found`,
+					);
+				}
 
-			const template = formatExerciseTemplate(data);
-			return createJsonResponse(template);
-		}, "get-exercise-template"),
+				const template = formatExerciseTemplate(data);
+				return createJsonResponse(template);
+			},
+			"get-exercise-template",
+		),
 	);
 }
