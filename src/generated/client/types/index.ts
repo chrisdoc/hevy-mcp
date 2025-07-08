@@ -1,4 +1,10 @@
 export type { DeletedWorkout } from './DeletedWorkout.ts'
+export type {
+  DeleteV1WebhookSubscriptionHeaderParams,
+  DeleteV1WebhookSubscription200,
+  DeleteV1WebhookSubscriptionMutationResponse,
+  DeleteV1WebhookSubscriptionMutation,
+} from './DeleteV1WebhookSubscription.ts'
 export type { ExerciseTemplate } from './ExerciseTemplate.ts'
 export type {
   GetV1ExerciseTemplatesQueryParams,
@@ -40,6 +46,21 @@ export type {
   GetV1RoutinesQueryResponse,
   GetV1RoutinesQuery,
 } from './GetV1Routines.ts'
+export type {
+  GetV1RoutinesRoutineidPathParams,
+  GetV1RoutinesRoutineidHeaderParams,
+  GetV1RoutinesRoutineid200,
+  GetV1RoutinesRoutineid400,
+  GetV1RoutinesRoutineidQueryResponse,
+  GetV1RoutinesRoutineidQuery,
+} from './GetV1RoutinesRoutineid.ts'
+export type {
+  GetV1WebhookSubscriptionHeaderParams,
+  GetV1WebhookSubscription200,
+  GetV1WebhookSubscription404,
+  GetV1WebhookSubscriptionQueryResponse,
+  GetV1WebhookSubscriptionQuery,
+} from './GetV1WebhookSubscription.ts'
 export type {
   GetV1WorkoutsQueryParams,
   GetV1WorkoutsHeaderParams,
@@ -88,6 +109,14 @@ export type {
   PostV1RoutinesMutation,
 } from './PostV1Routines.ts'
 export type {
+  PostV1WebhookSubscriptionHeaderParams,
+  PostV1WebhookSubscription201,
+  PostV1WebhookSubscription400,
+  PostV1WebhookSubscriptionMutationRequest,
+  PostV1WebhookSubscriptionMutationResponse,
+  PostV1WebhookSubscriptionMutation,
+} from './PostV1WebhookSubscription.ts'
+export type {
   PostV1WorkoutsHeaderParams,
   PostV1Workouts201,
   PostV1Workouts400,
@@ -123,6 +152,7 @@ export type {
 export type { Routine } from './Routine.ts'
 export type { RoutineFolder } from './RoutineFolder.ts'
 export type { UpdatedWorkout } from './UpdatedWorkout.ts'
+export type { WebhookRequestBody } from './WebhookRequestBody.ts'
 export type { Workout } from './Workout.ts'
 export { postRoutinesRequestSetTypeEnum } from './PostRoutinesRequestSet.ts'
 export { postWorkoutsRequestSetTypeEnum, postWorkoutsRequestSetRpeEnum } from './PostWorkoutsRequestSet.ts'

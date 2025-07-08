@@ -16,6 +16,7 @@ export const routineSchema = z.object({
       z.object({
         index: z.number().describe('Index indicating the order of the exercise in the routine.').optional(),
         title: z.string().describe('Title of the exercise').optional(),
+        rest_seconds: z.string().describe('The rest time in seconds between sets of the exercise').optional(),
         notes: z.string().describe('Routine notes on the exercise').optional(),
         exercise_template_id: z.string().describe('The id of the exercise template. This can be used to fetch the exercise template.').optional(),
         supersets_id: z

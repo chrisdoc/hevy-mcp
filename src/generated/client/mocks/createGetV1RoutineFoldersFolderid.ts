@@ -13,7 +13,7 @@ import { faker } from '@faker-js/faker'
 
 export function createGetV1RoutineFoldersFolderidPathParams(data?: Partial<GetV1RoutineFoldersFolderidPathParams>): GetV1RoutineFoldersFolderidPathParams {
   return {
-    ...{ folderId: faker.string.alpha() },
+    ...{ folderId: undefined },
     ...(data || {}),
   }
 }

@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   PutV1WorkoutsWorkoutidMutationRequest,
   PutV1WorkoutsWorkoutidMutationResponse,
@@ -25,14 +25,15 @@ export async function putV1WorkoutsWorkoutid(
   workoutId: PutV1WorkoutsWorkoutidPathParams['workoutId'],
   headers: PutV1WorkoutsWorkoutidHeaderParams,
   data?: PutV1WorkoutsWorkoutidMutationRequest,
-  config: Partial<RequestConfig<PutV1WorkoutsWorkoutidMutationRequest>> & { client?: typeof client } = {},
+  config: Partial<RequestConfig<PutV1WorkoutsWorkoutidMutationRequest>> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
+  const requestData = data
   const res = await request<PutV1WorkoutsWorkoutidMutationResponse, ResponseErrorConfig<PutV1WorkoutsWorkoutid400>, PutV1WorkoutsWorkoutidMutationRequest>({
     method: 'PUT',
     url: getPutV1WorkoutsWorkoutidUrl(workoutId).toString(),
-    data,
+    data: requestData,
     ...requestConfig,
     headers: { ...headers, ...requestConfig.headers },
   })

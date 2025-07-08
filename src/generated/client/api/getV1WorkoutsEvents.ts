@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   GetV1WorkoutsEventsQueryResponse,
   GetV1WorkoutsEventsQueryParams,
@@ -24,9 +24,9 @@ function getGetV1WorkoutsEventsUrl() {
 export async function getV1WorkoutsEvents(
   headers: GetV1WorkoutsEventsHeaderParams,
   params?: GetV1WorkoutsEventsQueryParams,
-  config: Partial<RequestConfig> & { client?: typeof client } = {},
+  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
   const res = await request<GetV1WorkoutsEventsQueryResponse, ResponseErrorConfig<GetV1WorkoutsEvents500>, unknown>({
     method: 'GET',

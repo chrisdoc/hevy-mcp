@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type { GetV1WorkoutsCountQueryResponse, GetV1WorkoutsCountHeaderParams } from '../types/GetV1WorkoutsCount.ts'
 import type { RequestConfig, ResponseErrorConfig } from '@kubb/plugin-client/clients/axios'
 
@@ -15,8 +15,8 @@ function getGetV1WorkoutsCountUrl() {
  * @summary Get the total number of workouts on the account
  * {@link /v1/workouts/count}
  */
-export async function getV1WorkoutsCount(headers: GetV1WorkoutsCountHeaderParams, config: Partial<RequestConfig> & { client?: typeof client } = {}) {
-  const { client: request = client, ...requestConfig } = config
+export async function getV1WorkoutsCount(headers: GetV1WorkoutsCountHeaderParams, config: Partial<RequestConfig> & { client?: typeof fetch } = {}) {
+  const { client: request = fetch, ...requestConfig } = config
 
   const res = await request<GetV1WorkoutsCountQueryResponse, ResponseErrorConfig<Error>, unknown>({
     method: 'GET',

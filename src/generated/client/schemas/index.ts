@@ -1,4 +1,9 @@
 export { deletedWorkoutSchema } from './deletedWorkoutSchema.ts'
+export {
+  deleteV1WebhookSubscriptionHeaderParamsSchema,
+  deleteV1WebhookSubscription200Schema,
+  deleteV1WebhookSubscriptionMutationResponseSchema,
+} from './deleteV1WebhookSubscriptionSchema.ts'
 export { exerciseTemplateSchema } from './exerciseTemplateSchema.ts'
 export {
   getV1ExerciseTemplatesExercisetemplateidPathParamsSchema,
@@ -29,12 +34,25 @@ export {
   getV1RoutineFoldersQueryResponseSchema,
 } from './getV1RoutineFoldersSchema.ts'
 export {
+  getV1RoutinesRoutineidPathParamsSchema,
+  getV1RoutinesRoutineidHeaderParamsSchema,
+  getV1RoutinesRoutineid200Schema,
+  getV1RoutinesRoutineid400Schema,
+  getV1RoutinesRoutineidQueryResponseSchema,
+} from './getV1RoutinesRoutineidSchema.ts'
+export {
   getV1RoutinesQueryParamsSchema,
   getV1RoutinesHeaderParamsSchema,
   getV1Routines200Schema,
   getV1Routines400Schema,
   getV1RoutinesQueryResponseSchema,
 } from './getV1RoutinesSchema.ts'
+export {
+  getV1WebhookSubscriptionHeaderParamsSchema,
+  getV1WebhookSubscription200Schema,
+  getV1WebhookSubscription404Schema,
+  getV1WebhookSubscriptionQueryResponseSchema,
+} from './getV1WebhookSubscriptionSchema.ts'
 export { getV1WorkoutsCountHeaderParamsSchema, getV1WorkoutsCount200Schema, getV1WorkoutsCountQueryResponseSchema } from './getV1WorkoutsCountSchema.ts'
 export {
   getV1WorkoutsEventsQueryParamsSchema,
@@ -78,6 +96,13 @@ export {
   postV1RoutinesMutationResponseSchema,
 } from './postV1RoutinesSchema.ts'
 export {
+  postV1WebhookSubscriptionHeaderParamsSchema,
+  postV1WebhookSubscription201Schema,
+  postV1WebhookSubscription400Schema,
+  postV1WebhookSubscriptionMutationRequestSchema,
+  postV1WebhookSubscriptionMutationResponseSchema,
+} from './postV1WebhookSubscriptionSchema.ts'
+export {
   postV1WorkoutsHeaderParamsSchema,
   postV1Workouts201Schema,
   postV1Workouts400Schema,
@@ -110,4 +135,5 @@ export {
 export { routineFolderSchema } from './routineFolderSchema.ts'
 export { routineSchema } from './routineSchema.ts'
 export { updatedWorkoutSchema } from './updatedWorkoutSchema.ts'
+export { webhookRequestBodySchema } from './webhookRequestBodySchema.ts'
 export { workoutSchema } from './workoutSchema.ts'

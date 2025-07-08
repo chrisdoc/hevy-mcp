@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   GetV1WorkoutsWorkoutidQueryResponse,
   GetV1WorkoutsWorkoutidPathParams,
@@ -23,9 +23,9 @@ function getGetV1WorkoutsWorkoutidUrl(workoutId: GetV1WorkoutsWorkoutidPathParam
 export async function getV1WorkoutsWorkoutid(
   workoutId: GetV1WorkoutsWorkoutidPathParams['workoutId'],
   headers: GetV1WorkoutsWorkoutidHeaderParams,
-  config: Partial<RequestConfig> & { client?: typeof client } = {},
+  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
   const res = await request<GetV1WorkoutsWorkoutidQueryResponse, ResponseErrorConfig<GetV1WorkoutsWorkoutid404>, unknown>({
     method: 'GET',

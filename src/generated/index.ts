@@ -1,4 +1,10 @@
 export type { DeletedWorkout } from './client/types/DeletedWorkout.ts'
+export type {
+  DeleteV1WebhookSubscriptionHeaderParams,
+  DeleteV1WebhookSubscription200,
+  DeleteV1WebhookSubscriptionMutationResponse,
+  DeleteV1WebhookSubscriptionMutation,
+} from './client/types/DeleteV1WebhookSubscription.ts'
 export type { ExerciseTemplate } from './client/types/ExerciseTemplate.ts'
 export type {
   GetV1ExerciseTemplatesQueryParams,
@@ -40,6 +46,21 @@ export type {
   GetV1RoutinesQueryResponse,
   GetV1RoutinesQuery,
 } from './client/types/GetV1Routines.ts'
+export type {
+  GetV1RoutinesRoutineidPathParams,
+  GetV1RoutinesRoutineidHeaderParams,
+  GetV1RoutinesRoutineid200,
+  GetV1RoutinesRoutineid400,
+  GetV1RoutinesRoutineidQueryResponse,
+  GetV1RoutinesRoutineidQuery,
+} from './client/types/GetV1RoutinesRoutineid.ts'
+export type {
+  GetV1WebhookSubscriptionHeaderParams,
+  GetV1WebhookSubscription200,
+  GetV1WebhookSubscription404,
+  GetV1WebhookSubscriptionQueryResponse,
+  GetV1WebhookSubscriptionQuery,
+} from './client/types/GetV1WebhookSubscription.ts'
 export type {
   GetV1WorkoutsQueryParams,
   GetV1WorkoutsHeaderParams,
@@ -93,6 +114,14 @@ export type {
   PostV1RoutinesMutation,
 } from './client/types/PostV1Routines.ts'
 export type {
+  PostV1WebhookSubscriptionHeaderParams,
+  PostV1WebhookSubscription201,
+  PostV1WebhookSubscription400,
+  PostV1WebhookSubscriptionMutationRequest,
+  PostV1WebhookSubscriptionMutationResponse,
+  PostV1WebhookSubscriptionMutation,
+} from './client/types/PostV1WebhookSubscription.ts'
+export type {
   PostV1WorkoutsHeaderParams,
   PostV1Workouts201,
   PostV1Workouts400,
@@ -128,22 +157,32 @@ export type {
 export type { Routine } from './client/types/Routine.ts'
 export type { RoutineFolder } from './client/types/RoutineFolder.ts'
 export type { UpdatedWorkout } from './client/types/UpdatedWorkout.ts'
+export type { WebhookRequestBody } from './client/types/WebhookRequestBody.ts'
 export type { Workout } from './client/types/Workout.ts'
+export { deleteV1WebhookSubscription } from './client/api/deleteV1WebhookSubscription.ts'
 export { getV1ExerciseTemplates } from './client/api/getV1ExerciseTemplates.ts'
 export { getV1ExerciseTemplatesExercisetemplateid } from './client/api/getV1ExerciseTemplatesExercisetemplateid.ts'
 export { getV1RoutineFolders } from './client/api/getV1RoutineFolders.ts'
 export { getV1RoutineFoldersFolderid } from './client/api/getV1RoutineFoldersFolderid.ts'
 export { getV1Routines } from './client/api/getV1Routines.ts'
+export { getV1RoutinesRoutineid } from './client/api/getV1RoutinesRoutineid.ts'
+export { getV1WebhookSubscription } from './client/api/getV1WebhookSubscription.ts'
 export { getV1Workouts } from './client/api/getV1Workouts.ts'
 export { getV1WorkoutsCount } from './client/api/getV1WorkoutsCount.ts'
 export { getV1WorkoutsEvents } from './client/api/getV1WorkoutsEvents.ts'
 export { getV1WorkoutsWorkoutid } from './client/api/getV1WorkoutsWorkoutid.ts'
 export { postV1RoutineFolders } from './client/api/postV1RoutineFolders.ts'
 export { postV1Routines } from './client/api/postV1Routines.ts'
+export { postV1WebhookSubscription } from './client/api/postV1WebhookSubscription.ts'
 export { postV1Workouts } from './client/api/postV1Workouts.ts'
 export { putV1RoutinesRoutineid } from './client/api/putV1RoutinesRoutineid.ts'
 export { putV1WorkoutsWorkoutid } from './client/api/putV1WorkoutsWorkoutid.ts'
 export { createDeletedWorkout } from './client/mocks/createDeletedWorkout.ts'
+export {
+  createDeleteV1WebhookSubscriptionHeaderParams,
+  createDeleteV1WebhookSubscription200,
+  createDeleteV1WebhookSubscriptionMutationResponse,
+} from './client/mocks/createDeleteV1WebhookSubscription.ts'
 export { createExerciseTemplate } from './client/mocks/createExerciseTemplate.ts'
 export {
   createGetV1ExerciseTemplatesQueryParams,
@@ -180,6 +219,19 @@ export {
   createGetV1Routines400,
   createGetV1RoutinesQueryResponse,
 } from './client/mocks/createGetV1Routines.ts'
+export {
+  createGetV1RoutinesRoutineidPathParams,
+  createGetV1RoutinesRoutineidHeaderParams,
+  createGetV1RoutinesRoutineid200,
+  createGetV1RoutinesRoutineid400,
+  createGetV1RoutinesRoutineidQueryResponse,
+} from './client/mocks/createGetV1RoutinesRoutineid.ts'
+export {
+  createGetV1WebhookSubscriptionHeaderParams,
+  createGetV1WebhookSubscription200,
+  createGetV1WebhookSubscription404,
+  createGetV1WebhookSubscriptionQueryResponse,
+} from './client/mocks/createGetV1WebhookSubscription.ts'
 export {
   createGetV1WorkoutsQueryParams,
   createGetV1WorkoutsHeaderParams,
@@ -227,6 +279,13 @@ export {
   createPostV1RoutinesMutationResponse,
 } from './client/mocks/createPostV1Routines.ts'
 export {
+  createPostV1WebhookSubscriptionHeaderParams,
+  createPostV1WebhookSubscription201,
+  createPostV1WebhookSubscription400,
+  createPostV1WebhookSubscriptionMutationRequest,
+  createPostV1WebhookSubscriptionMutationResponse,
+} from './client/mocks/createPostV1WebhookSubscription.ts'
+export {
   createPostV1WorkoutsHeaderParams,
   createPostV1Workouts201,
   createPostV1Workouts400,
@@ -259,8 +318,14 @@ export {
 export { createRoutine } from './client/mocks/createRoutine.ts'
 export { createRoutineFolder } from './client/mocks/createRoutineFolder.ts'
 export { createUpdatedWorkout } from './client/mocks/createUpdatedWorkout.ts'
+export { createWebhookRequestBody } from './client/mocks/createWebhookRequestBody.ts'
 export { createWorkout } from './client/mocks/createWorkout.ts'
 export { deletedWorkoutSchema } from './client/schemas/deletedWorkoutSchema.ts'
+export {
+  deleteV1WebhookSubscriptionHeaderParamsSchema,
+  deleteV1WebhookSubscription200Schema,
+  deleteV1WebhookSubscriptionMutationResponseSchema,
+} from './client/schemas/deleteV1WebhookSubscriptionSchema.ts'
 export { exerciseTemplateSchema } from './client/schemas/exerciseTemplateSchema.ts'
 export {
   getV1ExerciseTemplatesExercisetemplateidPathParamsSchema,
@@ -291,12 +356,25 @@ export {
   getV1RoutineFoldersQueryResponseSchema,
 } from './client/schemas/getV1RoutineFoldersSchema.ts'
 export {
+  getV1RoutinesRoutineidPathParamsSchema,
+  getV1RoutinesRoutineidHeaderParamsSchema,
+  getV1RoutinesRoutineid200Schema,
+  getV1RoutinesRoutineid400Schema,
+  getV1RoutinesRoutineidQueryResponseSchema,
+} from './client/schemas/getV1RoutinesRoutineidSchema.ts'
+export {
   getV1RoutinesQueryParamsSchema,
   getV1RoutinesHeaderParamsSchema,
   getV1Routines200Schema,
   getV1Routines400Schema,
   getV1RoutinesQueryResponseSchema,
 } from './client/schemas/getV1RoutinesSchema.ts'
+export {
+  getV1WebhookSubscriptionHeaderParamsSchema,
+  getV1WebhookSubscription200Schema,
+  getV1WebhookSubscription404Schema,
+  getV1WebhookSubscriptionQueryResponseSchema,
+} from './client/schemas/getV1WebhookSubscriptionSchema.ts'
 export {
   getV1WorkoutsCountHeaderParamsSchema,
   getV1WorkoutsCount200Schema,
@@ -344,6 +422,13 @@ export {
   postV1RoutinesMutationResponseSchema,
 } from './client/schemas/postV1RoutinesSchema.ts'
 export {
+  postV1WebhookSubscriptionHeaderParamsSchema,
+  postV1WebhookSubscription201Schema,
+  postV1WebhookSubscription400Schema,
+  postV1WebhookSubscriptionMutationRequestSchema,
+  postV1WebhookSubscriptionMutationResponseSchema,
+} from './client/schemas/postV1WebhookSubscriptionSchema.ts'
+export {
   postV1WorkoutsHeaderParamsSchema,
   postV1Workouts201Schema,
   postV1Workouts400Schema,
@@ -376,6 +461,7 @@ export {
 export { routineFolderSchema } from './client/schemas/routineFolderSchema.ts'
 export { routineSchema } from './client/schemas/routineSchema.ts'
 export { updatedWorkoutSchema } from './client/schemas/updatedWorkoutSchema.ts'
+export { webhookRequestBodySchema } from './client/schemas/webhookRequestBodySchema.ts'
 export { workoutSchema } from './client/schemas/workoutSchema.ts'
 export { postRoutinesRequestSetTypeEnum } from './client/types/PostRoutinesRequestSet.ts'
 export { postWorkoutsRequestSetTypeEnum, postWorkoutsRequestSetRpeEnum } from './client/types/PostWorkoutsRequestSet.ts'

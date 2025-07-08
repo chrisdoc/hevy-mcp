@@ -17,6 +17,7 @@ export function createRoutine(data?: Partial<Routine>): Routine {
       exercises: faker.helpers.multiple(() => ({
         index: faker.number.float(),
         title: faker.string.alpha(),
+        rest_seconds: faker.string.alpha(),
         notes: faker.string.alpha(),
         exercise_template_id: faker.string.alpha(),
         supersets_id: faker.number.float(),

@@ -6,11 +6,7 @@
 import type { ExerciseTemplate } from './ExerciseTemplate.ts'
 
 export type GetV1ExerciseTemplatesExercisetemplateidPathParams = {
-  /**
-   * @description The id of the exercise template
-   * @type string
-   */
-  exerciseTemplateId: string
+  exerciseTemplateId: any
 }
 
 export type GetV1ExerciseTemplatesExercisetemplateidHeaderParams = {

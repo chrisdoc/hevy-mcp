@@ -1,0 +1,1 @@
+{"type":"object","properties":{"authToken":{"type":"string","description":"The auth token that will be send as Authorization header in the webhook.","example":"Bearer mytoken"},"url":{"type":"string","description":"The webhook URL.","example":"https://example.com/hevy-webhook"}},"x-readme-ref-name":"WebhookRequestBody"}

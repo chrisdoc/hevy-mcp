@@ -80,6 +80,10 @@ export function createClient(
 			params?: GetV1RoutinesQueryParams,
 		): ReturnType<typeof api.getV1Routines> =>
 			api.getV1Routines(headers, params, { client }),
+		getRoutineById: (
+			routineId: string,
+		): ReturnType<typeof api.getV1RoutinesRoutineid> =>
+			api.getV1RoutinesRoutineid(routineId, headers, { client }),
 		createRoutine: (
 			data: PostV1RoutinesMutationRequest,
 		): ReturnType<typeof api.postV1Routines> =>
@@ -119,5 +123,17 @@ export function createClient(
 			api.getV1RoutineFoldersFolderid(folderId, headers, {
 				client,
 			}),
+
+		// Webhooks
+		getWebhookSubscription: (): ReturnType<
+			typeof api.getV1WebhookSubscription
+		> => api.getV1WebhookSubscription(headers, { client }),
+		createWebhookSubscription: (
+			data: import("../generated/client/types").PostV1WebhookSubscriptionMutationRequest,
+		): ReturnType<typeof api.postV1WebhookSubscription> =>
+			api.postV1WebhookSubscription(headers, data, { client }),
+		deleteWebhookSubscription: (): ReturnType<
+			typeof api.deleteV1WebhookSubscription
+		> => api.deleteV1WebhookSubscription(headers, { client }),
 	};
 }

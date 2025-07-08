@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   PutV1RoutinesRoutineidMutationRequest,
   PutV1RoutinesRoutineidMutationResponse,
@@ -26,14 +26,21 @@ export async function putV1RoutinesRoutineid(
   routineId: PutV1RoutinesRoutineidPathParams['routineId'],
   headers: PutV1RoutinesRoutineidHeaderParams,
   data?: PutV1RoutinesRoutineidMutationRequest,
-  config: Partial<RequestConfig<PutV1RoutinesRoutineidMutationRequest>> & { client?: typeof client } = {},
+  config: Partial<RequestConfig<PutV1RoutinesRoutineidMutationRequest>> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
+  const requestData = data
   const res = await request<
     PutV1RoutinesRoutineidMutationResponse,
     ResponseErrorConfig<PutV1RoutinesRoutineid400 | PutV1RoutinesRoutineid404>,
     PutV1RoutinesRoutineidMutationRequest
-  >({ method: 'PUT', url: getPutV1RoutinesRoutineidUrl(routineId).toString(), data, ...requestConfig, headers: { ...headers, ...requestConfig.headers } })
+  >({
+    method: 'PUT',
+    url: getPutV1RoutinesRoutineidUrl(routineId).toString(),
+    data: requestData,
+    ...requestConfig,
+    headers: { ...headers, ...requestConfig.headers },
+  })
   return res.data
 }

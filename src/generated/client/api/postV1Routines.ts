@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   PostV1RoutinesMutationRequest,
   PostV1RoutinesMutationResponse,
@@ -24,14 +24,15 @@ function getPostV1RoutinesUrl() {
 export async function postV1Routines(
   headers: PostV1RoutinesHeaderParams,
   data?: PostV1RoutinesMutationRequest,
-  config: Partial<RequestConfig<PostV1RoutinesMutationRequest>> & { client?: typeof client } = {},
+  config: Partial<RequestConfig<PostV1RoutinesMutationRequest>> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
+  const requestData = data
   const res = await request<PostV1RoutinesMutationResponse, ResponseErrorConfig<PostV1Routines400 | PostV1Routines403>, PostV1RoutinesMutationRequest>({
     method: 'POST',
     url: getPostV1RoutinesUrl().toString(),
-    data,
+    data: requestData,
     ...requestConfig,
     headers: { ...headers, ...requestConfig.headers },
   })

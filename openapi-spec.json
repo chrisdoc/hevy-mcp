@@ -2,7 +2,7 @@
 	"openapi": "3.0.0",
 	"info": {
 		"title": "Hevy API Docs",
-		"description": "\n      Welcome to Hevy's new public API! We're just starting to roll this out and depending\n      on your feedback, we'll be adding more features and endpoints. Also, we make no guarantees\n      that we won't completely change the structure or abandon the project entirely so use it at\n      your own risk. Currently, this API is only available to Hevy Pro users. You can get your \n      key on our web app at https://hevy.com/settings?developer. If you have any questions,\n      please reach out to desmond@hevyapp.com 🤝.\n      ",
+		"description": "\n      Welcome to Hevy's public API! We're just starting to roll this out and depending on your\n      feedback, we'll be adding more features and endpoints. Also, we make no guarantees that \n      we won't completely change the structure or abandon the project entirely so use it at\n      your own risk. Currently, this API is only available to Hevy Pro users. You can get your \n      key on our web app at https://hevy.com/settings?developer. If you have any questions,\n      please reach out to pedro@hevyapp.com 🤝.\n      ",
 		"version": "0.0.1"
 	},
 	"paths": {
@@ -240,10 +240,7 @@
 						"name": "workoutId",
 						"in": "path",
 						"description": "The id of the workout",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"required": true
 					}
 				],
 				"responses": {
@@ -279,10 +276,7 @@
 						"in": "path",
 						"name": "workoutId",
 						"description": "The id of the workout",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"required": true
 					}
 				],
 				"requestBody": {
@@ -463,6 +457,60 @@
 			}
 		},
 		"/v1/routines/{routineId}": {
+			"get": {
+				"summary": "Get a routine by its Id",
+				"tags": ["Routines"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					},
+					{
+						"in": "path",
+						"name": "routineId",
+						"description": "The id of the routine",
+						"required": true
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The routine with the provided id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"routine": {
+											"$ref": "#/components/schemas/Routine"
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid request body",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string",
+											"description": "Error message"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			},
 			"put": {
 				"summary": "Update an existing routine",
 				"tags": ["Routines"],
@@ -480,10 +528,7 @@
 						"in": "path",
 						"name": "routineId",
 						"description": "The id of the routine",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"required": true
 					}
 				],
 				"requestBody": {
@@ -628,10 +673,7 @@
 						"name": "exerciseTemplateId",
 						"in": "path",
 						"description": "The id of the exercise template",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"required": true
 					}
 				],
 				"responses": {
@@ -790,10 +832,7 @@
 						"name": "folderId",
 						"in": "path",
 						"description": "The id of the routine folder",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"required": true
 					}
 				],
 				"responses": {
@@ -809,6 +848,119 @@
 					},
 					"404": {
 						"description": "Routine folder not found"
+					}
+				}
+			}
+		},
+		"/v1/webhook-subscription": {
+			"post": {
+				"summary": "Create a new webhook subscription.",
+				"description": "This endpoint allows you to create a webhook subscription that will notify your application when a workout is created.\n\n Your endpoint must respond with a `200 OK` status within **5 seconds**, otherwise the delivery will be retried.\n\nWhen a new workout is created, we will send a POST request to your provided URL with the following JSON payload:\n```json {\n  \"id\": \"00000000-0000-0000-0000-000000000001\",\n  \"payload\": {\n    \"workoutId\": \"f1085cdb-32b2-4003-967d-53a3af8eaecb\"\n  }\n}\n",
+				"tags": ["Webhook"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/WebhookRequestBody"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The webhook subscription was successfully created"
+					},
+					"400": {
+						"description": "Invalid request body",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string",
+											"description": "Error message"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"summary": "Delete a webhook subscription.",
+				"tags": ["Webhook"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true,
+						"description": "Your API key"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The webhook subscription was successfully deleted"
+					}
+				}
+			},
+			"get": {
+				"summary": "Get the current webhook subscription.",
+				"tags": ["Webhook"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true,
+						"description": "Your API key"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The current webhook subscription",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The webhook URL",
+											"example": "https://example.com/hevy-webhook"
+										},
+										"auth_token": {
+											"type": "string",
+											"description": "The auth token for the webhook",
+											"example": "Bearer mytoken"
+										}
+									}
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No webhook subscription found"
 					}
 				}
 			}
@@ -1158,6 +1310,21 @@
 					}
 				}
 			},
+			"WebhookRequestBody": {
+				"type": "object",
+				"properties": {
+					"authToken": {
+						"type": "string",
+						"description": "The auth token that will be send as Authorization header in the webhook.",
+						"example": "Bearer mytoken"
+					},
+					"url": {
+						"type": "string",
+						"description": "The webhook URL.",
+						"example": "https://example.com/hevy-webhook"
+					}
+				}
+			},
 			"ExerciseTemplate": {
 				"type": "object",
 				"properties": {
@@ -1268,6 +1435,11 @@
 									"type": "string",
 									"description": "Title of the exercise",
 									"example": "Bench Press (Barbell)"
+								},
+								"rest_seconds": {
+									"type": "string",
+									"description": "The rest time in seconds between sets of the exercise",
+									"example": 60
 								},
 								"notes": {
 									"type": "string",

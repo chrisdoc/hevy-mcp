@@ -44,6 +44,11 @@ export type Routine = {
      */
     title?: string
     /**
+     * @description The rest time in seconds between sets of the exercise
+     * @type string | undefined
+     */
+    rest_seconds?: string
+    /**
      * @description Routine notes on the exercise
      * @type string | undefined
      */

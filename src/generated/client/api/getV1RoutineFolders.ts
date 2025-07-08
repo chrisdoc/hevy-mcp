@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   GetV1RoutineFoldersQueryResponse,
   GetV1RoutineFoldersQueryParams,
@@ -23,9 +23,9 @@ function getGetV1RoutineFoldersUrl() {
 export async function getV1RoutineFolders(
   headers: GetV1RoutineFoldersHeaderParams,
   params?: GetV1RoutineFoldersQueryParams,
-  config: Partial<RequestConfig> & { client?: typeof client } = {},
+  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
   const res = await request<GetV1RoutineFoldersQueryResponse, ResponseErrorConfig<GetV1RoutineFolders400>, unknown>({
     method: 'GET',

@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   PostV1RoutineFoldersMutationRequest,
   PostV1RoutineFoldersMutationResponse,
@@ -23,14 +23,15 @@ function getPostV1RoutineFoldersUrl() {
 export async function postV1RoutineFolders(
   headers: PostV1RoutineFoldersHeaderParams,
   data?: PostV1RoutineFoldersMutationRequest,
-  config: Partial<RequestConfig<PostV1RoutineFoldersMutationRequest>> & { client?: typeof client } = {},
+  config: Partial<RequestConfig<PostV1RoutineFoldersMutationRequest>> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
+  const requestData = data
   const res = await request<PostV1RoutineFoldersMutationResponse, ResponseErrorConfig<PostV1RoutineFolders400>, PostV1RoutineFoldersMutationRequest>({
     method: 'POST',
     url: getPostV1RoutineFoldersUrl().toString(),
-    data,
+    data: requestData,
     ...requestConfig,
     headers: { ...headers, ...requestConfig.headers },
   })

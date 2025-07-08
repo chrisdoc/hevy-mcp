@@ -15,7 +15,7 @@ import { faker } from '@faker-js/faker'
 
 export function createPutV1WorkoutsWorkoutidPathParams(data?: Partial<PutV1WorkoutsWorkoutidPathParams>): PutV1WorkoutsWorkoutidPathParams {
   return {
-    ...{ workoutId: faker.string.alpha() },
+    ...{ workoutId: undefined },
     ...(data || {}),
   }
 }

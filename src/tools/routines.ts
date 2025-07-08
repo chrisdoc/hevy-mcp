@@ -78,69 +78,41 @@ export function registerRoutineTools(
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 		},
-		withErrorHandling(
-			async ({ page, pageSize }: { page: number; pageSize: number }) => {
-				const data = await hevyClient.getRoutines({
-					page,
-					pageSize,
-				});
+		withErrorHandling(async (args) => {
+			const { page, pageSize } = args as { page: number; pageSize: number };
+			const data = await hevyClient.getRoutines({
+				page,
+				pageSize,
+			});
 
-				// Process routines to extract relevant information
-				const routines =
-					data?.routines?.map((routine: Routine) => formatRoutine(routine)) ||
-					[];
+			// Process routines to extract relevant information
+			const routines =
+				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
 
-				if (routines.length === 0) {
-					return createEmptyResponse(
-						"No routines found for the specified parameters",
-					);
-				}
+			if (routines.length === 0) {
+				return createEmptyResponse(
+					"No routines found for the specified parameters",
+				);
+			}
 
-				return createJsonResponse(routines);
-			},
-			"get-routines",
-		),
+			return createJsonResponse(routines);
+		}, "get-routines"),
 	);
 
-	// Get single routine by ID
+	// Get single routine by ID (new, direct endpoint)
 	server.tool(
 		"get-routine",
-		"Get complete details of a specific routine by its ID, including title, notes, folder, and all exercises and sets.",
+		"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
 		{
 			routineId: z.string().min(1),
 		},
-		withErrorHandling(async ({ routineId }: { routineId: string }) => {
-			// Since there's no direct get routine by ID endpoint, we need to search across all pages
-			let page = 1;
-			const pageSize = 10; // Use maximum page size for efficiency
-			let routine = null;
-
-			while (!routine) {
-				const data = await hevyClient.getRoutines({
-					page,
-					pageSize,
-				});
-
-				if (!data?.routines || data.routines.length === 0) {
-					// No more routines to check
-					break;
-				}
-
-				routine = data.routines.find((r) => r.id === routineId);
-
-				if (!routine && data.routines.length < pageSize) {
-					// We've reached the last page and didn't find the routine
-					break;
-				}
-
-				page++;
-			}
-			if (!routine) {
+		withErrorHandling(async ({ routineId }) => {
+			const data = await hevyClient.getRoutineById(String(routineId));
+			if (!data || !data.routine) {
 				return createEmptyResponse(`Routine with ID ${routineId} not found`);
 			}
-
-			const formattedRoutine = formatRoutine(routine);
-			return createJsonResponse(formattedRoutine);
+			const routine = formatRoutine(data.routine);
+			return createJsonResponse(routine);
 		}, "get-routine"),
 	);
 
@@ -173,48 +145,46 @@ export function registerRoutineTools(
 				}),
 			),
 		},
-		withErrorHandling(
-			async ({ title, folderId, notes, exercises }: CreateRoutineParams) => {
-				const data = await hevyClient.createRoutine({
-					routine: {
-						title,
-						folder_id: folderId ?? null,
-						notes: notes ?? "",
-						exercises: exercises.map(
-							(exercise): PostRoutinesRequestExercise => ({
-								exercise_template_id: exercise.exerciseTemplateId,
-								superset_id: exercise.supersetId ?? null,
-								rest_seconds: exercise.restSeconds ?? null,
-								notes: exercise.notes ?? null,
-								sets: exercise.sets.map(
-									(set): PostRoutinesRequestSet => ({
-										type: set.type as PostRoutinesRequestSetTypeEnum,
-										weight_kg: set.weightKg ?? null,
-										reps: set.reps ?? null,
-										distance_meters: set.distanceMeters ?? null,
-										duration_seconds: set.durationSeconds ?? null,
-										custom_metric: set.customMetric ?? null,
-									}),
-								),
-							}),
-						),
-					},
-				});
+		withErrorHandling(async (args) => {
+			const { title, folderId, notes, exercises } = args as CreateRoutineParams;
+			const data = await hevyClient.createRoutine({
+				routine: {
+					title,
+					folder_id: folderId ?? null,
+					notes: notes ?? "",
+					exercises: exercises.map(
+						(exercise): PostRoutinesRequestExercise => ({
+							exercise_template_id: exercise.exerciseTemplateId,
+							superset_id: exercise.supersetId ?? null,
+							rest_seconds: exercise.restSeconds ?? null,
+							notes: exercise.notes ?? null,
+							sets: exercise.sets.map(
+								(set): PostRoutinesRequestSet => ({
+									type: set.type as PostRoutinesRequestSetTypeEnum,
+									weight_kg: set.weightKg ?? null,
+									reps: set.reps ?? null,
+									distance_meters: set.distanceMeters ?? null,
+									duration_seconds: set.durationSeconds ?? null,
+									custom_metric: set.customMetric ?? null,
+								}),
+							),
+						}),
+					),
+				},
+			});
 
-				if (!data) {
-					return createEmptyResponse(
-						"Failed to create routine: Server returned no data",
-					);
-				}
+			if (!data) {
+				return createEmptyResponse(
+					"Failed to create routine: Server returned no data",
+				);
+			}
 
-				const routine = formatRoutine(data);
-				return createJsonResponse(routine, {
-					pretty: true,
-					indent: 2,
-				});
-			},
-			"create-routine",
-		),
+			const routine = formatRoutine(data);
+			return createJsonResponse(routine, {
+				pretty: true,
+				indent: 2,
+			});
+		}, "create-routine"),
 	);
 
 	// Update existing routine
@@ -246,46 +216,45 @@ export function registerRoutineTools(
 				}),
 			),
 		},
-		withErrorHandling(
-			async ({ routineId, title, notes, exercises }: UpdateRoutineParams) => {
-				const data = await hevyClient.updateRoutine(routineId, {
-					routine: {
-						title,
-						notes: notes ?? "",
-						exercises: exercises.map(
-							(exercise): PutRoutinesRequestExercise => ({
-								exercise_template_id: exercise.exerciseTemplateId,
-								superset_id: exercise.supersetId ?? null,
-								rest_seconds: exercise.restSeconds ?? null,
-								notes: exercise.notes ?? null,
-								sets: exercise.sets.map(
-									(set): PutRoutinesRequestSet => ({
-										type: set.type as PutRoutinesRequestSetTypeEnum,
-										weight_kg: set.weightKg ?? null,
-										reps: set.reps ?? null,
-										distance_meters: set.distanceMeters ?? null,
-										duration_seconds: set.durationSeconds ?? null,
-										custom_metric: set.customMetric ?? null,
-									}),
-								),
-							}),
-						),
-					},
-				});
+		withErrorHandling(async (args) => {
+			const { routineId, title, notes, exercises } =
+				args as UpdateRoutineParams;
+			const data = await hevyClient.updateRoutine(routineId, {
+				routine: {
+					title,
+					notes: notes ?? "",
+					exercises: exercises.map(
+						(exercise): PutRoutinesRequestExercise => ({
+							exercise_template_id: exercise.exerciseTemplateId,
+							superset_id: exercise.supersetId ?? null,
+							rest_seconds: exercise.restSeconds ?? null,
+							notes: exercise.notes ?? null,
+							sets: exercise.sets.map(
+								(set): PutRoutinesRequestSet => ({
+									type: set.type as PutRoutinesRequestSetTypeEnum,
+									weight_kg: set.weightKg ?? null,
+									reps: set.reps ?? null,
+									distance_meters: set.distanceMeters ?? null,
+									duration_seconds: set.durationSeconds ?? null,
+									custom_metric: set.customMetric ?? null,
+								}),
+							),
+						}),
+					),
+				},
+			});
 
-				if (!data) {
-					return createEmptyResponse(
-						`Failed to update routine with ID ${routineId}`,
-					);
-				}
+			if (!data) {
+				return createEmptyResponse(
+					`Failed to update routine with ID ${routineId}`,
+				);
+			}
 
-				const routine = formatRoutine(data);
-				return createJsonResponse(routine, {
-					pretty: true,
-					indent: 2,
-				});
-			},
-			"update-routine",
-		),
+			const routine = formatRoutine(data);
+			return createJsonResponse(routine, {
+				pretty: true,
+				indent: 2,
+			});
+		}, "update-routine"),
 	);
 }

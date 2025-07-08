@@ -6,6 +6,7 @@ import { name, version } from "../package.json";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
+import { registerWebhookTools } from "./tools/webhooks.js";
 // Import tool registration functions
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { createClient } from "./utils/hevyClient.js";
@@ -33,6 +34,7 @@ registerWorkoutTools(server, hevyClient);
 registerRoutineTools(server, hevyClient);
 registerTemplateTools(server, hevyClient);
 registerFolderTools(server, hevyClient);
+registerWebhookTools(server, hevyClient);
 
 // Start the server
 async function runServer() {

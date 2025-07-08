@@ -7,7 +7,7 @@ import { exerciseTemplateSchema } from './exerciseTemplateSchema.ts'
 import { z } from 'zod'
 
 export const getV1ExerciseTemplatesExercisetemplateidPathParamsSchema = z.object({
-  exerciseTemplateId: z.string().describe('The id of the exercise template'),
+  exerciseTemplateId: z.any(),
 })
 
 export const getV1ExerciseTemplatesExercisetemplateidHeaderParamsSchema = z.object({

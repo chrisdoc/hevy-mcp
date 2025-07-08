@@ -7,7 +7,7 @@ import { routineFolderSchema } from './routineFolderSchema.ts'
 import { z } from 'zod'
 
 export const getV1RoutineFoldersFolderidPathParamsSchema = z.object({
-  folderId: z.string().describe('The id of the routine folder'),
+  folderId: z.any(),
 })
 
 export const getV1RoutineFoldersFolderidHeaderParamsSchema = z.object({

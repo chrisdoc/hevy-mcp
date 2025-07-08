@@ -8,7 +8,7 @@ import { routineSchema } from './routineSchema.ts'
 import { z } from 'zod'
 
 export const putV1RoutinesRoutineidPathParamsSchema = z.object({
-  routineId: z.string().describe('The id of the routine'),
+  routineId: z.any(),
 })
 
 export const putV1RoutinesRoutineidHeaderParamsSchema = z.object({

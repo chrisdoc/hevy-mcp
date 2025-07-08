@@ -1,5 +1,7 @@
-const fs = require("node:fs");
-const { parse, find, generate } = require("abstract-syntax-tree");
+import { writeFileSync } from "node:fs";
+import pkg from "abstract-syntax-tree";
+
+const { parse, find, generate } = pkg;
 
 async function fetchSwaggerInitFile() {
 	const url = "https://api.hevyapp.com/docs/swagger-ui-init.js";
@@ -31,7 +33,7 @@ async function main() {
 		const swaggerDocCode = generate(swaggerDocProperty.value, { tabs: true });
 		const openAPISpec = JSON.parse(swaggerDocCode);
 
-		fs.writeFileSync("openapi-spec.json", JSON.stringify(openAPISpec, null, 2));
+		writeFileSync("openapi-spec.json", JSON.stringify(openAPISpec, null, 2));
 		console.log("OpenAPI spec successfully extracted to openapi-spec.json");
 	} catch (error) {
 		console.error("Failed to extract OpenAPI spec:", error);

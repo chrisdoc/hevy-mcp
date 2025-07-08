@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-import client from '@kubb/plugin-client/clients/axios'
+import fetch from '@kubb/plugin-client/clients/axios'
 import type {
   GetV1ExerciseTemplatesQueryResponse,
   GetV1ExerciseTemplatesQueryParams,
@@ -23,9 +23,9 @@ function getGetV1ExerciseTemplatesUrl() {
 export async function getV1ExerciseTemplates(
   headers: GetV1ExerciseTemplatesHeaderParams,
   params?: GetV1ExerciseTemplatesQueryParams,
-  config: Partial<RequestConfig> & { client?: typeof client } = {},
+  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
 ) {
-  const { client: request = client, ...requestConfig } = config
+  const { client: request = fetch, ...requestConfig } = config
 
   const res = await request<GetV1ExerciseTemplatesQueryResponse, ResponseErrorConfig<GetV1ExerciseTemplates400>, unknown>({
     method: 'GET',

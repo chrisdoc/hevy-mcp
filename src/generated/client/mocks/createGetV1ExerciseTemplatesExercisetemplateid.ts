@@ -15,7 +15,7 @@ export function createGetV1ExerciseTemplatesExercisetemplateidPathParams(
   data?: Partial<GetV1ExerciseTemplatesExercisetemplateidPathParams>,
 ): GetV1ExerciseTemplatesExercisetemplateidPathParams {
   return {
-    ...{ exerciseTemplateId: faker.string.alpha() },
+    ...{ exerciseTemplateId: undefined },
     ...(data || {}),
   }
 }

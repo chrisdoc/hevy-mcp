@@ -16,7 +16,7 @@ import { faker } from '@faker-js/faker'
 
 export function createPutV1RoutinesRoutineidPathParams(data?: Partial<PutV1RoutinesRoutineidPathParams>): PutV1RoutinesRoutineidPathParams {
   return {
-    ...{ routineId: faker.string.alpha() },
+    ...{ routineId: undefined },
     ...(data || {}),
   }
 }
