@@ -263,9 +263,9 @@ describe("Formatters", () => {
 				id: templateId,
 				title: "Bench Press",
 				type: "barbell",
-				primaryMuscleGroup: "chest",
-				secondaryMuscleGroups: ["triceps", "shoulders"],
-				isCustom: false,
+				primary_muscle_group: "chest",
+				secondary_muscle_groups: ["triceps", "shoulders"],
+				is_custom: false,
 			};
 
 			const result = formatExerciseTemplate(template as ExerciseTemplate);
@@ -285,8 +285,8 @@ describe("Formatters", () => {
 				id: templateId,
 				title: "Custom Exercise",
 				type: "bodyweight",
-				primaryMuscleGroup: "full_body",
-				isCustom: true,
+				primary_muscle_group: "full_body",
+				is_custom: true,
 			};
 
 			const result = formatExerciseTemplate(template as ExerciseTemplate);
