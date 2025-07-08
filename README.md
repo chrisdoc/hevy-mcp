@@ -1,5 +1,3 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/chrisdoc-hevy-mcp-badge.png)](https://mseep.ai/app/chrisdoc-hevy-mcp)
-
 # hevy-mcp: Model Context Protocol Server for Hevy Fitness API
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
