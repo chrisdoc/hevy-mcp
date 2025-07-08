@@ -26,26 +26,29 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 		},
-		withErrorHandling(async ({ page, pageSize }) => {
-			const data = await hevyClient.getRoutineFolders({
-				page: page as number,
-				pageSize: pageSize as number,
-			});
+		withErrorHandling(
+			async ({ page, pageSize }: { page: number; pageSize: number }) => {
+				const data = await hevyClient.getRoutineFolders({
+					page,
+					pageSize,
+				});
 
-			// Process routine folders to extract relevant information
-			const folders =
-				data?.routine_folders?.map((folder: RoutineFolder) =>
-					formatRoutineFolder(folder),
-				) || [];
+				// Process routine folders to extract relevant information
+				const folders =
+					data?.routine_folders?.map((folder: RoutineFolder) =>
+						formatRoutineFolder(folder),
+					) || [];
 
-			if (folders.length === 0) {
-				return createEmptyResponse(
-					"No routine folders found for the specified parameters",
-				);
-			}
+				if (folders.length === 0) {
+					return createEmptyResponse(
+						"No routine folders found for the specified parameters",
+					);
+				}
 
-			return createJsonResponse(folders);
-		}, "get-routine-folders"),
+				return createJsonResponse(folders);
+			},
+			"get-routine-folders",
+		),
 	);
 
 	// Get single routine folder by ID
@@ -55,8 +58,8 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 		{
 			folderId: z.string().min(1),
 		},
-		withErrorHandling(async ({ folderId }) => {
-			const data = await hevyClient.getRoutineFolder(folderId as string);
+		withErrorHandling(async ({ folderId }: { folderId: string }) => {
+			const data = await hevyClient.getRoutineFolder(folderId);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -76,10 +79,10 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 		{
 			name: z.string().min(1),
 		},
-		withErrorHandling(async ({ name }) => {
+		withErrorHandling(async ({ name }: { name: string }) => {
 			const data = await hevyClient.createRoutineFolder({
 				routine_folder: {
-					title: name as string,
+					title: name,
 				},
 			});
 

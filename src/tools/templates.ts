@@ -29,26 +29,29 @@ export function registerTemplateTools(
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(100).default(5),
 		},
-		withErrorHandling(async ({ page, pageSize }) => {
-			const data = await hevyClient.getExerciseTemplates({
-				page: page as number,
-				pageSize: pageSize as number,
-			});
+		withErrorHandling(
+			async ({ page, pageSize }: { page: number; pageSize: number }) => {
+				const data = await hevyClient.getExerciseTemplates({
+					page,
+					pageSize,
+				});
 
-			// Process exercise templates to extract relevant information
-			const templates =
-				data?.exercise_templates?.map((template: ExerciseTemplate) =>
-					formatExerciseTemplate(template),
-				) || [];
+				// Process exercise templates to extract relevant information
+				const templates =
+					data?.exercise_templates?.map((template: ExerciseTemplate) =>
+						formatExerciseTemplate(template),
+					) || [];
 
-			if (templates.length === 0) {
-				return createEmptyResponse(
-					"No exercise templates found for the specified parameters",
-				);
-			}
+				if (templates.length === 0) {
+					return createEmptyResponse(
+						"No exercise templates found for the specified parameters",
+					);
+				}
 
-			return createJsonResponse(templates);
-		}, "get-exercise-templates"),
+				return createJsonResponse(templates);
+			},
+			"get-exercise-templates",
+		),
 	);
 
 	// Get single exercise template by ID
@@ -58,8 +61,8 @@ export function registerTemplateTools(
 		{
 			templateId: z.string().min(1),
 		},
-		withErrorHandling(async ({ templateId }) => {
-			const data = await hevyClient.getExerciseTemplate(templateId as string);
+		withErrorHandling(async ({ templateId }: { templateId: string }) => {
+			const data = await hevyClient.getExerciseTemplate(templateId);
 
 			if (!data) {
 				return createEmptyResponse(

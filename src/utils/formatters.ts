@@ -236,8 +236,8 @@ export function formatExerciseTemplate(
 		id: template.id,
 		title: template.title,
 		type: template.type,
-		primaryMuscleGroup: template.primaryMuscleGroup,
-		secondaryMuscleGroups: template.secondaryMuscleGroups,
-		isCustom: template.isCustom,
+		primaryMuscleGroup: template.primary_muscle_group,
+		secondaryMuscleGroups: template.secondary_muscle_groups,
+		isCustom: template.is_custom,
 	};
 }

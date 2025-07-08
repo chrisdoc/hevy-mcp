@@ -82,61 +82,44 @@ export function createErrorResponse(
  * Determine the type of error based on error characteristics
  */
 function determineErrorType(error: unknown, message: string): ErrorType {
-	// Check for network-related errors
-	if (error instanceof Error) {
-		const errorName = error.name.toLowerCase();
-		const errorMessage = error.message.toLowerCase();
-
-		if (
-			errorName.includes("network") ||
-			errorMessage.includes("network") ||
-			errorName.includes("fetch") ||
-			errorMessage.includes("fetch") ||
-			errorName.includes("timeout") ||
-			errorMessage.includes("timeout")
-		) {
-			return ErrorType.NETWORK_ERROR;
-		}
-
-		if (
-			errorName.includes("validation") ||
-			errorMessage.includes("validation") ||
-			errorMessage.includes("invalid") ||
-			errorMessage.includes("required")
-		) {
-			return ErrorType.VALIDATION_ERROR;
-		}
-
-		if (
-			errorMessage.includes("not found") ||
-			errorMessage.includes("404") ||
-			errorMessage.includes("does not exist")
-		) {
-			return ErrorType.NOT_FOUND;
-		}
-
-		if (
-			errorName.includes("api") ||
-			errorMessage.includes("api") ||
-			errorMessage.includes("server error") ||
-			errorMessage.includes("500")
-		) {
-			return ErrorType.API_ERROR;
-		}
-	}
-
-	// Check message content for common patterns
 	const messageLower = message.toLowerCase();
-	if (messageLower.includes("not found") || messageLower.includes("404")) {
-		return ErrorType.NOT_FOUND;
+	const nameLower = error instanceof Error ? error.name.toLowerCase() : "";
+
+	if (
+		nameLower.includes("network") ||
+		messageLower.includes("network") ||
+		nameLower.includes("fetch") ||
+		messageLower.includes("fetch") ||
+		nameLower.includes("timeout") ||
+		messageLower.includes("timeout")
+	) {
+		return ErrorType.NETWORK_ERROR;
 	}
 
-	if (messageLower.includes("validation") || messageLower.includes("invalid")) {
+	if (
+		nameLower.includes("validation") ||
+		messageLower.includes("validation") ||
+		messageLower.includes("invalid") ||
+		messageLower.includes("required")
+	) {
 		return ErrorType.VALIDATION_ERROR;
 	}
 
-	if (messageLower.includes("network") || messageLower.includes("timeout")) {
-		return ErrorType.NETWORK_ERROR;
+	if (
+		messageLower.includes("not found") ||
+		messageLower.includes("404") ||
+		messageLower.includes("does not exist")
+	) {
+		return ErrorType.NOT_FOUND;
+	}
+
+	if (
+		nameLower.includes("api") ||
+		messageLower.includes("api") ||
+		messageLower.includes("server error") ||
+		messageLower.includes("500")
+	) {
+		return ErrorType.API_ERROR;
 	}
 
 	return ErrorType.UNKNOWN_ERROR;

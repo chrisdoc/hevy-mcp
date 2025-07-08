@@ -22,6 +22,47 @@ type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
+// Define types for the routine operations based on Zod schemas
+type CreateRoutineParams = {
+	title: string;
+	folderId?: number | null;
+	notes?: string;
+	exercises: Array<{
+		exerciseTemplateId: string;
+		supersetId?: number | null;
+		restSeconds?: number;
+		notes?: string;
+		sets: Array<{
+			type: "warmup" | "normal" | "failure" | "dropset";
+			weightKg?: number;
+			reps?: number;
+			distanceMeters?: number;
+			durationSeconds?: number;
+			customMetric?: number;
+		}>;
+	}>;
+};
+
+type UpdateRoutineParams = {
+	routineId: string;
+	title: string;
+	notes?: string;
+	exercises: Array<{
+		exerciseTemplateId: string;
+		supersetId?: number | null;
+		restSeconds?: number;
+		notes?: string;
+		sets: Array<{
+			type: "warmup" | "normal" | "failure" | "dropset";
+			weightKg?: number;
+			reps?: number;
+			distanceMeters?: number;
+			durationSeconds?: number;
+			customMetric?: number;
+		}>;
+	}>;
+};
+
 /**
  * Register all routine-related tools with the MCP server
  */
@@ -37,24 +78,28 @@ export function registerRoutineTools(
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 		},
-		withErrorHandling(async ({ page, pageSize }) => {
-			const data = await hevyClient.getRoutines({
-				page: page as number,
-				pageSize: pageSize as number,
-			});
+		withErrorHandling(
+			async ({ page, pageSize }: { page: number; pageSize: number }) => {
+				const data = await hevyClient.getRoutines({
+					page,
+					pageSize,
+				});
 
-			// Process routines to extract relevant information
-			const routines =
-				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
+				// Process routines to extract relevant information
+				const routines =
+					data?.routines?.map((routine: Routine) => formatRoutine(routine)) ||
+					[];
 
-			if (routines.length === 0) {
-				return createEmptyResponse(
-					"No routines found for the specified parameters",
-				);
-			}
+				if (routines.length === 0) {
+					return createEmptyResponse(
+						"No routines found for the specified parameters",
+					);
+				}
 
-			return createJsonResponse(routines);
-		}, "get-routines"),
+				return createJsonResponse(routines);
+			},
+			"get-routines",
+		),
 	);
 
 	// Get single routine by ID
@@ -64,20 +109,21 @@ export function registerRoutineTools(
 		{
 			routineId: z.string().min(1),
 		},
-		withErrorHandling(async ({ routineId }) => {
-			// Since the Kiota client doesn't have a get() method for routine by ID, we need to use the list endpoint and filter
-			const data = await hevyClient.updateRoutine(routineId as string, {
-				routine: {
-					title: "", // We're providing a minimal body as required by the API
-				},
-			});
+		withErrorHandling(async ({ routineId }: { routineId: string }) => {
+			// Since there's no direct get routine by ID endpoint, we need to use the list endpoint and filter
+			const data = await hevyClient.getRoutines();
 
-			if (!data) {
+			if (!data?.routines) {
+				return createEmptyResponse("No routines found");
+			}
+
+			const routine = data.routines.find((r) => r.id === routineId);
+			if (!routine) {
 				return createEmptyResponse(`Routine with ID ${routineId} not found`);
 			}
 
-			const routine = formatRoutine(data);
-			return createJsonResponse(routine);
+			const formattedRoutine = formatRoutine(routine);
+			return createJsonResponse(formattedRoutine);
 		}, "get-routine"),
 	);
 
@@ -110,57 +156,48 @@ export function registerRoutineTools(
 				}),
 			),
 		},
-		withErrorHandling(async ({ title, folderId, notes, exercises }) => {
-			const data = await hevyClient.createRoutine({
-				routine: {
-					title: title as string,
-					folder_id: (folderId as number) || null,
-					notes: (notes as string) || "",
-					exercises: (exercises as unknown[]).map(
-						(exercise: unknown): PostRoutinesRequestExercise => ({
-							exercise_template_id: (exercise as { exerciseTemplateId: string })
-								.exerciseTemplateId,
-							superset_id:
-								(exercise as { supersetId?: number | null }).supersetId || null,
-							rest_seconds:
-								(exercise as { restSeconds?: number | null }).restSeconds ||
-								null,
-							notes: (exercise as { notes?: string | null }).notes || null,
-							sets: ((exercise as { sets: unknown[] }).sets as unknown[]).map(
-								(set: unknown): PostRoutinesRequestSet => ({
-									type: (set as { type: string })
-										.type as PostRoutinesRequestSetTypeEnum,
-									weight_kg:
-										(set as { weightKg?: number | null }).weightKg || null,
-									reps: (set as { reps?: number | null }).reps || null,
-									distance_meters:
-										(set as { distanceMeters?: number | null })
-											.distanceMeters || null,
-									duration_seconds:
-										(set as { durationSeconds?: number | null })
-											.durationSeconds || null,
-									custom_metric:
-										(set as { customMetric?: number | null }).customMetric ||
-										null,
-								}),
-							),
-						}),
-					),
-				},
-			});
+		withErrorHandling(
+			async ({ title, folderId, notes, exercises }: CreateRoutineParams) => {
+				const data = await hevyClient.createRoutine({
+					routine: {
+						title,
+						folder_id: folderId ?? null,
+						notes: notes ?? "",
+						exercises: exercises.map(
+							(exercise): PostRoutinesRequestExercise => ({
+								exercise_template_id: exercise.exerciseTemplateId,
+								superset_id: exercise.supersetId ?? null,
+								rest_seconds: exercise.restSeconds ?? null,
+								notes: exercise.notes ?? null,
+								sets: exercise.sets.map(
+									(set): PostRoutinesRequestSet => ({
+										type: set.type as PostRoutinesRequestSetTypeEnum,
+										weight_kg: set.weightKg ?? null,
+										reps: set.reps ?? null,
+										distance_meters: set.distanceMeters ?? null,
+										duration_seconds: set.durationSeconds ?? null,
+										custom_metric: set.customMetric ?? null,
+									}),
+								),
+							}),
+						),
+					},
+				});
 
-			if (!data) {
-				return createEmptyResponse(
-					"Failed to create routine: Server returned no data",
-				);
-			}
+				if (!data) {
+					return createEmptyResponse(
+						"Failed to create routine: Server returned no data",
+					);
+				}
 
-			const routine = formatRoutine(data);
-			return createJsonResponse(routine, {
-				pretty: true,
-				indent: 2,
-			});
-		}, "create-routine"),
+				const routine = formatRoutine(data);
+				return createJsonResponse(routine, {
+					pretty: true,
+					indent: 2,
+				});
+			},
+			"create-routine",
+		),
 	);
 
 	// Update existing routine
@@ -192,55 +229,46 @@ export function registerRoutineTools(
 				}),
 			),
 		},
-		withErrorHandling(async ({ routineId, title, notes, exercises }) => {
-			const data = await hevyClient.updateRoutine(routineId as string, {
-				routine: {
-					title: title as string,
-					notes: (notes as string) || "",
-					exercises: (exercises as unknown[]).map(
-						(exercise: unknown): PutRoutinesRequestExercise => ({
-							exercise_template_id: (exercise as { exerciseTemplateId: string })
-								.exerciseTemplateId,
-							superset_id:
-								(exercise as { supersetId?: number | null }).supersetId || null,
-							rest_seconds:
-								(exercise as { restSeconds?: number | null }).restSeconds ||
-								null,
-							notes: (exercise as { notes?: string | null }).notes || null,
-							sets: ((exercise as { sets: unknown[] }).sets as unknown[]).map(
-								(set: unknown): PutRoutinesRequestSet => ({
-									type: (set as { type: string })
-										.type as PutRoutinesRequestSetTypeEnum,
-									weight_kg:
-										(set as { weightKg?: number | null }).weightKg || null,
-									reps: (set as { reps?: number | null }).reps || null,
-									distance_meters:
-										(set as { distanceMeters?: number | null })
-											.distanceMeters || null,
-									duration_seconds:
-										(set as { durationSeconds?: number | null })
-											.durationSeconds || null,
-									custom_metric:
-										(set as { customMetric?: number | null }).customMetric ||
-										null,
-								}),
-							),
-						}),
-					),
-				},
-			});
+		withErrorHandling(
+			async ({ routineId, title, notes, exercises }: UpdateRoutineParams) => {
+				const data = await hevyClient.updateRoutine(routineId, {
+					routine: {
+						title,
+						notes: notes ?? "",
+						exercises: exercises.map(
+							(exercise): PutRoutinesRequestExercise => ({
+								exercise_template_id: exercise.exerciseTemplateId,
+								superset_id: exercise.supersetId ?? null,
+								rest_seconds: exercise.restSeconds ?? null,
+								notes: exercise.notes ?? null,
+								sets: exercise.sets.map(
+									(set): PutRoutinesRequestSet => ({
+										type: set.type as PutRoutinesRequestSetTypeEnum,
+										weight_kg: set.weightKg ?? null,
+										reps: set.reps ?? null,
+										distance_meters: set.distanceMeters ?? null,
+										duration_seconds: set.durationSeconds ?? null,
+										custom_metric: set.customMetric ?? null,
+									}),
+								),
+							}),
+						),
+					},
+				});
 
-			if (!data) {
-				return createEmptyResponse(
-					`Failed to update routine with ID ${routineId}`,
-				);
-			}
+				if (!data) {
+					return createEmptyResponse(
+						`Failed to update routine with ID ${routineId}`,
+					);
+				}
 
-			const routine = formatRoutine(data);
-			return createJsonResponse(routine, {
-				pretty: true,
-				indent: 2,
-			});
-		}, "update-routine"),
+				const routine = formatRoutine(data);
+				return createJsonResponse(routine, {
+					pretty: true,
+					indent: 2,
+				});
+			},
+			"update-routine",
+		),
 	);
 }
