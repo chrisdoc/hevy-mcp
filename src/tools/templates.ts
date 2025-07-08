@@ -1,7 +1,18 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { HevyClient } from "../generated/client/hevyClient.js";
+// Import types from generated client
+import type { ExerciseTemplate } from "../generated/client/types/index.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatExerciseTemplate } from "../utils/formatters.js";
+import {
+	createEmptyResponse,
+	createJsonResponse,
+} from "../utils/response-formatter.js";
+
+// Type definitions for the template operations
+type HevyClient = ReturnType<
+	typeof import("../utils/hevyClientKubb.js").createClient
+>;
 
 /**
  * Register all exercise template-related tools with the MCP server
@@ -13,97 +24,51 @@ export function registerTemplateTools(
 	// Get exercise templates
 	server.tool(
 		"get-exercise-templates",
-		"Get a paginated list of exercise templates available on the account. Returns both default and custom exercise templates with details including title, type, primary muscle group, and secondary muscle groups. Supports up to 100 templates per page.",
+		"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
 		{
 			page: z.coerce.number().int().gte(1).default(1),
-			pageSize: z.coerce.number().int().gte(1).lte(100).default(20),
+			pageSize: z.coerce.number().int().gte(1).lte(100).default(5),
 		},
-		async ({ page, pageSize }) => {
-			try {
-				const data = await hevyClient.exercise_templates.get({
-					queryParameters: {
-						page,
-						pageSize,
-					},
-				});
-				// Process exercise templates to extract relevant information
-				const templates =
-					data?.exerciseTemplates?.map((template) =>
-						formatExerciseTemplate(template),
-					) || [];
+		withErrorHandling(async ({ page, pageSize }) => {
+			const data = await hevyClient.getExerciseTemplates({
+				page: page as number,
+				pageSize: pageSize as number,
+			});
 
-				return {
-					content: [
-						{
-							type: "text",
-							text: JSON.stringify(templates, null, 2),
-						},
-					],
-				};
-			} catch (error) {
-				console.error("Error fetching exercise templates:", error);
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error fetching exercise templates: ${error instanceof Error ? error.message : String(error)}`,
-						},
-					],
-					isError: true,
-				};
+			// Process exercise templates to extract relevant information
+			const templates =
+				data?.exercise_templates?.map((template: ExerciseTemplate) =>
+					formatExerciseTemplate(template),
+				) || [];
+
+			if (templates.length === 0) {
+				return createEmptyResponse(
+					"No exercise templates found for the specified parameters",
+				);
 			}
-		},
+
+			return createJsonResponse(templates);
+		}, "get-exercise-templates"),
 	);
 
 	// Get single exercise template by ID
 	server.tool(
 		"get-exercise-template",
-		"Get complete details of a specific exercise template by ID. Returns all template information including title, type, primary muscle group, secondary muscle groups, and whether it's a custom exercise.",
+		"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
 		{
-			exerciseTemplateId: z.string().min(1),
+			templateId: z.string().min(1),
 		},
-		async ({ exerciseTemplateId }) => {
-			try {
-				const data = await hevyClient.exercise_templates
-					.byExerciseTemplateId(exerciseTemplateId)
-					.get();
+		withErrorHandling(async ({ templateId }) => {
+			const data = await hevyClient.getExerciseTemplate(templateId as string);
 
-				if (!data) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `Exercise template with ID ${exerciseTemplateId} not found`,
-							},
-						],
-					};
-				}
-
-				const template = formatExerciseTemplate(data);
-
-				return {
-					content: [
-						{
-							type: "text",
-							text: JSON.stringify(template, null, 2),
-						},
-					],
-				};
-			} catch (error) {
-				console.error(
-					`Error fetching exercise template ${exerciseTemplateId}:`,
-					error,
+			if (!data) {
+				return createEmptyResponse(
+					`Exercise template with ID ${templateId} not found`,
 				);
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error fetching exercise template: ${error instanceof Error ? error.message : String(error)}`,
-						},
-					],
-					isError: true,
-				};
 			}
-		},
+
+			const template = formatExerciseTemplate(data);
+			return createJsonResponse(template);
+		}, "get-exercise-template"),
 	);
 }

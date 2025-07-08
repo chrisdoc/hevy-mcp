@@ -1,7 +1,18 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { HevyClient } from "../generated/client/hevyClient.js";
+// Import types from generated client
+import type { RoutineFolder } from "../generated/client/types/index.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
+import {
+	createEmptyResponse,
+	createJsonResponse,
+} from "../utils/response-formatter.js";
+
+// Type definitions for the folder operations
+type HevyClient = ReturnType<
+	typeof import("../utils/hevyClientKubb.js").createClient
+>;
 
 /**
  * Register all routine folder-related tools with the MCP server
@@ -10,145 +21,79 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 	// Get routine folders
 	server.tool(
 		"get-routine-folders",
-		"Get a paginated list of routine folders available on the account. Returns folder details including ID, title, index (order position), and creation/update timestamps. Useful for organizing routines into categories.",
+		"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
 		{
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 		},
-		async ({ page, pageSize }) => {
-			try {
-				const data = await hevyClient.routine_folders.get({
-					queryParameters: {
-						page,
-						pageSize,
-					},
-				});
+		withErrorHandling(async ({ page, pageSize }) => {
+			const data = await hevyClient.getRoutineFolders({
+				page: page as number,
+				pageSize: pageSize as number,
+			});
 
-				// Process routine folders to extract relevant information
-				const folders =
-					data?.routineFolders?.map((folder) => formatRoutineFolder(folder)) ||
-					[];
+			// Process routine folders to extract relevant information
+			const folders =
+				data?.routine_folders?.map((folder: RoutineFolder) =>
+					formatRoutineFolder(folder),
+				) || [];
 
-				return {
-					content: [
-						{
-							type: "text",
-							text: JSON.stringify(folders, null, 2),
-						},
-					],
-				};
-			} catch (error) {
-				console.error("Error fetching routine folders:", error);
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error fetching routine folders: ${error instanceof Error ? error.message : String(error)}`,
-						},
-					],
-					isError: true,
-				};
+			if (folders.length === 0) {
+				return createEmptyResponse(
+					"No routine folders found for the specified parameters",
+				);
 			}
-		},
+
+			return createJsonResponse(folders);
+		}, "get-routine-folders"),
 	);
 
 	// Get single routine folder by ID
 	server.tool(
 		"get-routine-folder",
-		"Get complete details of a specific routine folder by ID. Returns all folder information including title, index (order position), and creation/update timestamps.",
+		"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
 		{
-			folderId: z.coerce.number().int(),
+			folderId: z.string().min(1),
 		},
-		async ({ folderId }) => {
-			try {
-				const data = await hevyClient.routine_folders
-					.byFolderId(folderId.toString())
-					.get();
+		withErrorHandling(async ({ folderId }) => {
+			const data = await hevyClient.getRoutineFolder(folderId as string);
 
-				if (!data) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `Routine folder with ID ${folderId} not found`,
-							},
-						],
-					};
-				}
-
-				const folder = formatRoutineFolder(data);
-
-				return {
-					content: [
-						{
-							type: "text",
-							text: JSON.stringify(folder, null, 2),
-						},
-					],
-				};
-			} catch (error) {
-				console.error(`Error fetching routine folder ${folderId}:`, error);
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error fetching routine folder: ${error instanceof Error ? error.message : String(error)}`,
-						},
-					],
-					isError: true,
-				};
+			if (!data) {
+				return createEmptyResponse(
+					`Routine folder with ID ${folderId} not found`,
+				);
 			}
-		},
+
+			const folder = formatRoutineFolder(data);
+			return createJsonResponse(folder);
+		}, "get-routine-folder"),
 	);
 
 	// Create new routine folder
 	server.tool(
 		"create-routine-folder",
-		"Create a new routine folder in your Hevy account. The folder will be created at index 0, and all other folders will have their indexes incremented. Returns the complete folder details upon successful creation including the newly assigned folder ID.",
+		"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
 		{
-			title: z.string().min(1),
+			name: z.string().min(1),
 		},
-		async ({ title }) => {
-			try {
-				const data = await hevyClient.routine_folders.post({
-					routineFolder: {
-						title,
-					},
-				});
+		withErrorHandling(async ({ name }) => {
+			const data = await hevyClient.createRoutineFolder({
+				routine_folder: {
+					title: name as string,
+				},
+			});
 
-				if (!data) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: "Failed to create routine folder",
-							},
-						],
-					};
-				}
-
-				const folder = formatRoutineFolder(data);
-
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Routine folder created successfully:\n${JSON.stringify(folder, null, 2)}`,
-						},
-					],
-				};
-			} catch (error) {
-				console.error("Error creating routine folder:", error);
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error creating routine folder: ${error instanceof Error ? error.message : String(error)}`,
-						},
-					],
-					isError: true,
-				};
+			if (!data) {
+				return createEmptyResponse(
+					"Failed to create routine folder: Server returned no data",
+				);
 			}
-		},
+
+			const folder = formatRoutineFolder(data);
+			return createJsonResponse(folder, {
+				pretty: true,
+				indent: 2,
+			});
+		}, "create-routine-folder"),
 	);
 }

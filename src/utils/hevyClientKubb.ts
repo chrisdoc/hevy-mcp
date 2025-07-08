@@ -1,3 +1,7 @@
+import type {
+	RequestConfig,
+	ResponseConfig,
+} from "@kubb/plugin-client/clients/axios";
 import axios from "axios";
 import * as api from "../generated/client/api";
 import type {
@@ -13,15 +17,13 @@ import type {
 	PutV1WorkoutsWorkoutidMutationRequest,
 } from "../generated/client/types";
 
-// Define a type that matches the expected client interface
+// Define a proper client type that matches the Kubb client interface
 type KubbClient = {
-	<_TData, _TError = unknown, _TVariables = unknown>(
-		config: Record<string, unknown>,
-	): Promise<unknown>;
-	getConfig: () => Partial<Record<string, unknown>>;
-	setConfig: (
-		config: Record<string, unknown>,
-	) => Partial<Record<string, unknown>>;
+	<TData, _TError = unknown, TVariables = unknown>(
+		config: RequestConfig<TVariables>,
+	): Promise<ResponseConfig<TData>>;
+	getConfig: () => Partial<RequestConfig<unknown>>;
+	setConfig: (config: RequestConfig) => Partial<RequestConfig<unknown>>;
 };
 
 export function createClient(
@@ -44,53 +46,76 @@ export function createClient(
 	// Cast axios instance to the expected client type
 	const client = axiosInstance as unknown as KubbClient;
 
-	// Return an object with all the API methods
+	// Return an object with all the API methods using ReturnType for automatic type inference
 	return {
 		// Workouts
-		getWorkouts: (params?: GetV1WorkoutsQueryParams) =>
+		getWorkouts: (
+			params?: GetV1WorkoutsQueryParams,
+		): ReturnType<typeof api.getV1Workouts> =>
 			api.getV1Workouts(headers, params, { client }),
-		getWorkout: (workoutId: string) =>
+		getWorkout: (
+			workoutId: string,
+		): ReturnType<typeof api.getV1WorkoutsWorkoutid> =>
 			api.getV1WorkoutsWorkoutid(workoutId, headers, { client }),
-		createWorkout: (data: PostV1WorkoutsMutationRequest) =>
+		createWorkout: (
+			data: PostV1WorkoutsMutationRequest,
+		): ReturnType<typeof api.postV1Workouts> =>
 			api.postV1Workouts(headers, data, { client }),
 		updateWorkout: (
 			workoutId: string,
 			data: PutV1WorkoutsWorkoutidMutationRequest,
-		) =>
+		): ReturnType<typeof api.putV1WorkoutsWorkoutid> =>
 			api.putV1WorkoutsWorkoutid(workoutId, headers, data, {
 				client,
 			}),
-		getWorkoutCount: () => api.getV1WorkoutsCount(headers, { client }),
-		getWorkoutEvents: (params?: GetV1WorkoutsEventsQueryParams) =>
+		getWorkoutCount: (): ReturnType<typeof api.getV1WorkoutsCount> =>
+			api.getV1WorkoutsCount(headers, { client }),
+		getWorkoutEvents: (
+			params?: GetV1WorkoutsEventsQueryParams,
+		): ReturnType<typeof api.getV1WorkoutsEvents> =>
 			api.getV1WorkoutsEvents(headers, params, { client }),
 
 		// Routines
-		getRoutines: (params?: GetV1RoutinesQueryParams) =>
+		getRoutines: (
+			params?: GetV1RoutinesQueryParams,
+		): ReturnType<typeof api.getV1Routines> =>
 			api.getV1Routines(headers, params, { client }),
-		createRoutine: (data: PostV1RoutinesMutationRequest) =>
+		createRoutine: (
+			data: PostV1RoutinesMutationRequest,
+		): ReturnType<typeof api.postV1Routines> =>
 			api.postV1Routines(headers, data, { client }),
 		updateRoutine: (
 			routineId: string,
 			data: PutV1RoutinesRoutineidMutationRequest,
-		) =>
+		): ReturnType<typeof api.putV1RoutinesRoutineid> =>
 			api.putV1RoutinesRoutineid(routineId, headers, data, {
 				client,
 			}),
 
 		// Exercise Templates
-		getExerciseTemplates: (params?: GetV1ExerciseTemplatesQueryParams) =>
+		getExerciseTemplates: (
+			params?: GetV1ExerciseTemplatesQueryParams,
+		): ReturnType<typeof api.getV1ExerciseTemplates> =>
 			api.getV1ExerciseTemplates(headers, params, { client }),
-		getExerciseTemplate: (templateId: string) =>
+		getExerciseTemplate: (
+			templateId: string,
+		): ReturnType<typeof api.getV1ExerciseTemplatesExercisetemplateid> =>
 			api.getV1ExerciseTemplatesExercisetemplateid(templateId, headers, {
 				client,
 			}),
 
 		// Routine Folders
-		getRoutineFolders: (params?: GetV1RoutineFoldersQueryParams) =>
+		getRoutineFolders: (
+			params?: GetV1RoutineFoldersQueryParams,
+		): ReturnType<typeof api.getV1RoutineFolders> =>
 			api.getV1RoutineFolders(headers, params, { client }),
-		createRoutineFolder: (data: PostV1RoutineFoldersMutationRequest) =>
+		createRoutineFolder: (
+			data: PostV1RoutineFoldersMutationRequest,
+		): ReturnType<typeof api.postV1RoutineFolders> =>
 			api.postV1RoutineFolders(headers, data, { client }),
-		getRoutineFolder: (folderId: string) =>
+		getRoutineFolder: (
+			folderId: string,
+		): ReturnType<typeof api.getV1RoutineFoldersFolderid> =>
 			api.getV1RoutineFoldersFolderid(folderId, headers, {
 				client,
 			}),

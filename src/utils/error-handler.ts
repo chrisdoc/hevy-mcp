@@ -18,6 +18,24 @@ export interface ErrorResponse {
 }
 
 /**
+ * Specific error types for better categorization
+ */
+export enum ErrorType {
+	API_ERROR = "API_ERROR",
+	VALIDATION_ERROR = "VALIDATION_ERROR",
+	NOT_FOUND = "NOT_FOUND",
+	NETWORK_ERROR = "NETWORK_ERROR",
+	UNKNOWN_ERROR = "UNKNOWN_ERROR",
+}
+
+/**
+ * Enhanced error response with type categorization
+ */
+export interface EnhancedErrorResponse extends ErrorResponse {
+	type: ErrorType;
+}
+
+/**
  * Create a standardized error response for MCP tools
  *
  * @param error - The error object or message
@@ -35,6 +53,9 @@ export function createErrorResponse(
 			? (error as { code?: string }).code
 			: undefined;
 
+	// Determine error type based on error characteristics
+	const errorType = determineErrorType(error, errorMessage);
+
 	// Include error code in logs if available
 	if (errorCode) {
 		console.debug(`Error code: ${errorCode}`);
@@ -43,8 +64,8 @@ export function createErrorResponse(
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${errorMessage}`;
 
-	// Log the error for server-side debugging
-	console.error(formattedMessage, error);
+	// Log the error for server-side debugging with type information
+	console.error(`${formattedMessage} (Type: ${errorType})`, error);
 
 	return {
 		content: [
@@ -55,6 +76,70 @@ export function createErrorResponse(
 		],
 		isError: true,
 	};
+}
+
+/**
+ * Determine the type of error based on error characteristics
+ */
+function determineErrorType(error: unknown, message: string): ErrorType {
+	// Check for network-related errors
+	if (error instanceof Error) {
+		const errorName = error.name.toLowerCase();
+		const errorMessage = error.message.toLowerCase();
+
+		if (
+			errorName.includes("network") ||
+			errorMessage.includes("network") ||
+			errorName.includes("fetch") ||
+			errorMessage.includes("fetch") ||
+			errorName.includes("timeout") ||
+			errorMessage.includes("timeout")
+		) {
+			return ErrorType.NETWORK_ERROR;
+		}
+
+		if (
+			errorName.includes("validation") ||
+			errorMessage.includes("validation") ||
+			errorMessage.includes("invalid") ||
+			errorMessage.includes("required")
+		) {
+			return ErrorType.VALIDATION_ERROR;
+		}
+
+		if (
+			errorMessage.includes("not found") ||
+			errorMessage.includes("404") ||
+			errorMessage.includes("does not exist")
+		) {
+			return ErrorType.NOT_FOUND;
+		}
+
+		if (
+			errorName.includes("api") ||
+			errorMessage.includes("api") ||
+			errorMessage.includes("server error") ||
+			errorMessage.includes("500")
+		) {
+			return ErrorType.API_ERROR;
+		}
+	}
+
+	// Check message content for common patterns
+	const messageLower = message.toLowerCase();
+	if (messageLower.includes("not found") || messageLower.includes("404")) {
+		return ErrorType.NOT_FOUND;
+	}
+
+	if (messageLower.includes("validation") || messageLower.includes("invalid")) {
+		return ErrorType.VALIDATION_ERROR;
+	}
+
+	if (messageLower.includes("network") || messageLower.includes("timeout")) {
+		return ErrorType.NETWORK_ERROR;
+	}
+
+	return ErrorType.UNKNOWN_ERROR;
 }
 
 /**
