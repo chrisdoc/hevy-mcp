@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.6.1...v1.7.0) (2025-07-09)
+
+
+### Features
+
+* trigger new release ([b8c5e0e](https://github.com/chrisdoc/hevy-mcp/commit/b8c5e0e27cdf86becb96c7a69e550fb1a64a2ade))
+
 ## [1.6.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.6.1...v1.6.2) (2025-07-09)
 
 ## [1.6.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.6.1...v1.6.2) (2025-07-08)
