@@ -165,7 +165,7 @@ export function formatRoutine(routine: Routine): FormattedRoutine {
 				index: exercise.index,
 				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
-				supersetId: (exercise as any).superset_id ?? null,
+				supersetId: exercise.supersets_id,
 				restSeconds: exercise.rest_seconds,
 				sets: exercise.sets?.map((set) => ({
 					index: set.index,

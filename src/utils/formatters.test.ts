@@ -163,7 +163,7 @@ describe("Formatters", () => {
 						index: 1,
 						exercise_template_id: templateId,
 						notes: "Focus on form",
-						superset_id: 1,
+						supersets_id: 1,
 						sets: [
 							{
 								index: 1,

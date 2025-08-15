@@ -151,7 +151,7 @@ export function registerRoutineTools(
 				routine: {
 					title,
 					folder_id: folderId ?? null,
-					notes: notes,
+					notes: notes ?? "",
 					exercises: exercises.map(
 						(exercise): PostRoutinesRequestExercise => ({
 							exercise_template_id: exercise.exerciseTemplateId,
