@@ -151,7 +151,7 @@ export function registerRoutineTools(
 				routine: {
 					title,
 					folder_id: folderId ?? null,
-					notes: notes ?? "",
+					notes: notes,
 					exercises: exercises.map(
 						(exercise): PostRoutinesRequestExercise => ({
 							exercise_template_id: exercise.exerciseTemplateId,
@@ -222,7 +222,7 @@ export function registerRoutineTools(
 			const data = await hevyClient.updateRoutine(routineId, {
 				routine: {
 					title,
-					notes: notes ?? "",
+					notes: notes ?? null,
 					exercises: exercises.map(
 						(exercise): PutRoutinesRequestExercise => ({
 							exercise_template_id: exercise.exerciseTemplateId,

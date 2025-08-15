@@ -12,4 +12,12 @@ export const putRoutinesRequestSetSchema = z.object({
   distance_meters: z.number().int().describe('The distance in meters.').nullable().nullish(),
   duration_seconds: z.number().int().describe('The duration in seconds.').nullable().nullish(),
   custom_metric: z.number().describe('A custom metric for the set. Currently used for steps and floors.').nullable().nullish(),
+  rep_range: z
+    .object({
+      start: z.number().describe('Starting rep count for the range').nullable().nullish(),
+      end: z.number().describe('Ending rep count for the range').nullable().nullish(),
+    })
+    .describe('Range of reps for the set, if applicable')
+    .nullable()
+    .nullish(),
 })
