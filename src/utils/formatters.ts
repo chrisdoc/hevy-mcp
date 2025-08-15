@@ -9,6 +9,7 @@ import type {
  * Formatted workout set interface
  */
 export interface FormattedWorkoutSet {
+	index: number | undefined;
 	type: string | undefined;
 	weight: number | undefined | null;
 	reps: number | undefined | null;
@@ -22,8 +23,11 @@ export interface FormattedWorkoutSet {
  * Formatted workout exercise interface
  */
 export interface FormattedWorkoutExercise {
+	index: number | undefined;
 	name: string | undefined;
+	exerciseTemplateId: string | undefined;
 	notes: string | undefined | null;
+	supersetsId: number | undefined | null;
 	sets: FormattedWorkoutSet[] | undefined;
 }
 
@@ -32,9 +36,12 @@ export interface FormattedWorkoutExercise {
  */
 export interface FormattedWorkout {
 	id: string | undefined;
-	date: string | undefined;
-	name: string | undefined;
+	title: string | undefined;
 	description: string | undefined | null;
+	startTime: number | undefined;
+	endTime: number | undefined;
+	createdAt: string | undefined;
+	updatedAt: string | undefined;
 	duration: string;
 	exercises: FormattedWorkoutExercise[] | undefined;
 }
@@ -50,6 +57,8 @@ export interface FormattedRoutineSet {
 	distance: number | undefined | null;
 	duration: number | undefined | null;
 	customMetric: number | undefined | null;
+	repRange?: { start?: number | null; end?: number | null } | undefined | null;
+	rpe?: number | undefined | null;
 }
 
 /**
@@ -61,6 +70,7 @@ export interface FormattedRoutineExercise {
 	exerciseTemplateId: string | undefined;
 	notes: string | undefined | null;
 	supersetId: number | undefined | null;
+	restSeconds: string | undefined;
 	sets: FormattedRoutineSet[] | undefined;
 }
 
@@ -107,18 +117,22 @@ export interface FormattedExerciseTemplate {
 export function formatWorkout(workout: Workout): FormattedWorkout {
 	return {
 		id: workout.id,
-		date: workout.created_at,
-		name: workout.title,
+		title: workout.title,
 		description: workout.description,
-		duration: calculateDuration(
-			workout.start_time || "",
-			workout.end_time || "",
-		),
+		startTime: workout.start_time,
+		endTime: workout.end_time,
+		createdAt: workout.created_at,
+		updatedAt: workout.updated_at,
+		duration: calculateDuration(workout.start_time, workout.end_time),
 		exercises: workout.exercises?.map((exercise) => {
 			return {
+				index: exercise.index,
 				name: exercise.title,
+				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
+				supersetsId: exercise.supersets_id,
 				sets: exercise.sets?.map((set) => ({
+					index: set.index,
 					type: set.type,
 					weight: set.weight_kg,
 					reps: set.reps,
@@ -152,13 +166,16 @@ export function formatRoutine(routine: Routine): FormattedRoutine {
 				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
 				supersetId: exercise.supersets_id,
+				restSeconds: exercise.rest_seconds,
 				sets: exercise.sets?.map((set) => ({
 					index: set.index,
 					type: set.type,
 					weight: set.weight_kg,
 					reps: set.reps,
+					...(set.rep_range !== undefined && { repRange: set.rep_range }),
 					distance: set.distance_meters,
 					duration: set.duration_seconds,
+					...(set.rpe !== undefined && { rpe: set.rpe }),
 					customMetric: set.custom_metric,
 				})),
 			};

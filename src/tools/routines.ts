@@ -222,7 +222,7 @@ export function registerRoutineTools(
 			const data = await hevyClient.updateRoutine(routineId, {
 				routine: {
 					title,
-					notes: notes ?? "",
+					notes: notes ?? null,
 					exercises: exercises.map(
 						(exercise): PutRoutinesRequestExercise => ({
 							exercise_template_id: exercise.exerciseTemplateId,

@@ -1124,6 +1124,25 @@
 						"nullable": true,
 						"description": "A custom metric for the set. Currently used for steps and floors.",
 						"example": null
+					},
+					"rep_range": {
+						"type": "object",
+						"nullable": true,
+						"description": "Range of reps for the set, if applicable",
+						"properties": {
+							"start": {
+								"type": "number",
+								"nullable": true,
+								"description": "Starting rep count for the range",
+								"example": 8
+							},
+							"end": {
+								"type": "number",
+								"nullable": true,
+								"description": "Ending rep count for the range",
+								"example": 12
+							}
+						}
 					}
 				}
 			},
@@ -1231,6 +1250,25 @@
 						"nullable": true,
 						"description": "A custom metric for the set. Currently used for steps and floors.",
 						"example": null
+					},
+					"rep_range": {
+						"type": "object",
+						"nullable": true,
+						"description": "Range of reps for the set, if applicable",
+						"properties": {
+							"start": {
+								"type": "number",
+								"nullable": true,
+								"description": "Starting rep count for the range",
+								"example": 8
+							},
+							"end": {
+								"type": "number",
+								"nullable": true,
+								"description": "Ending rep count for the range",
+								"example": 12
+							}
+						}
 					}
 				}
 			},
@@ -1483,6 +1521,25 @@
 												"nullable": true,
 												"description": "Number of reps logged for the set",
 												"example": 10
+											},
+											"rep_range": {
+												"type": "object",
+												"nullable": true,
+												"description": "Range of reps for the set, if applicable",
+												"properties": {
+													"start": {
+														"type": "number",
+														"nullable": true,
+														"description": "Starting rep count for the range",
+														"example": 8
+													},
+													"end": {
+														"type": "number",
+														"nullable": true,
+														"description": "Ending rep count for the range",
+														"example": 12
+													}
+												}
 											},
 											"distance_meters": {
 												"type": "number",

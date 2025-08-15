@@ -31,6 +31,14 @@ export const routineSchema = z.object({
               type: z.string().describe("The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'").optional(),
               weight_kg: z.number().describe('Weight lifted in kilograms.').nullable().nullish(),
               reps: z.number().describe('Number of reps logged for the set').nullable().nullish(),
+              rep_range: z
+                .object({
+                  start: z.number().describe('Starting rep count for the range').nullable().nullish(),
+                  end: z.number().describe('Ending rep count for the range').nullable().nullish(),
+                })
+                .describe('Range of reps for the set, if applicable')
+                .nullable()
+                .nullish(),
               distance_meters: z.number().describe('Number of meters logged for the set').nullable().nullish(),
               duration_seconds: z.number().describe('Number of seconds logged for the set').nullable().nullish(),
               rpe: z.number().describe('RPE (Relative perceived exertion) value logged for the set').nullable().nullish(),

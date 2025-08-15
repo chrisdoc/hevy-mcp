@@ -43,4 +43,20 @@ export type PostRoutinesRequestSet = {
    * @type number
    */
   custom_metric?: number | null
+  /**
+   * @description Range of reps for the set, if applicable
+   * @type object
+   */
+  rep_range?: {
+    /**
+     * @description Starting rep count for the range
+     * @type number
+     */
+    start?: number | null
+    /**
+     * @description Ending rep count for the range
+     * @type number
+     */
+    end?: number | null
+  } | null
 }
