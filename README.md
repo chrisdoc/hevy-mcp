@@ -110,7 +110,12 @@ curl -X POST http://localhost:3000/mcp \
 npm run dev
 ```
 
-This starts the MCP server in development mode with hot reloading.
+This starts the MCP server in development mode with hot reloading using STDIO transport.
+
+For development with HTTP transport:
+```bash
+MCP_HTTP_PORT=3000 npm run dev
+```
 
 ### Production
 
@@ -118,6 +123,20 @@ This starts the MCP server in development mode with hot reloading.
 npm run build
 npm start
 ```
+
+For production with HTTP transport:
+```bash
+npm run build
+MCP_HTTP_PORT=3000 npm start
+```
+
+### Transport Modes
+
+The server supports three operational modes:
+
+1. **STDIO only** (default): `node dist/index.js`
+2. **HTTP only**: `MCP_HTTP_PORT=3000 node dist/index.js` (STDIO is still available)
+3. **Both transports**: Set `MCP_HTTP_PORT` to enable HTTP alongside STDIO
 
 ## Available MCP Tools
 
