@@ -16,4 +16,7 @@ ENV HEVY_API_KEY=your-api-key-here
 # Build the application
 RUN npm run build
 
+# Expose the HTTP port for MCP transport
+EXPOSE 3000
+
 CMD [ "npm", "start" ]
