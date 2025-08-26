@@ -5,12 +5,13 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 
 // Map to store transports by session ID
-const transports: { 
-  [sessionId: string]: { 
-    transport: StreamableHTTPServerTransport; 
-    lastActivity: number; 
-  } 
-} = {};
+const transports = new Map<
+  string,
+  {
+    transport: StreamableHTTPServerTransport;
+    lastActivity: number;
+  }
+>();
 
 // Session timeout in milliseconds (30 minutes)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
@@ -18,11 +19,11 @@ const SESSION_TIMEOUT = 30 * 60 * 1000;
 // Periodic cleanup of abandoned sessions
 setInterval(() => {
   const now = Date.now();
-  for (const [sessionId, session] of Object.entries(transports)) {
+  for (const [sessionId, session] of transports) {
     if (now - session.lastActivity > SESSION_TIMEOUT) {
       console.log(`Cleaning up abandoned session: ${sessionId}`);
       session.transport.close?.();
-      delete transports[sessionId];
+      transports.delete(sessionId);
     }
   }
 }, 5 * 60 * 1000); // Run cleanup every 5 minutes
@@ -51,17 +52,17 @@ export function createHttpServer(
 		const sessionId = req.headers["mcp-session-id"] as string | undefined;
 		let transport: StreamableHTTPServerTransport;
 
-                if (sessionId && transports[sessionId]) {
+                if (sessionId && transports.has(sessionId)) {
                   // Reuse existing transport
-                  transport = transports[sessionId].transport;
-                  transports[sessionId].lastActivity = Date.now();
+                  transport = transports.get(sessionId)!.transport;
+                  transports.get(sessionId)!.lastActivity = Date.now();
 		} else if (!sessionId && isInitializeRequest(req.body)) {
 			// New initialization request
 			transport = new StreamableHTTPServerTransport({
 				sessionIdGenerator: () => randomUUID(),
 				onsessioninitialized: (sessionId) => {
 					// Store the transport by session ID
-                                        transports[sessionId] = { transport, lastActivity: Date.now() };
+                                        transports.set(sessionId, { transport, lastActivity: Date.now() });
 				},
 				// DNS rebinding protection configuration
 				enableDnsRebindingProtection:
@@ -72,7 +73,7 @@ export function createHttpServer(
 			// Clean up transport when closed
 			transport.onclose = () => {
 				if (transport.sessionId) {
-					delete transports[transport.sessionId];
+					transports.delete(transport.sessionId!);
 				}
 			};
 
