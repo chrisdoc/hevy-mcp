@@ -23,7 +23,9 @@
 		"build": "tsup",
 		"build:client": "kubb generate",
 		"start": "node dist/index.js",
+		"start:http": "node dist/index.js --http",
 		"dev": "tsx watch --clear-screen=false src/index.ts",
+		"dev:http": "MCP_TRANSPORT=http tsx watch --clear-screen=false src/index.ts",
 		"check": "biome check --write --unsafe",
 		"check:types": "tsc --noEmit",
 		"version:patch": "npm version patch",
@@ -53,6 +55,8 @@
 		"@kubb/plugin-ts": "^3.14.0",
 		"@kubb/plugin-zod": "^3.14.0",
 		"@modelcontextprotocol/sdk": "^1.15.0",
+		"@types/express": "^5.0.3",
+		"@types/uuid": "^10.0.0",
 		"axios": "^1.10.0",
 		"uuid": "^11.1.0",
 		"zod": "^3.25.75"

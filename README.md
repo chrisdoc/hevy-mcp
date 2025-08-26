@@ -72,6 +72,64 @@ HEVY_API_KEY=your_hevy_api_key_here
 
 Replace `your_hevy_api_key_here` with your actual Hevy API key.
 
+## Transport Modes
+
+The MCP server supports two transport modes:
+
+### Stdio Transport (Default)
+
+The default mode uses stdio transport, which is suitable for integration with MCP clients like Claude Desktop and Cursor:
+
+```bash
+npm start
+# or
+node dist/index.js
+```
+
+### HTTP Transport
+
+The server can also run in HTTP mode for remote access or web-based integrations:
+
+```bash
+# Start in HTTP mode
+npm start -- --http
+# or
+node dist/index.js --http
+
+# Using environment variable
+MCP_TRANSPORT=http npm start
+```
+
+#### HTTP Configuration
+
+The HTTP transport can be configured using environment variables:
+
+```env
+# Transport mode
+MCP_TRANSPORT=http
+
+# HTTP server configuration
+MCP_HTTP_HOST=127.0.0.1
+MCP_HTTP_PORT=3000
+
+# DNS rebinding protection (recommended for production)
+MCP_DNS_REBINDING_PROTECTION=true
+MCP_ALLOWED_HOSTS=127.0.0.1,localhost
+```
+
+#### HTTP Endpoints
+
+When running in HTTP mode, the following endpoints are available:
+
+- `POST /mcp` - MCP client-to-server communication
+- `GET /mcp` - Server-to-client notifications (SSE)
+- `DELETE /mcp` - Session termination
+- `GET /health` - Health check endpoint
+
+#### Session Management
+
+The HTTP transport includes session management for stateful connections. Each client session is identified by a unique session ID that must be included in the `mcp-session-id` header for subsequent requests.
+
 ## Usage
 
 ### Development
