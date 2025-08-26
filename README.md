@@ -72,6 +72,36 @@ HEVY_API_KEY=your_hevy_api_key_here
 
 Replace `your_hevy_api_key_here` with your actual Hevy API key.
 
+### Transport Configuration
+
+The hevy-mcp server supports two transport mechanisms:
+
+#### STDIO Transport (Default)
+The server runs with STDIO transport by default, which is compatible with most MCP clients including Cursor, Claude Desktop, and other local applications.
+
+#### HTTP Transport (Optional)
+For Smithery hosted servers and HTTP-based clients, you can enable HTTP transport by setting the `MCP_HTTP_PORT` environment variable:
+
+```env
+HEVY_API_KEY=your_hevy_api_key_here
+MCP_HTTP_PORT=3000
+```
+
+When `MCP_HTTP_PORT` is set, the server will run both STDIO and HTTP transports simultaneously:
+- STDIO transport continues to work as before
+- HTTP server listens on the specified port at endpoint `/mcp`
+- Supports both streaming (SSE) and direct HTTP responses
+- Compatible with Smithery's Streamable HTTP transport specification
+
+Example HTTP endpoint usage:
+```bash
+# Server running on port 3000
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "1.0.0", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0.0"}}}'
+```
+
 ## Usage
 
 ### Development
