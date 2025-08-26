@@ -5,7 +5,27 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 
 // Map to store transports by session ID
-const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+const transports: { 
+  [sessionId: string]: { 
+    transport: StreamableHTTPServerTransport; 
+    lastActivity: number; 
+  } 
+} = {};
+
+// Session timeout in milliseconds (30 minutes)
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+
+// Periodic cleanup of abandoned sessions
+setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, session] of Object.entries(transports)) {
+    if (now - session.lastActivity > SESSION_TIMEOUT) {
+      console.log(`Cleaning up abandoned session: ${sessionId}`);
+      session.transport.close?.();
+      delete transports[sessionId];
+    }
+  }
+}, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
 /**
  * Create and configure Express server for MCP HTTP transport
