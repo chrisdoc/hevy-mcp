@@ -51,9 +51,10 @@ export function createHttpServer(
 		const sessionId = req.headers["mcp-session-id"] as string | undefined;
 		let transport: StreamableHTTPServerTransport;
 
-		if (sessionId && transports[sessionId]) {
-			// Reuse existing transport
-			transport = transports[sessionId];
+                if (sessionId && transports[sessionId]) {
+                  // Reuse existing transport
+                  transport = transports[sessionId].transport;
+                  transports[sessionId].lastActivity = Date.now();
 		} else if (!sessionId && isInitializeRequest(req.body)) {
 			// New initialization request
 			transport = new StreamableHTTPServerTransport({
