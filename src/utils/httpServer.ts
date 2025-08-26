@@ -60,7 +60,7 @@ export function createHttpServer(
 				sessionIdGenerator: () => randomUUID(),
 				onsessioninitialized: (sessionId) => {
 					// Store the transport by session ID
-					transports[sessionId] = transport;
+                                        transports[sessionId] = { transport, lastActivity: Date.now() };
 				},
 				// DNS rebinding protection configuration
 				enableDnsRebindingProtection:
