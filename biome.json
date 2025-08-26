@@ -9,10 +9,10 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"**",
-			"!**/node_modules",
-			"!**/dist",
-			"!**/src/generated",
-			"!**/coverage"
+                        "!**/node_modules/**",
+                        "!**/dist/**",
+                        "!**/src/generated/**",
+                        "!**/coverage/**"
 		]
 	},
 	"formatter": {
