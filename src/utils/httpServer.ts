@@ -108,8 +108,8 @@ export function createHttpServer(
 		}
 
 		const transport = transports.get(sessionId)!.transport;
-		await transport.handleRequest(req, res);
-	};
+                const transport = transports[sessionId].transport;
+                await transport.handleRequest(req, res);
 
 	// Handle GET requests for server-to-client notifications via SSE
 	app.get("/mcp", handleSessionRequest);
