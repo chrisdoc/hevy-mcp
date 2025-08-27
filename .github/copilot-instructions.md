@@ -36,24 +36,27 @@ Run these commands in order to set up a working development environment:
 
 4. **Run unit tests only:**
    ```bash
-   npx vitest run --exclude tests/integration/**
+   npm test
+   # or explicitly
+   npm run test:unit
    ```
    - Takes approximately 1-2 seconds. NEVER CANCEL.
    - This is the primary testing command for development.
+   - Excludes integration tests that require API key.
 
 5. **Run integration tests (requires API key):**
    ```bash
-   npx vitest run tests/integration
+   npm run test:integration
    ```
    - **WILL FAIL** without valid `HEVY_API_KEY` in `.env` file (by design).
    - Integration tests require real API access and cannot run in sandboxed environments.
 
-6. **Run all tests:**
+6. **Run unit tests with coverage:**
    ```bash
-   npm test
+   npm run test:unit:coverage
    ```
-   - Takes approximately 1-2 seconds for unit tests only (without API key).
-   - **WILL FAIL** if `HEVY_API_KEY` is missing due to integration test failure (by design).
+   - Takes approximately 1-2 seconds for unit tests only.
+   - Generates coverage report excluding integration tests.
 
 ### API Client Generation
 
