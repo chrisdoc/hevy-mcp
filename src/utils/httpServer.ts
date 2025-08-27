@@ -143,12 +143,10 @@ export function createHttpServer(
 		startServer,
 		getActiveSessionsCount: () => transports.size,
 		closeAllSessions: () => {
-			for (const transport of Object.values(transports)) {
-				transport.close?.();
+			for (const session of transports.values()) {
+				session.transport.close?.();
 			}
-			for (const key in transports) {
-				delete transports[key];
-			}
+			transports.clear();
 		},
 	};
 }
