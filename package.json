@@ -19,9 +19,9 @@
 	"scripts": {
 		"inspect": "npm run build && npx -y @modelcontextprotocol/inspector@latest node dist/index.js",
 		"test": "npm run test:unit",
-		"test:unit": "vitest --run --exclude \"tests/integration/**\"",
+		"test:unit": "vitest --run",
 		"test:integration": "vitest --run --config vitest.integration.config.ts",
-		"test:unit:coverage": "vitest --run --coverage --exclude \"tests/integration/**\"",
+		"test:unit:coverage": "vitest --run --coverage",
 		"export-specs": "node ./scripts/export-openapi-spec.js",
 		"build": "tsup",
 		"build:client": "kubb generate",
