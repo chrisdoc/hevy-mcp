@@ -30,9 +30,12 @@ describe("Formatters", () => {
 			const result = formatWorkout(workout as Workout);
 			expect(result).toEqual({
 				id: workoutId,
-				date: "2025-03-27T07:00:00Z",
-				name: "Morning Workout",
+				title: "Morning Workout",
 				description: "Great session",
+				startTime: 1711522800000,
+				endTime: 1711526400000,
+				createdAt: "2025-03-27T07:00:00Z",
+				updatedAt: undefined,
 				duration: "1h 0m 0s",
 				exercises: [],
 			});
@@ -78,16 +81,23 @@ describe("Formatters", () => {
 			const result = formatWorkout(workout as Workout);
 			expect(result).toEqual({
 				id: workoutId,
-				date: "2025-03-27T07:00:00Z",
-				name: "Morning Workout",
+				title: "Morning Workout",
 				description: "Great session",
+				startTime: 1711522800000,
+				endTime: 1711526400000,
+				createdAt: "2025-03-27T07:00:00Z",
+				updatedAt: undefined,
 				duration: "1h 0m 0s",
 				exercises: [
 					{
+						index: undefined,
 						name: "Bench Press",
+						exerciseTemplateId: undefined,
 						notes: "Felt strong today",
+						supersetsId: undefined,
 						sets: [
 							{
+								index: undefined,
 								type: "warmup",
 								weight: 60,
 								reps: 10,
@@ -97,6 +107,7 @@ describe("Formatters", () => {
 								customMetric: null,
 							},
 							{
+								index: undefined,
 								type: "normal",
 								weight: 80,
 								reps: 8,
@@ -191,6 +202,7 @@ describe("Formatters", () => {
 						exerciseTemplateId: templateId,
 						notes: "Focus on form",
 						supersetId: 1,
+						restSeconds: undefined,
 						sets: [
 							{
 								index: 1,

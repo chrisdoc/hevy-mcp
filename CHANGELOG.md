@@ -1,3 +1,15 @@
+# [1.8.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.7.16...v1.8.0) (2025-08-26)
+
+
+### Bug Fixes
+
+* **tests:** fix integration tests accessing wrong fields ([426fd00](https://github.com/chrisdoc/hevy-mcp/commit/426fd006eb04e417647cf2ec07e48520244017bb))
+
+
+### Features
+
+* add support for rep range and RPE fields in routines ([#90](https://github.com/chrisdoc/hevy-mcp/issues/90)) ([81cb552](https://github.com/chrisdoc/hevy-mcp/commit/81cb552abe6dac0390cb92fd79fdb84ea4704432))
+
 ## [1.7.16](https://github.com/chrisdoc/hevy-mcp/compare/v1.7.15...v1.7.16) (2025-08-25)
 
 ## [1.7.15](https://github.com/chrisdoc/hevy-mcp/compare/v1.7.14...v1.7.15) (2025-08-25)

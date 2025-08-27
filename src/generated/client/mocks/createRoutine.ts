@@ -26,6 +26,7 @@ export function createRoutine(data?: Partial<Routine>): Routine {
           type: faker.string.alpha(),
           weight_kg: faker.number.float(),
           reps: faker.number.float(),
+          rep_range: { start: faker.number.float(), end: faker.number.float() },
           distance_meters: faker.number.float(),
           duration_seconds: faker.number.float(),
           rpe: faker.number.float(),

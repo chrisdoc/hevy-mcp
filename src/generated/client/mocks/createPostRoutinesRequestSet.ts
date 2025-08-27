@@ -15,6 +15,7 @@ export function createPostRoutinesRequestSet(data?: Partial<PostRoutinesRequestS
       distance_meters: faker.number.int(),
       duration_seconds: faker.number.int(),
       custom_metric: faker.number.float(),
+      rep_range: { start: faker.number.float(), end: faker.number.float() },
     },
     ...(data || {}),
   }
