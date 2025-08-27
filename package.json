@@ -21,6 +21,7 @@
 		"test": "npm run test:unit",
 		"test:unit": "vitest --run",
 		"test:integration": "vitest --run --config vitest.integration.config.ts",
+		"test:integration:coverage": "vitest --run --config vitest.integration.config.ts --coverage",
 		"test:unit:coverage": "vitest --run --coverage",
 		"export-specs": "node ./scripts/export-openapi-spec.js",
 		"build": "tsup",
