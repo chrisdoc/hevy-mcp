@@ -141,7 +141,7 @@ export function createHttpServer(
 	return {
 		app,
 		startServer,
-		getActiveSessionsCount: () => Object.keys(transports).length,
+		getActiveSessionsCount: () => transports.size,
 		closeAllSessions: () => {
 			for (const transport of Object.values(transports)) {
 				transport.close?.();
