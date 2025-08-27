@@ -102,12 +102,12 @@ export function createHttpServer(
 		res: express.Response,
 	) => {
 		const sessionId = req.headers["mcp-session-id"] as string | undefined;
-		if (!sessionId || !transports[sessionId]) {
+		if (!sessionId || !transports.has(sessionId)) {
 			res.status(400).send("Invalid or missing session ID");
 			return;
 		}
 
-		const transport = transports[sessionId];
+		const transport = transports.get(sessionId)!.transport;
 		await transport.handleRequest(req, res);
 	};
 
