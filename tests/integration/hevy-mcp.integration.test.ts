@@ -151,6 +151,6 @@ describe("Hevy MCP Server Integration Tests", () => {
 			expect(responseData[0].title).toBeDefined();
 			expect(responseData[0].title.length).toBeGreaterThanOrEqual(3); // title is formatted as title
 			expect(responseData[0].createdAt).toBeDefined(); // start_time is formatted as date
-		});
+		}, 15000); // 15 second timeout to allow for API response time
 	});
 });
