@@ -1,7 +1,10 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
+runtime: "typescript"
+env:
+  MCP_TRANSPORT: "http"
 startCommand:
-  type: stdio
+  type: "http"
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
@@ -11,7 +14,5 @@ startCommand:
       hevyApiKey:
         type: string
         description: Your Hevy API key to authenticate with the Hevy Fitness API.
-  commandFunction:
-    # A function that produces the CLI command to start the MCP on stdio.
-    |-
-    config => ({ command: 'node', args: ['dist/index.js'], env: { HEVY_API_KEY: config.hevyApiKey } })
+  exampleConfig:
+    hevyApiKey: "your-hevy-api-key-here"
