@@ -10,6 +10,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
     permissions:
       contents: write # to be able to publish a GitHub release
       issues: write # to be able to comment on released issues
@@ -23,11 +25,23 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Run unit tests
-        run: npx vitest run --exclude tests/integration/**
-      - name: Run integration tests
-        run: npx vitest run tests/integration
-        env:
-          HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+        run: npm run test:unit
+
+      - name: Upload unit coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unit
+      - name: Run integration coverage
+        if: ${{ env.HEVY_API_KEY != '' }}
+        run: npm run test:integration:coverage
+
+      - name: Upload integration coverage to Codecov
+        if: ${{ env.HEVY_API_KEY != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: integration
       - run: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

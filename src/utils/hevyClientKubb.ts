@@ -30,12 +30,14 @@ export function createClient(
 	apiKey: string,
 	baseUrl = "https://api.hevyapp.com",
 ) {
-	// Create an axios instance with the API key
+	// Create an axios instance with the API key and timeout
 	const axiosInstance = axios.create({
 		baseURL: baseUrl,
 		headers: {
 			"api-key": apiKey,
 		},
+		// Set a 10 second timeout for API calls to prevent hanging
+		timeout: 10000,
 	});
 
 	// Create headers object with API key

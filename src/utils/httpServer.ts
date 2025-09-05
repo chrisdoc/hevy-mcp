@@ -6,27 +6,30 @@ import express from "express";
 
 // Map to store transports by session ID
 const transports = new Map<
-  string,
-  {
-    transport: StreamableHTTPServerTransport;
-    lastActivity: number;
-  }
+	string,
+	{
+		transport: StreamableHTTPServerTransport;
+		lastActivity: number;
+	}
 >();
 
 // Session timeout in milliseconds (30 minutes)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 // Periodic cleanup of abandoned sessions
-setInterval(() => {
-  const now = Date.now();
-  for (const [sessionId, session] of transports) {
-    if (now - session.lastActivity > SESSION_TIMEOUT) {
-      console.log(`Cleaning up abandoned session: ${sessionId}`);
-      session.transport.close?.();
-      transports.delete(sessionId);
-    }
-  }
-}, 5 * 60 * 1000); // Run cleanup every 5 minutes
+setInterval(
+	() => {
+		const now = Date.now();
+		for (const [sessionId, session] of transports) {
+			if (now - session.lastActivity > SESSION_TIMEOUT) {
+				console.log(`Cleaning up abandoned session: ${sessionId}`);
+				session.transport.close?.();
+				transports.delete(sessionId);
+			}
+		}
+	},
+	5 * 60 * 1000,
+); // Run cleanup every 5 minutes
 
 /**
  * Create and configure Express server for MCP HTTP transport
@@ -52,17 +55,17 @@ export function createHttpServer(
 		const sessionId = req.headers["mcp-session-id"] as string | undefined;
 		let transport: StreamableHTTPServerTransport;
 
-                if (sessionId && transports.has(sessionId)) {
-                  // Reuse existing transport
-                  transport = transports.get(sessionId)!.transport;
-                  transports.get(sessionId)!.lastActivity = Date.now();
+		if (sessionId && transports.has(sessionId)) {
+			// Reuse existing transport
+			transport = transports.get(sessionId)?.transport;
+			transports.get(sessionId)!.lastActivity = Date.now();
 		} else if (!sessionId && isInitializeRequest(req.body)) {
 			// New initialization request
 			transport = new StreamableHTTPServerTransport({
 				sessionIdGenerator: () => randomUUID(),
 				onsessioninitialized: (sessionId) => {
 					// Store the transport by session ID
-                                        transports.set(sessionId, { transport, lastActivity: Date.now() });
+					transports.set(sessionId, { transport, lastActivity: Date.now() });
 				},
 				// DNS rebinding protection configuration
 				enableDnsRebindingProtection:
@@ -107,9 +110,9 @@ export function createHttpServer(
 			return;
 		}
 
-                const transport = transports.get(sessionId)!.transport;
-                await transport.handleRequest(req, res);
-                };
+		const transport = transports.get(sessionId)?.transport;
+		await transport.handleRequest(req, res);
+	};
 
 	// Handle GET requests for server-to-client notifications via SSE
 	app.get("/mcp", handleSessionRequest);

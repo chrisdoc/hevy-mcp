@@ -34,16 +34,19 @@ jobs:
       run: npm run build
 
     - name: Run unit tests
-      run: npx vitest run --coverage --exclude tests/integration/**
+      run: npm run test:unit:coverage
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        flags: unit
 
   integration-tests:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
     
     steps:
     - name: Checkout repository
@@ -60,10 +63,16 @@ jobs:
     - name: Run build
       run: npm run build
 
-    - name: Run integration tests
-      run: npx vitest run tests/integration
-      env:
-        HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+    - name: Run integration coverage
+      if: ${{ env.HEVY_API_KEY != '' }}
+      run: npm run test:integration:coverage
+
+    - name: Upload integration coverage to Codecov
+      if: ${{ env.HEVY_API_KEY != '' }}
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: integration
 
   otel-cicd-action:
     if: always()
@@ -77,4 +86,4 @@ jobs:
           otlpEndpoint: 'grpc://in-otel.hyperdx.io:4317/'
           otlpHeaders: ${{ secrets.HYPERDX_OTLP_HEADERS }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          runId: ${{ github.event.workflow_run.id }}
+          runId: ${{ github.run_id }}

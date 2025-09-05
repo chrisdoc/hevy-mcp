@@ -219,36 +219,43 @@ npm run check
 
 ### Testing
 
-#### Run All Tests
+#### Run Unit Tests (Default)
 
-To run all tests (unit and integration), use:
+To run only unit tests (recommended for development):
 
 ```bash
 npm test
+# or
+npm run test:unit
 ```
 
-> **Note:** If the `HEVY_API_KEY` environment variable is set, integration tests will also run. If not, only unit tests will run.
-
-#### Run Only Unit Tests
-
-To run only unit tests (excluding integration tests):
+#### Run Unit Tests with Coverage
 
 ```bash
-npx vitest run --exclude tests/integration/**
+npm run test:unit:coverage
 ```
 
-Or with coverage:
+#### Run Integration Tests
+
+To run only integration tests (requires a valid `HEVY_API_KEY`):
 
 ```bash
-npx vitest run --coverage --exclude tests/integration/**
+npm run test:integration
 ```
 
-#### Run Only Integration Tests
+#### Manual Test Commands
 
-To run only the integration tests (requires a valid `HEVY_API_KEY`):
+You can also run tests manually with vitest:
 
 ```bash
-npx vitest run tests/integration
+# Unit tests only (note the quotes to prevent shell expansion)
+npx vitest run --exclude "tests/integration/**"
+
+# Integration tests only
+npx vitest run tests/integration/**
+
+# All tests (not recommended without API key)
+npx vitest run
 ```
 
 **Note:** The integration tests will fail if the `HEVY_API_KEY` environment variable is not set. This is by design to ensure that the tests are always run with a valid API key.
