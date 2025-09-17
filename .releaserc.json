@@ -5,6 +5,14 @@
 		"@semantic-release/release-notes-generator",
 		"@semantic-release/changelog",
 		"@semantic-release/npm",
+		[
+			"@semantic-release/github",
+			{
+				"successComment": false,
+				"failTitle": false,
+				"failComment": false
+			}
+		],
 		"@semantic-release/git"
 	],
 	"releaseRules": [

@@ -147,6 +147,59 @@ npm run build
 npm start
 ```
 
+### Docker
+
+The project includes a Dockerfile for containerized deployments. Docker images are automatically built and pushed to GitHub Container Registry (GHCR) during the CI/CD process.
+
+#### Using Pre-built Images
+
+Pull and run the latest image:
+
+```bash
+docker run -d \
+  --name hevy-mcp \
+  -e HEVY_API_KEY=your_api_key_here \
+  -p 3000:3000 \
+  ghcr.io/chrisdoc/hevy-mcp:latest
+```
+
+#### Building Locally
+
+```bash
+# Build the image
+docker build -t hevy-mcp .
+
+# Run the container
+docker run -d \
+  --name hevy-mcp \
+  -e HEVY_API_KEY=your_api_key_here \
+  -p 3000:3000 \
+  hevy-mcp
+```
+
+#### Docker Compose Example
+
+```yaml
+version: '3.8'
+services:
+  hevy-mcp:
+    image: ghcr.io/chrisdoc/hevy-mcp:latest
+    environment:
+      - HEVY_API_KEY=your_api_key_here
+      - MCP_TRANSPORT=http
+      - MCP_HTTP_HOST=0.0.0.0
+      - MCP_HTTP_PORT=3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+```
+
+#### Available Image Tags
+
+- `latest` - Latest stable release
+- `main` - Latest development build from main branch  
+- `v1.8.8`, `v1.8`, `v1` - Semantic version tags for releases
+
 ## Available MCP Tools
 
 The server implements the following MCP tools for interacting with the Hevy API:
