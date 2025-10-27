@@ -47,17 +47,17 @@
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"dependencies": {
 		"@dotenvx/dotenvx": "^1.49.0",
-		"@kubb/cli": "^3.18.1",
-		"@kubb/core": "^3.18.1",
-		"@kubb/plugin-client": "^3.18.1",
-		"@kubb/plugin-faker": "^3.18.1",
-		"@kubb/plugin-oas": "^3.18.1",
-		"@kubb/plugin-ts": "^3.18.1",
-		"@kubb/plugin-zod": "^3.18.1",
+		"@kubb/cli": "^4.3.1",
+		"@kubb/core": "^4.3.1",
+		"@kubb/plugin-client": "^4.3.1",
+		"@kubb/plugin-faker": "^4.3.1",
+		"@kubb/plugin-oas": "^4.3.1",
+		"@kubb/plugin-ts": "^4.3.1",
+		"@kubb/plugin-zod": "^4.3.1",
 		"@modelcontextprotocol/sdk": "^1.17.4",
 		"axios": "^1.11.0",
-		"uuid": "^11.1.0",
-		"zod": "^3.25.75"
+		"uuid": "^13.0.0",
+		"zod": "^4.1.12"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.6",
