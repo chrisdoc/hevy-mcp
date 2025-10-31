@@ -57,8 +57,8 @@ export function createHttpServer(
 
 		if (sessionId && transports.has(sessionId)) {
 			// Reuse existing transport
-                        transport = transports.get(sessionId)!.transport;
-                        transports.get(sessionId)!.lastActivity = Date.now();
+			transport = transports.get(sessionId)?.transport;
+			transports.get(sessionId)!.lastActivity = Date.now();
 		} else if (!sessionId && isInitializeRequest(req.body)) {
 			// New initialization request
 			transport = new StreamableHTTPServerTransport({
