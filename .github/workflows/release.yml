@@ -28,12 +28,16 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-      - run: npm ci
-      - run: npm run build
+          cache: 'pnpm'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
       - name: Run unit tests
-        run: npx vitest run --exclude tests/integration/**
+        run: pnpm vitest run --exclude tests/integration/**
       - name: Run integration tests
-        run: npx vitest run tests/integration
+        run: pnpm vitest run tests/integration
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
       - name: Store initial version
@@ -45,7 +49,7 @@ jobs:
       
       - name: Release
         id: release_step
-        run: npm run release
+        run: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -46,13 +46,20 @@ export interface HttpServerOptions {
 	onFirstRequestApiKey?: (apiKey: string) => void;
 }
 
+export interface HttpServerInstance {
+	app: express.Express;
+	startServer: () => Promise<void>;
+	getActiveSessionsCount: () => number;
+	closeAllSessions: () => void;
+}
+
 /**
  * Create and configure Express server for MCP HTTP transport
  */
 export function createHttpServer(
 	server: McpServer,
 	options?: HttpServerOptions,
-) {
+): HttpServerInstance {
 	const app = express();
 	const port = options?.port || 3000;
 	const host = options?.host || "127.0.0.1";
@@ -89,8 +96,20 @@ export function createHttpServer(
 
 		if (sessionId && transports.has(sessionId)) {
 			// Reuse existing transport
-			transport = transports.get(sessionId)?.transport;
-			transports.get(sessionId)!.lastActivity = Date.now();
+			const existingSession = transports.get(sessionId);
+			if (!existingSession) {
+				res.status(400).json({
+					jsonrpc: "2.0",
+					error: {
+						code: -32000,
+						message: "Bad Request: Session lookup failed",
+					},
+					id: null,
+				});
+				return;
+			}
+			transport = existingSession.transport;
+			existingSession.lastActivity = Date.now();
 		} else if (!sessionId && isInitializeRequest(req.body)) {
 			// New initialization request
 			// Extract API key from query parameters if provided
@@ -114,7 +133,7 @@ export function createHttpServer(
 			// Clean up transport when closed
 			transport.onclose = () => {
 				if (transport.sessionId) {
-					transports.delete(transport.sessionId!);
+					transports.delete(transport.sessionId);
 				}
 			};
 

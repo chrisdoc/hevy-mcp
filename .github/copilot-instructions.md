@@ -10,24 +10,24 @@
 ## Working Effectively
 
 ### Bootstrap and Build Repository
-Run these commands in order to set up a working development environment:
+Run these commands in order to set up a working development environment (run `corepack use pnpm@10.22.0` once per machine if pnpm isn't already available):
 
 1. **Install dependencies:**
    ```bash
-   npm ci
+   pnpm install
    ```
    - Takes approximately 30 seconds. NEVER CANCEL - set timeout to 60+ seconds.
 
 2. **Build the project:**
    ```bash
-   npm run build
+   pnpm run build
    ```
    - Takes approximately 3-5 seconds. TypeScript compilation via tsup.
    - Always build before running the server or testing changes.
 
 3. **Run linting/formatting:**
    ```bash
-   npm run check
+   pnpm run check
    ```
    - Takes less than 1 second.
    - **EXPECTED WARNING:** Biome schema version mismatch warning is normal and can be ignored.
@@ -36,21 +36,21 @@ Run these commands in order to set up a working development environment:
 
 4. **Run unit tests only:**
    ```bash
-   npx vitest run --exclude tests/integration/**
+   pnpm vitest run --exclude tests/integration/**
    ```
    - Takes approximately 1-2 seconds. NEVER CANCEL.
    - This is the primary testing command for development.
 
 5. **Run integration tests (requires API key):**
    ```bash
-   npx vitest run tests/integration
+   pnpm vitest run tests/integration
    ```
    - **WILL FAIL** without valid `HEVY_API_KEY` in `.env` file (by design).
    - Integration tests require real API access and cannot run in sandboxed environments.
 
 6. **Run all tests:**
    ```bash
-   npm test
+   pnpm test
    ```
    - Takes approximately 1-2 seconds for unit tests only (without API key).
    - **WILL FAIL** if `HEVY_API_KEY` is missing due to integration test failure (by design).
@@ -59,7 +59,7 @@ Run these commands in order to set up a working development environment:
 
 7. **Regenerate API client from OpenAPI spec:**
    ```bash
-   npm run build:client
+   pnpm run build:client
    ```
    - Takes approximately 4-5 seconds. NEVER CANCEL.
    - **EXPECTED WARNINGS:** OpenAPI validation warnings about missing schemas are normal.
@@ -69,24 +69,24 @@ Run these commands in order to set up a working development environment:
 
 8. **Development server (with hot reload):**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
    - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
    - Server runs indefinitely until stopped.
 
 9. **Production server:**
    ```bash
-   npm start
+   pnpm start
    ```
    - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
-   - Must run `npm run build` first.
+   - Must run `pnpm run build` first.
 
 ## Commands That Do Not Work
 
 ### Known Failing Commands
-- **`npm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
-- **`npm run check:types`**: Reports 301 TypeScript errors in generated code. This is expected - the project builds successfully despite these errors.
-- **`npm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
+- **`pnpm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
+- **`pnpm run check:types`**: Reports 301 TypeScript errors in generated code. This is expected - the project builds successfully despite these errors.
+- **`pnpm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
 
 ## Environment Setup
 
@@ -112,24 +112,24 @@ Always perform these validation steps after making changes:
 
 1. **Build validation:**
    ```bash
-   npm run build
+   pnpm run build
    ```
    - Must complete successfully without errors.
 
 2. **Unit test validation:**
    ```bash
-   npx vitest run --exclude tests/integration/**
+   pnpm vitest run --exclude tests/integration/**
    ```
    - All unit tests must pass.
 
 3. **Code style validation:**
    ```bash
-   npm run check
+   pnpm run check
    ```
    - Must complete without errors (warnings about Biome schema are acceptable).
 
 4. **MCP tool functionality validation (if API key available):**
-   - Start development server: `npm run dev`
+   - Start development server: `pnpm run dev`
    - Test MCP tool endpoints with a client
    - Verify tool responses are correctly formatted
 
@@ -178,7 +178,7 @@ tests/
 
 ### Working with Generated Code
 - **NEVER** edit files in `src/generated/` directly
-- Regenerate API client: `npm run build:client`
+- Regenerate API client: `pnpm run build:client`
 - If OpenAPI spec changes, update `openapi-spec.json` first
 
 ### Error Handling
@@ -191,7 +191,7 @@ tests/
 1. **Server won't start:** Check for `HEVY_API_KEY` in `.env` file
 2. **Integration tests failing:** Expected without valid API key
 3. **TypeScript errors in generated code:** Expected - ignore these
-4. **Build failures:** Run `npm run check` to identify formatting/linting issues
+4. **Build failures:** Run `pnpm run check` to identify formatting/linting issues
 5. **Network errors in export-specs:** Expected in sandboxed environments
 
 ### Performance Expectations

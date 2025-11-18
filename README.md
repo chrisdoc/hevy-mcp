@@ -16,7 +16,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 ## Prerequisites
 
 - Node.js (v20 or higher)
-- npm or yarn
+- pnpm (via Corepack)
 - A Hevy API key
 
 ## Installation
@@ -36,7 +36,8 @@ git clone https://github.com/chrisdoc/hevy-mcp.git
 cd hevy-mcp
 
 # Install dependencies
-npm install
+corepack use pnpm@10.22.0
+pnpm install
 
 # Create .env file from sample
 cp .env.sample .env
@@ -67,7 +68,7 @@ Make sure to replace `your-api-key-here` with your actual Hevy API key.
 You can supply your Hevy API key in two ways:
 
 1. Environment variable (`HEVY_API_KEY`)
-2. Command-line argument (`--hevy-api-key=your_key` or `hevy-api-key=your_key` after `--` when using npm scripts)
+2. Command-line argument (`--hevy-api-key=your_key` or `hevy-api-key=your_key` after `--` when using pnpm scripts)
 
 Create a `.env` file in the project root (you can copy from [.env.sample](.env.sample)) with the following content if using the environment variable approach:
 
@@ -78,13 +79,13 @@ HEVY_API_KEY=your_hevy_api_key_here
 Replace `your_hevy_api_key_here` with your actual Hevy API key. If you prefer the command argument approach you can skip setting the environment variable and start the server with for example:
 
 ```bash
-npm start -- --hevy-api-key=your_hevy_api_key_here
+pnpm start -- --hevy-api-key=your_hevy_api_key_here
 ```
 
 Or in HTTP mode:
 
 ```bash
-npm start -- --http --hevy-api-key=your_hevy_api_key_here
+pnpm start -- --http --hevy-api-key=your_hevy_api_key_here
 ```
 
 ## Transport Modes
@@ -96,7 +97,7 @@ The MCP server supports two transport modes:
 The default mode uses stdio transport, which is suitable for integration with MCP clients like Claude Desktop and Cursor:
 
 ```bash
-npm start
+pnpm start
 # or
 node dist/index.js
 ```
@@ -104,17 +105,16 @@ node dist/index.js
 ### HTTP Transport
 
 The server can also run in HTTP mode for remote access or web-based integrations:
-
 ```bash
 # Start in HTTP mode (env var)
-npm start -- --http
+pnpm start -- --http
 # Start in HTTP mode (CLI arg)
-npm start -- --http --hevy-api-key=your_hevy_api_key_here
+pnpm start -- --http --hevy-api-key=your_hevy_api_key_here
 # Or using node directly
 node dist/index.js --http --hevy-api-key=your_hevy_api_key_here
 
 # Using environment variable
-MCP_TRANSPORT=http npm start
+MCP_TRANSPORT=http pnpm start
 ```
 
 #### HTTP Configuration
@@ -152,7 +152,7 @@ The HTTP transport includes session management for stateful connections. Each cl
 ### Development
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 This starts the MCP server in development mode with hot reloading.
@@ -160,8 +160,8 @@ This starts the MCP server in development mode with hot reloading.
 ### Production
 
 ```bash
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 ### Docker
@@ -298,7 +298,7 @@ hevy-mcp/
 This project uses Biome for code formatting and linting:
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 ### Testing
@@ -308,7 +308,7 @@ npm run check
 To run all tests (unit and integration), use:
 
 ```bash
-npm test
+pnpm test
 ```
 
 > **Note:** If the `HEVY_API_KEY` environment variable is set, integration tests will also run. If not, only unit tests will run.
@@ -318,13 +318,13 @@ npm test
 To run only unit tests (excluding integration tests):
 
 ```bash
-npx vitest run --exclude tests/integration/**
+pnpm vitest run --exclude tests/integration/**
 ```
 
 Or with coverage:
 
 ```bash
-npx vitest run --coverage --exclude tests/integration/**
+pnpm vitest run --coverage --exclude tests/integration/**
 ```
 
 #### Run Only Integration Tests
@@ -332,7 +332,7 @@ npx vitest run --coverage --exclude tests/integration/**
 To run only the integration tests (requires a valid `HEVY_API_KEY`):
 
 ```bash
-npx vitest run tests/integration
+pnpm vitest run tests/integration
 ```
 
 **Note:** The integration tests will fail if the `HEVY_API_KEY` environment variable is not set. This is by design to ensure that the tests are always run with a valid API key.
@@ -359,15 +359,15 @@ If the secret is not set, the integration tests step will be skipped with a mess
 The API client is generated from the OpenAPI specification using [Kubb](https://kubb.dev/):
 
 ```bash
-npm run export-specs
-npm run build:client
+pnpm run export-specs
+pnpm run build:client
 ```
 
 Kubb generates TypeScript types, API clients, Zod schemas, and mock data from the OpenAPI specification.
 
 ### Troubleshooting
 
-- **Rollup optional dependency missing**: If you see an error similar to `Cannot find module @rollup/rollup-linux-x64-gnu`, set the environment variable `ROLLUP_SKIP_NODEJS_NATIVE_BUILD=true` before running `npm run build`. This forces Rollup to use the pure JavaScript fallback and avoids the npm optional dependency bug on some Linux runners.
+- **Rollup optional dependency missing**: If you see an error similar to `Cannot find module @rollup/rollup-linux-x64-gnu`, set the environment variable `ROLLUP_SKIP_NODEJS_NATIVE_BUILD=true` before running `pnpm run build`. This forces Rollup to use the pure JavaScript fallback and avoids the npm optional dependency bug on some Linux runners.
 
 ## License
 
