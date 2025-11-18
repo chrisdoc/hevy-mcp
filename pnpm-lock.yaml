@@ -61,8 +61,8 @@ importers:
         specifier: ^20.1.0
         version: 20.1.0(@types/node@24.10.1)(typescript@5.9.3)
       '@faker-js/faker':
-        specifier: ^9.3.0
-        version: 9.9.0
+        specifier: ^10.1.0
+        version: 10.1.0
       '@semantic-release/changelog':
         specifier: ^6.0.3
         version: 6.0.3(semantic-release@25.0.2(typescript@5.9.3))
@@ -97,11 +97,11 @@ importers:
         specifier: ^2.22.0
         version: 2.22.0
       cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^10.1.0
+        version: 10.1.0
       dotenv:
-        specifier: ^16.6.1
-        version: 16.6.1
+        specifier: ^17.2.3
+        version: 17.2.3
       lefthook:
         specifier: ^2.0.4
         version: 2.0.4
@@ -314,6 +314,9 @@ packages:
     engines: {bun: '>=1', deno: '>=2', node: '>=16'}
     peerDependencies:
       '@noble/ciphers': ^1.0.0
+
+  '@epic-web/invariant@1.0.0':
+    resolution: {integrity: sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA==}
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -630,9 +633,9 @@ packages:
   '@exodus/schemasafe@1.3.0':
     resolution: {integrity: sha512-5Aap/GaRupgNx/feGBwLLTVv8OQFfv3pq2lPRzPg9R+IOBnDgghTGW7l7EuVXOvg5cc/xSAlRW8rBrjIC3Nvqw==}
 
-  '@faker-js/faker@9.9.0':
-    resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
-    engines: {node: '>=18.0.0', npm: '>=9.0.0'}
+  '@faker-js/faker@10.1.0':
+    resolution: {integrity: sha512-C3mrr3b5dRVlKPJdfrAXS8+dq+rq8Qm5SNRazca0JKgw1HQERFmrVb0towvMmw5uu8hHKNiQasMaR/tydf3Zsg==}
+    engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -1552,9 +1555,9 @@ packages:
       typescript:
         optional: true
 
-  cross-env@7.0.3:
-    resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
-    engines: {node: '>=10.14', npm: '>=6', yarn: '>=1'}
+  cross-env@10.1.0:
+    resolution: {integrity: sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==}
+    engines: {node: '>=20'}
     hasBin: true
 
   cross-spawn@7.0.6:
@@ -1624,10 +1627,6 @@ packages:
   dot-prop@5.3.0:
     resolution: {integrity: sha512-QM8q3zDe58hqUqjraQOmzZ1LIH9SWQJTlEKCH4kJ2oQvLZk7RbQXvtDM2XEq3fwkV9CCvvH4LA0AV+ogFsBM2Q==}
     engines: {node: '>=8'}
-
-  dotenv@16.6.1:
-    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
-    engines: {node: '>=12'}
 
   dotenv@17.2.3:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
@@ -4049,6 +4048,8 @@ snapshots:
     dependencies:
       '@noble/ciphers': 1.3.0
 
+  '@epic-web/invariant@1.0.0': {}
+
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
 
@@ -4207,7 +4208,7 @@ snapshots:
 
   '@exodus/schemasafe@1.3.0': {}
 
-  '@faker-js/faker@9.9.0': {}
+  '@faker-js/faker@10.1.0': {}
 
   '@fastify/busboy@2.1.1': {}
 
@@ -5284,8 +5285,9 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  cross-env@7.0.3:
+  cross-env@10.1.0:
     dependencies:
+      '@epic-web/invariant': 1.0.0
       cross-spawn: 7.0.6
 
   cross-spawn@7.0.6:
@@ -5334,8 +5336,6 @@ snapshots:
   dot-prop@5.3.0:
     dependencies:
       is-obj: 2.0.0
-
-  dotenv@16.6.1: {}
 
   dotenv@17.2.3: {}
 
