@@ -23,16 +23,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v5
 
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.22.0
+        run_install: false
+
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
         node-version-file: '.nvmrc'
         cache: 'pnpm'
-
-    - name: Set up pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10.22.0
+        cache-dependency-path: pnpm-lock.yaml
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
@@ -59,16 +61,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v5
 
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.22.0
+        run_install: false
+
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
         node-version-file: '.nvmrc'
         cache: 'pnpm'
-
-    - name: Set up pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10.22.0
+        cache-dependency-path: pnpm-lock.yaml
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
