@@ -19,7 +19,7 @@ type HevyClient = ReturnType<
  */
 export function registerTemplateTools(
 	server: McpServer,
-	hevyClient: HevyClient,
+	hevyClient: HevyClient | null,
 ) {
 	// Get exercise templates
 	server.tool(
@@ -31,6 +31,11 @@ export function registerTemplateTools(
 		},
 		withErrorHandling(
 			async ({ page, pageSize }: { page: number; pageSize: number }) => {
+				if (!hevyClient) {
+					throw new Error(
+						"API client not initialized. Please provide HEVY_API_KEY.",
+					);
+				}
 				const data = await hevyClient.getExerciseTemplates({
 					page,
 					pageSize,
@@ -63,6 +68,11 @@ export function registerTemplateTools(
 		},
 		withErrorHandling(
 			async ({ exerciseTemplateId }: { exerciseTemplateId: string }) => {
+				if (!hevyClient) {
+					throw new Error(
+						"API client not initialized. Please provide HEVY_API_KEY.",
+					);
+				}
 				const data = await hevyClient.getExerciseTemplate(exerciseTemplateId);
 
 				if (!data) {

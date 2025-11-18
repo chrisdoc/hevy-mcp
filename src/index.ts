@@ -8,9 +8,9 @@ import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
-// Import tool registration functions
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
+import type { HevyClient } from "./utils/hevyClient.js";
 import { createClient } from "./utils/hevyClient.js";
 import { createHttpServer } from "./utils/httpServer.js";
 
@@ -26,14 +26,35 @@ const server = new McpServer({
 	version,
 });
 
-// Validate API key presence
-assertApiKey(cfg.apiKey);
+// Global client holder - will be initialized on first request or at startup
+let hevyClient: HevyClient | null = null;
 
-// Configure client
-const apiKey = cfg.apiKey;
-const hevyClient = createClient(apiKey, HEVY_API_BASEURL);
+// Initialize client with API key
+function initializeClient(apiKey: string) {
+	if (!hevyClient) {
+		assertApiKey(apiKey);
+		hevyClient = createClient(apiKey, HEVY_API_BASEURL);
+		console.log("Hevy client initialized with API key");
+	}
+}
 
-// Register all tools
+// For HTTP mode, we might get API key from query params on first request
+// For stdio mode, we need API key from env/args at startup
+if (cfg.transportMode === "stdio") {
+	// Stdio mode requires API key upfront
+	initializeClient(cfg.apiKey!);
+} else if (cfg.apiKey) {
+	// HTTP mode with env var - initialize now
+	initializeClient(cfg.apiKey);
+} else {
+	// HTTP mode without env var - will wait for query param
+	console.log(
+		"Starting in HTTP mode without API key. Waiting for API key via query parameter on first request.",
+	);
+}
+
+// Register all tools (they will use the global client)
+// Note: The client might not be initialized yet in HTTP mode without env var
 registerWorkoutTools(server, hevyClient);
 registerRoutineTools(server, hevyClient);
 registerTemplateTools(server, hevyClient);
@@ -51,6 +72,18 @@ async function runServer() {
 			host: cfg.httpHost,
 			enableDnsRebindingProtection: cfg.enableDnsRebindingProtection,
 			allowedHosts: cfg.allowedHosts,
+			// Callback to handle API key from query params
+			onFirstRequestApiKey: (apiKey: string) => {
+				if (!hevyClient) {
+					initializeClient(apiKey);
+					// Re-register tools with the newly created client
+					registerWorkoutTools(server, hevyClient!);
+					registerRoutineTools(server, hevyClient!);
+					registerTemplateTools(server, hevyClient!);
+					registerFolderTools(server, hevyClient!);
+					registerWebhookTools(server, hevyClient!);
+				}
+			},
 		});
 		await httpServer.startServer();
 	} else {

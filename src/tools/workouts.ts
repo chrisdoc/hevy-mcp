@@ -1,9 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { HevyClient } from "../generated/client/hevyClient.js";
 import type { PostWorkoutsRequestBody } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatWorkout } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
@@ -42,7 +42,7 @@ interface ExerciseInput {
  */
 export function registerWorkoutTools(
 	server: McpServer,
-	hevyClient: HevyClient,
+	hevyClient: HevyClient | null,
 ) {
 	// Get workouts
 	server.tool(
@@ -53,6 +53,11 @@ export function registerWorkoutTools(
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 		},
 		withErrorHandling(async ({ page, pageSize }) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.getWorkouts({
 				page,
 				pageSize,
@@ -80,6 +85,11 @@ export function registerWorkoutTools(
 			workoutId: z.string().min(1),
 		},
 		withErrorHandling(async ({ workoutId }) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.getWorkout(workoutId);
 
 			if (!data) {
@@ -97,6 +107,11 @@ export function registerWorkoutTools(
 		"Get the total number of workouts on the account. Useful for pagination or statistics.",
 		{},
 		withErrorHandling(async () => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.getWorkoutCount();
 			// Use type assertion to access count property
 			const count = data
@@ -116,6 +131,11 @@ export function registerWorkoutTools(
 			since: z.string().default("1970-01-01T00:00:00Z"),
 		},
 		withErrorHandling(async ({ page, pageSize, since }) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.getWorkoutEvents({
 				page,
 				pageSize,
@@ -174,6 +194,11 @@ export function registerWorkoutTools(
 				isPrivate,
 				exercises,
 			}) => {
+				if (!hevyClient) {
+					throw new Error(
+						"API client not initialized. Please provide HEVY_API_KEY.",
+					);
+				}
 				const requestBody: PostWorkoutsRequestBody = {
 					workout: {
 						title,
@@ -181,11 +206,11 @@ export function registerWorkoutTools(
 						startTime,
 						endTime,
 						isPrivate,
-						exercises: exercises.map((exercise: ExerciseInput) => ({
+						exercises: exercises.map((exercise) => ({
 							exerciseTemplateId: exercise.exerciseTemplateId,
 							supersetId: exercise.supersetId || null,
 							notes: exercise.notes || null,
-							sets: exercise.sets.map((set: ExerciseSetInput) => ({
+							sets: exercise.sets.map((set) => ({
 								type: set.type,
 								weightKg: set.weightKg || null,
 								reps: set.reps || null,

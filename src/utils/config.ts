@@ -1,5 +1,5 @@
 export interface HevyConfig {
-	apiKey: string;
+	apiKey?: string;
 	transportMode: "http" | "stdio";
 	httpHost: string;
 	httpPort: number;
@@ -59,10 +59,12 @@ export function parseConfig(
 	};
 }
 
-export function assertApiKey(apiKey: string) {
+export function assertApiKey(
+	apiKey: string | undefined,
+): asserts apiKey is string {
 	if (!apiKey) {
 		console.error(
-			"Hevy API key is required. Provide via HEVY_API_KEY env variable or --hevy-api-key=YOUR_KEY command argument.",
+			"Hevy API key is required. Provide via HEVY_API_KEY env variable, --hevy-api-key=YOUR_KEY command argument, or ?HEVY_API_KEY=YOUR_KEY query parameter.",
 		);
 		process.exit(1);
 	}

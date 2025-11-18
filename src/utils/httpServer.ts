@@ -32,22 +32,54 @@ setInterval(
 ); // Run cleanup every 5 minutes
 
 /**
+ * Options for creating the HTTP server
+ */
+export interface HttpServerOptions {
+	port?: number;
+	host?: string;
+	enableDnsRebindingProtection?: boolean;
+	allowedHosts?: string[];
+	/**
+	 * Callback to extract and store API key from first request
+	 * This is called with the API key from query params (if provided)
+	 */
+	onFirstRequestApiKey?: (apiKey: string) => void;
+}
+
+/**
  * Create and configure Express server for MCP HTTP transport
  */
 export function createHttpServer(
 	server: McpServer,
-	options?: {
-		port?: number;
-		host?: string;
-		enableDnsRebindingProtection?: boolean;
-		allowedHosts?: string[];
-	},
+	options?: HttpServerOptions,
 ) {
 	const app = express();
 	const port = options?.port || 3000;
 	const host = options?.host || "127.0.0.1";
 
 	app.use(express.json());
+
+	// CORS middleware for Smithery compatibility
+	app.use("/mcp", (req, res, next) => {
+		res.setHeader("Access-Control-Allow-Origin", "*");
+		res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+		res.setHeader(
+			"Access-Control-Allow-Headers",
+			"Content-Type, mcp-session-id",
+		);
+		res.setHeader(
+			"Access-Control-Expose-Headers",
+			"mcp-session-id, mcp-protocol-version",
+		);
+
+		// Handle preflight requests
+		if (req.method === "OPTIONS") {
+			res.status(204).end();
+			return;
+		}
+
+		next();
+	});
 
 	// Handle POST requests for client-to-server communication
 	app.post("/mcp", async (req, res) => {
@@ -57,10 +89,16 @@ export function createHttpServer(
 
 		if (sessionId && transports.has(sessionId)) {
 			// Reuse existing transport
-                        transport = transports.get(sessionId)!.transport;
-                        transports.get(sessionId)!.lastActivity = Date.now();
+			transport = transports.get(sessionId)?.transport;
+			transports.get(sessionId)!.lastActivity = Date.now();
 		} else if (!sessionId && isInitializeRequest(req.body)) {
 			// New initialization request
+			// Extract API key from query parameters if provided
+			const queryApiKey = req.query.HEVY_API_KEY as string | undefined;
+			if (queryApiKey && options?.onFirstRequestApiKey) {
+				options.onFirstRequestApiKey(queryApiKey);
+			}
+
 			transport = new StreamableHTTPServerTransport({
 				sessionIdGenerator: () => randomUUID(),
 				onsessioninitialized: (sessionId) => {
@@ -111,7 +149,9 @@ export function createHttpServer(
 		}
 
 		const transport = transports.get(sessionId)?.transport;
-		await transport.handleRequest(req, res);
+		if (transport) {
+			await transport.handleRequest(req, res);
+		}
 	};
 
 	// Handle GET requests for server-to-client notifications via SSE

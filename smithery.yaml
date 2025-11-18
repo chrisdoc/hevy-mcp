@@ -1,12 +1,17 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
-runtime: "typescript"
+runtime: "container"
 env:
-  MCP_TRANSPORT: "http"
+  # Smithery automatically sets PORT=8081, we map it to MCP_HTTP_PORT
+  MCP_HTTP_PORT: "${PORT:-8081}"
+  # Bind to all interfaces so Docker can accept connections
+  MCP_HTTP_HOST: "0.0.0.0"
 startCommand:
   type: "http"
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
+    # These values are passed as URL query parameters (e.g., ?HEVY_API_KEY=...)
+    # NOT as environment variables
     type: object
     required:
       - HEVY_API_KEY
@@ -16,3 +21,6 @@ startCommand:
         description: Your Hevy API key to authenticate with the Hevy Fitness API.
   exampleConfig:
     HEVY_API_KEY: "your-hevy-api-key-here"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."

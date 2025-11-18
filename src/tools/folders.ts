@@ -17,7 +17,10 @@ type HevyClient = ReturnType<
 /**
  * Register all routine folder-related tools with the MCP server
  */
-export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
+export function registerFolderTools(
+	server: McpServer,
+	hevyClient: HevyClient | null,
+) {
 	// Get routine folders
 	server.tool(
 		"get-routine-folders",
@@ -28,6 +31,11 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 		},
 		withErrorHandling(
 			async ({ page, pageSize }: { page: number; pageSize: number }) => {
+				if (!hevyClient) {
+					throw new Error(
+						"API client not initialized. Please provide HEVY_API_KEY.",
+					);
+				}
 				const data = await hevyClient.getRoutineFolders({
 					page,
 					pageSize,
@@ -59,6 +67,11 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 			folderId: z.string().min(1),
 		},
 		withErrorHandling(async ({ folderId }: { folderId: string }) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.getRoutineFolder(folderId);
 
 			if (!data) {
@@ -80,6 +93,11 @@ export function registerFolderTools(server: McpServer, hevyClient: HevyClient) {
 			name: z.string().min(1),
 		},
 		withErrorHandling(async ({ name }: { name: string }) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.createRoutineFolder({
 				routine_folder: {
 					title: name,

@@ -46,7 +46,7 @@ const webhookUrlSchema = z
 
 export function registerWebhookTools(
 	server: McpServer,
-	hevyClient: HevyClient,
+	hevyClient: HevyClient | null,
 ) {
 	// Get webhook subscription
 	server.tool(
@@ -54,6 +54,11 @@ export function registerWebhookTools(
 		"Get the current webhook subscription for this account. Returns the webhook URL and auth token if a subscription exists.",
 		{},
 		withErrorHandling(async () => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.getWebhookSubscription();
 			if (!data) {
 				return createEmptyResponse(
@@ -80,6 +85,11 @@ export function registerWebhookTools(
 				),
 		},
 		withErrorHandling(async ({ url, authToken }) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			// Validate the request body using the generated schema
 			const requestBody = webhookRequestBodySchema.parse({
 				url,
@@ -102,6 +112,11 @@ export function registerWebhookTools(
 		"Delete the current webhook subscription for this account. This will stop all webhook notifications.",
 		{},
 		withErrorHandling(async () => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.deleteWebhookSubscription();
 			if (!data) {
 				return createEmptyResponse(
