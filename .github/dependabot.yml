@@ -34,5 +34,22 @@ updates:
       interval: "weekly"
   - package-ecosystem: "github-actions" # See documentation for possible values
     directory: "/" # Location of package manifests
+    groups:
+      github-core-actions:
+        patterns:
+          - "actions/*"
+      pnpm-tooling-actions:
+        patterns:
+          - "pnpm/*"
+      docker-build-actions:
+        patterns:
+          - "docker/*"
+      observability-actions:
+        patterns:
+          - "codecov/*"
+          - "corentinmusard/*"
+      workflow-automation-actions:
+        patterns:
+          - "linear-b/*"
     schedule:
       interval: "weekly"
