@@ -32,12 +32,9 @@ RUN corepack use pnpm@10.22.0 \
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/generated ./src/generated
 
-# Create non-root user
+# Create non-root user and drop privileges for the runtime container
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
-
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 ENV NODE_ENV=production

@@ -1,6 +1,4 @@
-import { config } from "dotenv";
-
-config();
+import "@dotenvx/dotenvx/config";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
