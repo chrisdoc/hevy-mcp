@@ -48,7 +48,7 @@ describe("HTTP Transport Integration", () => {
 	});
 
 	it("should respond to health check", async () => {
-		const response = await fetch("http://*********:3001/health");
+		const response = await fetch("http://127.0.0.1:3001/health");
 		expect(response.status).toBe(200);
 
 		const data: { status: string; timestamp: string } = await response.json();
