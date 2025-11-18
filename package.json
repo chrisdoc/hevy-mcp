@@ -56,9 +56,9 @@
 		"@kubb/plugin-zod": "^4.5.9",
 		"@modelcontextprotocol/sdk": "^1.22.0",
 		"axios": "^1.13.2",
-		"express": "^4.21.2",
+		"express": "^5.1.0",
 		"uuid": "^13.0.0",
-		"zod": "^3.25.76"
+		"zod": "^4.1.12"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.6",
