@@ -1,0 +1,9 @@
+packages:
+  - .
+
+onlyBuiltDependencies:
+  - esbuild
+
+ignoredBuiltDependencies:
+  - es5-ext
+  - lefthook

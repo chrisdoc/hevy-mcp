@@ -11,7 +11,7 @@ RUN apk update && apk upgrade --no-cache
 # Copy package files and install dependencies
 COPY package.json pnpm-lock.yaml ./
 RUN corepack use pnpm@10.22.0 \
-    && corepack pnpm install --frozen-lockfile --ignore-scripts
+    && corepack pnpm install --frozen-lockfile
 
 # Copy source code and build
 COPY . ./
@@ -25,7 +25,7 @@ WORKDIR /app
 # Copy package files for production dependencies
 COPY package.json pnpm-lock.yaml ./
 RUN corepack use pnpm@10.22.0 \
-    && corepack pnpm install --prod --frozen-lockfile --ignore-scripts --no-optional \
+    && corepack pnpm install --prod --frozen-lockfile --no-optional \
     && corepack pnpm store prune
 
 # Copy built application from builder stage
