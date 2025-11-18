@@ -10,11 +10,12 @@ RUN apk update && apk upgrade --no-cache
 
 # Copy package files and install dependencies
 COPY package.json pnpm-lock.yaml ./
-RUN corepack use pnpm@10.22.0 && pnpm install --frozen-lockfile --ignore-scripts
+RUN corepack use pnpm@10.22.0 \
+    && corepack pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy source code and build
 COPY . ./
-RUN pnpm run build
+RUN corepack pnpm run build
 
 # Production stage
 FROM node:24-alpine3.22 AS production
@@ -24,8 +25,8 @@ WORKDIR /app
 # Copy package files for production dependencies
 COPY package.json pnpm-lock.yaml ./
 RUN corepack use pnpm@10.22.0 \
-    && pnpm install --prod --frozen-lockfile --ignore-scripts --no-optional \
-    && pnpm store prune
+    && corepack pnpm install --prod --frozen-lockfile --ignore-scripts --no-optional \
+    && corepack pnpm store prune
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
