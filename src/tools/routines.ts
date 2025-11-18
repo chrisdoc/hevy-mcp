@@ -4,10 +4,10 @@ import { z } from "zod";
 import type {
 	PostRoutinesRequestExercise,
 	PostRoutinesRequestSet,
-	PostRoutinesRequestSetTypeEnum,
+	PostRoutinesRequestSetTypeEnumKey,
 	PutRoutinesRequestExercise,
 	PutRoutinesRequestSet,
-	PutRoutinesRequestSetTypeEnum,
+	PutRoutinesRequestSetTypeEnumKey,
 	Routine,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
@@ -68,7 +68,7 @@ type UpdateRoutineParams = {
  */
 export function registerRoutineTools(
 	server: McpServer,
-	hevyClient: HevyClient,
+	hevyClient: HevyClient | null,
 ) {
 	// Get routines
 	server.tool(
@@ -79,6 +79,11 @@ export function registerRoutineTools(
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 		},
 		withErrorHandling(async (args) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const { page, pageSize } = args as { page: number; pageSize: number };
 			const data = await hevyClient.getRoutines({
 				page,
@@ -107,6 +112,11 @@ export function registerRoutineTools(
 			routineId: z.string().min(1),
 		},
 		withErrorHandling(async ({ routineId }) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const data = await hevyClient.getRoutineById(String(routineId));
 			if (!data || !data.routine) {
 				return createEmptyResponse(`Routine with ID ${routineId} not found`);
@@ -146,6 +156,11 @@ export function registerRoutineTools(
 			),
 		},
 		withErrorHandling(async (args) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const { title, folderId, notes, exercises } = args as CreateRoutineParams;
 			const data = await hevyClient.createRoutine({
 				routine: {
@@ -160,7 +175,7 @@ export function registerRoutineTools(
 							notes: exercise.notes ?? null,
 							sets: exercise.sets.map(
 								(set): PostRoutinesRequestSet => ({
-									type: set.type as PostRoutinesRequestSetTypeEnum,
+									type: set.type as PostRoutinesRequestSetTypeEnumKey,
 									weight_kg: set.weightKg ?? null,
 									reps: set.reps ?? null,
 									distance_meters: set.distanceMeters ?? null,
@@ -217,6 +232,11 @@ export function registerRoutineTools(
 			),
 		},
 		withErrorHandling(async (args) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
 			const { routineId, title, notes, exercises } =
 				args as UpdateRoutineParams;
 			const data = await hevyClient.updateRoutine(routineId, {
@@ -231,7 +251,7 @@ export function registerRoutineTools(
 							notes: exercise.notes ?? null,
 							sets: exercise.sets.map(
 								(set): PutRoutinesRequestSet => ({
-									type: set.type as PutRoutinesRequestSetTypeEnum,
+									type: set.type as PutRoutinesRequestSetTypeEnumKey,
 									weight_kg: set.weightKg ?? null,
 									reps: set.reps ?? null,
 									distance_meters: set.distanceMeters ?? null,

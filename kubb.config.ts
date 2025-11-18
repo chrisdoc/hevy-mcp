@@ -32,17 +32,7 @@ export default defineConfig({
 			output: {
 				path: "./client/api",
 			},
-			clients: [
-				{
-					client: "axios",
-					options: {
-						baseUrl: "https://api.hevyapp.com",
-						headers: {
-							"api-key": "{api-key}",
-						},
-					},
-				},
-			],
+			client: "axios",
 		}),
 		pluginZod({
 			output: {

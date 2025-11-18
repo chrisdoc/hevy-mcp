@@ -4,7 +4,7 @@ import type {
 	Routine,
 	RoutineFolder,
 	Workout,
-} from "../generated/client/models";
+} from "../generated/client/types/index.js";
 import {
 	calculateDuration,
 	formatExerciseTemplate,

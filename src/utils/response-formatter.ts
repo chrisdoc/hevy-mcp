@@ -1,8 +1,13 @@
 /**
- * Centralized response formatting utility for MCP tools
+ * MCP Tool Response type
  */
-
-import type { McpToolResponse } from "@modelcontextprotocol/sdk/server/mcp.js";
+export interface McpToolResponse {
+	[x: string]: unknown;
+	content: Array<{
+		type: "text";
+		text: string;
+	}>;
+}
 
 /**
  * Format options for JSON responses
@@ -32,7 +37,7 @@ export function createJsonResponse(
 	return {
 		content: [
 			{
-				type: "text",
+				type: "text" as const,
 				text: jsonString,
 			},
 		],
@@ -49,7 +54,7 @@ export function createTextResponse(message: string): McpToolResponse {
 	return {
 		content: [
 			{
-				type: "text",
+				type: "text" as const,
 				text: message,
 			},
 		],
@@ -68,7 +73,7 @@ export function createEmptyResponse(
 	return {
 		content: [
 			{
-				type: "text",
+				type: "text" as const,
 				text: message,
 			},
 		],

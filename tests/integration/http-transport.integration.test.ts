@@ -5,7 +5,7 @@ import { createHttpServer } from "../../src/utils/httpServer.js";
 describe("HTTP Transport Integration", () => {
 	let server: McpServer;
 	let httpServer: ReturnType<typeof createHttpServer>;
-	let serverInstance: unknown;
+	const serverInstance: { close: (callback: () => void) => void } | null = null;
 
 	beforeAll(async () => {
 		// Create a minimal server for testing
@@ -48,10 +48,10 @@ describe("HTTP Transport Integration", () => {
 	});
 
 	it("should respond to health check", async () => {
-		const response = await fetch("http://127.0.0.1:3001/health");
+		const response = await fetch("http://*********:3001/health");
 		expect(response.status).toBe(200);
 
-		const data = await response.json();
+		const data: { status: string; timestamp: string } = await response.json();
 		expect(data.status).toBe("ok");
 		expect(data.timestamp).toBeDefined();
 	});

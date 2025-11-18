@@ -139,7 +139,11 @@ describe("Hevy MCP Server Integration Tests", () => {
 			);
 
 			expect(result).toBeDefined();
-			const responseData = JSON.parse(result.content[0].text as string);
+			const firstContent = result.content[0];
+			if (firstContent.type !== "text") {
+				throw new Error("Expected text content");
+			}
+			const responseData = JSON.parse(firstContent.text);
 
 			// Validate the response schema with Zod
 			GetWorkoutsResponseSchema.parse(responseData);
