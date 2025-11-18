@@ -12,6 +12,9 @@ permissions:
   contents: read
   packages: write
 
+env:
+  ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -118,4 +121,4 @@ jobs:
           otlpEndpoint: 'grpc://in-otel.hyperdx.io:4317/'
           otlpHeaders: ${{ secrets.HYPERDX_OTLP_HEADERS }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          runId: ${{ github.event.workflow_run.id }}
+          runId: ${{ github.run_id }}

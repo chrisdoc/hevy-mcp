@@ -1,8 +1,12 @@
 # Multi-stage Docker build for hevy-mcp
 # Build stage
-FROM node:lts-alpine AS builder
+FROM node:24-alpine3.22 AS builder
 
 WORKDIR /app
+
+ENV ROLLUP_SKIP_NODEJS_NATIVE_BUILD=1
+
+RUN apk update && apk upgrade --no-cache
 
 # Copy package files and install dependencies
 COPY package*.json ./
@@ -13,7 +17,7 @@ COPY . ./
 RUN npm run build
 
 # Production stage
-FROM node:lts-alpine AS production
+FROM node:24-alpine3.22AS production
 
 WORKDIR /app
 

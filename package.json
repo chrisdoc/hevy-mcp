@@ -76,6 +76,7 @@
 		"@types/uuid": "^11.0.0",
 		"@vitest/coverage-v8": "^4.0.10",
 		"abstract-syntax-tree": "^2.22.0",
+		"cross-env": "^7.0.3",
 		"lefthook": "^2.0.4",
 		"semantic-release": "^25.0.2",
 		"tsup": "^8.5.1",

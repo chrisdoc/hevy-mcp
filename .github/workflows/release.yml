@@ -8,6 +8,9 @@ permissions:
   contents: write  # needed to create releases/tags
   packages: write  # needed to push to GHCR in docker-release job
 
+env:
+  ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
+
 jobs:
   release:
     runs-on: ubuntu-latest

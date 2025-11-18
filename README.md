@@ -365,6 +365,10 @@ npm run build:client
 
 Kubb generates TypeScript types, API clients, Zod schemas, and mock data from the OpenAPI specification.
 
+### Troubleshooting
+
+- **Rollup optional dependency missing**: If you see an error similar to `Cannot find module @rollup/rollup-linux-x64-gnu`, set the environment variable `ROLLUP_SKIP_NODEJS_NATIVE_BUILD=true` before running `npm run build`. This forces Rollup to use the pure JavaScript fallback and avoids the npm optional dependency bug on some Linux runners.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
