@@ -15,11 +15,22 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 > **Note:** HTTP transport and Docker images remain deprecated. Smithery deployment now uses the official TypeScript runtime flow (no Docker required), or you can run the server locally via stdio (e.g., `npx hevy-mcp`). Existing GHCR images remain available but are no longer updated.
 
+## Quick start
+
+Pick the workflow that fits your setup:
+
+| Scenario | Command | Requirements |
+| --- | --- | --- |
+| One-off stdio run | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` | Node.js ≥ 20, Hevy API key |
+| Local development | `pnpm install && pnpm run dev` | `.env` with `HEVY_API_KEY`, pnpm via Corepack |
+| Smithery playground / deploy | `pnpm run smithery:dev` / `pnpm run smithery:build` | `HEVY_API_KEY`, `SMITHERY_API_KEY` (or `pnpm dlx @smithery/cli login`) |
+
 ## Prerequisites
 
 - Node.js (v20 or higher)
 - pnpm (via Corepack)
 - A Hevy API key
+  - Optional: A Smithery account + API key/login if you plan to deploy via Smithery
 
 ## Installation
 
@@ -39,8 +50,11 @@ cd hevy-mcp
 
 # Install dependencies
 corepack use pnpm@10.22.0
+pnpm install
+
+# Create .env and add your keys (never commit real keys)
 cp .env.sample .env
-# Edit .env and add your Hevy API key
+# Edit .env and add at least HEVY_API_KEY. Add SMITHERY_API_KEY if you use Smithery CLI.
 ```
 
 ### Integration with Cursor
@@ -103,6 +117,8 @@ Smithery can bundle and host `hevy-mcp` without Docker by importing the exported
    ```
 
 4. Connect the repository to Smithery and trigger a deployment from their dashboard. Configuration is handled entirely through the exported Zod schema, so no additional `smithery.yaml` env mapping is required.
+
+> **Why are `chalk`, `cors`, and `@smithery/sdk` dependencies?** Smithery’s TypeScript runtime injects its own Express bootstrap that imports these packages. Declaring them in `package.json` ensures the Smithery CLI can bundle your server successfully.
 
 hevy-mcp now runs exclusively over stdio, which works seamlessly with MCP-aware clients like Claude Desktop and Cursor. HTTP transport has been removed to simplify deployment.
 
@@ -264,6 +280,13 @@ Kubb generates TypeScript types, API clients, Zod schemas, and mock data from th
 ### Troubleshooting
 
 - **Rollup optional dependency missing**: If you see an error similar to `Cannot find module @rollup/rollup-linux-x64-gnu`, set the environment variable `ROLLUP_SKIP_NODEJS_NATIVE_BUILD=true` before running `pnpm run build`. This forces Rollup to use the pure JavaScript fallback and avoids the npm optional dependency bug on some Linux runners.
+
+### Troubleshooting Smithery deployments
+
+- **`smithery.yaml` validation failed (unexpected fields)**: Only `runtime`, `target`, and `env` are allowed for the TypeScript runtime. Remove `entry`, `name`, or other fields.
+- **`Could not resolve "chalk"/"cors"`**: Run `pnpm install` so the runtime dependencies listed in `package.json` are present before invoking Smithery.
+- **`Failed to connect to Smithery API: Unauthorized`**: Log in via `pnpm dlx @smithery/cli login` or set `SMITHERY_API_KEY` in `.env`.
+- **Tunnel crashes with `RangeError: Invalid count value`**: This is a known issue in certain `@smithery/cli` builds. Upgrade/downgrade the CLI (e.g., `pnpm add -D @smithery/cli@latest`) or contact Smithery support.
 
 ## License
 
