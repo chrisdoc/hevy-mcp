@@ -23,17 +23,4 @@ describe("parseConfig", () => {
 		const cfg = parseConfig([], env({ HEVY_API_KEY: "envOnly" }));
 		expect(cfg.apiKey).toBe("envOnly");
 	});
-
-	it("detects http transport via --http", () => {
-		const cfg = parseConfig(["--http"], env({ HEVY_API_KEY: "k" }));
-		expect(cfg.transportMode).toBe("http");
-	});
-
-	it("detects http transport via env", () => {
-		const cfg = parseConfig(
-			[],
-			env({ MCP_TRANSPORT: "http", HEVY_API_KEY: "k" }),
-		);
-		expect(cfg.transportMode).toBe("http");
-	});
 });

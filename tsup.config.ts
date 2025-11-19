@@ -13,5 +13,4 @@ export default defineConfig({
 	},
 	outDir: "dist",
 	bundle: true,
-	external: ["express"], // Don't bundle express
 });

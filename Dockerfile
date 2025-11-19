@@ -1,42 +1,8 @@
-# Multi-stage Docker build for hevy-mcp
-# Build stage
-FROM node:24-alpine3.22 AS builder
+# hevy-mcp Docker support was retired in favor of local stdio usage via npx.
+# This file intentionally fails to build to make the deprecation explicit.
+# Previously published images remain available on GHCR for historical purposes.
 
-WORKDIR /app
-
-ENV ROLLUP_SKIP_NODEJS_NATIVE_BUILD=1
-
-RUN apk update && apk upgrade --no-cache
-
-# Copy package files and install dependencies
-COPY package.json pnpm-lock.yaml ./
-RUN corepack use pnpm@10.22.0 \
-    && corepack pnpm install --frozen-lockfile
-
-# Copy source code and build
-COPY . ./
-RUN corepack pnpm run build
-
-# Production stage
-FROM node:24-alpine3.22 AS production
-
-WORKDIR /app
-
-# Copy package files for production dependencies
-COPY package.json pnpm-lock.yaml ./
-RUN corepack use pnpm@10.22.0 \
-    && corepack pnpm install --prod --frozen-lockfile --no-optional \
-    && corepack pnpm store prune
-
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/generated ./src/generated
-
-# Create non-root user and drop privileges for the runtime container
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-USER nodejs
-
-ENV NODE_ENV=production
-
-CMD [ "pnpm", "start", "--", "--http" ]
+FROM alpine:3.20 AS deprecated
+RUN echo "hevy-mcp Docker images are no longer maintained.\n" \
+	&& echo "Install locally instead: npx hevy-mcp" \
+	&& exit 1

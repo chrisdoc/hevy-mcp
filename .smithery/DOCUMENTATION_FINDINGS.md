@@ -1,5 +1,7 @@
 # Smithery Documentation Summary - Key Findings
 
+> **Note:** Smithery deployment support has been deprecated in favor of local stdio usage. The findings below are retained only for historical context.
+
 ## Critical Information from Smithery Docs
 
 After reading the official Smithery documentation, here are the key findings that impact our implementation:

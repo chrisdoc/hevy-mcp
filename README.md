@@ -1,7 +1,6 @@
 # hevy-mcp: Model Context Protocol Server for Hevy Fitness API
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![smithery badge](https://smithery.ai/badge/@chrisdoc/hevy-mcp)](https://smithery.ai/server/@chrisdoc/hevy-mcp)
 
 A Model Context Protocol (MCP) server implementation that interfaces with the [Hevy fitness tracking app](https://www.hevyapp.com/) and its [API](https://api.hevyapp.com/docs/). This server enables AI assistants to access and manage workout data, routines, exercise templates, and more through the Hevy API (requires PRO subscription).
 
@@ -13,6 +12,8 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - **Folder Organization**: Manage routine folders
 - **Webhook Subscriptions**: Create, view, and delete webhook subscriptions for workout events
 
+> **Note:** HTTP transport, Smithery deployment, and Docker images have all been deprecated. Run the server locally via stdio (e.g., `npx hevy-mcp`). Existing GHCR images remain available but are no longer updated.
+
 ## Prerequisites
 
 - Node.js (v20 or higher)
@@ -21,12 +22,12 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 ## Installation
 
-### Installing via Smithery
+### Run via npx (recommended)
 
-To install hevy-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@chrisdoc/hevy-mcp):
+You can launch the server directly without cloning:
 
 ```bash
-npx -y @smithery/cli install @chrisdoc/hevy-mcp --client claude
+HEVY_API_KEY=your_hevy_api_key_here npx -y hevy-mcp
 ```
 
 ### Manual Installation
@@ -82,70 +83,9 @@ Replace `your_hevy_api_key_here` with your actual Hevy API key. If you prefer th
 pnpm start -- --hevy-api-key=your_hevy_api_key_here
 ```
 
-Or in HTTP mode:
+## Transport
 
-```bash
-pnpm start -- --http --hevy-api-key=your_hevy_api_key_here
-```
-
-## Transport Modes
-
-The MCP server supports two transport modes:
-
-### Stdio Transport (Default)
-
-The default mode uses stdio transport, which is suitable for integration with MCP clients like Claude Desktop and Cursor:
-
-```bash
-pnpm start
-# or
-node dist/index.js
-```
-
-### HTTP Transport
-
-The server can also run in HTTP mode for remote access or web-based integrations:
-```bash
-# Start in HTTP mode (env var)
-pnpm start -- --http
-# Start in HTTP mode (CLI arg)
-pnpm start -- --http --hevy-api-key=your_hevy_api_key_here
-# Or using node directly
-node dist/index.js --http --hevy-api-key=your_hevy_api_key_here
-
-# Using environment variable
-MCP_TRANSPORT=http pnpm start
-```
-
-#### HTTP Configuration
-
-The HTTP transport can be configured using environment variables:
-
-```env
-# Transport mode
-MCP_TRANSPORT=http
-
-# HTTP server configuration
-MCP_HTTP_HOST=127.0.0.1
-PORT=3000
-
-# DNS rebinding protection (recommended for production)
-MCP_DNS_REBINDING_PROTECTION=true
-MCP_ALLOWED_HOSTS=127.0.0.1,localhost
-```
-
-#### HTTP Endpoints
-
-When running in HTTP mode, the following endpoints are available:
-
-- `POST /mcp` - MCP client-to-server communication
-- `GET /mcp` - Server-to-client notifications (SSE)
-- `DELETE /mcp` - Session termination
-- `GET /health` - Health check endpoint
-
-#### Session Management
-
-The HTTP transport includes session management for stateful connections. Each client session is identified by a unique session ID that must be included in the `mcp-session-id` header for subsequent requests.
+hevy-mcp now runs exclusively over stdio, which works seamlessly with MCP-aware clients like Claude Desktop and Cursor. HTTP transport has been removed to simplify deployment.
 
 ## Usage
 
@@ -164,72 +104,9 @@ pnpm run build
 pnpm start
 ```
 
-### Docker
+### Docker (deprecated)
 
-The project includes a Dockerfile for containerized deployments. Docker images are automatically built and pushed to GitHub Container Registry (GHCR) during the CI/CD process.
-
-#### Using Pre-built Images
-
-Pull and run the latest image:
-
-```bash
-docker run -d \
-  --name hevy-mcp \
-  -e HEVY_API_KEY=your_api_key_here \
-  -p 3000:3000 \
-  ghcr.io/chrisdoc/hevy-mcp:latest
-
-# Or using CLI argument for the key (omit env var)
-docker run -d \
-  --name hevy-mcp \
-  -p 3000:3000 \
-  ghcr.io/chrisdoc/hevy-mcp:latest \
-  hevy-api-key=your_api_key_here
-```
-
-#### Building Locally
-
-```bash
-# Build the image
-docker build -t hevy-mcp .
-
-# Run the container
-docker run -d \
-  --name hevy-mcp \
-  -e HEVY_API_KEY=your_api_key_here \
-  -p 3000:3000 \
-  hevy-mcp
-
-# Or with CLI argument
-docker run -d \
-  --name hevy-mcp \
-  -p 3000:3000 \
-  hevy-mcp \
-  hevy-api-key=your_api_key_here
-```
-
-#### Docker Compose Example
-
-```yaml
-version: '3.8'
-services:
-  hevy-mcp:
-    image: ghcr.io/chrisdoc/hevy-mcp:latest
-    environment:
-      - HEVY_API_KEY=your_api_key_here
-      - MCP_TRANSPORT=http
-      - MCP_HTTP_HOST=0.0.0.0
-      - PORT=3000
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
-```
-
-#### Available Image Tags
-
-- `latest` - Latest stable release
-- `main` - Latest development build from main branch  
-- `v1.8.8`, `v1.8`, `v1` - Semantic version tags for releases
+Docker-based workflows have been retired so we can focus on the stdio-native experience. The bundled `Dockerfile` now exits with a clear message to prevent accidental builds, and `.dockerignore` simply documents the deprecation. Previously published images remain available on GHCR (for example `ghcr.io/chrisdoc/hevy-mcp:latest`), but they are **no longer updated**. For the best experience, run the server locally via `npx hevy-mcp` or your own Node.js runtime.
 
 ## Available MCP Tools
 

@@ -4,6 +4,8 @@
 
 When deploying to Smithery with a container runtime, configuration values from `configSchema` are handled as follows:
 
+> **Note:** Smithery integration has been deprecated because the project now focuses exclusively on stdio usage via `npx hevy-mcp`. The details below are preserved for historical context only.
+
 ### Current Behavior (What Smithery Does)
 
 1. **URL Query Parameters**: Smithery passes `configSchema` properties (like `HEVY_API_KEY`) as **URL query parameters** in the format:

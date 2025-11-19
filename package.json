@@ -23,9 +23,7 @@
 		"build": "tsup",
 		"build:client": "kubb generate",
 		"start": "node dist/index.js",
-		"start:http": "node dist/index.js --http",
 		"dev": "tsx watch --clear-screen=false src/index.ts",
-		"dev:http": "MCP_TRANSPORT=http tsx watch --clear-screen=false src/index.ts",
 		"check": "biome check --write --unsafe",
 		"check:types": "tsc --noEmit",
 		"version:patch": "pnpm version patch",
@@ -56,8 +54,6 @@
 		"@kubb/plugin-zod": "^4.5.9",
 		"@modelcontextprotocol/sdk": "^1.22.0",
 		"axios": "^1.13.2",
-		"express": "^4.21.2",
-		"uuid": "^13.0.0",
 		"zod": "^3.25.76"
 	},
 	"devDependencies": {
@@ -71,7 +67,6 @@
 		"@semantic-release/github": "^12.0.2",
 		"@semantic-release/npm": "^13.1.2",
 		"@semantic-release/release-notes-generator": "^14.1.0",
-		"@types/express": "^5.0.5",
 		"@types/node": "^24.10.1",
 		"@vitest/coverage-v8": "^4.0.10",
 		"abstract-syntax-tree": "^2.22.0",

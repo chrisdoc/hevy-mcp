@@ -41,9 +41,6 @@ updates:
       pnpm-tooling-actions:
         patterns:
           - "pnpm/*"
-      docker-build-actions:
-        patterns:
-          - "docker/*"
       observability-actions:
         patterns:
           - "codecov/*"
