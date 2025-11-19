@@ -1,11 +1,4 @@
 runtime: "typescript"
-entry: "src/index.ts"
-name: "hevy-mcp"
-description: "Manage Hevy workouts, routines, templates, folders, and webhooks via MCP tools."
-links:
-  - label: "Repository"
-    href: "https://github.com/chrisdoc/hevy-mcp"
-  - label: "TypeScript deployment guide"
-    href: "https://smithery.ai/docs/build/deployments/typescript"
-# Configuration is handled via the exported configSchema in src/index.ts, which
-# prompts for HEVY_API_KEY.
+# Optional fields like name/description/links are inferred automatically for the
+# TypeScript runtime. Configuration is handled via the exported configSchema in
+# src/index.ts, which prompts for HEVY_API_KEY.
