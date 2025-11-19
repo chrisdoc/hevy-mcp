@@ -2,7 +2,7 @@
 	"name": "hevy-mcp",
 	"version": "1.11.11",
 	"main": "dist/index.js",
-	"module": "dist/index.js",
+	"module": "src/index.ts",
 	"types": "dist/index.d.ts",
 	"files": [
 		"dist",
@@ -24,6 +24,8 @@
 		"build:client": "kubb generate",
 		"start": "node dist/index.js",
 		"dev": "tsx watch --clear-screen=false src/index.ts",
+		"smithery:build": "smithery build",
+		"smithery:dev": "smithery dev",
 		"check": "biome check --write --unsafe",
 		"check:types": "tsc --noEmit",
 		"version:patch": "pnpm version patch",
@@ -53,7 +55,9 @@
 		"@kubb/plugin-ts": "^4.5.9",
 		"@kubb/plugin-zod": "^4.5.9",
 		"@modelcontextprotocol/sdk": "^1.22.0",
+		"@smithery/sdk": "1.7.4",
 		"axios": "^1.13.2",
+		"express": "4.21.2",
 		"zod": "^3.25.76"
 	},
 	"devDependencies": {
@@ -67,6 +71,7 @@
 		"@semantic-release/github": "^12.0.2",
 		"@semantic-release/npm": "^13.1.2",
 		"@semantic-release/release-notes-generator": "^14.1.0",
+		"@smithery/cli": "^1.6.3",
 		"@types/node": "^24.10.1",
 		"@vitest/coverage-v8": "^4.0.10",
 		"abstract-syntax-tree": "^2.22.0",

@@ -1,130 +1,48 @@
 # Smithery Deployment Guide
 
-## How Config Values Are Passed
+Smithery support is back, now targeting the TypeScript runtime path described in the [official documentation](https://smithery.ai/docs/build/deployments/typescript). This server remains stdio-first for local usage, but you can also deploy it remotely through Smithery without Docker.
 
-When deploying to Smithery with a container runtime, configuration values from `configSchema` are handled as follows:
+## Overview
 
-> **Note:** Smithery integration has been deprecated because the project now focuses exclusively on stdio usage via `npx hevy-mcp`. The details below are preserved for historical context only.
+- **Runtime**: `runtime: "typescript"` with `entry: "src/index.ts"` (see `smithery.yaml`).
+- **Configuration**: The server exports `configSchema` from `src/index.ts`. Smithery reads that schema and prompts the user for `HEVY_API_KEY`.
+- **Transport**: Smithery invokes the exported `createServer` function, so no HTTP bridge or container build is required.
 
-### Current Behavior (What Smithery Does)
+## Prerequisites
 
-1. **URL Query Parameters**: Smithery passes `configSchema` properties (like `HEVY_API_KEY`) as **URL query parameters** in the format:
-   ```
-   http://your-server:8081/mcp?HEVY_API_KEY=user_provided_key
-   ```
+1. Node.js ≥ 20 (matches project requirement).
+2. Install dependencies: `pnpm install`.
+3. Smithery CLI available via `@smithery/cli` (already listed in `devDependencies`).
 
-2. **Environment Variables**: Smithery automatically sets:
-   - `PORT=8081` - The port your container should listen on
-   - Any variables defined in the `env` section of `smithery.yaml`
+## Key Files
 
-### What This Means for Your Code
+- `smithery.yaml` – declares the TypeScript runtime entry, metadata, and helpful links.
+- `src/index.ts` – exports `configSchema` (requires `HEVY_API_KEY`) and a default `createServer` compatible with Smithery.
+- `package.json` – provides `smithery:build` / `smithery:dev` scripts that wrap the Smithery CLI.
 
-**⚠️ CRITICAL ISSUE**: Your current code expects `HEVY_API_KEY` as an environment variable, but Smithery passes it as a URL parameter!
+## Local Workflow
 
-Looking at `src/index.ts`:
-```typescript
-// This line runs BEFORE the HTTP request is received
-assertApiKey(cfg.apiKey); // ❌ Will fail - no env var yet!
+```bash
+# Build the project once (tsup bundles the stdio entry as usual)
+
+
+# Launch the Smithery playground against the TypeScript runtime
+pnpm run smithery:dev
+
+# When ready, produce the Smithery bundle
+pnpm run smithery:build
 ```
 
-The API key validation happens at **startup** (before any HTTP requests), but Smithery only provides the API key as a **query parameter on each request**.
+During `smithery dev`/`smithery build`, the CLI consumes `smithery.yaml`, imports `src/index.ts`, reads the exported `configSchema`, and asks for your `HEVY_API_KEY`. That key is then supplied via `createServer({ config })`, matching the stdio CLI behavior.
 
-## Solutions
+## Deploying Remotely
 
-You have two options:
+1. Commit the updated `smithery.yaml`, `package.json`, and `src/index.ts`.
+2. Push to GitHub and connect the repo to Smithery.
+3. From the Smithery UI, trigger a deployment. No Dockerfile or HTTP server configuration is involved—the CLI bundles the TypeScript output directly.
 
-### Option 1: Use Environment Variables (Simpler, Recommended for Smithery)
+## Notes
 
-Modify `smithery.yaml` to pass the config as environment variables instead of query parameters:
-
-```yaml
-runtime: "container"
-env:
-  MCP_HTTP_PORT: "${PORT:-8081}"
-  MCP_HTTP_HOST: "0.0.0.0"
-  # Map the user-provided config to environment variables
-  HEVY_API_KEY: "${HEVY_API_KEY}"
-startCommand:
+- Docker- and HTTP-based transports remain deprecated; the TypeScript runtime path keeps everything MCP-native.
+- If additional configuration fields are needed later, extend the exported `configSchema` and Smithery will pick them up automatically.
   type: "http"
-  configSchema:
-    type: object
-    required:
-      - HEVY_API_KEY
-    properties:
-      HEVY_API_KEY:
-        type: string
-        description: Your Hevy API key to authenticate with the Hevy Fitness API.
-  exampleConfig:
-    HEVY_API_KEY: "your-hevy-api-key-here"
-build:
-  dockerfile: "Dockerfile"
-  dockerBuildPath: "."
-```
-
-**This assumes Smithery supports environment variable interpolation from `configSchema` values.** *(This needs verification)*
-
-### Option 2: Parse Query Parameters from HTTP Requests (More Complex)
-
-Modify your code to extract the API key from the first HTTP request's query parameters:
-
-1. Start the HTTP server without validating the API key
-2. Extract `HEVY_API_KEY` from query parameters in the `/mcp` POST handler
-3. Dynamically create/configure the Hevy client per request or per session
-
-This requires significant code changes to:
-- Remove early API key validation
-- Parse query parameters in `httpServer.ts`
-- Store API key per session
-- Create per-session Hevy clients
-
-### Option 3: Hybrid Approach (Fallback)
-
-Support both environment variables AND query parameters:
-
-```typescript
-// In httpServer.ts or config.ts
-function getApiKey(req: express.Request, env: NodeJS.ProcessEnv): string {
-  // Try query parameter first
-  const queryApiKey = req.query.HEVY_API_KEY as string;
-  if (queryApiKey) return queryApiKey;
-
-  // Fallback to environment
-  return env.HEVY_API_KEY || "";
-}
-```
-
-## Current Configuration
-
-Your `smithery.yaml` is set up to:
-- ✅ Use container runtime with Docker
-- ✅ Listen on PORT 8081 (Smithery's default)
-- ✅ Bind to 0.0.0.0 (required for Docker networking)
-- ⚠️ Pass HEVY_API_KEY as query parameter (but your code expects env var)
-
-## Testing Locally
-
-To test Smithery behavior locally:
-
-```bash
-# Build the Docker image
-docker build -t hevy-mcp .
-
-# Run with Smithery-style configuration (env vars)
-docker run -p 8081:8081 \
-  -e PORT=8081 \
-  -e MCP_HTTP_PORT=8081 \
-  -e MCP_HTTP_HOST=0.0.0.0 \
-  -e HEVY_API_KEY=your_api_key_here \
-  hevy-mcp
-```
-
-Then test with query parameters:
-```bash
-curl "http://localhost:8081/mcp?HEVY_API_KEY=your_key" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}'
-```
-
-## Recommendation
-
-**Best approach**: Verify if Smithery supports `env` variable interpolation from `configSchema`. If yes, use Option 1. If no, implement Option 3 (hybrid approach) to support both deployment methods.

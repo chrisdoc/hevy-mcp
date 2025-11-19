@@ -1,2 +1,11 @@
-# Smithery deployment support has been removed because hevy-mcp now runs standalone via stdio.
-# This file intentionally left as a placeholder to avoid confusion for existing Smithery users.
+runtime: "typescript"
+entry: "src/index.ts"
+name: "hevy-mcp"
+description: "Manage Hevy workouts, routines, templates, folders, and webhooks via MCP tools."
+links:
+	- label: "Repository"
+		href: "https://github.com/chrisdoc/hevy-mcp"
+	- label: "TypeScript deployment guide"
+		href: "https://smithery.ai/docs/build/deployments/typescript"
+# Configuration is handled via the exported configSchema in src/index.ts, which
+# prompts for HEVY_API_KEY.

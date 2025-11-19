@@ -9,7 +9,7 @@ export default defineConfig({
 	dts: true,
 	splitting: false,
 	banner: {
-		js: "// Generated with tsup\n// https://github.com/egoist/tsup",
+		js: "#!/usr/bin/env node\n// Generated with tsup\n// https://github.com/egoist/tsup",
 	},
 	outDir: "dist",
 	bundle: true,

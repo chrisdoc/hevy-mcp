@@ -12,7 +12,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - **Folder Organization**: Manage routine folders
 - **Webhook Subscriptions**: Create, view, and delete webhook subscriptions for workout events
 
-> **Note:** HTTP transport, Smithery deployment, and Docker images have all been deprecated. Run the server locally via stdio (e.g., `npx hevy-mcp`). Existing GHCR images remain available but are no longer updated.
+> **Note:** HTTP transport and Docker images remain deprecated. Smithery deployment now uses the official TypeScript runtime flow (no Docker required), or you can run the server locally via stdio (e.g., `npx hevy-mcp`). Existing GHCR images remain available but are no longer updated.
 
 ## Prerequisites
 
@@ -38,9 +38,6 @@ cd hevy-mcp
 
 # Install dependencies
 corepack use pnpm@10.22.0
-pnpm install
-
-# Create .env file from sample
 cp .env.sample .env
 # Edit .env and add your Hevy API key
 ```
@@ -84,6 +81,27 @@ pnpm start -- --hevy-api-key=your_hevy_api_key_here
 ```
 
 ## Transport
+
+### Deploy via Smithery (TypeScript runtime)
+
+Smithery can bundle and host `hevy-mcp` without Docker by importing the exported `createServer` and `configSchema` from `src/index.ts`.
+
+1. Ensure dependencies are installed: `pnpm install`
+2. Launch the Smithery playground locally:
+
+   ```bash
+   pnpm run smithery:dev
+   ```
+
+   The CLI will prompt for `HEVY_API_KEY`, invoke `createServer({ config })`, and open the Smithery MCP playground.
+
+3. Build the deployable bundle:
+
+   ```bash
+   pnpm run smithery:build
+   ```
+
+4. Connect the repository to Smithery and trigger a deployment from their dashboard. Configuration is handled entirely through the exported Zod schema, so no additional `smithery.yaml` env mapping is required.
 
 hevy-mcp now runs exclusively over stdio, which works seamlessly with MCP-aware clients like Claude Desktop and Cursor. HTTP transport has been removed to simplify deployment.
 

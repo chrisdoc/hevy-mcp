@@ -138,3 +138,6 @@ dist
 # env
 .env
 .aider*
+
+# Smithery CLI build artifacts
+.smithery/index.cjs
