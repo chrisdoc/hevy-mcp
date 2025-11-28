@@ -57,8 +57,7 @@ async function runServer() {
 	assertApiKey(apiKey);
 
 	const server = buildServer(apiKey);
-	// Removed console.log to prevent stdout pollution in stdio mode
-	// console.log("Starting MCP server in stdio mode");
+	console.error("Starting MCP server in stdio mode");
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
 }
