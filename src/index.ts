@@ -33,8 +33,7 @@ function buildServer(apiKey: string) {
 	});
 
 	const hevyClient = createClient(apiKey, HEVY_API_BASEURL);
-	// Removed console.log to prevent stdout pollution in stdio mode
-	// console.log("Hevy client initialized with API key");
+	console.error("Hevy client initialized with API key");
 
 	registerWorkoutTools(server, hevyClient);
 	registerRoutineTools(server, hevyClient);
