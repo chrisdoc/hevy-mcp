@@ -1,4 +1,7 @@
-import "@dotenvx/dotenvx/config";
+import dotenvx from "@dotenvx/dotenvx";
+
+dotenvx.config({ quiet: true });
+
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -31,7 +34,7 @@ function buildServer(apiKey: string) {
 	});
 
 	const hevyClient = createClient(apiKey, HEVY_API_BASEURL);
-	console.log("Hevy client initialized with API key");
+	console.error("Hevy client initialized with API key");
 
 	registerWorkoutTools(server, hevyClient);
 	registerRoutineTools(server, hevyClient);
@@ -55,7 +58,7 @@ async function runServer() {
 	assertApiKey(apiKey);
 
 	const server = buildServer(apiKey);
-	console.log("Starting MCP server in stdio mode");
+	console.error("Starting MCP server in stdio mode");
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
 }
