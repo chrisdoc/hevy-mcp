@@ -1,3 +1,10 @@
+## [1.12.8](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.7...v1.12.8) (2025-11-29)
+
+
+### Bug Fixes
+
+* remove stdout pollution in stdio mode ([#174](https://github.com/chrisdoc/hevy-mcp/issues/174)) ([0ad6a1b](https://github.com/chrisdoc/hevy-mcp/commit/0ad6a1bd2024b1f6223bd5d1dba522d239effa29))
+
 ## [1.12.7](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.6...v1.12.7) (2025-11-29)
 
 ## [1.12.6](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.5...v1.12.6) (2025-11-29)
