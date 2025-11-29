@@ -8,6 +8,7 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import { createPassthroughSchema } from "../utils/schema-helpers.js";
 
 // Type definitions for the template operations
 type HevyClient = ReturnType<
@@ -25,10 +26,10 @@ export function registerTemplateTools(
 	server.tool(
 		"get-exercise-templates",
 		"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
-		{
+		createPassthroughSchema({
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(100).default(5),
-		},
+		}),
 		withErrorHandling(
 			async ({ page, pageSize }: { page: number; pageSize: number }) => {
 				if (!hevyClient) {
@@ -63,9 +64,9 @@ export function registerTemplateTools(
 	server.tool(
 		"get-exercise-template",
 		"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
-		{
+		createPassthroughSchema({
 			exerciseTemplateId: z.string().min(1),
-		},
+		}),
 		withErrorHandling(
 			async ({ exerciseTemplateId }: { exerciseTemplateId: string }) => {
 				if (!hevyClient) {

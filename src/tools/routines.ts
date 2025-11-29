@@ -16,6 +16,7 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import { createPassthroughSchema } from "../utils/schema-helpers.js";
 
 // Type definitions for the routine operations
 type HevyClient = ReturnType<
@@ -74,10 +75,10 @@ export function registerRoutineTools(
 	server.tool(
 		"get-routines",
 		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
-		{
+		createPassthroughSchema({
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
-		},
+		}),
 		withErrorHandling(async (args) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -108,9 +109,9 @@ export function registerRoutineTools(
 	server.tool(
 		"get-routine",
 		"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
-		{
+		createPassthroughSchema({
 			routineId: z.string().min(1),
-		},
+		}),
 		withErrorHandling(async ({ routineId }) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -130,7 +131,7 @@ export function registerRoutineTools(
 	server.tool(
 		"create-routine",
 		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
-		{
+		createPassthroughSchema({
 			title: z.string().min(1),
 			folderId: z.coerce.number().nullable().optional(),
 			notes: z.string().optional(),
@@ -154,7 +155,7 @@ export function registerRoutineTools(
 					),
 				}),
 			),
-		},
+		}),
 		withErrorHandling(async (args) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -206,7 +207,7 @@ export function registerRoutineTools(
 	server.tool(
 		"update-routine",
 		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
-		{
+		createPassthroughSchema({
 			routineId: z.string().min(1),
 			title: z.string().min(1),
 			notes: z.string().optional(),
@@ -230,7 +231,7 @@ export function registerRoutineTools(
 					),
 				}),
 			),
-		},
+		}),
 		withErrorHandling(async (args) => {
 			if (!hevyClient) {
 				throw new Error(

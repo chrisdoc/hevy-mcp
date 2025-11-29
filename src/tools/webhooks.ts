@@ -6,6 +6,7 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import { createPassthroughSchema } from "../utils/schema-helpers.js";
 
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
@@ -52,7 +53,7 @@ export function registerWebhookTools(
 	server.tool(
 		"get-webhook-subscription",
 		"Get the current webhook subscription for this account. Returns the webhook URL and auth token if a subscription exists.",
-		{},
+		createPassthroughSchema({}),
 		withErrorHandling(async () => {
 			if (!hevyClient) {
 				throw new Error(
@@ -73,7 +74,7 @@ export function registerWebhookTools(
 	server.tool(
 		"create-webhook-subscription",
 		"Create a new webhook subscription for this account. The webhook will receive POST requests when workouts are created. Your endpoint must respond with 200 OK within 5 seconds.",
-		{
+		createPassthroughSchema({
 			url: webhookUrlSchema.describe(
 				"The webhook URL that will receive POST requests when workouts are created",
 			),
@@ -83,7 +84,7 @@ export function registerWebhookTools(
 				.describe(
 					"Optional auth token that will be sent as Authorization header in webhook requests",
 				),
-		},
+		}),
 		withErrorHandling(async ({ url, authToken }) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -110,7 +111,7 @@ export function registerWebhookTools(
 	server.tool(
 		"delete-webhook-subscription",
 		"Delete the current webhook subscription for this account. This will stop all webhook notifications.",
-		{},
+		createPassthroughSchema({}),
 		withErrorHandling(async () => {
 			if (!hevyClient) {
 				throw new Error(
