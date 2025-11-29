@@ -1,7 +1,9 @@
-// Commented out to prevent stdout pollution in stdio mode
-// dotenvx prints colored status messages that break JSON-RPC communication
-// import "@dotenvx/dotenvx/config";
 import { fileURLToPath } from "node:url";
+import dotenvx from "@dotenvx/dotenvx";
+
+// Configure dotenvx with quiet mode to prevent stdout pollution in stdio mode
+dotenvx.config({ quiet: true });
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
