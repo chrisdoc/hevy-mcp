@@ -25,6 +25,9 @@ updates:
       biome-dependencies:
         patterns:
           - "@biomejs/*"
+      zod-dependencies:
+        patterns:
+          - "zod"
       # fallback groups for any remaining prod/dev dependencies
       production-dependencies:
         dependency-type: "production"
