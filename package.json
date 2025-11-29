@@ -1,6 +1,6 @@
 {
 	"name": "hevy-mcp",
-	"version": "1.12.5",
+	"version": "1.12.6",
 	"main": "dist/index.js",
 	"module": "src/index.ts",
 	"types": "dist/index.d.ts",
