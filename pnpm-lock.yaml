@@ -34,7 +34,7 @@ importers:
         version: 4.7.2(ajv@8.17.1)
       '@modelcontextprotocol/sdk':
         specifier: ^1.23.0
-        version: 1.23.0(zod@4.1.13)
+        version: 1.24.0(zod@4.1.13)
       '@smithery/sdk':
         specifier: 1.7.4
         version: 1.7.4
@@ -785,8 +785,8 @@ packages:
     resolution: {integrity: sha512-82xk49z2ag8Zy+64w6MrYaMG7Q+vun41Jl9+seROzad8iHD2AmCgYCggJrqUbBW1WZbBZzQq6qIPEN6LVKp+fA==}
     engines: {node: '>=20'}
 
-  '@modelcontextprotocol/sdk@1.23.0':
-    resolution: {integrity: sha512-MCGd4K9aZKvuSqdoBkdMvZNcYXCkZRYVs/Gh92mdV5IHbctX9H9uIvd4X93+9g8tBbXv08sxc/QHXTzf8y65bA==}
+  '@modelcontextprotocol/sdk@1.24.0':
+    resolution: {integrity: sha512-D8h5KXY2vHFW8zTuxn2vuZGN0HGrQ5No6LkHwlEA9trVgNdPL3TF1dSqKA7Dny6BbBYKSW/rOBDXdC8KJAjUCg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -2385,6 +2385,9 @@ packages:
 
   jose@6.1.2:
     resolution: {integrity: sha512-MpcPtHLE5EmztuFIqB0vzHAWJPpmN1E6L4oo+kze56LIs3MyXIj9ZHMDxqOvkP38gBR7K1v3jqd4WU2+nrfONQ==}
+
+  jose@6.1.3:
+    resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -4770,7 +4773,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@modelcontextprotocol/sdk@1.23.0(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.24.0(zod@3.25.76)':
     dependencies:
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
@@ -4781,6 +4784,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.0
       express-rate-limit: 7.5.1(express@5.2.0)
+      jose: 6.1.3
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
       zod: 3.25.76
@@ -4788,7 +4792,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@modelcontextprotocol/sdk@1.23.0(zod@4.1.13)':
+  '@modelcontextprotocol/sdk@1.24.0(zod@4.1.13)':
     dependencies:
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
@@ -4799,6 +4803,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.0
       express-rate-limit: 7.5.1(express@5.2.0)
+      jose: 6.1.3
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
       zod: 4.1.13
@@ -5183,7 +5188,7 @@ snapshots:
   '@smithery/cli@1.6.3(@types/node@24.10.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.13)':
     dependencies:
       '@anthropic-ai/mcpb': 1.2.0
-      '@modelcontextprotocol/sdk': 1.23.0(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.24.0(zod@4.1.13)
       '@ngrok/ngrok': 1.6.0
       '@smithery/registry': 0.4.4
       '@smithery/sdk': 1.7.4
@@ -5218,7 +5223,7 @@ snapshots:
 
   '@smithery/sdk@1.7.4':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.23.0(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.24.0(zod@3.25.76)
       chalk: 5.6.2
       express: 5.2.0
       jose: 6.1.2
@@ -6539,6 +6544,8 @@ snapshots:
   jiti@2.6.1: {}
 
   jose@6.1.2: {}
+
+  jose@6.1.3: {}
 
   joycon@3.1.1: {}
 
