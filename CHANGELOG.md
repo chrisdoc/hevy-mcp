@@ -1,3 +1,10 @@
+## [1.12.13](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.12...v1.12.13) (2025-12-05)
+
+
+### Bug Fixes
+
+* make hevy-mcp CLI start stdio server again ([#184](https://github.com/chrisdoc/hevy-mcp/issues/184)) ([3fd898a](https://github.com/chrisdoc/hevy-mcp/commit/3fd898a6d02ce03699df7a9097a8c670a259370f))
+
 ## [1.12.12](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.11...v1.12.12) (2025-12-02)
 
 ## [1.12.11](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.10...v1.12.11) (2025-12-01)
