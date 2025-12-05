@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import dotenvx from "@dotenvx/dotenvx";
 
 // Configure dotenvx with quiet mode to prevent stdout pollution in stdio mode
@@ -52,7 +51,7 @@ export default function createServer({ config }: { config: ServerConfig }) {
 	return server.server;
 }
 
-async function runServer() {
+export async function runServer() {
 	const args = process.argv.slice(2);
 	const cfg = parseConfig(args, process.env);
 	const apiKey = cfg.apiKey;
@@ -62,26 +61,4 @@ async function runServer() {
 	console.error("Starting MCP server in stdio mode");
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
-}
-
-const isDirectExecution = (() => {
-	if (typeof process === "undefined" || !Array.isArray(process.argv)) {
-		return false;
-	}
-	if (typeof import.meta === "undefined" || !import.meta?.url) {
-		return false;
-	}
-	try {
-		const modulePath = fileURLToPath(import.meta.url);
-		return process.argv[1] === modulePath;
-	} catch {
-		return false;
-	}
-})();
-
-if (isDirectExecution) {
-	runServer().catch((error) => {
-		console.error("Fatal error in main():", error);
-		process.exit(1);
-	});
 }

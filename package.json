@@ -14,16 +14,16 @@
 	},
 	"homepage": "https://github.com/chrisdoc/hevy-mcp#readme",
 	"bin": {
-		"hevy-mcp": "dist/index.js"
+		"hevy-mcp": "dist/cli.js"
 	},
 	"scripts": {
-		"inspect": "pnpm run build && pnpm dlx @modelcontextprotocol/inspector@latest node dist/index.js",
+		"inspect": "pnpm run build && pnpm dlx @modelcontextprotocol/inspector@latest node dist/cli.js",
 		"test": "vitest --run",
 		"export-specs": "node ./scripts/export-openapi-spec.js",
 		"build": "tsup",
 		"build:client": "kubb generate",
-		"start": "node dist/index.js",
-		"dev": "tsx watch --clear-screen=false src/index.ts",
+		"start": "node dist/cli.js",
+		"dev": "tsx watch --clear-screen=false src/cli.ts",
 		"smithery:build": "smithery build",
 		"smithery:dev": "smithery dev",
 		"check": "biome check --write --unsafe",
