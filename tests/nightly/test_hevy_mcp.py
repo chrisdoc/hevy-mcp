@@ -9,31 +9,9 @@ This test installs hevy-mcp from npm and verifies:
 
 import asyncio
 import os
-import subprocess
 import sys
 
 from mcp_use import MCPClient
-
-
-def install_hevy_mcp():
-    """Install hevy-mcp globally to ensure the command is available."""
-    print("📦 Installing hevy-mcp from npm...")
-    result = subprocess.run(
-        ["npm", "install", "-g", "hevy-mcp"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        print(f"❌ Failed to install hevy-mcp: {result.stderr}")
-        sys.exit(1)
-    print("✅ hevy-mcp installed successfully")
-
-    # Verify installation
-    result = subprocess.run(["which", "hevy-mcp"], capture_output=True, text=True)
-    if result.returncode != 0:
-        print("❌ hevy-mcp command not found after installation")
-        sys.exit(1)
-    print(f"   Command location: {result.stdout.strip()}")
 
 
 async def main():
@@ -42,16 +20,13 @@ async def main():
         print("❌ HEVY_API_KEY environment variable not set")
         sys.exit(1)
 
-    # Install hevy-mcp globally first
-    install_hevy_mcp()
-
-    print("🔧 Configuring hevy-mcp...")
+    print("🔧 Configuring hevy-mcp via npx...")
 
     config = {
         "mcpServers": {
             "hevy": {
-                "command": "hevy-mcp",
-                "args": [],
+                "command": "npx",
+                "args": ["-y", "hevy-mcp"],
                 "env": {"HEVY_API_KEY": api_key},
             }
         }
