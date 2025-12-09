@@ -1,3 +1,10 @@
+## [1.12.17](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.16...v1.12.17) (2025-12-09)
+
+
+### Bug Fixes
+
+* add trailing newline to .npmrc for Smithery compatibility ([ee50888](https://github.com/chrisdoc/hevy-mcp/commit/ee508888d1f8b332a47d6810fcb1b31d12cbaf49))
+
 ## [1.12.16](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.15...v1.12.16) (2025-12-08)
 
 ## [1.12.15](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.14...v1.12.15) (2025-12-08)
