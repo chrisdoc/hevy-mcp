@@ -1,3 +1,10 @@
+## [1.12.18](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.17...v1.12.18) (2025-12-09)
+
+
+### Bug Fixes
+
+* **nightly:** install hevy-mcp globally before running test ([08ff5db](https://github.com/chrisdoc/hevy-mcp/commit/08ff5dba63fe08e2c8fee1e4d041634f628b7498))
+
 ## [1.12.17](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.16...v1.12.17) (2025-12-09)
 
 
