@@ -22,12 +22,12 @@ async def main():
 
     print("🔧 Configuring hevy-mcp via npx...")
 
-    # Use npx with -c flag to force shell execution, which properly inherits PATH
+    # Use shell wrapper to ensure npx's PATH modification is inherited
     config = {
         "mcpServers": {
             "hevy": {
-                "command": "npx",
-                "args": ["-y", "-c", "hevy-mcp"],
+                "command": "/bin/sh",
+                "args": ["-c", "npx -y hevy-mcp"],
                 "env": {"HEVY_API_KEY": api_key},
             }
         }
