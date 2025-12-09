@@ -1,0 +1,41 @@
+name: Nightly MCP Integration Test
+
+on:
+  schedule:
+    # Run every night at 2:00 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-integration-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install mcp-use
+      run: pip install mcp-use
+
+    - name: Run MCP integration test
+      run: python tests/nightly/test_hevy_mcp.py
+      env:
+        HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "::error::Nightly MCP integration test failed! The latest hevy-mcp npm package may have issues."
