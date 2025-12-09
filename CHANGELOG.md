@@ -1,3 +1,10 @@
+## [1.12.23](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.22...v1.12.23) (2025-12-09)
+
+
+### Bug Fixes
+
+* **nightly:** revert to global install - npx PATH issues are unfixable ([de37575](https://github.com/chrisdoc/hevy-mcp/commit/de37575004e866816b2fc2860f9513f7e36628e6))
+
 ## [1.12.22](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.21...v1.12.22) (2025-12-09)
 
 ## [1.12.21](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.20...v1.12.21) (2025-12-09)
