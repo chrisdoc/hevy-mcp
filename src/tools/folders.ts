@@ -8,6 +8,7 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import { createPassthroughSchema } from "../utils/schema-helpers.js";
 
 // Type definitions for the folder operations
 type HevyClient = ReturnType<
@@ -25,10 +26,10 @@ export function registerFolderTools(
 	server.tool(
 		"get-routine-folders",
 		"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
-		{
+		createPassthroughSchema({
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
-		},
+		}),
 		withErrorHandling(
 			async ({ page, pageSize }: { page: number; pageSize: number }) => {
 				if (!hevyClient) {
@@ -63,9 +64,9 @@ export function registerFolderTools(
 	server.tool(
 		"get-routine-folder",
 		"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
-		{
+		createPassthroughSchema({
 			folderId: z.string().min(1),
-		},
+		}),
 		withErrorHandling(async ({ folderId }: { folderId: string }) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -89,9 +90,9 @@ export function registerFolderTools(
 	server.tool(
 		"create-routine-folder",
 		"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
-		{
+		createPassthroughSchema({
 			name: z.string().min(1),
-		},
+		}),
 		withErrorHandling(async ({ name }: { name: string }) => {
 			if (!hevyClient) {
 				throw new Error(

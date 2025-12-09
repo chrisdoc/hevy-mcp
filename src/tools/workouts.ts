@@ -8,6 +8,7 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import { createPassthroughSchema } from "../utils/schema-helpers.js";
 
 /**
  * Type definition for exercise set types
@@ -48,10 +49,10 @@ export function registerWorkoutTools(
 	server.tool(
 		"get-workouts",
 		"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
-		{
+		createPassthroughSchema({
 			page: z.coerce.number().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
-		},
+		}),
 		withErrorHandling(async ({ page, pageSize }) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -81,9 +82,9 @@ export function registerWorkoutTools(
 	server.tool(
 		"get-workout",
 		"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
-		{
+		createPassthroughSchema({
 			workoutId: z.string().min(1),
-		},
+		}),
 		withErrorHandling(async ({ workoutId }) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -105,7 +106,7 @@ export function registerWorkoutTools(
 	server.tool(
 		"get-workout-count",
 		"Get the total number of workouts on the account. Useful for pagination or statistics.",
-		{},
+		createPassthroughSchema({}),
 		withErrorHandling(async () => {
 			if (!hevyClient) {
 				throw new Error(
@@ -125,11 +126,11 @@ export function registerWorkoutTools(
 	server.tool(
 		"get-workout-events",
 		"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
-		{
+		createPassthroughSchema({
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 			since: z.string().default("1970-01-01T00:00:00Z"),
-		},
+		}),
 		withErrorHandling(async ({ page, pageSize, since }) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -158,7 +159,7 @@ export function registerWorkoutTools(
 	server.tool(
 		"create-workout",
 		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
-		{
+		createPassthroughSchema({
 			title: z.string().min(1),
 			description: z.string().optional().nullable(),
 			startTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
@@ -184,7 +185,7 @@ export function registerWorkoutTools(
 					),
 				}),
 			),
-		},
+		}),
 		withErrorHandling(
 			async ({
 				title,
@@ -245,7 +246,7 @@ export function registerWorkoutTools(
 	server.tool(
 		"update-workout",
 		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
-		{
+		createPassthroughSchema({
 			workoutId: z.string().min(1),
 			title: z.string().min(1),
 			description: z.string().optional().nullable(),
@@ -272,7 +273,7 @@ export function registerWorkoutTools(
 					),
 				}),
 			),
-		},
+		}),
 		withErrorHandling(
 			async ({
 				workoutId,
