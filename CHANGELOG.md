@@ -1,3 +1,10 @@
+## [1.12.20](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.19...v1.12.20) (2025-12-09)
+
+
+### Bug Fixes
+
+* **nightly:** use global install - npx has issues in CI ([f6a721f](https://github.com/chrisdoc/hevy-mcp/commit/f6a721f4666b76c86cef9bda6e4a9158b32fee2d))
+
 ## [1.12.19](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.18...v1.12.19) (2025-12-09)
 
 ## [1.12.18](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.17...v1.12.18) (2025-12-09)
