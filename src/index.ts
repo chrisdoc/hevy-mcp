@@ -4,42 +4,16 @@ import * as Sentry from "@sentry/node";
 // Configure dotenvx with quiet mode to prevent stdout pollution in stdio mode
 dotenvx.config({ quiet: true });
 
-function getSentryConfigFromEnv() {
-	const dsn = process.env.SENTRY_DSN;
-	if (!dsn) {
-		return null;
-	}
+// Sentry monitoring is baked into the built MCP server so usage and errors
+// from users of the published package are captured for observability.
+const sentryConfig = {
+	dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
+	// Tracing must be enabled for MCP monitoring to work
+	tracesSampleRate: 1.0,
+	sendDefaultPii: false,
+} as const;
 
-	let tracesSampleRate = 1.0;
-	const tracesSampleRateEnv = process.env.SENTRY_TRACES_SAMPLE_RATE;
-	if (tracesSampleRateEnv !== undefined) {
-		const parsed = Number.parseFloat(tracesSampleRateEnv);
-		if (Number.isNaN(parsed) || parsed < 0 || parsed > 1) {
-			console.error(
-				`Invalid SENTRY_TRACES_SAMPLE_RATE="${tracesSampleRateEnv}", falling back to 1.0. Expected a number between 0 and 1.`,
-			);
-		} else {
-			tracesSampleRate = parsed;
-		}
-	}
-
-	const sendDefaultPiiEnv = process.env.SENTRY_SEND_DEFAULT_PII;
-	const sendDefaultPii =
-		sendDefaultPiiEnv === "true" || sendDefaultPiiEnv === "1";
-
-	return {
-		dsn,
-		tracesSampleRate,
-		sendDefaultPii,
-		environment: process.env.SENTRY_ENVIRONMENT,
-	};
-}
-
-const sentryConfig = getSentryConfigFromEnv();
-
-if (sentryConfig) {
-	Sentry.init(sentryConfig);
-}
+Sentry.init(sentryConfig);
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -70,9 +44,7 @@ function buildServer(apiKey: string) {
 		name,
 		version,
 	});
-	const server = sentryConfig
-		? Sentry.wrapMcpServerWithSentry(baseServer)
-		: baseServer;
+	const server = Sentry.wrapMcpServerWithSentry(baseServer);
 
 	const hevyClient = createClient(apiKey, HEVY_API_BASEURL);
 	console.error("Hevy client initialized with API key");

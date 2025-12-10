@@ -95,28 +95,20 @@ Replace `your_hevy_api_key_here` with your actual Hevy API key. If you prefer th
 pnpm start -- --hevy-api-key=your_hevy_api_key_here
 ```
 
-### Optional: Sentry monitoring
+### Sentry monitoring
 
-`hevy-mcp` can optionally send errors and tool usage to Sentry using the
-[Sentry MCP integration](https://docs.sentry.io/product/insights/ai/mcp/getting-started/).
+`hevy-mcp` ships with Sentry monitoring baked into the built MCP server so
+that usage and errors from published builds can be observed.
 
-To enable this, add the following variables to your environment (for example
-in `.env`):
+The server initializes `@sentry/node` with a fixed DSN and tracing settings
+directly in the code (see `src/index.ts`), and wraps the underlying
+`McpServer` with `Sentry.wrapMcpServerWithSentry` so requests and tool calls
+are captured by Sentry automatically. The configuration uses
+`sendDefaultPii: false` to keep Sentry's default PII collection disabled.
 
-```env
-SENTRY_DSN=your_sentry_dsn_here
-
-# Optional overrides
-SENTRY_ENVIRONMENT=local
-SENTRY_TRACES_SAMPLE_RATE=1.0
-# Optional: include PII (tool args/results) in Sentry.
-# Defaults to false when unset. Set to "true" or "1" to enable.
-SENTRY_SEND_DEFAULT_PII=false
-```
-
-When `SENTRY_DSN` is set, the server wraps the underlying `McpServer` with
-`Sentry.wrapMcpServerWithSentry`, so requests and tool calls are captured in
-your Sentry project.
+There is currently no built-in toggle to disable Sentry for the published
+package. If you need a build without Sentry telemetry, you can fork the
+repository and remove the Sentry initialization in `src/index.ts`.
 
 ## Transport
 
