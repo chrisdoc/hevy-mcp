@@ -109,9 +109,12 @@ export function registerRoutineTools(
 						type: z
 							.enum(["warmup", "normal", "failure", "dropset"])
 							.default("normal"),
+						weight: z.coerce.number().optional(),
 						weightKg: z.coerce.number().optional(),
 						reps: z.coerce.number().int().optional(),
+						distance: z.coerce.number().int().optional(),
 						distanceMeters: z.coerce.number().int().optional(),
+						duration: z.coerce.number().int().optional(),
 						durationSeconds: z.coerce.number().int().optional(),
 						customMetric: z.coerce.number().optional(),
 					}),
@@ -146,10 +149,10 @@ export function registerRoutineTools(
 							sets: exercise.sets.map(
 								(set): PostRoutinesRequestSet => ({
 									type: set.type as PostRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weightKg ?? null,
+									weight_kg: set.weight ?? set.weightKg ?? null,
 									reps: set.reps ?? null,
-									distance_meters: set.distanceMeters ?? null,
-									duration_seconds: set.durationSeconds ?? null,
+									distance_meters: set.distance ?? set.distanceMeters ?? null,
+									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
 								}),
 							),
@@ -188,9 +191,12 @@ export function registerRoutineTools(
 						type: z
 							.enum(["warmup", "normal", "failure", "dropset"])
 							.default("normal"),
+						weight: z.coerce.number().optional(),
 						weightKg: z.coerce.number().optional(),
 						reps: z.coerce.number().int().optional(),
+						distance: z.coerce.number().int().optional(),
 						distanceMeters: z.coerce.number().int().optional(),
+						duration: z.coerce.number().int().optional(),
 						durationSeconds: z.coerce.number().int().optional(),
 						customMetric: z.coerce.number().optional(),
 					}),
@@ -224,10 +230,10 @@ export function registerRoutineTools(
 							sets: exercise.sets.map(
 								(set): PutRoutinesRequestSet => ({
 									type: set.type as PutRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weightKg ?? null,
+									weight_kg: set.weight ?? set.weightKg ?? null,
 									reps: set.reps ?? null,
-									distance_meters: set.distanceMeters ?? null,
-									duration_seconds: set.durationSeconds ?? null,
+									distance_meters: set.distance ?? set.distanceMeters ?? null,
+									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
 								}),
 							),

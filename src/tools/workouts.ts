@@ -16,34 +16,6 @@ import {
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 /**
- * Type definition for exercise set types
- */
-type SetType = "warmup" | "normal" | "failure" | "dropset";
-
-/**
- * Interface for exercise set input
- */
-interface ExerciseSetInput {
-	type: SetType;
-	weightKg?: number | null;
-	reps?: number | null;
-	distanceMeters?: number | null;
-	durationSeconds?: number | null;
-	rpe?: number | null;
-	customMetric?: number | null;
-}
-
-/**
- * Interface for exercise input
- */
-interface ExerciseInput {
-	exerciseTemplateId: string;
-	supersetId?: number | null;
-	notes?: string | null;
-	sets: ExerciseSetInput[];
-}
-
-/**
  * Register all workout-related tools with the MCP server
  */
 export function registerWorkoutTools(
@@ -73,7 +45,6 @@ export function registerWorkoutTools(
 				pageSize,
 			});
 
-			// Process workouts to extract relevant information
 			const workouts =
 				data?.workouts?.map((workout) => formatWorkout(workout)) || [];
 
@@ -127,7 +98,6 @@ export function registerWorkoutTools(
 				);
 			}
 			const data = await hevyClient.getWorkoutCount();
-			// Use type assertion to access count property
 			const count = data
 				? (data as { workoutCount?: number }).workoutCount || 0
 				: 0;
@@ -189,9 +159,12 @@ export function registerWorkoutTools(
 						type: z
 							.enum(["warmup", "normal", "failure", "dropset"])
 							.default("normal"),
+						weight: z.coerce.number().optional().nullable(),
 						weightKg: z.coerce.number().optional().nullable(),
 						reps: z.coerce.number().int().optional().nullable(),
+						distance: z.coerce.number().int().optional().nullable(),
 						distanceMeters: z.coerce.number().int().optional().nullable(),
+						duration: z.coerce.number().int().optional().nullable(),
 						durationSeconds: z.coerce.number().int().optional().nullable(),
 						rpe: z.coerce.number().optional().nullable(),
 						customMetric: z.coerce.number().optional().nullable(),
@@ -224,17 +197,17 @@ export function registerWorkoutTools(
 					exercises: exercises.map(
 						(exercise): PostWorkoutsRequestExercise => ({
 							exercise_template_id: exercise.exerciseTemplateId,
-							superset_id: exercise.supersetId || null,
-							notes: exercise.notes || null,
+							superset_id: exercise.supersetId ?? null,
+							notes: exercise.notes ?? null,
 							sets: exercise.sets.map((set) => ({
 								type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-								weight_kg: set.weightKg || null,
-								reps: set.reps || null,
-								distance_meters: set.distanceMeters || null,
-								duration_seconds: set.durationSeconds || null,
+								weight_kg: set.weight ?? set.weightKg ?? null,
+								reps: set.reps ?? null,
+								distance_meters: set.distance ?? set.distanceMeters ?? null,
+								duration_seconds: set.duration ?? set.durationSeconds ?? null,
 								rpe:
-									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) || null,
-								custom_metric: set.customMetric || null,
+									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
+								custom_metric: set.customMetric ?? null,
 							})),
 						}),
 					),
@@ -275,9 +248,12 @@ export function registerWorkoutTools(
 						type: z
 							.enum(["warmup", "normal", "failure", "dropset"])
 							.default("normal"),
+						weight: z.coerce.number().optional().nullable(),
 						weightKg: z.coerce.number().optional().nullable(),
 						reps: z.coerce.number().int().optional().nullable(),
+						distance: z.coerce.number().int().optional().nullable(),
 						distanceMeters: z.coerce.number().int().optional().nullable(),
+						duration: z.coerce.number().int().optional().nullable(),
 						durationSeconds: z.coerce.number().int().optional().nullable(),
 						rpe: z.coerce.number().optional().nullable(),
 						customMetric: z.coerce.number().optional().nullable(),
@@ -317,17 +293,17 @@ export function registerWorkoutTools(
 					exercises: exercises.map(
 						(exercise): PostWorkoutsRequestExercise => ({
 							exercise_template_id: exercise.exerciseTemplateId,
-							superset_id: exercise.supersetId || null,
-							notes: exercise.notes || null,
+							superset_id: exercise.supersetId ?? null,
+							notes: exercise.notes ?? null,
 							sets: exercise.sets.map((set) => ({
 								type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-								weight_kg: set.weightKg || null,
-								reps: set.reps || null,
-								distance_meters: set.distanceMeters || null,
-								duration_seconds: set.durationSeconds || null,
+								weight_kg: set.weight ?? set.weightKg ?? null,
+								reps: set.reps ?? null,
+								distance_meters: set.distance ?? set.distanceMeters ?? null,
+								duration_seconds: set.duration ?? set.durationSeconds ?? null,
 								rpe:
-									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) || null,
-								custom_metric: set.customMetric || null,
+									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
+								custom_metric: set.customMetric ?? null,
 							})),
 						}),
 					),
