@@ -2,11 +2,8 @@
  * Centralized error handling utility for MCP tools
  */
 
-// Define the McpToolResponse interface based on the SDK's structure
-interface McpToolResponse {
-	content: Array<{ type: string; text: string }>;
-	isError?: boolean;
-}
+// Import the McpToolResponse type from response-formatter to ensure consistency
+import type { McpToolResponse } from "./response-formatter.js";
 
 /**
  * Standard error response interface
@@ -70,7 +67,7 @@ export function createErrorResponse(
 	return {
 		content: [
 			{
-				type: "text",
+				type: "text" as const,
 				text: formattedMessage,
 			},
 		],
@@ -128,31 +125,23 @@ function determineErrorType(error: unknown, message: string): ErrorType {
 /**
  * Wrap an async function with standardized error handling
  *
- * @param fn - The async function to wrap
- * @param context - Context information for error messages
- * @returns A function that catches errors and returns standardized error responses
- */
-// Define a more specific type for function parameters
-type McpToolFunction = (
-	...args: Record<string, unknown>[]
-) => Promise<McpToolResponse>;
-
-/**
- * Wrap an async function with standardized error handling
+ * This function preserves the parameter types of the wrapped function while
+ * providing error handling. The returned function accepts Record<string, unknown>
+ * (as required by MCP SDK) but internally casts to the original parameter type.
  *
  * @param fn - The async function to wrap
  * @param context - Context information for error messages
  * @returns A function that catches errors and returns standardized error responses
  */
-export function withErrorHandling<T extends McpToolFunction>(
-	fn: T,
+export function withErrorHandling<TParams extends Record<string, unknown>>(
+	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
-): T {
-	return (async (...args: Parameters<T>) => {
+): (args: Record<string, unknown>) => Promise<McpToolResponse> {
+	return async (args: Record<string, unknown>) => {
 		try {
-			return await fn(...args);
+			return await fn(args as TParams);
 		} catch (error) {
 			return createErrorResponse(error, context);
 		}
-	}) as T;
+	};
 }

@@ -6,6 +6,7 @@
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
 - The codebase is TypeScript (Node.js v20+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
+- **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
 ## Working Effectively
 
@@ -127,8 +128,16 @@ Always perform these validation steps after making changes:
    pnpm run check
    ```
    - Must complete without errors (warnings about Biome schema are acceptable).
+   - **EXPECTED:** Warnings about `any` usage in `webhooks.ts` are acceptable (API methods not yet available).
 
-4. **MCP tool functionality validation (if API key available):**
+4. **Type checking validation:**
+   ```bash
+   npx tsc --noEmit
+   ```
+   - Must complete without errors.
+   - Verifies all type inference is working correctly.
+
+5. **MCP tool functionality validation (if API key available):**
    - Start development server: `pnpm run dev`
    - Test MCP tool endpoints with a client
    - Verify tool responses are correctly formatted
@@ -136,8 +145,10 @@ Always perform these validation steps after making changes:
 ### Critical Validation Notes
 - **ALWAYS** run unit tests after any source code changes
 - **ALWAYS** run build validation before committing changes
+- **ALWAYS** use type inference (`InferToolParams`) instead of manual type assertions
 - **DO NOT** attempt to fix TypeScript errors in `src/generated/` - these are auto-generated files
 - **DO NOT** commit `.env` files containing real API keys
+- **DO NOT** use `as any` or `as unknown` type assertions in tool handlers
 
 ## Project Structure and Key Files
 
@@ -155,8 +166,14 @@ src/
 │   ├── client/        # Kubb-generated client code
 │   └── schemas/       # Zod validation schemas
 └── utils/             # Shared helper functions
-    ├── formatters.ts  # Data formatting helpers
-    └── hevyClient.ts  # API client configuration
+    ├── tool-helpers.ts    # Type inference utilities (InferToolParams)
+    ├── error-handler.ts   # Centralized error handling (withErrorHandling)
+    ├── response-formatter.ts # MCP response utilities
+    ├── formatters.ts      # Data formatting helpers
+    ├── hevyClient.ts      # API client factory
+    ├── hevyClientKubb.ts  # Kubb client wrapper
+    ├── config.ts          # Configuration parsing
+    └── httpServer.ts      # HTTP server utilities (deprecated)
 ```
 
 ### Testing Structure
@@ -168,22 +185,73 @@ tests/
 
 ## Development Patterns
 
+### Type-Safe Tool Implementation
+
+The project uses **Zod schema inference** for type-safe tool parameters. This eliminates manual type assertions and ensures types match schemas automatically.
+
+#### Pattern: Using Type Inference
+
+**Always** extract Zod schemas and use `InferToolParams` for type safety:
+
+```typescript
+import type { InferToolParams } from "../utils/tool-helpers.js";
+import { withErrorHandling } from "../utils/error-handler.js";
+
+// 1. Define schema as const
+const getRoutinesSchema = {
+  page: z.coerce.number().int().gte(1).default(1),
+  pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+} as const;
+
+// 2. Infer types from schema
+type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
+
+// 3. Use inferred type in handler
+server.tool(
+  "get-routines",
+  "Description...",
+  getRoutinesSchema,  // Use the schema constant
+  withErrorHandling(async (args: GetRoutinesParams) => {
+    // args is fully typed - no manual assertions needed!
+    const { page, pageSize } = args;
+    // ...
+  }, "get-routines"),
+);
+```
+
+**Key Benefits:**
+- ✅ Single source of truth (Zod schema defines both validation and types)
+- ✅ No manual type assertions (`args as {...}`)
+- ✅ Automatic type updates when schemas change
+- ✅ Full IDE autocomplete and type checking
+
+**DO NOT:**
+- ❌ Use `args as { ... }` type assertions
+- ❌ Define parameter types separately from Zod schemas
+- ❌ Use `Record<string, unknown>` in handler signatures (use inferred types)
+
 ### Adding New MCP Tools
-1. Create new tool file in `src/tools/`
-2. Implement tool functions using existing patterns
-3. Validate inputs with Zod schemas from `src/generated/schemas/`
-4. Format outputs using helpers in `src/utils/formatters.ts`
-5. Register tools in `src/index.ts`
-6. Add unit tests co-located with implementation
+
+1. **Create new tool file** in `src/tools/`
+2. **Define Zod schema** with `as const` assertion
+3. **Infer parameter types** using `InferToolParams<typeof schema>`
+4. **Implement handler** with typed parameters (no manual assertions)
+5. **Wrap with error handling** using `withErrorHandling` from `src/utils/error-handler.ts`
+6. **Format outputs** using helpers in `src/utils/formatters.ts`
+7. **Register tools** in `src/index.ts`
+8. **Add unit tests** co-located with implementation
 
 ### Working with Generated Code
 - **NEVER** edit files in `src/generated/` directly
 - Regenerate API client: `pnpm run build:client`
 - If OpenAPI spec changes, update `openapi-spec.json` first
+- Generated types are available in `src/generated/client/types/index.ts`
 
 ### Error Handling
 - Use centralized error handling from `src/utils/error-handler.ts`
+- Wrap handlers with `withErrorHandling(fn, "context-name")`
 - Follow existing error response patterns in tool implementations
+- Error responses automatically include `isError: true` flag
 
 ## Troubleshooting
 
@@ -193,12 +261,30 @@ tests/
 3. **TypeScript errors in generated code:** Expected - ignore these
 4. **Build failures:** Run `pnpm run check` to identify formatting/linting issues
 5. **Network errors in export-specs:** Expected in sandboxed environments
+6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
+7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)
 
 ### Performance Expectations
 - **Build time:** 3-5 seconds
 - **Unit test time:** 1-2 seconds
 - **Dependency installation:** 30 seconds
 - **API client generation:** 4-5 seconds
+- **Type checking:** < 1 second
+
+## Key Utilities Reference
+
+### Type Inference (`src/utils/tool-helpers.ts`)
+- **`InferToolParams<T>`**: Infers TypeScript types from Zod schema objects
+- **`createTypedToolHandler`**: Optional wrapper for automatic validation (MCP SDK already validates)
+
+### Error Handling (`src/utils/error-handler.ts`)
+- **`withErrorHandling<TParams>(fn, context)`**: Wraps handlers with error handling while preserving parameter types
+- **`createErrorResponse(error, context?)`**: Creates standardized error responses
+
+### Response Formatting (`src/utils/response-formatter.ts`)
+- **`createJsonResponse(data, options?)`**: Creates JSON-formatted MCP responses
+- **`createTextResponse(text)`**: Creates text-formatted MCP responses
+- **`createEmptyResponse(message)`**: Creates empty responses with messages
 
 ---
 
