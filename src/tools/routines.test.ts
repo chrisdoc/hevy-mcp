@@ -5,7 +5,9 @@ describe("Routine Tools - Weight Field Mapping", () => {
 	it("should accept weight field in create-routine schema", () => {
 		// Define the schema as used in create-routine
 		const setSchema = z.object({
-			type: z.enum(["warmup", "normal", "failure", "dropset"]).default("normal"),
+			type: z
+				.enum(["warmup", "normal", "failure", "dropset"])
+				.default("normal"),
 			weight: z.coerce.number().optional(),
 			reps: z.coerce.number().int().optional(),
 			distance: z.coerce.number().int().optional(),
@@ -28,7 +30,9 @@ describe("Routine Tools - Weight Field Mapping", () => {
 	it("should accept weight field in update-routine schema", () => {
 		// Define the schema as used in update-routine
 		const setSchema = z.object({
-			type: z.enum(["warmup", "normal", "failure", "dropset"]).default("normal"),
+			type: z
+				.enum(["warmup", "normal", "failure", "dropset"])
+				.default("normal"),
 			weight: z.coerce.number().optional(),
 			reps: z.coerce.number().int().optional(),
 			distance: z.coerce.number().int().optional(),
@@ -50,7 +54,9 @@ describe("Routine Tools - Weight Field Mapping", () => {
 
 	it("should handle decimal weights correctly", () => {
 		const setSchema = z.object({
-			type: z.enum(["warmup", "normal", "failure", "dropset"]).default("normal"),
+			type: z
+				.enum(["warmup", "normal", "failure", "dropset"])
+				.default("normal"),
 			weight: z.coerce.number().optional(),
 			reps: z.coerce.number().int().optional(),
 		});
@@ -68,7 +74,9 @@ describe("Routine Tools - Weight Field Mapping", () => {
 
 	it("should handle string weights correctly via coercion", () => {
 		const setSchema = z.object({
-			type: z.enum(["warmup", "normal", "failure", "dropset"]).default("normal"),
+			type: z
+				.enum(["warmup", "normal", "failure", "dropset"])
+				.default("normal"),
 			weight: z.coerce.number().optional(),
 			reps: z.coerce.number().int().optional(),
 		});
@@ -76,7 +84,7 @@ describe("Routine Tools - Weight Field Mapping", () => {
 		// Test with string weight that should be coerced
 		const validSet = {
 			type: "normal" as const,
-			weight: "62.5" as any, // String that will be coerced
+			weight: "62.5", // String that will be coerced
 			reps: 5,
 		};
 
@@ -87,7 +95,9 @@ describe("Routine Tools - Weight Field Mapping", () => {
 
 	it("should handle missing weight field correctly", () => {
 		const setSchema = z.object({
-			type: z.enum(["warmup", "normal", "failure", "dropset"]).default("normal"),
+			type: z
+				.enum(["warmup", "normal", "failure", "dropset"])
+				.default("normal"),
 			weight: z.coerce.number().optional(),
 			reps: z.coerce.number().int().optional(),
 		});
@@ -141,7 +151,9 @@ describe("Routine Tools - Weight Field Mapping", () => {
 
 	it("should map distance and duration fields correctly", () => {
 		const setSchema = z.object({
-			type: z.enum(["warmup", "normal", "failure", "dropset"]).default("normal"),
+			type: z
+				.enum(["warmup", "normal", "failure", "dropset"])
+				.default("normal"),
 			distance: z.coerce.number().int().optional(),
 			duration: z.coerce.number().int().optional(),
 		});

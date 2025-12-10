@@ -19,10 +19,10 @@ type SetType = "warmup" | "normal" | "failure" | "dropset";
  */
 interface ExerciseSetInput {
 	type: SetType;
-	weightKg?: number | null;
+	weight?: number | null;
 	reps?: number | null;
-	distanceMeters?: number | null;
-	durationSeconds?: number | null;
+	distance?: number | null;
+	duration?: number | null;
 	rpe?: number | null;
 	customMetric?: number | null;
 }
@@ -174,10 +174,10 @@ export function registerWorkoutTools(
 							type: z
 								.enum(["warmup", "normal", "failure", "dropset"])
 								.default("normal"),
-							weightKg: z.coerce.number().optional().nullable(),
+							weight: z.coerce.number().optional().nullable(),
 							reps: z.coerce.number().int().optional().nullable(),
-							distanceMeters: z.coerce.number().int().optional().nullable(),
-							durationSeconds: z.coerce.number().int().optional().nullable(),
+							distance: z.coerce.number().int().optional().nullable(),
+							duration: z.coerce.number().int().optional().nullable(),
 							rpe: z.coerce.number().optional().nullable(),
 							customMetric: z.coerce.number().optional().nullable(),
 						}),
@@ -212,10 +212,10 @@ export function registerWorkoutTools(
 							notes: exercise.notes || null,
 							sets: exercise.sets.map((set) => ({
 								type: set.type,
-								weightKg: set.weightKg || null,
+								weightKg: set.weight || null,
 								reps: set.reps || null,
-								distanceMeters: set.distanceMeters || null,
-								durationSeconds: set.durationSeconds || null,
+								distanceMeters: set.distance || null,
+								durationSeconds: set.duration || null,
 								rpe: set.rpe || null,
 								customMetric: set.customMetric || null,
 							})),
@@ -262,10 +262,10 @@ export function registerWorkoutTools(
 							type: z
 								.enum(["warmup", "normal", "failure", "dropset"])
 								.default("normal"),
-							weightKg: z.coerce.number().optional().nullable(),
+							weight: z.coerce.number().optional().nullable(),
 							reps: z.coerce.number().int().optional().nullable(),
-							distanceMeters: z.coerce.number().int().optional().nullable(),
-							durationSeconds: z.coerce.number().int().optional().nullable(),
+							distance: z.coerce.number().int().optional().nullable(),
+							duration: z.coerce.number().int().optional().nullable(),
 							rpe: z.coerce.number().optional().nullable(),
 							customMetric: z.coerce.number().optional().nullable(),
 						}),
@@ -296,10 +296,10 @@ export function registerWorkoutTools(
 							notes: exercise.notes || null,
 							sets: exercise.sets.map((set: ExerciseSetInput) => ({
 								type: set.type,
-								weightKg: set.weightKg || null,
+								weightKg: set.weight || null,
 								reps: set.reps || null,
-								distanceMeters: set.distanceMeters || null,
-								durationSeconds: set.durationSeconds || null,
+								distanceMeters: set.distance || null,
+								durationSeconds: set.duration || null,
 								rpe: set.rpe || null,
 								customMetric: set.customMetric || null,
 							})),
