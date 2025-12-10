@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.24...v1.13.0) (2025-12-10)
+
+
+### Features
+
+* improve type safety with Zod schema inference ([f78f35b](https://github.com/chrisdoc/hevy-mcp/commit/f78f35bfcb500b07c3d32365a537f680482d98c3))
+
 ## [1.12.24](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.23...v1.12.24) (2025-12-09)
 
 ## [1.12.23](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.22...v1.12.23) (2025-12-09)
