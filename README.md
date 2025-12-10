@@ -95,6 +95,29 @@ Replace `your_hevy_api_key_here` with your actual Hevy API key. If you prefer th
 pnpm start -- --hevy-api-key=your_hevy_api_key_here
 ```
 
+### Optional: Sentry monitoring
+
+`hevy-mcp` can optionally send errors and tool usage to Sentry using the
+[Sentry MCP integration](https://docs.sentry.io/product/insights/ai/mcp/getting-started/).
+
+To enable this, add the following variables to your environment (for example
+in `.env`):
+
+```env
+SENTRY_DSN=your_sentry_dsn_here
+
+# Optional overrides
+SENTRY_ENVIRONMENT=local
+SENTRY_TRACES_SAMPLE_RATE=1.0
+# Optional: include PII (tool args/results) in Sentry.
+# Defaults to false when unset. Set to "true" or "1" to enable.
+SENTRY_SEND_DEFAULT_PII=false
+```
+
+When `SENTRY_DSN` is set, the server wraps the underlying `McpServer` with
+`Sentry.wrapMcpServerWithSentry`, so requests and tool calls are captured in
+your Sentry project.
+
 ## Transport
 
 ### Deploy via Smithery (TypeScript runtime)
