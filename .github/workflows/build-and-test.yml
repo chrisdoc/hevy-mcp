@@ -43,11 +43,8 @@ jobs:
     - name: Run build
       run: pnpm run build
 
-    - name: Run unit tests
-      run: pnpm vitest run --coverage --exclude tests/integration/**
-
-    - name: Run integration tests
-      run: pnpm vitest run tests/integration
+    - name: Run tests with coverage
+      run: pnpm vitest run --coverage
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
@@ -55,6 +52,7 @@ jobs:
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/lcov.info
 
   otel-cicd-action:
     if: always()
