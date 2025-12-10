@@ -101,11 +101,9 @@ describe("Server entry", () => {
 			};
 			process.argv = originalArgv.slice(0, 2);
 
-			const exitSpy = vi
-				.spyOn(process, "exit")
-				.mockImplementation((_code?: number) => {
-					throw new Error("process.exit called");
-				});
+			const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
+				throw new Error("process.exit called");
+			});
 
 			await expect(runServer()).rejects.toThrow();
 			expect(exitSpy).toHaveBeenCalledWith(1);
