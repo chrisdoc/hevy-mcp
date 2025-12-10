@@ -1,6 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { PostWorkoutsRequestBody } from "../generated/client/types/index.js";
+import type {
+	PostWorkoutsRequestBody,
+	PostWorkoutsRequestExercise,
+	PostWorkoutsRequestSetRpeEnumKey,
+	PostWorkoutsRequestSetTypeEnumKey,
+} from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
@@ -8,6 +13,7 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import type { InferToolParams } from "../utils/tool-helpers.js";
 
 /**
  * Type definition for exercise set types
@@ -45,19 +51,23 @@ export function registerWorkoutTools(
 	hevyClient: HevyClient | null,
 ) {
 	// Get workouts
+	const getWorkoutsSchema = {
+		page: z.coerce.number().gte(1).default(1),
+		pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+	} as const;
+	type GetWorkoutsParams = InferToolParams<typeof getWorkoutsSchema>;
+
 	server.tool(
 		"get-workouts",
 		"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
-		{
-			page: z.coerce.number().gte(1).default(1),
-			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
-		},
-		withErrorHandling(async ({ page, pageSize }) => {
+		getWorkoutsSchema,
+		withErrorHandling(async (args: GetWorkoutsParams) => {
 			if (!hevyClient) {
 				throw new Error(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
+			const { page, pageSize } = args;
 			const data = await hevyClient.getWorkouts({
 				page,
 				pageSize,
@@ -78,18 +88,22 @@ export function registerWorkoutTools(
 	);
 
 	// Get single workout by ID
+	const getWorkoutSchema = {
+		workoutId: z.string().min(1),
+	} as const;
+	type GetWorkoutParams = InferToolParams<typeof getWorkoutSchema>;
+
 	server.tool(
 		"get-workout",
 		"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
-		{
-			workoutId: z.string().min(1),
-		},
-		withErrorHandling(async ({ workoutId }) => {
+		getWorkoutSchema,
+		withErrorHandling(async (args: GetWorkoutParams) => {
 			if (!hevyClient) {
 				throw new Error(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
+			const { workoutId } = args;
 			const data = await hevyClient.getWorkout(workoutId);
 
 			if (!data) {
@@ -122,20 +136,24 @@ export function registerWorkoutTools(
 	);
 
 	// Get workout events (updates/deletes)
+	const getWorkoutEventsSchema = {
+		page: z.coerce.number().int().gte(1).default(1),
+		pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+		since: z.string().default("1970-01-01T00:00:00Z"),
+	} as const;
+	type GetWorkoutEventsParams = InferToolParams<typeof getWorkoutEventsSchema>;
+
 	server.tool(
 		"get-workout-events",
 		"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
-		{
-			page: z.coerce.number().int().gte(1).default(1),
-			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
-			since: z.string().default("1970-01-01T00:00:00Z"),
-		},
-		withErrorHandling(async ({ page, pageSize, since }) => {
+		getWorkoutEventsSchema,
+		withErrorHandling(async (args: GetWorkoutEventsParams) => {
 			if (!hevyClient) {
 				throw new Error(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
+			const { page, pageSize, since } = args;
 			const data = await hevyClient.getWorkoutEvents({
 				page,
 				pageSize,
@@ -155,126 +173,132 @@ export function registerWorkoutTools(
 	);
 
 	// Create workout
+	const createWorkoutSchema = {
+		title: z.string().min(1),
+		description: z.string().optional().nullable(),
+		startTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+		endTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+		isPrivate: z.boolean().default(false),
+		exercises: z.array(
+			z.object({
+				exerciseTemplateId: z.string().min(1),
+				supersetId: z.coerce.number().nullable().optional(),
+				notes: z.string().optional().nullable(),
+				sets: z.array(
+					z.object({
+						type: z
+							.enum(["warmup", "normal", "failure", "dropset"])
+							.default("normal"),
+						weightKg: z.coerce.number().optional().nullable(),
+						reps: z.coerce.number().int().optional().nullable(),
+						distanceMeters: z.coerce.number().int().optional().nullable(),
+						durationSeconds: z.coerce.number().int().optional().nullable(),
+						rpe: z.coerce.number().optional().nullable(),
+						customMetric: z.coerce.number().optional().nullable(),
+					}),
+				),
+			}),
+		),
+	} as const;
+	type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
+
 	server.tool(
 		"create-workout",
 		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
-		{
-			title: z.string().min(1),
-			description: z.string().optional().nullable(),
-			startTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
-			endTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
-			isPrivate: z.boolean().default(false),
-			exercises: z.array(
-				z.object({
-					exerciseTemplateId: z.string().min(1),
-					supersetId: z.coerce.number().nullable().optional(),
-					notes: z.string().optional().nullable(),
-					sets: z.array(
-						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
-							weightKg: z.coerce.number().optional().nullable(),
-							reps: z.coerce.number().int().optional().nullable(),
-							distanceMeters: z.coerce.number().int().optional().nullable(),
-							durationSeconds: z.coerce.number().int().optional().nullable(),
-							rpe: z.coerce.number().optional().nullable(),
-							customMetric: z.coerce.number().optional().nullable(),
-						}),
-					),
-				}),
-			),
-		},
-		withErrorHandling(
-			async ({
-				title,
-				description,
-				startTime,
-				endTime,
-				isPrivate,
-				exercises,
-			}) => {
-				if (!hevyClient) {
-					throw new Error(
-						"API client not initialized. Please provide HEVY_API_KEY.",
-					);
-				}
-				const requestBody: PostWorkoutsRequestBody = {
-					workout: {
-						title,
-						description: description || null,
-						startTime,
-						endTime,
-						isPrivate,
-						exercises: exercises.map((exercise) => ({
-							exerciseTemplateId: exercise.exerciseTemplateId,
-							supersetId: exercise.supersetId || null,
+		createWorkoutSchema,
+		withErrorHandling(async (args: CreateWorkoutParams) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
+			const { title, description, startTime, endTime, isPrivate, exercises } =
+				args;
+			const requestBody: PostWorkoutsRequestBody = {
+				workout: {
+					title,
+					description: description || null,
+					start_time: startTime,
+					end_time: endTime,
+					is_private: isPrivate,
+					exercises: exercises.map(
+						(exercise): PostWorkoutsRequestExercise => ({
+							exercise_template_id: exercise.exerciseTemplateId,
+							superset_id: exercise.supersetId || null,
 							notes: exercise.notes || null,
 							sets: exercise.sets.map((set) => ({
-								type: set.type,
-								weightKg: set.weightKg || null,
+								type: set.type as PostWorkoutsRequestSetTypeEnumKey,
+								weight_kg: set.weightKg || null,
 								reps: set.reps || null,
-								distanceMeters: set.distanceMeters || null,
-								durationSeconds: set.durationSeconds || null,
-								rpe: set.rpe || null,
-								customMetric: set.customMetric || null,
+								distance_meters: set.distanceMeters || null,
+								duration_seconds: set.durationSeconds || null,
+								rpe:
+									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) || null,
+								custom_metric: set.customMetric || null,
 							})),
-						})),
-					},
-				};
+						}),
+					),
+				},
+			};
 
-				const data = await hevyClient.createWorkout(requestBody);
+			const data = await hevyClient.createWorkout(requestBody);
 
-				if (!data) {
-					return createEmptyResponse(
-						"Failed to create workout: Server returned no data",
-					);
-				}
+			if (!data) {
+				return createEmptyResponse(
+					"Failed to create workout: Server returned no data",
+				);
+			}
 
-				const workout = formatWorkout(data);
-				return createJsonResponse(workout, {
-					pretty: true,
-					indent: 2,
-				});
-			},
-			"create-workout",
-		),
+			const workout = formatWorkout(data);
+			return createJsonResponse(workout, {
+				pretty: true,
+				indent: 2,
+			});
+		}, "create-workout"),
 	);
 
 	// Update workout
+	const updateWorkoutSchema = {
+		workoutId: z.string().min(1),
+		title: z.string().min(1),
+		description: z.string().optional().nullable(),
+		startTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+		endTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+		isPrivate: z.boolean().default(false),
+		exercises: z.array(
+			z.object({
+				exerciseTemplateId: z.string().min(1),
+				supersetId: z.coerce.number().nullable().optional(),
+				notes: z.string().optional().nullable(),
+				sets: z.array(
+					z.object({
+						type: z
+							.enum(["warmup", "normal", "failure", "dropset"])
+							.default("normal"),
+						weightKg: z.coerce.number().optional().nullable(),
+						reps: z.coerce.number().int().optional().nullable(),
+						distanceMeters: z.coerce.number().int().optional().nullable(),
+						durationSeconds: z.coerce.number().int().optional().nullable(),
+						rpe: z.coerce.number().optional().nullable(),
+						customMetric: z.coerce.number().optional().nullable(),
+					}),
+				),
+			}),
+		),
+	} as const;
+	type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
+
 	server.tool(
 		"update-workout",
 		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
-		{
-			workoutId: z.string().min(1),
-			title: z.string().min(1),
-			description: z.string().optional().nullable(),
-			startTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
-			endTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
-			isPrivate: z.boolean().default(false),
-			exercises: z.array(
-				z.object({
-					exerciseTemplateId: z.string().min(1),
-					supersetId: z.coerce.number().nullable().optional(),
-					notes: z.string().optional().nullable(),
-					sets: z.array(
-						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
-							weightKg: z.coerce.number().optional().nullable(),
-							reps: z.coerce.number().int().optional().nullable(),
-							distanceMeters: z.coerce.number().int().optional().nullable(),
-							durationSeconds: z.coerce.number().int().optional().nullable(),
-							rpe: z.coerce.number().optional().nullable(),
-							customMetric: z.coerce.number().optional().nullable(),
-						}),
-					),
-				}),
-			),
-		},
-		withErrorHandling(
-			async ({
+		updateWorkoutSchema,
+		withErrorHandling(async (args: UpdateWorkoutParams) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
+			const {
 				workoutId,
 				title,
 				description,
@@ -282,46 +306,47 @@ export function registerWorkoutTools(
 				endTime,
 				isPrivate,
 				exercises,
-			}) => {
-				const requestBody: PostWorkoutsRequestBody = {
-					workout: {
-						title,
-						description: description || null,
-						startTime,
-						endTime,
-						isPrivate,
-						exercises: exercises.map((exercise: ExerciseInput) => ({
-							exerciseTemplateId: exercise.exerciseTemplateId,
-							supersetId: exercise.supersetId || null,
+			} = args;
+			const requestBody: PostWorkoutsRequestBody = {
+				workout: {
+					title,
+					description: description || null,
+					start_time: startTime,
+					end_time: endTime,
+					is_private: isPrivate,
+					exercises: exercises.map(
+						(exercise): PostWorkoutsRequestExercise => ({
+							exercise_template_id: exercise.exerciseTemplateId,
+							superset_id: exercise.supersetId || null,
 							notes: exercise.notes || null,
-							sets: exercise.sets.map((set: ExerciseSetInput) => ({
-								type: set.type,
-								weightKg: set.weightKg || null,
+							sets: exercise.sets.map((set) => ({
+								type: set.type as PostWorkoutsRequestSetTypeEnumKey,
+								weight_kg: set.weightKg || null,
 								reps: set.reps || null,
-								distanceMeters: set.distanceMeters || null,
-								durationSeconds: set.durationSeconds || null,
-								rpe: set.rpe || null,
-								customMetric: set.customMetric || null,
+								distance_meters: set.distanceMeters || null,
+								duration_seconds: set.durationSeconds || null,
+								rpe:
+									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) || null,
+								custom_metric: set.customMetric || null,
 							})),
-						})),
-					},
-				};
+						}),
+					),
+				},
+			};
 
-				const data = await hevyClient.updateWorkout(workoutId, requestBody);
+			const data = await hevyClient.updateWorkout(workoutId, requestBody);
 
-				if (!data) {
-					return createEmptyResponse(
-						`Failed to update workout with ID ${workoutId}`,
-					);
-				}
+			if (!data) {
+				return createEmptyResponse(
+					`Failed to update workout with ID ${workoutId}`,
+				);
+			}
 
-				const workout = formatWorkout(data);
-				return createJsonResponse(workout, {
-					pretty: true,
-					indent: 2,
-				});
-			},
-			"update-workout-operation",
-		),
+			const workout = formatWorkout(data);
+			return createJsonResponse(workout, {
+				pretty: true,
+				indent: 2,
+			});
+		}, "update-workout-operation"),
 	);
 }

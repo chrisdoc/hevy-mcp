@@ -16,52 +16,12 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import type { InferToolParams } from "../utils/tool-helpers.js";
 
 // Type definitions for the routine operations
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
-
-// Define types for the routine operations based on Zod schemas
-type CreateRoutineParams = {
-	title: string;
-	folderId?: number | null;
-	notes?: string;
-	exercises: Array<{
-		exerciseTemplateId: string;
-		supersetId?: number | null;
-		restSeconds?: number;
-		notes?: string;
-		sets: Array<{
-			type: "warmup" | "normal" | "failure" | "dropset";
-			weightKg?: number;
-			reps?: number;
-			distanceMeters?: number;
-			durationSeconds?: number;
-			customMetric?: number;
-		}>;
-	}>;
-};
-
-type UpdateRoutineParams = {
-	routineId: string;
-	title: string;
-	notes?: string;
-	exercises: Array<{
-		exerciseTemplateId: string;
-		supersetId?: number | null;
-		restSeconds?: number;
-		notes?: string;
-		sets: Array<{
-			type: "warmup" | "normal" | "failure" | "dropset";
-			weightKg?: number;
-			reps?: number;
-			distanceMeters?: number;
-			durationSeconds?: number;
-			customMetric?: number;
-		}>;
-	}>;
-};
 
 /**
  * Register all routine-related tools with the MCP server
@@ -71,20 +31,23 @@ export function registerRoutineTools(
 	hevyClient: HevyClient | null,
 ) {
 	// Get routines
+	const getRoutinesSchema = {
+		page: z.coerce.number().int().gte(1).default(1),
+		pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+	} as const;
+	type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
+
 	server.tool(
 		"get-routines",
 		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
-		{
-			page: z.coerce.number().int().gte(1).default(1),
-			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
-		},
-		withErrorHandling(async (args) => {
+		getRoutinesSchema,
+		withErrorHandling(async (args: GetRoutinesParams) => {
 			if (!hevyClient) {
 				throw new Error(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const { page, pageSize } = args as { page: number; pageSize: number };
+			const { page, pageSize } = args;
 			const data = await hevyClient.getRoutines({
 				page,
 				pageSize,
@@ -105,18 +68,22 @@ export function registerRoutineTools(
 	);
 
 	// Get single routine by ID (new, direct endpoint)
+	const getRoutineSchema = {
+		routineId: z.string().min(1),
+	} as const;
+	type GetRoutineParams = InferToolParams<typeof getRoutineSchema>;
+
 	server.tool(
 		"get-routine",
 		"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
-		{
-			routineId: z.string().min(1),
-		},
-		withErrorHandling(async ({ routineId }) => {
+		getRoutineSchema,
+		withErrorHandling(async (args: GetRoutineParams) => {
 			if (!hevyClient) {
 				throw new Error(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
+			const { routineId } = args;
 			const data = await hevyClient.getRoutineById(String(routineId));
 			if (!data || !data.routine) {
 				return createEmptyResponse(`Routine with ID ${routineId} not found`);
@@ -127,41 +94,44 @@ export function registerRoutineTools(
 	);
 
 	// Create new routine
+	const createRoutineSchema = {
+		title: z.string().min(1),
+		folderId: z.coerce.number().nullable().optional(),
+		notes: z.string().optional(),
+		exercises: z.array(
+			z.object({
+				exerciseTemplateId: z.string().min(1),
+				supersetId: z.coerce.number().nullable().optional(),
+				restSeconds: z.coerce.number().int().min(0).optional(),
+				notes: z.string().optional(),
+				sets: z.array(
+					z.object({
+						type: z
+							.enum(["warmup", "normal", "failure", "dropset"])
+							.default("normal"),
+						weightKg: z.coerce.number().optional(),
+						reps: z.coerce.number().int().optional(),
+						distanceMeters: z.coerce.number().int().optional(),
+						durationSeconds: z.coerce.number().int().optional(),
+						customMetric: z.coerce.number().optional(),
+					}),
+				),
+			}),
+		),
+	} as const;
+	type CreateRoutineParams = InferToolParams<typeof createRoutineSchema>;
+
 	server.tool(
 		"create-routine",
 		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
-		{
-			title: z.string().min(1),
-			folderId: z.coerce.number().nullable().optional(),
-			notes: z.string().optional(),
-			exercises: z.array(
-				z.object({
-					exerciseTemplateId: z.string().min(1),
-					supersetId: z.coerce.number().nullable().optional(),
-					restSeconds: z.coerce.number().int().min(0).optional(),
-					notes: z.string().optional(),
-					sets: z.array(
-						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
-							weightKg: z.coerce.number().optional(),
-							reps: z.coerce.number().int().optional(),
-							distanceMeters: z.coerce.number().int().optional(),
-							durationSeconds: z.coerce.number().int().optional(),
-							customMetric: z.coerce.number().optional(),
-						}),
-					),
-				}),
-			),
-		},
-		withErrorHandling(async (args) => {
+		createRoutineSchema,
+		withErrorHandling(async (args: CreateRoutineParams) => {
 			if (!hevyClient) {
 				throw new Error(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const { title, folderId, notes, exercises } = args as CreateRoutineParams;
+			const { title, folderId, notes, exercises } = args;
 			const data = await hevyClient.createRoutine({
 				routine: {
 					title,
@@ -203,42 +173,44 @@ export function registerRoutineTools(
 	);
 
 	// Update existing routine
+	const updateRoutineSchema = {
+		routineId: z.string().min(1),
+		title: z.string().min(1),
+		notes: z.string().optional(),
+		exercises: z.array(
+			z.object({
+				exerciseTemplateId: z.string().min(1),
+				supersetId: z.coerce.number().nullable().optional(),
+				restSeconds: z.coerce.number().int().min(0).optional(),
+				notes: z.string().optional(),
+				sets: z.array(
+					z.object({
+						type: z
+							.enum(["warmup", "normal", "failure", "dropset"])
+							.default("normal"),
+						weightKg: z.coerce.number().optional(),
+						reps: z.coerce.number().int().optional(),
+						distanceMeters: z.coerce.number().int().optional(),
+						durationSeconds: z.coerce.number().int().optional(),
+						customMetric: z.coerce.number().optional(),
+					}),
+				),
+			}),
+		),
+	} as const;
+	type UpdateRoutineParams = InferToolParams<typeof updateRoutineSchema>;
+
 	server.tool(
 		"update-routine",
 		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
-		{
-			routineId: z.string().min(1),
-			title: z.string().min(1),
-			notes: z.string().optional(),
-			exercises: z.array(
-				z.object({
-					exerciseTemplateId: z.string().min(1),
-					supersetId: z.coerce.number().nullable().optional(),
-					restSeconds: z.coerce.number().int().min(0).optional(),
-					notes: z.string().optional(),
-					sets: z.array(
-						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
-							weightKg: z.coerce.number().optional(),
-							reps: z.coerce.number().int().optional(),
-							distanceMeters: z.coerce.number().int().optional(),
-							durationSeconds: z.coerce.number().int().optional(),
-							customMetric: z.coerce.number().optional(),
-						}),
-					),
-				}),
-			),
-		},
-		withErrorHandling(async (args) => {
+		updateRoutineSchema,
+		withErrorHandling(async (args: UpdateRoutineParams) => {
 			if (!hevyClient) {
 				throw new Error(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const { routineId, title, notes, exercises } =
-				args as UpdateRoutineParams;
+			const { routineId, title, notes, exercises } = args;
 			const data = await hevyClient.updateRoutine(routineId, {
 				routine: {
 					title,
