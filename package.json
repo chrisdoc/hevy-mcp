@@ -17,7 +17,8 @@
 		"hevy-mcp": "dist/cli.js"
 	},
 	"scripts": {
-		"inspect": "pnpm run build && pnpm dlx @modelcontextprotocol/inspector@latest node dist/cli.js",
+		"inspect": "pnpm run build && dotenvx run -- pnpm dlx @modelcontextprotocol/inspector@latest node dist/index.js",
+		"inspect:npm": "dotenvx run -- pnpm dlx @modelcontextprotocol/inspector@latest pnpm dlx hevy-mcp@latest",
 		"test": "vitest --run",
 		"export-specs": "node ./scripts/export-openapi-spec.js",
 		"build": "tsup",
