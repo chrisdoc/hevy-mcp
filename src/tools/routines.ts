@@ -34,10 +34,10 @@ type CreateRoutineParams = {
 		notes?: string;
 		sets: Array<{
 			type: "warmup" | "normal" | "failure" | "dropset";
-			weightKg?: number;
+			weight?: number;
 			reps?: number;
-			distanceMeters?: number;
-			durationSeconds?: number;
+			distance?: number;
+			duration?: number;
 			customMetric?: number;
 		}>;
 	}>;
@@ -54,10 +54,10 @@ type UpdateRoutineParams = {
 		notes?: string;
 		sets: Array<{
 			type: "warmup" | "normal" | "failure" | "dropset";
-			weightKg?: number;
+			weight?: number;
 			reps?: number;
-			distanceMeters?: number;
-			durationSeconds?: number;
+			distance?: number;
+			duration?: number;
 			customMetric?: number;
 		}>;
 	}>;
@@ -145,10 +145,10 @@ export function registerRoutineTools(
 							type: z
 								.enum(["warmup", "normal", "failure", "dropset"])
 								.default("normal"),
-							weightKg: z.coerce.number().optional(),
+							weight: z.coerce.number().optional(),
 							reps: z.coerce.number().int().optional(),
-							distanceMeters: z.coerce.number().int().optional(),
-							durationSeconds: z.coerce.number().int().optional(),
+							distance: z.coerce.number().int().optional(),
+							duration: z.coerce.number().int().optional(),
 							customMetric: z.coerce.number().optional(),
 						}),
 					),
@@ -176,10 +176,10 @@ export function registerRoutineTools(
 							sets: exercise.sets.map(
 								(set): PostRoutinesRequestSet => ({
 									type: set.type as PostRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weightKg ?? null,
+									weight_kg: set.weight ?? null,
 									reps: set.reps ?? null,
-									distance_meters: set.distanceMeters ?? null,
-									duration_seconds: set.durationSeconds ?? null,
+									distance_meters: set.distance ?? null,
+									duration_seconds: set.duration ?? null,
 									custom_metric: set.customMetric ?? null,
 								}),
 							),
@@ -221,10 +221,10 @@ export function registerRoutineTools(
 							type: z
 								.enum(["warmup", "normal", "failure", "dropset"])
 								.default("normal"),
-							weightKg: z.coerce.number().optional(),
+							weight: z.coerce.number().optional(),
 							reps: z.coerce.number().int().optional(),
-							distanceMeters: z.coerce.number().int().optional(),
-							durationSeconds: z.coerce.number().int().optional(),
+							distance: z.coerce.number().int().optional(),
+							duration: z.coerce.number().int().optional(),
 							customMetric: z.coerce.number().optional(),
 						}),
 					),
@@ -252,10 +252,10 @@ export function registerRoutineTools(
 							sets: exercise.sets.map(
 								(set): PutRoutinesRequestSet => ({
 									type: set.type as PutRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weightKg ?? null,
+									weight_kg: set.weight ?? null,
 									reps: set.reps ?? null,
-									distance_meters: set.distanceMeters ?? null,
-									duration_seconds: set.durationSeconds ?? null,
+									distance_meters: set.distance ?? null,
+									duration_seconds: set.duration ?? null,
 									custom_metric: set.customMetric ?? null,
 								}),
 							),
