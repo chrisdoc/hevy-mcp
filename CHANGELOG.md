@@ -1,3 +1,10 @@
+## [1.13.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.13.1...v1.13.2) (2025-12-10)
+
+
+### Bug Fixes
+
+* align routine and workout weight fields ([#190](https://github.com/chrisdoc/hevy-mcp/issues/190)) ([14d10d1](https://github.com/chrisdoc/hevy-mcp/commit/14d10d1a074e1a52830d69e42734c4f5a3eb4dfd))
+
 ## [1.13.1](https://github.com/chrisdoc/hevy-mcp/compare/v1.13.0...v1.13.1) (2025-12-10)
 
 # [1.13.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.12.24...v1.13.0) (2025-12-10)
