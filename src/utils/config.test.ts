@@ -14,6 +14,14 @@ describe("parseConfig", () => {
 		expect(cfg.apiKey).toBe("cliKey");
 	});
 
+	it("supports --hevyApiKey= camelCase form", () => {
+		const cfg = parseConfig(
+			["--hevyApiKey=camelKey"],
+			env({ HEVY_API_KEY: "envKey" }),
+		);
+		expect(cfg.apiKey).toBe("camelKey");
+	});
+
 	it("supports bare hevy-api-key= form", () => {
 		const cfg = parseConfig(["hevy-api-key=bareKey"], env({}));
 		expect(cfg.apiKey).toBe("bareKey");
