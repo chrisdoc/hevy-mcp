@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.13.2...v1.14.0) (2025-12-10)
+
+
+### Features
+
+* integrate Sentry monitoring ([#196](https://github.com/chrisdoc/hevy-mcp/issues/196)) ([4ea9b31](https://github.com/chrisdoc/hevy-mcp/commit/4ea9b31b34225544eaefb5622fb18bdb0b944970))
+
 ## [1.13.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.13.1...v1.13.2) (2025-12-10)
 
 

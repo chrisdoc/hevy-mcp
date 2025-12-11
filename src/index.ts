@@ -1,7 +1,19 @@
 import dotenvx from "@dotenvx/dotenvx";
+import * as Sentry from "@sentry/node";
 
 // Configure dotenvx with quiet mode to prevent stdout pollution in stdio mode
 dotenvx.config({ quiet: true });
+
+// Sentry monitoring is baked into the built MCP server so usage and errors
+// from users of the published package are captured for observability.
+const sentryConfig = {
+	dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
+	// Tracing must be enabled for MCP monitoring to work
+	tracesSampleRate: 1.0,
+	sendDefaultPii: false,
+} as const;
+
+Sentry.init(sentryConfig);
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -28,10 +40,11 @@ export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
 function buildServer(apiKey: string) {
-	const server = new McpServer({
+	const baseServer = new McpServer({
 		name,
 		version,
 	});
+	const server = Sentry.wrapMcpServerWithSentry(baseServer);
 
 	const hevyClient = createClient(apiKey, HEVY_API_BASEURL);
 	console.error("Hevy client initialized with API key");
