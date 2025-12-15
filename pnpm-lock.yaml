@@ -62,13 +62,13 @@ importers:
         version: 2.3.8
       '@commitlint/cli':
         specifier: ^20.1.0
-        version: 20.2.0(@types/node@24.10.1)(typescript@5.9.3)
+        version: 20.2.0(@types/node@25.0.2)(typescript@5.9.3)
       '@commitlint/config-conventional':
         specifier: ^20.0.0
         version: 20.2.0
       '@commitlint/prompt-cli':
         specifier: ^20.1.0
-        version: 20.2.0(@types/node@24.10.1)(typescript@5.9.3)
+        version: 20.2.0(@types/node@25.0.2)(typescript@5.9.3)
       '@semantic-release/changelog':
         specifier: ^6.0.3
         version: 6.0.3(semantic-release@25.0.2(typescript@5.9.3))
@@ -83,19 +83,19 @@ importers:
         version: 12.0.2(semantic-release@25.0.2(typescript@5.9.3))
       '@semantic-release/npm':
         specifier: ^13.1.2
-        version: 13.1.2(semantic-release@25.0.2(typescript@5.9.3))
+        version: 13.1.3(semantic-release@25.0.2(typescript@5.9.3))
       '@semantic-release/release-notes-generator':
         specifier: ^14.1.0
         version: 14.1.0(semantic-release@25.0.2(typescript@5.9.3))
       '@smithery/cli':
         specifier: ^1.6.3
-        version: 1.6.6(@types/node@24.10.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.13)
+        version: 1.6.6(@types/node@25.0.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.13)
       '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.1
+        specifier: ^25.0.2
+        version: 25.0.2
       '@vitest/coverage-v8':
         specifier: ^4.0.14
-        version: 4.0.15(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 4.0.15(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
       abstract-syntax-tree:
         specifier: ^2.22.0
         version: 2.22.0
@@ -104,7 +104,7 @@ importers:
         version: 10.1.0
       lefthook:
         specifier: ^2.0.4
-        version: 2.0.8
+        version: 2.0.11
       semantic-release:
         specifier: ^25.0.2
         version: 25.0.2(typescript@5.9.3)
@@ -119,21 +119,21 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.14
-        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
 packages:
 
-  '@actions/core@1.11.1':
-    resolution: {integrity: sha512-hXJCSrkwfA46Vd9Z3q4cpEpHB1rL5NG04+/rbqW9d3+CSvtB1tYe8UTpAlixa1vj0m/ULglfEK2UKxMGxCxv5A==}
+  '@actions/core@2.0.1':
+    resolution: {integrity: sha512-oBfqT3GwkvLlo1fjvhQLQxuwZCGTarTE5OuZ2Wg10hvhBj7LRIlF611WT4aZS6fDhO5ZKlY7lCAZTlpmyaHaeg==}
 
-  '@actions/exec@1.1.1':
-    resolution: {integrity: sha512-+sCcHHbVdk93a0XT19ECtO/gIXoxvdsgQLzb2fE2/5sIZmWQuluYyjPQtrtTHdU1YzTZ7bAPN4sITq2xi1679w==}
+  '@actions/exec@2.0.0':
+    resolution: {integrity: sha512-k8ngrX2voJ/RIN6r9xB82NVqKpnMRtxDoiO+g3olkIUpQNqjArXrCQceduQZCQj3P3xm32pChRLqRrtXTlqhIw==}
 
-  '@actions/http-client@2.2.3':
-    resolution: {integrity: sha512-mx8hyJi/hjFvbPokCg4uRd4ZX78t+YyRPtnKWwIl+RzNaVuFpQHfmlGVfsKEJN8LwTCvL+DfVgAM04XaHkm6bA==}
+  '@actions/http-client@3.0.0':
+    resolution: {integrity: sha512-1s3tXAfVMSz9a4ZEBkXXRQD4QhY3+GAsWSbaYpeknPOKEeyRiU3lH+bHiLMZdo2x/fIeQ/hscL1wCkDLVM2DZQ==}
 
-  '@actions/io@1.1.3':
-    resolution: {integrity: sha512-wi9JjgKLYS7U/z8PPbco+PvTb/nRWjeoFlJ1Qer83k/3C5PHQi28hiVdeE2kHXmIL99mQFawx8qt/JPjZilJ8Q==}
+  '@actions/io@2.0.0':
+    resolution: {integrity: sha512-Jv33IN09XLO+0HS79aaODsvIRyduiF7NY/F6LYeK5oeUmrsz7aFdRphQjFoESF4jS7lMauDOttKALcpapVDIAg==}
 
   '@anthropic-ai/mcpb@1.2.0':
     resolution: {integrity: sha512-XYVCxQJsr4D4ZecEXVe9PvBpKj2T31KgEiT8K4thoi7krPFIQjXj4yOolAXP8hGSJHrW1Nf4odZES1kjLNDVkg==}
@@ -1336,8 +1336,8 @@ packages:
     peerDependencies:
       semantic-release: '>=24.1.0'
 
-  '@semantic-release/npm@13.1.2':
-    resolution: {integrity: sha512-9rtshDTNlzYrC7uSBtB1vHqFzFZaNHigqkkCH5Ls4N/BSlVOenN5vtwHYxjAR4jf1hNvWSVwL4eIFTHONYckkw==}
+  '@semantic-release/npm@13.1.3':
+    resolution: {integrity: sha512-q7zreY8n9V0FIP1Cbu63D+lXtRAVAIWb30MH5U3TdrfXt6r2MIrWCY0whAImN53qNvSGp0Zt07U95K+Qp9GpEg==}
     engines: {node: ^22.14.0 || >= 24.10.0}
     peerDependencies:
       semantic-release: '>=20.1.0'
@@ -1450,8 +1450,8 @@ packages:
   '@types/node@22.19.3':
     resolution: {integrity: sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA==}
 
-  '@types/node@24.10.1':
-    resolution: {integrity: sha512-GNWcUTRBgIRJD5zj+Tq0fKOJ5XZajIiBroOF0yvj2bSU1WvNdYS/dn9UxwsujGW4JX06dnHyjV2y9rRaybH0iQ==}
+  '@types/node@25.0.2':
+    resolution: {integrity: sha512-gWEkeiyYE4vqjON/+Obqcoeffmk0NF15WSBwSs7zwVA2bAbTaE0SJ7P0WNGoJn8uE7fiaV5a7dKYIJriEqOrmA==}
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
@@ -2727,58 +2727,58 @@ packages:
     resolution: {integrity: sha512-7W0vV3rqv5tokqkBAFV1LbR7HPOWzXQDpDgEuib/aJ1jsZZx6x3c2mBI+TJhJzOhkGeaLbCKEHXEXLfirtG2JA==}
     engines: {node: '>=18'}
 
-  lefthook-darwin-arm64@2.0.8:
-    resolution: {integrity: sha512-Nu52qmqhSP+DKKuKYKDkMkPbgvgTZv+ueEo1LVXidTcgxEwvrbe2balcdqdulQTsPfYtm3pCPvv8ikalHrH+Qg==}
+  lefthook-darwin-arm64@2.0.11:
+    resolution: {integrity: sha512-RfpdcJJQXstdgDiIBDRffncayKiXx+0LyMUCunIxDEO2JMXPpYK2hIdpUU0rkitzptAADchG7u1OXJ31rrtIAA==}
     cpu: [arm64]
     os: [darwin]
 
-  lefthook-darwin-x64@2.0.8:
-    resolution: {integrity: sha512-EGNBw1vuXzphs/KyDchkglwnYNkKQH3EpptIPXcQCRC3WKiz87PSrwkOxjGtgDg6nLYWru3YUzgcFrIGUXjWPw==}
+  lefthook-darwin-x64@2.0.11:
+    resolution: {integrity: sha512-D013UNKQa4FKgpxDMqdaU109U2/Pidtrt9CobQoq8te4eGUglcwxMzuYVTgaYnenz0FgKxSfVaCZsZgwqeMWqA==}
     cpu: [x64]
     os: [darwin]
 
-  lefthook-freebsd-arm64@2.0.8:
-    resolution: {integrity: sha512-ZPua6y7y7l/0PpMJhU1ZAt4jl0dC3F+EGlSzy9v0vqzyoixk0HRqsz9nxN7wmJo/5vHhHJBjsE5/sEYS9Z8tsQ==}
+  lefthook-freebsd-arm64@2.0.11:
+    resolution: {integrity: sha512-mgfNqG1tiJkCuGNwPG0LEfnAHGJA+Qzl6KidOtX/Zhxmj/sM+6hxiP4LOeEAhCnaZF5kuPtQgbFzShFHc2BK6A==}
     cpu: [arm64]
     os: [freebsd]
 
-  lefthook-freebsd-x64@2.0.8:
-    resolution: {integrity: sha512-ab9M5gCsMeYzOeBoHIOz+zyVSnEZowwV2jn3Am+x625ZNcqU0T3eNf+a7ppopvkQjrehfmO3y5HiMVAkSAs1Vw==}
+  lefthook-freebsd-x64@2.0.11:
+    resolution: {integrity: sha512-rnHOlQbJfLGCibr7yHM44kPNgf/tFpEbj/cWVHRhjRdbgYSCAjJk0uKd/EVo3v/vjfId2na0AhWbLvO/aY3wQQ==}
     cpu: [x64]
     os: [freebsd]
 
-  lefthook-linux-arm64@2.0.8:
-    resolution: {integrity: sha512-BaoUKmwnAbWssSwVHoA0HyJFX3m+Mp6xJhxD4YAu8H1mo8DNOWBG5J7DGXJRIiBTm6YjAXlerq8Pjfx4lycfYQ==}
+  lefthook-linux-arm64@2.0.11:
+    resolution: {integrity: sha512-1XjDo2/4fM0TbJBwxZh8w+WMOFueg9oYHkryM8vc3vp8wTajdWBazg1K37JIS3FUco3tcOs+eWHQg0ekVjpWoA==}
     cpu: [arm64]
     os: [linux]
 
-  lefthook-linux-x64@2.0.8:
-    resolution: {integrity: sha512-oNXcoGWsGy/U9gqE6PJpLtiNlGlAgoYtVmfc2gauNPRJehaQBaifD5/5aXPiWhRukUTQ1p9kuShFDpT2jOYn5Q==}
+  lefthook-linux-x64@2.0.11:
+    resolution: {integrity: sha512-OKOcfEvozXhO7+y2xgUzvc2kkqfhluql/sjQSzd8Ka+iK3hM4KCfbfgYx9q61Pjr34a0+i03cuH5DF2dlq/rrg==}
     cpu: [x64]
     os: [linux]
 
-  lefthook-openbsd-arm64@2.0.8:
-    resolution: {integrity: sha512-pxUgnilqsnDEWF7J5uNViHJ+Q4gSEQbRbrcIEdluBzjW34E20WK4UPk0bxZDQZAeaXTubNQEvyafmfY7dWe4Gg==}
+  lefthook-openbsd-arm64@2.0.11:
+    resolution: {integrity: sha512-n1KEx196M3SKaWVNTQXGgxzBsiYAsdAy6Of6I6TAZwPhG7yoRrKGkQrhOlPgMzYl36udG1Lk4D+mfY9T0oOUYQ==}
     cpu: [arm64]
     os: [openbsd]
 
-  lefthook-openbsd-x64@2.0.8:
-    resolution: {integrity: sha512-p50cpkWImLwU330JJuJaioNVT1X/Z56iqPOLEgBt2+1BlljmPe/eGrMArF4iIKfdZ4wFJ9f2h0gq+jyvQGFjSg==}
+  lefthook-openbsd-x64@2.0.11:
+    resolution: {integrity: sha512-WAEtKpYUVvuJMVLA38IBoaPnTNSiaEzvUYxjTBlYTLHJwn7HC2GG6P1cnvoua8rfxb9/Bfi7C3D3IPa9VmB33Q==}
     cpu: [x64]
     os: [openbsd]
 
-  lefthook-windows-arm64@2.0.8:
-    resolution: {integrity: sha512-dStshOCvmg9sQSUmWNiLMLv52HFTVxC9JE2HGxCiHcK5oqVZS2v9cCZdFdiDZ1Xldi3ozLi2y7/Xpzul8Oqv5Q==}
+  lefthook-windows-arm64@2.0.11:
+    resolution: {integrity: sha512-HBqW1qfAnmmbpet7gSWatB6H5YIFdGxCqzolMCLwY/0o8oPFiMwdNE5RGp5JMmhZdz/h3XlbaUlIhnxoW8dk5g==}
     cpu: [arm64]
     os: [win32]
 
-  lefthook-windows-x64@2.0.8:
-    resolution: {integrity: sha512-2YgT6feliy6CCDwbkT3pg1ylKD1b9lj+O5NdLsrxvZGRmO6ftXleWB4xfWKGGY8FrzAD2Y3eEVDv5n3NvGHDzw==}
+  lefthook-windows-x64@2.0.11:
+    resolution: {integrity: sha512-e5TYmV5cBZfRrhPVFCqjauegLI5CjdAd8exyAbMzGHkiwp3ZK145Su/pntgEP3d+ayS9mpgYPJmXYOSL7WHlyg==}
     cpu: [x64]
     os: [win32]
 
-  lefthook@2.0.8:
-    resolution: {integrity: sha512-FozDCKeSI+m3BP0cvyPgHch+yf7ClS3hDy1JsRUrbNmlyjqBcmlygnRXsZzpH+wHoNnF2fmfhJhkx/7S7IpaVw==}
+  lefthook@2.0.11:
+    resolution: {integrity: sha512-/91k4dt9MRNkzeSr1iMjNi/z8dNuh+XvNfXrWA6PV+M1ZxiNY6uN6bGnr13n+j7N89f4h7YWBhCqhzhK33M5cA==}
     hasBin: true
 
   leven@3.1.0:
@@ -3091,8 +3091,8 @@ packages:
     resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==}
     engines: {node: '>=18'}
 
-  npm@11.6.4:
-    resolution: {integrity: sha512-ERjKtGoFpQrua/9bG0+h3xiv/4nVdGViCjUYA1AmlV24fFvfnSB7B7dIfZnySQ1FDLd0ZVrWPsLLp78dCtJdRQ==}
+  npm@11.7.0:
+    resolution: {integrity: sha512-wiCZpv/41bIobCoJ31NStIWKfAxxYyD1iYnWCtiyns8s5v3+l8y0HCP/sScuH6B5+GhIfda4HQKiqeGZwJWhFw==}
     engines: {node: ^20.17.0 || >=22.9.0}
     hasBin: true
     bundledDependencies:
@@ -4051,6 +4051,10 @@ packages:
     resolution: {integrity: sha512-xxCJm+Bckc6kQBknN7i9fnP/xobQRsRQxR01CztFkp/h++yfVxUUcmMgfR2HttJx/dpWjS9ubVuyspJv24Q9DA==}
     engines: {node: '>=20'}
 
+  type-fest@5.3.1:
+    resolution: {integrity: sha512-VCn+LMHbd4t6sF3wfU/+HKT63C9OoyrSIf4b+vtWHpt2U7/4InZG467YDNMFMR70DdHjAdpPWmw2lzRdg0Xqqg==}
+    engines: {node: '>=20'}
+
   type-is@2.0.1:
     resolution: {integrity: sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==}
     engines: {node: '>= 0.6'}
@@ -4385,21 +4389,21 @@ packages:
 
 snapshots:
 
-  '@actions/core@1.11.1':
+  '@actions/core@2.0.1':
     dependencies:
-      '@actions/exec': 1.1.1
-      '@actions/http-client': 2.2.3
+      '@actions/exec': 2.0.0
+      '@actions/http-client': 3.0.0
 
-  '@actions/exec@1.1.1':
+  '@actions/exec@2.0.0':
     dependencies:
-      '@actions/io': 1.1.3
+      '@actions/io': 2.0.0
 
-  '@actions/http-client@2.2.3':
+  '@actions/http-client@3.0.0':
     dependencies:
       tunnel: 0.0.6
       undici: 5.29.0
 
-  '@actions/io@1.1.3': {}
+  '@actions/io@2.0.0': {}
 
   '@anthropic-ai/mcpb@1.2.0':
     dependencies:
@@ -4491,11 +4495,11 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@commitlint/cli@20.2.0(@types/node@24.10.1)(typescript@5.9.3)':
+  '@commitlint/cli@20.2.0(@types/node@25.0.2)(typescript@5.9.3)':
     dependencies:
       '@commitlint/format': 20.2.0
       '@commitlint/lint': 20.2.0
-      '@commitlint/load': 20.2.0(@types/node@24.10.1)(typescript@5.9.3)
+      '@commitlint/load': 20.2.0(@types/node@25.0.2)(typescript@5.9.3)
       '@commitlint/read': 20.2.0
       '@commitlint/types': 20.2.0
       tinyexec: 1.0.2
@@ -4542,7 +4546,7 @@ snapshots:
       '@commitlint/rules': 20.2.0
       '@commitlint/types': 20.2.0
 
-  '@commitlint/load@20.2.0(@types/node@24.10.1)(typescript@5.9.3)':
+  '@commitlint/load@20.2.0(@types/node@25.0.2)(typescript@5.9.3)':
     dependencies:
       '@commitlint/config-validator': 20.2.0
       '@commitlint/execute-rule': 20.0.0
@@ -4550,7 +4554,7 @@ snapshots:
       '@commitlint/types': 20.2.0
       chalk: 5.6.2
       cosmiconfig: 9.0.0(typescript@5.9.3)
-      cosmiconfig-typescript-loader: 6.2.0(@types/node@24.10.1)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3)
+      cosmiconfig-typescript-loader: 6.2.0(@types/node@25.0.2)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3)
       lodash.isplainobject: 4.0.6
       lodash.merge: 4.6.2
       lodash.uniq: 4.5.0
@@ -4566,22 +4570,22 @@ snapshots:
       conventional-changelog-angular: 7.0.0
       conventional-commits-parser: 5.0.0
 
-  '@commitlint/prompt-cli@20.2.0(@types/node@24.10.1)(typescript@5.9.3)':
+  '@commitlint/prompt-cli@20.2.0(@types/node@25.0.2)(typescript@5.9.3)':
     dependencies:
-      '@commitlint/prompt': 20.2.0(@types/node@24.10.1)(typescript@5.9.3)
-      inquirer: 9.3.8(@types/node@24.10.1)
+      '@commitlint/prompt': 20.2.0(@types/node@25.0.2)(typescript@5.9.3)
+      inquirer: 9.3.8(@types/node@25.0.2)
       tinyexec: 1.0.2
     transitivePeerDependencies:
       - '@types/node'
       - typescript
 
-  '@commitlint/prompt@20.2.0(@types/node@24.10.1)(typescript@5.9.3)':
+  '@commitlint/prompt@20.2.0(@types/node@25.0.2)(typescript@5.9.3)':
     dependencies:
       '@commitlint/ensure': 20.2.0
-      '@commitlint/load': 20.2.0(@types/node@24.10.1)(typescript@5.9.3)
+      '@commitlint/load': 20.2.0(@types/node@25.0.2)(typescript@5.9.3)
       '@commitlint/types': 20.2.0
       chalk: 5.6.2
-      inquirer: 9.3.8(@types/node@24.10.1)
+      inquirer: 9.3.8(@types/node@25.0.2)
     transitivePeerDependencies:
       - '@types/node'
       - typescript
@@ -4841,12 +4845,12 @@ snapshots:
       '@inquirer/type': 2.0.0
       yoctocolors-cjs: 2.1.3
 
-  '@inquirer/external-editor@1.0.3(@types/node@24.10.1)':
+  '@inquirer/external-editor@1.0.3(@types/node@25.0.2)':
     dependencies:
       chardet: 2.1.1
       iconv-lite: 0.7.0
     optionalDependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
 
   '@inquirer/figures@1.0.15': {}
 
@@ -5691,18 +5695,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@semantic-release/npm@13.1.2(semantic-release@25.0.2(typescript@5.9.3))':
+  '@semantic-release/npm@13.1.3(semantic-release@25.0.2(typescript@5.9.3))':
     dependencies:
-      '@actions/core': 1.11.1
+      '@actions/core': 2.0.1
       '@semantic-release/error': 4.0.0
       aggregate-error: 5.0.0
       env-ci: 11.2.0
-      execa: 9.6.0
+      execa: 9.6.1
       fs-extra: 11.3.2
       lodash-es: 4.17.21
       nerf-dart: 1.0.0
       normalize-url: 8.1.0
-      npm: 11.6.4
+      npm: 11.7.0
       rc: 1.2.8
       read-pkg: 10.0.0
       registry-auth-token: 5.1.0
@@ -5797,7 +5801,7 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@smithery/cli@1.6.6(@types/node@24.10.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.13)':
+  '@smithery/cli@1.6.6(@types/node@25.0.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.13)':
     dependencies:
       '@anthropic-ai/mcpb': 1.2.0
       '@modelcontextprotocol/sdk': 1.24.3(zod@4.1.13)
@@ -5811,8 +5815,8 @@ snapshots:
       cross-fetch: 4.1.0
       esbuild: 0.25.12
       express: 5.2.1
-      inquirer: 8.2.7(@types/node@24.10.1)
-      inquirer-autocomplete-prompt: 2.0.1(inquirer@8.2.7(@types/node@24.10.1))
+      inquirer: 8.2.7(@types/node@25.0.2)
+      inquirer-autocomplete-prompt: 2.0.1(inquirer@8.2.7(@types/node@25.0.2))
       lodash: 4.17.21
       ora: 8.2.0
       react: 19.2.0
@@ -5890,11 +5894,11 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
 
   '@types/conventional-commits-parser@5.0.2':
     dependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
 
   '@types/deep-eql@4.0.2': {}
 
@@ -5904,17 +5908,17 @@ snapshots:
 
   '@types/mute-stream@0.0.4':
     dependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
 
   '@types/mysql@2.15.27':
     dependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
 
   '@types/node@22.19.3':
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@24.10.1':
+  '@types/node@25.0.2':
     dependencies:
       undici-types: 7.16.0
 
@@ -5926,19 +5930,19 @@ snapshots:
 
   '@types/pg@8.15.6':
     dependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
       pg-protocol: 1.10.3
       pg-types: 2.2.0
 
   '@types/tedious@4.0.14':
     dependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
 
   '@types/tinycolor2@1.4.6': {}
 
   '@types/wrap-ansi@3.0.0': {}
 
-  '@vitest/coverage-v8@4.0.15(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@vitest/coverage-v8@4.0.15(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.0.15
@@ -5951,7 +5955,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -5964,13 +5968,13 @@ snapshots:
       chai: 6.2.1
       tinyrainbow: 3.0.3
 
-  '@vitest/mocker@4.0.15(vite@7.2.7(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@vitest/mocker@4.0.15(vite@7.2.7(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@vitest/spy': 4.0.15
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.2.7(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+      vite: 7.2.7(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/pretty-format@4.0.15':
     dependencies:
@@ -6386,9 +6390,9 @@ snapshots:
       object-assign: 4.1.1
       vary: 1.1.2
 
-  cosmiconfig-typescript-loader@6.2.0(@types/node@24.10.1)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3):
+  cosmiconfig-typescript-loader@6.2.0(@types/node@25.0.2)(cosmiconfig@9.0.0(typescript@5.9.3))(typescript@5.9.3):
     dependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
       cosmiconfig: 9.0.0(typescript@5.9.3)
       jiti: 2.6.1
       typescript: 5.9.3
@@ -7083,18 +7087,18 @@ snapshots:
 
   ini@4.1.1: {}
 
-  inquirer-autocomplete-prompt@2.0.1(inquirer@8.2.7(@types/node@24.10.1)):
+  inquirer-autocomplete-prompt@2.0.1(inquirer@8.2.7(@types/node@25.0.2)):
     dependencies:
       ansi-escapes: 4.3.2
       figures: 3.2.0
-      inquirer: 8.2.7(@types/node@24.10.1)
+      inquirer: 8.2.7(@types/node@25.0.2)
       picocolors: 1.1.1
       run-async: 2.4.1
       rxjs: 7.8.2
 
-  inquirer@8.2.7(@types/node@24.10.1):
+  inquirer@8.2.7(@types/node@25.0.2):
     dependencies:
-      '@inquirer/external-editor': 1.0.3(@types/node@24.10.1)
+      '@inquirer/external-editor': 1.0.3(@types/node@25.0.2)
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       cli-cursor: 3.1.0
@@ -7112,9 +7116,9 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  inquirer@9.3.8(@types/node@24.10.1):
+  inquirer@9.3.8(@types/node@25.0.2):
     dependencies:
-      '@inquirer/external-editor': 1.0.3(@types/node@24.10.1)
+      '@inquirer/external-editor': 1.0.3(@types/node@25.0.2)
       '@inquirer/figures': 1.0.15
       ansi-escapes: 4.3.2
       cli-width: 4.1.0
@@ -7294,48 +7298,48 @@ snapshots:
     dependencies:
       package-json: 10.0.1
 
-  lefthook-darwin-arm64@2.0.8:
+  lefthook-darwin-arm64@2.0.11:
     optional: true
 
-  lefthook-darwin-x64@2.0.8:
+  lefthook-darwin-x64@2.0.11:
     optional: true
 
-  lefthook-freebsd-arm64@2.0.8:
+  lefthook-freebsd-arm64@2.0.11:
     optional: true
 
-  lefthook-freebsd-x64@2.0.8:
+  lefthook-freebsd-x64@2.0.11:
     optional: true
 
-  lefthook-linux-arm64@2.0.8:
+  lefthook-linux-arm64@2.0.11:
     optional: true
 
-  lefthook-linux-x64@2.0.8:
+  lefthook-linux-x64@2.0.11:
     optional: true
 
-  lefthook-openbsd-arm64@2.0.8:
+  lefthook-openbsd-arm64@2.0.11:
     optional: true
 
-  lefthook-openbsd-x64@2.0.8:
+  lefthook-openbsd-x64@2.0.11:
     optional: true
 
-  lefthook-windows-arm64@2.0.8:
+  lefthook-windows-arm64@2.0.11:
     optional: true
 
-  lefthook-windows-x64@2.0.8:
+  lefthook-windows-x64@2.0.11:
     optional: true
 
-  lefthook@2.0.8:
+  lefthook@2.0.11:
     optionalDependencies:
-      lefthook-darwin-arm64: 2.0.8
-      lefthook-darwin-x64: 2.0.8
-      lefthook-freebsd-arm64: 2.0.8
-      lefthook-freebsd-x64: 2.0.8
-      lefthook-linux-arm64: 2.0.8
-      lefthook-linux-x64: 2.0.8
-      lefthook-openbsd-arm64: 2.0.8
-      lefthook-openbsd-x64: 2.0.8
-      lefthook-windows-arm64: 2.0.8
-      lefthook-windows-x64: 2.0.8
+      lefthook-darwin-arm64: 2.0.11
+      lefthook-darwin-x64: 2.0.11
+      lefthook-freebsd-arm64: 2.0.11
+      lefthook-freebsd-x64: 2.0.11
+      lefthook-linux-arm64: 2.0.11
+      lefthook-linux-x64: 2.0.11
+      lefthook-openbsd-arm64: 2.0.11
+      lefthook-openbsd-x64: 2.0.11
+      lefthook-windows-arm64: 2.0.11
+      lefthook-windows-x64: 2.0.11
 
   leven@3.1.0: {}
 
@@ -7601,7 +7605,7 @@ snapshots:
       path-key: 4.0.0
       unicorn-magic: 0.3.0
 
-  npm@11.6.4: {}
+  npm@11.7.0: {}
 
   oas-kit-common@1.0.8:
     dependencies:
@@ -7965,7 +7969,7 @@ snapshots:
       '@types/normalize-package-data': 2.4.4
       normalize-package-data: 8.0.0
       parse-json: 8.3.0
-      type-fest: 5.2.0
+      type-fest: 5.3.1
       unicorn-magic: 0.3.0
 
   read-pkg@9.0.1:
@@ -8114,7 +8118,7 @@ snapshots:
       '@semantic-release/commit-analyzer': 13.0.1(semantic-release@25.0.2(typescript@5.9.3))
       '@semantic-release/error': 4.0.0
       '@semantic-release/github': 12.0.2(semantic-release@25.0.2(typescript@5.9.3))
-      '@semantic-release/npm': 13.1.2(semantic-release@25.0.2(typescript@5.9.3))
+      '@semantic-release/npm': 13.1.3(semantic-release@25.0.2(typescript@5.9.3))
       '@semantic-release/release-notes-generator': 14.1.0(semantic-release@25.0.2(typescript@5.9.3))
       aggregate-error: 5.0.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
@@ -8551,6 +8555,10 @@ snapshots:
     dependencies:
       tagged-tag: 1.0.0
 
+  type-fest@5.3.1:
+    dependencies:
+      tagged-tag: 1.0.0
+
   type-is@2.0.1:
     dependencies:
       content-type: 1.0.5
@@ -8624,7 +8632,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@7.2.7(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2):
+  vite@7.2.7(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.3)
@@ -8633,16 +8641,16 @@ snapshots:
       rollup: 4.53.3
       tinyglobby: 0.2.15
     optionalDependencies:
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
       fsevents: 2.3.3
       jiti: 2.6.1
       tsx: 4.21.0
       yaml: 2.8.2
 
-  vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2):
+  vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
       '@vitest/expect': 4.0.15
-      '@vitest/mocker': 4.0.15(vite@7.2.7(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
+      '@vitest/mocker': 4.0.15(vite@7.2.7(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
       '@vitest/pretty-format': 4.0.15
       '@vitest/runner': 4.0.15
       '@vitest/snapshot': 4.0.15
@@ -8659,11 +8667,11 @@ snapshots:
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vite: 7.2.7(@types/node@24.10.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+      vite: 7.2.7(@types/node@25.0.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
-      '@types/node': 24.10.1
+      '@types/node': 25.0.2
     transitivePeerDependencies:
       - jiti
       - less
