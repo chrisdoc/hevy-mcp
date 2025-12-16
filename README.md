@@ -77,6 +77,9 @@ To use this MCP server with Cursor, you need to update your `~/.cursor/mcp.json`
 
 Make sure to replace `your-api-key-here` with your actual Hevy API key.
 
+The `"hevy-mcp"` key name is arbitrary. If you already have an existing config
+using a different name (for example `"hevy-mcp-server"`), you can keep it.
+
 
 ## Configuration
 
@@ -216,7 +219,7 @@ hevy-mcp/
 │       ├── error-handler.ts       # Tool error wrapper + response builder
 │       ├── formatters.ts          # Domain formatting helpers
 │       ├── hevyClient.ts          # API client factory
-│       ├── httpServer.ts          # HTTP transport (removed/deprecated)
+│       ├── httpServer.ts          # Legacy HTTP transport (kept for reference)
 │       ├── response-formatter.ts  # MCP response utilities
 │       └── tool-helpers.ts        # Zod schema -> TS type inference
 ├── scripts/               # Build and utility scripts
@@ -288,6 +291,10 @@ To set up the `HEVY_API_KEY` secret:
 5. Click "Add secret"
 
 If the secret is not set, the integration tests will fail (by design).
+
+Note: GitHub does not provide secrets to pull requests from forks by default, so
+fork PRs may fail CI unless a maintainer reruns the checks with `HEVY_API_KEY`
+available.
 
 ### Generating API Client
 

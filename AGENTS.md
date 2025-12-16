@@ -88,6 +88,10 @@ Run these commands in order to set up a working development environment (Corepac
 - **`pnpm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
 - **`pnpm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
 
+Only list commands here that are known to be flaky or unsupported in some
+environments. Other documented commands (including `pnpm run check:types`) are
+expected to succeed.
+
 ## Environment Setup
 
 ### Required Environment Variables
@@ -134,6 +138,7 @@ Always perform these validation steps after making changes:
    pnpm run check:types
    ```
    - Must complete without errors.
+   - Runs `tsc --noEmit` across the project.
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**
