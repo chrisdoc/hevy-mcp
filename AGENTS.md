@@ -86,7 +86,6 @@ Run these commands in order to set up a working development environment (Corepac
 
 ### Known Failing Commands
 - **`pnpm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
-- **`pnpm run check:types`**: May report TypeScript errors in source code due to strict type checking. The project builds successfully via `pnpm run build` (using tsup) despite these errors. Generated code in `src/generated/` is excluded from type checking.
 - **`pnpm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
 
 ## Environment Setup
@@ -103,7 +102,7 @@ HEVY_API_KEY=your_hevy_api_key_here
 - API client functionality cannot be tested
 
 ### Node.js Version
-- **Required:** Node.js v20+ (specified in `.nvmrc` as v22.14.0)
+- **Required:** Node.js v20+ (CI uses the version pinned in `.nvmrc`)
 - Use `node --version` to verify current version
 
 ## Validation After Changes
@@ -132,7 +131,7 @@ Always perform these validation steps after making changes:
 
 4. **Type checking validation:**
    ```bash
-   npx tsc --noEmit
+   pnpm run check:types
    ```
    - Must complete without errors.
    - Verifies all type inference is working correctly.

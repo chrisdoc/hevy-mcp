@@ -16,7 +16,7 @@ This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API.
 ### Code Quality
 - `pnpm run check` - Run Biome formatter and linter (auto-fixes issues)
 - `pnpm run check:types` - TypeScript type checking without emitting files
-- `pnpm test` - Run all tests (unit and integration if HEVY_API_KEY is set)
+- `pnpm test` - Run all tests (unit + integration). Integration tests will fail by design without `HEVY_API_KEY`.
 
 ### API Client Generation
 - `pnpm run export-specs` - Export OpenAPI specification

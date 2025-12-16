@@ -27,7 +27,7 @@ Pick the workflow that fits your setup:
 
 ## Prerequisites
 
-- Node.js (v20 or higher)
+- Node.js (v20 or higher; CI uses the version pinned in `.nvmrc`)
 - pnpm (via Corepack)
 - A Hevy API key
   - Optional: A Smithery account + API key/login if you plan to deploy via Smithery
@@ -63,11 +63,13 @@ To use this MCP server with Cursor, you need to update your `~/.cursor/mcp.json`
 
 ```json
 {
-  "hevy-mcp-server": {
-    "command": "npx",
-    "args": ["-y", "hevy-mcp"],
-    "env": {
-      "HEVY_API_KEY": "your-api-key-here"
+  "mcpServers": {
+    "hevy-mcp": {
+      "command": "npx",
+      "args": ["-y", "hevy-mcp"],
+      "env": {
+        "HEVY_API_KEY": "your-api-key-here"
+      }
     }
   }
 }
@@ -210,8 +212,13 @@ hevy-mcp/
 │   │   │   ├── schemas/   # Zod schemas
 │   │   │   └── mocks/     # Mock data
 │   └── utils/             # Helper utilities
-│       ├── formatters.ts  # Data formatting helpers
-│       └── validators.ts  # Input validation helpers
+│       ├── config.ts              # Env/CLI config parsing
+│       ├── error-handler.ts       # Tool error wrapper + response builder
+│       ├── formatters.ts          # Domain formatting helpers
+│       ├── hevyClient.ts          # API client factory
+│       ├── httpServer.ts          # HTTP transport (removed/deprecated)
+│       ├── response-formatter.ts  # MCP response utilities
+│       └── tool-helpers.ts        # Zod schema -> TS type inference
 ├── scripts/               # Build and utility scripts
 └── tests/                 # Test suite
     ├── integration/       # Integration tests with real API
@@ -238,7 +245,8 @@ To run all tests (unit and integration), use:
 pnpm test
 ```
 
-> **Note:** If the `HEVY_API_KEY` environment variable is set, integration tests will also run. If not, only unit tests will run.
+> **Note:** `pnpm test` runs **all** tests. Integration tests will fail by design if
+> `HEVY_API_KEY` is missing.
 
 #### Run Only Unit Tests
 
@@ -268,8 +276,8 @@ pnpm vitest run tests/integration
 
 For GitHub Actions:
 
-1. Unit tests will always run on every push and pull request
-2. Integration tests will only run if the `HEVY_API_KEY` secret is set in the repository settings
+1. Unit + integration tests are executed as part of the normal `Build and Test` workflow
+2. Integration tests require the `HEVY_API_KEY` secret to be set
 
 To set up the `HEVY_API_KEY` secret:
 
@@ -279,7 +287,7 @@ To set up the `HEVY_API_KEY` secret:
 4. Set the name to `HEVY_API_KEY` and the value to your Hevy API key
 5. Click "Add secret"
 
-If the secret is not set, the integration tests step will be skipped with a message indicating that the API key is missing.
+If the secret is not set, the integration tests will fail (by design).
 
 ### Generating API Client
 
