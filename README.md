@@ -27,7 +27,8 @@ Pick the workflow that fits your setup:
 
 ## Prerequisites
 
-- Node.js (v20 or higher; CI uses the version pinned in `.nvmrc`)
+- Node.js (v20 or higher; strongly recommended to use the exact version pinned in
+  `.nvmrc` to match CI)
 - pnpm (via Corepack)
 - A Hevy API key
   - Optional: A Smithery account + API key/login if you plan to deploy via Smithery
@@ -59,7 +60,34 @@ cp .env.sample .env
 
 ### Integration with Cursor
 
-To use this MCP server with Cursor, you need to update your `~/.cursor/mcp.json` file by adding the following configuration:
+To use this MCP server with Cursor, add/merge this server entry under
+`"mcpServers"` in `~/.cursor/mcp.json`:
+
+```json
+{
+  "hevy-mcp": {
+    "command": "npx",
+    "args": ["-y", "hevy-mcp"],
+    "env": {
+      "HEVY_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
+Make sure to replace `your-api-key-here` with your actual Hevy API key.
+
+If your `mcp.json` already contains other servers, do not replace the whole
+file—merge the `"hevy-mcp"` entry into your existing `"mcpServers"` object.
+
+The `"hevy-mcp"` key name is arbitrary. If you already have an existing config
+using a different name (for example `"hevy-mcp-server"`), you can keep it.
+
+If you already have an existing `"mcpServers"` object, merge the `"hevy-mcp"`
+entry into it without removing other servers.
+
+<details>
+<summary><strong>Example full ~/.cursor/mcp.json</strong></summary>
 
 ```json
 {
@@ -75,10 +103,7 @@ To use this MCP server with Cursor, you need to update your `~/.cursor/mcp.json`
 }
 ```
 
-Make sure to replace `your-api-key-here` with your actual Hevy API key.
-
-The `"hevy-mcp"` key name is arbitrary. If you already have an existing config
-using a different name (for example `"hevy-mcp-server"`), you can keep it.
+</details>
 
 
 ## Configuration
@@ -219,7 +244,7 @@ hevy-mcp/
 │       ├── error-handler.ts       # Tool error wrapper + response builder
 │       ├── formatters.ts          # Domain formatting helpers
 │       ├── hevyClient.ts          # API client factory
-│       ├── httpServer.ts          # Legacy HTTP transport (kept for reference)
+│       ├── httpServer.ts          # Legacy HTTP transport (deprecated; throws explicit error; kept only for backward compatibility - removing may be breaking)
 │       ├── response-formatter.ts  # MCP response utilities
 │       └── tool-helpers.ts        # Zod schema -> TS type inference
 ├── scripts/               # Build and utility scripts
@@ -249,7 +274,8 @@ pnpm test
 ```
 
 > **Note:** `pnpm test` runs **all** tests. Integration tests will fail by design if
-> `HEVY_API_KEY` is missing.
+> `HEVY_API_KEY` is missing. If you don’t have an API key locally, use the unit
+> test command below.
 
 #### Run Only Unit Tests
 
@@ -282,6 +308,9 @@ For GitHub Actions:
 1. Unit + integration tests are executed as part of the normal `Build and Test` workflow
 2. Integration tests require the `HEVY_API_KEY` secret to be set
 
+The workflow runs `pnpm vitest run --coverage` and provides `HEVY_API_KEY` from
+repository secrets.
+
 To set up the `HEVY_API_KEY` secret:
 
 1. Go to your GitHub repository
@@ -295,6 +324,18 @@ If the secret is not set, the integration tests will fail (by design).
 Note: GitHub does not provide secrets to pull requests from forks by default, so
 fork PRs may fail CI unless a maintainer reruns the checks with `HEVY_API_KEY`
 available.
+
+If CI is failing only because the fork PR is missing `HEVY_API_KEY`, that is
+expected; maintainers may rerun the workflow with secrets enabled.
+
+For contributors from forks: CI failures caused solely by missing `HEVY_API_KEY`
+do not indicate a problem with your changes.
+
+All other CI checks (build, formatting/linting, unit tests, etc.) are still
+expected to pass.
+
+Only failures caused solely by missing `HEVY_API_KEY` on forked PRs are
+considered acceptable.
 
 ### Generating API Client
 
