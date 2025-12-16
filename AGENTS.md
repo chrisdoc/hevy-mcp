@@ -82,12 +82,19 @@ Run these commands in order to set up a working development environment (Corepac
    - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
    - Must run `pnpm run build` first.
 
-## Commands That Do Not Work
+## Commands With Known Environment Limitations
 
 ### Known Failing Commands
 - **`pnpm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
-- **`pnpm run check:types`**: May report TypeScript errors in source code due to strict type checking. The project builds successfully via `pnpm run build` (using tsup) despite these errors. Generated code in `src/generated/` is excluded from type checking.
 - **`pnpm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
+
+Only list commands here that are known to be flaky or unsupported in some
+environments. Other documented commands (including `pnpm run check:types`) are
+expected to succeed locally; treat failures as issues to fix rather than
+environmental flakiness. See `README.md` for the canonical list of commands.
+
+`pnpm run check:types` is expected to pass locally before opening a PR; see the
+"Type checking validation" section below.
 
 ## Environment Setup
 
@@ -103,7 +110,9 @@ HEVY_API_KEY=your_hevy_api_key_here
 - API client functionality cannot be tested
 
 ### Node.js Version
-- **Required:** Node.js v20+ (specified in `.nvmrc` as v22.14.0)
+- **Supported:** Node.js >= 20
+- **Recommended:** Use the exact version pinned in `.nvmrc` (CI uses this exact version)
+- If you use `nvm`, run `nvm use` in the repo root to match `.nvmrc`
 - Use `node --version` to verify current version
 
 ## Validation After Changes
@@ -132,9 +141,14 @@ Always perform these validation steps after making changes:
 
 4. **Type checking validation:**
    ```bash
-   npx tsc --noEmit
+   pnpm run check:types
    ```
    - Must complete without errors.
+   - Runs the TypeScript compiler in check-only mode (no emitted files), as
+     configured in the `check:types` script in `package.json`.
+   - Note: `pnpm run build` (tsup) may still succeed when this fails.
+   - Treat failures here as issues to fix (even if the build passes).
+   - Run this locally before opening a PR (CI does not currently run this check).
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**
