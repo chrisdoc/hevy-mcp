@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.15.0...v1.16.0) (2025-12-19)
+
+
+### Features
+
+* **mcp:** add new tools for exercise history and template creation ([7b5e71d](https://github.com/chrisdoc/hevy-mcp/commit/7b5e71df9361e4e7a0ade11f4f01a6ba2291c78a))
+
 # [1.15.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.14.4...v1.15.0) (2025-12-19)
 
 
