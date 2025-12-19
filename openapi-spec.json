@@ -653,6 +653,85 @@
 						"description": "Invalid page size"
 					}
 				}
+			},
+			"post": {
+				"summary": "Create a new custom exercise template.",
+				"tags": ["ExerciseTemplates"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateCustomExerciseRequestBody"
+							}
+						}
+					},
+					"description": "The exercise template to create."
+				},
+				"responses": {
+					"200": {
+						"description": "The exercise template was successfully created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"id": {
+											"type": "integer",
+											"description": "The ID of the exercise template",
+											"example": 123
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid request body",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string",
+											"description": "Error message",
+											"example": "Invalid request body"
+										}
+									}
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Exceeds custom exercise limit",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string",
+											"description": "Error message",
+											"example": "exceeds-custom-exercise-limit"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		},
 		"/v1/exercise_templates/{exerciseTemplateId}": {
@@ -852,11 +931,10 @@
 				}
 			}
 		},
-		"/v1/webhook-subscription": {
-			"post": {
-				"summary": "Create a new webhook subscription.",
-				"description": "This endpoint allows you to create a webhook subscription that will notify your application when a workout is created.\n\n Your endpoint must respond with a `200 OK` status within **5 seconds**, otherwise the delivery will be retried.\n\nWhen a new workout is created, we will send a POST request to your provided URL with the following JSON payload:\n```json {\n  \"id\": \"00000000-0000-0000-0000-000000000001\",\n  \"payload\": {\n    \"workoutId\": \"f1085cdb-32b2-4003-967d-53a3af8eaecb\"\n  }\n}\n",
-				"tags": ["Webhook"],
+		"/v1/exercise_history/{exerciseTemplateId}": {
+			"get": {
+				"summary": "Get exercise history for a specific exercise template",
+				"tags": ["ExerciseHistory"],
 				"parameters": [
 					{
 						"in": "header",
@@ -866,101 +944,57 @@
 							"format": "uuid"
 						},
 						"required": true
+					},
+					{
+						"in": "path",
+						"name": "exerciseTemplateId",
+						"description": "The id of the exercise template",
+						"required": true
+					},
+					{
+						"in": "query",
+						"name": "start_date",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						},
+						"description": "Optional start date for filtering exercise history (ISO 8601 format)",
+						"example": "2024-01-01T00:00:00Z",
+						"required": false
+					},
+					{
+						"in": "query",
+						"name": "end_date",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						},
+						"description": "Optional end date for filtering exercise history (ISO 8601 format)",
+						"example": "2024-12-31T23:59:59Z",
+						"required": false
 					}
 				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/WebhookRequestBody"
+				"responses": {
+					"200": {
+						"description": "A list of exercise history entries",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"exercise_history": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/ExerciseHistoryEntry"
+											}
+										}
+									}
+								}
 							}
 						}
-					}
-				},
-				"responses": {
-					"201": {
-						"description": "The webhook subscription was successfully created"
 					},
 					"400": {
-						"description": "Invalid request body",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"error": {
-											"type": "string",
-											"description": "Error message"
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			},
-			"delete": {
-				"summary": "Delete a webhook subscription.",
-				"tags": ["Webhook"],
-				"parameters": [
-					{
-						"in": "header",
-						"name": "api-key",
-						"schema": {
-							"type": "string",
-							"format": "uuid"
-						},
-						"required": true,
-						"description": "Your API key"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "The webhook subscription was successfully deleted"
-					}
-				}
-			},
-			"get": {
-				"summary": "Get the current webhook subscription.",
-				"tags": ["Webhook"],
-				"parameters": [
-					{
-						"in": "header",
-						"name": "api-key",
-						"schema": {
-							"type": "string",
-							"format": "uuid"
-						},
-						"required": true,
-						"description": "Your API key"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "The current webhook subscription",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"url": {
-											"type": "string",
-											"description": "The webhook URL",
-											"example": "https://example.com/hevy-webhook"
-										},
-										"auth_token": {
-											"type": "string",
-											"description": "The auth token for the webhook",
-											"example": "Bearer mytoken"
-										}
-									}
-								}
-							}
-						}
-					},
-					"404": {
-						"description": "No webhook subscription found"
+						"description": "Invalid request parameters or date format"
 					}
 				}
 			}
@@ -1348,20 +1382,219 @@
 					}
 				}
 			},
-			"WebhookRequestBody": {
+			"Set": {
 				"type": "object",
 				"properties": {
-					"authToken": {
-						"type": "string",
-						"description": "The auth token that will be send as Authorization header in the webhook.",
-						"example": "Bearer mytoken"
+					"index": {
+						"type": "number",
+						"description": "Index indicating the order of the set in the workout.",
+						"example": 0
 					},
-					"url": {
+					"type": {
 						"type": "string",
-						"description": "The webhook URL.",
-						"example": "https://example.com/hevy-webhook"
+						"description": "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
+						"example": "normal"
+					},
+					"weight_kg": {
+						"type": "number",
+						"nullable": true,
+						"description": "Weight lifted in kilograms.",
+						"example": 100
+					},
+					"reps": {
+						"type": "number",
+						"nullable": true,
+						"description": "Number of reps logged for the set",
+						"example": 10
+					},
+					"distance_meters": {
+						"type": "number",
+						"nullable": true,
+						"description": "Number of meters logged for the set",
+						"example": null
+					},
+					"duration_seconds": {
+						"type": "number",
+						"nullable": true,
+						"description": "Number of seconds logged for the set",
+						"example": null
+					},
+					"rpe": {
+						"type": "number",
+						"nullable": true,
+						"description": "RPE (Relative perceived exertion) value logged for the set",
+						"example": 9.5
+					},
+					"custom_metric": {
+						"type": "number",
+						"nullable": true,
+						"description": "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)",
+						"example": 50
 					}
 				}
+			},
+			"Exercise": {
+				"type": "object",
+				"properties": {
+					"index": {
+						"type": "number",
+						"description": "Index indicating the order of the exercise in the workout.",
+						"example": 0
+					},
+					"title": {
+						"type": "string",
+						"description": "Title of the exercise",
+						"example": "Bench Press (Barbell)"
+					},
+					"notes": {
+						"type": "string",
+						"description": "Notes on the exercise",
+						"example": "Paid closer attention to form today. Felt great!"
+					},
+					"exercise_template_id": {
+						"type": "string",
+						"description": "The id of the exercise template. This can be used to fetch the exercise template.",
+						"example": "05293BCA"
+					},
+					"supersets_id": {
+						"type": "number",
+						"nullable": true,
+						"description": "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
+						"example": 0
+					},
+					"sets": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Set"
+						}
+					}
+				}
+			},
+			"ExerciseHistoryEntry": {
+				"type": "object",
+				"properties": {
+					"workout_id": {
+						"type": "string",
+						"description": "The workout ID",
+						"example": "b459cba5-cd6d-463c-abd6-54f8eafcadcb"
+					},
+					"workout_title": {
+						"type": "string",
+						"description": "The workout title",
+						"example": "Morning Workout 💪"
+					},
+					"workout_start_time": {
+						"type": "string",
+						"description": "ISO 8601 timestamp of when the workout was recorded to have started.",
+						"example": "2024-01-01T12:00:00Z"
+					},
+					"workout_end_time": {
+						"type": "string",
+						"description": "ISO 8601 timestamp of when the workout was recorded to have ended.",
+						"example": "2024-01-01T13:00:00Z"
+					},
+					"exercise_template_id": {
+						"type": "string",
+						"description": "The exercise template ID",
+						"example": "D04AC939"
+					},
+					"weight_kg": {
+						"type": "number",
+						"nullable": true,
+						"description": "The weight in kilograms",
+						"example": 100
+					},
+					"reps": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The number of repetitions",
+						"example": 10
+					},
+					"distance_meters": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The distance in meters",
+						"example": null
+					},
+					"duration_seconds": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The duration in seconds",
+						"example": null
+					},
+					"rpe": {
+						"type": "number",
+						"nullable": true,
+						"description": "The Rating of Perceived Exertion",
+						"example": 8.5
+					},
+					"custom_metric": {
+						"type": "number",
+						"nullable": true,
+						"description": "A custom metric for the set",
+						"example": null
+					},
+					"set_type": {
+						"type": "string",
+						"description": "The type of set (warmup, normal, failure, dropset)",
+						"example": "normal"
+					}
+				}
+			},
+			"CustomExerciseType": {
+				"type": "enum",
+				"enum": [
+					"weight_reps",
+					"reps_only",
+					"bodyweight_reps",
+					"bodyweight_assisted_reps",
+					"duration",
+					"weight_duration",
+					"distance_duration",
+					"short_distance_weight"
+				],
+				"example": "weight_reps"
+			},
+			"MuscleGroup": {
+				"type": "enum",
+				"enum": [
+					"abdominals",
+					"shoulders",
+					"biceps",
+					"triceps",
+					"forearms",
+					"quadriceps",
+					"hamstrings",
+					"calves",
+					"glutes",
+					"abductors",
+					"adductors",
+					"lats",
+					"upper_back",
+					"traps",
+					"lower_back",
+					"chest",
+					"cardio",
+					"neck",
+					"full_body",
+					"other"
+				],
+				"example": "chest"
+			},
+			"EquipmentCategory": {
+				"type": "enum",
+				"enum": [
+					"none",
+					"barbell",
+					"dumbbell",
+					"kettlebell",
+					"machine",
+					"plate",
+					"resistance_band",
+					"suspension",
+					"other"
+				],
+				"example": "barbell"
 			},
 			"ExerciseTemplate": {
 				"type": "object",
@@ -1384,7 +1617,7 @@
 					"primary_muscle_group": {
 						"type": "string",
 						"description": "The primary muscle group of the exercise.",
-						"example": "weight_reps"
+						"example": "chest"
 					},
 					"secondary_muscle_groups": {
 						"type": "array",
@@ -1397,6 +1630,43 @@
 						"type": "boolean",
 						"description": "A boolean indicating whether the exercise is a custom exercise.",
 						"example": false
+					}
+				}
+			},
+			"CreateCustomExerciseRequestBody": {
+				"type": "object",
+				"properties": {
+					"exercise": {
+						"required": true,
+						"type": "object",
+						"properties": {
+							"title": {
+								"type": "string",
+								"description": "The title of the exercise template.",
+								"example": "Bench Press"
+							},
+							"exercise_type": {
+								"$ref": "#/components/schemas/CustomExerciseType"
+							},
+							"equipment_category": {
+								"$ref": "#/components/schemas/EquipmentCategory",
+								"description": "The equipment category of the exercise template.",
+								"example": "barbell"
+							},
+							"muscle_group": {
+								"$ref": "#/components/schemas/MuscleGroup",
+								"description": "The muscle group of the exercise template.",
+								"example": "chest"
+							},
+							"other_muscles": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/MuscleGroup"
+								},
+								"description": "The other muscles of the exercise template.",
+								"example": ["biceps", "triceps"]
+							}
+						}
 					}
 				}
 			},
@@ -1586,18 +1856,23 @@
 						"description": "The workout title.",
 						"example": "Morning Workout 💪"
 					},
+					"routine_id": {
+						"type": "string",
+						"description": "The ID of the routine that this workout belongs to.",
+						"example": "b459cba5-cd6d-463c-abd6-54f8eafcadcb"
+					},
 					"description": {
 						"type": "string",
 						"description": "The workout description.",
 						"example": "Pushed myself to the limit today!"
 					},
 					"start_time": {
-						"type": "number",
+						"type": "string",
 						"description": "ISO 8601 timestamp of when the workout was recorded to have started.",
 						"example": "2021-09-14T12:00:00Z"
 					},
 					"end_time": {
-						"type": "number",
+						"type": "string",
 						"description": "ISO 8601 timestamp of when the workout was recorded to have ended.",
 						"example": "2021-09-14T12:00:00Z"
 					},

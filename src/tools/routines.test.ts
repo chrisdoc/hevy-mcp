@@ -150,6 +150,7 @@ describe("registerRoutineTools", () => {
 								distance_meters: null,
 								duration_seconds: null,
 								custom_metric: null,
+								rep_range: null,
 							},
 						],
 					},
@@ -159,5 +160,80 @@ describe("registerRoutineTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(formatRoutine(routine));
+	});
+
+	it("create-routine maps repRange to rep_range in the request body", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "created-routine",
+			title: "Leg Day",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:00:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			createRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-routine");
+
+		const args = {
+			title: "Leg Day",
+			folderId: null,
+			notes: "Focus on form",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					restSeconds: 90,
+					notes: "Slow and controlled",
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 100,
+							reps: 10,
+							repRange: {
+								start: 8,
+								end: 12,
+							},
+						},
+					],
+				},
+			],
+		};
+
+		await handler(args as Record<string, unknown>);
+
+		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
+			routine: {
+				title: "Leg Day",
+				folder_id: null,
+				notes: "Focus on form",
+				exercises: [
+					{
+						exercise_template_id: "template-id",
+						superset_id: null,
+						rest_seconds: 90,
+						notes: "Slow and controlled",
+						sets: [
+							{
+								type: "normal",
+								weight_kg: 100,
+								reps: 10,
+								distance_meters: null,
+								duration_seconds: null,
+								custom_metric: null,
+								rep_range: {
+									start: 8,
+									end: 12,
+								},
+							},
+						],
+					},
+				],
+			},
+		});
 	});
 });

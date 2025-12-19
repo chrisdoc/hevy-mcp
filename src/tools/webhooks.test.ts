@@ -98,9 +98,7 @@ describe("registerWebhookTools", () => {
 	it("create-webhook-subscription uses the client when available", async () => {
 		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
-			createWebhookSubscription: vi
-				.fn()
-				.mockResolvedValue({ id: "sub-1" }),
+			createWebhookSubscription: vi.fn().mockResolvedValue({ id: "sub-1" }),
 		} as unknown as HevyClient;
 
 		registerWebhookTools(server, hevyClient);
@@ -178,9 +176,7 @@ describe("registerWebhookTools", () => {
 	it("delete-webhook-subscription calls the client and returns JSON", async () => {
 		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
-			deleteWebhookSubscription: vi
-				.fn()
-				.mockResolvedValue({ success: true }),
+			deleteWebhookSubscription: vi.fn().mockResolvedValue({ success: true }),
 		} as unknown as HevyClient;
 
 		registerWebhookTools(server, hevyClient);

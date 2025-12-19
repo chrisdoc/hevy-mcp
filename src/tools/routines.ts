@@ -117,6 +117,12 @@ export function registerRoutineTools(
 						duration: z.coerce.number().int().optional(),
 						durationSeconds: z.coerce.number().int().optional(),
 						customMetric: z.coerce.number().optional(),
+						repRange: z
+							.object({
+								start: z.coerce.number().int().optional(),
+								end: z.coerce.number().int().optional(),
+							})
+							.optional(),
 					}),
 				),
 			}),
@@ -154,6 +160,12 @@ export function registerRoutineTools(
 									distance_meters: set.distance ?? set.distanceMeters ?? null,
 									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
+									rep_range: set.repRange
+										? {
+												start: set.repRange.start ?? null,
+												end: set.repRange.end ?? null,
+											}
+										: null,
 								}),
 							),
 						}),
@@ -199,6 +211,12 @@ export function registerRoutineTools(
 						duration: z.coerce.number().int().optional(),
 						durationSeconds: z.coerce.number().int().optional(),
 						customMetric: z.coerce.number().optional(),
+						repRange: z
+							.object({
+								start: z.coerce.number().int().optional(),
+								end: z.coerce.number().int().optional(),
+							})
+							.optional(),
 					}),
 				),
 			}),
@@ -235,6 +253,12 @@ export function registerRoutineTools(
 									distance_meters: set.distance ?? set.distanceMeters ?? null,
 									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
+									rep_range: set.repRange
+										? {
+												start: set.repRange.start ?? null,
+												end: set.repRange.end ?? null,
+											}
+										: null,
 								}),
 							),
 						}),
