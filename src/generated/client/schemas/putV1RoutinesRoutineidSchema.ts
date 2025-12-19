@@ -5,20 +5,20 @@
 
 import { putRoutinesRequestBodySchema } from "./putRoutinesRequestBodySchema.ts";
 import { routineSchema } from "./routineSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const putV1RoutinesRoutineidPathParamsSchema = z.object({
-    "routineId": z.any()
+    "routineId": z.any().describe("The id of the routine")
     })
 
 export const putV1RoutinesRoutineidHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description The routine was successfully updated
  */
-export const putV1RoutinesRoutineid200Schema = routineSchema
+export const putV1RoutinesRoutineid200Schema = z.lazy(() => routineSchema)
 
 /**
  * @description Invalid request body
@@ -34,6 +34,6 @@ export const putV1RoutinesRoutineid404Schema = z.object({
     "error": z.optional(z.string().describe("Error message"))
     })
 
-export const putV1RoutinesRoutineidMutationRequestSchema = putRoutinesRequestBodySchema
+export const putV1RoutinesRoutineidMutationRequestSchema = z.lazy(() => putRoutinesRequestBodySchema)
 
-export const putV1RoutinesRoutineidMutationResponseSchema = putV1RoutinesRoutineid200Schema
+export const putV1RoutinesRoutineidMutationResponseSchema = z.lazy(() => putV1RoutinesRoutineid200Schema)

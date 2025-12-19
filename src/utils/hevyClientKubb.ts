@@ -5,11 +5,13 @@ import type {
 import axios from "axios";
 import * as api from "../generated/client/api";
 import type {
+	GetV1ExerciseHistoryExercisetemplateidQueryParams,
 	GetV1ExerciseTemplatesQueryParams,
 	GetV1RoutineFoldersQueryParams,
 	GetV1RoutinesQueryParams,
 	GetV1WorkoutsEventsQueryParams,
 	GetV1WorkoutsQueryParams,
+	PostV1ExerciseTemplatesMutationRequest,
 	PostV1RoutineFoldersMutationRequest,
 	PostV1RoutinesMutationRequest,
 	PostV1WorkoutsMutationRequest,
@@ -107,6 +109,20 @@ export function createClient(
 			api.getV1ExerciseTemplatesExercisetemplateid(templateId, headers, {
 				client,
 			}),
+		getExerciseHistory: (
+			exerciseTemplateId: string,
+			params?: GetV1ExerciseHistoryExercisetemplateidQueryParams,
+		): ReturnType<typeof api.getV1ExerciseHistoryExercisetemplateid> =>
+			api.getV1ExerciseHistoryExercisetemplateid(
+				exerciseTemplateId,
+				headers,
+				params,
+				{ client },
+			),
+		createExerciseTemplate: (
+			data: PostV1ExerciseTemplatesMutationRequest,
+		): ReturnType<typeof api.postV1ExerciseTemplates> =>
+			api.postV1ExerciseTemplates(headers, data, { client }),
 
 		// Routine Folders
 		getRoutineFolders: (

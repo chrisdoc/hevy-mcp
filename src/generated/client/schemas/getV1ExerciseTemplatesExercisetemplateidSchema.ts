@@ -4,24 +4,24 @@
 */
 
 import { exerciseTemplateSchema } from "./exerciseTemplateSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const getV1ExerciseTemplatesExercisetemplateidPathParamsSchema = z.object({
-    "exerciseTemplateId": z.any()
+    "exerciseTemplateId": z.any().describe("The id of the exercise template")
     })
 
 export const getV1ExerciseTemplatesExercisetemplateidHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description Success
  */
-export const getV1ExerciseTemplatesExercisetemplateid200Schema = exerciseTemplateSchema
+export const getV1ExerciseTemplatesExercisetemplateid200Schema = z.lazy(() => exerciseTemplateSchema)
 
 /**
  * @description Exercise template not found
  */
 export const getV1ExerciseTemplatesExercisetemplateid404Schema = z.any()
 
-export const getV1ExerciseTemplatesExercisetemplateidQueryResponseSchema = getV1ExerciseTemplatesExercisetemplateid200Schema
+export const getV1ExerciseTemplatesExercisetemplateidQueryResponseSchema = z.lazy(() => getV1ExerciseTemplatesExercisetemplateid200Schema)

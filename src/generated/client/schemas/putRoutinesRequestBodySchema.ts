@@ -4,12 +4,14 @@
 */
 
 import { putRoutinesRequestExerciseSchema } from "./putRoutinesRequestExerciseSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const putRoutinesRequestBodySchema = z.object({
     "routine": z.optional(z.object({
     "title": z.optional(z.string().describe("The title of the routine.")),
 "notes": z.string().describe("Additional notes for the routine.").nullish(),
-"exercises": z.optional(z.array(z.lazy(() => putRoutinesRequestExerciseSchema)))
+get "exercises"(){
+                return z.array(putRoutinesRequestExerciseSchema).optional()
+              }
     }))
     })

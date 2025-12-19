@@ -3,7 +3,7 @@
 * Do not edit manually.
 */
 
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const routineFolderSchema = z.object({
     "id": z.optional(z.number().describe("The routine folder ID.")),

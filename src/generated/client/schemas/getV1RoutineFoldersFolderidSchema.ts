@@ -4,24 +4,24 @@
 */
 
 import { routineFolderSchema } from "./routineFolderSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const getV1RoutineFoldersFolderidPathParamsSchema = z.object({
-    "folderId": z.any()
+    "folderId": z.any().describe("The id of the routine folder")
     })
 
 export const getV1RoutineFoldersFolderidHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description Success
  */
-export const getV1RoutineFoldersFolderid200Schema = routineFolderSchema
+export const getV1RoutineFoldersFolderid200Schema = z.lazy(() => routineFolderSchema)
 
 /**
  * @description Routine folder not found
  */
 export const getV1RoutineFoldersFolderid404Schema = z.any()
 
-export const getV1RoutineFoldersFolderidQueryResponseSchema = getV1RoutineFoldersFolderid200Schema
+export const getV1RoutineFoldersFolderidQueryResponseSchema = z.lazy(() => getV1RoutineFoldersFolderid200Schema)

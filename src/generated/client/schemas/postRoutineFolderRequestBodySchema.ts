@@ -3,7 +3,7 @@
 * Do not edit manually.
 */
 
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const postRoutineFolderRequestBodySchema = z.object({
     "routine_folder": z.optional(z.object({

@@ -4,11 +4,13 @@
 */
 
 import { postWorkoutsRequestSetSchema } from "./postWorkoutsRequestSetSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const postWorkoutsRequestExerciseSchema = z.object({
     "exercise_template_id": z.optional(z.string().describe("The ID of the exercise template.")),
-"superset_id": z.number().int().describe("The ID of the superset.").nullish(),
+"superset_id": z.int().describe("The ID of the superset.").nullish(),
 "notes": z.string().describe("Additional notes for the exercise.").nullish(),
-"sets": z.optional(z.array(z.lazy(() => postWorkoutsRequestSetSchema)))
+get "sets"(){
+                return z.array(postWorkoutsRequestSetSchema).optional()
+              }
     })

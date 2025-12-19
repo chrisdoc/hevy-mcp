@@ -3,7 +3,7 @@
 * Do not edit manually.
 */
 
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const routineSchema = z.object({
     "id": z.optional(z.string().describe("The routine ID.")),

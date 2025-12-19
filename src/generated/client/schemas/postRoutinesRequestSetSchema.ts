@@ -3,14 +3,14 @@
 * Do not edit manually.
 */
 
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const postRoutinesRequestSetSchema = z.object({
     "type": z.optional(z.enum(["warmup", "normal", "failure", "dropset"]).describe("The type of the set.")),
 "weight_kg": z.number().describe("The weight in kilograms.").nullish(),
-"reps": z.number().int().describe("The number of repetitions.").nullish(),
-"distance_meters": z.number().int().describe("The distance in meters.").nullish(),
-"duration_seconds": z.number().int().describe("The duration in seconds.").nullish(),
+"reps": z.int().describe("The number of repetitions.").nullish(),
+"distance_meters": z.int().describe("The distance in meters.").nullish(),
+"duration_seconds": z.int().describe("The duration in seconds.").nullish(),
 "custom_metric": z.number().describe("A custom metric for the set. Currently used for steps and floors.").nullish(),
 "rep_range": z.object({
     "start": z.number().describe("Starting rep count for the range").nullish(),

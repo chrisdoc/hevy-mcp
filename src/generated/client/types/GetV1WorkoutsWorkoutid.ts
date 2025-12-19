@@ -6,6 +6,9 @@
 import type { Workout } from "./Workout.ts";
 
 export type GetV1WorkoutsWorkoutidPathParams = {
+    /**
+     * @description The id of the workout
+    */
     workoutId: any;
 };
 

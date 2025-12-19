@@ -3,14 +3,15 @@
 * Do not edit manually.
 */
 
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const workoutSchema = z.object({
     "id": z.optional(z.string().describe("The workout ID.")),
 "title": z.optional(z.string().describe("The workout title.")),
+"routine_id": z.optional(z.string().describe("The ID of the routine that this workout belongs to.")),
 "description": z.optional(z.string().describe("The workout description.")),
-"start_time": z.optional(z.number().describe("ISO 8601 timestamp of when the workout was recorded to have started.")),
-"end_time": z.optional(z.number().describe("ISO 8601 timestamp of when the workout was recorded to have ended.")),
+"start_time": z.optional(z.string().describe("ISO 8601 timestamp of when the workout was recorded to have started.")),
+"end_time": z.optional(z.string().describe("ISO 8601 timestamp of when the workout was recorded to have ended.")),
 "updated_at": z.optional(z.string().describe("ISO 8601 timestamp of when the workout was last updated.")),
 "created_at": z.optional(z.string().describe("ISO 8601 timestamp of when the workout was created.")),
 "exercises": z.optional(z.array(z.object({

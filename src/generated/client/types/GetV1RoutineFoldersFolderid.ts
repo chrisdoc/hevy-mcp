@@ -6,6 +6,9 @@
 import type { RoutineFolder } from "./RoutineFolder.ts";
 
 export type GetV1RoutineFoldersFolderidPathParams = {
+    /**
+     * @description The id of the routine folder
+    */
     folderId: any;
 };
 

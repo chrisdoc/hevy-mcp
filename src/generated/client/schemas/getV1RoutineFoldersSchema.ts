@@ -4,7 +4,7 @@
 */
 
 import { routineFolderSchema } from "./routineFolderSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const getV1RoutineFoldersQueryParamsSchema = z.object({
     "page": z.coerce.number().int().default(1).describe("Page number (Must be 1 or greater)"),
@@ -12,16 +12,18 @@ export const getV1RoutineFoldersQueryParamsSchema = z.object({
     })
 
 export const getV1RoutineFoldersHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description A paginated list of routine folders
  */
 export const getV1RoutineFolders200Schema = z.object({
-    "page": z.optional(z.number().int().default(1).describe("Current page number")),
-"page_count": z.optional(z.number().int().default(5).describe("Total number of pages")),
-"routine_folders": z.optional(z.array(z.lazy(() => routineFolderSchema)))
+    "page": z.optional(z.int().default(1).describe("Current page number")),
+"page_count": z.optional(z.int().default(5).describe("Total number of pages")),
+get "routine_folders"(){
+                return z.array(routineFolderSchema).optional()
+              }
     })
 
 /**
@@ -29,4 +31,4 @@ export const getV1RoutineFolders200Schema = z.object({
  */
 export const getV1RoutineFolders400Schema = z.any()
 
-export const getV1RoutineFoldersQueryResponseSchema = getV1RoutineFolders200Schema
+export const getV1RoutineFoldersQueryResponseSchema = z.lazy(() => getV1RoutineFolders200Schema)

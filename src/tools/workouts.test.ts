@@ -145,6 +145,7 @@ describe("registerWorkoutTools", () => {
 			description: null,
 			startTime: "2025-03-27T07:00:00Z",
 			endTime: "2025-03-27T08:00:00Z",
+			routineId: null,
 			isPrivate: false,
 			exercises: [
 				{
@@ -174,6 +175,7 @@ describe("registerWorkoutTools", () => {
 				description: null,
 				start_time: "2025-03-27T07:00:00Z",
 				end_time: "2025-03-27T08:00:00Z",
+				routine_id: null,
 				is_private: false,
 				exercises: [
 					{
@@ -198,5 +200,79 @@ describe("registerWorkoutTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(formatWorkout(createResult));
+	});
+
+	it("create-workout maps routineId to routine_id", async () => {
+		const { server, tool } = createMockServer();
+		const createResult: Workout = {
+			id: "created-id",
+			title: "Programmed Workout",
+			description: null,
+			start_time: 1711522800000,
+			end_time: 1711526400000,
+			created_at: "2025-03-27T07:00:00Z",
+			updated_at: "2025-03-27T07:00:00Z",
+			exercises: [],
+		};
+		const hevyClient = {
+			createWorkout: vi.fn().mockResolvedValue(createResult),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-workout");
+
+		const args = {
+			title: "Programmed Workout",
+			description: null,
+			startTime: "2025-03-27T07:00:00Z",
+			endTime: "2025-03-27T08:00:00Z",
+			routineId: "routine-123",
+			isPrivate: false,
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					notes: null,
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 50,
+							reps: 10,
+						},
+					],
+				},
+			],
+		};
+
+		await handler(args as Record<string, unknown>);
+
+		expect(hevyClient.createWorkout).toHaveBeenCalledWith({
+			workout: {
+				title: "Programmed Workout",
+				description: null,
+				start_time: "2025-03-27T07:00:00Z",
+				end_time: "2025-03-27T08:00:00Z",
+				routine_id: "routine-123",
+				is_private: false,
+				exercises: [
+					{
+						exercise_template_id: "template-id",
+						superset_id: null,
+						notes: null,
+						sets: [
+							{
+								type: "normal",
+								weight_kg: 50,
+								reps: 10,
+								distance_meters: null,
+								duration_seconds: null,
+								rpe: null,
+								custom_metric: null,
+							},
+						],
+					},
+				],
+			},
+		});
 	});
 });

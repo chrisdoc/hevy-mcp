@@ -1,0 +1,1 @@
+{"type":"enum","enum":["weight_reps","reps_only","bodyweight_reps","bodyweight_assisted_reps","duration","weight_duration","distance_duration","short_distance_weight"],"example":"weight_reps","x-readme-ref-name":"CustomExerciseType"}

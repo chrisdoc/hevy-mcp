@@ -4,24 +4,24 @@
 */
 
 import { workoutSchema } from "./workoutSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const getV1WorkoutsWorkoutidPathParamsSchema = z.object({
-    "workoutId": z.any()
+    "workoutId": z.any().describe("The id of the workout")
     })
 
 export const getV1WorkoutsWorkoutidHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description Success
  */
-export const getV1WorkoutsWorkoutid200Schema = workoutSchema
+export const getV1WorkoutsWorkoutid200Schema = z.lazy(() => workoutSchema)
 
 /**
  * @description Workout not found
  */
 export const getV1WorkoutsWorkoutid404Schema = z.any()
 
-export const getV1WorkoutsWorkoutidQueryResponseSchema = getV1WorkoutsWorkoutid200Schema
+export const getV1WorkoutsWorkoutidQueryResponseSchema = z.lazy(() => getV1WorkoutsWorkoutid200Schema)

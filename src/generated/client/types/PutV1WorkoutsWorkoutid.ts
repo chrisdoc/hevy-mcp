@@ -7,6 +7,9 @@ import type { PostWorkoutsRequestBody } from "./PostWorkoutsRequestBody.ts";
 import type { Workout } from "./Workout.ts";
 
 export type PutV1WorkoutsWorkoutidPathParams = {
+    /**
+     * @description The id of the workout
+    */
     workoutId: any;
 };
 

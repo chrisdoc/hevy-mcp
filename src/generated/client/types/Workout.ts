@@ -16,20 +16,25 @@ export type Workout = {
     */
     title?: string;
     /**
+     * @description The ID of the routine that this workout belongs to.
+     * @type string | undefined
+    */
+    routine_id?: string;
+    /**
      * @description The workout description.
      * @type string | undefined
     */
     description?: string;
     /**
      * @description ISO 8601 timestamp of when the workout was recorded to have started.
-     * @type number | undefined
+     * @type string | undefined
     */
-    start_time?: number;
+    start_time?: string;
     /**
      * @description ISO 8601 timestamp of when the workout was recorded to have ended.
-     * @type number | undefined
+     * @type string | undefined
     */
-    end_time?: number;
+    end_time?: string;
     /**
      * @description ISO 8601 timestamp of when the workout was last updated.
      * @type string | undefined

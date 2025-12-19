@@ -6,6 +6,9 @@
 import type { Routine } from "./Routine.ts";
 
 export type GetV1RoutinesRoutineidPathParams = {
+    /**
+     * @description The id of the routine
+    */
     routineId: any;
 };
 

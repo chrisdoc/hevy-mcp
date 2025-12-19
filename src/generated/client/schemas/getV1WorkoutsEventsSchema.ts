@@ -4,7 +4,7 @@
 */
 
 import { paginatedWorkoutEventsSchema } from "./paginatedWorkoutEventsSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const getV1WorkoutsEventsQueryParamsSchema = z.object({
     "page": z.coerce.number().int().default(1).describe("Page number (Must be 1 or greater)"),
@@ -13,17 +13,17 @@ export const getV1WorkoutsEventsQueryParamsSchema = z.object({
     })
 
 export const getV1WorkoutsEventsHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description A paginated list of workout events
  */
-export const getV1WorkoutsEvents200Schema = paginatedWorkoutEventsSchema
+export const getV1WorkoutsEvents200Schema = z.lazy(() => paginatedWorkoutEventsSchema)
 
 /**
  * @description Internal Server Error
  */
 export const getV1WorkoutsEvents500Schema = z.any()
 
-export const getV1WorkoutsEventsQueryResponseSchema = getV1WorkoutsEvents200Schema
+export const getV1WorkoutsEventsQueryResponseSchema = z.lazy(() => getV1WorkoutsEvents200Schema)

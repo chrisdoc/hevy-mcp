@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type {
+	ExerciseHistoryEntry,
 	ExerciseTemplate,
 	Routine,
 	RoutineFolder,
@@ -7,6 +8,7 @@ import type {
 } from "../generated/client/types/index.js";
 import {
 	calculateDuration,
+	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
 	formatRoutine,
 	formatRoutineFolder,
@@ -22,8 +24,8 @@ describe("Formatters", () => {
 				created_at: "2025-03-27T07:00:00Z",
 				title: "Morning Workout",
 				description: "Great session",
-				start_time: 1711522800000,
-				end_time: 1711526400000,
+				start_time: "2024-03-27T07:00:00Z",
+				end_time: "2024-03-27T08:00:00Z",
 				exercises: [],
 			};
 
@@ -32,8 +34,8 @@ describe("Formatters", () => {
 				id: workoutId,
 				title: "Morning Workout",
 				description: "Great session",
-				startTime: 1711522800000,
-				endTime: 1711526400000,
+				startTime: "2024-03-27T07:00:00Z",
+				endTime: "2024-03-27T08:00:00Z",
 				createdAt: "2025-03-27T07:00:00Z",
 				updatedAt: undefined,
 				duration: "1h 0m 0s",
@@ -48,8 +50,8 @@ describe("Formatters", () => {
 				created_at: "2025-03-27T07:00:00Z",
 				title: "Morning Workout",
 				description: "Great session",
-				start_time: 1711522800000,
-				end_time: 1711526400000,
+				start_time: "2024-03-27T07:00:00Z",
+				end_time: "2024-03-27T08:00:00Z",
 				exercises: [
 					{
 						title: "Bench Press",
@@ -83,8 +85,8 @@ describe("Formatters", () => {
 				id: workoutId,
 				title: "Morning Workout",
 				description: "Great session",
-				startTime: 1711522800000,
-				endTime: 1711526400000,
+				startTime: "2024-03-27T07:00:00Z",
+				endTime: "2024-03-27T08:00:00Z",
 				createdAt: "2025-03-27T07:00:00Z",
 				updatedAt: undefined,
 				duration: "1h 0m 0s",
@@ -361,6 +363,41 @@ describe("Formatters", () => {
 				primaryMuscleGroup: "full_body",
 				secondaryMuscleGroups: undefined,
 				isCustom: true,
+			});
+		});
+	});
+
+	describe("formatExerciseHistoryEntry", () => {
+		it("formats exercise history entries to a friendly shape", () => {
+			const entry: ExerciseHistoryEntry = {
+				workout_id: "w1",
+				workout_title: "Push Day",
+				workout_start_time: "2024-01-01T10:00:00Z",
+				workout_end_time: "2024-01-01T11:00:00Z",
+				exercise_template_id: "t1",
+				weight_kg: 80,
+				reps: 8,
+				distance_meters: null,
+				duration_seconds: null,
+				rpe: 8,
+				custom_metric: null,
+				set_type: "normal",
+			};
+
+			const result = formatExerciseHistoryEntry(entry);
+			expect(result).toEqual({
+				workoutId: "w1",
+				workoutTitle: "Push Day",
+				workoutStartTime: "2024-01-01T10:00:00Z",
+				workoutEndTime: "2024-01-01T11:00:00Z",
+				exerciseTemplateId: "t1",
+				weight: 80,
+				reps: 8,
+				distance: null,
+				duration: null,
+				rpe: 8,
+				customMetric: null,
+				setType: "normal",
 			});
 		});
 	});

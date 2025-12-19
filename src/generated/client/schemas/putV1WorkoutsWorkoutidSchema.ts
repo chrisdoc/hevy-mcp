@@ -5,20 +5,20 @@
 
 import { postWorkoutsRequestBodySchema } from "./postWorkoutsRequestBodySchema.ts";
 import { workoutSchema } from "./workoutSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const putV1WorkoutsWorkoutidPathParamsSchema = z.object({
-    "workoutId": z.any()
+    "workoutId": z.any().describe("The id of the workout")
     })
 
 export const putV1WorkoutsWorkoutidHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description The workout was successfully updated
  */
-export const putV1WorkoutsWorkoutid200Schema = workoutSchema
+export const putV1WorkoutsWorkoutid200Schema = z.lazy(() => workoutSchema)
 
 /**
  * @description Invalid request body
@@ -27,6 +27,6 @@ export const putV1WorkoutsWorkoutid400Schema = z.object({
     "error": z.optional(z.string().describe("Error message"))
     })
 
-export const putV1WorkoutsWorkoutidMutationRequestSchema = postWorkoutsRequestBodySchema
+export const putV1WorkoutsWorkoutidMutationRequestSchema = z.lazy(() => postWorkoutsRequestBodySchema)
 
-export const putV1WorkoutsWorkoutidMutationResponseSchema = putV1WorkoutsWorkoutid200Schema
+export const putV1WorkoutsWorkoutidMutationResponseSchema = z.lazy(() => putV1WorkoutsWorkoutid200Schema)

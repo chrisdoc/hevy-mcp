@@ -1,0 +1,1 @@
+{"type":"enum","enum":["abdominals","shoulders","biceps","triceps","forearms","quadriceps","hamstrings","calves","glutes","abductors","adductors","lats","upper_back","traps","lower_back","chest","cardio","neck","full_body","other"],"example":"chest","x-readme-ref-name":"MuscleGroup"}

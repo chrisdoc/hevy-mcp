@@ -7,6 +7,9 @@ import type { PutRoutinesRequestBody } from "./PutRoutinesRequestBody.ts";
 import type { Routine } from "./Routine.ts";
 
 export type PutV1RoutinesRoutineidPathParams = {
+    /**
+     * @description The id of the routine
+    */
     routineId: any;
 };
 

@@ -1,4 +1,5 @@
 import type {
+	ExerciseHistoryEntry,
 	ExerciseTemplate,
 	Routine,
 	RoutineFolder,
@@ -38,8 +39,8 @@ export interface FormattedWorkout {
 	id: string | undefined;
 	title: string | undefined;
 	description: string | undefined | null;
-	startTime: number | undefined;
-	endTime: number | undefined;
+	startTime: string | number | undefined;
+	endTime: string | number | undefined;
 	createdAt: string | undefined;
 	updatedAt: string | undefined;
 	duration: string;
@@ -106,6 +107,21 @@ export interface FormattedExerciseTemplate {
 	primaryMuscleGroup: string | undefined;
 	secondaryMuscleGroups: string[] | undefined;
 	isCustom: boolean | undefined;
+}
+
+export interface FormattedExerciseHistoryEntry {
+	workoutId: string | undefined;
+	workoutTitle: string | undefined;
+	workoutStartTime: string | undefined;
+	workoutEndTime: string | undefined;
+	exerciseTemplateId: string | undefined;
+	weight: number | undefined | null;
+	reps: number | undefined | null;
+	distance: number | undefined | null;
+	duration: number | undefined | null;
+	rpe: number | undefined | null;
+	customMetric: number | undefined | null;
+	setType: string | undefined;
 }
 
 /**
@@ -256,5 +272,24 @@ export function formatExerciseTemplate(
 		primaryMuscleGroup: template.primary_muscle_group,
 		secondaryMuscleGroups: template.secondary_muscle_groups,
 		isCustom: template.is_custom,
+	};
+}
+
+export function formatExerciseHistoryEntry(
+	entry: ExerciseHistoryEntry,
+): FormattedExerciseHistoryEntry {
+	return {
+		workoutId: entry.workout_id,
+		workoutTitle: entry.workout_title,
+		workoutStartTime: entry.workout_start_time,
+		workoutEndTime: entry.workout_end_time,
+		exerciseTemplateId: entry.exercise_template_id,
+		weight: entry.weight_kg,
+		reps: entry.reps,
+		distance: entry.distance_meters,
+		duration: entry.duration_seconds,
+		rpe: entry.rpe,
+		customMetric: entry.custom_metric,
+		setType: entry.set_type,
 	};
 }

@@ -4,21 +4,23 @@
 */
 
 import { routineSchema } from "./routineSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const getV1RoutinesRoutineidPathParamsSchema = z.object({
-    "routineId": z.any()
+    "routineId": z.any().describe("The id of the routine")
     })
 
 export const getV1RoutinesRoutineidHeaderParamsSchema = z.object({
-    "api-key": z.string().uuid()
+    "api-key": z.uuid()
     })
 
 /**
  * @description The routine with the provided id
  */
 export const getV1RoutinesRoutineid200Schema = z.object({
-    "routine": z.optional(z.lazy(() => routineSchema))
+    get "routine"(){
+                return routineSchema.optional()
+              }
     })
 
 /**
@@ -28,4 +30,4 @@ export const getV1RoutinesRoutineid400Schema = z.object({
     "error": z.optional(z.string().describe("Error message"))
     })
 
-export const getV1RoutinesRoutineidQueryResponseSchema = getV1RoutinesRoutineid200Schema
+export const getV1RoutinesRoutineidQueryResponseSchema = z.lazy(() => getV1RoutinesRoutineid200Schema)

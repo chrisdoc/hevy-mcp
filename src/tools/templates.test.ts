@@ -36,7 +36,12 @@ describe("registerTemplateTools", () => {
 		const { server, tool } = createMockServer();
 		registerTemplateTools(server, null);
 
-		const toolNames = ["get-exercise-templates", "get-exercise-template"];
+		const toolNames = [
+			"get-exercise-templates",
+			"get-exercise-template",
+			"get-exercise-history",
+			"create-exercise-template",
+		];
 
 		for (const name of toolNames) {
 			const { handler } = getToolRegistration(tool, name);
@@ -99,5 +104,98 @@ describe("registerTemplateTools", () => {
 		expect(response.content[0]?.text).toBe(
 			"Exercise template with ID missing-id not found",
 		);
+	});
+
+	it("get-exercise-history returns formatted entries", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			getExerciseHistory: vi.fn().mockResolvedValue({
+				exercise_history: [
+					{
+						workout_id: "w1",
+						workout_title: "Push Day",
+						workout_start_time: "2024-01-01T10:00:00Z",
+						workout_end_time: "2024-01-01T11:00:00Z",
+						exercise_template_id: "t1",
+						weight_kg: 80,
+						reps: 8,
+						distance_meters: null,
+						duration_seconds: null,
+						rpe: 8,
+						custom_metric: null,
+						set_type: "normal",
+					},
+				],
+			}),
+		} as unknown as HevyClient;
+
+		registerTemplateTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-exercise-history");
+
+		const response = await handler({
+			exerciseTemplateId: "t1",
+			startDate: "2024-01-01T00:00:00Z",
+			endDate: "2024-02-01T00:00:00Z",
+		});
+
+		expect(hevyClient.getExerciseHistory).toHaveBeenCalledWith("t1", {
+			start_date: "2024-01-01T00:00:00Z",
+			end_date: "2024-02-01T00:00:00Z",
+		});
+
+		const parsed = JSON.parse(response.content[0].text) as unknown[];
+		expect(parsed).toEqual([
+			{
+				workoutId: "w1",
+				workoutTitle: "Push Day",
+				workoutStartTime: "2024-01-01T10:00:00Z",
+				workoutEndTime: "2024-01-01T11:00:00Z",
+				exerciseTemplateId: "t1",
+				weight: 80,
+				reps: 8,
+				distance: null,
+				duration: null,
+				rpe: 8,
+				customMetric: null,
+				setType: "normal",
+			},
+		]);
+	});
+
+	it("create-exercise-template maps input to API payload", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			createExerciseTemplate: vi.fn().mockResolvedValue({ id: 42 }),
+		} as unknown as HevyClient;
+
+		registerTemplateTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-exercise-template");
+
+		const response = await handler({
+			title: "Custom Curl",
+			exerciseType: "weight_reps",
+			equipmentCategory: "dumbbell",
+			muscleGroup: "biceps",
+			otherMuscles: ["forearms"],
+		});
+
+		expect(hevyClient.createExerciseTemplate).toHaveBeenCalledWith({
+			exercise: {
+				title: "Custom Curl",
+				exercise_type: "weight_reps",
+				equipment_category: "dumbbell",
+				muscle_group: "biceps",
+				other_muscles: ["forearms"],
+			},
+		});
+
+		const parsed = JSON.parse(response.content[0].text) as {
+			id: number | undefined;
+			message: string;
+		};
+		expect(parsed).toEqual({
+			id: 42,
+			message: "Exercise template created successfully",
+		});
 	});
 });

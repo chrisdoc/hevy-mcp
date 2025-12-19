@@ -4,7 +4,7 @@
 */
 
 import { postWorkoutsRequestExerciseSchema } from "./postWorkoutsRequestExerciseSchema.ts";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const postWorkoutsRequestBodySchema = z.object({
     "workout": z.optional(z.object({
@@ -13,6 +13,8 @@ export const postWorkoutsRequestBodySchema = z.object({
 "start_time": z.optional(z.string().describe("The time the workout started.")),
 "end_time": z.optional(z.string().describe("The time the workout ended.")),
 "is_private": z.optional(z.boolean().describe("A boolean indicating if the workout is private.")),
-"exercises": z.optional(z.array(z.lazy(() => postWorkoutsRequestExerciseSchema)))
+get "exercises"(){
+                return z.array(postWorkoutsRequestExerciseSchema).optional()
+              }
     }))
     })
