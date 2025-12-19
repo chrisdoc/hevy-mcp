@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.14.4...v1.15.0) (2025-12-19)
+
+
+### Features
+
+* **api:** add support for rep ranges ([00c9e6b](https://github.com/chrisdoc/hevy-mcp/commit/00c9e6b83b81a8df464075b3f98c7e76f37f1c86))
+
 ## [1.14.4](https://github.com/chrisdoc/hevy-mcp/compare/v1.14.3...v1.14.4) (2025-12-16)
 
 ## [1.14.3](https://github.com/chrisdoc/hevy-mcp/compare/v1.14.2...v1.14.3) (2025-12-15)
