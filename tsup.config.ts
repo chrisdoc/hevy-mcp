@@ -1,9 +1,20 @@
 import { readFileSync } from "node:fs";
 import { defineConfig } from "tsup";
 
-const { name, version } = JSON.parse(
-	readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
-) as { name: string; version: string };
+interface PackageJsonMeta {
+	name: string;
+	version: string;
+}
+
+const pkgJsonRaw = readFileSync(
+	new URL("./package.json", import.meta.url),
+	"utf-8",
+);
+const { name, version } = JSON.parse(pkgJsonRaw) as PackageJsonMeta;
+
+if (!name || !version) {
+	throw new Error("package.json must provide 'name' and 'version'.");
+}
 
 export default defineConfig({
 	entry: ["src/index.ts", "src/cli.ts"],
