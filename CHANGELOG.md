@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.16.0...v1.17.0) (2025-12-20)
+
+
+### Features
+
+* **sentry:** add release tracking ([#204](https://github.com/chrisdoc/hevy-mcp/issues/204)) ([123b17c](https://github.com/chrisdoc/hevy-mcp/commit/123b17c11cb65bfc11844df822d5c7d56c05873e))
+
 # [1.16.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.15.0...v1.16.0) (2025-12-19)
 
 
