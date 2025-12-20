@@ -4,6 +4,17 @@ import * as Sentry from "@sentry/node";
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
 
+const isBuiltArtifact = import.meta.url.includes("/dist/");
+if (
+	isBuiltArtifact &&
+	(typeof __HEVY_MCP_NAME__ !== "string" ||
+		typeof __HEVY_MCP_VERSION__ !== "string")
+) {
+	throw new Error(
+		"Build-time variables __HEVY_MCP_NAME__ and __HEVY_MCP_VERSION__ must be defined.",
+	);
+}
+
 const name =
 	typeof __HEVY_MCP_NAME__ === "string" ? __HEVY_MCP_NAME__ : "hevy-mcp";
 const version =
