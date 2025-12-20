@@ -5,7 +5,16 @@ import { registerWebhookTools } from "./webhooks.js";
 
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
->;
+> & {
+	createWebhookSubscription?: (data: {
+		webhook: {
+			url: string;
+			authToken: string | null;
+		};
+	}) => Promise<unknown>;
+	getWebhookSubscription?: () => Promise<unknown>;
+	deleteWebhookSubscription?: () => Promise<unknown>;
+};
 
 function createMockServer() {
 	const tool = vi.fn();

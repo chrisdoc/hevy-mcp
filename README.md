@@ -130,7 +130,8 @@ pnpm start -- --hevy-api-key=your_hevy_api_key_here
 `hevy-mcp` ships with Sentry monitoring baked into the built MCP server so
 that usage and errors from published builds can be observed.
 
-The server initializes `@sentry/node` with a fixed DSN and tracing settings
+The server initializes `@sentry/node` with a fixed DSN, release name derived
+from the package version, and tracing settings
 directly in the code (see `src/index.ts`), and wraps the underlying
 `McpServer` with `Sentry.wrapMcpServerWithSentry` so requests and tool calls
 are captured by Sentry automatically. The configuration uses

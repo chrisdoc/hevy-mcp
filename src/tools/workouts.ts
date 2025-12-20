@@ -188,33 +188,31 @@ export function registerWorkoutTools(
 			}
 			const { title, description, startTime, endTime, isPrivate, exercises } =
 				args;
-			const requestBody: PostWorkoutsRequestBody = {
-				workout: {
-					title,
-					description: description || null,
-					start_time: startTime,
-					end_time: endTime,
-					routine_id: args.routineId ?? null,
-					is_private: isPrivate,
-					exercises: exercises.map(
-						(exercise): PostWorkoutsRequestExercise => ({
-							exercise_template_id: exercise.exerciseTemplateId,
-							superset_id: exercise.supersetId ?? null,
-							notes: exercise.notes ?? null,
-							sets: exercise.sets.map((set) => ({
-								type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-								weight_kg: set.weight ?? set.weightKg ?? null,
-								reps: set.reps ?? null,
-								distance_meters: set.distance ?? set.distanceMeters ?? null,
-								duration_seconds: set.duration ?? set.durationSeconds ?? null,
-								rpe:
-									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
-								custom_metric: set.customMetric ?? null,
-							})),
-						}),
-					),
-				},
+			const workoutPayload = {
+				title,
+				description: description || null,
+				start_time: startTime,
+				end_time: endTime,
+				routine_id: args.routineId ?? null,
+				is_private: isPrivate,
+				exercises: exercises.map(
+					(exercise): PostWorkoutsRequestExercise => ({
+						exercise_template_id: exercise.exerciseTemplateId,
+						superset_id: exercise.supersetId ?? null,
+						notes: exercise.notes ?? null,
+						sets: exercise.sets.map((set) => ({
+							type: set.type as PostWorkoutsRequestSetTypeEnumKey,
+							weight_kg: set.weight ?? set.weightKg ?? null,
+							reps: set.reps ?? null,
+							distance_meters: set.distance ?? set.distanceMeters ?? null,
+							duration_seconds: set.duration ?? set.durationSeconds ?? null,
+							rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
+							custom_metric: set.customMetric ?? null,
+						})),
+					}),
+				),
 			};
+			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
 			const data = await hevyClient.createWorkout(requestBody);
 
@@ -287,33 +285,31 @@ export function registerWorkoutTools(
 				isPrivate,
 				exercises,
 			} = args;
-			const requestBody: PostWorkoutsRequestBody = {
-				workout: {
-					title,
-					description: description || null,
-					start_time: startTime,
-					end_time: endTime,
-					routine_id: routineId ?? null,
-					is_private: isPrivate,
-					exercises: exercises.map(
-						(exercise): PostWorkoutsRequestExercise => ({
-							exercise_template_id: exercise.exerciseTemplateId,
-							superset_id: exercise.supersetId ?? null,
-							notes: exercise.notes ?? null,
-							sets: exercise.sets.map((set) => ({
-								type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-								weight_kg: set.weight ?? set.weightKg ?? null,
-								reps: set.reps ?? null,
-								distance_meters: set.distance ?? set.distanceMeters ?? null,
-								duration_seconds: set.duration ?? set.durationSeconds ?? null,
-								rpe:
-									(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
-								custom_metric: set.customMetric ?? null,
-							})),
-						}),
-					),
-				},
+			const workoutPayload = {
+				title,
+				description: description || null,
+				start_time: startTime,
+				end_time: endTime,
+				routine_id: routineId ?? null,
+				is_private: isPrivate,
+				exercises: exercises.map(
+					(exercise): PostWorkoutsRequestExercise => ({
+						exercise_template_id: exercise.exerciseTemplateId,
+						superset_id: exercise.supersetId ?? null,
+						notes: exercise.notes ?? null,
+						sets: exercise.sets.map((set) => ({
+							type: set.type as PostWorkoutsRequestSetTypeEnumKey,
+							weight_kg: set.weight ?? set.weightKg ?? null,
+							reps: set.reps ?? null,
+							distance_meters: set.distance ?? set.distanceMeters ?? null,
+							duration_seconds: set.duration ?? set.durationSeconds ?? null,
+							rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
+							custom_metric: set.customMetric ?? null,
+						})),
+					}),
+				),
 			};
+			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
 			const data = await hevyClient.updateWorkout(workoutId, requestBody);
 

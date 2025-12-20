@@ -1,13 +1,36 @@
 import dotenvx from "@dotenvx/dotenvx";
 import * as Sentry from "@sentry/node";
 
+declare const __HEVY_MCP_NAME__: string | undefined;
+declare const __HEVY_MCP_VERSION__: string | undefined;
+declare const __HEVY_MCP_BUILD__: boolean | undefined;
+
+const isBuiltArtifact =
+	typeof __HEVY_MCP_BUILD__ === "boolean" ? __HEVY_MCP_BUILD__ : false;
+if (
+	isBuiltArtifact &&
+	(typeof __HEVY_MCP_NAME__ !== "string" ||
+		typeof __HEVY_MCP_VERSION__ !== "string")
+) {
+	throw new Error(
+		"Build-time variables __HEVY_MCP_NAME__ and __HEVY_MCP_VERSION__ must be defined.",
+	);
+}
+
+const name =
+	typeof __HEVY_MCP_NAME__ === "string" ? __HEVY_MCP_NAME__ : "hevy-mcp";
+const version =
+	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
+
 // Configure dotenvx with quiet mode to prevent stdout pollution in stdio mode
 dotenvx.config({ quiet: true });
 
 // Sentry monitoring is baked into the built MCP server so usage and errors
 // from users of the published package are captured for observability.
+const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
 const sentryConfig = {
 	dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
+	release: sentryRelease,
 	// Tracing must be enabled for MCP monitoring to work
 	tracesSampleRate: 1.0,
 	sendDefaultPii: false,
@@ -18,7 +41,6 @@ Sentry.init(sentryConfig);
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { name, version } from "../package.json";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";

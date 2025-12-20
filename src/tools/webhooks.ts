@@ -9,7 +9,16 @@ import type { InferToolParams } from "../utils/tool-helpers.js";
 
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
->;
+> & {
+	getWebhookSubscription?: () => Promise<unknown>;
+	createWebhookSubscription?: (data: {
+		webhook: {
+			url: string;
+			authToken: string | null;
+		};
+	}) => Promise<unknown>;
+	deleteWebhookSubscription?: () => Promise<unknown>;
+};
 
 // Enhanced webhook URL validation
 const webhookUrlSchema = z
@@ -64,13 +73,12 @@ export function registerWebhookTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			// TODO: Uncomment after regenerating client from updated OpenAPI spec
-			if (!("getWebhookSubscription" in hevyClient)) {
+			if (!hevyClient.getWebhookSubscription) {
 				throw new Error(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
 				);
 			}
-			const data = await (hevyClient as any).getWebhookSubscription();
+			const data = await hevyClient.getWebhookSubscription();
 			if (!data) {
 				return createEmptyResponse(
 					"No webhook subscription found for this account",
@@ -107,13 +115,12 @@ export function registerWebhookTools(
 				);
 			}
 			const { url, authToken } = args;
-			// TODO: Uncomment after regenerating client from updated OpenAPI spec
-			if (!("createWebhookSubscription" in hevyClient)) {
+			if (!hevyClient.createWebhookSubscription) {
 				throw new Error(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
 				);
 			}
-			const data = await (hevyClient as any).createWebhookSubscription({
+			const data = await hevyClient.createWebhookSubscription({
 				webhook: {
 					url,
 					authToken: authToken || null,
@@ -144,13 +151,12 @@ export function registerWebhookTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			// TODO: Uncomment after regenerating client from updated OpenAPI spec
-			if (!("deleteWebhookSubscription" in hevyClient)) {
+			if (!hevyClient.deleteWebhookSubscription) {
 				throw new Error(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
 				);
 			}
-			const data = await (hevyClient as any).deleteWebhookSubscription();
+			const data = await hevyClient.deleteWebhookSubscription();
 			if (!data) {
 				return createEmptyResponse(
 					"Failed to delete webhook subscription - no subscription may exist or there was a server error",
