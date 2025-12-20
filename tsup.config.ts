@@ -37,6 +37,7 @@ export default defineConfig({
 	format: ["esm"],
 	target: "esnext",
 	define: {
+		__HEVY_MCP_BUILD__: "true",
 		__HEVY_MCP_NAME__: JSON.stringify(name),
 		__HEVY_MCP_VERSION__: JSON.stringify(version),
 	},

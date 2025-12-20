@@ -3,8 +3,10 @@ import * as Sentry from "@sentry/node";
 
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
+declare const __HEVY_MCP_BUILD__: boolean | undefined;
 
-const isBuiltArtifact = import.meta.url.includes("/dist/");
+const isBuiltArtifact =
+	typeof __HEVY_MCP_BUILD__ === "boolean" ? __HEVY_MCP_BUILD__ : false;
 if (
 	isBuiltArtifact &&
 	(typeof __HEVY_MCP_NAME__ !== "string" ||
