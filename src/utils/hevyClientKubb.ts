@@ -28,6 +28,13 @@ type KubbClient = {
 	setConfig: (config: RequestConfig) => Partial<RequestConfig<unknown>>;
 };
 
+type CreateWebhookSubscriptionRequest = {
+	webhook: {
+		url: string;
+		authToken: string | null;
+	};
+};
+
 export function createClient(
 	apiKey: string,
 	baseUrl = "https://api.hevyapp.com",
@@ -141,15 +148,22 @@ export function createClient(
 			}),
 
 		// Webhooks
-		getWebhookSubscription: (): ReturnType<
-			typeof api.getV1WebhookSubscription
-		> => api.getV1WebhookSubscription(headers, { client }),
-		createWebhookSubscription: (
-			data: import("../generated/client/types").PostV1WebhookSubscriptionMutationRequest,
-		): ReturnType<typeof api.postV1WebhookSubscription> =>
-			api.postV1WebhookSubscription(headers, data, { client }),
-		deleteWebhookSubscription: (): ReturnType<
-			typeof api.deleteV1WebhookSubscription
-		> => api.deleteV1WebhookSubscription(headers, { client }),
+		getWebhookSubscription: async (): Promise<unknown> => {
+			throw new Error(
+				"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+			);
+		},
+		createWebhookSubscription: async (
+			_data: CreateWebhookSubscriptionRequest,
+		): Promise<unknown> => {
+			throw new Error(
+				"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+			);
+		},
+		deleteWebhookSubscription: async (): Promise<unknown> => {
+			throw new Error(
+				"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+			);
+		},
 	};
 }

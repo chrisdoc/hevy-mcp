@@ -70,7 +70,7 @@ export function registerWebhookTools(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
 				);
 			}
-			const data = await (hevyClient as any).getWebhookSubscription();
+			const data = await hevyClient.getWebhookSubscription();
 			if (!data) {
 				return createEmptyResponse(
 					"No webhook subscription found for this account",
@@ -113,7 +113,7 @@ export function registerWebhookTools(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
 				);
 			}
-			const data = await (hevyClient as any).createWebhookSubscription({
+			const data = await hevyClient.createWebhookSubscription({
 				webhook: {
 					url,
 					authToken: authToken || null,
@@ -150,7 +150,7 @@ export function registerWebhookTools(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
 				);
 			}
-			const data = await (hevyClient as any).deleteWebhookSubscription();
+			const data = await hevyClient.deleteWebhookSubscription();
 			if (!data) {
 				return createEmptyResponse(
 					"Failed to delete webhook subscription - no subscription may exist or there was a server error",
