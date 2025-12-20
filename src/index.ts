@@ -1,6 +1,13 @@
 import dotenvx from "@dotenvx/dotenvx";
 import * as Sentry from "@sentry/node";
-import { name, version } from "../package.json";
+
+declare const __HEVY_MCP_NAME__: string | undefined;
+declare const __HEVY_MCP_VERSION__: string | undefined;
+
+const name =
+	typeof __HEVY_MCP_NAME__ === "string" ? __HEVY_MCP_NAME__ : "hevy-mcp";
+const version =
+	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
 
 // Configure dotenvx with quiet mode to prevent stdout pollution in stdio mode
 dotenvx.config({ quiet: true });
