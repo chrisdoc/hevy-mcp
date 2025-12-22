@@ -34,13 +34,13 @@ importers:
         version: 4.11.1(ajv@8.17.1)
       '@modelcontextprotocol/sdk':
         specifier: ^1.23.0
-        version: 1.24.3(zod@4.1.13)
+        version: 1.24.3(zod@4.2.1)
       '@sentry/node':
         specifier: ^10.30.0
         version: 10.30.0
       '@smithery/sdk':
         specifier: 2.1.0
-        version: 2.1.0(zod@4.1.13)
+        version: 2.1.0(zod@4.2.1)
       axios:
         specifier: ^1.13.2
         version: 1.13.2
@@ -55,7 +55,7 @@ importers:
         version: 5.2.1
       zod:
         specifier: ^4.1.13
-        version: 4.1.13
+        version: 4.2.1
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.8
@@ -89,7 +89,7 @@ importers:
         version: 14.1.0(semantic-release@25.0.2(typescript@5.9.3))
       '@smithery/cli':
         specifier: ^1.6.3
-        version: 1.6.6(@types/node@25.0.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.13)
+        version: 1.6.6(@types/node@25.0.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.2.1)
       '@types/node':
         specifier: ^25.0.2
         version: 25.0.2
@@ -4666,8 +4666,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.1.13:
-    resolution: {integrity: sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig==}
+  zod@4.2.1:
+    resolution: {integrity: sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw==}
 
 snapshots:
 
@@ -5463,7 +5463,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@modelcontextprotocol/sdk@1.24.3(zod@4.1.13)':
+  '@modelcontextprotocol/sdk@1.24.3(zod@4.2.1)':
     dependencies:
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
@@ -5477,8 +5477,8 @@ snapshots:
       jose: 6.1.3
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.1.13
-      zod-to-json-schema: 3.25.0(zod@4.1.13)
+      zod: 4.2.1
+      zod-to-json-schema: 3.25.0(zod@4.2.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -6227,10 +6227,10 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@smithery/cli@1.6.6(@types/node@25.0.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.13)':
+  '@smithery/cli@1.6.6(@types/node@25.0.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.2.1)':
     dependencies:
       '@anthropic-ai/mcpb': 1.2.0
-      '@modelcontextprotocol/sdk': 1.24.3(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.24.3(zod@4.2.1)
       '@ngrok/ngrok': 1.6.0
       '@smithery/registry': 0.4.4
       '@smithery/sdk': 1.7.5
@@ -6279,9 +6279,9 @@ snapshots:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@smithery/sdk@2.1.0(zod@4.1.13)':
+  '@smithery/sdk@2.1.0(zod@4.2.1)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.24.3(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.24.3(zod@4.2.1)
       chalk: 5.6.2
       express: 5.2.1
       jose: 6.1.3
@@ -6289,8 +6289,8 @@ snapshots:
       lodash: 4.17.21
       okay-error: 1.0.3
       uuid: 11.1.0
-      zod: 4.1.13
-      zod-to-json-schema: 3.25.0(zod@4.1.13)
+      zod: 4.2.1
+      zod-to-json-schema: 3.25.0(zod@4.2.1)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
@@ -9294,10 +9294,10 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  zod-to-json-schema@3.25.0(zod@4.1.13):
+  zod-to-json-schema@3.25.0(zod@4.2.1):
     dependencies:
-      zod: 4.1.13
+      zod: 4.2.1
 
   zod@3.25.76: {}
 
-  zod@4.1.13: {}
+  zod@4.2.1: {}
