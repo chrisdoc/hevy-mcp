@@ -33,12 +33,21 @@ class ReadBuffer {
 	}
 }
 
-function deserializeMessageLenient(line: string) {
+type DeserializeResult =
+	| { ok: true; message: JSONRPCMessage }
+	| { ok: false; kind: "parse" }
+	| {
+			ok: false;
+			kind: "schema";
+			issue: { path: unknown[]; code: string; message: string };
+	  };
+
+function deserializeMessageLenient(line: string): DeserializeResult {
 	let parsedJson: unknown;
 	try {
 		parsedJson = JSON.parse(line);
 	} catch {
-		return null;
+		return { ok: false, kind: "parse" };
 	}
 
 	if (
@@ -52,10 +61,19 @@ function deserializeMessageLenient(line: string) {
 
 	const parsedMessage = JSONRPCMessageSchema.safeParse(parsedJson);
 	if (!parsedMessage.success) {
-		return null;
+		const issue = parsedMessage.error.issues[0];
+		return {
+			ok: false,
+			kind: "schema",
+			issue: {
+				path: issue?.path ?? [],
+				code: issue?.code ?? "unknown",
+				message: issue?.message ?? "Invalid JSON-RPC message",
+			},
+		};
 	}
 
-	return parsedMessage.data;
+	return { ok: true, message: parsedMessage.data };
 }
 
 /**
@@ -116,10 +134,18 @@ export class LenientStdioServerTransport {
 			}
 
 			try {
-				const message = deserializeMessageLenient(line);
-				if (!message) {
+				const result = deserializeMessageLenient(line);
+				if (!result.ok) {
 					this._invalidMessageCount += 1;
 					if (this._invalidMessageCount <= this._maxInvalidMessagesToLog) {
+						if (result.kind === "schema") {
+							console.error(
+								"Ignoring malformed JSON-RPC message on stdin (failed schema validation)",
+								JSON.stringify(result.issue),
+							);
+							continue;
+						}
+
 						console.error(
 							"Ignoring malformed JSON-RPC message on stdin (failed schema validation)",
 						);
@@ -127,7 +153,7 @@ export class LenientStdioServerTransport {
 					continue;
 				}
 
-				this.onmessage?.(message, undefined);
+				this.onmessage?.(result.message, undefined);
 			} catch (error) {
 				this.onerror?.(
 					error instanceof Error
