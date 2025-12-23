@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
 	entry: ["src/index.ts", "src/cli.ts"],
@@ -7,10 +7,8 @@ export default defineConfig({
 	sourcemap: true,
 	clean: true,
 	dts: true,
-	splitting: false,
 	banner: {
-		js: "#!/usr/bin/env node\n// Generated with tsup\n// https://github.com/egoist/tsup",
+		js: "#!/usr/bin/env node\n// Generated with tsdown\n// https://github.com/nicepkg/tsdown",
 	},
 	outDir: "dist",
-	bundle: true,
 });
