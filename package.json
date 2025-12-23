@@ -1,9 +1,9 @@
 {
 	"name": "hevy-mcp",
 	"version": "1.17.3",
-	"main": "dist/index.js",
+	"main": "dist/index.mjs",
 	"module": "src/index.ts",
-	"types": "dist/index.d.ts",
+	"types": "dist/index.d.mts",
 	"files": [
 		"dist",
 		"README.md"
@@ -14,16 +14,16 @@
 	},
 	"homepage": "https://github.com/chrisdoc/hevy-mcp#readme",
 	"bin": {
-		"hevy-mcp": "dist/cli.js"
+		"hevy-mcp": "dist/cli.mjs"
 	},
 	"scripts": {
-		"inspect": "pnpm run build && dotenvx run -- pnpm dlx @modelcontextprotocol/inspector@latest node dist/index.js",
+		"inspect": "pnpm run build && dotenvx run -- pnpm dlx @modelcontextprotocol/inspector@latest node dist/index.mjs",
 		"inspect:npm": "dotenvx run -- pnpm dlx @modelcontextprotocol/inspector@latest pnpm dlx hevy-mcp@latest",
 		"test": "vitest --run",
 		"export-specs": "node ./scripts/export-openapi-spec.js",
-		"build": "tsup",
+		"build": "tsdown",
 		"build:client": "kubb generate",
-		"start": "node dist/cli.js",
+		"start": "node dist/cli.mjs",
 		"dev": "tsx watch --clear-screen=false src/cli.ts",
 		"smithery:build": "smithery build",
 		"smithery:dev": "smithery dev",
@@ -82,7 +82,7 @@
 		"cross-env": "^10.1.0",
 		"lefthook": "^2.0.4",
 		"semantic-release": "^25.0.2",
-		"tsup": "^8.5.1",
+		"tsdown": "^0.18.2",
 		"tsx": "^4.20.6",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.14"

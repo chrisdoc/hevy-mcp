@@ -23,7 +23,7 @@ Run these commands in order to set up a working development environment (Corepac
    ```bash
    pnpm run build
    ```
-   - Takes approximately 3-5 seconds. TypeScript compilation via tsup.
+   - Takes approximately 3-5 seconds. TypeScript compilation via tsdown.
    - Always build before running the server or testing changes.
 
 3. **Run linting/formatting:**

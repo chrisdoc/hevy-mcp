@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 interface PackageJsonMeta {
 	name?: unknown;
@@ -46,8 +46,7 @@ export default defineConfig({
 	dts: true,
 	splitting: false,
 	banner: {
-		js: "#!/usr/bin/env node\n// Generated with tsup\n// https://github.com/egoist/tsup",
+		js: "#!/usr/bin/env node\n// Generated with tsdown\n// https://tsdown.dev",
 	},
 	outDir: "dist",
-	bundle: true,
 });
