@@ -1,7 +1,7 @@
-import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import createServer, { configSchema, runServer } from "./index.js";
 import { createClient } from "./utils/hevyClient.js";
+import * as stdioTransportModule from "./utils/stdioTransport.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
@@ -22,16 +22,16 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	};
 });
 
-vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => {
+vi.mock("./utils/stdioTransport.js", () => {
 	const transports: unknown[] = [];
-	class MockStdioServerTransport {
+	class MockLenientStdioServerTransport {
 		constructor() {
 			transports.push(this);
 		}
 	}
 
 	return {
-		StdioServerTransport: MockStdioServerTransport,
+		LenientStdioServerTransport: MockLenientStdioServerTransport,
 		__transports: transports,
 	};
 });
@@ -41,9 +41,11 @@ describe("Server entry", () => {
 		process.env = { ...originalEnv };
 		process.argv = [...originalArgv];
 		vi.clearAllMocks();
-		const anyStdioModule = stdioModule as { __transports?: unknown[] };
-		if (anyStdioModule.__transports) {
-			anyStdioModule.__transports.length = 0;
+		const anyTransportModule = stdioTransportModule as {
+			__transports?: unknown[];
+		};
+		if (anyTransportModule.__transports) {
+			anyTransportModule.__transports.length = 0;
 		}
 	});
 
@@ -76,8 +78,10 @@ describe("Server entry", () => {
 				"test-api-key",
 				"https://api.hevyapp.com",
 			);
-			const anyStdioModule = stdioModule as { __transports?: unknown[] };
-			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
+			const anyTransportModule = stdioTransportModule as {
+				__transports?: unknown[];
+			};
+			expect(anyTransportModule.__transports?.length).toBeGreaterThan(0);
 		});
 
 		it("prefers CLI --hevy-api-key argument over environment variable", async () => {

@@ -39,7 +39,6 @@ const sentryConfig = {
 Sentry.init(sentryConfig);
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
@@ -48,6 +47,7 @@ import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { createClient } from "./utils/hevyClient.js";
+import { LenientStdioServerTransport } from "./utils/stdioTransport.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 
@@ -94,6 +94,6 @@ export async function runServer() {
 
 	const server = buildServer(apiKey);
 	console.error("Starting MCP server in stdio mode");
-	const transport = new StdioServerTransport();
+	const transport = new LenientStdioServerTransport();
 	await server.connect(transport);
 }
