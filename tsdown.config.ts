@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { sentryRollupPlugin } from "@sentry/rollup-plugin";
 import { defineConfig } from "tsdown";
 
 interface PackageJsonMeta {
@@ -49,4 +50,18 @@ export default defineConfig({
 		js: "#!/usr/bin/env node\n// Generated with tsdown\n// https://tsdown.dev",
 	},
 	outDir: "dist",
+	plugins: [
+		sentryRollupPlugin({
+			org: process.env.SENTRY_ORG,
+			project: process.env.SENTRY_PROJECT,
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+			telemetry: false,
+			sourcemaps: {
+				assets: ["./dist/**/*.map"],
+			},
+			release: {
+				name: version,
+			},
+		}),
+	],
 });

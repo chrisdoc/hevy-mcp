@@ -322,6 +322,21 @@ To set up the `HEVY_API_KEY` secret:
 
 If the secret is not set, the integration tests will fail (by design).
 
+To set up Sentry secrets for source map uploads during builds:
+
+The build process uses Sentry's Rollup plugin to upload source maps. You need to configure three secrets:
+
+1. Go to your GitHub repository
+2. Click on "Settings" > "Secrets and variables" > "Actions"
+3. Add the following secrets:
+   - `SENTRY_ORG`: Your Sentry organization slug
+   - `SENTRY_PROJECT`: Your Sentry project slug
+   - `SENTRY_AUTH_TOKEN`: A Sentry auth token with `project:releases` scope
+
+   You can create a Sentry auth token at: https://sentry.io/settings/account/api/auth-tokens/
+
+If these secrets are not set, the build will still succeed, but source maps will not be uploaded to Sentry.
+
 Note: GitHub does not provide secrets to pull requests from forks by default, so
 fork PRs may fail CI unless a maintainer reruns the checks with `HEVY_API_KEY`
 available.
