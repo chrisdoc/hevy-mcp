@@ -1,4 +1,3 @@
----
 name: Close Stale Issues
 
 on:
@@ -16,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Close stale issues and PRs
-        uses: actions/stale@v9
+        uses: actions/stale@v10
         with:
           # Issues
           stale-issue-message: >-
