@@ -3,11 +3,10 @@ import { createHttpServer } from "./httpServer.js";
 
 describe("createHttpServer", () => {
 	it("throws because HTTP transport is removed", () => {
-		expect(() => createHttpServer()).toThrowError(
-			/HTTP\/SSE transport has been removed/,
-		);
-		expect(() => createHttpServer()).toThrowError(
-			/migration-from-httpsse-transport/,
-		);
+		const call = () => createHttpServer();
+
+		expect(call).toThrowError(/HTTP\/SSE transport has been removed/);
+		expect(call).toThrowError(/use stdio instead of HTTP\/SSE/);
+		expect(call).toThrowError(/migration-from-httpsse-transport/);
 	});
 });
