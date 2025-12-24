@@ -1,5 +1,5 @@
-import dotenvx from "@dotenvx/dotenvx";
 import * as Sentry from "@sentry/node";
+import * as dotenv from "dotenv";
 
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
@@ -22,8 +22,10 @@ const name =
 const version =
 	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
 
-// Configure dotenvx with quiet mode to prevent stdout pollution in stdio mode
-dotenvx.config({ quiet: true });
+// Configure dotenv with quiet mode to prevent stdout pollution in stdio mode
+// Without quiet: true, dotenv outputs "injecting env" messages to stdout
+// which corrupts MCP JSON-RPC communication in stdio mode
+dotenv.config({ quiet: true });
 
 // Sentry monitoring is baked into the built MCP server so usage and errors
 // from users of the published package are captured for observability.

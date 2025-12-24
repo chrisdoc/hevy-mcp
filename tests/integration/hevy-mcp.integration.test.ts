@@ -1,6 +1,6 @@
-import dotenvx from "@dotenvx/dotenvx";
+import * as dotenv from "dotenv";
 
-dotenvx.config({ quiet: true });
+dotenv.config({ quiet: true });
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
