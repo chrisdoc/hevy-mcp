@@ -166,7 +166,71 @@ Smithery can bundle and host `hevy-mcp` without Docker by importing the exported
 
 > **Why are `chalk`, `cors`, and `@smithery/sdk` dependencies?** Smithery’s TypeScript runtime injects its own Express bootstrap that imports these packages. Declaring them in `package.json` ensures the Smithery CLI can bundle your server successfully.
 
-hevy-mcp now runs exclusively over stdio, which works seamlessly with MCP-aware clients like Claude Desktop and Cursor. HTTP transport has been removed to simplify deployment.
+### Stdio Only (Current)
+
+**As of version 1.18.0 (November 2025), hevy-mcp only supports stdio transport.** HTTP/SSE transport has been completely removed.
+
+hevy-mcp runs exclusively over stdio, which works seamlessly with MCP-aware clients like Claude Desktop and Cursor. The server communicates via standard input/output streams using JSON-RPC messages.
+
+### Migration from HTTP/SSE Transport
+
+**If you were using HTTP or SSE transport in an older version (< 1.18.0), you must migrate to stdio.**
+
+The HTTP/SSE transport was removed in commit `6f32a48` (November 19, 2025) to simplify the codebase and focus on the stdio-native MCP experience. If you're encountering errors like:
+
+- `"stream is not readable"` when making HTTP requests
+- `"HTTP transport mode has been removed from hevy-mcp"`
+- Server messages about SSE mode on `http://localhost:3001`
+
+You are likely running an outdated build or trying to connect with an HTTP-based client. Here's how to fix it:
+
+#### Steps to Migrate:
+
+1. **Update to the latest version:**
+   ```bash
+   npx -y hevy-mcp@latest
+   # or if installed locally:
+   pnpm install hevy-mcp@latest
+   ```
+
+2. **Update your client configuration** to use stdio transport instead of HTTP. For example, in Cursor's `~/.cursor/mcp.json`:
+   
+   **Old HTTP-based config (no longer supported):**
+   ```json
+   {
+     "hevy-mcp": {
+       "url": "http://localhost:3001/sse"
+     }
+   }
+   ```
+   
+   **New stdio-based config (current):**
+   ```json
+   {
+     "hevy-mcp": {
+       "command": "npx",
+       "args": ["-y", "hevy-mcp"],
+       "env": {
+         "HEVY_API_KEY": "your-api-key-here"
+       }
+     }
+   }
+   ```
+
+3. **Clear any cached builds:**
+   ```bash
+   # If you have a local clone, rebuild
+   pnpm run build
+   
+   # Or remove node_modules and reinstall
+   rm -rf node_modules dist
+   pnpm install
+   pnpm run build
+   ```
+
+4. **Ensure you're not running a custom HTTP server.** If you have custom code that imports `createHttpServer()`, it will now throw an error. Remove those imports and use stdio transport instead.
+
+If you absolutely need HTTP/SSE transport, you can use version `1.17.x` or earlier, but those versions are no longer maintained and contain known bugs (including the "stream is not readable" issue caused by middleware conflicts).
 
 ## Usage
 

@@ -5,6 +5,38 @@
 
 * integrate Sentry Rollup plugin for source map uploads ([#215](https://github.com/chrisdoc/hevy-mcp/issues/215)) ([c1195c1](https://github.com/chrisdoc/hevy-mcp/commit/c1195c11288698df2d9e190bd92c5f0e014179d8))
 
+
+### BREAKING CHANGES
+
+* **HTTP/SSE Transport Removed (November 19, 2025)**: HTTP and SSE transport support has been completely removed from hevy-mcp as of commit `6f32a48`. The server now exclusively supports stdio transport.
+
+**Migration Required**: If you were using HTTP or SSE transport in versions prior to 1.18.0, you must update your client configuration to use stdio transport. 
+
+**Common errors indicating you need to migrate:**
+- `"stream is not readable"` when making HTTP requests
+- `"HTTP transport mode has been removed from hevy-mcp"`
+- Server messages about SSE mode on `http://localhost:3001`
+
+**How to migrate:**
+
+1. Update to the latest version: `npx -y hevy-mcp@latest`
+2. Update your client configuration to use stdio instead of HTTP/SSE
+3. For Cursor, change `~/.cursor/mcp.json` from URL-based to command-based config:
+   ```json
+   {
+     "hevy-mcp": {
+       "command": "npx",
+       "args": ["-y", "hevy-mcp"],
+       "env": {
+         "HEVY_API_KEY": "your-api-key-here"
+       }
+     }
+   }
+   ```
+4. Clear any cached builds if you have a local clone
+
+**Note**: Versions 1.17.x and earlier still support HTTP/SSE but are no longer maintained and contain known bugs.
+
 ## [1.17.3](https://github.com/chrisdoc/hevy-mcp/compare/v1.17.2...v1.17.3) (2025-12-23)
 
 ## [1.17.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.17.1...v1.17.2) (2025-12-23)
