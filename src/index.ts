@@ -83,7 +83,7 @@ function buildServer(apiKey: string) {
 export default function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey } = serverConfigSchema.parse(config);
 	const server = buildServer(apiKey);
-	return server.server;
+	return server;
 }
 
 export async function runServer() {
