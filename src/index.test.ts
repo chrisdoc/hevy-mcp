@@ -10,9 +10,13 @@ vi.mock("./utils/hevyClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
 }));
 
+vi.mock("@sentry/node", () => ({
+	init: vi.fn(),
+	wrapMcpServerWithSentry: vi.fn((server) => server),
+}));
+
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	class MockMcpServer {
-		server = { mockServer: true };
 		connect = vi.fn().mockResolvedValue(undefined);
 		tool = vi.fn();
 	}
