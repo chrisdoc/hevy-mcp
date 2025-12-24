@@ -7,6 +7,14 @@
 
 * integrate Sentry Rollup plugin for source map uploads ([#215](https://github.com/chrisdoc/hevy-mcp/issues/215)) ([c1195c1](https://github.com/chrisdoc/hevy-mcp/commit/c1195c11288698df2d9e190bd92c5f0e014179d8))
 
+
+### BREAKING CHANGES
+
+* **HTTP/SSE transport removed**: hevy-mcp now runs exclusively over stdio.
+
+  For migration steps (including Cursor config examples), see:
+  https://github.com/chrisdoc/hevy-mcp#migration-from-httpsse-transport
+
 ## [1.17.3](https://github.com/chrisdoc/hevy-mcp/compare/v1.17.2...v1.17.3) (2025-12-23)
 
 ## [1.17.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.17.1...v1.17.2) (2025-12-23)

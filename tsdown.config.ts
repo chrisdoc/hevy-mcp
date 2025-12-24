@@ -45,7 +45,6 @@ export default defineConfig({
 	sourcemap: true,
 	clean: true,
 	dts: true,
-	splitting: false,
 	banner: {
 		js: "#!/usr/bin/env node\n// Generated with tsdown\n// https://tsdown.dev",
 	},
