@@ -6,5 +6,8 @@ describe("createHttpServer", () => {
 		expect(() => createHttpServer()).toThrowError(
 			/HTTP\/SSE transport has been removed/,
 		);
+		expect(() => createHttpServer()).toThrowError(
+			/migration-from-httpsse-transport/,
+		);
 	});
 });

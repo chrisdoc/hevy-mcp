@@ -6,5 +6,8 @@ describe("HTTP transport integration", () => {
 		expect(() => createHttpServer()).toThrow(
 			/HTTP\/SSE transport has been removed/,
 		);
+		expect(() => createHttpServer()).toThrow(
+			/migration-from-httpsse-transport/,
+		);
 	});
 });
