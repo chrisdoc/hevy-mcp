@@ -4,7 +4,7 @@ import { createHttpServer } from "./httpServer.js";
 describe("createHttpServer", () => {
 	it("throws because HTTP transport is removed", () => {
 		expect(() => createHttpServer()).toThrowError(
-			/HTTP transport mode has been removed/,
+			/HTTP\/SSE transport has been removed/,
 		);
 	});
 });

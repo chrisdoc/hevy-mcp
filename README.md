@@ -168,7 +168,8 @@ Smithery can bundle and host `hevy-mcp` without Docker by importing the exported
 
 ### Stdio Only (Current)
 
-**As of version 1.18.0 (November 2025), hevy-mcp only supports stdio transport.** HTTP/SSE transport has been completely removed.
+**As of version 1.18.0, hevy-mcp only supports stdio transport.** HTTP/SSE
+transport has been completely removed.
 
 hevy-mcp runs exclusively over stdio, which works seamlessly with MCP-aware clients like Claude Desktop and Cursor. The server communicates via standard input/output streams using JSON-RPC messages.
 
@@ -176,7 +177,8 @@ hevy-mcp runs exclusively over stdio, which works seamlessly with MCP-aware clie
 
 **If you were using HTTP or SSE transport in an older version (< 1.18.0), you must migrate to stdio.**
 
-The HTTP/SSE transport was removed in commit `6f32a48` (November 19, 2025) to simplify the codebase and focus on the stdio-native MCP experience. If you're encountering errors like:
+The HTTP/SSE transport was removed in v1.18.0 to simplify the codebase and focus
+on the stdio-native MCP experience. If you're encountering errors like:
 
 - `"stream is not readable"` when making HTTP requests
 - `"HTTP transport mode has been removed from hevy-mcp"`
