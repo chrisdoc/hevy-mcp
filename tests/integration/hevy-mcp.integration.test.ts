@@ -1,6 +1,5 @@
-import * as dotenv from "dotenv";
-
-dotenv.config({ quiet: true });
+// Environment variables are loaded via Node.js native --env-file flag (Node.js 20.6+)
+// or set directly in the environment before running tests.
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";

@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/node";
-import * as dotenv from "dotenv";
 
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
@@ -22,10 +21,9 @@ const name =
 const version =
 	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
 
-// Configure dotenv with quiet mode to prevent stdout pollution in stdio mode
-// Without quiet: true, dotenv outputs "injecting env" messages to stdout
-// which corrupts MCP JSON-RPC communication in stdio mode
-dotenv.config({ quiet: true });
+// Environment variables are loaded via Node.js native --env-file flag (Node.js 20.6+)
+// or set directly in the environment. No dotenv dependency needed.
+// This avoids stdout pollution that corrupts MCP JSON-RPC communication in stdio mode.
 
 // Sentry monitoring is baked into the built MCP server so usage and errors
 // from users of the published package are captured for observability.
