@@ -17,14 +17,14 @@
 		"hevy-mcp": "dist/cli.mjs"
 	},
 	"scripts": {
-		"inspect": "pnpm run build && dotenvx run -- pnpm dlx @modelcontextprotocol/inspector@latest node dist/index.mjs",
-		"inspect:npm": "dotenvx run -- pnpm dlx @modelcontextprotocol/inspector@latest pnpm dlx hevy-mcp@latest",
+		"inspect": "pnpm run build && pnpm dlx @modelcontextprotocol/inspector@latest node --env-file .env dist/index.mjs",
+		"inspect:npm": "pnpm dlx @modelcontextprotocol/inspector@latest pnpm dlx hevy-mcp@latest",
 		"test": "vitest --run",
 		"export-specs": "node ./scripts/export-openapi-spec.js",
 		"build": "tsdown",
 		"build:client": "kubb generate",
-		"start": "node dist/cli.mjs",
-		"dev": "tsx watch --clear-screen=false src/cli.ts",
+		"start": "node --env-file .env dist/cli.mjs",
+		"dev": "tsx watch --env-file .env --clear-screen=false src/cli.ts",
 		"smithery:build": "smithery build",
 		"smithery:dev": "smithery dev",
 		"check": "biome check --write --unsafe",
