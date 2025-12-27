@@ -56,13 +56,7 @@ export function registerRoutineTools(
 
 			// Process routines to extract relevant information
 			// filter routines to only those created after the provided `since` timestamp
-			const sinceValue = since || "1970-01-01T00:00:00Z";
-			const sinceDate = new Date(sinceValue);
-			if (isNaN(sinceDate.getTime())) {
-				throw new Error(
-					"Invalid 'since' date format, please use ISO 8601 format.",
-				);
-			}
+			const sinceDate = new Date(since ?? "1970-01-01T00:00:00Z");
 			const routines = (data?.routines ?? [])
 				.filter((routine: Routine) => {
 					if (!routine.created_at) return false;
