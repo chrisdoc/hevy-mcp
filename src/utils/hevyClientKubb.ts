@@ -19,6 +19,17 @@ import type {
 	PutV1WorkoutsWorkoutidMutationRequest,
 } from "../generated/client/types";
 
+type RoutineWithFolderId = PutV1RoutinesRoutineidMutationRequest["routine"] & {
+	folder_id?: number | null;
+};
+
+type PutV1RoutinesRoutineidMutationRequestWithFolderId = Omit<
+	PutV1RoutinesRoutineidMutationRequest,
+	"routine"
+> & {
+	routine?: RoutineWithFolderId;
+};
+
 // Define a proper client type that matches the Kubb client interface
 type KubbClient = {
 	<TData, _TError = unknown, TVariables = unknown>(
@@ -99,8 +110,10 @@ export function createClient(
 			api.postV1Routines(headers, data, { client }),
 		updateRoutine: (
 			routineId: string,
-			data: PutV1RoutinesRoutineidMutationRequest,
+			data: PutV1RoutinesRoutineidMutationRequestWithFolderId,
 		): ReturnType<typeof api.putV1RoutinesRoutineid> =>
+			// NOTE: The generated type for PutV1RoutinesRoutineidMutationRequest does not
+			// model routine.folder_id, but the backend accepts it.
 			api.putV1RoutinesRoutineid(routineId, headers, data, {
 				client,
 			}),

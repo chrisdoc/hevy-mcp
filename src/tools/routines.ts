@@ -191,6 +191,7 @@ export function registerRoutineTools(
 	const updateRoutineSchema = {
 		routineId: z.string().min(1),
 		title: z.string().min(1),
+		folderId: z.coerce.number().nullable().optional(),
 		notes: z.string().optional(),
 		exercises: z.array(
 			z.object({
@@ -226,7 +227,7 @@ export function registerRoutineTools(
 
 	server.tool(
 		"update-routine",
-		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
+		"Update an existing routine by ID. You can modify the title, notes, folder assignment, and exercise configurations. Returns the updated routine with all changes applied.",
 		updateRoutineSchema,
 		withErrorHandling(async (args: UpdateRoutineParams) => {
 			if (!hevyClient) {
@@ -234,10 +235,21 @@ export function registerRoutineTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const { routineId, title, notes, exercises } = args;
+			const { routineId, title, folderId, notes, exercises } = args;
+
+			let resolvedFolderId = folderId;
+			if (resolvedFolderId === undefined) {
+				const existing = await hevyClient.getRoutineById(String(routineId));
+				if (!existing || !existing.routine) {
+					return createEmptyResponse(`Routine with ID ${routineId} not found`);
+				}
+				resolvedFolderId = existing.routine.folder_id ?? null;
+			}
+
 			const data = await hevyClient.updateRoutine(routineId, {
 				routine: {
 					title,
+					folder_id: resolvedFolderId ?? null,
 					notes: notes ?? null,
 					exercises: exercises.map(
 						(exercise): PutRoutinesRequestExercise => ({
