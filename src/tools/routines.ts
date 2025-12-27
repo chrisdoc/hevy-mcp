@@ -34,12 +34,13 @@ export function registerRoutineTools(
 	const getRoutinesSchema = {
 		page: z.coerce.number().int().gte(1).default(1),
 		pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+		since: z.iso.datetime({ offset: true }).default("1970-01-01T00:00:00Z"),
 	} as const;
 	type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
 
 	server.tool(
 		"get-routines",
-		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
+		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines. Supports pagination and filtering by createdAt by passing the since argument.",
 		getRoutinesSchema,
 		withErrorHandling(async (args: GetRoutinesParams) => {
 			if (!hevyClient) {
@@ -47,15 +48,28 @@ export function registerRoutineTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const { page, pageSize } = args;
+			const { page, pageSize, since } = args;
 			const data = await hevyClient.getRoutines({
 				page,
 				pageSize,
 			});
 
 			// Process routines to extract relevant information
-			const routines =
-				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
+			// filter routines to only those created after the provided `since` timestamp
+			const sinceValue = since || "1970-01-01T00:00:00Z";
+			const sinceDate = new Date(sinceValue);
+			if (isNaN(sinceDate.getTime())) {
+				throw new Error(
+					"Invalid 'since' date format, please use ISO 8601 format.",
+				);
+			}
+			const routines = (data?.routines ?? [])
+				.filter((routine: Routine) => {
+					if (!routine.created_at) return false;
+					const createdAt = new Date(routine.created_at);
+					return !isNaN(createdAt.getTime()) && createdAt >= sinceDate;
+				})
+				.map((routine: Routine) => formatRoutine(routine));
 
 			if (routines.length === 0) {
 				return createEmptyResponse(
