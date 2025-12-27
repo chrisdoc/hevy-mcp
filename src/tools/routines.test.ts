@@ -162,6 +162,154 @@ describe("registerRoutineTools", () => {
 		expect(parsed).toEqual(formatRoutine(routine));
 	});
 
+	it("create-routine sends folder_id as null when folderId is omitted", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "created-routine",
+			title: "No Folder",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:00:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			createRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-routine");
+
+		await handler({
+			title: "No Folder",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal" as const, weight: 70, reps: 8 }],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
+			routine: expect.objectContaining({
+				title: "No Folder",
+				folder_id: null,
+			}),
+		});
+	});
+
+	it("update-routine preserves folder_id when folderId is omitted", async () => {
+		const { server, tool } = createMockServer();
+		const existingRoutine: Routine = {
+			id: "routine-123",
+			title: "Existing",
+			folder_id: 321,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:00:00Z",
+			exercises: [],
+		};
+		const updatedRoutine: Routine = {
+			...existingRoutine,
+			title: "Updated",
+			updated_at: "2025-03-26T19:30:00Z",
+		};
+		const hevyClient: HevyClient = {
+			getRoutineById: vi.fn().mockResolvedValue({ routine: existingRoutine }),
+			updateRoutine: vi.fn().mockResolvedValue(updatedRoutine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({
+			routineId: "routine-123",
+			title: "Updated",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal" as const, weight: 70, reps: 8 }],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(hevyClient.getRoutineById).toHaveBeenCalledWith("routine-123");
+		expect(hevyClient.updateRoutine).toHaveBeenCalledWith("routine-123", {
+			routine: expect.objectContaining({
+				title: "Updated",
+				folder_id: 321,
+			}),
+		});
+	});
+
+	it("update-routine uses the provided folderId without extra lookup", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "routine-123",
+			title: "Updated",
+			folder_id: 456,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			getRoutineById: vi.fn(),
+			updateRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({
+			routineId: "routine-123",
+			title: "Updated",
+			folderId: 456,
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal" as const, weight: 70, reps: 8 }],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(hevyClient.getRoutineById).not.toHaveBeenCalled();
+		expect(hevyClient.updateRoutine).toHaveBeenCalledWith("routine-123", {
+			routine: expect.objectContaining({
+				folder_id: 456,
+			}),
+		});
+	});
+
+	it("update-routine returns an empty response when the routine does not exist", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			getRoutineById: vi.fn().mockResolvedValue(null),
+			updateRoutine: vi.fn(),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		const response = await handler({
+			routineId: "missing-routine",
+			title: "Updated",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal" as const, weight: 70, reps: 8 }],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(hevyClient.updateRoutine).not.toHaveBeenCalled();
+		expect(response).toMatchObject({
+			content: [
+				{
+					type: "text",
+					text: "Routine with ID missing-routine not found",
+				},
+			],
+		});
+	});
+
 	it("create-routine maps repRange to rep_range in the request body", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {
