@@ -73,21 +73,35 @@ export function registerRoutineTools(
 	// Get routines
 	server.tool(
 		"get-routines",
-		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
+		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines. Supports pagination and filtering by createdAt by passing the since argument.",
 		{
 			page: z.coerce.number().int().gte(1).default(1),
 			pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+			since: z.string().default("1970-01-01T00:00:00Z"),
 		},
 		withErrorHandling(async (args) => {
-			const { page, pageSize } = args as { page: number; pageSize: number };
+			const { page, pageSize, since } = args as {
+				page: number;
+				pageSize: number;
+				since: string;
+			};
 			const data = await hevyClient.getRoutines({
 				page,
 				pageSize,
 			});
 
 			// Process routines to extract relevant information
-			const routines =
-				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
+			// filter routines to only those created after the provided `since` timestamp
+			const sinceDate = new Date(since);
+			const routines = (data?.routines ?? [])
+				.filter((routine: Routine) => {
+					if (!routine.created_at) return false;
+					const created = new Date(routine.created_at);
+					if (Number.isNaN(created.getTime())) return false;
+					if (Number.isNaN(sinceDate.getTime())) return true;
+					return created > sinceDate;
+				})
+				.map((routine: Routine) => formatRoutine(routine));
 
 			if (routines.length === 0) {
 				return createEmptyResponse(
