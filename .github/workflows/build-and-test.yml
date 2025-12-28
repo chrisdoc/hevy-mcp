@@ -40,6 +40,9 @@ jobs:
     - name: Run Check
       run: pnpm run check
 
+    - name: Validate OpenAPI Spec
+      run: pnpm run validate:openapi
+
     - name: Run build
       run: pnpm run build
       env:

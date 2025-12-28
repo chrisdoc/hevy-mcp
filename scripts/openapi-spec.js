@@ -1,32 +1,32 @@
+#!/usr/bin/env node
+/**
+ * OpenAPI Spec Script
+ *
+ * Fetches the OpenAPI spec from Hevy's API and applies fixes for known issues.
+ * Run with: pnpm run openapi
+ */
 import { writeFileSync } from "node:fs";
 import pkg from "abstract-syntax-tree";
 
 const { parse, find, generate } = pkg;
 
+const SPEC_FILE = "openapi-spec.json";
+const HEVY_SWAGGER_URL = "https://api.hevyapp.com/docs/swagger-ui-init.js";
+
 /**
  * Fix known OpenAPI spec issues from the upstream Hevy API.
- * These are issues that would cause validation errors or warnings.
  */
 function fixOpenAPISpec(spec) {
-	// Deep clone to avoid mutation issues
 	const fixed = JSON.parse(JSON.stringify(spec));
 
-	// Fix invalid "required: true" on properties (should be array at schema level)
+	console.log("Applying fixes...\n");
+
 	fixInvalidRequiredProperties(fixed.components?.schemas || {});
-
-	// Fix invalid "type": "enum" (should be "type": "string" with enum array)
 	fixInvalidEnumTypes(fixed.components?.schemas || {});
-
-	// Fix $ref siblings (properties next to $ref are invalid)
 	fixRefSiblings(fixed.components?.schemas || {});
-
-	// Fix missing schema on parameters (api-key header parameters)
 	fixMissingParameterSchemas(fixed.paths || {});
-
-	// Fix invalid examples
 	fixInvalidExamples(fixed.components?.schemas || {});
 
-	// Add missing servers array
 	if (!fixed.servers || fixed.servers.length === 0) {
 		fixed.servers = [
 			{ url: "https://api.hevyapp.com", description: "Hevy API" },
@@ -34,18 +34,14 @@ function fixOpenAPISpec(spec) {
 		console.log("  Fixed: Added missing servers array");
 	}
 
-	// Add missing global tags from operations
 	fixMissingGlobalTags(fixed);
-
-	// Generate missing operationIds
 	generateOperationIds(fixed.paths || {});
 
 	return fixed;
 }
 
 /**
- * Recursively fix schemas that have "required": true on properties.
- * In OpenAPI 3.0, "required" must be an array of property names at the schema level.
+ * Fix schemas with "required": true on properties.
  */
 function fixInvalidRequiredProperties(schemas, path = "schemas") {
 	for (const [schemaName, schema] of Object.entries(schemas)) {
@@ -55,19 +51,14 @@ function fixInvalidRequiredProperties(schemas, path = "schemas") {
 	}
 }
 
-/**
- * Fix a single schema's required properties recursively.
- */
 function fixSchemaRequired(schema, path = "") {
 	if (!schema || typeof schema !== "object") return;
 
-	// Check if this schema has properties with invalid "required: true"
 	if (schema.properties && typeof schema.properties === "object") {
 		const requiredProps = [];
 
 		for (const [propName, propSchema] of Object.entries(schema.properties)) {
 			if (propSchema && typeof propSchema === "object") {
-				// Check for invalid "required": true on the property itself
 				if (propSchema.required === true) {
 					requiredProps.push(propName);
 					delete propSchema.required;
@@ -75,29 +66,19 @@ function fixSchemaRequired(schema, path = "") {
 						`  Fixed: ${path}.properties.${propName} - moved "required: true" to schema level`,
 					);
 				}
-
-				// Recursively fix nested objects
 				fixSchemaRequired(propSchema, `${path}.properties.${propName}`);
 			}
 		}
 
-		// Add found required properties to the schema's required array
 		if (requiredProps.length > 0) {
-			if (!schema.required) {
-				schema.required = [];
-			}
+			if (!schema.required) schema.required = [];
 			schema.required.push(...requiredProps);
-			// Remove duplicates
 			schema.required = [...new Set(schema.required)];
 		}
 	}
 
-	// Handle nested schemas in items (arrays)
-	if (schema.items) {
-		fixSchemaRequired(schema.items, `${path}.items`);
-	}
+	if (schema.items) fixSchemaRequired(schema.items, `${path}.items`);
 
-	// Handle allOf, oneOf, anyOf
 	for (const keyword of ["allOf", "oneOf", "anyOf"]) {
 		if (Array.isArray(schema[keyword])) {
 			schema[keyword].forEach((subSchema, i) => {
@@ -106,7 +87,6 @@ function fixSchemaRequired(schema, path = "") {
 		}
 	}
 
-	// Handle additionalProperties if it's a schema
 	if (
 		schema.additionalProperties &&
 		typeof schema.additionalProperties === "object"
@@ -120,12 +100,10 @@ function fixSchemaRequired(schema, path = "") {
 
 /**
  * Fix invalid "type": "enum" schemas.
- * In OpenAPI 3.0, enums should be "type": "string" with an "enum" array.
  */
 function fixInvalidEnumTypes(schemas) {
 	for (const [schemaName, schema] of Object.entries(schemas)) {
 		if (schema && schema.type === "enum" && Array.isArray(schema.enum)) {
-			// Determine the actual type from enum values
 			const firstValue = schema.enum[0];
 			const inferredType = typeof firstValue === "number" ? "number" : "string";
 			schema.type = inferredType;
@@ -137,8 +115,7 @@ function fixInvalidEnumTypes(schemas) {
 }
 
 /**
- * Fix $ref siblings - properties next to $ref are invalid in OpenAPI 3.0.
- * We need to wrap the $ref in an allOf and put the extra properties alongside.
+ * Fix $ref siblings - wrap in allOf.
  */
 function fixRefSiblings(schemas) {
 	for (const [schemaName, schema] of Object.entries(schemas)) {
@@ -151,37 +128,26 @@ function fixRefSiblings(schemas) {
 function fixRefSiblingsRecursive(obj, path = "") {
 	if (!obj || typeof obj !== "object") return;
 
-	// Check properties
 	if (obj.properties) {
 		for (const [propName, propSchema] of Object.entries(obj.properties)) {
 			if (propSchema && typeof propSchema === "object") {
-				// Check if this property has both $ref and other properties
 				if (propSchema.$ref && Object.keys(propSchema).length > 1) {
 					const ref = propSchema.$ref;
 					const otherProps = { ...propSchema };
 					delete otherProps.$ref;
-
-					// Replace with allOf structure
-					obj.properties[propName] = {
-						allOf: [{ $ref: ref }, otherProps],
-					};
+					obj.properties[propName] = { allOf: [{ $ref: ref }, otherProps] };
 					console.log(
 						`  Fixed: ${path}.properties.${propName} - wrapped $ref with siblings in allOf`,
 					);
 				} else {
-					// Recurse
 					fixRefSiblingsRecursive(propSchema, `${path}.properties.${propName}`);
 				}
 			}
 		}
 	}
 
-	// Handle items
-	if (obj.items) {
-		fixRefSiblingsRecursive(obj.items, `${path}.items`);
-	}
+	if (obj.items) fixRefSiblingsRecursive(obj.items, `${path}.items`);
 
-	// Handle allOf, oneOf, anyOf
 	for (const keyword of ["allOf", "oneOf", "anyOf"]) {
 		if (Array.isArray(obj[keyword])) {
 			obj[keyword].forEach((subSchema, i) => {
@@ -193,7 +159,6 @@ function fixRefSiblingsRecursive(obj, path = "") {
 
 /**
  * Fix missing schema on parameters.
- * Parameters often missing the schema property in the upstream spec.
  */
 function fixMissingParameterSchemas(paths) {
 	for (const [pathName, pathItem] of Object.entries(paths)) {
@@ -203,13 +168,8 @@ function fixMissingParameterSchemas(paths) {
 
 			for (const param of operation.parameters) {
 				if (!param.schema && !param.content) {
-					// Determine schema based on parameter type
 					if (param.in === "header") {
 						param.schema = { type: "string", format: "uuid" };
-					} else if (param.in === "path") {
-						param.schema = { type: "string" };
-					} else if (param.in === "query") {
-						param.schema = { type: "string" };
 					} else {
 						param.schema = { type: "string" };
 					}
@@ -226,7 +186,6 @@ function fixMissingParameterSchemas(paths) {
  * Fix invalid examples in schemas.
  */
 function fixInvalidExamples(schemas) {
-	// Fix PostWorkoutsRequestSet.rpe.example (null is not in enum)
 	const postWorkoutsSet = schemas.PostWorkoutsRequestSet;
 	if (postWorkoutsSet?.properties?.rpe?.example === null) {
 		delete postWorkoutsSet.properties.rpe.example;
@@ -235,7 +194,6 @@ function fixInvalidExamples(schemas) {
 		);
 	}
 
-	// Fix Routine.exercises.items.properties.rest_seconds.example (should be string, not number)
 	const routine = schemas.Routine;
 	if (routine?.properties?.exercises?.items?.properties?.rest_seconds) {
 		const restSeconds =
@@ -243,7 +201,7 @@ function fixInvalidExamples(schemas) {
 		if (typeof restSeconds.example === "number") {
 			restSeconds.example = String(restSeconds.example);
 			console.log(
-				"  Fixed: schemas.Routine.properties.exercises.items.properties.rest_seconds - converted example to string",
+				"  Fixed: schemas.Routine...rest_seconds - converted example to string",
 			);
 		}
 	}
@@ -255,25 +213,18 @@ function fixInvalidExamples(schemas) {
 function fixMissingGlobalTags(spec) {
 	const usedTags = new Set();
 
-	// Collect all tags used in operations
 	for (const pathItem of Object.values(spec.paths || {})) {
 		for (const method of ["get", "post", "put", "patch", "delete"]) {
 			const operation = pathItem[method];
 			if (operation?.tags) {
-				for (const tag of operation.tags) {
-					usedTags.add(tag);
-				}
+				for (const tag of operation.tags) usedTags.add(tag);
 			}
 		}
 	}
 
-	// Ensure tags array exists
-	if (!spec.tags) {
-		spec.tags = [];
-	}
-
-	// Add missing tags
+	if (!spec.tags) spec.tags = [];
 	const existingTags = new Set(spec.tags.map((t) => t.name));
+
 	for (const tag of usedTags) {
 		if (!existingTags.has(tag)) {
 			spec.tags.push({ name: tag, description: `${tag} operations` });
@@ -283,81 +234,76 @@ function fixMissingGlobalTags(spec) {
 }
 
 /**
- * Generate missing operationIds from path and method.
- * Format matches Kubb's expected naming convention:
+ * Generate operationIds matching Kubb's expected format.
  * e.g., GET /v1/workouts/{workoutId} -> getV1WorkoutsWorkoutid
  */
 function generateOperationIds(paths) {
 	for (const [pathName, pathItem] of Object.entries(paths)) {
 		for (const method of ["get", "post", "put", "patch", "delete"]) {
 			const operation = pathItem[method];
-			if (!operation) continue;
+			if (!operation || operation.operationId) continue;
 
-			if (!operation.operationId) {
-				// Generate operationId matching Kubb's expected format
-				// e.g., GET /v1/workouts/{workoutId} -> getV1WorkoutsWorkoutid
-				// Path params are lowercased (workoutId -> workoutid)
-				const pathParts = pathName
-					.replace(/^\//, "") // Remove leading slash
-					.replace(/\{(\w+)\}/g, (_, param) => param.toLowerCase()) // {workoutId} -> workoutid
-					.split("/")
-					.map((part, i) => {
-						// Convert underscores to camelCase and capitalize each segment after first
-						const camelCase = part.replace(/_(\w)/g, (_, c) => c.toUpperCase());
-						return i === 0
-							? camelCase
-							: camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
-					})
-					.join("");
+			const pathParts = pathName
+				.replace(/^\//, "")
+				.replace(/\{(\w+)\}/g, (_, param) => param.toLowerCase())
+				.split("/")
+				.map((part, i) => {
+					const camelCase = part.replace(/_(\w)/g, (_, c) => c.toUpperCase());
+					return i === 0
+						? camelCase
+						: camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+				})
+				.join("");
 
-				operation.operationId =
-					method + pathParts.charAt(0).toUpperCase() + pathParts.slice(1);
-				console.log(
-					`  Fixed: paths.${pathName}.${method} - generated operationId "${operation.operationId}"`,
-				);
-			}
+			operation.operationId =
+				method + pathParts.charAt(0).toUpperCase() + pathParts.slice(1);
+			console.log(
+				`  Fixed: paths.${pathName}.${method} - generated operationId "${operation.operationId}"`,
+			);
 		}
 	}
 }
 
-async function fetchSwaggerInitFile() {
-	const url = "https://api.hevyapp.com/docs/swagger-ui-init.js";
-	const response = await fetch(url);
+/**
+ * Fetch the OpenAPI spec from Hevy's swagger-ui-init.js file
+ */
+async function fetchSpecFromHevy() {
+	console.log("Fetching OpenAPI spec from Hevy API...\n");
+
+	const response = await fetch(HEVY_SWAGGER_URL);
 	if (!response.ok) {
 		throw new Error(`HTTP error! Status: ${response.status}`);
 	}
-	return await response.text();
+
+	const jsContent = await response.text();
+	const ast = parse(jsContent);
+
+	const optionsNode = find(ast, 'VariableDeclarator[id.name="options"]')[0];
+	if (!optionsNode?.init?.properties) {
+		throw new Error("options variable not found in swagger-ui-init.js");
+	}
+
+	const swaggerDocProperty = optionsNode.init.properties.find(
+		(prop) => prop.key.value === "swaggerDoc",
+	);
+	if (!swaggerDocProperty) {
+		throw new Error("swaggerDoc property not found in options");
+	}
+
+	const swaggerDocCode = generate(swaggerDocProperty.value, { tabs: true });
+	return JSON.parse(swaggerDocCode);
 }
 
 async function main() {
 	try {
-		console.log("Fetching swagger-ui-init.js file...");
-		const jsContent = await fetchSwaggerInitFile();
-		const ast = parse(jsContent);
+		const spec = await fetchSpecFromHevy();
+		const fixedSpec = fixOpenAPISpec(spec);
 
-		const optionsNode = find(ast, 'VariableDeclarator[id.name="options"]')[0];
-		if (!optionsNode || !optionsNode.init || !optionsNode.init.properties) {
-			throw new Error("options variable not found.");
-		}
-
-		const swaggerDocProperty = optionsNode.init.properties.find(
-			(prop) => prop.key.value === "swaggerDoc",
-		);
-		if (!swaggerDocProperty) {
-			throw new Error("swaggerDoc property not found.");
-		}
-
-		const swaggerDocCode = generate(swaggerDocProperty.value, { tabs: true });
-		const openAPISpec = JSON.parse(swaggerDocCode);
-
-		// Fix known issues in the upstream Hevy OpenAPI spec
-		console.log("Fixing known OpenAPI spec issues...");
-		const fixedSpec = fixOpenAPISpec(openAPISpec);
-
-		writeFileSync("openapi-spec.json", JSON.stringify(fixedSpec, null, "\t"));
-		console.log("OpenAPI spec successfully extracted to openapi-spec.json");
+		writeFileSync(SPEC_FILE, JSON.stringify(fixedSpec, null, "\t"));
+		console.log(`\n✓ OpenAPI spec saved to ${SPEC_FILE}`);
 	} catch (error) {
-		console.error("Failed to extract OpenAPI spec:", error);
+		console.error("Error:", error.message);
+		process.exit(1);
 	}
 }
 

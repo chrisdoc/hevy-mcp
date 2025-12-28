@@ -71,7 +71,8 @@
 					"400": {
 						"description": "Invalid page size"
 					}
-				}
+				},
+				"operationId": "getV1Workouts"
 			},
 			"post": {
 				"summary": "Create a new workout",
@@ -124,7 +125,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "postV1Workouts"
 			}
 		},
 		"/v1/workouts/count": {
@@ -160,7 +162,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "getV1WorkoutsCount"
 			}
 		},
 		"/v1/workouts/events": {
@@ -219,7 +222,8 @@
 					"500": {
 						"description": "Internal Server Error"
 					}
-				}
+				},
+				"operationId": "getV1WorkoutsEvents"
 			}
 		},
 		"/v1/workouts/{workoutId}": {
@@ -240,7 +244,10 @@
 						"name": "workoutId",
 						"in": "path",
 						"description": "The id of the workout",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -257,7 +264,8 @@
 					"404": {
 						"description": "Workout not found"
 					}
-				}
+				},
+				"operationId": "getV1WorkoutsWorkoutid"
 			},
 			"put": {
 				"summary": "Update an existing workout",
@@ -276,7 +284,10 @@
 						"in": "path",
 						"name": "workoutId",
 						"description": "The id of the workout",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"requestBody": {
@@ -316,7 +327,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "putV1WorkoutsWorkoutid"
 			}
 		},
 		"/v1/routines": {
@@ -384,7 +396,8 @@
 					"400": {
 						"description": "Invalid page size"
 					}
-				}
+				},
+				"operationId": "getV1Routines"
 			},
 			"post": {
 				"summary": "Create a new routine",
@@ -453,7 +466,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "postV1Routines"
 			}
 		},
 		"/v1/routines/{routineId}": {
@@ -474,7 +488,10 @@
 						"in": "path",
 						"name": "routineId",
 						"description": "The id of the routine",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -509,7 +526,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "getV1RoutinesRoutineid"
 			},
 			"put": {
 				"summary": "Update an existing routine",
@@ -528,7 +546,10 @@
 						"in": "path",
 						"name": "routineId",
 						"description": "The id of the routine",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"requestBody": {
@@ -584,7 +605,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "putV1RoutinesRoutineid"
 			}
 		},
 		"/v1/exercise_templates": {
@@ -652,7 +674,8 @@
 					"400": {
 						"description": "Invalid page size"
 					}
-				}
+				},
+				"operationId": "getV1ExerciseTemplates"
 			},
 			"post": {
 				"summary": "Create a new custom exercise template.",
@@ -731,7 +754,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "postV1ExerciseTemplates"
 			}
 		},
 		"/v1/exercise_templates/{exerciseTemplateId}": {
@@ -752,7 +776,10 @@
 						"name": "exerciseTemplateId",
 						"in": "path",
 						"description": "The id of the exercise template",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -769,7 +796,8 @@
 					"404": {
 						"description": "Exercise template not found"
 					}
-				}
+				},
+				"operationId": "getV1ExerciseTemplatesExercisetemplateid"
 			}
 		},
 		"/v1/routine_folders": {
@@ -837,7 +865,8 @@
 					"400": {
 						"description": "Invalid page size"
 					}
-				}
+				},
+				"operationId": "getV1RoutineFolders"
 			},
 			"post": {
 				"summary": "Create a new routine folder. The folder will be created at index 0, and all other folders will have their indexes incremented.",
@@ -890,7 +919,8 @@
 							}
 						}
 					}
-				}
+				},
+				"operationId": "postV1RoutineFolders"
 			}
 		},
 		"/v1/routine_folders/{folderId}": {
@@ -911,7 +941,10 @@
 						"name": "folderId",
 						"in": "path",
 						"description": "The id of the routine folder",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -928,7 +961,8 @@
 					"404": {
 						"description": "Routine folder not found"
 					}
-				}
+				},
+				"operationId": "getV1RoutineFoldersFolderid"
 			}
 		},
 		"/v1/exercise_history/{exerciseTemplateId}": {
@@ -949,7 +983,10 @@
 						"in": "path",
 						"name": "exerciseTemplateId",
 						"description": "The id of the exercise template",
-						"required": true
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
 					},
 					{
 						"in": "query",
@@ -996,7 +1033,8 @@
 					"400": {
 						"description": "Invalid request parameters or date format"
 					}
-				}
+				},
+				"operationId": "getV1ExerciseHistoryExercisetemplateid"
 			}
 		}
 	},
@@ -1045,8 +1083,7 @@
 						"type": "number",
 						"nullable": true,
 						"description": "The Rating of Perceived Exertion (RPE).",
-						"enum": [6, 7, 7.5, 8, 8.5, 9, 9.5, 10],
-						"example": null
+						"enum": [6, 7, 7.5, 8, 8.5, 9, 9.5, 10]
 					}
 				}
 			},
@@ -1542,7 +1579,7 @@
 				}
 			},
 			"CustomExerciseType": {
-				"type": "enum",
+				"type": "string",
 				"enum": [
 					"weight_reps",
 					"reps_only",
@@ -1556,7 +1593,7 @@
 				"example": "weight_reps"
 			},
 			"MuscleGroup": {
-				"type": "enum",
+				"type": "string",
 				"enum": [
 					"abdominals",
 					"shoulders",
@@ -1582,7 +1619,7 @@
 				"example": "chest"
 			},
 			"EquipmentCategory": {
-				"type": "enum",
+				"type": "string",
 				"enum": [
 					"none",
 					"barbell",
@@ -1637,7 +1674,6 @@
 				"type": "object",
 				"properties": {
 					"exercise": {
-						"required": true,
 						"type": "object",
 						"properties": {
 							"title": {
@@ -1649,14 +1685,26 @@
 								"$ref": "#/components/schemas/CustomExerciseType"
 							},
 							"equipment_category": {
-								"$ref": "#/components/schemas/EquipmentCategory",
-								"description": "The equipment category of the exercise template.",
-								"example": "barbell"
+								"allOf": [
+									{
+										"$ref": "#/components/schemas/EquipmentCategory"
+									},
+									{
+										"description": "The equipment category of the exercise template.",
+										"example": "barbell"
+									}
+								]
 							},
 							"muscle_group": {
-								"$ref": "#/components/schemas/MuscleGroup",
-								"description": "The muscle group of the exercise template.",
-								"example": "chest"
+								"allOf": [
+									{
+										"$ref": "#/components/schemas/MuscleGroup"
+									},
+									{
+										"description": "The muscle group of the exercise template.",
+										"example": "chest"
+									}
+								]
 							},
 							"other_muscles": {
 								"type": "array",
@@ -1668,7 +1716,8 @@
 							}
 						}
 					}
-				}
+				},
+				"required": ["exercise"]
 			},
 			"RoutineFolder": {
 				"type": "object",
@@ -1747,7 +1796,7 @@
 								"rest_seconds": {
 									"type": "string",
 									"description": "The rest time in seconds between sets of the exercise",
-									"example": 60
+									"example": "60"
 								},
 								"notes": {
 									"type": "string",
@@ -2043,5 +2092,32 @@
 			}
 		}
 	},
-	"tags": []
+	"tags": [
+		{
+			"name": "Workouts",
+			"description": "Workouts operations"
+		},
+		{
+			"name": "Routines",
+			"description": "Routines operations"
+		},
+		{
+			"name": "ExerciseTemplates",
+			"description": "ExerciseTemplates operations"
+		},
+		{
+			"name": "RoutineFolders",
+			"description": "RoutineFolders operations"
+		},
+		{
+			"name": "ExerciseHistory",
+			"description": "ExerciseHistory operations"
+		}
+	],
+	"servers": [
+		{
+			"url": "https://api.hevyapp.com",
+			"description": "Hevy API"
+		}
+	]
 }
