@@ -1,1 +1,16 @@
-{"type":"enum","enum":["none","barbell","dumbbell","kettlebell","machine","plate","resistance_band","suspension","other"],"example":"barbell","x-readme-ref-name":"EquipmentCategory"}
+{
+  "type": "string",
+  "enum": [
+    "none",
+    "barbell",
+    "dumbbell",
+    "kettlebell",
+    "machine",
+    "plate",
+    "resistance_band",
+    "suspension",
+    "other"
+  ],
+  "example": "barbell",
+  "x-readme-ref-name": "EquipmentCategory"
+}

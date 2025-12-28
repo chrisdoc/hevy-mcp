@@ -66,16 +66,25 @@ Run these commands in order to set up a working development environment (Corepac
    - **EXPECTED WARNINGS:** OpenAPI validation warnings about missing schemas are normal.
    - Always run this after updating `openapi-spec.json`.
 
+8. **Validate OpenAPI spec:**
+   ```bash
+   pnpm run validate:openapi
+   ```
+   - Takes less than 1 second.
+   - Uses IBM OpenAPI Validator with Spectral ruleset (`.spectral.yaml`).
+   - Validates `openapi-spec.json` against OpenAPI 3.0 specification.
+   - **EXPECTED WARNINGS:** Since this is an external API spec from Hevy, some warnings are expected and acceptable.
+
 ### Server Operations
 
-8. **Development server (with hot reload):**
+9. **Development server (with hot reload):**
    ```bash
    pnpm run dev
    ```
    - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
    - Server runs indefinitely until stopped.
 
-9. **Production server:**
+10. **Production server:**
    ```bash
    pnpm start
    ```

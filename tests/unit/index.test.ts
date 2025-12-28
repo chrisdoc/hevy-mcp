@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("src/index.ts - Environment Variable Loading", () => {
 	let originalEnv: NodeJS.ProcessEnv;
@@ -238,7 +238,8 @@ describe("src/index.ts - Environment Variable Loading", () => {
 		});
 
 		it("should handle URL values in environment variables", () => {
-			process.env.API_URL = "https://api.example.com/v1/endpoint?key=value&foo=bar";
+			process.env.API_URL =
+				"https://api.example.com/v1/endpoint?key=value&foo=bar";
 
 			expect(process.env.API_URL).toBe(
 				"https://api.example.com/v1/endpoint?key=value&foo=bar",
