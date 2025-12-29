@@ -1,0 +1,16 @@
+# IBM OpenAPI Validator Configuration
+# See: https://github.com/IBM/openapi-validator
+
+# Output format: text or json
+outputFormat: text
+
+# Colorize output
+colorizeOutput: true
+
+# Files to validate
+files:
+  - openapi-spec.json
+
+# Use a custom Spectral ruleset for validation
+# This allows us to customize rules for external API specs like Hevy
+ruleset: .spectral.yaml

@@ -1,0 +1,30 @@
+# Spectral Ruleset for OpenAPI Validation
+# See: https://docs.stoplight.io/docs/spectral/
+
+extends:
+  - spectral:oas
+
+# Override rules for external API specs like Hevy
+# These rules would require modifying the upstream API spec
+rules:
+  # Core validation - keep these as warnings since this is an external spec
+  # that we mirror from Hevy and cannot directly modify
+  oas3-schema: warn
+  no-$ref-siblings: warn
+  oas3-valid-schema-example: warn
+  oas3-valid-media-example: warn
+
+  # Disable rules that are too strict for external API specs
+  info-contact: off
+  info-license: off
+  operation-description: off
+  
+  # Keep operational rules as warnings
+  operation-operationId: warn
+  operation-tags: warn
+  openapi-tags: warn
+  operation-tag-defined: warn
+  oas3-api-servers: warn
+
+  # Schema validation (keep as warnings)
+  oas3-unused-component: warn
