@@ -88,6 +88,77 @@ describe("registerRoutineTools", () => {
 		expect(parsed).toEqual([formatRoutine(routine)]);
 	});
 
+	it("get-routines filters routines based on the since parameter", async () => {
+		const { server, tool } = createMockServer();
+		const routines: Routine[] = [
+			{
+				id: "r1",
+				title: "Old Routine",
+				folder_id: null,
+				created_at: "2020-01-01T10:00:00Z",
+				updated_at: "2020-01-01T11:00:00Z",
+				exercises: [],
+			},
+			{
+				id: "r2",
+				title: "New Routine",
+				folder_id: null,
+				created_at: "2025-01-01T10:00:00Z",
+				updated_at: "2025-01-01T11:00:00Z",
+				exercises: [],
+			},
+		];
+		const hevyClient: HevyClient = {
+			getRoutines: vi.fn().mockResolvedValue({ routines }),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-routines");
+
+		const sinceDate = "2024-01-01T00:00:00Z";
+		const response = await handler({ page: 1, pageSize: 5, since: sinceDate });
+
+		expect(hevyClient.getRoutines).toHaveBeenCalledWith({
+			page: 1,
+			pageSize: 5,
+		});
+
+		const parsed = JSON.parse(response.content[0].text) as unknown[];
+		expect(parsed).toEqual([formatRoutine(routines[1])]);
+	});
+
+	it("get-routines returns empty array when no routines match the since filter", async () => {
+		const { server, tool } = createMockServer();
+		const routines: Routine[] = [
+			{
+				id: "r1",
+				title: "Old Routine",
+				folder_id: null,
+				created_at: "2020-01-01T10:00:00Z",
+				updated_at: "2020-01-01T11:00:00Z",
+				exercises: [],
+			},
+		];
+		const hevyClient: HevyClient = {
+			getRoutines: vi.fn().mockResolvedValue({ routines }),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-routines");
+
+		const sinceDate = "2024-01-01T00:00:00Z";
+		const response = await handler({ page: 1, pageSize: 5, since: sinceDate });
+
+		expect(hevyClient.getRoutines).toHaveBeenCalledWith({
+			page: 1,
+			pageSize: 5,
+		});
+
+		expect(response.content[0].text).toEqual(
+			"No routines found for the specified parameters",
+		);
+	});
+
 	it("create-routine maps arguments to the request body and formats the response", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {
