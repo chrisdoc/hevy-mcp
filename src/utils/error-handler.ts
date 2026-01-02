@@ -51,7 +51,7 @@ export function createErrorResponse(
 			: undefined;
 
 	// Determine error type based on error characteristics
-	const errorType = determineErrorType(error, errorMessage);
+	const _errorType = determineErrorType(error, errorMessage);
 
 	// Include error code in logs if available
 	if (errorCode) {
@@ -61,8 +61,10 @@ export function createErrorResponse(
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${errorMessage}`;
 
-	// Log the error for server-side debugging with type information
-	console.error(`${formattedMessage} (Type: ${errorType})`, error);
+	// Note: We intentionally avoid console.error here because it writes to stderr,
+	// which can corrupt the MCP stdio communication channel and cause EPIPE errors
+	// when the client reads unexpected output. Error information is returned in the
+	// response for client-side handling.
 
 	return {
 		content: [

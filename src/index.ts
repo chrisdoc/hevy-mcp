@@ -69,7 +69,6 @@ function buildServer(apiKey: string) {
 	const server = Sentry.wrapMcpServerWithSentry(baseServer);
 
 	const hevyClient = createClient(apiKey, HEVY_API_BASEURL);
-	console.error("Hevy client initialized with API key");
 
 	registerWorkoutTools(server, hevyClient);
 	registerRoutineTools(server, hevyClient);
@@ -93,7 +92,28 @@ export async function runServer() {
 	assertApiKey(apiKey);
 
 	const server = buildServer(apiKey);
-	console.error("Starting MCP server in stdio mode");
+
+	// Handle EPIPE errors gracefully - these occur when the client disconnects
+	// and the server tries to write to a broken pipe. This is expected behavior
+	// when the client closes the connection, so we exit cleanly.
+	process.stdout.on("error", (err: NodeJS.ErrnoException) => {
+		if (err.code === "EPIPE") {
+			// Client disconnected - exit gracefully
+			process.exit(0);
+		}
+		// Re-throw other errors
+		throw err;
+	});
+
+	process.stderr.on("error", (err: NodeJS.ErrnoException) => {
+		if (err.code === "EPIPE") {
+			// Client disconnected - exit gracefully
+			process.exit(0);
+		}
+		// Re-throw other errors
+		throw err;
+	});
+
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
 }

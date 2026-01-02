@@ -29,7 +29,8 @@ describe("Error Handler", () => {
 				],
 				isError: true,
 			});
-			expect(console.error).toHaveBeenCalled();
+			// Note: console.error is intentionally not called to avoid corrupting
+			// MCP stdio communication channel
 		});
 
 		it("should create a proper error response from a string", () => {
@@ -69,41 +70,11 @@ describe("Error Handler", () => {
 			expect(console.debug).toHaveBeenCalledWith("Error code: ERR_TEST_CODE");
 		});
 
-		it("classifies network-related errors as NETWORK_ERROR", () => {
-			const error = new Error("Network request failed");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: NETWORK_ERROR)"),
-				error,
-			);
-		});
-
-		it("classifies validation errors as VALIDATION_ERROR", () => {
-			const error = new Error("Validation failed: required field missing");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: VALIDATION_ERROR)"),
-				error,
-			);
-		});
-
-		it("classifies not found errors as NOT_FOUND", () => {
-			const error = new Error("Resource not found");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: NOT_FOUND)"),
-				error,
-			);
-		});
-
-		it("classifies API errors as API_ERROR", () => {
-			const error = new Error("API server error 500");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: API_ERROR)"),
-				error,
-			);
-		});
+		// Note: Error type classification tests were removed because console.error
+		// is no longer called during error handling to avoid corrupting the MCP
+		// stdio communication channel. The error type is still determined internally
+		// but not logged. The error information is returned in the response for
+		// client-side handling instead.
 	});
 
 	describe("withErrorHandling", () => {
