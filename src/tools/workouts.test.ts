@@ -145,7 +145,6 @@ describe("registerWorkoutTools", () => {
 			description: null,
 			startTime: "2025-03-27T07:00:00Z",
 			endTime: "2025-03-27T08:00:00Z",
-			routineId: null,
 			isPrivate: false,
 			exercises: [
 				{
@@ -175,7 +174,6 @@ describe("registerWorkoutTools", () => {
 				description: null,
 				start_time: "2025-03-27T07:00:00Z",
 				end_time: "2025-03-27T08:00:00Z",
-				routine_id: null,
 				is_private: false,
 				exercises: [
 					{
@@ -202,7 +200,7 @@ describe("registerWorkoutTools", () => {
 		expect(parsed).toEqual(formatWorkout(createResult));
 	});
 
-	it("create-workout maps routineId to routine_id", async () => {
+	it("create-workout does not send routine_id", async () => {
 		const { server, tool } = createMockServer();
 		const createResult: Workout = {
 			id: "created-id",
@@ -214,9 +212,8 @@ describe("registerWorkoutTools", () => {
 			updated_at: "2025-03-27T07:00:00Z",
 			exercises: [],
 		};
-		const hevyClient = {
-			createWorkout: vi.fn().mockResolvedValue(createResult),
-		} as unknown as HevyClient;
+		const createWorkout = vi.fn().mockResolvedValue(createResult);
+		const hevyClient = { createWorkout } as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "create-workout");
@@ -246,13 +243,16 @@ describe("registerWorkoutTools", () => {
 
 		await handler(args as Record<string, unknown>);
 
-		expect(hevyClient.createWorkout).toHaveBeenCalledWith({
+		expect(createWorkout).toHaveBeenCalledTimes(1);
+		const [callArg] = createWorkout.mock.calls[0] ?? [];
+		expect(callArg?.workout).not.toHaveProperty("routine_id");
+
+		expect(createWorkout).toHaveBeenCalledWith({
 			workout: {
 				title: "Programmed Workout",
 				description: null,
 				start_time: "2025-03-27T07:00:00Z",
 				end_time: "2025-03-27T08:00:00Z",
-				routine_id: "routine-123",
 				is_private: false,
 				exercises: [
 					{

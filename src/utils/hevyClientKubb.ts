@@ -129,7 +129,7 @@ export function createClient(
 		createExerciseTemplate: (
 			data: PostV1ExerciseTemplatesMutationRequest,
 		): ReturnType<typeof api.postV1ExerciseTemplates> =>
-			api.postV1ExerciseTemplates(headers, data, { client }),
+			api.postV1ExerciseTemplates(data, headers, { client }),
 
 		// Routine Folders
 		getRoutineFolders: (
