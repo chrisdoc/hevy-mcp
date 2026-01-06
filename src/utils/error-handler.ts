@@ -43,7 +43,22 @@ export function createErrorResponse(
 	error: unknown,
 	context?: string,
 ): McpToolResponse {
-	const errorMessage = error instanceof Error ? error.message : String(error);
+	// Extract axios response data if available
+	let errorMessage = error instanceof Error ? error.message : String(error);
+
+	// Check for axios error with response data
+	if (error && typeof error === 'object' && 'response' in error) {
+		const axiosError = error as { response?: { data?: unknown; status?: number } };
+		if (axiosError.response?.data) {
+			const responseData = axiosError.response.data;
+			if (typeof responseData === 'string') {
+				errorMessage = responseData;
+			} else if (typeof responseData === 'object' && responseData !== null) {
+				errorMessage = JSON.stringify(responseData);
+			}
+		}
+	}
+
 	// Extract error code if available (for logging purposes)
 	const errorCode =
 		error instanceof Error && "code" in error
