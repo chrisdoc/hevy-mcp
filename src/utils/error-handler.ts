@@ -33,6 +33,97 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 }
 
 /**
+ * Safely extract loggable information from an error object
+ * Handles circular references (e.g., AxiosError with req/res cycle)
+ *
+ * @param error - The error object to extract information from
+ * @returns A plain object safe for JSON serialization
+ */
+function extractSafeErrorInfo(error: unknown): Record<string, unknown> {
+	if (!(error instanceof Error)) {
+		return { value: String(error) };
+	}
+
+	const safeInfo: Record<string, unknown> = {
+		name: error.name,
+		message: error.message,
+	};
+
+	// Extract stack trace (first few lines for brevity)
+	if (error.stack) {
+		const stackLines = error.stack.split("\n").slice(0, 5);
+		safeInfo.stack = stackLines.join("\n");
+	}
+
+	// Handle Axios-like errors with response data
+	if ("response" in error && error.response) {
+		const response = error.response as {
+			status?: number;
+			statusText?: string;
+			data?: unknown;
+			headers?: Record<string, string>;
+		};
+		safeInfo.response = {
+			status: response.status,
+			statusText: response.statusText,
+			// Only include data if it's serializable (not circular)
+			data:
+				typeof response.data === "object" && response.data !== null
+					? safeStringify(response.data)
+					: response.data,
+		};
+	}
+
+	// Handle error code if present
+	if ("code" in error) {
+		safeInfo.code = (error as { code?: string }).code;
+	}
+
+	// Handle Axios config (URL and method are useful for debugging)
+	if ("config" in error && error.config) {
+		const config = error.config as {
+			url?: string;
+			method?: string;
+			baseURL?: string;
+		};
+		safeInfo.config = {
+			url: config.url,
+			method: config.method,
+			baseURL: config.baseURL,
+		};
+	}
+
+	return safeInfo;
+}
+
+/**
+ * Safely stringify an object, handling circular references
+ *
+ * @param obj - The object to stringify
+ * @returns A string representation of the object
+ */
+function safeStringify(obj: unknown): string {
+	const seen = new WeakSet();
+	try {
+		return JSON.stringify(
+			obj,
+			(_key, value) => {
+				if (typeof value === "object" && value !== null) {
+					if (seen.has(value)) {
+						return "[Circular]";
+					}
+					seen.add(value);
+				}
+				return value;
+			},
+			2,
+		);
+	} catch {
+		return "[Unable to serialize]";
+	}
+}
+
+/**
  * Create a standardized error response for MCP tools
  *
  * @param error - The error object or message
@@ -62,7 +153,12 @@ export function createErrorResponse(
 	const formattedMessage = `${contextPrefix}Error: ${errorMessage}`;
 
 	// Log the error for server-side debugging with type information
-	console.error(`${formattedMessage} (Type: ${errorType})`, error);
+	// Use extractSafeErrorInfo to avoid circular reference issues (e.g., AxiosError)
+	const safeErrorInfo = extractSafeErrorInfo(error);
+	console.error(
+		`${formattedMessage} (Type: ${errorType})`,
+		safeStringify(safeErrorInfo),
+	);
 
 	return {
 		content: [

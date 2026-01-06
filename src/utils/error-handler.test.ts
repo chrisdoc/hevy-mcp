@@ -74,7 +74,7 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: NETWORK_ERROR)"),
-				error,
+				expect.stringContaining("Network request failed"),
 			);
 		});
 
@@ -83,7 +83,7 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: VALIDATION_ERROR)"),
-				error,
+				expect.stringContaining("Validation failed"),
 			);
 		});
 
@@ -92,7 +92,7 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: NOT_FOUND)"),
-				error,
+				expect.stringContaining("Resource not found"),
 			);
 		});
 
@@ -101,8 +101,45 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: API_ERROR)"),
-				error,
+				expect.stringContaining("API server error 500"),
 			);
+		});
+
+		it("should safely handle circular references in AxiosError-like objects", () => {
+			// Create an error with circular reference (simulating AxiosError)
+			const error = new Error("Request failed") as Error & {
+				response?: {
+					status: number;
+					statusText: string;
+					data: { message: string };
+					req?: unknown;
+				};
+				config?: { url: string; method: string };
+			};
+			error.response = {
+				status: 404,
+				statusText: "Not Found",
+				data: { message: "Resource not found" },
+			};
+			error.config = { url: "/api/test", method: "GET" };
+
+			// Add circular reference: response.req -> error.config -> ...
+			error.response.req = error.config;
+
+			// This should NOT throw "Converting circular structure to JSON"
+			expect(() => createErrorResponse(error, "TestContext")).not.toThrow();
+
+			// Verify the response is still properly formatted
+			const response = createErrorResponse(error, "TestContext");
+			expect(response).toEqual({
+				content: [
+					{
+						type: "text",
+						text: "[TestContext] Error: Request failed",
+					},
+				],
+				isError: true,
+			});
 		});
 	});
 
