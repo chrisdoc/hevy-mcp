@@ -51,15 +51,12 @@ export function createErrorResponse(
 		const axiosError = error as { response?: { data?: unknown; status?: number } };
 		if (axiosError.response?.data) {
 			const responseData = axiosError.response.data;
-			if (typeof responseData === 'string') {
-				errorMessage = responseData;
-			} else if (typeof responseData === 'object' && responseData !== null) {
-                                try {
-                                        errorMessage = JSON.stringify(responseData);
-                                } catch {
-                                        errorMessage = error instanceof Error ? error.message : String(error);
-                                }
-			}
+if (isAxiosError(error) && error.response?.data) {
+		const { data } = error.response;
+		if (typeof data === 'string') {
+			errorMessage = data;
+		} else if (data && typeof data === 'object') {
+			errorMessage = JSON.stringify(data);
 		}
 	}
 
