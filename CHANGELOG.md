@@ -1,3 +1,11 @@
+# [1.19.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.11...v1.19.0) (2026-01-08)
+
+
+### Features
+
+* **client:** add type-safe wrapApi helper to prevent arg-order regressions ([a78951f](https://github.com/chrisdoc/hevy-mcp/commit/a78951f))
+
+
 ## [1.18.11](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.10...v1.18.11) (2026-01-08)
 
 
