@@ -53,7 +53,11 @@ export function createErrorResponse(
 		if (typeof data === "string") {
 			errorMessage = data;
 		} else if (data && typeof data === "object") {
-			errorMessage = JSON.stringify(data);
+			try {
+				errorMessage = JSON.stringify(data);
+			} catch (_e) {
+				errorMessage = String(data);
+			}
 		}
 	}
 
