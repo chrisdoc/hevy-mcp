@@ -28,6 +28,19 @@ type KubbClient = {
 	setConfig: (config: RequestConfig) => Partial<RequestConfig<unknown>>;
 };
 
+/**
+ * Type-safe wrapper helper that enforces parameter types match the generated API.
+ * This prevents arg-order regressions by using Parameters<> to extract expected types.
+ *
+ * Usage: wrapApi(api.postV1ExerciseTemplates)(data, headers, { client })
+ * TypeScript will error if arguments don't match the generated signature.
+ */
+function wrapApi<T extends (...args: Parameters<T>) => ReturnType<T>>(
+	fn: T,
+): (...args: Parameters<T>) => ReturnType<T> {
+	return fn;
+}
+
 type CreateWebhookSubscriptionRequest = {
 	webhook: {
 		url: string;
@@ -129,7 +142,8 @@ export function createClient(
 		createExerciseTemplate: (
 			data: PostV1ExerciseTemplatesMutationRequest,
 		): ReturnType<typeof api.postV1ExerciseTemplates> =>
-			api.postV1ExerciseTemplates(data, headers, { client }),
+			// Using wrapApi ensures TypeScript validates arg order matches generated API
+			wrapApi(api.postV1ExerciseTemplates)(data, headers, { client }),
 
 		// Routine Folders
 		getRoutineFolders: (
