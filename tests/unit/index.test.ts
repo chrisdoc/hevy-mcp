@@ -133,15 +133,16 @@ describe("src/index.ts - Environment Variable Loading", () => {
 			// The removal of dotenvx prevents stdout pollution
 			// which is critical for MCP JSON-RPC communication over stdio
 
-			const originalStdoutWrite = process.stdout.write;
 			let stdoutData = "";
-
-			// Mock stdout to capture any writes
-			process.stdout.write = vi.fn((chunk: unknown) => {
-				stdoutData += String(chunk);
-				return true;
-				// biome-ignore lint/suspicious/noExplicitAny: Mocking complex overload
-			}) as any;
+			const writeSpy = vi
+				.spyOn(process.stdout, "write")
+				.mockImplementation(
+					(...args: Parameters<typeof process.stdout.write>) => {
+						const [chunk] = args;
+						stdoutData += chunk.toString();
+						return true;
+					},
+				);
 
 			// Simulate server initialization (env vars are already loaded)
 			process.env.HEVY_API_KEY = "test-key";
@@ -149,9 +150,8 @@ describe("src/index.ts - Environment Variable Loading", () => {
 			// Verify no stdout pollution occurred
 			// (In the real app, dotenvx.config({ quiet: true }) still caused issues)
 			expect(stdoutData).toBe("");
-
-			// Restore stdout
-			process.stdout.write = originalStdoutWrite;
+			expect(writeSpy).not.toHaveBeenCalled();
+			writeSpy.mockRestore();
 		});
 
 		it("should allow clean JSON-RPC message passing", () => {
@@ -251,8 +251,9 @@ describe("src/index.ts - Environment Variable Loading", () => {
 			const jsonValue = '{"key":"value","nested":{"foo":"bar"}}';
 			process.env.JSON_VAR = jsonValue;
 
-			expect(process.env.JSON_VAR).toBe(jsonValue);
-			expect(() => JSON.parse(process.env.JSON_VAR as string)).not.toThrow();
+			const jsonVar = process.env.JSON_VAR;
+			expect(jsonVar).toBe(jsonValue);
+			expect(() => JSON.parse(jsonVar ?? "")).not.toThrow();
 		});
 
 		it("should handle empty environment altogether", () => {
