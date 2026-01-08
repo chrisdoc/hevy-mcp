@@ -1,3 +1,10 @@
+## [1.18.11](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.10...v1.18.11) (2026-01-08)
+
+
+### Bug Fixes
+
+* **workouts:** omit routine_id from create/update ([#229](https://github.com/chrisdoc/hevy-mcp/issues/229)) ([bca641a](https://github.com/chrisdoc/hevy-mcp/commit/bca641a2efb6008389630501b2a6c926ca7b76c6))
+
 ## [1.18.10](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.9...v1.18.10) (2026-01-08)
 
 
