@@ -137,9 +137,10 @@ describe("src/index.ts - Environment Variable Loading", () => {
 			let stdoutData = "";
 
 			// Mock stdout to capture any writes
-			process.stdout.write = vi.fn((chunk: any) => {
-				stdoutData += chunk.toString();
+			process.stdout.write = vi.fn((chunk: unknown) => {
+				stdoutData += String(chunk);
 				return true;
+				// biome-ignore lint/suspicious/noExplicitAny: Mocking complex overload
 			}) as any;
 
 			// Simulate server initialization (env vars are already loaded)
@@ -251,7 +252,7 @@ describe("src/index.ts - Environment Variable Loading", () => {
 			process.env.JSON_VAR = jsonValue;
 
 			expect(process.env.JSON_VAR).toBe(jsonValue);
-			expect(() => JSON.parse(process.env.JSON_VAR!)).not.toThrow();
+			expect(() => JSON.parse(process.env.JSON_VAR as string)).not.toThrow();
 		});
 
 		it("should handle empty environment altogether", () => {
