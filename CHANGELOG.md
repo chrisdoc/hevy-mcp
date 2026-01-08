@@ -1,3 +1,10 @@
+## [1.18.10](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.9...v1.18.10) (2026-01-08)
+
+
+### Bug Fixes
+
+* extract axios response data for better error messages ([#233](https://github.com/chrisdoc/hevy-mcp/issues/233)) ([6ba1dbc](https://github.com/chrisdoc/hevy-mcp/commit/6ba1dbcf5d24b8a5b653a852e5b23b541a2b8a65))
+
 ## [1.18.9](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.8...v1.18.9) (2026-01-08)
 
 ## [1.18.8](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.7...v1.18.8) (2026-01-07)
