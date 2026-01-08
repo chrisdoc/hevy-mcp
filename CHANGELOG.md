@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.11...v1.19.0) (2026-01-08)
+
+
+### Features
+
+* **client:** export HevyApiClient type for external type annotations ([f3530d3](https://github.com/chrisdoc/hevy-mcp/commit/f3530d31d09c8a1cc4b27b71158afcf865eb5604))
+
 ## [1.18.11](https://github.com/chrisdoc/hevy-mcp/compare/v1.18.10...v1.18.11) (2026-01-08)
 
 
