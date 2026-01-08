@@ -184,3 +184,9 @@ export function createClient(
 		},
 	};
 }
+
+/**
+ * Type representing the Hevy API client returned by createClient.
+ * Useful for typing variables that hold the client instance.
+ */
+export type HevyApiClient = ReturnType<typeof createClient>;
