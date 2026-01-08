@@ -3,6 +3,7 @@
  */
 
 // Import the McpToolResponse type from response-formatter to ensure consistency
+import { isAxiosError } from "axios";
 import type { McpToolResponse } from "./response-formatter.js";
 
 /**
@@ -43,7 +44,23 @@ export function createErrorResponse(
 	error: unknown,
 	context?: string,
 ): McpToolResponse {
-	const errorMessage = error instanceof Error ? error.message : String(error);
+	// Extract axios response data if available
+	let errorMessage = error instanceof Error ? error.message : String(error);
+
+	// Check for axios error with response data
+	if (isAxiosError(error) && error.response?.data) {
+		const { data } = error.response;
+		if (typeof data === "string") {
+			errorMessage = data;
+		} else if (data && typeof data === "object") {
+			try {
+				errorMessage = JSON.stringify(data);
+			} catch (_e) {
+				errorMessage = String(data);
+			}
+		}
+	}
+
 	// Extract error code if available (for logging purposes)
 	const errorCode =
 		error instanceof Error && "code" in error
