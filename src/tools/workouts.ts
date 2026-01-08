@@ -189,7 +189,7 @@ export function registerWorkoutTools(
 				args;
 			const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> = {
 				title,
-				description: description || null,
+				description: description ?? null,
 				start_time: startTime,
 				end_time: endTime,
 				is_private: isPrivate,
@@ -283,7 +283,7 @@ export function registerWorkoutTools(
 			} = args;
 			const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> = {
 				title,
-				description: description || null,
+				description: description ?? null,
 				start_time: startTime,
 				end_time: endTime,
 				is_private: isPrivate,

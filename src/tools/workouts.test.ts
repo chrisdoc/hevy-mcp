@@ -223,7 +223,7 @@ describe("registerWorkoutTools", () => {
 			description: null,
 			startTime: "2025-03-27T07:00:00Z",
 			endTime: "2025-03-27T08:00:00Z",
-			routineId: "routine-123",
+			// routineId removed as it's not supported by the API schema
 			isPrivate: false,
 			exercises: [
 				{
