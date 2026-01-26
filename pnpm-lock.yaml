@@ -31,13 +31,13 @@ importers:
         version: 4.17.0(typescript@5.9.3)
       '@modelcontextprotocol/sdk':
         specifier: ^1.23.0
-        version: 1.25.2(hono@4.11.1)(zod@4.3.5)
+        version: 1.25.2(hono@4.11.1)(zod@4.3.6)
       '@sentry/node':
         specifier: ^10.30.0
         version: 10.34.0
       '@smithery/sdk':
         specifier: 4.0.1
-        version: 4.0.1(@modelcontextprotocol/sdk@1.25.2(hono@4.11.1)(zod@4.3.5))(zod@4.3.5)
+        version: 4.0.1(@modelcontextprotocol/sdk@1.25.2(hono@4.11.1)(zod@4.3.6))(zod@4.3.6)
       axios:
         specifier: ^1.13.2
         version: 1.13.2
@@ -52,7 +52,7 @@ importers:
         version: 5.2.1
       zod:
         specifier: ^4.1.13
-        version: 4.3.5
+        version: 4.3.6
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.11
@@ -89,7 +89,7 @@ importers:
         version: 4.6.2(rollup@4.56.0)
       '@smithery/cli':
         specifier: ^3.1.2
-        version: 3.1.6(@types/node@25.0.9)(hono@4.11.1)(zod@4.3.5)
+        version: 3.1.6(@types/node@25.0.9)(hono@4.11.1)(zod@4.3.6)
       '@types/node':
         specifier: ^25.0.2
         version: 25.0.9
@@ -5829,8 +5829,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.3.5:
-    resolution: {integrity: sha512-k7Nwx6vuWx1IJ9Bjuf4Zt1PEllcwe7cls3VNzm4CQ1/hgtFUK2bRNG3rvnpPUhFjmqJKAKtjV576KnUkHocg/g==}
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
 
@@ -6879,7 +6879,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@modelcontextprotocol/sdk@1.25.2(hono@4.11.1)(zod@4.3.5)':
+  '@modelcontextprotocol/sdk@1.25.2(hono@4.11.1)(zod@4.3.6)':
     dependencies:
       '@hono/node-server': 1.19.7(hono@4.11.1)
       ajv: 8.17.1
@@ -6895,8 +6895,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.3.5
-      zod-to-json-schema: 3.25.1(zod@4.3.5)
+      zod: 4.3.6
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
     transitivePeerDependencies:
       - hono
       - supports-color
@@ -7753,10 +7753,10 @@ snapshots:
 
   '@smithery/api@0.11.0': {}
 
-  '@smithery/cli@3.1.6(@types/node@25.0.9)(hono@4.11.1)(zod@4.3.5)':
+  '@smithery/cli@3.1.6(@types/node@25.0.9)(hono@4.11.1)(zod@4.3.6)':
     dependencies:
       '@anthropic-ai/mcpb': 1.2.0
-      '@modelcontextprotocol/sdk': 1.25.2(hono@4.11.1)(zod@4.3.5)
+      '@modelcontextprotocol/sdk': 1.25.2(hono@4.11.1)(zod@4.3.6)
       '@ngrok/ngrok': 1.7.0
       '@smithery/api': 0.11.0
       chalk: 4.1.2
@@ -7776,8 +7776,8 @@ snapshots:
       uuid: 11.1.0
       uuidv7: 1.1.0
       yaml: 2.8.2
-      zod: 4.3.5
-      zod-to-json-schema: 3.25.1(zod@4.3.5)
+      zod: 4.3.6
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
     optionalDependencies:
       keytar: 7.9.0
     transitivePeerDependencies:
@@ -7789,10 +7789,10 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@smithery/sdk@4.0.1(@modelcontextprotocol/sdk@1.25.2(hono@4.11.1)(zod@4.3.5))(zod@4.3.5)':
+  '@smithery/sdk@4.0.1(@modelcontextprotocol/sdk@1.25.2(hono@4.11.1)(zod@4.3.6))(zod@4.3.6)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.25.2(hono@4.11.1)(zod@4.3.5)
-      zod: 4.3.5
+      '@modelcontextprotocol/sdk': 1.25.2(hono@4.11.1)(zod@4.3.6)
+      zod: 4.3.6
 
   '@speed-highlight/core@1.2.14': {}
 
@@ -11974,10 +11974,10 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  zod-to-json-schema@3.25.1(zod@4.3.5):
+  zod-to-json-schema@3.25.1(zod@4.3.6):
     dependencies:
-      zod: 4.3.5
+      zod: 4.3.6
 
   zod@3.25.76: {}
 
-  zod@4.3.5: {}
+  zod@4.3.6: {}
