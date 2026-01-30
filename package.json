@@ -9,6 +9,10 @@
 		"README.md"
 	],
 	"access": "public",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/chrisdoc/hevy-mcp.git"
+	},
 	"bugs": {
 		"url": "https://github.com/chrisdoc/hevy-mcp/issues"
 	},
