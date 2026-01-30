@@ -31,6 +31,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
+          registry-url: 'https://registry.npmjs.org'
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
         env:
@@ -55,7 +56,6 @@ jobs:
         run: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       
       - name: Check if release was created
         id: release
@@ -74,5 +74,4 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
