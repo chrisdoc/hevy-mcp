@@ -68,7 +68,7 @@ jobs:
     needs: [build]
     steps:
       - name: Export workflow
-        uses: corentinmusard/otel-cicd-action@v2
+        uses: corentinmusard/otel-cicd-action@v3
         with:
           otlpEndpoint: 'grpc://in-otel.hyperdx.io:4317/'
           otlpHeaders: ${{ secrets.HYPERDX_OTLP_HEADERS }}
