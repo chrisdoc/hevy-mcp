@@ -1,1 +1,123 @@
-{"type":"object","properties":{"exercise":{"type":"object","properties":{"title":{"type":"string","description":"The title of the exercise template.","example":"Bench Press"},"exercise_type":{"type":"string","enum":["weight_reps","reps_only","bodyweight_reps","bodyweight_assisted_reps","duration","weight_duration","distance_duration","short_distance_weight"],"example":"weight_reps","x-readme-ref-name":"CustomExerciseType"},"equipment_category":{"allOf":[{"type":"string","enum":["none","barbell","dumbbell","kettlebell","machine","plate","resistance_band","suspension","other"],"example":"barbell","x-readme-ref-name":"EquipmentCategory"},{"description":"The equipment category of the exercise template.","example":"barbell"}]},"muscle_group":{"allOf":[{"type":"string","enum":["abdominals","shoulders","biceps","triceps","forearms","quadriceps","hamstrings","calves","glutes","abductors","adductors","lats","upper_back","traps","lower_back","chest","cardio","neck","full_body","other"],"example":"chest","x-readme-ref-name":"MuscleGroup"},{"description":"The muscle group of the exercise template.","example":"chest"}]},"other_muscles":{"type":"array","items":{"type":"string","enum":["abdominals","shoulders","biceps","triceps","forearms","quadriceps","hamstrings","calves","glutes","abductors","adductors","lats","upper_back","traps","lower_back","chest","cardio","neck","full_body","other"],"example":"chest","x-readme-ref-name":"MuscleGroup"},"description":"The other muscles of the exercise template.","example":["biceps","triceps"]}}}},"required":["exercise"],"x-readme-ref-name":"CreateCustomExerciseRequestBody"}
+{
+  "type": "object",
+  "properties": {
+    "exercise": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the exercise template.",
+          "example": "Bench Press"
+        },
+        "exercise_type": {
+          "type": "string",
+          "enum": [
+            "weight_reps",
+            "reps_only",
+            "bodyweight_reps",
+            "bodyweight_assisted_reps",
+            "duration",
+            "weight_duration",
+            "distance_duration",
+            "short_distance_weight"
+          ],
+          "example": "weight_reps",
+          "x-readme-ref-name": "CustomExerciseType"
+        },
+        "equipment_category": {
+          "allOf": [
+            {
+              "type": "string",
+              "enum": [
+                "none",
+                "barbell",
+                "dumbbell",
+                "kettlebell",
+                "machine",
+                "plate",
+                "resistance_band",
+                "suspension",
+                "other"
+              ],
+              "example": "barbell",
+              "x-readme-ref-name": "EquipmentCategory"
+            },
+            {
+              "description": "The equipment category of the exercise template.",
+              "example": "barbell"
+            }
+          ]
+        },
+        "muscle_group": {
+          "allOf": [
+            {
+              "type": "string",
+              "enum": [
+                "abdominals",
+                "shoulders",
+                "biceps",
+                "triceps",
+                "forearms",
+                "quadriceps",
+                "hamstrings",
+                "calves",
+                "glutes",
+                "abductors",
+                "adductors",
+                "lats",
+                "upper_back",
+                "traps",
+                "lower_back",
+                "chest",
+                "cardio",
+                "neck",
+                "full_body",
+                "other"
+              ],
+              "example": "chest",
+              "x-readme-ref-name": "MuscleGroup"
+            },
+            {
+              "description": "The muscle group of the exercise template.",
+              "example": "chest"
+            }
+          ]
+        },
+        "other_muscles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "abdominals",
+              "shoulders",
+              "biceps",
+              "triceps",
+              "forearms",
+              "quadriceps",
+              "hamstrings",
+              "calves",
+              "glutes",
+              "abductors",
+              "adductors",
+              "lats",
+              "upper_back",
+              "traps",
+              "lower_back",
+              "chest",
+              "cardio",
+              "neck",
+              "full_body",
+              "other"
+            ],
+            "example": "chest",
+            "x-readme-ref-name": "MuscleGroup"
+          },
+          "description": "The other muscles of the exercise template.",
+          "example": ["biceps", "triceps"]
+        }
+      }
+    }
+  },
+  "required": ["exercise"],
+  "x-readme-ref-name": "CreateCustomExerciseRequestBody"
+}
