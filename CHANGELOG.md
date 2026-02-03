@@ -1,3 +1,10 @@
+## [1.19.16](https://github.com/chrisdoc/hevy-mcp/compare/v1.19.15...v1.19.16) (2026-02-03)
+
+
+### Bug Fixes
+
+* **copilot:** Sync Copilot instructions with current codebase state ([#250](https://github.com/chrisdoc/hevy-mcp/issues/250)) ([27734a9](https://github.com/chrisdoc/hevy-mcp/commit/27734a92315297e85a5df590d5d0c664c784ad4c))
+
 ## [1.19.15](https://github.com/chrisdoc/hevy-mcp/compare/v1.19.14...v1.19.15) (2026-02-02)
 
 ## [1.19.14](https://github.com/chrisdoc/hevy-mcp/compare/v1.19.13...v1.19.14) (2026-02-02)
