@@ -140,28 +140,6 @@ repository and remove the Sentry initialization in `src/index.ts`.
 
 ## Transport
 
-### Deploy via Smithery (TypeScript runtime)
-
-Smithery can bundle and host `hevy-mcp` without Docker by importing the exported `createServer` and `configSchema` from `src/index.ts`.
-
-1. Ensure dependencies are installed: `pnpm install`
-2. Launch the Smithery playground locally:
-
-   ```bash
-   pnpm run smithery:dev
-   ```
-
-   The CLI will prompt for `HEVY_API_KEY`, invoke `createServer({ config })`, and open the Smithery MCP playground.
-
-3. Build the deployable bundle:
-
-   ```bash
-   pnpm run smithery:build
-   ```
-
-4. Connect the repository to Smithery and trigger a deployment from their dashboard. Configuration is handled entirely through the exported Zod schema, so no additional `smithery.yaml` env mapping is required.
-
-> **Why are `chalk`, `cors`, and `@smithery/sdk` dependencies?** Smithery’s TypeScript runtime injects its own Express bootstrap that imports these packages. Declaring them in `package.json` ensures the Smithery CLI can bundle your server successfully.
 
 ### Stdio Only (Current)
 
