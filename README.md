@@ -1,6 +1,5 @@
 # hevy-mcp: Model Context Protocol Server for Hevy Fitness API
 
-[![smithery badge](https://smithery.ai/badge/@chrisdoc/hevy-mcp)](https://smithery.ai/server/@chrisdoc/hevy-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 A Model Context Protocol (MCP) server implementation that interfaces with the [Hevy fitness tracking app](https://www.hevyapp.com/) and its [API](https://api.hevyapp.com/docs/). This server enables AI assistants to access and manage workout data, routines, exercise templates, and more through the Hevy API (requires PRO subscription).
@@ -13,7 +12,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - **Folder Organization**: Manage routine folders
 - **Webhook Subscriptions**: Create, view, and delete webhook subscriptions for workout events
 
-> **Note:** HTTP transport and Docker images remain deprecated. Smithery deployment now uses the official TypeScript runtime flow (no Docker required), or you can run the server locally via stdio (e.g., `npx hevy-mcp`). Existing GHCR images remain available but are no longer updated.
+> **Note:** HTTP transport and Docker images are deprecated. The server runs via stdio transport (e.g., `npx hevy-mcp`). Legacy GHCR images remain available but are no longer maintained.
 
 ## Quick start
 
@@ -23,7 +22,6 @@ Pick the workflow that fits your setup:
 | --- | --- | --- |
 | One-off stdio run | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` | Node.js ≥ 20, Hevy API key |
 | Local development | `pnpm install && pnpm run dev` | `.env` with `HEVY_API_KEY`, pnpm via Corepack |
-| Smithery playground / deploy | `pnpm run smithery:dev` / `pnpm run smithery:build` | `HEVY_API_KEY`, `SMITHERY_API_KEY` (or `pnpm dlx @smithery/cli login`) |
 
 ## Prerequisites
 
@@ -31,7 +29,6 @@ Pick the workflow that fits your setup:
   `.nvmrc` to match CI)
 - pnpm (via Corepack)
 - A Hevy API key
-  - Optional: A Smithery account + API key/login if you plan to deploy via Smithery
 
 ## Installation
 
@@ -55,7 +52,7 @@ pnpm install
 
 # Create .env and add your keys (never commit real keys)
 cp .env.sample .env
-# Edit .env and add at least HEVY_API_KEY. Add SMITHERY_API_KEY if you use Smithery CLI.
+# Edit .env and add your HEVY_API_KEY.
 ```
 
 ### Integration with Cursor
@@ -143,28 +140,6 @@ repository and remove the Sentry initialization in `src/index.ts`.
 
 ## Transport
 
-### Deploy via Smithery (TypeScript runtime)
-
-Smithery can bundle and host `hevy-mcp` without Docker by importing the exported `createServer` and `configSchema` from `src/index.ts`.
-
-1. Ensure dependencies are installed: `pnpm install`
-2. Launch the Smithery playground locally:
-
-   ```bash
-   pnpm run smithery:dev
-   ```
-
-   The CLI will prompt for `HEVY_API_KEY`, invoke `createServer({ config })`, and open the Smithery MCP playground.
-
-3. Build the deployable bundle:
-
-   ```bash
-   pnpm run smithery:build
-   ```
-
-4. Connect the repository to Smithery and trigger a deployment from their dashboard. Configuration is handled entirely through the exported Zod schema, so no additional `smithery.yaml` env mapping is required.
-
-> **Why are `chalk`, `cors`, and `@smithery/sdk` dependencies?** Smithery’s TypeScript runtime injects its own Express bootstrap that imports these packages. Declaring them in `package.json` ensures the Smithery CLI can bundle your server successfully.
 
 ### Stdio Only (Current)
 
@@ -433,13 +408,6 @@ Kubb generates TypeScript types, API clients, Zod schemas, and mock data from th
 ### Troubleshooting
 
 - **Rollup optional dependency missing**: If you see an error similar to `Cannot find module @rollup/rollup-linux-x64-gnu`, set the environment variable `ROLLUP_SKIP_NODEJS_NATIVE_BUILD=true` before running `pnpm run build`. This forces Rollup to use the pure JavaScript fallback and avoids the npm optional dependency bug on some Linux runners.
-
-### Troubleshooting Smithery deployments
-
-- **`smithery.yaml` validation failed (unexpected fields)**: Only `runtime`, `target`, and `env` are allowed for the TypeScript runtime. Remove `entry`, `name`, or other fields.
-- **`Could not resolve "chalk"/"cors"`**: Run `pnpm install` so the runtime dependencies listed in `package.json` are present before invoking Smithery.
-- **`Failed to connect to Smithery API: Unauthorized`**: Log in via `pnpm dlx @smithery/cli login` or set `SMITHERY_API_KEY` in `.env`.
-- **Tunnel crashes with `RangeError: Invalid count value`**: This is a known issue in certain `@smithery/cli` builds. Upgrade/downgrade the CLI (e.g., `pnpm add -D @smithery/cli@latest`) or contact Smithery support.
 
 ## License
 

@@ -30,8 +30,6 @@
 		"validate:openapi": "lint-openapi -c .ibm-openapi-validator.yaml openapi-spec.json",
 		"start": "node --env-file .env dist/cli.mjs",
 		"dev": "tsx watch --env-file .env --clear-screen=false src/cli.ts",
-		"smithery:build": "smithery build",
-		"smithery:dev": "smithery dev",
 		"check": "biome check --write --unsafe",
 		"check:types": "tsc --noEmit",
 		"version:patch": "pnpm version patch",
@@ -61,11 +59,7 @@
 		"@kubb/plugin-zod": "^4.20.0",
 		"@modelcontextprotocol/sdk": "^1.25.3",
 		"@sentry/node": "^10.38.0",
-		"@smithery/sdk": "4.0.1",
 		"axios": "^1.13.4",
-		"chalk": "^5.6.2",
-		"cors": "^2.8.6",
-		"express": "5.2.1",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
@@ -80,7 +74,6 @@
 		"@semantic-release/npm": "^13.1.3",
 		"@semantic-release/release-notes-generator": "^14.1.0",
 		"@sentry/rollup-plugin": "^4.8.0",
-		"@smithery/cli": "^3.6.0",
 		"@types/node": "^25.1.0",
 		"@vitest/coverage-v8": "^4.0.18",
 		"abstract-syntax-tree": "^2.22.0",

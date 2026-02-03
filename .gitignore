@@ -139,6 +139,3 @@ dist
 .env
 .env.sentry-build-plugin
 .aider*
-
-# Smithery CLI build artifacts
-.smithery/index.cjs
