@@ -12,7 +12,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - **Folder Organization**: Manage routine folders
 - **Webhook Subscriptions**: Create, view, and delete webhook subscriptions for workout events
 
-> **Note:** HTTP transport and Docker images remain deprecated. You can run the server locally via stdio (e.g., `npx hevy-mcp`). Existing GHCR images remain available but are no longer updated.
+> **Note:** HTTP transport and Docker images are deprecated. The server runs via stdio transport (e.g., `npx hevy-mcp`). Legacy GHCR images remain available but are no longer maintained.
 
 ## Quick start
 
