@@ -1,7 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 // Import types from generated client
-import type { RoutineFolder } from "../generated/client/types/index.js";
+import type {
+	GetV1RoutineFolders200,
+	GetV1RoutineFoldersFolderid200,
+	PostV1RoutineFolders201,
+	RoutineFolder,
+} from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
 import {
@@ -42,7 +47,7 @@ export function registerFolderTools(
 				);
 			}
 			const { page, pageSize } = args;
-			const data = await hevyClient.getRoutineFolders({
+			const data: GetV1RoutineFolders200 = await hevyClient.getRoutineFolders({
 				page,
 				pageSize,
 			});
@@ -80,7 +85,8 @@ export function registerFolderTools(
 				);
 			}
 			const { folderId } = args;
-			const data = await hevyClient.getRoutineFolder(folderId);
+			const data: GetV1RoutineFoldersFolderid200 =
+				await hevyClient.getRoutineFolder(folderId);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -112,11 +118,12 @@ export function registerFolderTools(
 				);
 			}
 			const { name } = args;
-			const data = await hevyClient.createRoutineFolder({
-				routine_folder: {
-					title: name,
-				},
-			});
+			const data: PostV1RoutineFolders201 =
+				await hevyClient.createRoutineFolder({
+					routine_folder: {
+						title: name,
+					},
+				});
 
 			if (!data) {
 				return createEmptyResponse(
