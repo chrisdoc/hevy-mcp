@@ -1,10 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type {
+	GetV1Workouts200,
+	GetV1WorkoutsCount200,
+	GetV1WorkoutsEvents200,
+	GetV1WorkoutsWorkoutid200,
+	PostV1Workouts201,
 	PostWorkoutsRequestBody,
 	PostWorkoutsRequestExercise,
 	PostWorkoutsRequestSetRpeEnumKey,
 	PostWorkoutsRequestSetTypeEnumKey,
+	PutV1WorkoutsWorkoutid200,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatWorkout } from "../utils/formatters.js";
@@ -40,7 +46,7 @@ export function registerWorkoutTools(
 				);
 			}
 			const { page, pageSize } = args;
-			const data = await hevyClient.getWorkouts({
+			const data: GetV1Workouts200 = await hevyClient.getWorkouts({
 				page,
 				pageSize,
 			});
@@ -75,7 +81,8 @@ export function registerWorkoutTools(
 				);
 			}
 			const { workoutId } = args;
-			const data = await hevyClient.getWorkout(workoutId);
+			const data: GetV1WorkoutsWorkoutid200 =
+				await hevyClient.getWorkout(workoutId);
 
 			if (!data) {
 				return createEmptyResponse(`Workout with ID ${workoutId} not found`);
@@ -97,10 +104,8 @@ export function registerWorkoutTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const data = await hevyClient.getWorkoutCount();
-			const count = data
-				? (data as { workoutCount?: number }).workoutCount || 0
-				: 0;
+			const data: GetV1WorkoutsCount200 = await hevyClient.getWorkoutCount();
+			const count = data?.workout_count ?? 0;
 			return createJsonResponse({ count });
 		}, "get-workout-count"),
 	);
@@ -124,7 +129,7 @@ export function registerWorkoutTools(
 				);
 			}
 			const { page, pageSize, since } = args;
-			const data = await hevyClient.getWorkoutEvents({
+			const data: GetV1WorkoutsEvents200 = await hevyClient.getWorkoutEvents({
 				page,
 				pageSize,
 				since,
@@ -212,7 +217,8 @@ export function registerWorkoutTools(
 			};
 			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
-			const data = await hevyClient.createWorkout(requestBody);
+			const data: PostV1Workouts201 =
+				await hevyClient.createWorkout(requestBody);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -306,7 +312,10 @@ export function registerWorkoutTools(
 			};
 			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
-			const data = await hevyClient.updateWorkout(workoutId, requestBody);
+			const data: PutV1WorkoutsWorkoutid200 = await hevyClient.updateWorkout(
+				workoutId,
+				requestBody,
+			);
 
 			if (!data) {
 				return createEmptyResponse(

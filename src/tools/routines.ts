@@ -2,12 +2,16 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 // Import types from generated client
 import type {
+	GetV1Routines200,
+	GetV1RoutinesRoutineid200,
 	PostRoutinesRequestExercise,
 	PostRoutinesRequestSet,
 	PostRoutinesRequestSetTypeEnumKey,
+	PostV1Routines201,
 	PutRoutinesRequestExercise,
 	PutRoutinesRequestSet,
 	PutRoutinesRequestSetTypeEnumKey,
+	PutV1RoutinesRoutineid200,
 	Routine,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
@@ -48,7 +52,7 @@ export function registerRoutineTools(
 				);
 			}
 			const { page, pageSize } = args;
-			const data = await hevyClient.getRoutines({
+			const data: GetV1Routines200 = await hevyClient.getRoutines({
 				page,
 				pageSize,
 			});
@@ -84,7 +88,9 @@ export function registerRoutineTools(
 				);
 			}
 			const { routineId } = args;
-			const data = await hevyClient.getRoutineById(String(routineId));
+			const data: GetV1RoutinesRoutineid200 = await hevyClient.getRoutineById(
+				String(routineId),
+			);
 			if (!data || !data.routine) {
 				return createEmptyResponse(`Routine with ID ${routineId} not found`);
 			}
@@ -141,7 +147,7 @@ export function registerRoutineTools(
 				);
 			}
 			const { title, folderId, notes, exercises } = args;
-			const data = await hevyClient.createRoutine({
+			const data: PostV1Routines201 = await hevyClient.createRoutine({
 				routine: {
 					title,
 					folder_id: folderId ?? null,
@@ -235,36 +241,40 @@ export function registerRoutineTools(
 				);
 			}
 			const { routineId, title, notes, exercises } = args;
-			const data = await hevyClient.updateRoutine(routineId, {
-				routine: {
-					title,
-					notes: notes ?? null,
-					exercises: exercises.map(
-						(exercise): PutRoutinesRequestExercise => ({
-							exercise_template_id: exercise.exerciseTemplateId,
-							superset_id: exercise.supersetId ?? null,
-							rest_seconds: exercise.restSeconds ?? null,
-							notes: exercise.notes ?? null,
-							sets: exercise.sets.map(
-								(set): PutRoutinesRequestSet => ({
-									type: set.type as PutRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weight ?? set.weightKg ?? null,
-									reps: set.reps ?? null,
-									distance_meters: set.distance ?? set.distanceMeters ?? null,
-									duration_seconds: set.duration ?? set.durationSeconds ?? null,
-									custom_metric: set.customMetric ?? null,
-									rep_range: set.repRange
-										? {
-												start: set.repRange.start ?? null,
-												end: set.repRange.end ?? null,
-											}
-										: null,
-								}),
-							),
-						}),
-					),
+			const data: PutV1RoutinesRoutineid200 = await hevyClient.updateRoutine(
+				routineId,
+				{
+					routine: {
+						title,
+						notes: notes ?? null,
+						exercises: exercises.map(
+							(exercise): PutRoutinesRequestExercise => ({
+								exercise_template_id: exercise.exerciseTemplateId,
+								superset_id: exercise.supersetId ?? null,
+								rest_seconds: exercise.restSeconds ?? null,
+								notes: exercise.notes ?? null,
+								sets: exercise.sets.map(
+									(set): PutRoutinesRequestSet => ({
+										type: set.type as PutRoutinesRequestSetTypeEnumKey,
+										weight_kg: set.weight ?? set.weightKg ?? null,
+										reps: set.reps ?? null,
+										distance_meters: set.distance ?? set.distanceMeters ?? null,
+										duration_seconds:
+											set.duration ?? set.durationSeconds ?? null,
+										custom_metric: set.customMetric ?? null,
+										rep_range: set.repRange
+											? {
+													start: set.repRange.start ?? null,
+													end: set.repRange.end ?? null,
+												}
+											: null,
+									}),
+								),
+							}),
+						),
+					},
 				},
-			});
+			);
 
 			if (!data) {
 				return createEmptyResponse(
