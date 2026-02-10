@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type {
+	GetV1WorkoutsCount200,
 	PostWorkoutsRequestBody,
 	PostWorkoutsRequestExercise,
 	PostWorkoutsRequestSetRpeEnumKey,
@@ -97,10 +98,8 @@ export function registerWorkoutTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const data = await hevyClient.getWorkoutCount();
-			const count = data
-				? (data as { workout_count?: number }).workout_count || 0
-				: 0;
+			const data: GetV1WorkoutsCount200 = await hevyClient.getWorkoutCount();
+			const count = data?.workout_count ?? 0;
 			return createJsonResponse({ count });
 		}, "get-workout-count"),
 	);
