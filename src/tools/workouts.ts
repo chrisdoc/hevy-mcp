@@ -99,7 +99,7 @@ export function registerWorkoutTools(
 			}
 			const data = await hevyClient.getWorkoutCount();
 			const count = data
-				? (data as { workoutCount?: number }).workoutCount || 0
+				? (data as { workout_count?: number }).workout_count || 0
 				: 0;
 			return createJsonResponse({ count });
 		}, "get-workout-count"),

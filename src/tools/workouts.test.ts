@@ -108,7 +108,7 @@ describe("registerWorkoutTools", () => {
 	it("get-workout-count returns the numeric count from the client", async () => {
 		const { server, tool } = createMockServer();
 		const hevyClient = {
-			getWorkoutCount: vi.fn().mockResolvedValue({ workoutCount: 42 }),
+			getWorkoutCount: vi.fn().mockResolvedValue({ workout_count: 42 }),
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
@@ -119,6 +119,38 @@ describe("registerWorkoutTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual({ count: 42 });
+	});
+
+	it("get-workout-count returns 0 when workout_count is undefined", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getWorkoutCount: vi.fn().mockResolvedValue({}),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-workout-count");
+
+		const response = await handler({});
+		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
+
+		const parsed = JSON.parse(response.content[0].text) as unknown;
+		expect(parsed).toEqual({ count: 0 });
+	});
+
+	it("get-workout-count returns 0 when data is null", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getWorkoutCount: vi.fn().mockResolvedValue(null),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-workout-count");
+
+		const response = await handler({});
+		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
+
+		const parsed = JSON.parse(response.content[0].text) as unknown;
+		expect(parsed).toEqual({ count: 0 });
 	});
 
 	it("create-workout maps arguments to the request body and formats the response", async () => {
