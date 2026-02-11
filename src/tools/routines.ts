@@ -16,6 +16,7 @@ import type {
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
+import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
@@ -104,34 +105,37 @@ export function registerRoutineTools(
 		title: z.string().min(1),
 		folderId: z.coerce.number().nullable().optional(),
 		notes: z.string().optional(),
-		exercises: z.array(
-			z.object({
-				exerciseTemplateId: z.string().min(1),
-				supersetId: z.coerce.number().nullable().optional(),
-				restSeconds: z.coerce.number().int().min(0).optional(),
-				notes: z.string().optional(),
-				sets: z.array(
-					z.object({
-						type: z
-							.enum(["warmup", "normal", "failure", "dropset"])
-							.default("normal"),
-						weight: z.coerce.number().optional(),
-						weightKg: z.coerce.number().optional(),
-						reps: z.coerce.number().int().optional(),
-						distance: z.coerce.number().int().optional(),
-						distanceMeters: z.coerce.number().int().optional(),
-						duration: z.coerce.number().int().optional(),
-						durationSeconds: z.coerce.number().int().optional(),
-						customMetric: z.coerce.number().optional(),
-						repRange: z
-							.object({
-								start: z.coerce.number().int().optional(),
-								end: z.coerce.number().int().optional(),
-							})
-							.optional(),
-					}),
-				),
-			}),
+		exercises: z.preprocess(
+			parseJsonArray,
+			z.array(
+				z.object({
+					exerciseTemplateId: z.string().min(1),
+					supersetId: z.coerce.number().nullable().optional(),
+					restSeconds: z.coerce.number().int().min(0).optional(),
+					notes: z.string().optional(),
+					sets: z.array(
+						z.object({
+							type: z
+								.enum(["warmup", "normal", "failure", "dropset"])
+								.default("normal"),
+							weight: z.coerce.number().optional(),
+							weightKg: z.coerce.number().optional(),
+							reps: z.coerce.number().int().optional(),
+							distance: z.coerce.number().int().optional(),
+							distanceMeters: z.coerce.number().int().optional(),
+							duration: z.coerce.number().int().optional(),
+							durationSeconds: z.coerce.number().int().optional(),
+							customMetric: z.coerce.number().optional(),
+							repRange: z
+								.object({
+									start: z.coerce.number().int().optional(),
+									end: z.coerce.number().int().optional(),
+								})
+								.optional(),
+						}),
+					),
+				}),
+			),
 		),
 	} as const;
 	type CreateRoutineParams = InferToolParams<typeof createRoutineSchema>;
@@ -198,34 +202,37 @@ export function registerRoutineTools(
 		routineId: z.string().min(1),
 		title: z.string().min(1),
 		notes: z.string().optional(),
-		exercises: z.array(
-			z.object({
-				exerciseTemplateId: z.string().min(1),
-				supersetId: z.coerce.number().nullable().optional(),
-				restSeconds: z.coerce.number().int().min(0).optional(),
-				notes: z.string().optional(),
-				sets: z.array(
-					z.object({
-						type: z
-							.enum(["warmup", "normal", "failure", "dropset"])
-							.default("normal"),
-						weight: z.coerce.number().optional(),
-						weightKg: z.coerce.number().optional(),
-						reps: z.coerce.number().int().optional(),
-						distance: z.coerce.number().int().optional(),
-						distanceMeters: z.coerce.number().int().optional(),
-						duration: z.coerce.number().int().optional(),
-						durationSeconds: z.coerce.number().int().optional(),
-						customMetric: z.coerce.number().optional(),
-						repRange: z
-							.object({
-								start: z.coerce.number().int().optional(),
-								end: z.coerce.number().int().optional(),
-							})
-							.optional(),
-					}),
-				),
-			}),
+		exercises: z.preprocess(
+			parseJsonArray,
+			z.array(
+				z.object({
+					exerciseTemplateId: z.string().min(1),
+					supersetId: z.coerce.number().nullable().optional(),
+					restSeconds: z.coerce.number().int().min(0).optional(),
+					notes: z.string().optional(),
+					sets: z.array(
+						z.object({
+							type: z
+								.enum(["warmup", "normal", "failure", "dropset"])
+								.default("normal"),
+							weight: z.coerce.number().optional(),
+							weightKg: z.coerce.number().optional(),
+							reps: z.coerce.number().int().optional(),
+							distance: z.coerce.number().int().optional(),
+							distanceMeters: z.coerce.number().int().optional(),
+							duration: z.coerce.number().int().optional(),
+							durationSeconds: z.coerce.number().int().optional(),
+							customMetric: z.coerce.number().optional(),
+							repRange: z
+								.object({
+									start: z.coerce.number().int().optional(),
+									end: z.coerce.number().int().optional(),
+								})
+								.optional(),
+						}),
+					),
+				}),
+			),
 		),
 	} as const;
 	type UpdateRoutineParams = InferToolParams<typeof updateRoutineSchema>;

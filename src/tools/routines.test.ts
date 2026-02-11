@@ -236,4 +236,75 @@ describe("registerRoutineTools", () => {
 			},
 		});
 	});
+
+	it("update-routine processes exercises array correctly", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "updated-routine",
+			title: "Updated Routine",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			updateRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		// Note: The preprocessing happens in the MCP SDK's validation layer,
+		// not in the handler. When testing the handler directly, we pass the
+		// already-processed (native array) value.
+		const args = {
+			routineId: "routine-123",
+			title: "Updated Routine",
+			notes: "Test notes",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					restSeconds: 90,
+					notes: "Test notes",
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 100,
+							reps: 10,
+						},
+					],
+				},
+			],
+		};
+
+		await handler(args as Record<string, unknown>);
+
+		// Verify that the handler correctly processed the exercises array
+		expect(hevyClient.updateRoutine).toHaveBeenCalledWith("routine-123", {
+			routine: {
+				title: "Updated Routine",
+				notes: "Test notes",
+				exercises: [
+					{
+						exercise_template_id: "template-id",
+						superset_id: null,
+						rest_seconds: 90,
+						notes: "Test notes",
+						sets: [
+							{
+								type: "normal",
+								weight_kg: 100,
+								reps: 10,
+								distance_meters: null,
+								duration_seconds: null,
+								custom_metric: null,
+								rep_range: null,
+							},
+						],
+					},
+				],
+			},
+		});
+	});
 });
