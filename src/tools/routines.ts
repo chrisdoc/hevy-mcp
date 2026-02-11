@@ -28,6 +28,22 @@ type HevyClient = ReturnType<
 >;
 
 /**
+ * Preprocessor to handle MCP clients that send JSON-stringified arrays
+ * instead of native arrays for complex parameters.
+ */
+function parseJsonArray(val: unknown): unknown {
+	// Handle case where MCP client sends JSON string instead of array
+	if (typeof val === "string") {
+		try {
+			return JSON.parse(val);
+		} catch {
+			return val; // Let Zod validation handle the error
+		}
+	}
+	return val;
+}
+
+/**
  * Register all routine-related tools with the MCP server
  */
 export function registerRoutineTools(
@@ -104,34 +120,37 @@ export function registerRoutineTools(
 		title: z.string().min(1),
 		folderId: z.coerce.number().nullable().optional(),
 		notes: z.string().optional(),
-		exercises: z.array(
-			z.object({
-				exerciseTemplateId: z.string().min(1),
-				supersetId: z.coerce.number().nullable().optional(),
-				restSeconds: z.coerce.number().int().min(0).optional(),
-				notes: z.string().optional(),
-				sets: z.array(
-					z.object({
-						type: z
-							.enum(["warmup", "normal", "failure", "dropset"])
-							.default("normal"),
-						weight: z.coerce.number().optional(),
-						weightKg: z.coerce.number().optional(),
-						reps: z.coerce.number().int().optional(),
-						distance: z.coerce.number().int().optional(),
-						distanceMeters: z.coerce.number().int().optional(),
-						duration: z.coerce.number().int().optional(),
-						durationSeconds: z.coerce.number().int().optional(),
-						customMetric: z.coerce.number().optional(),
-						repRange: z
-							.object({
-								start: z.coerce.number().int().optional(),
-								end: z.coerce.number().int().optional(),
-							})
-							.optional(),
-					}),
-				),
-			}),
+		exercises: z.preprocess(
+			parseJsonArray,
+			z.array(
+				z.object({
+					exerciseTemplateId: z.string().min(1),
+					supersetId: z.coerce.number().nullable().optional(),
+					restSeconds: z.coerce.number().int().min(0).optional(),
+					notes: z.string().optional(),
+					sets: z.array(
+						z.object({
+							type: z
+								.enum(["warmup", "normal", "failure", "dropset"])
+								.default("normal"),
+							weight: z.coerce.number().optional(),
+							weightKg: z.coerce.number().optional(),
+							reps: z.coerce.number().int().optional(),
+							distance: z.coerce.number().int().optional(),
+							distanceMeters: z.coerce.number().int().optional(),
+							duration: z.coerce.number().int().optional(),
+							durationSeconds: z.coerce.number().int().optional(),
+							customMetric: z.coerce.number().optional(),
+							repRange: z
+								.object({
+									start: z.coerce.number().int().optional(),
+									end: z.coerce.number().int().optional(),
+								})
+								.optional(),
+						}),
+					),
+				}),
+			),
 		),
 	} as const;
 	type CreateRoutineParams = InferToolParams<typeof createRoutineSchema>;
@@ -198,34 +217,37 @@ export function registerRoutineTools(
 		routineId: z.string().min(1),
 		title: z.string().min(1),
 		notes: z.string().optional(),
-		exercises: z.array(
-			z.object({
-				exerciseTemplateId: z.string().min(1),
-				supersetId: z.coerce.number().nullable().optional(),
-				restSeconds: z.coerce.number().int().min(0).optional(),
-				notes: z.string().optional(),
-				sets: z.array(
-					z.object({
-						type: z
-							.enum(["warmup", "normal", "failure", "dropset"])
-							.default("normal"),
-						weight: z.coerce.number().optional(),
-						weightKg: z.coerce.number().optional(),
-						reps: z.coerce.number().int().optional(),
-						distance: z.coerce.number().int().optional(),
-						distanceMeters: z.coerce.number().int().optional(),
-						duration: z.coerce.number().int().optional(),
-						durationSeconds: z.coerce.number().int().optional(),
-						customMetric: z.coerce.number().optional(),
-						repRange: z
-							.object({
-								start: z.coerce.number().int().optional(),
-								end: z.coerce.number().int().optional(),
-							})
-							.optional(),
-					}),
-				),
-			}),
+		exercises: z.preprocess(
+			parseJsonArray,
+			z.array(
+				z.object({
+					exerciseTemplateId: z.string().min(1),
+					supersetId: z.coerce.number().nullable().optional(),
+					restSeconds: z.coerce.number().int().min(0).optional(),
+					notes: z.string().optional(),
+					sets: z.array(
+						z.object({
+							type: z
+								.enum(["warmup", "normal", "failure", "dropset"])
+								.default("normal"),
+							weight: z.coerce.number().optional(),
+							weightKg: z.coerce.number().optional(),
+							reps: z.coerce.number().int().optional(),
+							distance: z.coerce.number().int().optional(),
+							distanceMeters: z.coerce.number().int().optional(),
+							duration: z.coerce.number().int().optional(),
+							durationSeconds: z.coerce.number().int().optional(),
+							customMetric: z.coerce.number().optional(),
+							repRange: z
+								.object({
+									start: z.coerce.number().int().optional(),
+									end: z.coerce.number().int().optional(),
+								})
+								.optional(),
+						}),
+					),
+				}),
+			),
 		),
 	} as const;
 	type UpdateRoutineParams = InferToolParams<typeof updateRoutineSchema>;
