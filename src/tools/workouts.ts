@@ -15,6 +15,7 @@ import type {
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
+import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
@@ -154,28 +155,31 @@ export function registerWorkoutTools(
 		startTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
 		endTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
 		isPrivate: z.boolean().default(false),
-		exercises: z.array(
-			z.object({
-				exerciseTemplateId: z.string().min(1),
-				supersetId: z.coerce.number().nullable().optional(),
-				notes: z.string().optional().nullable(),
-				sets: z.array(
-					z.object({
-						type: z
-							.enum(["warmup", "normal", "failure", "dropset"])
-							.default("normal"),
-						weight: z.coerce.number().optional().nullable(),
-						weightKg: z.coerce.number().optional().nullable(),
-						reps: z.coerce.number().int().optional().nullable(),
-						distance: z.coerce.number().int().optional().nullable(),
-						distanceMeters: z.coerce.number().int().optional().nullable(),
-						duration: z.coerce.number().int().optional().nullable(),
-						durationSeconds: z.coerce.number().int().optional().nullable(),
-						rpe: z.coerce.number().optional().nullable(),
-						customMetric: z.coerce.number().optional().nullable(),
-					}),
-				),
-			}),
+		exercises: z.preprocess(
+			parseJsonArray,
+			z.array(
+				z.object({
+					exerciseTemplateId: z.string().min(1),
+					supersetId: z.coerce.number().nullable().optional(),
+					notes: z.string().optional().nullable(),
+					sets: z.array(
+						z.object({
+							type: z
+								.enum(["warmup", "normal", "failure", "dropset"])
+								.default("normal"),
+							weight: z.coerce.number().optional().nullable(),
+							weightKg: z.coerce.number().optional().nullable(),
+							reps: z.coerce.number().int().optional().nullable(),
+							distance: z.coerce.number().int().optional().nullable(),
+							distanceMeters: z.coerce.number().int().optional().nullable(),
+							duration: z.coerce.number().int().optional().nullable(),
+							durationSeconds: z.coerce.number().int().optional().nullable(),
+							rpe: z.coerce.number().optional().nullable(),
+							customMetric: z.coerce.number().optional().nullable(),
+						}),
+					),
+				}),
+			),
 		),
 	} as const;
 	type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
@@ -242,28 +246,31 @@ export function registerWorkoutTools(
 		startTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
 		endTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
 		isPrivate: z.boolean().default(false),
-		exercises: z.array(
-			z.object({
-				exerciseTemplateId: z.string().min(1),
-				supersetId: z.coerce.number().nullable().optional(),
-				notes: z.string().optional().nullable(),
-				sets: z.array(
-					z.object({
-						type: z
-							.enum(["warmup", "normal", "failure", "dropset"])
-							.default("normal"),
-						weight: z.coerce.number().optional().nullable(),
-						weightKg: z.coerce.number().optional().nullable(),
-						reps: z.coerce.number().int().optional().nullable(),
-						distance: z.coerce.number().int().optional().nullable(),
-						distanceMeters: z.coerce.number().int().optional().nullable(),
-						duration: z.coerce.number().int().optional().nullable(),
-						durationSeconds: z.coerce.number().int().optional().nullable(),
-						rpe: z.coerce.number().optional().nullable(),
-						customMetric: z.coerce.number().optional().nullable(),
-					}),
-				),
-			}),
+		exercises: z.preprocess(
+			parseJsonArray,
+			z.array(
+				z.object({
+					exerciseTemplateId: z.string().min(1),
+					supersetId: z.coerce.number().nullable().optional(),
+					notes: z.string().optional().nullable(),
+					sets: z.array(
+						z.object({
+							type: z
+								.enum(["warmup", "normal", "failure", "dropset"])
+								.default("normal"),
+							weight: z.coerce.number().optional().nullable(),
+							weightKg: z.coerce.number().optional().nullable(),
+							reps: z.coerce.number().int().optional().nullable(),
+							distance: z.coerce.number().int().optional().nullable(),
+							distanceMeters: z.coerce.number().int().optional().nullable(),
+							duration: z.coerce.number().int().optional().nullable(),
+							durationSeconds: z.coerce.number().int().optional().nullable(),
+							rpe: z.coerce.number().optional().nullable(),
+							customMetric: z.coerce.number().optional().nullable(),
+						}),
+					),
+				}),
+			),
 		),
 	} as const;
 	type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
