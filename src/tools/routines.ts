@@ -16,6 +16,7 @@ import type {
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
+import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
@@ -26,22 +27,6 @@ import type { InferToolParams } from "../utils/tool-helpers.js";
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
-
-/**
- * Preprocessor to handle MCP clients that send JSON-stringified arrays
- * instead of native arrays for complex parameters.
- */
-function parseJsonArray(val: unknown): unknown {
-	// Handle case where MCP client sends JSON string instead of array
-	if (typeof val === "string") {
-		try {
-			return JSON.parse(val);
-		} catch {
-			return val; // Let Zod validation handle the error
-		}
-	}
-	return val;
-}
 
 /**
  * Register all routine-related tools with the MCP server
