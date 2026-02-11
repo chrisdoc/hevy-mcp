@@ -254,12 +254,14 @@ describe("registerRoutineTools", () => {
 		registerRoutineTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "update-routine");
 
-		// Test with JSON-stringified exercises (the actual bug scenario)
+		// Note: The preprocessing happens in the MCP SDK's validation layer,
+		// not in the handler. When testing the handler directly, we pass the
+		// already-processed (native array) value.
 		const args = {
 			routineId: "routine-123",
 			title: "Updated Routine",
 			notes: "Test notes",
-			exercises: JSON.stringify([
+			exercises: [
 				{
 					exerciseTemplateId: "template-id",
 					supersetId: null,
@@ -273,8 +275,9 @@ describe("registerRoutineTools", () => {
 						},
 					],
 				},
-			]),
+			],
 		};
+
 		await handler(args as Record<string, unknown>);
 
 		// Verify that the handler correctly processed the exercises array
