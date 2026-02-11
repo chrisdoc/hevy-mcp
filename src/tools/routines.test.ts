@@ -254,11 +254,12 @@ describe("registerRoutineTools", () => {
 		registerRoutineTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "update-routine");
 
+		// Test with JSON-stringified exercises (the actual bug scenario)
 		const args = {
 			routineId: "routine-123",
 			title: "Updated Routine",
 			notes: "Test notes",
-			exercises: [
+			exercises: JSON.stringify([
 				{
 					exerciseTemplateId: "template-id",
 					supersetId: null,
@@ -272,9 +273,8 @@ describe("registerRoutineTools", () => {
 						},
 					],
 				},
-			],
+			]),
 		};
-
 		await handler(args as Record<string, unknown>);
 
 		// Verify that the handler correctly processed the exercises array
