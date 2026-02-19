@@ -238,6 +238,49 @@ describe("registerRoutineTools", () => {
 		});
 	});
 
+	it("create-routine includes a rep range display warning when repRange is provided", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "created-routine",
+			title: "Leg Day",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:00:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			createRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-routine");
+
+		const response = await handler({
+			title: "Leg Day",
+			folderId: null,
+			notes: "Focus on form",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					restSeconds: 90,
+					notes: "Slow and controlled",
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 100,
+							repRange: { start: 8, end: 12 },
+						},
+					],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(response.content).toHaveLength(2);
+		expect(response.content[1]?.text).toContain("rep ranges");
+		expect(response.content[1]?.text).toContain("issues/261");
+	});
+
 	it("create-routine schema keeps reps null (does not coerce to 0)", () => {
 		const { server, tool } = createMockServer();
 		registerRoutineTools(server, null);

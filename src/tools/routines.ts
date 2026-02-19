@@ -90,6 +90,12 @@ function buildRepRange(repRange?: {
 	return { start, end };
 }
 
+const repRangeDisplayWarningText =
+	"Note: Hevy's public API stores rep ranges (rep_range), but the Hevy apps may " +
+	"not display them because they rely on an internal-only exercise field " +
+	"(input_modifier). See https://github.com/chrisdoc/hevy-mcp/issues/261 for " +
+	"details/workarounds.";
+
 /**
  * Register all routine-related tools with the MCP server
  */
@@ -208,6 +214,9 @@ export function registerRoutineTools(
 				);
 			}
 			const { title, folderId, notes, exercises } = args;
+			const usesRepRanges = exercises.some((exercise) =>
+				exercise.sets.some((set) => buildRepRange(set.repRange) !== null),
+			);
 			const data: PostV1Routines201 = await hevyClient.createRoutine({
 				routine: {
 					title,
@@ -243,10 +252,19 @@ export function registerRoutineTools(
 			}
 
 			const routine = formatRoutine(data);
-			return createJsonResponse(routine, {
+			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,
 			});
+
+			if (usesRepRanges) {
+				response.content.push({
+					type: "text",
+					text: repRangeDisplayWarningText,
+				});
+			}
+
+			return response;
 		}, "create-routine"),
 	);
 
@@ -296,6 +314,9 @@ export function registerRoutineTools(
 				);
 			}
 			const { routineId, title, notes, exercises } = args;
+			const usesRepRanges = exercises.some((exercise) =>
+				exercise.sets.some((set) => buildRepRange(set.repRange) !== null),
+			);
 			const data: PutV1RoutinesRoutineid200 = await hevyClient.updateRoutine(
 				routineId,
 				{
@@ -334,10 +355,19 @@ export function registerRoutineTools(
 			}
 
 			const routine = formatRoutine(data);
-			return createJsonResponse(routine, {
+			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,
 			});
+
+			if (usesRepRanges) {
+				response.content.push({
+					type: "text",
+					text: repRangeDisplayWarningText,
+				});
+			}
+
+			return response;
 		}, "update-routine"),
 	);
 }
