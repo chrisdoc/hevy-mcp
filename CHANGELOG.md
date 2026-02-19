@@ -1,3 +1,10 @@
+## [1.20.5](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.4...v1.20.5) (2026-02-19)
+
+
+### Bug Fixes
+
+* trigger new release ([88e1989](https://github.com/chrisdoc/hevy-mcp/commit/88e1989650f0b2074ac597ccf449648e877c9ae8))
+
 ## [1.20.3](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.2...v1.20.3) (2026-02-16)
 
 ## [1.20.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.1...v1.20.2) (2026-02-16)
