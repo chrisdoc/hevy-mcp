@@ -220,29 +220,32 @@ export function registerRoutineTools(
 					title,
 					folder_id: folderId ?? null,
 					notes: notes ?? "",
-					exercises: exercises.map(
-						(exercise): PostRoutinesRequestExercise => ({
+					exercises: exercises.map((exercise): PostRoutinesRequestExercise => {
+						const sets = exercise.sets.map((set): PostRoutinesRequestSet => {
+							const repRange = buildRepRange(set.repRange);
+							return {
+								type: set.type as PostRoutinesRequestSetTypeEnumKey,
+								weight_kg: set.weight ?? set.weightKg ?? null,
+								reps: repRange ? null : (set.reps ?? null),
+								distance_meters: set.distance ?? set.distanceMeters ?? null,
+								duration_seconds: set.duration ?? set.durationSeconds ?? null,
+								custom_metric: set.customMetric ?? null,
+								rep_range: repRange,
+							};
+						});
+
+						if (sets.some((set) => set.rep_range !== null)) {
+							usesRepRanges = true;
+						}
+
+						return {
 							exercise_template_id: exercise.exerciseTemplateId,
 							superset_id: exercise.supersetId ?? null,
 							rest_seconds: exercise.restSeconds ?? null,
 							notes: exercise.notes ?? null,
-							sets: exercise.sets.map((set): PostRoutinesRequestSet => {
-								const repRange = buildRepRange(set.repRange);
-								if (repRange !== null) {
-									usesRepRanges = true;
-								}
-								return {
-									type: set.type as PostRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weight ?? set.weightKg ?? null,
-									reps: repRange ? null : (set.reps ?? null),
-									distance_meters: set.distance ?? set.distanceMeters ?? null,
-									duration_seconds: set.duration ?? set.durationSeconds ?? null,
-									custom_metric: set.customMetric ?? null,
-									rep_range: repRange,
-								};
-							}),
-						}),
-					),
+							sets,
+						};
+					}),
 				},
 			});
 
@@ -322,30 +325,32 @@ export function registerRoutineTools(
 					routine: {
 						title,
 						notes: notes ?? null,
-						exercises: exercises.map(
-							(exercise): PutRoutinesRequestExercise => ({
+						exercises: exercises.map((exercise): PutRoutinesRequestExercise => {
+							const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
+								const repRange = buildRepRange(set.repRange);
+								return {
+									type: set.type as PutRoutinesRequestSetTypeEnumKey,
+									weight_kg: set.weight ?? set.weightKg ?? null,
+									reps: repRange ? null : (set.reps ?? null),
+									distance_meters: set.distance ?? set.distanceMeters ?? null,
+									duration_seconds: set.duration ?? set.durationSeconds ?? null,
+									custom_metric: set.customMetric ?? null,
+									rep_range: repRange,
+								};
+							});
+
+							if (sets.some((set) => set.rep_range !== null)) {
+								usesRepRanges = true;
+							}
+
+							return {
 								exercise_template_id: exercise.exerciseTemplateId,
 								superset_id: exercise.supersetId ?? null,
 								rest_seconds: exercise.restSeconds ?? null,
 								notes: exercise.notes ?? null,
-								sets: exercise.sets.map((set): PutRoutinesRequestSet => {
-									const repRange = buildRepRange(set.repRange);
-									if (repRange !== null) {
-										usesRepRanges = true;
-									}
-									return {
-										type: set.type as PutRoutinesRequestSetTypeEnumKey,
-										weight_kg: set.weight ?? set.weightKg ?? null,
-										reps: repRange ? null : (set.reps ?? null),
-										distance_meters: set.distance ?? set.distanceMeters ?? null,
-										duration_seconds:
-											set.duration ?? set.durationSeconds ?? null,
-										custom_metric: set.customMetric ?? null,
-										rep_range: repRange,
-									};
-								}),
-							}),
-						),
+								sets,
+							};
+						}),
 					},
 				},
 			);
