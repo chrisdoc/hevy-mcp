@@ -28,6 +28,51 @@ type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
+function coerceNullishNumberInput(value: unknown): unknown {
+	if (value === null || value === undefined) {
+		return value;
+	}
+
+	if (typeof value !== "string") {
+		return value;
+	}
+
+	const trimmed = value.trim();
+	if (trimmed === "") {
+		return undefined;
+	}
+
+	const lowered = trimmed.toLowerCase();
+	if (lowered === "null") {
+		return null;
+	}
+	if (lowered === "undefined") {
+		return undefined;
+	}
+
+	const asNumber = Number(trimmed);
+	if (Number.isNaN(asNumber)) {
+		return value;
+	}
+
+	return asNumber;
+}
+
+const zNullableInt = z.preprocess(
+	coerceNullishNumberInput,
+	z.number().int().nullable().optional(),
+);
+
+const zOptionalRepRange = z.preprocess(
+	(value) => (value === null ? undefined : value),
+	z
+		.object({
+			start: zNullableInt,
+			end: zNullableInt,
+		})
+		.optional(),
+);
+
 /**
  * Register all routine-related tools with the MCP server
  */
@@ -120,18 +165,13 @@ export function registerRoutineTools(
 								.default("normal"),
 							weight: z.coerce.number().optional(),
 							weightKg: z.coerce.number().optional(),
-							reps: z.coerce.number().int().optional(),
+							reps: zNullableInt,
 							distance: z.coerce.number().int().optional(),
 							distanceMeters: z.coerce.number().int().optional(),
 							duration: z.coerce.number().int().optional(),
 							durationSeconds: z.coerce.number().int().optional(),
 							customMetric: z.coerce.number().optional(),
-							repRange: z
-								.object({
-									start: z.coerce.number().int().optional(),
-									end: z.coerce.number().int().optional(),
-								})
-								.optional(),
+							repRange: zOptionalRepRange,
 						}),
 					),
 				}),
@@ -166,7 +206,7 @@ export function registerRoutineTools(
 								(set): PostRoutinesRequestSet => ({
 									type: set.type as PostRoutinesRequestSetTypeEnumKey,
 									weight_kg: set.weight ?? set.weightKg ?? null,
-									reps: set.reps ?? null,
+									reps: set.repRange ? null : (set.reps ?? null),
 									distance_meters: set.distance ?? set.distanceMeters ?? null,
 									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
@@ -217,18 +257,13 @@ export function registerRoutineTools(
 								.default("normal"),
 							weight: z.coerce.number().optional(),
 							weightKg: z.coerce.number().optional(),
-							reps: z.coerce.number().int().optional(),
+							reps: zNullableInt,
 							distance: z.coerce.number().int().optional(),
 							distanceMeters: z.coerce.number().int().optional(),
 							duration: z.coerce.number().int().optional(),
 							durationSeconds: z.coerce.number().int().optional(),
 							customMetric: z.coerce.number().optional(),
-							repRange: z
-								.object({
-									start: z.coerce.number().int().optional(),
-									end: z.coerce.number().int().optional(),
-								})
-								.optional(),
+							repRange: zOptionalRepRange,
 						}),
 					),
 				}),
@@ -264,7 +299,7 @@ export function registerRoutineTools(
 									(set): PutRoutinesRequestSet => ({
 										type: set.type as PutRoutinesRequestSetTypeEnumKey,
 										weight_kg: set.weight ?? set.weightKg ?? null,
-										reps: set.reps ?? null,
+										reps: set.repRange ? null : (set.reps ?? null),
 										distance_meters: set.distance ?? set.distanceMeters ?? null,
 										duration_seconds:
 											set.duration ?? set.durationSeconds ?? null,

@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import type { Routine } from "../generated/client/types/index.js";
 import { formatRoutine } from "../utils/formatters.js";
 import { registerRoutineTools } from "./routines.js";
@@ -19,7 +20,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const [, , , handler] = match as [
+	const [, , schema, handler] = match as [
 		string,
 		string,
 		Record<string, unknown>,
@@ -28,7 +29,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 			isError?: boolean;
 		}>,
 	];
-	return { handler };
+	return { schema, handler };
 }
 
 describe("registerRoutineTools", () => {
@@ -221,7 +222,7 @@ describe("registerRoutineTools", () => {
 							{
 								type: "normal",
 								weight_kg: 100,
-								reps: 10,
+								reps: null,
 								distance_meters: null,
 								duration_seconds: null,
 								custom_metric: null,
@@ -235,6 +236,84 @@ describe("registerRoutineTools", () => {
 				],
 			},
 		});
+	});
+
+	it("create-routine schema keeps reps null (does not coerce to 0)", () => {
+		const { server, tool } = createMockServer();
+		registerRoutineTools(server, null);
+		const { schema } = getToolRegistration(tool, "create-routine");
+
+		const zodSchema = z.object(schema as Record<string, z.ZodTypeAny>);
+		const parsed = zodSchema.parse({
+			title: "Leg Day",
+			folderId: null,
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					restSeconds: 90,
+					sets: [{ weightKg: 100, reps: null }],
+				},
+			],
+		}) as { exercises: Array<{ sets: Array<{ reps?: number | null }> }> };
+
+		expect(parsed.exercises[0]?.sets[0]?.reps).toBeNull();
+	});
+
+	it("update-routine clears reps when repRange is provided", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "updated-routine",
+			title: "Updated Routine",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			updateRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({
+			routineId: "routine-123",
+			title: "Updated Routine",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					restSeconds: 90,
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 100,
+							reps: 10,
+							repRange: { start: 8, end: 12 },
+						},
+					],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(hevyClient.updateRoutine).toHaveBeenCalledWith(
+			"routine-123",
+			expect.objectContaining({
+				routine: expect.objectContaining({
+					exercises: [
+						expect.objectContaining({
+							sets: [
+								expect.objectContaining({
+									reps: null,
+									rep_range: { start: 8, end: 12 },
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		);
 	});
 
 	it("update-routine processes exercises array correctly", async () => {
