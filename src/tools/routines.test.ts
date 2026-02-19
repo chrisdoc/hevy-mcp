@@ -23,7 +23,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	const [, , schema, handler] = match as [
 		string,
 		string,
-		Record<string, unknown>,
+		Record<string, z.ZodTypeAny>,
 		(args: Record<string, unknown>) => Promise<{
 			content: Array<{ type: string; text: string }>;
 			isError?: boolean;
@@ -243,7 +243,7 @@ describe("registerRoutineTools", () => {
 		registerRoutineTools(server, null);
 		const { schema } = getToolRegistration(tool, "create-routine");
 
-		const zodSchema = z.object(schema as Record<string, z.ZodTypeAny>);
+		const zodSchema = z.object(schema);
 		const parsed = zodSchema.parse({
 			title: "Leg Day",
 			folderId: null,
