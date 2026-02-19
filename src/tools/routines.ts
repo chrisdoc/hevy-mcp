@@ -214,9 +214,7 @@ export function registerRoutineTools(
 				);
 			}
 			const { title, folderId, notes, exercises } = args;
-			const usesRepRanges = exercises.some((exercise) =>
-				exercise.sets.some((set) => buildRepRange(set.repRange) !== null),
-			);
+			let usesRepRanges = false;
 			const data: PostV1Routines201 = await hevyClient.createRoutine({
 				routine: {
 					title,
@@ -230,6 +228,9 @@ export function registerRoutineTools(
 							notes: exercise.notes ?? null,
 							sets: exercise.sets.map((set): PostRoutinesRequestSet => {
 								const repRange = buildRepRange(set.repRange);
+								if (repRange !== null) {
+									usesRepRanges = true;
+								}
 								return {
 									type: set.type as PostRoutinesRequestSetTypeEnumKey,
 									weight_kg: set.weight ?? set.weightKg ?? null,
@@ -314,9 +315,7 @@ export function registerRoutineTools(
 				);
 			}
 			const { routineId, title, notes, exercises } = args;
-			const usesRepRanges = exercises.some((exercise) =>
-				exercise.sets.some((set) => buildRepRange(set.repRange) !== null),
-			);
+			let usesRepRanges = false;
 			const data: PutV1RoutinesRoutineid200 = await hevyClient.updateRoutine(
 				routineId,
 				{
@@ -331,6 +330,9 @@ export function registerRoutineTools(
 								notes: exercise.notes ?? null,
 								sets: exercise.sets.map((set): PutRoutinesRequestSet => {
 									const repRange = buildRepRange(set.repRange);
+									if (repRange !== null) {
+										usesRepRanges = true;
+									}
 									return {
 										type: set.type as PutRoutinesRequestSetTypeEnumKey,
 										weight_kg: set.weight ?? set.weightKg ?? null,

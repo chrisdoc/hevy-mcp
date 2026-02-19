@@ -277,6 +277,9 @@ describe("registerRoutineTools", () => {
 		} as Record<string, unknown>);
 
 		expect(response.content).toHaveLength(2);
+		expect(JSON.parse(response.content[0].text)).toEqual(
+			formatRoutine(routine),
+		);
 		expect(response.content[1]?.text).toContain("rep ranges");
 		expect(response.content[1]?.text).toContain("issues/261");
 	});
