@@ -90,6 +90,12 @@ function buildRepRange(repRange?: {
 	return { start, end };
 }
 
+const repRangeDisplayWarningText =
+	"Note: Hevy's public API stores rep ranges (rep_range), but the Hevy apps may " +
+	"not display them because they rely on an internal-only exercise field " +
+	"(input_modifier). See https://github.com/chrisdoc/hevy-mcp/issues/261 for " +
+	"details/workarounds.";
+
 /**
  * Register all routine-related tools with the MCP server
  */
@@ -208,31 +214,38 @@ export function registerRoutineTools(
 				);
 			}
 			const { title, folderId, notes, exercises } = args;
+			let usesRepRanges = false;
 			const data: PostV1Routines201 = await hevyClient.createRoutine({
 				routine: {
 					title,
 					folder_id: folderId ?? null,
 					notes: notes ?? "",
-					exercises: exercises.map(
-						(exercise): PostRoutinesRequestExercise => ({
+					exercises: exercises.map((exercise): PostRoutinesRequestExercise => {
+						const sets = exercise.sets.map((set): PostRoutinesRequestSet => {
+							const repRange = buildRepRange(set.repRange);
+							return {
+								type: set.type as PostRoutinesRequestSetTypeEnumKey,
+								weight_kg: set.weight ?? set.weightKg ?? null,
+								reps: repRange ? null : (set.reps ?? null),
+								distance_meters: set.distance ?? set.distanceMeters ?? null,
+								duration_seconds: set.duration ?? set.durationSeconds ?? null,
+								custom_metric: set.customMetric ?? null,
+								rep_range: repRange,
+							};
+						});
+
+						if (sets.some((set) => set.rep_range !== null)) {
+							usesRepRanges = true;
+						}
+
+						return {
 							exercise_template_id: exercise.exerciseTemplateId,
 							superset_id: exercise.supersetId ?? null,
 							rest_seconds: exercise.restSeconds ?? null,
 							notes: exercise.notes ?? null,
-							sets: exercise.sets.map((set): PostRoutinesRequestSet => {
-								const repRange = buildRepRange(set.repRange);
-								return {
-									type: set.type as PostRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weight ?? set.weightKg ?? null,
-									reps: repRange ? null : (set.reps ?? null),
-									distance_meters: set.distance ?? set.distanceMeters ?? null,
-									duration_seconds: set.duration ?? set.durationSeconds ?? null,
-									custom_metric: set.customMetric ?? null,
-									rep_range: repRange,
-								};
-							}),
-						}),
-					),
+							sets,
+						};
+					}),
 				},
 			});
 
@@ -243,10 +256,19 @@ export function registerRoutineTools(
 			}
 
 			const routine = formatRoutine(data);
-			return createJsonResponse(routine, {
+			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,
 			});
+
+			if (usesRepRanges) {
+				response.content.push({
+					type: "text",
+					text: repRangeDisplayWarningText,
+				});
+			}
+
+			return response;
 		}, "create-routine"),
 	);
 
@@ -296,33 +318,39 @@ export function registerRoutineTools(
 				);
 			}
 			const { routineId, title, notes, exercises } = args;
+			let usesRepRanges = false;
 			const data: PutV1RoutinesRoutineid200 = await hevyClient.updateRoutine(
 				routineId,
 				{
 					routine: {
 						title,
 						notes: notes ?? null,
-						exercises: exercises.map(
-							(exercise): PutRoutinesRequestExercise => ({
+						exercises: exercises.map((exercise): PutRoutinesRequestExercise => {
+							const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
+								const repRange = buildRepRange(set.repRange);
+								return {
+									type: set.type as PutRoutinesRequestSetTypeEnumKey,
+									weight_kg: set.weight ?? set.weightKg ?? null,
+									reps: repRange ? null : (set.reps ?? null),
+									distance_meters: set.distance ?? set.distanceMeters ?? null,
+									duration_seconds: set.duration ?? set.durationSeconds ?? null,
+									custom_metric: set.customMetric ?? null,
+									rep_range: repRange,
+								};
+							});
+
+							if (sets.some((set) => set.rep_range !== null)) {
+								usesRepRanges = true;
+							}
+
+							return {
 								exercise_template_id: exercise.exerciseTemplateId,
 								superset_id: exercise.supersetId ?? null,
 								rest_seconds: exercise.restSeconds ?? null,
 								notes: exercise.notes ?? null,
-								sets: exercise.sets.map((set): PutRoutinesRequestSet => {
-									const repRange = buildRepRange(set.repRange);
-									return {
-										type: set.type as PutRoutinesRequestSetTypeEnumKey,
-										weight_kg: set.weight ?? set.weightKg ?? null,
-										reps: repRange ? null : (set.reps ?? null),
-										distance_meters: set.distance ?? set.distanceMeters ?? null,
-										duration_seconds:
-											set.duration ?? set.durationSeconds ?? null,
-										custom_metric: set.customMetric ?? null,
-										rep_range: repRange,
-									};
-								}),
-							}),
-						),
+								sets,
+							};
+						}),
 					},
 				},
 			);
@@ -334,10 +362,19 @@ export function registerRoutineTools(
 			}
 
 			const routine = formatRoutine(data);
-			return createJsonResponse(routine, {
+			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,
 			});
+
+			if (usesRepRanges) {
+				response.content.push({
+					type: "text",
+					text: repRangeDisplayWarningText,
+				});
+			}
+
+			return response;
 		}, "update-routine"),
 	);
 }
