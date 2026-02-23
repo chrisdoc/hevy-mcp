@@ -63,7 +63,7 @@
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.4.0",
+		"@biomejs/biome": "2.4.4",
 		"@commitlint/cli": "^20.4.0",
 		"@commitlint/config-conventional": "^20.4.0",
 		"@commitlint/prompt-cli": "^20.4.0",
