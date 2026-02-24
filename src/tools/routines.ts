@@ -90,6 +90,35 @@ function buildRepRange(repRange?: {
 	return { start, end };
 }
 
+/**
+ * Returns a fixed rep count when `repRange` is a fixed range (start and end are
+ * both non-null and equal). Otherwise returns null.
+ */
+function getFixedRepsFromRepRange(
+	repRange:
+		| {
+				start?: number | null;
+				end?: number | null;
+		  }
+		| null
+		| undefined,
+): number | null {
+	if (!repRange) {
+		return null;
+	}
+
+	const start = repRange.start ?? null;
+	const end = repRange.end ?? null;
+	if (start === null || end === null) {
+		return null;
+	}
+	if (start !== end) {
+		return null;
+	}
+
+	return start;
+}
+
 const repRangeDisplayWarningText =
 	"Note: Hevy's public API stores rep ranges (rep_range), but the Hevy apps may " +
 	"not display them because they rely on an internal-only exercise field " +
@@ -223,10 +252,12 @@ export function registerRoutineTools(
 					exercises: exercises.map((exercise): PostRoutinesRequestExercise => {
 						const sets = exercise.sets.map((set): PostRoutinesRequestSet => {
 							const repRange = buildRepRange(set.repRange);
+							const fixedReps = getFixedRepsFromRepRange(repRange);
+							const reps = typeof set.reps === "number" ? set.reps : fixedReps;
 							return {
 								type: set.type as PostRoutinesRequestSetTypeEnumKey,
 								weight_kg: set.weight ?? set.weightKg ?? null,
-								reps: repRange ? null : (set.reps ?? null),
+								reps: reps ?? null,
 								distance_meters: set.distance ?? set.distanceMeters ?? null,
 								duration_seconds: set.duration ?? set.durationSeconds ?? null,
 								custom_metric: set.customMetric ?? null,
@@ -234,7 +265,13 @@ export function registerRoutineTools(
 							};
 						});
 
-						if (sets.some((set) => set.rep_range !== null)) {
+						if (
+							sets.some(
+								(set) =>
+									set.rep_range != null &&
+									getFixedRepsFromRepRange(set.rep_range) === null,
+							)
+						) {
 							usesRepRanges = true;
 						}
 
@@ -328,10 +365,13 @@ export function registerRoutineTools(
 						exercises: exercises.map((exercise): PutRoutinesRequestExercise => {
 							const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
 								const repRange = buildRepRange(set.repRange);
+								const fixedReps = getFixedRepsFromRepRange(repRange);
+								const reps =
+									typeof set.reps === "number" ? set.reps : fixedReps;
 								return {
 									type: set.type as PutRoutinesRequestSetTypeEnumKey,
 									weight_kg: set.weight ?? set.weightKg ?? null,
-									reps: repRange ? null : (set.reps ?? null),
+									reps: reps ?? null,
 									distance_meters: set.distance ?? set.distanceMeters ?? null,
 									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
@@ -339,7 +379,13 @@ export function registerRoutineTools(
 								};
 							});
 
-							if (sets.some((set) => set.rep_range !== null)) {
+							if (
+								sets.some(
+									(set) =>
+										set.rep_range != null &&
+										getFixedRepsFromRepRange(set.rep_range) === null,
+								)
+							) {
 								usesRepRanges = true;
 							}
 
