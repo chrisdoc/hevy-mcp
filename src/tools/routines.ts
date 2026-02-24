@@ -90,23 +90,33 @@ function buildRepRange(repRange?: {
 	return { start, end };
 }
 
+/**
+ * Returns a fixed rep count when `repRange` is a fixed range (start and end are
+ * both non-null and equal). Otherwise returns null.
+ */
 function getFixedRepsFromRepRange(
-	repRange: {
-		start: number | null;
-		end: number | null;
-	} | null,
+	repRange:
+		| {
+				start?: number | null;
+				end?: number | null;
+		  }
+		| null
+		| undefined,
 ): number | null {
 	if (!repRange) {
 		return null;
 	}
-	if (repRange.start === null || repRange.end === null) {
+
+	const start = repRange.start ?? null;
+	const end = repRange.end ?? null;
+	if (start === null || end === null) {
 		return null;
 	}
-	if (repRange.start !== repRange.end) {
+	if (start !== end) {
 		return null;
 	}
 
-	return repRange.start;
+	return start;
 }
 
 const repRangeDisplayWarningText =
@@ -256,7 +266,11 @@ export function registerRoutineTools(
 						});
 
 						if (
-							sets.some((set) => set.rep_range !== null && set.reps === null)
+							sets.some(
+								(set) =>
+									set.rep_range !== null &&
+									getFixedRepsFromRepRange(set.rep_range) === null,
+							)
 						) {
 							usesRepRanges = true;
 						}
@@ -365,7 +379,11 @@ export function registerRoutineTools(
 							});
 
 							if (
-								sets.some((set) => set.rep_range !== null && set.reps === null)
+								sets.some(
+									(set) =>
+										set.rep_range !== null &&
+										getFixedRepsFromRepRange(set.rep_range) === null,
+								)
 							) {
 								usesRepRanges = true;
 							}
