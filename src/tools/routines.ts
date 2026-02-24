@@ -253,7 +253,7 @@ export function registerRoutineTools(
 						const sets = exercise.sets.map((set): PostRoutinesRequestSet => {
 							const repRange = buildRepRange(set.repRange);
 							const fixedReps = getFixedRepsFromRepRange(repRange);
-							const reps = set.reps === undefined ? fixedReps : set.reps;
+							const reps = typeof set.reps === "number" ? set.reps : fixedReps;
 							return {
 								type: set.type as PostRoutinesRequestSetTypeEnumKey,
 								weight_kg: set.weight ?? set.weightKg ?? null,
@@ -268,7 +268,7 @@ export function registerRoutineTools(
 						if (
 							sets.some(
 								(set) =>
-									set.rep_range !== null &&
+									set.rep_range != null &&
 									getFixedRepsFromRepRange(set.rep_range) === null,
 							)
 						) {
@@ -366,7 +366,8 @@ export function registerRoutineTools(
 							const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
 								const repRange = buildRepRange(set.repRange);
 								const fixedReps = getFixedRepsFromRepRange(repRange);
-								const reps = set.reps === undefined ? fixedReps : set.reps;
+								const reps =
+									typeof set.reps === "number" ? set.reps : fixedReps;
 								return {
 									type: set.type as PutRoutinesRequestSetTypeEnumKey,
 									weight_kg: set.weight ?? set.weightKg ?? null,
@@ -381,7 +382,7 @@ export function registerRoutineTools(
 							if (
 								sets.some(
 									(set) =>
-										set.rep_range !== null &&
+										set.rep_range != null &&
 										getFixedRepsFromRepRange(set.rep_range) === null,
 								)
 							) {
