@@ -1,3 +1,10 @@
+## [1.20.6](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.5...v1.20.6) (2026-02-24)
+
+
+### Bug Fixes
+
+* **routines:** keep reps when repRange is set ([#270](https://github.com/chrisdoc/hevy-mcp/issues/270)) ([48da995](https://github.com/chrisdoc/hevy-mcp/commit/48da9951ad0be80b0fe7da2d02356ca890abcfdf))
+
 ## [1.20.5](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.4...v1.20.5) (2026-02-19)
 
 
