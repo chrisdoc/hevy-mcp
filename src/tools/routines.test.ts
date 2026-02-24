@@ -419,6 +419,23 @@ describe("registerRoutineTools", () => {
 			],
 		} as Record<string, unknown>);
 
+		expect(hevyClient.createRoutine).toHaveBeenCalledWith(
+			expect.objectContaining({
+				routine: expect.objectContaining({
+					exercises: [
+						expect.objectContaining({
+							sets: [
+								expect.objectContaining({
+									reps: null,
+									rep_range: { start: 8, end: 12 },
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		);
+
 		expect(response.content).toHaveLength(2);
 		expect(JSON.parse(response.content[0].text)).toEqual(
 			formatRoutine(routine),
@@ -503,6 +520,63 @@ describe("registerRoutineTools", () => {
 				}),
 			}),
 		);
+	});
+
+	it("update-routine copies reps from fixed repRange when reps is omitted", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "updated-routine",
+			title: "Updated Routine",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			updateRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		const response = await handler({
+			routineId: "routine-123",
+			title: "Updated Routine",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					restSeconds: 90,
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 100,
+							repRange: { start: 8, end: 8 },
+						},
+					],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(hevyClient.updateRoutine).toHaveBeenCalledWith(
+			"routine-123",
+			expect.objectContaining({
+				routine: expect.objectContaining({
+					exercises: [
+						expect.objectContaining({
+							sets: [
+								expect.objectContaining({
+									reps: 8,
+									rep_range: { start: 8, end: 8 },
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		);
+
+		expect(response.content).toHaveLength(1);
 	});
 
 	it("update-routine includes a rep range display warning when repRange is provided", async () => {
