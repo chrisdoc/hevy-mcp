@@ -55,6 +55,7 @@ jobs:
         if [ -n "${HEVY_API_KEY}" ]; then
           pnpm vitest run --coverage
         else
+          echo "::notice::HEVY_API_KEY is not set; skipping tests/integration/hevy-mcp.integration.test.ts"
           pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
         fi
       env:
