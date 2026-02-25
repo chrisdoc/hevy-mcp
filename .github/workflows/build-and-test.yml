@@ -55,35 +55,34 @@ jobs:
       run: |
         if [ -n "${HEVY_API_KEY}" ]; then
           pnpm vitest run --coverage
-        elif [ "${IS_FORK_PR}" = "true" ]; then
-          echo "::warning::HEVY_API_KEY is not available for fork PRs; skipping tests/integration/hevy-mcp.integration.test.ts"
+          exit 0
+        fi
 
+        echo "::warning::HEVY_API_KEY is not set; skipping tests/integration/hevy-mcp.integration.test.ts"
+        if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+          echo "::error::HEVY_API_KEY must be configured for pushes to main"
+          exit 1
+        fi
+
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           pr_number=$(jq -r '.pull_request.number // empty' < "$GITHUB_EVENT_PATH")
           if [ -n "${pr_number}" ]; then
-            changed_files=$(curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" | jq -r '.[].filename')
+            api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100"
+            files_json=$(curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "$api_url")
+            changed_files=$(printf '%s' "$files_json" | jq -r '.[].filename')
+
             if echo "${changed_files}" | grep -Fxq 'tests/integration/hevy-mcp.integration.test.ts'; then
-              echo '::error::This fork PR modifies tests/integration/hevy-mcp.integration.test.ts, but HEVY_API_KEY is not available for fork PRs. Please ask a maintainer to run this integration test.'
+              echo '::error::This PR modifies tests/integration/hevy-mcp.integration.test.ts, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test.'
               exit 1
             fi
           fi
-
-          # If additional tests end up requiring HEVY_API_KEY, add them to this exclude list.
-          pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
-        else
-          echo "::error::HEVY_API_KEY is not set; running without tests/integration/hevy-mcp.integration.test.ts"
-          # If additional tests end up requiring HEVY_API_KEY, add them to this exclude list.
-          pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
-          test_status=$?
-          if [ "$test_status" -ne 0 ]; then
-            exit "$test_status"
-          fi
-          exit 1
         fi
+
+        # If additional tests end up requiring HEVY_API_KEY, add them to this exclude list.
+        pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        IS_FORK_PR: >-
-          ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork && github.event.pull_request.head.repo.full_name != github.repository }}
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v5
