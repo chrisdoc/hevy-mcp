@@ -64,44 +64,20 @@ jobs:
           exit 1
         fi
 
-        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] && ! command -v jq >/dev/null; then
-          echo "::error::jq is required to inspect pull request file changes"
-          exit 1
-        fi
-
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-          pr_number=$(jq -r '.pull_request.number // empty' < "$GITHUB_EVENT_PATH")
+          if ! command -v gh >/dev/null; then
+            echo "::error::gh CLI is required to inspect pull request file changes"
+            exit 1
+          fi
+
+          pr_number=$(node --input-type=module -e "import fs from 'node:fs'; const e=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,'utf8')); console.log(e.pull_request?.number ?? '');")
           if [ -n "${pr_number}" ]; then
-            api_url_base="https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100"
-            changed_hevy_integration_test=false
-
-            page=1
-            max_pages=100
-            while [ "$page" -le "$max_pages" ]; do
-              api_url="${api_url_base}&page=${page}"
-              body=$(curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "$api_url") || {
-                echo "::error::Failed to fetch PR file list"
-                exit 1
-              }
-              changed_files=$(printf '%s' "$body" | jq -r '.[].filename')
-              if [ -z "${changed_files}" ]; then
-                break
-              fi
-
-              if echo "${changed_files}" | grep -Fxq 'tests/integration/hevy-mcp.integration.test.ts'; then
-                changed_hevy_integration_test=true
-                break
-              fi
-
-              page=$((page + 1))
-            done
-
-            if [ "$page" -gt "$max_pages" ]; then
-              echo "::error::Failed to fetch PR file list (exceeded ${max_pages} pages)"
+            changed_files=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" -q '.[].filename') || {
+              echo "::error::Failed to fetch pull request file list"
               exit 1
-            fi
+            }
 
-            if [ "$changed_hevy_integration_test" = "true" ]; then
+            if echo "${changed_files}" | grep -Fxq 'tests/integration/hevy-mcp.integration.test.ts'; then
               echo '::error::This PR modifies tests/integration/hevy-mcp.integration.test.ts, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test.'
               exit 1
             fi
@@ -112,7 +88,7 @@ jobs:
         pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v5
