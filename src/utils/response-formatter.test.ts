@@ -19,6 +19,7 @@ describe("Response Formatter", () => {
 			const json = createJsonResponse(data).content[0].text;
 			const toon = encode(data);
 
+			expect(json).toBe(JSON.stringify(data, null, 2));
 			expect(toon.length).toBeGreaterThan(0);
 			expect(toon.length).toBeLessThan(json.length);
 		});
