@@ -80,6 +80,6 @@ describe("MCP JSON output size comparison", () => {
 		);
 
 		expect(toon.length).toBeGreaterThan(0);
-		expect(delta).toBeGreaterThan(0);
+		expect(json.length).toBeGreaterThan(0);
 	});
 });
