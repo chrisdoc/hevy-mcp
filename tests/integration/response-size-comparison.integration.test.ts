@@ -3,32 +3,32 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { encode } from "@toon-format/toon";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createJsonResponse } from "../../src/utils/response-formatter.js";
+
+const TEST_DATA = {
+	users: Array.from({ length: 25 }, (_, i) => ({
+		id: i + 1,
+		name: `User ${i + 1}`,
+		role: i % 2 === 0 ? "admin" : "user",
+	})),
+} as const;
 
 describe("MCP JSON output size comparison", () => {
 	let server: McpServer | null = null;
 	let client: Client | null = null;
 
-	beforeEach(async () => {
+	beforeAll(async () => {
 		server = new McpServer({
 			name: "hevy-mcp-size-comparison-test",
 			version: "1.0.0",
 		});
 
-		const data = {
-			users: Array.from({ length: 25 }, (_, i) => ({
-				id: i + 1,
-				name: `User ${i + 1}`,
-				role: i % 2 === 0 ? "admin" : "user",
-			})),
-		};
-
 		server.tool(
 			"size-comparison-json",
 			"Returns a deterministic JSON payload for output-size comparisons",
 			{},
-			async () => createJsonResponse(data),
+			async () => createJsonResponse(TEST_DATA),
 		);
 
 		client = new Client({
@@ -44,7 +44,7 @@ describe("MCP JSON output size comparison", () => {
 		]);
 	});
 
-	afterEach(async () => {
+	afterAll(async () => {
 		await client?.close();
 		await server?.close();
 	});
@@ -69,8 +69,10 @@ describe("MCP JSON output size comparison", () => {
 		}
 
 		const json = textBlock.text;
-		const data = JSON.parse(json) as unknown;
-		const toon = encode(data);
+		const parsed = JSON.parse(json) as typeof TEST_DATA;
+		expect(parsed).toEqual(TEST_DATA);
+
+		const toon = encode(parsed);
 
 		const delta = json.length - toon.length;
 		console.info(
