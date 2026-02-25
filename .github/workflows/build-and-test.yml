@@ -58,6 +58,11 @@ jobs:
           exit 0
         fi
 
+        if ! command -v jq >/dev/null; then
+          echo "::error::jq is required for this workflow step"
+          exit 1
+        fi
+
         echo "::warning::HEVY_API_KEY is not set; skipping tests/integration/hevy-mcp.integration.test.ts"
         if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
           echo "::error::HEVY_API_KEY must be configured for pushes to main"
@@ -70,16 +75,14 @@ jobs:
             api_url_base="https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100"
             changed_hevy_integration_test=false
 
-            for page in $(seq 1 20); do
+            page=1
+            max_pages=100
+            while [ "$page" -le "$max_pages" ]; do
               api_url="${api_url_base}&page=${page}"
-              response=$(curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" -w "\n%{http_code}" "$api_url")
-              http_code=$(printf '%s' "$response" | tail -n 1)
-              body=$(printf '%s' "$response" | sed '$d')
-              if [ "$http_code" -ne 200 ]; then
-                echo "::error::Failed to fetch PR file list (HTTP ${http_code})"
+              body=$(curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "$api_url") || {
+                echo "::error::Failed to fetch PR file list"
                 exit 1
-              fi
-
+              }
               changed_files=$(printf '%s' "$body" | jq -r '.[].filename')
               if [ -z "${changed_files}" ]; then
                 break
@@ -89,7 +92,14 @@ jobs:
                 changed_hevy_integration_test=true
                 break
               fi
+
+              page=$((page + 1))
             done
+
+            if [ "$page" -gt "$max_pages" ]; then
+              echo "::error::Failed to fetch PR file list (exceeded ${max_pages} pages)"
+              exit 1
+            fi
 
             if [ "$changed_hevy_integration_test" = "true" ]; then
               echo '::error::This PR modifies tests/integration/hevy-mcp.integration.test.ts, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test.'
