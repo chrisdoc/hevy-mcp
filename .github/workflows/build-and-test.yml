@@ -67,11 +67,31 @@ jobs:
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           pr_number=$(jq -r '.pull_request.number // empty' < "$GITHUB_EVENT_PATH")
           if [ -n "${pr_number}" ]; then
-            api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100"
-            files_json=$(curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "$api_url")
-            changed_files=$(printf '%s' "$files_json" | jq -r '.[].filename')
+            api_url_base="https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100"
+            changed_hevy_integration_test=false
 
-            if echo "${changed_files}" | grep -Fxq 'tests/integration/hevy-mcp.integration.test.ts'; then
+            for page in $(seq 1 20); do
+              api_url="${api_url_base}&page=${page}"
+              response=$(curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" -w "\n%{http_code}" "$api_url")
+              http_code=$(printf '%s' "$response" | tail -n 1)
+              body=$(printf '%s' "$response" | sed '$d')
+              if [ "$http_code" -ne 200 ]; then
+                echo "::error::Failed to fetch PR file list (HTTP ${http_code})"
+                exit 1
+              fi
+
+              changed_files=$(printf '%s' "$body" | jq -r '.[].filename')
+              if [ -z "${changed_files}" ]; then
+                break
+              fi
+
+              if echo "${changed_files}" | grep -Fxq 'tests/integration/hevy-mcp.integration.test.ts'; then
+                changed_hevy_integration_test=true
+                break
+              fi
+            done
+
+            if [ "$changed_hevy_integration_test" = "true" ]; then
               echo '::error::This PR modifies tests/integration/hevy-mcp.integration.test.ts, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test.'
               exit 1
             fi
