@@ -78,6 +78,7 @@ jobs:
             exit 1
           fi
 
+          integration_test_changed=false
           if command -v gh >/dev/null; then
             changed_files=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" -q '.[].filename') || {
               echo "::error::Failed to fetch pull request file list"
@@ -85,8 +86,7 @@ jobs:
             }
 
             if echo "${changed_files}" | grep -Fxq "${integration_test_file}"; then
-              echo "::error::This PR modifies ${integration_test_file}, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test."
-              exit 1
+              integration_test_changed=true
             fi
           else
             body=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100") || {
@@ -95,9 +95,13 @@ jobs:
             }
 
             if echo "${body}" | grep -Fq "\"filename\":\"${integration_test_file}\""; then
-              echo "::error::This PR modifies ${integration_test_file}, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test."
-              exit 1
+              integration_test_changed=true
             fi
+          fi
+
+          if [ "$integration_test_changed" = "true" ]; then
+            echo "::error::This PR modifies ${integration_test_file}, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test."
+            exit 1
           fi
         fi
 
