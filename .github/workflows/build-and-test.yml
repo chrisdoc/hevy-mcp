@@ -84,8 +84,15 @@ jobs:
               exit 1
             fi
           else
-            echo "::error::gh CLI is not available; cannot verify whether ${integration_test_file} was modified"
-            exit 1
+            body=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100") || {
+              echo "::error::Failed to fetch pull request file list"
+              exit 1
+            }
+
+            if echo "${body}" | grep -Fq "\"filename\":\"${integration_test_file}\""; then
+              echo "::error::This PR modifies ${integration_test_file}, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test."
+              exit 1
+            fi
           fi
         fi
 
