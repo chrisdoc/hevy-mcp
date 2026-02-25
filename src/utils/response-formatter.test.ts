@@ -10,14 +10,16 @@ describe("Response Formatter", () => {
 	describe("createJsonResponse", () => {
 		it("should be larger than a toon encoded representation", () => {
 			const data = {
-				users: [
-					{ id: 1, name: "Alice", role: "admin" },
-					{ id: 2, name: "Bob", role: "user" },
-				],
+				users: Array.from({ length: 25 }, (_, i) => ({
+					id: i + 1,
+					name: `User ${i + 1}`,
+					role: i % 2 === 0 ? "admin" : "user",
+				})),
 			};
 			const json = createJsonResponse(data).content[0].text;
 			const toon = encode(data);
 
+			expect(toon.length).toBeGreaterThan(0);
 			expect(toon.length).toBeLessThan(json.length);
 		});
 
