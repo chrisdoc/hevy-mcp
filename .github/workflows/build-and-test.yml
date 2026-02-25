@@ -10,7 +10,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: read # required for gh api /pulls/{number}/files in the test step
 
 env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
@@ -84,7 +84,8 @@ jobs:
               exit 1
             fi
           else
-            echo "::warning::gh CLI is not available; unable to confirm whether ${integration_test_file} was modified"
+            echo "::error::gh CLI is not available; cannot verify whether ${integration_test_file} was modified"
+            exit 1
           fi
         fi
 
