@@ -51,16 +51,18 @@ jobs:
         SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+    - name: Ensure jq is installed
+      run: |
+        if ! command -v jq >/dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y jq
+        fi
+
     - name: Run tests with coverage
       run: |
         if [ -n "${HEVY_API_KEY}" ]; then
           pnpm vitest run --coverage
           exit 0
-        fi
-
-        if ! command -v jq >/dev/null; then
-          echo "::error::jq is required for this workflow step"
-          exit 1
         fi
 
         echo "::warning::HEVY_API_KEY is not set; skipping tests/integration/hevy-mcp.integration.test.ts"
