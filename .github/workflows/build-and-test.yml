@@ -51,7 +51,12 @@ jobs:
         SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
     - name: Run tests with coverage
-      run: pnpm vitest run --coverage
+      run: |
+        if [ -n "${HEVY_API_KEY}" ]; then
+          pnpm vitest run --coverage
+        else
+          pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
+        fi
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
