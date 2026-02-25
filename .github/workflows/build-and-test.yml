@@ -56,14 +56,18 @@ jobs:
           pnpm vitest run --coverage
         elif [ "${IS_FORK_PR}" = "true" ]; then
           echo "::warning::HEVY_API_KEY is not available for fork PRs; skipping tests/integration/hevy-mcp.integration.test.ts"
+          # If additional tests end up requiring HEVY_API_KEY, add them to this exclude list.
           pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
         else
-          echo "::error::HEVY_API_KEY is not set; cannot run tests/integration/hevy-mcp.integration.test.ts"
+          echo "::error::HEVY_API_KEY is not set; running without tests/integration/hevy-mcp.integration.test.ts"
+          # If additional tests end up requiring HEVY_API_KEY, add them to this exclude list.
+          pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
           exit 1
         fi
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
-        IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        IS_FORK_PR: >-
+          ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork && github.event.pull_request.head.repo.full_name != github.repository }}
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v5
