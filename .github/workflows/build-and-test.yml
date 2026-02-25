@@ -58,34 +58,38 @@ jobs:
           exit 0
         fi
 
-        echo "::warning::HEVY_API_KEY is not set; skipping tests/integration/hevy-mcp.integration.test.ts"
+        integration_test_file='tests/integration/hevy-mcp.integration.test.ts'
+
+        echo "::warning::HEVY_API_KEY is not set; skipping ${integration_test_file}"
         if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
           echo "::error::HEVY_API_KEY must be configured for pushes to main"
           exit 1
         fi
 
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-          if ! command -v gh >/dev/null; then
-            echo "::error::gh CLI is required to inspect pull request file changes"
+          pr_number=$(node --input-type=module -e "import fs from 'node:fs'; const e=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,'utf8')); console.log(e.pull_request?.number ?? '');")
+          if [ -z "${pr_number}" ]; then
+            echo "::error::Unable to determine pull request number; cannot safely skip ${integration_test_file} without HEVY_API_KEY"
             exit 1
           fi
 
-          pr_number=$(node --input-type=module -e "import fs from 'node:fs'; const e=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,'utf8')); console.log(e.pull_request?.number ?? '');")
-          if [ -n "${pr_number}" ]; then
+          if command -v gh >/dev/null; then
             changed_files=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" -q '.[].filename') || {
               echo "::error::Failed to fetch pull request file list"
               exit 1
             }
 
-            if echo "${changed_files}" | grep -Fxq 'tests/integration/hevy-mcp.integration.test.ts'; then
-              echo '::error::This PR modifies tests/integration/hevy-mcp.integration.test.ts, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test.'
+            if echo "${changed_files}" | grep -Fxq "${integration_test_file}"; then
+              echo "::error::This PR modifies ${integration_test_file}, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test."
               exit 1
             fi
+          else
+            echo "::warning::gh CLI is not available; unable to confirm whether ${integration_test_file} was modified"
           fi
         fi
 
         # If additional tests end up requiring HEVY_API_KEY, add them to this exclude list.
-        pnpm vitest run --coverage --exclude tests/integration/hevy-mcp.integration.test.ts
+        pnpm vitest run --coverage --exclude "${integration_test_file}"
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
