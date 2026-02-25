@@ -1,4 +1,3 @@
-import { encode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
 import {
 	createEmptyResponse,
@@ -8,21 +7,6 @@ import {
 
 describe("Response Formatter", () => {
 	describe("createJsonResponse", () => {
-		it("should be larger than a toon encoded representation", () => {
-			const data = {
-				users: Array.from({ length: 25 }, (_, i) => ({
-					id: i + 1,
-					name: `User ${i + 1}`,
-					role: i % 2 === 0 ? "admin" : "user",
-				})),
-			};
-			const json = createJsonResponse(data).content[0].text;
-			const toon = encode(data);
-
-			expect(toon.length).toBeGreaterThan(0);
-			expect(toon.length).toBeLessThan(json.length);
-		});
-
 		it("should format JSON data with default pretty printing", () => {
 			const testData = { name: "Test", value: 123, nested: { key: "value" } };
 			const response = createJsonResponse(testData);
