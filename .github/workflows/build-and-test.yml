@@ -51,13 +51,6 @@ jobs:
         SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-    - name: Ensure jq is installed
-      run: |
-        if ! command -v jq >/dev/null; then
-          sudo apt-get update
-          sudo apt-get install -y jq
-        fi
-
     - name: Run tests with coverage
       run: |
         if [ -n "${HEVY_API_KEY}" ]; then
@@ -68,6 +61,11 @@ jobs:
         echo "::warning::HEVY_API_KEY is not set; skipping tests/integration/hevy-mcp.integration.test.ts"
         if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
           echo "::error::HEVY_API_KEY must be configured for pushes to main"
+          exit 1
+        fi
+
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] && ! command -v jq >/dev/null; then
+          echo "::error::jq is required to inspect pull request file changes"
           exit 1
         fi
 
