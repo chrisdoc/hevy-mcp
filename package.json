@@ -74,6 +74,7 @@
 		"@semantic-release/npm": "^13.1.4",
 		"@semantic-release/release-notes-generator": "^14.1.0",
 		"@sentry/rollup-plugin": "^4.9.1",
+		"@toon-format/toon": "2.1.0",
 		"@types/node": "^25.3.0",
 		"@vitest/coverage-v8": "^4.0.18",
 		"abstract-syntax-tree": "^2.22.0",

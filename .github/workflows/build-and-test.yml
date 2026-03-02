@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read # required for gh api /pulls/{number}/files in the test step
 
 env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
@@ -51,9 +52,58 @@ jobs:
         SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
     - name: Run tests with coverage
-      run: pnpm vitest run --coverage
+      run: |
+        if [ -n "${HEVY_API_KEY}" ]; then
+          pnpm vitest run --coverage
+          exit 0
+        fi
+
+        integration_test_file='tests/integration/hevy-mcp.integration.test.ts'
+
+        echo "::warning::HEVY_API_KEY is not set; skipping ${integration_test_file}"
+        if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+          echo "::error::HEVY_API_KEY must be configured for pushes to main"
+          exit 1
+        fi
+
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+          pr_number=$(node --input-type=module -e "import fs from 'node:fs'; const e=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,'utf8')); console.log(e.pull_request?.number ?? '');")
+          if [ -z "${pr_number}" ]; then
+            echo "::error::Unable to determine pull request number; cannot safely skip ${integration_test_file} without HEVY_API_KEY"
+            exit 1
+          fi
+
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::GH_TOKEN is not set; cannot inspect pull request file changes"
+            exit 1
+          fi
+
+          if ! command -v gh >/dev/null; then
+            echo "::error::gh CLI is required to inspect pull request file changes"
+            exit 1
+          fi
+
+          integration_test_changed=false
+          changed_files=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" -q '.[].filename') || {
+            echo "::error::Failed to fetch pull request file list"
+            exit 1
+          }
+
+          if echo "${changed_files}" | grep -Fxq "${integration_test_file}"; then
+            integration_test_changed=true
+          fi
+
+          if [ "$integration_test_changed" = "true" ]; then
+            echo "::error::This PR modifies ${integration_test_file}, but HEVY_API_KEY is not set. Please configure the secret or ask a maintainer to run this integration test."
+            exit 1
+          fi
+        fi
+
+        # If additional tests end up requiring HEVY_API_KEY, add them to this exclude list.
+        pnpm vitest run --coverage --exclude "${integration_test_file}"
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v5
