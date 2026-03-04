@@ -16,7 +16,7 @@ import {
 } from "vitest";
 import { z } from "zod";
 import { registerWorkoutTools } from "../../src/tools/workouts.js";
-import { createClient } from "../../src/utils/hevyClient.js";
+import { createClient } from "../../src/utils/hevyApiClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 

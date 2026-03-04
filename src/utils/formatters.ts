@@ -4,7 +4,7 @@ import type {
 	Routine,
 	RoutineFolder,
 	Workout,
-} from "../generated/client/types/index.js";
+} from "hevy-api-client";
 
 /**
  * Formatted workout set interface
@@ -71,7 +71,7 @@ export interface FormattedRoutineExercise {
 	exerciseTemplateId: string | undefined;
 	notes: string | undefined | null;
 	supersetId: number | undefined | null;
-	restSeconds: string | undefined;
+	restSeconds: string | number | undefined;
 	sets: FormattedRoutineSet[] | undefined;
 }
 

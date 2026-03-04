@@ -1,8 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Workout } from "hevy-api-client";
 import { describe, expect, it, vi } from "vitest";
-import type { Workout } from "../generated/client/types/index.js";
 import { formatWorkout } from "../utils/formatters.js";
-import type { HevyClient } from "../utils/hevyClient.js";
+import type { HevyClient } from "../utils/hevyApiClient.js";
 import { registerWorkoutTools } from "./workouts.js";
 
 function createMockServer() {
@@ -298,7 +298,6 @@ describe("registerWorkoutTools", () => {
 								reps: 10,
 								distance_meters: null,
 								duration_seconds: null,
-								rpe: null,
 								custom_metric: null,
 							},
 						],

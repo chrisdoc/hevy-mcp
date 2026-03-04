@@ -18,10 +18,6 @@ This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API.
 - `pnpm run check:types` - TypeScript type checking without emitting files
 - `pnpm test` - Runs Vitest against all `*.test.ts` files (including `tests/integration/**`). Integration tests will fail by design without `HEVY_API_KEY`. See the "Testing" section in `README.md` for CI requirements and secret configuration.
 
-### API Client Generation
-- `pnpm run export-specs` - Export OpenAPI specification
-- `pnpm run build:client` - Generate API client using Kubb from OpenAPI spec
-
 ### Testing Variants
 - `pnpm vitest run --exclude tests/integration/**` - Unit tests only
 - `pnpm vitest run tests/integration` - Integration tests only (requires HEVY_API_KEY)
@@ -38,17 +34,9 @@ This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API.
   - `folders.ts` - Routine folder organization
   - `webhooks.ts` - Webhook subscription management
 - **Utils**: `src/utils/` - Shared utilities for HTTP client, formatting, and error handling
-- **Generated Code**: `src/generated/` - Auto-generated API client from OpenAPI spec
-
-### Client Architecture
-The project uses a generated API client via Kubb that creates:
-- TypeScript types in `src/generated/client/types/`
-- API methods in `src/generated/client/api/`
-- Zod schemas in `src/generated/client/schemas/`
-- Mock data in `src/generated/client/mocks/`
+- **Hevy API client**: `src/utils/hevyApiClient.ts` wraps the `hevy-api-client` npm package
 
 ### Configuration Files
-- `kubb.config.ts` - API client generation configuration
 - `biome.json` - Code formatting and linting rules (tabs, 80 char lines, double quotes)
 - `lefthook.yml` - Git hooks for pre-commit formatting and commit message linting
 
@@ -56,19 +44,12 @@ The project uses a generated API client via Kubb that creates:
 
 ### Code Style
 - Uses Biome for formatting/linting with tabs, 80-character lines, double quotes
-- Excludes generated code (`src/generated/`) from linting
 - Pre-commit hooks auto-format staged files
 
 ### Testing Strategy
 - Unit tests for utilities and core logic
 - Integration tests that require real Hevy API access
 - Tests run conditionally based on HEVY_API_KEY presence
-
-### Client Regeneration
-When API changes occur:
-1. Update `openapi-spec.json` with `pnpm run export-specs`
-2. Regenerate client with `pnpm run build:client`
-3. Generated code is automatically formatted via Kubb hooks
 
 ## Environment Setup
 
@@ -79,7 +60,7 @@ Required environment variables:
 
 Each MCP tool follows this pattern:
 1. Input validation using Zod schemas
-2. API call using generated client
+2. API call using the Hevy API client
 3. Response formatting for user consumption
 4. Error handling with descriptive messages
 

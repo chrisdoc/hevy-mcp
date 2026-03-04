@@ -1,26 +1,33 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 import type {
-	GetV1Workouts200,
-	GetV1WorkoutsCount200,
-	GetV1WorkoutsEvents200,
-	GetV1WorkoutsWorkoutid200,
-	PostV1Workouts201,
 	PostWorkoutsRequestBody,
 	PostWorkoutsRequestExercise,
-	PostWorkoutsRequestSetRpeEnumKey,
-	PostWorkoutsRequestSetTypeEnumKey,
-	PutV1WorkoutsWorkoutid200,
-} from "../generated/client/types/index.js";
+	PostWorkoutsRequestSet,
+} from "hevy-api-client";
+import { z } from "zod";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatWorkout } from "../utils/formatters.js";
-import type { HevyClient } from "../utils/hevyClient.js";
+import type { HevyClient } from "../utils/hevyApiClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
+
+function normalizeRpe(
+	rpe: number | null | undefined,
+): PostWorkoutsRequestSet["rpe"] | undefined {
+	if (rpe === null || rpe === undefined) {
+		return undefined;
+	}
+
+	if ([6, 7, 7.5, 8, 8.5, 9, 9.5, 10].includes(rpe)) {
+		return rpe as PostWorkoutsRequestSet["rpe"];
+	}
+
+	return undefined;
+}
 
 /**
  * Register all workout-related tools with the MCP server
@@ -47,7 +54,7 @@ export function registerWorkoutTools(
 				);
 			}
 			const { page, pageSize } = args;
-			const data: GetV1Workouts200 = await hevyClient.getWorkouts({
+			const data = await hevyClient.getWorkouts({
 				page,
 				pageSize,
 			});
@@ -82,8 +89,7 @@ export function registerWorkoutTools(
 				);
 			}
 			const { workoutId } = args;
-			const data: GetV1WorkoutsWorkoutid200 =
-				await hevyClient.getWorkout(workoutId);
+			const data = await hevyClient.getWorkout(workoutId);
 
 			if (!data) {
 				return createEmptyResponse(`Workout with ID ${workoutId} not found`);
@@ -105,7 +111,7 @@ export function registerWorkoutTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const data: GetV1WorkoutsCount200 = await hevyClient.getWorkoutCount();
+			const data = await hevyClient.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
 			return createJsonResponse({ count });
 		}, "get-workout-count"),
@@ -130,7 +136,7 @@ export function registerWorkoutTools(
 				);
 			}
 			const { page, pageSize, since } = args;
-			const data: GetV1WorkoutsEvents200 = await hevyClient.getWorkoutEvents({
+			const data = await hevyClient.getWorkoutEvents({
 				page,
 				pageSize,
 				since,
@@ -207,22 +213,24 @@ export function registerWorkoutTools(
 						exercise_template_id: exercise.exerciseTemplateId,
 						superset_id: exercise.supersetId ?? null,
 						notes: exercise.notes ?? null,
-						sets: exercise.sets.map((set) => ({
-							type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-							weight_kg: set.weight ?? set.weightKg ?? null,
-							reps: set.reps ?? null,
-							distance_meters: set.distance ?? set.distanceMeters ?? null,
-							duration_seconds: set.duration ?? set.durationSeconds ?? null,
-							rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
-							custom_metric: set.customMetric ?? null,
-						})),
+						sets: exercise.sets.map((set) => {
+							const rpe = normalizeRpe(set.rpe);
+							return {
+								type: set.type,
+								weight_kg: set.weight ?? set.weightKg ?? null,
+								reps: set.reps ?? null,
+								distance_meters: set.distance ?? set.distanceMeters ?? null,
+								duration_seconds: set.duration ?? set.durationSeconds ?? null,
+								...(rpe !== undefined && { rpe }),
+								custom_metric: set.customMetric ?? null,
+							};
+						}),
 					}),
 				),
 			};
 			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
-			const data: PostV1Workouts201 =
-				await hevyClient.createWorkout(requestBody);
+			const data = await hevyClient.createWorkout(requestBody);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -305,24 +313,24 @@ export function registerWorkoutTools(
 						exercise_template_id: exercise.exerciseTemplateId,
 						superset_id: exercise.supersetId ?? null,
 						notes: exercise.notes ?? null,
-						sets: exercise.sets.map((set) => ({
-							type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-							weight_kg: set.weight ?? set.weightKg ?? null,
-							reps: set.reps ?? null,
-							distance_meters: set.distance ?? set.distanceMeters ?? null,
-							duration_seconds: set.duration ?? set.durationSeconds ?? null,
-							rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
-							custom_metric: set.customMetric ?? null,
-						})),
+						sets: exercise.sets.map((set) => {
+							const rpe = normalizeRpe(set.rpe);
+							return {
+								type: set.type,
+								weight_kg: set.weight ?? set.weightKg ?? null,
+								reps: set.reps ?? null,
+								distance_meters: set.distance ?? set.distanceMeters ?? null,
+								duration_seconds: set.duration ?? set.durationSeconds ?? null,
+								...(rpe !== undefined && { rpe }),
+								custom_metric: set.customMetric ?? null,
+							};
+						}),
 					}),
 				),
 			};
 			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
-			const data: PutV1WorkoutsWorkoutid200 = await hevyClient.updateWorkout(
-				workoutId,
-				requestBody,
-			);
+			const data = await hevyClient.updateWorkout(workoutId, requestBody);
 
 			if (!data) {
 				return createEmptyResponse(

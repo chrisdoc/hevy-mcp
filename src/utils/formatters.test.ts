@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
 import type {
 	ExerciseHistoryEntry,
 	ExerciseTemplate,
 	Routine,
 	RoutineFolder,
 	Workout,
-} from "../generated/client/types/index.js";
+} from "hevy-api-client";
+import { describe, expect, it } from "vitest";
 import {
 	calculateDuration,
 	formatExerciseHistoryEntry,

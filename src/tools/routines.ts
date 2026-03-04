@@ -1,32 +1,21 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-// Import types from generated client
 import type {
-	GetV1Routines200,
-	GetV1RoutinesRoutineid200,
 	PostRoutinesRequestExercise,
 	PostRoutinesRequestSet,
-	PostRoutinesRequestSetTypeEnumKey,
-	PostV1Routines201,
 	PutRoutinesRequestExercise,
 	PutRoutinesRequestSet,
-	PutRoutinesRequestSetTypeEnumKey,
-	PutV1RoutinesRoutineid200,
 	Routine,
-} from "../generated/client/types/index.js";
+} from "hevy-api-client";
+import { z } from "zod";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyApiClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
-
-// Type definitions for the routine operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function coerceNullishNumberInput(value: unknown): unknown {
 	if (value === null || value === undefined) {
@@ -76,18 +65,22 @@ const zOptionalRepRange = z.preprocess(
 function buildRepRange(repRange?: {
 	start?: number | null;
 	end?: number | null;
-}): { start: number | null; end: number | null } | null {
+}): { start?: number; end?: number } | null {
 	if (!repRange) {
 		return null;
 	}
 
-	const start = repRange.start ?? null;
-	const end = repRange.end ?? null;
-	if (start === null && end === null) {
+	const start = repRange.start === null ? undefined : repRange.start;
+	const end = repRange.end === null ? undefined : repRange.end;
+
+	if (start === undefined && end === undefined) {
 		return null;
 	}
 
-	return { start, end };
+	return {
+		...(start !== undefined && { start }),
+		...(end !== undefined && { end }),
+	};
 }
 
 /**
@@ -150,7 +143,7 @@ export function registerRoutineTools(
 				);
 			}
 			const { page, pageSize } = args;
-			const data: GetV1Routines200 = await hevyClient.getRoutines({
+			const data = await hevyClient.getRoutines({
 				page,
 				pageSize,
 			});
@@ -186,9 +179,7 @@ export function registerRoutineTools(
 				);
 			}
 			const { routineId } = args;
-			const data: GetV1RoutinesRoutineid200 = await hevyClient.getRoutineById(
-				String(routineId),
-			);
+			const data = await hevyClient.getRoutineById(String(routineId));
 			if (!data || !data.routine) {
 				return createEmptyResponse(`Routine with ID ${routineId} not found`);
 			}
@@ -244,7 +235,7 @@ export function registerRoutineTools(
 			}
 			const { title, folderId, notes, exercises } = args;
 			let usesRepRanges = false;
-			const data: PostV1Routines201 = await hevyClient.createRoutine({
+			const data = await hevyClient.createRoutine({
 				routine: {
 					title,
 					folder_id: folderId ?? null,
@@ -255,7 +246,7 @@ export function registerRoutineTools(
 							const fixedReps = getFixedRepsFromRepRange(repRange);
 							const reps = typeof set.reps === "number" ? set.reps : fixedReps;
 							return {
-								type: set.type as PostRoutinesRequestSetTypeEnumKey,
+								type: set.type,
 								weight_kg: set.weight ?? set.weightKg ?? null,
 								reps: reps ?? null,
 								distance_meters: set.distance ?? set.distanceMeters ?? null,
@@ -356,50 +347,46 @@ export function registerRoutineTools(
 			}
 			const { routineId, title, notes, exercises } = args;
 			let usesRepRanges = false;
-			const data: PutV1RoutinesRoutineid200 = await hevyClient.updateRoutine(
-				routineId,
-				{
-					routine: {
-						title,
-						notes: notes ?? null,
-						exercises: exercises.map((exercise): PutRoutinesRequestExercise => {
-							const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
-								const repRange = buildRepRange(set.repRange);
-								const fixedReps = getFixedRepsFromRepRange(repRange);
-								const reps =
-									typeof set.reps === "number" ? set.reps : fixedReps;
-								return {
-									type: set.type as PutRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weight ?? set.weightKg ?? null,
-									reps: reps ?? null,
-									distance_meters: set.distance ?? set.distanceMeters ?? null,
-									duration_seconds: set.duration ?? set.durationSeconds ?? null,
-									custom_metric: set.customMetric ?? null,
-									rep_range: repRange,
-								};
-							});
-
-							if (
-								sets.some(
-									(set) =>
-										set.rep_range != null &&
-										getFixedRepsFromRepRange(set.rep_range) === null,
-								)
-							) {
-								usesRepRanges = true;
-							}
-
+			const data = await hevyClient.updateRoutine(routineId, {
+				routine: {
+					title,
+					notes: notes ?? null,
+					exercises: exercises.map((exercise): PutRoutinesRequestExercise => {
+						const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
+							const repRange = buildRepRange(set.repRange);
+							const fixedReps = getFixedRepsFromRepRange(repRange);
+							const reps = typeof set.reps === "number" ? set.reps : fixedReps;
 							return {
-								exercise_template_id: exercise.exerciseTemplateId,
-								superset_id: exercise.supersetId ?? null,
-								rest_seconds: exercise.restSeconds ?? null,
-								notes: exercise.notes ?? null,
-								sets,
+								type: set.type,
+								weight_kg: set.weight ?? set.weightKg ?? null,
+								reps: reps ?? null,
+								distance_meters: set.distance ?? set.distanceMeters ?? null,
+								duration_seconds: set.duration ?? set.durationSeconds ?? null,
+								custom_metric: set.customMetric ?? null,
+								rep_range: repRange,
 							};
-						}),
-					},
+						});
+
+						if (
+							sets.some(
+								(set) =>
+									set.rep_range != null &&
+									getFixedRepsFromRepRange(set.rep_range) === null,
+							)
+						) {
+							usesRepRanges = true;
+						}
+
+						return {
+							exercise_template_id: exercise.exerciseTemplateId,
+							superset_id: exercise.supersetId ?? null,
+							rest_seconds: exercise.restSeconds ?? null,
+							notes: exercise.notes ?? null,
+							sets,
+						};
+					}),
 				},
-			);
+			});
 
 			if (!data) {
 				return createEmptyResponse(

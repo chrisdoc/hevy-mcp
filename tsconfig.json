@@ -16,5 +16,5 @@
 	},
 	// Include the necessary files for your project
 	"include": ["**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules", "dist", "src/generated"]
+	"exclude": ["node_modules", "dist"]
 }
