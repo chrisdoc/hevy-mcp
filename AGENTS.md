@@ -4,8 +4,8 @@
 
 ## Project Overview
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v20+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
-- API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
+- The codebase is TypeScript (Node.js v20+), with tool implementations in `src/tools/` and shared utilities in `src/utils/`.
+- The Hevy API client comes from the `hevy-api-client` npm package and is wrapped by `src/utils/hevyApiClient.ts`.
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
 ## Working Effectively
@@ -56,25 +56,6 @@ Run these commands in order to set up a working development environment (Corepac
    - Takes approximately 1-2 seconds for unit tests only (without API key).
    - **WILL FAIL** if `HEVY_API_KEY` is missing due to integration test failure (by design).
 
-### API Client Generation
-
-7. **Regenerate API client from OpenAPI spec:**
-   ```bash
-   pnpm run build:client
-   ```
-   - Takes approximately 4-5 seconds. NEVER CANCEL.
-   - **EXPECTED WARNINGS:** OpenAPI validation warnings about missing schemas are normal.
-   - Always run this after updating `openapi-spec.json`.
-
-8. **Validate OpenAPI spec:**
-   ```bash
-   pnpm run validate:openapi
-   ```
-   - Takes less than 1 second.
-   - Uses IBM OpenAPI Validator with Spectral ruleset (`.spectral.yaml`).
-   - Validates `openapi-spec.json` against OpenAPI 3.0 specification.
-   - **EXPECTED WARNINGS:** Since this is an external API spec from Hevy, some warnings are expected and acceptable.
-
 ### Server Operations
 
 9. **Development server (with hot reload):**
@@ -94,7 +75,6 @@ Run these commands in order to set up a working development environment (Corepac
 ## Commands With Known Environment Limitations
 
 ### Known Failing Commands
-- **`pnpm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
 - **`pnpm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
 
 Only list commands here that are known to be flaky or unsupported in some
@@ -169,7 +149,6 @@ Always perform these validation steps after making changes:
 - **ALWAYS** run unit tests after any source code changes
 - **ALWAYS** run build validation before committing changes
 - **ALWAYS** use type inference (`InferToolParams`) instead of manual type assertions
-- **DO NOT** attempt to fix TypeScript errors in `src/generated/` - these are auto-generated files
 - **DO NOT** commit `.env` files containing real API keys
 - **DO NOT** use `as any` or `as unknown` type assertions in tool handlers
 
@@ -185,16 +164,12 @@ src/
 │   ├── templates.ts   # Exercise template tools
 │   ├── folders.ts     # Routine folder tools
 │   └── webhooks.ts    # Webhook subscription tools
-├── generated/         # Auto-generated API client (DO NOT EDIT)
-│   ├── client/        # Kubb-generated client code
-│   └── schemas/       # Zod validation schemas
 └── utils/             # Shared helper functions
     ├── tool-helpers.ts    # Type inference utilities (InferToolParams)
     ├── error-handler.ts   # Centralized error handling (withErrorHandling)
     ├── response-formatter.ts # MCP response utilities
     ├── formatters.ts      # Data formatting helpers
-    ├── hevyClient.ts      # API client factory
-    ├── hevyClientKubb.ts  # Kubb client wrapper
+    ├── hevyApiClient.ts   # Hevy API client wrapper (via hevy-api-client)
     ├── config.ts          # Configuration parsing
     └── httpServer.ts      # HTTP server utilities (deprecated)
 ```
@@ -264,11 +239,9 @@ server.tool(
 7. **Register tools** in `src/index.ts`
 8. **Add unit tests** co-located with implementation
 
-### Working with Generated Code
-- **NEVER** edit files in `src/generated/` directly
-- Regenerate API client: `pnpm run build:client`
-- If OpenAPI spec changes, update `openapi-spec.json` first
-- Generated types are available in `src/generated/client/types/index.ts`
+### Working with the Hevy API client
+- `src/utils/hevyApiClient.ts` wraps the `hevy-api-client` npm package.
+- To pick up API changes, update the `hevy-api-client` dependency.
 
 ### Error Handling
 - Use centralized error handling from `src/utils/error-handler.ts`
@@ -281,11 +254,9 @@ server.tool(
 ### Common Issues
 1. **Server won't start:** Check for `HEVY_API_KEY` in `.env` file
 2. **Integration tests failing:** Expected without valid API key
-3. **TypeScript errors in generated code:** Expected - ignore these
-4. **Build failures:** Run `pnpm run check` to identify formatting/linting issues
-5. **Network errors in export-specs:** Expected in sandboxed environments
-6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
-7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)
+3. **Build failures:** Run `pnpm run check` to identify formatting/linting issues
+4. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
+5. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet
 
 ### Performance Expectations
 - **Build time:** 3-5 seconds

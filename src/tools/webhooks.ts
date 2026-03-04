@@ -1,15 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withErrorHandling } from "../utils/error-handler.js";
+import type { HevyClient as BaseHevyClient } from "../utils/hevyApiClient.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
-> & {
+type HevyClient = BaseHevyClient & {
 	getWebhookSubscription?: () => Promise<unknown>;
 	createWebhookSubscription?: (data: {
 		webhook: {
@@ -75,7 +74,7 @@ export function registerWebhookTools(
 			}
 			if (!hevyClient.getWebhookSubscription) {
 				throw new Error(
-					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+					"Webhook subscription API not available in the current Hevy API client.",
 				);
 			}
 			const data = await hevyClient.getWebhookSubscription();
@@ -117,7 +116,7 @@ export function registerWebhookTools(
 			const { url, authToken } = args;
 			if (!hevyClient.createWebhookSubscription) {
 				throw new Error(
-					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+					"Webhook subscription API not available in the current Hevy API client.",
 				);
 			}
 			const data = await hevyClient.createWebhookSubscription({
@@ -153,7 +152,7 @@ export function registerWebhookTools(
 			}
 			if (!hevyClient.deleteWebhookSubscription) {
 				throw new Error(
-					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+					"Webhook subscription API not available in the current Hevy API client.",
 				);
 			}
 			const data = await hevyClient.deleteWebhookSubscription();

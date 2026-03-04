@@ -1,12 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ExerciseTemplate } from "hevy-api-client";
 import { describe, expect, it, vi } from "vitest";
-import type { ExerciseTemplate } from "../generated/client/types/index.js";
 import { formatExerciseTemplate } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyApiClient.js";
 import { registerTemplateTools } from "./templates.js";
-
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function createMockServer() {
 	const tool = vi.fn();

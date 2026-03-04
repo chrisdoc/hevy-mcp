@@ -1,11 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import type { HevyClient as BaseHevyClient } from "../utils/hevyApiClient.js";
 import { registerWebhookTools } from "./webhooks.js";
 
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
-> & {
+type HevyClient = BaseHevyClient & {
 	createWebhookSubscription?: (data: {
 		webhook: {
 			url: string;
@@ -153,7 +152,7 @@ describe("registerWebhookTools", () => {
 				{
 					type: "text",
 					text: expect.stringContaining(
-						"Webhook subscription API not available. Please regenerate the client",
+						"Webhook subscription API not available in the current Hevy API client.",
 					),
 				},
 			],

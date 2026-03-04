@@ -1,26 +1,36 @@
-import { describe, expect, it, vi } from "vitest";
-import { createClient } from "./hevyClient";
+import { describe, expect, it } from "vitest";
+import { createClient } from "./hevyApiClient";
 
-// Mock the Kubb client
-vi.mock("./hevyClientKubb.js", () => ({
-	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
-}));
-
-describe("hevyClient", () => {
+describe("hevyApiClient", () => {
 	describe("createClient", () => {
 		it("should create a client with the correct configuration", () => {
 			// Arrange
 			const apiKey = "test-api-key";
 			const baseUrl = "https://api.hevy.com";
 
-			// Reset mocks
-			vi.clearAllMocks();
-
 			// Act
 			const client = createClient(apiKey, baseUrl);
 
 			// Assert
-			expect(client).toEqual({ mockedClient: true });
+			expect(client).toMatchObject({
+				getWorkouts: expect.any(Function),
+				getWorkout: expect.any(Function),
+				createWorkout: expect.any(Function),
+				updateWorkout: expect.any(Function),
+				getWorkoutCount: expect.any(Function),
+				getWorkoutEvents: expect.any(Function),
+				getRoutines: expect.any(Function),
+				getRoutineById: expect.any(Function),
+				createRoutine: expect.any(Function),
+				updateRoutine: expect.any(Function),
+				getExerciseTemplates: expect.any(Function),
+				getExerciseTemplate: expect.any(Function),
+				getExerciseHistory: expect.any(Function),
+				createExerciseTemplate: expect.any(Function),
+				getRoutineFolders: expect.any(Function),
+				getRoutineFolder: expect.any(Function),
+				createRoutineFolder: expect.any(Function),
+			});
 		});
 	});
 });

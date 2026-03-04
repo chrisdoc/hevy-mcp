@@ -1,28 +1,17 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ExerciseTemplate } from "hevy-api-client";
 import { z } from "zod";
-// Import types from generated client
-import type {
-	ExerciseTemplate,
-	GetV1ExerciseHistoryExercisetemplateid200,
-	GetV1ExerciseTemplates200,
-	GetV1ExerciseTemplatesExercisetemplateid200,
-	PostV1ExerciseTemplates200,
-} from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import {
 	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
 } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyApiClient.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
-
-// Type definitions for the template operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 /**
  * Register all exercise template-related tools with the MCP server
@@ -51,11 +40,10 @@ export function registerTemplateTools(
 				);
 			}
 			const { page, pageSize } = args;
-			const data: GetV1ExerciseTemplates200 =
-				await hevyClient.getExerciseTemplates({
-					page,
-					pageSize,
-				});
+			const data = await hevyClient.getExerciseTemplates({
+				page,
+				pageSize,
+			});
 
 			// Process exercise templates to extract relevant information
 			const templates =
@@ -92,8 +80,7 @@ export function registerTemplateTools(
 				);
 			}
 			const { exerciseTemplateId } = args;
-			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
-				await hevyClient.getExerciseTemplate(exerciseTemplateId);
+			const data = await hevyClient.getExerciseTemplate(exerciseTemplateId);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -135,11 +122,10 @@ export function registerTemplateTools(
 				);
 			}
 			const { exerciseTemplateId, startDate, endDate } = args;
-			const data: GetV1ExerciseHistoryExercisetemplateid200 =
-				await hevyClient.getExerciseHistory(exerciseTemplateId, {
-					...(startDate ? { start_date: startDate } : {}),
-					...(endDate ? { end_date: endDate } : {}),
-				});
+			const data = await hevyClient.getExerciseHistory(exerciseTemplateId, {
+				...(startDate ? { start_date: startDate } : {}),
+				...(endDate ? { end_date: endDate } : {}),
+			});
 
 			const history =
 				data?.exercise_history?.map((entry) =>
@@ -251,16 +237,15 @@ export function registerTemplateTools(
 				otherMuscles,
 			} = args;
 
-			const response: PostV1ExerciseTemplates200 =
-				await hevyClient.createExerciseTemplate({
-					exercise: {
-						title,
-						exercise_type: exerciseType,
-						equipment_category: equipmentCategory,
-						muscle_group: muscleGroup,
-						other_muscles: otherMuscles,
-					},
-				});
+			const response = await hevyClient.createExerciseTemplate({
+				exercise: {
+					title,
+					exercise_type: exerciseType,
+					equipment_category: equipmentCategory,
+					muscle_group: muscleGroup,
+					other_muscles: otherMuscles,
+				},
+			});
 
 			return createJsonResponse({
 				id: response?.id,

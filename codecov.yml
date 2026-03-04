@@ -10,6 +10,3 @@ coverage:
         threshold: 0%
         base: auto
     patch: yes
-
-ignore:
-  - "src/generated/**/*"  # Ignore all files in the generated directory

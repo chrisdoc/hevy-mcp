@@ -47,7 +47,7 @@ import { registerTemplateTools } from "./tools/templates.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
-import { createClient } from "./utils/hevyClient.js";
+import { createClient } from "./utils/hevyApiClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 

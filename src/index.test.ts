@@ -1,12 +1,12 @@
 import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import createServer, { configSchema, runServer } from "./index.js";
-import { createClient } from "./utils/hevyClient.js";
+import { createClient } from "./utils/hevyApiClient.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
 
-vi.mock("./utils/hevyClient.js", () => ({
+vi.mock("./utils/hevyApiClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
 }));
 

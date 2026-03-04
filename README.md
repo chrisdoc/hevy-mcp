@@ -275,21 +275,14 @@ hevy-mcp/
 │   │   ├── templates.ts   # Exercise template tools
 │   │   ├── folders.ts     # Routine folder tools
 │   │   └── webhooks.ts    # Webhook subscription tools
-│   ├── generated/         # API client (generated code)
-│   │   ├── client/        # Kubb-generated client
-│   │   │   ├── api/       # API client methods
-│   │   │   ├── types/     # TypeScript types
-│   │   │   ├── schemas/   # Zod schemas
-│   │   │   └── mocks/     # Mock data
 │   └── utils/             # Helper utilities
 │       ├── config.ts              # Env/CLI config parsing
 │       ├── error-handler.ts       # Tool error wrapper + response builder
 │       ├── formatters.ts          # Domain formatting helpers
-│       ├── hevyClient.ts          # API client factory
+│       ├── hevyApiClient.ts       # Hevy API client wrapper (via hevy-api-client)
 │       ├── httpServer.ts          # Legacy HTTP transport (deprecated; throws explicit error; kept only for backward compatibility - removing may be breaking)
 │       ├── response-formatter.ts  # MCP response utilities
 │       └── tool-helpers.ts        # Zod schema -> TS type inference
-├── scripts/               # Build and utility scripts
 └── tests/                 # Test suite
     ├── integration/       # Integration tests with real API
     │   └── hevy-mcp.integration.test.ts  # MCP server integration tests
@@ -394,16 +387,10 @@ expected to pass.
 Only failures caused solely by missing `HEVY_API_KEY` on forked PRs are
 considered acceptable.
 
-### Generating API Client
+### Hevy API client
 
-The API client is generated from the OpenAPI specification using [Kubb](https://kubb.dev/):
-
-```bash
-pnpm run export-specs
-pnpm run build:client
-```
-
-Kubb generates TypeScript types, API clients, Zod schemas, and mock data from the OpenAPI specification.
+This project uses the `hevy-api-client` npm package for all Hevy API calls.
+The wrapper lives in `src/utils/hevyApiClient.ts`.
 
 ### Troubleshooting
 
