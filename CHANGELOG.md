@@ -1,3 +1,5 @@
+## [1.20.9](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.8...v1.20.9) (2026-03-09)
+
 ## [1.20.8](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.7...v1.20.8) (2026-03-04)
 
 ## [1.20.7](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.6...v1.20.7) (2026-03-02)
