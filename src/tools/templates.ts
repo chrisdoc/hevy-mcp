@@ -24,12 +24,39 @@ type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
+// Shared muscle group values used by both create and search tools
+const MUSCLE_GROUPS = [
+	"abdominals",
+	"shoulders",
+	"biceps",
+	"triceps",
+	"forearms",
+	"quadriceps",
+	"hamstrings",
+	"calves",
+	"glutes",
+	"abductors",
+	"adductors",
+	"lats",
+	"upper_back",
+	"traps",
+	"lower_back",
+	"chest",
+	"cardio",
+	"neck",
+	"full_body",
+	"other",
+] as const;
+
 // Module-level cache for all exercise templates
 let exerciseTemplateCache: ExerciseTemplate[] | null = null;
+// In-flight promise to prevent concurrent duplicate fetches
+let exerciseTemplateFetch: Promise<ExerciseTemplate[]> | null = null;
 
 /** Reset the exercise template cache (exposed for testing). */
 export function resetExerciseTemplateCache(): void {
 	exerciseTemplateCache = null;
+	exerciseTemplateFetch = null;
 }
 
 /**
@@ -188,54 +215,8 @@ export function registerTemplateTools(
 			"suspension",
 			"other",
 		]),
-		muscleGroup: z.enum([
-			"abdominals",
-			"shoulders",
-			"biceps",
-			"triceps",
-			"forearms",
-			"quadriceps",
-			"hamstrings",
-			"calves",
-			"glutes",
-			"abductors",
-			"adductors",
-			"lats",
-			"upper_back",
-			"traps",
-			"lower_back",
-			"chest",
-			"cardio",
-			"neck",
-			"full_body",
-			"other",
-		]),
-		otherMuscles: z
-			.array(
-				z.enum([
-					"abdominals",
-					"shoulders",
-					"biceps",
-					"triceps",
-					"forearms",
-					"quadriceps",
-					"hamstrings",
-					"calves",
-					"glutes",
-					"abductors",
-					"adductors",
-					"lats",
-					"upper_back",
-					"traps",
-					"lower_back",
-					"chest",
-					"cardio",
-					"neck",
-					"full_body",
-					"other",
-				]),
-			)
-			.default([]),
+		muscleGroup: z.enum(MUSCLE_GROUPS),
+		otherMuscles: z.array(z.enum(MUSCLE_GROUPS)).default([]),
 	} as const;
 	type CreateExerciseTemplateParams = InferToolParams<
 		typeof createExerciseTemplateSchema
@@ -278,29 +259,6 @@ export function registerTemplateTools(
 	);
 
 	// Search exercise templates (cached)
-	const muscleGroupEnum = z.enum([
-		"abdominals",
-		"shoulders",
-		"biceps",
-		"triceps",
-		"forearms",
-		"quadriceps",
-		"hamstrings",
-		"calves",
-		"glutes",
-		"abductors",
-		"adductors",
-		"lats",
-		"upper_back",
-		"traps",
-		"lower_back",
-		"chest",
-		"cardio",
-		"neck",
-		"full_body",
-		"other",
-	]);
-
 	const searchExerciseTemplatesSchema = {
 		query: z
 			.string()
@@ -308,7 +266,8 @@ export function registerTemplateTools(
 			.describe(
 				"Case-insensitive substring to match against exercise template titles",
 			),
-		primaryMuscleGroup: muscleGroupEnum
+		primaryMuscleGroup: z
+			.enum(MUSCLE_GROUPS)
 			.optional()
 			.describe(
 				"Optional filter to restrict results to a specific primary muscle group",
@@ -337,26 +296,37 @@ export function registerTemplateTools(
 			}
 			const { query, primaryMuscleGroup, refresh } = args;
 
-			// Populate cache if empty or refresh requested
+			// Populate cache if empty or refresh requested.
+			// Use an in-flight promise to prevent concurrent duplicate fetches.
 			if (exerciseTemplateCache === null || refresh) {
-				const allTemplates: ExerciseTemplate[] = [];
-				let page = 1;
-				let pageCount = 1;
+				if (refresh) exerciseTemplateFetch = null;
 
-				do {
-					const data: GetV1ExerciseTemplates200 =
-						await hevyClient.getExerciseTemplates({
-							page,
-							pageSize: 100,
-						});
+				if (exerciseTemplateFetch === null) {
+					exerciseTemplateFetch = (async () => {
+						const allTemplates: ExerciseTemplate[] = [];
+						let page = 1;
+						let pageCount = 1;
 
-					const templates = data?.exercise_templates ?? [];
-					allTemplates.push(...templates);
-					pageCount = data?.page_count ?? 1;
-					page++;
-				} while (page <= pageCount);
+						do {
+							const data: GetV1ExerciseTemplates200 =
+								await hevyClient.getExerciseTemplates({
+									page,
+									pageSize: 100,
+								});
 
-				exerciseTemplateCache = allTemplates;
+							const templates = data?.exercise_templates ?? [];
+							allTemplates.push(...templates);
+							pageCount = data?.page_count ?? 1;
+							page++;
+						} while (page <= pageCount);
+
+						exerciseTemplateCache = allTemplates;
+						exerciseTemplateFetch = null;
+						return allTemplates;
+					})();
+				}
+
+				await exerciseTemplateFetch;
 			}
 
 			// Filter by query (case-insensitive title substring match)
