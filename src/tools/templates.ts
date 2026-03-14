@@ -24,6 +24,14 @@ type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
+// Module-level cache for all exercise templates
+let exerciseTemplateCache: ExerciseTemplate[] | null = null;
+
+/** Reset the exercise template cache (exposed for testing). */
+export function resetExerciseTemplateCache(): void {
+	exerciseTemplateCache = null;
+}
+
 /**
  * Register all exercise template-related tools with the MCP server
  */
@@ -267,5 +275,110 @@ export function registerTemplateTools(
 				message: "Exercise template created successfully",
 			});
 		}, "create-exercise-template"),
+	);
+
+	// Search exercise templates (cached)
+	const muscleGroupEnum = z.enum([
+		"abdominals",
+		"shoulders",
+		"biceps",
+		"triceps",
+		"forearms",
+		"quadriceps",
+		"hamstrings",
+		"calves",
+		"glutes",
+		"abductors",
+		"adductors",
+		"lats",
+		"upper_back",
+		"traps",
+		"lower_back",
+		"chest",
+		"cardio",
+		"neck",
+		"full_body",
+		"other",
+	]);
+
+	const searchExerciseTemplatesSchema = {
+		query: z
+			.string()
+			.min(1)
+			.describe(
+				"Case-insensitive substring to match against exercise template titles",
+			),
+		primaryMuscleGroup: muscleGroupEnum
+			.optional()
+			.describe(
+				"Optional filter to restrict results to a specific primary muscle group",
+			),
+		refresh: z
+			.boolean()
+			.optional()
+			.default(false)
+			.describe(
+				"Set to true to bust the in-memory cache and re-fetch all templates from the API",
+			),
+	} as const;
+	type SearchExerciseTemplatesParams = InferToolParams<
+		typeof searchExerciseTemplatesSchema
+	>;
+
+	server.tool(
+		"search-exercise-templates",
+		"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call and caches them in memory for subsequent searches. Use refresh:true to force a re-fetch.",
+		searchExerciseTemplatesSchema,
+		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
+			if (!hevyClient) {
+				throw new Error(
+					"API client not initialized. Please provide HEVY_API_KEY.",
+				);
+			}
+			const { query, primaryMuscleGroup, refresh } = args;
+
+			// Populate cache if empty or refresh requested
+			if (exerciseTemplateCache === null || refresh) {
+				const allTemplates: ExerciseTemplate[] = [];
+				let page = 1;
+				let pageCount = 1;
+
+				do {
+					const data: GetV1ExerciseTemplates200 =
+						await hevyClient.getExerciseTemplates({
+							page,
+							pageSize: 100,
+						});
+
+					const templates = data?.exercise_templates ?? [];
+					allTemplates.push(...templates);
+					pageCount = data?.page_count ?? 1;
+					page++;
+				} while (page <= pageCount);
+
+				exerciseTemplateCache = allTemplates;
+			}
+
+			// Filter by query (case-insensitive title substring match)
+			const queryLower = query.toLowerCase();
+			let results = exerciseTemplateCache.filter((t) =>
+				(t.title ?? "").toLowerCase().includes(queryLower),
+			);
+
+			// Optional primary muscle group filter
+			if (primaryMuscleGroup !== undefined) {
+				results = results.filter(
+					(t) => t.primary_muscle_group === primaryMuscleGroup,
+				);
+			}
+
+			if (results.length === 0) {
+				return createEmptyResponse(
+					`No exercise templates found matching "${query}"${primaryMuscleGroup ? ` with primary muscle group "${primaryMuscleGroup}"` : ""}`,
+				);
+			}
+
+			return createJsonResponse(results.map(formatExerciseTemplate));
+		}, "search-exercise-templates"),
 	);
 }
