@@ -1,8 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplate } from "../generated/client/types/index.js";
 import { formatExerciseTemplate } from "../utils/formatters.js";
-import { registerTemplateTools } from "./templates.js";
+import {
+	registerTemplateTools,
+	resetExerciseTemplateCache,
+} from "./templates.js";
 
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
@@ -41,6 +44,7 @@ describe("registerTemplateTools", () => {
 			"get-exercise-template",
 			"get-exercise-history",
 			"create-exercise-template",
+			"search-exercise-templates",
 		];
 
 		for (const name of toolNames) {
@@ -160,6 +164,227 @@ describe("registerTemplateTools", () => {
 				setType: "normal",
 			},
 		]);
+	});
+
+	describe("search-exercise-templates", () => {
+		beforeEach(() => {
+			resetExerciseTemplateCache();
+		});
+
+		it("returns error when client is not initialized", async () => {
+			const { server, tool } = createMockServer();
+			registerTemplateTools(server, null);
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+			const response = await handler({ query: "bench", refresh: false });
+			expect(response).toMatchObject({
+				isError: true,
+				content: [
+					{
+						type: "text",
+						text: expect.stringContaining(
+							"API client not initialized. Please provide HEVY_API_KEY.",
+						),
+					},
+				],
+			});
+		});
+
+		it("fetches all pages and filters by query substring", async () => {
+			const { server, tool } = createMockServer();
+			const benchTemplate: ExerciseTemplate = {
+				id: "t1",
+				title: "Bench Press",
+				type: "barbell",
+				primary_muscle_group: "chest",
+				secondary_muscle_groups: ["triceps"],
+				is_custom: false,
+			};
+			const squatTemplate: ExerciseTemplate = {
+				id: "t2",
+				title: "Back Squat",
+				type: "barbell",
+				primary_muscle_group: "quadriceps",
+				secondary_muscle_groups: ["glutes"],
+				is_custom: false,
+			};
+
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi
+					.fn()
+					.mockResolvedValueOnce({
+						page: 1,
+						page_count: 2,
+						exercise_templates: [benchTemplate],
+					})
+					.mockResolvedValueOnce({
+						page: 2,
+						page_count: 2,
+						exercise_templates: [squatTemplate],
+					}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient);
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			const response = await handler({ query: "bench", refresh: false });
+
+			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(2);
+			expect(hevyClient.getExerciseTemplates).toHaveBeenNthCalledWith(1, {
+				page: 1,
+				pageSize: 100,
+			});
+			expect(hevyClient.getExerciseTemplates).toHaveBeenNthCalledWith(2, {
+				page: 2,
+				pageSize: 100,
+			});
+
+			const parsed = JSON.parse(response.content[0].text) as unknown[];
+			expect(parsed).toEqual([formatExerciseTemplate(benchTemplate)]);
+		});
+
+		it("uses cached data on subsequent calls without refresh", async () => {
+			const { server, tool } = createMockServer();
+			const template: ExerciseTemplate = {
+				id: "t1",
+				title: "Bench Press",
+				type: "barbell",
+				primary_muscle_group: "chest",
+				secondary_muscle_groups: [],
+				is_custom: false,
+			};
+
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi.fn().mockResolvedValue({
+					page: 1,
+					page_count: 1,
+					exercise_templates: [template],
+				}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient);
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			await handler({ query: "bench", refresh: false });
+			await handler({ query: "bench", refresh: false });
+
+			// API should only be called once — second call uses cache
+			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(1);
+		});
+
+		it("re-fetches when refresh is true", async () => {
+			const { server, tool } = createMockServer();
+			const template: ExerciseTemplate = {
+				id: "t1",
+				title: "Deadlift",
+				type: "barbell",
+				primary_muscle_group: "hamstrings",
+				secondary_muscle_groups: [],
+				is_custom: false,
+			};
+
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi.fn().mockResolvedValue({
+					page: 1,
+					page_count: 1,
+					exercise_templates: [template],
+				}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient);
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			await handler({ query: "dead", refresh: false });
+			await handler({ query: "dead", refresh: true });
+
+			// API should be called twice — refresh busts the cache
+			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(2);
+		});
+
+		it("filters by primaryMuscleGroup when provided", async () => {
+			const { server, tool } = createMockServer();
+			const chestTemplate: ExerciseTemplate = {
+				id: "t1",
+				title: "Bench Press",
+				type: "barbell",
+				primary_muscle_group: "chest",
+				secondary_muscle_groups: [],
+				is_custom: false,
+			};
+			const shoulderTemplate: ExerciseTemplate = {
+				id: "t2",
+				title: "Bench Press (Incline)",
+				type: "barbell",
+				primary_muscle_group: "shoulders",
+				secondary_muscle_groups: [],
+				is_custom: false,
+			};
+
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi.fn().mockResolvedValue({
+					page: 1,
+					page_count: 1,
+					exercise_templates: [chestTemplate, shoulderTemplate],
+				}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient);
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			const response = await handler({
+				query: "bench",
+				primaryMuscleGroup: "chest",
+				refresh: false,
+			});
+
+			const parsed = JSON.parse(response.content[0].text) as unknown[];
+			expect(parsed).toEqual([formatExerciseTemplate(chestTemplate)]);
+		});
+
+		it("returns empty response when no templates match", async () => {
+			const { server, tool } = createMockServer();
+			const template: ExerciseTemplate = {
+				id: "t1",
+				title: "Squat",
+				type: "barbell",
+				primary_muscle_group: "quadriceps",
+				secondary_muscle_groups: [],
+				is_custom: false,
+			};
+
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi.fn().mockResolvedValue({
+					page: 1,
+					page_count: 1,
+					exercise_templates: [template],
+				}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient);
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			const response = await handler({ query: "bench", refresh: false });
+			expect(response.content[0]?.text).toContain(
+				'No exercise templates found matching "bench"',
+			);
+		});
 	});
 
 	it("create-exercise-template maps input to API payload", async () => {
