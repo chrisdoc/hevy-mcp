@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.10...v1.21.0) (2026-03-15)
+
+
+### Features
+
+* add search-exercise-templates tool with in-memory cache ([#281](https://github.com/chrisdoc/hevy-mcp/issues/281)) ([5aba482](https://github.com/chrisdoc/hevy-mcp/commit/5aba4821622bf73dc41eaad074d024610ec9584a))
+
 ## [1.20.10](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.9...v1.20.10) (2026-03-10)
 
 ## [1.20.9](https://github.com/chrisdoc/hevy-mcp/compare/v1.20.8...v1.20.9) (2026-03-09)
