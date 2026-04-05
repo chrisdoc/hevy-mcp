@@ -227,8 +227,8 @@ function fixMissingGlobalTags(spec) {
 
 	for (const tag of usedTags) {
 		if (!existingTags.has(tag)) {
-			spec.tags.push({ name: tag, description: `${tag} operations` });
-			console.log(`  Fixed: Added missing global tag "${tag}"`);
+			spec.tags.push({ name: tag, description: `${String(tag)} operations` });
+			console.log(`  Fixed: Added missing global tag "${String(tag)}"`);
 		}
 	}
 }
@@ -307,4 +307,4 @@ async function main() {
 	}
 }
 
-main();
+void main();
