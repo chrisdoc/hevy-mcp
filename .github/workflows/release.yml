@@ -5,7 +5,7 @@ on:
     branches:
       - main
 permissions:
-  contents: write  # needed to create releases/tags
+  contents: write # needed to create releases/tags
 
 env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
@@ -26,8 +26,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+          node-version-file: ".nvmrc"
+          cache: "npm"
       - run: npm ci
       - run: npm run build
         env:
@@ -46,13 +46,13 @@ jobs:
           set -euo pipefail
           VERSION=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      
+
       - name: Release
         id: release_step
         run: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Check if release was created
         id: release
         run: |
@@ -70,4 +70,3 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
