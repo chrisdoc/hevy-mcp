@@ -179,7 +179,7 @@ Always perform these validation steps after making changes:
    pnpm run check
    ```
 
-   - Must complete without errors (warnings about Biome schema are acceptable).
+   - Must complete without errors (warnings about oxlint and oxfmt schema are acceptable).
    - **EXPECTED:** Warnings about `any` usage in `webhooks.ts` are acceptable (API methods not yet available).
 
 4. **Type checking validation:**
