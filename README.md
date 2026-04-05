@@ -38,9 +38,9 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 Pick the workflow that fits your setup:
 
-| Scenario | Command | Requirements |
-| :--- | :--- | :--- |
-| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` | Node.js ≥ 24, Hevy API key |
+| Scenario              | Command                                     | Requirements               |
+| :-------------------- | :------------------------------------------ | :------------------------- |
+| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp`   | Node.js ≥ 24, Hevy API key |
 | **Local development** | `npm install && npm run build && npm start` | `.env` with `HEVY_API_KEY` |
 
 ---
@@ -91,15 +91,15 @@ To use this server with Claude Desktop, add the following to your `claude_deskto
 
 ```json
 {
-  "mcpServers": {
-    "hevy-mcp": {
-      "command": "npx",
-      "args": ["-y", "hevy-mcp"],
-      "env": {
-        "HEVY_API_KEY": "sk_live_your_key_here"
-      }
-    }
-  }
+	"mcpServers": {
+		"hevy-mcp": {
+			"command": "npx",
+			"args": ["-y", "hevy-mcp"],
+			"env": {
+				"HEVY_API_KEY": "sk_live_your_key_here"
+			}
+		}
+	}
 }
 ```
 
@@ -109,15 +109,15 @@ Add this server under `"mcpServers"` in `~/.cursor/mcp.json`:
 
 ```json
 {
-  "mcpServers": {
-    "hevy-mcp": {
-      "command": "npx",
-      "args": ["-y", "hevy-mcp"],
-      "env": {
-        "HEVY_API_KEY": "your-api-key-here"
-      }
-    }
-  }
+	"mcpServers": {
+		"hevy-mcp": {
+			"command": "npx",
+			"args": ["-y", "hevy-mcp"],
+			"env": {
+				"HEVY_API_KEY": "your-api-key-here"
+			}
+		}
+	}
 }
 ```
 
@@ -154,9 +154,11 @@ HEVY_API_KEY=your_hevy_api_key_here
 <summary><strong>⚠️ Deprecation Notices (HTTP/SSE & Docker)</strong></summary>
 
 ### Stdio Only
+
 As of version **1.18.0**, `hevy-mcp` only supports **stdio** transport. HTTP/SSE transport has been completely removed to simplify the codebase and focus on the native MCP experience.
 
 ### Docker
+
 Docker-based workflows are retired. The provided `Dockerfile` now exits with a message pointing to the stdio-native experience. Legacy GHCR images are no longer updated.
 
 </details>
@@ -165,13 +167,13 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 
 ## 🛠️ Available MCP Tools
 
-| Category | Tools |
-| :--- | :--- |
-| **Workouts** | `get-workouts`, `get-workout`, `create-workout`, `update-workout`, `get-workout-count`, `get-workout-events` |
-| **Routines** | `get-routines`, `get-routine-by-id`, `create-routine`, `update-routine` |
-| **Templates** | `get-exercise-templates`, `get-exercise-template`, `search-exercise-templates` |
-| **Folders** | `get-routine-folders`, `get-routine-folder`, `create-routine-folder` |
-| **Webhooks** | `get-webhook-subscription`, `create-webhook-subscription`, `delete-webhook-subscription` |
+| Category      | Tools                                                                                                        |
+| :------------ | :----------------------------------------------------------------------------------------------------------- |
+| **Workouts**  | `get-workouts`, `get-workout`, `create-workout`, `update-workout`, `get-workout-count`, `get-workout-events` |
+| **Routines**  | `get-routines`, `get-routine-by-id`, `create-routine`, `update-routine`                                      |
+| **Templates** | `get-exercise-templates`, `get-exercise-template`, `search-exercise-templates`                               |
+| **Folders**   | `get-routine-folders`, `get-routine-folder`, `create-routine-folder`                                         |
+| **Webhooks**  | `get-webhook-subscription`, `create-webhook-subscription`, `delete-webhook-subscription`                     |
 
 ---
 
@@ -202,4 +204,5 @@ npm run build:client
 - **Credits**: [Model Context Protocol](https://github.com/modelcontextprotocol), [Hevy Fitness](https://www.hevyapp.com/).
 
 ---
+
 **Contributions are welcome!** Please open an issue or PR for any major changes.
