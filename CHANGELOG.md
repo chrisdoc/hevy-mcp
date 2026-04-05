@@ -1,3 +1,10 @@
+## [1.21.8](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.7...v1.21.8) (2026-04-05)
+
+
+### Bug Fixes
+
+* format README.md and add .md to lefthook check ([1369ef5](https://github.com/chrisdoc/hevy-mcp/commit/1369ef5276ad6c4833e2b19e3ddfd248ff3a7cd1))
+
 ## [1.21.7](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.6...v1.21.7) (2026-04-05)
 
 ## [1.21.6](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.5...v1.21.6) (2026-04-05)
