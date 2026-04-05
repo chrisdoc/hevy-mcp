@@ -1,24 +1,37 @@
 {
 	"name": "hevy-mcp",
 	"version": "1.21.6",
-	"main": "dist/index.mjs",
-	"module": "src/index.ts",
-	"types": "dist/index.d.mts",
-	"files": [
-		"dist",
-		"README.md"
+	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
+	"keywords": [
+		"api",
+		"fitness",
+		"hevy",
+		"mcp",
+		"model context protocol"
 	],
-	"access": "public",
+	"homepage": "https://github.com/chrisdoc/hevy-mcp#readme",
+	"bugs": {
+		"url": "https://github.com/chrisdoc/hevy-mcp/issues"
+	},
+	"license": "MIT",
+	"author": "Christoph Kieslich",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/chrisdoc/hevy-mcp.git"
 	},
-	"bugs": {
-		"url": "https://github.com/chrisdoc/hevy-mcp/issues"
-	},
-	"homepage": "https://github.com/chrisdoc/hevy-mcp#readme",
 	"bin": {
 		"hevy-mcp": "dist/cli.mjs"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"type": "module",
+	"main": "dist/index.mjs",
+	"module": "src/index.ts",
+	"types": "dist/index.d.mts",
+	"publishConfig": {
+		"access": "public"
 	},
 	"scripts": {
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/index.mjs",
@@ -27,10 +40,10 @@
 		"openapi": "node ./scripts/openapi-spec.js",
 		"build": "tsdown",
 		"build:client": "kubb generate",
-		"validate:openapi": "lint-openapi -c .ibm-openapi-validator.yaml openapi-spec.json",
 		"start": "node --env-file .env dist/cli.mjs",
 		"dev": "tsx watch --env-file .env --clear-screen=false src/cli.ts",
-		"check": "biome check --write --unsafe",
+		"check": "oxlint . --type-aware --type-check && oxfmt . --check",
+		"check:fix": "oxlint . --type-aware --type-check && oxfmt . --write",
 		"check:types": "tsc --noEmit",
 		"version:patch": "npm version patch",
 		"version:minor": "npm version minor",
@@ -38,53 +51,43 @@
 		"release": "semantic-release",
 		"commit": "commit"
 	},
-	"type": "module",
-	"keywords": [
-		"mcp",
-		"hevy",
-		"fitness",
-		"api",
-		"model context protocol"
-	],
-	"author": "Christoph Kieslich",
-	"license": "MIT",
-	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"dependencies": {
-		"@kubb/cli": "^4.27.4",
-		"@kubb/core": "^4.27.4",
-		"@kubb/plugin-client": "^4.27.4",
-		"@kubb/plugin-faker": "^4.27.4",
-		"@kubb/plugin-oas": "^4.27.4",
-		"@kubb/plugin-ts": "^4.27.4",
-		"@kubb/plugin-zod": "^4.27.4",
-		"@modelcontextprotocol/sdk": "^1.27.0",
-		"@sentry/node": "^10.39.0",
-		"axios": "^1.13.5",
+		"@kubb/cli": "^4.37.1",
+		"@kubb/core": "^4.37.1",
+		"@kubb/plugin-client": "^4.37.1",
+		"@kubb/plugin-faker": "^4.37.1",
+		"@kubb/plugin-oas": "^4.37.1",
+		"@kubb/plugin-ts": "^4.37.1",
+		"@kubb/plugin-zod": "^4.37.1",
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@sentry/node": "^10.47.0",
+		"axios": "^1.14.0",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.4.10",
-		"@commitlint/cli": "^20.4.2",
-		"@commitlint/config-conventional": "^20.4.2",
-		"@commitlint/prompt-cli": "^20.4.2",
+		"@commitlint/cli": "^20.5.0",
+		"@commitlint/config-conventional": "^20.5.0",
+		"@commitlint/prompt-cli": "^20.5.0",
 		"@semantic-release/changelog": "^6.0.3",
 		"@semantic-release/commit-analyzer": "^13.0.1",
 		"@semantic-release/git": "^10.0.1",
 		"@semantic-release/github": "^12.0.6",
-		"@semantic-release/npm": "^13.1.4",
+		"@semantic-release/npm": "^13.1.5",
 		"@semantic-release/release-notes-generator": "^14.1.0",
 		"@sentry/rollup-plugin": "^5.1.1",
-		"@types/node": "^25.3.0",
-		"@vitest/coverage-v8": "^4.0.18",
+		"@types/node": "^25.5.2",
+		"@vitest/coverage-v8": "^4.1.2",
 		"abstract-syntax-tree": "^2.22.0",
 		"cross-env": "^10.1.0",
-		"ibm-openapi-validator": "^1.37.11",
-		"lefthook": "^2.1.1",
+		"lefthook": "^2.1.4",
+		"oxfmt": "^0.43.0",
+		"oxlint": "^1.58.0",
+		"oxlint-tsgolint": "^0.19.0",
 		"semantic-release": "^25.0.3",
-		"tsdown": "^0.21.0",
+		"tsdown": "^0.21.7",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.2",
-		"vitest": "^4.0.18"
+		"vitest": "^4.1.2"
 	},
 	"engines": {
 		"node": ">=24.0.0"

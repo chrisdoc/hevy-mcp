@@ -12,4 +12,4 @@ coverage:
     patch: yes
 
 ignore:
-  - "src/generated/**/*"  # Ignore all files in the generated directory
+  - "src/generated/**/*" # Ignore all files in the generated directory

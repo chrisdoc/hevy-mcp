@@ -107,7 +107,7 @@ describe("Server entry", () => {
 
 			const exitSpy = vi
 				.spyOn(process, "exit")
-				.mockImplementation((code?: string | number | null | undefined) => {
+				.mockImplementation((code?: string | number | null) => {
 					expect(code).toBe(1);
 					throw new Error("process.exit called");
 				});

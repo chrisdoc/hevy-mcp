@@ -52,6 +52,7 @@ const data = await hevyClient.getWorkouts({ page, pageSize });
 ### Step 1: Identify the API Method
 
 Look at the `hevyClient` method you're calling:
+
 ```typescript
 const data = await hevyClient.getWorkouts({ page, pageSize });
 ```
@@ -59,6 +60,7 @@ const data = await hevyClient.getWorkouts({ page, pageSize });
 ### Step 2: Check the Client Wrapper
 
 Open `src/utils/hevyClientKubb.ts` and find the method:
+
 ```typescript
 getWorkouts: (params?: GetV1WorkoutsQueryParams): ReturnType<typeof api.getV1Workouts> =>
   wrapApi(api.getV1Workouts)(headers, params, { client }),
@@ -69,6 +71,7 @@ The return type is `ReturnType<typeof api.getV1Workouts>`.
 ### Step 3: Check the Generated API Function
 
 Open `src/generated/client/api/getV1Workouts.ts`:
+
 ```typescript
 export async function getV1Workouts(...) {
   const res = await request<
@@ -83,13 +86,14 @@ export async function getV1Workouts(...) {
 ### Step 4: Find the Response Type
 
 Open `src/generated/client/types/GetV1Workouts.ts`:
+
 ```typescript
 export type GetV1WorkoutsQueryResponse = GetV1Workouts200;
 
 export type GetV1Workouts200 = {
-  page?: number;
-  page_count?: number;
-  workouts?: Workout[];
+	page?: number;
+	page_count?: number;
+	workouts?: Workout[];
 };
 ```
 
@@ -97,17 +101,18 @@ Use `GetV1Workouts200` as the type annotation.
 
 ## Quick Reference: Response Type Naming Conventions
 
-| HTTP Method | Status | Example Type Name |
-|-------------|--------|-------------------|
-| GET | 200 | `GetV1Workouts200` |
-| POST | 200 | `PostV1ExerciseTemplates200` |
-| POST | 201 | `PostV1Workouts201` |
-| PUT | 200 | `PutV1WorkoutsWorkoutid200` |
-| DELETE | 204 | Usually no response type |
+| HTTP Method | Status | Example Type Name            |
+| ----------- | ------ | ---------------------------- |
+| GET         | 200    | `GetV1Workouts200`           |
+| POST        | 200    | `PostV1ExerciseTemplates200` |
+| POST        | 201    | `PostV1Workouts201`          |
+| PUT         | 200    | `PutV1WorkoutsWorkoutid200`  |
+| DELETE      | 204    | Usually no response type     |
 
 ## Common Response Types by Endpoint
 
 ### Workouts
+
 - `getWorkouts()` → `GetV1Workouts200`
 - `getWorkout(id)` → `GetV1WorkoutsWorkoutid200`
 - `getWorkoutCount()` → `GetV1WorkoutsCount200`
@@ -116,18 +121,21 @@ Use `GetV1Workouts200` as the type annotation.
 - `updateWorkout()` → `PutV1WorkoutsWorkoutid200`
 
 ### Routines
+
 - `getRoutines()` → `GetV1Routines200`
 - `getRoutineById(id)` → `GetV1RoutinesRoutineid200`
 - `createRoutine()` → `PostV1Routines201`
 - `updateRoutine()` → `PutV1RoutinesRoutineid200`
 
 ### Exercise Templates
+
 - `getExerciseTemplates()` → `GetV1ExerciseTemplates200`
 - `getExerciseTemplate(id)` → `GetV1ExerciseTemplatesExercisetemplateid200`
 - `getExerciseHistory()` → `GetV1ExerciseHistoryExercisetemplateid200`
 - `createExerciseTemplate()` → `PostV1ExerciseTemplates200`
 
 ### Routine Folders
+
 - `getRoutineFolders()` → `GetV1RoutineFolders200`
 - `getRoutineFolder(id)` → `GetV1RoutineFoldersFolderid200`
 - `createRoutineFolder()` → `PostV1RoutineFolders201`
@@ -146,11 +154,13 @@ When adding a new tool or handler:
 ### "Property does not exist on type"
 
 If you get an error like:
+
 ```
 Property 'workoutCount' does not exist on type 'GetV1WorkoutsCount200'
 ```
 
 This means:
+
 1. You're accessing a property that doesn't exist in the API response
 2. Check the generated type to see the correct property name (likely `workout_count`)
 3. The Hevy API uses snake_case, not camelCase
@@ -158,6 +168,7 @@ This means:
 ### "Type X is not assignable to type Y"
 
 If the hevyClient method returns a different type than expected:
+
 1. Check `src/utils/hevyClientKubb.ts` for the actual return type
 2. Verify you're using the `QueryResponse` or `MutationResponse` type, not the `Query` or `Mutation` type
 3. The response types usually end in `200`, `201`, etc. (HTTP status codes)
@@ -167,6 +178,7 @@ If the hevyClient method returns a different type than expected:
 ### When Regenerating the API Client
 
 After running `pnpm run build:client`:
+
 1. Run `pnpm run check:types` to catch any breaking changes
 2. Update type annotations in tool handlers if needed
 3. Run tests to verify behavior: `pnpm vitest run --exclude 'tests/integration/**'`
@@ -174,6 +186,7 @@ After running `pnpm run build:client`:
 ### Code Review Checklist
 
 When reviewing PRs that add/modify API calls:
+
 - [ ] All `await hevyClient.*()` calls have explicit type annotations
 - [ ] Type imports are from `../generated/client/types/index.js`
 - [ ] No manual type assertions (`as { ... }`)
