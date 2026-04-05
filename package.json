@@ -30,6 +30,9 @@
 	"main": "dist/index.mjs",
 	"module": "src/index.ts",
 	"types": "dist/index.d.mts",
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/index.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
@@ -88,6 +91,5 @@
 	},
 	"engines": {
 		"node": ">=24.0.0"
-	},
-	"access": "public"
+	}
 }
