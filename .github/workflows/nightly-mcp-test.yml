@@ -22,9 +22,6 @@ jobs:
       with:
         node-version: '22'
 
-    - name: Install pnpm
-      run: npm install -g pnpm
-
     - name: Set up Python
       uses: actions/setup-python@v6
       with:

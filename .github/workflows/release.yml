@@ -23,24 +23,20 @@ jobs:
       released: ${{ steps.release.outputs.released }}
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-        with:
-          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
         env:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       - name: Run unit tests
-        run: pnpm vitest run --exclude tests/integration/**
+        run: npx vitest run --exclude tests/integration/**
       - name: Run integration tests
-        run: pnpm vitest run tests/integration
+        run: npx vitest run tests/integration
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
       - name: Store initial version
@@ -52,7 +48,7 @@ jobs:
       
       - name: Release
         id: release_step
-        run: pnpm run release
+        run: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       

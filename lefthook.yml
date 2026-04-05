@@ -5,7 +5,7 @@ pre-commit:
       run: npx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
       stage_fixed: true
     tests:
-      run: pnpm test
+      run: npm test
 
 # Validate commit messages
 commit-msg:

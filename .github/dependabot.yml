@@ -41,9 +41,6 @@ updates:
       github-core-actions:
         patterns:
           - "actions/*"
-      pnpm-tooling-actions:
-        patterns:
-          - "pnpm/*"
       observability-actions:
         patterns:
           - "codecov/*"
