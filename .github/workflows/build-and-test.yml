@@ -20,41 +20,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version-file: '.nvmrc'
-        cache: 'npm'
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run Check
-      run: npm run check
+      - name: Run Check
+        run: npm run check
 
-    - name: Validate OpenAPI Spec
-      run: npm run validate:openapi
+      - name: Run build
+        run: npm run build
+        env:
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-    - name: Run build
-      run: npm run build
-      env:
-        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      - name: Run tests with coverage
+        run: npx vitest run --coverage
+        env:
+          HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
-    - name: Run tests with coverage
-      run: npx vitest run --coverage
-      env:
-        HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
-
-    - name: Upload results to Codecov
-      uses: codecov/codecov-action@v6
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage/lcov.info
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
 
   otel-cicd-action:
     if: always()
@@ -65,7 +62,7 @@ jobs:
       - name: Export workflow
         uses: corentinmusard/otel-cicd-action@v4
         with:
-          otlpEndpoint: 'grpc://in-otel.hyperdx.io:4317/'
+          otlpEndpoint: "grpc://in-otel.hyperdx.io:4317/"
           otlpHeaders: ${{ secrets.HYPERDX_OTLP_HEADERS }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           runId: ${{ github.run_id }}

@@ -3,6 +3,7 @@
 **ALWAYS follow these instructions first and only fallback to search or additional context if the information here is incomplete or found to be in error.**
 
 ## Project Overview
+
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
 - The codebase is TypeScript (Node.js v20+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
@@ -11,89 +12,100 @@
 ## Working Effectively
 
 ### Bootstrap and Build Repository
+
 Run these commands in order to set up a working development environment (npm is the package manager for this project):
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    ```
+
    - Takes approximately 30 seconds. NEVER CANCEL - set timeout to 60+ seconds.
 
 2. **Build the project:**
+
    ```bash
    npm run build
    ```
+
    - Takes approximately 3-5 seconds. TypeScript compilation via tsdown.
    - Always build before running the server or testing changes.
 
 3. **Run linting/formatting:**
+
    ```bash
    npm run check
    ```
+
    - Takes less than 1 second.
-   - **EXPECTED WARNING:** Biome schema version mismatch warning is normal and can be ignored.
+   - **EXPECTED WARNING:** Warnings from oxlint are expected and can be ignored.
 
 ### Testing Commands
 
 4. **Run unit tests only:**
+
    ```bash
    npx vitest run --exclude tests/integration/**
    ```
+
    - Takes approximately 1-2 seconds. NEVER CANCEL.
    - This is the primary testing command for development.
 
 5. **Run integration tests (requires API key):**
+
    ```bash
    npx vitest run tests/integration
    ```
+
    - **WILL FAIL** without valid `HEVY_API_KEY` in `.env` file (by design).
    - Integration tests require real API access and cannot run in sandboxed environments.
 
 6. **Run all tests:**
+
    ```bash
    npm test
    ```
+
    - Takes approximately 1-2 seconds for unit tests only (without API key).
    - **WILL FAIL** if `HEVY_API_KEY` is missing due to integration test failure (by design).
 
 ### API Client Generation
 
 7. **Regenerate API client from OpenAPI spec:**
+
    ```bash
    npm run build:client
    ```
+
    - Takes approximately 4-5 seconds. NEVER CANCEL.
    - **EXPECTED WARNINGS:** OpenAPI validation warnings about missing schemas are normal.
    - Always run this after updating `openapi-spec.json`.
 
-8. **Validate OpenAPI spec:**
-   ```bash
-   npm run validate:openapi
-   ```
-   - Takes less than 1 second.
-   - Uses IBM OpenAPI Validator with Spectral ruleset (`.spectral.yaml`).
-   - Validates `openapi-spec.json` against OpenAPI 3.0 specification.
-   - **EXPECTED WARNINGS:** Since this is an external API spec from Hevy, some warnings are expected and acceptable.
-
 ### Server Operations
 
 9. **Development server (with hot reload):**
+
    ```bash
    npm run dev
    ```
+
    - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
    - Server runs indefinitely until stopped.
 
 10. **Production server:**
-   ```bash
-   npm start
-   ```
-   - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
-   - Must run `npm run build` first.
+
+```bash
+npm start
+```
+
+- **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
+- Must run `npm run build` first.
 
 ## Commands With Known Environment Limitations
 
 ### Known Failing Commands
+
 - **`npm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
 - **`npm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
 
@@ -108,17 +120,21 @@ environmental flakiness. See `README.md` for the canonical list of commands.
 ## Environment Setup
 
 ### Required Environment Variables
+
 Create a `.env` file in the project root with:
+
 ```env
 HEVY_API_KEY=your_hevy_api_key_here
 ```
 
 **CRITICAL:** Without this API key:
+
 - Servers will not start
 - Integration tests will fail (by design)
 - API client functionality cannot be tested
 
 ### Node.js Version
+
 - **Supported:** Node.js >= 20
 - **Recommended:** Use the exact version pinned in `.nvmrc` (CI uses this exact version)
 - If you use `nvm`, run `nvm use` in the repo root to match `.nvmrc`
@@ -127,31 +143,40 @@ HEVY_API_KEY=your_hevy_api_key_here
 ## Validation After Changes
 
 ### Manual Testing Scenarios
+
 Always perform these validation steps after making changes:
 
 1. **Build validation:**
+
    ```bash
    npm run build
    ```
+
    - Must complete successfully without errors.
 
 2. **Unit test validation:**
+
    ```bash
    npx vitest run --exclude tests/integration/**
    ```
+
    - All unit tests must pass.
 
 3. **Code style validation:**
+
    ```bash
    npm run check
    ```
-   - Must complete without errors (warnings about Biome schema are acceptable).
+
+   - Must complete without errors (warnings about oxlint and oxfmt schema are acceptable).
    - **EXPECTED:** Warnings about `any` usage in `webhooks.ts` are acceptable (API methods not yet available).
 
 4. **Type checking validation:**
+
    ```bash
    npm run check:types
    ```
+
    - Must complete without errors.
    - Runs the TypeScript compiler in check-only mode (no emitted files), as
      configured in the `check:types` script in `package.json`.
@@ -166,6 +191,7 @@ Always perform these validation steps after making changes:
    - Verify tool responses are correctly formatted
 
 ### Critical Validation Notes
+
 - **ALWAYS** run unit tests after any source code changes
 - **ALWAYS** run build validation before committing changes
 - **ALWAYS** use type inference (`InferToolParams`) instead of manual type assertions
@@ -176,6 +202,7 @@ Always perform these validation steps after making changes:
 ## Project Structure and Key Files
 
 ### Source Code Organization
+
 ```
 src/
 ├── index.ts           # Main entry point - register tools here
@@ -200,6 +227,7 @@ src/
 ```
 
 ### Testing Structure
+
 ```
 tests/
 ├── integration/       # Integration tests (require API key)
@@ -222,8 +250,8 @@ import { withErrorHandling } from "../utils/error-handler.js";
 
 // 1. Define schema as const
 const getRoutinesSchema = {
-  page: z.coerce.number().int().gte(1).default(1),
-  pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+	page: z.coerce.number().int().gte(1).default(1),
+	pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 } as const;
 
 // 2. Infer types from schema
@@ -231,24 +259,26 @@ type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
 
 // 3. Use inferred type in handler
 server.tool(
-  "get-routines",
-  "Description...",
-  getRoutinesSchema,  // Use the schema constant
-  withErrorHandling(async (args: GetRoutinesParams) => {
-    // args is fully typed - no manual assertions needed!
-    const { page, pageSize } = args;
-    // ...
-  }, "get-routines"),
+	"get-routines",
+	"Description...",
+	getRoutinesSchema, // Use the schema constant
+	withErrorHandling(async (args: GetRoutinesParams) => {
+		// args is fully typed - no manual assertions needed!
+		const { page, pageSize } = args;
+		// ...
+	}, "get-routines"),
 );
 ```
 
 **Key Benefits:**
+
 - ✅ Single source of truth (Zod schema defines both validation and types)
 - ✅ No manual type assertions (`args as {...}`)
 - ✅ Automatic type updates when schemas change
 - ✅ Full IDE autocomplete and type checking
 
 **DO NOT:**
+
 - ❌ Use `args as { ... }` type assertions
 - ❌ Define parameter types separately from Zod schemas
 - ❌ Use `Record<string, unknown>` in handler signatures (use inferred types)
@@ -265,12 +295,14 @@ server.tool(
 8. **Add unit tests** co-located with implementation
 
 ### Working with Generated Code
+
 - **NEVER** edit files in `src/generated/` directly
 - Regenerate API client: `npm run build:client`
 - If OpenAPI spec changes, update `openapi-spec.json` first
 - Generated types are available in `src/generated/client/types/index.ts`
 
 ### Error Handling
+
 - Use centralized error handling from `src/utils/error-handler.ts`
 - Wrap handlers with `withErrorHandling(fn, "context-name")`
 - Follow existing error response patterns in tool implementations
@@ -279,6 +311,7 @@ server.tool(
 ## Troubleshooting
 
 ### Common Issues
+
 1. **Server won't start:** Check for `HEVY_API_KEY` in `.env` file
 2. **Integration tests failing:** Expected without valid API key
 3. **TypeScript errors in generated code:** Expected - ignore these
@@ -288,6 +321,7 @@ server.tool(
 7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)
 
 ### Performance Expectations
+
 - **Build time:** 3-5 seconds
 - **Unit test time:** 1-2 seconds
 - **Dependency installation:** 30 seconds
@@ -297,14 +331,17 @@ server.tool(
 ## Key Utilities Reference
 
 ### Type Inference (`src/utils/tool-helpers.ts`)
+
 - **`InferToolParams<T>`**: Infers TypeScript types from Zod schema objects
 - **`createTypedToolHandler`**: Optional wrapper for automatic validation (MCP SDK already validates)
 
 ### Error Handling (`src/utils/error-handler.ts`)
+
 - **`withErrorHandling<TParams>(fn, context)`**: Wraps handlers with error handling while preserving parameter types
 - **`createErrorResponse(error, context?)`**: Creates standardized error responses
 
 ### Response Formatting (`src/utils/response-formatter.ts`)
+
 - **`createJsonResponse(data, options?)`**: Creates JSON-formatted MCP responses
 - **`createTextResponse(text)`**: Creates text-formatted MCP responses
 - **`createEmptyResponse(message)`**: Creates empty responses with messages
