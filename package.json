@@ -84,6 +84,7 @@
 		"oxlint": "^1.58.0",
 		"oxlint-tsgolint": "^0.19.0",
 		"semantic-release": "^25.0.3",
+		"semantic-release-unsquash": "^0.4.0",
 		"tsdown": "^0.21.7",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.2",
