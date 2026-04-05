@@ -9,23 +9,23 @@ This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API.
 ## Key Commands
 
 ### Development
-- `pnpm run dev` - Start development server with hot reloading
-- `pnpm run build` - Build the project for production
-- `pnpm start` - Run the built project
+- `npm run dev` - Start development server with hot reloading
+- `npm run build` - Build the project for production
+- `npm start` - Run the built project
 
 ### Code Quality
-- `pnpm run check` - Run Biome formatter and linter (auto-fixes issues)
-- `pnpm run check:types` - TypeScript type checking without emitting files
-- `pnpm test` - Runs Vitest against all `*.test.ts` files (including `tests/integration/**`). Integration tests will fail by design without `HEVY_API_KEY`. See the "Testing" section in `README.md` for CI requirements and secret configuration.
+- `npm run check` - Run Biome formatter and linter (auto-fixes issues)
+- `npm run check:types` - TypeScript type checking without emitting files
+- `npm test` - Runs Vitest against all `*.test.ts` files (including `tests/integration/**`). Integration tests will fail by design without `HEVY_API_KEY`. See the "Testing" section in `README.md` for CI requirements and secret configuration.
 
 ### API Client Generation
-- `pnpm run export-specs` - Export OpenAPI specification
-- `pnpm run build:client` - Generate API client using Kubb from OpenAPI spec
+- `npm run export-specs` - Export OpenAPI specification
+- `npm run build:client` - Generate API client using Kubb from OpenAPI spec
 
 ### Testing Variants
-- `pnpm vitest run --exclude tests/integration/**` - Unit tests only
-- `pnpm vitest run tests/integration` - Integration tests only (requires HEVY_API_KEY)
-- `pnpm vitest run --coverage` - Tests with coverage report
+- `npx vitest run --exclude tests/integration/**` - Unit tests only
+- `npx vitest run tests/integration` - Integration tests only (requires HEVY_API_KEY)
+- `npx vitest run --coverage` - Tests with coverage report
 
 ## Architecture
 
@@ -66,8 +66,8 @@ The project uses a generated API client via Kubb that creates:
 
 ### Client Regeneration
 When API changes occur:
-1. Update `openapi-spec.json` with `pnpm run export-specs`
-2. Regenerate client with `pnpm run build:client`
+1. Update `openapi-spec.json` with `npm run export-specs`
+2. Regenerate client with `npm run build:client`
 3. Generated code is automatically formatted via Kubb hooks
 
 ## Environment Setup

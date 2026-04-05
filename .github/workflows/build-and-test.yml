@@ -22,36 +22,30 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v6
 
-    - name: Set up pnpm
-      uses: pnpm/action-setup@v5
-      with:
-        run_install: false
-
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
         node-version-file: '.nvmrc'
-        cache: 'pnpm'
-        cache-dependency-path: pnpm-lock.yaml
+        cache: 'npm'
 
     - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      run: npm ci
 
     - name: Run Check
-      run: pnpm run check
+      run: npm run check
 
     - name: Validate OpenAPI Spec
-      run: pnpm run validate:openapi
+      run: npm run validate:openapi
 
     - name: Run build
-      run: pnpm run build
+      run: npm run build
       env:
         SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
     - name: Run tests with coverage
-      run: pnpm vitest run --coverage
+      run: npx vitest run --coverage
       env:
         HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 

@@ -21,13 +21,13 @@ Pick the workflow that fits your setup:
 | Scenario | Command | Requirements |
 | --- | --- | --- |
 | One-off stdio run | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` | Node.js ≥ 20, Hevy API key |
-| Local development | `pnpm install && pnpm run dev` | `.env` with `HEVY_API_KEY`, pnpm via Corepack |
+| Local development | `npm install && npm run dev` | `.env` with `HEVY_API_KEY`, npm via Corepack |
 
 ## Prerequisites
 
 - Node.js (v20 or higher; strongly recommended to use the exact version pinned in
   `.nvmrc` to match CI)
-- pnpm (via Corepack)
+- npm
 - A Hevy API key
 
 ## Installation
@@ -47,8 +47,6 @@ git clone https://github.com/chrisdoc/hevy-mcp.git
 cd hevy-mcp
 
 # Install dependencies
-corepack use pnpm@10.22.0
-pnpm install
 
 # Create .env and add your keys (never commit real keys)
 cp .env.sample .env
@@ -108,7 +106,7 @@ entry into it without removing other servers.
 You can supply your Hevy API key in two ways:
 
 1. Environment variable (`HEVY_API_KEY`)
-2. Command-line argument (`--hevy-api-key=your_key` or `hevy-api-key=your_key` after `--` when using pnpm scripts)
+2. Command-line argument (`--hevy-api-key=your_key` or `hevy-api-key=your_key` after `--` when using npm scripts)
 
 Create a `.env` file in the project root (you can copy from [.env.sample](.env.sample)) with the following content if using the environment variable approach:
 
@@ -119,7 +117,7 @@ HEVY_API_KEY=your_hevy_api_key_here
 Replace `your_hevy_api_key_here` with your actual Hevy API key. If you prefer the command argument approach you can skip setting the environment variable and start the server with for example:
 
 ```bash
-pnpm start -- --hevy-api-key=your_hevy_api_key_here
+npm start -- --hevy-api-key=your_hevy_api_key_here
 ```
 
 ### Sentry monitoring
@@ -167,7 +165,7 @@ You are likely running an outdated build or trying to connect with an HTTP-based
    ```bash
    npx -y hevy-mcp@latest
    # or if installed locally:
-   pnpm install hevy-mcp@latest
+   npm install hevy-mcp@latest
    ```
 
 2. **Update your client configuration** to use stdio transport instead of HTTP. For example, in Cursor's `~/.cursor/mcp.json`:
@@ -197,12 +195,12 @@ You are likely running an outdated build or trying to connect with an HTTP-based
 3. **Clear any cached builds:**
    ```bash
    # If you have a local clone, rebuild
-   pnpm run build
+   npm run build
    
    # Or remove node_modules and reinstall
    rm -rf node_modules dist
-   pnpm install
-   pnpm run build
+   npm install
+   npm run build
    ```
 
 4. **Ensure you're not running a custom HTTP server.** If you have custom code that imports `createHttpServer()`, it will now throw an error. Remove those imports and use stdio transport instead.
@@ -214,7 +212,7 @@ If you absolutely need HTTP/SSE transport, you can use version `1.17.x` or earli
 ### Development
 
 ```bash
-pnpm run dev
+npm run dev
 ```
 
 This starts the MCP server in development mode with hot reloading.
@@ -222,8 +220,8 @@ This starts the MCP server in development mode with hot reloading.
 ### Production
 
 ```bash
-pnpm run build
-pnpm start
+npm run build
+npm start
 ```
 
 ### Docker (deprecated)
@@ -302,7 +300,7 @@ hevy-mcp/
 This project uses Biome for code formatting and linting:
 
 ```bash
-pnpm run check
+npm run check
 ```
 
 ### Testing
@@ -312,10 +310,10 @@ pnpm run check
 To run all tests (unit and integration), use:
 
 ```bash
-pnpm test
+npm test
 ```
 
-> **Note:** `pnpm test` runs **all** tests. Integration tests will fail by design if
+> **Note:** `npm test` runs **all** tests. Integration tests will fail by design if
 > `HEVY_API_KEY` is missing. If you don’t have an API key locally, use the unit
 > test command below.
 
@@ -324,13 +322,13 @@ pnpm test
 To run only unit tests (excluding integration tests):
 
 ```bash
-pnpm vitest run --exclude tests/integration/**
+npx vitest run --exclude tests/integration/**
 ```
 
 Or with coverage:
 
 ```bash
-pnpm vitest run --coverage --exclude tests/integration/**
+npx vitest run --coverage --exclude tests/integration/**
 ```
 
 #### Run Only Integration Tests
@@ -338,7 +336,7 @@ pnpm vitest run --coverage --exclude tests/integration/**
 To run only the integration tests (requires a valid `HEVY_API_KEY`):
 
 ```bash
-pnpm vitest run tests/integration
+npx vitest run tests/integration
 ```
 
 **Note:** The integration tests will fail if the `HEVY_API_KEY` environment variable is not set. This is by design to ensure that the tests are always run with a valid API key.
@@ -350,7 +348,7 @@ For GitHub Actions:
 1. Unit + integration tests are executed as part of the normal `Build and Test` workflow
 2. Integration tests require the `HEVY_API_KEY` secret to be set
 
-The workflow runs `pnpm vitest run --coverage` and provides `HEVY_API_KEY` from
+The workflow runs `npx vitest run --coverage` and provides `HEVY_API_KEY` from
 repository secrets.
 
 To set up the `HEVY_API_KEY` secret:
@@ -399,15 +397,15 @@ considered acceptable.
 The API client is generated from the OpenAPI specification using [Kubb](https://kubb.dev/):
 
 ```bash
-pnpm run export-specs
-pnpm run build:client
+npm run export-specs
+npm run build:client
 ```
 
 Kubb generates TypeScript types, API clients, Zod schemas, and mock data from the OpenAPI specification.
 
 ### Troubleshooting
 
-- **Rollup optional dependency missing**: If you see an error similar to `Cannot find module @rollup/rollup-linux-x64-gnu`, set the environment variable `ROLLUP_SKIP_NODEJS_NATIVE_BUILD=true` before running `pnpm run build`. This forces Rollup to use the pure JavaScript fallback and avoids the npm optional dependency bug on some Linux runners.
+- **Rollup optional dependency missing**: If you see an error similar to `Cannot find module @rollup/rollup-linux-x64-gnu`, set the environment variable `ROLLUP_SKIP_NODEJS_NATIVE_BUILD=true` before running `npm run build`. This forces Rollup to use the pure JavaScript fallback and avoids the npm optional dependency bug on some Linux runners.
 
 ## License
 
