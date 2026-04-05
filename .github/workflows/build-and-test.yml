@@ -13,6 +13,7 @@ permissions:
 
 env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
