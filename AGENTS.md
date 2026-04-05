@@ -5,7 +5,7 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v20+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
+- The codebase is TypeScript (Node.js v24+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
@@ -140,7 +140,7 @@ HEVY_API_KEY=your_hevy_api_key_here
 
 ### Node.js Version
 
-- **Supported:** Node.js >= 20
+- **Supported:** Node.js >= 24
 - **Recommended:** Use the exact version pinned in `.nvmrc` (CI uses this exact version)
 - If you use `nvm`, run `nvm use` in the repo root to match `.nvmrc`
 - Use `node --version` to verify current version
