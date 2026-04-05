@@ -226,9 +226,15 @@ function fixMissingGlobalTags(spec) {
 	const existingTags = new Set(spec.tags.map((t) => t.name));
 
 	for (const tag of usedTags) {
+		if (typeof tag !== "string") {
+			console.warn(
+				`  Warning: Skipping invalid non-string tag: ${JSON.stringify(tag)}`,
+			);
+			continue;
+		}
 		if (!existingTags.has(tag)) {
-			spec.tags.push({ name: tag, description: `${String(tag)} operations` });
-			console.log(`  Fixed: Added missing global tag "${String(tag)}"`);
+			spec.tags.push({ name: tag, description: `${tag} operations` });
+			console.log(`  Fixed: Added missing global tag "${tag}"`);
 		}
 	}
 }

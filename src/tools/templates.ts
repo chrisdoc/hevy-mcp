@@ -331,7 +331,10 @@ export function registerTemplateTools(
 
 			// Filter by query (case-insensitive title substring match)
 			const queryLower = query.toLowerCase();
-			let results = (exerciseTemplateCache ?? []).filter((t) =>
+			if (exerciseTemplateCache === null) {
+				throw new Error("Failed to populate exercise template cache.");
+			}
+			let results = exerciseTemplateCache.filter((t) =>
 				(t.title ?? "").toLowerCase().includes(queryLower),
 			);
 
