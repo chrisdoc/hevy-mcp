@@ -9,6 +9,11 @@
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
+## Git & Workflow Standards
+
+- **Conventional Commits**: Always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`).
+- **GitHub Squash and Merge**: When using "Squash and Merge" on GitHub, always ensure the **PR Title** (which becomes the final commit title) follows the conventional commit format in **lowercase** (e.g., `refactor: replace biome with oxlint`). This is critical for `semantic-release` to correctly identify version bumps.
+
 ## Working Effectively
 
 ### Bootstrap and Build Repository
