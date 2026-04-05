@@ -21,7 +21,7 @@ Pick the workflow that fits your setup:
 | Scenario | Command | Requirements |
 | --- | --- | --- |
 | One-off stdio run | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` | Node.js ≥ 20, Hevy API key |
-| Local development | `npm install && npm run dev` | `.env` with `HEVY_API_KEY`, npm via Corepack |
+| Local development | `npm install && npm run dev` | `.env` with `HEVY_API_KEY` |
 
 ## Prerequisites
 
@@ -47,6 +47,7 @@ git clone https://github.com/chrisdoc/hevy-mcp.git
 cd hevy-mcp
 
 # Install dependencies
+npm install
 
 # Create .env and add your keys (never commit real keys)
 cp .env.sample .env
