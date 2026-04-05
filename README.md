@@ -18,10 +18,10 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 Pick the workflow that fits your setup:
 
-| Scenario | Command | Requirements |
-| --- | --- | --- |
+| Scenario          | Command                                   | Requirements               |
+| ----------------- | ----------------------------------------- | -------------------------- |
 | One-off stdio run | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` | Node.js ≥ 20, Hevy API key |
-| Local development | `npm install && npm run dev` | `.env` with `HEVY_API_KEY` |
+| Local development | `npm install && npm run dev`              | `.env` with `HEVY_API_KEY` |
 
 ## Prerequisites
 
@@ -41,6 +41,7 @@ HEVY_API_KEY=your_hevy_api_key_here npx -y hevy-mcp
 ```
 
 ### Manual Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/chrisdoc/hevy-mcp.git
@@ -61,13 +62,13 @@ To use this MCP server with Cursor, add/merge this server entry under
 
 ```json
 {
-  "hevy-mcp": {
-    "command": "npx",
-    "args": ["-y", "hevy-mcp"],
-    "env": {
-      "HEVY_API_KEY": "your-api-key-here"
-    }
-  }
+	"hevy-mcp": {
+		"command": "npx",
+		"args": ["-y", "hevy-mcp"],
+		"env": {
+			"HEVY_API_KEY": "your-api-key-here"
+		}
+	}
 }
 ```
 
@@ -87,20 +88,19 @@ entry into it without removing other servers.
 
 ```json
 {
-  "mcpServers": {
-    "hevy-mcp": {
-      "command": "npx",
-      "args": ["-y", "hevy-mcp"],
-      "env": {
-        "HEVY_API_KEY": "your-api-key-here"
-      }
-    }
-  }
+	"mcpServers": {
+		"hevy-mcp": {
+			"command": "npx",
+			"args": ["-y", "hevy-mcp"],
+			"env": {
+				"HEVY_API_KEY": "your-api-key-here"
+			}
+		}
+	}
 }
 ```
 
 </details>
-
 
 ## Configuration
 
@@ -139,7 +139,6 @@ repository and remove the Sentry initialization in `src/index.ts`.
 
 ## Transport
 
-
 ### Stdio Only (Current)
 
 **As of version 1.18.0, hevy-mcp only supports stdio transport.** HTTP/SSE
@@ -163,6 +162,7 @@ You are likely running an outdated build or trying to connect with an HTTP-based
 #### Steps to Migrate:
 
 1. **Update to the latest version:**
+
    ```bash
    npx -y hevy-mcp@latest
    # or if installed locally:
@@ -170,34 +170,37 @@ You are likely running an outdated build or trying to connect with an HTTP-based
    ```
 
 2. **Update your client configuration** to use stdio transport instead of HTTP. For example, in Cursor's `~/.cursor/mcp.json`:
-   
+
    **Old HTTP-based config (no longer supported):**
+
    ```json
    {
-     "hevy-mcp": {
-       "url": "http://localhost:3001/sse"
-     }
+   	"hevy-mcp": {
+   		"url": "http://localhost:3001/sse"
+   	}
    }
    ```
-   
+
    **New stdio-based config (current):**
+
    ```json
    {
-     "hevy-mcp": {
-       "command": "npx",
-       "args": ["-y", "hevy-mcp"],
-       "env": {
-         "HEVY_API_KEY": "your-api-key-here"
-       }
-     }
+   	"hevy-mcp": {
+   		"command": "npx",
+   		"args": ["-y", "hevy-mcp"],
+   		"env": {
+   			"HEVY_API_KEY": "your-api-key-here"
+   		}
+   	}
    }
    ```
 
 3. **Clear any cached builds:**
+
    ```bash
    # If you have a local clone, rebuild
    npm run build
-   
+
    # Or remove node_modules and reinstall
    rm -rf node_modules dist
    npm install
@@ -234,6 +237,7 @@ Docker-based workflows have been retired so we can focus on the stdio-native exp
 The server implements the following MCP tools for interacting with the Hevy API:
 
 ### Workout Tools
+
 - `get-workouts`: Fetch and format workout data
 - `get-workout`: Get a single workout by ID
 - `create-workout`: Create a new workout
@@ -242,21 +246,25 @@ The server implements the following MCP tools for interacting with the Hevy API:
 - `get-workout-events`: Get workout update/delete events
 
 ### Routine Tools
+
 - `get-routines`: Fetch and format routine data
 - `create-routine`: Create a new routine
 - `update-routine`: Update an existing routine
 - `get-routine-by-id`: Get a single routine by ID using direct endpoint
 
 ### Exercise Template Tools
+
 - `get-exercise-templates`: Fetch exercise templates
 - `get-exercise-template`: Get a template by ID
 
 ### Routine Folder Tools
+
 - `get-routine-folders`: Fetch routine folders
 - `create-routine-folder`: Create a new folder
 - `get-routine-folder`: Get a folder by ID
 
 ### Webhook Tools
+
 - `get-webhook-subscription`: Get the current webhook subscription
 - `create-webhook-subscription`: Create a new webhook subscription
 - `delete-webhook-subscription`: Delete the current webhook subscription
@@ -298,7 +306,7 @@ hevy-mcp/
 
 ### Code Style
 
-This project uses Biome for code formatting and linting:
+This project uses oxlint and oxfmt for code formatting and linting:
 
 ```bash
 npm run check

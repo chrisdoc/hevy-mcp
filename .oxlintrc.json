@@ -1,0 +1,34 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc"],
+	"ignorePatterns": [
+		"**/node_modules",
+		"**/dist",
+		"**/src/generated",
+		"**/coverage"
+	],
+	"categories": {
+		"correctness": "error"
+	},
+	"rules": {
+		"no-param-reassign": "error",
+		"@typescript-eslint/consistent-type-assertions": "error",
+		"default-param-last": "error",
+		"@typescript-eslint/no-inferrable-types": "error",
+		"unicorn/no-useless-fallback-in-spread": "off",
+		"unicorn/no-useless-spread": "off",
+		"no-unused-vars": [
+			"error",
+			{
+				"argsIgnorePattern": "^_",
+				"varsIgnorePattern": "^_",
+				"caughtErrorsIgnorePattern": "^_"
+			}
+		],
+		"await-thenable": "error",
+		"no-floating-promises": "error"
+	},
+	"env": {
+		"builtin": true
+	}
+}
