@@ -16,6 +16,7 @@
 		"**/node_modules",
 		"**/dist",
 		"**/src/generated",
-		"**/coverage"
+		"**/coverage",
+		"**/CHANGELOG.md"
 	]
 }
