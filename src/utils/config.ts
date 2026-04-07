@@ -1,5 +1,7 @@
 export interface HevyConfig {
 	apiKey?: string;
+	transport?: "stdio" | "http";
+	port?: number;
 }
 
 /**
@@ -15,6 +17,9 @@ export function parseConfig(
 	env: NodeJS.ProcessEnv,
 ): HevyConfig {
 	let apiKey = "";
+	let transport: "stdio" | "http" | undefined;
+	let port: number | undefined;
+
 	const apiKeyArgPatterns = [
 		/^--hevy-api-key=(.+)$/i,
 		/^--hevyApiKey=(.+)$/i,
@@ -28,7 +33,20 @@ export function parseConfig(
 				break;
 			}
 		}
-		if (apiKey) break;
+		const transportMatch = raw.match(/^--transport=(stdio|http)$/i);
+		if (transportMatch) {
+			transport = transportMatch[1].toLowerCase() as "stdio" | "http";
+		}
+		const portMatch = raw.match(/^--port=(\d+)$/);
+		if (portMatch) {
+			const parsedPort = parseInt(portMatch[1], 10);
+			if (parsedPort < 0 || parsedPort > 65535) {
+				throw new Error(
+					`Invalid --port value "${portMatch[1]}". Expected an integer between 0 and 65535.`,
+				);
+			}
+			port = parsedPort;
+		}
 	}
 	if (!apiKey) {
 		apiKey = env.HEVY_API_KEY || "";
@@ -36,6 +54,8 @@ export function parseConfig(
 
 	return {
 		apiKey,
+		transport,
+		port,
 	};
 }
 

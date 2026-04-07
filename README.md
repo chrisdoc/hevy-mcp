@@ -38,10 +38,11 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 Pick the workflow that fits your setup:
 
-| Scenario              | Command                                     | Requirements               |
-| :-------------------- | :------------------------------------------ | :------------------------- |
-| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp`   | Node.js ≥ 24, Hevy API key |
-| **Local development** | `npm install && npm run build && npm start` | `.env` with `HEVY_API_KEY` |
+| Scenario              | Command                                                                | Requirements               |
+| :-------------------- | :--------------------------------------------------------------------- | :------------------------- |
+| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp`                              | Node.js ≥ 24, Hevy API key |
+| **HTTP mode**         | `HEVY_API_KEY=sk_live... npx -y hevy-mcp --transport=http --port=3000` | Node.js ≥ 24, Hevy API key |
+| **Local development** | `npm install && npm run build && npm start`                            | `.env` with `HEVY_API_KEY` |
 
 ---
 
@@ -150,12 +151,34 @@ HEVY_API_KEY=your_hevy_api_key_here
 
 ---
 
+## Transport Modes
+
+`hevy-mcp` supports two transport modes:
+
+### stdio (default)
+
+The default mode. Used by all MCP clients that launch the server as a subprocess:
+
+```bash
+HEVY_API_KEY=your_key npx -y hevy-mcp
+```
+
+### Streamable HTTP
+
+Use `--transport=http` to start a Streamable HTTP server. The server listens on `/mcp` and manages one MCP session per client connection.
+
+```bash
+HEVY_API_KEY=your_key npx -y hevy-mcp --transport=http --port=3000
+```
+
+Default port is `3000`. Inspect with:
+
+```bash
+npx @modelcontextprotocol/inspector http://localhost:3000/mcp
+```
+
 <details>
-<summary><strong>⚠️ Deprecation Notices (HTTP/SSE & Docker)</strong></summary>
-
-### Stdio Only
-
-As of version **1.18.0**, `hevy-mcp` only supports **stdio** transport. HTTP/SSE transport has been completely removed to simplify the codebase and focus on the native MCP experience.
+<summary><strong>⚠️ Deprecation Notice (Docker)</strong></summary>
 
 ### Docker
 

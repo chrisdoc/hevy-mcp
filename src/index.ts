@@ -47,6 +47,7 @@ import { registerTemplateTools } from "./tools/templates.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
+import { startHttpServer } from "./utils/httpServer.js";
 import { createClient } from "./utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
@@ -89,11 +90,16 @@ export default function createServer({ config }: { config: ServerConfig }) {
 export async function runServer() {
 	const args = process.argv.slice(2);
 	const cfg = parseConfig(args, process.env);
-	const apiKey = cfg.apiKey;
-	assertApiKey(apiKey);
+	assertApiKey(cfg.apiKey);
 
-	const server = buildServer(apiKey);
-	console.error("Starting MCP server in stdio mode");
-	const transport = new StdioServerTransport();
-	await server.connect(transport);
+	if (cfg.transport === "http") {
+		const port = cfg.port ?? 3000;
+		console.error(`Starting MCP server in HTTP mode on port ${port}`);
+		await startHttpServer(() => buildServer(cfg.apiKey!), port);
+	} else {
+		console.error("Starting MCP server in stdio mode");
+		const server = buildServer(cfg.apiKey!);
+		const transport = new StdioServerTransport();
+		await server.connect(transport);
+	}
 }

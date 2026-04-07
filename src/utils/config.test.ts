@@ -31,4 +31,35 @@ describe("parseConfig", () => {
 		const cfg = parseConfig([], env({ HEVY_API_KEY: "envOnly" }));
 		expect(cfg.apiKey).toBe("envOnly");
 	});
+
+	it("parses --transport=http", () => {
+		const cfg = parseConfig(["--transport=http"], env({}));
+		expect(cfg.transport).toBe("http");
+	});
+
+	it("parses --transport=stdio", () => {
+		const cfg = parseConfig(["--transport=stdio"], env({}));
+		expect(cfg.transport).toBe("stdio");
+	});
+
+	it("transport defaults to undefined when not provided", () => {
+		const cfg = parseConfig([], env({}));
+		expect(cfg.transport).toBeUndefined();
+	});
+
+	it("parses --port=4000", () => {
+		const cfg = parseConfig(["--port=4000"], env({}));
+		expect(cfg.port).toBe(4000);
+	});
+
+	it("port defaults to undefined when not provided", () => {
+		const cfg = parseConfig([], env({}));
+		expect(cfg.port).toBeUndefined();
+	});
+
+	it("throws on out-of-range port", () => {
+		expect(() => parseConfig(["--port=99999"], env({}))).toThrow(
+			/Invalid --port value/,
+		);
+	});
 });
