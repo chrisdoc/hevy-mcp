@@ -1,0 +1,14 @@
+http:
+  routers:
+    hevy-mcp:
+      rule: "Host(`hevymcp.ams.iosharp.com`)"
+      entryPoints:
+        - web-secure
+      service: hevy-mcp
+      tls:
+        certResolver: myresolver
+  services:
+    hevy-mcp:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.178.42:8012"
