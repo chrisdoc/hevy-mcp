@@ -8,6 +8,11 @@ import {
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import express from "express";
+import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
+import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import { SQLiteOAuthProvider } from "./oauthProvider.js";
+import { createConsentRouter } from "./consent.js";
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MiB
 
@@ -129,5 +134,91 @@ export function startHttpServer(
 	return new Promise((resolve, reject) => {
 		httpServer.listen(port, () => resolve(httpServer));
 		httpServer.on("error", reject);
+	});
+}
+
+export function startOAuthHttpServer(
+	buildMcpServer: () => McpServer,
+	port: number,
+	issuerUrl: string,
+	title: string,
+): Promise<void> {
+	const provider = new SQLiteOAuthProvider(issuerUrl);
+	const app = express();
+	const sessions = new Map<string, Session>();
+
+	app.use(express.json({ limit: MAX_BODY_BYTES }));
+
+	app.use(
+		mcpAuthRouter({
+			provider,
+			issuerUrl: new URL(issuerUrl),
+			resourceServerUrl: new URL(`${issuerUrl}/mcp`),
+		}),
+	);
+
+	app.use(createConsentRouter(provider, title));
+
+	app.all(
+		"/mcp",
+		requireBearerAuth({ verifier: provider }),
+		async (req, res) => {
+			try {
+				const sessionIdHeader = req.headers["mcp-session-id"];
+				const sessionId = Array.isArray(sessionIdHeader)
+					? sessionIdHeader[0]
+					: sessionIdHeader;
+
+				if (sessionId && sessions.has(sessionId)) {
+					await sessions
+						.get(sessionId)!
+						.transport.handleRequest(req, res, req.body);
+					return;
+				}
+
+				if (
+					!sessionId &&
+					req.method === "POST" &&
+					isInitializeRequest(req.body)
+				) {
+					let mcpServer: McpServer;
+					const transport = new StreamableHTTPServerTransport({
+						sessionIdGenerator: () => randomUUID(),
+						onsessioninitialized: (id) => {
+							sessions.set(id, { transport, server: mcpServer });
+						},
+					});
+					transport.onclose = () => {
+						if (transport.sessionId) sessions.delete(transport.sessionId);
+					};
+					mcpServer = buildMcpServer();
+					await mcpServer.connect(transport);
+					await transport.handleRequest(req, res, req.body);
+					return;
+				}
+
+				res.status(404).json({
+					jsonrpc: "2.0",
+					error: { code: -32000, message: "Session not found" },
+					id: null,
+				});
+			} catch {
+				if (!res.headersSent) {
+					res.status(500).json({
+						jsonrpc: "2.0",
+						error: { code: -32603, message: "Internal error" },
+						id: null,
+					});
+				}
+			}
+		},
+	);
+
+	return new Promise((resolve, reject) => {
+		const server = app.listen(port, () => {
+			console.error(`OAuth HTTP server listening on port ${port}`);
+			resolve();
+		});
+		server.on("error", reject);
 	});
 }

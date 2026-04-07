@@ -1,0 +1,15 @@
+services:
+  hevy-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.oauth
+    ports:
+      - "8012:8000"
+    volumes:
+      - oauth-data:/data
+    environment:
+      - OAUTH_DB_PATH=/data/oauth.db
+    env_file: .env
+
+volumes:
+  oauth-data:

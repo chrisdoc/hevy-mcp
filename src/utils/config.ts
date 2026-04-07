@@ -1,7 +1,8 @@
 export interface HevyConfig {
 	apiKey?: string;
-	transport?: "stdio" | "http";
+	transport?: "stdio" | "http" | "http+oauth";
 	port?: number;
+	issuerUrl?: string;
 }
 
 /**
@@ -17,8 +18,9 @@ export function parseConfig(
 	env: NodeJS.ProcessEnv,
 ): HevyConfig {
 	let apiKey = "";
-	let transport: "stdio" | "http" | undefined;
+	let transport: "stdio" | "http" | "http+oauth" | undefined;
 	let port: number | undefined;
+	let issuerUrl: string | undefined;
 
 	const apiKeyArgPatterns = [
 		/^--hevy-api-key=(.+)$/i,
@@ -33,9 +35,12 @@ export function parseConfig(
 				break;
 			}
 		}
-		const transportMatch = raw.match(/^--transport=(stdio|http)$/i);
+		const transportMatch = raw.match(/^--transport=(stdio|http|http\+oauth)$/i);
 		if (transportMatch) {
-			transport = transportMatch[1].toLowerCase() as "stdio" | "http";
+			transport = transportMatch[1].toLowerCase() as
+				| "stdio"
+				| "http"
+				| "http+oauth";
 		}
 		const portMatch = raw.match(/^--port=(\d+)$/);
 		if (portMatch) {
@@ -47,15 +52,23 @@ export function parseConfig(
 			}
 			port = parsedPort;
 		}
+		const issuerMatch = raw.match(/^--issuer-url=(.+)$/i);
+		if (issuerMatch) {
+			issuerUrl = issuerMatch[1];
+		}
 	}
 	if (!apiKey) {
 		apiKey = env.HEVY_API_KEY || "";
+	}
+	if (!issuerUrl) {
+		issuerUrl = env.MCP_ISSUER_URL;
 	}
 
 	return {
 		apiKey,
 		transport,
 		port,
+		issuerUrl,
 	};
 }
 
@@ -65,6 +78,17 @@ export function assertApiKey(
 	if (!apiKey) {
 		console.error(
 			"Hevy API key is required. Provide it via the HEVY_API_KEY environment variable or the --hevy-api-key=YOUR_KEY command argument.",
+		);
+		process.exit(1);
+	}
+}
+
+export function assertIssuerUrl(
+	url: string | undefined,
+): asserts url is string {
+	if (!url) {
+		console.error(
+			"Issuer URL is required for http+oauth transport. Provide it via the MCP_ISSUER_URL environment variable or the --issuer-url=URL command argument.",
 		);
 		process.exit(1);
 	}

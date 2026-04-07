@@ -88,6 +88,44 @@ Required environment variables:
 
 - `HEVY_API_KEY` - Hevy API key (required for server operation and integration tests)
 
+### HTTP+OAuth Transport
+
+The `http+oauth` transport exposes a password-gated OAuth 2.1 authorization server + MCP resource server, compatible with claude.ai Connectors.
+
+Additional environment variables (required for `http+oauth` mode):
+
+- `MCP_ISSUER_URL` - Public base URL of this server (e.g. `https://mcp.example.com`). Also settable via `--issuer-url=URL`.
+- `MCP_AUTH_PASSWORD` - Password shown in the consent form; leave empty to reject all logins.
+- `OAUTH_DB_PATH` - Path to the SQLite database file (default: `./oauth.db`).
+
+Starting the server:
+
+```bash
+MCP_ISSUER_URL=http://localhost:3000 MCP_AUTH_PASSWORD=secret HEVY_API_KEY=xxx \
+  node dist/cli.mjs --transport=http+oauth --port=3000
+```
+
+Verification:
+
+```bash
+# OAuth metadata
+curl http://localhost:3000/.well-known/oauth-authorization-server | jq .
+
+# Unauthenticated request should return 401
+curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+#### Docker Compose
+
+`Dockerfile.oauth` and `docker-compose.yml` provide a self-contained deployment (port 8012 → 8000 inside container). The existing `Dockerfile` stub (which deliberately errors) and `docker.test.ts` are untouched.
+
+```bash
+# Create .env with HEVY_API_KEY, MCP_AUTH_PASSWORD, MCP_ISSUER_URL
+docker compose -f docker-compose.yml build
+docker compose -f docker-compose.yml up -d
+```
+
 ## Tool Implementation Pattern
 
 Each MCP tool follows this pattern:

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { parseConfig } from "./config.js";
+import { describe, expect, it, vi } from "vitest";
+import { assertIssuerUrl, parseConfig } from "./config.js";
 
 function env(vars: Record<string, string | undefined>): NodeJS.ProcessEnv {
 	return { ...process.env, ...vars } as NodeJS.ProcessEnv;
@@ -61,5 +61,47 @@ describe("parseConfig", () => {
 		expect(() => parseConfig(["--port=99999"], env({}))).toThrow(
 			/Invalid --port value/,
 		);
+	});
+
+	it("parses --transport=http+oauth", () => {
+		const cfg = parseConfig(["--transport=http+oauth"], env({}));
+		expect(cfg.transport).toBe("http+oauth");
+	});
+
+	it("parses --issuer-url=https://example.com", () => {
+		const cfg = parseConfig(["--issuer-url=https://example.com"], env({}));
+		expect(cfg.issuerUrl).toBe("https://example.com");
+	});
+
+	it("falls back to MCP_ISSUER_URL env var", () => {
+		const cfg = parseConfig(
+			[],
+			env({ MCP_ISSUER_URL: "https://env.example.com" }),
+		);
+		expect(cfg.issuerUrl).toBe("https://env.example.com");
+	});
+
+	it("CLI --issuer-url takes priority over MCP_ISSUER_URL env var", () => {
+		const cfg = parseConfig(
+			["--issuer-url=https://cli.example.com"],
+			env({ MCP_ISSUER_URL: "https://env.example.com" }),
+		);
+		expect(cfg.issuerUrl).toBe("https://cli.example.com");
+	});
+});
+
+describe("assertIssuerUrl", () => {
+	it("exits if issuer URL is undefined", () => {
+		const exitSpy = vi
+			.spyOn(process, "exit")
+			.mockImplementation((_code?: string | number | null) => {
+				throw new Error("process.exit called");
+			});
+		expect(() => assertIssuerUrl(undefined)).toThrow("process.exit called");
+		exitSpy.mockRestore();
+	});
+
+	it("does not throw when issuer URL is provided", () => {
+		expect(() => assertIssuerUrl("https://example.com")).not.toThrow();
 	});
 });

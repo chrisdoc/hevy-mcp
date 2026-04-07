@@ -46,8 +46,8 @@ import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
-import { assertApiKey, parseConfig } from "./utils/config.js";
-import { startHttpServer } from "./utils/httpServer.js";
+import { assertApiKey, assertIssuerUrl, parseConfig } from "./utils/config.js";
+import { startHttpServer, startOAuthHttpServer } from "./utils/httpServer.js";
 import { createClient } from "./utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
@@ -90,6 +90,21 @@ export default function createServer({ config }: { config: ServerConfig }) {
 export async function runServer() {
 	const args = process.argv.slice(2);
 	const cfg = parseConfig(args, process.env);
+
+	if (cfg.transport === "http+oauth") {
+		assertApiKey(cfg.apiKey);
+		assertIssuerUrl(cfg.issuerUrl);
+		const port = cfg.port ?? 3000;
+		console.error(`Starting MCP server in HTTP+OAuth mode on port ${port}`);
+		await startOAuthHttpServer(
+			() => buildServer(cfg.apiKey!),
+			port,
+			cfg.issuerUrl!,
+			"Hevy MCP Authorization",
+		);
+		return;
+	}
+
 	assertApiKey(cfg.apiKey);
 
 	if (cfg.transport === "http") {
