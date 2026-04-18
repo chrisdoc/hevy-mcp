@@ -443,6 +443,81 @@ describe("registerRoutineTools", () => {
 		expect(response.content[1]?.text).toContain("issues/261");
 	});
 
+	it("create-routine unwraps {routine: [...]} mutation response", async () => {
+		// Regression test: the Hevy API returns POST /v1/routines as
+		// `{ routine: [Routine] }` (a one-element array nested under a
+		// `routine` key), but the generated OpenAPI types claim the response
+		// IS a Routine. The handler must defensively unwrap so the tool
+		// returns the actual routine object, not "{}".
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "created-routine",
+			title: "Wrapped Response",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:00:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			createRoutine: vi
+				.fn()
+				.mockResolvedValue({ routine: [routine] } as unknown as Routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-routine");
+
+		const response = await handler({
+			title: "Wrapped Response",
+			folderId: null,
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal", weightKg: 50, reps: 10 }],
+				},
+			],
+		} as Record<string, unknown>);
+
+		const parsed = JSON.parse(response.content[0].text) as unknown;
+		expect(parsed).toEqual(formatRoutine(routine));
+	});
+
+	it("update-routine unwraps {routine: [...]} mutation response", async () => {
+		// Regression test: PUT /v1/routines/:id has the same wrapping
+		// behaviour as POST; unwrap so the response isn't "{}".
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "updated-routine",
+			title: "Wrapped Response",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			updateRoutine: vi
+				.fn()
+				.mockResolvedValue({ routine: [routine] } as unknown as Routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		const response = await handler({
+			routineId: "routine-123",
+			title: "Wrapped Response",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal", weightKg: 50, reps: 10 }],
+				},
+			],
+		} as Record<string, unknown>);
+
+		const parsed = JSON.parse(response.content[0].text) as unknown;
+		expect(parsed).toEqual(formatRoutine(routine));
+	});
+
 	it("create-routine omits rep_range from reps-only sets", async () => {
 		// Regression test: the Hevy API rejects PUT payloads containing
 		// `rep_range: null` with "rep_range must be of type object", and the

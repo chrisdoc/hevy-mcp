@@ -119,6 +119,31 @@ function getFixedRepsFromRepRange(
 	return start;
 }
 
+/**
+ * Unwraps the mutation (POST/PUT) response from the Hevy API.
+ *
+ * The API wraps the created/updated routine in `{ routine: [routineObj] }`
+ * — a single-element array inside a `routine` key — even though the
+ * generated OpenAPI types claim the response body IS a Routine. Until the
+ * spec is corrected, unwrap defensively: accept either the wrapped shape,
+ * `{ routine: routineObj }`, or a bare Routine, so callers always receive
+ * a single Routine (or null).
+ */
+function unwrapMutationResponse(data: unknown): Routine | null {
+	if (!data || typeof data !== "object") {
+		return null;
+	}
+	const maybeWrapped = data as { routine?: Routine | Routine[] };
+	if (maybeWrapped.routine !== undefined) {
+		const r = maybeWrapped.routine;
+		if (Array.isArray(r)) {
+			return r[0] ?? null;
+		}
+		return r;
+	}
+	return data as Routine;
+}
+
 const repRangeDisplayWarningText =
 	"Note: Hevy's public API stores rep ranges (rep_range), but the Hevy apps may " +
 	"not display them because they rely on an internal-only exercise field " +
@@ -291,13 +316,18 @@ export function registerRoutineTools(
 				},
 			});
 
-			if (!data) {
+			// The Hevy API returns { routine: [Routine] } on POST — a wrapper
+			// around an array with a single element — even though the
+			// generated OpenAPI type claims the response IS a Routine. Unwrap
+			// it so `formatRoutine` receives the actual routine object.
+			const created = unwrapMutationResponse(data);
+			if (!created) {
 				return createEmptyResponse(
 					"Failed to create routine: Server returned no data",
 				);
 			}
 
-			const routine = formatRoutine(data);
+			const routine = formatRoutine(created);
 			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,
@@ -410,13 +440,15 @@ export function registerRoutineTools(
 				},
 			);
 
-			if (!data) {
+			// The Hevy API returns { routine: [Routine] } on PUT as well.
+			const updated = unwrapMutationResponse(data);
+			if (!updated) {
 				return createEmptyResponse(
 					`Failed to update routine with ID ${routineId}`,
 				);
 			}
 
-			const routine = formatRoutine(data);
+			const routine = formatRoutine(updated);
 			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,
