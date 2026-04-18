@@ -261,7 +261,12 @@ export function registerRoutineTools(
 								distance_meters: set.distance ?? set.distanceMeters ?? null,
 								duration_seconds: set.duration ?? set.durationSeconds ?? null,
 								custom_metric: set.customMetric ?? null,
-								rep_range: repRange,
+								// Omit rep_range when null. The Hevy API rejects PUT
+								// payloads with `rep_range: null` ("rep_range must be of
+								// type object"), and on POST we prefer omitting so the
+								// app treats the set as reps-only rather than storing a
+								// null range object.
+								...(repRange !== null && { rep_range: repRange }),
 							};
 						});
 
@@ -375,7 +380,11 @@ export function registerRoutineTools(
 									distance_meters: set.distance ?? set.distanceMeters ?? null,
 									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
-									rep_range: repRange,
+									// Omit rep_range when null. The Hevy API rejects PUT
+									// payloads with `rep_range: null` ("rep_range must be
+									// of type object"), which breaks every reps-only set
+									// (warmups and sets without a prescribed range).
+									...(repRange !== null && { rep_range: repRange }),
 								};
 							});
 

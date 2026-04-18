@@ -151,7 +151,6 @@ describe("registerRoutineTools", () => {
 								distance_meters: null,
 								duration_seconds: null,
 								custom_metric: null,
-								rep_range: null,
 							},
 						],
 					},
@@ -444,6 +443,137 @@ describe("registerRoutineTools", () => {
 		expect(response.content[1]?.text).toContain("issues/261");
 	});
 
+	it("create-routine omits rep_range from reps-only sets", async () => {
+		// Regression test: the Hevy API rejects PUT payloads containing
+		// `rep_range: null` with "rep_range must be of type object", and the
+		// mobile app stores a null range object instead of treating the set
+		// as reps-only. When no rep range is provided, the field must be
+		// omitted from the outgoing payload.
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "created-routine",
+			title: "Reps Only",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:00:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			createRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-routine");
+
+		await handler({
+			title: "Reps Only",
+			folderId: null,
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal", weightKg: 50, reps: 10 }],
+				},
+			],
+		} as Record<string, unknown>);
+
+		const call = vi.mocked(hevyClient.createRoutine).mock.calls[0]?.[0] as {
+			routine: { exercises: Array<{ sets: Array<Record<string, unknown>> }> };
+		};
+		const set = call.routine.exercises[0]?.sets[0] as Record<string, unknown>;
+		expect(set).not.toHaveProperty("rep_range");
+		expect(set.reps).toBe(10);
+	});
+
+	it("update-routine omits rep_range from reps-only sets", async () => {
+		// Regression test: `update-routine` previously always sent
+		// `rep_range: repRange`, producing `rep_range: null` for reps-only
+		// sets. The Hevy API rejects that payload ("rep_range must be of
+		// type object"), so every update with at least one reps-only set
+		// failed. The field must be omitted when no range exists.
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "updated-routine",
+			title: "Reps Only",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			updateRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({
+			routineId: "routine-123",
+			title: "Reps Only",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [
+						{ type: "warmup", weightKg: 40, reps: 6 },
+						{ type: "normal", weightKg: 60, reps: 10 },
+					],
+				},
+			],
+		} as Record<string, unknown>);
+
+		const call = vi.mocked(hevyClient.updateRoutine).mock.calls[0]?.[1] as {
+			routine: { exercises: Array<{ sets: Array<Record<string, unknown>> }> };
+		};
+		const sets = call.routine.exercises[0]?.sets ?? [];
+		for (const set of sets) {
+			expect(set).not.toHaveProperty("rep_range");
+		}
+	});
+
+	it("update-routine preserves rep_range when a real range is provided", async () => {
+		// Counterpart to the omit regression: when the caller supplies a
+		// real rep range, it must round-trip into the payload as an object
+		// so the Hevy API stores it.
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "updated-routine",
+			title: "With Range",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const hevyClient: HevyClient = {
+			updateRoutine: vi.fn().mockResolvedValue(routine),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({
+			routineId: "routine-123",
+			title: "With Range",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [
+						{
+							type: "normal",
+							weightKg: 80,
+							reps: null,
+							repRange: { start: 8, end: 12 },
+						},
+					],
+				},
+			],
+		} as Record<string, unknown>);
+
+		const call = vi.mocked(hevyClient.updateRoutine).mock.calls[0]?.[1] as {
+			routine: { exercises: Array<{ sets: Array<Record<string, unknown>> }> };
+		};
+		const set = call.routine.exercises[0]?.sets[0] as Record<string, unknown>;
+		expect(set.rep_range).toEqual({ start: 8, end: 12 });
+	});
+
 	it("create-routine schema keeps reps null (does not coerce to 0)", () => {
 		const { server, tool } = createMockServer();
 		registerRoutineTools(server, null);
@@ -685,7 +815,6 @@ describe("registerRoutineTools", () => {
 								distance_meters: null,
 								duration_seconds: null,
 								custom_metric: null,
-								rep_range: null,
 							},
 						],
 					},
