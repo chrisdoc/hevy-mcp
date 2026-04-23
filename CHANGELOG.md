@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.22.0...v1.23.0) (2026-04-23)
+
+
+### Features
+
+* add body measurements MCP tools ([#306](https://github.com/chrisdoc/hevy-mcp/issues/306)) ([78b3a5b](https://github.com/chrisdoc/hevy-mcp/commit/78b3a5b7dc87648e5de15ce8229468bc094a618d))
+
 # [1.22.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.20...v1.22.0) (2026-04-23)
 
 
