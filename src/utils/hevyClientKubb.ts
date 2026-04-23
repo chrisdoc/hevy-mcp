@@ -5,16 +5,19 @@ import type {
 import axios from "axios";
 import * as api from "../generated/client/api";
 import type {
+	GetV1BodyMeasurementsQueryParams,
 	GetV1ExerciseHistoryExercisetemplateidQueryParams,
 	GetV1ExerciseTemplatesQueryParams,
 	GetV1RoutineFoldersQueryParams,
 	GetV1RoutinesQueryParams,
 	GetV1WorkoutsEventsQueryParams,
 	GetV1WorkoutsQueryParams,
+	PostV1BodyMeasurementsMutationRequest,
 	PostV1ExerciseTemplatesMutationRequest,
 	PostV1RoutineFoldersMutationRequest,
 	PostV1RoutinesMutationRequest,
 	PostV1WorkoutsMutationRequest,
+	PutV1BodyMeasurementsDateMutationRequest,
 	PutV1RoutinesRoutineidMutationRequest,
 	PutV1WorkoutsWorkoutidMutationRequest,
 } from "../generated/client/types";
@@ -162,6 +165,27 @@ export function createClient(
 			folderId: string,
 		): ReturnType<typeof api.getV1RoutineFoldersFolderid> =>
 			wrapApi(api.getV1RoutineFoldersFolderid)(folderId, headers, {
+				client,
+			}),
+
+		// Body Measurements
+		getBodyMeasurements: (
+			params?: GetV1BodyMeasurementsQueryParams,
+		): ReturnType<typeof api.getV1BodyMeasurements> =>
+			wrapApi(api.getV1BodyMeasurements)(headers, params, { client }),
+		getBodyMeasurement: (
+			date: string,
+		): ReturnType<typeof api.getV1BodyMeasurementsDate> =>
+			wrapApi(api.getV1BodyMeasurementsDate)(date, headers, { client }),
+		createBodyMeasurement: (
+			data: PostV1BodyMeasurementsMutationRequest,
+		): ReturnType<typeof api.postV1BodyMeasurements> =>
+			wrapApi(api.postV1BodyMeasurements)(data, headers, { client }),
+		updateBodyMeasurement: (
+			date: string,
+			data: PutV1BodyMeasurementsDateMutationRequest,
+		): ReturnType<typeof api.putV1BodyMeasurementsDate> =>
+			wrapApi(api.putV1BodyMeasurementsDate)(date, data, headers, {
 				client,
 			}),
 
