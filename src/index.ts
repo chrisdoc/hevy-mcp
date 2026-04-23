@@ -41,6 +41,7 @@ Sentry.init(sentryConfig);
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
@@ -75,6 +76,7 @@ function buildServer(apiKey: string) {
 	registerRoutineTools(server, hevyClient);
 	registerTemplateTools(server, hevyClient);
 	registerFolderTools(server, hevyClient);
+	registerBodyMeasurementTools(server, hevyClient);
 	registerWebhookTools(server, hevyClient);
 
 	return server;
