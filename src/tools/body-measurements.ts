@@ -18,7 +18,7 @@ type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
-const zNullableNumber = z.coerce.number().nullable().optional();
+const zNullableNumber = z.number().nullable().optional();
 
 const bodyMeasurementFieldsSchema = {
 	weightKg: zNullableNumber.describe("Body weight in kilograms"),
