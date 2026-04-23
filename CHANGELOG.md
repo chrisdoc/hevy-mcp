@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.20...v1.22.0) (2026-04-23)
+
+
+### Features
+
+* update openapi spec and regenerate api client ([#305](https://github.com/chrisdoc/hevy-mcp/issues/305)) ([0bfad15](https://github.com/chrisdoc/hevy-mcp/commit/0bfad15b5897e57c08eb63aebf65bd91bbad8ef2))
+
 ## [1.21.20](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.19...v1.21.20) (2026-04-21)
 
 ## [1.21.19](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.18...v1.21.19) (2026-04-21)
