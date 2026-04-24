@@ -20,14 +20,13 @@ async def main():
         print("❌ HEVY_API_KEY environment variable not set")
         sys.exit(1)
 
-    print("🔧 Configuring hevy-mcp via pnpm dlx...")
+    print("🔧 Configuring hevy-mcp via npx...")
 
-    # Use pnpm dlx instead of npx - it may handle PATH better
     config = {
         "mcpServers": {
             "hevy": {
-                "command": "pnpm",
-                "args": ["dlx", "hevy-mcp"],
+                "command": "npx",
+                "args": ["hevy-mcp"],
                 "env": {"HEVY_API_KEY": api_key},
             }
         }
