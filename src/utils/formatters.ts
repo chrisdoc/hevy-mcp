@@ -1,4 +1,5 @@
 import type {
+	BodyMeasurement,
 	ExerciseHistoryEntry,
 	ExerciseTemplate,
 	Routine,
@@ -291,5 +292,51 @@ export function formatExerciseHistoryEntry(
 		rpe: entry.rpe,
 		customMetric: entry.custom_metric,
 		setType: entry.set_type,
+	};
+}
+
+export interface FormattedBodyMeasurement {
+	date: string;
+	weightKg: number | null;
+	leanMassKg: number | null;
+	fatPercent: number | null;
+	neckCm: number | null;
+	shoulderCm: number | null;
+	chestCm: number | null;
+	leftBicepCm: number | null;
+	rightBicepCm: number | null;
+	leftForearmCm: number | null;
+	rightForearmCm: number | null;
+	abdomen: number | null;
+	waist: number | null;
+	hips: number | null;
+	leftThigh: number | null;
+	rightThigh: number | null;
+	leftCalf: number | null;
+	rightCalf: number | null;
+}
+
+export function formatBodyMeasurement(
+	measurement: BodyMeasurement,
+): FormattedBodyMeasurement {
+	return {
+		date: measurement.date,
+		weightKg: measurement.weight_kg ?? null,
+		leanMassKg: measurement.lean_mass_kg ?? null,
+		fatPercent: measurement.fat_percent ?? null,
+		neckCm: measurement.neck_cm ?? null,
+		shoulderCm: measurement.shoulder_cm ?? null,
+		chestCm: measurement.chest_cm ?? null,
+		leftBicepCm: measurement.left_bicep_cm ?? null,
+		rightBicepCm: measurement.right_bicep_cm ?? null,
+		leftForearmCm: measurement.left_forearm_cm ?? null,
+		rightForearmCm: measurement.right_forearm_cm ?? null,
+		abdomen: measurement.abdomen ?? null,
+		waist: measurement.waist ?? null,
+		hips: measurement.hips ?? null,
+		leftThigh: measurement.left_thigh ?? null,
+		rightThigh: measurement.right_thigh ?? null,
+		leftCalf: measurement.left_calf ?? null,
+		rightCalf: measurement.right_calf ?? null,
 	};
 }

@@ -1,3 +1,51 @@
+## [1.23.8](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.7...v1.23.8) (2026-05-09)
+
+## [1.23.7](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.6...v1.23.7) (2026-05-08)
+
+## [1.23.6](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.5...v1.23.6) (2026-05-05)
+
+## [1.23.5](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.4...v1.23.5) (2026-05-05)
+
+## [1.23.4](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.3...v1.23.4) (2026-05-05)
+
+## [1.23.3](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.2...v1.23.3) (2026-04-28)
+
+## [1.23.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.1...v1.23.2) (2026-04-28)
+
+## [1.23.1](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.0...v1.23.1) (2026-04-28)
+
+# [1.23.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.22.0...v1.23.0) (2026-04-23)
+
+
+### Features
+
+* add body measurements MCP tools ([#306](https://github.com/chrisdoc/hevy-mcp/issues/306)) ([78b3a5b](https://github.com/chrisdoc/hevy-mcp/commit/78b3a5b7dc87648e5de15ce8229468bc094a618d))
+
+# [1.22.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.20...v1.22.0) (2026-04-23)
+
+
+### Features
+
+* update openapi spec and regenerate api client ([#305](https://github.com/chrisdoc/hevy-mcp/issues/305)) ([0bfad15](https://github.com/chrisdoc/hevy-mcp/commit/0bfad15b5897e57c08eb63aebf65bd91bbad8ef2))
+
+## [1.21.20](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.19...v1.21.20) (2026-04-21)
+
+## [1.21.19](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.18...v1.21.19) (2026-04-21)
+
+## [1.21.18](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.17...v1.21.18) (2026-04-16)
+
+## [1.21.17](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.16...v1.21.17) (2026-04-14)
+
+## [1.21.16](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.15...v1.21.16) (2026-04-14)
+
+## [1.21.15](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.14...v1.21.15) (2026-04-14)
+
+## [1.21.14](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.13...v1.21.14) (2026-04-12)
+
+## [1.21.13](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.12...v1.21.13) (2026-04-08)
+
+## [1.21.12](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.11...v1.21.12) (2026-04-08)
+
 ## [1.21.11](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.10...v1.21.11) (2026-04-07)
 
 ## [1.21.10](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.9...v1.21.10) (2026-04-06)

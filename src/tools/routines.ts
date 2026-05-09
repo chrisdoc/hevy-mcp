@@ -76,14 +76,14 @@ const zOptionalRepRange = z.preprocess(
 function buildRepRange(repRange?: {
 	start?: number | null;
 	end?: number | null;
-}): { start: number | null; end: number | null } | null {
+}): { start?: number; end?: number } | null {
 	if (!repRange) {
 		return null;
 	}
 
-	const start = repRange.start ?? null;
-	const end = repRange.end ?? null;
-	if (start === null && end === null) {
+	const start = repRange.start ?? undefined;
+	const end = repRange.end ?? undefined;
+	if (start === undefined && end === undefined) {
 		return null;
 	}
 

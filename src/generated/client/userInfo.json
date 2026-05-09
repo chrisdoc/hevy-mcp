@@ -1,0 +1,1 @@
+{"type":"object","properties":{"id":{"type":"string","description":"The user ID.","example":"9c465af3-de7d-42bc-9c7c-f0170396358b"},"name":{"type":"string","description":"The user's display name.","example":"John doe"},"url":{"type":"string","description":"The user's public profile URL.","example":"https://hevy.com/user/jhon"}},"x-readme-ref-name":"UserInfo"}
