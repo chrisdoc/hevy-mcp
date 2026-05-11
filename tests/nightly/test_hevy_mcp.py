@@ -1,7 +1,7 @@
 """
 Nightly integration test for hevy-mcp using mcp-use.
 
-This test installs hevy-mcp from npm and verifies:
+This test installs the published hevy-mcp package from npm and verifies:
 1. The MCP server starts correctly
 2. Tools are properly registered
 3. A basic tool call works (get-workouts)
@@ -26,7 +26,7 @@ async def main():
         "mcpServers": {
             "hevy": {
                 "command": "npx",
-                "args": ["hevy-mcp"],
+                "args": ["-y", "hevy-mcp@latest"],
                 "env": {"HEVY_API_KEY": api_key},
             }
         }
