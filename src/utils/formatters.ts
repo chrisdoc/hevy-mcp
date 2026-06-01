@@ -125,6 +125,23 @@ export interface FormattedExerciseHistoryEntry {
 	setType: string | undefined;
 }
 
+type ExerciseWithSupersetVariants = {
+	supersets_id?: number | null;
+	superset_id?: number | null;
+};
+
+function getSupersetId(exercise: ExerciseWithSupersetVariants): number | null {
+	if (exercise.supersets_id !== undefined) {
+		return exercise.supersets_id;
+	}
+
+	if (exercise.superset_id !== undefined) {
+		return exercise.superset_id;
+	}
+
+	return null;
+}
+
 /**
  * Format a workout object for consistent presentation
  *
@@ -147,7 +164,7 @@ export function formatWorkout(workout: Workout): FormattedWorkout {
 				name: exercise.title,
 				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
-				supersetsId: exercise.supersets_id,
+				supersetsId: getSupersetId(exercise),
 				sets: exercise.sets?.map((set) => ({
 					index: set.index,
 					type: set.type,
@@ -182,7 +199,7 @@ export function formatRoutine(routine: Routine): FormattedRoutine {
 				index: exercise.index,
 				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
-				supersetId: exercise.supersets_id,
+				supersetId: getSupersetId(exercise),
 				restSeconds: exercise.rest_seconds,
 				sets: exercise.sets?.map((set) => ({
 					index: set.index,

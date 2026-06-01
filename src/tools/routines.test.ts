@@ -89,7 +89,7 @@ describe("registerRoutineTools", () => {
 		expect(parsed).toEqual([formatRoutine(routine)]);
 	});
 
-	it("create-routine maps arguments to the request body and formats the response", async () => {
+	it("create-routine forwards non-null supersetId as superset_id", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
@@ -113,7 +113,7 @@ describe("registerRoutineTools", () => {
 			exercises: [
 				{
 					exerciseTemplateId: "template-id",
-					supersetId: null,
+					supersetId: 42,
 					restSeconds: 60,
 					notes: "Slow eccentric",
 					sets: [
@@ -140,7 +140,7 @@ describe("registerRoutineTools", () => {
 				exercises: [
 					{
 						exercise_template_id: "template-id",
-						superset_id: null,
+						superset_id: 42,
 						rest_seconds: 60,
 						notes: "Slow eccentric",
 						sets: [
@@ -686,7 +686,7 @@ describe("registerRoutineTools", () => {
 		expect(response.content[1]?.text).toContain("issues/261");
 	});
 
-	it("update-routine processes exercises array correctly", async () => {
+	it("update-routine forwards non-null supersetId as superset_id", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {
 			id: "updated-routine",
@@ -713,7 +713,7 @@ describe("registerRoutineTools", () => {
 			exercises: [
 				{
 					exerciseTemplateId: "template-id",
-					supersetId: null,
+					supersetId: 77,
 					restSeconds: 90,
 					notes: "Test notes",
 					sets: [
@@ -737,7 +737,7 @@ describe("registerRoutineTools", () => {
 				exercises: [
 					{
 						exercise_template_id: "template-id",
-						superset_id: null,
+						superset_id: 77,
 						rest_seconds: 90,
 						notes: "Test notes",
 						sets: [

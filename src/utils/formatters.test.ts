@@ -96,7 +96,7 @@ describe("Formatters", () => {
 						name: "Bench Press",
 						exerciseTemplateId: undefined,
 						notes: "Felt strong today",
-						supersetsId: undefined,
+						supersetsId: null,
 						sets: [
 							{
 								index: undefined,
@@ -122,6 +122,25 @@ describe("Formatters", () => {
 					},
 				],
 			});
+		});
+
+		it("should fallback to singular superset_id for workout exercises", () => {
+			const workout = {
+				id: crypto.randomUUID(),
+				title: "Workout",
+				start_time: "2024-03-27T07:00:00Z",
+				end_time: "2024-03-27T08:00:00Z",
+				exercises: [
+					{
+						title: "Bench Press",
+						superset_id: 7,
+						sets: [],
+					},
+				],
+			};
+
+			const result = formatWorkout(workout as Workout);
+			expect(result.exercises?.[0]?.supersetsId).toBe(7);
 		});
 	});
 
@@ -273,6 +292,25 @@ describe("Formatters", () => {
 				repRange: { start: 6, end: 10 },
 				rpe: 7,
 			});
+		});
+
+		it("should fallback to singular superset_id for routine exercises", () => {
+			const routine = {
+				id: crypto.randomUUID(),
+				title: "Routine",
+				created_at: "2025-03-26T19:00:00Z",
+				updated_at: "2025-03-26T19:30:00Z",
+				exercises: [
+					{
+						title: "Squat",
+						superset_id: 9,
+						sets: [],
+					},
+				],
+			};
+
+			const result = formatRoutine(routine as Routine);
+			expect(result.exercises?.[0]?.supersetId).toBe(9);
 		});
 	});
 
