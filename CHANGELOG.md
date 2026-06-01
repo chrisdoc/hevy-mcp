@@ -1,3 +1,10 @@
+## [1.23.14](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.13...v1.23.14) (2026-06-01)
+
+
+### Bug Fixes
+
+* keep MCP stdio clean on routine update errors ([#330](https://github.com/chrisdoc/hevy-mcp/issues/330)) ([540c5eb](https://github.com/chrisdoc/hevy-mcp/commit/540c5eb1c2a4a948a5ae4309880532107fdeba8e))
+
 ## [1.23.13](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.12...v1.23.13) (2026-05-23)
 
 ## [1.23.12](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.11...v1.23.12) (2026-05-19)
