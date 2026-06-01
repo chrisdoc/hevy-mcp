@@ -66,7 +66,11 @@ describe("Error Handler", () => {
 			const response = createErrorResponse(errorWithCode);
 
 			expect(response.content[0].text).toBe("Error: Error with code");
-			expect(console.debug).toHaveBeenCalledWith("Error code: ERR_TEST_CODE");
+			expect(console.debug).not.toHaveBeenCalled();
+			expect(console.error).toHaveBeenCalledWith(
+				expect.stringContaining("Code: ERR_TEST_CODE"),
+				errorWithCode,
+			);
 		});
 
 		it("classifies network-related errors as NETWORK_ERROR", () => {
