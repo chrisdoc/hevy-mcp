@@ -375,7 +375,7 @@ export function registerRoutineTools(
 									distance_meters: set.distance ?? set.distanceMeters ?? null,
 									duration_seconds: set.duration ?? set.durationSeconds ?? null,
 									custom_metric: set.customMetric ?? null,
-									rep_range: repRange,
+									...(repRange ? { rep_range: repRange } : {}),
 								};
 							});
 

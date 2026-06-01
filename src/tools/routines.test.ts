@@ -579,6 +579,69 @@ describe("registerRoutineTools", () => {
 		expect(response.content).toHaveLength(1);
 	});
 
+	it("update-routine omits rep_range when repRange does not contain values", async () => {
+		const { server, tool } = createMockServer();
+		const routine: Routine = {
+			id: "updated-routine",
+			title: "Updated Routine",
+			folder_id: null,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [],
+		};
+		const updateRoutineMock = vi.fn().mockResolvedValue(routine);
+		const hevyClient: HevyClient = {
+			updateRoutine: updateRoutineMock,
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({
+			routineId: "routine-123",
+			title: "Updated Routine",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					restSeconds: 90,
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 100,
+							reps: 10,
+							repRange: { start: null, end: null },
+						},
+					],
+				},
+			],
+		} as Record<string, unknown>);
+
+		expect(updateRoutineMock).toHaveBeenCalledWith(
+			"routine-123",
+			expect.objectContaining({
+				routine: expect.objectContaining({
+					exercises: [
+						expect.objectContaining({
+							sets: [expect.objectContaining({ reps: 10 })],
+						}),
+					],
+				}),
+			}),
+		);
+
+		const updatePayload = updateRoutineMock.mock.calls[0]?.[1] as {
+			routine: {
+				exercises: Array<{
+					sets: Array<Record<string, unknown>>;
+				}>;
+			};
+		};
+		expect(updatePayload.routine.exercises[0]?.sets[0]).not.toHaveProperty(
+			"rep_range",
+		);
+	});
+
 	it("update-routine includes a rep range display warning when repRange is provided", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {
@@ -685,7 +748,6 @@ describe("registerRoutineTools", () => {
 								distance_meters: null,
 								duration_seconds: null,
 								custom_metric: null,
-								rep_range: null,
 							},
 						],
 					},
