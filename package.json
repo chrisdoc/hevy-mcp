@@ -80,7 +80,7 @@
 		"abstract-syntax-tree": "^2.22.0",
 		"cross-env": "^10.1.0",
 		"lefthook": "^2.1.4",
-		"oxfmt": "^0.51.0",
+		"oxfmt": "^0.53.0",
 		"oxlint": "^1.58.0",
 		"oxlint-tsgolint": "^0.23.0",
 		"semantic-release": "^25.0.3",
