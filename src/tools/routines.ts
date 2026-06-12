@@ -21,6 +21,11 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import {
+	createAnnotations,
+	readOnlyAnnotations,
+	updateAnnotations,
+} from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 // Type definitions for the routine operations
@@ -143,6 +148,7 @@ export function registerRoutineTools(
 		"get-routines",
 		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
 		getRoutinesSchema,
+		readOnlyAnnotations("Get Routines"),
 		withErrorHandling(async (args: GetRoutinesParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -179,6 +185,7 @@ export function registerRoutineTools(
 		"get-routine",
 		"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
 		getRoutineSchema,
+		readOnlyAnnotations("Get Routine"),
 		withErrorHandling(async (args: GetRoutineParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -236,6 +243,7 @@ export function registerRoutineTools(
 		"create-routine",
 		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
 		createRoutineSchema,
+		createAnnotations("Create Routine"),
 		withErrorHandling(async (args: CreateRoutineParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -348,6 +356,7 @@ export function registerRoutineTools(
 		"update-routine",
 		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
 		updateRoutineSchema,
+		updateAnnotations("Update Routine"),
 		withErrorHandling(async (args: UpdateRoutineParams) => {
 			if (!hevyClient) {
 				throw new Error(

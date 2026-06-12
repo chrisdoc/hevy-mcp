@@ -20,6 +20,11 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import {
+	createAnnotations,
+	readOnlyAnnotations,
+	updateAnnotations,
+} from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 /**
@@ -40,6 +45,7 @@ export function registerWorkoutTools(
 		"get-workouts",
 		"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
 		getWorkoutsSchema,
+		readOnlyAnnotations("Get Workouts"),
 		withErrorHandling(async (args: GetWorkoutsParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -75,6 +81,7 @@ export function registerWorkoutTools(
 		"get-workout",
 		"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
 		getWorkoutSchema,
+		readOnlyAnnotations("Get Workout"),
 		withErrorHandling(async (args: GetWorkoutParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -99,6 +106,7 @@ export function registerWorkoutTools(
 		"get-workout-count",
 		"Get the total number of workouts on the account. Useful for pagination or statistics.",
 		{},
+		readOnlyAnnotations("Get Workout Count"),
 		withErrorHandling(async () => {
 			if (!hevyClient) {
 				throw new Error(
@@ -123,6 +131,7 @@ export function registerWorkoutTools(
 		"get-workout-events",
 		"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
 		getWorkoutEventsSchema,
+		readOnlyAnnotations("Get Workout Events"),
 		withErrorHandling(async (args: GetWorkoutEventsParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -188,6 +197,7 @@ export function registerWorkoutTools(
 		"create-workout",
 		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
 		createWorkoutSchema,
+		createAnnotations("Create Workout"),
 		withErrorHandling(async (args: CreateWorkoutParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -279,6 +289,7 @@ export function registerWorkoutTools(
 		"update-workout",
 		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
 		updateWorkoutSchema,
+		updateAnnotations("Update Workout"),
 		withErrorHandling(async (args: UpdateWorkoutParams) => {
 			if (!hevyClient) {
 				throw new Error(

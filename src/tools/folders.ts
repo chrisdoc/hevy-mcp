@@ -13,6 +13,10 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import {
+	createAnnotations,
+	readOnlyAnnotations,
+} from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 // Type definitions for the folder operations
@@ -40,6 +44,7 @@ export function registerFolderTools(
 		"get-routine-folders",
 		"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
 		getRoutineFoldersSchema,
+		readOnlyAnnotations("Get Routine Folders"),
 		withErrorHandling(async (args: GetRoutineFoldersParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -78,6 +83,7 @@ export function registerFolderTools(
 		"get-routine-folder",
 		"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
 		getRoutineFolderSchema,
+		readOnlyAnnotations("Get Routine Folder"),
 		withErrorHandling(async (args: GetRoutineFolderParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -111,6 +117,7 @@ export function registerFolderTools(
 		"create-routine-folder",
 		"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
 		createRoutineFolderSchema,
+		createAnnotations("Create Routine Folder"),
 		withErrorHandling(async (args: CreateRoutineFolderParams) => {
 			if (!hevyClient) {
 				throw new Error(
