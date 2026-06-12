@@ -189,6 +189,10 @@ export function createClient(
 				client,
 			}),
 
+		// User
+		getUserInfo: (): ReturnType<typeof api.getV1UserInfo> =>
+			wrapApi(api.getV1UserInfo)(headers, { client }),
+
 		getWebhookSubscription: async (): Promise<unknown> => {
 			throw new Error(
 				"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",

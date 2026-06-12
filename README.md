@@ -167,13 +167,15 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 
 ## 🛠️ Available MCP Tools
 
-| Category      | Tools                                                                                                        |
-| :------------ | :----------------------------------------------------------------------------------------------------------- |
-| **Workouts**  | `get-workouts`, `get-workout`, `create-workout`, `update-workout`, `get-workout-count`, `get-workout-events` |
-| **Routines**  | `get-routines`, `get-routine-by-id`, `create-routine`, `update-routine`                                      |
-| **Templates** | `get-exercise-templates`, `get-exercise-template`, `search-exercise-templates`                               |
-| **Folders**   | `get-routine-folders`, `get-routine-folder`, `create-routine-folder`                                         |
-| **Webhooks**  | `get-webhook-subscription`, `create-webhook-subscription`, `delete-webhook-subscription`                     |
+| Category              | Tools                                                                                                                              |
+| :-------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| **Workouts**          | `get-workouts`, `get-workout`, `create-workout`, `update-workout`, `get-workout-count`, `get-workout-events`                       |
+| **Routines**          | `get-routines`, `get-routine`, `create-routine`, `update-routine`                                                                  |
+| **Templates**         | `get-exercise-templates`, `get-exercise-template`, `search-exercise-templates`, `create-exercise-template`, `get-exercise-history` |
+| **Folders**           | `get-routine-folders`, `get-routine-folder`, `create-routine-folder`                                                               |
+| **Body Measurements** | `get-body-measurements`, `get-body-measurement`, `create-body-measurement`, `update-body-measurement`                              |
+| **User**              | `get-user-info`                                                                                                                    |
+| **Webhooks**          | `get-webhook-subscription`, `create-webhook-subscription`, `delete-webhook-subscription`                                           |
 
 ---
 

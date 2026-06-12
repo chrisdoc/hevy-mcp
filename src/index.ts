@@ -45,6 +45,7 @@ import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
+import { registerUserTools } from "./tools/user.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
@@ -77,6 +78,7 @@ function buildServer(apiKey: string) {
 	registerTemplateTools(server, hevyClient);
 	registerFolderTools(server, hevyClient);
 	registerBodyMeasurementTools(server, hevyClient);
+	registerUserTools(server, hevyClient);
 	registerWebhookTools(server, hevyClient);
 
 	return server;
