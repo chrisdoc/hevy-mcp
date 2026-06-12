@@ -274,6 +274,46 @@ describe("registerBodyMeasurementTools", () => {
 		expect(parsed.waist).toBe(82);
 	});
 
+	it("treats empty strings as omitted instead of coercing to 0", () => {
+		const { server, tool } = createMockServer();
+		registerBodyMeasurementTools(server, {} as unknown as HevyClient);
+		const { schema } = getToolRegistration(tool, "create-body-measurement");
+
+		const parsed = z.object(schema).parse({
+			date: "2025-04-01",
+			weightKg: "",
+		});
+
+		expect(parsed.weightKg).toBeUndefined();
+	});
+
+	it("update-body-measurement rejects calls without measurement fields", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			updateBodyMeasurement: vi.fn().mockResolvedValue(undefined),
+		} as unknown as HevyClient;
+
+		registerBodyMeasurementTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-body-measurement");
+
+		for (const args of [
+			{ date: "2025-03-25" },
+			{ date: "2025-03-25", weightKg: null },
+		]) {
+			const response = await handler(args);
+			expect(response).toMatchObject({
+				isError: true,
+				content: [
+					{
+						type: "text",
+						text: expect.stringContaining("No measurement fields provided"),
+					},
+				],
+			});
+		}
+		expect(hevyClient.updateBodyMeasurement).not.toHaveBeenCalled();
+	});
+
 	it("accepts date-only input and explicit nulls in the schema", () => {
 		const { server, tool } = createMockServer();
 		registerBodyMeasurementTools(server, {} as unknown as HevyClient);

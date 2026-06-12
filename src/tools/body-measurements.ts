@@ -24,9 +24,13 @@ type HevyClient = ReturnType<
 >;
 
 // Coerce numeric strings ("81.5") since some MCP clients serialize numbers
-// as strings; nullable()/optional() short-circuit before coercion, so null
-// stays null instead of becoming 0.
-const zNullableNumber = z.coerce.number().nullable().optional();
+// as strings; empty strings are treated as omitted rather than coerced to 0,
+// and nullable()/optional() short-circuit before coercion, so null stays
+// null instead of becoming 0.
+const zNullableNumber = z.preprocess(
+	(value) => (value === "" ? undefined : value),
+	z.coerce.number().nullable().optional(),
+);
 
 const bodyMeasurementFieldsSchema = {
 	weightKg: zNullableNumber.describe("Body weight in kilograms"),
@@ -204,7 +208,7 @@ export function registerBodyMeasurementTools(
 
 	server.tool(
 		"create-body-measurement",
-		"Create a body measurement entry for a given date. All measurement fields are optional. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
+		"Create a body measurement entry for a given date. All measurement fields are optional; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
 		withErrorHandling(async (args: CreateBodyMeasurementParams) => {
@@ -241,7 +245,7 @@ export function registerBodyMeasurementTools(
 
 	server.tool(
 		"update-body-measurement",
-		"Update an existing body measurement entry for a given date. Only the fields you provide are sent; omitted fields are not included in the request. Returns 404 if no entry exists for the date.",
+		"Update an existing body measurement entry for a given date. Only the fields you provide are sent and updated; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Requires at least one measurement field. Returns 404 if no entry exists for the date.",
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
 		withErrorHandling(async (args: UpdateBodyMeasurementParams) => {
@@ -251,10 +255,13 @@ export function registerBodyMeasurementTools(
 				);
 			}
 			const { date, ...fields } = args;
-			await hevyClient.updateBodyMeasurement(
-				date,
-				buildMeasurementPayload(fields),
-			);
+			const payload = buildMeasurementPayload(fields);
+			if (Object.keys(payload).length === 0) {
+				throw new Error(
+					"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
+				);
+			}
+			await hevyClient.updateBodyMeasurement(date, payload);
 
 			return createTextResponse(
 				`Body measurement for ${date} updated successfully.`,
