@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { createHash } from "node:crypto";
 
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
@@ -52,6 +53,10 @@ import { createClient } from "./utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 
+function hashApiKey(apiKey: string) {
+	return createHash("sha256").update(apiKey).digest("hex");
+}
+
 const serverConfigSchema = z.object({
 	apiKey: z
 		.string()
@@ -63,6 +68,8 @@ export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
 function buildServer(apiKey: string) {
+	Sentry.setUser({ id: hashApiKey(apiKey) });
+
 	const baseServer = new McpServer({
 		name,
 		version,

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import createServer, { configSchema, runServer } from "./index.js";
@@ -5,6 +6,12 @@ import { createClient } from "./utils/hevyClient.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
+const TEST_KEY_SHA256 =
+	"62af8704764faf8ea82fc61ce9c4c3908b6cb97d463a634e9e587d7c885db0ef";
+const TEST_API_KEY_SHA256 =
+	"4c806362b613f7496abf284146efd31da90e4b16169fe001841ca17290f427c4";
+const CLI_KEY_SHA256 =
+	"b46dbee3ba949754e901d383e0ebc5bb3ddf09f2f30c3e890b78cc6c0cdf868a";
 
 vi.mock("./utils/hevyClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
@@ -12,6 +19,7 @@ vi.mock("./utils/hevyClient.js", () => ({
 
 vi.mock("@sentry/node", () => ({
 	init: vi.fn(),
+	setUser: vi.fn(),
 	wrapMcpServerWithSentry: vi.fn((server) => server),
 }));
 
@@ -67,6 +75,15 @@ describe("Server entry", () => {
 		expect(server).toBeDefined();
 	});
 
+	it("sets the Sentry user ID to a SHA-256 hash of the API key", () => {
+		createServer({ config: { apiKey: "test-key" } });
+
+		expect(Sentry.setUser).toHaveBeenCalledWith({ id: TEST_KEY_SHA256 });
+		expect(JSON.stringify(vi.mocked(Sentry.setUser).mock.calls)).not.toContain(
+			"test-key",
+		);
+	});
+
 	describe("runServer", () => {
 		it("uses HEVY_API_KEY from the environment and connects stdio transport", async () => {
 			process.env = {
@@ -80,6 +97,12 @@ describe("Server entry", () => {
 				"test-api-key",
 				"https://api.hevyapp.com",
 			);
+			expect(Sentry.setUser).toHaveBeenCalledWith({
+				id: TEST_API_KEY_SHA256,
+			});
+			expect(
+				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
+			).not.toContain("test-api-key");
 			const anyStdioModule = stdioModule as { __transports?: unknown[] };
 			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
 		});
@@ -96,6 +119,13 @@ describe("Server entry", () => {
 				"cli-key",
 				"https://api.hevyapp.com",
 			);
+			expect(Sentry.setUser).toHaveBeenCalledWith({ id: CLI_KEY_SHA256 });
+			expect(
+				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
+			).not.toContain("cli-key");
+			expect(
+				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
+			).not.toContain("env-key");
 		});
 
 		it("exits the process when no API key is provided", async () => {
