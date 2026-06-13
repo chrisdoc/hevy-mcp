@@ -6,12 +6,12 @@ import { createClient } from "./utils/hevyClient.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
-const TEST_KEY_SHA256 =
-	"62af8704764faf8ea82fc61ce9c4c3908b6cb97d463a634e9e587d7c885db0ef";
-const TEST_API_KEY_SHA256 =
-	"4c806362b613f7496abf284146efd31da90e4b16169fe001841ca17290f427c4";
-const CLI_KEY_SHA256 =
-	"b46dbee3ba949754e901d383e0ebc5bb3ddf09f2f30c3e890b78cc6c0cdf868a";
+const TEST_KEY_HMAC_SHA256 =
+	"2cb0b5f95a4652a38a004b9767aa14cea59feb62eb9252ef5fe7f64afd6b6b27";
+const TEST_API_KEY_HMAC_SHA256 =
+	"0eefd4f47c434138f560075be1eedfca27256a782534f3f254781d736cbd468c";
+const CLI_KEY_HMAC_SHA256 =
+	"85a3f127af4cea435cd358405c5298016946cc3f4e196552c2f1e435c2c6f1b3";
 
 vi.mock("./utils/hevyClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
@@ -75,10 +75,10 @@ describe("Server entry", () => {
 		expect(server).toBeDefined();
 	});
 
-	it("sets the Sentry user ID to a SHA-256 hash of the API key", () => {
+	it("sets the Sentry user ID to an HMAC-SHA-256 fingerprint of the API key", () => {
 		createServer({ config: { apiKey: "test-key" } });
 
-		expect(Sentry.setUser).toHaveBeenCalledWith({ id: TEST_KEY_SHA256 });
+		expect(Sentry.setUser).toHaveBeenCalledWith({ id: TEST_KEY_HMAC_SHA256 });
 		expect(JSON.stringify(vi.mocked(Sentry.setUser).mock.calls)).not.toContain(
 			"test-key",
 		);
@@ -98,7 +98,7 @@ describe("Server entry", () => {
 				"https://api.hevyapp.com",
 			);
 			expect(Sentry.setUser).toHaveBeenCalledWith({
-				id: TEST_API_KEY_SHA256,
+				id: TEST_API_KEY_HMAC_SHA256,
 			});
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
@@ -119,7 +119,7 @@ describe("Server entry", () => {
 				"cli-key",
 				"https://api.hevyapp.com",
 			);
-			expect(Sentry.setUser).toHaveBeenCalledWith({ id: CLI_KEY_SHA256 });
+			expect(Sentry.setUser).toHaveBeenCalledWith({ id: CLI_KEY_HMAC_SHA256 });
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
 			).not.toContain("cli-key");

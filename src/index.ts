@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
@@ -53,8 +53,14 @@ import { createClient } from "./utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 
-function hashApiKey(apiKey: string) {
-	return createHash("sha256").update(apiKey).digest("hex");
+const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
+
+function fingerprintApiKey(apiKey: string) {
+	// HMAC-SHA-256 gives Sentry a deterministic pseudonymous user ID without
+	// sending, logging, or storing the raw Hevy API key.
+	return createHmac("sha256", apiKey)
+		.update(SENTRY_USER_ID_CONTEXT)
+		.digest("hex");
 }
 
 const serverConfigSchema = z.object({
@@ -68,7 +74,7 @@ export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
 function buildServer(apiKey: string) {
-	Sentry.setUser({ id: hashApiKey(apiKey) });
+	Sentry.setUser({ id: fingerprintApiKey(apiKey) });
 
 	const baseServer = new McpServer({
 		name,
