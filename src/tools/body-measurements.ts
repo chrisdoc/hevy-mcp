@@ -12,13 +12,25 @@ import {
 	createJsonResponse,
 	createTextResponse,
 } from "../utils/response-formatter.js";
+import {
+	createAnnotations,
+	readOnlyAnnotations,
+	updateAnnotations,
+} from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
-const zNullableNumber = z.number().nullable().optional();
+// Coerce numeric strings ("81.5") since some MCP clients serialize numbers
+// as strings; empty strings are treated as omitted rather than coerced to 0,
+// and nullable()/optional() short-circuit before coercion, so null stays
+// null instead of becoming 0.
+const zNullableNumber = z.preprocess(
+	(value) => (value === "" ? undefined : value),
+	z.coerce.number().nullable().optional(),
+);
 
 const bodyMeasurementFieldsSchema = {
 	weightKg: zNullableNumber.describe("Body weight in kilograms"),
@@ -54,44 +66,48 @@ const bodyMeasurementFieldsSchema = {
 	),
 } as const;
 
-function buildMeasurementPayload(args: {
-	weightKg?: number | null;
-	leanMassKg?: number | null;
-	fatPercent?: number | null;
-	neckCm?: number | null;
-	shoulderCm?: number | null;
-	chestCm?: number | null;
-	leftBicepCm?: number | null;
-	rightBicepCm?: number | null;
-	leftForearmCm?: number | null;
-	rightForearmCm?: number | null;
-	abdomen?: number | null;
-	waist?: number | null;
-	hips?: number | null;
-	leftThigh?: number | null;
-	rightThigh?: number | null;
-	leftCalf?: number | null;
-	rightCalf?: number | null;
-}) {
-	return {
-		weight_kg: args.weightKg ?? null,
-		lean_mass_kg: args.leanMassKg ?? null,
-		fat_percent: args.fatPercent ?? null,
-		neck_cm: args.neckCm ?? null,
-		shoulder_cm: args.shoulderCm ?? null,
-		chest_cm: args.chestCm ?? null,
-		left_bicep_cm: args.leftBicepCm ?? null,
-		right_bicep_cm: args.rightBicepCm ?? null,
-		left_forearm_cm: args.leftForearmCm ?? null,
-		right_forearm_cm: args.rightForearmCm ?? null,
-		abdomen: args.abdomen ?? null,
-		waist: args.waist ?? null,
-		hips: args.hips ?? null,
-		left_thigh: args.leftThigh ?? null,
-		right_thigh: args.rightThigh ?? null,
-		left_calf: args.leftCalf ?? null,
-		right_calf: args.rightCalf ?? null,
-	};
+const MEASUREMENT_FIELD_TO_API_KEY = {
+	weightKg: "weight_kg",
+	leanMassKg: "lean_mass_kg",
+	fatPercent: "fat_percent",
+	neckCm: "neck_cm",
+	shoulderCm: "shoulder_cm",
+	chestCm: "chest_cm",
+	leftBicepCm: "left_bicep_cm",
+	rightBicepCm: "right_bicep_cm",
+	leftForearmCm: "left_forearm_cm",
+	rightForearmCm: "right_forearm_cm",
+	abdomen: "abdomen",
+	waist: "waist",
+	hips: "hips",
+	leftThigh: "left_thigh",
+	rightThigh: "right_thigh",
+	leftCalf: "left_calf",
+	rightCalf: "right_calf",
+} as const satisfies Record<
+	keyof typeof bodyMeasurementFieldsSchema,
+	keyof Omit<BodyMeasurement, "date">
+>;
+
+type MeasurementFieldArgs = Partial<
+	Record<keyof typeof MEASUREMENT_FIELD_TO_API_KEY, number | null>
+>;
+
+// The Hevy API rejects null for omitted fields, so only fields with actual
+// values are included in the payload (#341).
+function buildMeasurementPayload(
+	args: MeasurementFieldArgs,
+): Omit<BodyMeasurement, "date"> {
+	const payload: Omit<BodyMeasurement, "date"> = {};
+	for (const [camelKey, apiKey] of Object.entries(
+		MEASUREMENT_FIELD_TO_API_KEY,
+	) as [keyof MeasurementFieldArgs, keyof Omit<BodyMeasurement, "date">][]) {
+		const value = args[camelKey];
+		if (value != null) {
+			payload[apiKey] = value;
+		}
+	}
+	return payload;
 }
 
 export function registerBodyMeasurementTools(
@@ -111,6 +127,7 @@ export function registerBodyMeasurementTools(
 		"get-body-measurements",
 		"Get a paginated list of body measurements for the authenticated user. Returns measurements including weight, body fat, and various circumference measurements.",
 		getBodyMeasurementsSchema,
+		readOnlyAnnotations("Get Body Measurements"),
 		withErrorHandling(async (args: GetBodyMeasurementsParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -154,6 +171,7 @@ export function registerBodyMeasurementTools(
 		"get-body-measurement",
 		"Get a single body measurement by date. Returns all measurement fields for the specified date.",
 		getBodyMeasurementSchema,
+		readOnlyAnnotations("Get Body Measurement"),
 		withErrorHandling(async (args: GetBodyMeasurementParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -190,8 +208,9 @@ export function registerBodyMeasurementTools(
 
 	server.tool(
 		"create-body-measurement",
-		"Create a body measurement entry for a given date. All measurement fields are optional. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
+		"Create a body measurement entry for a given date. All measurement fields are optional; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
 		createBodyMeasurementSchema,
+		createAnnotations("Create Body Measurement"),
 		withErrorHandling(async (args: CreateBodyMeasurementParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -226,8 +245,9 @@ export function registerBodyMeasurementTools(
 
 	server.tool(
 		"update-body-measurement",
-		"Update an existing body measurement entry for a given date. All fields are overwritten — omitted fields are set to null. Returns 404 if no entry exists for the date.",
+		"Update an existing body measurement entry for a given date. Only the fields you provide are sent and updated; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Requires at least one measurement field. Returns 404 if no entry exists for the date.",
 		updateBodyMeasurementSchema,
+		updateAnnotations("Update Body Measurement"),
 		withErrorHandling(async (args: UpdateBodyMeasurementParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -235,10 +255,13 @@ export function registerBodyMeasurementTools(
 				);
 			}
 			const { date, ...fields } = args;
-			await hevyClient.updateBodyMeasurement(
-				date,
-				buildMeasurementPayload(fields),
-			);
+			const payload = buildMeasurementPayload(fields);
+			if (Object.keys(payload).length === 0) {
+				throw new Error(
+					"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
+				);
+			}
+			await hevyClient.updateBodyMeasurement(date, payload);
 
 			return createTextResponse(
 				`Body measurement for ${date} updated successfully.`,

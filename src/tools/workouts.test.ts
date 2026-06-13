@@ -16,15 +16,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const [, , , handler] = match as [
-		string,
-		string,
-		Record<string, unknown>,
-		(args: Record<string, unknown>) => Promise<{
-			content: Array<{ type: string; text: string }>;
-			isError?: boolean;
-		}>,
-	];
+	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
+		content: Array<{ type: string; text: string }>;
+		isError?: boolean;
+	}>;
 	return { handler };
 }
 

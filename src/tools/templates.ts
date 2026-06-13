@@ -17,6 +17,10 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import {
+	createAnnotations,
+	readOnlyAnnotations,
+} from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 // Type definitions for the template operations
@@ -79,6 +83,7 @@ export function registerTemplateTools(
 		"get-exercise-templates",
 		"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
 		getExerciseTemplatesSchema,
+		readOnlyAnnotations("Get Exercise Templates"),
 		withErrorHandling(async (args: GetExerciseTemplatesParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -120,6 +125,7 @@ export function registerTemplateTools(
 		"get-exercise-template",
 		"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
 		getExerciseTemplateSchema,
+		readOnlyAnnotations("Get Exercise Template"),
 		withErrorHandling(async (args: GetExerciseTemplateParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -163,6 +169,7 @@ export function registerTemplateTools(
 		"get-exercise-history",
 		"Get past sets for a specific exercise template, optionally filtered by start and end dates.",
 		getExerciseHistorySchema,
+		readOnlyAnnotations("Get Exercise History"),
 		withErrorHandling(async (args: GetExerciseHistoryParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -226,6 +233,7 @@ export function registerTemplateTools(
 		"create-exercise-template",
 		"Create a custom exercise template with title, type, equipment, and muscle groups.",
 		createExerciseTemplateSchema,
+		createAnnotations("Create Exercise Template"),
 		withErrorHandling(async (args: CreateExerciseTemplateParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -288,6 +296,7 @@ export function registerTemplateTools(
 		"search-exercise-templates",
 		"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call and caches them in memory for subsequent searches. Use refresh:true to force a re-fetch.",
 		searchExerciseTemplatesSchema,
+		readOnlyAnnotations("Search Exercise Templates"),
 		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
 			if (!hevyClient) {
 				throw new Error(

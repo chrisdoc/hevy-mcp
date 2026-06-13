@@ -5,6 +5,11 @@ import {
 	createEmptyResponse,
 	createJsonResponse,
 } from "../utils/response-formatter.js";
+import {
+	createAnnotations,
+	destructiveAnnotations,
+	readOnlyAnnotations,
+} from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 type HevyClient = ReturnType<
@@ -67,6 +72,7 @@ export function registerWebhookTools(
 		"get-webhook-subscription",
 		"Get the current webhook subscription for this account. Returns the webhook URL and auth token if a subscription exists.",
 		getWebhookSubscriptionSchema,
+		readOnlyAnnotations("Get Webhook Subscription"),
 		withErrorHandling(async (_args: GetWebhookSubscriptionParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -108,6 +114,7 @@ export function registerWebhookTools(
 		"create-webhook-subscription",
 		"Create a new webhook subscription for this account. The webhook will receive POST requests when workouts are created. Your endpoint must respond with 200 OK within 5 seconds.",
 		createWebhookSubscriptionSchema,
+		createAnnotations("Create Webhook Subscription"),
 		withErrorHandling(async (args: CreateWebhookSubscriptionParams) => {
 			if (!hevyClient) {
 				throw new Error(
@@ -145,6 +152,7 @@ export function registerWebhookTools(
 		"delete-webhook-subscription",
 		"Delete the current webhook subscription for this account. This will stop all webhook notifications.",
 		deleteWebhookSubscriptionSchema,
+		destructiveAnnotations("Delete Webhook Subscription"),
 		withErrorHandling(async (_args: DeleteWebhookSubscriptionParams) => {
 			if (!hevyClient) {
 				throw new Error(
