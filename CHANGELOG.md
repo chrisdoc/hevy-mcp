@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.24...v1.24.0) (2026-06-15)
+
+
+### Features
+
+* fix sentry ([728d9a0](https://github.com/chrisdoc/hevy-mcp/commit/728d9a0da6f7fabd8baa468d36e528bb43a5ed2e))
+
 ## [1.23.24](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.23...v1.23.24) (2026-06-15)
 
 ## [1.23.23](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.22...v1.23.23) (2026-06-13)
