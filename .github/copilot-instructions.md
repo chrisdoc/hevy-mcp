@@ -5,20 +5,25 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v20+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
+- The codebase is TypeScript (Node.js v24+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
+
+## Git & Workflow Standards
+
+- **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
+- **GitHub Squash and Merge**: When using "Squash and Merge" on GitHub, always ensure the **PR Title** (which becomes the final commit title) follows the conventional commit format in **lowercase** (e.g., `refactor: replace biome with oxlint`). This is critical for `semantic-release` to correctly identify version bumps.
 
 ## Working Effectively
 
 ### Bootstrap and Build Repository
 
-Run these commands in order to set up a working development environment (Corepack is bundled with Node.js v20+, so run `corepack use pnpm@10.22.0` once per machine if pnpm isn't available):
+Run these commands in order to set up a working development environment (npm is the package manager for this project):
 
 1. **Install dependencies:**
 
    ```bash
-   pnpm install
+   npm install
    ```
 
    - Takes approximately 30 seconds. NEVER CANCEL - set timeout to 60+ seconds.
@@ -26,7 +31,7 @@ Run these commands in order to set up a working development environment (Corepac
 2. **Build the project:**
 
    ```bash
-   pnpm run build
+   npm run build
    ```
 
    - Takes approximately 3-5 seconds. TypeScript compilation via tsdown.
@@ -35,18 +40,18 @@ Run these commands in order to set up a working development environment (Corepac
 3. **Run linting/formatting:**
 
    ```bash
-   pnpm run check
+   npm run check
    ```
 
    - Takes less than 1 second.
-   - **EXPECTED WARNING:** Biome schema version mismatch warning is normal and can be ignored.
+   - **EXPECTED WARNING:** Warnings from oxlint are expected and can be ignored.
 
 ### Testing Commands
 
 4. **Run unit tests only:**
 
    ```bash
-   pnpm vitest run --exclude tests/integration/**
+   npx vitest run --exclude tests/integration/**
    ```
 
    - Takes approximately 1-2 seconds. NEVER CANCEL.
@@ -55,7 +60,7 @@ Run these commands in order to set up a working development environment (Corepac
 5. **Run integration tests (requires API key):**
 
    ```bash
-   pnpm vitest run tests/integration
+   npx vitest run tests/integration
    ```
 
    - **WILL FAIL** without valid `HEVY_API_KEY` in `.env` file (by design).
@@ -64,7 +69,7 @@ Run these commands in order to set up a working development environment (Corepac
 6. **Run all tests:**
 
    ```bash
-   pnpm test
+   npm test
    ```
 
    - Takes approximately 1-2 seconds for unit tests only (without API key).
@@ -75,30 +80,19 @@ Run these commands in order to set up a working development environment (Corepac
 7. **Regenerate API client from OpenAPI spec:**
 
    ```bash
-   pnpm run build:client
+   npm run build:client
    ```
 
    - Takes approximately 4-5 seconds. NEVER CANCEL.
    - **EXPECTED WARNINGS:** OpenAPI validation warnings about missing schemas are normal.
    - Always run this after updating `openapi-spec.json`.
 
-8. **Validate OpenAPI spec:**
-
-   ```bash
-   pnpm run validate:openapi
-   ```
-
-   - Takes less than 1 second.
-   - Uses IBM OpenAPI Validator with Spectral ruleset (`.spectral.yaml`).
-   - Validates `openapi-spec.json` against OpenAPI 3.0 specification.
-   - **EXPECTED WARNINGS:** Since this is an external API spec from Hevy, some warnings are expected and acceptable.
-
 ### Server Operations
 
 9. **Development server (with hot reload):**
 
    ```bash
-   pnpm run dev
+   npm run dev
    ```
 
    - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
@@ -107,25 +101,25 @@ Run these commands in order to set up a working development environment (Corepac
 10. **Production server:**
 
 ```bash
-pnpm start
+npm start
 ```
 
 - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
-- Must run `pnpm run build` first.
+- Must run `npm run build` first.
 
 ## Commands With Known Environment Limitations
 
 ### Known Failing Commands
 
-- **`pnpm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
-- **`pnpm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
+- **`npm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
+- **`npm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
 
 Only list commands here that are known to be flaky or unsupported in some
-environments. Other documented commands (including `pnpm run check:types`) are
+environments. Other documented commands (including `npm run check:types`) are
 expected to succeed locally; treat failures as issues to fix rather than
 environmental flakiness. See `README.md` for the canonical list of commands.
 
-`pnpm run check:types` is expected to pass locally before opening a PR; see the
+`npm run check:types` is expected to pass locally before opening a PR; see the
 "Type checking validation" section below.
 
 ## Environment Setup
@@ -146,7 +140,7 @@ HEVY_API_KEY=your_hevy_api_key_here
 
 ### Node.js Version
 
-- **Supported:** Node.js >= 20
+- **Supported:** Node.js >= 24
 - **Recommended:** Use the exact version pinned in `.nvmrc` (CI uses this exact version)
 - If you use `nvm`, run `nvm use` in the repo root to match `.nvmrc`
 - Use `node --version` to verify current version
@@ -160,7 +154,7 @@ Always perform these validation steps after making changes:
 1. **Build validation:**
 
    ```bash
-   pnpm run build
+   npm run build
    ```
 
    - Must complete successfully without errors.
@@ -168,7 +162,7 @@ Always perform these validation steps after making changes:
 2. **Unit test validation:**
 
    ```bash
-   pnpm vitest run --exclude tests/integration/**
+   npx vitest run --exclude tests/integration/**
    ```
 
    - All unit tests must pass.
@@ -176,7 +170,7 @@ Always perform these validation steps after making changes:
 3. **Code style validation:**
 
    ```bash
-   pnpm run check
+   npm run check
    ```
 
    - Must complete without errors (warnings about oxlint and oxfmt schema are acceptable).
@@ -185,19 +179,19 @@ Always perform these validation steps after making changes:
 4. **Type checking validation:**
 
    ```bash
-   pnpm run check:types
+   npm run check:types
    ```
 
    - Must complete without errors.
    - Runs the TypeScript compiler in check-only mode (no emitted files), as
      configured in the `check:types` script in `package.json`.
-   - Note: `pnpm run build` (tsup) may still succeed when this fails.
+   - Note: `npm run build` (tsup) may still succeed when this fails.
    - Treat failures here as issues to fix (even if the build passes).
    - Run this locally before opening a PR (CI does not currently run this check).
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**
-   - Start development server: `pnpm run dev`
+   - Start development server: `npm run dev`
    - Test MCP tool endpoints with a client
    - Verify tool responses are correctly formatted
 
@@ -308,7 +302,7 @@ server.tool(
 ### Working with Generated Code
 
 - **NEVER** edit files in `src/generated/` directly
-- Regenerate API client: `pnpm run build:client`
+- Regenerate API client: `npm run build:client`
 - If OpenAPI spec changes, update `openapi-spec.json` first
 - Generated types are available in `src/generated/client/types/index.ts`
 
@@ -326,7 +320,7 @@ server.tool(
 1. **Server won't start:** Check for `HEVY_API_KEY` in `.env` file
 2. **Integration tests failing:** Expected without valid API key
 3. **TypeScript errors in generated code:** Expected - ignore these
-4. **Build failures:** Run `pnpm run check` to identify formatting/linting issues
+4. **Build failures:** Run `npm run check` to identify formatting/linting issues
 5. **Network errors in export-specs:** Expected in sandboxed environments
 6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
 7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)

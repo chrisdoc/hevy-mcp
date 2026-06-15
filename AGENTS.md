@@ -11,8 +11,16 @@
 
 ## Git & Workflow Standards
 
-- **Conventional Commits**: Always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`).
+- **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
 - **GitHub Squash and Merge**: When using "Squash and Merge" on GitHub, always ensure the **PR Title** (which becomes the final commit title) follows the conventional commit format in **lowercase** (e.g., `refactor: replace biome with oxlint`). This is critical for `semantic-release` to correctly identify version bumps.
+
+## Agent Tool Requirements
+
+### Documentation and Research
+
+- **Context7**: MUST use Context7 for any library and API documentation needs
+- **GitHub Integration**: MUST use the GitHub MCP server for all GitHub interactions and only use `gh` if there is a problem with the personal access token
+- **AI Feedback**: MUST ask Gemini for feedback (about a design, code review, etc.) but remember Gemini has no memory so everything must be provided in the prompt and you must refer to files using the @ syntax
 
 ## Working Effectively
 
@@ -238,6 +246,21 @@ tests/
 ├── integration/       # Integration tests (require API key)
 └── unit tests are co-located with source files (*.test.ts)
 ```
+
+### Client Architecture
+
+The project uses a generated API client via Kubb that creates:
+
+- TypeScript types in `src/generated/client/types/`
+- API methods in `src/generated/client/api/`
+- Zod schemas in `src/generated/client/schemas/`
+- Mock data in `src/generated/client/mocks/`
+
+### Configuration Files
+
+- `kubb.config.ts` - API client generation configuration
+- `oxlint and oxfmt configuration` - Code formatting and linting rules (tabs, 80 char lines, double quotes)
+- `lefthook.yml` - Git hooks for pre-commit formatting and commit message linting
 
 ## Development Patterns
 
