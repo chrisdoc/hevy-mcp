@@ -40,6 +40,7 @@
 		"openapi": "node ./scripts/openapi-spec.js",
 		"build": "tsdown",
 		"build:client": "kubb generate",
+		"prepack": "npm run build",
 		"start": "node --env-file .env dist/cli.mjs",
 		"dev": "tsx watch --env-file .env --clear-screen=false src/cli.ts",
 		"check": "oxlint . --type-aware --type-check && oxfmt . --check",
