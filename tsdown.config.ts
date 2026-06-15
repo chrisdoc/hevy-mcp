@@ -72,7 +72,7 @@ export default defineConfig({
 				assets: ["./dist/**/*.mjs", "./dist/**/*.map"],
 			},
 			release: {
-				name: version,
+				name: `${name}@${version}`,
 			},
 		}),
 	],
