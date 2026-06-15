@@ -49,6 +49,19 @@ export default defineConfig({
 		js: "#!/usr/bin/env node\n// Generated with tsdown\n// https://tsdown.dev",
 	},
 	outDir: "dist",
+	inputOptions: {
+		onLog(level, log, defaultHandler) {
+			if (
+				typeof log === "object" &&
+				log !== null &&
+				"code" in log &&
+				log.code === "SOURCEMAP_BROKEN"
+			) {
+				return;
+			}
+			defaultHandler(level, log);
+		},
+	},
 	plugins: [
 		sentryRollupPlugin({
 			org: process.env.SENTRY_ORG,
@@ -56,7 +69,7 @@ export default defineConfig({
 			authToken: process.env.SENTRY_AUTH_TOKEN,
 			telemetry: false,
 			sourcemaps: {
-				assets: ["./dist/**/*.map"],
+				assets: ["./dist/**/*.mjs", "./dist/**/*.map"],
 			},
 			release: {
 				name: version,
