@@ -1,3 +1,10 @@
+## [1.24.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.24.1...v1.24.2) (2026-06-15)
+
+
+### Bug Fixes
+
+* align sentry release name with project@version pattern ([fa9613f](https://github.com/chrisdoc/hevy-mcp/commit/fa9613f95d6ff6786b354f93e00d310b36c575e6))
+
 ## [1.24.1](https://github.com/chrisdoc/hevy-mcp/compare/v1.24.0...v1.24.1) (2026-06-15)
 
 # [1.24.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.24...v1.24.0) (2026-06-15)
