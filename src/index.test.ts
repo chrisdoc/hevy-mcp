@@ -21,6 +21,12 @@ vi.mock("@sentry/node", () => ({
 	init: vi.fn(),
 	setUser: vi.fn(),
 	wrapMcpServerWithSentry: vi.fn((server) => server),
+	startSpan: vi.fn((_, callback) =>
+		callback({
+			setAttribute: vi.fn(),
+			setStatus: vi.fn(),
+		}),
+	),
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
@@ -73,6 +79,10 @@ describe("Server entry", () => {
 	it("creates an MCP server instance", () => {
 		const server = createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
+		expect(Sentry.startSpan).toHaveBeenCalledWith(
+			expect.objectContaining({ name: "mcp.server.build" }),
+			expect.any(Function),
+		);
 	});
 
 	it("sets the Sentry user ID to an HMAC-SHA-256 fingerprint of the API key", () => {
@@ -105,6 +115,11 @@ describe("Server entry", () => {
 			).not.toContain("test-api-key");
 			const anyStdioModule = stdioModule as { __transports?: unknown[] };
 			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
+			const spanNames = vi
+				.mocked(Sentry.startSpan)
+				.mock.calls.map(([options]) => (options as { name?: string }).name);
+			expect(spanNames).toContain("mcp.server.run");
+			expect(spanNames).toContain("mcp.server.connect");
 		});
 
 		it("prefers CLI --hevy-api-key argument over environment variable", async () => {

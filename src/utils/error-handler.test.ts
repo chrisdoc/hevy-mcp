@@ -1,5 +1,23 @@
+import * as Sentry from "@sentry/node";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
+
+const sentryTestDoubles = vi.hoisted(() => ({
+	span: {
+		setAttribute: vi.fn(),
+		setStatus: vi.fn(),
+	},
+	scope: {
+		setTag: vi.fn(),
+		setContext: vi.fn(),
+	},
+}));
+
+vi.mock("@sentry/node", () => ({
+	startSpan: vi.fn((_, callback) => callback(sentryTestDoubles.span)),
+	withScope: vi.fn((callback) => callback(sentryTestDoubles.scope)),
+	captureException: vi.fn(),
+}));
 
 describe("Error Handler", () => {
 	describe("createErrorResponse", () => {
@@ -131,6 +149,10 @@ describe("Error Handler", () => {
 				content: [{ type: "text", text: "Success" }],
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
+			expect(Sentry.startSpan).toHaveBeenCalledWith(
+				expect.objectContaining({ op: "mcp.tool.execute" }),
+				expect.any(Function),
+			);
 		});
 
 		it("should handle errors thrown by the wrapped function", async () => {
@@ -152,6 +174,7 @@ describe("Error Handler", () => {
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
 			// We don't check console.error here as we're using a different mocking approach
+			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
 		});
 	});
 });
