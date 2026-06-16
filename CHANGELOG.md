@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.24.2...v1.25.0) (2026-06-16)
+
+
+### Features
+
+* add MCP lifecycle and stdio parse observability ([#348](https://github.com/chrisdoc/hevy-mcp/issues/348)) ([f7a816b](https://github.com/chrisdoc/hevy-mcp/commit/f7a816baf8c852b7f891b4575fa49dced3806511))
+
 ## [1.24.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.24.1...v1.24.2) (2026-06-15)
 
 
