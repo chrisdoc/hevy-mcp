@@ -127,7 +127,7 @@ Add this server under `"mcpServers"` in `~/.cursor/mcp.json`:
 
 - 🚀 **High Performance**: Built with the **Oxc** toolchain (`oxlint`/`oxfmt`) for near-instant linting and formatting.
 - 🛡️ **Type Safety**: Fully type-safe implementation using **Zod** and **Kubb**-generated API clients.
-- 📉 **Observability**: Built-in **Sentry** monitoring for error tracking and performance profiling.
+- 📉 **Observability**: Built-in **Sentry** monitoring for error tracking, lifecycle and tool tracing, and stdio parse diagnostics.
 - ⚡ **Optimized**: Includes in-memory caching for exercise templates to reduce API latency.
 
 ---
@@ -146,7 +146,12 @@ HEVY_API_KEY=your_hevy_api_key_here
 
 ### 📡 Sentry Monitoring
 
-`hevy-mcp` includes Sentry monitoring to observe errors and usage in production. It initializes `@sentry/node` with tracing enabled and PII collection disabled by default.
+`hevy-mcp` includes Sentry monitoring to observe errors and usage in production. It initializes `@sentry/node` with tracing enabled and PII collection disabled by default. Recent observability changes also add:
+
+- lifecycle spans around server build, run, and stdio connect
+- per-tool execution spans plus captured handler exceptions
+- stdio parse diagnostics, including leading UTF-8 BOM stripping and invalid JSON context
+- a deterministic pseudonymous Sentry user ID derived from `HEVY_API_KEY`, so the raw key is never sent to Sentry
 
 ---
 
