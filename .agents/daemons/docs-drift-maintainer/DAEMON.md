@@ -13,7 +13,7 @@ deny:
   - Do not invent product behavior, API contracts, ownership, or setup steps.
   - Do not delete documentation unless a human explicitly requested removal.
   - Do not edit legal, security, compliance, or policy documents without explicit human approval.
-schedule: "0 10 * * 1-5"
+schedule: '0 10 * * 1-5'
 ---
 
 # Recent Docs Drift Maintainer
