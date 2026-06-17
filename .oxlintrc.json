@@ -5,7 +5,8 @@
 		"**/node_modules",
 		"**/dist",
 		"**/src/generated",
-		"**/coverage"
+		"**/coverage",
+		"**/.agents"
 	],
 	"categories": {
 		"correctness": "error"

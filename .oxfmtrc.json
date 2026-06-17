@@ -17,6 +17,7 @@
 		"**/dist",
 		"**/src/generated",
 		"**/coverage",
-		"**/CHANGELOG.md"
+		"**/CHANGELOG.md",
+		"**/.agents"
 	]
 }
