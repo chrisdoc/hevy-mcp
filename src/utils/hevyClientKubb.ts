@@ -1,7 +1,7 @@
 import type {
 	RequestConfig,
 	ResponseConfig,
-} from "@kubb/plugin-client/clients/axios";
+} from "../generated/.kubb/fetch.ts";
 import axios from "axios";
 import * as api from "../generated/client/api";
 import type {
