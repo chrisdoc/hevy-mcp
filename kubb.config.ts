@@ -33,6 +33,7 @@ export default defineConfig({
 				path: "./client/api",
 			},
 			client: "axios",
+			bundle: true,
 		}),
 		pluginZod({
 			output: {
