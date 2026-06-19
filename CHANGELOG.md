@@ -1,3 +1,10 @@
+## [1.25.4](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.3...v1.25.4) (2026-06-19)
+
+
+### Bug Fixes
+
+* remove kubb plugin-client from runtime deps ([#356](https://github.com/chrisdoc/hevy-mcp/issues/356)) ([61077ae](https://github.com/chrisdoc/hevy-mcp/commit/61077ae7942168ef79baf7b8c8454e1dcc2760c7))
+
 ## [1.25.3](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.2...v1.25.3) (2026-06-17)
 
 ## [1.25.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.1...v1.25.2) (2026-06-17)
