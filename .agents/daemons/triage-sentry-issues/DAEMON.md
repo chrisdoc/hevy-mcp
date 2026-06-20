@@ -50,6 +50,7 @@ Post at most one concise Sentry comment per issue per activation, and only when 
 Use this format:
 
 ```md
+<!-- charlie:triage-sentry id:triage-sentry-issues -->
 **Triage update**
 
 Signal: <current impact and trend>
@@ -57,13 +58,6 @@ Release/repo context: <suspect release window, commits, or PRs>
 Most likely area: <module/file/owner clue from stack traces or changes>
 Next step: <single recommended debugging or validation action>
 Evidence: <up to 3 links or references>
-```
-
-Omit empty lines. Keep wording factual and uncertainty-aware.
-
-## Idempotency
-
-Before posting, inspect prior Charlie triage comments on the same Sentry issue.
 
 No-op when an equivalent update already exists for the same evidence state. Post a follow-up only if at least one material change is true:
 
