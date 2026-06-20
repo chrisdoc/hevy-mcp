@@ -2,6 +2,8 @@
 id: triage-sentry-issues
 purpose: Help teams triage high-signal Sentry issues by correlating release and repository context, then posting one concise update only when evidence changes.
 schedule: '0 10 * * 1-5'
+watch:
+  - A new Sentry issue is created.
 routines:
   - Identify high-signal unresolved or regressed Sentry issues using event/user impact, recency, and production-environment relevance.
   - Correlate each candidate with release and repository context, including suspect commits, recent pull requests, and touched files.
