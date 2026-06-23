@@ -17,6 +17,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - [Installation](#installation)
   - [Claude Desktop Configuration](#claude-desktop-configuration)
   - [Cursor Configuration](#cursor-configuration)
+  - [Other MCP Clients (via add-mcp)](#other-mcp-clients-via-add-mcp)
 - [Why hevy-mcp?](#why-hevy-mcp)
 - [Configuration](#configuration)
 - [Available MCP Tools](#available-mcp-tools)
@@ -120,6 +121,16 @@ Add this server under `"mcpServers"` in `~/.cursor/mcp.json`:
 	}
 }
 ```
+
+### Other MCP Clients (via add-mcp)
+
+For a generic setup flow across MCP clients, use [`add-mcp`](https://github.com/neon-solutions/add-mcp):
+
+```bash
+npx add-mcp hevy-mcp --env "HEVY_API_KEY=secret"
+```
+
+This bootstraps the `hevy-mcp` entry in your client config without manual JSON edits.
 
 ---
 
