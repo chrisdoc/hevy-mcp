@@ -20,10 +20,41 @@
 		],
 		"@semantic-release/git"
 	],
+	"presetConfig": {
+		"types": [
+			{ "type": "feat", "section": "Features", "hidden": false },
+			{ "type": "fix", "section": "Bug Fixes", "hidden": false },
+			{
+				"type": "perf",
+				"section": "Performance Improvements",
+				"hidden": false
+			},
+			{ "type": "revert", "section": "Reverts", "hidden": false },
+			{ "type": "docs", "section": "Documentation", "hidden": false },
+			{ "type": "style", "section": "Styles", "hidden": false },
+			{ "type": "chore", "section": "Chores", "hidden": false },
+			{
+				"type": "refactor",
+				"section": "Code Refactoring",
+				"hidden": false
+			},
+			{ "type": "test", "section": "Tests", "hidden": false },
+			{ "type": "build", "section": "Build System", "hidden": false },
+			{
+				"type": "ci",
+				"section": "Continuous Integration",
+				"hidden": false
+			}
+		]
+	},
 	"releaseRules": [
 		{ "type": "docs", "release": "patch" },
 		{ "type": "chore", "release": "patch" },
 		{ "type": "refactor", "release": "patch" },
+		{ "type": "build", "release": "patch" },
+		{ "type": "ci", "release": "patch" },
+		{ "type": "test", "release": "patch" },
+		{ "type": "style", "release": "patch" },
 		{ "type": "feat", "release": "minor" }
 	]
 }
