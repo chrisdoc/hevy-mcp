@@ -85,7 +85,9 @@ Run these commands in order to set up a working development environment (npm is 
 
    - Takes approximately 4-5 seconds. NEVER CANCEL.
    - **EXPECTED WARNINGS:** OpenAPI validation warnings about missing schemas are normal.
-   - Always run this after updating `openapi-spec.json`.
+   - If you need to refresh `openapi-spec.json` from Hevy first, run `npm run openapi`.
+   - `npm run openapi` fetches the upstream spec and **WILL FAIL** with `ENOTFOUND api.hevyapp.com` in sandboxed environments.
+   - Always run `npm run build:client` after updating `openapi-spec.json`.
 
 ### Server Operations
 
@@ -111,7 +113,7 @@ npm start
 
 ### Known Failing Commands
 
-- **`npm run export-specs`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
+- **`npm run openapi`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
 - **`npm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
 
 Only list commands here that are known to be flaky or unsupported in some
@@ -303,7 +305,7 @@ server.tool(
 
 - **NEVER** edit files in `src/generated/` directly
 - Regenerate API client: `npm run build:client`
-- If OpenAPI spec changes, update `openapi-spec.json` first
+- If OpenAPI spec changes, refresh `openapi-spec.json` with `npm run openapi` first
 - Generated types are available in `src/generated/client/types/index.ts`
 
 ### Error Handling
@@ -321,7 +323,7 @@ server.tool(
 2. **Integration tests failing:** Expected without valid API key
 3. **TypeScript errors in generated code:** Expected - ignore these
 4. **Build failures:** Run `npm run check` to identify formatting/linting issues
-5. **Network errors in export-specs:** Expected in sandboxed environments
+5. **Network errors in `npm run openapi`:** Expected in sandboxed environments
 6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
 7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)
 
