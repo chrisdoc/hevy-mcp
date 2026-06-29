@@ -8,8 +8,6 @@
 import { writeFileSync } from "node:fs";
 import pkg from "abstract-syntax-tree";
 
-const { parse, find, generate } = pkg;
-
 const SPEC_FILE = "openapi-spec.json";
 const HEVY_SWAGGER_URL = "https://api.hevyapp.com/docs/swagger-ui-init.js";
 
@@ -282,9 +280,9 @@ async function fetchSpecFromHevy() {
 	}
 
 	const jsContent = await response.text();
-	const ast = parse(jsContent);
+	const ast = pkg.parse(jsContent);
 
-	const optionsNode = find(ast, 'VariableDeclarator[id.name="options"]')[0];
+	const optionsNode = pkg.find(ast, 'VariableDeclarator[id.name="options"]')[0];
 	if (!optionsNode?.init?.properties) {
 		throw new Error("options variable not found in swagger-ui-init.js");
 	}
@@ -296,7 +294,9 @@ async function fetchSpecFromHevy() {
 		throw new Error("swaggerDoc property not found in options");
 	}
 
-	const swaggerDocCode = generate(swaggerDocProperty.value, { tabs: true });
+	const swaggerDocCode = pkg.generate(swaggerDocProperty.value, {
+		tabs: true,
+	});
 	return JSON.parse(swaggerDocCode);
 }
 
