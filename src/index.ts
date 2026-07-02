@@ -128,11 +128,13 @@ function buildServer(apiKey: string) {
 	);
 }
 
-export default function createServer({ config }: { config: ServerConfig }) {
+export function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey } = serverConfigSchema.parse(config);
 	const server = buildServer(apiKey);
 	return server;
 }
+
+export default createServer;
 
 export async function runServer() {
 	await Sentry.startSpan(
