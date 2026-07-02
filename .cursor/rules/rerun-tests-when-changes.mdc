@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-Make sure to re-run tests whenever you make a change to the the source code and also ensure that the test cases are up to date
