@@ -6,7 +6,6 @@ import { registerFolderTools } from "./folders.js";
 import { registerRoutineTools } from "./routines.js";
 import { registerTemplateTools } from "./templates.js";
 import { registerUserTools } from "./user.js";
-import { registerWebhookTools } from "./webhooks.js";
 import { registerWorkoutTools } from "./workouts.js";
 
 const READ_ONLY_TOOLS = [
@@ -25,7 +24,6 @@ const READ_ONLY_TOOLS = [
 	"get-body-measurements",
 	"get-body-measurement",
 	"get-user-info",
-	"get-webhook-subscription",
 ] as const;
 
 const CREATE_TOOLS = [
@@ -34,7 +32,6 @@ const CREATE_TOOLS = [
 	"create-exercise-template",
 	"create-routine-folder",
 	"create-body-measurement",
-	"create-webhook-subscription",
 ] as const;
 
 const UPDATE_TOOLS = [
@@ -43,7 +40,7 @@ const UPDATE_TOOLS = [
 	"update-body-measurement",
 ] as const;
 
-const DESTRUCTIVE_TOOLS = ["delete-webhook-subscription"] as const;
+const DESTRUCTIVE_TOOLS = [] as const;
 
 function registerAllTools() {
 	const tool = vi.fn();
@@ -54,7 +51,6 @@ function registerAllTools() {
 	registerFolderTools(server, null);
 	registerBodyMeasurementTools(server, null);
 	registerUserTools(server, null);
-	registerWebhookTools(server, null);
 	return tool;
 }
 
