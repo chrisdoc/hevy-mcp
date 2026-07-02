@@ -1,6 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withErrorHandling } from "../utils/error-handler.js";
+import {
+	createErrorResponse,
+	withErrorHandling,
+} from "../utils/error-handler.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
@@ -80,8 +83,9 @@ export function registerWebhookTools(
 				);
 			}
 			if (!hevyClient.getWebhookSubscription) {
-				throw new Error(
+				return createErrorResponse(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+					"get-webhook-subscription",
 				);
 			}
 			const data = await hevyClient.getWebhookSubscription();
@@ -123,8 +127,9 @@ export function registerWebhookTools(
 			}
 			const { url, authToken } = args;
 			if (!hevyClient.createWebhookSubscription) {
-				throw new Error(
+				return createErrorResponse(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+					"create-webhook-subscription",
 				);
 			}
 			const data = await hevyClient.createWebhookSubscription({
@@ -160,8 +165,9 @@ export function registerWebhookTools(
 				);
 			}
 			if (!hevyClient.deleteWebhookSubscription) {
-				throw new Error(
+				return createErrorResponse(
 					"Webhook subscription API not available. Please regenerate the client from the updated OpenAPI spec.",
+					"delete-webhook-subscription",
 				);
 			}
 			const data = await hevyClient.deleteWebhookSubscription();

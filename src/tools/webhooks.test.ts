@@ -128,32 +128,45 @@ describe("registerWebhookTools", () => {
 		expect(parsed).toEqual({ id: "sub-1" });
 	});
 
-	it("create-webhook-subscription surfaces API availability errors", async () => {
+	it("unsupported webhook subscription tools return user-facing errors", async () => {
 		const { server, tool } = createMockServer();
 		// Client without the webhook API methods
 		const hevyClient = {} as HevyClient;
 
 		registerWebhookTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			tool,
-			"create-webhook-subscription",
-		);
+		const unsupportedTools = [
+			{
+				name: "get-webhook-subscription",
+				args: {},
+			},
+			{
+				name: "create-webhook-subscription",
+				args: { url: "https://example.com/webhook" },
+			},
+			{
+				name: "delete-webhook-subscription",
+				args: {},
+			},
+		] as const;
 
-		const response = await handler({
-			url: "https://example.com/webhook",
-		} as Record<string, unknown>);
+		for (const toolConfig of unsupportedTools) {
+			const { handler } = getToolRegistration(tool, toolConfig.name);
+			const response = await handler(
+				toolConfig.args as Record<string, unknown>,
+			);
 
-		expect(response).toMatchObject({
-			isError: true,
-			content: [
-				{
-					type: "text",
-					text: expect.stringContaining(
-						"Webhook subscription API not available. Please regenerate the client",
-					),
-				},
-			],
-		});
+			expect(response).toMatchObject({
+				isError: true,
+				content: [
+					{
+						type: "text",
+						text: expect.stringContaining(
+							"Webhook subscription API not available. Please regenerate the client",
+						),
+					},
+				],
+			});
+		}
 	});
 
 	it("get-webhook-subscription returns JSON when a subscription exists", async () => {
