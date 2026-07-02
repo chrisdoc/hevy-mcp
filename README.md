@@ -214,6 +214,19 @@ The API client is automatically generated from the OpenAPI spec using [Kubb](htt
 npm run build:client
 ```
 
+### Versioning & Releases
+
+This project uses [Changesets](https://github.com/changesets/changesets) to manage versioning, changelogs, and releases.
+
+1. **Creating a Changeset**: Whenever you make a change that requires a version bump, run:
+   ```bash
+   npx changeset
+   ```
+   Follow the prompts to specify the type of change (patch, minor, major) and write a short summary of your change. This creates a markdown file under the `.changeset/` directory.
+2. **Automated Releases**:
+   - Pushing changesets to `main` triggers a GitHub Action that automatically creates or updates a **"Version Packages"** Pull Request.
+   - When this Pull Request is merged, the package is automatically built, published to npm (via OIDC Trusted Publishing), and a GitHub Release is created.
+
 ---
 
 ## 📄 License & Acknowledgements
