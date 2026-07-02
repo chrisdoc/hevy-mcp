@@ -312,6 +312,26 @@ describe("Formatters", () => {
 			const result = formatRoutine(routine as Routine);
 			expect(result.exercises?.[0]?.supersetId).toBe(9);
 		});
+
+		it("should prefer singular superset_id when both variants are present", () => {
+			const routine = {
+				id: crypto.randomUUID(),
+				title: "Routine",
+				created_at: "2025-03-26T19:00:00Z",
+				updated_at: "2025-03-26T19:30:00Z",
+				exercises: [
+					{
+						title: "Squat",
+						supersets_id: null,
+						superset_id: 9,
+						sets: [],
+					},
+				],
+			};
+
+			const result = formatRoutine(routine as Routine);
+			expect(result.exercises?.[0]?.supersetId).toBe(9);
+		});
 	});
 
 	describe("formatRoutineFolder", () => {

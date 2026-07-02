@@ -85,6 +85,77 @@ describe("registerRoutineTools", () => {
 		expect(parsed).toEqual([formatRoutine(routine)]);
 	});
 
+	it("get-routines maps exercise superset_id to supersetId", async () => {
+		const { server, tool } = createMockServer();
+		const routine = {
+			id: "r1",
+			title: "Push Day",
+			folder_id: 123,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [
+				{
+					title: "Leg Press",
+					index: 0,
+					exercise_template_id: "C7973E0E",
+					notes: "Leg day",
+					supersets_id: null,
+					superset_id: 1,
+					sets: [],
+				},
+			],
+		} as unknown as Routine;
+		const hevyClient: HevyClient = {
+			getRoutines: vi.fn().mockResolvedValue({ routines: [routine] }),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-routines");
+
+		const response = await handler({ page: 1, pageSize: 5 });
+		const parsed = JSON.parse(response.content[0].text) as Array<{
+			exercises?: Array<{ supersetId?: number | null }>;
+		}>;
+
+		expect(parsed[0]?.exercises?.[0]).toMatchObject({ supersetId: 1 });
+	});
+
+	it("get-routine maps exercise superset_id to supersetId", async () => {
+		const { server, tool } = createMockServer();
+		const routine = {
+			id: "routine-1",
+			title: "Leg C2",
+			folder_id: 123,
+			created_at: "2025-03-26T19:00:00Z",
+			updated_at: "2025-03-26T19:30:00Z",
+			exercises: [
+				{
+					title: "Leg Press",
+					index: 0,
+					exercise_template_id: "C7973E0E",
+					notes: "Leg day",
+					supersets_id: null,
+					superset_id: 1,
+					sets: [],
+				},
+			],
+		} as unknown as Routine;
+		const hevyClient: HevyClient = {
+			getRoutineById: vi.fn().mockResolvedValue({ routine }),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-routine");
+
+		const response = await handler({ routineId: "routine-1" });
+		const parsed = JSON.parse(response.content[0].text) as {
+			exercises?: Array<{ supersetId?: number | null }>;
+		};
+
+		expect(hevyClient.getRoutineById).toHaveBeenCalledWith("routine-1");
+		expect(parsed.exercises?.[0]).toMatchObject({ supersetId: 1 });
+	});
+
 	it("create-routine forwards non-null supersetId as superset_id", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {

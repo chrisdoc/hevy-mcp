@@ -131,12 +131,12 @@ type ExerciseWithSupersetVariants = {
 };
 
 function getSupersetId(exercise: ExerciseWithSupersetVariants): number | null {
-	if (exercise.supersets_id !== undefined) {
-		return exercise.supersets_id;
-	}
-
 	if (exercise.superset_id !== undefined) {
 		return exercise.superset_id;
+	}
+
+	if (exercise.supersets_id !== undefined) {
+		return exercise.supersets_id;
 	}
 
 	return null;
