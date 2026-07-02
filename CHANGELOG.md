@@ -1,3 +1,10 @@
+## [1.25.16](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.15...v1.25.16) (2026-07-02)
+
+
+### Bug Fixes
+
+* preserve routine supersetId in read responses ([#375](https://github.com/chrisdoc/hevy-mcp/issues/375)) ([9291ace](https://github.com/chrisdoc/hevy-mcp/commit/9291acec0cba10bc79771b7b995de31af919e593))
+
 ## [1.25.15](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.14...v1.25.15) (2026-06-29)
 
 ## [1.25.14](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.13...v1.25.14) (2026-06-29)
