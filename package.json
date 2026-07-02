@@ -49,7 +49,7 @@
 		"version:patch": "npm version patch",
 		"version:minor": "npm version minor",
 		"version:major": "npm version major",
-		"release": "semantic-release",
+		"release": "changeset publish",
 		"commit": "commit"
 	},
 	"dependencies": {
@@ -59,6 +59,8 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@changesets/changelog-github": "^0.7.0",
+		"@changesets/cli": "^2.31.0",
 		"@commitlint/cli": "^21.0.2",
 		"@commitlint/config-conventional": "^21.0.2",
 		"@commitlint/prompt-cli": "^21.0.2",
@@ -69,12 +71,6 @@
 		"@kubb/plugin-oas": "^4.38.0",
 		"@kubb/plugin-ts": "^4.38.0",
 		"@kubb/plugin-zod": "^4.38.0",
-		"@semantic-release/changelog": "^6.0.3",
-		"@semantic-release/commit-analyzer": "^13.0.1",
-		"@semantic-release/git": "^10.0.1",
-		"@semantic-release/github": "^12.0.8",
-		"@semantic-release/npm": "^13.1.5",
-		"@semantic-release/release-notes-generator": "^14.1.1",
 		"@sentry/rollup-plugin": "^5.3.0",
 		"@types/node": "^26.0.0",
 		"@vitest/coverage-v8": "^4.1.9",
@@ -84,8 +80,6 @@
 		"oxfmt": "^0.56.0",
 		"oxlint": "^1.70.0",
 		"oxlint-tsgolint": "^0.23.0",
-		"semantic-release": "^25.0.5",
-		"semantic-release-unsquash": "^0.4.0",
 		"tsdown": "^0.22.2",
 		"tsx": "^4.22.4",
 		"typescript": "^6.0.3",

@@ -24,6 +24,8 @@ jobs:
       released: ${{ steps.release.outputs.released }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
@@ -40,36 +42,29 @@ jobs:
         run: npx vitest run tests/integration
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
-      - name: Store initial version
-        id: initial_version
-        run: |
-          set -euo pipefail
-          VERSION=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Release
-        id: release_step
-        run: npm run release
+      - name: Create Release PR or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Check if release was created
+      - name: Set Release Outputs
         id: release
         run: |
           set -euo pipefail
-          NEW_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
-          if [ "$NEW_VERSION" != "${{ steps.initial_version.outputs.version }}" ]; then
-            {
-              echo "version=$NEW_VERSION"
-              echo "released=true"
-            } >> "$GITHUB_OUTPUT"
-            echo "Release created: $NEW_VERSION"
+          if [ "${{ steps.changesets.outputs.published }}" = "true" ]; then
+            VERSION=$(node -p 'const pkgs = JSON.parse(process.env.PKGS); pkgs[0]?.version || ""')
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "released=true" >> "$GITHUB_OUTPUT"
           else
+            echo "version=" >> "$GITHUB_OUTPUT"
             echo "released=false" >> "$GITHUB_OUTPUT"
-            echo "No release created"
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKGS: ${{ steps.changesets.outputs.publishedPackages }}

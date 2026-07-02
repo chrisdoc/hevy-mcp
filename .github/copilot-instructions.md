@@ -12,7 +12,7 @@
 ## Git & Workflow Standards
 
 - **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
-- **GitHub Squash and Merge**: When using "Squash and Merge" on GitHub, always ensure the **PR Title** (which becomes the final commit title) follows the conventional commit format in **lowercase** (e.g., `refactor: replace biome with oxlint`). This is critical for `semantic-release` to correctly identify version bumps.
+- **Changesets**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases. When making changes that require a version bump and release, run `npx changeset` to create a changeset file describing the changes. The Release CI workflow will automatically handle creating/updating the release pull request and publishing to npm upon merge.
 
 ## Working Effectively
 
