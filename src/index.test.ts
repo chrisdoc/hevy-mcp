@@ -1,7 +1,11 @@
 import * as Sentry from "@sentry/node";
 import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import createServer, { configSchema, runServer } from "./index.js";
+import createServer, {
+	configSchema,
+	createServer as namedCreateServer,
+	runServer,
+} from "./index.js";
 import { createClient } from "./utils/hevyClient.js";
 
 const originalEnv = { ...process.env };
@@ -83,6 +87,12 @@ describe("Server entry", () => {
 			expect.objectContaining({ name: "mcp.server.build" }),
 			expect.any(Function),
 		);
+	});
+
+	it("exports createServer as both default and named exports", () => {
+		expect(namedCreateServer).toBe(createServer);
+		const server = namedCreateServer({ config: { apiKey: "named-key" } });
+		expect(server).toBeDefined();
 	});
 
 	it("sets the Sentry user ID to an HMAC-SHA-256 fingerprint of the API key", () => {
