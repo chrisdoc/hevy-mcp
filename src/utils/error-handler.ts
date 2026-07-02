@@ -7,6 +7,8 @@ import * as Sentry from "@sentry/node";
 import { isAxiosError } from "axios";
 import type { McpToolResponse } from "./response-formatter.js";
 
+const EXPECTED_AXIOS_STATUS_CODES = new Set([400, 401, 403, 404, 409]);
+
 /**
  * Standard error response interface
  */
@@ -139,6 +141,48 @@ function determineErrorType(error: unknown, message: string): ErrorType {
 	return ErrorType.UNKNOWN_ERROR;
 }
 
+function isExpectedAxiosErrorForSentry(error: unknown): boolean {
+	if (!isAxiosError(error)) {
+		return false;
+	}
+
+	const status = error.response?.status;
+	return typeof status === "number" && EXPECTED_AXIOS_STATUS_CODES.has(status);
+}
+
+function isExpectedJsonParseErrorForSentry(error: unknown): boolean {
+	if (!(error instanceof SyntaxError)) {
+		return false;
+	}
+
+	const message = error.message.toLowerCase();
+	if (message.includes("unexpected end of json input")) {
+		return true;
+	}
+
+	const hasJsonContext = message.includes("json");
+	const looksLikeParseFailure =
+		message.includes("unexpected token") ||
+		message.includes("json parse") ||
+		message.includes("is not valid json") ||
+		message.includes("at position") ||
+		message.includes("expected");
+
+	return hasJsonContext && looksLikeParseFailure;
+}
+
+function shouldCaptureInSentry(error: unknown): boolean {
+	if (isExpectedAxiosErrorForSentry(error)) {
+		return false;
+	}
+
+	if (isExpectedJsonParseErrorForSentry(error)) {
+		return false;
+	}
+
+	return true;
+}
+
 /**
  * Wrap an async function with standardized error handling
  *
@@ -177,14 +221,20 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 					return result;
 				} catch (error) {
 					span.setStatus({ code: 2, message: "tool_handler_error" });
-					Sentry.withScope((scope) => {
-						scope.setTag("mcp.tool.context", context);
-						scope.setContext("mcpTool", {
-							context,
-							argumentKeyCount,
+
+					const shouldCapture = shouldCaptureInSentry(error);
+					span.setAttribute("mcp.tool.error.capture_in_sentry", shouldCapture);
+
+					if (shouldCapture) {
+						Sentry.withScope((scope) => {
+							scope.setTag("mcp.tool.context", context);
+							scope.setContext("mcpTool", {
+								context,
+								argumentKeyCount,
+							});
+							Sentry.captureException(error);
 						});
-						Sentry.captureException(error);
-					});
+					}
 
 					return createErrorResponse(error, context);
 				}

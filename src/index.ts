@@ -29,13 +29,14 @@ const version =
 // Sentry monitoring is baked into the built MCP server so usage and errors
 // from users of the published package are captured for observability.
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
-const sentryConfig = {
+const sentryConfig: Sentry.NodeOptions = {
 	dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
 	release: sentryRelease,
 	// Tracing must be enabled for MCP monitoring to work
 	tracesSampleRate: 1.0,
 	sendDefaultPii: false,
-} as const;
+	ignoreErrors: ["EPIPE", "broken pipe"],
+};
 
 Sentry.init(sentryConfig);
 
