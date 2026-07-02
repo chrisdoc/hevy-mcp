@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
 
 const sentryTestDoubles = vi.hoisted(() => ({
@@ -129,8 +129,24 @@ describe("Error Handler", () => {
 	});
 
 	describe("withErrorHandling", () => {
+		const createAxiosLikeError = (status: number) => {
+			const error = new Error(
+				`Request failed with status code ${status}`,
+			) as Error & {
+				isAxiosError: boolean;
+				response?: { status: number };
+			};
+			error.isAxiosError = true;
+			error.response = { status };
+			return error;
+		};
+
 		// Setup mocks before tests
 		vi.spyOn(console, "error").mockImplementation(() => {});
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
 
 		// Restore original console methods after all tests
 		afterAll(() => {
@@ -176,5 +192,66 @@ describe("Error Handler", () => {
 			// We don't check console.error here as we're using a different mocking approach
 			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
 		});
+
+		it.each([400, 401, 403, 404, 409])(
+			"does not send expected Axios %s errors to Sentry",
+			async (statusCode) => {
+				const mockFn = vi.fn().mockImplementation(() => {
+					throw createAxiosLikeError(statusCode);
+				});
+
+				const wrappedFn = withErrorHandling(mockFn, "ExpectedAxiosError");
+				const result = await wrappedFn({ param: "test" });
+
+				expect(result).toEqual({
+					content: [
+						{
+							type: "text",
+							text: `[ExpectedAxiosError] Error: Request failed with status code ${statusCode}`,
+						},
+					],
+					isError: true,
+				});
+				expect(Sentry.captureException).not.toHaveBeenCalled();
+			},
+		);
+
+		it("continues sending unexpected Axios errors to Sentry", async () => {
+			const mockFn = vi.fn().mockImplementation(() => {
+				throw createAxiosLikeError(500);
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "UnexpectedAxiosError");
+			await wrappedFn({ param: "test" });
+
+			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it.each([
+			"Unexpected end of JSON input",
+			"Unexpected token < in JSON at position 0",
+			'"invalid" is not valid JSON',
+		])(
+			"does not send expected JSON parse errors to Sentry: %s",
+			async (msg) => {
+				const mockFn = vi.fn().mockImplementation(() => {
+					throw new SyntaxError(msg);
+				});
+
+				const wrappedFn = withErrorHandling(mockFn, "JsonParseError");
+				const result = await wrappedFn({ param: "test" });
+
+				expect(result).toEqual({
+					content: [
+						{
+							type: "text",
+							text: `[JsonParseError] Error: ${msg}`,
+						},
+					],
+					isError: true,
+				});
+				expect(Sentry.captureException).not.toHaveBeenCalled();
+			},
+		);
 	});
 });
