@@ -31,7 +31,6 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - **Routine Management**: Access and manage workout routines.
 - **Exercise Templates**: Browse available exercise templates with in-memory caching.
 - **Folder Organization**: Manage routine folders.
-- **Webhook Subscriptions**: Create, view, and delete webhook subscriptions for workout events.
 
 ---
 
@@ -191,7 +190,6 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 | **Folders**           | `get-routine-folders`, `get-routine-folder`, `create-routine-folder`                                                               |
 | **Body Measurements** | `get-body-measurements`, `get-body-measurement`, `create-body-measurement`, `update-body-measurement`                              |
 | **User**              | `get-user-info`                                                                                                                    |
-| **Webhooks**          | `get-webhook-subscription`, `create-webhook-subscription`, `delete-webhook-subscription`                                           |
 
 ---
 
