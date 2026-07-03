@@ -12,7 +12,12 @@
 ## Git & Workflow Standards
 
 - **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
-- **Changesets**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases. When making changes that require a version bump and release, run `npx changeset` to create a changeset file describing the changes. The Release CI workflow will automatically handle creating/updating the release pull request and publishing to npm upon merge.
+- **Changesets (CRITICAL)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
+  - **WHEN TO USE**: Every single PR/change that modifies any source code or package dependencies **MUST** have a changeset file.
+  - **HOW TO CREATE**: Before submitting a PR or committing your changes, run `npx changeset` and follow the prompts to select the bump type (major/minor/patch) and write a summary.
+  - **NO-OP / NO-RELEASE CHANGES**: If your change does _not_ require a release (e.g., docs, CI config, internal tests, refactoring, or chore), you **MUST** run `npx changeset --empty` to create an empty changeset file.
+  - **CI ENFORCEMENT**: Pull Requests are guarded by a CI check that runs `npm run check:changeset` (which runs `npx changeset status --since=origin/<base_branch>`). CI will fail if no changeset file is staged/committed.
+  - **VALIDATION**: You can validate your changeset status locally by running `npm run check:changeset`. Make sure the changeset file is staged/committed.
 
 ## Working Effectively
 

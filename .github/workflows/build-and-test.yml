@@ -46,6 +46,10 @@ jobs:
             fi
           fi
 
+      - name: Check for changeset
+        if: github.event_name == 'pull_request'
+        run: npx changeset status --since=origin/${{ github.base_ref }}
+
       - name: Run Check
         run: npm run check
 
