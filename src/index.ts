@@ -47,7 +47,6 @@ import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
 import { registerUserTools } from "./tools/user.js";
-import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { createClient } from "./utils/hevyClient.js";
@@ -109,7 +108,7 @@ function buildServer(apiKey: string) {
 					name: "mcp.tools.register",
 					op: "mcp.lifecycle.tools.register",
 					attributes: {
-						"mcp.tools.count": 7,
+						"mcp.tools.count": 6,
 					},
 				},
 				() => {
@@ -119,7 +118,6 @@ function buildServer(apiKey: string) {
 					registerFolderTools(server, hevyClient);
 					registerBodyMeasurementTools(server, hevyClient);
 					registerUserTools(server, hevyClient);
-					registerWebhookTools(server, hevyClient);
 				},
 			);
 
