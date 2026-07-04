@@ -77,7 +77,8 @@ jobs:
 
       - name: Run tests with coverage (unit only)
         if: steps.filter.outputs.integration != 'true'
-        run: npx vitest run --coverage --exclude tests/integration/**
+        run: npx vitest run --coverage --exclude "tests/integration/**"
+
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v7
