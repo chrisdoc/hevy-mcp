@@ -60,10 +60,24 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Run tests with coverage
+      - name: Check if integration tests changed
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            integration:
+              - 'tests/integration/**'
+              - '.github/workflows/build-and-test.yml'
+
+      - name: Run tests with coverage (including integration)
+        if: steps.filter.outputs.integration == 'true'
         run: npx vitest run --coverage
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+
+      - name: Run tests with coverage (unit only)
+        if: steps.filter.outputs.integration != 'true'
+        run: npx vitest run --coverage --exclude tests/integration/**
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v7
