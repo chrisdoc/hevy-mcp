@@ -70,14 +70,18 @@ jobs:
               - '.github/workflows/build-and-test.yml'
 
       - name: Run tests with coverage (including integration)
-        if: steps.filter.outputs.integration == 'true'
+        if: steps.filter.outputs.integration == 'true' && secrets.HEVY_API_KEY != ''
         run: npx vitest run --coverage
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
       - name: Run tests with coverage (unit only)
-        if: steps.filter.outputs.integration != 'true'
+        if: steps.filter.outputs.integration != 'true' || secrets.HEVY_API_KEY == ''
         run: npx vitest run --coverage --exclude "tests/integration/**"
+
+      - name: "Warning: Integration tests skipped"
+        if: steps.filter.outputs.integration == 'true' && secrets.HEVY_API_KEY == ''
+        run: echo "Skipping integration tests because HEVY_API_KEY is not set. Please configure the HEVY_API_KEY secret in your repository to run integration tests."
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v7
