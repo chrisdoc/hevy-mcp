@@ -275,6 +275,52 @@ describe("registerTemplateTools", () => {
 			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(1);
 		});
 
+		it("retries on next call after an initial fetch failure", async () => {
+			const { server, tool } = createMockServer();
+			const template: ExerciseTemplate = {
+				id: "t1",
+				title: "Bench Press",
+				type: "barbell",
+				primary_muscle_group: "chest",
+				secondary_muscle_groups: [],
+				is_custom: false,
+			};
+
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi
+					.fn()
+					.mockRejectedValueOnce(new Error("catalog fetch failed"))
+					.mockResolvedValueOnce({
+						page: 1,
+						page_count: 1,
+						exercise_templates: [template],
+					}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient);
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			const failedResponse = await handler({
+				query: "bench",
+				refresh: false,
+			});
+			expect(failedResponse).toMatchObject({ isError: true });
+
+			const successfulResponse = await handler({
+				query: "bench",
+				refresh: false,
+			});
+
+			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(2);
+			const parsed = JSON.parse(
+				successfulResponse.content[0].text,
+			) as unknown[];
+			expect(parsed).toEqual([formatExerciseTemplate(template)]);
+		});
+
 		it("re-fetches when refresh is true", async () => {
 			const { server, tool } = createMockServer();
 			const template: ExerciseTemplate = {
