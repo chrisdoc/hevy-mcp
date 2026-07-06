@@ -201,6 +201,7 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
 - **Unit Tests**: `npx vitest run --exclude tests/integration/**`
 - **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
+- **Changeset Check**: `npm run check:changeset`
 
 For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).
 
@@ -214,14 +215,22 @@ npm run build:client
 
 ### Versioning & Releases
 
-This project uses [Changesets](https://github.com/changesets/changesets) to manage versioning, changelogs, and releases.
+This project uses [Changesets](https://github.com/changesets/changesets) to manage versioning, changelogs, releases, and pull request validation.
 
-1. **Creating a Changeset**: Whenever you make a change that requires a version bump, run:
+1. **Every Pull Request Needs a Changeset**: If your change should ship in the next release, run:
    ```bash
    npx changeset
    ```
    Follow the prompts to specify the type of change (patch, minor, major) and write a short summary of your change. This creates a markdown file under the `.changeset/` directory.
-2. **Automated Releases**:
+2. **Use an Empty Changeset for Non-Release Changes**: Docs, CI, test-only, refactor, and chore changes should still include an empty changeset:
+   ```bash
+   npx changeset --empty
+   ```
+3. **Validate Before Opening a PR**: Pull requests targeting `main` are checked for a changeset in CI. You can run the same validation locally with:
+   ```bash
+   npm run check:changeset
+   ```
+4. **Automated Releases**:
    - Pushing changesets to `main` triggers a GitHub Action that automatically creates or updates a **"Version Packages"** Pull Request.
    - When this Pull Request is merged, the package is automatically built, published to npm (via OIDC Trusted Publishing), and a GitHub Release is created.
 
