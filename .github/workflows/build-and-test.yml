@@ -48,7 +48,7 @@ jobs:
           fi
 
       - name: Check for changeset
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         run: npx changeset status --since=origin/${{ github.base_ref }}
 
       - name: Run Check
