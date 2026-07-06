@@ -312,26 +312,29 @@ export function registerTemplateTools(
 
 				if (exerciseTemplateFetch === null) {
 					exerciseTemplateFetch = (async () => {
-						const allTemplates: ExerciseTemplate[] = [];
-						let page = 1;
-						let pageCount = 1;
+						try {
+							const allTemplates: ExerciseTemplate[] = [];
+							let page = 1;
+							let pageCount = 1;
 
-						do {
-							const data: GetV1ExerciseTemplates200 =
-								await hevyClient.getExerciseTemplates({
-									page,
-									pageSize: 100,
-								});
+							do {
+								const data: GetV1ExerciseTemplates200 =
+									await hevyClient.getExerciseTemplates({
+										page,
+										pageSize: 100,
+									});
 
-							const templates = data?.exercise_templates ?? [];
-							allTemplates.push(...templates);
-							pageCount = data?.page_count ?? 1;
-							page++;
-						} while (page <= pageCount);
+								const templates = data?.exercise_templates ?? [];
+								allTemplates.push(...templates);
+								pageCount = data?.page_count ?? 1;
+								page++;
+							} while (page <= pageCount);
 
-						exerciseTemplateCache = allTemplates;
-						exerciseTemplateFetch = null;
-						return allTemplates;
+							exerciseTemplateCache = allTemplates;
+							return allTemplates;
+						} finally {
+							exerciseTemplateFetch = null;
+						}
 					})();
 				}
 
