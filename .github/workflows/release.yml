@@ -45,9 +45,9 @@ jobs:
 
       - name: Create Release PR or Publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2.0.0-next.3
         with:
-          publish: npm run release
+          publish-script: npm run release
           commit-message: "chore: version packages"
           pr-title: "chore: version packages"
         env:
