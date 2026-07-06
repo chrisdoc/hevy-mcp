@@ -1,9 +1,15 @@
 ## [1.25.16](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.15...v1.25.16) (2026-07-02)
 
+## 1.25.17
+
+### Patch Changes
+
+- [#393](https://github.com/chrisdoc/hevy-mcp/pull/393) [`a1ddf76`](https://github.com/chrisdoc/hevy-mcp/commit/a1ddf76c8a2c9c315920e52bebbbf40a1a355223) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Fix exercise template catalog caching so a failed in-flight fetch is not
+  reused as a rejected promise and subsequent searches retry naturally.
 
 ### Bug Fixes
 
-* preserve routine supersetId in read responses ([#375](https://github.com/chrisdoc/hevy-mcp/issues/375)) ([9291ace](https://github.com/chrisdoc/hevy-mcp/commit/9291acec0cba10bc79771b7b995de31af919e593))
+- preserve routine supersetId in read responses ([#375](https://github.com/chrisdoc/hevy-mcp/issues/375)) ([9291ace](https://github.com/chrisdoc/hevy-mcp/commit/9291acec0cba10bc79771b7b995de31af919e593))
 
 ## [1.25.15](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.14...v1.25.15) (2026-06-29)
 
@@ -29,10 +35,9 @@
 
 ## [1.25.4](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.3...v1.25.4) (2026-06-19)
 
-
 ### Bug Fixes
 
-* remove kubb plugin-client from runtime deps ([#356](https://github.com/chrisdoc/hevy-mcp/issues/356)) ([61077ae](https://github.com/chrisdoc/hevy-mcp/commit/61077ae7942168ef79baf7b8c8454e1dcc2760c7))
+- remove kubb plugin-client from runtime deps ([#356](https://github.com/chrisdoc/hevy-mcp/issues/356)) ([61077ae](https://github.com/chrisdoc/hevy-mcp/commit/61077ae7942168ef79baf7b8c8454e1dcc2760c7))
 
 ## [1.25.3](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.2...v1.25.3) (2026-06-17)
 
@@ -42,26 +47,23 @@
 
 # [1.25.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.24.2...v1.25.0) (2026-06-16)
 
-
 ### Features
 
-* add MCP lifecycle and stdio parse observability ([#348](https://github.com/chrisdoc/hevy-mcp/issues/348)) ([f7a816b](https://github.com/chrisdoc/hevy-mcp/commit/f7a816baf8c852b7f891b4575fa49dced3806511))
+- add MCP lifecycle and stdio parse observability ([#348](https://github.com/chrisdoc/hevy-mcp/issues/348)) ([f7a816b](https://github.com/chrisdoc/hevy-mcp/commit/f7a816baf8c852b7f891b4575fa49dced3806511))
 
 ## [1.24.2](https://github.com/chrisdoc/hevy-mcp/compare/v1.24.1...v1.24.2) (2026-06-15)
 
-
 ### Bug Fixes
 
-* align sentry release name with project@version pattern ([fa9613f](https://github.com/chrisdoc/hevy-mcp/commit/fa9613f95d6ff6786b354f93e00d310b36c575e6))
+- align sentry release name with project@version pattern ([fa9613f](https://github.com/chrisdoc/hevy-mcp/commit/fa9613f95d6ff6786b354f93e00d310b36c575e6))
 
 ## [1.24.1](https://github.com/chrisdoc/hevy-mcp/compare/v1.24.0...v1.24.1) (2026-06-15)
 
 # [1.24.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.24...v1.24.0) (2026-06-15)
 
-
 ### Features
 
-* fix sentry ([728d9a0](https://github.com/chrisdoc/hevy-mcp/commit/728d9a0da6f7fabd8baa468d36e528bb43a5ed2e))
+- fix sentry ([728d9a0](https://github.com/chrisdoc/hevy-mcp/commit/728d9a0da6f7fabd8baa468d36e528bb43a5ed2e))
 
 ## [1.23.24](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.23...v1.23.24) (2026-06-15)
 
@@ -85,10 +87,9 @@
 
 ## [1.23.14](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.13...v1.23.14) (2026-06-01)
 
-
 ### Bug Fixes
 
-* keep MCP stdio clean on routine update errors ([#330](https://github.com/chrisdoc/hevy-mcp/issues/330)) ([540c5eb](https://github.com/chrisdoc/hevy-mcp/commit/540c5eb1c2a4a948a5ae4309880532107fdeba8e))
+- keep MCP stdio clean on routine update errors ([#330](https://github.com/chrisdoc/hevy-mcp/issues/330)) ([540c5eb](https://github.com/chrisdoc/hevy-mcp/commit/540c5eb1c2a4a948a5ae4309880532107fdeba8e))
 
 ## [1.23.13](https://github.com/chrisdoc/hevy-mcp/compare/v1.23.12...v1.23.13) (2026-05-23)
 
@@ -118,17 +119,15 @@
 
 # [1.23.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.22.0...v1.23.0) (2026-04-23)
 
-
 ### Features
 
-* add body measurements MCP tools ([#306](https://github.com/chrisdoc/hevy-mcp/issues/306)) ([78b3a5b](https://github.com/chrisdoc/hevy-mcp/commit/78b3a5b7dc87648e5de15ce8229468bc094a618d))
+- add body measurements MCP tools ([#306](https://github.com/chrisdoc/hevy-mcp/issues/306)) ([78b3a5b](https://github.com/chrisdoc/hevy-mcp/commit/78b3a5b7dc87648e5de15ce8229468bc094a618d))
 
 # [1.22.0](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.20...v1.22.0) (2026-04-23)
 
-
 ### Features
 
-* update openapi spec and regenerate api client ([#305](https://github.com/chrisdoc/hevy-mcp/issues/305)) ([0bfad15](https://github.com/chrisdoc/hevy-mcp/commit/0bfad15b5897e57c08eb63aebf65bd91bbad8ef2))
+- update openapi spec and regenerate api client ([#305](https://github.com/chrisdoc/hevy-mcp/issues/305)) ([0bfad15](https://github.com/chrisdoc/hevy-mcp/commit/0bfad15b5897e57c08eb63aebf65bd91bbad8ef2))
 
 ## [1.21.20](https://github.com/chrisdoc/hevy-mcp/compare/v1.21.19...v1.21.20) (2026-04-21)
 
