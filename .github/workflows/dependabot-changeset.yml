@@ -24,6 +24,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create changeset
-        uses: the-guild-org/changesets-dependencies-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: mscharley/dependency-changesets-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
