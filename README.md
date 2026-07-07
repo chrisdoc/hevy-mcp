@@ -205,6 +205,15 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 
 For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).
 
+### Pull Request Checks
+
+- **Conventional Commits**: CI lints commit messages on pull requests, so use
+  prefixes such as `feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `refactor:`,
+  `test:`, or `style:`.
+- **Changesets**: Contributor pull requests targeting `main` must include a
+  changeset. Dependabot PRs and automated `changeset-release/main` release PRs
+  are handled by automation and skip this check.
+
 ### API Client Generation
 
 The API client is automatically generated from the OpenAPI spec using [Kubb](https://kubb.dev/):
@@ -217,7 +226,7 @@ npm run build:client
 
 This project uses [Changesets](https://github.com/changesets/changesets) to manage versioning, changelogs, releases, and pull request validation.
 
-1. **Every Pull Request Needs a Changeset**: If your change should ship in the next release, run:
+1. **Every Contributor Pull Request Needs a Changeset**: If your change should ship in the next release, run:
    ```bash
    npx changeset
    ```
@@ -226,7 +235,10 @@ This project uses [Changesets](https://github.com/changesets/changesets) to mana
    ```bash
    npx changeset --empty
    ```
-3. **Validate Before Opening a PR**: Pull requests targeting `main` are checked for a changeset in CI. You can run the same validation locally with:
+3. **Validate Before Opening a PR**: Contributor pull requests targeting `main`
+   are checked for a changeset in CI. Dependabot PRs and automated
+   `changeset-release/main` release PRs are handled separately. You can run the
+   same validation locally with:
    ```bash
    npm run check:changeset
    ```
