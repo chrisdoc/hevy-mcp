@@ -144,10 +144,12 @@ This bootstraps the `hevy-mcp` entry in your client config without manual JSON e
 
 ## ⚙️ Configuration
 
-Supply your Hevy API key via:
+Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
+`.env` or system environment).
 
-1. **Environment Variable**: `HEVY_API_KEY` (in `.env` or system environment).
-2. **CLI Argument**: `--hevy-api-key=your_key` (after `--` in npm scripts).
+> ⚠️ CLI API key arguments (`--hevy-api-key=...`, `--hevyApiKey=...`,
+> `hevy-api-key=...`) are still accepted for backward compatibility, but are
+> deprecated and insecure. Use `HEVY_API_KEY` instead.
 
 ```env
 # Example .env
@@ -191,6 +193,11 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 | **Body Measurements** | `get-body-measurements`, `get-body-measurement`, `create-body-measurement`, `update-body-measurement`                              |
 | **User**              | `get-user-info`                                                                                                                    |
 
+> **Delete operations are currently unsupported:** The upstream Hevy OpenAPI
+> spec does not expose `DELETE` endpoints for workouts, routines, routine
+> folders, exercise templates, or body measurements, so `hevy-mcp` does not
+> provide delete tools for these resources.
+
 ---
 
 ## 👨‍💻 Development & Contributing
@@ -199,6 +206,7 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
+- **Type Check**: `npm run check:types`
 - **Unit Tests**: `npx vitest run --exclude tests/integration/**`
 - **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
 - **Changeset Check**: `npm run check:changeset`
@@ -210,6 +218,8 @@ For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).
 - **Conventional Commits**: CI lints commit messages on pull requests, so use
   prefixes such as `feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `refactor:`,
   `test:`, or `style:`.
+- **Type Checking**: CI runs `npm run check:types` on pull requests and pushes
+  to `main`; run this locally before opening a PR.
 - **Changesets**: Contributor pull requests targeting `main` must include a
   changeset. Dependabot PRs and automated `changeset-release/main` release PRs
   are handled by automation and skip this check.
@@ -224,27 +234,40 @@ npm run build:client
 
 ### Versioning & Releases
 
-This project uses [Changesets](https://github.com/changesets/changesets) to manage versioning, changelogs, releases, and pull request validation.
+This project uses [Changesets](https://github.com/changesets/changesets) to
+manage versioning, changelogs, releases, and pull request validation.
 
-1. **Every Contributor Pull Request Needs a Changeset**: If your change should ship in the next release, run:
+1. **Routine Release Cadence**: Merge the automated
+   `changeset-release/main` (**"Version Packages"**) Pull Request on a regular
+   cadence (weekly is a good default) instead of ad-hoc frequent merges.
+2. **Urgent Release Exception**: Security fixes and high-impact,
+   user-facing bug fixes can be released immediately outside the routine
+   cadence.
+3. **Use Bump Changesets Only for User-Facing Runtime Changes**: If your
+   change is user-facing/runtime-visible, run:
    ```bash
    npx changeset
    ```
-   Follow the prompts to specify the type of change (patch, minor, major) and write a short summary of your change. This creates a markdown file under the `.changeset/` directory.
-2. **Use an Empty Changeset for Non-Release Changes**: Docs, CI, test-only, refactor, and chore changes should still include an empty changeset:
+   Follow the prompts to choose `patch`, `minor`, or `major`, then write a
+   short summary. This creates a markdown file under `.changeset/`.
+4. **Use Empty Changesets for Internal-Only Work**: Docs, CI, test-only,
+   refactor, and chore changes should use an empty changeset:
    ```bash
    npx changeset --empty
    ```
-3. **Validate Before Opening a PR**: Contributor pull requests targeting `main`
-   are checked for a changeset in CI. Dependabot PRs and automated
+5. **Validate Before Opening a PR**: Contributor pull requests targeting
+   `main` are checked for a changeset in CI. Dependabot PRs and automated
    `changeset-release/main` release PRs are handled separately. You can run the
    same validation locally with:
    ```bash
    npm run check:changeset
    ```
-4. **Automated Releases**:
-   - Pushing changesets to `main` triggers a GitHub Action that automatically creates or updates a **"Version Packages"** Pull Request.
-   - When this Pull Request is merged, the package is automatically built, published to npm (via OIDC Trusted Publishing), and a GitHub Release is created.
+6. **Automated Releases**:
+   - Pushing changesets to `main` triggers a GitHub Action that automatically
+     creates or updates a **"Version Packages"** Pull Request.
+   - When this Pull Request is merged, the package is automatically built,
+     published to npm (via OIDC Trusted Publishing), and a GitHub Release is
+     created.
 
 ---
 
