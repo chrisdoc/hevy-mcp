@@ -44,6 +44,29 @@ describe("registerUserTools", () => {
 		});
 	});
 
+	it("get-user-info returns an error response when the client rejects", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			getUserInfo: vi.fn().mockRejectedValue(new Error("User API timeout")),
+		} as unknown as HevyClient;
+
+		registerUserTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-user-info");
+
+		const response = await handler({});
+
+		expect(hevyClient.getUserInfo).toHaveBeenCalledTimes(1);
+		expect(response).toMatchObject({
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: expect.stringContaining("User API timeout"),
+				},
+			],
+		});
+	});
+
 	it("get-user-info returns the user info from the client", async () => {
 		const { server, tool } = createMockServer();
 		const userInfo = {
