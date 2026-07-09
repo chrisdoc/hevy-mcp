@@ -2,11 +2,11 @@
  * Centralized telemetry initialization.
  *
  * This module MUST be imported before any other application code.
- * It sets up OpenTelemetry with dual span processors (Sentry + Honeycomb)
- * and a meter provider for Honeycomb metrics.
+ * It sets up OpenTelemetry with dual export: Sentry (error events +
+ * traces) and an OTel Collector (traces + metrics to Honeycomb).
  *
- * Sentry receives: error events, performance traces, release tracking
- * Honeycomb receives: performance traces, metrics (counters, histograms)
+ * Sentry SDK: error events, performance traces, release tracking
+ * OTel Collector → Honeycomb: performance traces, metrics
  */
 
 import * as Sentry from "@sentry/node";
@@ -30,23 +30,23 @@ import {
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
 declare const __HEVY_MCP_BUILD__: boolean | undefined;
-declare const __HONEYCOMB_API_KEY__: string | undefined;
+declare const __OTEL_COLLECTOR_TOKEN__: string | undefined;
 
 const name =
 	typeof __HEVY_MCP_NAME__ === "string" ? __HEVY_MCP_NAME__ : "hevy-mcp";
 const version =
 	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
 
-// Honeycomb API key is injected at build time from the HONEYCOMB_API_KEY
-// GitHub secret via tsdown.config.ts define. This mirrors how the Sentry
-// DSN is baked into the published package.
-const honeycombApiKey =
-	typeof __HONEYCOMB_API_KEY__ === "string" && __HONEYCOMB_API_KEY__
-		? __HONEYCOMB_API_KEY__
-		: (process.env.HONEYCOMB_API_KEY ?? "");
+// Collector token is injected at build time from the OTEL_COLLECTOR_TOKEN
+// GitHub secret via tsdown.config.ts define. The collector forwards
+// traces and metrics to Honeycomb, keeping the Honeycomb API key off the
+// client. The collector endpoint is public (behind Cloudflare Tunnel).
+const collectorToken =
+	typeof __OTEL_COLLECTOR_TOKEN__ === "string" && __OTEL_COLLECTOR_TOKEN__
+		? __OTEL_COLLECTOR_TOKEN__
+		: (process.env.OTEL_COLLECTOR_TOKEN ?? "");
 
-const HONEYCOMB_ENDPOINT = "https://api.eu1.honeycomb.io/v1";
-const HONEYCOMB_DATASET = "hevy-mcp";
+const COLLECTOR_ENDPOINT = "https://otel.chrisdoc.dev/v1";
 
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
 
@@ -75,15 +75,14 @@ const sentryClient = Sentry.init({
 // --- OpenTelemetry tracer provider (dual export) ---
 const spanProcessors: SpanProcessor[] = [new SentrySpanProcessor()];
 
-// Span processor 2: Honeycomb (traces) — only if API key is available
-if (honeycombApiKey) {
+// Span processor 2: OTel Collector → Honeycomb (traces) — only if token is available
+if (collectorToken) {
 	spanProcessors.push(
 		new BatchSpanProcessor(
 			new OTLPTraceExporter({
-				url: `${HONEYCOMB_ENDPOINT}/traces`,
+				url: `${COLLECTOR_ENDPOINT}/traces`,
 				headers: {
-					"x-honeycomb-team": honeycombApiKey,
-					"x-honeycomb-dataset": HONEYCOMB_DATASET,
+					Authorization: `Bearer ${collectorToken}`,
 				},
 			}),
 		),
@@ -101,17 +100,16 @@ tracerProvider.register({
 	contextManager: new Sentry.SentryContextManager(),
 });
 
-// --- OpenTelemetry meter provider (Honeycomb metrics) ---
-if (honeycombApiKey) {
+// --- OpenTelemetry meter provider (→ Collector → Honeycomb metrics) ---
+if (collectorToken) {
 	const meterProvider = new MeterProvider({
 		resource,
 		readers: [
 			new PeriodicExportingMetricReader({
 				exporter: new OTLPMetricExporter({
-					url: `${HONEYCOMB_ENDPOINT}/metrics`,
+					url: `${COLLECTOR_ENDPOINT}/metrics`,
 					headers: {
-						"x-honeycomb-team": honeycombApiKey,
-						"x-honeycomb-dataset": HONEYCOMB_DATASET,
+						Authorization: `Bearer ${collectorToken}`,
 					},
 				}),
 				exportIntervalMillis: 10_000,

@@ -41,7 +41,9 @@ export default defineConfig({
 		__HEVY_MCP_BUILD__: "true",
 		__HEVY_MCP_NAME__: JSON.stringify(name),
 		__HEVY_MCP_VERSION__: JSON.stringify(version),
-		__HONEYCOMB_API_KEY__: JSON.stringify(process.env.HONEYCOMB_API_KEY ?? ""),
+		__OTEL_COLLECTOR_TOKEN__: JSON.stringify(
+			process.env.OTEL_COLLECTOR_TOKEN ?? "",
+		),
 	},
 	sourcemap: true,
 	clean: true,

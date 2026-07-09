@@ -106,28 +106,26 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalled();
 	});
 
-	it("configures Honeycomb exporters when an API key is present", async () => {
+	it("configures collector exporters when a token is present", async () => {
 		vi.resetModules();
 		process.env = {
 			...originalEnv,
-			HONEYCOMB_API_KEY: "test-honeycomb-key",
+			OTEL_COLLECTOR_TOKEN: "test-collector-token",
 		};
 
 		await import("./telemetry.js");
 
 		expect(testDoubles.otlpTraceExporter).toHaveBeenCalledWith({
-			url: "https://api.eu1.honeycomb.io/v1/traces",
+			url: "https://otel.chrisdoc.dev/v1/traces",
 			headers: {
-				"x-honeycomb-team": "test-honeycomb-key",
-				"x-honeycomb-dataset": "hevy-mcp",
+				Authorization: "Bearer test-collector-token",
 			},
 		});
 		expect(testDoubles.batchSpanProcessor).toHaveBeenCalledTimes(1);
 		expect(testDoubles.otlpMetricExporter).toHaveBeenCalledWith({
-			url: "https://api.eu1.honeycomb.io/v1/metrics",
+			url: "https://otel.chrisdoc.dev/v1/metrics",
 			headers: {
-				"x-honeycomb-team": "test-honeycomb-key",
-				"x-honeycomb-dataset": "hevy-mcp",
+				Authorization: "Bearer test-collector-token",
 			},
 		});
 		expect(testDoubles.periodicExportingMetricReader).toHaveBeenCalledWith(
