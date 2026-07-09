@@ -29,7 +29,7 @@ const HELP_TEXT = [
 	"Options:",
 	"  -h, --help                 Show this help message and exit",
 	"  -v, --version              Show version and exit",
-	"  --hevy-api-key=<api-key>   Hevy API key override",
+	"  --hevy-api-key=<api-key>   (deprecated, use HEVY_API_KEY env var)",
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
