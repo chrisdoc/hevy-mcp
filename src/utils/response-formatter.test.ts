@@ -68,9 +68,7 @@ describe("Response Formatter", () => {
 
 		it("should handle null and undefined values", () => {
 			expect(createJsonResponse(null).content[0].text).toBe("null");
-			// JSON.stringify(undefined) returns undefined, not a string
-			// So we need to check that the text is undefined
-			expect(createJsonResponse(undefined).content[0].text).toBe(undefined);
+			expect(createJsonResponse(undefined).content[0].text).toBe("null");
 		});
 	});
 

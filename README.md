@@ -180,6 +180,22 @@ Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
 HEVY_API_KEY=your_hevy_api_key_here
 ```
 
+### 🧠 Exercise Template Cache Behavior
+
+`search-exercise-templates` now uses a shared in-memory async cache for the
+full exercise template catalog:
+
+- **TTL**: 5 minutes per cached catalog entry.
+- **Memory bound**: max 1 catalog entry (LRU bounded cache).
+- **In-flight de-duplication**: concurrent requests share the same active
+  fetch when possible.
+- **Manual refresh**: set `refresh: true` in the tool input to invalidate the
+  cached catalog and force a re-fetch from the Hevy API.
+
+This cache currently applies to `search-exercise-templates` only. Paginated
+`get-exercise-templates` requests still call the API directly to keep paging
+behavior explicit and avoid cross-page invalidation complexity.
+
 ### 📡 Sentry Monitoring
 
 `hevy-mcp` includes Sentry monitoring to observe errors and usage in production. It initializes `@sentry/node` with tracing enabled and PII collection disabled by default. Recent observability changes also add:
