@@ -2,8 +2,11 @@ import type {
 	RequestConfig,
 	ResponseConfig,
 } from "../generated/.kubb/fetch.ts";
-import axios from "axios";
+import { SpanStatusCode, type Span } from "@opentelemetry/api";
+import axios, { type InternalAxiosRequestConfig } from "axios";
 import * as api from "../generated/client/api";
+import { tracer } from "./telemetry.js";
+import { apiCalls, apiDuration } from "./metrics.js";
 import type {
 	GetV1BodyMeasurementsQueryParams,
 	GetV1ExerciseHistoryExercisetemplateidQueryParams,
@@ -55,6 +58,75 @@ export function createClient(
 			"api-key": apiKey,
 		},
 	});
+
+	// --- Axios interceptors for HTTP tracing and metrics ---
+	type TracedConfig = InternalAxiosRequestConfig & {
+		_span?: Span;
+		_startTime?: number;
+	};
+
+	axiosInstance.interceptors.request.use((config) => {
+		const tracedConfig = config as TracedConfig;
+		const method = (config.method ?? "get").toUpperCase();
+		tracedConfig._span = tracer.startSpan(`hevy.api.${method}`, {
+			attributes: {
+				"http.method": method,
+				"http.url": config.url ?? "",
+				"http.base_url": config.baseURL ?? "",
+			},
+		});
+		tracedConfig._startTime = Date.now();
+		return config;
+	});
+
+	axiosInstance.interceptors.response.use(
+		(response) => {
+			const tracedConfig = response.config as TracedConfig;
+			const span = tracedConfig._span;
+			const startTime = tracedConfig._startTime ?? Date.now();
+			const method = (response.config.method ?? "get").toUpperCase();
+			const endpoint = response.config.url ?? "";
+
+			if (span) {
+				span.setAttribute("http.status_code", response.status);
+				span.setStatus({ code: SpanStatusCode.OK });
+				span.end();
+			}
+
+			apiCalls.add(1, {
+				method,
+				endpoint,
+				status_code: response.status,
+			});
+			apiDuration.record(Date.now() - startTime, { method, endpoint });
+
+			return response;
+		},
+		(error) => {
+			const tracedConfig = (error.config ?? {}) as TracedConfig;
+			const span = tracedConfig._span;
+			const startTime = tracedConfig._startTime ?? Date.now();
+			const method = (error.config?.method ?? "get").toUpperCase();
+			const endpoint = error.config?.url ?? "";
+			const statusCode = error.response?.status ?? 0;
+
+			if (span) {
+				span.setAttribute("http.status_code", statusCode);
+				span.setStatus({ code: SpanStatusCode.ERROR });
+				span.recordException(error);
+				span.end();
+			}
+
+			apiCalls.add(1, {
+				method,
+				endpoint,
+				status_code: statusCode,
+			});
+			apiDuration.record(Date.now() - startTime, { method, endpoint });
+
+			throw error;
+		},
+	);
 
 	// Create headers object with API key
 	const headers = {

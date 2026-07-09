@@ -1,26 +1,58 @@
-import * as Sentry from "@sentry/node";
 import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createInstrumentedStdioTransport,
 	deserializeMessageWithObservability,
 } from "./stdio-observability";
+import { Sentry } from "./telemetry.js";
 
-const sentryTestDoubles = vi.hoisted(() => ({
+const testDoubles = vi.hoisted(() => ({
 	span: {
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
+		recordException: vi.fn(),
+		end: vi.fn(),
 	},
 	scope: {
 		setTag: vi.fn(),
 		setContext: vi.fn(),
 	},
+	startActiveSpan: vi.fn((...args: unknown[]) => {
+		const cb = args[args.length - 1] as (span: unknown) => unknown;
+		return cb(testDoubles.span);
+	}),
 }));
 
-vi.mock("@sentry/node", () => ({
-	startSpan: vi.fn((_, callback) => callback(sentryTestDoubles.span)),
-	withScope: vi.fn((callback) => callback(sentryTestDoubles.scope)),
-	captureException: vi.fn(),
+vi.mock("./telemetry.js", () => ({
+	Sentry: {
+		withScope: vi.fn((cb: (scope: unknown) => void) => cb(testDoubles.scope)),
+		captureException: vi.fn(),
+	},
+	tracer: {
+		startActiveSpan: testDoubles.startActiveSpan,
+	},
+	meter: {
+		createCounter: vi.fn(() => ({ add: vi.fn() })),
+		createHistogram: vi.fn(() => ({ record: vi.fn() })),
+	},
+	serviceName: "hevy-mcp",
+	serviceVersion: "dev",
+}));
+
+vi.mock("./metrics.js", () => ({
+	toolInvocations: { add: vi.fn() },
+	toolErrors: { add: vi.fn() },
+	toolDuration: { record: vi.fn() },
+	apiCalls: { add: vi.fn() },
+	apiDuration: { record: vi.fn() },
+	stdioParseErrors: { add: vi.fn() },
+	serverStartups: { add: vi.fn() },
+}));
+
+vi.mock("@opentelemetry/api", () => ({
+	SpanStatusCode: { OK: 1, ERROR: 2 },
+	trace: { getTracer: vi.fn() },
+	metrics: { getMeter: vi.fn() },
 }));
 
 describe("stdio observability", () => {
@@ -41,7 +73,8 @@ describe("stdio observability", () => {
 			method: "ping",
 		});
 		expect(Sentry.captureException).not.toHaveBeenCalled();
-		expect(Sentry.startSpan).toHaveBeenCalledWith(
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"mcp.stdio.deserialize",
 			expect.objectContaining({
 				attributes: expect.objectContaining({
 					"mcp.stdio.parse.line.had_leading_bom": true,
@@ -61,7 +94,7 @@ describe("stdio observability", () => {
 		).toThrow();
 
 		expect(Sentry.captureException).toHaveBeenCalledTimes(1);
-		expect(sentryTestDoubles.scope.setContext).toHaveBeenCalledWith(
+		expect(testDoubles.scope.setContext).toHaveBeenCalledWith(
 			"mcpStdioParse",
 			expect.objectContaining({
 				lineHadLeadingBom: true,
@@ -103,7 +136,8 @@ describe("stdio observability", () => {
 
 		const message = readBuffer.readMessage();
 		expect(message).toMatchObject({ method: "ping" });
-		expect(Sentry.startSpan).toHaveBeenCalledWith(
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"mcp.stdio.deserialize",
 			expect.objectContaining({
 				attributes: expect.objectContaining({
 					"mcp.stdio.parse.chunk.last_had_utf8_bom": true,

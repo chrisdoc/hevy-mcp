@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import createServer, {
@@ -7,6 +6,7 @@ import createServer, {
 	runServer,
 } from "./index.js";
 import { createClient } from "./utils/hevyClient.js";
+import { Sentry } from "./utils/telemetry.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
@@ -17,20 +17,66 @@ const TEST_API_KEY_HMAC_SHA256 =
 const CLI_KEY_HMAC_SHA256 =
 	"85a3f127af4cea435cd358405c5298016946cc3f4e196552c2f1e435c2c6f1b3";
 
+const testDoubles = vi.hoisted(() => ({
+	span: {
+		setAttribute: vi.fn(),
+		setStatus: vi.fn(),
+		recordException: vi.fn(),
+		end: vi.fn(),
+	},
+	sentry: {
+		init: vi.fn(() => ({})),
+		setUser: vi.fn(),
+		wrapMcpServerWithSentry: vi.fn((server: unknown) => server),
+		withScope: vi.fn((cb: (scope: unknown) => void) =>
+			cb({ setTag: vi.fn(), setContext: vi.fn() }),
+		),
+		captureException: vi.fn(),
+		validateOpenTelemetrySetup: vi.fn(),
+		SentryContextManager: vi.fn(),
+	},
+	startActiveSpan: vi.fn((...args: unknown[]) => {
+		const cb = args[args.length - 1] as (span: unknown) => unknown;
+		return cb(testDoubles.span);
+	}),
+}));
+
 vi.mock("./utils/hevyClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
 }));
 
-vi.mock("@sentry/node", () => ({
-	init: vi.fn(),
-	setUser: vi.fn(),
-	wrapMcpServerWithSentry: vi.fn((server) => server),
-	startSpan: vi.fn((_, callback) =>
-		callback({
-			setAttribute: vi.fn(),
-			setStatus: vi.fn(),
-		}),
-	),
+vi.mock("./utils/telemetry.js", () => ({
+	Sentry: testDoubles.sentry,
+	tracer: {
+		startActiveSpan: testDoubles.startActiveSpan,
+	},
+	meter: {
+		createCounter: vi.fn(() => ({ add: vi.fn() })),
+		createHistogram: vi.fn(() => ({ record: vi.fn() })),
+	},
+	serviceName: "hevy-mcp",
+	serviceVersion: "dev",
+}));
+
+vi.mock("./utils/metrics.js", () => ({
+	toolInvocations: { add: vi.fn() },
+	toolErrors: { add: vi.fn() },
+	toolDuration: { record: vi.fn() },
+	apiCalls: { add: vi.fn() },
+	apiDuration: { record: vi.fn() },
+	stdioParseErrors: { add: vi.fn() },
+	serverStartups: { add: vi.fn() },
+}));
+
+vi.mock("@opentelemetry/api", () => ({
+	SpanStatusCode: { OK: 1, ERROR: 2 },
+	trace: { getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })) },
+	metrics: {
+		getMeter: vi.fn(() => ({
+			createCounter: vi.fn(),
+			createHistogram: vi.fn(),
+		})),
+	},
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
@@ -83,8 +129,13 @@ describe("Server entry", () => {
 	it("creates an MCP server instance", () => {
 		const server = createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
-		expect(Sentry.startSpan).toHaveBeenCalledWith(
-			expect.objectContaining({ name: "mcp.server.build" }),
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"mcp.server.build",
+			expect.objectContaining({
+				attributes: expect.objectContaining({
+					"mcp.server.name": "hevy-mcp",
+				}),
+			}),
 			expect.any(Function),
 		);
 	});
@@ -125,9 +176,9 @@ describe("Server entry", () => {
 			).not.toContain("test-api-key");
 			const anyStdioModule = stdioModule as { __transports?: unknown[] };
 			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
-			const spanNames = vi
-				.mocked(Sentry.startSpan)
-				.mock.calls.map(([options]) => (options as { name?: string }).name);
+			const spanNames = testDoubles.startActiveSpan.mock.calls.map(
+				([name]) => name as string,
+			);
 			expect(spanNames).toContain("mcp.server.run");
 			expect(spanNames).toContain("mcp.server.connect");
 		});
@@ -144,7 +195,9 @@ describe("Server entry", () => {
 				"cli-key",
 				"https://api.hevyapp.com",
 			);
-			expect(Sentry.setUser).toHaveBeenCalledWith({ id: CLI_KEY_HMAC_SHA256 });
+			expect(Sentry.setUser).toHaveBeenCalledWith({
+				id: CLI_KEY_HMAC_SHA256,
+			});
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
 			).not.toContain("cli-key");

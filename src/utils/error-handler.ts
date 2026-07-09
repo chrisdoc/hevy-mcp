@@ -2,9 +2,10 @@
  * Centralized error handling utility for MCP tools
  */
 
-// Import the McpToolResponse type from response-formatter to ensure consistency
-import * as Sentry from "@sentry/node";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { isAxiosError } from "axios";
+import { Sentry, tracer } from "./telemetry.js";
+import { toolInvocations, toolErrors, toolDuration } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
 
 /**
@@ -156,11 +157,13 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (args: Record<string, unknown>) => {
 		const argumentKeyCount = Object.keys(args).length;
+		const startTime = Date.now();
 
-		return Sentry.startSpan(
+		toolInvocations.add(1, { tool_name: context });
+
+		return tracer.startActiveSpan(
+			`mcp.tool.${context}`,
 			{
-				name: `mcp.tool.${context}`,
-				op: "mcp.tool.execute",
 				attributes: {
 					"mcp.tool.context": context,
 					"mcp.tool.args.key_count": argumentKeyCount,
@@ -169,14 +172,26 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 			async (span) => {
 				try {
 					const result = await fn(args as TParams);
-					span.setStatus({ code: 1 });
+					span.setStatus({ code: SpanStatusCode.OK });
 					span.setAttribute(
 						"mcp.tool.result.is_error",
 						Boolean(result.isError),
 					);
 					return result;
 				} catch (error) {
-					span.setStatus({ code: 2, message: "tool_handler_error" });
+					span.setStatus({ code: SpanStatusCode.ERROR });
+					span.recordException(error as Error);
+
+					const errorType = determineErrorType(
+						error,
+						error instanceof Error ? error.message : String(error),
+					);
+
+					toolErrors.add(1, {
+						tool_name: context,
+						error_type: errorType,
+					});
+
 					Sentry.withScope((scope) => {
 						scope.setTag("mcp.tool.context", context);
 						scope.setContext("mcpTool", {
@@ -187,6 +202,11 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 					});
 
 					return createErrorResponse(error, context);
+				} finally {
+					toolDuration.record(Date.now() - startTime, {
+						tool_name: context,
+					});
+					span.end();
 				}
 			},
 		);
