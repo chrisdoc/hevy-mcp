@@ -54,6 +54,39 @@ describe("registerWorkoutTools", () => {
 		}
 	});
 
+	it("get-workout-events returns error response on client failure", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getWorkoutEvents: vi
+				.fn()
+				.mockRejectedValue(new Error("Workout events endpoint failed")),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-workout-events");
+
+		const response = await handler({
+			page: 1,
+			pageSize: 5,
+			since: "2025-01-01T00:00:00Z",
+		});
+
+		expect(hevyClient.getWorkoutEvents).toHaveBeenCalledWith({
+			page: 1,
+			pageSize: 5,
+			since: "2025-01-01T00:00:00Z",
+		});
+		expect(response).toMatchObject({
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: expect.stringContaining("Workout events endpoint failed"),
+				},
+			],
+		});
+	});
+
 	it("get-workouts returns formatted workouts from the client", async () => {
 		const { server, tool } = createMockServer();
 		const workout: Workout = {

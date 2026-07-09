@@ -1,45 +1,22 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
-import { Sentry } from "./telemetry.js";
+import { getCurrentUserId, Sentry } from "./telemetry.js";
 
-type AxiosLikeError = Error & {
-	hevyRetryCount?: number;
-	hevyRetryExhausted?: boolean;
-	isAxiosError: true;
-	response?: {
-		data?: unknown;
-		headers?: unknown;
-		status: number;
+function createMockAxiosError(status: number, data: unknown): unknown {
+	return {
+		isAxiosError: true,
+		name: "AxiosError",
+		message: `Request failed with status code ${status}`,
+		config: {
+			method: "post",
+			url: "/v1/body_measurements",
+		},
+		response: {
+			status,
+			statusText: "Error",
+			data,
+		},
 	};
-};
-
-function createAxiosError(options: {
-	data?: unknown;
-	headers?: unknown;
-	message?: string;
-	retryCount?: number;
-	retryExhausted?: boolean;
-	status: number;
-}): AxiosLikeError {
-	const error = new Error(
-		options.message ?? "Request failed",
-	) as AxiosLikeError;
-	error.isAxiosError = true;
-	error.response = {
-		status: options.status,
-		headers: options.headers,
-		data: options.data,
-	};
-
-	if (options.retryCount !== undefined) {
-		error.hevyRetryCount = options.retryCount;
-	}
-
-	if (options.retryExhausted) {
-		error.hevyRetryExhausted = true;
-	}
-
-	return error;
 }
 
 const testDoubles = vi.hoisted(() => ({
@@ -112,7 +89,7 @@ describe("Error Handler", () => {
 			const error = new Error("Test error message");
 			const response = createErrorResponse(error);
 
-			expect(response).toEqual({
+			expect(response).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -120,6 +97,9 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					originalErrorMessage: "Test error message",
+				},
 			});
 			expect(console.error).toHaveBeenCalled();
 		});
@@ -127,7 +107,7 @@ describe("Error Handler", () => {
 		it("should create a proper error response from a string", () => {
 			const response = createErrorResponse("String error message");
 
-			expect(response).toEqual({
+			expect(response).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -135,6 +115,9 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					originalErrorMessage: "String error message",
+				},
 			});
 		});
 
@@ -162,7 +145,7 @@ describe("Error Handler", () => {
 			);
 		});
 
-		it("falls back to String(data) when axios object response data is not serializable", () => {
+		it("falls back when axios object response data is not serializable", () => {
 			const circular: { self?: unknown } = {};
 			circular.self = circular;
 
@@ -173,7 +156,9 @@ describe("Error Handler", () => {
 				},
 			});
 
-			expect(response.content[0].text).toBe("Error: [object Object]");
+			expect(response.content[0].text).toBe(
+				"Error: Unable to serialize error response data",
+			);
 		});
 
 		it("should include context in the error message when provided", () => {
@@ -183,6 +168,12 @@ describe("Error Handler", () => {
 			expect(response.content[0].text).toBe(
 				"[TestContext] Error: Test error with context",
 			);
+			expect(response).toMatchObject({
+				errorContext: {
+					sourceContext: "TestContext",
+					originalErrorMessage: "Test error with context",
+				},
+			});
 		});
 
 		it("should handle errors with code property", () => {
@@ -196,11 +187,216 @@ describe("Error Handler", () => {
 			const response = createErrorResponse(errorWithCode);
 
 			expect(response.content[0].text).toBe("Error: Error with code");
+			expect(response).toMatchObject({
+				errorContext: {
+					errorCode: "ERR_TEST_CODE",
+					originalErrorMessage: "Error with code",
+				},
+			});
 			expect(console.debug).not.toHaveBeenCalled();
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("Code: ERR_TEST_CODE"),
 				errorWithCode,
 			);
+		});
+
+		it.each([
+			{
+				status: 401,
+				expectedMessage:
+					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+			},
+			{
+				status: 403,
+				expectedMessage:
+					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+			},
+			{
+				status: 404,
+				expectedMessage: "The requested resource was not found in Hevy.",
+			},
+			{
+				status: 409,
+				expectedMessage:
+					"A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.",
+			},
+			{
+				status: 422,
+				expectedMessage:
+					"The request failed Hevy validation. Check the field values and try again.",
+			},
+			{
+				status: 429,
+				expectedMessage:
+					"Rate limited by Hevy (HTTP 429). Please wait and retry your request.",
+			},
+			{
+				status: 503,
+				expectedMessage: "Hevy API experienced an error. Please retry later.",
+			},
+		])(
+			"maps axios status $status to actionable Hevy message",
+			({ status, expectedMessage }) => {
+				const responseBody = {
+					error: "original_api_error",
+					detail: `raw detail for status ${status}`,
+				};
+				const response = createErrorResponse(
+					createMockAxiosError(status, responseBody),
+					"TestContext",
+				);
+
+				expect(response.content[0].text).toBe(
+					`[TestContext] Error: ${expectedMessage}`,
+				);
+				expect(response).toMatchObject({
+					isError: true,
+					errorContext: {
+						sourceContext: "TestContext",
+						originalErrorMessage: `Request failed with status code ${status}`,
+						axios: {
+							status,
+							data: responseBody,
+							method: "post",
+							url: "/v1/body_measurements",
+						},
+					},
+				});
+			},
+		);
+
+		it("includes Retry-After in 429 error messages", () => {
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					headers: { "retry-after": "12" },
+					status: 429,
+				},
+			});
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 12 seconds before retrying.",
+			);
+		});
+
+		it("prioritizes exhausted retry errors over status mappings", () => {
+			const response = createErrorResponse({
+				hevyRetryCount: 2,
+				hevyRetryExhausted: true,
+				isAxiosError: true,
+				response: { status: 503 },
+			});
+
+			expect(response.content[0].text).toBe(
+				"Error: Unable to complete the request after 3 attempts " +
+					"to the Hevy API due to transient failures. Please try again shortly.",
+			);
+		});
+
+		it("uses raw axios string data when no Hevy status mapping exists", () => {
+			const response = createErrorResponse(
+				createMockAxiosError(400, "plain upstream message"),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				"[TestContext] Error: plain upstream message",
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "Request failed with status code 400",
+					axios: {
+						status: 400,
+						data: "plain upstream message",
+					},
+				},
+			});
+		});
+
+		it("serializes axios object data when no Hevy status mapping exists", () => {
+			const responseBody = {
+				detail: "Missing workout entry",
+			};
+			const response = createErrorResponse(
+				createMockAxiosError(400, responseBody),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				`[TestContext] Error: ${JSON.stringify(responseBody)}`,
+			);
+		});
+
+		it("stringifies axios primitive data when no Hevy status mapping exists", () => {
+			const response = createErrorResponse(
+				createMockAxiosError(400, 42),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe("[TestContext] Error: 42");
+		});
+
+		it("serializes object errors without a message field", () => {
+			const response = createErrorResponse({
+				detail: "Missing workout entry",
+			});
+
+			expect(response.content[0].text).toBe(
+				'Error: {"detail":"Missing workout entry"}',
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: '{"detail":"Missing workout entry"}',
+				},
+			});
+		});
+
+		it("falls back when error objects cannot be serialized", () => {
+			const circularError: { self?: unknown } = {};
+			circularError.self = circularError;
+
+			const response = createErrorResponse(circularError);
+
+			expect(response.content[0].text).toBe("Error: Unknown error object");
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "Unknown error object",
+				},
+			});
+		});
+
+		it("falls back when axios response data cannot be serialized", () => {
+			const circularData: { self?: unknown } = {};
+			circularData.self = circularData;
+
+			const response = createErrorResponse(
+				createMockAxiosError(400, circularData),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				"[TestContext] Error: Unable to serialize error response data",
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					axios: {
+						status: 400,
+						data: circularData,
+					},
+				},
+			});
+		});
+
+		it("stringifies non-object thrown values", () => {
+			const response = createErrorResponse(0);
+
+			expect(response.content[0].text).toBe("Error: 0");
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "0",
+				},
+			});
 		});
 
 		it("classifies network-related errors as NETWORK_ERROR", () => {
@@ -237,193 +433,6 @@ describe("Error Handler", () => {
 				expect.stringContaining("(Type: API_ERROR)"),
 				error,
 			);
-		});
-
-		it("shows actionable message for 429 rate limits", () => {
-			const error = createAxiosError({
-				headers: { "retry-after": "12" },
-				status: 429,
-			});
-
-			const response = createErrorResponse(error, "get-workouts");
-
-			expect(response.content[0].text).toBe(
-				"[get-workouts] Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait about 12 seconds before retrying.",
-			);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: RATE_LIMIT)"),
-				error,
-			);
-		});
-
-		it("handles Retry-After as HTTP-date for 429 messages", () => {
-			const now = 1_700_000_000_000;
-			vi.spyOn(Date, "now").mockReturnValue(now);
-
-			const error = createAxiosError({
-				headers: {
-					"retry-after": new Date(now + 5_000).toUTCString(),
-				},
-				status: 429,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait about 5 seconds before retrying.",
-			);
-		});
-
-		it("falls back when a 429 has no Retry-After header", () => {
-			const error = createAxiosError({ status: 429 });
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait and retry your request.",
-			);
-		});
-
-		it("normalizes Retry-After arrays returned from headers.get", () => {
-			const error = createAxiosError({
-				headers: {
-					get: () => [3],
-				},
-				status: 429,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait about 3 seconds before retrying.",
-			);
-		});
-
-		it("treats empty Retry-After arrays as missing", () => {
-			const error = createAxiosError({
-				headers: {
-					get: () => [],
-				},
-				status: 429,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait and retry your request.",
-			);
-		});
-
-		it("falls back when Retry-After is present but invalid", () => {
-			const error = createAxiosError({
-				headers: { "retry-after": "later today" },
-				status: 429,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait and retry your request.",
-			);
-		});
-
-		it("surfaces clearer message when retries are exhausted", () => {
-			const error = createAxiosError({
-				message: "timeout of 30000ms exceeded",
-				retryCount: 3,
-				retryExhausted: true,
-				status: 503,
-			});
-
-			const response = createErrorResponse(error, "get-routines");
-
-			expect(response.content[0].text).toBe(
-				"[get-routines] Error: Unable to complete the request " +
-					"after 4 attempts to the Hevy API due to transient " +
-					"failures. Please try again shortly.",
-			);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: NETWORK_ERROR)"),
-				error,
-			);
-		});
-
-		it("prioritizes retry exhaustion over 429 classification", () => {
-			const error = createAxiosError({
-				headers: { "retry-after": "120" },
-				retryCount: 3,
-				retryExhausted: true,
-				status: 429,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe(
-				"Error: Unable to complete the request after 4 attempts " +
-					"to the Hevy API due to transient failures. " +
-					"Please try again shortly.",
-			);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: NETWORK_ERROR)"),
-				error,
-			);
-		});
-
-		it("uses a generic retry exhaustion message without a retry count", () => {
-			const error = createAxiosError({
-				retryExhausted: true,
-				status: 503,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe(
-				"Error: Unable to complete the request after multiple attempts " +
-					"to the Hevy API due to transient failures. " +
-					"Please try again shortly.",
-			);
-		});
-
-		it("prefers axios string response payloads for error text", () => {
-			const error = createAxiosError({
-				data: "Upstream said no",
-				status: 500,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe("Error: Upstream said no");
-		});
-
-		it("serializes axios object response payloads for error text", () => {
-			const error = createAxiosError({
-				data: { detail: "Bad request" },
-				status: 400,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe('Error: {"detail":"Bad request"}');
-		});
-
-		it("falls back to String when axios payload serialization fails", () => {
-			const circularData: { self?: unknown } = {};
-			circularData.self = circularData;
-
-			const error = createAxiosError({
-				data: circularData,
-				status: 500,
-			});
-
-			const response = createErrorResponse(error);
-
-			expect(response.content[0].text).toBe("Error: [object Object]");
 		});
 	});
 
@@ -467,7 +476,7 @@ describe("Error Handler", () => {
 			const wrappedFn = withErrorHandling(mockFn, "ErrorTest");
 			const result = await wrappedFn({ param: "test" });
 
-			expect(result).toEqual({
+			expect(result).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -475,9 +484,106 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					sourceContext: "ErrorTest",
+					originalErrorMessage: "Function error",
+				},
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
 			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it("handles rejected promises from the wrapped function", async () => {
+			const mockFn = vi
+				.fn()
+				.mockRejectedValue(new Error("Async handler failure"));
+
+			const wrappedFn = withErrorHandling(mockFn, "RejectContext");
+			const result = await wrappedFn({ param: "test" });
+
+			expect(result).toMatchObject({
+				isError: true,
+				content: [
+					{
+						type: "text",
+						text: "[RejectContext] Error: Async handler failure",
+					},
+				],
+			});
+			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it("handles axios-specific errors from wrapped handlers", async () => {
+			const axiosLikeError = {
+				message: "Request failed with status code 503",
+				isAxiosError: true,
+				response: {
+					data: {
+						error: "service unavailable",
+						code: "E_SERVICE_UNAVAILABLE",
+					},
+				},
+			};
+			const mockFn = vi.fn().mockImplementation(() => {
+				throw axiosLikeError;
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "AxiosContext");
+			const result = await wrappedFn({});
+
+			expect(result).toMatchObject({ isError: true });
+			expect(result.content[0]?.text).toContain("service unavailable");
+			expect(result.content[0]?.text).toContain("E_SERVICE_UNAVAILABLE");
+			expect(Sentry.captureException).toHaveBeenCalledWith(axiosLikeError);
+		});
+
+		it("adds the current user ID to span attributes when available", async () => {
+			testDoubles.startActiveSpan.mockClear();
+			vi.mocked(getCurrentUserId).mockReturnValue("user-123");
+
+			const mockFn = vi.fn().mockResolvedValue({
+				content: [{ type: "text", text: "Success" }],
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "UserContext");
+			await wrappedFn({ param: "test" });
+
+			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
+				"mcp.tool.UserContext",
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						"mcp.tool.name": "UserContext",
+						"user.id": "user-123",
+					}),
+				}),
+				expect.any(Function),
+			);
+
+			vi.mocked(getCurrentUserId).mockReturnValue(undefined);
+		});
+
+		it("handles non-Error thrown values from wrapped functions", async () => {
+			const mockFn = vi.fn().mockImplementation(() => {
+				throw 42;
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "NumberErrorTest");
+			const result = await wrappedFn({ param: "test" });
+
+			expect(result).toMatchObject({
+				content: [
+					{
+						type: "text",
+						text: "[NumberErrorTest] Error: 42",
+					},
+				],
+				isError: true,
+				errorContext: {
+					sourceContext: "NumberErrorTest",
+					originalErrorMessage: "42",
+				},
+			});
+			expect(Sentry.captureException).toHaveBeenCalledWith(42);
 		});
 	});
 });

@@ -8,6 +8,7 @@
 - The codebase is TypeScript (Node.js v26+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
+- **MCP SDK internals sensitivity:** `src/utils/stdio-observability.ts` depends on MCP SDK stdio internals (private fields such as `_ondata`/`_readBuffer`) for raw chunk instrumentation. Re-run the stdio observability test suite after any `@modelcontextprotocol/sdk` upgrade.
 
 ## Git & Workflow Standards
 
@@ -150,6 +151,12 @@ Create a `.env` file in the project root with:
 HEVY_API_KEY=your_hevy_api_key_here
 ```
 
+Always provide the API key through `HEVY_API_KEY`.
+
+Do **not** pass API keys via CLI arguments
+(`--hevy-api-key=...`, `--hevyApiKey=...`, `hevy-api-key=...`). These CLI
+forms are deprecated and insecure.
+
 **CRITICAL:** Without this API key:
 
 - Servers will not start
@@ -206,7 +213,8 @@ Always perform these validation steps after making changes:
      configured in the `check:types` script in `package.json`.
    - Note: `npm run build` (tsup) may still succeed when this fails.
    - Treat failures here as issues to fix (even if the build passes).
-   - Run this locally before opening a PR (CI does not currently run this check).
+   - Run this locally before opening a PR; CI also runs this check on pull
+     requests and pushes to `main`.
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**
@@ -248,8 +256,7 @@ src/
     ├── formatters.ts      # Data formatting helpers
     ├── hevyClient.ts      # API client factory
     ├── hevyClientKubb.ts  # Kubb client wrapper
-    ├── config.ts          # Configuration parsing
-    └── httpServer.ts      # HTTP server utilities (deprecated)
+    └── config.ts          # Configuration parsing
 ```
 
 ### Testing Structure

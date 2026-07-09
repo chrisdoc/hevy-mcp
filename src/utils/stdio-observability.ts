@@ -22,6 +22,69 @@ type MutableStdioServerTransport = {
 	_ondata?: (chunk: Buffer) => void;
 };
 
+interface SdkPrivateStdioAdapter {
+	wrapOnData: (onChunk: (chunk: Buffer) => void) => void;
+	installReadMessageHook: (
+		onReadLine: (line: string) => JSONRPCMessage,
+	) => boolean;
+}
+
+/**
+ * Adapter boundary around MCP SDK stdio internals.
+ *
+ * MCP SDK v1.29.0 exposes public message-level hooks but does not expose a
+ * public raw-chunk hook on `StdioServerTransport`. To capture chunk metadata,
+ * we currently rely on private internals (`_ondata`, `_readBuffer`, `_buffer`)
+ * in this one place.
+ *
+ * If those internals change in a future SDK release, this adapter should fail
+ * closed and preserve default transport behavior (no instrumentation patching).
+ */
+function createSdkPrivateStdioAdapter(
+	transport: StdioServerTransport,
+): SdkPrivateStdioAdapter {
+	const mutableTransport = transport as unknown as MutableStdioServerTransport;
+
+	return {
+		wrapOnData(onChunk) {
+			const originalOnData = mutableTransport._ondata;
+			if (typeof originalOnData !== "function") {
+				return;
+			}
+
+			mutableTransport._ondata = (chunk: Buffer) => {
+				onChunk(chunk);
+				originalOnData(chunk);
+			};
+		},
+		installReadMessageHook(onReadLine) {
+			const readBuffer = mutableTransport._readBuffer;
+			if (!readBuffer || typeof readBuffer.readMessage !== "function") {
+				return false;
+			}
+
+			readBuffer.readMessage = () => {
+				const buffer = readBuffer._buffer;
+				if (!buffer) {
+					return null;
+				}
+
+				const index = buffer.indexOf("\n");
+				if (index === -1) {
+					return null;
+				}
+
+				const lineBuffer = buffer.subarray(0, index);
+				readBuffer._buffer = buffer.subarray(index + 1);
+				const line = lineBuffer.toString("utf8").replace(/\r$/, "");
+				return onReadLine(line);
+			};
+
+			return true;
+		},
+	};
+}
+
 function hasUtf8BomPrefix(chunk: Buffer): boolean {
 	return (
 		chunk.length >= 3 &&
@@ -144,44 +207,25 @@ export function deserializeMessageWithObservability(
 export function createInstrumentedStdioTransport<
 	T extends StdioServerTransport,
 >(transport: T): T {
-	const mutableTransport = transport as unknown as MutableStdioServerTransport;
+	const privateAdapter = createSdkPrivateStdioAdapter(transport);
 	let lastChunkSnapshot: StdioChunkSnapshot = {
 		lastChunkByteLength: 0,
 		lastChunkStartsWithUtf8Bom: false,
 	};
 
-	const originalOnData = mutableTransport._ondata;
-	if (typeof originalOnData === "function") {
-		mutableTransport._ondata = (chunk: Buffer) => {
-			lastChunkSnapshot = {
-				lastChunkByteLength: chunk.byteLength,
-				lastChunkStartsWithUtf8Bom: hasUtf8BomPrefix(chunk),
-			};
-			originalOnData(chunk);
+	privateAdapter.wrapOnData((chunk) => {
+		lastChunkSnapshot = {
+			lastChunkByteLength: chunk.byteLength,
+			lastChunkStartsWithUtf8Bom: hasUtf8BomPrefix(chunk),
 		};
-	}
+	});
 
-	const readBuffer = mutableTransport._readBuffer;
-	if (!readBuffer || typeof readBuffer.readMessage !== "function") {
+	const didInstallReadMessageHook = privateAdapter.installReadMessageHook(
+		(line) => deserializeMessageWithObservability(line, lastChunkSnapshot),
+	);
+	if (!didInstallReadMessageHook) {
 		return transport;
 	}
-
-	readBuffer.readMessage = () => {
-		const buffer = readBuffer._buffer;
-		if (!buffer) {
-			return null;
-		}
-
-		const index = buffer.indexOf("\n");
-		if (index === -1) {
-			return null;
-		}
-
-		const lineBuffer = buffer.subarray(0, index);
-		readBuffer._buffer = buffer.subarray(index + 1);
-		const line = lineBuffer.toString("utf8").replace(/\r$/, "");
-		return deserializeMessageWithObservability(line, lastChunkSnapshot);
-	};
 
 	return transport;
 }
