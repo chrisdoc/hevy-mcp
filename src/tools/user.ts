@@ -6,7 +6,7 @@ import {
 	createJsonResponse,
 } from "../utils/response-formatter.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
-import type { InferToolParams } from "../utils/tool-helpers.js";
+import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
@@ -26,12 +26,8 @@ export function registerUserTools(
 		getUserInfoSchema,
 		readOnlyAnnotations("Get User Info"),
 		withErrorHandling(async (_args: GetUserInfoParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
-			const data: UserInfoResponse = await hevyClient.getUserInfo();
+			const client = requireClient(hevyClient);
+			const data: UserInfoResponse = await client.getUserInfo();
 			if (!data?.data) {
 				return createEmptyResponse(
 					"No user info found for the authenticated user",

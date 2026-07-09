@@ -25,7 +25,8 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import type { InferToolParams } from "../utils/tool-helpers.js";
+import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import { setTypeEnum } from "../utils/schemas.js";
 
 /**
  * Register all workout-related tools with the MCP server
@@ -47,13 +48,9 @@ export function registerWorkoutTools(
 		getWorkoutsSchema,
 		readOnlyAnnotations("Get Workouts"),
 		withErrorHandling(async (args: GetWorkoutsParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
-			const data: GetV1Workouts200 = await hevyClient.getWorkouts({
+			const data: GetV1Workouts200 = await client.getWorkouts({
 				page,
 				pageSize,
 			});
@@ -83,14 +80,10 @@ export function registerWorkoutTools(
 		getWorkoutSchema,
 		readOnlyAnnotations("Get Workout"),
 		withErrorHandling(async (args: GetWorkoutParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { workoutId } = args;
 			const data: GetV1WorkoutsWorkoutid200 =
-				await hevyClient.getWorkout(workoutId);
+				await client.getWorkout(workoutId);
 
 			if (!data) {
 				return createEmptyResponse(`Workout with ID ${workoutId} not found`);
@@ -108,12 +101,8 @@ export function registerWorkoutTools(
 		{},
 		readOnlyAnnotations("Get Workout Count"),
 		withErrorHandling(async () => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
-			const data: GetV1WorkoutsCount200 = await hevyClient.getWorkoutCount();
+			const client = requireClient(hevyClient);
+			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
 			return createJsonResponse({ count });
 		}, "get-workout-count"),
@@ -133,13 +122,9 @@ export function registerWorkoutTools(
 		getWorkoutEventsSchema,
 		readOnlyAnnotations("Get Workout Events"),
 		withErrorHandling(async (args: GetWorkoutEventsParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { page, pageSize, since } = args;
-			const data: GetV1WorkoutsEvents200 = await hevyClient.getWorkoutEvents({
+			const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
 				page,
 				pageSize,
 				since,
@@ -173,9 +158,7 @@ export function registerWorkoutTools(
 					notes: z.string().optional().nullable(),
 					sets: z.array(
 						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
+							type: setTypeEnum,
 							weight: z.coerce.number().optional().nullable(),
 							weightKg: z.coerce.number().optional().nullable(),
 							reps: z.coerce.number().int().optional().nullable(),
@@ -199,11 +182,7 @@ export function registerWorkoutTools(
 		createWorkoutSchema,
 		createAnnotations("Create Workout"),
 		withErrorHandling(async (args: CreateWorkoutParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { title, description, startTime, endTime, isPrivate, exercises } =
 				args;
 			const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> = {
@@ -231,8 +210,7 @@ export function registerWorkoutTools(
 			};
 			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
-			const data: PostV1Workouts201 =
-				await hevyClient.createWorkout(requestBody);
+			const data: PostV1Workouts201 = await client.createWorkout(requestBody);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -265,9 +243,7 @@ export function registerWorkoutTools(
 					notes: z.string().optional().nullable(),
 					sets: z.array(
 						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
+							type: setTypeEnum,
 							weight: z.coerce.number().optional().nullable(),
 							weightKg: z.coerce.number().optional().nullable(),
 							reps: z.coerce.number().int().optional().nullable(),
@@ -291,11 +267,7 @@ export function registerWorkoutTools(
 		updateWorkoutSchema,
 		updateAnnotations("Update Workout"),
 		withErrorHandling(async (args: UpdateWorkoutParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const {
 				workoutId,
 				title,
@@ -330,7 +302,7 @@ export function registerWorkoutTools(
 			};
 			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
 
-			const data: PutV1WorkoutsWorkoutid200 = await hevyClient.updateWorkout(
+			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
 				workoutId,
 				requestBody,
 			);
