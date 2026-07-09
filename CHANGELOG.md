@@ -1,5 +1,43 @@
 ## [1.25.16](https://github.com/chrisdoc/hevy-mcp/compare/v1.25.15...v1.25.16) (2026-07-02)
 
+## 1.26.1
+
+### Patch Changes
+
+- [#438](https://github.com/chrisdoc/hevy-mcp/pull/438) [`35ab9ea`](https://github.com/chrisdoc/hevy-mcp/commit/35ab9eaa98bbe7ebbaf1b9832ee8d7e183851073) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Align MCP tool response helpers with SDK `CallToolResult` typing by
+  replacing the loose custom response interface, narrowing helper content to
+  SDK `TextContent[]`, and ensuring JSON responses always emit string text.
+
+- [#436](https://github.com/chrisdoc/hevy-mcp/pull/436) [`f1b6018`](https://github.com/chrisdoc/hevy-mcp/commit/f1b601801ab5d8d8c8948d1cc102606781736fc7) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add a shared bounded TTL async cache utility and migrate exercise template
+  catalog caching in `search-exercise-templates` to use it. This keeps cache
+  behavior consistent (TTL, LRU bound, refresh invalidation, and in-flight
+  request de-duplication) and adds tests plus README documentation.
+
+- [#463](https://github.com/chrisdoc/hevy-mcp/pull/463) [`d5df6ca`](https://github.com/chrisdoc/hevy-mcp/commit/d5df6cac5db50fe0dbe6feadb0268e6d434604e5) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Fix commitlint failing on Mergify batch merge commits in the merge queue.
+
+- [#434](https://github.com/chrisdoc/hevy-mcp/pull/434) [`59f95fe`](https://github.com/chrisdoc/hevy-mcp/commit/59f95fe448bcb5cd38f253e62ae69439ece8762b) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Deprecate CLI API key arguments by warning on stderr whenever
+  `--hevy-api-key=...`, `--hevyApiKey=...`, or `hevy-api-key=...` is used.
+  Keep backward compatibility for those flags while documenting `HEVY_API_KEY`
+  as the recommended and secure configuration path.
+
+- [#474](https://github.com/chrisdoc/hevy-mcp/pull/474) [`12cf700`](https://github.com/chrisdoc/hevy-mcp/commit/12cf70079ad52819820509fa7a2e3337e7e6c73a) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Fix missing OTEL_COLLECTOR_TOKEN in the Release workflow build step.
+
+  The Release workflow built the npm package without passing the
+  OTEL_COLLECTOR_TOKEN secret, so the published package had an empty
+  collector token. This caused the OTLP exporter to be skipped at
+  runtime (the `if (collectorToken)` guard in telemetry.ts), meaning
+  no traces or metrics were sent to the OTel Collector.
+
+- [#439](https://github.com/chrisdoc/hevy-mcp/pull/439) [`ca182f6`](https://github.com/chrisdoc/hevy-mcp/commit/ca182f60c6aa0aa24d75f3f5a74559f123d066b9) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add mocked integration coverage with nock and run mocked integrations on every
+  PR while keeping live integrations optional behind `HEVY_API_KEY`.
+
+- [#431](https://github.com/chrisdoc/hevy-mcp/pull/431) [`b6fe3c0`](https://github.com/chrisdoc/hevy-mcp/commit/b6fe3c0749c9297123c05fde10c2640743cbbdd8) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add CLI `--help`/`-h` and `--version`/`-v` flags that print output and
+  exit before server startup, with unit test coverage for flag and default
+  startup behavior.
+
+- [#423](https://github.com/chrisdoc/hevy-mcp/pull/423) [`8dfb593`](https://github.com/chrisdoc/hevy-mcp/commit/8dfb59326202bd0473bfeb3c26c413b6f8475cb4) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Map common Hevy API error statuses to clearer MCP error messages and keep
+  structured debug context with original HTTP details for troubleshooting.
+
 ## 1.26.0
 
 ### Minor Changes
