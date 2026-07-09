@@ -282,6 +282,27 @@ describe("Error Handler", () => {
 			);
 		});
 
+		it("prioritizes retry exhaustion over 429 classification", () => {
+			const error = createAxiosError({
+				headers: { "retry-after": "120" },
+				retryCount: 3,
+				retryExhausted: true,
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Unable to complete the request after 4 attempts " +
+					"to the Hevy API due to transient failures. " +
+					"Please try again shortly.",
+			);
+			expect(console.error).toHaveBeenCalledWith(
+				expect.stringContaining("(Type: NETWORK_ERROR)"),
+				error,
+			);
+		});
+
 		it("uses a generic retry exhaustion message without a retry count", () => {
 			const error = createAxiosError({
 				retryExhausted: true,

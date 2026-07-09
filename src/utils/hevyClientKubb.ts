@@ -171,7 +171,7 @@ function getHeaderValue(headers: unknown, key: string): string | undefined {
 function parseRetryAfterMs(value: string): number | undefined {
 	const numericSeconds = Number(value);
 	if (Number.isFinite(numericSeconds) && numericSeconds >= 0) {
-		return Math.round(numericSeconds * 1000);
+		return Math.min(RETRY_BACKOFF_MAX_MS, Math.round(numericSeconds * 1000));
 	}
 
 	const dateMillis = Date.parse(value);
@@ -179,7 +179,7 @@ function parseRetryAfterMs(value: string): number | undefined {
 		return undefined;
 	}
 
-	return Math.max(0, dateMillis - Date.now());
+	return Math.min(RETRY_BACKOFF_MAX_MS, Math.max(0, dateMillis - Date.now()));
 }
 
 function getRetryAfterDelayMs(error: AxiosError): number | undefined {
@@ -212,7 +212,10 @@ function getRetryDelayMs(error: AxiosError, retryAttempt: number): number {
 		return exponentialDelay;
 	}
 
-	return Math.max(exponentialDelay, retryAfterDelay);
+	return Math.min(
+		RETRY_BACKOFF_MAX_MS,
+		Math.max(exponentialDelay, retryAfterDelay),
+	);
 }
 
 function shouldRetryRequest(

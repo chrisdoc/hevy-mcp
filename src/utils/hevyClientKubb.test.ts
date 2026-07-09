@@ -279,6 +279,29 @@ describe("hevyClientKubb", () => {
 		expect(delays).toEqual([2_000]);
 	});
 
+	it("caps large Retry-After values to the bounded retry delay", async () => {
+		const delays = mockImmediateTimeouts();
+		axiosTestDoubles.request
+			.mockRejectedValueOnce(
+				createAxiosError({
+					headers: { "retry-after": "86400" },
+					status: 429,
+				}),
+			)
+			.mockResolvedValueOnce({
+				data: { ok: true },
+				headers: {},
+				status: 200,
+				statusText: "OK",
+			});
+
+		const client = createClient("test-api-key");
+		await client.getRoutines();
+
+		expect(axiosTestDoubles.request).toHaveBeenCalledTimes(2);
+		expect(delays).toEqual([5_000]);
+	});
+
 	it("respects Retry-After HTTP-date for 429 retries", async () => {
 		const delays = mockImmediateTimeouts();
 		const now = 1_700_000_000_000;

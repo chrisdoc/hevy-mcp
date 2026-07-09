@@ -158,12 +158,12 @@ function getRetryExhaustedMessage(error: unknown): string {
 }
 
 function getUserFacingMessage(error: unknown, defaultMessage: string): string {
-	if (isAxiosError(error) && error.response?.status === 429) {
-		return getRateLimitMessage(error);
-	}
-
 	if (isRetryExhaustedError(error)) {
 		return getRetryExhaustedMessage(error);
+	}
+
+	if (isAxiosError(error) && error.response?.status === 429) {
+		return getRateLimitMessage(error);
 	}
 
 	return defaultMessage;
@@ -240,12 +240,12 @@ export function createErrorResponse(
  * Determine the type of error based on error characteristics
  */
 function determineErrorType(error: unknown, message: string): ErrorType {
-	if (isAxiosError(error) && error.response?.status === 429) {
-		return ErrorType.RATE_LIMIT;
-	}
-
 	if (isRetryExhaustedError(error)) {
 		return ErrorType.NETWORK_ERROR;
+	}
+
+	if (isAxiosError(error) && error.response?.status === 429) {
+		return ErrorType.RATE_LIMIT;
 	}
 
 	const messageLower = message.toLowerCase();
