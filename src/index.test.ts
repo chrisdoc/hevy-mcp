@@ -24,6 +24,7 @@ const testDoubles = vi.hoisted(() => ({
 		recordException: vi.fn(),
 		end: vi.fn(),
 	},
+	connect: vi.fn().mockResolvedValue(undefined),
 	sentry: {
 		init: vi.fn(() => ({})),
 		setUser: vi.fn(),
@@ -81,7 +82,7 @@ vi.mock("@opentelemetry/api", () => ({
 
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	class MockMcpServer {
-		connect = vi.fn().mockResolvedValue(undefined);
+		connect = testDoubles.connect;
 		tool = vi.fn();
 	}
 
@@ -155,6 +156,17 @@ describe("Server entry", () => {
 		);
 	});
 
+	it("marks the build span as failed when the Hevy client cannot be initialized", () => {
+		vi.mocked(createClient).mockImplementationOnce(() => {
+			throw new Error("client init failed");
+		});
+
+		expect(() => createServer({ config: { apiKey: "test-key" } })).toThrow(
+			"client init failed",
+		);
+		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
+	});
+
 	describe("runServer", () => {
 		it("uses HEVY_API_KEY from the environment and connects stdio transport", async () => {
 			process.env = {
@@ -204,6 +216,19 @@ describe("Server entry", () => {
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
 			).not.toContain("env-key");
+		});
+
+		it("marks the connect span as failed when stdio connection throws", async () => {
+			process.env = {
+				...originalEnv,
+				HEVY_API_KEY: "test-api-key",
+			};
+			process.argv = originalArgv.slice(0, 2);
+			testDoubles.connect.mockRejectedValueOnce(new Error("connect failed"));
+
+			await expect(runServer()).rejects.toThrow("connect failed");
+			expect(testDoubles.connect).toHaveBeenCalled();
+			expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 		});
 
 		it("exits the process when no API key is provided", async () => {

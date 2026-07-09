@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const originalEnv = { ...process.env };
 
 // The telemetry module initializes Sentry and OTel at import time.
 // We mock the external dependencies so the test can verify initialization
@@ -7,10 +9,14 @@ import { describe, expect, it, vi } from "vitest";
 const testDoubles = vi.hoisted(() => ({
 	sentryInit: vi.fn(() => ({ _isSentryClient: true })),
 	validateOpenTelemetrySetup: vi.fn(),
-	addSpanProcessor: vi.fn(),
 	register: vi.fn(),
 	setGlobalTracerProvider: vi.fn(),
 	setGlobalMeterProvider: vi.fn(),
+	otlpTraceExporter: vi.fn(),
+	otlpMetricExporter: vi.fn(),
+	batchSpanProcessor: vi.fn(),
+	meterProvider: vi.fn(),
+	periodicExportingMetricReader: vi.fn(),
 }));
 
 vi.mock("@sentry/node", () => ({
@@ -40,11 +46,11 @@ vi.mock("@opentelemetry/api", () => ({
 }));
 
 vi.mock("@opentelemetry/exporter-trace-otlp-http", () => ({
-	OTLPTraceExporter: vi.fn(),
+	OTLPTraceExporter: testDoubles.otlpTraceExporter,
 }));
 
 vi.mock("@opentelemetry/exporter-metrics-otlp-http", () => ({
-	OTLPMetricExporter: vi.fn(),
+	OTLPMetricExporter: testDoubles.otlpMetricExporter,
 }));
 
 vi.mock("@opentelemetry/resources", () => ({
@@ -52,23 +58,27 @@ vi.mock("@opentelemetry/resources", () => ({
 }));
 
 vi.mock("@opentelemetry/sdk-trace-base", () => ({
-	BatchSpanProcessor: vi.fn(),
+	BatchSpanProcessor: testDoubles.batchSpanProcessor,
 }));
 
 vi.mock("@opentelemetry/sdk-trace-node", () => {
 	class MockNodeTracerProvider {
-		addSpanProcessor = testDoubles.addSpanProcessor;
 		register = testDoubles.register;
 	}
 	return { NodeTracerProvider: MockNodeTracerProvider };
 });
 
 vi.mock("@opentelemetry/sdk-metrics", () => ({
-	MeterProvider: vi.fn(),
-	PeriodicExportingMetricReader: vi.fn(),
+	MeterProvider: testDoubles.meterProvider,
+	PeriodicExportingMetricReader: testDoubles.periodicExportingMetricReader,
 }));
 
 describe("telemetry initialization", () => {
+	afterEach(() => {
+		process.env = { ...originalEnv };
+		vi.clearAllMocks();
+	});
+
 	it("initializes Sentry with skipOpenTelemetrySetup", async () => {
 		vi.resetModules();
 		await import("./telemetry.js");
@@ -94,6 +104,44 @@ describe("telemetry initialization", () => {
 		await import("./telemetry.js");
 
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalled();
+	});
+
+	it("configures Honeycomb exporters when an API key is present", async () => {
+		vi.resetModules();
+		process.env = {
+			...originalEnv,
+			HONEYCOMB_API_KEY: "test-honeycomb-key",
+		};
+
+		await import("./telemetry.js");
+
+		expect(testDoubles.otlpTraceExporter).toHaveBeenCalledWith({
+			url: "https://api.honeycomb.io/v1/traces",
+			headers: {
+				"x-honeycomb-team": "test-honeycomb-key",
+				"x-honeycomb-dataset": "hevy-mcp",
+			},
+		});
+		expect(testDoubles.batchSpanProcessor).toHaveBeenCalledTimes(1);
+		expect(testDoubles.otlpMetricExporter).toHaveBeenCalledWith({
+			url: "https://api.honeycomb.io/v1/metrics",
+			headers: {
+				"x-honeycomb-team": "test-honeycomb-key",
+				"x-honeycomb-dataset": "hevy-mcp",
+			},
+		});
+		expect(testDoubles.periodicExportingMetricReader).toHaveBeenCalledWith(
+			expect.objectContaining({
+				exporter: expect.anything(),
+				exportIntervalMillis: 10_000,
+			}),
+		);
+		expect(testDoubles.meterProvider).toHaveBeenCalledWith(
+			expect.objectContaining({
+				readers: expect.any(Array),
+			}),
+		);
+		expect(testDoubles.setGlobalMeterProvider).toHaveBeenCalled();
 	});
 
 	it("exports tracer, meter, Sentry, serviceName, and serviceVersion", async () => {

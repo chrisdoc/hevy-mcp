@@ -96,6 +96,44 @@ describe("Error Handler", () => {
 			});
 		});
 
+		it("uses axios string response data when available", () => {
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					data: "Service unavailable",
+				},
+			});
+
+			expect(response.content[0].text).toBe("Error: Service unavailable");
+		});
+
+		it("stringifies axios object response data when possible", () => {
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					data: { message: "validation failed", retryable: false },
+				},
+			});
+
+			expect(response.content[0].text).toBe(
+				'Error: {"message":"validation failed","retryable":false}',
+			);
+		});
+
+		it("falls back to String(data) when axios object response data is not serializable", () => {
+			const circular: { self?: unknown } = {};
+			circular.self = circular;
+
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					data: circular,
+				},
+			});
+
+			expect(response.content[0].text).toBe("Error: [object Object]");
+		});
+
 		it("should include context in the error message when provided", () => {
 			const error = new Error("Test error with context");
 			const response = createErrorResponse(error, "TestContext");
