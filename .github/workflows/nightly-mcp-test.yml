@@ -14,7 +14,18 @@ env:
 
 jobs:
   mcp-integration-test:
+    name: MCP integration test (${{ matrix.launcher.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        launcher:
+          - name: npx
+            command: npx
+            args_json: '["-y", "hevy-mcp@latest"]'
+          - name: bunx
+            command: bunx
+            args_json: '["hevy-mcp@latest"]'
 
     steps:
       - name: Checkout repository
@@ -31,6 +42,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Bun
+        if: matrix.launcher.command == 'bunx'
+        uses: oven-sh/setup-bun@v2
+
       - name: Install mcp-use
         run: pip install mcp-use
 
@@ -38,6 +53,8 @@ jobs:
         run: python tests/nightly/test_hevy_mcp.py
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+          HEVY_MCP_COMMAND: ${{ matrix.launcher.command }}
+          HEVY_MCP_ARGS_JSON: ${{ matrix.launcher.args_json }}
 
       - name: Notify on failure
         if: failure()
