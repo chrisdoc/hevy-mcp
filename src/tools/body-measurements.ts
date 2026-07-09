@@ -17,20 +17,12 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import type { InferToolParams } from "../utils/tool-helpers.js";
+import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import { zNullableNumber } from "../utils/schemas.js";
 
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
-
-// Coerce numeric strings ("81.5") since some MCP clients serialize numbers
-// as strings; empty strings are treated as omitted rather than coerced to 0,
-// and nullable()/optional() short-circuit before coercion, so null stays
-// null instead of becoming 0.
-const zNullableNumber = z.preprocess(
-	(value) => (value === "" ? undefined : value),
-	z.coerce.number().nullable().optional(),
-);
 
 const bodyMeasurementFieldsSchema = {
 	weightKg: zNullableNumber.describe("Body weight in kilograms"),
@@ -129,17 +121,12 @@ export function registerBodyMeasurementTools(
 		getBodyMeasurementsSchema,
 		readOnlyAnnotations("Get Body Measurements"),
 		withErrorHandling(async (args: GetBodyMeasurementsParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
-			const data: GetV1BodyMeasurements200 =
-				await hevyClient.getBodyMeasurements({
-					page,
-					pageSize,
-				});
+			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
+				page,
+				pageSize,
+			});
 
 			const measurements =
 				data?.body_measurements?.map((measurement: BodyMeasurement) =>
@@ -173,14 +160,10 @@ export function registerBodyMeasurementTools(
 		getBodyMeasurementSchema,
 		readOnlyAnnotations("Get Body Measurement"),
 		withErrorHandling(async (args: GetBodyMeasurementParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { date } = args;
 			const data: GetV1BodyMeasurementsDate200 =
-				await hevyClient.getBodyMeasurement(date);
+				await client.getBodyMeasurement(date);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -212,13 +195,9 @@ export function registerBodyMeasurementTools(
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
 		withErrorHandling(async (args: CreateBodyMeasurementParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
-			await hevyClient.createBodyMeasurement({
+			await client.createBodyMeasurement({
 				date,
 				...buildMeasurementPayload(fields),
 			});
@@ -249,11 +228,7 @@ export function registerBodyMeasurementTools(
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
 		withErrorHandling(async (args: UpdateBodyMeasurementParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			const payload = buildMeasurementPayload(fields);
 			if (Object.keys(payload).length === 0) {
@@ -261,7 +236,7 @@ export function registerBodyMeasurementTools(
 					"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
 				);
 			}
-			await hevyClient.updateBodyMeasurement(date, payload);
+			await client.updateBodyMeasurement(date, payload);
 
 			return createTextResponse(
 				`Body measurement for ${date} updated successfully.`,

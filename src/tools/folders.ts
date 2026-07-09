@@ -17,7 +17,7 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
-import type { InferToolParams } from "../utils/tool-helpers.js";
+import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 
 // Type definitions for the folder operations
 type HevyClient = ReturnType<
@@ -46,13 +46,9 @@ export function registerFolderTools(
 		getRoutineFoldersSchema,
 		readOnlyAnnotations("Get Routine Folders"),
 		withErrorHandling(async (args: GetRoutineFoldersParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
-			const data: GetV1RoutineFolders200 = await hevyClient.getRoutineFolders({
+			const data: GetV1RoutineFolders200 = await client.getRoutineFolders({
 				page,
 				pageSize,
 			});
@@ -85,14 +81,10 @@ export function registerFolderTools(
 		getRoutineFolderSchema,
 		readOnlyAnnotations("Get Routine Folder"),
 		withErrorHandling(async (args: GetRoutineFolderParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { folderId } = args;
 			const data: GetV1RoutineFoldersFolderid200 =
-				await hevyClient.getRoutineFolder(folderId);
+				await client.getRoutineFolder(folderId);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -119,18 +111,13 @@ export function registerFolderTools(
 		createRoutineFolderSchema,
 		createAnnotations("Create Routine Folder"),
 		withErrorHandling(async (args: CreateRoutineFolderParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { name } = args;
-			const data: PostV1RoutineFolders201 =
-				await hevyClient.createRoutineFolder({
-					routine_folder: {
-						title: name,
-					},
-				});
+			const data: PostV1RoutineFolders201 = await client.createRoutineFolder({
+				routine_folder: {
+					title: name,
+				},
+			});
 
 			if (!data) {
 				return createEmptyResponse(
