@@ -463,6 +463,50 @@ describe("Error Handler", () => {
 			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
 		});
 
+		it("handles rejected promises from the wrapped function", async () => {
+			const mockFn = vi
+				.fn()
+				.mockRejectedValue(new Error("Async handler failure"));
+
+			const wrappedFn = withErrorHandling(mockFn, "RejectContext");
+			const result = await wrappedFn({ param: "test" });
+
+			expect(result).toMatchObject({
+				isError: true,
+				content: [
+					{
+						type: "text",
+						text: "[RejectContext] Error: Async handler failure",
+					},
+				],
+			});
+			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it("handles axios-specific errors from wrapped handlers", async () => {
+			const axiosLikeError = {
+				message: "Request failed with status code 503",
+				isAxiosError: true,
+				response: {
+					data: {
+						error: "service unavailable",
+						code: "E_SERVICE_UNAVAILABLE",
+					},
+				},
+			};
+			const mockFn = vi.fn().mockImplementation(() => {
+				throw axiosLikeError;
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "AxiosContext");
+			const result = await wrappedFn({});
+
+			expect(result).toMatchObject({ isError: true });
+			expect(result.content[0]?.text).toContain("service unavailable");
+			expect(result.content[0]?.text).toContain("E_SERVICE_UNAVAILABLE");
+			expect(Sentry.captureException).toHaveBeenCalledWith(axiosLikeError);
+		});
+
 		it("adds the current user ID to span attributes when available", async () => {
 			testDoubles.startActiveSpan.mockClear();
 			vi.mocked(getCurrentUserId).mockReturnValue("user-123");
