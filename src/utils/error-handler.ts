@@ -35,6 +35,23 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 }
 
 /**
+ * Structured debug context that preserves original error details
+ */
+export interface ErrorDebugContext {
+	sourceContext?: string;
+	originalErrorMessage: string;
+	errorCode?: string;
+	errorType: ErrorType;
+	axios?: {
+		status?: number;
+		statusText?: string;
+		data?: unknown;
+		method?: string;
+		url?: string;
+	};
+}
+
+/**
  * Create a standardized error response for MCP tools
  *
  * @param error - The error object or message
@@ -45,21 +62,20 @@ export function createErrorResponse(
 	error: unknown,
 	context?: string,
 ): McpToolResponse {
-	// Extract axios response data if available
-	let errorMessage = error instanceof Error ? error.message : String(error);
+	const originalErrorMessage = extractErrorMessage(error);
+	let errorMessage = originalErrorMessage;
+	const axiosErrorContext = extractAxiosErrorContext(error);
+	const mappedHevyErrorMessage = mapHevyErrorMessageByStatus(
+		axiosErrorContext?.status,
+	);
+
+	if (mappedHevyErrorMessage) {
+		errorMessage = mappedHevyErrorMessage;
+	}
 
 	// Check for axios error with response data
-	if (isAxiosError(error) && error.response?.data) {
-		const { data } = error.response;
-		if (typeof data === "string") {
-			errorMessage = data;
-		} else if (data && typeof data === "object") {
-			try {
-				errorMessage = JSON.stringify(data);
-			} catch (_e) {
-				errorMessage = String(data);
-			}
-		}
+	if (!mappedHevyErrorMessage && axiosErrorContext?.data) {
+		errorMessage = stringifyErrorData(axiosErrorContext.data);
 	}
 
 	// Extract error code if available (for logging purposes)
@@ -70,6 +86,13 @@ export function createErrorResponse(
 
 	// Determine error type based on error characteristics
 	const errorType = determineErrorType(error, errorMessage);
+	const errorContext: ErrorDebugContext = {
+		sourceContext: context,
+		originalErrorMessage,
+		errorCode,
+		errorType,
+		axios: axiosErrorContext ?? undefined,
+	};
 
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${errorMessage}`;
@@ -89,7 +112,97 @@ export function createErrorResponse(
 			},
 		],
 		isError: true,
+		errorContext,
 	};
+}
+
+function extractErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (typeof error === "string") {
+		return error;
+	}
+
+	if (
+		error &&
+		typeof error === "object" &&
+		"message" in error &&
+		typeof error.message === "string"
+	) {
+		return error.message;
+	}
+
+	if (error && typeof error === "object") {
+		try {
+			return JSON.stringify(error);
+		} catch (_e) {
+			return "Unknown error object";
+		}
+	}
+
+	return String(error);
+}
+
+function extractAxiosErrorContext(
+	error: unknown,
+): ErrorDebugContext["axios"] | null {
+	if (!isAxiosError(error)) {
+		return null;
+	}
+
+	return {
+		status: error.response?.status,
+		statusText: error.response?.statusText,
+		data: error.response?.data,
+		method: error.config?.method,
+		url: error.config?.url,
+	};
+}
+
+function mapHevyErrorMessageByStatus(status?: number): string | null {
+	if (status === 401 || status === 403) {
+		return "The Hevy API key is invalid or has expired. Check HEVY_API_KEY.";
+	}
+
+	if (status === 404) {
+		return "The requested resource was not found in Hevy.";
+	}
+
+	if (status === 409) {
+		return "A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.";
+	}
+
+	if (status === 422) {
+		return "The request failed Hevy validation. Check the field values and try again.";
+	}
+
+	if (status === 429) {
+		return "Rate limited by Hevy. Please wait and retry.";
+	}
+
+	if (status && status >= 500 && status <= 599) {
+		return "Hevy API experienced an error. Please retry later.";
+	}
+
+	return null;
+}
+
+function stringifyErrorData(data: unknown): string {
+	if (typeof data === "string") {
+		return data;
+	}
+
+	if (data && typeof data === "object") {
+		try {
+			return JSON.stringify(data);
+		} catch (_e) {
+			return "Unable to serialize error response data";
+		}
+	}
+
+	return String(data);
 }
 
 /**

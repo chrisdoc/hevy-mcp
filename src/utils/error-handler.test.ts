@@ -2,6 +2,23 @@ import * as Sentry from "@sentry/node";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
 
+function createMockAxiosError(status: number, data: unknown): unknown {
+	return {
+		isAxiosError: true,
+		name: "AxiosError",
+		message: `Request failed with status code ${status}`,
+		config: {
+			method: "post",
+			url: "/v1/body_measurements",
+		},
+		response: {
+			status,
+			statusText: "Error",
+			data,
+		},
+	};
+}
+
 const sentryTestDoubles = vi.hoisted(() => ({
 	span: {
 		setAttribute: vi.fn(),
@@ -38,7 +55,7 @@ describe("Error Handler", () => {
 			const error = new Error("Test error message");
 			const response = createErrorResponse(error);
 
-			expect(response).toEqual({
+			expect(response).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -46,6 +63,9 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					originalErrorMessage: "Test error message",
+				},
 			});
 			expect(console.error).toHaveBeenCalled();
 		});
@@ -53,7 +73,7 @@ describe("Error Handler", () => {
 		it("should create a proper error response from a string", () => {
 			const response = createErrorResponse("String error message");
 
-			expect(response).toEqual({
+			expect(response).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -61,6 +81,9 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					originalErrorMessage: "String error message",
+				},
 			});
 		});
 
@@ -71,6 +94,12 @@ describe("Error Handler", () => {
 			expect(response.content[0].text).toBe(
 				"[TestContext] Error: Test error with context",
 			);
+			expect(response).toMatchObject({
+				errorContext: {
+					sourceContext: "TestContext",
+					originalErrorMessage: "Test error with context",
+				},
+			});
 		});
 
 		it("should handle errors with code property", () => {
@@ -84,12 +113,82 @@ describe("Error Handler", () => {
 			const response = createErrorResponse(errorWithCode);
 
 			expect(response.content[0].text).toBe("Error: Error with code");
+			expect(response).toMatchObject({
+				errorContext: {
+					errorCode: "ERR_TEST_CODE",
+					originalErrorMessage: "Error with code",
+				},
+			});
 			expect(console.debug).not.toHaveBeenCalled();
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("Code: ERR_TEST_CODE"),
 				errorWithCode,
 			);
 		});
+
+		it.each([
+			{
+				status: 401,
+				expectedMessage:
+					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+			},
+			{
+				status: 403,
+				expectedMessage:
+					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+			},
+			{
+				status: 404,
+				expectedMessage: "The requested resource was not found in Hevy.",
+			},
+			{
+				status: 409,
+				expectedMessage:
+					"A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.",
+			},
+			{
+				status: 422,
+				expectedMessage:
+					"The request failed Hevy validation. Check the field values and try again.",
+			},
+			{
+				status: 429,
+				expectedMessage: "Rate limited by Hevy. Please wait and retry.",
+			},
+			{
+				status: 503,
+				expectedMessage: "Hevy API experienced an error. Please retry later.",
+			},
+		])(
+			"maps axios status $status to actionable Hevy message",
+			({ status, expectedMessage }) => {
+				const responseBody = {
+					error: "original_api_error",
+					detail: `raw detail for status ${status}`,
+				};
+				const response = createErrorResponse(
+					createMockAxiosError(status, responseBody),
+					"TestContext",
+				);
+
+				expect(response.content[0].text).toBe(
+					`[TestContext] Error: ${expectedMessage}`,
+				);
+				expect(response).toMatchObject({
+					isError: true,
+					errorContext: {
+						sourceContext: "TestContext",
+						originalErrorMessage: `Request failed with status code ${status}`,
+						axios: {
+							status,
+							data: responseBody,
+							method: "post",
+							url: "/v1/body_measurements",
+						},
+					},
+				});
+			},
+		);
 
 		it("classifies network-related errors as NETWORK_ERROR", () => {
 			const error = new Error("Network request failed");
@@ -163,7 +262,7 @@ describe("Error Handler", () => {
 			const wrappedFn = withErrorHandling(mockFn, "ErrorTest");
 			const result = await wrappedFn({ param: "test" });
 
-			expect(result).toEqual({
+			expect(result).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -171,6 +270,10 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					sourceContext: "ErrorTest",
+					originalErrorMessage: "Function error",
+				},
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
 			// We don't check console.error here as we're using a different mocking approach
