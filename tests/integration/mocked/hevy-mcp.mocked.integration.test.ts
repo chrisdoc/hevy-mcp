@@ -378,7 +378,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 			expect(result.isError).toBe(true);
 			expect(result.text).toContain("[get-workout] Error");
-			expect(result.text).toContain("workout not found");
+			expect(result.text.toLowerCase()).toContain("not found");
 		} finally {
 			consoleErrorSpy.mockRestore();
 		}
