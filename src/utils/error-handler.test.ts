@@ -8,14 +8,14 @@ type AxiosLikeError = Error & {
 	isAxiosError: true;
 	response?: {
 		data?: unknown;
-		headers?: Record<string, string>;
+		headers?: unknown;
 		status: number;
 	};
 };
 
 function createAxiosError(options: {
 	data?: unknown;
-	headers?: Record<string, string>;
+	headers?: unknown;
 	message?: string;
 	retryCount?: number;
 	retryExhausted?: boolean;
@@ -204,6 +204,63 @@ describe("Error Handler", () => {
 			);
 		});
 
+		it("falls back when a 429 has no Retry-After header", () => {
+			const error = createAxiosError({ status: 429 });
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait and retry your request.",
+			);
+		});
+
+		it("normalizes Retry-After arrays returned from headers.get", () => {
+			const error = createAxiosError({
+				headers: {
+					get: () => [3],
+				},
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 3 seconds before retrying.",
+			);
+		});
+
+		it("treats empty Retry-After arrays as missing", () => {
+			const error = createAxiosError({
+				headers: {
+					get: () => [],
+				},
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait and retry your request.",
+			);
+		});
+
+		it("falls back when Retry-After is present but invalid", () => {
+			const error = createAxiosError({
+				headers: { "retry-after": "later today" },
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait and retry your request.",
+			);
+		});
+
 		it("surfaces clearer message when retries are exhausted", () => {
 			const error = createAxiosError({
 				message: "timeout of 30000ms exceeded",
@@ -223,6 +280,57 @@ describe("Error Handler", () => {
 				expect.stringContaining("(Type: NETWORK_ERROR)"),
 				error,
 			);
+		});
+
+		it("uses a generic retry exhaustion message without a retry count", () => {
+			const error = createAxiosError({
+				retryExhausted: true,
+				status: 503,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Unable to complete the request after multiple attempts " +
+					"to the Hevy API due to transient failures. " +
+					"Please try again shortly.",
+			);
+		});
+
+		it("prefers axios string response payloads for error text", () => {
+			const error = createAxiosError({
+				data: "Upstream said no",
+				status: 500,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe("Error: Upstream said no");
+		});
+
+		it("serializes axios object response payloads for error text", () => {
+			const error = createAxiosError({
+				data: { detail: "Bad request" },
+				status: 400,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe('Error: {"detail":"Bad request"}');
+		});
+
+		it("falls back to String when axios payload serialization fails", () => {
+			const circularData: { self?: unknown } = {};
+			circularData.self = circularData;
+
+			const error = createAxiosError({
+				data: circularData,
+				status: 500,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe("Error: [object Object]");
 		});
 	});
 
