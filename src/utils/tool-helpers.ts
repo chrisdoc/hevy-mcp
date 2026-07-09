@@ -5,6 +5,20 @@
 import { z } from "zod";
 import type { McpToolResponse } from "./response-formatter.js";
 
+export const HEVY_CLIENT_NOT_INITIALIZED_ERROR =
+	"API client not initialized. Please provide HEVY_API_KEY.";
+
+/**
+ * Assert that the Hevy API client is initialized before running a tool.
+ */
+export function requireClient<TClient>(client: TClient | null): TClient {
+	if (!client) {
+		throw new Error(HEVY_CLIENT_NOT_INITIALIZED_ERROR);
+	}
+
+	return client;
+}
+
 /**
  * Infer TypeScript types from Zod schema objects
  *

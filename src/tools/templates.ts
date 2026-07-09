@@ -22,36 +22,17 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
-import type { InferToolParams } from "../utils/tool-helpers.js";
+import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import {
+	equipmentCategoryEnum,
+	exerciseTypeEnum,
+	muscleGroupEnum,
+} from "../utils/schemas.js";
 
 // Type definitions for the template operations
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
-
-// Shared muscle group values used by both create and search tools
-const MUSCLE_GROUPS = [
-	"abdominals",
-	"shoulders",
-	"biceps",
-	"triceps",
-	"forearms",
-	"quadriceps",
-	"hamstrings",
-	"calves",
-	"glutes",
-	"abductors",
-	"adductors",
-	"lats",
-	"upper_back",
-	"traps",
-	"lower_back",
-	"chest",
-	"cardio",
-	"neck",
-	"full_body",
-	"other",
-] as const;
 
 const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
 const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -115,17 +96,14 @@ export function registerTemplateTools(
 		getExerciseTemplatesSchema,
 		readOnlyAnnotations("Get Exercise Templates"),
 		withErrorHandling(async (args: GetExerciseTemplatesParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
-			const data: GetV1ExerciseTemplates200 =
-				await hevyClient.getExerciseTemplates({
+			const data: GetV1ExerciseTemplates200 = await client.getExerciseTemplates(
+				{
 					page,
 					pageSize,
-				});
+				},
+			);
 
 			// Process exercise templates to extract relevant information
 			const templates =
@@ -157,14 +135,10 @@ export function registerTemplateTools(
 		getExerciseTemplateSchema,
 		readOnlyAnnotations("Get Exercise Template"),
 		withErrorHandling(async (args: GetExerciseTemplateParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { exerciseTemplateId } = args;
 			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
-				await hevyClient.getExerciseTemplate(exerciseTemplateId);
+				await client.getExerciseTemplate(exerciseTemplateId);
 
 			if (!data) {
 				return createEmptyResponse(
@@ -201,14 +175,10 @@ export function registerTemplateTools(
 		getExerciseHistorySchema,
 		readOnlyAnnotations("Get Exercise History"),
 		withErrorHandling(async (args: GetExerciseHistoryParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { exerciseTemplateId, startDate, endDate } = args;
 			const data: GetV1ExerciseHistoryExercisetemplateid200 =
-				await hevyClient.getExerciseHistory(exerciseTemplateId, {
+				await client.getExerciseHistory(exerciseTemplateId, {
 					...(startDate ? { start_date: startDate } : {}),
 					...(endDate ? { end_date: endDate } : {}),
 				});
@@ -231,29 +201,10 @@ export function registerTemplateTools(
 	// Create a custom exercise template
 	const createExerciseTemplateSchema = {
 		title: z.string().min(1),
-		exerciseType: z.enum([
-			"weight_reps",
-			"reps_only",
-			"bodyweight_reps",
-			"bodyweight_assisted_reps",
-			"duration",
-			"weight_duration",
-			"distance_duration",
-			"short_distance_weight",
-		]),
-		equipmentCategory: z.enum([
-			"none",
-			"barbell",
-			"dumbbell",
-			"kettlebell",
-			"machine",
-			"plate",
-			"resistance_band",
-			"suspension",
-			"other",
-		]),
-		muscleGroup: z.enum(MUSCLE_GROUPS),
-		otherMuscles: z.array(z.enum(MUSCLE_GROUPS)).default([]),
+		exerciseType: exerciseTypeEnum,
+		equipmentCategory: equipmentCategoryEnum,
+		muscleGroup: muscleGroupEnum,
+		otherMuscles: z.array(muscleGroupEnum).default([]),
 	} as const;
 	type CreateExerciseTemplateParams = InferToolParams<
 		typeof createExerciseTemplateSchema
@@ -265,11 +216,7 @@ export function registerTemplateTools(
 		createExerciseTemplateSchema,
 		createAnnotations("Create Exercise Template"),
 		withErrorHandling(async (args: CreateExerciseTemplateParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const {
 				title,
 				exerciseType,
@@ -279,7 +226,7 @@ export function registerTemplateTools(
 			} = args;
 
 			const response: PostV1ExerciseTemplates200 =
-				await hevyClient.createExerciseTemplate({
+				await client.createExerciseTemplate({
 					exercise: {
 						title,
 						exercise_type: exerciseType,
@@ -304,8 +251,7 @@ export function registerTemplateTools(
 			.describe(
 				"Case-insensitive substring to match against exercise template titles",
 			),
-		primaryMuscleGroup: z
-			.enum(MUSCLE_GROUPS)
+		primaryMuscleGroup: muscleGroupEnum
 			.optional()
 			.describe(
 				"Optional filter to restrict results to a specific primary muscle group",
@@ -328,15 +274,11 @@ export function registerTemplateTools(
 		searchExerciseTemplatesSchema,
 		readOnlyAnnotations("Search Exercise Templates"),
 		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
 			const catalog = await exerciseTemplateCatalogCache.getOrFetch(
 				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
-				() => fetchExerciseTemplateCatalog(hevyClient),
+				() => fetchExerciseTemplateCatalog(client),
 				{ refresh },
 			);
 
