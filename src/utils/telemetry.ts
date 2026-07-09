@@ -55,9 +55,15 @@ const resource = resourceFromAttributes({
 	"service.version": version,
 });
 
+const bakedDsn =
+	"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
+const rawDsn = process.env.SENTRY_DSN ?? bakedDsn;
+const isValidDsn =
+	typeof rawDsn === "string" && rawDsn.length > 0 && !rawDsn.startsWith("*");
+
 // --- Sentry (error monitoring + traces) ---
 const sentryClient = Sentry.init({
-	dsn: "***********************************************************************************************",
+	dsn: isValidDsn ? rawDsn : undefined,
 	release: sentryRelease,
 	tracesSampleRate: 1.0,
 	sendDefaultPii: false,
