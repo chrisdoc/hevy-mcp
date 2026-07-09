@@ -255,8 +255,7 @@ src/
     ├── formatters.ts      # Data formatting helpers
     ├── hevyClient.ts      # API client factory
     ├── hevyClientKubb.ts  # Kubb client wrapper
-    ├── config.ts          # Configuration parsing
-    └── httpServer.ts      # HTTP server utilities (deprecated)
+    └── config.ts          # Configuration parsing
 ```
 
 ### Testing Structure
