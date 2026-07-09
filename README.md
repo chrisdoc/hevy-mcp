@@ -38,10 +38,10 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 Pick the workflow that fits your setup:
 
-| Scenario              | Command                                     | Requirements               |
-| :-------------------- | :------------------------------------------ | :------------------------- |
-| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp`   | Node.js ≥ 26, Hevy API key |
-| **Local development** | `npm install && npm run build && npm start` | `.env` with `HEVY_API_KEY` |
+| Scenario              | Command                                                                                     | Requirements               |
+| :-------------------- | :------------------------------------------------------------------------------------------ | :------------------------- |
+| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` or `HEVY_API_KEY=sk_live... bunx hevy-mcp@latest` | Node.js ≥ 26, Hevy API key |
+| **Local development** | `npm install && npm run build && npm start`                                                 | `.env` with `HEVY_API_KEY` |
 
 ---
 
@@ -49,18 +49,24 @@ Pick the workflow that fits your setup:
 
 - **Node.js**: v26 or higher (strongly recommended to use the exact version pinned in `.nvmrc`).
 - **npm**: v10 or higher.
+- **Bun** (optional): If you want to launch with `bunx`.
 - **Hevy API key**: Required for all operations (available with Hevy PRO).
 
 ---
 
 ## 📦 Installation
 
-### Run via npx (Recommended)
+### Run via npx or bunx
 
-You can launch the server directly without cloning:
+You can launch the server directly without cloning. Both launchers are covered
+by nightly smoke tests:
 
 ```bash
+# npm launcher
 HEVY_API_KEY=your_hevy_api_key_here npx -y hevy-mcp
+
+# bun launcher
+HEVY_API_KEY=your_hevy_api_key_here bunx hevy-mcp@latest
 ```
 
 ### Manual Installation
@@ -103,6 +109,15 @@ To use this server with Claude Desktop, add the following to your `claude_deskto
 }
 ```
 
+If you prefer Bun, swap the launcher fields:
+
+```json
+{
+	"command": "bunx",
+	"args": ["hevy-mcp@latest"]
+}
+```
+
 ### Cursor Configuration
 
 Add this server under `"mcpServers"` in `~/.cursor/mcp.json`:
@@ -118,6 +133,15 @@ Add this server under `"mcpServers"` in `~/.cursor/mcp.json`:
 			}
 		}
 	}
+}
+```
+
+If you prefer Bun, swap the launcher fields:
+
+```json
+{
+	"command": "bunx",
+	"args": ["hevy-mcp@latest"]
 }
 ```
 
@@ -156,6 +180,22 @@ Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
 HEVY_API_KEY=your_hevy_api_key_here
 ```
 
+### 🧠 Exercise Template Cache Behavior
+
+`search-exercise-templates` now uses a shared in-memory async cache for the
+full exercise template catalog:
+
+- **TTL**: 5 minutes per cached catalog entry.
+- **Memory bound**: max 1 catalog entry (LRU bounded cache).
+- **In-flight de-duplication**: concurrent requests share the same active
+  fetch when possible.
+- **Manual refresh**: set `refresh: true` in the tool input to invalidate the
+  cached catalog and force a re-fetch from the Hevy API.
+
+This cache currently applies to `search-exercise-templates` only. Paginated
+`get-exercise-templates` requests still call the API directly to keep paging
+behavior explicit and avoid cross-page invalidation complexity.
+
 ### 📡 Sentry Monitoring
 
 `hevy-mcp` includes Sentry monitoring to observe errors and usage in production. It initializes `@sentry/node` with tracing enabled and PII collection disabled by default. Recent observability changes also add:
@@ -168,15 +208,12 @@ HEVY_API_KEY=your_hevy_api_key_here
 ---
 
 <details>
-<summary><strong>⚠️ Deprecation Notices (HTTP/SSE & Docker)</strong></summary>
+<summary><strong>⚠️ Migration Note (v1.18.0)</strong></summary>
 
-### Stdio Only
+As of **v1.18.0**, `hevy-mcp` removed both HTTP/SSE transport and Docker
+support.
 
-As of version **1.18.0**, `hevy-mcp` only supports **stdio** transport. HTTP/SSE transport has been completely removed to simplify the codebase and focus on the native MCP experience.
-
-### Docker
-
-Docker-based workflows are retired. The provided `Dockerfile` now exits with a message pointing to the stdio-native experience. Legacy GHCR images are no longer updated.
+The supported path is stdio via `npx hevy-mcp`.
 
 </details>
 
