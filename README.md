@@ -144,10 +144,12 @@ This bootstraps the `hevy-mcp` entry in your client config without manual JSON e
 
 ## ⚙️ Configuration
 
-Supply your Hevy API key via:
+Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
+`.env` or system environment).
 
-1. **Environment Variable**: `HEVY_API_KEY` (in `.env` or system environment).
-2. **CLI Argument**: `--hevy-api-key=your_key` (after `--` in npm scripts).
+> ⚠️ CLI API key arguments (`--hevy-api-key=...`, `--hevyApiKey=...`,
+> `hevy-api-key=...`) are still accepted for backward compatibility, but are
+> deprecated and insecure. Use `HEVY_API_KEY` instead.
 
 ```env
 # Example .env
