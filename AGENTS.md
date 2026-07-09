@@ -8,6 +8,7 @@
 - The codebase is TypeScript (Node.js v26+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
+- **MCP SDK internals sensitivity:** `src/utils/stdio-observability.ts` depends on MCP SDK stdio internals (private fields such as `_ondata`/`_readBuffer`) for raw chunk instrumentation. Re-run the stdio observability test suite after any `@modelcontextprotocol/sdk` upgrade.
 
 ## Git & Workflow Standards
 
@@ -255,8 +256,7 @@ src/
     ├── formatters.ts      # Data formatting helpers
     ├── hevyClient.ts      # API client factory
     ├── hevyClientKubb.ts  # Kubb client wrapper
-    ├── config.ts          # Configuration parsing
-    └── httpServer.ts      # HTTP server utilities (deprecated)
+    └── config.ts          # Configuration parsing
 ```
 
 ### Testing Structure

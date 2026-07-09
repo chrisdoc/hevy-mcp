@@ -8,6 +8,7 @@ import type {
 	GetV1ExerciseTemplatesExercisetemplateid200,
 	PostV1ExerciseTemplates200,
 } from "../generated/client/types/index.js";
+import { AsyncTtlCache } from "../utils/cache.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import {
 	formatExerciseHistoryEntry,
@@ -33,15 +34,44 @@ type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
-// Module-level cache for all exercise templates
-let exerciseTemplateCache: ExerciseTemplate[] | null = null;
-// In-flight promise to prevent concurrent duplicate fetches
-let exerciseTemplateFetch: Promise<ExerciseTemplate[]> | null = null;
+const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
+const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+const EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE = 1;
+
+const exerciseTemplateCatalogCache = new AsyncTtlCache<
+	string,
+	ExerciseTemplate[]
+>({
+	ttlMs: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+	maxSize: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+});
+
+async function fetchExerciseTemplateCatalog(
+	hevyClient: HevyClient,
+): Promise<ExerciseTemplate[]> {
+	const allTemplates: ExerciseTemplate[] = [];
+	let page = 1;
+	let pageCount = 1;
+
+	do {
+		const data: GetV1ExerciseTemplates200 =
+			await hevyClient.getExerciseTemplates({
+				page,
+				pageSize: 100,
+			});
+
+		const templates = data?.exercise_templates ?? [];
+		allTemplates.push(...templates);
+		pageCount = data?.page_count ?? 1;
+		page++;
+	} while (page <= pageCount);
+
+	return allTemplates;
+}
 
 /** Reset the exercise template cache (exposed for testing). */
 export function resetExerciseTemplateCache(): void {
-	exerciseTemplateCache = null;
-	exerciseTemplateFetch = null;
+	exerciseTemplateCatalogCache.clear();
 }
 
 /**
@@ -231,7 +261,7 @@ export function registerTemplateTools(
 			.optional()
 			.default(false)
 			.describe(
-				"Set to true to bust the in-memory cache and re-fetch all templates from the API",
+				"Set to true to invalidate the catalog cache and re-fetch all templates from the API",
 			),
 	} as const;
 	type SearchExerciseTemplatesParams = InferToolParams<
@@ -240,55 +270,21 @@ export function registerTemplateTools(
 
 	server.tool(
 		"search-exercise-templates",
-		"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call and caches them in memory for subsequent searches. Use refresh:true to force a re-fetch.",
+		"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call, caches the catalog in memory with a bounded TTL cache, and reuses it for subsequent searches. Use refresh:true to force a re-fetch.",
 		searchExerciseTemplatesSchema,
 		readOnlyAnnotations("Search Exercise Templates"),
 		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
-
-			// Populate cache if empty or refresh requested.
-			// Use an in-flight promise to prevent concurrent duplicate fetches.
-			if (exerciseTemplateCache === null || refresh) {
-				if (refresh) exerciseTemplateFetch = null;
-
-				if (exerciseTemplateFetch === null) {
-					exerciseTemplateFetch = (async () => {
-						try {
-							const allTemplates: ExerciseTemplate[] = [];
-							let page = 1;
-							let pageCount = 1;
-
-							do {
-								const data: GetV1ExerciseTemplates200 =
-									await client.getExerciseTemplates({
-										page,
-										pageSize: 100,
-									});
-
-								const templates = data?.exercise_templates ?? [];
-								allTemplates.push(...templates);
-								pageCount = data?.page_count ?? 1;
-								page++;
-							} while (page <= pageCount);
-
-							exerciseTemplateCache = allTemplates;
-							return allTemplates;
-						} finally {
-							exerciseTemplateFetch = null;
-						}
-					})();
-				}
-
-				await exerciseTemplateFetch;
-			}
+			const catalog = await exerciseTemplateCatalogCache.getOrFetch(
+				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
+				() => fetchExerciseTemplateCatalog(client),
+				{ refresh },
+			);
 
 			// Filter by query (case-insensitive title substring match)
 			const queryLower = query.toLowerCase();
-			if (exerciseTemplateCache === null) {
-				throw new Error("Failed to populate exercise template cache.");
-			}
-			let results = exerciseTemplateCache.filter((t) =>
+			let results = catalog.filter((t) =>
 				(t.title ?? "").toLowerCase().includes(queryLower),
 			);
 
