@@ -105,6 +105,62 @@ describe("Server entry", () => {
 	});
 
 	describe("runServer", () => {
+		it.each(["--version", "-v"])(
+			"prints version for %s and exits before server startup",
+			async (flag) => {
+				process.env = {
+					...originalEnv,
+					HEVY_API_KEY: "test-api-key",
+				};
+				process.argv = [...originalArgv.slice(0, 2), flag];
+
+				const logSpy = vi
+					.spyOn(console, "log")
+					.mockImplementation(() => undefined);
+
+				await runServer();
+
+				expect(logSpy).toHaveBeenCalledWith("dev");
+				expect(createClient).not.toHaveBeenCalled();
+				expect(Sentry.startSpan).not.toHaveBeenCalled();
+
+				const anyStdioModule = stdioModule as { __transports?: unknown[] };
+				expect(anyStdioModule.__transports).toHaveLength(0);
+
+				logSpy.mockRestore();
+			},
+		);
+
+		it.each(["--help", "-h"])(
+			"prints help for %s and exits before server startup",
+			async (flag) => {
+				process.env = {
+					...originalEnv,
+					HEVY_API_KEY: "test-api-key",
+				};
+				process.argv = [...originalArgv.slice(0, 2), flag];
+
+				const logSpy = vi
+					.spyOn(console, "log")
+					.mockImplementation(() => undefined);
+
+				await runServer();
+
+				expect(logSpy).toHaveBeenCalledTimes(1);
+				const [helpText] = logSpy.mock.calls[0] ?? [];
+				expect(helpText).toContain("Usage:");
+				expect(helpText).toContain("HEVY_API_KEY");
+				expect(helpText).toContain("Examples:");
+				expect(createClient).not.toHaveBeenCalled();
+				expect(Sentry.startSpan).not.toHaveBeenCalled();
+
+				const anyStdioModule = stdioModule as { __transports?: unknown[] };
+				expect(anyStdioModule.__transports).toHaveLength(0);
+
+				logSpy.mockRestore();
+			},
+		);
+
 		it("uses HEVY_API_KEY from the environment and connects stdio transport", async () => {
 			process.env = {
 				...originalEnv,

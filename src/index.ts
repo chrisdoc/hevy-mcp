@@ -22,6 +22,37 @@ const name =
 const version =
 	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
 
+const HELP_TEXT = [
+	"Usage:",
+	"  hevy-mcp [options]",
+	"",
+	"Options:",
+	"  -h, --help                 Show this help message and exit",
+	"  -v, --version              Show version and exit",
+	"  --hevy-api-key=<api-key>   Hevy API key override",
+	"",
+	"Environment:",
+	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
+	"",
+	"Examples:",
+	"  HEVY_API_KEY=your-key npx hevy-mcp",
+	"  npx hevy-mcp --hevy-api-key=your-key",
+	"  npm start -- --hevy-api-key=your-key",
+].join("\n");
+
+function getCliAction(args: string[]): "start" | "version" | "help" {
+	for (const arg of args) {
+		if (arg === "--version" || arg === "-v") {
+			return "version";
+		}
+		if (arg === "--help" || arg === "-h") {
+			return "help";
+		}
+	}
+
+	return "start";
+}
+
 // Environment variables are loaded via Node.js native --env-file flag (Node.js 20.6+)
 // or set directly in the environment. No dotenv dependency needed.
 // This avoids stdout pollution that corrupts MCP JSON-RPC communication in stdio mode.
@@ -135,6 +166,19 @@ export function createServer({ config }: { config: ServerConfig }) {
 export default createServer;
 
 export async function runServer() {
+	const args = process.argv.slice(2);
+	const cliAction = getCliAction(args);
+
+	if (cliAction === "version") {
+		console.log(version);
+		return;
+	}
+
+	if (cliAction === "help") {
+		console.log(HELP_TEXT);
+		return;
+	}
+
 	await Sentry.startSpan(
 		{
 			name: "mcp.server.run",
@@ -144,7 +188,6 @@ export async function runServer() {
 			},
 		},
 		async () => {
-			const args = process.argv.slice(2);
 			const cfg = parseConfig(args, process.env);
 			const apiKey = cfg.apiKey;
 			assertApiKey(apiKey);
