@@ -166,15 +166,12 @@ HEVY_API_KEY=your_hevy_api_key_here
 ---
 
 <details>
-<summary><strong>⚠️ Deprecation Notices (HTTP/SSE & Docker)</strong></summary>
+<summary><strong>⚠️ Migration Note (v1.18.0)</strong></summary>
 
-### Stdio Only
+As of **v1.18.0**, `hevy-mcp` removed both HTTP/SSE transport and Docker
+support.
 
-As of version **1.18.0**, `hevy-mcp` only supports **stdio** transport. HTTP/SSE transport has been completely removed to simplify the codebase and focus on the native MCP experience.
-
-### Docker
-
-Docker-based workflows are retired. The provided `Dockerfile` now exits with a message pointing to the stdio-native experience. Legacy GHCR images are no longer updated.
+The supported path is stdio via `npx hevy-mcp`.
 
 </details>
 
