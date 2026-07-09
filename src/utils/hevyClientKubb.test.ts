@@ -223,11 +223,8 @@ describe("hevyClientKubb", () => {
 				interceptors: {
 					request: {
 						use: vi.fn(
-							(
-								handler: typeof telemetryTestDoubles.requestHandler,
-							) => {
-								telemetryTestDoubles.requestHandler =
-									handler ?? undefined;
+							(handler: typeof telemetryTestDoubles.requestHandler) => {
+								telemetryTestDoubles.requestHandler = handler ?? undefined;
 								return 0;
 							},
 						),
@@ -665,7 +662,9 @@ describe("hevyClientKubb", () => {
 			"http.response.duration_ms",
 			125,
 		);
-		expect(telemetryTestDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
+		expect(telemetryTestDoubles.span.setStatus).toHaveBeenCalledWith({
+			code: 1,
+		});
 		expect(telemetryTestDoubles.span.end).toHaveBeenCalled();
 		expect(telemetryTestDoubles.apiCallsAdd).toHaveBeenCalledWith(1, {
 			method: "POST",
@@ -707,7 +706,9 @@ describe("hevyClientKubb", () => {
 			"http.status_code",
 			503,
 		);
-		expect(telemetryTestDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
+		expect(telemetryTestDoubles.span.setStatus).toHaveBeenCalledWith({
+			code: 2,
+		});
 		expect(telemetryTestDoubles.span.recordException).toHaveBeenCalledWith(
 			error,
 		);
