@@ -60,6 +60,18 @@ describe("parseJsonArray", () => {
 			expect(result).toBe(malformedJson);
 		});
 
+		it("should return unterminated array JSON string unchanged", () => {
+			const malformedArrayJson = '[{"id": 1}';
+			const result = parseJsonArray(malformedArrayJson);
+			expect(result).toBe(malformedArrayJson);
+		});
+
+		it("should return trailing comma JSON string unchanged", () => {
+			const trailingCommaJson = '[{"id": 1},]';
+			const result = parseJsonArray(trailingCommaJson);
+			expect(result).toBe(trailingCommaJson);
+		});
+
 		it("should return empty string unchanged", () => {
 			const result = parseJsonArray("");
 			expect(result).toBe("");

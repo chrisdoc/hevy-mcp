@@ -33,4 +33,22 @@ describe("parseConfig", () => {
 		expect(cfg.apiKey).toBe("envOnly");
 		expect(errorSpy).not.toHaveBeenCalled();
 	});
+
+	it("returns empty apiKey when CLI flag and env var are missing", () => {
+		const cfg = parseConfig([], env({ HEVY_API_KEY: undefined }));
+		expect(cfg.apiKey).toBe("");
+	});
+
+	it("returns empty apiKey when env var is an empty string", () => {
+		const cfg = parseConfig([], env({ HEVY_API_KEY: "" }));
+		expect(cfg.apiKey).toBe("");
+	});
+
+	it("ignores empty CLI API key values and falls back to env", () => {
+		const cfg = parseConfig(
+			["--hevy-api-key="],
+			env({ HEVY_API_KEY: "envFallback" }),
+		);
+		expect(cfg.apiKey).toBe("envFallback");
+	});
 });
