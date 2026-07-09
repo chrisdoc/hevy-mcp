@@ -175,9 +175,14 @@ Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
 > `hevy-api-key=...`) are still accepted for backward compatibility, but are
 > deprecated and insecure. Use `HEVY_API_KEY` instead.
 
+Set `HEVY_MCP_API_TIMEOUT` to override the default 30-second Hevy API request
+timeout. Its value is in milliseconds.
+
 ```env
 # Example .env
 HEVY_API_KEY=your_hevy_api_key_here
+# Optional: customize Hevy API request timeout (milliseconds)
+HEVY_MCP_API_TIMEOUT=30000
 ```
 
 ### 🧠 Exercise Template Cache Behavior
