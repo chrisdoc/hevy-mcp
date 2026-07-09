@@ -1,7 +1,9 @@
-import * as Sentry from "@sentry/node";
+import { SpanStatusCode } from "@opentelemetry/api";
 import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { deserializeMessage } from "@modelcontextprotocol/sdk/shared/stdio.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { Sentry, tracer } from "./telemetry.js";
+import { stdioParseErrors } from "./metrics.js";
 
 const UTF8_BOM = "\uFEFF";
 
@@ -130,10 +132,9 @@ export function deserializeMessageWithObservability(
 	const normalizedLine = lineHadLeadingBom ? line.slice(1) : line;
 	const lineByteLength = Buffer.byteLength(line);
 
-	return Sentry.startSpan(
+	return tracer.startActiveSpan(
+		"mcp.stdio.deserialize",
 		{
-			name: "mcp.stdio.deserialize",
-			op: "mcp.stdio.parse",
 			attributes: {
 				"mcp.transport": "stdio",
 				"mcp.stdio.parse.line.char_length": line.length,
@@ -149,7 +150,13 @@ export function deserializeMessageWithObservability(
 		(span) => {
 			try {
 				const message = deserializeMessage(normalizedLine);
-				span.setStatus({ code: 1 });
+				span.setStatus({ code: SpanStatusCode.OK });
+				if (message && typeof message === "object" && "method" in message) {
+					span.setAttribute(
+						"mcp.method",
+						String((message as { method: unknown }).method),
+					);
+				}
 				return message;
 			} catch (error) {
 				const failurePosition = parseFailurePosition(error);
@@ -158,7 +165,8 @@ export function deserializeMessageWithObservability(
 					lineHadLeadingBom,
 				);
 
-				span.setStatus({ code: 2, message: "invalid_json" });
+				span.setStatus({ code: SpanStatusCode.ERROR });
+				span.recordException(error as Error);
 				span.setAttribute("mcp.stdio.parse.failure.location", failureLocation);
 				if (failurePosition !== null) {
 					span.setAttribute(
@@ -166,6 +174,8 @@ export function deserializeMessageWithObservability(
 						failurePosition,
 					);
 				}
+
+				stdioParseErrors.add(1, { failure_location: failureLocation });
 
 				Sentry.withScope((scope) => {
 					scope.setTag("mcp.transport", "stdio");
@@ -187,6 +197,8 @@ export function deserializeMessageWithObservability(
 				});
 
 				throw error;
+			} finally {
+				span.end();
 			}
 		},
 	);

@@ -5,6 +5,9 @@
 manifest:
   version: 1.0
 
+# Keep this aligned with branch protection required approvals.
+required_approvals: 1
+
 automations:
   # Use LinearB's AI service to review the changes
   linearb_ai_review:
@@ -69,6 +72,28 @@ automations:
         args:
           label: "{{ calc.etr }} min review"
           color: "{{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}"
+
+  # Add review progress label when team approval target is met
+  label_approved_by_team:
+    if:
+      - "{{ not pr.draft }}"
+      - "{{ pr.approvals | length >= required_approvals }}"
+    run:
+      - action: add-label@v1
+        args:
+          label: "approved-by-team"
+          color: "0e8a16"
+
+  # Add Greptile reviewed label once Greptile check succeeds
+  label_greptile_reviewed:
+    if:
+      - "{{ not pr.draft }}"
+      - "{{ pr.checks | filter(attr='name', regex=r/greptile/i) | filter(attr='status', term='completed') | match(attr='conclusion', term='success') | some }}"
+    run:
+      - action: add-label@v1
+        args:
+          label: "greptile-reviewed"
+          color: "5319e7"
 
   # Add safe changes label for low-risk changes
   label_safe_changes:

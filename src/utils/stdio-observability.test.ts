@@ -1,20 +1,26 @@
-import * as Sentry from "@sentry/node";
 import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createInstrumentedStdioTransport,
 	deserializeMessageWithObservability,
 } from "./stdio-observability";
+import { Sentry } from "./telemetry.js";
 
-const sentryTestDoubles = vi.hoisted(() => ({
+const testDoubles = vi.hoisted(() => ({
 	span: {
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
+		recordException: vi.fn(),
+		end: vi.fn(),
 	},
 	scope: {
 		setTag: vi.fn(),
 		setContext: vi.fn(),
 	},
+	startActiveSpan: vi.fn((...args: unknown[]) => {
+		const cb = args[args.length - 1] as (span: unknown) => unknown;
+		return cb(testDoubles.span);
+	}),
 }));
 
 const sdkSharedTestDoubles = vi.hoisted(() => ({
@@ -36,10 +42,38 @@ vi.mock("@modelcontextprotocol/sdk/shared/stdio.js", async () => {
 	};
 });
 
-vi.mock("@sentry/node", () => ({
-	startSpan: vi.fn((_, callback) => callback(sentryTestDoubles.span)),
-	withScope: vi.fn((callback) => callback(sentryTestDoubles.scope)),
-	captureException: vi.fn(),
+vi.mock("./telemetry.js", () => ({
+	Sentry: {
+		withScope: vi.fn((cb: (scope: unknown) => void) => cb(testDoubles.scope)),
+		captureException: vi.fn(),
+	},
+	tracer: {
+		startActiveSpan: testDoubles.startActiveSpan,
+	},
+	meter: {
+		createCounter: vi.fn(() => ({ add: vi.fn() })),
+		createHistogram: vi.fn(() => ({ record: vi.fn() })),
+	},
+	serviceName: "hevy-mcp",
+	serviceVersion: "dev",
+	setCurrentUserId: vi.fn(),
+	getCurrentUserId: vi.fn(() => undefined),
+}));
+
+vi.mock("./metrics.js", () => ({
+	toolInvocations: { add: vi.fn() },
+	toolErrors: { add: vi.fn() },
+	toolDuration: { record: vi.fn() },
+	apiCalls: { add: vi.fn() },
+	apiDuration: { record: vi.fn() },
+	stdioParseErrors: { add: vi.fn() },
+	serverStartups: { add: vi.fn() },
+}));
+
+vi.mock("@opentelemetry/api", () => ({
+	SpanStatusCode: { OK: 1, ERROR: 2 },
+	trace: { getTracer: vi.fn() },
+	metrics: { getMeter: vi.fn() },
 }));
 
 interface ReadBufferDouble {
@@ -85,9 +119,10 @@ describe("stdio observability", () => {
 			id: 1,
 			method: "ping",
 		});
-		expect(sentryTestDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
+		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
 		expect(Sentry.captureException).not.toHaveBeenCalled();
-		expect(Sentry.startSpan).toHaveBeenCalledWith(
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"mcp.stdio.deserialize",
 			expect.objectContaining({
 				attributes: expect.objectContaining({
 					"mcp.stdio.parse.line.had_leading_bom": true,
@@ -106,20 +141,17 @@ describe("stdio observability", () => {
 			}),
 		).toThrow();
 
-		expect(sentryTestDoubles.span.setStatus).toHaveBeenCalledWith({
-			code: 2,
-			message: "invalid_json",
-		});
-		expect(sentryTestDoubles.span.setAttribute).toHaveBeenCalledWith(
+		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.stdio.parse.failure.location",
 			"line_start_bom",
 		);
-		expect(sentryTestDoubles.scope.setTag).toHaveBeenCalledWith(
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
 			"mcp.stdio.parse.failure.location",
 			"line_start_bom",
 		);
 		expect(Sentry.captureException).toHaveBeenCalledTimes(1);
-		expect(sentryTestDoubles.scope.setContext).toHaveBeenCalledWith(
+		expect(testDoubles.scope.setContext).toHaveBeenCalledWith(
 			"mcpStdioParse",
 			expect.objectContaining({
 				lineHadLeadingBom: true,
@@ -127,84 +159,6 @@ describe("stdio observability", () => {
 				failureLocation: "line_start_bom",
 				failureStage: "deserializeMessage",
 			}),
-		);
-	});
-
-	it("captures line_start failures with position metadata", () => {
-		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
-			throw new Error("synthetic parse failure at position 0");
-		});
-
-		expect(() =>
-			deserializeMessageWithObservability("{", {
-				lastChunkByteLength: 1,
-				lastChunkStartsWithUtf8Bom: false,
-			}),
-		).toThrow("synthetic parse failure at position 0");
-
-		expect(sentryTestDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.location",
-			"line_start",
-		);
-		expect(sentryTestDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.position",
-			0,
-		);
-		expect(sentryTestDoubles.scope.setTag).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.location",
-			"line_start",
-		);
-	});
-
-	it("captures line_body failures with position metadata", () => {
-		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
-			throw new Error("synthetic parse failure at position 17");
-		});
-
-		expect(() =>
-			deserializeMessageWithObservability("{", {
-				lastChunkByteLength: 1,
-				lastChunkStartsWithUtf8Bom: false,
-			}),
-		).toThrow("synthetic parse failure at position 17");
-
-		expect(sentryTestDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.location",
-			"line_body",
-		);
-		expect(sentryTestDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.position",
-			17,
-		);
-		expect(sentryTestDoubles.scope.setTag).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.location",
-			"line_body",
-		);
-	});
-
-	it("captures unknown failures without failure-position attribute", () => {
-		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
-			throw new Error("synthetic schema mismatch");
-		});
-
-		expect(() =>
-			deserializeMessageWithObservability("{}", {
-				lastChunkByteLength: 2,
-				lastChunkStartsWithUtf8Bom: false,
-			}),
-		).toThrow("synthetic schema mismatch");
-
-		expect(sentryTestDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.location",
-			"unknown",
-		);
-		expect(sentryTestDoubles.span.setAttribute).not.toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.position",
-			expect.any(Number),
-		);
-		expect(sentryTestDoubles.scope.setTag).toHaveBeenCalledWith(
-			"mcp.stdio.parse.failure.location",
-			"unknown",
 		);
 	});
 
@@ -224,13 +178,92 @@ describe("stdio observability", () => {
 
 		const message = readBuffer.readMessage();
 		expect(message).toMatchObject({ method: "ping" });
-		expect(Sentry.startSpan).toHaveBeenCalledWith(
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"mcp.stdio.deserialize",
 			expect.objectContaining({
 				attributes: expect.objectContaining({
 					"mcp.stdio.parse.chunk.last_had_utf8_bom": true,
 				}),
 			}),
 			expect.any(Function),
+		);
+	});
+
+	it("captures line_start failures with position metadata", () => {
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw new Error("synthetic parse failure at position 0");
+		});
+
+		expect(() =>
+			deserializeMessageWithObservability("{", {
+				lastChunkByteLength: 1,
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow("synthetic parse failure at position 0");
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.location",
+			"line_start",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.position",
+			0,
+		);
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.location",
+			"line_start",
+		);
+	});
+
+	it("captures line_body failures with position metadata", () => {
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw new Error("synthetic parse failure at position 17");
+		});
+
+		expect(() =>
+			deserializeMessageWithObservability("{", {
+				lastChunkByteLength: 1,
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow("synthetic parse failure at position 17");
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.location",
+			"line_body",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.position",
+			17,
+		);
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.location",
+			"line_body",
+		);
+	});
+
+	it("captures unknown failures without failure-position attribute", () => {
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw new Error("synthetic schema mismatch");
+		});
+
+		expect(() =>
+			deserializeMessageWithObservability("{}", {
+				lastChunkByteLength: 2,
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow("synthetic schema mismatch");
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.location",
+			"unknown",
+		);
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.position",
+			expect.any(Number),
+		);
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.location",
+			"unknown",
 		);
 	});
 
@@ -248,7 +281,8 @@ describe("stdio observability", () => {
 		expect(originalOnData).toHaveBeenNthCalledWith(1, firstChunk);
 		expect(originalOnData).toHaveBeenNthCalledWith(2, secondChunk);
 		expect(readBuffer.readMessage()).toMatchObject({ method: "ping" });
-		expect(Sentry.startSpan).toHaveBeenCalledWith(
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"mcp.stdio.deserialize",
 			expect.objectContaining({
 				attributes: expect.objectContaining({
 					"mcp.stdio.parse.chunk.last_byte_length": secondChunk.byteLength,
@@ -269,7 +303,7 @@ describe("stdio observability", () => {
 		);
 
 		expect(readBuffer.readMessage()).toBeNull();
-		expect(Sentry.startSpan).not.toHaveBeenCalled();
+		expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
 	});
 
 	it("handles CRLF-delimited lines", () => {
@@ -300,7 +334,7 @@ describe("stdio observability", () => {
 		expect(readBuffer.readMessage()).toMatchObject({ id: 1, method: "ping" });
 		expect(readBuffer.readMessage()).toMatchObject({ id: 2, method: "pong" });
 		expect(readBuffer.readMessage()).toBeNull();
-		expect(Sentry.startSpan).toHaveBeenCalledTimes(2);
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledTimes(2);
 	});
 
 	it("parses messages split across multiple chunks", () => {
