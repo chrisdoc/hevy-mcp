@@ -1,3 +1,11 @@
+## 1.26.3
+
+### Patch Changes
+
+- [#421](https://github.com/chrisdoc/hevy-mcp/pull/421) [`2c1fa0d`](https://github.com/chrisdoc/hevy-mcp/commit/2c1fa0df05341a038c1bdeba062addcadabb5ed2) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Lower the minimum supported Node.js version to 24 (current Active LTS) and
+  update CI to test against Node 24.x and 26.x. Update README quick start and
+  prerequisites to match the supported runtime versions.
+
 ## 1.26.2
 
 ### Patch Changes
