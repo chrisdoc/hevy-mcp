@@ -37,25 +37,18 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
-          cache: "npm"
 
-      - name: Set up Python
-        id: setup_python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
+      - name: Install Node dependencies
+        id: install_npm_deps
+        run: npm ci --no-audit --no-fund
 
       - name: Set up Bun
         if: matrix.launcher.command == 'bunx'
         uses: oven-sh/setup-bun@v2
 
-      - name: Install mcp-use
-        id: install_mcp_use
-        run: pip install mcp-use
-
       - name: Run MCP integration test
         id: run_mcp_integration_test
-        run: python tests/nightly/test_hevy_mcp.py
+        run: node tests/nightly/test_hevy_mcp.mjs
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_MCP_COMMAND: ${{ matrix.launcher.command }}
