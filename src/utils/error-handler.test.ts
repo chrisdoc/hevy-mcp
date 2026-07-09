@@ -1,22 +1,56 @@
-import * as Sentry from "@sentry/node";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
+import { Sentry } from "./telemetry.js";
 
-const sentryTestDoubles = vi.hoisted(() => ({
+const testDoubles = vi.hoisted(() => ({
 	span: {
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
+		recordException: vi.fn(),
+		end: vi.fn(),
 	},
 	scope: {
 		setTag: vi.fn(),
 		setContext: vi.fn(),
 	},
+	startActiveSpan: vi.fn((...args: unknown[]) => {
+		const cb = args[args.length - 1] as (span: unknown) => unknown;
+		return cb(testDoubles.span);
+	}),
 }));
 
-vi.mock("@sentry/node", () => ({
-	startSpan: vi.fn((_, callback) => callback(sentryTestDoubles.span)),
-	withScope: vi.fn((callback) => callback(sentryTestDoubles.scope)),
-	captureException: vi.fn(),
+vi.mock("./telemetry.js", () => ({
+	Sentry: {
+		withScope: vi.fn((cb: (scope: unknown) => void) => cb(testDoubles.scope)),
+		captureException: vi.fn(),
+	},
+	tracer: {
+		startActiveSpan: testDoubles.startActiveSpan,
+	},
+	meter: {
+		createCounter: vi.fn(() => ({ add: vi.fn() })),
+		createHistogram: vi.fn(() => ({ record: vi.fn() })),
+	},
+	serviceName: "hevy-mcp",
+	serviceVersion: "dev",
+	setCurrentUserId: vi.fn(),
+	getCurrentUserId: vi.fn(() => undefined),
+}));
+
+vi.mock("./metrics.js", () => ({
+	toolInvocations: { add: vi.fn() },
+	toolErrors: { add: vi.fn() },
+	toolDuration: { record: vi.fn() },
+	apiCalls: { add: vi.fn() },
+	apiDuration: { record: vi.fn() },
+	stdioParseErrors: { add: vi.fn() },
+	serverStartups: { add: vi.fn() },
+}));
+
+vi.mock("@opentelemetry/api", () => ({
+	SpanStatusCode: { OK: 1, ERROR: 2 },
+	trace: { getTracer: vi.fn() },
+	metrics: { getMeter: vi.fn() },
 }));
 
 describe("Error Handler", () => {
@@ -62,6 +96,44 @@ describe("Error Handler", () => {
 				],
 				isError: true,
 			});
+		});
+
+		it("uses axios string response data when available", () => {
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					data: "Service unavailable",
+				},
+			});
+
+			expect(response.content[0].text).toBe("Error: Service unavailable");
+		});
+
+		it("stringifies axios object response data when possible", () => {
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					data: { message: "validation failed", retryable: false },
+				},
+			});
+
+			expect(response.content[0].text).toBe(
+				'Error: {"message":"validation failed","retryable":false}',
+			);
+		});
+
+		it("falls back to String(data) when axios object response data is not serializable", () => {
+			const circular: { self?: unknown } = {};
+			circular.self = circular;
+
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					data: circular,
+				},
+			});
+
+			expect(response.content[0].text).toBe("Error: [object Object]");
 		});
 
 		it("should include context in the error message when provided", () => {
@@ -149,8 +221,13 @@ describe("Error Handler", () => {
 				content: [{ type: "text", text: "Success" }],
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
-			expect(Sentry.startSpan).toHaveBeenCalledWith(
-				expect.objectContaining({ op: "mcp.tool.execute" }),
+			expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+				"mcp.tool.TestContext",
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						"mcp.tool.name": "TestContext",
+					}),
+				}),
 				expect.any(Function),
 			);
 		});
@@ -173,7 +250,6 @@ describe("Error Handler", () => {
 				isError: true,
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
-			// We don't check console.error here as we're using a different mocking approach
 			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
 		});
 	});
