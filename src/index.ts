@@ -5,6 +5,7 @@ import {
 	tracer,
 	serviceName,
 	serviceVersion,
+	setCurrentUserId,
 } from "./utils/telemetry.js";
 import { serverStartups } from "./utils/metrics.js";
 
@@ -49,6 +50,8 @@ export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
 function buildServer(apiKey: string) {
+	const userId = fingerprintApiKey(apiKey);
+
 	return tracer.startActiveSpan(
 		"mcp.server.build",
 		{
@@ -56,11 +59,13 @@ function buildServer(apiKey: string) {
 				"mcp.server.name": name,
 				"mcp.server.version": version,
 				"mcp.transport": "stdio",
+				"user.id": userId,
 			},
 		},
 		(span) => {
 			try {
-				Sentry.setUser({ id: fingerprintApiKey(apiKey) });
+				Sentry.setUser({ id: userId });
+			setCurrentUserId(userId);
 
 				const baseServer = new McpServer({
 					name,

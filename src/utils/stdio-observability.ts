@@ -88,6 +88,12 @@ export function deserializeMessageWithObservability(
 			try {
 				const message = deserializeMessage(normalizedLine);
 				span.setStatus({ code: SpanStatusCode.OK });
+				if (message && typeof message === "object" && "method" in message) {
+					span.setAttribute(
+						"mcp.method",
+						String((message as { method: unknown }).method),
+					);
+				}
 				return message;
 			} catch (error) {
 				const failurePosition = parseFailurePosition(error);

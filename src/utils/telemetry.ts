@@ -131,3 +131,14 @@ export const tracer = trace.getTracer(name);
 export const meter = metrics.getMeter(name);
 export { Sentry };
 export { name as serviceName, version as serviceVersion };
+
+// --- User context for span attributes ---
+let currentUserId: string | undefined;
+
+export function setCurrentUserId(id: string): void {
+	currentUserId = id;
+}
+
+export function getCurrentUserId(): string | undefined {
+	return currentUserId;
+}

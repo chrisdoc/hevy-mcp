@@ -33,6 +33,8 @@ vi.mock("./telemetry.js", () => ({
 	},
 	serviceName: "hevy-mcp",
 	serviceVersion: "dev",
+	setCurrentUserId: vi.fn(),
+	getCurrentUserId: vi.fn(() => undefined),
 }));
 
 vi.mock("./metrics.js", () => ({
@@ -223,7 +225,7 @@ describe("Error Handler", () => {
 				"mcp.tool.TestContext",
 				expect.objectContaining({
 					attributes: expect.objectContaining({
-						"mcp.tool.context": "TestContext",
+						"mcp.tool.name": "TestContext",
 					}),
 				}),
 				expect.any(Function),

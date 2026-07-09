@@ -109,6 +109,7 @@ describe("hevyClientKubb", () => {
 				"http.method": "POST",
 				"http.url": "/v1/workouts",
 				"http.base_url": "https://api.hevyapp.com",
+				"hevy.api.endpoint": "/v1/workouts",
 			},
 		});
 
@@ -121,6 +122,10 @@ describe("hevyClientKubb", () => {
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"http.status_code",
 			201,
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"http.response.duration_ms",
+			125,
 		);
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
 		expect(testDoubles.span.end).toHaveBeenCalled();
@@ -193,6 +198,7 @@ describe("hevyClientKubb", () => {
 				"http.method": "GET",
 				"http.url": "",
 				"http.base_url": "",
+				"hevy.api.endpoint": "",
 			},
 		});
 	});

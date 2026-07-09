@@ -4,7 +4,7 @@
 
 import { SpanStatusCode } from "@opentelemetry/api";
 import { isAxiosError } from "axios";
-import { Sentry, tracer } from "./telemetry.js";
+import { Sentry, tracer, getCurrentUserId } from "./telemetry.js";
 import { toolInvocations, toolErrors, toolDuration } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
 
@@ -165,8 +165,11 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 			`mcp.tool.${context}`,
 			{
 				attributes: {
-					"mcp.tool.context": context,
+					"mcp.tool.name": context,
 					"mcp.tool.args.key_count": argumentKeyCount,
+					...(getCurrentUserId()
+						? { "user.id": getCurrentUserId() }
+						: {}),
 				},
 			},
 			async (span) => {
@@ -187,6 +190,7 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 						error instanceof Error ? error.message : String(error),
 					);
 
+					span.setAttribute("error.type", errorType);
 					toolErrors.add(1, {
 						tool_name: context,
 						error_type: errorType,

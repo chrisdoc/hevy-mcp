@@ -68,11 +68,15 @@ export function createClient(
 	axiosInstance.interceptors.request.use((config) => {
 		const tracedConfig = config as TracedConfig;
 		const method = (config.method ?? "get").toUpperCase();
+		const url = config.url ?? "";
+		// Extract clean endpoint path without query params for high-cardinality safety
+		const endpoint = url.split("?")[0] ?? url;
 		tracedConfig._span = tracer.startSpan(`hevy.api.${method}`, {
 			attributes: {
 				"http.method": method,
-				"http.url": config.url ?? "",
+				"http.url": url,
 				"http.base_url": config.baseURL ?? "",
+				"hevy.api.endpoint": endpoint,
 			},
 		});
 		tracedConfig._startTime = Date.now();
@@ -85,10 +89,13 @@ export function createClient(
 			const span = tracedConfig._span;
 			const startTime = tracedConfig._startTime ?? Date.now();
 			const method = (response.config.method ?? "get").toUpperCase();
-			const endpoint = response.config.url ?? "";
+			const url = response.config.url ?? "";
+			const endpoint = url.split("?")[0] ?? url;
+			const durationMs = Date.now() - startTime;
 
 			if (span) {
 				span.setAttribute("http.status_code", response.status);
+				span.setAttribute("http.response.duration_ms", durationMs);
 				span.setStatus({ code: SpanStatusCode.OK });
 				span.end();
 			}
@@ -98,7 +105,7 @@ export function createClient(
 				endpoint,
 				status_code: response.status,
 			});
-			apiDuration.record(Date.now() - startTime, { method, endpoint });
+			apiDuration.record(durationMs, { method, endpoint });
 
 			return response;
 		},
@@ -107,11 +114,14 @@ export function createClient(
 			const span = tracedConfig._span;
 			const startTime = tracedConfig._startTime ?? Date.now();
 			const method = (error.config?.method ?? "get").toUpperCase();
-			const endpoint = error.config?.url ?? "";
+			const url = error.config?.url ?? "";
+			const endpoint = url.split("?")[0] ?? url;
 			const statusCode = error.response?.status ?? 0;
+			const durationMs = Date.now() - startTime;
 
 			if (span) {
 				span.setAttribute("http.status_code", statusCode);
+				span.setAttribute("http.response.duration_ms", durationMs);
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				span.recordException(error);
 				span.end();
@@ -122,7 +132,7 @@ export function createClient(
 				endpoint,
 				status_code: statusCode,
 			});
-			apiDuration.record(Date.now() - startTime, { method, endpoint });
+			apiDuration.record(durationMs, { method, endpoint });
 
 			throw error;
 		},

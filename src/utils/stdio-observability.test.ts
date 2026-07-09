@@ -37,6 +37,8 @@ vi.mock("./telemetry.js", () => ({
 	},
 	serviceName: "hevy-mcp",
 	serviceVersion: "dev",
+	setCurrentUserId: vi.fn(),
+	getCurrentUserId: vi.fn(() => undefined),
 }));
 
 vi.mock("./metrics.js", () => ({
