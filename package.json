@@ -34,7 +34,7 @@
 		"access": "public"
 	},
 	"scripts": {
-		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/index.mjs",
+		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/cli.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
 		"test": "node --env-file .env node_modules/vitest/vitest.mjs --run",
 		"openapi": "node ./scripts/openapi-spec.js",
