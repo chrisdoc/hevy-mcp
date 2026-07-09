@@ -144,10 +144,12 @@ This bootstraps the `hevy-mcp` entry in your client config without manual JSON e
 
 ## ⚙️ Configuration
 
-Supply your Hevy API key via:
+Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
+`.env` or system environment).
 
-1. **Environment Variable**: `HEVY_API_KEY` (in `.env` or system environment).
-2. **CLI Argument**: `--hevy-api-key=your_key` (after `--` in npm scripts).
+> ⚠️ CLI API key arguments (`--hevy-api-key=...`, `--hevyApiKey=...`,
+> `hevy-api-key=...`) are still accepted for backward compatibility, but are
+> deprecated and insecure. Use `HEVY_API_KEY` instead.
 
 ```env
 # Example .env
@@ -191,6 +193,11 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 | **Body Measurements** | `get-body-measurements`, `get-body-measurement`, `create-body-measurement`, `update-body-measurement`                              |
 | **User**              | `get-user-info`                                                                                                                    |
 
+> **Delete operations are currently unsupported:** The upstream Hevy OpenAPI
+> spec does not expose `DELETE` endpoints for workouts, routines, routine
+> folders, exercise templates, or body measurements, so `hevy-mcp` does not
+> provide delete tools for these resources.
+
 ---
 
 ## 👨‍💻 Development & Contributing
@@ -199,6 +206,7 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
+- **Type Check**: `npm run check:types`
 - **Unit Tests**: `npx vitest run --exclude tests/integration/**`
 - **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
 - **Changeset Check**: `npm run check:changeset`
@@ -210,6 +218,8 @@ For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).
 - **Conventional Commits**: CI lints commit messages on pull requests, so use
   prefixes such as `feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `refactor:`,
   `test:`, or `style:`.
+- **Type Checking**: CI runs `npm run check:types` on pull requests and pushes
+  to `main`; run this locally before opening a PR.
 - **Changesets**: Contributor pull requests targeting `main` must include a
   changeset. Dependabot PRs and automated `changeset-release/main` release PRs
   are handled by automation and skip this check.

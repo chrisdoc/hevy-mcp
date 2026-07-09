@@ -151,6 +151,12 @@ Create a `.env` file in the project root with:
 HEVY_API_KEY=your_hevy_api_key_here
 ```
 
+Always provide the API key through `HEVY_API_KEY`.
+
+Do **not** pass API keys via CLI arguments
+(`--hevy-api-key=...`, `--hevyApiKey=...`, `hevy-api-key=...`). These CLI
+forms are deprecated and insecure.
+
 **CRITICAL:** Without this API key:
 
 - Servers will not start
@@ -207,7 +213,8 @@ Always perform these validation steps after making changes:
      configured in the `check:types` script in `package.json`.
    - Note: `npm run build` (tsup) may still succeed when this fails.
    - Treat failures here as issues to fix (even if the build passes).
-   - Run this locally before opening a PR (CI does not currently run this check).
+   - Run this locally before opening a PR; CI also runs this check on pull
+     requests and pushes to `main`.
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**
