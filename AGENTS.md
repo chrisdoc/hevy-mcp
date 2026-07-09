@@ -14,9 +14,11 @@
 - **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
 - **No Direct Pushes to `main` (CRITICAL)**: Pushing directly to the `main` branch is strictly prohibited and blocked by branch protection. All development must be done on feature branches (e.g., `feat/some-feature` or `fix/some-bug`) and submitted via a Pull Request.
 - **Changesets (CRITICAL)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
-  - **WHEN TO USE**: Every single PR/change that modifies any source code or package dependencies **MUST** have a changeset file.
-  - **HOW TO CREATE**: Before submitting a PR or committing your changes, run `npx changeset` and follow the prompts to select the bump type (major/minor/patch) and write a summary.
-  - **NO-OP / NO-RELEASE CHANGES**: If your change does _not_ require a release (e.g., docs, CI config, internal tests, refactoring, or chore), you **MUST** run `npx changeset --empty` to create an empty changeset file.
+  - **RELEASE CADENCE**: Merge the automated `changeset-release/main` (**"Version Packages"**) Pull Request on a regular cadence (weekly is the default), not via ad-hoc frequent merges.
+  - **URGENT EXCEPTION**: Security fixes and high-impact user-facing bug fixes may be released immediately outside the routine cadence.
+  - **WHEN TO USE**: Every single PR/change that modifies source code or package dependencies **MUST** include a changeset file.
+  - **HOW TO CREATE BUMP CHANGESETS**: Use `npx changeset` with `patch`/`minor`/`major` **only** for user-facing, runtime-visible changes.
+  - **NO-OP / NO-RELEASE CHANGES**: For docs, CI config, internal tests, refactoring, and other internal-only changes, you **MUST** run `npx changeset --empty`.
   - **CI ENFORCEMENT**: Pull Requests are guarded by a CI check that runs `npm run check:changeset` (which runs `npx changeset status --since=origin/<base_branch>`). CI will fail if no changeset file is staged/committed.
   - **VALIDATION**: You can validate your changeset status locally by running `npm run check:changeset`. Make sure the changeset file is staged/committed.
 
@@ -190,7 +192,8 @@ Always perform these validation steps after making changes:
    ```
 
    - Must complete without errors (warnings about oxlint and oxfmt schema are acceptable).
-   - **EXPECTED:** Warnings about `any` usage in `webhooks.ts` are acceptable (API methods not yet available).
+   - No tool-specific lint warnings are expected; treat reported code warnings
+     as issues to fix.
 
 4. **Type checking validation:**
 
@@ -227,12 +230,14 @@ Always perform these validation steps after making changes:
 ```
 src/
 ├── index.ts           # Main entry point - register tools here
-├── tools/             # MCP tool implementations
-│   ├── workouts.ts    # Workout management tools
-│   ├── routines.ts    # Routine management tools
-│   ├── templates.ts   # Exercise template tools
-│   ├── folders.ts     # Routine folder tools
-│   └── webhooks.ts    # Webhook subscription tools
+├── tools/             # MCP tool implementations (+ co-located *.test.ts)
+│   ├── annotations.ts       # Workout annotation tools
+│   ├── body-measurements.ts # Body measurement tools
+│   ├── folders.ts           # Routine folder tools
+│   ├── routines.ts          # Routine management tools
+│   ├── templates.ts         # Exercise template tools
+│   ├── user.ts              # User profile tools
+│   └── workouts.ts          # Workout management tools
 ├── generated/         # Auto-generated API client (DO NOT EDIT)
 │   ├── client/        # Kubb-generated client code
 │   └── schemas/       # Zod validation schemas
@@ -354,7 +359,9 @@ server.tool(
 4. **Build failures:** Run `npm run check` to identify formatting/linting issues
 5. **Network errors in `npm run openapi`:** Expected in sandboxed environments
 6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
-7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)
+7. **Stale webhook references in docs:** Webhook endpoints are not currently
+   available in the generated client, so docs should not reference a
+   `src/tools/webhooks.ts` tool implementation.
 
 ### Performance Expectations
 
