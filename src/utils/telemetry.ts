@@ -45,7 +45,7 @@ const honeycombApiKey =
 		? __HONEYCOMB_API_KEY__
 		: (process.env.HONEYCOMB_API_KEY ?? "");
 
-const HONEYCOMB_ENDPOINT = "https://api.honeycomb.io/v1";
+const HONEYCOMB_ENDPOINT = "https://api.eu1.honeycomb.io/v1";
 const HONEYCOMB_DATASET = "hevy-mcp";
 
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
