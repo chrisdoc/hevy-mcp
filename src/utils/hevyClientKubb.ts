@@ -2,9 +2,17 @@ import type {
 	RequestConfig,
 	ResponseConfig,
 } from "../generated/.kubb/fetch.ts";
-import axios, { isAxiosError } from "axios";
-import type { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+import { SpanStatusCode, type Span } from "@opentelemetry/api";
+import axios, {
+	isAxiosError,
+	type AxiosError,
+	type AxiosInstance,
+	type AxiosRequestConfig,
+	type InternalAxiosRequestConfig,
+} from "axios";
 import * as api from "../generated/client/api";
+import { tracer } from "./telemetry.js";
+import { apiCalls, apiDuration } from "./metrics.js";
 import type {
 	GetV1BodyMeasurementsQueryParams,
 	GetV1ExerciseHistoryExercisetemplateidQueryParams,
@@ -314,6 +322,60 @@ function createResilientClient(axiosInstance: AxiosInstance): KubbClient {
 	return resilientClient;
 }
 
+// --- Interceptor helpers ---
+
+type TracedConfig = InternalAxiosRequestConfig & {
+	_span?: Span;
+	_startTime?: number;
+};
+
+/**
+ * Extract common request metadata from an Axios config.
+ * Shared between the success and error response interceptors to avoid
+ * duplicating the method/url/endpoint/duration extraction logic.
+ */
+function extractRequestMeta(config: {
+	method?: string;
+	url?: string;
+	_startTime?: number;
+}) {
+	const method = (config.method ?? "get").toUpperCase();
+	const url = config.url ?? "";
+	const endpoint = url.split("?")[0] ?? url;
+	const now = Date.now();
+	const durationMs = now - (config._startTime ?? now);
+	return { method, url, endpoint, durationMs };
+}
+
+/**
+ * Finalize a traced span and record metrics for a completed HTTP request.
+ */
+function finalizeRequestTrace(opts: {
+	span: Span | undefined;
+	statusCode: number;
+	durationMs: number;
+	method: string;
+	endpoint: string;
+	error?: unknown;
+}) {
+	const { span, statusCode, durationMs, method, endpoint, error } = opts;
+
+	if (span) {
+		span.setAttribute("http.status_code", statusCode);
+		span.setAttribute("http.response.duration_ms", durationMs);
+		if (error) {
+			span.setStatus({ code: SpanStatusCode.ERROR });
+			span.recordException(error as Error);
+		} else {
+			span.setStatus({ code: SpanStatusCode.OK });
+		}
+		span.end();
+	}
+
+	apiCalls.add(1, { method, endpoint, status_code: statusCode });
+	apiDuration.record(durationMs, { method, endpoint });
+}
+
 export function createClient(
 	apiKey: string,
 	baseUrl = "https://api.hevyapp.com",
@@ -326,6 +388,65 @@ export function createClient(
 			"api-key": apiKey,
 		},
 	});
+
+	// --- Axios interceptors for HTTP tracing and metrics ---
+	axiosInstance.interceptors.request.use((config) => {
+		const tracedConfig = config as TracedConfig;
+		const method = (config.method ?? "get").toUpperCase();
+		const url = config.url ?? "";
+		// Extract clean endpoint path without query params for high-cardinality safety
+		const endpoint = url.split("?")[0] ?? url;
+		tracedConfig._span = tracer.startSpan(`hevy.api.${method}`, {
+			attributes: {
+				"http.method": method,
+				"http.url": url,
+				"http.base_url": config.baseURL ?? "",
+				"hevy.api.endpoint": endpoint,
+			},
+		});
+		tracedConfig._startTime = Date.now();
+		return config;
+	});
+
+	axiosInstance.interceptors.response.use(
+		(response) => {
+			const tracedConfig = response.config as TracedConfig;
+			const { method, endpoint, durationMs } = extractRequestMeta({
+				method: response.config.method,
+				url: response.config.url,
+				_startTime: tracedConfig._startTime,
+			});
+
+			finalizeRequestTrace({
+				span: tracedConfig._span,
+				statusCode: response.status,
+				durationMs,
+				method,
+				endpoint,
+			});
+
+			return response;
+		},
+		(error) => {
+			const tracedConfig = (error.config ?? {}) as TracedConfig;
+			const { method, endpoint, durationMs } = extractRequestMeta({
+				method: error.config?.method,
+				url: error.config?.url,
+				_startTime: tracedConfig._startTime,
+			});
+
+			finalizeRequestTrace({
+				span: tracedConfig._span,
+				statusCode: error.response?.status ?? 0,
+				durationMs,
+				method,
+				endpoint,
+				error,
+			});
+
+			throw error;
+		},
+	);
 
 	// Create headers object with API key
 	const headers = {
