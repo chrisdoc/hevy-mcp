@@ -26,57 +26,17 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import type { InferToolParams } from "../utils/tool-helpers.js";
+import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import {
+	setTypeEnum,
+	zNullableInt,
+	zOptionalRepRange,
+} from "../utils/schemas.js";
 
 // Type definitions for the routine operations
 type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
-
-function coerceNullishNumberInput(value: unknown): unknown {
-	if (value === null || value === undefined) {
-		return value;
-	}
-
-	if (typeof value !== "string") {
-		return value;
-	}
-
-	const trimmed = value.trim();
-	if (trimmed === "") {
-		return undefined;
-	}
-
-	const lowered = trimmed.toLowerCase();
-	if (lowered === "null") {
-		return null;
-	}
-	if (lowered === "undefined") {
-		return undefined;
-	}
-
-	const asNumber = Number(trimmed);
-	if (Number.isNaN(asNumber)) {
-		return value;
-	}
-
-	return asNumber;
-}
-
-const zNullableInt = z.preprocess(
-	coerceNullishNumberInput,
-	z.number().int().nullable().optional(),
-);
-
-const zOptionalRepRange = z.preprocess(
-	(value) => (value === null ? undefined : value),
-	z
-		.object({
-			start: zNullableInt,
-			end: zNullableInt,
-		})
-		.optional(),
-);
 
 function buildRepRange(repRange?: {
 	start?: number | null;
@@ -150,13 +110,9 @@ export function registerRoutineTools(
 		getRoutinesSchema,
 		readOnlyAnnotations("Get Routines"),
 		withErrorHandling(async (args: GetRoutinesParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
-			const data: GetV1Routines200 = await hevyClient.getRoutines({
+			const data: GetV1Routines200 = await client.getRoutines({
 				page,
 				pageSize,
 			});
@@ -187,13 +143,9 @@ export function registerRoutineTools(
 		getRoutineSchema,
 		readOnlyAnnotations("Get Routine"),
 		withErrorHandling(async (args: GetRoutineParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { routineId } = args;
-			const data: GetV1RoutinesRoutineid200 = await hevyClient.getRoutineById(
+			const data: GetV1RoutinesRoutineid200 = await client.getRoutineById(
 				String(routineId),
 			);
 			if (!data || !data.routine) {
@@ -219,9 +171,7 @@ export function registerRoutineTools(
 					notes: z.string().optional(),
 					sets: z.array(
 						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
+							type: setTypeEnum,
 							weight: z.coerce.number().optional(),
 							weightKg: z.coerce.number().optional(),
 							reps: zNullableInt,
@@ -245,14 +195,10 @@ export function registerRoutineTools(
 		createRoutineSchema,
 		createAnnotations("Create Routine"),
 		withErrorHandling(async (args: CreateRoutineParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { title, folderId, notes, exercises } = args;
 			let usesRepRanges = false;
-			const data: PostV1Routines201 = await hevyClient.createRoutine({
+			const data: PostV1Routines201 = await client.createRoutine({
 				routine: {
 					title,
 					folder_id: folderId ?? null,
@@ -332,9 +278,7 @@ export function registerRoutineTools(
 					notes: z.string().optional(),
 					sets: z.array(
 						z.object({
-							type: z
-								.enum(["warmup", "normal", "failure", "dropset"])
-								.default("normal"),
+							type: setTypeEnum,
 							weight: z.coerce.number().optional(),
 							weightKg: z.coerce.number().optional(),
 							reps: zNullableInt,
@@ -358,14 +302,10 @@ export function registerRoutineTools(
 		updateRoutineSchema,
 		updateAnnotations("Update Routine"),
 		withErrorHandling(async (args: UpdateRoutineParams) => {
-			if (!hevyClient) {
-				throw new Error(
-					"API client not initialized. Please provide HEVY_API_KEY.",
-				);
-			}
+			const client = requireClient(hevyClient);
 			const { routineId, title, notes, exercises } = args;
 			let usesRepRanges = false;
-			const data: PutV1RoutinesRoutineid200 = await hevyClient.updateRoutine(
+			const data: PutV1RoutinesRoutineid200 = await client.updateRoutine(
 				routineId,
 				{
 					routine: {

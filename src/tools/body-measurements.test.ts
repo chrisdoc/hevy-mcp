@@ -78,6 +78,34 @@ describe("registerBodyMeasurementTools", () => {
 		}
 	});
 
+	it("get-body-measurements returns error response on client failure", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			getBodyMeasurements: vi
+				.fn()
+				.mockRejectedValue(new Error("Body measurements request failed")),
+		} as unknown as HevyClient;
+
+		registerBodyMeasurementTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-body-measurements");
+
+		const response = await handler({ page: 1, pageSize: 10 });
+
+		expect(hevyClient.getBodyMeasurements).toHaveBeenCalledWith({
+			page: 1,
+			pageSize: 10,
+		});
+		expect(response).toMatchObject({
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: expect.stringContaining("Body measurements request failed"),
+				},
+			],
+		});
+	});
+
 	it("get-body-measurements returns formatted measurements from the client", async () => {
 		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {

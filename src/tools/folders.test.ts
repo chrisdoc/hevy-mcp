@@ -54,6 +54,34 @@ describe("registerFolderTools", () => {
 		}
 	});
 
+	it("get-routine-folders returns error response on client failure", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			getRoutineFolders: vi
+				.fn()
+				.mockRejectedValue(new Error("Routine folders request failed")),
+		} as unknown as HevyClient;
+
+		registerFolderTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-routine-folders");
+
+		const response = await handler({ page: 1, pageSize: 5 });
+
+		expect(hevyClient.getRoutineFolders).toHaveBeenCalledWith({
+			page: 1,
+			pageSize: 5,
+		});
+		expect(response).toMatchObject({
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: expect.stringContaining("Routine folders request failed"),
+				},
+			],
+		});
+	});
+
 	it("get-routine-folders returns formatted folders from the client", async () => {
 		const { server, tool } = createMockServer();
 		const folder: RoutineFolder = {
