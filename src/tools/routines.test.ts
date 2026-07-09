@@ -57,6 +57,32 @@ describe("registerRoutineTools", () => {
 		}
 	});
 
+	it("get-routines returns error response when the client rejects", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient: HevyClient = {
+			getRoutines: vi.fn().mockRejectedValue(new Error("Routines API timeout")),
+		} as unknown as HevyClient;
+
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-routines");
+
+		const response = await handler({ page: 1, pageSize: 5 });
+
+		expect(hevyClient.getRoutines).toHaveBeenCalledWith({
+			page: 1,
+			pageSize: 5,
+		});
+		expect(response).toMatchObject({
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: expect.stringContaining("Routines API timeout"),
+				},
+			],
+		});
+	});
+
 	it("get-routines returns formatted routines from the client", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {
