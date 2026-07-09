@@ -189,6 +189,16 @@ describe("stdio observability", () => {
 		);
 	});
 
+	it("returns null when no buffer is available", () => {
+		const { readBuffer, transport } = createTransportDouble();
+		createInstrumentedStdioTransport(
+			transport as unknown as StdioServerTransport,
+		);
+
+		expect(readBuffer.readMessage()).toBeNull();
+		expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
+	});
+
 	it("captures line_start failures with position metadata", () => {
 		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
 			throw new Error("synthetic parse failure at position 0");
@@ -243,7 +253,7 @@ describe("stdio observability", () => {
 
 	it("captures unknown failures without failure-position attribute", () => {
 		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
-			throw new Error("synthetic schema mismatch");
+			throw "synthetic schema mismatch";
 		});
 
 		expect(() =>
@@ -251,7 +261,7 @@ describe("stdio observability", () => {
 				lastChunkByteLength: 2,
 				lastChunkStartsWithUtf8Bom: false,
 			}),
-		).toThrow("synthetic schema mismatch");
+		).toThrow();
 
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.stdio.parse.failure.location",
@@ -264,6 +274,10 @@ describe("stdio observability", () => {
 		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
 			"mcp.stdio.parse.failure.location",
 			"unknown",
+		);
+		expect(testDoubles.scope.setContext).toHaveBeenCalledWith(
+			"mcpStdioParse",
+			expect.objectContaining({ errorName: "UnknownError" }),
 		);
 	});
 
