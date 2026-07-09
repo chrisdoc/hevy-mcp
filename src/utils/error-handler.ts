@@ -167,9 +167,7 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 				attributes: {
 					"mcp.tool.name": context,
 					"mcp.tool.args.key_count": argumentKeyCount,
-					...(getCurrentUserId()
-						? { "user.id": getCurrentUserId() }
-						: {}),
+					...(getCurrentUserId() ? { "user.id": getCurrentUserId() } : {}),
 				},
 			},
 			async (span) => {

@@ -65,7 +65,7 @@ function buildServer(apiKey: string) {
 		(span) => {
 			try {
 				Sentry.setUser({ id: userId });
-			setCurrentUserId(userId);
+				setCurrentUserId(userId);
 
 				const baseServer = new McpServer({
 					name,
