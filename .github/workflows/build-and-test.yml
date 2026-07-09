@@ -18,7 +18,15 @@ env:
 
 jobs:
   build:
+    name: Build and test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - "22.18.0"
+          - "24.x"
+          - "26.x"
 
     steps:
       - name: Checkout repository
@@ -29,18 +37,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: ".nvmrc"
+          node-version: ${{ matrix.node-version }}
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
       - name: Verify commit messages
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && matrix.node-version == '22.18.0'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
       - name: Check for changeset
-        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.head_ref != 'changeset-release/main'
+        if: github.event_name == 'pull_request' && matrix.node-version == '22.18.0' && github.actor != 'dependabot[bot]' && github.head_ref != 'changeset-release/main'
         run: npx changeset status --since=origin/${{ github.base_ref }}
 
       - name: Run Check
@@ -75,6 +83,7 @@ jobs:
         run: echo "Skipping integration tests because HEVY_API_KEY is not set. Please configure the HEVY_API_KEY secret in your repository to run integration tests."
 
       - name: Upload results to Codecov
+        if: matrix.node-version == '22.18.0'
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
