@@ -47,6 +47,60 @@ function wrapApi<T extends (...args: Parameters<T>) => ReturnType<T>>(
 	return fn;
 }
 
+// --- Interceptor helpers ---
+
+type TracedConfig = InternalAxiosRequestConfig & {
+	_span?: Span;
+	_startTime?: number;
+};
+
+/**
+ * Extract common request metadata from an Axios config.
+ * Shared between the success and error response interceptors to avoid
+ * duplicating the method/url/endpoint/duration extraction logic.
+ */
+function extractRequestMeta(config: {
+	method?: string;
+	url?: string;
+	_startTime?: number;
+}) {
+	const method = (config.method ?? "get").toUpperCase();
+	const url = config.url ?? "";
+	const endpoint = url.split("?")[0] ?? url;
+	const now = Date.now();
+	const durationMs = now - (config._startTime ?? now);
+	return { method, url, endpoint, durationMs };
+}
+
+/**
+ * Finalize a traced span and record metrics for a completed HTTP request.
+ */
+function finalizeRequestTrace(opts: {
+	span: Span | undefined;
+	statusCode: number;
+	durationMs: number;
+	method: string;
+	endpoint: string;
+	error?: unknown;
+}) {
+	const { span, statusCode, durationMs, method, endpoint, error } = opts;
+
+	if (span) {
+		span.setAttribute("http.status_code", statusCode);
+		span.setAttribute("http.response.duration_ms", durationMs);
+		if (error) {
+			span.setStatus({ code: SpanStatusCode.ERROR });
+			span.recordException(error as Error);
+		} else {
+			span.setStatus({ code: SpanStatusCode.OK });
+		}
+		span.end();
+	}
+
+	apiCalls.add(1, { method, endpoint, status_code: statusCode });
+	apiDuration.record(durationMs, { method, endpoint });
+}
+
 export function createClient(
 	apiKey: string,
 	baseUrl = "https://api.hevyapp.com",
@@ -60,11 +114,6 @@ export function createClient(
 	});
 
 	// --- Axios interceptors for HTTP tracing and metrics ---
-	type TracedConfig = InternalAxiosRequestConfig & {
-		_span?: Span;
-		_startTime?: number;
-	};
-
 	axiosInstance.interceptors.request.use((config) => {
 		const tracedConfig = config as TracedConfig;
 		const method = (config.method ?? "get").toUpperCase();
@@ -86,53 +135,38 @@ export function createClient(
 	axiosInstance.interceptors.response.use(
 		(response) => {
 			const tracedConfig = response.config as TracedConfig;
-			const span = tracedConfig._span;
-			const startTime = tracedConfig._startTime ?? Date.now();
-			const method = (response.config.method ?? "get").toUpperCase();
-			const url = response.config.url ?? "";
-			const endpoint = url.split("?")[0] ?? url;
-			const durationMs = Date.now() - startTime;
+			const { method, endpoint, durationMs } = extractRequestMeta({
+				method: response.config.method,
+				url: response.config.url,
+				_startTime: tracedConfig._startTime,
+			});
 
-			if (span) {
-				span.setAttribute("http.status_code", response.status);
-				span.setAttribute("http.response.duration_ms", durationMs);
-				span.setStatus({ code: SpanStatusCode.OK });
-				span.end();
-			}
-
-			apiCalls.add(1, {
+			finalizeRequestTrace({
+				span: tracedConfig._span,
+				statusCode: response.status,
+				durationMs,
 				method,
 				endpoint,
-				status_code: response.status,
 			});
-			apiDuration.record(durationMs, { method, endpoint });
 
 			return response;
 		},
 		(error) => {
 			const tracedConfig = (error.config ?? {}) as TracedConfig;
-			const span = tracedConfig._span;
-			const startTime = tracedConfig._startTime ?? Date.now();
-			const method = (error.config?.method ?? "get").toUpperCase();
-			const url = error.config?.url ?? "";
-			const endpoint = url.split("?")[0] ?? url;
-			const statusCode = error.response?.status ?? 0;
-			const durationMs = Date.now() - startTime;
+			const { method, endpoint, durationMs } = extractRequestMeta({
+				method: error.config?.method,
+				url: error.config?.url,
+				_startTime: tracedConfig._startTime,
+			});
 
-			if (span) {
-				span.setAttribute("http.status_code", statusCode);
-				span.setAttribute("http.response.duration_ms", durationMs);
-				span.setStatus({ code: SpanStatusCode.ERROR });
-				span.recordException(error);
-				span.end();
-			}
-
-			apiCalls.add(1, {
+			finalizeRequestTrace({
+				span: tracedConfig._span,
+				statusCode: error.response?.status ?? 0,
+				durationMs,
 				method,
 				endpoint,
-				status_code: statusCode,
+				error,
 			});
-			apiDuration.record(durationMs, { method, endpoint });
 
 			throw error;
 		},

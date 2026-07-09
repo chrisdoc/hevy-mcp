@@ -128,6 +128,19 @@ Sentry.validateOpenTelemetrySetup();
 export const tracer = trace.getTracer(name);
 export const meter = metrics.getMeter(name);
 export { Sentry };
+
+/**
+ * Bundled service identity — avoids passing name and version as
+ * separate primitives throughout the codebase (Data Clumps smell).
+ */
+export interface ServiceInfo {
+	readonly name: string;
+	readonly version: string;
+}
+
+export const serviceInfo: ServiceInfo = { name, version } as const;
+
+// Keep individual exports for backward compatibility
 export { name as serviceName, version as serviceVersion };
 
 // --- User context for span attributes ---

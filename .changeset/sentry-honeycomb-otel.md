@@ -3,12 +3,13 @@
 ---
 
 Add OpenTelemetry instrumentation with dual export to Sentry and an
-OTel Collector (forwarding to Honeycomb).
+OTel Collector (forwarding to Honeycomb and other backends).
 
 - New `src/utils/telemetry.ts` initializes OpenTelemetry with a custom
   tracer provider that has dual span processors: `SentrySpanProcessor`
   for Sentry (errors + traces) and `BatchSpanProcessor` with
-  `OTLPTraceExporter` for the OTel Collector (traces).
+  `OTLPTraceExporter` routed through our own OTel Collector, which
+  forwards traces and metrics to Honeycomb and other backends.
 - New `src/utils/metrics.ts` defines metric instruments (counters and
   histograms) for tool invocations, errors, duration, API calls, API
   latency, stdio parse errors, and server startups.
@@ -20,6 +21,7 @@ OTel Collector (forwarding to Honeycomb).
 - The collector endpoint and auth token are injected at build time
   from the `OTEL_COLLECTOR_ENDPOINT` and `OTEL_COLLECTOR_TOKEN`
   GitHub secrets via `tsdown.config.ts` define. Traces and metrics
-  are sent to the OTel Collector, which forwards them to Honeycomb.
+  are sent to the OTel Collector, which forwards them to Honeycomb
+  and other observability backends.
 - Sentry remains the error monitoring backend (captureException,
   setUser, withScope, wrapMcpServerWithSentry).

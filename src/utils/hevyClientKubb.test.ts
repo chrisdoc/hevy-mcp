@@ -223,7 +223,8 @@ describe("hevyClientKubb", () => {
 			endpoint: "",
 			status_code: 0,
 		});
-		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(40, {
+		// When no _startTime is available (missing config), duration falls back to 0
+		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(0, {
 			method: "GET",
 			endpoint: "",
 		});
