@@ -2,6 +2,46 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
 import { Sentry } from "./telemetry.js";
 
+type AxiosLikeError = Error & {
+	hevyRetryCount?: number;
+	hevyRetryExhausted?: boolean;
+	isAxiosError: true;
+	response?: {
+		data?: unknown;
+		headers?: unknown;
+		status: number;
+	};
+};
+
+function createAxiosError(options: {
+	data?: unknown;
+	headers?: unknown;
+	message?: string;
+	retryCount?: number;
+	retryExhausted?: boolean;
+	status: number;
+}): AxiosLikeError {
+	const error = new Error(
+		options.message ?? "Request failed",
+	) as AxiosLikeError;
+	error.isAxiosError = true;
+	error.response = {
+		status: options.status,
+		headers: options.headers,
+		data: options.data,
+	};
+
+	if (options.retryCount !== undefined) {
+		error.hevyRetryCount = options.retryCount;
+	}
+
+	if (options.retryExhausted) {
+		error.hevyRetryExhausted = true;
+	}
+
+	return error;
+}
+
 const testDoubles = vi.hoisted(() => ({
 	span: {
 		setAttribute: vi.fn(),
@@ -197,6 +237,193 @@ describe("Error Handler", () => {
 				expect.stringContaining("(Type: API_ERROR)"),
 				error,
 			);
+		});
+
+		it("shows actionable message for 429 rate limits", () => {
+			const error = createAxiosError({
+				headers: { "retry-after": "12" },
+				status: 429,
+			});
+
+			const response = createErrorResponse(error, "get-workouts");
+
+			expect(response.content[0].text).toBe(
+				"[get-workouts] Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 12 seconds before retrying.",
+			);
+			expect(console.error).toHaveBeenCalledWith(
+				expect.stringContaining("(Type: RATE_LIMIT)"),
+				error,
+			);
+		});
+
+		it("handles Retry-After as HTTP-date for 429 messages", () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, "now").mockReturnValue(now);
+
+			const error = createAxiosError({
+				headers: {
+					"retry-after": new Date(now + 5_000).toUTCString(),
+				},
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 5 seconds before retrying.",
+			);
+		});
+
+		it("falls back when a 429 has no Retry-After header", () => {
+			const error = createAxiosError({ status: 429 });
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait and retry your request.",
+			);
+		});
+
+		it("normalizes Retry-After arrays returned from headers.get", () => {
+			const error = createAxiosError({
+				headers: {
+					get: () => [3],
+				},
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 3 seconds before retrying.",
+			);
+		});
+
+		it("treats empty Retry-After arrays as missing", () => {
+			const error = createAxiosError({
+				headers: {
+					get: () => [],
+				},
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait and retry your request.",
+			);
+		});
+
+		it("falls back when Retry-After is present but invalid", () => {
+			const error = createAxiosError({
+				headers: { "retry-after": "later today" },
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait and retry your request.",
+			);
+		});
+
+		it("surfaces clearer message when retries are exhausted", () => {
+			const error = createAxiosError({
+				message: "timeout of 30000ms exceeded",
+				retryCount: 3,
+				retryExhausted: true,
+				status: 503,
+			});
+
+			const response = createErrorResponse(error, "get-routines");
+
+			expect(response.content[0].text).toBe(
+				"[get-routines] Error: Unable to complete the request " +
+					"after 4 attempts to the Hevy API due to transient " +
+					"failures. Please try again shortly.",
+			);
+			expect(console.error).toHaveBeenCalledWith(
+				expect.stringContaining("(Type: NETWORK_ERROR)"),
+				error,
+			);
+		});
+
+		it("prioritizes retry exhaustion over 429 classification", () => {
+			const error = createAxiosError({
+				headers: { "retry-after": "120" },
+				retryCount: 3,
+				retryExhausted: true,
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Unable to complete the request after 4 attempts " +
+					"to the Hevy API due to transient failures. " +
+					"Please try again shortly.",
+			);
+			expect(console.error).toHaveBeenCalledWith(
+				expect.stringContaining("(Type: NETWORK_ERROR)"),
+				error,
+			);
+		});
+
+		it("uses a generic retry exhaustion message without a retry count", () => {
+			const error = createAxiosError({
+				retryExhausted: true,
+				status: 503,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Unable to complete the request after multiple attempts " +
+					"to the Hevy API due to transient failures. " +
+					"Please try again shortly.",
+			);
+		});
+
+		it("prefers axios string response payloads for error text", () => {
+			const error = createAxiosError({
+				data: "Upstream said no",
+				status: 500,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe("Error: Upstream said no");
+		});
+
+		it("serializes axios object response payloads for error text", () => {
+			const error = createAxiosError({
+				data: { detail: "Bad request" },
+				status: 400,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe('Error: {"detail":"Bad request"}');
+		});
+
+		it("falls back to String when axios payload serialization fails", () => {
+			const circularData: { self?: unknown } = {};
+			circularData.self = circularData;
+
+			const error = createAxiosError({
+				data: circularData,
+				status: 500,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe("Error: [object Object]");
 		});
 	});
 
