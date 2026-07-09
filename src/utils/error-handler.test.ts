@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
-import { Sentry } from "./telemetry.js";
+import { getCurrentUserId, Sentry } from "./telemetry.js";
 
 function createMockAxiosError(status: number, data: unknown): unknown {
 	return {
@@ -461,6 +461,55 @@ describe("Error Handler", () => {
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
 			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it("adds the current user ID to span attributes when available", async () => {
+			testDoubles.startActiveSpan.mockClear();
+			vi.mocked(getCurrentUserId).mockReturnValue("user-123");
+
+			const mockFn = vi.fn().mockResolvedValue({
+				content: [{ type: "text", text: "Success" }],
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "UserContext");
+			await wrappedFn({ param: "test" });
+
+			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
+				"mcp.tool.UserContext",
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						"mcp.tool.name": "UserContext",
+						"user.id": "user-123",
+					}),
+				}),
+				expect.any(Function),
+			);
+
+			vi.mocked(getCurrentUserId).mockReturnValue(undefined);
+		});
+
+		it("handles non-Error thrown values from wrapped functions", async () => {
+			const mockFn = vi.fn().mockImplementation(() => {
+				throw 42;
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "NumberErrorTest");
+			const result = await wrappedFn({ param: "test" });
+
+			expect(result).toMatchObject({
+				content: [
+					{
+						type: "text",
+						text: "[NumberErrorTest] Error: 42",
+					},
+				],
+				isError: true,
+				errorContext: {
+					sourceContext: "NumberErrorTest",
+					originalErrorMessage: "42",
+				},
+			});
+			expect(Sentry.captureException).toHaveBeenCalledWith(42);
 		});
 	});
 });
