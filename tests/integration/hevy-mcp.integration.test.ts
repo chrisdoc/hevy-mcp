@@ -5,15 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import {
-	afterAll,
-	afterEach,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	it,
-} from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { registerWorkoutTools } from "../../src/tools/workouts.js";
 import { registerRoutineTools } from "../../src/tools/routines.js";
@@ -24,6 +16,8 @@ import { registerBodyMeasurementTools } from "../../src/tools/body-measurements.
 import { createClient } from "../../src/utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
+const hevyApiKey = process.env.HEVY_API_KEY || "";
+const describeLive = describe.runIf(Boolean(hevyApiKey));
 
 // --- WORKOUTS SCHEMAS ---
 const FormattedWorkoutSetSchema = z.object({
@@ -153,31 +147,9 @@ const GetBodyMeasurementsResponseSchema = z.array(
 	FormattedBodyMeasurementSchema,
 );
 
-describe("Hevy MCP Server Integration Tests", () => {
+describeLive("Hevy MCP Server Integration Tests", () => {
 	let server: McpServer | null = null;
 	let client: Client | null = null;
-	let hevyApiKey: string;
-	let hasApiKey = false;
-
-	beforeAll(() => {
-		hevyApiKey = process.env.HEVY_API_KEY || "";
-		hasApiKey = !!hevyApiKey;
-
-		if (!hasApiKey) {
-			throw new Error(
-				"HEVY_API_KEY is not set in environment variables. Integration tests cannot run without a valid API key.\n\n" +
-					"For local development:\n" +
-					"1. Create a .env file in the project root\n" +
-					"2. Add HEVY_API_KEY=your_api_key to the file\n\n" +
-					"For GitHub Actions:\n" +
-					"1. Go to your GitHub repository\n" +
-					"2. Click on Settings > Secrets and variables > Actions\n" +
-					"3. Click on New repository secret\n" +
-					"4. Set the name to HEVY_API_KEY and the value to your Hevy API key\n" +
-					"5. Click Add secret",
-			);
-		}
-	});
 
 	beforeEach(async () => {
 		// Create server instance
