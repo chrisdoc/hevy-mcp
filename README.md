@@ -38,10 +38,10 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 Pick the workflow that fits your setup:
 
-| Scenario              | Command                                     | Requirements                    |
-| :-------------------- | :------------------------------------------ | :------------------------------ |
+| Scenario              | Command                                     | Requirements               |
+| :-------------------- | :------------------------------------------ | :------------------------- |
 | **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp`   | Node.js ≥ 24, Hevy API key |
-| **Local development** | `npm install && npm run build && npm start` | `.env` with `HEVY_API_KEY`      |
+| **Local development** | `npm install && npm run build && npm start` | `.env` with `HEVY_API_KEY` |
 
 ---
 
