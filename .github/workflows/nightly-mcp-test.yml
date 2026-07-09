@@ -18,28 +18,77 @@ jobs:
 
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@v7
 
       - name: Set up Node.js
+        id: setup_node
         uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
 
       - name: Set up Python
+        id: setup_python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Install mcp-use
+        id: install_mcp_use
         run: pip install mcp-use
 
       - name: Run MCP integration test
+        id: run_mcp_integration_test
         run: python tests/nightly/test_hevy_mcp.py
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
-      - name: Notify on failure
+      - name: Build failure summary
+        id: failure_summary
         if: failure()
         run: |
-          echo "::error::Nightly MCP integration test failed! The latest hevy-mcp npm package may have issues."
+          failed_step="Unknown step"
+
+          if [[ "${{ steps.checkout.outcome }}" == "failure" ]]; then
+            failed_step="Checkout repository"
+          elif [[ "${{ steps.setup_node.outcome }}" == "failure" ]]; then
+            failed_step="Set up Node.js"
+          elif [[ "${{ steps.setup_python.outcome }}" == "failure" ]]; then
+            failed_step="Set up Python"
+          elif [[ "${{ steps.install_mcp_use.outcome }}" == "failure" ]]; then
+            failed_step="Install mcp-use"
+          elif [[ "${{ steps.run_mcp_integration_test.outcome }}" == "failure" ]]; then
+            failed_step="Run MCP integration test"
+          fi
+
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          message="Nightly MCP integration test failed for"
+          message="${message} ${{ github.repository }}@${{ github.ref_name }}."
+          message="${message} Failed step: ${failed_step}."
+          message="${message} Run: ${run_url}"
+
+          {
+            echo "message<<EOF"
+            echo "$message"
+            echo "EOF"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Send failure webhook notification
+        if: failure() && secrets.NIGHTLY_FAILURE_WEBHOOK_URL != ''
+        env:
+          WEBHOOK_URL: ${{ secrets.NIGHTLY_FAILURE_WEBHOOK_URL }}
+          MESSAGE: ${{ steps.failure_summary.outputs.message }}
+        run: |
+          payload="$(jq -cn --arg msg "$MESSAGE" '{text: $msg, content: $msg}')"
+
+          curl --fail --show-error --silent \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$WEBHOOK_URL"
+
+      - name: Warn when webhook secret is missing
+        if: failure() && secrets.NIGHTLY_FAILURE_WEBHOOK_URL == ''
+        run: |
+          echo "::warning::Nightly MCP integration test failed, but NIGHTLY_FAILURE_WEBHOOK_URL is not set. Unable to send webhook notification."
