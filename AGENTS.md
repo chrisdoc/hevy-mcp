@@ -14,9 +14,11 @@
 - **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
 - **No Direct Pushes to `main` (CRITICAL)**: Pushing directly to the `main` branch is strictly prohibited and blocked by branch protection. All development must be done on feature branches (e.g., `feat/some-feature` or `fix/some-bug`) and submitted via a Pull Request.
 - **Changesets (CRITICAL)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
-  - **WHEN TO USE**: Every single PR/change that modifies any source code or package dependencies **MUST** have a changeset file.
-  - **HOW TO CREATE**: Before submitting a PR or committing your changes, run `npx changeset` and follow the prompts to select the bump type (major/minor/patch) and write a summary.
-  - **NO-OP / NO-RELEASE CHANGES**: If your change does _not_ require a release (e.g., docs, CI config, internal tests, refactoring, or chore), you **MUST** run `npx changeset --empty` to create an empty changeset file.
+  - **RELEASE CADENCE**: Merge the automated `changeset-release/main` (**"Version Packages"**) Pull Request on a regular cadence (weekly is the default), not via ad-hoc frequent merges.
+  - **URGENT EXCEPTION**: Security fixes and high-impact user-facing bug fixes may be released immediately outside the routine cadence.
+  - **WHEN TO USE**: Every single PR/change that modifies source code or package dependencies **MUST** include a changeset file.
+  - **HOW TO CREATE BUMP CHANGESETS**: Use `npx changeset` with `patch`/`minor`/`major` **only** for user-facing, runtime-visible changes.
+  - **NO-OP / NO-RELEASE CHANGES**: For docs, CI config, internal tests, refactoring, and other internal-only changes, you **MUST** run `npx changeset --empty`.
   - **CI ENFORCEMENT**: Pull Requests are guarded by a CI check that runs `npm run check:changeset` (which runs `npx changeset status --since=origin/<base_branch>`). CI will fail if no changeset file is staged/committed.
   - **VALIDATION**: You can validate your changeset status locally by running `npm run check:changeset`. Make sure the changeset file is staged/committed.
 
@@ -148,6 +150,12 @@ Create a `.env` file in the project root with:
 HEVY_API_KEY=your_hevy_api_key_here
 ```
 
+Always provide the API key through `HEVY_API_KEY`.
+
+Do **not** pass API keys via CLI arguments
+(`--hevy-api-key=...`, `--hevyApiKey=...`, `hevy-api-key=...`). These CLI
+forms are deprecated and insecure.
+
 **CRITICAL:** Without this API key:
 
 - Servers will not start
@@ -204,7 +212,8 @@ Always perform these validation steps after making changes:
      configured in the `check:types` script in `package.json`.
    - Note: `npm run build` (tsup) may still succeed when this fails.
    - Treat failures here as issues to fix (even if the build passes).
-   - Run this locally before opening a PR (CI does not currently run this check).
+   - Run this locally before opening a PR; CI also runs this check on pull
+     requests and pushes to `main`.
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**

@@ -1,0 +1,6 @@
+{
+	"labels": ["needs-ai-review"],
+	"triggerOnUpdates": true,
+	"triggerOnDrafts": false,
+	"statusCheck": true
+}

@@ -2,9 +2,10 @@
  * Centralized error handling utility for MCP tools
  */
 
-// Import the McpToolResponse type from response-formatter to ensure consistency
-import * as Sentry from "@sentry/node";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { isAxiosError } from "axios";
+import { Sentry, tracer, getCurrentUserId } from "./telemetry.js";
+import { toolInvocations, toolErrors, toolDuration } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
 
 /**
@@ -35,6 +36,23 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 }
 
 /**
+ * Structured debug context that preserves original error details
+ */
+export interface ErrorDebugContext {
+	sourceContext?: string;
+	originalErrorMessage: string;
+	errorCode?: string;
+	errorType: ErrorType;
+	axios?: {
+		status?: number;
+		statusText?: string;
+		data?: unknown;
+		method?: string;
+		url?: string;
+	};
+}
+
+/**
  * Create a standardized error response for MCP tools
  *
  * @param error - The error object or message
@@ -45,21 +63,20 @@ export function createErrorResponse(
 	error: unknown,
 	context?: string,
 ): McpToolResponse {
-	// Extract axios response data if available
-	let errorMessage = error instanceof Error ? error.message : String(error);
+	const originalErrorMessage = extractErrorMessage(error);
+	let errorMessage = originalErrorMessage;
+	const axiosErrorContext = extractAxiosErrorContext(error);
+	const mappedHevyErrorMessage = mapHevyErrorMessageByStatus(
+		axiosErrorContext?.status,
+	);
+
+	if (mappedHevyErrorMessage) {
+		errorMessage = mappedHevyErrorMessage;
+	}
 
 	// Check for axios error with response data
-	if (isAxiosError(error) && error.response?.data) {
-		const { data } = error.response;
-		if (typeof data === "string") {
-			errorMessage = data;
-		} else if (data && typeof data === "object") {
-			try {
-				errorMessage = JSON.stringify(data);
-			} catch (_e) {
-				errorMessage = String(data);
-			}
-		}
+	if (!mappedHevyErrorMessage && axiosErrorContext?.data) {
+		errorMessage = stringifyErrorData(axiosErrorContext.data);
 	}
 
 	// Extract error code if available (for logging purposes)
@@ -70,6 +87,13 @@ export function createErrorResponse(
 
 	// Determine error type based on error characteristics
 	const errorType = determineErrorType(error, errorMessage);
+	const errorContext: ErrorDebugContext = {
+		sourceContext: context,
+		originalErrorMessage,
+		errorCode,
+		errorType,
+		axios: axiosErrorContext ?? undefined,
+	};
 
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${errorMessage}`;
@@ -89,7 +113,97 @@ export function createErrorResponse(
 			},
 		],
 		isError: true,
+		errorContext,
 	};
+}
+
+function extractErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (typeof error === "string") {
+		return error;
+	}
+
+	if (
+		error &&
+		typeof error === "object" &&
+		"message" in error &&
+		typeof error.message === "string"
+	) {
+		return error.message;
+	}
+
+	if (error && typeof error === "object") {
+		try {
+			return JSON.stringify(error);
+		} catch (_e) {
+			return "Unknown error object";
+		}
+	}
+
+	return String(error);
+}
+
+function extractAxiosErrorContext(
+	error: unknown,
+): ErrorDebugContext["axios"] | null {
+	if (!isAxiosError(error)) {
+		return null;
+	}
+
+	return {
+		status: error.response?.status,
+		statusText: error.response?.statusText,
+		data: error.response?.data,
+		method: error.config?.method,
+		url: error.config?.url,
+	};
+}
+
+function mapHevyErrorMessageByStatus(status?: number): string | null {
+	if (status === 401 || status === 403) {
+		return "The Hevy API key is invalid or has expired. Check HEVY_API_KEY.";
+	}
+
+	if (status === 404) {
+		return "The requested resource was not found in Hevy.";
+	}
+
+	if (status === 409) {
+		return "A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.";
+	}
+
+	if (status === 422) {
+		return "The request failed Hevy validation. Check the field values and try again.";
+	}
+
+	if (status === 429) {
+		return "Rate limited by Hevy. Please wait and retry.";
+	}
+
+	if (status && status >= 500 && status <= 599) {
+		return "Hevy API experienced an error. Please retry later.";
+	}
+
+	return null;
+}
+
+function stringifyErrorData(data: unknown): string {
+	if (typeof data === "string") {
+		return data;
+	}
+
+	if (data && typeof data === "object") {
+		try {
+			return JSON.stringify(data);
+		} catch (_e) {
+			return "Unable to serialize error response data";
+		}
+	}
+
+	return String(data);
 }
 
 /**
@@ -156,27 +270,43 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (args: Record<string, unknown>) => {
 		const argumentKeyCount = Object.keys(args).length;
+		const startTime = Date.now();
 
-		return Sentry.startSpan(
+		toolInvocations.add(1, { tool_name: context });
+
+		return tracer.startActiveSpan(
+			`mcp.tool.${context}`,
 			{
-				name: `mcp.tool.${context}`,
-				op: "mcp.tool.execute",
 				attributes: {
-					"mcp.tool.context": context,
+					"mcp.tool.name": context,
 					"mcp.tool.args.key_count": argumentKeyCount,
+					...(getCurrentUserId() ? { "user.id": getCurrentUserId() } : {}),
 				},
 			},
 			async (span) => {
 				try {
 					const result = await fn(args as TParams);
-					span.setStatus({ code: 1 });
+					span.setStatus({ code: SpanStatusCode.OK });
 					span.setAttribute(
 						"mcp.tool.result.is_error",
 						Boolean(result.isError),
 					);
 					return result;
 				} catch (error) {
-					span.setStatus({ code: 2, message: "tool_handler_error" });
+					span.setStatus({ code: SpanStatusCode.ERROR });
+					span.recordException(error as Error);
+
+					const errorType = determineErrorType(
+						error,
+						error instanceof Error ? error.message : String(error),
+					);
+
+					span.setAttribute("error.type", errorType);
+					toolErrors.add(1, {
+						tool_name: context,
+						error_type: errorType,
+					});
+
 					Sentry.withScope((scope) => {
 						scope.setTag("mcp.tool.context", context);
 						scope.setContext("mcpTool", {
@@ -187,6 +317,11 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 					});
 
 					return createErrorResponse(error, context);
+				} finally {
+					toolDuration.record(Date.now() - startTime, {
+						tool_name: context,
+					});
+					span.end();
 				}
 			},
 		);

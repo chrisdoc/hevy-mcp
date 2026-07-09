@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseConfig } from "./config.js";
 
 function env(vars: Record<string, string | undefined>): NodeJS.ProcessEnv {
@@ -6,29 +6,31 @@ function env(vars: Record<string, string | undefined>): NodeJS.ProcessEnv {
 }
 
 describe("parseConfig", () => {
-	it("prefers --hevy-api-key= over env", () => {
-		const cfg = parseConfig(
-			["--hevy-api-key=cliKey"],
-			env({ HEVY_API_KEY: "envKey" }),
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		["--hevy-api-key=cliKey", "cliKey"],
+		["--hevyApiKey=camelKey", "camelKey"],
+		["hevy-api-key=bareKey", "bareKey"],
+	])("uses %s and emits a deprecation warning", (cliArg, expectedApiKey) => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const cfg = parseConfig([cliArg], env({ HEVY_API_KEY: "envKey" }));
+
+		expect(cfg.apiKey).toBe(expectedApiKey);
+		expect(errorSpy).toHaveBeenCalledTimes(1);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("HEVY_API_KEY"),
 		);
-		expect(cfg.apiKey).toBe("cliKey");
+		expect(errorSpy.mock.calls[0]?.[0]).toMatch(/deprecated/i);
 	});
 
-	it("supports --hevyApiKey= camelCase form", () => {
-		const cfg = parseConfig(
-			["--hevyApiKey=camelKey"],
-			env({ HEVY_API_KEY: "envKey" }),
-		);
-		expect(cfg.apiKey).toBe("camelKey");
-	});
-
-	it("supports bare hevy-api-key= form", () => {
-		const cfg = parseConfig(["hevy-api-key=bareKey"], env({}));
-		expect(cfg.apiKey).toBe("bareKey");
-	});
-
-	it("falls back to env HEVY_API_KEY", () => {
+	it("falls back to env HEVY_API_KEY without deprecation warning", () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const cfg = parseConfig([], env({ HEVY_API_KEY: "envOnly" }));
+
 		expect(cfg.apiKey).toBe("envOnly");
+		expect(errorSpy).not.toHaveBeenCalled();
 	});
 });
