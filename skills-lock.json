@@ -1,0 +1,35 @@
+{
+	"version": 1,
+	"skills": {
+		"code-review": {
+			"source": "mattpocock/skills",
+			"sourceType": "github",
+			"skillPath": "skills/engineering/code-review/SKILL.md",
+			"computedHash": "4a17d9d3e0fc87ae48544d371a820fac5a4a78f4c05e7e6b3229094fbf8a7e26"
+		},
+		"improve-codebase-architecture": {
+			"source": "mattpocock/skills",
+			"sourceType": "github",
+			"skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+			"computedHash": "8bf292143ca93b00276a0de0fc5f84f2381f4690c5b0d32e99fa283a072f392f"
+		},
+		"sentry": {
+			"source": "openai/skills",
+			"sourceType": "github",
+			"skillPath": "skills/.curated/sentry/SKILL.md",
+			"computedHash": "ac32ffd194fee6dfc777e8d16b85ea7f9c5975cf4c7488d2616dc3e5dfa07386"
+		},
+		"thermo-nuclear-code-quality-review": {
+			"source": "cursor/plugins",
+			"sourceType": "github",
+			"skillPath": "cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md",
+			"computedHash": "9052b01b46b1d8dbf94c45f9313ec1983443f9a460e83d49cdc7fe0f640ca476"
+		},
+		"wayfinder": {
+			"source": "mattpocock/skills",
+			"sourceType": "github",
+			"skillPath": "skills/engineering/wayfinder/SKILL.md",
+			"computedHash": "3eb72cd9abdfaa00e10fa69f0b4410ff8639a6cf4eb9e5d187b289c3aa9be2fc"
+		}
+	}
+}
