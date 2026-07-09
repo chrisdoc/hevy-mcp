@@ -1,44 +1,16 @@
-import * as Sentry from "@sentry/node";
+// Telemetry must be initialized before any other imports so that
+// OpenTelemetry and Sentry are ready before application code runs.
+import {
+	Sentry,
+	tracer,
+	serviceName,
+	serviceVersion,
+	setCurrentUserId,
+} from "./utils/telemetry.js";
+import { serverStartups } from "./utils/metrics.js";
+
+import { SpanStatusCode } from "@opentelemetry/api";
 import { createHmac } from "node:crypto";
-
-declare const __HEVY_MCP_NAME__: string | undefined;
-declare const __HEVY_MCP_VERSION__: string | undefined;
-declare const __HEVY_MCP_BUILD__: boolean | undefined;
-
-const isBuiltArtifact =
-	typeof __HEVY_MCP_BUILD__ === "boolean" ? __HEVY_MCP_BUILD__ : false;
-if (
-	isBuiltArtifact &&
-	(typeof __HEVY_MCP_NAME__ !== "string" ||
-		typeof __HEVY_MCP_VERSION__ !== "string")
-) {
-	throw new Error(
-		"Build-time variables __HEVY_MCP_NAME__ and __HEVY_MCP_VERSION__ must be defined.",
-	);
-}
-
-const name =
-	typeof __HEVY_MCP_NAME__ === "string" ? __HEVY_MCP_NAME__ : "hevy-mcp";
-const version =
-	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
-
-// Environment variables are loaded via Node.js native --env-file flag (Node.js 20.6+)
-// or set directly in the environment. No dotenv dependency needed.
-// This avoids stdout pollution that corrupts MCP JSON-RPC communication in stdio mode.
-
-// Sentry monitoring is baked into the built MCP server so usage and errors
-// from users of the published package are captured for observability.
-const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
-const sentryConfig = {
-	dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
-	release: sentryRelease,
-	// Tracing must be enabled for MCP monitoring to work
-	tracesSampleRate: 1.0,
-	sendDefaultPii: false,
-} as const;
-
-Sentry.init(sentryConfig);
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -51,6 +23,9 @@ import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { createClient } from "./utils/hevyClient.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
+
+const name = serviceName;
+const version = serviceVersion;
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 
@@ -75,53 +50,70 @@ export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
 function buildServer(apiKey: string) {
-	return Sentry.startSpan(
+	const userId = fingerprintApiKey(apiKey);
+
+	return tracer.startActiveSpan(
+		"mcp.server.build",
 		{
-			name: "mcp.server.build",
-			op: "mcp.lifecycle.build",
 			attributes: {
 				"mcp.server.name": name,
 				"mcp.server.version": version,
 				"mcp.transport": "stdio",
+				"user.id": userId,
 			},
 		},
-		() => {
-			Sentry.setUser({ id: fingerprintApiKey(apiKey) });
+		(span) => {
+			try {
+				Sentry.setUser({ id: userId });
+				setCurrentUserId(userId);
 
-			const baseServer = new McpServer({
-				name,
-				version,
-			});
-			const server = Sentry.wrapMcpServerWithSentry(baseServer);
+				const baseServer = new McpServer({
+					name,
+					version,
+				});
+				const server = Sentry.wrapMcpServerWithSentry(baseServer);
 
-			const hevyClient = Sentry.startSpan(
-				{
-					name: "mcp.hevy-client.initialize",
-					op: "mcp.lifecycle.client.init",
-				},
-				() => createClient(apiKey, HEVY_API_BASEURL),
-			);
-			console.error("Hevy client initialized with API key");
-
-			Sentry.startSpan(
-				{
-					name: "mcp.tools.register",
-					op: "mcp.lifecycle.tools.register",
-					attributes: {
-						"mcp.tools.count": 6,
+				const hevyClient = tracer.startActiveSpan(
+					"mcp.hevy-client.initialize",
+					(childSpan) => {
+						try {
+							return createClient(apiKey, HEVY_API_BASEURL);
+						} finally {
+							childSpan.end();
+						}
 					},
-				},
-				() => {
-					registerWorkoutTools(server, hevyClient);
-					registerRoutineTools(server, hevyClient);
-					registerTemplateTools(server, hevyClient);
-					registerFolderTools(server, hevyClient);
-					registerBodyMeasurementTools(server, hevyClient);
-					registerUserTools(server, hevyClient);
-				},
-			);
+				);
+				console.error("Hevy client initialized with API key");
 
-			return server;
+				tracer.startActiveSpan(
+					"mcp.tools.register",
+					{
+						attributes: {
+							"mcp.tools.count": 6,
+						},
+					},
+					(toolsSpan) => {
+						try {
+							registerWorkoutTools(server, hevyClient);
+							registerRoutineTools(server, hevyClient);
+							registerTemplateTools(server, hevyClient);
+							registerFolderTools(server, hevyClient);
+							registerBodyMeasurementTools(server, hevyClient);
+							registerUserTools(server, hevyClient);
+						} finally {
+							toolsSpan.end();
+						}
+					},
+				);
+
+				span.setStatus({ code: SpanStatusCode.OK });
+				return server;
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR });
+				throw e;
+			} finally {
+				span.end();
+			}
 		},
 	);
 }
@@ -135,38 +127,55 @@ export function createServer({ config }: { config: ServerConfig }) {
 export default createServer;
 
 export async function runServer() {
-	await Sentry.startSpan(
+	serverStartups.add(1, { version });
+
+	await tracer.startActiveSpan(
+		"mcp.server.run",
 		{
-			name: "mcp.server.run",
-			op: "mcp.lifecycle.run",
 			attributes: {
 				"mcp.transport": "stdio",
 			},
 		},
-		async () => {
-			const args = process.argv.slice(2);
-			const cfg = parseConfig(args, process.env);
-			const apiKey = cfg.apiKey;
-			assertApiKey(apiKey);
+		async (span) => {
+			try {
+				const args = process.argv.slice(2);
+				const cfg = parseConfig(args, process.env);
+				const apiKey = cfg.apiKey;
+				assertApiKey(apiKey);
 
-			const server = buildServer(apiKey);
-			console.error("Starting MCP server in stdio mode");
-			const transport = createInstrumentedStdioTransport(
-				new StdioServerTransport(),
-			);
+				const server = buildServer(apiKey);
+				console.error("Starting MCP server in stdio mode");
+				const transport = createInstrumentedStdioTransport(
+					new StdioServerTransport(),
+				);
 
-			await Sentry.startSpan(
-				{
-					name: "mcp.server.connect",
-					op: "mcp.lifecycle.connect",
-					attributes: {
-						"mcp.transport": "stdio",
+				await tracer.startActiveSpan(
+					"mcp.server.connect",
+					{
+						attributes: {
+							"mcp.transport": "stdio",
+						},
 					},
-				},
-				async () => {
-					await server.connect(transport);
-				},
-			);
+					async (connectSpan) => {
+						try {
+							await server.connect(transport);
+							connectSpan.setStatus({ code: SpanStatusCode.OK });
+						} catch (e) {
+							connectSpan.setStatus({ code: SpanStatusCode.ERROR });
+							throw e;
+						} finally {
+							connectSpan.end();
+						}
+					},
+				);
+
+				span.setStatus({ code: SpanStatusCode.OK });
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR });
+				throw e;
+			} finally {
+				span.end();
+			}
 		},
 	);
 }
