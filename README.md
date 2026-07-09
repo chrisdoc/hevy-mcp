@@ -191,6 +191,11 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 | **Body Measurements** | `get-body-measurements`, `get-body-measurement`, `create-body-measurement`, `update-body-measurement`                              |
 | **User**              | `get-user-info`                                                                                                                    |
 
+> **Delete operations are currently unsupported:** The upstream Hevy OpenAPI
+> spec does not expose `DELETE` endpoints for workouts, routines, routine
+> folders, exercise templates, or body measurements, so `hevy-mcp` does not
+> provide delete tools for these resources.
+
 ---
 
 ## 👨‍💻 Development & Contributing
