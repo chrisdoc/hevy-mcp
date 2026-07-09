@@ -142,6 +142,23 @@ describe("Formatters", () => {
 			const result = formatWorkout(workout as Workout);
 			expect(result.exercises?.[0]?.supersetsId).toBe(7);
 		});
+
+		it("handles missing required workout fields and malformed times", () => {
+			const workout = {
+				start_time: "not-a-date",
+				end_time: "still-not-a-date",
+			} as Workout;
+
+			const result = formatWorkout(workout);
+			expect(result).toMatchObject({
+				id: undefined,
+				title: undefined,
+				startTime: "not-a-date",
+				endTime: "still-not-a-date",
+				duration: "Unknown duration",
+				exercises: undefined,
+			});
+		});
 	});
 
 	describe("formatRoutine", () => {
@@ -332,6 +349,33 @@ describe("Formatters", () => {
 			const result = formatRoutine(routine as Routine);
 			expect(result.exercises?.[0]?.supersetId).toBe(9);
 		});
+
+		it("handles malformed routines with missing required fields", () => {
+			const routine = {
+				exercises: [
+					{
+						sets: [{}],
+					},
+				],
+			} as Routine;
+
+			const result = formatRoutine(routine);
+			expect(result).toMatchObject({
+				id: undefined,
+				title: undefined,
+				folderId: undefined,
+			});
+			expect(result.exercises?.[0]).toMatchObject({
+				name: undefined,
+				exerciseTemplateId: undefined,
+				supersetId: null,
+			});
+			expect(result.exercises?.[0]?.sets?.[0]).toMatchObject({
+				type: undefined,
+				weight: undefined,
+				reps: undefined,
+			});
+		});
 	});
 
 	describe("formatRoutineFolder", () => {
@@ -350,6 +394,16 @@ describe("Formatters", () => {
 				title: "Cardio",
 				createdAt: "2025-03-25T10:00:00Z",
 				updatedAt: "2025-03-25T10:15:00Z",
+			});
+		});
+
+		it("handles folders with missing required fields", () => {
+			const result = formatRoutineFolder({} as RoutineFolder);
+			expect(result).toEqual({
+				id: undefined,
+				title: undefined,
+				createdAt: undefined,
+				updatedAt: undefined,
 			});
 		});
 	});
@@ -377,6 +431,15 @@ describe("Formatters", () => {
 			const endTime = "2025-03-27T08:00:00Z";
 			const result = calculateDuration(startTime, endTime);
 			expect(result).toContain("Invalid duration");
+		});
+
+		it("returns Unknown duration for malformed timestamp strings", () => {
+			expect(calculateDuration("not-a-date", "2025-03-27T08:00:00Z")).toBe(
+				"Unknown duration",
+			);
+			expect(calculateDuration("2025-03-27T07:00:00Z", "not-a-date")).toBe(
+				"Unknown duration",
+			);
 		});
 	});
 
@@ -421,6 +484,22 @@ describe("Formatters", () => {
 				primaryMuscleGroup: "full_body",
 				secondaryMuscleGroups: undefined,
 				isCustom: true,
+			});
+		});
+
+		it("handles malformed template fields without throwing", () => {
+			const malformedTemplate = {
+				secondary_muscle_groups: "not-an-array",
+			} as unknown as ExerciseTemplate;
+
+			const result = formatExerciseTemplate(malformedTemplate);
+			expect(result).toMatchObject({
+				id: undefined,
+				title: undefined,
+				type: undefined,
+				primaryMuscleGroup: undefined,
+				secondaryMuscleGroups: "not-an-array",
+				isCustom: undefined,
 			});
 		});
 	});
