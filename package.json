@@ -1,6 +1,6 @@
 {
 	"name": "hevy-mcp",
-	"version": "1.25.17",
+	"version": "1.26.0",
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"keywords": [
 		"api",
@@ -34,7 +34,7 @@
 		"access": "public"
 	},
 	"scripts": {
-		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/index.mjs",
+		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/cli.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
 		"test": "node --env-file .env node_modules/vitest/vitest.mjs --run",
 		"openapi": "node ./scripts/openapi-spec.js",
@@ -55,7 +55,15 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@opentelemetry/api": "^1.9.0",
+		"@opentelemetry/exporter-metrics-otlp-http": "^0.220.0",
+		"@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
+		"@opentelemetry/resources": "^2.9.0",
+		"@opentelemetry/sdk-metrics": "^2.9.0",
+		"@opentelemetry/sdk-trace-base": "^2.9.0",
+		"@opentelemetry/sdk-trace-node": "^2.9.0",
 		"@sentry/node": "^10.58.0",
+		"@sentry/opentelemetry": "^10.58.0",
 		"axios": "^1.18.0",
 		"zod": "^4.4.3"
 	},
@@ -78,6 +86,7 @@
 		"abstract-syntax-tree": "^2.22.0",
 		"cross-env": "^10.1.0",
 		"lefthook": "^2.1.9",
+		"nock": "^14.0.16",
 		"oxfmt": "^0.57.0",
 		"oxlint": "^1.70.0",
 		"oxlint-tsgolint": "^0.24.0",
