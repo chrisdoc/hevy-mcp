@@ -2,6 +2,46 @@ import * as Sentry from "@sentry/node";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
 
+type AxiosLikeError = Error & {
+	hevyRetryCount?: number;
+	hevyRetryExhausted?: boolean;
+	isAxiosError: true;
+	response?: {
+		data?: unknown;
+		headers?: Record<string, string>;
+		status: number;
+	};
+};
+
+function createAxiosError(options: {
+	data?: unknown;
+	headers?: Record<string, string>;
+	message?: string;
+	retryCount?: number;
+	retryExhausted?: boolean;
+	status: number;
+}): AxiosLikeError {
+	const error = new Error(
+		options.message ?? "Request failed",
+	) as AxiosLikeError;
+	error.isAxiosError = true;
+	error.response = {
+		status: options.status,
+		headers: options.headers,
+		data: options.data,
+	};
+
+	if (options.retryCount !== undefined) {
+		error.hevyRetryCount = options.retryCount;
+	}
+
+	if (options.retryExhausted) {
+		error.hevyRetryExhausted = true;
+	}
+
+	return error;
+}
+
 const sentryTestDoubles = vi.hoisted(() => ({
 	span: {
 		setAttribute: vi.fn(),
@@ -123,6 +163,64 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: API_ERROR)"),
+				error,
+			);
+		});
+
+		it("shows actionable message for 429 rate limits", () => {
+			const error = createAxiosError({
+				headers: { "retry-after": "12" },
+				status: 429,
+			});
+
+			const response = createErrorResponse(error, "get-workouts");
+
+			expect(response.content[0].text).toBe(
+				"[get-workouts] Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 12 seconds before retrying.",
+			);
+			expect(console.error).toHaveBeenCalledWith(
+				expect.stringContaining("(Type: RATE_LIMIT)"),
+				error,
+			);
+		});
+
+		it("handles Retry-After as HTTP-date for 429 messages", () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, "now").mockReturnValue(now);
+
+			const error = createAxiosError({
+				headers: {
+					"retry-after": new Date(now + 5_000).toUTCString(),
+				},
+				status: 429,
+			});
+
+			const response = createErrorResponse(error);
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 5 seconds before retrying.",
+			);
+		});
+
+		it("surfaces clearer message when retries are exhausted", () => {
+			const error = createAxiosError({
+				message: "timeout of 30000ms exceeded",
+				retryCount: 3,
+				retryExhausted: true,
+				status: 503,
+			});
+
+			const response = createErrorResponse(error, "get-routines");
+
+			expect(response.content[0].text).toBe(
+				"[get-routines] Error: Unable to complete the request " +
+					"after 4 attempts to the Hevy API due to transient " +
+					"failures. Please try again shortly.",
+			);
+			expect(console.error).toHaveBeenCalledWith(
+				expect.stringContaining("(Type: NETWORK_ERROR)"),
 				error,
 			);
 		});

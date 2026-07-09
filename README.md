@@ -148,10 +148,14 @@ Supply your Hevy API key via:
 
 1. **Environment Variable**: `HEVY_API_KEY` (in `.env` or system environment).
 2. **CLI Argument**: `--hevy-api-key=your_key` (after `--` in npm scripts).
+3. **Optional Timeout Override**: `HEVY_MCP_API_TIMEOUT` (milliseconds,
+   defaults to `30000`).
 
 ```env
 # Example .env
 HEVY_API_KEY=your_hevy_api_key_here
+# Optional: customize Hevy API request timeout (milliseconds)
+HEVY_MCP_API_TIMEOUT=30000
 ```
 
 ### 📡 Sentry Monitoring

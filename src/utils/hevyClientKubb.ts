@@ -2,7 +2,8 @@ import type {
 	RequestConfig,
 	ResponseConfig,
 } from "../generated/.kubb/fetch.ts";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
+import type { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import * as api from "../generated/client/api";
 import type {
 	GetV1BodyMeasurementsQueryParams,
@@ -44,6 +45,272 @@ function wrapApi<T extends (...args: Parameters<T>) => ReturnType<T>>(
 	return fn;
 }
 
+export const DEFAULT_API_TIMEOUT_MS = 30_000;
+export const MAX_GET_RETRIES = 3;
+export const RETRY_BACKOFF_BASE_MS = 300;
+const RETRY_BACKOFF_MAX_MS = 5_000;
+
+export const HEVY_RETRY_EXHAUSTED_ERROR_CODE = "HEVY_RETRY_EXHAUSTED";
+
+const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+
+const RETRYABLE_NETWORK_ERROR_CODES = new Set([
+	"ECONNABORTED",
+	"ECONNREFUSED",
+	"ECONNRESET",
+	"EAI_AGAIN",
+	"ENETUNREACH",
+	"ENOTFOUND",
+	"ERR_NETWORK",
+	"ERR_SOCKET_TIMEOUT",
+	"ETIMEDOUT",
+]);
+
+type RetryAwareAxiosError = AxiosError & {
+	hevyRetryCount?: number;
+	hevyRetryExhausted?: boolean;
+	hevyRetryStatus?: number;
+	hevyRetryOriginalCode?: string;
+};
+
+function getApiTimeoutMs(): number {
+	const rawValue = process.env.HEVY_MCP_API_TIMEOUT;
+	if (!rawValue) {
+		return DEFAULT_API_TIMEOUT_MS;
+	}
+
+	const parsed = Number(rawValue);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		return DEFAULT_API_TIMEOUT_MS;
+	}
+
+	return Math.trunc(parsed);
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+function isGetRequest(config: RequestConfig<unknown>): boolean {
+	return config.method?.toUpperCase() === "GET";
+}
+
+function isRetryableStatus(status: number | undefined): boolean {
+	if (status === undefined) {
+		return false;
+	}
+
+	return RETRYABLE_STATUS_CODES.has(status);
+}
+
+function isTransientNetworkError(error: AxiosError): boolean {
+	if (error.code === "ERR_CANCELED") {
+		return false;
+	}
+
+	if (error.code && RETRYABLE_NETWORK_ERROR_CODES.has(error.code)) {
+		return true;
+	}
+
+	if (error.response) {
+		return false;
+	}
+
+	const message = error.message.toLowerCase();
+	return (
+		message.includes("network") ||
+		message.includes("socket hang up") ||
+		message.includes("timeout")
+	);
+}
+
+function normalizeHeaderValue(value: unknown): string | undefined {
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
+	}
+
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return String(value);
+	}
+
+	if (Array.isArray(value) && value.length > 0) {
+		return normalizeHeaderValue(value[0]);
+	}
+
+	return undefined;
+}
+
+function getHeaderValue(headers: unknown, key: string): string | undefined {
+	if (!headers || typeof headers !== "object") {
+		return undefined;
+	}
+
+	if (
+		"get" in headers &&
+		typeof (headers as { get?: unknown }).get === "function"
+	) {
+		const value = (
+			headers as {
+				get: (headerName: string) => unknown;
+			}
+		).get(key);
+		return normalizeHeaderValue(value);
+	}
+
+	const headerRecord = headers as Record<string, unknown>;
+	return normalizeHeaderValue(
+		headerRecord[key] ??
+			headerRecord[key.toLowerCase()] ??
+			headerRecord[key.toUpperCase()],
+	);
+}
+
+function parseRetryAfterMs(value: string): number | undefined {
+	const numericSeconds = Number(value);
+	if (Number.isFinite(numericSeconds) && numericSeconds >= 0) {
+		return Math.round(numericSeconds * 1000);
+	}
+
+	const dateMillis = Date.parse(value);
+	if (Number.isNaN(dateMillis)) {
+		return undefined;
+	}
+
+	return Math.max(0, dateMillis - Date.now());
+}
+
+function getRetryAfterDelayMs(error: AxiosError): number | undefined {
+	if (error.response?.status !== 429) {
+		return undefined;
+	}
+
+	const retryAfterHeader = getHeaderValue(
+		error.response.headers,
+		"retry-after",
+	);
+	if (!retryAfterHeader) {
+		return undefined;
+	}
+
+	return parseRetryAfterMs(retryAfterHeader);
+}
+
+function getExponentialBackoffMs(retryAttempt: number): number {
+	const exponent = Math.max(0, retryAttempt - 1);
+	const delay = RETRY_BACKOFF_BASE_MS * 2 ** exponent;
+	return Math.min(RETRY_BACKOFF_MAX_MS, delay);
+}
+
+function getRetryDelayMs(error: AxiosError, retryAttempt: number): number {
+	const exponentialDelay = getExponentialBackoffMs(retryAttempt);
+	const retryAfterDelay = getRetryAfterDelayMs(error);
+
+	if (retryAfterDelay === undefined) {
+		return exponentialDelay;
+	}
+
+	return Math.max(exponentialDelay, retryAfterDelay);
+}
+
+function shouldRetryRequest(
+	config: RequestConfig<unknown>,
+	error: AxiosError,
+): boolean {
+	if (!isGetRequest(config)) {
+		return false;
+	}
+
+	return (
+		isRetryableStatus(error.response?.status) || isTransientNetworkError(error)
+	);
+}
+
+function markRetryExhausted(error: AxiosError, retryCount: number): void {
+	const retryError = error as RetryAwareAxiosError;
+	retryError.hevyRetryExhausted = true;
+	retryError.hevyRetryCount = retryCount;
+	retryError.hevyRetryStatus = error.response?.status;
+
+	if (retryError.code) {
+		retryError.hevyRetryOriginalCode = retryError.code;
+	}
+
+	retryError.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
+}
+
+async function requestWithRetries<TData, TVariables>(
+	axiosInstance: AxiosInstance,
+	config: RequestConfig<TVariables>,
+): Promise<ResponseConfig<TData>> {
+	let retryCount = 0;
+
+	while (true) {
+		try {
+			return await axiosInstance.request<
+				TData,
+				ResponseConfig<TData>,
+				TVariables
+			>(config as AxiosRequestConfig<TVariables>);
+		} catch (error) {
+			if (!isAxiosError(error)) {
+				throw error;
+			}
+
+			const normalizedConfig = config as RequestConfig<unknown>;
+			if (!shouldRetryRequest(normalizedConfig, error)) {
+				throw error;
+			}
+
+			if (retryCount >= MAX_GET_RETRIES) {
+				markRetryExhausted(error, retryCount);
+				throw error;
+			}
+
+			retryCount += 1;
+			const retryDelayMs = getRetryDelayMs(error, retryCount);
+			await sleep(retryDelayMs);
+		}
+	}
+}
+
+function createResilientClient(axiosInstance: AxiosInstance): KubbClient {
+	let clientConfig: Partial<RequestConfig<unknown>> = {
+		baseURL: axiosInstance.defaults.baseURL,
+	};
+
+	const resilientClient = (async <
+		TData,
+		_TError = unknown,
+		TVariables = unknown,
+	>(
+		config: RequestConfig<TVariables>,
+	): Promise<ResponseConfig<TData>> => {
+		return requestWithRetries<TData, TVariables>(axiosInstance, config);
+	}) as KubbClient;
+
+	resilientClient.getConfig = () => ({
+		...clientConfig,
+	});
+
+	resilientClient.setConfig = (config: RequestConfig) => {
+		clientConfig = {
+			...clientConfig,
+			...config,
+		};
+
+		if (config.baseURL !== undefined) {
+			axiosInstance.defaults.baseURL = config.baseURL;
+		}
+
+		return resilientClient.getConfig();
+	};
+
+	return resilientClient;
+}
+
 export function createClient(
 	apiKey: string,
 	baseUrl = "https://api.hevyapp.com",
@@ -51,6 +318,7 @@ export function createClient(
 	// Create an axios instance with the API key
 	const axiosInstance = axios.create({
 		baseURL: baseUrl,
+		timeout: getApiTimeoutMs(),
 		headers: {
 			"api-key": apiKey,
 		},
@@ -61,8 +329,7 @@ export function createClient(
 		"api-key": apiKey,
 	};
 
-	// Cast axios instance to the expected client type
-	const client = axiosInstance as unknown as KubbClient;
+	const client = createResilientClient(axiosInstance);
 
 	// Return an object with all the API methods using ReturnType for automatic type inference
 	// All API calls use wrapApi to ensure TypeScript validates arg order matches generated API

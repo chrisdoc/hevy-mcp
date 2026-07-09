@@ -21,10 +21,152 @@ export interface ErrorResponse {
  */
 export enum ErrorType {
 	API_ERROR = "API_ERROR",
+	RATE_LIMIT = "RATE_LIMIT",
 	VALIDATION_ERROR = "VALIDATION_ERROR",
 	NOT_FOUND = "NOT_FOUND",
 	NETWORK_ERROR = "NETWORK_ERROR",
 	UNKNOWN_ERROR = "UNKNOWN_ERROR",
+}
+
+type RetryAwareError = {
+	hevyRetryCount?: number;
+	hevyRetryExhausted?: boolean;
+};
+
+function normalizeHeaderValue(value: unknown): string | undefined {
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
+	}
+
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return String(value);
+	}
+
+	if (Array.isArray(value) && value.length > 0) {
+		return normalizeHeaderValue(value[0]);
+	}
+
+	return undefined;
+}
+
+function getHeaderValue(headers: unknown, key: string): string | undefined {
+	if (!headers || typeof headers !== "object") {
+		return undefined;
+	}
+
+	if (
+		"get" in headers &&
+		typeof (headers as { get?: unknown }).get === "function"
+	) {
+		const value = (
+			headers as {
+				get: (headerName: string) => unknown;
+			}
+		).get(key);
+		return normalizeHeaderValue(value);
+	}
+
+	const headerRecord = headers as Record<string, unknown>;
+	return normalizeHeaderValue(
+		headerRecord[key] ??
+			headerRecord[key.toLowerCase()] ??
+			headerRecord[key.toUpperCase()],
+	);
+}
+
+function formatSecondsLabel(seconds: number): string {
+	const roundedSeconds = Math.max(0, Math.round(seconds));
+	const suffix = roundedSeconds === 1 ? "" : "s";
+	return `${roundedSeconds} second${suffix}`;
+}
+
+function getRateLimitMessage(error: unknown): string {
+	if (!isAxiosError(error)) {
+		return "Rate limited by Hevy. Please wait and retry.";
+	}
+
+	const retryAfterHeader = getHeaderValue(
+		error.response?.headers,
+		"retry-after",
+	);
+	if (!retryAfterHeader) {
+		return (
+			"Rate limited by Hevy (HTTP 429). " +
+			"Please wait and retry your request."
+		);
+	}
+
+	const seconds = Number(retryAfterHeader);
+	if (Number.isFinite(seconds) && seconds >= 0) {
+		return (
+			"Rate limited by Hevy (HTTP 429). " +
+			`Please wait about ${formatSecondsLabel(seconds)} before retrying.`
+		);
+	}
+
+	const retryAtMillis = Date.parse(retryAfterHeader);
+	if (!Number.isNaN(retryAtMillis)) {
+		const secondsUntilRetry = Math.ceil(
+			Math.max(0, retryAtMillis - Date.now()) / 1000,
+		);
+		return (
+			"Rate limited by Hevy (HTTP 429). " +
+			`Please wait about ${formatSecondsLabel(
+				secondsUntilRetry,
+			)} before retrying.`
+		);
+	}
+
+	return (
+		"Rate limited by Hevy (HTTP 429). " + "Please wait and retry your request."
+	);
+}
+
+function isRetryExhaustedError(error: unknown): boolean {
+	if (!error || typeof error !== "object") {
+		return false;
+	}
+
+	const retryAwareError = error as RetryAwareError;
+	return retryAwareError.hevyRetryExhausted === true;
+}
+
+function getRetryExhaustedMessage(error: unknown): string {
+	const retryCount =
+		typeof error === "object" && error !== null
+			? (error as RetryAwareError).hevyRetryCount
+			: undefined;
+	const attemptCount =
+		typeof retryCount === "number" && Number.isFinite(retryCount)
+			? retryCount + 1
+			: undefined;
+
+	if (attemptCount) {
+		return (
+			`Unable to complete the request after ${attemptCount} attempts ` +
+			"to the Hevy API due to transient failures. " +
+			"Please try again shortly."
+		);
+	}
+
+	return (
+		"Unable to complete the request after multiple attempts " +
+		"to the Hevy API due to transient failures. " +
+		"Please try again shortly."
+	);
+}
+
+function getUserFacingMessage(error: unknown, defaultMessage: string): string {
+	if (isAxiosError(error) && error.response?.status === 429) {
+		return getRateLimitMessage(error);
+	}
+
+	if (isRetryExhaustedError(error)) {
+		return getRetryExhaustedMessage(error);
+	}
+
+	return defaultMessage;
 }
 
 /**
@@ -46,21 +188,23 @@ export function createErrorResponse(
 	context?: string,
 ): McpToolResponse {
 	// Extract axios response data if available
-	let errorMessage = error instanceof Error ? error.message : String(error);
+	let baseErrorMessage = error instanceof Error ? error.message : String(error);
 
 	// Check for axios error with response data
 	if (isAxiosError(error) && error.response?.data) {
 		const { data } = error.response;
 		if (typeof data === "string") {
-			errorMessage = data;
+			baseErrorMessage = data;
 		} else if (data && typeof data === "object") {
 			try {
-				errorMessage = JSON.stringify(data);
+				baseErrorMessage = JSON.stringify(data);
 			} catch (_e) {
-				errorMessage = String(data);
+				baseErrorMessage = String(data);
 			}
 		}
 	}
+
+	const errorMessage = getUserFacingMessage(error, baseErrorMessage);
 
 	// Extract error code if available (for logging purposes)
 	const errorCode =
@@ -96,6 +240,14 @@ export function createErrorResponse(
  * Determine the type of error based on error characteristics
  */
 function determineErrorType(error: unknown, message: string): ErrorType {
+	if (isAxiosError(error) && error.response?.status === 429) {
+		return ErrorType.RATE_LIMIT;
+	}
+
+	if (isRetryExhaustedError(error)) {
+		return ErrorType.NETWORK_ERROR;
+	}
+
 	const messageLower = message.toLowerCase();
 	const nameLower = error instanceof Error ? error.name.toLowerCase() : "";
 
