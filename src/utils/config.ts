@@ -2,7 +2,7 @@ export interface HevyConfig {
 	apiKey?: string;
 }
 
-const HEVY_API_KEY_ARG_DEPRECATION_WARNING = [
+const DEPRECATED_CLI_ARGUMENT_WARNING = [
 	"DEPRECATION WARNING: Passing the Hevy API key via CLI arguments",
 	"(--hevy-api-key=..., --hevyApiKey=..., hevy-api-key=...) is",
 	"deprecated and insecure. Use the HEVY_API_KEY environment",
@@ -40,7 +40,7 @@ export function parseConfig(
 		if (apiKey) break;
 	}
 	if (usedDeprecatedApiKeyArg) {
-		console.error(HEVY_API_KEY_ARG_DEPRECATION_WARNING);
+		console.error(DEPRECATED_CLI_ARGUMENT_WARNING);
 	}
 	if (!apiKey) {
 		apiKey = env.HEVY_API_KEY || "";
