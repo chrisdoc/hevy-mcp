@@ -1,0 +1,44 @@
+queue_rules:
+  - name: default
+    merge_method: squash
+    update_method: rebase
+    # Batch several PRs into a single speculative CI run to clear the backlog faster.
+    batch_size: 3
+    batch_max_wait_time: 5 min
+    # Conditions to enter the queue.
+    queue_conditions:
+      - base = main
+      - check-success = build
+    # Conditions re-checked at the front of the queue before merging.
+    merge_conditions:
+      - check-success = build
+
+pull_request_rules:
+  - name: Queue pull requests labeled 'queue'
+    conditions:
+      - base = main
+      - label = queue
+    actions:
+      queue:
+        name: default
+
+  - name: Automatically queue Dependabot pull requests
+    conditions:
+      - base = main
+      - author = dependabot[bot]
+      - check-success = build
+    actions:
+      queue:
+        name: default
+  - name: Keep PRs up to date
+    conditions:
+      - -draft
+      - "#commits-behind >= 1"
+    actions:
+      update: null
+priority_rules:
+  - name: dependabot
+    priority: low
+    conditions:
+      - author = dependabot[bot]
+    allow_checks_interruption: false
