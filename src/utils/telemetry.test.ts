@@ -116,7 +116,7 @@ describe("telemetry initialization", () => {
 		await import("./telemetry.js");
 
 		expect(testDoubles.otlpTraceExporter).toHaveBeenCalledWith({
-			url: "https://api.honeycomb.io/v1/traces",
+			url: "https://api.eu1.honeycomb.io/v1/traces",
 			headers: {
 				"x-honeycomb-team": "test-honeycomb-key",
 				"x-honeycomb-dataset": "hevy-mcp",
@@ -124,7 +124,7 @@ describe("telemetry initialization", () => {
 		});
 		expect(testDoubles.batchSpanProcessor).toHaveBeenCalledTimes(1);
 		expect(testDoubles.otlpMetricExporter).toHaveBeenCalledWith({
-			url: "https://api.honeycomb.io/v1/metrics",
+			url: "https://api.eu1.honeycomb.io/v1/metrics",
 			headers: {
 				"x-honeycomb-team": "test-honeycomb-key",
 				"x-honeycomb-dataset": "hevy-mcp",
