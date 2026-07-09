@@ -190,6 +190,111 @@ describe("Error Handler", () => {
 			},
 		);
 
+		it("uses raw axios string data when no Hevy status mapping exists", () => {
+			const response = createErrorResponse(
+				createMockAxiosError(400, "plain upstream message"),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				"[TestContext] Error: plain upstream message",
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "Request failed with status code 400",
+					axios: {
+						status: 400,
+						data: "plain upstream message",
+					},
+				},
+			});
+		});
+
+		it("serializes axios object data when no Hevy status mapping exists", () => {
+			const responseBody = {
+				detail: "Missing workout entry",
+			};
+			const response = createErrorResponse(
+				createMockAxiosError(400, responseBody),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				`[TestContext] Error: ${JSON.stringify(responseBody)}`,
+			);
+		});
+
+		it("stringifies axios primitive data when no Hevy status mapping exists", () => {
+			const response = createErrorResponse(
+				createMockAxiosError(400, 42),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe("[TestContext] Error: 42");
+		});
+
+		it("serializes object errors without a message field", () => {
+			const response = createErrorResponse({
+				detail: "Missing workout entry",
+			});
+
+			expect(response.content[0].text).toBe(
+				'Error: {"detail":"Missing workout entry"}',
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: '{"detail":"Missing workout entry"}',
+				},
+			});
+		});
+
+		it("falls back when error objects cannot be serialized", () => {
+			const circularError: { self?: unknown } = {};
+			circularError.self = circularError;
+
+			const response = createErrorResponse(circularError);
+
+			expect(response.content[0].text).toBe("Error: Unknown error object");
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "Unknown error object",
+				},
+			});
+		});
+
+		it("falls back when axios response data cannot be serialized", () => {
+			const circularData: { self?: unknown } = {};
+			circularData.self = circularData;
+
+			const response = createErrorResponse(
+				createMockAxiosError(400, circularData),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				"[TestContext] Error: Unable to serialize error response data",
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					axios: {
+						status: 400,
+						data: circularData,
+					},
+				},
+			});
+		});
+
+		it("stringifies non-object thrown values", () => {
+			const response = createErrorResponse(0);
+
+			expect(response.content[0].text).toBe("Error: 0");
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "0",
+				},
+			});
+		});
+
 		it("classifies network-related errors as NETWORK_ERROR", () => {
 			const error = new Error("Network request failed");
 			createErrorResponse(error);
