@@ -30,3 +30,9 @@ pull_request_rules:
     actions:
       queue:
         name: default
+  - name: Keep PRs up to date
+    conditions:
+      - -draft
+      - "#commits-behind >= 1"
+    actions:
+      update: null
