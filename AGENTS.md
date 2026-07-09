@@ -190,7 +190,8 @@ Always perform these validation steps after making changes:
    ```
 
    - Must complete without errors (warnings about oxlint and oxfmt schema are acceptable).
-   - **EXPECTED:** Warnings about `any` usage in `webhooks.ts` are acceptable (API methods not yet available).
+   - No tool-specific lint warnings are expected; treat reported code warnings
+     as issues to fix.
 
 4. **Type checking validation:**
 
@@ -227,12 +228,14 @@ Always perform these validation steps after making changes:
 ```
 src/
 ├── index.ts           # Main entry point - register tools here
-├── tools/             # MCP tool implementations
-│   ├── workouts.ts    # Workout management tools
-│   ├── routines.ts    # Routine management tools
-│   ├── templates.ts   # Exercise template tools
-│   ├── folders.ts     # Routine folder tools
-│   └── webhooks.ts    # Webhook subscription tools
+├── tools/             # MCP tool implementations (+ co-located *.test.ts)
+│   ├── annotations.ts       # Workout annotation tools
+│   ├── body-measurements.ts # Body measurement tools
+│   ├── folders.ts           # Routine folder tools
+│   ├── routines.ts          # Routine management tools
+│   ├── templates.ts         # Exercise template tools
+│   ├── user.ts              # User profile tools
+│   └── workouts.ts          # Workout management tools
 ├── generated/         # Auto-generated API client (DO NOT EDIT)
 │   ├── client/        # Kubb-generated client code
 │   └── schemas/       # Zod validation schemas
@@ -354,7 +357,9 @@ server.tool(
 4. **Build failures:** Run `npm run check` to identify formatting/linting issues
 5. **Network errors in `npm run openapi`:** Expected in sandboxed environments
 6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
-7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)
+7. **Stale webhook references in docs:** Webhook endpoints are not currently
+   available in the generated client, so docs should not reference a
+   `src/tools/webhooks.ts` tool implementation.
 
 ### Performance Expectations
 
