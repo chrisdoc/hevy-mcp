@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import createServer, {
@@ -7,6 +6,7 @@ import createServer, {
 	runServer,
 } from "./index.js";
 import { createClient } from "./utils/hevyClient.js";
+import { Sentry } from "./utils/telemetry.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
@@ -17,25 +17,74 @@ const TEST_API_KEY_HMAC_SHA256 =
 const CLI_KEY_HMAC_SHA256 =
 	"85a3f127af4cea435cd358405c5298016946cc3f4e196552c2f1e435c2c6f1b3";
 
+const testDoubles = vi.hoisted(() => ({
+	span: {
+		setAttribute: vi.fn(),
+		setStatus: vi.fn(),
+		recordException: vi.fn(),
+		end: vi.fn(),
+	},
+	connect: vi.fn().mockResolvedValue(undefined),
+	sentry: {
+		init: vi.fn(() => ({})),
+		setUser: vi.fn(),
+		wrapMcpServerWithSentry: vi.fn((server: unknown) => server),
+		withScope: vi.fn((cb: (scope: unknown) => void) =>
+			cb({ setTag: vi.fn(), setContext: vi.fn() }),
+		),
+		captureException: vi.fn(),
+		validateOpenTelemetrySetup: vi.fn(),
+		SentryContextManager: vi.fn(),
+	},
+	startActiveSpan: vi.fn((...args: unknown[]) => {
+		const cb = args[args.length - 1] as (span: unknown) => unknown;
+		return cb(testDoubles.span);
+	}),
+}));
+
 vi.mock("./utils/hevyClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
 }));
 
-vi.mock("@sentry/node", () => ({
-	init: vi.fn(),
-	setUser: vi.fn(),
-	wrapMcpServerWithSentry: vi.fn((server) => server),
-	startSpan: vi.fn((_, callback) =>
-		callback({
-			setAttribute: vi.fn(),
-			setStatus: vi.fn(),
-		}),
-	),
+vi.mock("./utils/telemetry.js", () => ({
+	Sentry: testDoubles.sentry,
+	tracer: {
+		startActiveSpan: testDoubles.startActiveSpan,
+	},
+	meter: {
+		createCounter: vi.fn(() => ({ add: vi.fn() })),
+		createHistogram: vi.fn(() => ({ record: vi.fn() })),
+	},
+	serviceName: "hevy-mcp",
+	serviceVersion: "dev",
+	setCurrentUserId: vi.fn(),
+	getCurrentUserId: vi.fn(() => undefined),
+}));
+
+vi.mock("./utils/metrics.js", () => ({
+	toolInvocations: { add: vi.fn() },
+	toolErrors: { add: vi.fn() },
+	toolDuration: { record: vi.fn() },
+	apiCalls: { add: vi.fn() },
+	apiDuration: { record: vi.fn() },
+	stdioParseErrors: { add: vi.fn() },
+	serverStartups: { add: vi.fn() },
+}));
+
+vi.mock("@opentelemetry/api", () => ({
+	SpanStatusCode: { OK: 1, ERROR: 2 },
+	trace: { getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })) },
+	metrics: {
+		getMeter: vi.fn(() => ({
+			createCounter: vi.fn(),
+			createHistogram: vi.fn(),
+		})),
+	},
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	class MockMcpServer {
-		connect = vi.fn().mockResolvedValue(undefined);
+		connect = testDoubles.connect;
 		tool = vi.fn();
 	}
 
@@ -59,15 +108,6 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => {
 });
 
 describe("Server entry", () => {
-	it("initializes Sentry with EPIPE/broken pipe ignoreErrors", () => {
-		createServer({ config: { apiKey: "test-key" } });
-		expect(Sentry.init).toHaveBeenCalledWith(
-			expect.objectContaining({
-				ignoreErrors: ["EPIPE", "broken pipe"],
-			}),
-		);
-	});
-
 	beforeEach(() => {
 		process.env = { ...originalEnv };
 		process.argv = [...originalArgv];
@@ -92,8 +132,13 @@ describe("Server entry", () => {
 	it("creates an MCP server instance", () => {
 		const server = createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
-		expect(Sentry.startSpan).toHaveBeenCalledWith(
-			expect.objectContaining({ name: "mcp.server.build" }),
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"mcp.server.build",
+			expect.objectContaining({
+				attributes: expect.objectContaining({
+					"mcp.server.name": "hevy-mcp",
+				}),
+			}),
 			expect.any(Function),
 		);
 	});
@@ -111,6 +156,17 @@ describe("Server entry", () => {
 		expect(JSON.stringify(vi.mocked(Sentry.setUser).mock.calls)).not.toContain(
 			"test-key",
 		);
+	});
+
+	it("marks the build span as failed when the Hevy client cannot be initialized", () => {
+		vi.mocked(createClient).mockImplementationOnce(() => {
+			throw new Error("client init failed");
+		});
+
+		expect(() => createServer({ config: { apiKey: "test-key" } })).toThrow(
+			"client init failed",
+		);
+		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 	});
 
 	describe("runServer", () => {
@@ -134,9 +190,9 @@ describe("Server entry", () => {
 			).not.toContain("test-api-key");
 			const anyStdioModule = stdioModule as { __transports?: unknown[] };
 			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
-			const spanNames = vi
-				.mocked(Sentry.startSpan)
-				.mock.calls.map(([options]) => (options as { name?: string }).name);
+			const spanNames = testDoubles.startActiveSpan.mock.calls.map(
+				([name]) => name as string,
+			);
 			expect(spanNames).toContain("mcp.server.run");
 			expect(spanNames).toContain("mcp.server.connect");
 		});
@@ -153,13 +209,28 @@ describe("Server entry", () => {
 				"cli-key",
 				"https://api.hevyapp.com",
 			);
-			expect(Sentry.setUser).toHaveBeenCalledWith({ id: CLI_KEY_HMAC_SHA256 });
+			expect(Sentry.setUser).toHaveBeenCalledWith({
+				id: CLI_KEY_HMAC_SHA256,
+			});
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
 			).not.toContain("cli-key");
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
 			).not.toContain("env-key");
+		});
+
+		it("marks the connect span as failed when stdio connection throws", async () => {
+			process.env = {
+				...originalEnv,
+				HEVY_API_KEY: "test-api-key",
+			};
+			process.argv = originalArgv.slice(0, 2);
+			testDoubles.connect.mockRejectedValueOnce(new Error("connect failed"));
+
+			await expect(runServer()).rejects.toThrow("connect failed");
+			expect(testDoubles.connect).toHaveBeenCalled();
+			expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 		});
 
 		it("exits the process when no API key is provided", async () => {
