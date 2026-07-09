@@ -29,13 +29,17 @@ const version =
 // Sentry monitoring is baked into the built MCP server so usage and errors
 // from users of the published package are captured for observability.
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
-const sentryConfig = {
-	dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
+const sentryConfig: Sentry.NodeOptions = {
+	dsn: "***********************************************************************************************",
 	release: sentryRelease,
 	// Tracing must be enabled for MCP monitoring to work
 	tracesSampleRate: 1.0,
 	sendDefaultPii: false,
-} as const;
+	// stdio clients that disconnect abruptly cause EPIPE / broken pipe
+	// errors when the server writes to the closed stdout pipe. These are
+	// expected runtime noise, not actionable bugs.
+	ignoreErrors: ["EPIPE", "broken pipe"],
+};
 
 Sentry.init(sentryConfig);
 

@@ -59,6 +59,15 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => {
 });
 
 describe("Server entry", () => {
+	it("initializes Sentry with EPIPE/broken pipe ignoreErrors", () => {
+		createServer({ config: { apiKey: "test-key" } });
+		expect(Sentry.init).toHaveBeenCalledWith(
+			expect.objectContaining({
+				ignoreErrors: ["EPIPE", "broken pipe"],
+			}),
+		);
+	});
+
 	beforeEach(() => {
 		process.env = { ...originalEnv };
 		process.argv = [...originalArgv];
