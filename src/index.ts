@@ -27,6 +27,38 @@ import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js
 const name = serviceName;
 const version = serviceVersion;
 
+const HELP_TEXT = [
+	"Usage:",
+	"  hevy-mcp [options]",
+	"",
+	"Options:",
+	"  -h, --help                 Show this help message and exit",
+	"  -v, --version              Show version and exit",
+	"  --hevy-api-key=<api-key>   (deprecated, use HEVY_API_KEY env var)",
+	"",
+	"Environment:",
+	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
+	"",
+	"Examples:",
+	"  HEVY_API_KEY=your-key npx hevy-mcp",
+	"  npx hevy-mcp --hevy-api-key=your-key",
+	"  npm start -- --hevy-api-key=your-key",
+].join("\n");
+
+function getCliAction(args: string[]): "start" | "version" | "help" {
+	for (const arg of args) {
+		if (arg === "--version" || arg === "-v") {
+			return "version";
+		}
+
+		if (arg === "--help" || arg === "-h") {
+			return "help";
+		}
+	}
+
+	return "start";
+}
+
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 
 const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
@@ -127,6 +159,19 @@ export function createServer({ config }: { config: ServerConfig }) {
 export default createServer;
 
 export async function runServer() {
+	const args = process.argv.slice(2);
+	const cliAction = getCliAction(args);
+
+	if (cliAction === "version") {
+		console.log(version);
+		return;
+	}
+
+	if (cliAction === "help") {
+		console.log(HELP_TEXT);
+		return;
+	}
+
 	serverStartups.add(1, { version });
 
 	await tracer.startActiveSpan(
@@ -138,7 +183,6 @@ export async function runServer() {
 		},
 		async (span) => {
 			try {
-				const args = process.argv.slice(2);
 				const cfg = parseConfig(args, process.env);
 				const apiKey = cfg.apiKey;
 				assertApiKey(apiKey);
