@@ -26,18 +26,55 @@ const version =
 // or set directly in the environment. No dotenv dependency needed.
 // This avoids stdout pollution that corrupts MCP JSON-RPC communication in stdio mode.
 
-// Sentry monitoring is baked into the built MCP server so usage and errors
-// from users of the published package are captured for observability.
-const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
-const sentryConfig = {
-	dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
-	release: sentryRelease,
-	// Tracing must be enabled for MCP monitoring to work
-	tracesSampleRate: 1.0,
-	sendDefaultPii: false,
-} as const;
+const DEFAULT_SENTRY_DSN =
+	"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
+const SENTRY_FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 
-Sentry.init(sentryConfig);
+function isSentryEnabled(): boolean {
+	const rawValue = process.env.HEVY_MCP_ENABLE_SENTRY;
+	if (typeof rawValue !== "string") {
+		return true;
+	}
+
+	return !SENTRY_FALSE_VALUES.has(rawValue.trim().toLowerCase());
+}
+
+function resolveSentryDsn(): string {
+	const dsnOverride = process.env.SENTRY_DSN?.trim();
+	return dsnOverride && dsnOverride.length > 0
+		? dsnOverride
+		: DEFAULT_SENTRY_DSN;
+}
+
+function initSentryIfEnabled(): boolean {
+	if (!isSentryEnabled()) {
+		return false;
+	}
+
+	Sentry.init({
+		dsn: resolveSentryDsn(),
+		release: process.env.SENTRY_RELEASE ?? `${name}@${version}`,
+		// Tracing must be enabled for MCP monitoring to work
+		tracesSampleRate: 1.0,
+		sendDefaultPii: false,
+	});
+
+	return true;
+}
+
+type StartupSpanOptions = Parameters<typeof Sentry.startSpan>[0];
+
+function withStartupSpan<T>(
+	sentryEnabled: boolean,
+	spanOptions: StartupSpanOptions,
+	callback: () => T,
+): T {
+	if (!sentryEnabled) {
+		return callback();
+	}
+
+	return Sentry.startSpan(spanOptions, callback);
+}
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -74,8 +111,9 @@ const serverConfigSchema = z.object({
 export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
-function buildServer(apiKey: string) {
-	return Sentry.startSpan(
+function buildServer(apiKey: string, sentryEnabled: boolean) {
+	return withStartupSpan(
+		sentryEnabled,
 		{
 			name: "mcp.server.build",
 			op: "mcp.lifecycle.build",
@@ -86,15 +124,20 @@ function buildServer(apiKey: string) {
 			},
 		},
 		() => {
-			Sentry.setUser({ id: fingerprintApiKey(apiKey) });
+			if (sentryEnabled) {
+				Sentry.setUser({ id: fingerprintApiKey(apiKey) });
+			}
 
 			const baseServer = new McpServer({
 				name,
 				version,
 			});
-			const server = Sentry.wrapMcpServerWithSentry(baseServer);
+			const server = sentryEnabled
+				? Sentry.wrapMcpServerWithSentry(baseServer)
+				: baseServer;
 
-			const hevyClient = Sentry.startSpan(
+			const hevyClient = withStartupSpan(
+				sentryEnabled,
 				{
 					name: "mcp.hevy-client.initialize",
 					op: "mcp.lifecycle.client.init",
@@ -103,7 +146,8 @@ function buildServer(apiKey: string) {
 			);
 			console.error("Hevy client initialized with API key");
 
-			Sentry.startSpan(
+			withStartupSpan(
+				sentryEnabled,
 				{
 					name: "mcp.tools.register",
 					op: "mcp.lifecycle.tools.register",
@@ -128,14 +172,18 @@ function buildServer(apiKey: string) {
 
 export function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey } = serverConfigSchema.parse(config);
-	const server = buildServer(apiKey);
+	const sentryEnabled = initSentryIfEnabled();
+	const server = buildServer(apiKey, sentryEnabled);
 	return server;
 }
 
 export default createServer;
 
 export async function runServer() {
-	await Sentry.startSpan(
+	const sentryEnabled = initSentryIfEnabled();
+
+	await withStartupSpan(
+		sentryEnabled,
 		{
 			name: "mcp.server.run",
 			op: "mcp.lifecycle.run",
@@ -149,13 +197,14 @@ export async function runServer() {
 			const apiKey = cfg.apiKey;
 			assertApiKey(apiKey);
 
-			const server = buildServer(apiKey);
+			const server = buildServer(apiKey, sentryEnabled);
 			console.error("Starting MCP server in stdio mode");
-			const transport = createInstrumentedStdioTransport(
-				new StdioServerTransport(),
-			);
+			const transport = sentryEnabled
+				? createInstrumentedStdioTransport(new StdioServerTransport())
+				: new StdioServerTransport();
 
-			await Sentry.startSpan(
+			await withStartupSpan(
+				sentryEnabled,
 				{
 					name: "mcp.server.connect",
 					op: "mcp.lifecycle.connect",

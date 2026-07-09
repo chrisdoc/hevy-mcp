@@ -154,6 +154,15 @@ HEVY_API_KEY=your_hevy_api_key_here
 - Integration tests will fail (by design)
 - API client functionality cannot be tested
 
+### Optional Observability Environment Variables
+
+Sentry telemetry is enabled by default for backward compatibility.
+
+- `HEVY_MCP_ENABLE_SENTRY` (default: `true`): set to `false`, `0`, `no`, or
+  `off` to disable Sentry startup initialization and startup instrumentation.
+- `SENTRY_DSN`: optional DSN override. If not set, the built-in default DSN is
+  used.
+
 ### Node.js Version
 
 - **Supported:** Node.js >= 26

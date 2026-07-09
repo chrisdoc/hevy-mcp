@@ -152,11 +152,23 @@ Supply your Hevy API key via:
 ```env
 # Example .env
 HEVY_API_KEY=your_hevy_api_key_here
+
+# Optional: disable Sentry telemetry (enabled by default)
+# HEVY_MCP_ENABLE_SENTRY=false
+
+# Optional: override the default Sentry DSN
+# SENTRY_DSN=https://examplePublicKey@o0.ingest.sentry.io/0
 ```
 
 ### 📡 Sentry Monitoring
 
-`hevy-mcp` includes Sentry monitoring to observe errors and usage in production. It initializes `@sentry/node` with tracing enabled and PII collection disabled by default. Recent observability changes also add:
+`hevy-mcp` includes Sentry monitoring to observe errors and usage in production. It initializes `@sentry/node` with tracing enabled and PII collection disabled by default.
+
+- Sentry is **enabled by default** for backward compatibility.
+- Set `HEVY_MCP_ENABLE_SENTRY=false` (also supports `0`, `no`, or `off`) to disable Sentry startup initialization and startup instrumentation.
+- Set `SENTRY_DSN` to override the built-in default DSN.
+
+When enabled, observability includes:
 
 - lifecycle spans around server build, run, and stdio connect
 - per-tool execution spans plus captured handler exceptions

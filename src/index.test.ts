@@ -7,6 +7,7 @@ import createServer, {
 	runServer,
 } from "./index.js";
 import { createClient } from "./utils/hevyClient.js";
+import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
@@ -16,6 +17,8 @@ const TEST_API_KEY_HMAC_SHA256 =
 	"0eefd4f47c434138f560075be1eedfca27256a782534f3f254781d736cbd468c";
 const CLI_KEY_HMAC_SHA256 =
 	"85a3f127af4cea435cd358405c5298016946cc3f4e196552c2f1e435c2c6f1b3";
+const DEFAULT_SENTRY_DSN =
+	"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
 
 vi.mock("./utils/hevyClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
@@ -58,9 +61,16 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => {
 	};
 });
 
+vi.mock("./utils/stdio-observability.js", () => ({
+	createInstrumentedStdioTransport: vi.fn((transport) => transport),
+}));
+
 describe("Server entry", () => {
 	beforeEach(() => {
 		process.env = { ...originalEnv };
+		delete process.env.HEVY_MCP_ENABLE_SENTRY;
+		delete process.env.SENTRY_DSN;
+		delete process.env.SENTRY_RELEASE;
 		process.argv = [...originalArgv];
 		vi.clearAllMocks();
 		const anyStdioModule = stdioModule as { __transports?: unknown[] };
@@ -80,12 +90,28 @@ describe("Server entry", () => {
 		expect(parsed.apiKey).toBe("abc");
 	});
 
-	it("creates an MCP server instance", () => {
+	it("creates an MCP server instance with Sentry enabled by default", () => {
 		const server = createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
+		expect(Sentry.init).toHaveBeenCalledWith(
+			expect.objectContaining({ dsn: DEFAULT_SENTRY_DSN }),
+		);
 		expect(Sentry.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ name: "mcp.server.build" }),
 			expect.any(Function),
+		);
+		expect(Sentry.wrapMcpServerWithSentry).toHaveBeenCalledTimes(1);
+	});
+
+	it("uses SENTRY_DSN override when provided", () => {
+		process.env.SENTRY_DSN = "https://examplePublicKey@o0.ingest.sentry.io/0";
+
+		createServer({ config: { apiKey: "test-key" } });
+
+		expect(Sentry.init).toHaveBeenCalledWith(
+			expect.objectContaining({
+				dsn: "https://examplePublicKey@o0.ingest.sentry.io/0",
+			}),
 		);
 	});
 
@@ -104,15 +130,37 @@ describe("Server entry", () => {
 		);
 	});
 
+	it.each(["false", "0", "no", "off", "FALSE", " Off "])(
+		"disables Sentry startup instrumentation when HEVY_MCP_ENABLE_SENTRY=%s",
+		(value) => {
+			process.env.HEVY_MCP_ENABLE_SENTRY = value;
+
+			const server = createServer({ config: { apiKey: "test-key" } });
+
+			expect(server).toBeDefined();
+			expect(Sentry.init).not.toHaveBeenCalled();
+			expect(Sentry.startSpan).not.toHaveBeenCalled();
+			expect(Sentry.wrapMcpServerWithSentry).not.toHaveBeenCalled();
+			expect(Sentry.setUser).not.toHaveBeenCalled();
+			expect(createClient).toHaveBeenCalledWith(
+				"test-key",
+				"https://api.hevyapp.com",
+			);
+		},
+	);
+
 	describe("runServer", () => {
 		it("uses HEVY_API_KEY from the environment and connects stdio transport", async () => {
 			process.env = {
-				...originalEnv,
+				...process.env,
 				HEVY_API_KEY: "test-api-key",
 			};
 			process.argv = originalArgv.slice(0, 2);
 
 			await runServer();
+			expect(Sentry.init).toHaveBeenCalledWith(
+				expect.objectContaining({ dsn: DEFAULT_SENTRY_DSN }),
+			);
 			expect(createClient).toHaveBeenCalledWith(
 				"test-api-key",
 				"https://api.hevyapp.com",
@@ -125,6 +173,7 @@ describe("Server entry", () => {
 			).not.toContain("test-api-key");
 			const anyStdioModule = stdioModule as { __transports?: unknown[] };
 			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
+			expect(createInstrumentedStdioTransport).toHaveBeenCalledTimes(1);
 			const spanNames = vi
 				.mocked(Sentry.startSpan)
 				.mock.calls.map(([options]) => (options as { name?: string }).name);
@@ -132,9 +181,33 @@ describe("Server entry", () => {
 			expect(spanNames).toContain("mcp.server.connect");
 		});
 
+		it("skips Sentry startup wrappers and spans when disabled", async () => {
+			process.env = {
+				...process.env,
+				HEVY_API_KEY: "test-api-key",
+				HEVY_MCP_ENABLE_SENTRY: "false",
+			};
+			process.argv = originalArgv.slice(0, 2);
+
+			await runServer();
+
+			expect(createClient).toHaveBeenCalledWith(
+				"test-api-key",
+				"https://api.hevyapp.com",
+			);
+			expect(Sentry.init).not.toHaveBeenCalled();
+			expect(Sentry.startSpan).not.toHaveBeenCalled();
+			expect(Sentry.wrapMcpServerWithSentry).not.toHaveBeenCalled();
+			expect(Sentry.setUser).not.toHaveBeenCalled();
+			expect(createInstrumentedStdioTransport).not.toHaveBeenCalled();
+
+			const anyStdioModule = stdioModule as { __transports?: unknown[] };
+			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
+		});
+
 		it("prefers CLI --hevy-api-key argument over environment variable", async () => {
 			process.env = {
-				...originalEnv,
+				...process.env,
 				HEVY_API_KEY: "env-key",
 			};
 			process.argv = [...originalArgv.slice(0, 2), "--hevy-api-key=cli-key"];
@@ -155,7 +228,7 @@ describe("Server entry", () => {
 
 		it("exits the process when no API key is provided", async () => {
 			process.env = {
-				...originalEnv,
+				...process.env,
 				HEVY_API_KEY: "",
 			};
 			process.argv = originalArgv.slice(0, 2);
