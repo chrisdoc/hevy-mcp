@@ -204,7 +204,8 @@ Always perform these validation steps after making changes:
      configured in the `check:types` script in `package.json`.
    - Note: `npm run build` (tsup) may still succeed when this fails.
    - Treat failures here as issues to fix (even if the build passes).
-   - Run this locally before opening a PR (CI does not currently run this check).
+   - Run this locally before opening a PR; CI also runs this check on pull
+     requests and pushes to `main`.
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**

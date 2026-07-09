@@ -199,6 +199,7 @@ Docker-based workflows are retired. The provided `Dockerfile` now exits with a m
 
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
+- **Type Check**: `npm run check:types`
 - **Unit Tests**: `npx vitest run --exclude tests/integration/**`
 - **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
 - **Changeset Check**: `npm run check:changeset`
@@ -210,6 +211,8 @@ For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).
 - **Conventional Commits**: CI lints commit messages on pull requests, so use
   prefixes such as `feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `refactor:`,
   `test:`, or `style:`.
+- **Type Checking**: CI runs `npm run check:types` on pull requests and pushes
+  to `main`; run this locally before opening a PR.
 - **Changesets**: Contributor pull requests targeting `main` must include a
   changeset. Dependabot PRs and automated `changeset-release/main` release PRs
   are handled by automation and skip this check.
