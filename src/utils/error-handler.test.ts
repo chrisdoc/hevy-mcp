@@ -280,6 +280,55 @@ describe("Error Handler", () => {
 			);
 		});
 
+		it("reads Retry-After from header getters with array values", () => {
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					headers: { get: () => [4] },
+					status: 429,
+				},
+			});
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 4 seconds before retrying.",
+			);
+		});
+
+		it("includes HTTP-date Retry-After values in 429 error messages", () => {
+			const now = Date.parse("2026-07-09T19:40:00Z");
+			vi.spyOn(Date, "now").mockReturnValue(now);
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					headers: {
+						"retry-after": new Date(now + 2_000).toUTCString(),
+					},
+					status: 429,
+				},
+			});
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait about 2 seconds before retrying.",
+			);
+		});
+
+		it("falls back to the generic message for invalid Retry-After values", () => {
+			const response = createErrorResponse({
+				isAxiosError: true,
+				response: {
+					headers: { "retry-after": "not-a-date" },
+					status: 429,
+				},
+			});
+
+			expect(response.content[0].text).toBe(
+				"Error: Rate limited by Hevy (HTTP 429). " +
+					"Please wait and retry your request.",
+			);
+		});
+
 		it("prioritizes exhausted retry errors over status mappings", () => {
 			const response = createErrorResponse({
 				hevyRetryCount: 2,
@@ -290,6 +339,19 @@ describe("Error Handler", () => {
 
 			expect(response.content[0].text).toBe(
 				"Error: Unable to complete the request after 3 attempts " +
+					"to the Hevy API due to transient failures. Please try again shortly.",
+			);
+		});
+
+		it("describes exhausted retry errors without a retry count", () => {
+			const response = createErrorResponse({
+				hevyRetryExhausted: true,
+				isAxiosError: true,
+				response: { status: 503 },
+			});
+
+			expect(response.content[0].text).toBe(
+				"Error: Unable to complete the request after multiple attempts " +
 					"to the Hevy API due to transient failures. Please try again shortly.",
 			);
 		});
