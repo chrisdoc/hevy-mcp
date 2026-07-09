@@ -33,7 +33,7 @@ pull_request_rules:
   - name: Keep PRs up to date
     conditions:
       - -draft
-      - "#commits-behind >= 1"
+      - "#commits-behind >= 5"
     actions:
       update: null
 priority_rules:
