@@ -1,3 +1,15 @@
+## 1.26.2
+
+### Patch Changes
+
+- [#425](https://github.com/chrisdoc/hevy-mcp/pull/425) [`958b037`](https://github.com/chrisdoc/hevy-mcp/commit/958b0373a1bafa91be505689fdbea981a68308c4) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add resilient Hevy API request handling with configurable timeout,
+  bounded retries for transient GET failures, Retry-After support for
+  429 responses, and clearer user-facing rate-limit/transient error
+  messages.
+
+- [#381](https://github.com/chrisdoc/hevy-mcp/pull/381) [`058a163`](https://github.com/chrisdoc/hevy-mcp/commit/058a163502e94385f8a481c5725531eaacd30884) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add `ignoreErrors: ["EPIPE", "broken pipe"]` to the Sentry config so
+  abrupt stdio client disconnects do not generate noisy Sentry events.
+
 ## 1.26.1
 
 ### Patch Changes
