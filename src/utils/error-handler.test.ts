@@ -1,6 +1,23 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
-import { Sentry } from "./telemetry.js";
+import { getCurrentUserId, Sentry } from "./telemetry.js";
+
+function createMockAxiosError(status: number, data: unknown): unknown {
+	return {
+		isAxiosError: true,
+		name: "AxiosError",
+		message: `Request failed with status code ${status}`,
+		config: {
+			method: "post",
+			url: "/v1/body_measurements",
+		},
+		response: {
+			status,
+			statusText: "Error",
+			data,
+		},
+	};
+}
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -72,7 +89,7 @@ describe("Error Handler", () => {
 			const error = new Error("Test error message");
 			const response = createErrorResponse(error);
 
-			expect(response).toEqual({
+			expect(response).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -80,6 +97,9 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					originalErrorMessage: "Test error message",
+				},
 			});
 			expect(console.error).toHaveBeenCalled();
 		});
@@ -87,7 +107,7 @@ describe("Error Handler", () => {
 		it("should create a proper error response from a string", () => {
 			const response = createErrorResponse("String error message");
 
-			expect(response).toEqual({
+			expect(response).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -95,6 +115,9 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					originalErrorMessage: "String error message",
+				},
 			});
 		});
 
@@ -122,7 +145,7 @@ describe("Error Handler", () => {
 			);
 		});
 
-		it("falls back to String(data) when axios object response data is not serializable", () => {
+		it("falls back when axios object response data is not serializable", () => {
 			const circular: { self?: unknown } = {};
 			circular.self = circular;
 
@@ -133,7 +156,9 @@ describe("Error Handler", () => {
 				},
 			});
 
-			expect(response.content[0].text).toBe("Error: [object Object]");
+			expect(response.content[0].text).toBe(
+				"Error: Unable to serialize error response data",
+			);
 		});
 
 		it("should include context in the error message when provided", () => {
@@ -143,6 +168,12 @@ describe("Error Handler", () => {
 			expect(response.content[0].text).toBe(
 				"[TestContext] Error: Test error with context",
 			);
+			expect(response).toMatchObject({
+				errorContext: {
+					sourceContext: "TestContext",
+					originalErrorMessage: "Test error with context",
+				},
+			});
 		});
 
 		it("should handle errors with code property", () => {
@@ -156,11 +187,186 @@ describe("Error Handler", () => {
 			const response = createErrorResponse(errorWithCode);
 
 			expect(response.content[0].text).toBe("Error: Error with code");
+			expect(response).toMatchObject({
+				errorContext: {
+					errorCode: "ERR_TEST_CODE",
+					originalErrorMessage: "Error with code",
+				},
+			});
 			expect(console.debug).not.toHaveBeenCalled();
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("Code: ERR_TEST_CODE"),
 				errorWithCode,
 			);
+		});
+
+		it.each([
+			{
+				status: 401,
+				expectedMessage:
+					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+			},
+			{
+				status: 403,
+				expectedMessage:
+					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+			},
+			{
+				status: 404,
+				expectedMessage: "The requested resource was not found in Hevy.",
+			},
+			{
+				status: 409,
+				expectedMessage:
+					"A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.",
+			},
+			{
+				status: 422,
+				expectedMessage:
+					"The request failed Hevy validation. Check the field values and try again.",
+			},
+			{
+				status: 429,
+				expectedMessage: "Rate limited by Hevy. Please wait and retry.",
+			},
+			{
+				status: 503,
+				expectedMessage: "Hevy API experienced an error. Please retry later.",
+			},
+		])(
+			"maps axios status $status to actionable Hevy message",
+			({ status, expectedMessage }) => {
+				const responseBody = {
+					error: "original_api_error",
+					detail: `raw detail for status ${status}`,
+				};
+				const response = createErrorResponse(
+					createMockAxiosError(status, responseBody),
+					"TestContext",
+				);
+
+				expect(response.content[0].text).toBe(
+					`[TestContext] Error: ${expectedMessage}`,
+				);
+				expect(response).toMatchObject({
+					isError: true,
+					errorContext: {
+						sourceContext: "TestContext",
+						originalErrorMessage: `Request failed with status code ${status}`,
+						axios: {
+							status,
+							data: responseBody,
+							method: "post",
+							url: "/v1/body_measurements",
+						},
+					},
+				});
+			},
+		);
+
+		it("uses raw axios string data when no Hevy status mapping exists", () => {
+			const response = createErrorResponse(
+				createMockAxiosError(400, "plain upstream message"),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				"[TestContext] Error: plain upstream message",
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "Request failed with status code 400",
+					axios: {
+						status: 400,
+						data: "plain upstream message",
+					},
+				},
+			});
+		});
+
+		it("serializes axios object data when no Hevy status mapping exists", () => {
+			const responseBody = {
+				detail: "Missing workout entry",
+			};
+			const response = createErrorResponse(
+				createMockAxiosError(400, responseBody),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				`[TestContext] Error: ${JSON.stringify(responseBody)}`,
+			);
+		});
+
+		it("stringifies axios primitive data when no Hevy status mapping exists", () => {
+			const response = createErrorResponse(
+				createMockAxiosError(400, 42),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe("[TestContext] Error: 42");
+		});
+
+		it("serializes object errors without a message field", () => {
+			const response = createErrorResponse({
+				detail: "Missing workout entry",
+			});
+
+			expect(response.content[0].text).toBe(
+				'Error: {"detail":"Missing workout entry"}',
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: '{"detail":"Missing workout entry"}',
+				},
+			});
+		});
+
+		it("falls back when error objects cannot be serialized", () => {
+			const circularError: { self?: unknown } = {};
+			circularError.self = circularError;
+
+			const response = createErrorResponse(circularError);
+
+			expect(response.content[0].text).toBe("Error: Unknown error object");
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "Unknown error object",
+				},
+			});
+		});
+
+		it("falls back when axios response data cannot be serialized", () => {
+			const circularData: { self?: unknown } = {};
+			circularData.self = circularData;
+
+			const response = createErrorResponse(
+				createMockAxiosError(400, circularData),
+				"TestContext",
+			);
+
+			expect(response.content[0].text).toBe(
+				"[TestContext] Error: Unable to serialize error response data",
+			);
+			expect(response).toMatchObject({
+				errorContext: {
+					axios: {
+						status: 400,
+						data: circularData,
+					},
+				},
+			});
+		});
+
+		it("stringifies non-object thrown values", () => {
+			const response = createErrorResponse(0);
+
+			expect(response.content[0].text).toBe("Error: 0");
+			expect(response).toMatchObject({
+				errorContext: {
+					originalErrorMessage: "0",
+				},
+			});
 		});
 
 		it("classifies network-related errors as NETWORK_ERROR", () => {
@@ -240,7 +446,7 @@ describe("Error Handler", () => {
 			const wrappedFn = withErrorHandling(mockFn, "ErrorTest");
 			const result = await wrappedFn({ param: "test" });
 
-			expect(result).toEqual({
+			expect(result).toMatchObject({
 				content: [
 					{
 						type: "text",
@@ -248,9 +454,62 @@ describe("Error Handler", () => {
 					},
 				],
 				isError: true,
+				errorContext: {
+					sourceContext: "ErrorTest",
+					originalErrorMessage: "Function error",
+				},
 			});
 			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
 			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it("adds the current user ID to span attributes when available", async () => {
+			testDoubles.startActiveSpan.mockClear();
+			vi.mocked(getCurrentUserId).mockReturnValue("user-123");
+
+			const mockFn = vi.fn().mockResolvedValue({
+				content: [{ type: "text", text: "Success" }],
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "UserContext");
+			await wrappedFn({ param: "test" });
+
+			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
+				"mcp.tool.UserContext",
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						"mcp.tool.name": "UserContext",
+						"user.id": "user-123",
+					}),
+				}),
+				expect.any(Function),
+			);
+
+			vi.mocked(getCurrentUserId).mockReturnValue(undefined);
+		});
+
+		it("handles non-Error thrown values from wrapped functions", async () => {
+			const mockFn = vi.fn().mockImplementation(() => {
+				throw 42;
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "NumberErrorTest");
+			const result = await wrappedFn({ param: "test" });
+
+			expect(result).toMatchObject({
+				content: [
+					{
+						type: "text",
+						text: "[NumberErrorTest] Error: 42",
+					},
+				],
+				isError: true,
+				errorContext: {
+					sourceContext: "NumberErrorTest",
+					originalErrorMessage: "42",
+				},
+			});
+			expect(Sentry.captureException).toHaveBeenCalledWith(42);
 		});
 	});
 });
