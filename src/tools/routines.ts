@@ -16,6 +16,7 @@ import type {
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	routineOutputSchema,
@@ -38,11 +39,6 @@ import {
 	zNullableInt,
 	zOptionalRepRange,
 } from "../utils/schemas.js";
-
-// Type definitions for the routine operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function buildRepRange(repRange?: {
 	start?: number | null;
