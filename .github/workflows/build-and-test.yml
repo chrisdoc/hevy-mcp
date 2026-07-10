@@ -57,12 +57,24 @@ jobs:
       - name: Run type check
         run: npm run check:types
 
+      - name: Check server manifest
+        run: npm run check:server-manifest
+
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
       - name: Check for changeset
-        if: github.event_name == 'pull_request' && matrix.node-version == '24.x' && github.actor != 'dependabot[bot]' && github.head_ref != 'changeset-release/main'
+        if: >-
+          github.event_name == 'pull_request' &&
+          matrix.node-version == '24.x' &&
+          github.actor != 'dependabot[bot]' &&
+          github.head_ref != 'changeset-release/main' &&
+          !(
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            github.event.pull_request.user.login == 'mergify[bot]' &&
+            startsWith(github.head_ref, 'mergify/merge-queue/')
+          )
         run: npx changeset status --since=origin/${{ github.base_ref }}
 
       - name: Run Check
