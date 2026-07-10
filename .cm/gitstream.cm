@@ -193,7 +193,7 @@ colors:
 
 is:
   # Documented gitStream predicate for Dependabot and common bot accounts.
-  bot_author: "{{ pr.author | match(list=['github-actions', '_bot_', '[bot]', 'dependabot']) | some }}"
+  bot_author: "{{ pr.author | includes(list=['github-actions', '_bot_', '[bot]', 'dependabot']) }}"
   high_risk: {{ ((not is.bot_author) and calc.etr >= 20) or (files | match(list=critical_files) | some) }}
   formatting: "{{ source.diff.files | isFormattingChange }}"
   docs: "{{ files | allDocs }}"
