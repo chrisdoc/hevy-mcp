@@ -86,7 +86,7 @@ automations:
       - pr_ready_for_review
       - commit
     if:
-      - "{{ not pr.draft }}"
+      - {{ not pr.draft }}
       - {{ not is.bot_author }}
     run:
       - action: explain-code-experts@v1
