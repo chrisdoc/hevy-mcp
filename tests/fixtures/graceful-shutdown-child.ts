@@ -5,15 +5,29 @@ const transport = new StdioServerTransport();
 await transport.start();
 installGracefulShutdown({ target: transport });
 
-const payload = "x".repeat(512 * 1024);
-void transport.send({
-	jsonrpc: "2.0",
-	id: 1,
-	result: { payload },
-});
+const payload = "x".repeat(128 * 1024);
+const pendingSends: Promise<void>[] = [];
+const maximumFrameCount = 64;
 
-if (!process.stdout.writableNeedDrain) {
-	throw new Error("Expected the stdout write to be backpressured");
+while (
+	!process.stdout.writableNeedDrain &&
+	pendingSends.length < maximumFrameCount
+) {
+	const id = pendingSends.length + 1;
+	pendingSends.push(
+		transport.send({
+			jsonrpc: "2.0",
+			id,
+			result: { payload },
+		}),
+	);
 }
 
-console.error("BACKPRESSURED");
+if (!process.stdout.writableNeedDrain) {
+	throw new Error(
+		`Expected stdout backpressure after ${maximumFrameCount} frames`,
+	);
+}
+
+console.error(`BACKPRESSURED:${pendingSends.length}`);
+await Promise.all(pendingSends);

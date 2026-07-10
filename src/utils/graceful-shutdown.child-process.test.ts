@@ -16,7 +16,7 @@ const childFixture = path.join(
 
 describe("graceful stdio shutdown regression", () => {
 	it.each(["SIGTERM", "SIGINT"] satisfies ShutdownSignal[])(
-		"flushes a backpressured JSON-RPC frame before exiting on %s",
+		"flushes backpressured JSON-RPC frames before exiting on %s",
 		async (signal) => {
 			const child = spawn(process.execPath, [tsxCli, childFixture], {
 				cwd: repositoryRoot,
@@ -36,6 +36,7 @@ describe("graceful stdio shutdown regression", () => {
 			});
 
 			try {
+				let expectedFrameCount = 0;
 				await new Promise<void>((resolve, reject) => {
 					const timeout = setTimeout(() => {
 						reject(new Error("Timed out waiting for backpressure marker"));
@@ -43,7 +44,10 @@ describe("graceful stdio shutdown regression", () => {
 
 					child.stderr.on("data", (chunk: Buffer) => {
 						stderrChunks.push(chunk);
-						if (Buffer.concat(stderrChunks).includes("BACKPRESSURED")) {
+						const stderr = Buffer.concat(stderrChunks).toString("utf8");
+						const marker = stderr.match(/BACKPRESSURED:(\d+)/);
+						if (marker) {
+							expectedFrameCount = Number(marker[1]);
 							clearTimeout(timeout);
 							resolve();
 						}
@@ -64,7 +68,7 @@ describe("graceful stdio shutdown regression", () => {
 				expect(exited).toBe(false);
 
 				child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
-				const timeout = setTimeout(() => child.kill("SIGKILL"), 5_000);
+				const timeout = setTimeout(() => child.kill("SIGKILL"), 10_000);
 				const result = await exitResult;
 				clearTimeout(timeout);
 
@@ -73,12 +77,15 @@ describe("graceful stdio shutdown regression", () => {
 				const stderr = Buffer.concat(stderrChunks).toString("utf8");
 				const frames = stdout.trimEnd().split("\n");
 
-				expect(frames).toHaveLength(1);
-				expect(JSON.parse(frames[0] ?? "")).toEqual({
-					jsonrpc: "2.0",
-					id: 1,
-					result: { payload: "x".repeat(512 * 1024) },
-				});
+				expect(expectedFrameCount).toBeGreaterThan(0);
+				expect(frames).toHaveLength(expectedFrameCount);
+				for (const [index, frame] of frames.entries()) {
+					expect(JSON.parse(frame)).toEqual({
+						jsonrpc: "2.0",
+						id: index + 1,
+						result: { payload: "x".repeat(128 * 1024) },
+					});
+				}
 				expect(stdout).not.toContain("Shutting down gracefully");
 				expect(stderr).toContain(`Shutting down gracefully after ${signal}`);
 			} finally {

@@ -6,6 +6,7 @@ interface CloseTarget {
 
 interface ProcessLike {
 	exitCode?: number | string | null;
+	exit(code?: number | string | null): never;
 	on(signal: ShutdownSignal, listener: () => void): unknown;
 	removeListener(signal: ShutdownSignal, listener: () => void): unknown;
 }
@@ -14,11 +15,22 @@ interface FlushableStdout {
 	write(chunk: string, callback: (error?: Error | null) => void): boolean;
 }
 
+interface ForcedExitTimer {
+	unref(): void;
+}
+
+type ScheduleForcedExit = (
+	callback: () => void,
+	timeoutMs: number,
+) => ForcedExitTimer;
+
 interface GracefulShutdownOptions {
 	target: CloseTarget;
 	process?: ProcessLike;
 	logError?: (message: string) => void;
 	flush?: () => Promise<void>;
+	forcedExitTimeoutMs?: number;
+	scheduleForcedExit?: ScheduleForcedExit;
 }
 
 export interface GracefulShutdownController {
@@ -27,6 +39,10 @@ export interface GracefulShutdownController {
 }
 
 const shutdownSignals: ShutdownSignal[] = ["SIGINT", "SIGTERM"];
+
+// Long enough for normal stdio flushing, but bounded so unrelated handles or a
+// stalled close cannot keep a signal-terminated process alive indefinitely.
+export const FORCED_EXIT_TIMEOUT_MS = 5_000;
 
 export function flushStdout(
 	stdout: FlushableStdout = process.stdout,
@@ -52,6 +68,8 @@ export function installGracefulShutdown({
 	process: processLike = process,
 	logError = console.error,
 	flush = flushStdout,
+	forcedExitTimeoutMs = FORCED_EXIT_TIMEOUT_MS,
+	scheduleForcedExit = setTimeout,
 }: GracefulShutdownOptions): GracefulShutdownController {
 	let listenersInstalled = true;
 	let shutdownSettled = false;
@@ -75,6 +93,18 @@ export function installGracefulShutdown({
 		if (shutdownPromise) {
 			return;
 		}
+
+		if (processLike.exitCode == null) {
+			processLike.exitCode = 0;
+		}
+
+		const forcedExitTimer = scheduleForcedExit(() => {
+			processLike.exit(processLike.exitCode ?? 0);
+		}, forcedExitTimeoutMs);
+		// This fallback must survive successful shutdown so it can terminate a
+		// process held open by unrelated handles, without keeping the process alive
+		// when the event loop drains normally.
+		forcedExitTimer.unref();
 
 		shutdownPromise = (async () => {
 			logError(`Shutting down gracefully after ${signal}`);
@@ -107,8 +137,6 @@ export function installGracefulShutdown({
 					processLike.exitCode = 1;
 					return;
 				}
-
-				processLike.exitCode = 0;
 			} finally {
 				shutdownSettled = true;
 				cleanup();

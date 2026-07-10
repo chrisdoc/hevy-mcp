@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+	FORCED_EXIT_TIMEOUT_MS,
 	flushStdout,
 	installGracefulShutdown,
 	type ShutdownSignal,
@@ -7,6 +8,7 @@ import {
 
 class FakeProcess {
 	exitCode: number | string | null | undefined;
+	readonly exit = vi.fn((_code?: number | string | null) => undefined as never);
 	readonly listeners = new Map<ShutdownSignal, Set<() => void>>();
 
 	on(signal: ShutdownSignal, listener: () => void) {
@@ -181,6 +183,89 @@ describe("installGracefulShutdown", () => {
 		expect(logError).toHaveBeenLastCalledWith(
 			"Graceful shutdown failed: Unknown shutdown error",
 		);
+	});
+
+	it("preserves a pre-existing nonzero exit code after successful shutdown", async () => {
+		const process = new FakeProcess();
+		process.exitCode = 2;
+		let forceExit: (() => void) | undefined;
+		const controller = installGracefulShutdown({
+			target: { close: vi.fn().mockResolvedValue(undefined) },
+			process,
+			logError: vi.fn(),
+			flush: vi.fn().mockResolvedValue(undefined),
+			scheduleForcedExit: (callback) => {
+				forceExit = callback;
+				return { unref: vi.fn() };
+			},
+		});
+
+		process.emit("SIGTERM");
+		await controller.getShutdownPromise();
+		forceExit?.();
+
+		expect(process.exitCode).toBe(2);
+		expect(process.exit).toHaveBeenCalledWith(2);
+	});
+
+	it("unrefs one bounded fallback that exits with the latest status", async () => {
+		const process = new FakeProcess();
+		const closeDeferred = Promise.withResolvers<void>();
+		let forceExit: (() => void) | undefined;
+		const unref = vi.fn();
+		const scheduleForcedExit = vi.fn(
+			(callback: () => void, _timeoutMs: number) => {
+				forceExit = callback;
+				return { unref };
+			},
+		);
+		const controller = installGracefulShutdown({
+			target: { close: vi.fn(() => closeDeferred.promise) },
+			process,
+			logError: vi.fn(),
+			flush: vi.fn().mockResolvedValue(undefined),
+			scheduleForcedExit,
+		});
+
+		process.emit("SIGTERM");
+		process.emit("SIGINT");
+
+		expect(scheduleForcedExit).toHaveBeenCalledTimes(1);
+		expect(scheduleForcedExit).toHaveBeenCalledWith(
+			expect.any(Function),
+			FORCED_EXIT_TIMEOUT_MS,
+		);
+		expect(unref).toHaveBeenCalledTimes(1);
+		expect(process.exitCode).toBe(0);
+
+		process.exitCode = 7;
+		forceExit?.();
+		expect(process.exit).toHaveBeenCalledWith(7);
+
+		closeDeferred.resolve();
+		await controller.getShutdownPromise();
+	});
+
+	it("uses a shutdown failure selected after the fallback was scheduled", async () => {
+		const process = new FakeProcess();
+		let forceExit: (() => void) | undefined;
+		const controller = installGracefulShutdown({
+			target: { close: vi.fn().mockRejectedValue(new Error("close failed")) },
+			process,
+			logError: vi.fn(),
+			flush: vi.fn().mockResolvedValue(undefined),
+			scheduleForcedExit: (callback) => {
+				forceExit = callback;
+				return { unref: vi.fn() };
+			},
+		});
+
+		process.emit("SIGINT");
+		await controller.getShutdownPromise();
+		forceExit?.();
+
+		expect(process.exitCode).toBe(1);
+		expect(process.exit).toHaveBeenCalledWith(1);
 	});
 });
 
