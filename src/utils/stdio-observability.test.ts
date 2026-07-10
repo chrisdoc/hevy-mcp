@@ -1,5 +1,6 @@
-import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PassThrough, Writable } from "node:stream";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createInstrumentedStdioTransport,
 	deserializeMessageWithObservability,
@@ -102,9 +103,24 @@ function createTransportDouble() {
 	};
 }
 
+function extractShapePreview(diagnostic: string): string {
+	const prefix = ' shape_preview="';
+	const suffix = '" shape_preview_redacted=';
+	const start = diagnostic.indexOf(prefix);
+	const end = diagnostic.indexOf(suffix, start + prefix.length);
+
+	expect(start).toBeGreaterThanOrEqual(0);
+	expect(end).toBeGreaterThanOrEqual(start + prefix.length);
+
+	return diagnostic.slice(start + prefix.length, end);
+}
+
 describe("stdio observability", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it("parses valid messages after stripping a leading BOM", () => {
@@ -134,6 +150,8 @@ describe("stdio observability", () => {
 	});
 
 	it("captures parse failures with structured metadata", () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
 		expect(() =>
 			deserializeMessageWithObservability("\uFEFF{", {
 				lastChunkByteLength: 2,
@@ -160,6 +178,257 @@ describe("stdio observability", () => {
 				failureStage: "deserializeMessage",
 			}),
 		);
+		expect(stderrSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Failed to parse MCP stdin message"),
+		);
+		expect(stderrSpy).toHaveBeenCalledWith(
+			expect.stringContaining("line_bytes=4"),
+		);
+		expect(stderrSpy).toHaveBeenCalledWith(
+			expect.stringContaining("failure_location=line_start_bom"),
+		);
+		stderrSpy.mockRestore();
+	});
+
+	it.each([
+		{
+			name: "quoted token",
+			line: '{"token":"quoted-value-sentinel"',
+			sentinels: ['"token"', "quoted-value-sentinel"],
+		},
+		{
+			name: "api_key",
+			line: '{"api_key":"underscore-credential-sentinel"',
+			sentinels: ["api_key", "underscore-credential-sentinel"],
+		},
+		{
+			name: "api-key",
+			line: '{"api-key":"hyphen-credential-sentinel"',
+			sentinels: ["api-key", "hyphen-credential-sentinel"],
+		},
+		{
+			name: "mixed casing and whitespace",
+			line: '{ "AuThOrIzAtIoN" \t : \t "mixed-credential-sentinel"',
+			sentinels: ["AuThOrIzAtIoN", "mixed-credential-sentinel"],
+		},
+		{
+			name: "unquoted authorization bearer credential",
+			line: "{Authorization: Bearer bare-credential-sentinel",
+			sentinels: ["Authorization", "Bearer", "bare-credential-sentinel"],
+		},
+		{
+			name: "JSON unicode escaped sensitive key",
+			line: '{"\\u0061pi_key":"unicode-credential-sentinel"',
+			sentinels: ["\\u0061pi_key", "unicode-credential-sentinel"],
+		},
+		{
+			name: "unknown custom field",
+			line: '{"private-workout-field-sentinel":"private-workout-value-sentinel"',
+			sentinels: [
+				"private-workout-field-sentinel",
+				"private-workout-value-sentinel",
+			],
+		},
+	])(
+		"emits only a structural redacted preview for $name",
+		({ line, sentinels }) => {
+			const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+			expect(() =>
+				deserializeMessageWithObservability(line, {
+					lastChunkByteLength: Buffer.byteLength(line),
+					lastChunkStartsWithUtf8Bom: false,
+				}),
+			).toThrow();
+
+			expect(stderrSpy).toHaveBeenCalledTimes(1);
+			const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
+			expect(diagnostic).toContain("error_kind=SyntaxError");
+			expect(diagnostic).toContain("[REDACTED]");
+			expect(diagnostic).toContain("shape_preview_redacted=true");
+			expect(diagnostic).toContain("shape_preview_truncated=false");
+			expect(diagnostic).not.toMatch(/[\r\n]/);
+			for (const sentinel of sentinels) {
+				expect(diagnostic).not.toContain(sentinel);
+			}
+
+			const shapePreview = extractShapePreview(diagnostic);
+			expect(shapePreview).not.toContain('"');
+			expect(shapePreview.length).toBeLessThanOrEqual(200);
+			const structuralPunctuation = shapePreview
+				.replaceAll("[REDACTED]", "")
+				.replaceAll("\\u0022", "")
+				.replaceAll("\\s", "");
+			expect(
+				structuralPunctuation
+					.split("")
+					.every((character) => "{}[]:,".includes(character)),
+			).toBe(true);
+		},
+	);
+
+	it("bounds long structural previews at 200 escaped characters", () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const line = `{${Array.from(
+			{ length: 80 },
+			(_, index) => `"key-sentinel-${index}":"value-sentinel-${index}"`,
+		).join(",")}`;
+
+		expect(() =>
+			deserializeMessageWithObservability(line, {
+				lastChunkByteLength: Buffer.byteLength(line),
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow();
+
+		expect(stderrSpy).toHaveBeenCalledTimes(1);
+		const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
+		const shapePreview = extractShapePreview(diagnostic);
+		expect(shapePreview).not.toContain('"');
+		expect(shapePreview.length).toBeLessThanOrEqual(200);
+		expect(diagnostic).toContain("shape_preview_redacted=true");
+		expect(diagnostic).toContain("shape_preview_truncated=true");
+		expect(diagnostic).not.toContain("key-sentinel");
+		expect(diagnostic).not.toContain("value-sentinel");
+		expect(diagnostic).not.toMatch(/[\r\n]/);
+	});
+
+	it.each([
+		{
+			name: "structural punctuation after the preview limit",
+			line: '"'.repeat(34),
+		},
+		{
+			name: "whitespace after the preview limit",
+			line: `${'"'.repeat(33)}{ `,
+		},
+	])("truncates previews at a $name", ({ line }) => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		expect(() =>
+			deserializeMessageWithObservability(line, {
+				lastChunkByteLength: Buffer.byteLength(line),
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow();
+
+		const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
+		expect(diagnostic).toContain("shape_preview_truncated=true");
+	});
+
+	it("records Error failures without a parser position", () => {
+		const parserError = new Error("synthetic parser failure");
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw parserError;
+		});
+
+		expect(() =>
+			deserializeMessageWithObservability("{", {
+				lastChunkByteLength: 1,
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow(parserError);
+
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.position",
+			expect.any(Number),
+		);
+	});
+
+	it("omits parser messages and names while rethrowing the original error", () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const parserError = new Error(
+			"parser-message-sentinel from private input at position 3",
+		);
+		parserError.name = "custom-error-name-sentinel";
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw parserError;
+		});
+
+		let thrownError: unknown;
+		try {
+			deserializeMessageWithObservability("private-line-sentinel", {
+				lastChunkByteLength: 21,
+				lastChunkStartsWithUtf8Bom: false,
+			});
+		} catch (error) {
+			thrownError = error;
+		}
+
+		expect(thrownError).toBe(parserError);
+		expect(stderrSpy).toHaveBeenCalledTimes(1);
+		const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
+		expect(diagnostic).toContain("error_kind=Error");
+		expect(diagnostic).toContain("failure_position=3");
+		expect(diagnostic).not.toContain("parser-message-sentinel");
+		expect(diagnostic).not.toContain("custom-error-name-sentinel");
+		expect(diagnostic).not.toContain("private-line-sentinel");
+		expect(diagnostic).not.toContain("message=");
+	});
+
+	it("rethrows the original parser error when stderr diagnostics fail", () => {
+		const parserError = new Error("original parser failure at position 3");
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw parserError;
+		});
+		vi.spyOn(console, "error").mockImplementation(() => {
+			throw new Error("stderr unavailable");
+		});
+
+		expect(() =>
+			deserializeMessageWithObservability("bad", {
+				lastChunkByteLength: 3,
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow(parserError);
+	});
+
+	it("continues after malformed input with the real stdio transport", async () => {
+		const stdin = new PassThrough();
+		let stdout = "";
+		const capturedStdout = new Writable({
+			write(chunk, _encoding, callback) {
+				stdout += chunk.toString();
+				callback();
+			},
+		});
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const transport = createInstrumentedStdioTransport(
+			new StdioServerTransport(stdin, capturedStdout),
+		);
+		let resolveMessageProcessed!: () => void;
+		const messageProcessed = new Promise<void>((resolve) => {
+			resolveMessageProcessed = resolve;
+		});
+		const onMessage = vi.fn(() => resolveMessageProcessed());
+		const onError = vi.fn();
+		transport.onmessage = onMessage;
+		transport.onerror = onError;
+
+		try {
+			await transport.start();
+			expect(() =>
+				stdin.write(
+					'{malformed json}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n',
+				),
+			).not.toThrow();
+			await messageProcessed;
+
+			expect(onError).toHaveBeenCalledTimes(1);
+			expect(onMessage).toHaveBeenCalledWith({
+				jsonrpc: "2.0",
+				method: "notifications/initialized",
+			});
+			expect(stderrSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Failed to parse MCP stdin message"),
+			);
+			expect(stdout).toBe("");
+		} finally {
+			await transport.close();
+			stdin.destroy();
+			capturedStdout.destroy();
+			stderrSpy.mockRestore();
+		}
 	});
 
 	it("is a no-op when transport internals are unavailable", () => {
