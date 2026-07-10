@@ -166,6 +166,17 @@ automations:
           start_line: {{ diff_location.console_log.start_line }}
           comment: "`console.log` writes to stdout, which carries MCP protocol traffic. Use the project logging/error path or `console.error`."
 
+  # Request advisory AI review for large PRs and critical runtime changes
+  request_ai_review:
+    if:
+      - {{ not pr.draft }}
+      - {{ is.high_risk }}
+    run:
+      - action: add-label@v1
+        args:
+          label: "needs-ai-review"
+          color: "5319e7"
+
   # Add review progress label when team approval target is met
   label_approved_by_team:
     if:
@@ -218,9 +229,17 @@ colors:
 
 is:
   # Documented gitStream predicate for Dependabot and common bot accounts.
-  bot_author: "{{ pr.author | match(list=['github-actions', '_bot_', '[bot]', 'dependabot']) | some }}"
+  bot_author: "{{ pr.author | includes(list=['github-actions', '_bot_', '[bot]', 'dependabot']) }}"
+  high_risk: {{ ((not is.bot_author) and calc.etr >= 20) or (files | match(list=critical_files) | some) }}
   formatting: "{{ source.diff.files | isFormattingChange }}"
   docs: "{{ files | allDocs }}"
   tests: "{{ files | allTests }}"
   image: "{{ files | allImages }}"
   bot_branch: "{{ branch.name | match(list=['renovate/']) | some }}"
+
+critical_files:
+  - src/index.ts
+  - src/utils/telemetry.ts
+  - src/utils/error-handler.ts
+  - src/utils/stdio-observability.ts
+  - src/utils/hevyClientKubb.ts
