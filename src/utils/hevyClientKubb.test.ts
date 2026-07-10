@@ -294,6 +294,31 @@ describe("hevyClientKubb", () => {
 		);
 	});
 
+	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 0.5])(
+		"falls back to the configured timeout policy for invalid override %s",
+		(timeoutMs) => {
+			process.env.HEVY_MCP_API_TIMEOUT = "45000";
+
+			createClient("test-api-key", undefined, { timeoutMs });
+
+			expect(axiosTestDoubles.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					timeout: 45_000,
+				}),
+			);
+		},
+	);
+
+	it("floors fractional client-specific timeouts", () => {
+		createClient("test-api-key", undefined, { timeoutMs: 5_000.9 });
+
+		expect(axiosTestDoubles.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				timeout: 5_000,
+			}),
+		);
+	});
+
 	it("falls back to the default timeout when HEVY_MCP_API_TIMEOUT is invalid", () => {
 		process.env.HEVY_MCP_API_TIMEOUT = "not-a-number";
 
@@ -344,6 +369,50 @@ describe("hevyClientKubb", () => {
 		});
 		expect(axiosTestDoubles.request).toHaveBeenCalledTimes(1);
 		expect(delays).toHaveLength(0);
+	});
+
+	it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+		"uses the default retry limit for non-finite override %s",
+		async (maxGetRetries) => {
+			const delays = mockImmediateTimeouts();
+			axiosTestDoubles.request.mockRejectedValue(
+				createAxiosError({ code: "ETIMEDOUT" }),
+			);
+
+			const client = createClient("test-api-key", undefined, {
+				maxGetRetries,
+			});
+
+			await expect(client.getUserInfo()).rejects.toMatchObject({
+				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+				hevyRetryCount: MAX_GET_RETRIES,
+				hevyRetryExhausted: true,
+				hevyRetryOriginalCode: "ETIMEDOUT",
+			});
+			expect(axiosTestDoubles.request).toHaveBeenCalledTimes(
+				MAX_GET_RETRIES + 1,
+			);
+			expect(delays).toHaveLength(MAX_GET_RETRIES);
+		},
+	);
+
+	it("floors fractional retry overrides", async () => {
+		const delays = mockImmediateTimeouts();
+		axiosTestDoubles.request.mockRejectedValue(
+			createAxiosError({ code: "ETIMEDOUT" }),
+		);
+
+		const client = createClient("test-api-key", undefined, {
+			maxGetRetries: 1.9,
+		});
+
+		await expect(client.getUserInfo()).rejects.toMatchObject({
+			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+			hevyRetryCount: 1,
+			hevyRetryExhausted: true,
+		});
+		expect(axiosTestDoubles.request).toHaveBeenCalledTimes(2);
+		expect(delays).toHaveLength(1);
 	});
 
 	it("emits an exact debug message for a retryable 503 GET failure", async () => {

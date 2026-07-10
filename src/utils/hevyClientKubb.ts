@@ -125,6 +125,23 @@ function getApiTimeoutMs(): number {
 	return Math.trunc(parsed);
 }
 
+function normalizeMaxGetRetries(value: number | undefined): number {
+	if (value === undefined || !Number.isFinite(value) || value < 0) {
+		return MAX_GET_RETRIES;
+	}
+
+	return Math.floor(value);
+}
+
+function normalizeTimeoutMs(value: number | undefined): number {
+	if (value === undefined || !Number.isFinite(value) || value <= 0) {
+		return getApiTimeoutMs();
+	}
+
+	const normalizedValue = Math.floor(value);
+	return normalizedValue > 0 ? normalizedValue : getApiTimeoutMs();
+}
+
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => {
 		setTimeout(resolve, ms);
@@ -492,11 +509,9 @@ export function createClient(
 	baseUrl = "https://api.hevyapp.com",
 	options: HevyClientOptions = {},
 ) {
-	const {
-		logger,
-		maxGetRetries = MAX_GET_RETRIES,
-		timeoutMs = getApiTimeoutMs(),
-	} = options;
+	const { logger } = options;
+	const maxGetRetries = normalizeMaxGetRetries(options.maxGetRetries);
+	const timeoutMs = normalizeTimeoutMs(options.timeoutMs);
 	// Create an axios instance with the API key
 	const axiosInstance = axios.create({
 		baseURL: baseUrl,
