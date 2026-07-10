@@ -37,6 +37,7 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
+import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import {
 	setTypeEnum,
@@ -114,8 +115,18 @@ export function registerRoutineTools(
 	server.registerTool(
 		"get-routines",
 		{
-			description:
-				"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
+			description: describeTool({
+				summary: "Read-only. Lists custom and default workout routines.",
+				aliases: [
+					"list routines",
+					"show workout plans",
+					"browse saved routines",
+				],
+				useCase:
+					"Use to browse routines or discover a routine ID; use get-routine for one known routine.",
+				importantNotes:
+					"Results are paginated; page starts at 1 and pageSize is limited to 10.",
+			}),
 			inputSchema: getRoutinesSchema,
 			outputSchema: routinesOutputSchema,
 			annotations: readOnlyAnnotations("Get Routines"),
@@ -152,8 +163,15 @@ export function registerRoutineTools(
 	server.registerTool(
 		"get-routine",
 		{
-			description:
-				"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
+			description: describeTool({
+				summary:
+					"Read-only. Retrieves one routine and its exercise configuration by ID.",
+				aliases: ["show routine", "fetch workout plan", "routine details"],
+				useCase:
+					"Use when the routineId is known; use get-routines to browse or discover IDs.",
+				importantNotes:
+					"Requires a routineId from get-routines or a prior create response.",
+			}),
 			inputSchema: getRoutineSchema,
 			outputSchema: routineOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine"),
@@ -210,7 +228,14 @@ export function registerRoutineTools(
 
 	server.tool(
 		"create-routine",
-		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
+		describeTool({
+			summary: "Writes to the Hevy account by creating a new workout routine.",
+			aliases: ["add routine", "build workout plan", "save training template"],
+			useCase:
+				"Use to create a reusable plan; use create-workout to log a completed session.",
+			importantNotes:
+				"Requires exercise template IDs; folderId is optional. Retrying can create duplicates, and non-fixed rep ranges may not display in Hevy apps.",
+		}),
 		createRoutineSchema,
 		createAnnotations("Create Routine"),
 		withObservability(async (args: CreateRoutineParams) => {
@@ -324,7 +349,19 @@ export function registerRoutineTools(
 
 	server.tool(
 		"update-routine",
-		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
+		describeTool({
+			summary:
+				"Mutates the Hevy account by replacing an existing routine's content.",
+			aliases: [
+				"edit routine",
+				"revise workout plan",
+				"replace routine exercises",
+			],
+			useCase:
+				"Use to change a known routine; use create-routine for a separate new plan.",
+			importantNotes:
+				"Requires routineId and the complete title and exercises payload; omitted exercises are removed. Non-fixed rep ranges may not display in Hevy apps.",
+		}),
 		updateRoutineSchema,
 		updateAnnotations("Update Routine"),
 		withObservability(async (args: UpdateRoutineParams) => {

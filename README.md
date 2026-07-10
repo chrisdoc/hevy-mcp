@@ -193,6 +193,11 @@ set `HEVY_MCP_AUTO_CONFIRM` to the exact value `1`, or start the server with the
 exact `--yes` argument. Both options skip every mutation confirmation, so only
 enable them in environments where requests are already reviewed and trusted.
 
+Set `HEVY_MCP_DEBUG=1` to emit verbose, privacy-bounded diagnostics to stderr.
+Debug records include tool invocations and sanitized Hevy API response timing
+and status details. Other values leave diagnostics disabled, and stdout remains
+reserved for the MCP JSON-RPC stream.
+
 ```env
 # Example .env
 HEVY_API_KEY=your_hevy_api_key_here
@@ -200,6 +205,8 @@ HEVY_API_KEY=your_hevy_api_key_here
 HEVY_MCP_API_TIMEOUT=30000
 # Optional: skip mutation confirmations for intentional automation
 HEVY_MCP_AUTO_CONFIRM=1
+# Optional: enable verbose stderr diagnostics (only the value 1 enables it)
+HEVY_MCP_DEBUG=1
 ```
 
 ### 🧠 Exercise Template Cache Behavior

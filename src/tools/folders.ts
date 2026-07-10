@@ -28,6 +28,7 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
+import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 
 /**
@@ -50,8 +51,14 @@ export function registerFolderTools(
 	server.registerTool(
 		"get-routine-folders",
 		{
-			description:
-				"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
+			description: describeTool({
+				summary: "Read-only. Lists default and custom routine folders.",
+				aliases: ["list folders", "browse routine groups", "show plan folders"],
+				useCase:
+					"Use to browse folder organization or discover folder IDs for routine creation.",
+				importantNotes:
+					"Results are paginated; page starts at 1 and pageSize is limited to 10.",
+			}),
 			inputSchema: getRoutineFoldersSchema,
 			outputSchema: routineFoldersOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine Folders"),
@@ -92,8 +99,14 @@ export function registerFolderTools(
 	server.registerTool(
 		"get-routine-folder",
 		{
-			description:
-				"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
+			description: describeTool({
+				summary: "Read-only. Retrieves one routine folder's metadata by ID.",
+				aliases: ["show folder", "folder details", "routine folder metadata"],
+				useCase:
+					"Use for one known folder; use get-routine-folders to browse or discover folder IDs.",
+				importantNotes:
+					"Requires a folderId from get-routine-folders or a prior create response.",
+			}),
 			inputSchema: getRoutineFolderSchema,
 			outputSchema: routineFolderOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine Folder"),
@@ -126,7 +139,14 @@ export function registerFolderTools(
 
 	server.tool(
 		"create-routine-folder",
-		"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
+		describeTool({
+			summary: "Writes to the Hevy account by creating a new routine folder.",
+			aliases: ["add folder", "organize routines", "create plan group"],
+			useCase:
+				"Use to create an organizational destination before assigning new routines to a folderId.",
+			importantNotes:
+				"Requires a non-empty name. Retrying or reusing a name can create duplicate folders.",
+		}),
 		createRoutineFolderSchema,
 		createAnnotations("Create Routine Folder"),
 		withObservability(async (args: CreateRoutineFolderParams) => {

@@ -34,6 +34,7 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
+import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import {
 	equipmentCategoryEnum,
@@ -71,8 +72,19 @@ export function registerTemplateTools(
 	server.registerTool(
 		"get-exercise-templates",
 		{
-			description:
-				"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
+			description: describeTool({
+				summary:
+					"Read-only. Lists default and custom exercise templates with equipment and muscle metadata.",
+				aliases: [
+					"browse exercises",
+					"list exercise catalog",
+					"show movements",
+				],
+				useCase:
+					"Use for page-by-page catalog browsing; use search-exercise-templates for a name lookup across the full catalog.",
+				importantNotes:
+					"Results are paginated; page starts at 1 and pageSize is limited to 100.",
+			}),
 			inputSchema: getExerciseTemplatesSchema,
 			outputSchema: exerciseTemplatesOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Templates"),
@@ -117,8 +129,19 @@ export function registerTemplateTools(
 	server.registerTool(
 		"get-exercise-template",
 		{
-			description:
-				"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
+			description: describeTool({
+				summary:
+					"Read-only. Retrieves complete metadata for one exercise template by ID.",
+				aliases: [
+					"show exercise details",
+					"fetch movement",
+					"exercise template info",
+				],
+				useCase:
+					"Use after locating an exact template; use search-exercise-templates when only a name is known.",
+				importantNotes:
+					"Requires an exerciseTemplateId from a template list, search, routine, or workout.",
+			}),
 			inputSchema: getExerciseTemplateSchema,
 			outputSchema: exerciseTemplateOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Template"),
@@ -164,8 +187,15 @@ export function registerTemplateTools(
 	server.registerTool(
 		"get-exercise-history",
 		{
-			description:
-				"Get past sets for a specific exercise template, optionally filtered by start and end dates.",
+			description: describeTool({
+				summary:
+					"Read-only. Retrieves past performed sets for one exercise template.",
+				aliases: ["exercise progress", "past sets", "movement history"],
+				useCase:
+					"Use to analyze performance for one movement; use get-workouts for complete sessions.",
+				importantNotes:
+					"Requires an exerciseTemplateId. Optional startDate and endDate must be ISO 8601 datetimes with an offset.",
+			}),
 			inputSchema: getExerciseHistorySchema,
 			outputSchema: exerciseHistoryOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise History"),
@@ -211,7 +241,15 @@ export function registerTemplateTools(
 
 	server.tool(
 		"create-exercise-template",
-		"Create a custom exercise template with title, type, equipment, and muscle groups.",
+		describeTool({
+			summary:
+				"Writes to the Hevy account by creating a custom exercise template.",
+			aliases: ["add custom exercise", "create movement", "define exercise"],
+			useCase:
+				"Use only when the needed movement is absent; search-exercise-templates should check existing templates first.",
+			importantNotes:
+				"Requires title, exercise type, equipment category, and primary muscle group. Retrying or reusing a title can create duplicates.",
+		}),
 		createExerciseTemplateSchema,
 		createAnnotations("Create Exercise Template"),
 		withObservability(async (args: CreateExerciseTemplateParams) => {
@@ -276,8 +314,15 @@ export function registerTemplateTools(
 	server.registerTool(
 		"search-exercise-templates",
 		{
-			description:
-				"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call, caches the catalog in memory with a bounded TTL cache, and reuses it for subsequent searches. Use refresh:true to force a re-fetch.",
+			description: describeTool({
+				summary:
+					"Read-only for the Hevy account. Searches the full exercise template catalog by title substring.",
+				aliases: ["find exercise", "look up movement", "search exercise IDs"],
+				useCase:
+					"Use when a name or partial name is known, especially to discover IDs for workouts and routines; use get-exercise-templates for page browsing.",
+				importantNotes:
+					"Matching is case-insensitive. The catalog is cached locally for 5 minutes; refresh:true re-fetches all pages and changes only local cache state.",
+			}),
 			inputSchema: searchExerciseTemplatesSchema,
 			outputSchema: exerciseTemplatesOutputSchema,
 			annotations: readOnlyAnnotations("Search Exercise Templates"),
