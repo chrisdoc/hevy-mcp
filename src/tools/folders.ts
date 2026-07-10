@@ -9,20 +9,22 @@ import type {
 } from "../generated/client/types/index.js";
 import { withObservability } from "../utils/observability-wrapper.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
+import {
+	routineFolderOutputSchema,
+	routineFoldersOutputSchema,
+} from "../utils/output-schemas.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
-
-// Type definitions for the folder operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 /**
  * Register all routine folder-related tools with the MCP server
@@ -40,11 +42,15 @@ export function registerFolderTools(
 		typeof getRoutineFoldersSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-routine-folders",
-		"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
-		getRoutineFoldersSchema,
-		readOnlyAnnotations("Get Routine Folders"),
+		{
+			description:
+				"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
+			inputSchema: getRoutineFoldersSchema,
+			outputSchema: routineFoldersOutputSchema,
+			annotations: readOnlyAnnotations("Get Routine Folders"),
+		},
 		withObservability(async (args: GetRoutineFoldersParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -60,12 +66,15 @@ export function registerFolderTools(
 				) || [];
 
 			if (folders.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No routine folders found for the specified parameters",
+					{ routineFolders: [] },
 				);
 			}
 
-			return createJsonResponse(folders);
+			return createStructuredJsonResponse(folders, {
+				routineFolders: folders,
+			});
 		}, "get-routine-folders"),
 	);
 
@@ -75,11 +84,15 @@ export function registerFolderTools(
 	} as const;
 	type GetRoutineFolderParams = InferToolParams<typeof getRoutineFolderSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-routine-folder",
-		"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
-		getRoutineFolderSchema,
-		readOnlyAnnotations("Get Routine Folder"),
+		{
+			description:
+				"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
+			inputSchema: getRoutineFolderSchema,
+			outputSchema: routineFolderOutputSchema,
+			annotations: readOnlyAnnotations("Get Routine Folder"),
+		},
 		withObservability(async (args: GetRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { folderId } = args;
@@ -87,13 +100,14 @@ export function registerFolderTools(
 				await client.getRoutineFolder(folderId);
 
 			if (!data) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					`Routine folder with ID ${folderId} not found`,
+					{ routineFolder: null },
 				);
 			}
 
 			const folder = formatRoutineFolder(data);
-			return createJsonResponse(folder);
+			return createStructuredJsonResponse(folder, { routineFolder: folder });
 		}, "get-routine-folder"),
 	);
 

@@ -17,8 +17,16 @@ import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
+	workoutCountOutputSchema,
+	workoutEventsOutputSchema,
+	workoutOutputSchema,
+	workoutsOutputSchema,
+} from "../utils/output-schemas.js";
+import {
 	createEmptyResponse,
 	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -42,11 +50,15 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutsParams = InferToolParams<typeof getWorkoutsSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-workouts",
-		"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
-		getWorkoutsSchema,
-		readOnlyAnnotations("Get Workouts"),
+		{
+			description:
+				"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
+			inputSchema: getWorkoutsSchema,
+			outputSchema: workoutsOutputSchema,
+			annotations: readOnlyAnnotations("Get Workouts"),
+		},
 		withObservability(async (args: GetWorkoutsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -59,12 +71,13 @@ export function registerWorkoutTools(
 				data?.workouts?.map((workout) => formatWorkout(workout)) || [];
 
 			if (workouts.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No workouts found for the specified parameters",
+					{ workouts: [] },
 				);
 			}
 
-			return createJsonResponse(workouts);
+			return createStructuredJsonResponse(workouts, { workouts });
 		}, "get-workouts"),
 	);
 
@@ -74,11 +87,15 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutParams = InferToolParams<typeof getWorkoutSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-workout",
-		"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
-		getWorkoutSchema,
-		readOnlyAnnotations("Get Workout"),
+		{
+			description:
+				"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
+			inputSchema: getWorkoutSchema,
+			outputSchema: workoutOutputSchema,
+			annotations: readOnlyAnnotations("Get Workout"),
+		},
 		withObservability(async (args: GetWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { workoutId } = args;
@@ -86,25 +103,32 @@ export function registerWorkoutTools(
 				await client.getWorkout(workoutId);
 
 			if (!data) {
-				return createEmptyResponse(`Workout with ID ${workoutId} not found`);
+				return createStructuredEmptyResponse(
+					`Workout with ID ${workoutId} not found`,
+					{ workout: null },
+				);
 			}
 
 			const workout = formatWorkout(data);
-			return createJsonResponse(workout);
+			return createStructuredJsonResponse(workout, { workout });
 		}, "get-workout"),
 	);
 
 	// Get workout count
-	server.tool(
+	server.registerTool(
 		"get-workout-count",
-		"Get the total number of workouts on the account. Useful for pagination or statistics.",
-		{},
-		readOnlyAnnotations("Get Workout Count"),
+		{
+			description:
+				"Get the total number of workouts on the account. Useful for pagination or statistics.",
+			inputSchema: {},
+			outputSchema: workoutCountOutputSchema,
+			annotations: readOnlyAnnotations("Get Workout Count"),
+		},
 		withObservability(async () => {
 			const client = requireClient(hevyClient);
 			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
-			return createJsonResponse({ count });
+			return createStructuredJsonResponse({ count }, { count });
 		}, "get-workout-count"),
 	);
 
@@ -116,11 +140,15 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutEventsParams = InferToolParams<typeof getWorkoutEventsSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-workout-events",
-		"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
-		getWorkoutEventsSchema,
-		readOnlyAnnotations("Get Workout Events"),
+		{
+			description:
+				"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
+			inputSchema: getWorkoutEventsSchema,
+			outputSchema: workoutEventsOutputSchema,
+			annotations: readOnlyAnnotations("Get Workout Events"),
+		},
 		withObservability(async (args: GetWorkoutEventsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize, since } = args;
@@ -133,12 +161,13 @@ export function registerWorkoutTools(
 			const events = data?.events || [];
 
 			if (events.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					`No workout events found for the specified parameters since ${since}`,
+					{ events: [] },
 				);
 			}
 
-			return createJsonResponse(events);
+			return createStructuredJsonResponse(events, { events });
 		}, "get-workout-events"),
 	);
 

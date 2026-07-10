@@ -1,16 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { UserInfoResponse } from "../generated/client/types/index.js";
 import { withObservability } from "../utils/observability-wrapper.js";
+import type { HevyClient } from "../utils/hevyClient.js";
+import { userOutputSchema } from "../utils/output-schemas.js";
 import {
-	createEmptyResponse,
-	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
-
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 export function registerUserTools(
 	server: McpServer,
@@ -20,20 +18,25 @@ export function registerUserTools(
 	const getUserInfoSchema = {} as const;
 	type GetUserInfoParams = InferToolParams<typeof getUserInfoSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-user-info",
-		"Get the authenticated user's account info, including user ID, display name, and public profile URL. Useful for verifying which account the API key belongs to.",
-		getUserInfoSchema,
-		readOnlyAnnotations("Get User Info"),
+		{
+			description:
+				"Get the authenticated user's account info, including user ID, display name, and public profile URL. Useful for verifying which account the API key belongs to.",
+			inputSchema: getUserInfoSchema,
+			outputSchema: userOutputSchema,
+			annotations: readOnlyAnnotations("Get User Info"),
+		},
 		withObservability(async (_args: GetUserInfoParams) => {
 			const client = requireClient(hevyClient);
 			const data: UserInfoResponse = await client.getUserInfo();
 			if (!data?.data) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No user info found for the authenticated user",
+					{ user: null },
 				);
 			}
-			return createJsonResponse(data.data);
+			return createStructuredJsonResponse(data.data, { user: data.data });
 		}, "get-user-info"),
 	);
 }

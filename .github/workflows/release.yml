@@ -39,7 +39,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
       - name: Run unit tests
-        run: npx vitest run --exclude tests/integration/**
+        run: npx vitest run --exclude 'tests/integration/**'
       - name: Run integration tests
         run: npx vitest run tests/integration
         env:
