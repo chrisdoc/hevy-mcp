@@ -185,13 +185,47 @@ describe("Server entry", () => {
 		);
 	});
 
-	it("advertises logging capability and injects one client logger", () => {
+	it("advertises logging, rich instructions, and one client logger", () => {
 		createServer({ config: { apiKey: "test-key" } });
 
 		expect(testDoubles.mcpServerConstructor).toHaveBeenCalledWith(
 			{ name: "hevy-mcp", version: "dev" },
-			{ capabilities: { logging: {} } },
+			{
+				capabilities: { logging: {} },
+				instructions: expect.any(String),
+			},
 		);
+
+		const serverOptions = testDoubles.mcpServerConstructor.mock.calls[0]?.[1];
+		expect(serverOptions).toBeDefined();
+		if (
+			!serverOptions ||
+			typeof serverOptions !== "object" ||
+			!("instructions" in serverOptions) ||
+			typeof serverOptions.instructions !== "string"
+		) {
+			throw new Error("MCP server instructions were not provided");
+		}
+
+		const instructions = serverOptions.instructions;
+		expect(instructions.trim()).not.toBe("");
+		expect(instructions).toMatch(/Hevy[\s\S]*workout-tracking data/i);
+		expect(instructions).toMatch(/HEVY_API_KEY/);
+		expect(instructions).toMatch(/get-\*[\s\S]*search-\*[\s\S]*read-only/i);
+		expect(instructions).toMatch(/create-\*[\s\S]*update-\*[\s\S]*mutate/i);
+		expect(instructions).toMatch(/delete[\s\S]*not available/i);
+		expect(instructions).toMatch(/search[\s\S]*templates[\s\S]*template IDs/i);
+		expect(instructions).toMatch(/routine[\s\S]*actual completed sets/i);
+		expect(instructions).toMatch(/page 1/i);
+		expect(instructions).toMatch(/pageSize[\s\S]*10/i);
+		expect(instructions).toMatch(/get-exercise-templates[\s\S]*100/i);
+		expect(instructions).toMatch(/HTTP 429/i);
+		expect(instructions).toMatch(/read requests[\s\S]*retry automatically/i);
+		expect(instructions).toMatch(/write requests[\s\S]*do not/i);
+		// A 6,000-character cap is conservative for the sub-2,000-token goal;
+		// character count is intentionally not treated as an exact token count.
+		expect(instructions.length).toBeLessThan(6_000);
+
 		expect(createClient).toHaveBeenCalledWith(
 			"test-key",
 			"https://api.hevyapp.com",
@@ -237,22 +271,35 @@ describe("Server entry", () => {
 	});
 
 	describe("runServer", () => {
-		it.each(["--version", "-v"])(
-			"prints version for %s and exits before server startup",
-			async (flag) => {
-				process.env = {
-					...originalEnv,
-					HEVY_API_KEY: "test-api-key",
-				};
+		it.each([
+			["--version", undefined],
+			["-v", ""],
+		])(
+			"prints version for %s without an API key and exits before server startup",
+			async (flag, apiKey) => {
+				process.env = { ...originalEnv };
+				if (apiKey === undefined) {
+					delete process.env.HEVY_API_KEY;
+				} else {
+					process.env.HEVY_API_KEY = apiKey;
+				}
 				process.argv = [...originalArgv.slice(0, 2), flag];
 
 				const logSpy = vi
 					.spyOn(console, "log")
 					.mockImplementation(() => undefined);
+				const errorSpy = vi
+					.spyOn(console, "error")
+					.mockImplementation(() => undefined);
+				const exitSpy = vi
+					.spyOn(process, "exit")
+					.mockImplementation(() => undefined as never);
 
 				await runServer();
 
-				expect(logSpy).toHaveBeenCalledWith("dev");
+				expect(errorSpy).toHaveBeenCalledExactlyOnceWith("hevy-mcp vdev");
+				expect(logSpy).not.toHaveBeenCalled();
+				expect(exitSpy).not.toHaveBeenCalled();
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
 				expect(testDoubles.installGracefulShutdown).not.toHaveBeenCalled();
@@ -261,6 +308,8 @@ describe("Server entry", () => {
 				expect(anyStdioModule.__transports).toHaveLength(0);
 
 				logSpy.mockRestore();
+				errorSpy.mockRestore();
+				exitSpy.mockRestore();
 			},
 		);
 
@@ -283,6 +332,7 @@ describe("Server entry", () => {
 				const [helpText] = logSpy.mock.calls[0] ?? [];
 				expect(helpText).toContain("Usage:");
 				expect(helpText).toContain("HEVY_API_KEY");
+				expect(helpText).toContain("HEVY_MCP_DEBUG=1");
 				expect(helpText).toContain("Examples:");
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();

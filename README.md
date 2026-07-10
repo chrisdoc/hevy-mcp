@@ -179,11 +179,18 @@ Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
 Set `HEVY_MCP_API_TIMEOUT` to override the default 30-second Hevy API request
 timeout. Its value is in milliseconds.
 
+Set `HEVY_MCP_DEBUG=1` to emit verbose, privacy-bounded diagnostics to stderr.
+Debug records include tool invocations and sanitized Hevy API response timing
+and status details. Other values leave diagnostics disabled, and stdout remains
+reserved for the MCP JSON-RPC stream.
+
 ```env
 # Example .env
 HEVY_API_KEY=your_hevy_api_key_here
 # Optional: customize Hevy API request timeout (milliseconds)
 HEVY_MCP_API_TIMEOUT=30000
+# Optional: enable verbose stderr diagnostics (only the value 1 enables it)
+HEVY_MCP_DEBUG=1
 ```
 
 ### 🧠 Exercise Template Cache Behavior

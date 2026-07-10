@@ -215,6 +215,7 @@ function mockImmediateTimeouts(): number[] {
 
 describe("hevyClientKubb", () => {
 	beforeEach(() => {
+		delete process.env.HEVY_MCP_DEBUG;
 		delete process.env.HEVY_MCP_API_TIMEOUT;
 		apiTestDoubles.lastClient = null;
 		vi.restoreAllMocks();
@@ -935,6 +936,102 @@ describe("hevyClientKubb", () => {
 			method: "GET",
 			endpoint: "/v1/routines",
 		});
+	});
+
+	it("writes sanitized successful API diagnostics to stderr", () => {
+		process.env.HEVY_MCP_DEBUG = "1";
+		const stderrSpy = vi
+			.spyOn(process.stderr, "write")
+			.mockImplementation(() => true);
+		const stdoutSpy = vi
+			.spyOn(process.stdout, "write")
+			.mockImplementation(() => true);
+		const logger = vi.fn();
+		createClient("test-api-key", "https://api.hevyapp.com", { logger });
+		const dateNow = vi.spyOn(Date, "now");
+		dateNow.mockReturnValueOnce(5_000).mockReturnValueOnce(5_075);
+
+		const config = telemetryTestDoubles.requestHandler?.({
+			method: "get",
+			url: "/v1/workouts/private-id?api-key=secret&query=private-text",
+			baseURL: "https://api.hevyapp.com",
+		});
+		telemetryTestDoubles.responseSuccessHandler?.({ status: 200, config });
+
+		const output = String(stderrSpy.mock.calls[0]?.[0]);
+		expect(output).toContain('"event":"api_response"');
+		expect(output).toContain('"method":"GET"');
+		expect(output).toContain('"endpoint":"/v1/workouts/:workoutId"');
+		expect(output).toContain('"durationMs":75');
+		expect(output).toContain('"status":200');
+		expect(output).not.toContain("private-id");
+		expect(output).not.toContain("secret");
+		expect(output).not.toContain("private-text");
+		expect(stdoutSpy).not.toHaveBeenCalled();
+		expect(logger).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ status: 503, expectedStatus: "503" },
+		{ status: undefined, expectedStatus: "null" },
+	])(
+		"writes sanitized failed API diagnostics with status $expectedStatus",
+		({ status, expectedStatus }) => {
+			process.env.HEVY_MCP_DEBUG = "1";
+			const stderrSpy = vi
+				.spyOn(process.stderr, "write")
+				.mockImplementation(() => true);
+			const stdoutSpy = vi
+				.spyOn(process.stdout, "write")
+				.mockImplementation(() => true);
+			createClient("test-api-key", "https://api.hevyapp.com");
+			const dateNow = vi.spyOn(Date, "now");
+			dateNow.mockReturnValueOnce(6_000).mockReturnValueOnce(6_040);
+
+			const config = telemetryTestDoubles.requestHandler?.({
+				method: "put",
+				url: "/v1/routines/private-id?token=secret",
+				baseURL: "https://api.hevyapp.com",
+			});
+			const error = new Error("must not be logged") as Error & {
+				config?: Record<string, unknown>;
+				response?: { status: number };
+			};
+			error.config = config;
+			if (status !== undefined) {
+				error.response = { status };
+			}
+
+			expect(() => telemetryTestDoubles.responseErrorHandler?.(error)).toThrow(
+				error,
+			);
+			const output = String(stderrSpy.mock.calls[0]?.[0]);
+			expect(output).toContain('"event":"api_response"');
+			expect(output).toContain('"method":"PUT"');
+			expect(output).toContain('"endpoint":"/v1/routines/:routineId"');
+			expect(output).toContain('"durationMs":40');
+			expect(output).toContain(`"status":${expectedStatus}`);
+			expect(output).not.toContain("private-id");
+			expect(output).not.toContain("secret");
+			expect(output).not.toContain("must not be logged");
+			expect(stdoutSpy).not.toHaveBeenCalled();
+		},
+	);
+
+	it("keeps API diagnostics silent when debug mode is disabled", () => {
+		const stderrSpy = vi
+			.spyOn(process.stderr, "write")
+			.mockImplementation(() => true);
+		createClient("test-api-key", "https://api.hevyapp.com");
+		vi.spyOn(Date, "now").mockReturnValue(7_000);
+		const config = telemetryTestDoubles.requestHandler?.({
+			method: "get",
+			url: "/v1/workouts",
+		});
+
+		telemetryTestDoubles.responseSuccessHandler?.({ status: 200, config });
+
+		expect(stderrSpy).not.toHaveBeenCalled();
 	});
 
 	it("defaults request tracing metadata when the axios config is sparse", () => {
