@@ -30,6 +30,7 @@ const testDoubles = vi.hoisted(() => ({
 	tool: vi.fn(),
 	registerTool: vi.fn(),
 	directRegisterToolCalls: 0,
+	invokeProxyFallback: false,
 	getUserInfo: vi.fn().mockResolvedValue({}),
 	sentry: {
 		init: vi.fn(() => ({})),
@@ -84,6 +85,9 @@ vi.mock("./tools/user.js", () => ({
 	registerUserTools: vi.fn((server: McpServer) => {
 		testDoubles.directRegisterToolCalls += 1;
 		server.registerTool("get-user-info", {}, vi.fn());
+		if (testDoubles.invokeProxyFallback) {
+			server.isConnected();
+		}
 	}),
 }));
 
@@ -139,6 +143,7 @@ describe("Server entry", () => {
 		vi.clearAllMocks();
 		testDoubles.getUserInfo.mockResolvedValue({});
 		testDoubles.directRegisterToolCalls = 0;
+		testDoubles.invokeProxyFallback = false;
 		testDoubles.tool.mockImplementation(
 			function (this: { registerTool: () => void }) {
 				this.registerTool();
@@ -202,6 +207,14 @@ describe("Server entry", () => {
 			"mcp.tools.count",
 			registrationCount,
 		);
+	});
+
+	it("preserves non-registration server methods through the counting proxy", () => {
+		testDoubles.invokeProxyFallback = true;
+
+		createServer({ config: { apiKey: "test-key" } });
+
+		expect(testDoubles.isConnected).toHaveBeenCalledTimes(1);
 	});
 
 	it("exports createServer as both default and named exports", () => {
@@ -441,6 +454,8 @@ describe("Server entry", () => {
 		it.each([
 			["network failure", { code: "ETIMEDOUT" }],
 			["HTTP 429", { response: { status: 429 } }],
+			["malformed response", { response: null }],
+			["malformed status", { response: { status: "unknown" } }],
 		])(
 			"warns and connects after a sanitized %s startup probe failure",
 			async (_label, failure) => {
