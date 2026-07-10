@@ -9,12 +9,12 @@ const OPTIONS = {
 };
 
 function registryResponse(latestVersion: unknown, ok = true): Response {
-	return {
-		ok,
-		json: vi.fn().mockResolvedValue({
+	return new Response(
+		JSON.stringify({
 			"dist-tags": { latest: latestVersion },
 		}),
-	} as unknown as Response;
+		{ status: ok ? 200 : 500 },
+	);
 }
 
 function createDependencies() {
@@ -174,14 +174,17 @@ describe("checkForUpdate", () => {
 	});
 
 	it.each([
-		["1.0.0", "2.0.0", true],
+		["1.26.5", "1.28.0", false],
+		["1.25.9", "1.28.0", true],
+		["1.28.0", "1.28.1", false],
+		["1.28.0", "2.0.0", true],
 		["2.0.0", "2.0.0", false],
 		["2.0.0", "1.0.0", false],
-		["1.0.0", "2.0.0-beta.1", true],
-		["2.0.0-beta.1", "2.0.0", true],
+		["1.0.0", "2.0.0-beta.1", false],
+		["2.0.0-beta.1", "2.0.0", false],
 		["2.0.0", "2.0.0-beta.1", false],
 	])(
-		"compares current %s and latest %s according to SemVer",
+		"applies the notification threshold from current %s to latest %s",
 		async (currentVersion, latestVersion, shouldNotify) => {
 			const dependencies = createDependencies();
 			dependencies.fetch.mockResolvedValue(registryResponse(latestVersion));
@@ -196,6 +199,22 @@ describe("checkForUpdate", () => {
 			);
 		},
 	);
+
+	it("emits a manager-neutral notice with versions and threshold", async () => {
+		const dependencies = createDependencies();
+		dependencies.fetch.mockResolvedValue(registryResponse("1.28.0"));
+
+		await checkForUpdate(
+			{ packageName: "hevy-mcp", currentVersion: "1.25.9" },
+			dependencies,
+		);
+
+		const notice = dependencies.writeStderr.mock.calls[0]?.[0];
+		expect(notice).toContain("current 1.25.9");
+		expect(notice).toContain("latest 1.28.0");
+		expect(notice).toMatch(/more than two minor versions/i);
+		expect(notice).not.toMatch(/npm install/i);
+	});
 
 	it("skips invalid local versions without cache or network work", async () => {
 		const dependencies = createDependencies();

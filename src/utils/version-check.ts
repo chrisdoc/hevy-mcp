@@ -121,6 +121,29 @@ function parseLatestVersion(value: unknown): string | undefined {
 	return distTags.latest;
 }
 
+function shouldNotifyAboutUpdate(
+	currentVersion: string,
+	latestVersion: string,
+): boolean {
+	const current = semver.parse(currentVersion);
+	const latest = semver.parse(latestVersion);
+
+	if (
+		!current ||
+		!latest ||
+		latest.prerelease.length > 0 ||
+		!semver.gt(latest, current)
+	) {
+		return false;
+	}
+
+	if (latest.major > current.major) {
+		return true;
+	}
+
+	return latest.major === current.major && latest.minor - current.minor > 2;
+}
+
 async function readFreshCachedVersion(
 	cachePath: string,
 	dependencies: VersionCheckDependencies,
@@ -210,9 +233,9 @@ export async function checkForUpdate(
 			);
 		}
 
-		if (semver.gt(latestVersion, options.currentVersion)) {
+		if (shouldNotifyAboutUpdate(options.currentVersion, latestVersion)) {
 			dependencies.writeStderr(
-				`A newer version of ${options.packageName} is available: ${options.currentVersion} → ${latestVersion}. Update with npm install -g ${options.packageName}@latest.\n`,
+				`Update available for ${options.packageName}: current ${options.currentVersion}, latest ${latestVersion}. Notices are shown for newer major versions or when more than two minor versions behind. Update using your preferred installation method.\n`,
 			);
 		}
 	} catch {
