@@ -34,6 +34,11 @@ const testDoubles = vi.hoisted(() => ({
 	tool: vi.fn(),
 	registerTool: vi.fn(),
 	directRegisterToolCalls: 0,
+	close: vi.fn().mockResolvedValue(undefined),
+	installGracefulShutdown: vi.fn(() => ({
+		cleanup: vi.fn(),
+		getShutdownPromise: vi.fn(),
+	})),
 	sentry: {
 		init: vi.fn(() => ({})),
 		setUser: vi.fn(),
@@ -110,6 +115,10 @@ vi.mock("./tools/body-measurements.js", () => ({
 	},
 }));
 
+vi.mock("./utils/graceful-shutdown.js", () => ({
+	installGracefulShutdown: testDoubles.installGracefulShutdown,
+}));
+
 vi.mock("./utils/telemetry.js", () => ({
 	Sentry: testDoubles.sentry,
 	tracer: {
@@ -160,6 +169,7 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 		}
 
 		connect = testDoubles.connect;
+		close = testDoubles.close;
 		isConnected = vi.fn(() => true);
 		sendLoggingMessage = testDoubles.sendLoggingMessage;
 		registerPrompt = testDoubles.registerPrompt;
@@ -192,6 +202,8 @@ describe("Server entry", () => {
 		process.env = { ...originalEnv };
 		process.argv = [...originalArgv];
 		vi.clearAllMocks();
+		testDoubles.connect.mockResolvedValue(undefined);
+		testDoubles.close.mockResolvedValue(undefined);
 		testDoubles.directRegisterToolCalls = 0;
 		testDoubles.tool.mockImplementation(
 			function (this: { registerTool: () => void }) {
@@ -402,6 +414,7 @@ describe("Server entry", () => {
 				expect(exitSpy).not.toHaveBeenCalled();
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
+				expect(testDoubles.installGracefulShutdown).not.toHaveBeenCalled();
 
 				const anyStdioModule = stdioModule as { __transports?: unknown[] };
 				expect(anyStdioModule.__transports).toHaveLength(0);
@@ -437,6 +450,7 @@ describe("Server entry", () => {
 				expect(helpText).toContain("Examples:");
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
+				expect(testDoubles.installGracefulShutdown).not.toHaveBeenCalled();
 
 				const anyStdioModule = stdioModule as { __transports?: unknown[] };
 				expect(anyStdioModule.__transports).toHaveLength(0);
@@ -471,6 +485,12 @@ describe("Server entry", () => {
 			);
 			expect(spanNames).toContain("mcp.server.run");
 			expect(spanNames).toContain("mcp.server.connect");
+			expect(testDoubles.installGracefulShutdown).toHaveBeenCalledWith({
+				target: expect.objectContaining({ close: testDoubles.close }),
+			});
+			expect(testDoubles.connect.mock.invocationCallOrder[0]).toBeLessThan(
+				testDoubles.installGracefulShutdown.mock.invocationCallOrder[0] ?? 0,
+			);
 		});
 
 		it("prefers CLI --hevy-api-key argument over environment variable", async () => {
@@ -507,6 +527,7 @@ describe("Server entry", () => {
 
 			await expect(runServer()).rejects.toThrow("connect failed");
 			expect(testDoubles.connect).toHaveBeenCalled();
+			expect(testDoubles.installGracefulShutdown).not.toHaveBeenCalled();
 			expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 		});
 

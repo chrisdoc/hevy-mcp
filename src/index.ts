@@ -23,6 +23,7 @@ import { registerTemplateTools } from "./tools/templates.js";
 import { registerUserTools } from "./tools/user.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
+import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { createClient } from "./utils/hevyClient.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
@@ -324,6 +325,7 @@ export async function runServer() {
 						}
 					},
 				);
+				installGracefulShutdown({ target: server });
 
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (e) {
