@@ -24,11 +24,13 @@ const testDoubles = vi.hoisted(() => ({
 	},
 	connect: vi.fn().mockResolvedValue(undefined),
 	mcpServerConstructor: vi.fn(),
+	isConnected: vi.fn(() => false),
 	sendLoggingMessage: vi.fn().mockResolvedValue(undefined),
 	registerPrompt: vi.fn(),
 	tool: vi.fn(),
 	registerTool: vi.fn(),
 	directRegisterToolCalls: 0,
+	getUserInfo: vi.fn().mockResolvedValue({}),
 	sentry: {
 		init: vi.fn(() => ({})),
 		setUser: vi.fn(),
@@ -47,7 +49,10 @@ const testDoubles = vi.hoisted(() => ({
 }));
 
 vi.mock("./utils/hevyClient.js", () => ({
-	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
+	createClient: vi.fn(() => ({
+		mockedClient: true,
+		getUserInfo: testDoubles.getUserInfo,
+	})),
 }));
 
 vi.mock("./utils/telemetry.js", () => ({
@@ -100,7 +105,7 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 		}
 
 		connect = testDoubles.connect;
-		isConnected = vi.fn(() => true);
+		isConnected = testDoubles.isConnected;
 		sendLoggingMessage = testDoubles.sendLoggingMessage;
 		registerPrompt = testDoubles.registerPrompt;
 		tool = testDoubles.tool;
@@ -132,6 +137,7 @@ describe("Server entry", () => {
 		process.env = { ...originalEnv };
 		process.argv = [...originalArgv];
 		vi.clearAllMocks();
+		testDoubles.getUserInfo.mockResolvedValue({});
 		testDoubles.directRegisterToolCalls = 0;
 		testDoubles.tool.mockImplementation(
 			function (this: { registerTool: () => void }) {
@@ -281,15 +287,33 @@ describe("Server entry", () => {
 			},
 		);
 
-		it("uses HEVY_API_KEY from the environment and connects stdio transport", async () => {
+		it("validates HEVY_API_KEY before connecting stdio transport", async () => {
+			const secret = "test-api-key";
 			process.env = {
 				...originalEnv,
-				HEVY_API_KEY: "test-api-key",
+				HEVY_API_KEY: secret,
 			};
 			process.argv = originalArgv.slice(0, 2);
+			const errorSpy = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => undefined);
+			const stdoutSpy = vi
+				.spyOn(process.stdout, "write")
+				.mockImplementation(() => true);
 
 			await runServer();
-			expect(createClient).toHaveBeenCalledWith(
+			expect(testDoubles.getUserInfo).toHaveBeenCalledTimes(1);
+			expect(testDoubles.getUserInfo.mock.invocationCallOrder[0]).toBeLessThan(
+				testDoubles.connect.mock.invocationCallOrder[0] ?? Infinity,
+			);
+			expect(createClient).toHaveBeenNthCalledWith(
+				1,
+				"test-api-key",
+				"https://api.hevyapp.com",
+				{ maxGetRetries: 0, timeoutMs: 5_000 },
+			);
+			expect(createClient).toHaveBeenNthCalledWith(
+				2,
 				"test-api-key",
 				"https://api.hevyapp.com",
 				{ logger: expect.any(Function) },
@@ -299,7 +323,15 @@ describe("Server entry", () => {
 			});
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
-			).not.toContain("test-api-key");
+			).not.toContain(secret);
+			const renderedStderr = JSON.stringify(errorSpy.mock.calls);
+			expect(renderedStderr).not.toContain(secret);
+			expect(renderedStderr).not.toContain(
+				"Skipped structured MCP client log because the server is not connected",
+			);
+			expect(stdoutSpy).not.toHaveBeenCalled();
+			expect(testDoubles.isConnected).not.toHaveBeenCalled();
+			expect(testDoubles.sendLoggingMessage).not.toHaveBeenCalled();
 			const anyStdioModule = stdioModule as { __transports?: unknown[] };
 			expect(anyStdioModule.__transports?.length).toBeGreaterThan(0);
 			const spanNames = testDoubles.startActiveSpan.mock.calls.map(
@@ -307,6 +339,8 @@ describe("Server entry", () => {
 			);
 			expect(spanNames).toContain("mcp.server.run");
 			expect(spanNames).toContain("mcp.server.connect");
+			errorSpy.mockRestore();
+			stdoutSpy.mockRestore();
 		});
 
 		it("prefers CLI --hevy-api-key argument over environment variable", async () => {
@@ -317,7 +351,14 @@ describe("Server entry", () => {
 			process.argv = [...originalArgv.slice(0, 2), "--hevy-api-key=cli-key"];
 
 			await runServer();
-			expect(createClient).toHaveBeenCalledWith(
+			expect(createClient).toHaveBeenNthCalledWith(
+				1,
+				"cli-key",
+				"https://api.hevyapp.com",
+				{ maxGetRetries: 0, timeoutMs: 5_000 },
+			);
+			expect(createClient).toHaveBeenNthCalledWith(
+				2,
 				"cli-key",
 				"https://api.hevyapp.com",
 				{ logger: expect.any(Function) },
@@ -346,7 +387,124 @@ describe("Server entry", () => {
 			expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 		});
 
-		it("exits the process when no API key is provided", async () => {
+		it.each([401, 403])(
+			"rejects a %s startup probe with only an actionable sanitized error",
+			async (status) => {
+				const secret = "secret-api-key";
+				process.env = {
+					...originalEnv,
+					HEVY_API_KEY: secret,
+				};
+				process.argv = originalArgv.slice(0, 2);
+				testDoubles.getUserInfo.mockRejectedValueOnce({
+					message: `request failed for ${secret}`,
+					response: {
+						status,
+						data: { apiKey: secret, detail: "raw response" },
+					},
+					config: { headers: { "api-key": secret } },
+				});
+				const errorSpy = vi
+					.spyOn(console, "error")
+					.mockImplementation(() => undefined);
+				const stdoutSpy = vi
+					.spyOn(process.stdout, "write")
+					.mockImplementation(() => true);
+
+				const error = await runServer().catch((caught: unknown) => caught);
+				const renderedError = `${String(error)}\n${
+					(error as Error).stack ?? ""
+				}`;
+
+				expect(error).toBeInstanceOf(Error);
+				expect((error as Error).message).toBe(
+					"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.",
+				);
+				expect(renderedError).not.toContain(secret);
+				expect(renderedError).not.toContain("raw response");
+				expect(errorSpy).not.toHaveBeenCalled();
+				expect(stdoutSpy).not.toHaveBeenCalled();
+				expect(testDoubles.isConnected).not.toHaveBeenCalled();
+				expect(testDoubles.sendLoggingMessage).not.toHaveBeenCalled();
+				expect(testDoubles.connect).not.toHaveBeenCalled();
+				expect(createClient).toHaveBeenCalledTimes(1);
+				expect(createClient).toHaveBeenCalledWith(
+					secret,
+					"https://api.hevyapp.com",
+					{ maxGetRetries: 0, timeoutMs: 5_000 },
+				);
+				errorSpy.mockRestore();
+				stdoutSpy.mockRestore();
+			},
+		);
+
+		it.each([
+			["network failure", { code: "ETIMEDOUT" }],
+			["HTTP 429", { response: { status: 429 } }],
+		])(
+			"warns and connects after a sanitized %s startup probe failure",
+			async (_label, failure) => {
+				const secret = "non-auth-failure-secret";
+				process.env = {
+					...originalEnv,
+					HEVY_API_KEY: secret,
+				};
+				process.argv = originalArgv.slice(0, 2);
+				testDoubles.getUserInfo.mockRejectedValueOnce({
+					...failure,
+					message: `request failed with ${secret}`,
+					config: { headers: { "api-key": secret } },
+				});
+				const errorSpy = vi
+					.spyOn(console, "error")
+					.mockImplementation(() => undefined);
+				const stdoutSpy = vi
+					.spyOn(process.stdout, "write")
+					.mockImplementation(() => true);
+
+				await runServer();
+
+				expect(errorSpy).toHaveBeenNthCalledWith(
+					1,
+					"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
+				);
+				expect(errorSpy).toHaveBeenNthCalledWith(
+					2,
+					"Hevy client initialized with API key",
+				);
+				expect(errorSpy).toHaveBeenNthCalledWith(
+					3,
+					"Starting MCP server in stdio mode",
+				);
+				expect(errorSpy).toHaveBeenCalledTimes(3);
+				const renderedStderr = JSON.stringify(errorSpy.mock.calls);
+				expect(renderedStderr).not.toContain(secret);
+				expect(renderedStderr).not.toContain("ETIMEDOUT");
+				expect(renderedStderr).not.toContain(
+					"Skipped structured MCP client log because the server is not connected",
+				);
+				expect(stdoutSpy).not.toHaveBeenCalled();
+				expect(testDoubles.isConnected).not.toHaveBeenCalled();
+				expect(testDoubles.sendLoggingMessage).not.toHaveBeenCalled();
+				expect(testDoubles.connect).toHaveBeenCalledTimes(1);
+				expect(createClient).toHaveBeenNthCalledWith(
+					1,
+					secret,
+					"https://api.hevyapp.com",
+					{ maxGetRetries: 0, timeoutMs: 5_000 },
+				);
+				expect(createClient).toHaveBeenNthCalledWith(
+					2,
+					secret,
+					"https://api.hevyapp.com",
+					{ logger: expect.any(Function) },
+				);
+				errorSpy.mockRestore();
+				stdoutSpy.mockRestore();
+			},
+		);
+
+		it("fails missing-key startup on stderr without client, connect, or stdout", async () => {
 			process.env = {
 				...originalEnv,
 				HEVY_API_KEY: "",
@@ -359,10 +517,25 @@ describe("Server entry", () => {
 					expect(code).toBe(1);
 					throw new Error("process.exit called");
 				});
+			const errorSpy = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => undefined);
+			const stdoutSpy = vi
+				.spyOn(process.stdout, "write")
+				.mockImplementation(() => true);
 
 			await expect(runServer()).rejects.toThrow();
 			expect(exitSpy).toHaveBeenCalledWith(1);
+			expect(errorSpy).toHaveBeenCalledWith(
+				"Hevy API key is required. Provide it via the HEVY_API_KEY environment variable.",
+			);
+			expect(stdoutSpy).not.toHaveBeenCalled();
+			expect(createClient).not.toHaveBeenCalled();
+			expect(testDoubles.getUserInfo).not.toHaveBeenCalled();
+			expect(testDoubles.connect).not.toHaveBeenCalled();
 			exitSpy.mockRestore();
+			errorSpy.mockRestore();
+			stdoutSpy.mockRestore();
 		});
 	});
 });

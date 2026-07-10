@@ -282,6 +282,18 @@ describe("hevyClientKubb", () => {
 		);
 	});
 
+	it("allows a client-specific timeout to override the default policy", () => {
+		process.env.HEVY_MCP_API_TIMEOUT = "45000";
+
+		createClient("test-api-key", undefined, { timeoutMs: 5_000 });
+
+		expect(axiosTestDoubles.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				timeout: 5_000,
+			}),
+		);
+	});
+
 	it("falls back to the default timeout when HEVY_MCP_API_TIMEOUT is invalid", () => {
 		process.env.HEVY_MCP_API_TIMEOUT = "not-a-number";
 
@@ -312,6 +324,26 @@ describe("hevyClientKubb", () => {
 		expect(response).toEqual({ ok: true });
 		expect(axiosTestDoubles.request).toHaveBeenCalledTimes(3);
 		expect(delays).toEqual([RETRY_BACKOFF_BASE_MS, RETRY_BACKOFF_BASE_MS * 2]);
+	});
+
+	it("allows retries to be disabled for a single client", async () => {
+		const delays = mockImmediateTimeouts();
+		axiosTestDoubles.request.mockRejectedValue(
+			createAxiosError({ code: "ETIMEDOUT" }),
+		);
+
+		const client = createClient("test-api-key", undefined, {
+			maxGetRetries: 0,
+		});
+
+		await expect(client.getUserInfo()).rejects.toMatchObject({
+			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+			hevyRetryCount: 0,
+			hevyRetryExhausted: true,
+			hevyRetryOriginalCode: "ETIMEDOUT",
+		});
+		expect(axiosTestDoubles.request).toHaveBeenCalledTimes(1);
+		expect(delays).toHaveLength(0);
 	});
 
 	it("emits an exact debug message for a retryable 503 GET failure", async () => {
