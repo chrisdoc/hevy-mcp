@@ -52,6 +52,7 @@ jobs:
         id: changesets
         uses: changesets/action@v1
         with:
+          version: npm run version:changesets
           publish: npm run release
           commit: "chore: version packages"
           title: "chore: version packages"
