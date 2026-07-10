@@ -22,6 +22,7 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
+import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { zNullableNumber } from "../utils/schemas.js";
 
@@ -119,8 +120,14 @@ export function registerBodyMeasurementTools(
 	server.registerTool(
 		"get-body-measurements",
 		{
-			description:
-				"Get a paginated list of body measurements for the authenticated user. Returns measurements including weight, body fat, and various circumference measurements.",
+			description: describeTool({
+				summary: "Read-only. Lists dated body measurements for the account.",
+				aliases: ["body stats history", "list weigh-ins", "measurement log"],
+				useCase:
+					"Use to browse measurement history; use get-body-measurement for one exact date.",
+				importantNotes:
+					"Results are paginated; page starts at 1 and pageSize is limited to 10.",
+			}),
 			inputSchema: getBodyMeasurementsSchema,
 			outputSchema: bodyMeasurementsOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurements"),
@@ -165,8 +172,15 @@ export function registerBodyMeasurementTools(
 	server.registerTool(
 		"get-body-measurement",
 		{
-			description:
-				"Get a single body measurement by date. Returns all measurement fields for the specified date.",
+			description: describeTool({
+				summary:
+					"Read-only. Retrieves the body measurement entry for one date.",
+				aliases: ["get weigh-in", "show body stats", "measurement by date"],
+				useCase:
+					"Use when the exact measurement date is known; use get-body-measurements to browse dates.",
+				importantNotes:
+					"date must use YYYY-MM-DD; at most one entry exists per date.",
+			}),
 			inputSchema: getBodyMeasurementSchema,
 			outputSchema: bodyMeasurementOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurement"),
@@ -207,7 +221,15 @@ export function registerBodyMeasurementTools(
 
 	server.tool(
 		"create-body-measurement",
-		"Create a body measurement entry for a given date. All measurement fields are optional; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
+		describeTool({
+			summary:
+				"Writes to the Hevy account by creating a dated body measurement.",
+			aliases: ["log weigh-in", "add body stats", "record measurements"],
+			useCase:
+				"Use for a date without an entry; use update-body-measurement when that date already exists.",
+			importantNotes:
+				"date must use YYYY-MM-DD and be unique. Null fields are omitted and cannot clear values; an existing date returns 409.",
+		}),
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
 		withObservability(async (args: CreateBodyMeasurementParams) => {
@@ -240,7 +262,15 @@ export function registerBodyMeasurementTools(
 
 	server.tool(
 		"update-body-measurement",
-		"Update an existing body measurement entry for a given date. Only the fields you provide are sent and updated; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Requires at least one measurement field. Returns 404 if no entry exists for the date.",
+		describeTool({
+			summary:
+				"Mutates the Hevy account by updating a body measurement for a date.",
+			aliases: ["edit weigh-in", "correct body stats", "change measurements"],
+			useCase:
+				"Use to change fields on an existing date; use create-body-measurement for a new date.",
+			importantNotes:
+				"date must use YYYY-MM-DD and already exist. Provide at least one numeric field; nulls are omitted and cannot clear stored values.",
+		}),
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
 		withObservability(async (args: UpdateBodyMeasurementParams) => {
