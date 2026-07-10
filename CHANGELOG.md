@@ -1,3 +1,16 @@
+## 1.27.0
+
+### Minor Changes
+
+- [#512](https://github.com/chrisdoc/hevy-mcp/pull/512) [`0a592d7`](https://github.com/chrisdoc/hevy-mcp/commit/0a592d7e284c469949f1545b3bf26612d34b0aea) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add validated structured output schemas and `structuredContent` to all read-only tools while preserving their existing text responses.
+
+### Patch Changes
+
+- [#504](https://github.com/chrisdoc/hevy-mcp/pull/504) [`bae0ffb`](https://github.com/chrisdoc/hevy-mcp/commit/bae0ffbf170a7ac5584b29d909268bca36fdde16) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Correct the MCP registration span tool count to reflect successful tool registrations.
+
+- [#509](https://github.com/chrisdoc/hevy-mcp/pull/509) [`fb00d27`](https://github.com/chrisdoc/hevy-mcp/commit/fb00d27cf4709e4d08833eb63d5543783a0053c9) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Expose the user profile, workout count, exercise template catalog, and routine
+  folders as discoverable MCP resources.
+
 ## 1.26.6
 
 ### Patch Changes
