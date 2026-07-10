@@ -17,8 +17,16 @@ import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
+	workoutCountOutputSchema,
+	workoutEventsOutputSchema,
+	workoutOutputSchema,
+	workoutsOutputSchema,
+} from "../utils/output-schemas.js";
+import {
 	createEmptyResponse,
 	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -48,6 +56,7 @@ export function registerWorkoutTools(
 			description:
 				"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
 			inputSchema: getWorkoutsSchema,
+			outputSchema: workoutsOutputSchema,
 			annotations: readOnlyAnnotations("Get Workouts"),
 		},
 		withErrorHandling(async (args: GetWorkoutsParams) => {
@@ -62,12 +71,13 @@ export function registerWorkoutTools(
 				data?.workouts?.map((workout) => formatWorkout(workout)) || [];
 
 			if (workouts.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No workouts found for the specified parameters",
+					{ workouts: [] },
 				);
 			}
 
-			return createJsonResponse(workouts);
+			return createStructuredJsonResponse(workouts, { workouts });
 		}, "get-workouts"),
 	);
 
@@ -83,6 +93,7 @@ export function registerWorkoutTools(
 			description:
 				"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
 			inputSchema: getWorkoutSchema,
+			outputSchema: workoutOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout"),
 		},
 		withErrorHandling(async (args: GetWorkoutParams) => {
@@ -92,11 +103,14 @@ export function registerWorkoutTools(
 				await client.getWorkout(workoutId);
 
 			if (!data) {
-				return createEmptyResponse(`Workout with ID ${workoutId} not found`);
+				return createStructuredEmptyResponse(
+					`Workout with ID ${workoutId} not found`,
+					{ workout: null },
+				);
 			}
 
 			const workout = formatWorkout(data);
-			return createJsonResponse(workout);
+			return createStructuredJsonResponse(workout, { workout });
 		}, "get-workout"),
 	);
 
@@ -107,13 +121,14 @@ export function registerWorkoutTools(
 			description:
 				"Get the total number of workouts on the account. Useful for pagination or statistics.",
 			inputSchema: {},
+			outputSchema: workoutCountOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout Count"),
 		},
 		withErrorHandling(async () => {
 			const client = requireClient(hevyClient);
 			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
-			return createJsonResponse({ count });
+			return createStructuredJsonResponse({ count }, { count });
 		}, "get-workout-count"),
 	);
 
@@ -131,6 +146,7 @@ export function registerWorkoutTools(
 			description:
 				"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
 			inputSchema: getWorkoutEventsSchema,
+			outputSchema: workoutEventsOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout Events"),
 		},
 		withErrorHandling(async (args: GetWorkoutEventsParams) => {
@@ -145,12 +161,13 @@ export function registerWorkoutTools(
 			const events = data?.events || [];
 
 			if (events.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					`No workout events found for the specified parameters since ${since}`,
+					{ events: [] },
 				);
 			}
 
-			return createJsonResponse(events);
+			return createStructuredJsonResponse(events, { events });
 		}, "get-workout-events"),
 	);
 
@@ -188,14 +205,11 @@ export function registerWorkoutTools(
 	} as const;
 	type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
 
-	server.registerTool(
+	server.tool(
 		"create-workout",
-		{
-			description:
-				"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
-			inputSchema: createWorkoutSchema,
-			annotations: createAnnotations("Create Workout"),
-		},
+		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
+		createWorkoutSchema,
+		createAnnotations("Create Workout"),
 		withErrorHandling(async (args: CreateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { title, description, startTime, endTime, isPrivate, exercises } =
@@ -276,14 +290,11 @@ export function registerWorkoutTools(
 	} as const;
 	type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
 
-	server.registerTool(
+	server.tool(
 		"update-workout",
-		{
-			description:
-				"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
-			inputSchema: updateWorkoutSchema,
-			annotations: updateAnnotations("Update Workout"),
-		},
+		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
+		updateWorkoutSchema,
+		updateAnnotations("Update Workout"),
 		withErrorHandling(async (args: UpdateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const {
@@ -336,6 +347,6 @@ export function registerWorkoutTools(
 				pretty: true,
 				indent: 2,
 			});
-		}, "update-workout"),
+		}, "update-workout-operation"),
 	);
 }

@@ -3,16 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { BodyMeasurement } from "../generated/client/types/index.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { registerBodyMeasurementTools } from "./body-measurements.js";
 
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
-
 function createMockServer() {
-	const registerTool = vi.fn();
-	const server = { registerTool } as unknown as McpServer;
-	return { server, registerTool };
+	const tool = vi.fn();
+	const server = { tool, registerTool: tool } as unknown as McpServer;
+	return { server, tool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -20,15 +17,17 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const config = match[1] as {
-		inputSchema: Record<string, z.ZodTypeAny>;
-	};
-	const schema = config.inputSchema;
-	const handler = match[2] as (args: Record<string, unknown>) => Promise<{
+	const config = match[1] as
+		| { inputSchema?: Record<string, z.ZodTypeAny>; outputSchema?: unknown }
+		| undefined;
+	const schema =
+		config?.inputSchema ?? (match[2] as Record<string, z.ZodTypeAny>);
+	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
+		structuredContent?: Record<string, unknown>;
 	}>;
-	return { schema, handler };
+	return { schema, outputSchema: config?.outputSchema, handler };
 }
 
 const sampleMeasurement: BodyMeasurement = {
@@ -54,7 +53,7 @@ const sampleMeasurement: BodyMeasurement = {
 
 describe("registerBodyMeasurementTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		registerBodyMeasurementTools(server, null);
 
 		const toolNames = [
@@ -65,7 +64,7 @@ describe("registerBodyMeasurementTools", () => {
 		];
 
 		for (const name of toolNames) {
-			const { handler } = getToolRegistration(registerTool, name);
+			const { handler } = getToolRegistration(tool, name);
 			const response = await handler({});
 			expect(response).toMatchObject({
 				isError: true,
@@ -82,7 +81,7 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("get-body-measurements returns error response on client failure", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getBodyMeasurements: vi
 				.fn()
@@ -90,10 +89,7 @@ describe("registerBodyMeasurementTools", () => {
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"get-body-measurements",
-		);
+		const { handler } = getToolRegistration(tool, "get-body-measurements");
 
 		const response = await handler({ page: 1, pageSize: 10 });
 
@@ -113,7 +109,7 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("get-body-measurements returns formatted measurements from the client", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getBodyMeasurements: vi.fn().mockResolvedValue({
 				body_measurements: [sampleMeasurement],
@@ -121,10 +117,7 @@ describe("registerBodyMeasurementTools", () => {
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"get-body-measurements",
-		);
+		const { handler } = getToolRegistration(tool, "get-body-measurements");
 
 		const response = await handler({ page: 1, pageSize: 10 });
 
@@ -135,37 +128,33 @@ describe("registerBodyMeasurementTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatBodyMeasurement(sampleMeasurement)]);
+		expect(response.structuredContent).toEqual({ bodyMeasurements: parsed });
 	});
 
 	it("get-body-measurements returns empty response when no measurements found", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getBodyMeasurements: vi.fn().mockResolvedValue({ body_measurements: [] }),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"get-body-measurements",
-		);
+		const { handler } = getToolRegistration(tool, "get-body-measurements");
 
 		const response = await handler({ page: 1, pageSize: 10 });
 		expect(response.content[0]?.text).toBe(
 			"No body measurements found for the specified parameters",
 		);
+		expect(response.structuredContent).toEqual({ bodyMeasurements: [] });
 	});
 
 	it("get-body-measurement returns a formatted measurement for a given date", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getBodyMeasurement: vi.fn().mockResolvedValue(sampleMeasurement),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"get-body-measurement",
-		);
+		const { handler } = getToolRegistration(tool, "get-body-measurement");
 
 		const response = await handler({ date: "2025-03-25" });
 
@@ -173,37 +162,33 @@ describe("registerBodyMeasurementTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(formatBodyMeasurement(sampleMeasurement));
+		expect(response.structuredContent).toEqual({ bodyMeasurement: parsed });
 	});
 
 	it("get-body-measurement returns empty response when not found", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getBodyMeasurement: vi.fn().mockResolvedValue(null),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"get-body-measurement",
-		);
+		const { handler } = getToolRegistration(tool, "get-body-measurement");
 
 		const response = await handler({ date: "2099-01-01" });
 		expect(response.content[0]?.text).toBe(
 			"No body measurement found for date 2099-01-01",
 		);
+		expect(response.structuredContent).toEqual({ bodyMeasurement: null });
 	});
 
 	it("create-body-measurement sends correct payload to the client", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			createBodyMeasurement: vi.fn().mockResolvedValue(undefined),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"create-body-measurement",
-		);
+		const { handler } = getToolRegistration(tool, "create-body-measurement");
 
 		const response = await handler({
 			date: "2025-04-01",
@@ -223,16 +208,13 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("update-body-measurement sends correct payload to the client", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			updateBodyMeasurement: vi.fn().mockResolvedValue(undefined),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"update-body-measurement",
-		);
+		const { handler } = getToolRegistration(tool, "update-body-measurement");
 
 		const response = await handler({
 			date: "2025-03-25",
@@ -254,16 +236,13 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("omits explicit null fields from the payload", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			createBodyMeasurement: vi.fn().mockResolvedValue(undefined),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"create-body-measurement",
-		);
+		const { handler } = getToolRegistration(tool, "create-body-measurement");
 
 		await handler({
 			date: "2025-04-01",
@@ -278,16 +257,13 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("maps all measurement fields to their API keys", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			updateBodyMeasurement: vi.fn().mockResolvedValue(undefined),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"update-body-measurement",
-		);
+		const { handler } = getToolRegistration(tool, "update-body-measurement");
 
 		await handler({
 			date: "2025-03-25",
@@ -318,12 +294,9 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("coerces numeric strings in measurement fields", () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		registerBodyMeasurementTools(server, {} as unknown as HevyClient);
-		const { schema } = getToolRegistration(
-			registerTool,
-			"create-body-measurement",
-		);
+		const { schema } = getToolRegistration(tool, "create-body-measurement");
 
 		const parsed = z.object(schema).parse({
 			date: "2025-04-01",
@@ -336,12 +309,9 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("treats empty strings as omitted instead of coercing to 0", () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		registerBodyMeasurementTools(server, {} as unknown as HevyClient);
-		const { schema } = getToolRegistration(
-			registerTool,
-			"create-body-measurement",
-		);
+		const { schema } = getToolRegistration(tool, "create-body-measurement");
 
 		const parsed = z.object(schema).parse({
 			date: "2025-04-01",
@@ -352,16 +322,13 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("update-body-measurement rejects calls without measurement fields", async () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		const hevyClient: HevyClient = {
 			updateBodyMeasurement: vi.fn().mockResolvedValue(undefined),
 		} as unknown as HevyClient;
 
 		registerBodyMeasurementTools(server, hevyClient);
-		const { handler } = getToolRegistration(
-			registerTool,
-			"update-body-measurement",
-		);
+		const { handler } = getToolRegistration(tool, "update-body-measurement");
 
 		for (const args of [
 			{ date: "2025-03-25" },
@@ -382,12 +349,9 @@ describe("registerBodyMeasurementTools", () => {
 	});
 
 	it("accepts date-only input and explicit nulls in the schema", () => {
-		const { server, registerTool } = createMockServer();
+		const { server, tool } = createMockServer();
 		registerBodyMeasurementTools(server, {} as unknown as HevyClient);
-		const { schema } = getToolRegistration(
-			registerTool,
-			"update-body-measurement",
-		);
+		const { schema } = getToolRegistration(tool, "update-body-measurement");
 
 		const dateOnly = z.object(schema).parse({ date: "2025-04-01" });
 		expect(dateOnly).toEqual({ date: "2025-04-01" });

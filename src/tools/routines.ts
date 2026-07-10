@@ -16,10 +16,17 @@ import type {
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
+import {
+	routineOutputSchema,
+	routinesOutputSchema,
+} from "../utils/output-schemas.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -32,11 +39,6 @@ import {
 	zNullableInt,
 	zOptionalRepRange,
 } from "../utils/schemas.js";
-
-// Type definitions for the routine operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function buildRepRange(repRange?: {
 	start?: number | null;
@@ -110,6 +112,7 @@ export function registerRoutineTools(
 			description:
 				"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
 			inputSchema: getRoutinesSchema,
+			outputSchema: routinesOutputSchema,
 			annotations: readOnlyAnnotations("Get Routines"),
 		},
 		withErrorHandling(async (args: GetRoutinesParams) => {
@@ -125,12 +128,13 @@ export function registerRoutineTools(
 				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
 
 			if (routines.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No routines found for the specified parameters",
+					{ routines: [] },
 				);
 			}
 
-			return createJsonResponse(routines);
+			return createStructuredJsonResponse(routines, { routines });
 		}, "get-routines"),
 	);
 
@@ -146,6 +150,7 @@ export function registerRoutineTools(
 			description:
 				"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
 			inputSchema: getRoutineSchema,
+			outputSchema: routineOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine"),
 		},
 		withErrorHandling(async (args: GetRoutineParams) => {
@@ -155,10 +160,13 @@ export function registerRoutineTools(
 				String(routineId),
 			);
 			if (!data || !data.routine) {
-				return createEmptyResponse(`Routine with ID ${routineId} not found`);
+				return createStructuredEmptyResponse(
+					`Routine with ID ${routineId} not found`,
+					{ routine: null },
+				);
 			}
 			const routine = formatRoutine(data.routine);
-			return createJsonResponse(routine);
+			return createStructuredJsonResponse(routine, { routine });
 		}, "get-routine"),
 	);
 
@@ -195,14 +203,11 @@ export function registerRoutineTools(
 	} as const;
 	type CreateRoutineParams = InferToolParams<typeof createRoutineSchema>;
 
-	server.registerTool(
+	server.tool(
 		"create-routine",
-		{
-			description:
-				"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
-			inputSchema: createRoutineSchema,
-			annotations: createAnnotations("Create Routine"),
-		},
+		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
+		createRoutineSchema,
+		createAnnotations("Create Routine"),
 		withErrorHandling(async (args: CreateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { title, folderId, notes, exercises } = args;
@@ -305,14 +310,11 @@ export function registerRoutineTools(
 	} as const;
 	type UpdateRoutineParams = InferToolParams<typeof updateRoutineSchema>;
 
-	server.registerTool(
+	server.tool(
 		"update-routine",
-		{
-			description:
-				"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
-			inputSchema: updateRoutineSchema,
-			annotations: updateAnnotations("Update Routine"),
-		},
+		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
+		updateRoutineSchema,
+		updateAnnotations("Update Routine"),
 		withErrorHandling(async (args: UpdateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId, title, notes, exercises } = args;

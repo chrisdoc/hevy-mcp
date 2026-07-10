@@ -14,6 +14,8 @@ import { createHmac } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { registerWorkoutPrompts } from "./prompts/workouts.js";
+import { registerHevyResources } from "./resources/hevy.js";
 import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
@@ -82,6 +84,42 @@ const serverConfigSchema = z.object({
 export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
+function createToolCountingServer(server: McpServer) {
+	let count = 0;
+
+	const countingServer = new Proxy(server, {
+		get(target, property, receiver) {
+			if (property === "tool") {
+				return (...args: Parameters<McpServer["tool"]>) => {
+					const registeredTool = target.tool(...args);
+					count += 1;
+					return registeredTool;
+				};
+			}
+
+			if (property === "registerTool") {
+				const registerTool: McpServer["registerTool"] = (
+					name,
+					config,
+					callback,
+				) => {
+					const registeredTool = target.registerTool(name, config, callback);
+					count += 1;
+					return registeredTool;
+				};
+				return registerTool;
+			}
+
+			return Reflect.get(target, property, receiver);
+		},
+	});
+
+	return {
+		server: countingServer,
+		getCount: () => count,
+	};
+}
+
 function buildServer(apiKey: string) {
 	const userId = fingerprintApiKey(apiKey);
 
@@ -118,23 +156,34 @@ function buildServer(apiKey: string) {
 				);
 				console.error("Hevy client initialized with API key");
 
+				tracer.startActiveSpan("mcp.tools.register", (toolsSpan) => {
+					try {
+						const counting = createToolCountingServer(server);
+						registerWorkoutTools(counting.server, hevyClient);
+						registerRoutineTools(counting.server, hevyClient);
+						registerTemplateTools(counting.server, hevyClient);
+						registerFolderTools(counting.server, hevyClient);
+						registerBodyMeasurementTools(counting.server, hevyClient);
+						registerUserTools(counting.server, hevyClient);
+						toolsSpan.setAttribute("mcp.tools.count", counting.getCount());
+					} finally {
+						toolsSpan.end();
+					}
+				});
+
+				registerWorkoutPrompts(server);
 				tracer.startActiveSpan(
-					"mcp.tools.register",
+					"mcp.resources.register",
 					{
 						attributes: {
-							"mcp.tools.count": 6,
+							"mcp.resources.count": 4,
 						},
 					},
-					(toolsSpan) => {
+					(resourcesSpan) => {
 						try {
-							registerWorkoutTools(server, hevyClient);
-							registerRoutineTools(server, hevyClient);
-							registerTemplateTools(server, hevyClient);
-							registerFolderTools(server, hevyClient);
-							registerBodyMeasurementTools(server, hevyClient);
-							registerUserTools(server, hevyClient);
+							registerHevyResources(server, hevyClient);
 						} finally {
-							toolsSpan.end();
+							resourcesSpan.end();
 						}
 					},
 				);
