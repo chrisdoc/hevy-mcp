@@ -1,7 +1,8 @@
 ---
-"hevy-mcp": patch
+"hevy-mcp": major
 ---
 
-Validate the configured Hevy API key before accepting MCP tool calls. Reject
-confirmed authentication failures with a sanitized error, while warning and
-continuing startup when validation is unavailable for other reasons.
+Change the public `createServer` factory to return a `Promise<McpServer>` so it
+can validate the configured Hevy API key before constructing a server. Reject
+confirmed authentication failures with a sanitized error, while warning with
+allowlisted diagnostics and continuing startup for other validation failures.

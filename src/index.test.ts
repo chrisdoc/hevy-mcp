@@ -166,9 +166,13 @@ describe("Server entry", () => {
 		expect(parsed.apiKey).toBe("abc");
 	});
 
-	it("creates an MCP server instance", () => {
-		const server = createServer({ config: { apiKey: "test-key" } });
+	it("creates an MCP server instance after validating the API key", async () => {
+		const server = await createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
+		expect(testDoubles.getUserInfo).toHaveBeenCalledTimes(1);
+		expect(testDoubles.getUserInfo.mock.invocationCallOrder[0]).toBeLessThan(
+			testDoubles.mcpServerConstructor.mock.invocationCallOrder[0],
+		);
 		expect(testDoubles.registerPrompt).toHaveBeenCalledTimes(2);
 		expect(
 			testDoubles.registerPrompt.mock.calls.map(([prompt]) => prompt),
@@ -184,8 +188,8 @@ describe("Server entry", () => {
 		);
 	});
 
-	it("advertises logging, rich instructions, and one client logger", () => {
-		createServer({ config: { apiKey: "test-key" } });
+	it("advertises logging, rich instructions, and one client logger", async () => {
+		await createServer({ config: { apiKey: "test-key" } });
 
 		expect(testDoubles.mcpServerConstructor).toHaveBeenCalledWith(
 			{ name: "hevy-mcp", version: "dev" },
@@ -232,8 +236,8 @@ describe("Server entry", () => {
 		);
 	});
 
-	it("reports the number of tool registration calls on the registration span", () => {
-		createServer({ config: { apiKey: "test-key" } });
+	it("reports the number of tool registration calls on the registration span", async () => {
+		await createServer({ config: { apiKey: "test-key" } });
 
 		const registrationCount = testDoubles.registerTool.mock.calls.length;
 		expect(registrationCount).toBeGreaterThan(0);
@@ -243,22 +247,22 @@ describe("Server entry", () => {
 		);
 	});
 
-	it("preserves non-registration server methods through the counting proxy", () => {
+	it("preserves non-registration server methods through the counting proxy", async () => {
 		testDoubles.invokeProxyFallback = true;
 
-		createServer({ config: { apiKey: "test-key" } });
+		await createServer({ config: { apiKey: "test-key" } });
 
 		expect(testDoubles.isConnected).toHaveBeenCalledTimes(1);
 	});
 
-	it("exports createServer as both default and named exports", () => {
+	it("exports createServer as both default and named exports", async () => {
 		expect(namedCreateServer).toBe(createServer);
-		const server = namedCreateServer({ config: { apiKey: "named-key" } });
+		const server = await namedCreateServer({ config: { apiKey: "named-key" } });
 		expect(server).toBeDefined();
 	});
 
-	it("sets the Sentry user ID to an HMAC-SHA-256 fingerprint of the API key", () => {
-		createServer({ config: { apiKey: "test-key" } });
+	it("sets the Sentry user ID to an HMAC-SHA-256 fingerprint of the API key", async () => {
+		await createServer({ config: { apiKey: "test-key" } });
 
 		expect(Sentry.setUser).toHaveBeenCalledWith({ id: TEST_KEY_HMAC_SHA256 });
 		expect(JSON.stringify(vi.mocked(Sentry.setUser).mock.calls)).not.toContain(
@@ -266,16 +270,60 @@ describe("Server entry", () => {
 		);
 	});
 
-	it("marks the build span as failed when the Hevy client cannot be initialized", () => {
-		vi.mocked(createClient).mockImplementationOnce(() => {
-			throw new Error("client init failed");
+	it("marks the build span as failed when the MCP server cannot be constructed", async () => {
+		testDoubles.mcpServerConstructor.mockImplementationOnce(() => {
+			throw new Error("server construction failed");
 		});
 
-		expect(() => createServer({ config: { apiKey: "test-key" } })).toThrow(
-			"client init failed",
-		);
+		await expect(
+			createServer({ config: { apiKey: "test-key" } }),
+		).rejects.toThrow("server construction failed");
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 	});
+
+	it.each([401, 403])(
+		"rejects a %s preflight before constructing an MCP server",
+		async (status) => {
+			const secret = "programmatic-secret";
+			testDoubles.getUserInfo.mockRejectedValueOnce({
+				name: "UnsafeErrorName",
+				message: `request failed for ${secret}`,
+				stack: `stack contains ${secret}`,
+				code: "UNKNOWN_SECRET_CODE",
+				request: { url: `https://example.test/${secret}` },
+				response: {
+					status,
+					data: { secret, detail: "raw response" },
+				},
+				config: { headers: { "api-key": secret } },
+			});
+			const errorSpy = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => undefined);
+
+			const error = await createServer({ config: { apiKey: secret } }).catch(
+				(caught: unknown) => caught,
+			);
+
+			expect(error).toBeInstanceOf(Error);
+			if (!(error instanceof Error)) {
+				throw new Error("Expected createServer to reject with an Error");
+			}
+			const renderedError = `${String(error)}\n${error.stack ?? ""}`;
+			expect(error.message).toBe(
+				"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.",
+			);
+			expect(testDoubles.getUserInfo).toHaveBeenCalledTimes(1);
+			expect(testDoubles.mcpServerConstructor).not.toHaveBeenCalled();
+			expect(createClient).toHaveBeenCalledTimes(1);
+			expect(errorSpy).not.toHaveBeenCalled();
+			expect(renderedError).not.toContain(secret);
+			expect(renderedError).not.toContain("raw response");
+			expect(renderedError).not.toContain("UNKNOWN_SECRET_CODE");
+			expect(renderedError).not.toContain("example.test");
+			errorSpy.mockRestore();
+		},
+	);
 
 	describe("runServer", () => {
 		it.each([
@@ -502,23 +550,60 @@ describe("Server entry", () => {
 		);
 
 		it.each([
-			["network failure", { code: "ETIMEDOUT" }],
-			["HTTP 429", { response: { status: 429 } }],
-			["malformed response", { response: null }],
-			["malformed status", { response: { status: "unknown" } }],
+			[
+				"known network failure",
+				{ code: "ETIMEDOUT" },
+				"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability. Diagnostic: ETIMEDOUT.",
+			],
+			[
+				"HTTP 5xx failure",
+				{ code: "ETIMEDOUT", response: { status: 503 } },
+				"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability. Diagnostic: HTTP 503.",
+			],
+			[
+				"unknown network failure",
+				{ code: "UNKNOWN_SECRET_CODE" },
+				"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
+			],
+			[
+				"malformed response",
+				{ response: null },
+				"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
+			],
+			[
+				"out-of-range status",
+				{ response: { status: 999 } },
+				"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
+			],
 		])(
 			"warns and connects after a sanitized %s startup probe failure",
-			async (_label, failure) => {
+			async (_label, failure, expectedWarning) => {
 				const secret = "non-auth-failure-secret";
 				process.env = {
 					...originalEnv,
 					HEVY_API_KEY: secret,
 				};
 				process.argv = originalArgv.slice(0, 2);
+				const response =
+					"response" in failure &&
+					failure.response &&
+					typeof failure.response === "object"
+						? {
+								...failure.response,
+								data: { secret, detail: "raw response body" },
+							}
+						: { data: { secret, detail: "raw response body" } };
 				testDoubles.getUserInfo.mockRejectedValueOnce({
 					...failure,
+					name: "UnsafeErrorName",
 					message: `request failed with ${secret}`,
-					config: { headers: { "api-key": secret } },
+					stack: `stack contains ${secret}`,
+					request: { url: `https://example.test/${secret}` },
+					config: {
+						headers: { "api-key": secret },
+						url: `https://example.test/${secret}`,
+					},
+					response,
 				});
 				const errorSpy = vi
 					.spyOn(console, "error")
@@ -529,10 +614,7 @@ describe("Server entry", () => {
 
 				await runServer();
 
-				expect(errorSpy).toHaveBeenNthCalledWith(
-					1,
-					"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
-				);
+				expect(errorSpy).toHaveBeenNthCalledWith(1, expectedWarning);
 				expect(errorSpy).toHaveBeenNthCalledWith(
 					2,
 					"Hevy client initialized with API key",
@@ -544,7 +626,10 @@ describe("Server entry", () => {
 				expect(errorSpy).toHaveBeenCalledTimes(3);
 				const renderedStderr = JSON.stringify(errorSpy.mock.calls);
 				expect(renderedStderr).not.toContain(secret);
-				expect(renderedStderr).not.toContain("ETIMEDOUT");
+				expect(renderedStderr).not.toContain("UnsafeErrorName");
+				expect(renderedStderr).not.toContain("UNKNOWN_SECRET_CODE");
+				expect(renderedStderr).not.toContain("raw response body");
+				expect(renderedStderr).not.toContain("example.test");
 				expect(renderedStderr).not.toContain(
 					"Skipped structured MCP client log because the server is not connected",
 				);

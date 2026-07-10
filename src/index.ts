@@ -102,6 +102,18 @@ const INVALID_API_KEY_MESSAGE =
 	"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.";
 const API_KEY_VALIDATION_WARNING =
 	"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.";
+const SAFE_NETWORK_ERROR_CODES = new Set([
+	"EAI_AGAIN",
+	"ECONNABORTED",
+	"ECONNREFUSED",
+	"ECONNRESET",
+	"ENETUNREACH",
+	"ENOTFOUND",
+	"ERR_NETWORK",
+	"ERR_SOCKET_TIMEOUT",
+	"ETIMEDOUT",
+	"HEVY_RETRY_EXHAUSTED",
+]);
 
 const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 
@@ -170,7 +182,28 @@ function getHttpStatus(error: unknown): number | undefined {
 		return undefined;
 	}
 
-	return typeof response.status === "number" ? response.status : undefined;
+	return typeof response.status === "number" &&
+		Number.isInteger(response.status) &&
+		response.status >= 100 &&
+		response.status <= 599
+		? response.status
+		: undefined;
+}
+
+function getSafeValidationDiagnostic(error: unknown): string | undefined {
+	const status = getHttpStatus(error);
+	if (status !== undefined) {
+		return `HTTP ${status}`;
+	}
+
+	if (!error || typeof error !== "object" || !("code" in error)) {
+		return undefined;
+	}
+
+	const code = error.code;
+	return typeof code === "string" && SAFE_NETWORK_ERROR_CODES.has(code)
+		? code
+		: undefined;
 }
 
 async function validateApiKey(apiKey: string) {
@@ -190,7 +223,12 @@ async function validateApiKey(apiKey: string) {
 			throw new Error(INVALID_API_KEY_MESSAGE);
 		}
 
-		console.error(API_KEY_VALIDATION_WARNING);
+		const diagnostic = getSafeValidationDiagnostic(error);
+		console.error(
+			diagnostic
+				? `${API_KEY_VALIDATION_WARNING} Diagnostic: ${diagnostic}.`
+				: API_KEY_VALIDATION_WARNING,
+		);
 	}
 }
 
@@ -285,8 +323,9 @@ function buildServer(apiKey: string) {
 	);
 }
 
-export function createServer({ config }: { config: ServerConfig }) {
+export async function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey } = serverConfigSchema.parse(config);
+	await validateApiKey(apiKey);
 	return buildServer(apiKey);
 }
 
@@ -321,8 +360,7 @@ export async function runServer() {
 				const apiKey = cfg.apiKey;
 				assertApiKey(apiKey);
 
-				await validateApiKey(apiKey);
-				const server = buildServer(apiKey);
+				const server = await createServer({ config: { apiKey } });
 				console.error("Starting MCP server in stdio mode");
 				const transport = createInstrumentedStdioTransport(
 					new StdioServerTransport(),
