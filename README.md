@@ -21,6 +21,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - [Why hevy-mcp?](#why-hevy-mcp)
 - [Configuration](#configuration)
 - [Available MCP Tools](#available-mcp-tools)
+- [Available MCP Resources](#available-mcp-resources)
 - [Development & Contributing](#development--contributing)
 
 ---
@@ -187,8 +188,8 @@ HEVY_MCP_API_TIMEOUT=30000
 
 ### 🧠 Exercise Template Cache Behavior
 
-`search-exercise-templates` now uses a shared in-memory async cache for the
-full exercise template catalog:
+`search-exercise-templates` and the `hevy://exercise-templates` resource use a
+shared in-memory async cache for the full exercise template catalog:
 
 - **TTL**: 5 minutes per cached catalog entry.
 - **Memory bound**: max 1 catalog entry (LRU bounded cache).
@@ -197,9 +198,8 @@ full exercise template catalog:
 - **Manual refresh**: set `refresh: true` in the tool input to invalidate the
   cached catalog and force a re-fetch from the Hevy API.
 
-This cache currently applies to `search-exercise-templates` only. Paginated
-`get-exercise-templates` requests still call the API directly to keep paging
-behavior explicit and avoid cross-page invalidation complexity.
+Paginated `get-exercise-templates` requests still call the API directly to keep
+paging behavior explicit and avoid cross-page invalidation complexity.
 
 ### 📡 Sentry Monitoring
 
@@ -253,6 +253,17 @@ Compatibility note: with MCP SDK v1.29.0, clients using the default must send
 
 ---
 
+## 📚 Available MCP Resources
+
+| Name                 | URI                         |
+| :------------------- | :-------------------------- |
+| `user-profile`       | `hevy://user`               |
+| `workout-count`      | `hevy://workout-count`      |
+| `exercise-templates` | `hevy://exercise-templates` |
+| `routine-folders`    | `hevy://routine-folders`    |
+
+---
+
 ## 👨‍💻 Development & Contributing
 
 ### Quick Commands
@@ -260,7 +271,7 @@ Compatibility note: with MCP SDK v1.29.0, clients using the default must send
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
 - **Type Check**: `npm run check:types`
-- **Unit Tests**: `npx vitest run --exclude tests/integration/**`
+- **Unit Tests**: `npx vitest run --exclude 'tests/integration/**'`
 - **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
 - **Changeset Check**: `npm run check:changeset`
 
