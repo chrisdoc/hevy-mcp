@@ -134,11 +134,22 @@ automations:
           label: "{{ calc.etr }} min review"
           color: "{{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}"
 
+  # Request advisory AI review for large PRs and critical runtime changes
+  request_ai_review:
+    if:
+      - {{ not pr.draft }}
+      - {{ is.high_risk }}
+    run:
+      - action: add-label@v1
+        args:
+          label: "needs-ai-review"
+          color: "5319e7"
+
   # Add review progress label when team approval target is met
   label_approved_by_team:
     if:
-      - "{{ not pr.draft }}"
-      - "{{ pr.approvals | length >= required_approvals }}"
+      - {{ not pr.draft }}
+      - {{ pr.approvals | length >= required_approvals }}
     run:
       - action: add-label@v1
         args:
@@ -148,8 +159,8 @@ automations:
   # Add Greptile reviewed label once Greptile check succeeds
   label_greptile_reviewed:
     if:
-      - "{{ not pr.draft }}"
-      - "{{ pr.checks | filter(attr='name', regex=r/greptile/i) | filter(attr='status', term='completed') | match(attr='conclusion', term='success') | some }}"
+      - {{ not pr.draft }}
+      - {{ pr.checks | filter(attr='name', regex=r/greptile/i) | filter(attr='status', term='completed') | match(attr='conclusion', term='success') | some }}
     run:
       - action: add-label@v1
         args:
@@ -183,7 +194,15 @@ colors:
 is:
   # Documented gitStream predicate for Dependabot and common bot accounts.
   bot_author: "{{ pr.author | match(list=['github-actions', '_bot_', '[bot]', 'dependabot']) | some }}"
+  high_risk: {{ ((not is.bot_author) and calc.etr >= 20) or (files | match(list=critical_files) | some) }}
   formatting: "{{ source.diff.files | isFormattingChange }}"
   docs: "{{ files | allDocs }}"
   tests: "{{ files | allTests }}"
   image: "{{ files | allImages }}"
+
+critical_files:
+  - src/index.ts
+  - src/utils/telemetry.ts
+  - src/utils/error-handler.ts
+  - src/utils/stdio-observability.ts
+  - src/utils/hevyClientKubb.ts
