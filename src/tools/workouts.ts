@@ -26,6 +26,7 @@ import {
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import { withTelemetry } from "../utils/telemetry-wrapper.js";
 import { setTypeEnum } from "../utils/schemas.js";
 
 /**
@@ -47,25 +48,28 @@ export function registerWorkoutTools(
 		"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
 		getWorkoutsSchema,
 		readOnlyAnnotations("Get Workouts"),
-		withErrorHandling(async (args: GetWorkoutsParams) => {
-			const client = requireClient(hevyClient);
-			const { page, pageSize } = args;
-			const data: GetV1Workouts200 = await client.getWorkouts({
-				page,
-				pageSize,
-			});
+		withErrorHandling(
+			withTelemetry(async (args: GetWorkoutsParams) => {
+				const client = requireClient(hevyClient);
+				const { page, pageSize } = args;
+				const data: GetV1Workouts200 = await client.getWorkouts({
+					page,
+					pageSize,
+				});
 
-			const workouts =
-				data?.workouts?.map((workout) => formatWorkout(workout)) || [];
+				const workouts =
+					data?.workouts?.map((workout) => formatWorkout(workout)) || [];
 
-			if (workouts.length === 0) {
-				return createEmptyResponse(
-					"No workouts found for the specified parameters",
-				);
-			}
+				if (workouts.length === 0) {
+					return createEmptyResponse(
+						"No workouts found for the specified parameters",
+					);
+				}
 
-			return createJsonResponse(workouts);
-		}, "get-workouts"),
+				return createJsonResponse(workouts);
+			}, "get-workouts"),
+			"get-workouts",
+		),
 	);
 
 	// Get single workout by ID
@@ -79,19 +83,22 @@ export function registerWorkoutTools(
 		"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
 		getWorkoutSchema,
 		readOnlyAnnotations("Get Workout"),
-		withErrorHandling(async (args: GetWorkoutParams) => {
-			const client = requireClient(hevyClient);
-			const { workoutId } = args;
-			const data: GetV1WorkoutsWorkoutid200 =
-				await client.getWorkout(workoutId);
+		withErrorHandling(
+			withTelemetry(async (args: GetWorkoutParams) => {
+				const client = requireClient(hevyClient);
+				const { workoutId } = args;
+				const data: GetV1WorkoutsWorkoutid200 =
+					await client.getWorkout(workoutId);
 
-			if (!data) {
-				return createEmptyResponse(`Workout with ID ${workoutId} not found`);
-			}
+				if (!data) {
+					return createEmptyResponse(`Workout with ID ${workoutId} not found`);
+				}
 
-			const workout = formatWorkout(data);
-			return createJsonResponse(workout);
-		}, "get-workout"),
+				const workout = formatWorkout(data);
+				return createJsonResponse(workout);
+			}, "get-workout"),
+			"get-workout",
+		),
 	);
 
 	// Get workout count
@@ -100,12 +107,15 @@ export function registerWorkoutTools(
 		"Get the total number of workouts on the account. Useful for pagination or statistics.",
 		{},
 		readOnlyAnnotations("Get Workout Count"),
-		withErrorHandling(async () => {
-			const client = requireClient(hevyClient);
-			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
-			const count = data?.workout_count ?? 0;
-			return createJsonResponse({ count });
-		}, "get-workout-count"),
+		withErrorHandling(
+			withTelemetry(async () => {
+				const client = requireClient(hevyClient);
+				const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
+				const count = data?.workout_count ?? 0;
+				return createJsonResponse({ count });
+			}, "get-workout-count"),
+			"get-workout-count",
+		),
 	);
 
 	// Get workout events (updates/deletes)
@@ -121,25 +131,28 @@ export function registerWorkoutTools(
 		"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
 		getWorkoutEventsSchema,
 		readOnlyAnnotations("Get Workout Events"),
-		withErrorHandling(async (args: GetWorkoutEventsParams) => {
-			const client = requireClient(hevyClient);
-			const { page, pageSize, since } = args;
-			const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
-				page,
-				pageSize,
-				since,
-			});
+		withErrorHandling(
+			withTelemetry(async (args: GetWorkoutEventsParams) => {
+				const client = requireClient(hevyClient);
+				const { page, pageSize, since } = args;
+				const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
+					page,
+					pageSize,
+					since,
+				});
 
-			const events = data?.events || [];
+				const events = data?.events || [];
 
-			if (events.length === 0) {
-				return createEmptyResponse(
-					`No workout events found for the specified parameters since ${since}`,
-				);
-			}
+				if (events.length === 0) {
+					return createEmptyResponse(
+						`No workout events found for the specified parameters since ${since}`,
+					);
+				}
 
-			return createJsonResponse(events);
-		}, "get-workout-events"),
+				return createJsonResponse(events);
+			}, "get-workout-events"),
+			"get-workout-events",
+		),
 	);
 
 	// Create workout
@@ -181,49 +194,57 @@ export function registerWorkoutTools(
 		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
 		createWorkoutSchema,
 		createAnnotations("Create Workout"),
-		withErrorHandling(async (args: CreateWorkoutParams) => {
-			const client = requireClient(hevyClient);
-			const { title, description, startTime, endTime, isPrivate, exercises } =
-				args;
-			const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> = {
-				title,
-				description: description ?? null,
-				start_time: startTime,
-				end_time: endTime,
-				is_private: isPrivate,
-				exercises: exercises.map(
-					(exercise): PostWorkoutsRequestExercise => ({
-						exercise_template_id: exercise.exerciseTemplateId,
-						superset_id: exercise.supersetId ?? null,
-						notes: exercise.notes ?? null,
-						sets: exercise.sets.map((set) => ({
-							type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-							weight_kg: set.weight ?? set.weightKg ?? null,
-							reps: set.reps ?? null,
-							distance_meters: set.distance ?? set.distanceMeters ?? null,
-							duration_seconds: set.duration ?? set.durationSeconds ?? null,
-							rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
-							custom_metric: set.customMetric ?? null,
-						})),
-					}),
-				),
-			};
-			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
+		withErrorHandling(
+			withTelemetry(async (args: CreateWorkoutParams) => {
+				const client = requireClient(hevyClient);
+				const { title, description, startTime, endTime, isPrivate, exercises } =
+					args;
+				const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> =
+					{
+						title,
+						description: description ?? null,
+						start_time: startTime,
+						end_time: endTime,
+						is_private: isPrivate,
+						exercises: exercises.map(
+							(exercise): PostWorkoutsRequestExercise => ({
+								exercise_template_id: exercise.exerciseTemplateId,
+								superset_id: exercise.supersetId ?? null,
+								notes: exercise.notes ?? null,
+								sets: exercise.sets.map((set) => ({
+									type: set.type as PostWorkoutsRequestSetTypeEnumKey,
+									weight_kg: set.weight ?? set.weightKg ?? null,
+									reps: set.reps ?? null,
+									distance_meters: set.distance ?? set.distanceMeters ?? null,
+									duration_seconds: set.duration ?? set.durationSeconds ?? null,
+									rpe:
+										(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ??
+										null,
+									custom_metric: set.customMetric ?? null,
+								})),
+							}),
+						),
+					};
+				const requestBody: PostWorkoutsRequestBody = {
+					workout: workoutPayload,
+				};
 
-			const data: PostV1Workouts201 = await client.createWorkout(requestBody);
+				const data: PostV1Workouts201 = await client.createWorkout(requestBody);
 
-			if (!data) {
-				return createEmptyResponse(
-					"Failed to create workout: Server returned no data",
-				);
-			}
+				if (!data) {
+					return createEmptyResponse(
+						"Failed to create workout: Server returned no data",
+					);
+				}
 
-			const workout = formatWorkout(data);
-			return createJsonResponse(workout, {
-				pretty: true,
-				indent: 2,
-			});
-		}, "create-workout"),
+				const workout = formatWorkout(data);
+				return createJsonResponse(workout, {
+					pretty: true,
+					indent: 2,
+				});
+			}, "create-workout"),
+			"create-workout",
+		),
 	);
 
 	// Update workout
@@ -266,58 +287,66 @@ export function registerWorkoutTools(
 		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
 		updateWorkoutSchema,
 		updateAnnotations("Update Workout"),
-		withErrorHandling(async (args: UpdateWorkoutParams) => {
-			const client = requireClient(hevyClient);
-			const {
-				workoutId,
-				title,
-				description,
-				startTime,
-				endTime,
-				isPrivate,
-				exercises,
-			} = args;
-			const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> = {
-				title,
-				description: description ?? null,
-				start_time: startTime,
-				end_time: endTime,
-				is_private: isPrivate,
-				exercises: exercises.map(
-					(exercise): PostWorkoutsRequestExercise => ({
-						exercise_template_id: exercise.exerciseTemplateId,
-						superset_id: exercise.supersetId ?? null,
-						notes: exercise.notes ?? null,
-						sets: exercise.sets.map((set) => ({
-							type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-							weight_kg: set.weight ?? set.weightKg ?? null,
-							reps: set.reps ?? null,
-							distance_meters: set.distance ?? set.distanceMeters ?? null,
-							duration_seconds: set.duration ?? set.durationSeconds ?? null,
-							rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
-							custom_metric: set.customMetric ?? null,
-						})),
-					}),
-				),
-			};
-			const requestBody: PostWorkoutsRequestBody = { workout: workoutPayload };
+		withErrorHandling(
+			withTelemetry(async (args: UpdateWorkoutParams) => {
+				const client = requireClient(hevyClient);
+				const {
+					workoutId,
+					title,
+					description,
+					startTime,
+					endTime,
+					isPrivate,
+					exercises,
+				} = args;
+				const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> =
+					{
+						title,
+						description: description ?? null,
+						start_time: startTime,
+						end_time: endTime,
+						is_private: isPrivate,
+						exercises: exercises.map(
+							(exercise): PostWorkoutsRequestExercise => ({
+								exercise_template_id: exercise.exerciseTemplateId,
+								superset_id: exercise.supersetId ?? null,
+								notes: exercise.notes ?? null,
+								sets: exercise.sets.map((set) => ({
+									type: set.type as PostWorkoutsRequestSetTypeEnumKey,
+									weight_kg: set.weight ?? set.weightKg ?? null,
+									reps: set.reps ?? null,
+									distance_meters: set.distance ?? set.distanceMeters ?? null,
+									duration_seconds: set.duration ?? set.durationSeconds ?? null,
+									rpe:
+										(set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ??
+										null,
+									custom_metric: set.customMetric ?? null,
+								})),
+							}),
+						),
+					};
+				const requestBody: PostWorkoutsRequestBody = {
+					workout: workoutPayload,
+				};
 
-			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
-				workoutId,
-				requestBody,
-			);
-
-			if (!data) {
-				return createEmptyResponse(
-					`Failed to update workout with ID ${workoutId}`,
+				const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
+					workoutId,
+					requestBody,
 				);
-			}
 
-			const workout = formatWorkout(data);
-			return createJsonResponse(workout, {
-				pretty: true,
-				indent: 2,
-			});
-		}, "update-workout-operation"),
+				if (!data) {
+					return createEmptyResponse(
+						`Failed to update workout with ID ${workoutId}`,
+					);
+				}
+
+				const workout = formatWorkout(data);
+				return createJsonResponse(workout, {
+					pretty: true,
+					indent: 2,
+				});
+			}, "update-workout-operation"),
+			"update-workout-operation",
+		),
 	);
 }

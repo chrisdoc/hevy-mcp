@@ -27,6 +27,7 @@ import {
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import { withTelemetry } from "../utils/telemetry-wrapper.js";
 import {
 	setTypeEnum,
 	zNullableInt,
@@ -109,26 +110,30 @@ export function registerRoutineTools(
 		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
 		getRoutinesSchema,
 		readOnlyAnnotations("Get Routines"),
-		withErrorHandling(async (args: GetRoutinesParams) => {
-			const client = requireClient(hevyClient);
-			const { page, pageSize } = args;
-			const data: GetV1Routines200 = await client.getRoutines({
-				page,
-				pageSize,
-			});
+		withErrorHandling(
+			withTelemetry(async (args: GetRoutinesParams) => {
+				const client = requireClient(hevyClient);
+				const { page, pageSize } = args;
+				const data: GetV1Routines200 = await client.getRoutines({
+					page,
+					pageSize,
+				});
 
-			// Process routines to extract relevant information
-			const routines =
-				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
+				// Process routines to extract relevant information
+				const routines =
+					data?.routines?.map((routine: Routine) => formatRoutine(routine)) ||
+					[];
 
-			if (routines.length === 0) {
-				return createEmptyResponse(
-					"No routines found for the specified parameters",
-				);
-			}
+				if (routines.length === 0) {
+					return createEmptyResponse(
+						"No routines found for the specified parameters",
+					);
+				}
 
-			return createJsonResponse(routines);
-		}, "get-routines"),
+				return createJsonResponse(routines);
+			}, "get-routines"),
+			"get-routines",
+		),
 	);
 
 	// Get single routine by ID (new, direct endpoint)
@@ -142,18 +147,21 @@ export function registerRoutineTools(
 		"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
 		getRoutineSchema,
 		readOnlyAnnotations("Get Routine"),
-		withErrorHandling(async (args: GetRoutineParams) => {
-			const client = requireClient(hevyClient);
-			const { routineId } = args;
-			const data: GetV1RoutinesRoutineid200 = await client.getRoutineById(
-				String(routineId),
-			);
-			if (!data || !data.routine) {
-				return createEmptyResponse(`Routine with ID ${routineId} not found`);
-			}
-			const routine = formatRoutine(data.routine);
-			return createJsonResponse(routine);
-		}, "get-routine"),
+		withErrorHandling(
+			withTelemetry(async (args: GetRoutineParams) => {
+				const client = requireClient(hevyClient);
+				const { routineId } = args;
+				const data: GetV1RoutinesRoutineid200 = await client.getRoutineById(
+					String(routineId),
+				);
+				if (!data || !data.routine) {
+					return createEmptyResponse(`Routine with ID ${routineId} not found`);
+				}
+				const routine = formatRoutine(data.routine);
+				return createJsonResponse(routine);
+			}, "get-routine"),
+			"get-routine",
+		),
 	);
 
 	// Create new routine
@@ -194,73 +202,83 @@ export function registerRoutineTools(
 		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
 		createRoutineSchema,
 		createAnnotations("Create Routine"),
-		withErrorHandling(async (args: CreateRoutineParams) => {
-			const client = requireClient(hevyClient);
-			const { title, folderId, notes, exercises } = args;
-			let usesRepRanges = false;
-			const data: PostV1Routines201 = await client.createRoutine({
-				routine: {
-					title,
-					folder_id: folderId ?? null,
-					notes: notes ?? "",
-					exercises: exercises.map((exercise): PostRoutinesRequestExercise => {
-						const sets = exercise.sets.map((set): PostRoutinesRequestSet => {
-							const repRange = buildRepRange(set.repRange);
-							const fixedReps = getFixedRepsFromRepRange(repRange);
-							const reps = typeof set.reps === "number" ? set.reps : fixedReps;
-							return {
-								type: set.type as PostRoutinesRequestSetTypeEnumKey,
-								weight_kg: set.weight ?? set.weightKg ?? null,
-								reps: reps ?? null,
-								distance_meters: set.distance ?? set.distanceMeters ?? null,
-								duration_seconds: set.duration ?? set.durationSeconds ?? null,
-								custom_metric: set.customMetric ?? null,
-								rep_range: repRange,
-							};
-						});
+		withErrorHandling(
+			withTelemetry(async (args: CreateRoutineParams) => {
+				const client = requireClient(hevyClient);
+				const { title, folderId, notes, exercises } = args;
+				let usesRepRanges = false;
+				const data: PostV1Routines201 = await client.createRoutine({
+					routine: {
+						title,
+						folder_id: folderId ?? null,
+						notes: notes ?? "",
+						exercises: exercises.map(
+							(exercise): PostRoutinesRequestExercise => {
+								const sets = exercise.sets.map(
+									(set): PostRoutinesRequestSet => {
+										const repRange = buildRepRange(set.repRange);
+										const fixedReps = getFixedRepsFromRepRange(repRange);
+										const reps =
+											typeof set.reps === "number" ? set.reps : fixedReps;
+										return {
+											type: set.type as PostRoutinesRequestSetTypeEnumKey,
+											weight_kg: set.weight ?? set.weightKg ?? null,
+											reps: reps ?? null,
+											distance_meters:
+												set.distance ?? set.distanceMeters ?? null,
+											duration_seconds:
+												set.duration ?? set.durationSeconds ?? null,
+											custom_metric: set.customMetric ?? null,
+											rep_range: repRange,
+										};
+									},
+								);
 
-						if (
-							sets.some(
-								(set) =>
-									set.rep_range != null &&
-									getFixedRepsFromRepRange(set.rep_range) === null,
-							)
-						) {
-							usesRepRanges = true;
-						}
+								if (
+									sets.some(
+										(set) =>
+											set.rep_range != null &&
+											getFixedRepsFromRepRange(set.rep_range) === null,
+									)
+								) {
+									usesRepRanges = true;
+								}
 
-						return {
-							exercise_template_id: exercise.exerciseTemplateId,
-							superset_id: exercise.supersetId ?? null,
-							rest_seconds: exercise.restSeconds ?? null,
-							notes: exercise.notes ?? null,
-							sets,
-						};
-					}),
-				},
-			});
-
-			if (!data) {
-				return createEmptyResponse(
-					"Failed to create routine: Server returned no data",
-				);
-			}
-
-			const routine = formatRoutine(data);
-			const response = createJsonResponse(routine, {
-				pretty: true,
-				indent: 2,
-			});
-
-			if (usesRepRanges) {
-				response.content.push({
-					type: "text",
-					text: repRangeDisplayWarningText,
+								return {
+									exercise_template_id: exercise.exerciseTemplateId,
+									superset_id: exercise.supersetId ?? null,
+									rest_seconds: exercise.restSeconds ?? null,
+									notes: exercise.notes ?? null,
+									sets,
+								};
+							},
+						),
+					},
 				});
-			}
 
-			return response;
-		}, "create-routine"),
+				if (!data) {
+					return createEmptyResponse(
+						"Failed to create routine: Server returned no data",
+					);
+				}
+
+				const routine = formatRoutine(data);
+				const response = createJsonResponse(routine, {
+					pretty: true,
+					indent: 2,
+				});
+
+				if (usesRepRanges) {
+					response.content.push({
+						type: "text",
+						text: repRangeDisplayWarningText,
+					});
+				}
+
+				return response;
+			}, "create-routine"),
+			"create-routine",
+		),
 	);
 
 	// Update existing routine
@@ -301,75 +319,84 @@ export function registerRoutineTools(
 		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
 		updateRoutineSchema,
 		updateAnnotations("Update Routine"),
-		withErrorHandling(async (args: UpdateRoutineParams) => {
-			const client = requireClient(hevyClient);
-			const { routineId, title, notes, exercises } = args;
-			let usesRepRanges = false;
-			const data: PutV1RoutinesRoutineid200 = await client.updateRoutine(
-				routineId,
-				{
-					routine: {
-						title,
-						notes: notes ?? null,
-						exercises: exercises.map((exercise): PutRoutinesRequestExercise => {
-							const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
-								const repRange = buildRepRange(set.repRange);
-								const fixedReps = getFixedRepsFromRepRange(repRange);
-								const reps =
-									typeof set.reps === "number" ? set.reps : fixedReps;
-								return {
-									type: set.type as PutRoutinesRequestSetTypeEnumKey,
-									weight_kg: set.weight ?? set.weightKg ?? null,
-									reps: reps ?? null,
-									distance_meters: set.distance ?? set.distanceMeters ?? null,
-									duration_seconds: set.duration ?? set.durationSeconds ?? null,
-									custom_metric: set.customMetric ?? null,
-									...(repRange ? { rep_range: repRange } : {}),
-								};
-							});
+		withErrorHandling(
+			withTelemetry(async (args: UpdateRoutineParams) => {
+				const client = requireClient(hevyClient);
+				const { routineId, title, notes, exercises } = args;
+				let usesRepRanges = false;
+				const data: PutV1RoutinesRoutineid200 = await client.updateRoutine(
+					routineId,
+					{
+						routine: {
+							title,
+							notes: notes ?? null,
+							exercises: exercises.map(
+								(exercise): PutRoutinesRequestExercise => {
+									const sets = exercise.sets.map(
+										(set): PutRoutinesRequestSet => {
+											const repRange = buildRepRange(set.repRange);
+											const fixedReps = getFixedRepsFromRepRange(repRange);
+											const reps =
+												typeof set.reps === "number" ? set.reps : fixedReps;
+											return {
+												type: set.type as PutRoutinesRequestSetTypeEnumKey,
+												weight_kg: set.weight ?? set.weightKg ?? null,
+												reps: reps ?? null,
+												distance_meters:
+													set.distance ?? set.distanceMeters ?? null,
+												duration_seconds:
+													set.duration ?? set.durationSeconds ?? null,
+												custom_metric: set.customMetric ?? null,
+												...(repRange ? { rep_range: repRange } : {}),
+											};
+										},
+									);
 
-							if (
-								sets.some(
-									(set) =>
-										set.rep_range != null &&
-										getFixedRepsFromRepRange(set.rep_range) === null,
-								)
-							) {
-								usesRepRanges = true;
-							}
+									if (
+										sets.some(
+											(set) =>
+												set.rep_range != null &&
+												getFixedRepsFromRepRange(set.rep_range) === null,
+										)
+									) {
+										usesRepRanges = true;
+									}
 
-							return {
-								exercise_template_id: exercise.exerciseTemplateId,
-								superset_id: exercise.supersetId ?? null,
-								rest_seconds: exercise.restSeconds ?? null,
-								notes: exercise.notes ?? null,
-								sets,
-							};
-						}),
+									return {
+										exercise_template_id: exercise.exerciseTemplateId,
+										superset_id: exercise.supersetId ?? null,
+										rest_seconds: exercise.restSeconds ?? null,
+										notes: exercise.notes ?? null,
+										sets,
+									};
+								},
+							),
+						},
 					},
-				},
-			);
-
-			if (!data) {
-				return createEmptyResponse(
-					`Failed to update routine with ID ${routineId}`,
 				);
-			}
 
-			const routine = formatRoutine(data);
-			const response = createJsonResponse(routine, {
-				pretty: true,
-				indent: 2,
-			});
+				if (!data) {
+					return createEmptyResponse(
+						`Failed to update routine with ID ${routineId}`,
+					);
+				}
 
-			if (usesRepRanges) {
-				response.content.push({
-					type: "text",
-					text: repRangeDisplayWarningText,
+				const routine = formatRoutine(data);
+				const response = createJsonResponse(routine, {
+					pretty: true,
+					indent: 2,
 				});
-			}
 
-			return response;
-		}, "update-routine"),
+				if (usesRepRanges) {
+					response.content.push({
+						type: "text",
+						text: repRangeDisplayWarningText,
+					});
+				}
+
+				return response;
+			}, "update-routine"),
+			"update-routine",
+		),
 	);
 }
