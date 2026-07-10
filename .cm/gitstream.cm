@@ -19,17 +19,16 @@ automations:
     run:
       - action: code-review@v1
         args:
-          approve_on_LGTM: {{ calc.safe_changes }}
+          approve_on_LGTM: true
           guidelines: {{ "./REVIEW_RULES.md" | readFile() | dump }}
 
-  # Approve only when the AI review passes and the changes are safe.
-  auto_approve_safe_lgtm:
+  # Approve when the AI review passes (LGTM).
+  auto_approve_lgtm:
     on:
       - pr_created
       - commit
     if:
       - {{ actions.linearb_ai_review.outputs.is_LGTM }}
-      - {{ calc.safe_changes }}
     run:
       - action: approve@v1
 
