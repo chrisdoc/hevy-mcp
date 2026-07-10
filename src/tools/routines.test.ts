@@ -263,12 +263,12 @@ describe("registerRoutineTools", () => {
 		},
 	);
 
-	it("create-routine forwards non-null supersetId as superset_id", async () => {
-		const { server, tool } = createMockServer();
+	it("create-routine confirms its folder and forwards payload IDs", async () => {
+		const { elicitInput, server, tool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Pull Day",
-			folder_id: null,
+			folder_id: 123,
 			created_at: "2025-03-26T19:00:00Z",
 			updated_at: "2025-03-26T19:00:00Z",
 			exercises: [],
@@ -282,7 +282,7 @@ describe("registerRoutineTools", () => {
 
 		const args = {
 			title: "Pull Day",
-			folderId: null,
+			folderId: 123,
 			notes: "Back and biceps",
 			exercises: [
 				{
@@ -306,10 +306,15 @@ describe("registerRoutineTools", () => {
 
 		const response = await handler(args as Record<string, unknown>);
 
+		expect(elicitInput).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: expect.stringContaining("in folder 123"),
+			}),
+		);
 		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
 			routine: {
 				title: "Pull Day",
-				folder_id: null,
+				folder_id: 123,
 				notes: "Back and biceps",
 				exercises: [
 					{

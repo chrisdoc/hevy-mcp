@@ -273,6 +273,86 @@ describe("registerWorkoutTools", () => {
 		},
 	);
 
+	it("update-workout continues after accepted confirmation", async () => {
+		const { elicitInput, server, tool } = createMockServer();
+		const updateResult: Workout = {
+			id: "workout-1",
+			title: "Updated Workout",
+			description: "Updated description",
+			start_time: "2025-03-27T09:00:00Z",
+			end_time: "2025-03-27T10:00:00Z",
+			created_at: "2025-03-27T07:00:00Z",
+			updated_at: "2025-03-27T09:00:00Z",
+			exercises: [],
+		};
+		const updateWorkout = vi.fn().mockResolvedValue(updateResult);
+		const hevyClient = { updateWorkout } as unknown as HevyClient;
+		registerWorkoutTools(server, hevyClient);
+
+		const args = {
+			workoutId: "workout-1",
+			title: "Updated Workout",
+			description: "Updated description",
+			startTime: "2025-03-27T09:00:00Z",
+			endTime: "2025-03-27T10:00:00Z",
+			isPrivate: true,
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: 2,
+					notes: "Updated notes",
+					sets: [
+						{
+							type: "normal" as const,
+							weight: 85,
+							reps: 6,
+							distance: null,
+							duration: null,
+							rpe: 8,
+							customMetric: null,
+						},
+					],
+				},
+			],
+		};
+
+		await getToolRegistration(tool, "update-workout").handler(args);
+
+		expect(elicitInput).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message:
+					"Update workout workout-1 to 'Updated Workout' from 2025-03-27T09:00:00Z to 2025-03-27T10:00:00Z with 1 exercises?",
+			}),
+		);
+		expect(updateWorkout).toHaveBeenCalledWith("workout-1", {
+			workout: {
+				title: "Updated Workout",
+				description: "Updated description",
+				start_time: "2025-03-27T09:00:00Z",
+				end_time: "2025-03-27T10:00:00Z",
+				is_private: true,
+				exercises: [
+					{
+						exercise_template_id: "template-id",
+						superset_id: 2,
+						notes: "Updated notes",
+						sets: [
+							{
+								type: "normal",
+								weight_kg: 85,
+								reps: 6,
+								distance_meters: null,
+								duration_seconds: null,
+								rpe: 8,
+								custom_metric: null,
+							},
+						],
+					},
+				],
+			},
+		});
+	});
+
 	it("create-workout maps arguments to the request body and formats the response", async () => {
 		const { server, tool } = createMockServer();
 		const createResult: Workout = {
