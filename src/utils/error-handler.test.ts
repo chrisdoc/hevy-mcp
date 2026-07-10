@@ -1,73 +1,28 @@
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
-import { getCurrentUserId, Sentry } from "./telemetry.js";
+import { Sentry } from "./telemetry.js";
+
 function createMockAxiosError(status: number, data: unknown): unknown {
 	return {
 		isAxiosError: true,
 		name: "AxiosError",
 		message: `Request failed with status code ${status}`,
-		config: {
-			method: "post",
-			url: "/v1/body_measurements",
-		},
-		response: {
-			status,
-			statusText: "Error",
-			data,
-		},
+		config: { method: "post", url: "/v1/body_measurements" },
+		response: { status, statusText: "Error", data },
 	};
 }
 
 const testDoubles = vi.hoisted(() => ({
-	span: {
-		setAttribute: vi.fn(),
-		setStatus: vi.fn(),
-		recordException: vi.fn(),
-		end: vi.fn(),
-	},
-	scope: {
-		setTag: vi.fn(),
-		setContext: vi.fn(),
-	},
-	startActiveSpan: vi.fn((...args: unknown[]) => {
-		const cb = args[args.length - 1] as (span: unknown) => unknown;
-		return cb(testDoubles.span);
-	}),
-	toolDurationRecord: vi.fn(),
+	scope: { setTag: vi.fn(), setContext: vi.fn() },
 }));
 
 vi.mock("./telemetry.js", () => ({
 	Sentry: {
-		withScope: vi.fn((cb: (scope: unknown) => void) => cb(testDoubles.scope)),
+		withScope: vi.fn((callback: (scope: unknown) => void) =>
+			callback(testDoubles.scope),
+		),
 		captureException: vi.fn(),
 	},
-	tracer: {
-		startActiveSpan: testDoubles.startActiveSpan,
-	},
-	meter: {
-		createCounter: vi.fn(() => ({ add: vi.fn() })),
-		createHistogram: vi.fn(() => ({ record: vi.fn() })),
-	},
-	serviceName: "hevy-mcp",
-	serviceVersion: "dev",
-	setCurrentUserId: vi.fn(),
-	getCurrentUserId: vi.fn(() => undefined),
-}));
-
-vi.mock("./metrics.js", () => ({
-	toolInvocations: { add: vi.fn() },
-	toolErrors: { add: vi.fn() },
-	toolDuration: { record: testDoubles.toolDurationRecord },
-	apiCalls: { add: vi.fn() },
-	apiDuration: { record: vi.fn() },
-	stdioParseErrors: { add: vi.fn() },
-	serverStartups: { add: vi.fn() },
-}));
-
-vi.mock("@opentelemetry/api", () => ({
-	SpanStatusCode: { OK: 1, ERROR: 2 },
-	trace: { getTracer: vi.fn() },
-	metrics: { getMeter: vi.fn() },
 }));
 
 describe("Error Handler", () => {
@@ -499,83 +454,81 @@ describe("Error Handler", () => {
 	});
 
 	describe("withErrorHandling", () => {
-		// Setup mocks before tests
-		vi.spyOn(console, "error").mockImplementation(() => {});
-
-		// Restore original console methods after all tests
-		afterAll(() => {
-			vi.restoreAllMocks();
+		beforeEach(() => {
+			vi.clearAllMocks();
+			vi.spyOn(console, "error").mockImplementation(() => {});
 		});
 
-		it("should return the function result when no error occurs", async () => {
-			const mockFn = vi.fn().mockResolvedValue({
-				content: [{ type: "text", text: "Success" }],
+		it("returns successful handler results unchanged", async () => {
+			const response = {
+				content: [{ type: "text" as const, text: "Success" }],
+			};
+			const handler = vi.fn().mockResolvedValue(response);
+
+			const result = await withErrorHandling(
+				handler,
+				"TestContext",
+			)({
+				param: "test",
 			});
 
-			const wrappedFn = withErrorHandling(mockFn, "TestContext");
-			const result = await wrappedFn({ param: "test" });
-
-			expect(result).toEqual({
-				content: [{ type: "text", text: "Success" }],
-			});
-			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
-			expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
-				"mcp.tool.TestContext",
-				expect.objectContaining({
-					attributes: expect.objectContaining({
-						"mcp.tool.name": "TestContext",
-					}),
-				}),
-				expect.any(Function),
-			);
+			expect(result).toBe(response);
+			expect(handler).toHaveBeenCalledWith({ param: "test" });
+			expect(Sentry.captureException).not.toHaveBeenCalled();
 		});
 
-		it("should handle errors thrown by the wrapped function", async () => {
-			const mockFn = vi.fn().mockImplementation(() => {
-				throw new Error("Function error");
-			});
+		it("normalizes nullish arguments to an empty object", async () => {
+			const handler = vi.fn().mockResolvedValue({ content: [] });
+			const wrapped = withErrorHandling(handler, "NullArgsContext");
 
-			const wrappedFn = withErrorHandling(mockFn, "ErrorTest");
-			const result = await wrappedFn({ param: "test" });
+			await Reflect.apply(wrapped, undefined, [null]);
+
+			expect(handler).toHaveBeenCalledWith({});
+		});
+
+		it("captures and formats thrown errors", async () => {
+			const error = new Error("Function error");
+			const handler = vi.fn().mockRejectedValue(error);
+
+			const result = await withErrorHandling(
+				handler,
+				"ErrorTest",
+			)({
+				param: "test",
+			});
 
 			expect(result).toMatchObject({
-				content: [
-					{
-						type: "text",
-						text: "[ErrorTest] Error: Function error",
-					},
-				],
 				isError: true,
+				content: [{ type: "text", text: "[ErrorTest] Error: Function error" }],
 				errorContext: {
 					sourceContext: "ErrorTest",
 					originalErrorMessage: "Function error",
 				},
 			});
-			expect(mockFn).toHaveBeenCalledWith({ param: "test" });
-			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+			expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+				"mcp.tool.context",
+				"ErrorTest",
+			);
+			expect(testDoubles.scope.setContext).toHaveBeenCalledWith("mcpTool", {
+				context: "ErrorTest",
+				argumentKeyCount: 1,
+			});
+			expect(Sentry.captureException).toHaveBeenCalledWith(error);
 		});
 
-		it("handles rejected promises from the wrapped function", async () => {
-			const mockFn = vi
-				.fn()
-				.mockRejectedValue(new Error("Async handler failure"));
+		it("captures and formats rejected non-Error values", async () => {
+			const handler = vi.fn().mockRejectedValue(42);
 
-			const wrappedFn = withErrorHandling(mockFn, "RejectContext");
-			const result = await wrappedFn({ param: "test" });
+			const result = await withErrorHandling(handler, "NumberErrorTest")({});
 
 			expect(result).toMatchObject({
 				isError: true,
-				content: [
-					{
-						type: "text",
-						text: "[RejectContext] Error: Async handler failure",
-					},
-				],
+				content: [{ type: "text", text: "[NumberErrorTest] Error: 42" }],
 			});
-			expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error));
+			expect(Sentry.captureException).toHaveBeenCalledWith(42);
 		});
 
-		it("handles axios-specific errors from wrapped handlers", async () => {
+		it("preserves axios-specific formatted responses", async () => {
 			const axiosLikeError = {
 				message: "Request failed with status code 503",
 				isAxiosError: true,
@@ -586,193 +539,14 @@ describe("Error Handler", () => {
 					},
 				},
 			};
-			const mockFn = vi.fn().mockImplementation(() => {
-				throw axiosLikeError;
-			});
+			const handler = vi.fn().mockRejectedValue(axiosLikeError);
 
-			const wrappedFn = withErrorHandling(mockFn, "AxiosContext");
-			const result = await wrappedFn({});
+			const result = await withErrorHandling(handler, "AxiosContext")({});
 
 			expect(result).toMatchObject({ isError: true });
 			expect(result.content[0]?.text).toContain("service unavailable");
 			expect(result.content[0]?.text).toContain("E_SERVICE_UNAVAILABLE");
 			expect(Sentry.captureException).toHaveBeenCalledWith(axiosLikeError);
-		});
-
-		it("adds the current user ID to span attributes when available", async () => {
-			testDoubles.startActiveSpan.mockClear();
-			vi.mocked(getCurrentUserId).mockReturnValue("user-123");
-
-			const mockFn = vi.fn().mockResolvedValue({
-				content: [{ type: "text", text: "Success" }],
-			});
-
-			const wrappedFn = withErrorHandling(mockFn, "UserContext");
-			await wrappedFn({ param: "test" });
-
-			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
-				"mcp.tool.UserContext",
-				expect.objectContaining({
-					attributes: expect.objectContaining({
-						"mcp.tool.name": "UserContext",
-						"user.id": "user-123",
-					}),
-				}),
-				expect.any(Function),
-			);
-
-			vi.mocked(getCurrentUserId).mockReturnValue(undefined);
-		});
-
-		it("handles non-Error thrown values from wrapped functions", async () => {
-			const mockFn = vi.fn().mockImplementation(() => {
-				throw 42;
-			});
-
-			const wrappedFn = withErrorHandling(mockFn, "NumberErrorTest");
-			const result = await wrappedFn({ param: "test" });
-
-			expect(result).toMatchObject({
-				content: [
-					{
-						type: "text",
-						text: "[NumberErrorTest] Error: 42",
-					},
-				],
-				isError: true,
-				errorContext: {
-					sourceContext: "NumberErrorTest",
-					originalErrorMessage: "42",
-				},
-			});
-			expect(Sentry.captureException).toHaveBeenCalledWith(42);
-		});
-
-		it("adds safe whitelisted arguments and argument keys string to span attributes", async () => {
-			testDoubles.span.setAttribute.mockClear();
-			testDoubles.startActiveSpan.mockClear();
-
-			const mockFn = vi.fn().mockResolvedValue({
-				content: [{ type: "text", text: "Success" }],
-			});
-
-			const wrappedFn = withErrorHandling(mockFn, "ArgsContext");
-			await wrappedFn({
-				page: 2,
-				pageSize: 10,
-				workoutId: "workout-456",
-				privateNote: "This should be hidden", // non-whitelisted
-				query: "bench press",
-			});
-
-			// Should add is_error attribute
-			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-				"mcp.tool.result.is_error",
-				false,
-			);
-
-			// Check individual attributes from extractSafeArgs via startActiveSpan attributes parameter
-			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
-				"mcp.tool.ArgsContext",
-				expect.objectContaining({
-					attributes: expect.objectContaining({
-						"mcp.tool.name": "ArgsContext",
-						"mcp.tool.args.key_count": 5,
-						"mcp.tool.args.keys": "page,pageSize,workoutId,query",
-						"mcp.tool.args.page": 2,
-						"mcp.tool.args.pageSize": 10,
-						"mcp.tool.args.workoutId": "workout-456",
-						"mcp.tool.args.query": "bench press",
-					}),
-				}),
-				expect.any(Function),
-			);
-
-			// Should NOT include privateNote in startActiveSpan attributes
-			const lastCall = vi.mocked(testDoubles.startActiveSpan).mock.lastCall;
-			const attributes = (lastCall?.[1] as any)?.attributes;
-			expect(attributes).not.toHaveProperty("mcp.tool.args.privateNote");
-		});
-
-		it("truncates query string if it is too long", async () => {
-			testDoubles.span.setAttribute.mockClear();
-
-			const mockFn = vi.fn().mockResolvedValue({
-				content: [{ type: "text", text: "Success" }],
-			});
-
-			const longQuery = "a".repeat(120);
-			const expectedTruncated = "a".repeat(100) + "...";
-
-			const wrappedFn = withErrorHandling(mockFn, "TruncateContext");
-			await wrappedFn({
-				query: longQuery,
-			});
-
-			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
-				"mcp.tool.TruncateContext",
-				expect.objectContaining({
-					attributes: expect.objectContaining({
-						"mcp.tool.args.query": expectedTruncated,
-					}),
-				}),
-				expect.any(Function),
-			);
-		});
-
-		it("sets result content details on the span", async () => {
-			testDoubles.span.setAttribute.mockClear();
-
-			const mockFn = vi.fn().mockResolvedValue({
-				content: [
-					{ type: "text", text: "Hello" },
-					{ type: "text", text: "World" },
-				],
-			});
-
-			const wrappedFn = withErrorHandling(mockFn, "ResultDetailsContext");
-			await wrappedFn({});
-
-			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-				"mcp.tool.result.content_count",
-				2,
-			);
-			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-				"mcp.tool.result.text_length",
-				10, // "Hello" + "World" length
-			);
-		});
-
-		it("sets error details on span and records metric on error", async () => {
-			testDoubles.span.setAttribute.mockClear();
-			testDoubles.toolDurationRecord.mockClear();
-
-			const mockError = new Error("Something went wrong");
-			(mockError as any).code = "ERR_GENERIC";
-			const mockFn = vi.fn().mockRejectedValue(mockError);
-
-			const wrappedFn = withErrorHandling(mockFn, "ErrorDetailsContext");
-			await wrappedFn({});
-
-			expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
-				code: 2, // SpanStatusCode.ERROR
-			});
-			expect(testDoubles.span.recordException).toHaveBeenCalledWith(mockError);
-			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-				"error.type",
-				"UNKNOWN_ERROR",
-			);
-			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-				"error.code",
-				"ERR_GENERIC",
-			);
-			expect(testDoubles.toolDurationRecord).toHaveBeenLastCalledWith(
-				expect.any(Number),
-				{
-					tool_name: "ErrorDetailsContext",
-					is_error: "true",
-				},
-			);
 		});
 	});
 });

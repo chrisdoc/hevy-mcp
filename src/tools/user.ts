@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { UserInfoResponse } from "../generated/client/types/index.js";
-import { withErrorHandling } from "../utils/error-handler.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { userOutputSchema } from "../utils/output-schemas.js";
 import {
@@ -27,7 +27,7 @@ export function registerUserTools(
 			outputSchema: userOutputSchema,
 			annotations: readOnlyAnnotations("Get User Info"),
 		},
-		withErrorHandling(async (_args: GetUserInfoParams) => {
+		withObservability(async (_args: GetUserInfoParams) => {
 			const client = requireClient(hevyClient);
 			const data: UserInfoResponse = await client.getUserInfo();
 			if (!data?.data) {

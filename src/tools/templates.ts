@@ -8,7 +8,7 @@ import type {
 	GetV1ExerciseTemplatesExercisetemplateid200,
 	PostV1ExerciseTemplates200,
 } from "../generated/client/types/index.js";
-import { withErrorHandling } from "../utils/error-handler.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import {
 	getExerciseTemplateCatalog,
 	resetExerciseTemplateCatalogCache,
@@ -69,7 +69,7 @@ export function registerTemplateTools(
 			outputSchema: exerciseTemplatesOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Templates"),
 		},
-		withErrorHandling(async (args: GetExerciseTemplatesParams) => {
+		withObservability(async (args: GetExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1ExerciseTemplates200 = await client.getExerciseTemplates(
@@ -115,7 +115,7 @@ export function registerTemplateTools(
 			outputSchema: exerciseTemplateOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Template"),
 		},
-		withErrorHandling(async (args: GetExerciseTemplateParams) => {
+		withObservability(async (args: GetExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId } = args;
 			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
@@ -162,7 +162,7 @@ export function registerTemplateTools(
 			outputSchema: exerciseHistoryOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise History"),
 		},
-		withErrorHandling(async (args: GetExerciseHistoryParams) => {
+		withObservability(async (args: GetExerciseHistoryParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId, startDate, endDate } = args;
 			const data: GetV1ExerciseHistoryExercisetemplateid200 =
@@ -206,7 +206,7 @@ export function registerTemplateTools(
 		"Create a custom exercise template with title, type, equipment, and muscle groups.",
 		createExerciseTemplateSchema,
 		createAnnotations("Create Exercise Template"),
-		withErrorHandling(async (args: CreateExerciseTemplateParams) => {
+		withObservability(async (args: CreateExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const {
 				title,
@@ -268,7 +268,7 @@ export function registerTemplateTools(
 			outputSchema: exerciseTemplatesOutputSchema,
 			annotations: readOnlyAnnotations("Search Exercise Templates"),
 		},
-		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
+		withObservability(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
 			const catalog = await getExerciseTemplateCatalog(client, { refresh });
