@@ -1,3 +1,9 @@
+## 1.26.4
+
+### Patch Changes
+
+- [#488](https://github.com/chrisdoc/hevy-mcp/pull/488) [`161adc7`](https://github.com/chrisdoc/hevy-mcp/commit/161adc704179a0e3a47493d5d3b7f7c46b7c15c9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Added integration tests covering the workout detail endpoints: `get-workout`, `get-workout-count`, and `get-workout-events`. These tools were not exercised by the existing mocked integration test suite.
+
 ## 1.26.3
 
 ### Patch Changes
