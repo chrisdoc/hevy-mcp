@@ -1,6 +1,6 @@
 {
 	"name": "hevy-mcp",
-	"version": "1.28.0",
+	"version": "1.28.1-beta.0",
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"keywords": [
 		"api",
@@ -24,7 +24,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"server.json"
 	],
 	"type": "module",
 	"main": "dist/index.mjs",
@@ -40,13 +41,17 @@
 		"openapi": "node ./scripts/openapi-spec.js",
 		"build": "tsdown",
 		"build:client": "kubb generate",
-		"prepack": "npm run build",
+		"prepack": "npm run check:server-manifest && npm run build",
 		"start": "node --env-file .env dist/cli.mjs",
 		"dev": "tsx watch --env-file .env --clear-screen=false src/cli.ts",
 		"check": "oxlint . --type-aware --type-check && oxfmt . --check",
 		"check:fix": "oxlint . --type-aware --type-check && oxfmt . --write",
 		"check:types": "tsc --noEmit",
 		"check:changeset": "changeset status --since=origin/main",
+		"check:server-manifest": "node scripts/server-manifest.mjs check",
+		"sync:server-manifest": "node scripts/server-manifest.mjs sync",
+		"version:changesets": "changeset version && npm run sync:server-manifest",
+		"version": "npm run sync:server-manifest && git add server.json",
 		"version:patch": "npm version patch",
 		"version:minor": "npm version minor",
 		"version:major": "npm version major",
@@ -65,6 +70,7 @@
 		"@sentry/node": "^10.58.0",
 		"@sentry/opentelemetry": "^10.58.0",
 		"axios": "^1.18.0",
+		"semver": "^7.8.5",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
@@ -82,6 +88,7 @@
 		"@kubb/plugin-zod": "^4.38.0",
 		"@sentry/rollup-plugin": "^5.3.0",
 		"@types/node": "^26.0.0",
+		"@types/semver": "^7.7.1",
 		"@vitest/coverage-v8": "^4.1.9",
 		"abstract-syntax-tree": "^2.22.0",
 		"cross-env": "^10.1.0",
@@ -97,5 +104,6 @@
 	},
 	"engines": {
 		"node": ">=20.0.0"
-	}
+	},
+	"mcpName": "io.github.chrisdoc/hevy-mcp"
 }
