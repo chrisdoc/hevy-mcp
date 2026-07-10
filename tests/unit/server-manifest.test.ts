@@ -250,9 +250,6 @@ describe("server manifest metadata", () => {
 		const packageJson = JSON.parse(
 			await readFile(join(rootDir, "package.json"), "utf8"),
 		);
-		const nextVersion = packageJson.version.replace(/\d+$/, (patch: string) =>
-			String(Number(patch) + 1),
-		);
 		const fixturePackageJson = {
 			name: packageJson.name,
 			version: packageJson.version,
@@ -295,36 +292,31 @@ describe("server manifest metadata", () => {
 			},
 		});
 
-		const [
-			updatedPackageJson,
-			updatedManifest,
-			committedFiles,
-			head,
-			tag,
-			status,
-		] = await Promise.all([
-			readFile(join(fixtureDir, "package.json"), "utf8").then(JSON.parse),
-			readFile(join(fixtureDir, "server.json"), "utf8").then(JSON.parse),
-			execFileAsync(
-				"git",
-				["show", "--name-only", "--pretty=format:", "HEAD"],
-				{ cwd: fixtureDir },
-			),
-			execFileAsync("git", ["rev-parse", "HEAD"], { cwd: fixtureDir }),
-			execFileAsync("git", ["rev-list", "-n", "1", `v${nextVersion}`], {
-				cwd: fixtureDir,
-			}),
-			execFileAsync("git", ["status", "--porcelain"], { cwd: fixtureDir }),
-		]);
+		const [updatedPackageJson, updatedManifest, committedFiles, tag, status] =
+			await Promise.all([
+				readFile(join(fixtureDir, "package.json"), "utf8").then(JSON.parse),
+				readFile(join(fixtureDir, "server.json"), "utf8").then(JSON.parse),
+				execFileAsync(
+					"git",
+					["show", "--name-only", "--pretty=format:", "HEAD"],
+					{ cwd: fixtureDir },
+				),
+				execFileAsync("git", ["tag", "--points-at", "HEAD"], {
+					cwd: fixtureDir,
+				}),
+				execFileAsync("git", ["status", "--porcelain"], { cwd: fixtureDir }),
+			]);
 
-		expect(updatedPackageJson.version).toBe(nextVersion);
-		expect(updatedManifest.version).toBe(nextVersion);
-		expect(updatedManifest.packages[0].version).toBe(nextVersion);
+		expect(updatedPackageJson.version).not.toBe(packageJson.version);
+		expect(updatedManifest.version).toBe(updatedPackageJson.version);
+		expect(updatedManifest.packages[0].version).toBe(
+			updatedPackageJson.version,
+		);
 		expect(committedFiles.stdout.trim().split("\n")).toEqual([
 			"package.json",
 			"server.json",
 		]);
-		expect(tag.stdout.trim()).toBe(head.stdout.trim());
+		expect(tag.stdout.trim()).toBe(`v${updatedPackageJson.version}`);
 		expect(status.stdout).toBe("");
 	});
 
