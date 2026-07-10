@@ -14,6 +14,7 @@ import {
 	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
 } from "../utils/formatters.js";
+import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
@@ -37,6 +38,10 @@ type HevyClient = ReturnType<
 const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
 const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
 const EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE = 1;
+
+export interface TemplateToolOptions {
+	logger?: McpClientLogger;
+}
 
 const exerciseTemplateCatalogCache = new AsyncTtlCache<
 	string,
@@ -80,7 +85,9 @@ export function resetExerciseTemplateCache(): void {
 export function registerTemplateTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	options: TemplateToolOptions = {},
 ) {
+	const { logger } = options;
 	// Get exercise templates
 	const getExerciseTemplatesSchema = {
 		page: z.coerce.number().int().gte(1).default(1),
@@ -276,9 +283,33 @@ export function registerTemplateTools(
 		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
+			const refreshReason = refresh
+				? "explicit-refresh"
+				: exerciseTemplateCatalogCache.size === 0
+					? "initial-load"
+					: "ttl-expired";
 			const catalog = await exerciseTemplateCatalogCache.getOrFetch(
 				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
-				() => fetchExerciseTemplateCatalog(client),
+				async () => {
+					const refreshedCatalog = await fetchExerciseTemplateCatalog(client);
+					try {
+						logger?.({
+							level: "info",
+							logger: "hevy-cache",
+							data: {
+								message: "Exercise template catalog refreshed",
+								count: refreshedCatalog.length,
+								reason: refreshReason,
+							},
+						});
+					} catch (error) {
+						console.error(
+							"Failed to emit structured exercise template cache log",
+							error,
+						);
+					}
+					return refreshedCatalog;
+				},
 				{ refresh },
 			);
 

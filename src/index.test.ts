@@ -22,6 +22,8 @@ const testDoubles = vi.hoisted(() => ({
 		end: vi.fn(),
 	},
 	connect: vi.fn().mockResolvedValue(undefined),
+	mcpServerConstructor: vi.fn(),
+	sendLoggingMessage: vi.fn().mockResolvedValue(undefined),
 	sentry: {
 		init: vi.fn(() => ({})),
 		setUser: vi.fn(),
@@ -81,7 +83,13 @@ vi.mock("@opentelemetry/api", () => ({
 
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	class MockMcpServer {
+		constructor(serverInfo: unknown, options: unknown) {
+			testDoubles.mcpServerConstructor(serverInfo, options);
+		}
+
 		connect = testDoubles.connect;
+		isConnected = vi.fn(() => true);
+		sendLoggingMessage = testDoubles.sendLoggingMessage;
 		tool = vi.fn();
 	}
 
@@ -137,6 +145,20 @@ describe("Server entry", () => {
 				}),
 			}),
 			expect.any(Function),
+		);
+	});
+
+	it("advertises logging capability and injects one client logger", () => {
+		createServer({ config: { apiKey: "test-key" } });
+
+		expect(testDoubles.mcpServerConstructor).toHaveBeenCalledWith(
+			{ name: "hevy-mcp", version: "dev" },
+			{ capabilities: { logging: {} } },
+		);
+		expect(createClient).toHaveBeenCalledWith(
+			"test-key",
+			"https://api.hevyapp.com",
+			{ logger: expect.any(Function) },
 		);
 	});
 
@@ -234,6 +256,7 @@ describe("Server entry", () => {
 			expect(createClient).toHaveBeenCalledWith(
 				"test-api-key",
 				"https://api.hevyapp.com",
+				{ logger: expect.any(Function) },
 			);
 			expect(Sentry.setUser).toHaveBeenCalledWith({
 				id: TEST_API_KEY_HMAC_SHA256,
@@ -261,6 +284,7 @@ describe("Server entry", () => {
 			expect(createClient).toHaveBeenCalledWith(
 				"cli-key",
 				"https://api.hevyapp.com",
+				{ logger: expect.any(Function) },
 			);
 			expect(Sentry.setUser).toHaveBeenCalledWith({
 				id: CLI_KEY_HMAC_SHA256,

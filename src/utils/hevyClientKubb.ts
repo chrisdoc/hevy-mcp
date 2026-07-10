@@ -11,6 +11,10 @@ import axios, {
 	type InternalAxiosRequestConfig,
 } from "axios";
 import * as api from "../generated/client/api";
+import type {
+	McpClientLogger,
+	McpClientLogMessage,
+} from "./mcp-client-logger.js";
 import { tracer } from "./telemetry.js";
 import { apiCalls, apiDuration } from "./metrics.js";
 import type {
@@ -60,6 +64,10 @@ const RETRY_BACKOFF_MAX_MS = 5_000;
 
 export const HEVY_RETRY_EXHAUSTED_ERROR_CODE = "HEVY_RETRY_EXHAUSTED";
 
+export interface HevyClientOptions {
+	logger?: McpClientLogger;
+}
+
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 
 const RETRYABLE_NETWORK_ERROR_CODES = new Set([
@@ -73,6 +81,26 @@ const RETRYABLE_NETWORK_ERROR_CODES = new Set([
 	"ERR_SOCKET_TIMEOUT",
 	"ETIMEDOUT",
 ]);
+
+const SAFE_STATIC_ENDPOINTS = new Set([
+	"/v1/body_measurements",
+	"/v1/exercise_templates",
+	"/v1/routine_folders",
+	"/v1/routines",
+	"/v1/user/info",
+	"/v1/workouts",
+	"/v1/workouts/count",
+	"/v1/workouts/events",
+]);
+
+const SAFE_DYNAMIC_ENDPOINTS = [
+	["/v1/body_measurements/", "/v1/body_measurements/:date"],
+	["/v1/exercise_history/", "/v1/exercise_history/:exerciseTemplateId"],
+	["/v1/exercise_templates/", "/v1/exercise_templates/:exerciseTemplateId"],
+	["/v1/routine_folders/", "/v1/routine_folders/:folderId"],
+	["/v1/routines/", "/v1/routines/:routineId"],
+	["/v1/workouts/", "/v1/workouts/:workoutId"],
+] as const;
 
 type RetryAwareAxiosError = AxiosError & {
 	hevyRetryCount?: number;
@@ -239,6 +267,34 @@ function shouldRetryRequest(
 	);
 }
 
+function getRequestContext(config: RequestConfig<unknown>) {
+	const method = (config.method ?? "GET").toUpperCase();
+	const url = config.url ?? "";
+	const rawEndpoint = url.split("?")[0] ?? url;
+
+	let endpoint = "unknown";
+	if (SAFE_STATIC_ENDPOINTS.has(rawEndpoint)) {
+		endpoint = rawEndpoint;
+	} else {
+		endpoint =
+			SAFE_DYNAMIC_ENDPOINTS.find(([prefix]) =>
+				rawEndpoint.startsWith(prefix),
+			)?.[1] ?? "unknown";
+	}
+	return { method, endpoint };
+}
+
+function emitClientLog(
+	logger: McpClientLogger | undefined,
+	message: McpClientLogMessage,
+): void {
+	try {
+		logger?.(message);
+	} catch (error) {
+		console.error("Failed to emit structured Hevy API log", error);
+	}
+}
+
 function markRetryExhausted(error: AxiosError, retryCount: number): void {
 	const retryError = error as RetryAwareAxiosError;
 	retryError.hevyRetryExhausted = true;
@@ -255,6 +311,7 @@ function markRetryExhausted(error: AxiosError, retryCount: number): void {
 async function requestWithRetries<TData, TVariables>(
 	axiosInstance: AxiosInstance,
 	config: RequestConfig<TVariables>,
+	logger?: McpClientLogger,
 ): Promise<ResponseConfig<TData>> {
 	let retryCount = 0;
 
@@ -271,23 +328,68 @@ async function requestWithRetries<TData, TVariables>(
 			}
 
 			const normalizedConfig = config as RequestConfig<unknown>;
+			const { method, endpoint } = getRequestContext(normalizedConfig);
+			const status = error.response?.status ?? null;
 			if (!shouldRetryRequest(normalizedConfig, error)) {
+				emitClientLog(logger, {
+					level: "error",
+					logger: "hevy-api",
+					data: {
+						message: "Hevy API request failed without retry",
+						status,
+						method,
+						endpoint,
+					},
+				});
 				throw error;
 			}
 
 			if (retryCount >= MAX_GET_RETRIES) {
+				emitClientLog(logger, {
+					level: status === 429 ? "warning" : "error",
+					logger: "hevy-api",
+					data: {
+						message: "Hevy API request failed after retries",
+						status,
+						attempt: retryCount + 1,
+						maxAttempts: MAX_GET_RETRIES + 1,
+						method,
+						endpoint,
+					},
+				});
 				markRetryExhausted(error, retryCount);
 				throw error;
 			}
 
 			retryCount += 1;
 			const retryDelayMs = getRetryDelayMs(error, retryCount);
+			const retryAfterMs = getRetryAfterDelayMs(error);
+			emitClientLog(logger, {
+				level: status === 429 ? "warning" : "debug",
+				logger: "hevy-api",
+				data: {
+					message:
+						status === 429
+							? "Hevy API rate limit; retrying request"
+							: "Retrying Hevy API request",
+					status,
+					attempt: retryCount + 1,
+					maxAttempts: MAX_GET_RETRIES + 1,
+					delayMs: retryDelayMs,
+					...(status === 429 ? { retryAfterMs: retryAfterMs ?? null } : {}),
+					method,
+					endpoint,
+				},
+			});
 			await sleep(retryDelayMs);
 		}
 	}
 }
 
-function createResilientClient(axiosInstance: AxiosInstance): KubbClient {
+function createResilientClient(
+	axiosInstance: AxiosInstance,
+	logger?: McpClientLogger,
+): KubbClient {
 	let clientConfig: Partial<RequestConfig<unknown>> = {
 		baseURL: axiosInstance.defaults.baseURL,
 	};
@@ -299,7 +401,7 @@ function createResilientClient(axiosInstance: AxiosInstance): KubbClient {
 	>(
 		config: RequestConfig<TVariables>,
 	): Promise<ResponseConfig<TData>> => {
-		return requestWithRetries<TData, TVariables>(axiosInstance, config);
+		return requestWithRetries<TData, TVariables>(axiosInstance, config, logger);
 	}) as KubbClient;
 
 	resilientClient.getConfig = () => ({
@@ -379,7 +481,9 @@ function finalizeRequestTrace(opts: {
 export function createClient(
 	apiKey: string,
 	baseUrl = "https://api.hevyapp.com",
+	options: HevyClientOptions = {},
 ) {
+	const { logger } = options;
 	// Create an axios instance with the API key
 	const axiosInstance = axios.create({
 		baseURL: baseUrl,
@@ -453,7 +557,7 @@ export function createClient(
 		"api-key": apiKey,
 	};
 
-	const client = createResilientClient(axiosInstance);
+	const client = createResilientClient(axiosInstance, logger);
 
 	// Return an object with all the API methods using ReturnType for automatic type inference
 	// All API calls use wrapApi to ensure TypeScript validates arg order matches generated API

@@ -22,6 +22,7 @@ import { registerUserTools } from "./tools/user.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { createClient } from "./utils/hevyClient.js";
+import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
 
 const name = serviceName;
@@ -100,17 +101,23 @@ function buildServer(apiKey: string) {
 				Sentry.setUser({ id: userId });
 				setCurrentUserId(userId);
 
-				const baseServer = new McpServer({
-					name,
-					version,
-				});
+				const baseServer = new McpServer(
+					{
+						name,
+						version,
+					},
+					{ capabilities: { logging: {} } },
+				);
 				const server = Sentry.wrapMcpServerWithSentry(baseServer);
+				const clientLogger = createMcpClientLogger(server);
 
 				const hevyClient = tracer.startActiveSpan(
 					"mcp.hevy-client.initialize",
 					(childSpan) => {
 						try {
-							return createClient(apiKey, HEVY_API_BASEURL);
+							return createClient(apiKey, HEVY_API_BASEURL, {
+								logger: clientLogger,
+							});
 						} finally {
 							childSpan.end();
 						}
@@ -129,7 +136,9 @@ function buildServer(apiKey: string) {
 						try {
 							registerWorkoutTools(server, hevyClient);
 							registerRoutineTools(server, hevyClient);
-							registerTemplateTools(server, hevyClient);
+							registerTemplateTools(server, hevyClient, {
+								logger: clientLogger,
+							});
 							registerFolderTools(server, hevyClient);
 							registerBodyMeasurementTools(server, hevyClient);
 							registerUserTools(server, hevyClient);
