@@ -1,3 +1,9 @@
+## 1.26.5
+
+### Patch Changes
+
+- [#491](https://github.com/chrisdoc/hevy-mcp/pull/491) [`2d22bd2`](https://github.com/chrisdoc/hevy-mcp/commit/2d22bd21f1d726777d77efff4163ebb33a2fc947) Thanks [@chrisdoc](https://github.com/chrisdoc)! - change nodejs engine to 20
+
 ## 1.26.4
 
 ### Patch Changes
