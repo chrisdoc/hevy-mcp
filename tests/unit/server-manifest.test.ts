@@ -207,7 +207,7 @@ describe("server manifest metadata", () => {
 		expect(manifest.version).not.toBe(packageJson.version);
 	});
 
-	it("synchronizes only package-derived fields with stable formatting", async () => {
+	it("repairs drift and reports the manifest as changed", async () => {
 		const { fixtureDir, manifest, packageJson } = await createFixture();
 		manifest.name = "io.github.example/drifted";
 		manifest.version = "9.8.7";
@@ -221,15 +221,14 @@ describe("server manifest metadata", () => {
 		const contents = await readFile(join(fixtureDir, "server.json"), "utf8");
 		const updatedManifest = JSON.parse(contents);
 
-		expect(result).toEqual({
-			changed: true,
-			drift: [
-				"name",
-				"version",
-				"packages[0].identifier",
-				"packages[0].version",
-			],
-		});
+		expect(result.drift).toEqual([
+			"name",
+			"version",
+			"packages[0].identifier",
+			"packages[0].version",
+		]);
+		expect(result.changed).toBe(true);
+		expect(result.changed).toBe(result.drift.length > 0);
 		expect(contents).toBe(`${JSON.stringify(updatedManifest, null, "\t")}\n`);
 		expect(updatedManifest).toEqual({
 			...manifest,

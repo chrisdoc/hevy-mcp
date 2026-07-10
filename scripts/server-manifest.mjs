@@ -128,11 +128,10 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 
 	const packagePath = resolve(rootDir, "package.json");
 	const manifestPath = resolve(rootDir, "server.json");
-	const [{ value: packageJson }, { contents, value: manifest }] =
-		await Promise.all([
-			readJson(packagePath, "package.json"),
-			readJson(manifestPath, "server.json"),
-		]);
+	const [{ value: packageJson }, { value: manifest }] = await Promise.all([
+		readJson(packagePath, "package.json"),
+		readJson(manifestPath, "server.json"),
+	]);
 
 	validatePackageJson(packageJson);
 	validateManifestShape(manifest);
@@ -156,11 +155,9 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 	manifest.packages[0].version = packageJson.version;
 
 	const updatedContents = `${JSON.stringify(manifest, null, "\t")}\n`;
-	if (updatedContents !== contents) {
-		await writeFile(manifestPath, updatedContents, "utf8");
-	}
+	await writeFile(manifestPath, updatedContents, "utf8");
 
-	return { changed: updatedContents !== contents, drift };
+	return { changed: true, drift };
 }
 
 const isCli =
