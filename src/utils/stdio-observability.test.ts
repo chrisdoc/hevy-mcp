@@ -296,11 +296,11 @@ describe("stdio observability", () => {
 	it.each([
 		{
 			name: "structural punctuation after the preview limit",
-			line: `${'x"'.repeat(16)}{}[]:,"{`,
+			line: '"'.repeat(34),
 		},
 		{
 			name: "whitespace after the preview limit",
-			line: `${'x"'.repeat(16)}{}[]:,{ `,
+			line: `${'"'.repeat(33)}{ `,
 		},
 	])("truncates previews at a $name", ({ line }) => {
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
