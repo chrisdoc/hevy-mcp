@@ -41,14 +41,14 @@ Pick the workflow that fits your setup:
 
 | Scenario              | Command                                                                                     | Requirements               |
 | :-------------------- | :------------------------------------------------------------------------------------------ | :------------------------- |
-| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` or `HEVY_API_KEY=sk_live... bunx hevy-mcp@latest` | Node.js ≥ 24, Hevy API key |
+| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` or `HEVY_API_KEY=sk_live... bunx hevy-mcp@latest` | Node.js ≥ 20, Hevy API key |
 | **Local development** | `npm install && npm run build && npm start`                                                 | `.env` with `HEVY_API_KEY` |
 
 ---
 
 ## 🛠️ Prerequisites
 
-- **Node.js**: v24 or higher (strongly recommended to use the exact version pinned in `.nvmrc`).
+- **Node.js**: v20 or higher (strongly recommended to use the exact version pinned in `.nvmrc`).
 - **npm**: v10 or higher.
 - **Bun** (optional): If you want to launch with `bunx`.
 - **Hevy API key**: Required for all operations (available with Hevy PRO).

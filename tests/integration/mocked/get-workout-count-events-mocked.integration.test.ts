@@ -51,6 +51,7 @@ async function callTool(
 	return {
 		isError: result.isError,
 		text: firstContent.text,
+		structuredContent: result.structuredContent,
 	};
 }
 
@@ -112,6 +113,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 
 		expect(result.isError).toBeFalsy();
 		expect(payload.count).toBe(42);
+		expect(result.structuredContent).toEqual({ count: 42 });
 	});
 
 	it("mocks get-workout-events through MCP transport", async () => {
@@ -130,11 +132,14 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 					page_count: 1,
 					events: [
 						{
-							id: "event-1",
 							type: "updated",
-							workout_id: "workout-1",
-							created_at: "2025-03-27T08:00:00Z",
-							updated_at: "2025-03-27T08:30:00Z",
+							workout: {
+								id: "workout-1",
+								title: "Updated Workout",
+								start_time: "2025-03-27T08:00:00Z",
+								end_time: "2025-03-27T08:30:00Z",
+								exercises: [],
+							},
 						},
 					],
 				});
@@ -145,19 +150,18 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 				since: "1970-01-01T00:00:00Z",
 			});
 			const payload = JSON.parse(result.text) as Array<{
-				id?: string;
 				type?: string;
-				workout_id?: string;
+				workout?: { id?: string };
 			}>;
 
 			expect(result.isError).toBeFalsy();
 			expect(Array.isArray(payload)).toBe(true);
 			expect(payload.length).toBeGreaterThan(0);
 			expect(payload[0]).toMatchObject({
-				id: "event-1",
 				type: "updated",
-				workout_id: "workout-1",
+				workout: { id: "workout-1" },
 			});
+			expect(result.structuredContent).toEqual({ events: payload });
 		} finally {
 			consoleErrorSpy.mockRestore();
 		}
@@ -192,5 +196,6 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 			title: "Mock Detail Workout",
 			duration: "1h 0m 0s",
 		});
+		expect(result.structuredContent).toEqual({ workout: payload });
 	});
 });
