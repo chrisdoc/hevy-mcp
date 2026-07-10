@@ -17,6 +17,7 @@ import {
 	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
 } from "../utils/formatters.js";
+import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	exerciseHistoryOutputSchema,
@@ -39,6 +40,9 @@ import {
 	muscleGroupEnum,
 } from "../utils/schemas.js";
 
+export interface TemplateToolOptions {
+	logger?: McpClientLogger;
+}
 /** Reset the exercise template cache (exposed for testing). */
 export function resetExerciseTemplateCache(): void {
 	resetExerciseTemplateCatalogCache();
@@ -50,7 +54,9 @@ export function resetExerciseTemplateCache(): void {
 export function registerTemplateTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	options: TemplateToolOptions = {},
 ) {
+	const { logger } = options;
 	// Get exercise templates
 	const getExerciseTemplatesSchema = {
 		page: z.coerce.number().int().gte(1).default(1),
@@ -271,7 +277,27 @@ export function registerTemplateTools(
 		withObservability(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
-			const catalog = await getExerciseTemplateCatalog(client, { refresh });
+			const catalog = await getExerciseTemplateCatalog(client, {
+				refresh,
+				onRefreshed: (refreshedCatalog, reason) => {
+					try {
+						logger?.({
+							level: "info",
+							logger: "hevy-cache",
+							data: {
+								message: "Exercise template catalog refreshed",
+								count: refreshedCatalog.length,
+								reason,
+							},
+						});
+					} catch (error) {
+						console.error(
+							"Failed to emit structured exercise template cache log",
+							error,
+						);
+					}
+				},
+			});
 
 			// Filter by query (case-insensitive title substring match)
 			const queryLower = query.toLowerCase();

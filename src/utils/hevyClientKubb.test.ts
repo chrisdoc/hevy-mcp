@@ -104,6 +104,18 @@ vi.mock("../generated/client/api", () => {
 					url: "/v1/workouts",
 				}),
 		),
+		getV1WorkoutsWorkoutid: vi.fn(
+			(
+				workoutId: string,
+				headers: unknown,
+				options: { client: InternalKubbClient },
+			) =>
+				invokeClient(options.client, {
+					headers,
+					method: "GET",
+					url: `/v1/workouts/${workoutId}`,
+				}),
+		),
 		getV1WorkoutsCount: vi.fn(
 			(headers: unknown, options: { client: InternalKubbClient }) =>
 				invokeClient(options.client, {
@@ -143,7 +155,7 @@ vi.mock("../generated/client/api", () => {
 				invokeClient(options.client, {
 					headers,
 					method: "GET",
-					url: "/v1/user-info",
+					url: "/v1/user/info",
 				}),
 		),
 		postV1Workouts: vi.fn(
@@ -302,6 +314,64 @@ describe("hevyClientKubb", () => {
 		expect(delays).toEqual([RETRY_BACKOFF_BASE_MS, RETRY_BACKOFF_BASE_MS * 2]);
 	});
 
+	it("emits an exact debug message for a retryable 503 GET failure", async () => {
+		mockImmediateTimeouts();
+		const logger = vi.fn();
+		axiosTestDoubles.request
+			.mockRejectedValueOnce(createAxiosError({ status: 503 }))
+			.mockResolvedValueOnce({
+				data: { ok: true },
+				headers: {},
+				status: 200,
+				statusText: "OK",
+			});
+
+		const client = createClient("test-api-key", undefined, { logger });
+		await client.getWorkouts();
+
+		expect(logger).toHaveBeenCalledExactlyOnceWith({
+			level: "debug",
+			logger: "hevy-api",
+			data: {
+				message: "Retrying Hevy API request",
+				status: 503,
+				attempt: 2,
+				maxAttempts: MAX_GET_RETRIES + 1,
+				delayMs: RETRY_BACKOFF_BASE_MS,
+				method: "GET",
+				endpoint: "/v1/workouts",
+			},
+		});
+	});
+
+	it("redacts dynamic path values and query strings from log endpoints", async () => {
+		mockImmediateTimeouts();
+		const logger = vi.fn();
+		axiosTestDoubles.request
+			.mockRejectedValueOnce(createAxiosError({ status: 503 }))
+			.mockResolvedValueOnce({
+				data: { ok: true },
+				headers: {},
+				status: 200,
+				statusText: "OK",
+			});
+
+		const client = createClient("test-api-key", undefined, { logger });
+		await client.getWorkout("private-user-text?api-key=secret");
+
+		expect(logger).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					endpoint: "/v1/workouts/:workoutId",
+				}),
+			}),
+		);
+		expect(JSON.stringify(logger.mock.calls)).not.toContain(
+			"private-user-text",
+		);
+		expect(JSON.stringify(logger.mock.calls)).not.toContain("secret");
+	});
+
 	it("retries transient timeout/network errors for GET requests", async () => {
 		const delays = mockImmediateTimeouts();
 		axiosTestDoubles.request
@@ -347,6 +417,42 @@ describe("hevyClientKubb", () => {
 
 		expect(axiosTestDoubles.request).toHaveBeenCalledTimes(2);
 		expect(delays).toEqual([2_000]);
+	});
+
+	it("emits an exact warning message for a 429 retry", async () => {
+		mockImmediateTimeouts();
+		const logger = vi.fn();
+		axiosTestDoubles.request
+			.mockRejectedValueOnce(
+				createAxiosError({
+					headers: { "retry-after": "2" },
+					status: 429,
+				}),
+			)
+			.mockResolvedValueOnce({
+				data: { ok: true },
+				headers: {},
+				status: 200,
+				statusText: "OK",
+			});
+
+		const client = createClient("test-api-key", undefined, { logger });
+		await client.getRoutines();
+
+		expect(logger).toHaveBeenCalledExactlyOnceWith({
+			level: "warning",
+			logger: "hevy-api",
+			data: {
+				message: "Hevy API rate limit; retrying request",
+				status: 429,
+				attempt: 2,
+				maxAttempts: MAX_GET_RETRIES + 1,
+				delayMs: 2_000,
+				retryAfterMs: 2_000,
+				method: "GET",
+				endpoint: "/v1/routines",
+			},
+		});
 	});
 
 	it("caps large Retry-After values to the bounded retry delay", async () => {
@@ -538,6 +644,28 @@ describe("hevyClientKubb", () => {
 		expect(delays).toHaveLength(0);
 	});
 
+	it("emits an exact error message for a non-retryable API failure", async () => {
+		mockImmediateTimeouts();
+		const logger = vi.fn();
+		axiosTestDoubles.request.mockRejectedValueOnce(
+			createAxiosError({ status: 400 }),
+		);
+
+		const client = createClient("test-api-key", undefined, { logger });
+
+		await expect(client.getRoutines()).rejects.toBeDefined();
+		expect(logger).toHaveBeenCalledExactlyOnceWith({
+			level: "error",
+			logger: "hevy-api",
+			data: {
+				message: "Hevy API request failed without retry",
+				status: 400,
+				method: "GET",
+				endpoint: "/v1/routines",
+			},
+		});
+	});
+
 	it("keeps retries bounded and annotates exhausted retry errors", async () => {
 		const delays = mockImmediateTimeouts();
 		axiosTestDoubles.request.mockImplementation(() => {
@@ -555,6 +683,91 @@ describe("hevyClientKubb", () => {
 
 		expect(axiosTestDoubles.request).toHaveBeenCalledTimes(MAX_GET_RETRIES + 1);
 		expect(delays).toHaveLength(MAX_GET_RETRIES);
+	});
+
+	it("emits one terminal error after non-429 retry exhaustion", async () => {
+		mockImmediateTimeouts();
+		const logger = vi.fn();
+		axiosTestDoubles.request.mockRejectedValue(
+			createAxiosError({ status: 503 }),
+		);
+
+		const client = createClient("test-api-key", undefined, { logger });
+
+		await expect(client.getUserInfo()).rejects.toBeDefined();
+
+		const terminalMessages = logger.mock.calls
+			.map(([entry]) => entry)
+			.filter(
+				(entry) =>
+					(entry as { data?: { message?: string } }).data?.message ===
+					"Hevy API request failed after retries",
+			);
+		expect(terminalMessages).toEqual([
+			{
+				level: "error",
+				logger: "hevy-api",
+				data: {
+					message: "Hevy API request failed after retries",
+					status: 503,
+					attempt: MAX_GET_RETRIES + 1,
+					maxAttempts: MAX_GET_RETRIES + 1,
+					method: "GET",
+					endpoint: "/v1/user/info",
+				},
+			},
+		]);
+	});
+
+	it("uses warning severity for terminal 429 exhaustion", async () => {
+		mockImmediateTimeouts();
+		const logger = vi.fn();
+		axiosTestDoubles.request.mockRejectedValue(
+			createAxiosError({ status: 429 }),
+		);
+
+		const client = createClient("test-api-key", undefined, { logger });
+
+		await expect(client.getWorkouts()).rejects.toBeDefined();
+
+		expect(logger).toHaveBeenLastCalledWith({
+			level: "warning",
+			logger: "hevy-api",
+			data: {
+				message: "Hevy API request failed after retries",
+				status: 429,
+				attempt: MAX_GET_RETRIES + 1,
+				maxAttempts: MAX_GET_RETRIES + 1,
+				method: "GET",
+				endpoint: "/v1/workouts",
+			},
+		});
+	});
+
+	it("does not let a throwing logger change retry results", async () => {
+		mockImmediateTimeouts();
+		const errorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+		const logger = vi.fn(() => {
+			throw new Error("logger failed");
+		});
+		axiosTestDoubles.request
+			.mockRejectedValueOnce(createAxiosError({ status: 503 }))
+			.mockResolvedValueOnce({
+				data: { ok: true },
+				headers: {},
+				status: 200,
+				statusText: "OK",
+			});
+
+		const client = createClient("test-api-key", undefined, { logger });
+
+		await expect(client.getWorkouts()).resolves.toEqual({ ok: true });
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Failed to emit structured Hevy API log",
+			expect.any(Error),
+		);
 	});
 
 	it("rethrows non-axios errors without retrying", async () => {

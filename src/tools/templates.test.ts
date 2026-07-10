@@ -440,6 +440,78 @@ describe("registerTemplateTools", () => {
 			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(2);
 		});
 
+		it("logs successful initial and explicit refreshes but stays silent on cache hits", async () => {
+			const { server, tool } = createMockServer();
+			const logger = vi.fn();
+			const template: ExerciseTemplate = {
+				id: "t1",
+				title: "Bench Press",
+				type: "barbell",
+				primary_muscle_group: "chest",
+				secondary_muscle_groups: [],
+				is_custom: false,
+			};
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi.fn().mockResolvedValue({
+					page: 1,
+					page_count: 1,
+					exercise_templates: [template],
+				}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient, { logger });
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			await handler({ query: "bench", refresh: false });
+			expect(logger).toHaveBeenCalledExactlyOnceWith({
+				level: "info",
+				logger: "hevy-cache",
+				data: {
+					message: "Exercise template catalog refreshed",
+					count: 1,
+					reason: "initial-load",
+				},
+			});
+
+			await handler({ query: "bench", refresh: false });
+			expect(logger).toHaveBeenCalledTimes(1);
+
+			await handler({ query: "bench", refresh: true });
+			expect(logger).toHaveBeenNthCalledWith(2, {
+				level: "info",
+				logger: "hevy-cache",
+				data: {
+					message: "Exercise template catalog refreshed",
+					count: 1,
+					reason: "explicit-refresh",
+				},
+			});
+		});
+
+		it("does not log a cache refresh when the catalog fetch fails", async () => {
+			const { server, tool } = createMockServer();
+			const logger = vi.fn();
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi
+					.fn()
+					.mockRejectedValue(new Error("catalog fetch failed")),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient, { logger });
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			const response = await handler({ query: "bench", refresh: false });
+
+			expect(response).toMatchObject({ isError: true });
+			expect(logger).not.toHaveBeenCalled();
+		});
+
 		it("filters by primaryMuscleGroup when provided", async () => {
 			const { server, tool } = createMockServer();
 			const chestTemplate: ExerciseTemplate = {

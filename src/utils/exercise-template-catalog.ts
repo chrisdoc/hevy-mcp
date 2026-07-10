@@ -18,6 +18,19 @@ const exerciseTemplateCatalogCache = new AsyncTtlCache<
 	maxSize: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 });
 
+export type ExerciseTemplateCatalogRefreshReason =
+	| "explicit-refresh"
+	| "initial-load"
+	| "ttl-expired";
+
+interface ExerciseTemplateCatalogOptions {
+	refresh?: boolean;
+	onRefreshed?: (
+		catalog: ExerciseTemplate[],
+		reason: ExerciseTemplateCatalogRefreshReason,
+	) => void;
+}
+
 function getSafePageCount(
 	data: GetV1ExerciseTemplates200,
 	currentPage: number,
@@ -58,11 +71,21 @@ async function fetchExerciseTemplateCatalog(
 
 export function getExerciseTemplateCatalog(
 	hevyClient: HevyClient,
-	options: { refresh?: boolean } = {},
+	options: ExerciseTemplateCatalogOptions = {},
 ): Promise<ExerciseTemplate[]> {
+	const reason = options.refresh
+		? "explicit-refresh"
+		: exerciseTemplateCatalogCache.size === 0
+			? "initial-load"
+			: "ttl-expired";
+
 	return exerciseTemplateCatalogCache.getOrFetch(
 		EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
-		() => fetchExerciseTemplateCatalog(hevyClient),
+		async () => {
+			const catalog = await fetchExerciseTemplateCatalog(hevyClient);
+			options.onRefreshed?.(catalog, reason);
+			return catalog;
+		},
 		options,
 	);
 }
