@@ -283,6 +283,48 @@ describe("stdio observability", () => {
 		expect(diagnostic).not.toMatch(/[\r\n]/);
 	});
 
+	it.each([
+		{
+			name: "structural punctuation after the preview limit",
+			line: `${'x"'.repeat(16)}{}[]:,"{`,
+		},
+		{
+			name: "whitespace after the preview limit",
+			line: `${'x"'.repeat(16)}{}[]:,{ `,
+		},
+	])("truncates previews at a $name", ({ line }) => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		expect(() =>
+			deserializeMessageWithObservability(line, {
+				lastChunkByteLength: Buffer.byteLength(line),
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow();
+
+		const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
+		expect(diagnostic).toContain("shape_preview_truncated=true");
+	});
+
+	it("records Error failures without a parser position", () => {
+		const parserError = new Error("synthetic parser failure");
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw parserError;
+		});
+
+		expect(() =>
+			deserializeMessageWithObservability("{", {
+				lastChunkByteLength: 1,
+				lastChunkStartsWithUtf8Bom: false,
+			}),
+		).toThrow(parserError);
+
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure.position",
+			expect.any(Number),
+		);
+	});
+
 	it("omits parser messages and names while rethrowing the original error", () => {
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const parserError = new Error(
