@@ -1,3 +1,11 @@
+## 1.28.0
+
+### Minor Changes
+
+- [#510](https://github.com/chrisdoc/hevy-mcp/pull/510) [`caf294d`](https://github.com/chrisdoc/hevy-mcp/commit/caf294d8f353a53cffc85d95d9919a56b2cf72f9) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Send structured MCP client logs for Hevy API retries, rate limits, errors, and exercise template catalog refreshes.
+
+- [#508](https://github.com/chrisdoc/hevy-mcp/pull/508) [`b5ffe99`](https://github.com/chrisdoc/hevy-mcp/commit/b5ffe99c098b99f47f183de69b5f33b058ac3e35) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add guided MCP prompts for analyzing workout progress and creating a completed workout from a routine.
+
 ## 1.27.0
 
 ### Minor Changes
