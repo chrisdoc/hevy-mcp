@@ -53,7 +53,7 @@ automations:
       - commit
     if:
       - "{{ not pr.draft }}"
-      - "{{ not is.bot_author }}"
+      - {{ not is.bot_author }}
       - "{{ (source.diff.files | match(attr='new_file', regex=r/^src\\/generated\\//) | some) or (source.diff.files | match(attr='original_file', regex=r/^src\\/generated\\//) | some) }}"
     run:
       - action: request-changes@v1
@@ -70,7 +70,7 @@ automations:
       - commit
     if:
       - "{{ not pr.draft }}"
-      - "{{ not is.bot_author }}"
+      - {{ not is.bot_author }}
       - "{{ source.diff.files | filter(attr='new_file', regex=r/^src\\/tools\\/.*\\.tsx?$/) | matchDiffLines(regex=r/^\\+.*\\bas\\s+(any|unknown)\\b/) | some }}"
     run:
       - action: request-changes@v1
@@ -87,7 +87,7 @@ automations:
       - commit
     if:
       - "{{ not pr.draft }}"
-      - "{{ not is.bot_author }}"
+      - {{ not is.bot_author }}
     run:
       - action: explain-code-experts@v1
         args:
@@ -127,7 +127,7 @@ automations:
   # Add estimated review time label for all PRs
   estimated_time_to_review:
     if:
-      - "{{ not is.bot_author }}"
+      - {{ not is.bot_author }}
     run:
       - action: add-label@v1
         args:
@@ -193,7 +193,7 @@ colors:
 
 is:
   # Documented gitStream predicate for Dependabot and common bot accounts.
-  bot_author: "{{ pr.author | includes(list=['github-actions', '_bot_', '[bot]', 'dependabot']) }}"
+  bot_author: {{ pr.author | includes(list=['github-actions', '_bot_', '[bot]', 'dependabot']) }}
   high_risk: {{ ((not is.bot_author) and calc.etr >= 20) or (files | match(list=critical_files) | some) }}
   formatting: "{{ source.diff.files | isFormattingChange }}"
   docs: "{{ files | allDocs }}"
