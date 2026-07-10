@@ -6,6 +6,9 @@ import { Sentry, tracer } from "./telemetry.js";
 import { stdioParseErrors } from "./metrics.js";
 
 const UTF8_BOM = "\uFEFF";
+/** Maximum escaped characters included in a malformed stdin shape preview. */
+const STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH = 200;
+const REDACTED_CONTENT_MARKER = "[REDACTED]";
 
 export interface StdioChunkSnapshot {
 	lastChunkByteLength: number;
@@ -124,6 +127,94 @@ function getFailureLocation(
 	return "unknown";
 }
 
+function createStructuralShapePreview(line: string): {
+	shapePreview: string;
+	truncated: boolean;
+} {
+	let shapePreview = "";
+	let inContentRun = false;
+	let inWhitespaceRun = false;
+
+	const append = (token: string): boolean => {
+		if (
+			shapePreview.length + token.length >
+			STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH
+		) {
+			return false;
+		}
+
+		shapePreview += token;
+		return true;
+	};
+
+	for (const character of line) {
+		if ('{}[]:,"'.includes(character)) {
+			inContentRun = false;
+			inWhitespaceRun = false;
+			if (!append(character === '"' ? '\\"' : character)) {
+				return { shapePreview, truncated: true };
+			}
+			continue;
+		}
+
+		if (/\s/u.test(character)) {
+			inContentRun = false;
+			if (!inWhitespaceRun) {
+				if (!append("\\s")) {
+					return { shapePreview, truncated: true };
+				}
+				inWhitespaceRun = true;
+			}
+			continue;
+		}
+
+		inWhitespaceRun = false;
+		if (!inContentRun) {
+			if (!append(REDACTED_CONTENT_MARKER)) {
+				return { shapePreview, truncated: true };
+			}
+			inContentRun = true;
+		}
+	}
+
+	return {
+		shapePreview,
+		truncated: false,
+	};
+}
+
+function getSafeErrorKind(
+	error: unknown,
+): "SyntaxError" | "Error" | "UnknownError" {
+	if (error instanceof SyntaxError) {
+		return "SyntaxError";
+	}
+	if (error instanceof Error) {
+		return "Error";
+	}
+	return "UnknownError";
+}
+
+function reportStdinParseFailure(
+	error: unknown,
+	line: string,
+	lineByteLength: number,
+	failureLocation: string,
+	failurePosition: number | null,
+): void {
+	try {
+		const errorKind = getSafeErrorKind(error);
+		const { shapePreview, truncated } = createStructuralShapePreview(line);
+		const position = failurePosition === null ? "unknown" : failurePosition;
+
+		console.error(
+			`Failed to parse MCP stdin message: error_kind=${errorKind} line_bytes=${lineByteLength} failure_location=${failureLocation} failure_position=${position} shape_preview="${shapePreview}" shape_preview_redacted=true shape_preview_truncated=${truncated}`,
+		);
+	} catch {
+		// Diagnostics are best-effort and must not replace the parser error.
+	}
+}
+
 export function deserializeMessageWithObservability(
 	line: string,
 	chunkSnapshot: StdioChunkSnapshot,
@@ -195,6 +286,14 @@ export function deserializeMessageWithObservability(
 					});
 					Sentry.captureException(error);
 				});
+
+				reportStdinParseFailure(
+					error,
+					line,
+					lineByteLength,
+					failureLocation,
+					failurePosition,
+				);
 
 				throw error;
 			} finally {
