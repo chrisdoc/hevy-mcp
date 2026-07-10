@@ -264,10 +264,11 @@ describe("gitStream inline comment configuration", () => {
 
 	it("keeps interpolated string action arguments quoted", () => {
 		expect(config).toContain(
-			'file_name: "{{ diff_location.unsafe_assertion.file_name }}"',
+			'file_path: "{{ diff_location.unsafe_assertion.file_name }}"',
 		);
 		expect(config).toContain(
-			'file_name: "{{ diff_location.console_log.file_name }}"',
+			'file_path: "{{ diff_location.console_log.file_name }}"',
 		);
+		expect(config).not.toMatch(/^\s+file_name:/m);
 	});
 });

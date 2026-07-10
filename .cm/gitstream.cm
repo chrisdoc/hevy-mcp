@@ -85,7 +85,7 @@ automations:
     run:
       - action: add-code-comment@v1
         args:
-          file_name: "{{ diff_location.unsafe_assertion.file_name }}"
+          file_path: "{{ diff_location.unsafe_assertion.file_name }}"
           start_line: {{ diff_location.unsafe_assertion.start_line }}
           comment: "Unsafe assertions bypass type safety. Prefer schema-driven `InferToolParams<typeof schema>` where applicable."
 
@@ -101,7 +101,7 @@ automations:
     run:
       - action: add-code-comment@v1
         args:
-          file_name: "{{ diff_location.console_log.file_name }}"
+          file_path: "{{ diff_location.console_log.file_name }}"
           start_line: {{ diff_location.console_log.start_line }}
           comment: "`console.log` writes to stdout, which carries MCP protocol traffic. Use the project logging/error path or `console.error`."
 
