@@ -76,9 +76,9 @@ automations:
   # Require additional review for large PRs and changes to critical files
   require_double_review:
     if:
-      - "{{ not pr.draft }}"
-      - "{{ not is.bot_author }}"
-      - "{{ is.double_review }}"
+      - {{ not pr.draft }}
+      - {{ not is.bot_author }}
+      - {{ is.double_review }}
     run:
       - action: set-required-approvals@v1
         args:
@@ -87,9 +87,9 @@ automations:
   # Add review progress label when team approval target is met
   label_approved_by_team:
     if:
-      - "{{ not pr.draft }}"
-      - "{{ not is.double_review }}"
-      - "{{ pr.approvals | length >= required_approvals }}"
+      - {{ not pr.draft }}
+      - {{ not is.double_review }}
+      - {{ pr.approvals | length >= required_approvals }}
     run:
       - action: add-label@v1
         args:
@@ -99,9 +99,9 @@ automations:
   # Add review progress label when the higher approval target is met
   label_double_review_approved_by_team:
     if:
-      - "{{ not pr.draft }}"
-      - "{{ is.double_review }}"
-      - "{{ pr.approvals | length >= 2 }}"
+      - {{ not pr.draft }}
+      - {{ is.double_review }}
+      - {{ pr.approvals | length >= 2 }}
     run:
       - action: add-label@v1
         args:
@@ -135,7 +135,7 @@ automations:
 # +----------------------------------------------------------------------------+
 
 calc:
-  etr: "{{ branch | estimatedReviewTime }}"
+  etr: {{ branch | estimatedReviewTime }}
   safe_changes: {{ is.formatting or is.docs or is.tests or is.image }}
 
 colors:
@@ -144,8 +144,8 @@ colors:
   green: '0e8a16'
 
 is:
-  bot_author: '{{ pr.author | match(regex=r/^(app\/.+|.+\[bot\])$/) | some }}'
-  double_review: "{{ calc.etr >= 20 or (files | match(list=critical_files) | some) }}"
+  bot_author: {{ pr.author | match(regex=r/^(app\/.+|.+\[bot\])$/) | some }}
+  double_review: {{ calc.etr >= 20 or (files | match(list=critical_files) | some) }}
   formatting: "{{ source.diff.files | isFormattingChange }}"
   docs: "{{ files | allDocs }}"
   tests: "{{ files | allTests }}"
