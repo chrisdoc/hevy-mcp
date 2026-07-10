@@ -14,6 +14,7 @@ import { createHmac } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
@@ -138,6 +139,8 @@ function buildServer(apiKey: string) {
 						}
 					},
 				);
+
+				registerWorkoutPrompts(server);
 
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;

@@ -22,6 +22,7 @@ const testDoubles = vi.hoisted(() => ({
 		end: vi.fn(),
 	},
 	connect: vi.fn().mockResolvedValue(undefined),
+	registerPrompt: vi.fn(),
 	sentry: {
 		init: vi.fn(() => ({})),
 		setUser: vi.fn(),
@@ -82,6 +83,7 @@ vi.mock("@opentelemetry/api", () => ({
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	class MockMcpServer {
 		connect = testDoubles.connect;
+		registerPrompt = testDoubles.registerPrompt;
 		tool = vi.fn();
 	}
 
@@ -129,6 +131,10 @@ describe("Server entry", () => {
 	it("creates an MCP server instance", () => {
 		const server = createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
+		expect(testDoubles.registerPrompt).toHaveBeenCalledTimes(2);
+		expect(
+			testDoubles.registerPrompt.mock.calls.map(([prompt]) => prompt),
+		).toEqual(["analyze-workout-progress", "create-workout-from-routine"]);
 		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 			"mcp.server.build",
 			expect.objectContaining({
