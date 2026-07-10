@@ -3,18 +3,21 @@ const MAX_DEBUG_RECORD_LENGTH = 8_192;
 const MAX_REDACTION_DEPTH = 4;
 const MAX_OBJECT_KEYS = 20;
 
-const SENSITIVE_KEY_PATTERN =
-	/(?:api[-_]?key|auth(?:orization)?|bearer|credential|password|secret|token)/i;
-const USER_CONTENT_KEY_PATTERN =
-	/(?:description|name|note|notes|query|text|title)/i;
-const SAFE_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/;
-
 type RedactedValue =
-	| boolean
 	| number
-	| null
 	| string
-	| { [key: string]: RedactedValue };
+	| {
+			type: "array";
+			length: number;
+			items: Record<string, RedactedValue> | "[max-depth]";
+			truncatedItems?: number;
+	  }
+	| {
+			type: "object";
+			fieldCount: number;
+			fields: Record<string, RedactedValue> | "[max-depth]";
+			truncatedFields?: number;
+	  };
 
 export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 	return env.HEVY_MCP_DEBUG === "1";
@@ -26,11 +29,11 @@ function redactValue(
 	seen: WeakSet<object>,
 ): RedactedValue {
 	if (value === null) {
-		return "[redacted]";
+		return "[null]";
 	}
 
 	if (typeof value !== "object") {
-		return "[redacted]";
+		return `[${typeof value}]`;
 	}
 
 	if (seen.has(value)) {
@@ -38,41 +41,73 @@ function redactValue(
 	}
 
 	if (Array.isArray(value)) {
-		return { type: "array", length: value.length };
+		const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+		const length =
+			lengthDescriptor &&
+			"value" in lengthDescriptor &&
+			typeof lengthDescriptor.value === "number"
+				? lengthDescriptor.value
+				: 0;
+		if (depth >= MAX_REDACTION_DEPTH) {
+			return { type: "array", length, items: "[max-depth]" };
+		}
+
+		seen.add(value);
+		try {
+			const itemCount = Math.min(length, MAX_OBJECT_KEYS);
+			const items: Record<string, RedactedValue> = {};
+			for (let index = 0; index < itemCount; index += 1) {
+				const descriptor = Object.getOwnPropertyDescriptor(
+					value,
+					String(index),
+				);
+				items[`item-${index + 1}`] =
+					descriptor && "value" in descriptor
+						? redactValue(descriptor.value, depth + 1, seen)
+						: "[empty-or-accessor]";
+			}
+
+			return {
+				type: "array",
+				length,
+				items,
+				...(length > MAX_OBJECT_KEYS
+					? { truncatedItems: length - MAX_OBJECT_KEYS }
+					: {}),
+			};
+		} finally {
+			seen.delete(value);
+		}
 	}
 
+	const keys = Object.keys(value);
 	if (depth >= MAX_REDACTION_DEPTH) {
-		return "[max-depth]";
+		return {
+			type: "object",
+			fieldCount: keys.length,
+			fields: "[max-depth]",
+		};
 	}
 
 	seen.add(value);
 	try {
-		const keys = Object.keys(value);
-		const result: Record<string, RedactedValue> = {};
-		for (const rawKey of keys.slice(0, MAX_OBJECT_KEYS)) {
-			const key = SAFE_KEY_PATTERN.test(rawKey) ? rawKey : "[redacted-key]";
-			if (
-				SENSITIVE_KEY_PATTERN.test(rawKey) ||
-				USER_CONTENT_KEY_PATTERN.test(rawKey)
-			) {
-				result[key] = "[redacted]";
-				continue;
-			}
-
+		const fields: Record<string, RedactedValue> = {};
+		for (const [index, rawKey] of keys.slice(0, MAX_OBJECT_KEYS).entries()) {
 			const descriptor = Object.getOwnPropertyDescriptor(value, rawKey);
-			if (!descriptor || !("value" in descriptor)) {
-				result[key] = "[redacted]";
-				continue;
-			}
-
-			result[key] = redactValue(descriptor.value, depth + 1, seen);
+			fields[`field-${index + 1}`] =
+				descriptor && "value" in descriptor
+					? redactValue(descriptor.value, depth + 1, seen)
+					: "[accessor]";
 		}
 
-		if (keys.length > MAX_OBJECT_KEYS) {
-			result["[truncated-keys]"] = keys.length - MAX_OBJECT_KEYS;
-		}
-
-		return result;
+		return {
+			type: "object",
+			fieldCount: keys.length,
+			fields,
+			...(keys.length > MAX_OBJECT_KEYS
+				? { truncatedFields: keys.length - MAX_OBJECT_KEYS }
+				: {}),
+		};
 	} finally {
 		seen.delete(value);
 	}

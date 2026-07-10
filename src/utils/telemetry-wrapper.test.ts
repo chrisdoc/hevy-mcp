@@ -50,15 +50,18 @@ describe("withTelemetry", () => {
 			.mockImplementation(() => true);
 		const handler = vi.fn().mockResolvedValue({ content: [] });
 		const args: Record<string, unknown> = {
-			page: 2,
-			pageSize: 10,
-			title: "Private Friday workout",
-			apiKey: "secret-key",
+			kneePain_notes: "Private Friday workout",
+			johnToken: "secret-key",
+			AliceDiagnosis: "personal notes",
+			"私密な鍵🔒": "private unicode value",
 			date: "2026-07-10",
 			weightKg: 81.5,
 			fatPercent: 18.2,
 			waist: 84,
-			workout: { notes: "personal notes", sets: 3 },
+			workout: {
+				nestedKneePain_notes: "nested private value",
+				sets: [3, { nestedJohnToken: "nested token value" }],
+			},
 		};
 		args.circular = args;
 
@@ -69,11 +72,18 @@ describe("withTelemetry", () => {
 		expect(output).toContain("[hevy-mcp:debug]");
 		expect(output).toContain('"event":"tool_invocation"');
 		expect(output).toContain('"tool":"create-body-measurement"');
-		expect(output).toContain('"page":"[redacted]"');
-		expect(output).toContain('"pageSize":"[redacted]"');
-		expect(output).toContain('"weightKg":"[redacted]"');
-		expect(output).toContain('"fatPercent":"[redacted]"');
-		expect(output).toContain('"waist":"[redacted]"');
+		expect(output).toContain(
+			'"params":{"type":"object","fieldCount":10,"fields":',
+		);
+		expect(output).toContain('"field-9":{"type":"object","fieldCount":2');
+		expect(output).toContain('"type":"array","length":2');
+		expect(output).toContain('"[circular]"');
+		expect(output).not.toContain("kneePain_notes");
+		expect(output).not.toContain("johnToken");
+		expect(output).not.toContain("AliceDiagnosis");
+		expect(output).not.toContain("私密な鍵🔒");
+		expect(output).not.toContain("nestedKneePain_notes");
+		expect(output).not.toContain("nestedJohnToken");
 		expect(output).not.toContain("81.5");
 		expect(output).not.toContain("18.2");
 		expect(output).not.toContain("84");
@@ -81,6 +91,9 @@ describe("withTelemetry", () => {
 		expect(output).not.toContain("Private Friday workout");
 		expect(output).not.toContain("secret-key");
 		expect(output).not.toContain("personal notes");
+		expect(output).not.toContain("private unicode value");
+		expect(output).not.toContain("nested private value");
+		expect(output).not.toContain("nested token value");
 		expect(stdoutSpy).not.toHaveBeenCalled();
 		stderrSpy.mockRestore();
 		stdoutSpy.mockRestore();

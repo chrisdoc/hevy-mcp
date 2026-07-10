@@ -78,30 +78,48 @@ describe("debug diagnostics", () => {
 		const redacted = redactToolArgs(args);
 		const serialized = JSON.stringify(redacted);
 
-		expect(redacted).toEqual({
-			page: "[redacted]",
-			includeCustom: "[redacted]",
-			weightKg: "[redacted]",
-			fatPercent: "[redacted]",
-			waist: "[redacted]",
-			date: "[redacted]",
-			unknownString: "[redacted]",
-			bigintValue: "[redacted]",
-			notANumber: "[redacted]",
-			positiveInfinity: "[redacted]",
-			symbolValue: "[redacted]",
-			callback: "[redacted]",
-			missing: "[redacted]",
-			empty: "[redacted]",
-			apiKey: "[redacted]",
-			title: "[redacted]",
-			query: "[redacted]",
-			workout: {
-				notes: "[redacted]",
-				exercises: { type: "array", length: 1 },
-				sets: "[redacted]",
+		expect(redacted).toMatchObject({
+			type: "object",
+			fieldCount: 19,
+			fields: {
+				"field-1": "[number]",
+				"field-2": "[boolean]",
+				"field-3": "[number]",
+				"field-4": "[number]",
+				"field-5": "[number]",
+				"field-6": "[string]",
+				"field-7": "[string]",
+				"field-8": "[bigint]",
+				"field-9": "[number]",
+				"field-10": "[number]",
+				"field-11": "[symbol]",
+				"field-12": "[function]",
+				"field-13": "[undefined]",
+				"field-14": "[null]",
+				"field-15": "[string]",
+				"field-16": "[string]",
+				"field-17": "[string]",
+				"field-18": {
+					type: "object",
+					fieldCount: 3,
+					fields: {
+						"field-1": "[string]",
+						"field-2": {
+							type: "array",
+							length: 1,
+							items: {
+								"item-1": {
+									type: "object",
+									fieldCount: 1,
+									fields: { "field-1": "[string]" },
+								},
+							},
+						},
+						"field-3": "[number]",
+					},
+				},
+				"field-19": "[circular]",
 			},
-			circular: "[circular]",
 		});
 		expect(serialized).not.toContain("81.5");
 		expect(serialized).not.toContain("18.2");
@@ -124,23 +142,80 @@ describe("debug diagnostics", () => {
 		expect(output).not.toContain("84");
 	});
 
-	it("bounds depth, object keys, array contents, unsafe keys, and output size", () => {
+	it("removes adversarial keys and bounds nested structural diagnostics", () => {
 		const manyKeys = Object.fromEntries(
 			Array.from({ length: 30 }, (_, index) => [`key${index}`, index]),
 		);
+		let getterCalls = 0;
+		const accessorObject = Object.defineProperty({}, "AliceDiagnosis", {
+			enumerable: true,
+			get: () => {
+				getterCalls += 1;
+				return "private getter value";
+			},
+		});
+		const accessorArray = Array.from({ length: 1 });
+		Object.defineProperty(accessorArray, "0", {
+			enumerable: true,
+			get: () => {
+				getterCalls += 1;
+				return "private array getter value";
+			},
+		});
 		const redacted = redactToolArgs({
-			"private workout title as a key": "secret",
-			items: Array.from({ length: 1_000 }, () => "private value"),
+			kneePain_notes: "private knee value",
+			johnToken: "private token value",
+			AliceDiagnosis: "private diagnosis value",
+			"私密な鍵🔒": "private unicode value",
+			items: Array.from({ length: 1_000 }, () => "private array value"),
 			level1: { level2: { level3: { level4: { level5: "secret" } } } },
 			manyKeys,
+			accessorObject,
+			accessorArray,
 		});
+		const serialized = JSON.stringify(redacted);
 
 		expect(redacted).toMatchObject({
-			"[redacted-key]": "[redacted]",
-			items: { type: "array", length: 1_000 },
-			level1: { level2: { level3: { level4: "[max-depth]" } } },
-			manyKeys: { "[truncated-keys]": 10 },
+			type: "object",
+			fieldCount: 9,
+			fields: {
+				"field-1": "[string]",
+				"field-2": "[string]",
+				"field-3": "[string]",
+				"field-4": "[string]",
+				"field-5": {
+					type: "array",
+					length: 1_000,
+					truncatedItems: 980,
+				},
+				"field-7": {
+					type: "object",
+					fieldCount: 30,
+					truncatedFields: 10,
+				},
+				"field-8": {
+					type: "object",
+					fieldCount: 1,
+					fields: { "field-1": "[accessor]" },
+				},
+				"field-9": {
+					type: "array",
+					length: 1,
+					items: { "item-1": "[empty-or-accessor]" },
+				},
+			},
 		});
+		expect(serialized).toContain("[max-depth]");
+		expect(serialized).not.toContain("kneePain_notes");
+		expect(serialized).not.toContain("johnToken");
+		expect(serialized).not.toContain("AliceDiagnosis");
+		expect(serialized).not.toContain("私密な鍵🔒");
+		expect(serialized).not.toContain("private knee value");
+		expect(serialized).not.toContain("private token value");
+		expect(serialized).not.toContain("private diagnosis value");
+		expect(serialized).not.toContain("private unicode value");
+		expect(serialized).not.toContain("private array value");
+		expect(getterCalls).toBe(0);
 
 		process.env.HEVY_MCP_DEBUG = "1";
 		debugLog("bounded", { payload: "x".repeat(20_000) });
@@ -160,6 +235,15 @@ describe("debug diagnostics", () => {
 		expect(() =>
 			debugLog("serialization_failure", { value: 1n }),
 		).not.toThrow();
+		const hostileProxy = new Proxy(
+			{},
+			{
+				ownKeys: () => {
+					throw new Error("reflection unavailable");
+				},
+			},
+		);
+		expect(redactToolArgs(hostileProxy)).toBe("[unavailable]");
 		expect(stdoutSpy).not.toHaveBeenCalled();
 	});
 });
