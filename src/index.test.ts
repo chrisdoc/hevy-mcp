@@ -270,6 +270,7 @@ describe("Server entry", () => {
 				const [helpText] = logSpy.mock.calls[0] ?? [];
 				expect(helpText).toContain("Usage:");
 				expect(helpText).toContain("HEVY_API_KEY");
+				expect(helpText).toContain("HEVY_MCP_DEBUG=1");
 				expect(helpText).toContain("Examples:");
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();

@@ -35,8 +35,55 @@ vi.mock("@opentelemetry/api", () => ({
 
 describe("withTelemetry", () => {
 	beforeEach(() => {
+		delete process.env.HEVY_MCP_DEBUG;
 		vi.clearAllMocks();
 		vi.mocked(getCurrentUserId).mockReturnValue(undefined);
+	});
+
+	it("emits redacted debug input from the central tool wrapper", async () => {
+		process.env.HEVY_MCP_DEBUG = "1";
+		const stderrSpy = vi
+			.spyOn(process.stderr, "write")
+			.mockImplementation(() => true);
+		const stdoutSpy = vi
+			.spyOn(process.stdout, "write")
+			.mockImplementation(() => true);
+		const handler = vi.fn().mockResolvedValue({ content: [] });
+		const args: Record<string, unknown> = {
+			page: 2,
+			pageSize: 10,
+			title: "Private Friday workout",
+			apiKey: "secret-key",
+			date: "2026-07-10",
+			weightKg: 81.5,
+			fatPercent: 18.2,
+			waist: 84,
+			workout: { notes: "personal notes", sets: 3 },
+		};
+		args.circular = args;
+
+		await withTelemetry(handler, "create-body-measurement")(args);
+
+		expect(handler).toHaveBeenCalledExactlyOnceWith(args);
+		const output = String(stderrSpy.mock.calls[0]?.[0]);
+		expect(output).toContain("[hevy-mcp:debug]");
+		expect(output).toContain('"event":"tool_invocation"');
+		expect(output).toContain('"tool":"create-body-measurement"');
+		expect(output).toContain('"page":"[redacted]"');
+		expect(output).toContain('"pageSize":"[redacted]"');
+		expect(output).toContain('"weightKg":"[redacted]"');
+		expect(output).toContain('"fatPercent":"[redacted]"');
+		expect(output).toContain('"waist":"[redacted]"');
+		expect(output).not.toContain("81.5");
+		expect(output).not.toContain("18.2");
+		expect(output).not.toContain("84");
+		expect(output).not.toContain("2026-07-10");
+		expect(output).not.toContain("Private Friday workout");
+		expect(output).not.toContain("secret-key");
+		expect(output).not.toContain("personal notes");
+		expect(stdoutSpy).not.toHaveBeenCalled();
+		stderrSpy.mockRestore();
+		stdoutSpy.mockRestore();
 	});
 
 	it("records successful invocations and normalizes nullish arguments", async () => {
