@@ -29,6 +29,7 @@ const testDoubles = vi.hoisted(() => ({
 	tool: vi.fn(),
 	registerTool: vi.fn(),
 	directRegisterToolCalls: 0,
+	scheduleUpdateCheck: vi.fn(),
 	sentry: {
 		init: vi.fn(() => ({})),
 		setUser: vi.fn(),
@@ -73,6 +74,10 @@ vi.mock("./utils/metrics.js", () => ({
 	apiDuration: { record: vi.fn() },
 	stdioParseErrors: { add: vi.fn() },
 	serverStartups: { add: vi.fn() },
+}));
+
+vi.mock("./utils/version-check.js", () => ({
+	scheduleUpdateCheck: testDoubles.scheduleUpdateCheck,
 }));
 
 vi.mock("./tools/user.js", () => ({
@@ -243,6 +248,7 @@ describe("Server entry", () => {
 				expect(logSpy).toHaveBeenCalledWith("dev");
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
+				expect(testDoubles.scheduleUpdateCheck).not.toHaveBeenCalled();
 
 				const anyStdioModule = stdioModule as { __transports?: unknown[] };
 				expect(anyStdioModule.__transports).toHaveLength(0);
@@ -273,6 +279,7 @@ describe("Server entry", () => {
 				expect(helpText).toContain("Examples:");
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
+				expect(testDoubles.scheduleUpdateCheck).not.toHaveBeenCalled();
 
 				const anyStdioModule = stdioModule as { __transports?: unknown[] };
 				expect(anyStdioModule.__transports).toHaveLength(0);
@@ -307,6 +314,29 @@ describe("Server entry", () => {
 			);
 			expect(spanNames).toContain("mcp.server.run");
 			expect(spanNames).toContain("mcp.server.connect");
+			expect(testDoubles.scheduleUpdateCheck).toHaveBeenCalledWith({
+				packageName: "hevy-mcp",
+				currentVersion: "dev",
+			});
+		});
+
+		it("schedules the update check only after connection succeeds", async () => {
+			process.env = {
+				...originalEnv,
+				HEVY_API_KEY: "test-api-key",
+			};
+			process.argv = originalArgv.slice(0, 2);
+			const events: string[] = [];
+			testDoubles.connect.mockImplementationOnce(async () => {
+				events.push("connected");
+			});
+			testDoubles.scheduleUpdateCheck.mockImplementationOnce(() => {
+				events.push("scheduled");
+			});
+
+			await runServer();
+
+			expect(events).toEqual(["connected", "scheduled"]);
 		});
 
 		it("prefers CLI --hevy-api-key argument over environment variable", async () => {
@@ -343,6 +373,7 @@ describe("Server entry", () => {
 
 			await expect(runServer()).rejects.toThrow("connect failed");
 			expect(testDoubles.connect).toHaveBeenCalled();
+			expect(testDoubles.scheduleUpdateCheck).not.toHaveBeenCalled();
 			expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 		});
 

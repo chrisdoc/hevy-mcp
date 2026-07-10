@@ -26,6 +26,7 @@ import { assertApiKey, parseConfig } from "./utils/config.js";
 import { createClient } from "./utils/hevyClient.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
+import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
 const version = serviceVersion;
@@ -271,6 +272,10 @@ export async function runServer() {
 						}
 					},
 				);
+				scheduleUpdateCheck({
+					packageName: serviceName,
+					currentVersion: serviceVersion,
+				});
 
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (e) {
