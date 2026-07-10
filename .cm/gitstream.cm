@@ -166,7 +166,7 @@ automations:
           start_line: {{ diff_location.console_log.start_line }}
           comment: "`console.log` writes to stdout, which carries MCP protocol traffic. Use the project logging/error path or `console.error`."
 
-  # Request advisory AI review for large PRs and critical runtime changes
+  # Mark high-risk PRs as pending AI review
   request_ai_review:
     if:
       - {{ not pr.draft }}
@@ -174,8 +174,8 @@ automations:
     run:
       - action: add-label@v1
         args:
-          label: "needs-ai-review"
-          color: "5319e7"
+          label: "review-pending"
+          color: "fbca04"
 
   # Add review progress label when team approval target is met
   label_approved_by_team:
@@ -188,16 +188,19 @@ automations:
           label: "approved-by-team"
           color: "0e8a16"
 
-  # Add Greptile reviewed label once Greptile check succeeds
-  label_greptile_reviewed:
+  # Mark AI review as complete once Greptile check succeeds
+  label_review_complete:
     if:
       - {{ not pr.draft }}
       - {{ pr.checks | filter(attr='name', regex=r/greptile/i) | filter(attr='status', term='completed') | match(attr='conclusion', term='success') | some }}
     run:
+      - action: remove-label@v1
+        args:
+          label: "review-pending"
       - action: add-label@v1
         args:
-          label: "greptile-reviewed"
-          color: "5319e7"
+          label: "review-complete"
+          color: "0e8a16"
 
   # Add safe changes label for low-risk changes
   label_safe_changes:
