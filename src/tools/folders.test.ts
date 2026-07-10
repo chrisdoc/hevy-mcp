@@ -10,7 +10,7 @@ type HevyClient = ReturnType<
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as unknown as McpServer;
 	return { server, tool };
 }
 
@@ -22,8 +22,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
+		structuredContent?: Record<string, unknown>;
 	}>;
-	return { handler };
+	const config = match[1] as { outputSchema?: unknown } | undefined;
+	return { outputSchema: config?.outputSchema, handler };
 }
 
 describe("registerFolderTools", () => {
@@ -108,6 +110,25 @@ describe("registerFolderTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatRoutineFolder(folder)]);
+		expect(response.structuredContent).toEqual({ routineFolders: parsed });
+	});
+
+	it("get-routine-folders returns a structured empty list", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getRoutineFolders: vi.fn().mockResolvedValue({ routine_folders: [] }),
+		} as unknown as HevyClient;
+		registerFolderTools(server, hevyClient);
+
+		const response = await getToolRegistration(
+			tool,
+			"get-routine-folders",
+		).handler({ page: 1, pageSize: 5 });
+
+		expect(response.structuredContent).toEqual({ routineFolders: [] });
+		expect(response.content[0]?.text).toBe(
+			"No routine folders found for the specified parameters",
+		);
 	});
 
 	it("get-routine-folder returns an empty response when folder is not found", async () => {
@@ -124,6 +145,24 @@ describe("registerFolderTools", () => {
 		expect(response.content[0]?.text).toBe(
 			"Routine folder with ID missing-id not found",
 		);
+		expect(response.structuredContent).toEqual({ routineFolder: null });
+	});
+
+	it("get-routine-folder returns structured folder details", async () => {
+		const { server, tool } = createMockServer();
+		const folder: RoutineFolder = { id: 1, title: "Strength" };
+		const hevyClient = {
+			getRoutineFolder: vi.fn().mockResolvedValue(folder),
+		} as unknown as HevyClient;
+		registerFolderTools(server, hevyClient);
+
+		const response = await getToolRegistration(
+			tool,
+			"get-routine-folder",
+		).handler({ folderId: "1" });
+		const parsed = JSON.parse(response.content[0].text) as unknown;
+
+		expect(response.structuredContent).toEqual({ routineFolder: parsed });
 	});
 
 	it("create-routine-folder maps arguments to the request body and formats the response", async () => {
