@@ -17,6 +17,18 @@ env:
   HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
 jobs:
+  upload-source-event:
+    name: Upload source event
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload source event
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: source-event
+          path: ${{ github.event_path }}
+          if-no-files-found: error
+
   build:
     name: Build and test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
@@ -29,12 +41,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
@@ -64,11 +76,29 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
 
+      - name: Run mocked integration tests with coverage
+        if: matrix.node-version == '24.x'
+        run: npx vitest run tests/integration/mocked --coverage --coverage.reportsDirectory=coverage/mocked
+
       - name: Run mocked integration tests
+        if: matrix.node-version == '26.x'
         run: npx vitest run tests/integration/mocked
 
-      - name: Run tests with coverage
-        run: npx vitest run --coverage
+      - name: Run unit tests with coverage and JUnit output
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npx vitest run --coverage --coverage.reportsDirectory=coverage/unit --exclude "tests/integration/**" --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
+
+      - name: Run unit tests with coverage
+        if: ${{ !cancelled() && matrix.node-version == '26.x' }}
+        run: npx vitest run --coverage --exclude "tests/integration/**"
+
+      - name: Upload unit test results
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unit-test-results-node-24
+          path: test-results/unit-tests.xml
+          if-no-files-found: error
 
       - name: "Warning: Live integration tests skipped"
         if: env.HEVY_API_KEY == ''
@@ -76,10 +106,10 @@ jobs:
 
       - name: Upload results to Codecov
         if: matrix.node-version == '24.x'
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+          files: ./coverage/unit/lcov.info,./coverage/mocked/lcov.info
 
   otel-cicd-action:
     if: always()
@@ -88,7 +118,7 @@ jobs:
     needs: [build]
     steps:
       - name: Export workflow
-        uses: corentinmusard/otel-cicd-action@v4
+        uses: corentinmusard/otel-cicd-action@f2d88ecf54d9dd3e01ea95e25f93603212ee93d3 # v4.0.1
         with:
           otlpEndpoint: "grpc://in-otel.hyperdx.io:4317/"
           otlpHeaders: ${{ secrets.HYPERDX_OTLP_HEADERS }}
