@@ -120,7 +120,7 @@ jobs:
       - name: Export workflow
         uses: corentinmusard/otel-cicd-action@f2d88ecf54d9dd3e01ea95e25f93603212ee93d3 # v4.0.1
         with:
-          otlpEndpoint: "grpc://in-otel.hyperdx.io:4317/"
-          otlpHeaders: ${{ secrets.HYPERDX_OTLP_HEADERS }}
+          otlpEndpoint: "https://otel.chrisdoc.dev/v1/traces"
+          otlpHeaders: "Authorization=Bearer ${{ secrets.OTEL_COLLECTOR_TOKEN }}"
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           runId: ${{ github.run_id }}
