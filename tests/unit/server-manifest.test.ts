@@ -1,10 +1,11 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { runServerManifest } from "../../scripts/server-manifest.mjs";
 
 const rootDir = resolve(import.meta.dirname, "../..");
+const manifestScript = resolve(rootDir, "scripts/server-manifest.mjs");
 
 async function createFixture() {
 	const fixtureDir = await mkdtemp(join(tmpdir(), "hevy-server-manifest-"));
@@ -25,6 +26,35 @@ async function createFixture() {
 	);
 
 	return { fixtureDir, manifest, packageJson };
+}
+
+async function runManifestCli(fixtureDir: string, mode: string) {
+	const originalArgv = process.argv;
+	const originalExitCode = process.exitCode;
+	const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(fixtureDir);
+	const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+	const errorSpy = vi
+		.spyOn(console, "error")
+		.mockImplementation(() => undefined);
+
+	try {
+		process.argv = [process.argv[0], manifestScript, mode];
+		process.exitCode = undefined;
+		vi.resetModules();
+		await import("../../scripts/server-manifest.mjs");
+
+		return {
+			errorCalls: errorSpy.mock.calls,
+			exitCode: process.exitCode,
+			logCalls: logSpy.mock.calls,
+		};
+	} finally {
+		process.argv = originalArgv;
+		process.exitCode = originalExitCode;
+		cwdSpy.mockRestore();
+		logSpy.mockRestore();
+		errorSpy.mockRestore();
+	}
 }
 
 describe("server manifest metadata", () => {
@@ -127,5 +157,51 @@ describe("server manifest metadata", () => {
 		await expect(
 			runServerManifest({ mode: "sync", rootDir: fixtureDir }),
 		).rejects.toThrow("package transport must be stdio");
+	});
+
+	it("reports unreadable and invalid JSON inputs clearly", async () => {
+		const { fixtureDir } = await createFixture();
+		await expect(
+			runServerManifest({
+				mode: "check",
+				rootDir: join(fixtureDir, "missing"),
+			}),
+		).rejects.toThrow("Unable to read package.json:");
+
+		await writeFile(join(fixtureDir, "package.json"), "not valid JSON\n");
+		await expect(
+			runServerManifest({ mode: "check", rootDir: fixtureDir }),
+		).rejects.toThrow("package.json is not valid JSON:");
+	});
+
+	it("reports CLI synchronization results", async () => {
+		const synchronized = await createFixture();
+		expect(await runManifestCli(synchronized.fixtureDir, "sync")).toMatchObject(
+			{
+				exitCode: undefined,
+				logCalls: [["server.json is synchronized with package.json."]],
+			},
+		);
+
+		const drifted = await createFixture();
+		drifted.manifest.version = "9.8.7";
+		await writeFile(
+			join(drifted.fixtureDir, "server.json"),
+			`${JSON.stringify(drifted.manifest, null, "\t")}\n`,
+		);
+		expect(await runManifestCli(drifted.fixtureDir, "sync")).toMatchObject({
+			exitCode: undefined,
+			logCalls: [["Synchronized server.json with package.json."]],
+		});
+	});
+
+	it("reports CLI errors and sets a failing exit code", async () => {
+		const { fixtureDir } = await createFixture();
+		expect(await runManifestCli(fixtureDir, "invalid")).toMatchObject({
+			errorCalls: [
+				['server-manifest: Invalid mode "invalid"; expected "check" or "sync"'],
+			],
+			exitCode: 1,
+		});
 	});
 });
