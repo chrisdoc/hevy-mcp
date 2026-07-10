@@ -110,7 +110,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           flavor: latest=false
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ !contains(needs.release.outputs.version, '-') }}
             type=semver,pattern={{version}},value=${{ needs.release.outputs.version }}
             type=semver,pattern={{major}},value=${{ needs.release.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.version }}
