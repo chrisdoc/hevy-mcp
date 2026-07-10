@@ -33,6 +33,21 @@ automations:
         args:
           concat_mode: append
 
+  # Suggest contributors with relevant code expertise for review
+  suggest_code_experts:
+    on:
+      - pr_created
+      - pr_ready_for_review
+      - commit
+    if:
+      - "{{ not pr.draft }}"
+      - "{{ not is.bot_author }}"
+    run:
+      - action: explain-code-experts@v1
+        args:
+          gt: 5
+          verbose: false
+
   # Automatically approve and merge dependabot patch updates
   merge_dependabot_patch:
     on:
@@ -66,7 +81,7 @@ automations:
   # Add estimated review time label for all PRs
   estimated_time_to_review:
     if:
-      - "{{ not is.bot }}"
+      - "{{ not is.bot_author }}"
     run:
       - action: add-label@v1
         args:
@@ -120,6 +135,7 @@ colors:
   green: '0e8a16'
 
 is:
+  bot_author: "{{ pr.author | match(list=['github-actions', '_bot_', '[bot]', 'dependabot']) | some }}"
   formatting: "{{ source.diff.files | isFormattingChange }}"
   docs: "{{ files | allDocs }}"
   tests: "{{ files | allTests }}"
