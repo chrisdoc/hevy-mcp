@@ -23,7 +23,11 @@ type HevyClient = ReturnType<
 function createMockServer() {
 	const registerResource = vi.fn();
 	const tool = vi.fn();
-	const server = { registerResource, tool } as unknown as McpServer;
+	const server = {
+		registerResource,
+		tool,
+		registerTool: tool,
+	} as unknown as McpServer;
 	return { registerResource, server, tool };
 }
 
