@@ -15,11 +15,11 @@ automations:
       - pr_created
       - commit
     if:
-      - "{{ not pr.draft }}"
+      - {{ not pr.draft }}
     run:
       - action: code-review@v1
         args:
-          approve_on_LGTM: "{{ calc.safe_changes }}"
+          approve_on_LGTM: {{ calc.safe_changes }}
           guidelines: {{ "./REVIEW_RULES.md" | readFile() | dump }}
 
   # Approve only when the AI review passes and the changes are safe.
@@ -39,7 +39,7 @@ automations:
       - pr_created
       - commit
     if:
-      - "{{ not pr.draft }}"
+      - {{ not pr.draft }}
     run:
       - action: describe-changes@v1
         args:
@@ -52,9 +52,9 @@ automations:
       - pr_ready_for_review
       - commit
     if:
-      - "{{ not pr.draft }}"
+      - {{ not pr.draft }}
       - {{ not is.bot_author }}
-      - "{{ (source.diff.files | match(attr='new_file', regex=r/^src\\/generated\\//) | some) or (source.diff.files | match(attr='original_file', regex=r/^src\\/generated\\//) | some) }}"
+      - {{ (source.diff.files | match(attr='new_file', regex=r/^src\\/generated\\//) | some) or (source.diff.files | match(attr='original_file', regex=r/^src\\/generated\\//) | some) }}
     run:
       - action: request-changes@v1
         args:
@@ -69,9 +69,9 @@ automations:
       - pr_ready_for_review
       - commit
     if:
-      - "{{ not pr.draft }}"
+      - {{ not pr.draft }}
       - {{ not is.bot_author }}
-      - "{{ source.diff.files | filter(attr='new_file', regex=r/^src\\/tools\\/.*\\.tsx?$/) | matchDiffLines(regex=r/^\\+.*\\bas\\s+(any|unknown)\\b/) | some }}"
+      - {{ source.diff.files | filter(attr='new_file', regex=r/^src\\/tools\\/.*\\.tsx?$/) | matchDiffLines(regex=r/^\\+.*\\bas\\s+(any|unknown)\\b/) | some }}
     run:
       - action: request-changes@v1
         args:
@@ -127,12 +127,44 @@ automations:
   # Add estimated review time label for all PRs
   estimated_time_to_review:
     if:
-      - {{ not is.bot_author }}
+      - {{ not (is.bot_author or is.bot_branch) }}
     run:
       - action: add-label@v1
         args:
           label: "{{ calc.etr }} min review"
           color: "{{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}"
+
+  # Flag unsafe TypeScript assertions on the exact added line
+  flag_unsafe_typescript_assertion:
+    on:
+      - pr_created
+      - commit
+    if:
+      - {{ not pr.draft }}
+      - {{ not (is.bot_author or is.bot_branch) }}
+      - {{ diff_location.unsafe_assertion.found }}
+    run:
+      - action: add-code-comment@v1
+        args:
+          file_path: "{{ diff_location.unsafe_assertion.file_name }}"
+          start_line: {{ diff_location.unsafe_assertion.start_line }}
+          comment: "Unsafe assertions bypass type safety. Prefer schema-driven `InferToolParams<typeof schema>` where applicable."
+
+  # Protect MCP protocol traffic by keeping diagnostics off stdout
+  flag_typescript_console_log:
+    on:
+      - pr_created
+      - commit
+    if:
+      - {{ not pr.draft }}
+      - {{ not (is.bot_author or is.bot_branch) }}
+      - {{ diff_location.console_log.found }}
+    run:
+      - action: add-code-comment@v1
+        args:
+          file_path: "{{ diff_location.console_log.file_name }}"
+          start_line: {{ diff_location.console_log.start_line }}
+          comment: "`console.log` writes to stdout, which carries MCP protocol traffic. Use the project logging/error path or `console.error`."
 
   # Request advisory AI review for large PRs and critical runtime changes
   request_ai_review:
@@ -186,6 +218,10 @@ calc:
   etr: "{{ branch | estimatedReviewTime }}"
   safe_changes: {{ is.formatting or is.docs or is.tests or is.image }}
 
+diff_location:
+  unsafe_assertion: {{ source | findDiffLocation(r/\bas\s+(?:any|unknown)\b/, r/^src\/.*\.tsx?$/, r/(?:^src\/generated\/|(?:^|\/)(?:__fixtures__|fixtures?)\/|(?:\.test|\.spec)\.tsx?$)/) }}
+  console_log: {{ source | findDiffLocation(r/\bconsole\.log\s*\(/, r/^src\/.*\.tsx?$/, r/(?:^src\/generated\/|(?:^|\/)(?:__fixtures__|fixtures?)\/|(?:\.test|\.spec)\.tsx?$)/) }}
+
 colors:
   red: 'b60205'
   yellow: 'fbca04'
@@ -193,12 +229,13 @@ colors:
 
 is:
   # Documented gitStream predicate for Dependabot and common bot accounts.
-  bot_author: {{ pr.author | includes(list=['github-actions', '_bot_', '[bot]', 'dependabot']) }}
+  bot_author: "{{ pr.author | includes(list=['github-actions', '_bot_', '[bot]', 'dependabot']) }}"
   high_risk: {{ ((not is.bot_author) and calc.etr >= 20) or (files | match(list=critical_files) | some) }}
   formatting: "{{ source.diff.files | isFormattingChange }}"
   docs: "{{ files | allDocs }}"
   tests: "{{ files | allTests }}"
   image: "{{ files | allImages }}"
+  bot_branch: "{{ branch.name | match(list=['renovate/']) | some }}"
 
 critical_files:
   - src/index.ts
