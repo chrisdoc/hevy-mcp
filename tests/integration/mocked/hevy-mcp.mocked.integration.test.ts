@@ -251,7 +251,15 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 						folder_id: 10,
 						created_at: "2025-03-26T19:00:00Z",
 						updated_at: "2025-03-26T19:15:00Z",
-						exercises: [],
+						exercises: [
+							{
+								index: 0,
+								title: "Bench Press",
+								exercise_template_id: "template-1",
+								rest_seconds: 60,
+								sets: [],
+							},
+						],
 					},
 				],
 			});
@@ -264,6 +272,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			id: string;
 			title: string;
 			folderId: number;
+			exercises: Array<{ restSeconds: number }>;
 		}>;
 
 		expect(result.isError).toBeFalsy();
@@ -271,6 +280,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			id: "routine-1",
 			title: "Mock Push Day",
 			folderId: 10,
+			exercises: [{ restSeconds: 60 }],
 		});
 	});
 

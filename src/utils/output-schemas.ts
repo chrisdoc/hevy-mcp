@@ -61,7 +61,7 @@ export const formattedRoutineExerciseSchema = z.object({
 	exerciseTemplateId: z.string().optional(),
 	notes: z.string().nullable().optional(),
 	supersetId: optionalNullableNumber,
-	restSeconds: z.string().optional(),
+	restSeconds: z.union([z.string(), z.number()]).nullable().optional(),
 	sets: z.array(formattedRoutineSetSchema).optional(),
 });
 
