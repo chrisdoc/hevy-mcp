@@ -3,12 +3,12 @@ import type { McpToolResponse } from "./response-formatter.js";
 import { createTextResponse } from "./response-formatter.js";
 
 export interface MutationConfirmationOptions {
-	autoConfirm?: boolean;
+	confirmMutations?: boolean;
 	message: string;
 }
 
 export interface MutationToolOptions {
-	autoConfirm?: boolean;
+	confirmMutations?: boolean;
 }
 
 export type MutationConfirmationResult =
@@ -16,14 +16,14 @@ export type MutationConfirmationResult =
 	| { confirmed: false; response: McpToolResponse };
 
 const UNSUPPORTED_MESSAGE = [
-	"This MCP client does not support form elicitation, so the requested change was not made.",
-	"For intentional automation, set HEVY_MCP_AUTO_CONFIRM=1 or start hevy-mcp with --yes.",
+	"Mutation confirmation is enabled, but this MCP client does not support form elicitation, so the requested change was not made.",
+	"Disable mutation confirmation or use a client with elicitation.form support.",
 ].join(" ");
 
 const CANCELED_MESSAGE = "Mutation canceled. No changes were made.";
 
 /**
- * Require explicit user confirmation before a mutating Hevy operation.
+ * Optionally require explicit user confirmation before a mutating Hevy operation.
  *
  * The guard fails closed when form elicitation is unavailable. Transport and
  * protocol errors intentionally propagate to the tool's existing error wrapper.
@@ -32,7 +32,7 @@ export async function confirmMutation(
 	server: McpServer,
 	options: MutationConfirmationOptions,
 ): Promise<MutationConfirmationResult> {
-	if (options.autoConfirm === true) {
+	if (options.confirmMutations !== true) {
 		return { confirmed: true };
 	}
 

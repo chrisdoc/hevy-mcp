@@ -267,7 +267,9 @@ describe("registerBodyMeasurementTools", () => {
 				createBodyMeasurement,
 				updateBodyMeasurement,
 			} as unknown as HevyClient;
-			registerBodyMeasurementTools(server, hevyClient);
+			registerBodyMeasurementTools(server, hevyClient, {
+				confirmMutations: true,
+			});
 
 			await getToolRegistration(tool, "create-body-measurement").handler({
 				date: "2025-04-01",
@@ -284,7 +286,7 @@ describe("registerBodyMeasurementTools", () => {
 	);
 
 	it("omits explicit null fields from the payload", async () => {
-		const { server, tool } = createMockServer();
+		const { server, tool } = createMockServer({ capabilities: {} });
 		const hevyClient: HevyClient = {
 			createBodyMeasurement: vi.fn().mockResolvedValue(undefined),
 		} as unknown as HevyClient;

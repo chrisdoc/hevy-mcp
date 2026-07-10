@@ -152,7 +152,7 @@ export function registerFolderTools(
 		withObservability(async (args: CreateRoutineFolderParams) => {
 			const { name } = args;
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Create routine folder '${name}'?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;

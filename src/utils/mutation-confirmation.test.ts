@@ -28,12 +28,13 @@ function createMockServer(
 }
 
 describe("confirmMutation", () => {
-	it("bypasses capability checks and elicitation when auto-confirmed", async () => {
-		const { elicitInput, getClientCapabilities, server } = createMockServer();
+	it("bypasses capability checks and elicitation by default", async () => {
+		const { elicitInput, getClientCapabilities, server } = createMockServer({
+			capabilities: undefined,
+		});
 
 		await expect(
 			confirmMutation(server, {
-				autoConfirm: true,
 				message: "Create workout?",
 			}),
 		).resolves.toEqual({ confirmed: true });
@@ -46,6 +47,7 @@ describe("confirmMutation", () => {
 
 		await expect(
 			confirmMutation(server, {
+				confirmMutations: true,
 				message: "Create workout 'Morning' with 3 exercises?",
 			}),
 		).resolves.toEqual({ confirmed: true });
@@ -77,6 +79,7 @@ describe("confirmMutation", () => {
 		const { server } = createMockServer({ result });
 
 		const confirmation = await confirmMutation(server, {
+			confirmMutations: true,
 			message: "Replace routine?",
 		});
 
@@ -100,6 +103,7 @@ describe("confirmMutation", () => {
 		const { elicitInput, server } = createMockServer({ capabilities });
 
 		const confirmation = await confirmMutation(server, {
+			confirmMutations: true,
 			message: "Create folder?",
 		});
 
@@ -110,7 +114,7 @@ describe("confirmMutation", () => {
 				content: [
 					{
 						text: expect.stringMatching(
-							/form elicitation.*not made.*HEVY_MCP_AUTO_CONFIRM=1.*--yes/i,
+							/confirmation is enabled.*form elicitation.*not made/i,
 						),
 					},
 				],
@@ -126,7 +130,10 @@ describe("confirmMutation", () => {
 		);
 
 		await expect(
-			confirmMutation(server, { message: "Create measurement?" }),
+			confirmMutation(server, {
+				confirmMutations: true,
+				message: "Create measurement?",
+			}),
 		).rejects.toThrow("elicitation transport failed");
 	});
 });
@@ -167,6 +174,7 @@ describe("confirmMutation protocol wiring", () => {
 
 		await expect(
 			confirmMutation(server, {
+				confirmMutations: true,
 				message: "Create routine 'Push Day' with 4 exercises?",
 			}),
 		).resolves.toEqual({ confirmed: true });

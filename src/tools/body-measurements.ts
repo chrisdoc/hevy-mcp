@@ -243,7 +243,7 @@ export function registerBodyMeasurementTools(
 				(value) => value != null,
 			).length;
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Create body measurement for ${date} with ${fieldCount} measurement fields?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;
@@ -298,7 +298,7 @@ export function registerBodyMeasurementTools(
 			}
 
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Update body measurement for ${date}: ${fieldNames.join(", ")}?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;

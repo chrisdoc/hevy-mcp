@@ -182,7 +182,7 @@ describe("registerFolderTools", () => {
 	});
 
 	it("create-routine-folder maps arguments to the request body and formats the response", async () => {
-		const { server, tool } = createMockServer();
+		const { server, tool } = createMockServer({ capabilities: {} });
 		const folder: RoutineFolder = {
 			id: 2,
 			title: "Hypertrophy",
@@ -221,7 +221,7 @@ describe("registerFolderTools", () => {
 			const { server, tool } = createMockServer(confirmation);
 			const createRoutineFolder = vi.fn();
 			const hevyClient = { createRoutineFolder } as unknown as HevyClient;
-			registerFolderTools(server, hevyClient);
+			registerFolderTools(server, hevyClient, { confirmMutations: true });
 
 			await getToolRegistration(tool, "create-routine-folder").handler({
 				name: "Guarded Folder",
@@ -238,7 +238,7 @@ describe("registerFolderTools", () => {
 		);
 		const createRoutineFolder = vi.fn();
 		const hevyClient = { createRoutineFolder } as unknown as HevyClient;
-		registerFolderTools(server, hevyClient);
+		registerFolderTools(server, hevyClient, { confirmMutations: true });
 
 		const response = await getToolRegistration(
 			tool,

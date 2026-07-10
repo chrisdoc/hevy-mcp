@@ -613,7 +613,7 @@ describe("registerTemplateTools", () => {
 	});
 
 	it("create-exercise-template maps input to API payload", async () => {
-		const { server, tool } = createMockServer();
+		const { server, tool } = createMockServer({ capabilities: {} });
 		const hevyClient: HevyClient = {
 			createExerciseTemplate: vi.fn().mockResolvedValue({ id: 42 }),
 		} as unknown as HevyClient;
@@ -659,7 +659,7 @@ describe("registerTemplateTools", () => {
 			const { server, tool } = createMockServer(confirmation);
 			const createExerciseTemplate = vi.fn();
 			const hevyClient = { createExerciseTemplate } as unknown as HevyClient;
-			registerTemplateTools(server, hevyClient);
+			registerTemplateTools(server, hevyClient, { confirmMutations: true });
 
 			await getToolRegistration(tool, "create-exercise-template").handler({
 				title: "Guarded Curl",

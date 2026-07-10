@@ -262,7 +262,7 @@ export function registerWorkoutTools(
 			const { title, description, startTime, endTime, isPrivate, exercises } =
 				args;
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Create workout '${title}' from ${startTime} to ${endTime} with ${exercises.length} exercises?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;
@@ -371,7 +371,7 @@ export function registerWorkoutTools(
 				exercises,
 			} = args;
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Update workout ${workoutId} to '${title}' from ${startTime} to ${endTime} with ${exercises.length} exercises?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;

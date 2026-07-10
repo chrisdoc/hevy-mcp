@@ -86,12 +86,12 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
 
-		registerWorkoutTools(server, hevyClient, { autoConfirm: true });
-		registerRoutineTools(server, hevyClient, { autoConfirm: true });
-		registerTemplateTools(server, hevyClient, { autoConfirm: true });
-		registerFolderTools(server, hevyClient, { autoConfirm: true });
+		registerWorkoutTools(server, hevyClient);
+		registerRoutineTools(server, hevyClient);
+		registerTemplateTools(server, hevyClient);
+		registerFolderTools(server, hevyClient);
 		registerUserTools(server, hevyClient);
-		registerBodyMeasurementTools(server, hevyClient, { autoConfirm: true });
+		registerBodyMeasurementTools(server, hevyClient);
 		registerHevyResources(server, hevyClient);
 
 		client = new Client({

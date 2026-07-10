@@ -213,7 +213,7 @@ describe("Server entry", () => {
 		expect(() => configSchema.parse({ apiKey: "" })).toThrow();
 		const parsed = configSchema.parse({ apiKey: "abc" });
 		expect(parsed.apiKey).toBe("abc");
-		expect(parsed.autoConfirm).toBe(false);
+		expect(parsed.confirmMutations).toBe(false);
 	});
 
 	it("creates an MCP server instance", () => {
@@ -234,8 +234,8 @@ describe("Server entry", () => {
 		);
 	});
 
-	it("propagates autoConfirm to every mutating tool registration", () => {
-		createServer({ config: { apiKey: "test-key", autoConfirm: true } });
+	it("propagates confirmMutations to every mutating tool registration", () => {
+		createServer({ config: { apiKey: "test-key", confirmMutations: true } });
 
 		for (const registration of [
 			testDoubles.registerWorkoutTools,
@@ -246,13 +246,13 @@ describe("Server entry", () => {
 			expect(registration).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.anything(),
-				{ autoConfirm: true },
+				{ confirmMutations: true },
 			);
 		}
 		expect(testDoubles.registerTemplateTools).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.anything(),
-			expect.objectContaining({ autoConfirm: true }),
+			expect.objectContaining({ confirmMutations: true }),
 		);
 	});
 
@@ -343,10 +343,10 @@ describe("Server entry", () => {
 
 	describe("runServer", () => {
 		it.each([
-			["--yes", {}, ["--yes"]],
-			["HEVY_MCP_AUTO_CONFIRM=1", { HEVY_MCP_AUTO_CONFIRM: "1" }, []],
+			["--confirm-mutations", {}, ["--confirm-mutations"]],
+			["HEVY_MCP_CONFIRM_MUTATIONS=1", { HEVY_MCP_CONFIRM_MUTATIONS: "1" }, []],
 		])(
-			"enables auto-confirm registrations with %s",
+			"enables mutation confirmation registrations with %s",
 			async (_label, envOverride, args) => {
 				process.env = {
 					...originalEnv,
@@ -365,7 +365,7 @@ describe("Server entry", () => {
 					testDoubles.registerBodyMeasurementTools,
 				]) {
 					expect(registration.mock.calls.at(-1)?.[2]).toMatchObject({
-						autoConfirm: true,
+						confirmMutations: true,
 					});
 				}
 			},
@@ -431,8 +431,8 @@ describe("Server entry", () => {
 				const [helpText] = logSpy.mock.calls[0] ?? [];
 				expect(helpText).toContain("Usage:");
 				expect(helpText).toContain("HEVY_API_KEY");
-				expect(helpText).toContain("HEVY_MCP_AUTO_CONFIRM=1");
-				expect(helpText).toContain("--yes");
+				expect(helpText).toContain("HEVY_MCP_CONFIRM_MUTATIONS=1");
+				expect(helpText).toContain("--confirm-mutations");
 				expect(helpText).toContain("HEVY_MCP_DEBUG=1");
 				expect(helpText).toContain("Examples:");
 				expect(createClient).not.toHaveBeenCalled();

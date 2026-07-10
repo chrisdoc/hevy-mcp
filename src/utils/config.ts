@@ -1,6 +1,6 @@
 export interface HevyConfig {
 	apiKey?: string;
-	autoConfirm: boolean;
+	confirmMutations: boolean;
 }
 
 const DEPRECATED_CLI_ARGUMENT_WARNING = [
@@ -49,9 +49,9 @@ export function parseConfig(
 
 	return {
 		apiKey,
-		autoConfirm:
-			argv.some((argument) => argument === "--yes") ||
-			env.HEVY_MCP_AUTO_CONFIRM === "1",
+		confirmMutations:
+			argv.some((argument) => argument === "--confirm-mutations") ||
+			env.HEVY_MCP_CONFIRM_MUTATIONS === "1",
 	};
 }
 

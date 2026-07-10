@@ -242,7 +242,7 @@ export function registerRoutineTools(
 			const { title, folderId, notes, exercises } = args;
 			const folderSummary = folderId ? ` in folder ${folderId}` : "";
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Create routine '${title}'${folderSummary} with ${exercises.length} exercises?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;
@@ -367,7 +367,7 @@ export function registerRoutineTools(
 		withObservability(async (args: UpdateRoutineParams) => {
 			const { routineId, title, notes, exercises } = args;
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Update routine ${routineId} to '${title}' with ${exercises.length} exercises?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;

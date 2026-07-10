@@ -69,17 +69,18 @@ const HELP_TEXT = [
 	"Options:",
 	"  -h, --help                 Show this help message and exit",
 	"  -v, --version              Show version and exit",
-	"  --yes                      Skip confirmations for intentional automation",
+	"  --confirm-mutations        Require confirmation before mutating Hevy data",
 	"  --hevy-api-key=<api-key>   (deprecated, use HEVY_API_KEY env var)",
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
-	"  HEVY_MCP_AUTO_CONFIRM=1    Skip confirmations for intentional automation",
+	"  HEVY_MCP_CONFIRM_MUTATIONS=1",
+	"                             Require confirmation before mutating Hevy data",
 	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
 	"",
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
-	"  HEVY_API_KEY=your-key npx hevy-mcp --yes",
+	"  HEVY_API_KEY=your-key npx hevy-mcp --confirm-mutations",
 	"  npx hevy-mcp --hevy-api-key=your-key",
 	"  npm start -- --hevy-api-key=your-key",
 ].join("\n");
@@ -116,10 +117,10 @@ const serverConfigSchema = z.object({
 		.string()
 		.min(1, "Hevy API key is required")
 		.describe("Your Hevy API key (available in the Hevy app settings)."),
-	autoConfirm: z
+	confirmMutations: z
 		.boolean()
 		.default(false)
-		.describe("Skip mutation confirmations for intentional automation."),
+		.describe("Require confirmation before mutating Hevy data."),
 });
 
 export const configSchema = serverConfigSchema;
@@ -161,7 +162,7 @@ function createToolCountingServer(server: McpServer) {
 	};
 }
 
-function buildServer(apiKey: string, autoConfirm: boolean) {
+function buildServer(apiKey: string, confirmMutations: boolean) {
 	const userId = fingerprintApiKey(apiKey);
 
 	return tracer.startActiveSpan(
@@ -209,15 +210,21 @@ function buildServer(apiKey: string, autoConfirm: boolean) {
 				tracer.startActiveSpan("mcp.tools.register", (toolsSpan) => {
 					try {
 						const counting = createToolCountingServer(server);
-						registerWorkoutTools(counting.server, hevyClient, { autoConfirm });
-						registerRoutineTools(counting.server, hevyClient, { autoConfirm });
+						registerWorkoutTools(counting.server, hevyClient, {
+							confirmMutations,
+						});
+						registerRoutineTools(counting.server, hevyClient, {
+							confirmMutations,
+						});
 						registerTemplateTools(counting.server, hevyClient, {
-							autoConfirm,
+							confirmMutations,
 							logger: clientLogger,
 						});
-						registerFolderTools(counting.server, hevyClient, { autoConfirm });
+						registerFolderTools(counting.server, hevyClient, {
+							confirmMutations,
+						});
 						registerBodyMeasurementTools(counting.server, hevyClient, {
-							autoConfirm,
+							confirmMutations,
 						});
 						registerUserTools(counting.server, hevyClient);
 						toolsSpan.setAttribute("mcp.tools.count", counting.getCount());
@@ -256,8 +263,8 @@ function buildServer(apiKey: string, autoConfirm: boolean) {
 }
 
 export function createServer({ config }: { config: ServerConfig }) {
-	const { apiKey, autoConfirm } = serverConfigSchema.parse(config);
-	const server = buildServer(apiKey, autoConfirm);
+	const { apiKey, confirmMutations } = serverConfigSchema.parse(config);
+	const server = buildServer(apiKey, confirmMutations);
 	return server;
 }
 
@@ -289,10 +296,10 @@ export async function runServer() {
 		async (span) => {
 			try {
 				const cfg = parseConfig(args, process.env);
-				const { apiKey, autoConfirm } = cfg;
+				const { apiKey, confirmMutations } = cfg;
 				assertApiKey(apiKey);
 
-				const server = buildServer(apiKey, autoConfirm);
+				const server = buildServer(apiKey, confirmMutations);
 				console.error("Starting MCP server in stdio mode");
 				const transport = createInstrumentedStdioTransport(
 					new StdioServerTransport(),

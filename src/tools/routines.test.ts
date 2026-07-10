@@ -244,7 +244,7 @@ describe("registerRoutineTools", () => {
 				createRoutine,
 				updateRoutine,
 			} as unknown as HevyClient;
-			registerRoutineTools(server, hevyClient);
+			registerRoutineTools(server, hevyClient, { confirmMutations: true });
 
 			const routine = {
 				title: "Guarded Routine",
@@ -277,7 +277,7 @@ describe("registerRoutineTools", () => {
 			createRoutine: vi.fn().mockResolvedValue(routine),
 		} as unknown as HevyClient;
 
-		registerRoutineTools(server, hevyClient);
+		registerRoutineTools(server, hevyClient, { confirmMutations: true });
 		const { handler } = getToolRegistration(tool, "create-routine");
 
 		const args = {
@@ -343,7 +343,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("create-routine maps repRange to rep_range in the request body", async () => {
-		const { server, tool } = createMockServer();
+		const { server, tool } = createMockServer({ capabilities: {} });
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Leg Day",

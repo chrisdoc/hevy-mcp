@@ -43,7 +43,7 @@ import {
 } from "../utils/schemas.js";
 
 export interface TemplateToolOptions {
-	autoConfirm?: boolean;
+	confirmMutations?: boolean;
 	logger?: McpClientLogger;
 }
 /** Reset the exercise template cache (exposed for testing). */
@@ -261,7 +261,7 @@ export function registerTemplateTools(
 				otherMuscles,
 			} = args;
 			const confirmation = await confirmMutation(server, {
-				autoConfirm: options.autoConfirm,
+				confirmMutations: options.confirmMutations,
 				message: `Create exercise template '${title}' (${exerciseType}, ${equipmentCategory}, primary muscle ${muscleGroup})?`,
 			});
 			if (!confirmation.confirmed) return confirmation.response;

@@ -252,7 +252,7 @@ describe("registerWorkoutTools", () => {
 				createWorkout,
 				updateWorkout,
 			} as unknown as HevyClient;
-			registerWorkoutTools(server, hevyClient);
+			registerWorkoutTools(server, hevyClient, { confirmMutations: true });
 
 			const workout = {
 				title: "Guarded Workout",
@@ -287,7 +287,7 @@ describe("registerWorkoutTools", () => {
 		};
 		const updateWorkout = vi.fn().mockResolvedValue(updateResult);
 		const hevyClient = { updateWorkout } as unknown as HevyClient;
-		registerWorkoutTools(server, hevyClient);
+		registerWorkoutTools(server, hevyClient, { confirmMutations: true });
 
 		const args = {
 			workoutId: "workout-1",
@@ -354,7 +354,7 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("create-workout maps arguments to the request body and formats the response", async () => {
-		const { server, tool } = createMockServer();
+		const { server, tool } = createMockServer({ capabilities: {} });
 		const createResult: Workout = {
 			id: "created-id",
 			title: "New Workout",
