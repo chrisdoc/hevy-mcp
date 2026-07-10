@@ -8,10 +8,12 @@ queue_rules:
     # Conditions to enter the queue.
     queue_conditions:
       - base = main
-      - check-success = build
+      - check-success = "Build and test (Node 24.x)"
+      - check-success = "Build and test (Node 26.x)"
     # Conditions re-checked at the front of the queue before merging.
     merge_conditions:
-      - check-success = build
+      - check-success = "Build and test (Node 24.x)"
+      - check-success = "Build and test (Node 26.x)"
 
 pull_request_rules:
   - name: Queue pull requests labeled 'queue'
@@ -26,10 +28,19 @@ pull_request_rules:
     conditions:
       - base = main
       - author = dependabot[bot]
-      - check-success = build
+      - check-success = "Build and test (Node 24.x)"
+      - check-success = "Build and test (Node 26.x)"
     actions:
       queue:
         name: default
+  - name: Auto-merge approved PRs
+    conditions:
+      - base = main
+      - "#approved-reviews-by >= 2"
+      - check-success = ci/build
+    actions:
+      merge:
+        method: squash
   - name: Keep PRs up to date
     conditions:
       - -draft

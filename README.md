@@ -21,6 +21,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - [Why hevy-mcp?](#why-hevy-mcp)
 - [Configuration](#configuration)
 - [Available MCP Tools](#available-mcp-tools)
+- [Available MCP Resources](#available-mcp-resources)
 - [Development & Contributing](#development--contributing)
 
 ---
@@ -40,14 +41,14 @@ Pick the workflow that fits your setup:
 
 | Scenario              | Command                                                                                     | Requirements               |
 | :-------------------- | :------------------------------------------------------------------------------------------ | :------------------------- |
-| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` or `HEVY_API_KEY=sk_live... bunx hevy-mcp@latest` | Node.js ≥ 24, Hevy API key |
+| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` or `HEVY_API_KEY=sk_live... bunx hevy-mcp@latest` | Node.js ≥ 20, Hevy API key |
 | **Local development** | `npm install && npm run build && npm start`                                                 | `.env` with `HEVY_API_KEY` |
 
 ---
 
 ## 🛠️ Prerequisites
 
-- **Node.js**: v24 or higher (strongly recommended to use the exact version pinned in `.nvmrc`).
+- **Node.js**: v20 or higher (strongly recommended to use the exact version pinned in `.nvmrc`).
 - **npm**: v10 or higher.
 - **Bun** (optional): If you want to launch with `bunx`.
 - **Hevy API key**: Required for all operations (available with Hevy PRO).
@@ -187,8 +188,8 @@ HEVY_MCP_API_TIMEOUT=30000
 
 ### 🧠 Exercise Template Cache Behavior
 
-`search-exercise-templates` now uses a shared in-memory async cache for the
-full exercise template catalog:
+`search-exercise-templates` and the `hevy://exercise-templates` resource use a
+shared in-memory async cache for the full exercise template catalog:
 
 - **TTL**: 5 minutes per cached catalog entry.
 - **Memory bound**: max 1 catalog entry (LRU bounded cache).
@@ -197,9 +198,8 @@ full exercise template catalog:
 - **Manual refresh**: set `refresh: true` in the tool input to invalidate the
   cached catalog and force a re-fetch from the Hevy API.
 
-This cache currently applies to `search-exercise-templates` only. Paginated
-`get-exercise-templates` requests still call the API directly to keep paging
-behavior explicit and avoid cross-page invalidation complexity.
+Paginated `get-exercise-templates` requests still call the API directly to keep
+paging behavior explicit and avoid cross-page invalidation complexity.
 
 ### 📡 Sentry Monitoring
 
@@ -240,6 +240,28 @@ The supported path is stdio via `npx hevy-mcp`.
 > folders, exercise templates, or body measurements, so `hevy-mcp` does not
 > provide delete tools for these resources.
 
+## 💬 Available MCP Prompts
+
+| Prompt                        | Arguments                                                                              | Guided workflow                                       |
+| :---------------------------- | :------------------------------------------------------------------------------------- | :---------------------------------------------------- |
+| `analyze-workout-progress`    | Optional `weeks` (1-12; defaults to `4` when omitted from a supplied arguments object) | Analyze recent workout and body-measurement trends.   |
+| `create-workout-from-routine` | `routineId`, `startTime` (UTC ISO seconds)                                             | Record a completed workout using a routine as a plan. |
+
+Compatibility note: with MCP SDK v1.29.0, clients using the default must send
+`arguments: {}` because the SDK rejects requests that omit the entire
+`arguments` object before prompt field defaults are evaluated.
+
+---
+
+## 📚 Available MCP Resources
+
+| Name                 | URI                         |
+| :------------------- | :-------------------------- |
+| `user-profile`       | `hevy://user`               |
+| `workout-count`      | `hevy://workout-count`      |
+| `exercise-templates` | `hevy://exercise-templates` |
+| `routine-folders`    | `hevy://routine-folders`    |
+
 ---
 
 ## 👨‍💻 Development & Contributing
@@ -249,7 +271,7 @@ The supported path is stdio via `npx hevy-mcp`.
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
 - **Type Check**: `npm run check:types`
-- **Unit Tests**: `npx vitest run --exclude tests/integration/**`
+- **Unit Tests**: `npx vitest run --exclude 'tests/integration/**'`
 - **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
 - **Changeset Check**: `npm run check:changeset`
 

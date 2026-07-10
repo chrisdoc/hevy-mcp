@@ -7,9 +7,14 @@ import type {
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import {
-	createEmptyResponse,
-	createJsonResponse,
+	bodyMeasurementOutputSchema,
+	bodyMeasurementsOutputSchema,
+} from "../utils/output-schemas.js";
+import {
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 	createTextResponse,
 } from "../utils/response-formatter.js";
 import {
@@ -19,10 +24,6 @@ import {
 } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { zNullableNumber } from "../utils/schemas.js";
-
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 const bodyMeasurementFieldsSchema = {
 	weightKg: zNullableNumber.describe("Body weight in kilograms"),
@@ -115,11 +116,15 @@ export function registerBodyMeasurementTools(
 		typeof getBodyMeasurementsSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-body-measurements",
-		"Get a paginated list of body measurements for the authenticated user. Returns measurements including weight, body fat, and various circumference measurements.",
-		getBodyMeasurementsSchema,
-		readOnlyAnnotations("Get Body Measurements"),
+		{
+			description:
+				"Get a paginated list of body measurements for the authenticated user. Returns measurements including weight, body fat, and various circumference measurements.",
+			inputSchema: getBodyMeasurementsSchema,
+			outputSchema: bodyMeasurementsOutputSchema,
+			annotations: readOnlyAnnotations("Get Body Measurements"),
+		},
 		withErrorHandling(async (args: GetBodyMeasurementsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -134,12 +139,15 @@ export function registerBodyMeasurementTools(
 				) || [];
 
 			if (measurements.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No body measurements found for the specified parameters",
+					{ bodyMeasurements: [] },
 				);
 			}
 
-			return createJsonResponse(measurements);
+			return createStructuredJsonResponse(measurements, {
+				bodyMeasurements: measurements,
+			});
 		}, "get-body-measurements"),
 	);
 
@@ -154,11 +162,15 @@ export function registerBodyMeasurementTools(
 		typeof getBodyMeasurementSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-body-measurement",
-		"Get a single body measurement by date. Returns all measurement fields for the specified date.",
-		getBodyMeasurementSchema,
-		readOnlyAnnotations("Get Body Measurement"),
+		{
+			description:
+				"Get a single body measurement by date. Returns all measurement fields for the specified date.",
+			inputSchema: getBodyMeasurementSchema,
+			outputSchema: bodyMeasurementOutputSchema,
+			annotations: readOnlyAnnotations("Get Body Measurement"),
+		},
 		withErrorHandling(async (args: GetBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date } = args;
@@ -166,12 +178,16 @@ export function registerBodyMeasurementTools(
 				await client.getBodyMeasurement(date);
 
 			if (!data) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					`No body measurement found for date ${date}`,
+					{ bodyMeasurement: null },
 				);
 			}
 
-			return createJsonResponse(formatBodyMeasurement(data));
+			const bodyMeasurement = formatBodyMeasurement(data);
+			return createStructuredJsonResponse(bodyMeasurement, {
+				bodyMeasurement,
+			});
 		}, "get-body-measurement"),
 	);
 

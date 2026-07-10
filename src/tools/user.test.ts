@@ -1,14 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { registerUserTools } from "./user.js";
-
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as unknown as McpServer;
 	return { server, tool };
 }
 
@@ -20,8 +17,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
+		structuredContent?: Record<string, unknown>;
 	}>;
-	return { handler };
+	const config = match[1] as { outputSchema?: unknown } | undefined;
+	return { outputSchema: config?.outputSchema, handler };
 }
 
 describe("registerUserTools", () => {
@@ -86,6 +85,7 @@ describe("registerUserTools", () => {
 		expect(hevyClient.getUserInfo).toHaveBeenCalled();
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(userInfo);
+		expect(response.structuredContent).toEqual({ user: userInfo });
 	});
 
 	it("get-user-info returns empty response when no user info is found", async () => {
@@ -101,5 +101,6 @@ describe("registerUserTools", () => {
 		expect(response.content[0]?.text).toBe(
 			"No user info found for the authenticated user",
 		);
+		expect(response.structuredContent).toEqual({ user: null });
 	});
 });
