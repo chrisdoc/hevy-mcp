@@ -1,3 +1,9 @@
+## 1.28.1-beta.1
+
+### Patch Changes
+
+- [#594](https://github.com/chrisdoc/hevy-mcp/pull/594) [`6a5035a`](https://github.com/chrisdoc/hevy-mcp/commit/6a5035a89d134c7f10e60d163baaa2e957acb561) Thanks [@chrisdoc](https://github.com/chrisdoc)! - fix: format workout events to match MCP output schema
+
 ## 1.28.1-beta.0
 
 ### Patch Changes
