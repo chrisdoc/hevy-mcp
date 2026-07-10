@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	createEmptyResponse,
 	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 	createTextResponse,
 } from "./response-formatter";
 
@@ -69,6 +71,35 @@ describe("Response Formatter", () => {
 		it("should handle null and undefined values", () => {
 			expect(createJsonResponse(null).content[0].text).toBe("null");
 			expect(createJsonResponse(undefined).content[0].text).toBe("null");
+		});
+	});
+
+	describe("structured responses", () => {
+		it("preserves the legacy JSON text byte-for-byte", () => {
+			const data = { id: "workout-1", values: [1, 2] };
+			const legacy = createJsonResponse(data);
+			const structuredContent = { workout: data };
+
+			expect(createStructuredJsonResponse(data, structuredContent)).toEqual({
+				...legacy,
+				structuredContent,
+			});
+		});
+
+		it("preserves empty response text with structured empty values", () => {
+			const message = "No workouts found for the specified parameters";
+
+			expect(createStructuredEmptyResponse(message, { workouts: [] })).toEqual({
+				...createEmptyResponse(message),
+				structuredContent: { workouts: [] },
+			});
+
+			expect(
+				createStructuredEmptyResponse("Workout not found", { workout: null }),
+			).toMatchObject({
+				content: [{ type: "text", text: "Workout not found" }],
+				structuredContent: { workout: null },
+			});
 		});
 	});
 

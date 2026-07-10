@@ -2,18 +2,15 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplate } from "../generated/client/types/index.js";
 import { formatExerciseTemplate } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	registerTemplateTools,
 	resetExerciseTemplateCache,
 } from "./templates.js";
 
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
-
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as unknown as McpServer;
 	return { server, tool };
 }
 
@@ -25,8 +22,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
+		structuredContent?: Record<string, unknown>;
 	}>;
-	return { handler };
+	const config = match[1] as { outputSchema?: unknown } | undefined;
+	return { outputSchema: config?.outputSchema, handler };
 }
 
 describe("registerTemplateTools", () => {
@@ -87,6 +86,7 @@ describe("registerTemplateTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatExerciseTemplate(template)]);
+		expect(response.structuredContent).toEqual({ exerciseTemplates: parsed });
 	});
 
 	it("get-exercise-template returns an empty response when template is not found", async () => {
@@ -103,6 +103,31 @@ describe("registerTemplateTools", () => {
 		expect(response.content[0]?.text).toBe(
 			"Exercise template with ID missing-id not found",
 		);
+		expect(response.structuredContent).toEqual({ exerciseTemplate: null });
+	});
+
+	it("get-exercise-template returns structured template details", async () => {
+		const { server, tool } = createMockServer();
+		const template: ExerciseTemplate = {
+			id: "t1",
+			title: "Bench Press",
+			type: "weight_reps",
+			primary_muscle_group: "chest",
+			secondary_muscle_groups: ["triceps"],
+			is_custom: false,
+		};
+		const hevyClient = {
+			getExerciseTemplate: vi.fn().mockResolvedValue(template),
+		} as unknown as HevyClient;
+		registerTemplateTools(server, hevyClient);
+
+		const response = await getToolRegistration(
+			tool,
+			"get-exercise-template",
+		).handler({ exerciseTemplateId: "t1" });
+		const parsed = JSON.parse(response.content[0].text) as unknown;
+
+		expect(response.structuredContent).toEqual({ exerciseTemplate: parsed });
 	});
 
 	it("get-exercise-history returns formatted entries", async () => {
@@ -159,6 +184,30 @@ describe("registerTemplateTools", () => {
 				setType: "normal",
 			},
 		]);
+		expect(response.structuredContent).toEqual({ exerciseHistory: parsed });
+	});
+
+	it("returns structured empty lists for template list and history", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getExerciseTemplates: vi
+				.fn()
+				.mockResolvedValue({ exercise_templates: [] }),
+			getExerciseHistory: vi.fn().mockResolvedValue({ exercise_history: [] }),
+		} as unknown as HevyClient;
+		registerTemplateTools(server, hevyClient);
+
+		const templates = await getToolRegistration(
+			tool,
+			"get-exercise-templates",
+		).handler({ page: 1, pageSize: 5 });
+		const history = await getToolRegistration(
+			tool,
+			"get-exercise-history",
+		).handler({ exerciseTemplateId: "t1" });
+
+		expect(templates.structuredContent).toEqual({ exerciseTemplates: [] });
+		expect(history.structuredContent).toEqual({ exerciseHistory: [] });
 	});
 
 	describe("search-exercise-templates", () => {
@@ -242,6 +291,44 @@ describe("registerTemplateTools", () => {
 			const parsed = JSON.parse(response.content[0].text) as unknown[];
 			expect(parsed).toEqual([formatExerciseTemplate(benchTemplate)]);
 		});
+
+		it.each([Number.NaN, Number.POSITIVE_INFINITY, 1.5, 0])(
+			"stops safely when page_count is malformed (%s)",
+			async (pageCount) => {
+				const { server, tool } = createMockServer();
+				const template: ExerciseTemplate = {
+					id: "t1",
+					title: "Bench Press",
+					type: "barbell",
+					primary_muscle_group: "chest",
+					secondary_muscle_groups: [],
+					is_custom: false,
+				};
+				const hevyClient: HevyClient = {
+					getExerciseTemplates: vi.fn().mockResolvedValue({
+						page: 1,
+						page_count: pageCount,
+						exercise_templates: [template],
+					}),
+				} as unknown as HevyClient;
+
+				registerTemplateTools(server, hevyClient);
+				const { handler } = getToolRegistration(
+					tool,
+					"search-exercise-templates",
+				);
+
+				const response = await handler({
+					query: "bench",
+					refresh: false,
+				});
+
+				expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(1);
+				expect(JSON.parse(response.content[0].text)).toEqual([
+					formatExerciseTemplate(template),
+				]);
+			},
+		);
 
 		it("uses cached data on subsequent calls without refresh", async () => {
 			const { server, tool } = createMockServer();
@@ -394,6 +481,7 @@ describe("registerTemplateTools", () => {
 
 			const parsed = JSON.parse(response.content[0].text) as unknown[];
 			expect(parsed).toEqual([formatExerciseTemplate(chestTemplate)]);
+			expect(response.structuredContent).toEqual({ exerciseTemplates: parsed });
 		});
 
 		it("returns empty response when no templates match", async () => {
@@ -425,6 +513,7 @@ describe("registerTemplateTools", () => {
 			expect(response.content[0]?.text).toContain(
 				'No exercise templates found matching "bench"',
 			);
+			expect(response.structuredContent).toEqual({ exerciseTemplates: [] });
 		});
 	});
 

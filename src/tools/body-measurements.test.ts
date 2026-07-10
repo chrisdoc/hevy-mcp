@@ -3,15 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { BodyMeasurement } from "../generated/client/types/index.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { registerBodyMeasurementTools } from "./body-measurements.js";
-
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as unknown as McpServer;
 	return { server, tool };
 }
 
@@ -20,12 +17,17 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const schema = match[2] as Record<string, z.ZodTypeAny>;
+	const config = match[1] as
+		| { inputSchema?: Record<string, z.ZodTypeAny>; outputSchema?: unknown }
+		| undefined;
+	const schema =
+		config?.inputSchema ?? (match[2] as Record<string, z.ZodTypeAny>);
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
+		structuredContent?: Record<string, unknown>;
 	}>;
-	return { schema, handler };
+	return { schema, outputSchema: config?.outputSchema, handler };
 }
 
 const sampleMeasurement: BodyMeasurement = {
@@ -126,6 +128,7 @@ describe("registerBodyMeasurementTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatBodyMeasurement(sampleMeasurement)]);
+		expect(response.structuredContent).toEqual({ bodyMeasurements: parsed });
 	});
 
 	it("get-body-measurements returns empty response when no measurements found", async () => {
@@ -141,6 +144,7 @@ describe("registerBodyMeasurementTools", () => {
 		expect(response.content[0]?.text).toBe(
 			"No body measurements found for the specified parameters",
 		);
+		expect(response.structuredContent).toEqual({ bodyMeasurements: [] });
 	});
 
 	it("get-body-measurement returns a formatted measurement for a given date", async () => {
@@ -158,6 +162,7 @@ describe("registerBodyMeasurementTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(formatBodyMeasurement(sampleMeasurement));
+		expect(response.structuredContent).toEqual({ bodyMeasurement: parsed });
 	});
 
 	it("get-body-measurement returns empty response when not found", async () => {
@@ -173,6 +178,7 @@ describe("registerBodyMeasurementTools", () => {
 		expect(response.content[0]?.text).toBe(
 			"No body measurement found for date 2099-01-01",
 		);
+		expect(response.structuredContent).toEqual({ bodyMeasurement: null });
 	});
 
 	it("create-body-measurement sends correct payload to the client", async () => {
