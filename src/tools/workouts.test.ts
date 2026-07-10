@@ -1,8 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import type { Workout } from "../generated/client/types/index.js";
 import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
+import { workoutEventsOutputSchema } from "../utils/output-schemas.js";
 import { registerWorkoutTools } from "./workouts.js";
 
 function createMockServer() {
@@ -120,11 +122,106 @@ describe("registerWorkoutTools", () => {
 		expect(response.structuredContent).toEqual({ workouts: parsed });
 	});
 
+	it("formats updated and deleted workout events from the client", async () => {
+		const { server, tool } = createMockServer();
+		const workout = {
+			id: "w1",
+			title: "Morning Workout",
+			start_time: "2025-03-27T07:00:00Z",
+			end_time: "2025-03-27T08:00:00Z",
+			exercises: [
+				{
+					index: 0,
+					title: "Bench Press",
+					exercise_template_id: "bench-press",
+					sets: [],
+					muscle_group: "chest",
+				},
+			],
+		};
+		const hevyClient = {
+			getWorkoutEvents: vi.fn().mockResolvedValue({
+				events: [
+					{ type: "updated", workout },
+					{
+						type: "deleted",
+						id: "deleted-workout",
+						deleted_at: "2025-03-28T07:00:00Z",
+					},
+				],
+			}),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler, outputSchema } = getToolRegistration(
+			tool,
+			"get-workout-events",
+		);
+
+		const response = await handler({
+			page: 1,
+			pageSize: 5,
+			since: "2025-01-01T00:00:00Z",
+		});
+
+		expect(response.structuredContent).toEqual({
+			events: [
+				{ type: "updated", workout: formatWorkout(workout) },
+				{
+					type: "deleted",
+					id: "deleted-workout",
+					deletedAt: "2025-03-28T07:00:00Z",
+				},
+			],
+		});
+		expect(response.structuredContent).not.toHaveProperty(
+			"events.0.workout.exercises.0.muscle_group",
+		);
+		expect(outputSchema).toBe(workoutEventsOutputSchema);
+		expect(() =>
+			z.object(workoutEventsOutputSchema).parse(response.structuredContent),
+		).not.toThrow();
+	});
+
+	it("rejects unsupported workout events without leaking payloads", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getWorkoutEvents: vi.fn().mockResolvedValue({
+				events: [
+					{
+						type: "mystery",
+						id: "should-not-be-treated-as-deleted",
+						secret: "sensitive-event-payload",
+					},
+				],
+			}),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-workout-events");
+
+		const response = await handler({
+			page: 1,
+			pageSize: 5,
+			since: "2025-01-01T00:00:00Z",
+		});
+		const responseText = response.content[0]?.text ?? "";
+
+		expect(response.isError).toBe(true);
+		expect(response.structuredContent).toBeUndefined();
+		expect(responseText).toContain("Unsupported workout event type: mystery");
+		expect(responseText).not.toContain("should-not-be-treated-as-deleted");
+		expect(responseText).not.toContain("sensitive-event-payload");
+	});
+
 	it("returns structured empty lists for workouts and events", async () => {
 		const { server, tool } = createMockServer();
 		const hevyClient = {
 			getWorkouts: vi.fn().mockResolvedValue({ workouts: [] }),
-			getWorkoutEvents: vi.fn().mockResolvedValue({ events: [] }),
+			getWorkoutEvents: vi
+				.fn()
+				.mockResolvedValueOnce({ events: [] })
+				.mockResolvedValueOnce({}),
 		} as unknown as HevyClient;
 		registerWorkoutTools(server, hevyClient);
 
@@ -140,13 +237,25 @@ describe("registerWorkoutTools", () => {
 			pageSize: 5,
 			since: "1970-01-01T00:00:00Z",
 		});
+		const eventsWithoutEvents = await getToolRegistration(
+			tool,
+			"get-workout-events",
+		).handler({
+			page: 1,
+			pageSize: 5,
+			since: "1970-01-01T00:00:00Z",
+		});
 
 		expect(workouts.structuredContent).toEqual({ workouts: [] });
 		expect(events.structuredContent).toEqual({ events: [] });
+		expect(eventsWithoutEvents.structuredContent).toEqual({ events: [] });
 		expect(workouts.content[0]?.text).toBe(
 			"No workouts found for the specified parameters",
 		);
 		expect(events.content[0]?.text).toBe(
+			"No workout events found for the specified parameters since 1970-01-01T00:00:00Z",
+		);
+		expect(eventsWithoutEvents.content[0]?.text).toBe(
 			"No workout events found for the specified parameters since 1970-01-01T00:00:00Z",
 		);
 	});

@@ -17,6 +17,7 @@ import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
+	type FormattedWorkout,
 	workoutCountOutputSchema,
 	workoutEventsOutputSchema,
 	workoutOutputSchema,
@@ -36,6 +37,30 @@ import {
 import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { setTypeEnum } from "../utils/schemas.js";
+
+type WorkoutEvent = GetV1WorkoutsEvents200["events"][number];
+type FormattedWorkoutEvent =
+	| { type: "updated"; workout: FormattedWorkout }
+	| { type: "deleted"; id: string; deletedAt?: string };
+
+function formatWorkoutEvent(event: WorkoutEvent): FormattedWorkoutEvent {
+	if (event.type === "updated" && "workout" in event) {
+		return {
+			type: "updated",
+			workout: formatWorkout(event.workout),
+		};
+	}
+
+	if (event.type === "deleted" && "id" in event) {
+		return {
+			type: "deleted",
+			id: event.id,
+			deletedAt: event.deleted_at,
+		};
+	}
+
+	throw new Error(`Unsupported workout event type: ${event.type}`);
+}
 
 /**
  * Register all workout-related tools with the MCP server
@@ -194,7 +219,7 @@ export function registerWorkoutTools(
 				since,
 			});
 
-			const events = data?.events || [];
+			const events = data?.events?.map(formatWorkoutEvent) || [];
 
 			if (events.length === 0) {
 				return createStructuredEmptyResponse(
