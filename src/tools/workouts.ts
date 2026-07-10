@@ -33,6 +33,7 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
+import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { setTypeEnum } from "../utils/schemas.js";
 
@@ -53,8 +54,19 @@ export function registerWorkoutTools(
 	server.registerTool(
 		"get-workouts",
 		{
-			description:
-				"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
+			description: describeTool({
+				summary:
+					"Read-only. Lists workouts from newest to oldest with exercise and timing details.",
+				aliases: [
+					"list workout history",
+					"show recent workouts",
+					"browse logs",
+				],
+				useCase:
+					"Use to browse or page through workout history; use get-workout when a workout ID is already known.",
+				importantNotes:
+					"Results are paginated; page starts at 1 and pageSize is limited to 10.",
+			}),
 			inputSchema: getWorkoutsSchema,
 			outputSchema: workoutsOutputSchema,
 			annotations: readOnlyAnnotations("Get Workouts"),
@@ -90,8 +102,15 @@ export function registerWorkoutTools(
 	server.registerTool(
 		"get-workout",
 		{
-			description:
-				"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
+			description: describeTool({
+				summary:
+					"Read-only. Retrieves complete details for one workout by its ID.",
+				aliases: ["show workout", "fetch workout details", "open workout log"],
+				useCase:
+					"Use after get-workouts identifies the exact workout; do not use for browsing multiple workouts.",
+				importantNotes:
+					"Requires a workoutId discovered from a workout list, event, or prior create response.",
+			}),
 			inputSchema: getWorkoutSchema,
 			outputSchema: workoutOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout"),
@@ -118,8 +137,14 @@ export function registerWorkoutTools(
 	server.registerTool(
 		"get-workout-count",
 		{
-			description:
-				"Get the total number of workouts on the account. Useful for pagination or statistics.",
+			description: describeTool({
+				summary: "Read-only. Returns the total workout count for the account.",
+				aliases: ["count workouts", "how many workouts", "workout total"],
+				useCase:
+					"Use for totals, statistics, or estimating pages; use get-workouts for actual workout records.",
+				importantNotes:
+					"Returns only a count and accepts no paging or date filters.",
+			}),
 			inputSchema: {},
 			outputSchema: workoutCountOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout Count"),
@@ -143,8 +168,19 @@ export function registerWorkoutTools(
 	server.registerTool(
 		"get-workout-events",
 		{
-			description:
-				"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
+			description: describeTool({
+				summary:
+					"Read-only. Lists workout update and delete events since a timestamp, newest first.",
+				aliases: [
+					"sync workout changes",
+					"workout change feed",
+					"deleted workouts",
+				],
+				useCase:
+					"Use to incrementally synchronize a local workout cache; use get-workouts for the current workout list.",
+				importantNotes:
+					"since must be a timestamp string; events are paginated with pageSize at most 10, and the default since value reads from 1970.",
+			}),
 			inputSchema: getWorkoutEventsSchema,
 			outputSchema: workoutEventsOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout Events"),
@@ -207,7 +243,14 @@ export function registerWorkoutTools(
 
 	server.tool(
 		"create-workout",
-		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
+		describeTool({
+			summary: "Writes to the Hevy account by creating a new workout.",
+			aliases: ["log workout", "add workout", "record training session"],
+			useCase:
+				"Use to add a completed workout; use update-workout only when modifying an existing workout ID.",
+			importantNotes:
+				"Requires UTC startTime/endTime in YYYY-MM-DDTHH:mm:ssZ form and exercise template IDs. Retrying can create duplicates.",
+		}),
 		createWorkoutSchema,
 		createAnnotations("Create Workout"),
 		withObservability(async (args: CreateWorkoutParams) => {
@@ -292,7 +335,18 @@ export function registerWorkoutTools(
 
 	server.tool(
 		"update-workout",
-		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
+		describeTool({
+			summary: "Mutates the Hevy account by replacing an existing workout.",
+			aliases: [
+				"edit workout",
+				"correct workout log",
+				"replace workout details",
+			],
+			useCase:
+				"Use to revise a known workout; use create-workout for a new training session.",
+			importantNotes:
+				"Requires workoutId plus the complete title, times, privacy, exercises, and sets payload; omitted optional values may be cleared or defaulted.",
+		}),
 		updateWorkoutSchema,
 		updateAnnotations("Update Workout"),
 		withObservability(async (args: UpdateWorkoutParams) => {
