@@ -15,6 +15,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - [Quick Start](#quick-start)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
+  - [Run with Docker](#run-with-docker)
   - [Claude Desktop Configuration](#claude-desktop-configuration)
   - [Cursor Configuration](#cursor-configuration)
   - [Other MCP Clients (via add-mcp)](#other-mcp-clients-via-add-mcp)
@@ -39,10 +40,11 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 Pick the workflow that fits your setup:
 
-| Scenario              | Command                                                                                     | Requirements               |
-| :-------------------- | :------------------------------------------------------------------------------------------ | :------------------------- |
-| **One-off stdio run** | `HEVY_API_KEY=sk_live... npx -y hevy-mcp` or `HEVY_API_KEY=sk_live... bunx hevy-mcp@latest` | Node.js ≥ 20, Hevy API key |
-| **Local development** | `npm install && npm run build && npm start`                                                 | `.env` with `HEVY_API_KEY` |
+| Scenario              | Command                                                                                 | Requirements               |
+| :-------------------- | :-------------------------------------------------------------------------------------- | :------------------------- |
+| **One-off stdio run** | `HEVY_API_KEY=your_key npx -y hevy-mcp` or `HEVY_API_KEY=your_key bunx hevy-mcp@latest` | Node.js ≥ 20, Hevy API key |
+| **Docker stdio run**  | `docker run -i --rm -e HEVY_API_KEY ghcr.io/chrisdoc/hevy-mcp:latest`                   | Docker, Hevy API key       |
+| **Local development** | `npm install && npm run build && npm start`                                             | `.env` with `HEVY_API_KEY` |
 
 ---
 
@@ -51,6 +53,7 @@ Pick the workflow that fits your setup:
 - **Node.js**: v20 or higher (strongly recommended to use the exact version pinned in `.nvmrc`).
 - **npm**: v10 or higher.
 - **Bun** (optional): If you want to launch with `bunx`.
+- **Docker** (optional): If you want an isolated container-based stdio setup.
 - **Hevy API key**: Required for all operations (available with Hevy PRO).
 
 ---
@@ -104,6 +107,26 @@ cp .env.sample .env
 # Edit .env and add your HEVY_API_KEY
 ```
 
+### Run with Docker
+
+Official multi-platform images are published to GitHub Container Registry for
+`linux/amd64` and `linux/arm64`:
+
+```bash
+export HEVY_API_KEY=your_hevy_api_key_here
+docker run -i --rm -e HEVY_API_KEY ghcr.io/chrisdoc/hevy-mcp:latest
+```
+
+The server uses stdio, so `-i` keeps standard input open for the MCP client.
+`--rm` removes the stopped container automatically. The `-e HEVY_API_KEY`
+form forwards the variable from the host environment without putting the key
+in the command arguments.
+
+Use `latest` to follow the newest stable release. For reproducible deployments,
+pin the exact version shown on the release, using a tag such as
+`ghcr.io/chrisdoc/hevy-mcp:X.Y.Z`. Major (`:X`) and major.minor (`:X.Y`) tags
+are also published for controlled automatic updates.
+
 ---
 
 ## 🔗 Integration
@@ -137,6 +160,41 @@ If you prefer Bun, swap the launcher fields:
 	"args": ["hevy-mcp@latest"]
 }
 ```
+
+To run Claude Desktop through Docker instead, first create an environment file
+outside the repository containing your real key:
+
+```dotenv
+HEVY_API_KEY=replace_with_your_real_key
+```
+
+Restrict access to that file where supported (for example,
+`chmod 600 /absolute/path/to/hevy-mcp.env`), then use its absolute path in the
+Claude Desktop configuration:
+
+```json
+{
+	"mcpServers": {
+		"hevy-mcp": {
+			"command": "docker",
+			"args": [
+				"run",
+				"-i",
+				"--rm",
+				"--env-file",
+				"/absolute/path/to/hevy-mcp.env",
+				"ghcr.io/chrisdoc/hevy-mcp:latest"
+			]
+		}
+	}
+}
+```
+
+This configuration runs the same stdio server inside the container; it does
+not expose an HTTP port or start a detached service. Docker reads the key from
+the environment file, so the Claude configuration does not replace an
+inherited key with a placeholder. Replace `latest` with an exact version tag if
+you want Claude Desktop to stay on a pinned release.
 
 ### Cursor Configuration
 
@@ -241,10 +299,11 @@ paging behavior explicit and avoid cross-page invalidation complexity.
 <details>
 <summary><strong>⚠️ Migration Note (v1.18.0)</strong></summary>
 
-As of **v1.18.0**, `hevy-mcp` removed both HTTP/SSE transport and Docker
-support.
+As of **v1.18.0**, `hevy-mcp` removed HTTP/SSE transport and its previous
+Docker packaging. Docker support is now available again for the stdio server.
 
-The supported path is stdio via `npx hevy-mcp`.
+Both `npx hevy-mcp` and the official container image use stdio; HTTP ports and
+detached-container deployment are not supported.
 
 </details>
 
