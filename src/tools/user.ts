@@ -8,6 +8,7 @@ import {
 	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
+import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 
 export function registerUserTools(
@@ -21,8 +22,15 @@ export function registerUserTools(
 	server.registerTool(
 		"get-user-info",
 		{
-			description:
-				"Get the authenticated user's account info, including user ID, display name, and public profile URL. Useful for verifying which account the API key belongs to.",
+			description: describeTool({
+				summary:
+					"Read-only. Returns the authenticated account's user ID, display name, and public profile URL.",
+				aliases: ["who am I", "account info", "verify Hevy user"],
+				useCase:
+					"Use to confirm which Hevy account is connected before reading or writing account data.",
+				importantNotes:
+					"Accepts no inputs and reports only the account associated with the configured credentials.",
+			}),
 			inputSchema: getUserInfoSchema,
 			outputSchema: userOutputSchema,
 			annotations: readOnlyAnnotations("Get User Info"),
