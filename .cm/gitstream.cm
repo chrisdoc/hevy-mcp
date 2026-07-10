@@ -122,7 +122,7 @@ automations:
   # Add safe changes label for low-risk changes
   label_safe_changes:
     if:
-      - "{{ calc.safe_changes }}"
+      - {{ calc.safe_changes }}
     run:
       - action: add-label@v1
         args:
@@ -136,7 +136,7 @@ automations:
 
 calc:
   etr: "{{ branch | estimatedReviewTime }}"
-  safe_changes: "{{ is.formatting or is.docs or is.tests or is.image }}"
+  safe_changes: {{ is.formatting or is.docs or is.tests or is.image }}
 
 colors:
   red: 'b60205'
