@@ -20,6 +20,22 @@ try {
 
 const { name, version } = parsed;
 
+if (process.env.HEVY_MCP_RELEASE === "true") {
+	const missing: string[] = [];
+	if (!process.env.OTEL_COLLECTOR_TOKEN) missing.push("OTEL_COLLECTOR_TOKEN");
+	if (!process.env.SENTRY_ORG) missing.push("SENTRY_ORG");
+	if (!process.env.SENTRY_PROJECT) missing.push("SENTRY_PROJECT");
+	if (!process.env.SENTRY_AUTH_TOKEN) missing.push("SENTRY_AUTH_TOKEN");
+
+	if (missing.length > 0) {
+		throw new Error(
+			`Release build failed: Missing required environment variables: ${missing.join(
+				", ",
+			)}`,
+		);
+	}
+}
+
 if (
 	typeof name !== "string" ||
 	typeof version !== "string" ||
@@ -32,7 +48,6 @@ if (
 		)}, version=${String(version)}`,
 	);
 }
-
 export default defineConfig({
 	entry: ["src/index.ts", "src/cli.ts"],
 	format: ["esm"],

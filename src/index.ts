@@ -66,11 +66,12 @@ const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 function fingerprintApiKey(apiKey: string) {
 	// HMAC-SHA-256 gives Sentry a deterministic pseudonymous user ID without
 	// sending, logging, or storing the raw Hevy API key.
+	// Trimmed to 10 characters to keep it compact and readable in Sentry & OTel traces.
 	return createHmac("sha256", apiKey)
 		.update(SENTRY_USER_ID_CONTEXT)
-		.digest("hex");
+		.digest("hex")
+		.slice(0, 10);
 }
-
 const serverConfigSchema = z.object({
 	apiKey: z
 		.string()
