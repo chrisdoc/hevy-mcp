@@ -1,0 +1,18 @@
+{
+	"mode": "pre",
+	"tag": "beta",
+	"initialVersions": {
+		"hevy-mcp": "1.28.0"
+	},
+	"changesets": [
+		"bright-otters-guide",
+		"calm-lions-report",
+		"calm-tools-guide",
+		"gate-release-workflow",
+		"gitstream-approve-lgtm",
+		"gitstream-review-status-labels",
+		"goofy-parks-repair",
+		"graceful-stdio-shutdown",
+		"quiet-lions-debug"
+	]
+}

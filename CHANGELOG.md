@@ -1,3 +1,21 @@
+## 1.28.1-beta.0
+
+### Patch Changes
+
+- [#563](https://github.com/chrisdoc/hevy-mcp/pull/563) [`4c80e87`](https://github.com/chrisdoc/hevy-mcp/commit/4c80e87d8b6cbf82c11cd194d642a33bc1995980) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Provide MCP clients with concise server-level guidance for safe tool selection,
+  recommended workout workflows, pagination, retries, and API-key setup.
+
+- [#569](https://github.com/chrisdoc/hevy-mcp/pull/569) [`209a7d4`](https://github.com/chrisdoc/hevy-mcp/commit/209a7d45535de6da63d8e376bf7f230b0498cab7) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Print the CLI version with the package name to stderr.
+
+- [#567](https://github.com/chrisdoc/hevy-mcp/pull/567) [`23cb9af`](https://github.com/chrisdoc/hevy-mcp/commit/23cb9af1c485afdbe2ce70188059ff3cf54f0b84) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Improve MCP tool descriptions with aliases, use-case guidance, side-effect classification, and operational constraints for more reliable LLM tool selection.
+
+- [#575](https://github.com/chrisdoc/hevy-mcp/pull/575) [`fc4dd6f`](https://github.com/chrisdoc/hevy-mcp/commit/fc4dd6f934a0a7581b0d03464961618b154fa1d1) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Report privacy-safe malformed stdin diagnostics while continuing to process later MCP messages.
+
+- [#570](https://github.com/chrisdoc/hevy-mcp/pull/570) [`d4b6872`](https://github.com/chrisdoc/hevy-mcp/commit/d4b6872bb9d0d5d1dd336b2baa14e9f05eaa5f00) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Gracefully close and flush the stdio transport on SIGINT or SIGTERM, with a
+  bounded forced-exit fallback when shutdown stalls or other handles remain open.
+
+- [#572](https://github.com/chrisdoc/hevy-mcp/pull/572) [`d1f629e`](https://github.com/chrisdoc/hevy-mcp/commit/d1f629ee2b2b5221d259676f453cbfb74242dbf3) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add opt-in, privacy-bounded stderr diagnostics for tool invocations and Hevy API responses.
+
 ## 1.28.0
 
 ### Minor Changes
