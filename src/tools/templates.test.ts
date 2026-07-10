@@ -292,6 +292,44 @@ describe("registerTemplateTools", () => {
 			expect(parsed).toEqual([formatExerciseTemplate(benchTemplate)]);
 		});
 
+		it.each([Number.NaN, Number.POSITIVE_INFINITY, 1.5, 0])(
+			"stops safely when page_count is malformed (%s)",
+			async (pageCount) => {
+				const { server, tool } = createMockServer();
+				const template: ExerciseTemplate = {
+					id: "t1",
+					title: "Bench Press",
+					type: "barbell",
+					primary_muscle_group: "chest",
+					secondary_muscle_groups: [],
+					is_custom: false,
+				};
+				const hevyClient: HevyClient = {
+					getExerciseTemplates: vi.fn().mockResolvedValue({
+						page: 1,
+						page_count: pageCount,
+						exercise_templates: [template],
+					}),
+				} as unknown as HevyClient;
+
+				registerTemplateTools(server, hevyClient);
+				const { handler } = getToolRegistration(
+					tool,
+					"search-exercise-templates",
+				);
+
+				const response = await handler({
+					query: "bench",
+					refresh: false,
+				});
+
+				expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(1);
+				expect(JSON.parse(response.content[0].text)).toEqual([
+					formatExerciseTemplate(template),
+				]);
+			},
+		);
+
 		it("uses cached data on subsequent calls without refresh", async () => {
 			const { server, tool } = createMockServer();
 			const template: ExerciseTemplate = {

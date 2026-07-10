@@ -14,6 +14,7 @@ import { createHmac } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { registerHevyResources } from "./resources/hevy.js";
 import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
 import { registerFolderTools } from "./tools/folders.js";
 import { registerRoutineTools } from "./tools/routines.js";
@@ -135,6 +136,22 @@ function buildServer(apiKey: string) {
 							registerUserTools(server, hevyClient);
 						} finally {
 							toolsSpan.end();
+						}
+					},
+				);
+
+				tracer.startActiveSpan(
+					"mcp.resources.register",
+					{
+						attributes: {
+							"mcp.resources.count": 4,
+						},
+					},
+					(resourcesSpan) => {
+						try {
+							registerHevyResources(server, hevyClient);
+						} finally {
+							resourcesSpan.end();
 						}
 					},
 				);
