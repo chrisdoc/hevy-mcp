@@ -1,0 +1,133 @@
+export type ShutdownSignal = "SIGINT" | "SIGTERM";
+
+interface CloseTarget {
+	close(): Promise<void>;
+}
+
+interface ProcessLike {
+	exitCode?: number | string | null;
+	on(signal: ShutdownSignal, listener: () => void): unknown;
+	removeListener(signal: ShutdownSignal, listener: () => void): unknown;
+}
+
+interface FlushableStdout {
+	write(chunk: string, callback: (error?: Error | null) => void): boolean;
+}
+
+interface GracefulShutdownOptions {
+	target: CloseTarget;
+	process?: ProcessLike;
+	logError?: (message: string) => void;
+	flush?: () => Promise<void>;
+}
+
+export interface GracefulShutdownController {
+	cleanup(): void;
+	getShutdownPromise(): Promise<void> | undefined;
+}
+
+const shutdownSignals: ShutdownSignal[] = ["SIGINT", "SIGTERM"];
+
+export function flushStdout(
+	stdout: FlushableStdout = process.stdout,
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		try {
+			stdout.write("", (error) => {
+				if (error) {
+					reject(error);
+					return;
+				}
+
+				resolve();
+			});
+		} catch (error) {
+			reject(error);
+		}
+	});
+}
+
+export function installGracefulShutdown({
+	target,
+	process: processLike = process,
+	logError = console.error,
+	flush = flushStdout,
+}: GracefulShutdownOptions): GracefulShutdownController {
+	let listenersInstalled = true;
+	let shutdownSettled = false;
+	let shutdownPromise: Promise<void> | undefined;
+
+	const cleanup = () => {
+		if (!listenersInstalled || (shutdownPromise && !shutdownSettled)) {
+			return;
+		}
+
+		listenersInstalled = false;
+		for (const signal of shutdownSignals) {
+			const listener = signalListeners.get(signal);
+			if (listener) {
+				processLike.removeListener(signal, listener);
+			}
+		}
+	};
+
+	const handleSignal = (signal: ShutdownSignal) => {
+		if (shutdownPromise) {
+			return;
+		}
+
+		shutdownPromise = (async () => {
+			logError(`Shutting down gracefully after ${signal}`);
+			let shutdownFailed = false;
+			let shutdownError: unknown;
+
+			try {
+				await target.close();
+			} catch (error) {
+				shutdownFailed = true;
+				shutdownError = error;
+			}
+
+			try {
+				await flush();
+			} catch (error) {
+				if (!shutdownFailed) {
+					shutdownError = error;
+				}
+				shutdownFailed = true;
+			}
+
+			try {
+				if (shutdownFailed) {
+					const message =
+						shutdownError instanceof Error
+							? shutdownError.message
+							: "Unknown shutdown error";
+					logError(`Graceful shutdown failed: ${message}`);
+					processLike.exitCode = 1;
+					return;
+				}
+
+				processLike.exitCode = 0;
+			} finally {
+				shutdownSettled = true;
+				cleanup();
+			}
+		})();
+	};
+	const signalListeners = new Map<ShutdownSignal, () => void>(
+		shutdownSignals.map((signal) => [signal, () => handleSignal(signal)]),
+	);
+
+	for (const signal of shutdownSignals) {
+		const listener = signalListeners.get(signal);
+		if (listener) {
+			processLike.on(signal, listener);
+		}
+	}
+
+	return {
+		cleanup,
+		getShutdownPromise: () => shutdownPromise,
+	};
+}
