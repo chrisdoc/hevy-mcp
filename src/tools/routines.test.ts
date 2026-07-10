@@ -3,15 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Routine } from "../generated/client/types/index.js";
 import { formatRoutine } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { registerRoutineTools } from "./routines.js";
-
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as unknown as McpServer;
 	return { server, tool };
 }
 
@@ -20,12 +17,17 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const schema = match[2] as Record<string, z.ZodTypeAny>;
+	const config = match[1] as
+		| { inputSchema?: Record<string, z.ZodTypeAny>; outputSchema?: unknown }
+		| undefined;
+	const schema =
+		config?.inputSchema ?? (match[2] as Record<string, z.ZodTypeAny>);
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
+		structuredContent?: Record<string, unknown>;
 	}>;
-	return { schema, handler };
+	return { schema, outputSchema: config?.outputSchema, handler };
 }
 
 describe("registerRoutineTools", () => {
@@ -109,6 +111,33 @@ describe("registerRoutineTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatRoutine(routine)]);
+		expect(response.structuredContent).toEqual({ routines: parsed });
+	});
+
+	it("returns structured empty results for routine reads", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getRoutines: vi.fn().mockResolvedValue({ routines: [] }),
+			getRoutineById: vi.fn().mockResolvedValue({}),
+		} as unknown as HevyClient;
+		registerRoutineTools(server, hevyClient);
+
+		const routines = await getToolRegistration(tool, "get-routines").handler({
+			page: 1,
+			pageSize: 5,
+		});
+		const routine = await getToolRegistration(tool, "get-routine").handler({
+			routineId: "missing-id",
+		});
+
+		expect(routines.structuredContent).toEqual({ routines: [] });
+		expect(routine.structuredContent).toEqual({ routine: null });
+		expect(routines.content[0]?.text).toBe(
+			"No routines found for the specified parameters",
+		);
+		expect(routine.content[0]?.text).toBe(
+			"Routine with ID missing-id not found",
+		);
 	});
 
 	it("get-routines maps exercise superset_id to supersetId", async () => {
@@ -180,6 +209,7 @@ describe("registerRoutineTools", () => {
 
 		expect(hevyClient.getRoutineById).toHaveBeenCalledWith("routine-1");
 		expect(parsed.exercises?.[0]).toMatchObject({ supersetId: 1 });
+		expect(response.structuredContent).toEqual({ routine: parsed });
 	});
 
 	it("create-routine forwards non-null supersetId as superset_id", async () => {
