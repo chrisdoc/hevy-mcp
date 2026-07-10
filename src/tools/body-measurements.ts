@@ -9,6 +9,10 @@ import { withObservability } from "../utils/observability-wrapper.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
+	confirmMutation,
+	type MutationToolOptions,
+} from "../utils/mutation-confirmation.js";
+import {
 	bodyMeasurementOutputSchema,
 	bodyMeasurementsOutputSchema,
 } from "../utils/output-schemas.js";
@@ -107,6 +111,7 @@ function buildMeasurementPayload(
 export function registerBodyMeasurementTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	options: MutationToolOptions = {},
 ) {
 	// Get body measurements (paginated list)
 	const getBodyMeasurementsSchema = {
@@ -233,8 +238,17 @@ export function registerBodyMeasurementTools(
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
 		withObservability(async (args: CreateBodyMeasurementParams) => {
-			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
+			const fieldCount = Object.values(fields).filter(
+				(value) => value != null,
+			).length;
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Create body measurement for ${date} with ${fieldCount} measurement fields?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 			await client.createBodyMeasurement({
 				date,
 				...buildMeasurementPayload(fields),
@@ -274,14 +288,22 @@ export function registerBodyMeasurementTools(
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
 		withObservability(async (args: UpdateBodyMeasurementParams) => {
-			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			const payload = buildMeasurementPayload(fields);
-			if (Object.keys(payload).length === 0) {
+			const fieldNames = Object.keys(payload);
+			if (fieldNames.length === 0) {
 				throw new Error(
 					"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
 				);
 			}
+
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Update body measurement for ${date}: ${fieldNames.join(", ")}?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 			await client.updateBodyMeasurement(date, payload);
 
 			return createTextResponse(

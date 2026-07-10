@@ -26,6 +26,11 @@ const testDoubles = vi.hoisted(() => ({
 	mcpServerConstructor: vi.fn(),
 	sendLoggingMessage: vi.fn().mockResolvedValue(undefined),
 	registerPrompt: vi.fn(),
+	registerWorkoutTools: vi.fn(),
+	registerRoutineTools: vi.fn(),
+	registerTemplateTools: vi.fn(),
+	registerFolderTools: vi.fn(),
+	registerBodyMeasurementTools: vi.fn(),
 	tool: vi.fn(),
 	registerTool: vi.fn(),
 	directRegisterToolCalls: 0,
@@ -48,6 +53,61 @@ const testDoubles = vi.hoisted(() => ({
 
 vi.mock("./utils/hevyClient.js", () => ({
 	createClient: vi.fn().mockReturnValue({ mockedClient: true }),
+}));
+
+vi.mock("./tools/workouts.js", () => ({
+	registerWorkoutTools: (
+		server: McpServer,
+		client: unknown,
+		options: unknown,
+	) => {
+		testDoubles.registerWorkoutTools(server, client, options);
+		server.tool("mock-workout-tool", {}, vi.fn());
+	},
+}));
+
+vi.mock("./tools/routines.js", () => ({
+	registerRoutineTools: (
+		server: McpServer,
+		client: unknown,
+		options: unknown,
+	) => {
+		testDoubles.registerRoutineTools(server, client, options);
+		server.tool("mock-routine-tool", {}, vi.fn());
+	},
+}));
+
+vi.mock("./tools/templates.js", () => ({
+	registerTemplateTools: (
+		server: McpServer,
+		client: unknown,
+		options: unknown,
+	) => {
+		testDoubles.registerTemplateTools(server, client, options);
+		server.tool("mock-template-tool", {}, vi.fn());
+	},
+}));
+
+vi.mock("./tools/folders.js", () => ({
+	registerFolderTools: (
+		server: McpServer,
+		client: unknown,
+		options: unknown,
+	) => {
+		testDoubles.registerFolderTools(server, client, options);
+		server.tool("mock-folder-tool", {}, vi.fn());
+	},
+}));
+
+vi.mock("./tools/body-measurements.js", () => ({
+	registerBodyMeasurementTools: (
+		server: McpServer,
+		client: unknown,
+		options: unknown,
+	) => {
+		testDoubles.registerBodyMeasurementTools(server, client, options);
+		server.tool("mock-body-measurement-tool", {}, vi.fn());
+	},
 }));
 
 vi.mock("./utils/telemetry.js", () => ({
@@ -153,6 +213,7 @@ describe("Server entry", () => {
 		expect(() => configSchema.parse({ apiKey: "" })).toThrow();
 		const parsed = configSchema.parse({ apiKey: "abc" });
 		expect(parsed.apiKey).toBe("abc");
+		expect(parsed.autoConfirm).toBe(false);
 	});
 
 	it("creates an MCP server instance", () => {
@@ -170,6 +231,28 @@ describe("Server entry", () => {
 				}),
 			}),
 			expect.any(Function),
+		);
+	});
+
+	it("propagates autoConfirm to every mutating tool registration", () => {
+		createServer({ config: { apiKey: "test-key", autoConfirm: true } });
+
+		for (const registration of [
+			testDoubles.registerWorkoutTools,
+			testDoubles.registerRoutineTools,
+			testDoubles.registerFolderTools,
+			testDoubles.registerBodyMeasurementTools,
+		]) {
+			expect(registration).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				{ autoConfirm: true },
+			);
+		}
+		expect(testDoubles.registerTemplateTools).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ autoConfirm: true }),
 		);
 	});
 
@@ -260,6 +343,35 @@ describe("Server entry", () => {
 
 	describe("runServer", () => {
 		it.each([
+			["--yes", {}, ["--yes"]],
+			["HEVY_MCP_AUTO_CONFIRM=1", { HEVY_MCP_AUTO_CONFIRM: "1" }, []],
+		])(
+			"enables auto-confirm registrations with %s",
+			async (_label, envOverride, args) => {
+				process.env = {
+					...originalEnv,
+					HEVY_API_KEY: "test-api-key",
+					...envOverride,
+				};
+				process.argv = [...originalArgv.slice(0, 2), ...args];
+
+				await runServer();
+
+				for (const registration of [
+					testDoubles.registerWorkoutTools,
+					testDoubles.registerRoutineTools,
+					testDoubles.registerTemplateTools,
+					testDoubles.registerFolderTools,
+					testDoubles.registerBodyMeasurementTools,
+				]) {
+					expect(registration.mock.calls.at(-1)?.[2]).toMatchObject({
+						autoConfirm: true,
+					});
+				}
+			},
+		);
+
+		it.each([
 			["--version", undefined],
 			["-v", ""],
 		])(
@@ -319,6 +431,8 @@ describe("Server entry", () => {
 				const [helpText] = logSpy.mock.calls[0] ?? [];
 				expect(helpText).toContain("Usage:");
 				expect(helpText).toContain("HEVY_API_KEY");
+				expect(helpText).toContain("HEVY_MCP_AUTO_CONFIRM=1");
+				expect(helpText).toContain("--yes");
 				expect(helpText).toContain("HEVY_MCP_DEBUG=1");
 				expect(helpText).toContain("Examples:");
 				expect(createClient).not.toHaveBeenCalled();

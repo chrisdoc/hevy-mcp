@@ -5,10 +5,33 @@ import { formatRoutineFolder } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerFolderTools } from "./folders.js";
 
-function createMockServer() {
+function createMockServer(
+	options: {
+		capabilities?: unknown;
+		result?: {
+			action: "accept" | "decline" | "cancel";
+			content?: { confirm: boolean };
+		};
+	} = {},
+) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
-	return { server, tool };
+	const capabilities = Object.hasOwn(options, "capabilities")
+		? options.capabilities
+		: { elicitation: { form: {} } };
+	const elicitInput = vi
+		.fn()
+		.mockResolvedValue(
+			options.result ?? { action: "accept", content: { confirm: true } },
+		);
+	const server = {
+		tool,
+		registerTool: tool,
+		server: {
+			getClientCapabilities: vi.fn(() => capabilities),
+			elicitInput,
+		},
+	} as unknown as McpServer;
+	return { elicitInput, server, tool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -30,11 +53,7 @@ describe("registerFolderTools", () => {
 		const { server, tool } = createMockServer();
 		registerFolderTools(server, null);
 
-		const toolNames = [
-			"get-routine-folders",
-			"get-routine-folder",
-			"create-routine-folder",
-		];
+		const toolNames = ["get-routine-folders", "get-routine-folder"];
 
 		for (const name of toolNames) {
 			const { handler } = getToolRegistration(tool, name);
@@ -190,5 +209,44 @@ describe("registerFolderTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(formatRoutineFolder(folder));
+	});
+
+	it.each([
+		["declined", { result: { action: "decline" as const } }],
+		["canceled", { result: { action: "cancel" as const } }],
+		["unsupported", { capabilities: {} }],
+	])(
+		"does not create a routine folder when confirmation is %s",
+		async (_label, confirmation) => {
+			const { server, tool } = createMockServer(confirmation);
+			const createRoutineFolder = vi.fn();
+			const hevyClient = { createRoutineFolder } as unknown as HevyClient;
+			registerFolderTools(server, hevyClient);
+
+			await getToolRegistration(tool, "create-routine-folder").handler({
+				name: "Guarded Folder",
+			});
+
+			expect(createRoutineFolder).not.toHaveBeenCalled();
+		},
+	);
+
+	it("returns an error without creating a folder when elicitation fails", async () => {
+		const { elicitInput, server, tool } = createMockServer();
+		elicitInput.mockRejectedValueOnce(
+			new Error("elicitation transport failed"),
+		);
+		const createRoutineFolder = vi.fn();
+		const hevyClient = { createRoutineFolder } as unknown as HevyClient;
+		registerFolderTools(server, hevyClient);
+
+		const response = await getToolRegistration(
+			tool,
+			"create-routine-folder",
+		).handler({ name: "Guarded Folder" });
+
+		expect(response.isError).toBe(true);
+		expect(response.content[0]?.text).toContain("elicitation transport failed");
+		expect(createRoutineFolder).not.toHaveBeenCalled();
 	});
 });

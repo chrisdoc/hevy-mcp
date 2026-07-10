@@ -6,10 +6,33 @@ import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerRoutineTools } from "./routines.js";
 
-function createMockServer() {
+function createMockServer(
+	options: {
+		capabilities?: unknown;
+		result?: {
+			action: "accept" | "decline" | "cancel";
+			content?: { confirm: boolean };
+		};
+	} = {},
+) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
-	return { server, tool };
+	const capabilities = Object.hasOwn(options, "capabilities")
+		? options.capabilities
+		: { elicitation: { form: {} } };
+	const elicitInput = vi
+		.fn()
+		.mockResolvedValue(
+			options.result ?? { action: "accept", content: { confirm: true } },
+		);
+	const server = {
+		tool,
+		registerTool: tool,
+		server: {
+			getClientCapabilities: vi.fn(() => capabilities),
+			elicitInput,
+		},
+	} as unknown as McpServer;
+	return { elicitInput, server, tool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -35,12 +58,7 @@ describe("registerRoutineTools", () => {
 		const { server, tool } = createMockServer();
 		registerRoutineTools(server, null);
 
-		const toolNames = [
-			"get-routines",
-			"get-routine",
-			"create-routine",
-			"update-routine",
-		];
+		const toolNames = ["get-routines", "get-routine"];
 
 		for (const name of toolNames) {
 			const { handler } = getToolRegistration(tool, name);
@@ -212,12 +230,45 @@ describe("registerRoutineTools", () => {
 		expect(response.structuredContent).toEqual({ routine: parsed });
 	});
 
-	it("create-routine forwards non-null supersetId as superset_id", async () => {
-		const { server, tool } = createMockServer();
+	it.each([
+		["declined", { result: { action: "decline" as const } }],
+		["canceled", { result: { action: "cancel" as const } }],
+		["unsupported", { capabilities: {} }],
+	])(
+		"does not create or update routines when confirmation is %s",
+		async (_label, confirmation) => {
+			const { server, tool } = createMockServer(confirmation);
+			const createRoutine = vi.fn();
+			const updateRoutine = vi.fn();
+			const hevyClient = {
+				createRoutine,
+				updateRoutine,
+			} as unknown as HevyClient;
+			registerRoutineTools(server, hevyClient);
+
+			const routine = {
+				title: "Guarded Routine",
+				folderId: null,
+				notes: null,
+				exercises: [],
+			};
+			await getToolRegistration(tool, "create-routine").handler(routine);
+			await getToolRegistration(tool, "update-routine").handler({
+				...routine,
+				routineId: "routine-1",
+			});
+
+			expect(createRoutine).not.toHaveBeenCalled();
+			expect(updateRoutine).not.toHaveBeenCalled();
+		},
+	);
+
+	it("create-routine confirms its folder and forwards payload IDs", async () => {
+		const { elicitInput, server, tool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Pull Day",
-			folder_id: null,
+			folder_id: 123,
 			created_at: "2025-03-26T19:00:00Z",
 			updated_at: "2025-03-26T19:00:00Z",
 			exercises: [],
@@ -231,7 +282,7 @@ describe("registerRoutineTools", () => {
 
 		const args = {
 			title: "Pull Day",
-			folderId: null,
+			folderId: 123,
 			notes: "Back and biceps",
 			exercises: [
 				{
@@ -255,10 +306,15 @@ describe("registerRoutineTools", () => {
 
 		const response = await handler(args as Record<string, unknown>);
 
+		expect(elicitInput).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: expect.stringContaining("in folder 123"),
+			}),
+		);
 		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
 			routine: {
 				title: "Pull Day",
-				folder_id: null,
+				folder_id: 123,
 				notes: "Back and biceps",
 				exercises: [
 					{

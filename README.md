@@ -179,6 +179,20 @@ Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
 Set `HEVY_MCP_API_TIMEOUT` to override the default 30-second Hevy API request
 timeout. Its value is in milliseconds.
 
+### Mutation confirmations
+
+The eight tools that create or update workouts, routines, exercise templates,
+routine folders, and body measurements request an MCP form confirmation before
+accessing Hevy. The action proceeds only when the client accepts the request and
+the confirmation checkbox is enabled. Declined or canceled requests make no
+changes.
+
+This behavior fails closed: clients without MCP form elicitation support receive
+an error and Hevy is not accessed. For intentional non-interactive automation,
+set `HEVY_MCP_AUTO_CONFIRM` to the exact value `1`, or start the server with the
+exact `--yes` argument. Both options skip every mutation confirmation, so only
+enable them in environments where requests are already reviewed and trusted.
+
 Set `HEVY_MCP_DEBUG=1` to emit verbose, privacy-bounded diagnostics to stderr.
 Debug records include tool invocations and sanitized Hevy API response timing
 and status details. Other values leave diagnostics disabled, and stdout remains
@@ -189,6 +203,8 @@ reserved for the MCP JSON-RPC stream.
 HEVY_API_KEY=your_hevy_api_key_here
 # Optional: customize Hevy API request timeout (milliseconds)
 HEVY_MCP_API_TIMEOUT=30000
+# Optional: skip mutation confirmations for intentional automation
+HEVY_MCP_AUTO_CONFIRM=1
 # Optional: enable verbose stderr diagnostics (only the value 1 enables it)
 HEVY_MCP_DEBUG=1
 ```
