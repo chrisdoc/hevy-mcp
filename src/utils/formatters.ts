@@ -6,124 +6,27 @@ import type {
 	RoutineFolder,
 	Workout,
 } from "../generated/client/types/index.js";
+import type {
+	FormattedBodyMeasurement,
+	FormattedExerciseHistoryEntry,
+	FormattedExerciseTemplate,
+	FormattedRoutine,
+	FormattedRoutineFolder,
+	FormattedWorkout,
+} from "./output-schemas.js";
 
-/**
- * Formatted workout set interface
- */
-export interface FormattedWorkoutSet {
-	index: number | undefined;
-	type: string | undefined;
-	weight: number | undefined | null;
-	reps: number | undefined | null;
-	distance: number | undefined | null;
-	duration: number | undefined | null;
-	rpe: number | undefined | null;
-	customMetric: number | undefined | null;
-}
-
-/**
- * Formatted workout exercise interface
- */
-export interface FormattedWorkoutExercise {
-	index: number | undefined;
-	name: string | undefined;
-	exerciseTemplateId: string | undefined;
-	notes: string | undefined | null;
-	supersetsId: number | undefined | null;
-	sets: FormattedWorkoutSet[] | undefined;
-}
-
-/**
- * Formatted workout interface
- */
-export interface FormattedWorkout {
-	id: string | undefined;
-	title: string | undefined;
-	description: string | undefined | null;
-	startTime: string | number | undefined;
-	endTime: string | number | undefined;
-	createdAt: string | undefined;
-	updatedAt: string | undefined;
-	duration: string;
-	exercises: FormattedWorkoutExercise[] | undefined;
-}
-
-/**
- * Formatted routine set interface
- */
-export interface FormattedRoutineSet {
-	index: number | undefined;
-	type: string | undefined;
-	weight: number | undefined | null;
-	reps: number | undefined | null;
-	distance: number | undefined | null;
-	duration: number | undefined | null;
-	customMetric: number | undefined | null;
-	repRange?: { start?: number | null; end?: number | null } | undefined | null;
-	rpe?: number | undefined | null;
-}
-
-/**
- * Formatted routine exercise interface
- */
-export interface FormattedRoutineExercise {
-	name: string | undefined;
-	index: number | undefined;
-	exerciseTemplateId: string | undefined;
-	notes: string | undefined | null;
-	supersetId: number | undefined | null;
-	restSeconds: string | undefined;
-	sets: FormattedRoutineSet[] | undefined;
-}
-
-/**
- * Formatted routine interface
- */
-export interface FormattedRoutine {
-	id: string | undefined;
-	title: string | undefined;
-	folderId: number | undefined | null;
-	createdAt: string | undefined;
-	updatedAt: string | undefined;
-	exercises: FormattedRoutineExercise[] | undefined;
-}
-
-/**
- * Formatted routine folder interface
- */
-export interface FormattedRoutineFolder {
-	id: number | undefined;
-	title: string | undefined;
-	createdAt: string | undefined;
-	updatedAt: string | undefined;
-}
-
-/**
- * Formatted exercise template interface
- */
-export interface FormattedExerciseTemplate {
-	id: string | undefined;
-	title: string | undefined;
-	type: string | undefined;
-	primaryMuscleGroup: string | undefined;
-	secondaryMuscleGroups: string[] | undefined;
-	isCustom: boolean | undefined;
-}
-
-export interface FormattedExerciseHistoryEntry {
-	workoutId: string | undefined;
-	workoutTitle: string | undefined;
-	workoutStartTime: string | undefined;
-	workoutEndTime: string | undefined;
-	exerciseTemplateId: string | undefined;
-	weight: number | undefined | null;
-	reps: number | undefined | null;
-	distance: number | undefined | null;
-	duration: number | undefined | null;
-	rpe: number | undefined | null;
-	customMetric: number | undefined | null;
-	setType: string | undefined;
-}
+export type {
+	FormattedBodyMeasurement,
+	FormattedExerciseHistoryEntry,
+	FormattedExerciseTemplate,
+	FormattedRoutine,
+	FormattedRoutineExercise,
+	FormattedRoutineFolder,
+	FormattedRoutineSet,
+	FormattedWorkout,
+	FormattedWorkoutExercise,
+	FormattedWorkoutSet,
+} from "./output-schemas.js";
 
 type ExerciseWithSupersetVariants = {
 	supersets_id?: number | null;
@@ -310,27 +213,6 @@ export function formatExerciseHistoryEntry(
 		customMetric: entry.custom_metric,
 		setType: entry.set_type,
 	};
-}
-
-export interface FormattedBodyMeasurement {
-	date: string;
-	weightKg: number | null;
-	leanMassKg: number | null;
-	fatPercent: number | null;
-	neckCm: number | null;
-	shoulderCm: number | null;
-	chestCm: number | null;
-	leftBicepCm: number | null;
-	rightBicepCm: number | null;
-	leftForearmCm: number | null;
-	rightForearmCm: number | null;
-	abdomen: number | null;
-	waist: number | null;
-	hips: number | null;
-	leftThigh: number | null;
-	rightThigh: number | null;
-	leftCalf: number | null;
-	rightCalf: number | null;
 }
 
 export function formatBodyMeasurement(
