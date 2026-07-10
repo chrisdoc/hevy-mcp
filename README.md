@@ -77,6 +77,12 @@ reached a stable release:
 
 ```bash
 npm install hevy-mcp@beta
+
+# npx launcher
+npx -y hevy-mcp@beta
+
+# bun launcher
+bunx hevy-mcp@beta
 ```
 
 Beta builds may be less stable and can change before their stable release.
