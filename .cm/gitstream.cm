@@ -18,6 +18,9 @@ automations:
       - "{{ not pr.draft }}"
     run:
       - action: code-review@v1
+        args:
+          approve_on_LGTM: "{{ calc.safe_changes }}"
+          guidelines: {{ "./REVIEW_RULES.md" | readFile() | dump }}
 
   # Approve only when the AI review passes and the changes are safe.
   auto_approve_safe_lgtm:
