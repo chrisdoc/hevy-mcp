@@ -336,6 +336,6 @@ export function registerWorkoutTools(
 				pretty: true,
 				indent: 2,
 			});
-		}, "update-workout-operation"),
+		}, "update-workout"),
 	);
 }
