@@ -1,0 +1,44 @@
+name: Publish Unit Test Results
+
+on:
+  workflow_run:
+    workflows:
+      - Build and Test
+    types:
+      - completed
+
+permissions:
+  actions: read
+  checks: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  publish:
+    name: Publish unit test results
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      (github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download source workflow artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
+      - name: Publish unit test results
+        if: ${{ hashFiles('artifacts/unit-test-results-node-24/*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action/linux@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          github_token: ${{ github.token }}
+          commit: ${{ github.event.workflow_run.head_sha }}
+          event_file: artifacts/source-event/event.json
+          event_name: ${{ github.event.workflow_run.event }}
+          files: artifacts/unit-test-results-node-24/*.xml
+          check_name: Unit Test Results
+          comment_title: Unit Test Results
+          comment_mode: always

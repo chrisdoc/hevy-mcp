@@ -7,7 +7,7 @@ import { registerWorkoutTools } from "./workouts.js";
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as unknown as McpServer;
 	return { server, tool };
 }
 
@@ -19,8 +19,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
+		structuredContent?: Record<string, unknown>;
 	}>;
-	return { handler };
+	const config = match[1] as { outputSchema?: unknown } | undefined;
+	return { outputSchema: config?.outputSchema, handler };
 }
 
 describe("registerWorkoutTools", () => {
@@ -115,6 +117,38 @@ describe("registerWorkoutTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatWorkout(workout)]);
+		expect(response.structuredContent).toEqual({ workouts: parsed });
+	});
+
+	it("returns structured empty lists for workouts and events", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			getWorkouts: vi.fn().mockResolvedValue({ workouts: [] }),
+			getWorkoutEvents: vi.fn().mockResolvedValue({ events: [] }),
+		} as unknown as HevyClient;
+		registerWorkoutTools(server, hevyClient);
+
+		const workouts = await getToolRegistration(tool, "get-workouts").handler({
+			page: 1,
+			pageSize: 5,
+		});
+		const events = await getToolRegistration(
+			tool,
+			"get-workout-events",
+		).handler({
+			page: 1,
+			pageSize: 5,
+			since: "1970-01-01T00:00:00Z",
+		});
+
+		expect(workouts.structuredContent).toEqual({ workouts: [] });
+		expect(events.structuredContent).toEqual({ events: [] });
+		expect(workouts.content[0]?.text).toBe(
+			"No workouts found for the specified parameters",
+		);
+		expect(events.content[0]?.text).toBe(
+			"No workout events found for the specified parameters since 1970-01-01T00:00:00Z",
+		);
 	});
 
 	it("get-workout returns an empty response when workout is not found", async () => {
@@ -131,6 +165,7 @@ describe("registerWorkoutTools", () => {
 		expect(response.content[0]?.text).toBe(
 			"Workout with ID missing-id not found",
 		);
+		expect(response.structuredContent).toEqual({ workout: null });
 	});
 
 	it("get-workout-count returns the numeric count from the client", async () => {
@@ -147,6 +182,7 @@ describe("registerWorkoutTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual({ count: 42 });
+		expect(response.structuredContent).toEqual(parsed);
 	});
 
 	it("get-workout-count returns 0 when workout_count is undefined", async () => {

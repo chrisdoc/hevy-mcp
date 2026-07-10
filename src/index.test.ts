@@ -161,12 +161,8 @@ describe("Server entry", () => {
 	it("reports the number of tool registration calls on the registration span", () => {
 		createServer({ config: { apiKey: "test-key" } });
 
-		const registrationCount =
-			testDoubles.tool.mock.calls.length + testDoubles.directRegisterToolCalls;
+		const registrationCount = testDoubles.registerTool.mock.calls.length;
 		expect(registrationCount).toBeGreaterThan(0);
-		expect(testDoubles.registerTool.mock.calls.length).toBeGreaterThan(
-			testDoubles.directRegisterToolCalls,
-		);
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.tools.count",
 			registrationCount,
