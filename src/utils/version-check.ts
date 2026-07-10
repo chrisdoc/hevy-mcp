@@ -235,7 +235,7 @@ export async function checkForUpdate(
 
 		if (shouldNotifyAboutUpdate(options.currentVersion, latestVersion)) {
 			dependencies.writeStderr(
-				`Update available for ${options.packageName}: current ${options.currentVersion}, latest ${latestVersion}. Notices are shown for newer major versions or when more than two minor versions behind. Update using your preferred installation method.\n`,
+				`Update available for ${options.packageName}: current ${options.currentVersion}, latest ${latestVersion}. Notices are shown for newer major versions or when more than two minor versions behind. Update using your preferred installation method (for example, npm install -g ${options.packageName}@latest).\n`,
 			);
 		}
 	} catch {

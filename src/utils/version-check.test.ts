@@ -200,7 +200,7 @@ describe("checkForUpdate", () => {
 		},
 	);
 
-	it("emits a manager-neutral notice with versions and threshold", async () => {
+	it("emits a notice with versions, threshold, and npm upgrade example", async () => {
 		const dependencies = createDependencies();
 		dependencies.fetch.mockResolvedValue(registryResponse("1.28.0"));
 
@@ -213,7 +213,7 @@ describe("checkForUpdate", () => {
 		expect(notice).toContain("current 1.25.9");
 		expect(notice).toContain("latest 1.28.0");
 		expect(notice).toMatch(/more than two minor versions/i);
-		expect(notice).not.toMatch(/npm install/i);
+		expect(notice).toContain("npm install -g hevy-mcp@latest");
 	});
 
 	it("skips invalid local versions without cache or network work", async () => {
