@@ -39,7 +39,6 @@ import {
 	muscleGroupEnum,
 } from "../utils/schemas.js";
 
-
 /** Reset the exercise template cache (exposed for testing). */
 export function resetExerciseTemplateCache(): void {
 	resetExerciseTemplateCatalogCache();
