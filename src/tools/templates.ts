@@ -17,6 +17,7 @@ import {
 	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
 } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	exerciseHistoryOutputSchema,
 	exerciseTemplateOutputSchema,
@@ -37,11 +38,6 @@ import {
 	exerciseTypeEnum,
 	muscleGroupEnum,
 } from "../utils/schemas.js";
-
-// Type definitions for the template operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 /** Reset the exercise template cache (exposed for testing). */
 export function resetExerciseTemplateCache(): void {

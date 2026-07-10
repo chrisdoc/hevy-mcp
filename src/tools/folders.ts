@@ -9,6 +9,7 @@ import type {
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	routineFolderOutputSchema,
 	routineFoldersOutputSchema,
@@ -24,11 +25,6 @@ import {
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
-
-// Type definitions for the folder operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 /**
  * Register all routine folder-related tools with the MCP server
