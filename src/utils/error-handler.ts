@@ -2,11 +2,12 @@
  * Centralized error handling utility for MCP tools
  */
 
-import { SpanStatusCode } from "@opentelemetry/api";
 import { isAxiosError } from "axios";
-import { Sentry, tracer, getCurrentUserId } from "./telemetry.js";
-import { toolInvocations, toolErrors, toolDuration } from "./metrics.js";
+import { determineErrorType, ErrorType } from "./error-classification.js";
 import type { McpToolResponse } from "./response-formatter.js";
+import { Sentry } from "./telemetry.js";
+
+export { ErrorType } from "./error-classification.js";
 
 /**
  * Standard error response interface
@@ -15,18 +16,6 @@ export interface ErrorResponse {
 	message: string;
 	code?: string;
 	details?: unknown;
-}
-
-/**
- * Specific error types for better categorization
- */
-export enum ErrorType {
-	API_ERROR = "API_ERROR",
-	RATE_LIMIT = "RATE_LIMIT",
-	VALIDATION_ERROR = "VALIDATION_ERROR",
-	NOT_FOUND = "NOT_FOUND",
-	NETWORK_ERROR = "NETWORK_ERROR",
-	UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
 type RetryAwareError = {
@@ -327,108 +316,6 @@ function stringifyErrorData(data: unknown): string {
 }
 
 /**
- * Determine the type of error based on error characteristics
- */
-function determineErrorType(error: unknown, message: string): ErrorType {
-	if (isRetryExhaustedError(error)) {
-		return ErrorType.NETWORK_ERROR;
-	}
-
-	if (isAxiosError(error) && error.response?.status === 429) {
-		return ErrorType.RATE_LIMIT;
-	}
-
-	const messageLower = message.toLowerCase();
-	const nameLower = error instanceof Error ? error.name.toLowerCase() : "";
-
-	if (
-		nameLower.includes("network") ||
-		messageLower.includes("network") ||
-		nameLower.includes("fetch") ||
-		messageLower.includes("fetch") ||
-		nameLower.includes("timeout") ||
-		messageLower.includes("timeout")
-	) {
-		return ErrorType.NETWORK_ERROR;
-	}
-
-	if (
-		nameLower.includes("validation") ||
-		messageLower.includes("validation") ||
-		messageLower.includes("invalid") ||
-		messageLower.includes("required")
-	) {
-		return ErrorType.VALIDATION_ERROR;
-	}
-
-	if (
-		messageLower.includes("not found") ||
-		messageLower.includes("404") ||
-		messageLower.includes("does not exist")
-	) {
-		return ErrorType.NOT_FOUND;
-	}
-
-	if (
-		nameLower.includes("api") ||
-		messageLower.includes("api") ||
-		messageLower.includes("server error") ||
-		messageLower.includes("500")
-	) {
-		return ErrorType.API_ERROR;
-	}
-	return ErrorType.UNKNOWN_ERROR;
-}
-
-/** Whitelist of safe argument keys that can be logged as span attributes without exposing PII. */
-const ARGUMENT_WHITELIST = new Set([
-	"page",
-	"pageSize",
-	"since",
-	"workoutId",
-	"routineId",
-	"folderId",
-	"exerciseTemplateId",
-	"date",
-	"startDate",
-	"endDate",
-	"updatedSince",
-	"includeCustom",
-	"limit",
-	"offset",
-	"refresh",
-	"query",
-	"primaryMuscleGroup",
-]);
-
-/**
- * Extract safe (non-PII) parameters from the tool arguments to include as span attributes.
- */
-function extractSafeArgs(
-	args: Record<string, unknown>,
-): Record<string, string | number | boolean> {
-	const attributes: Record<string, string | number | boolean> = {};
-	for (const [key, value] of Object.entries(args)) {
-		if (ARGUMENT_WHITELIST.has(key)) {
-			const type = typeof value;
-			if (type === "string" || type === "number" || type === "boolean") {
-				if (key === "query" && type === "string") {
-					const strVal = value as string;
-					attributes[`mcp.tool.args.${key}`] =
-						strVal.length > 100 ? `${strVal.slice(0, 100)}...` : strVal;
-				} else {
-					attributes[`mcp.tool.args.${key}`] = value as
-						| string
-						| number
-						| boolean;
-				}
-			}
-		}
-	}
-	return attributes;
-}
-
-/**
  * Wrap an async function with standardized error handling
  *
  * This function preserves the parameter types of the wrapped function while
@@ -445,93 +332,19 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (rawArgs: Record<string, unknown>) => {
 		const args = rawArgs ?? {};
-		const argumentKeys = Object.keys(args);
-		const argumentKeyCount = argumentKeys.length;
-		const startTime = Date.now();
+		try {
+			return await fn(args as TParams);
+		} catch (error) {
+			Sentry.withScope((scope) => {
+				scope.setTag("mcp.tool.context", context);
+				scope.setContext("mcpTool", {
+					context,
+					argumentKeyCount: Object.keys(args).length,
+				});
+				Sentry.captureException(error);
+			});
 
-		toolInvocations.add(1, { tool_name: context });
-
-		const userId = getCurrentUserId();
-		const safeArgs = extractSafeArgs(args);
-		const whitelistedKeys = Object.keys(safeArgs).map((k) =>
-			k.replace("mcp.tool.args.", ""),
-		);
-
-		return tracer.startActiveSpan(
-			`mcp.tool.${context}`,
-			{
-				attributes: {
-					"mcp.tool.name": context,
-					"mcp.tool.args.key_count": argumentKeyCount,
-					"mcp.tool.args.keys": whitelistedKeys.join(","),
-					...(userId ? { "user.id": userId } : {}),
-					...safeArgs,
-				},
-			},
-			async (span) => {
-				let isError = false;
-				try {
-					const result = await fn(args as TParams);
-					isError = Boolean(result.isError);
-					span.setStatus({
-						code: isError ? SpanStatusCode.ERROR : SpanStatusCode.OK,
-					});
-					span.setAttribute("mcp.tool.result.is_error", isError);
-					if (result.content) {
-						span.setAttribute(
-							"mcp.tool.result.content_count",
-							result.content.length,
-						);
-						const textLength = result.content.reduce(
-							(sum, item) => sum + (item.text?.length ?? 0),
-							0,
-						);
-						span.setAttribute("mcp.tool.result.text_length", textLength);
-					}
-					return result;
-				} catch (error) {
-					isError = true;
-					span.setStatus({ code: SpanStatusCode.ERROR });
-					span.recordException(error as Error);
-
-					const errorType = determineErrorType(
-						error,
-						error instanceof Error ? error.message : String(error),
-					);
-
-					span.setAttribute("error.type", errorType);
-
-					const rawCode =
-						error instanceof Error && "code" in error
-							? (error as { code?: unknown }).code
-							: undefined;
-					if (rawCode !== undefined && rawCode !== null) {
-						span.setAttribute("error.code", String(rawCode as string | number));
-					}
-
-					toolErrors.add(1, {
-						tool_name: context,
-						error_type: errorType,
-					});
-
-					Sentry.withScope((scope) => {
-						scope.setTag("mcp.tool.context", context);
-						scope.setContext("mcpTool", {
-							context,
-							argumentKeyCount,
-						});
-						Sentry.captureException(error);
-					});
-
-					return createErrorResponse(error, context);
-				} finally {
-					toolDuration.record(Date.now() - startTime, {
-						tool_name: context,
-						is_error: String(isError),
-					});
-					span.end();
-				}
-			},
-		);
+			return createErrorResponse(error, context);
+		}
 	};
 }

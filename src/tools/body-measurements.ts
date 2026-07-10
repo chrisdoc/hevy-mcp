@@ -5,7 +5,7 @@ import type {
 	GetV1BodyMeasurements200,
 	GetV1BodyMeasurementsDate200,
 } from "../generated/client/types/index.js";
-import { withErrorHandling } from "../utils/error-handler.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
@@ -125,7 +125,7 @@ export function registerBodyMeasurementTools(
 			outputSchema: bodyMeasurementsOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurements"),
 		},
-		withErrorHandling(async (args: GetBodyMeasurementsParams) => {
+		withObservability(async (args: GetBodyMeasurementsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
@@ -171,7 +171,7 @@ export function registerBodyMeasurementTools(
 			outputSchema: bodyMeasurementOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurement"),
 		},
-		withErrorHandling(async (args: GetBodyMeasurementParams) => {
+		withObservability(async (args: GetBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date } = args;
 			const data: GetV1BodyMeasurementsDate200 =
@@ -210,7 +210,7 @@ export function registerBodyMeasurementTools(
 		"Create a body measurement entry for a given date. All measurement fields are optional; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
-		withErrorHandling(async (args: CreateBodyMeasurementParams) => {
+		withObservability(async (args: CreateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			await client.createBodyMeasurement({
@@ -243,7 +243,7 @@ export function registerBodyMeasurementTools(
 		"Update an existing body measurement entry for a given date. Only the fields you provide are sent and updated; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Requires at least one measurement field. Returns 404 if no entry exists for the date.",
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
-		withErrorHandling(async (args: UpdateBodyMeasurementParams) => {
+		withObservability(async (args: UpdateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			const payload = buildMeasurementPayload(fields);

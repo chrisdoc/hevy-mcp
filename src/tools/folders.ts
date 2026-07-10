@@ -7,7 +7,7 @@ import type {
 	PostV1RoutineFolders201,
 	RoutineFolder,
 } from "../generated/client/types/index.js";
-import { withErrorHandling } from "../utils/error-handler.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
@@ -51,7 +51,7 @@ export function registerFolderTools(
 			outputSchema: routineFoldersOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine Folders"),
 		},
-		withErrorHandling(async (args: GetRoutineFoldersParams) => {
+		withObservability(async (args: GetRoutineFoldersParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1RoutineFolders200 = await client.getRoutineFolders({
@@ -93,7 +93,7 @@ export function registerFolderTools(
 			outputSchema: routineFolderOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine Folder"),
 		},
-		withErrorHandling(async (args: GetRoutineFolderParams) => {
+		withObservability(async (args: GetRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { folderId } = args;
 			const data: GetV1RoutineFoldersFolderid200 =
@@ -124,7 +124,7 @@ export function registerFolderTools(
 		"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
 		createRoutineFolderSchema,
 		createAnnotations("Create Routine Folder"),
-		withErrorHandling(async (args: CreateRoutineFolderParams) => {
+		withObservability(async (args: CreateRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { name } = args;
 			const data: PostV1RoutineFolders201 = await client.createRoutineFolder({
