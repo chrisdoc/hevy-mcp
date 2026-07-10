@@ -22,6 +22,7 @@ import {
 	formattedExerciseHistoryEntrySchema,
 	formattedExerciseTemplateSchema,
 	formattedRoutineFolderSchema,
+	formattedRoutineExerciseSchema,
 	formattedRoutineSchema,
 	formattedWorkoutSchema,
 	userOutputSchema,
@@ -95,6 +96,25 @@ describe("formatted output schemas", () => {
 		expect(formattedWorkoutSchema.parse(workout)).toEqual(workout);
 		expect(formattedRoutineSchema.parse(routine)).toEqual(routine);
 	});
+
+	it("accepts numeric workout timestamps", () => {
+		const workout = {
+			startTime: 1_735_729_200,
+			endTime: 1_735_732_800,
+			duration: "1h 0m 0s",
+		};
+
+		expect(formattedWorkoutSchema.parse(workout)).toEqual(workout);
+	});
+
+	it.each(["60", 60, null])(
+		"accepts routine restSeconds value %s",
+		(restSeconds) => {
+			const exercise = { restSeconds };
+
+			expect(formattedRoutineExerciseSchema.parse(exercise)).toEqual(exercise);
+		},
+	);
 
 	it("reuses generated contracts for raw events and user info", () => {
 		expect(() =>

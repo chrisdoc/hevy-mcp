@@ -268,6 +268,14 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			page: 1,
 			pageSize: 1,
 		});
+		const structuredContent = result.structuredContent as {
+			routines: Array<{
+				id: string;
+				title: string;
+				folderId: number;
+				exercises: Array<{ restSeconds: number }>;
+			}>;
+		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
@@ -276,12 +284,14 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		}>;
 
 		expect(result.isError).toBeFalsy();
-		expect(payload[0]).toMatchObject({
+		expect(structuredContent.routines[0]).toMatchObject({
 			id: "routine-1",
 			title: "Mock Push Day",
 			folderId: 10,
 			exercises: [{ restSeconds: 60 }],
 		});
+		expect(structuredContent.routines[0]?.exercises[0]?.restSeconds).toBe(60);
+		expect(payload).toEqual(structuredContent.routines);
 	});
 
 	it("accepts nullable routine exercise notes through MCP output validation", async () => {
