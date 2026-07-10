@@ -11,6 +11,11 @@ export type McpToolResponse = Omit<CallToolResult, "content"> & {
 	content: TextContent[];
 };
 
+export type StructuredMcpToolResponse<T extends Record<string, unknown>> =
+	McpToolResponse & {
+		structuredContent: T;
+	};
+
 /**
  * Format options for JSON responses
  */
@@ -48,6 +53,23 @@ export function createJsonResponse(
 }
 
 /**
+ * Create a JSON text response with a typed machine-readable payload.
+ *
+ * The text content is produced by the legacy JSON formatter so existing MCP
+ * clients receive byte-for-byte identical output.
+ */
+export function createStructuredJsonResponse<T extends Record<string, unknown>>(
+	data: unknown,
+	structuredContent: T,
+	options: JsonFormatOptions = { pretty: true, indent: 2 },
+): StructuredMcpToolResponse<T> {
+	return {
+		...createJsonResponse(data, options),
+		structuredContent,
+	};
+}
+
+/**
  * Create a standardized success response with text data
  *
  * @param message - The text message to include in the response
@@ -74,4 +96,16 @@ export function createEmptyResponse(
 	message = "No data found",
 ): McpToolResponse {
 	return createTextResponse(message);
+}
+
+/**
+ * Create an empty/not-found text response with a valid structured payload.
+ */
+export function createStructuredEmptyResponse<
+	T extends Record<string, unknown>,
+>(message: string, structuredContent: T): StructuredMcpToolResponse<T> {
+	return {
+		...createEmptyResponse(message),
+		structuredContent,
+	};
 }
