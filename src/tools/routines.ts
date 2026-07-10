@@ -14,7 +14,7 @@ import type {
 	PutV1RoutinesRoutineid200,
 	Routine,
 } from "../generated/client/types/index.js";
-import { withErrorHandling } from "../utils/error-handler.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
@@ -115,7 +115,7 @@ export function registerRoutineTools(
 			outputSchema: routinesOutputSchema,
 			annotations: readOnlyAnnotations("Get Routines"),
 		},
-		withErrorHandling(async (args: GetRoutinesParams) => {
+		withObservability(async (args: GetRoutinesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1Routines200 = await client.getRoutines({
@@ -153,7 +153,7 @@ export function registerRoutineTools(
 			outputSchema: routineOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine"),
 		},
-		withErrorHandling(async (args: GetRoutineParams) => {
+		withObservability(async (args: GetRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId } = args;
 			const data: GetV1RoutinesRoutineid200 = await client.getRoutineById(
@@ -208,7 +208,7 @@ export function registerRoutineTools(
 		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
 		createRoutineSchema,
 		createAnnotations("Create Routine"),
-		withErrorHandling(async (args: CreateRoutineParams) => {
+		withObservability(async (args: CreateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { title, folderId, notes, exercises } = args;
 			let usesRepRanges = false;
@@ -315,7 +315,7 @@ export function registerRoutineTools(
 		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
 		updateRoutineSchema,
 		updateAnnotations("Update Routine"),
-		withErrorHandling(async (args: UpdateRoutineParams) => {
+		withObservability(async (args: UpdateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId, title, notes, exercises } = args;
 			let usesRepRanges = false;
