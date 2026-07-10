@@ -73,6 +73,24 @@ function getAnnotations(
 	return match[3] as ToolAnnotations;
 }
 
+function getDescription(
+	spies: ReturnType<typeof registerAllTools>,
+	name: string,
+): string {
+	const registered = spies.registerTool.mock.calls.find(
+		([toolName]) => toolName === name,
+	);
+	if (registered) {
+		return (registered[1] as { description: string }).description;
+	}
+	const match = spies.tool.mock.calls.find(([toolName]) => toolName === name);
+	if (!match) {
+		throw new Error(`Tool ${name} was not registered`);
+	}
+	// server.tool(name, description, schema, annotations, handler)
+	return match[1] as string;
+}
+
 describe("tool annotations", () => {
 	const spies = registerAllTools();
 
@@ -97,6 +115,34 @@ describe("tool annotations", () => {
 			expect(annotations.title, `${name} title`).toBeTruthy();
 			expect(annotations.openWorldHint, `${name} openWorldHint`).toBe(false);
 		}
+	});
+
+	it("every tool has concise selection guidance", () => {
+		for (const name of [...READ_ONLY_TOOLS, ...CREATE_TOOLS, ...UPDATE_TOOLS]) {
+			const description = getDescription(spies, name);
+			const words = description.trim().split(/\s+/);
+
+			expect(description, `${name} aliases`).toMatch(/Aliases: [^<]+, [^<]+\./);
+			expect(description, `${name} use case`).toMatch(
+				/<use_case>.+<\/use_case>/,
+			);
+			expect(description, `${name} important notes`).toMatch(
+				/<important_notes>.+<\/important_notes>/,
+			);
+			expect(words.length, `${name} word budget`).toBeLessThanOrEqual(120);
+		}
+	});
+
+	it.each(READ_ONLY_TOOLS)("%s description says it is read-only", (name) => {
+		expect(getDescription(spies, name)).toMatch(/^Read-only(?:\.| for)/);
+	});
+
+	it.each(CREATE_TOOLS)("%s description says it writes", (name) => {
+		expect(getDescription(spies, name)).toMatch(/^Writes to the Hevy account/);
+	});
+
+	it.each(UPDATE_TOOLS)("%s description says it mutates", (name) => {
+		expect(getDescription(spies, name)).toMatch(/^Mutates the Hevy account/);
 	});
 
 	it.each(READ_ONLY_TOOLS)("%s is read-only", (name) => {
