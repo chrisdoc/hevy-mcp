@@ -18,8 +18,17 @@ automations:
       - "{{ not pr.draft }}"
     run:
       - action: code-review@v1
-        args:
-          approve_on_LGTM: "{{ calc.safe_changes }}"
+
+  # Approve only when the AI review passes and the changes are safe.
+  auto_approve_safe_lgtm:
+    on:
+      - pr_created
+      - commit
+    if:
+      - "{{ actions.linearb_ai_review.outputs.is_LGTM }}"
+      - "{{ calc.safe_changes }}"
+    run:
+      - action: approve@v1
 
   # Use LinearB's AI service to add a description to the PR
   linearb_ai_description:
