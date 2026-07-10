@@ -52,10 +52,18 @@ async function callTool(
 	if (!firstContent || firstContent.type !== "text") {
 		throw new Error("Expected text content in MCP tool response");
 	}
+	if (
+		!result.isError &&
+		(name.startsWith("get-") || name.startsWith("search-")) &&
+		result.structuredContent === undefined
+	) {
+		throw new Error(`Expected structured content from ${name}`);
+	}
 
 	return {
 		isError: result.isError,
 		text: firstContent.text,
+		structuredContent: result.structuredContent,
 	};
 }
 
@@ -112,6 +120,36 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		nock.enableNetConnect();
 	});
 
+	it("advertises output schemas for all read-only tools", async () => {
+		if (!client) throw new Error("Client not initialized");
+		const result = await client.listTools();
+		const readOnlyNames = new Set([
+			"get-workouts",
+			"get-workout",
+			"get-workout-count",
+			"get-workout-events",
+			"get-routines",
+			"get-routine",
+			"get-exercise-templates",
+			"get-exercise-template",
+			"get-exercise-history",
+			"search-exercise-templates",
+			"get-routine-folders",
+			"get-routine-folder",
+			"get-body-measurements",
+			"get-body-measurement",
+			"get-user-info",
+		]);
+		const readOnlyTools = result.tools.filter(({ name }) =>
+			readOnlyNames.has(name),
+		);
+
+		expect(readOnlyTools).toHaveLength(readOnlyNames.size);
+		for (const tool of readOnlyTools) {
+			expect(tool.outputSchema, `${tool.name} output schema`).toBeTruthy();
+		}
+	});
+
 	it("mocks get-workouts through MCP client/server transport", async () => {
 		if (!client) throw new Error("Client not initialized");
 
@@ -153,6 +191,50 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 	});
 
+	it("accepts nullable workout fields through MCP output validation", async () => {
+		if (!client) throw new Error("Client not initialized");
+
+		getApiScope()
+			.get("/v1/workouts/workout-null-fields")
+			.reply(200, {
+				id: "workout-null-fields",
+				title: "Nullable Workout",
+				description: null,
+				start_time: "2025-03-27T07:00:00Z",
+				end_time: "2025-03-27T08:00:00Z",
+				exercises: [
+					{
+						index: 0,
+						title: "Bench Press",
+						exercise_template_id: "template-1",
+						notes: null,
+						sets: [],
+					},
+				],
+			});
+
+		const result = await callTool(client, "get-workout", {
+			workoutId: "workout-null-fields",
+		});
+		const structuredContent = result.structuredContent as {
+			workout: {
+				description: null;
+				exercises: Array<{ notes: null }>;
+			};
+		};
+
+		expect(result.isError).toBeFalsy();
+		expect(structuredContent).toMatchObject({
+			workout: {
+				description: null,
+				exercises: [{ notes: null }],
+			},
+		});
+		expect(result.text).toBe(
+			JSON.stringify(structuredContent.workout, null, 2),
+		);
+	});
+
 	it("mocks get-routines through MCP client/server transport", async () => {
 		if (!client) throw new Error("Client not initialized");
 
@@ -190,6 +272,48 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			title: "Mock Push Day",
 			folderId: 10,
 		});
+	});
+
+	it("accepts nullable routine exercise notes through MCP output validation", async () => {
+		if (!client) throw new Error("Client not initialized");
+
+		getApiScope()
+			.get("/v1/routines/routine-null-notes")
+			.reply(200, {
+				routine: {
+					id: "routine-null-notes",
+					title: "Nullable Routine",
+					folder_id: null,
+					exercises: [
+						{
+							index: 0,
+							title: "Bench Press",
+							exercise_template_id: "template-1",
+							notes: null,
+							sets: [],
+						},
+					],
+				},
+			});
+
+		const result = await callTool(client, "get-routine", {
+			routineId: "routine-null-notes",
+		});
+		const structuredContent = result.structuredContent as {
+			routine: {
+				exercises: Array<{ notes: null }>;
+			};
+		};
+
+		expect(result.isError).toBeFalsy();
+		expect(structuredContent).toMatchObject({
+			routine: {
+				exercises: [{ notes: null }],
+			},
+		});
+		expect(result.text).toBe(
+			JSON.stringify(structuredContent.routine, null, 2),
+		);
 	});
 
 	it("mocks get-exercise-templates through MCP transport", async () => {
