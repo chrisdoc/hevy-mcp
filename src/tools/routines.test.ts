@@ -3,11 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Routine } from "../generated/client/types/index.js";
 import { formatRoutine } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import { registerRoutineTools } from "./routines.js";
-
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 function createMockServer() {
 	const tool = vi.fn();

@@ -14,6 +14,7 @@ import {
 	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
 } from "../utils/formatters.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	createEmptyResponse,
 	createJsonResponse,
@@ -28,11 +29,6 @@ import {
 	exerciseTypeEnum,
 	muscleGroupEnum,
 } from "../utils/schemas.js";
-
-// Type definitions for the template operations
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
 
 const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
 const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
