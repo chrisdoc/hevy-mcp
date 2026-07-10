@@ -187,41 +187,41 @@ export function registerWorkoutTools(
 			outputSchema: workoutEventsOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout Events"),
 		},
-			withObservability(async (args: GetWorkoutEventsParams) => {
-				const client = requireClient(hevyClient);
-				const { page, pageSize, since } = args;
-				const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
-					page,
-					pageSize,
-					since,
-				});
+		withObservability(async (args: GetWorkoutEventsParams) => {
+			const client = requireClient(hevyClient);
+			const { page, pageSize, since } = args;
+			const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
+				page,
+				pageSize,
+				since,
+			});
 
-				const events =
-					data?.events?.map((event) => {
-						if (event.type === "updated") {
-							const updatedEvent = event as UpdatedWorkout;
-							return {
-								type: "updated",
-								workout: formatWorkout(updatedEvent.workout),
-							};
-						}
-						const deletedEvent = event as DeletedWorkout;
+			const events =
+				data?.events?.map((event) => {
+					if (event.type === "updated") {
+						const updatedEvent = event as UpdatedWorkout;
 						return {
-							type: "deleted",
-							id: deletedEvent.id,
-							deletedAt: deletedEvent.deleted_at,
+							type: "updated",
+							workout: formatWorkout(updatedEvent.workout),
 						};
-					}) || [];
+					}
+					const deletedEvent = event as DeletedWorkout;
+					return {
+						type: "deleted",
+						id: deletedEvent.id,
+						deletedAt: deletedEvent.deleted_at,
+					};
+				}) || [];
 
-				if (events.length === 0) {
-					return createStructuredEmptyResponse(
-						`No workout events found for the specified parameters since ${since}`,
-						{ events: [] },
-					);
-				}
+			if (events.length === 0) {
+				return createStructuredEmptyResponse(
+					`No workout events found for the specified parameters since ${since}`,
+					{ events: [] },
+				);
+			}
 
-				return createStructuredJsonResponse(events, { events });
-			}, "get-workout-events"),
+			return createStructuredJsonResponse(events, { events });
+		}, "get-workout-events"),
 	);
 
 	// Create workout
