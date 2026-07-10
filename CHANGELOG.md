@@ -1,3 +1,21 @@
+## 1.26.6
+
+### Patch Changes
+
+- [#493](https://github.com/chrisdoc/hevy-mcp/pull/493) [`d36658e`](https://github.com/chrisdoc/hevy-mcp/commit/d36658e410b098c4a7f8db97b0b20371d4f7d4d4) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add enhanced OpenTelemetry and Sentry instrumentation and observability to MCP tool calls, capturing safe whitelisted arguments, response payload metadata (content count and text length), detailed error properties (code, message, type), and grouping execution duration by success/error status.
+
+## 1.26.5
+
+### Patch Changes
+
+- [#491](https://github.com/chrisdoc/hevy-mcp/pull/491) [`2d22bd2`](https://github.com/chrisdoc/hevy-mcp/commit/2d22bd21f1d726777d77efff4163ebb33a2fc947) Thanks [@chrisdoc](https://github.com/chrisdoc)! - change nodejs engine to 20
+
+## 1.26.4
+
+### Patch Changes
+
+- [#488](https://github.com/chrisdoc/hevy-mcp/pull/488) [`161adc7`](https://github.com/chrisdoc/hevy-mcp/commit/161adc704179a0e3a47493d5d3b7f7c46b7c15c9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Added integration tests covering the workout detail endpoints: `get-workout`, `get-workout-count`, and `get-workout-events`. These tools were not exercised by the existing mocked integration test suite.
+
 ## 1.26.3
 
 ### Patch Changes

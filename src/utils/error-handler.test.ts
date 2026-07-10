@@ -1,7 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createErrorResponse, withErrorHandling } from "./error-handler";
 import { getCurrentUserId, Sentry } from "./telemetry.js";
-
 function createMockAxiosError(status: number, data: unknown): unknown {
 	return {
 		isAxiosError: true,
@@ -34,6 +33,7 @@ const testDoubles = vi.hoisted(() => ({
 		const cb = args[args.length - 1] as (span: unknown) => unknown;
 		return cb(testDoubles.span);
 	}),
+	toolDurationRecord: vi.fn(),
 }));
 
 vi.mock("./telemetry.js", () => ({
@@ -57,7 +57,7 @@ vi.mock("./telemetry.js", () => ({
 vi.mock("./metrics.js", () => ({
 	toolInvocations: { add: vi.fn() },
 	toolErrors: { add: vi.fn() },
-	toolDuration: { record: vi.fn() },
+	toolDuration: { record: testDoubles.toolDurationRecord },
 	apiCalls: { add: vi.fn() },
 	apiDuration: { record: vi.fn() },
 	stdioParseErrors: { add: vi.fn() },
@@ -646,6 +646,133 @@ describe("Error Handler", () => {
 				},
 			});
 			expect(Sentry.captureException).toHaveBeenCalledWith(42);
+		});
+
+		it("adds safe whitelisted arguments and argument keys string to span attributes", async () => {
+			testDoubles.span.setAttribute.mockClear();
+			testDoubles.startActiveSpan.mockClear();
+
+			const mockFn = vi.fn().mockResolvedValue({
+				content: [{ type: "text", text: "Success" }],
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "ArgsContext");
+			await wrappedFn({
+				page: 2,
+				pageSize: 10,
+				workoutId: "workout-456",
+				privateNote: "This should be hidden", // non-whitelisted
+				query: "bench press",
+			});
+
+			// Should add is_error attribute
+			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+				"mcp.tool.result.is_error",
+				false,
+			);
+
+			// Check individual attributes from extractSafeArgs via startActiveSpan attributes parameter
+			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
+				"mcp.tool.ArgsContext",
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						"mcp.tool.name": "ArgsContext",
+						"mcp.tool.args.key_count": 5,
+						"mcp.tool.args.keys": "page,pageSize,workoutId,query",
+						"mcp.tool.args.page": 2,
+						"mcp.tool.args.pageSize": 10,
+						"mcp.tool.args.workoutId": "workout-456",
+						"mcp.tool.args.query": "bench press",
+					}),
+				}),
+				expect.any(Function),
+			);
+
+			// Should NOT include privateNote in startActiveSpan attributes
+			const lastCall = vi.mocked(testDoubles.startActiveSpan).mock.lastCall;
+			const attributes = (lastCall?.[1] as any)?.attributes;
+			expect(attributes).not.toHaveProperty("mcp.tool.args.privateNote");
+		});
+
+		it("truncates query string if it is too long", async () => {
+			testDoubles.span.setAttribute.mockClear();
+
+			const mockFn = vi.fn().mockResolvedValue({
+				content: [{ type: "text", text: "Success" }],
+			});
+
+			const longQuery = "a".repeat(120);
+			const expectedTruncated = "a".repeat(100) + "...";
+
+			const wrappedFn = withErrorHandling(mockFn, "TruncateContext");
+			await wrappedFn({
+				query: longQuery,
+			});
+
+			expect(testDoubles.startActiveSpan).toHaveBeenLastCalledWith(
+				"mcp.tool.TruncateContext",
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						"mcp.tool.args.query": expectedTruncated,
+					}),
+				}),
+				expect.any(Function),
+			);
+		});
+
+		it("sets result content details on the span", async () => {
+			testDoubles.span.setAttribute.mockClear();
+
+			const mockFn = vi.fn().mockResolvedValue({
+				content: [
+					{ type: "text", text: "Hello" },
+					{ type: "text", text: "World" },
+				],
+			});
+
+			const wrappedFn = withErrorHandling(mockFn, "ResultDetailsContext");
+			await wrappedFn({});
+
+			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+				"mcp.tool.result.content_count",
+				2,
+			);
+			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+				"mcp.tool.result.text_length",
+				10, // "Hello" + "World" length
+			);
+		});
+
+		it("sets error details on span and records metric on error", async () => {
+			testDoubles.span.setAttribute.mockClear();
+			testDoubles.toolDurationRecord.mockClear();
+
+			const mockError = new Error("Something went wrong");
+			(mockError as any).code = "ERR_GENERIC";
+			const mockFn = vi.fn().mockRejectedValue(mockError);
+
+			const wrappedFn = withErrorHandling(mockFn, "ErrorDetailsContext");
+			await wrappedFn({});
+
+			expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
+				code: 2, // SpanStatusCode.ERROR
+			});
+			expect(testDoubles.span.recordException).toHaveBeenCalledWith(mockError);
+			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+				"error.type",
+				"UNKNOWN_ERROR",
+			);
+			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+				"error.code",
+				"ERR_GENERIC",
+			);
+			expect(testDoubles.toolDurationRecord).toHaveBeenLastCalledWith(
+				expect.any(Number),
+				{
+					tool_name: "ErrorDetailsContext",
+					is_error: "true",
+				},
+			);
 		});
 	});
 });

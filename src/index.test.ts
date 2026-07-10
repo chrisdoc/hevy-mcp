@@ -10,12 +10,9 @@ import { Sentry } from "./utils/telemetry.js";
 
 const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
-const TEST_KEY_HMAC_SHA256 =
-	"2cb0b5f95a4652a38a004b9767aa14cea59feb62eb9252ef5fe7f64afd6b6b27";
-const TEST_API_KEY_HMAC_SHA256 =
-	"0eefd4f47c434138f560075be1eedfca27256a782534f3f254781d736cbd468c";
-const CLI_KEY_HMAC_SHA256 =
-	"85a3f127af4cea435cd358405c5298016946cc3f4e196552c2f1e435c2c6f1b3";
+const TEST_KEY_HMAC_SHA256 = "2cb0b5f95a";
+const TEST_API_KEY_HMAC_SHA256 = "0eefd4f47c";
+const CLI_KEY_HMAC_SHA256 = "85a3f127af";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
