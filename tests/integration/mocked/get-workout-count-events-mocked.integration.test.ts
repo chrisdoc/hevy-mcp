@@ -147,6 +147,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 			const payload = JSON.parse(result.text) as Array<{
 				id?: string;
 				type?: string;
+				workout_id?: string;
 			}>;
 
 			expect(result.isError).toBeFalsy();
@@ -155,6 +156,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 			expect(payload[0]).toMatchObject({
 				id: "event-1",
 				type: "updated",
+				workout_id: "workout-1",
 			});
 		} finally {
 			consoleErrorSpy.mockRestore();
