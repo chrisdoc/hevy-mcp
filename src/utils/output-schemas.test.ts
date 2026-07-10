@@ -116,10 +116,20 @@ describe("formatted output schemas", () => {
 		},
 	);
 
-	it("reuses generated contracts for raw events and user info", () => {
+	it("uses formatted schemas for events and generated contract for user info", () => {
 		expect(() =>
 			workoutEventsOutputSchema.events.parse([
-				{ type: "deleted", id: "workout-1", deleted_at: "2025-01-01" },
+				{ type: "deleted", id: "workout-1", deletedAt: "2025-01-01" },
+				{
+					type: "updated",
+					workout: formatWorkout({
+						id: "workout-1",
+						title: "Workout",
+						start_time: "2025-01-01T10:00:00Z",
+						end_time: "2025-01-01T11:00:00Z",
+						exercises: [],
+					}),
+				},
 			]),
 		).not.toThrow();
 		expect(() =>
