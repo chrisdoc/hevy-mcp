@@ -12,7 +12,7 @@ import type {
 	PostWorkoutsRequestSetTypeEnumKey,
 	PutV1WorkoutsWorkoutid200,
 } from "../generated/client/types/index.js";
-import { withToolMonitoring } from "../utils/telemetry-wrapper.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
@@ -47,7 +47,7 @@ export function registerWorkoutTools(
 		"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
 		getWorkoutsSchema,
 		readOnlyAnnotations("Get Workouts"),
-		withToolMonitoring(async (args: GetWorkoutsParams) => {
+		withObservability(async (args: GetWorkoutsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1Workouts200 = await client.getWorkouts({
@@ -79,7 +79,7 @@ export function registerWorkoutTools(
 		"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
 		getWorkoutSchema,
 		readOnlyAnnotations("Get Workout"),
-		withToolMonitoring(async (args: GetWorkoutParams) => {
+		withObservability(async (args: GetWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { workoutId } = args;
 			const data: GetV1WorkoutsWorkoutid200 =
@@ -100,7 +100,7 @@ export function registerWorkoutTools(
 		"Get the total number of workouts on the account. Useful for pagination or statistics.",
 		{},
 		readOnlyAnnotations("Get Workout Count"),
-		withToolMonitoring(async () => {
+		withObservability(async () => {
 			const client = requireClient(hevyClient);
 			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
@@ -121,7 +121,7 @@ export function registerWorkoutTools(
 		"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
 		getWorkoutEventsSchema,
 		readOnlyAnnotations("Get Workout Events"),
-		withToolMonitoring(async (args: GetWorkoutEventsParams) => {
+		withObservability(async (args: GetWorkoutEventsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize, since } = args;
 			const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
@@ -181,7 +181,7 @@ export function registerWorkoutTools(
 		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
 		createWorkoutSchema,
 		createAnnotations("Create Workout"),
-		withToolMonitoring(async (args: CreateWorkoutParams) => {
+		withObservability(async (args: CreateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { title, description, startTime, endTime, isPrivate, exercises } =
 				args;
@@ -266,7 +266,7 @@ export function registerWorkoutTools(
 		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
 		updateWorkoutSchema,
 		updateAnnotations("Update Workout"),
-		withToolMonitoring(async (args: UpdateWorkoutParams) => {
+		withObservability(async (args: UpdateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const {
 				workoutId,

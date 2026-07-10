@@ -9,7 +9,7 @@ import type {
 	PostV1ExerciseTemplates200,
 } from "../generated/client/types/index.js";
 import { AsyncTtlCache } from "../utils/cache.js";
-import { withToolMonitoring } from "../utils/telemetry-wrapper.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import {
 	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
@@ -95,7 +95,7 @@ export function registerTemplateTools(
 		"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
 		getExerciseTemplatesSchema,
 		readOnlyAnnotations("Get Exercise Templates"),
-		withToolMonitoring(async (args: GetExerciseTemplatesParams) => {
+		withObservability(async (args: GetExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1ExerciseTemplates200 = await client.getExerciseTemplates(
@@ -134,7 +134,7 @@ export function registerTemplateTools(
 		"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
 		getExerciseTemplateSchema,
 		readOnlyAnnotations("Get Exercise Template"),
-		withToolMonitoring(async (args: GetExerciseTemplateParams) => {
+		withObservability(async (args: GetExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId } = args;
 			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
@@ -174,7 +174,7 @@ export function registerTemplateTools(
 		"Get past sets for a specific exercise template, optionally filtered by start and end dates.",
 		getExerciseHistorySchema,
 		readOnlyAnnotations("Get Exercise History"),
-		withToolMonitoring(async (args: GetExerciseHistoryParams) => {
+		withObservability(async (args: GetExerciseHistoryParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId, startDate, endDate } = args;
 			const data: GetV1ExerciseHistoryExercisetemplateid200 =
@@ -215,7 +215,7 @@ export function registerTemplateTools(
 		"Create a custom exercise template with title, type, equipment, and muscle groups.",
 		createExerciseTemplateSchema,
 		createAnnotations("Create Exercise Template"),
-		withToolMonitoring(async (args: CreateExerciseTemplateParams) => {
+		withObservability(async (args: CreateExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const {
 				title,
@@ -273,7 +273,7 @@ export function registerTemplateTools(
 		"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call, caches the catalog in memory with a bounded TTL cache, and reuses it for subsequent searches. Use refresh:true to force a re-fetch.",
 		searchExerciseTemplatesSchema,
 		readOnlyAnnotations("Search Exercise Templates"),
-		withToolMonitoring(async (args: SearchExerciseTemplatesParams) => {
+		withObservability(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
 			const catalog = await exerciseTemplateCatalogCache.getOrFetch(

@@ -7,7 +7,7 @@ import type {
 	PostV1RoutineFolders201,
 	RoutineFolder,
 } from "../generated/client/types/index.js";
-import { withToolMonitoring } from "../utils/telemetry-wrapper.js";
+import { withObservability } from "../utils/observability-wrapper.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
 import {
 	createEmptyResponse,
@@ -45,7 +45,7 @@ export function registerFolderTools(
 		"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
 		getRoutineFoldersSchema,
 		readOnlyAnnotations("Get Routine Folders"),
-		withToolMonitoring(async (args: GetRoutineFoldersParams) => {
+		withObservability(async (args: GetRoutineFoldersParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1RoutineFolders200 = await client.getRoutineFolders({
@@ -80,7 +80,7 @@ export function registerFolderTools(
 		"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
 		getRoutineFolderSchema,
 		readOnlyAnnotations("Get Routine Folder"),
-		withToolMonitoring(async (args: GetRoutineFolderParams) => {
+		withObservability(async (args: GetRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { folderId } = args;
 			const data: GetV1RoutineFoldersFolderid200 =
@@ -110,7 +110,7 @@ export function registerFolderTools(
 		"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
 		createRoutineFolderSchema,
 		createAnnotations("Create Routine Folder"),
-		withToolMonitoring(async (args: CreateRoutineFolderParams) => {
+		withObservability(async (args: CreateRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { name } = args;
 			const data: PostV1RoutineFolders201 = await client.createRoutineFolder({

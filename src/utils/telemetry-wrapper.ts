@@ -1,6 +1,5 @@
 import { SpanStatusCode } from "@opentelemetry/api";
 import { determineErrorType } from "./error-classification.js";
-import { withErrorHandling } from "./error-handler.js";
 import { toolDuration, toolErrors, toolInvocations } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
 import { getCurrentUserId, tracer } from "./telemetry.js";
@@ -137,15 +136,4 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 			},
 		);
 	};
-}
-
-/**
- * Compose telemetry before error handling so failed calls retain their span
- * attributes and metrics before the error response is formatted.
- */
-export function withToolMonitoring<TParams extends Record<string, unknown>>(
-	fn: (args: TParams) => Promise<McpToolResponse>,
-	context: string,
-) {
-	return withErrorHandling(withTelemetry(fn, context), context);
 }
