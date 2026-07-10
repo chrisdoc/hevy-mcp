@@ -50,6 +50,7 @@ jobs:
         uses: changesets/action@v1
         with:
           publish: npm run release
+          version: node ./node_modules/@changesets/cli/bin.js version
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
