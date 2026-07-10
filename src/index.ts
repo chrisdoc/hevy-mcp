@@ -27,6 +27,7 @@ import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { createClient } from "./utils/hevyClient.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
+import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
 const version = serviceVersion;
@@ -308,6 +309,10 @@ export async function runServer() {
 						}
 					},
 				);
+				scheduleUpdateCheck({
+					packageName: serviceName,
+					currentVersion: serviceVersion,
+				});
 				installGracefulShutdown({ target: server });
 
 				span.setStatus({ code: SpanStatusCode.OK });
