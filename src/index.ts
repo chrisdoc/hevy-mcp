@@ -14,6 +14,7 @@ import { createHmac } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerHevyResources } from "./resources/hevy.js";
 import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
 import { registerFolderTools } from "./tools/folders.js";
@@ -170,6 +171,7 @@ function buildServer(apiKey: string) {
 					}
 				});
 
+				registerWorkoutPrompts(server);
 				tracer.startActiveSpan(
 					"mcp.resources.register",
 					{

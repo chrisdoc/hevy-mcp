@@ -240,6 +240,17 @@ The supported path is stdio via `npx hevy-mcp`.
 > folders, exercise templates, or body measurements, so `hevy-mcp` does not
 > provide delete tools for these resources.
 
+## 💬 Available MCP Prompts
+
+| Prompt                        | Arguments                                                                              | Guided workflow                                       |
+| :---------------------------- | :------------------------------------------------------------------------------------- | :---------------------------------------------------- |
+| `analyze-workout-progress`    | Optional `weeks` (1-12; defaults to `4` when omitted from a supplied arguments object) | Analyze recent workout and body-measurement trends.   |
+| `create-workout-from-routine` | `routineId`, `startTime` (UTC ISO seconds)                                             | Record a completed workout using a routine as a plan. |
+
+Compatibility note: with MCP SDK v1.29.0, clients using the default must send
+`arguments: {}` because the SDK rejects requests that omit the entire
+`arguments` object before prompt field defaults are evaluated.
+
 ---
 
 ## 📚 Available MCP Resources
