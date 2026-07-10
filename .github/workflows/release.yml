@@ -48,6 +48,13 @@ jobs:
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
+      - name: Test source MCP build
+        run: node tests/nightly/test_hevy_mcp.mjs
+        env:
+          HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+          HEVY_MCP_COMMAND: node
+          HEVY_MCP_ARGS_JSON: '["dist/cli.mjs"]'
+
       - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@v1

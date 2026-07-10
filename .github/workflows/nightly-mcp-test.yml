@@ -26,6 +26,9 @@ jobs:
           - name: bunx
             command: bunx
             args_json: '["hevy-mcp@latest"]'
+          - name: source
+            command: node
+            args_json: '["dist/cli.mjs"]'
 
     steps:
       - name: Checkout repository
@@ -41,6 +44,10 @@ jobs:
       - name: Install Node dependencies
         id: install_npm_deps
         run: npm ci --no-audit --no-fund
+
+      - name: Build local source
+        if: matrix.launcher.name == 'source'
+        run: npm run build
 
       - name: Set up Bun
         if: matrix.launcher.command == 'bunx'
