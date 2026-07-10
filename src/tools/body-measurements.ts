@@ -5,7 +5,7 @@ import type {
 	GetV1BodyMeasurements200,
 	GetV1BodyMeasurementsDate200,
 } from "../generated/client/types/index.js";
-import { withErrorHandling } from "../utils/error-handler.js";
+import { withToolMonitoring } from "../utils/telemetry-wrapper.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
 import {
 	createEmptyResponse,
@@ -18,7 +18,6 @@ import {
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
-import { withTelemetry } from "../utils/telemetry-wrapper.js";
 import { zNullableNumber } from "../utils/schemas.js";
 
 type HevyClient = ReturnType<
@@ -121,32 +120,27 @@ export function registerBodyMeasurementTools(
 		"Get a paginated list of body measurements for the authenticated user. Returns measurements including weight, body fat, and various circumference measurements.",
 		getBodyMeasurementsSchema,
 		readOnlyAnnotations("Get Body Measurements"),
-		withErrorHandling(
-			withTelemetry(async (args: GetBodyMeasurementsParams) => {
-				const client = requireClient(hevyClient);
-				const { page, pageSize } = args;
-				const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements(
-					{
-						page,
-						pageSize,
-					},
+		withToolMonitoring(async (args: GetBodyMeasurementsParams) => {
+			const client = requireClient(hevyClient);
+			const { page, pageSize } = args;
+			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
+				page,
+				pageSize,
+			});
+
+			const measurements =
+				data?.body_measurements?.map((measurement: BodyMeasurement) =>
+					formatBodyMeasurement(measurement),
+				) || [];
+
+			if (measurements.length === 0) {
+				return createEmptyResponse(
+					"No body measurements found for the specified parameters",
 				);
+			}
 
-				const measurements =
-					data?.body_measurements?.map((measurement: BodyMeasurement) =>
-						formatBodyMeasurement(measurement),
-					) || [];
-
-				if (measurements.length === 0) {
-					return createEmptyResponse(
-						"No body measurements found for the specified parameters",
-					);
-				}
-
-				return createJsonResponse(measurements);
-			}, "get-body-measurements"),
-			"get-body-measurements",
-		),
+			return createJsonResponse(measurements);
+		}, "get-body-measurements"),
 	);
 
 	// Get single body measurement by date
@@ -165,23 +159,20 @@ export function registerBodyMeasurementTools(
 		"Get a single body measurement by date. Returns all measurement fields for the specified date.",
 		getBodyMeasurementSchema,
 		readOnlyAnnotations("Get Body Measurement"),
-		withErrorHandling(
-			withTelemetry(async (args: GetBodyMeasurementParams) => {
-				const client = requireClient(hevyClient);
-				const { date } = args;
-				const data: GetV1BodyMeasurementsDate200 =
-					await client.getBodyMeasurement(date);
+		withToolMonitoring(async (args: GetBodyMeasurementParams) => {
+			const client = requireClient(hevyClient);
+			const { date } = args;
+			const data: GetV1BodyMeasurementsDate200 =
+				await client.getBodyMeasurement(date);
 
-				if (!data) {
-					return createEmptyResponse(
-						`No body measurement found for date ${date}`,
-					);
-				}
+			if (!data) {
+				return createEmptyResponse(
+					`No body measurement found for date ${date}`,
+				);
+			}
 
-				return createJsonResponse(formatBodyMeasurement(data));
-			}, "get-body-measurement"),
-			"get-body-measurement",
-		),
+			return createJsonResponse(formatBodyMeasurement(data));
+		}, "get-body-measurement"),
 	);
 
 	// Create body measurement
@@ -203,21 +194,18 @@ export function registerBodyMeasurementTools(
 		"Create a body measurement entry for a given date. All measurement fields are optional; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
-		withErrorHandling(
-			withTelemetry(async (args: CreateBodyMeasurementParams) => {
-				const client = requireClient(hevyClient);
-				const { date, ...fields } = args;
-				await client.createBodyMeasurement({
-					date,
-					...buildMeasurementPayload(fields),
-				});
+		withToolMonitoring(async (args: CreateBodyMeasurementParams) => {
+			const client = requireClient(hevyClient);
+			const { date, ...fields } = args;
+			await client.createBodyMeasurement({
+				date,
+				...buildMeasurementPayload(fields),
+			});
 
-				return createTextResponse(
-					`Body measurement for ${date} created successfully.`,
-				);
-			}, "create-body-measurement"),
-			"create-body-measurement",
-		),
+			return createTextResponse(
+				`Body measurement for ${date} created successfully.`,
+			);
+		}, "create-body-measurement"),
 	);
 
 	// Update body measurement
@@ -239,23 +227,20 @@ export function registerBodyMeasurementTools(
 		"Update an existing body measurement entry for a given date. Only the fields you provide are sent and updated; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Requires at least one measurement field. Returns 404 if no entry exists for the date.",
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
-		withErrorHandling(
-			withTelemetry(async (args: UpdateBodyMeasurementParams) => {
-				const client = requireClient(hevyClient);
-				const { date, ...fields } = args;
-				const payload = buildMeasurementPayload(fields);
-				if (Object.keys(payload).length === 0) {
-					throw new Error(
-						"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
-					);
-				}
-				await client.updateBodyMeasurement(date, payload);
-
-				return createTextResponse(
-					`Body measurement for ${date} updated successfully.`,
+		withToolMonitoring(async (args: UpdateBodyMeasurementParams) => {
+			const client = requireClient(hevyClient);
+			const { date, ...fields } = args;
+			const payload = buildMeasurementPayload(fields);
+			if (Object.keys(payload).length === 0) {
+				throw new Error(
+					"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
 				);
-			}, "update-body-measurement"),
-			"update-body-measurement",
-		),
+			}
+			await client.updateBodyMeasurement(date, payload);
+
+			return createTextResponse(
+				`Body measurement for ${date} updated successfully.`,
+			);
+		}, "update-body-measurement"),
 	);
 }
