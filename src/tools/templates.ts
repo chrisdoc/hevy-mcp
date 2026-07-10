@@ -8,8 +8,11 @@ import type {
 	GetV1ExerciseTemplatesExercisetemplateid200,
 	PostV1ExerciseTemplates200,
 } from "../generated/client/types/index.js";
-import { AsyncTtlCache } from "../utils/cache.js";
 import { withErrorHandling } from "../utils/error-handler.js";
+import {
+	getExerciseTemplateCatalog,
+	resetExerciseTemplateCatalogCache,
+} from "../utils/exercise-template-catalog.js";
 import {
 	formatExerciseHistoryEntry,
 	formatExerciseTemplate,
@@ -34,44 +37,9 @@ type HevyClient = ReturnType<
 	typeof import("../utils/hevyClientKubb.js").createClient
 >;
 
-const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
-const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
-const EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE = 1;
-
-const exerciseTemplateCatalogCache = new AsyncTtlCache<
-	string,
-	ExerciseTemplate[]
->({
-	ttlMs: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-	maxSize: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
-});
-
-async function fetchExerciseTemplateCatalog(
-	hevyClient: HevyClient,
-): Promise<ExerciseTemplate[]> {
-	const allTemplates: ExerciseTemplate[] = [];
-	let page = 1;
-	let pageCount = 1;
-
-	do {
-		const data: GetV1ExerciseTemplates200 =
-			await hevyClient.getExerciseTemplates({
-				page,
-				pageSize: 100,
-			});
-
-		const templates = data?.exercise_templates ?? [];
-		allTemplates.push(...templates);
-		pageCount = data?.page_count ?? 1;
-		page++;
-	} while (page <= pageCount);
-
-	return allTemplates;
-}
-
 /** Reset the exercise template cache (exposed for testing). */
 export function resetExerciseTemplateCache(): void {
-	exerciseTemplateCatalogCache.clear();
+	resetExerciseTemplateCatalogCache();
 }
 
 /**
@@ -276,11 +244,7 @@ export function registerTemplateTools(
 		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
-			const catalog = await exerciseTemplateCatalogCache.getOrFetch(
-				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
-				() => fetchExerciseTemplateCatalog(client),
-				{ refresh },
-			);
+			const catalog = await getExerciseTemplateCatalog(client, { refresh });
 
 			// Filter by query (case-insensitive title substring match)
 			const queryLower = query.toLowerCase();

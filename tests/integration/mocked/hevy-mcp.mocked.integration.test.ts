@@ -13,12 +13,14 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { registerHevyResources } from "../../../src/resources/hevy.js";
 import { registerBodyMeasurementTools } from "../../../src/tools/body-measurements.js";
 import { registerFolderTools } from "../../../src/tools/folders.js";
 import { registerRoutineTools } from "../../../src/tools/routines.js";
 import { registerTemplateTools } from "../../../src/tools/templates.js";
 import { registerUserTools } from "../../../src/tools/user.js";
 import { registerWorkoutTools } from "../../../src/tools/workouts.js";
+import { resetExerciseTemplateCatalogCache } from "../../../src/utils/exercise-template-catalog.js";
 import { createClient } from "../../../src/utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
@@ -68,6 +70,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 	});
 
 	beforeEach(async () => {
+		resetExerciseTemplateCatalogCache();
 		server = new McpServer({
 			name: "hevy-mcp-mocked-test",
 			version: "1.0.0",
@@ -81,6 +84,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		registerFolderTools(server, hevyClient);
 		registerUserTools(server, hevyClient);
 		registerBodyMeasurementTools(server, hevyClient);
+		registerHevyResources(server, hevyClient);
 
 		client = new Client({
 			name: "hevy-mcp-mocked-test-client",
@@ -328,6 +332,159 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			name: "Mock User",
 			url: "https://hevy.com/user/mock-user",
 		});
+	});
+
+	it("lists all Hevy resources through MCP transport", async () => {
+		if (!client) throw new Error("Client not initialized");
+
+		const result = await client.listResources();
+		expect(
+			result.resources.map(({ name, uri, mimeType }) => ({
+				name,
+				uri,
+				mimeType,
+			})),
+		).toEqual([
+			{
+				name: "user-profile",
+				uri: "hevy://user",
+				mimeType: "application/json",
+			},
+			{
+				name: "workout-count",
+				uri: "hevy://workout-count",
+				mimeType: "application/json",
+			},
+			{
+				name: "exercise-templates",
+				uri: "hevy://exercise-templates",
+				mimeType: "application/json",
+			},
+			{
+				name: "routine-folders",
+				uri: "hevy://routine-folders",
+				mimeType: "application/json",
+			},
+		]);
+	});
+
+	it("reads all Hevy resources through MCP transport", async () => {
+		if (!client) throw new Error("Client not initialized");
+
+		getApiScope()
+			.get("/v1/user/info")
+			.reply(200, {
+				data: {
+					id: "resource-user-1",
+					name: "Resource User",
+					url: "https://hevy.com/user/resource-user",
+				},
+			});
+		getApiScope()
+			.get("/v1/exercise_templates")
+			.query({ page: 1, pageSize: 100 })
+			.reply(200, {
+				page: 1,
+				page_count: 1,
+				exercise_templates: [
+					{
+						id: "resource-template-1",
+						title: "Resource Bench Press",
+						type: "weight_reps",
+						primary_muscle_group: "chest",
+						secondary_muscle_groups: ["triceps"],
+						is_custom: false,
+					},
+				],
+			});
+		getApiScope().get("/v1/workouts/count").reply(200, {
+			workout_count: 42,
+		});
+		getApiScope()
+			.get("/v1/routine_folders")
+			.query({ page: 1, pageSize: 10 })
+			.reply(200, {
+				page: 1,
+				page_count: 1,
+				routine_folders: [
+					{
+						id: 12,
+						title: "Resource Folder",
+						created_at: "2025-03-30T09:00:00Z",
+						updated_at: "2025-03-30T10:00:00Z",
+					},
+				],
+			});
+
+		const userResult = await client.readResource({ uri: "hevy://user" });
+		const userContent = userResult.contents[0];
+		if (!userContent || !("text" in userContent)) {
+			throw new Error("Expected user JSON text resource");
+		}
+		expect(userContent).toMatchObject({
+			uri: "hevy://user",
+			mimeType: "application/json",
+		});
+		expect(JSON.parse(userContent.text)).toEqual({
+			id: "resource-user-1",
+			name: "Resource User",
+			url: "https://hevy.com/user/resource-user",
+		});
+
+		const templatesResult = await client.readResource({
+			uri: "hevy://exercise-templates",
+		});
+		const templatesContent = templatesResult.contents[0];
+		if (!templatesContent || !("text" in templatesContent)) {
+			throw new Error("Expected templates JSON text resource");
+		}
+		expect(templatesContent).toMatchObject({
+			uri: "hevy://exercise-templates",
+			mimeType: "application/json",
+		});
+		expect(JSON.parse(templatesContent.text)).toEqual([
+			{
+				id: "resource-template-1",
+				title: "Resource Bench Press",
+				type: "weight_reps",
+				primaryMuscleGroup: "chest",
+				secondaryMuscleGroups: ["triceps"],
+				isCustom: false,
+			},
+		]);
+
+		const countResult = await client.readResource({
+			uri: "hevy://workout-count",
+		});
+		const countContent = countResult.contents[0];
+		if (!countContent || !("text" in countContent)) {
+			throw new Error("Expected workout count JSON text resource");
+		}
+		expect(countContent).toMatchObject({
+			uri: "hevy://workout-count",
+			mimeType: "application/json",
+		});
+		expect(JSON.parse(countContent.text)).toEqual({ count: 42 });
+
+		const foldersResult = await client.readResource({
+			uri: "hevy://routine-folders",
+		});
+		const foldersContent = foldersResult.contents[0];
+		if (!foldersContent || !("text" in foldersContent)) {
+			throw new Error("Expected routine folders JSON text resource");
+		}
+		expect(foldersContent).toMatchObject({
+			uri: "hevy://routine-folders",
+			mimeType: "application/json",
+		});
+		expect(JSON.parse(foldersContent.text)).toEqual([
+			{
+				id: 12,
+				title: "Resource Folder",
+				createdAt: "2025-03-30T09:00:00Z",
+				updatedAt: "2025-03-30T10:00:00Z",
+			},
+		]);
 	});
 
 	it("mocks a write tool through MCP transport", async () => {
