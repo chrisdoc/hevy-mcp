@@ -443,12 +443,19 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
-	return async (args: Record<string, unknown>) => {
+	return async (rawArgs: Record<string, unknown>) => {
+		const args = rawArgs ?? {};
 		const argumentKeys = Object.keys(args);
 		const argumentKeyCount = argumentKeys.length;
 		const startTime = Date.now();
 
 		toolInvocations.add(1, { tool_name: context });
+
+		const userId = getCurrentUserId();
+		const safeArgs = extractSafeArgs(args);
+		const whitelistedKeys = Object.keys(safeArgs).map((k) =>
+			k.replace("mcp.tool.args.", ""),
+		);
 
 		return tracer.startActiveSpan(
 			`mcp.tool.${context}`,
@@ -456,9 +463,9 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 				attributes: {
 					"mcp.tool.name": context,
 					"mcp.tool.args.key_count": argumentKeyCount,
-					"mcp.tool.args.keys": argumentKeys.join(","),
-					...(getCurrentUserId() ? { "user.id": getCurrentUserId() } : {}),
-					...extractSafeArgs(args),
+					"mcp.tool.args.keys": whitelistedKeys.join(","),
+					...(userId ? { "user.id": userId } : {}),
+					...safeArgs,
 				},
 			},
 			async (span) => {
@@ -466,7 +473,9 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 				try {
 					const result = await fn(args as TParams);
 					isError = Boolean(result.isError);
-					span.setStatus({ code: SpanStatusCode.OK });
+					span.setStatus({
+						code: isError ? SpanStatusCode.ERROR : SpanStatusCode.OK,
+					});
 					span.setAttribute("mcp.tool.result.is_error", isError);
 					if (result.content) {
 						span.setAttribute(
@@ -492,16 +501,12 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 
 					span.setAttribute("error.type", errorType);
 
-					const errorMessage =
-						error instanceof Error ? error.message : String(error);
-					span.setAttribute("error.message", errorMessage);
-
-					const errorCode =
+					const rawCode =
 						error instanceof Error && "code" in error
-							? String((error as { code?: unknown }).code)
+							? (error as { code?: unknown }).code
 							: undefined;
-					if (errorCode) {
-						span.setAttribute("error.code", errorCode);
+					if (rawCode !== undefined && rawCode !== null) {
+						span.setAttribute("error.code", String(rawCode as string | number));
 					}
 
 					toolErrors.add(1, {

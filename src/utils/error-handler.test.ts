@@ -678,7 +678,7 @@ describe("Error Handler", () => {
 					attributes: expect.objectContaining({
 						"mcp.tool.name": "ArgsContext",
 						"mcp.tool.args.key_count": 5,
-						"mcp.tool.args.keys": "page,pageSize,workoutId,privateNote,query",
+						"mcp.tool.args.keys": "page,pageSize,workoutId,query",
 						"mcp.tool.args.page": 2,
 						"mcp.tool.args.pageSize": 10,
 						"mcp.tool.args.workoutId": "workout-456",
@@ -761,10 +761,6 @@ describe("Error Handler", () => {
 			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 				"error.type",
 				"UNKNOWN_ERROR",
-			);
-			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-				"error.message",
-				"Something went wrong",
 			);
 			expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 				"error.code",
