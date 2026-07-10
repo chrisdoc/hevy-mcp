@@ -70,7 +70,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 		});
 
 		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
-		registerWorkoutTools(server, hevyClient);
+		registerWorkoutTools(server, hevyClient, { autoConfirm: true });
 
 		client = new Client({
 			name: "hevy-mcp-workout-detail-test-client",

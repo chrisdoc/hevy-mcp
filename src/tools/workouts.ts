@@ -17,6 +17,10 @@ import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
+	confirmMutation,
+	type MutationToolOptions,
+} from "../utils/mutation-confirmation.js";
+import {
 	workoutCountOutputSchema,
 	workoutEventsOutputSchema,
 	workoutOutputSchema,
@@ -42,6 +46,7 @@ import { setTypeEnum } from "../utils/schemas.js";
 export function registerWorkoutTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	options: MutationToolOptions = {},
 ) {
 	// Get workouts
 	const getWorkoutsSchema = {
@@ -211,9 +216,15 @@ export function registerWorkoutTools(
 		createWorkoutSchema,
 		createAnnotations("Create Workout"),
 		withObservability(async (args: CreateWorkoutParams) => {
-			const client = requireClient(hevyClient);
 			const { title, description, startTime, endTime, isPrivate, exercises } =
 				args;
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Create workout '${title}' from ${startTime} to ${endTime} with ${exercises.length} exercises?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 			const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> = {
 				title,
 				description: description ?? null,
@@ -296,7 +307,6 @@ export function registerWorkoutTools(
 		updateWorkoutSchema,
 		updateAnnotations("Update Workout"),
 		withObservability(async (args: UpdateWorkoutParams) => {
-			const client = requireClient(hevyClient);
 			const {
 				workoutId,
 				title,
@@ -306,6 +316,13 @@ export function registerWorkoutTools(
 				isPrivate,
 				exercises,
 			} = args;
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Update workout ${workoutId} to '${title}' from ${startTime} to ${endTime} with ${exercises.length} exercises?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 			const workoutPayload: NonNullable<PostWorkoutsRequestBody["workout"]> = {
 				title,
 				description: description ?? null,

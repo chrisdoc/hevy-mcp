@@ -19,6 +19,10 @@ import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
+	confirmMutation,
+	type MutationToolOptions,
+} from "../utils/mutation-confirmation.js";
+import {
 	routineOutputSchema,
 	routinesOutputSchema,
 } from "../utils/output-schemas.js";
@@ -98,6 +102,7 @@ const repRangeDisplayWarningText =
 export function registerRoutineTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	options: MutationToolOptions = {},
 ) {
 	// Get routines
 	const getRoutinesSchema = {
@@ -209,8 +214,15 @@ export function registerRoutineTools(
 		createRoutineSchema,
 		createAnnotations("Create Routine"),
 		withObservability(async (args: CreateRoutineParams) => {
-			const client = requireClient(hevyClient);
 			const { title, folderId, notes, exercises } = args;
+			const folderSummary = folderId ? ` in folder ${folderId}` : "";
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Create routine '${title}'${folderSummary} with ${exercises.length} exercises?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 			let usesRepRanges = false;
 			const data: PostV1Routines201 = await client.createRoutine({
 				routine: {
@@ -316,8 +328,14 @@ export function registerRoutineTools(
 		updateRoutineSchema,
 		updateAnnotations("Update Routine"),
 		withObservability(async (args: UpdateRoutineParams) => {
-			const client = requireClient(hevyClient);
 			const { routineId, title, notes, exercises } = args;
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Update routine ${routineId} to '${title}' with ${exercises.length} exercises?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 			let usesRepRanges = false;
 			const data: PutV1RoutinesRoutineid200 = await client.updateRoutine(
 				routineId,

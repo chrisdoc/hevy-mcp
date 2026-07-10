@@ -162,12 +162,12 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		const hevyClient = createClient(hevyApiKey, HEVY_API_BASEURL);
 
 		// Register all tool groups
-		registerWorkoutTools(server, hevyClient);
-		registerRoutineTools(server, hevyClient);
-		registerTemplateTools(server, hevyClient);
-		registerFolderTools(server, hevyClient);
+		registerWorkoutTools(server, hevyClient, { autoConfirm: true });
+		registerRoutineTools(server, hevyClient, { autoConfirm: true });
+		registerTemplateTools(server, hevyClient, { autoConfirm: true });
+		registerFolderTools(server, hevyClient, { autoConfirm: true });
 		registerUserTools(server, hevyClient);
-		registerBodyMeasurementTools(server, hevyClient);
+		registerBodyMeasurementTools(server, hevyClient, { autoConfirm: true });
 
 		// Create client
 		client = new Client({

@@ -11,6 +11,10 @@ import { withObservability } from "../utils/observability-wrapper.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
+	confirmMutation,
+	type MutationToolOptions,
+} from "../utils/mutation-confirmation.js";
+import {
 	routineFolderOutputSchema,
 	routineFoldersOutputSchema,
 } from "../utils/output-schemas.js";
@@ -32,6 +36,7 @@ import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 export function registerFolderTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	options: MutationToolOptions = {},
 ) {
 	// Get routine folders
 	const getRoutineFoldersSchema = {
@@ -125,8 +130,14 @@ export function registerFolderTools(
 		createRoutineFolderSchema,
 		createAnnotations("Create Routine Folder"),
 		withObservability(async (args: CreateRoutineFolderParams) => {
-			const client = requireClient(hevyClient);
 			const { name } = args;
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Create routine folder '${name}'?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 			const data: PostV1RoutineFolders201 = await client.createRoutineFolder({
 				routine_folder: {
 					title: name,

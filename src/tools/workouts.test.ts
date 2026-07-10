@@ -5,10 +5,33 @@ import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerWorkoutTools } from "./workouts.js";
 
-function createMockServer() {
+function createMockServer(
+	options: {
+		capabilities?: unknown;
+		result?: {
+			action: "accept" | "decline" | "cancel";
+			content?: { confirm: boolean };
+		};
+	} = {},
+) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
-	return { server, tool };
+	const capabilities = Object.hasOwn(options, "capabilities")
+		? options.capabilities
+		: { elicitation: { form: {} } };
+	const elicitInput = vi
+		.fn()
+		.mockResolvedValue(
+			options.result ?? { action: "accept", content: { confirm: true } },
+		);
+	const server = {
+		tool,
+		registerTool: tool,
+		server: {
+			getClientCapabilities: vi.fn(() => capabilities),
+			elicitInput,
+		},
+	} as unknown as McpServer;
+	return { elicitInput, server, tool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -35,8 +58,6 @@ describe("registerWorkoutTools", () => {
 			"get-workout",
 			"get-workout-count",
 			"get-workout-events",
-			"create-workout",
-			"update-workout",
 		];
 
 		for (const name of toolNames) {
@@ -216,6 +237,41 @@ describe("registerWorkoutTools", () => {
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual({ count: 0 });
 	});
+
+	it.each([
+		["declined", { result: { action: "decline" as const } }],
+		["canceled", { result: { action: "cancel" as const } }],
+		["unsupported", { capabilities: {} }],
+	])(
+		"does not create or update workouts when confirmation is %s",
+		async (_label, confirmation) => {
+			const { server, tool } = createMockServer(confirmation);
+			const createWorkout = vi.fn();
+			const updateWorkout = vi.fn();
+			const hevyClient = {
+				createWorkout,
+				updateWorkout,
+			} as unknown as HevyClient;
+			registerWorkoutTools(server, hevyClient);
+
+			const workout = {
+				title: "Guarded Workout",
+				description: null,
+				startTime: "2025-03-27T07:00:00Z",
+				endTime: "2025-03-27T08:00:00Z",
+				isPrivate: false,
+				exercises: [],
+			};
+			await getToolRegistration(tool, "create-workout").handler(workout);
+			await getToolRegistration(tool, "update-workout").handler({
+				...workout,
+				workoutId: "workout-1",
+			});
+
+			expect(createWorkout).not.toHaveBeenCalled();
+			expect(updateWorkout).not.toHaveBeenCalled();
+		},
+	);
 
 	it("create-workout maps arguments to the request body and formats the response", async () => {
 		const { server, tool } = createMockServer();

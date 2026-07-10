@@ -8,10 +8,33 @@ import {
 	resetExerciseTemplateCache,
 } from "./templates.js";
 
-function createMockServer() {
+function createMockServer(
+	options: {
+		capabilities?: unknown;
+		result?: {
+			action: "accept" | "decline" | "cancel";
+			content?: { confirm: boolean };
+		};
+	} = {},
+) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
-	return { server, tool };
+	const capabilities = Object.hasOwn(options, "capabilities")
+		? options.capabilities
+		: { elicitation: { form: {} } };
+	const elicitInput = vi
+		.fn()
+		.mockResolvedValue(
+			options.result ?? { action: "accept", content: { confirm: true } },
+		);
+	const server = {
+		tool,
+		registerTool: tool,
+		server: {
+			getClientCapabilities: vi.fn(() => capabilities),
+			elicitInput,
+		},
+	} as unknown as McpServer;
+	return { elicitInput, server, tool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -625,4 +648,28 @@ describe("registerTemplateTools", () => {
 			message: "Exercise template created successfully",
 		});
 	});
+
+	it.each([
+		["declined", { result: { action: "decline" as const } }],
+		["canceled", { result: { action: "cancel" as const } }],
+		["unsupported", { capabilities: {} }],
+	])(
+		"does not create an exercise template when confirmation is %s",
+		async (_label, confirmation) => {
+			const { server, tool } = createMockServer(confirmation);
+			const createExerciseTemplate = vi.fn();
+			const hevyClient = { createExerciseTemplate } as unknown as HevyClient;
+			registerTemplateTools(server, hevyClient);
+
+			await getToolRegistration(tool, "create-exercise-template").handler({
+				title: "Guarded Curl",
+				exerciseType: "weight_reps",
+				equipmentCategory: "dumbbell",
+				muscleGroup: "biceps",
+				otherMuscles: [],
+			});
+
+			expect(createExerciseTemplate).not.toHaveBeenCalled();
+		},
+	);
 });

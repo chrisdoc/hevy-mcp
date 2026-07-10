@@ -19,6 +19,7 @@ import {
 } from "../utils/formatters.js";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "../utils/hevyClient.js";
+import { confirmMutation } from "../utils/mutation-confirmation.js";
 import {
 	exerciseHistoryOutputSchema,
 	exerciseTemplateOutputSchema,
@@ -41,6 +42,7 @@ import {
 } from "../utils/schemas.js";
 
 export interface TemplateToolOptions {
+	autoConfirm?: boolean;
 	logger?: McpClientLogger;
 }
 /** Reset the exercise template cache (exposed for testing). */
@@ -213,7 +215,6 @@ export function registerTemplateTools(
 		createExerciseTemplateSchema,
 		createAnnotations("Create Exercise Template"),
 		withObservability(async (args: CreateExerciseTemplateParams) => {
-			const client = requireClient(hevyClient);
 			const {
 				title,
 				exerciseType,
@@ -221,6 +222,13 @@ export function registerTemplateTools(
 				muscleGroup,
 				otherMuscles,
 			} = args;
+			const confirmation = await confirmMutation(server, {
+				autoConfirm: options.autoConfirm,
+				message: `Create exercise template '${title}' (${exerciseType}, ${equipmentCategory}, primary muscle ${muscleGroup})?`,
+			});
+			if (!confirmation.confirmed) return confirmation.response;
+
+			const client = requireClient(hevyClient);
 
 			const response: PostV1ExerciseTemplates200 =
 				await client.createExerciseTemplate({
