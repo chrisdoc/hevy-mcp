@@ -479,7 +479,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-01 — Align Node/runtime declarations
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-01 — Align Node/runtime declarations](https://github.com/chrisdoc/hevy-mcp/issues/605).
 - **Objective:** Make the claimed support range match tested and distributed
   runtimes.
 - **Scope:** Inventory `.nvmrc`, `package.json#engines`, README, `AGENTS.md`, CI,
@@ -494,7 +494,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-02 — Shared mocked MCP/Nock harness
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-02 — Shared mocked MCP/Nock harness](https://github.com/chrisdoc/hevy-mcp/issues/606).
 - **Objective:** Remove duplicated client/server/Nock lifecycle setup and make
   deterministic MCP tests safe by default.
 - **Scope:** Typed test-support factories; registration; linked transport;
@@ -516,7 +516,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-03 — Full MCP tool contract matrix
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-03 — Full MCP tool contract matrix](https://github.com/chrisdoc/hevy-mcp/issues/607).
 - **Objective:** Deterministically validate the public MCP contract for every
   registered tool, plus prompts/resources and lifecycle behavior.
 - **Scope:** Inventory/metadata; valid schemas; success, empty/null, invalid
@@ -535,7 +535,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-04 — Reuse production schemas in live canaries
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-04 — Reuse production schemas in live canaries](https://github.com/chrisdoc/hevy-mcp/issues/608).
 - **Objective:** Eliminate duplicate live-test output contracts.
 - **Scope:** Export/import production output schemas; validate
   `structuredContent`; retain text compatibility assertions; add named sanitized
@@ -551,7 +551,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-05 — Deterministic npm-pack + spawned-stdio boundary
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-05 — Deterministic npm-pack + spawned-stdio boundary](https://github.com/chrisdoc/hevy-mcp/issues/609).
 - **Objective:** Test the exact candidate package and real stdio framing before
   merge/release without contacting Hevy.
 - **Scope:** Build; `npm pack`; inspect tarball contents; install in a temporary
@@ -577,7 +577,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-06 — Named test lanes + local performance baseline
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-06 — Named test lanes + local performance baseline](https://github.com/chrisdoc/hevy-mcp/issues/610).
 - **Objective:** Give contributors stable commands and establish performance
   trend data without premature timing gates.
 - **Scope:** Add the proposed scripts; document lane ownership; add startup,
@@ -597,7 +597,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-07 — Honest coverage denominator + ratchet
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-07 — Honest coverage denominator + ratchet](https://github.com/chrisdoc/hevy-mcp/issues/611).
 - **Objective:** Make coverage percentages represent all intended
   repository-owned production source, then prevent regression.
 - **Scope:** Add explicit include/exclude policy; merge or flag unit/MCP/stdio
@@ -617,7 +617,7 @@ duplicated contract logic across live and mocked suites.
 
 ### TS-08 — Nightly diagnostics redaction regression tests
 
-- **Tracking issue:** To be created from this specification.
+- **Tracking issue:** [TS-08 — Nightly diagnostics redaction regression tests](https://github.com/chrisdoc/hevy-mcp/issues/612).
 - **Objective:** Make live failures actionable without leaking credentials or
   user/upstream payload detail.
 - **Scope:** Structured category results; environment/version metadata;
