@@ -1,3 +1,9 @@
+## 1.26.6
+
+### Patch Changes
+
+- [#493](https://github.com/chrisdoc/hevy-mcp/pull/493) [`d36658e`](https://github.com/chrisdoc/hevy-mcp/commit/d36658e410b098c4a7f8db97b0b20371d4f7d4d4) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add enhanced OpenTelemetry and Sentry instrumentation and observability to MCP tool calls, capturing safe whitelisted arguments, response payload metadata (content count and text length), detailed error properties (code, message, type), and grouping execution duration by success/error status.
+
 ## 1.26.5
 
 ### Patch Changes
