@@ -95,6 +95,7 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 		connect = testDoubles.connect;
 		tool = testDoubles.tool;
 		registerTool = testDoubles.registerTool;
+		registerResource = vi.fn();
 	}
 
 	return {
