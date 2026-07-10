@@ -167,7 +167,10 @@ describe("registerWorkoutTools", () => {
 		const { server, tool } = createMockServer();
 		const hevyClient = {
 			getWorkouts: vi.fn().mockResolvedValue({ workouts: [] }),
-			getWorkoutEvents: vi.fn().mockResolvedValue({ events: [] }),
+			getWorkoutEvents: vi
+				.fn()
+				.mockResolvedValueOnce({ events: [] })
+				.mockResolvedValueOnce({}),
 		} as unknown as HevyClient;
 		registerWorkoutTools(server, hevyClient);
 
@@ -183,13 +186,25 @@ describe("registerWorkoutTools", () => {
 			pageSize: 5,
 			since: "1970-01-01T00:00:00Z",
 		});
+		const eventsWithoutEvents = await getToolRegistration(
+			tool,
+			"get-workout-events",
+		).handler({
+			page: 1,
+			pageSize: 5,
+			since: "1970-01-01T00:00:00Z",
+		});
 
 		expect(workouts.structuredContent).toEqual({ workouts: [] });
 		expect(events.structuredContent).toEqual({ events: [] });
+		expect(eventsWithoutEvents.structuredContent).toEqual({ events: [] });
 		expect(workouts.content[0]?.text).toBe(
 			"No workouts found for the specified parameters",
 		);
 		expect(events.content[0]?.text).toBe(
+			"No workout events found for the specified parameters since 1970-01-01T00:00:00Z",
+		);
+		expect(eventsWithoutEvents.content[0]?.text).toBe(
 			"No workout events found for the specified parameters since 1970-01-01T00:00:00Z",
 		);
 	});
