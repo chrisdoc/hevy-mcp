@@ -33,6 +33,14 @@ pull_request_rules:
     actions:
       queue:
         name: default
+  - name: Auto-merge approved PRs
+    conditions:
+      - base = main
+      - "#approved-reviews-by >= 2"
+      - check-success = ci/build
+    actions:
+      merge:
+        method: squash
   - name: Keep PRs up to date
     conditions:
       - -draft
