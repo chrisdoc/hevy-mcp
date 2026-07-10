@@ -103,6 +103,18 @@ function createTransportDouble() {
 	};
 }
 
+function extractShapePreview(diagnostic: string): string {
+	const prefix = ' shape_preview="';
+	const suffix = '" shape_preview_redacted=';
+	const start = diagnostic.indexOf(prefix);
+	const end = diagnostic.indexOf(suffix, start + prefix.length);
+
+	expect(start).toBeGreaterThanOrEqual(0);
+	expect(end).toBeGreaterThanOrEqual(start + prefix.length);
+
+	return diagnostic.slice(start + prefix.length, end);
+}
+
 describe("stdio observability", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -240,18 +252,17 @@ describe("stdio observability", () => {
 				expect(diagnostic).not.toContain(sentinel);
 			}
 
-			const shapePreview = diagnostic.match(
-				/ shape_preview="(.*?)" shape_preview_redacted=/,
-			)?.[1];
-			expect(shapePreview).toBeDefined();
-			expect(shapePreview?.length).toBeLessThanOrEqual(200);
+			const shapePreview = extractShapePreview(diagnostic);
+			expect(shapePreview).not.toContain('"');
+			expect(shapePreview.length).toBeLessThanOrEqual(200);
 			const structuralPunctuation = shapePreview
-				?.replaceAll("[REDACTED]", "")
+				.replaceAll("[REDACTED]", "")
+				.replaceAll("\\u0022", "")
 				.replaceAll("\\s", "");
 			expect(
 				structuralPunctuation
-					?.split("")
-					.every((character) => '{}[]:,\\"'.includes(character)),
+					.split("")
+					.every((character) => "{}[]:,".includes(character)),
 			).toBe(true);
 		},
 	);
@@ -272,10 +283,9 @@ describe("stdio observability", () => {
 
 		expect(stderrSpy).toHaveBeenCalledTimes(1);
 		const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
-		const shapePreview = diagnostic.match(
-			/ shape_preview="(.*?)" shape_preview_redacted=/,
-		)?.[1];
-		expect(shapePreview?.length).toBeLessThanOrEqual(200);
+		const shapePreview = extractShapePreview(diagnostic);
+		expect(shapePreview).not.toContain('"');
+		expect(shapePreview.length).toBeLessThanOrEqual(200);
 		expect(diagnostic).toContain("shape_preview_redacted=true");
 		expect(diagnostic).toContain("shape_preview_truncated=true");
 		expect(diagnostic).not.toContain("key-sentinel");
@@ -386,7 +396,11 @@ describe("stdio observability", () => {
 		const transport = createInstrumentedStdioTransport(
 			new StdioServerTransport(stdin, capturedStdout),
 		);
-		const onMessage = vi.fn();
+		let resolveMessageProcessed!: () => void;
+		const messageProcessed = new Promise<void>((resolve) => {
+			resolveMessageProcessed = resolve;
+		});
+		const onMessage = vi.fn(() => resolveMessageProcessed());
 		const onError = vi.fn();
 		transport.onmessage = onMessage;
 		transport.onerror = onError;
@@ -398,6 +412,7 @@ describe("stdio observability", () => {
 					'{malformed json}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n',
 				),
 			).not.toThrow();
+			await messageProcessed;
 
 			expect(onError).toHaveBeenCalledTimes(1);
 			expect(onMessage).toHaveBeenCalledWith({

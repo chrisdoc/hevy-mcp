@@ -151,7 +151,7 @@ function createStructuralShapePreview(line: string): {
 		if ('{}[]:,"'.includes(character)) {
 			inContentRun = false;
 			inWhitespaceRun = false;
-			if (!append(character === '"' ? '\\"' : character)) {
+			if (!append(character === '"' ? "\\u0022" : character)) {
 				return { shapePreview, truncated: true };
 			}
 			continue;
