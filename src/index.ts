@@ -222,7 +222,7 @@ export async function runServer() {
 	const cliAction = getCliAction(args);
 
 	if (cliAction === "version") {
-		console.log(version);
+		console.error(`${name} v${version}`);
 		return;
 	}
 

@@ -225,22 +225,35 @@ describe("Server entry", () => {
 	});
 
 	describe("runServer", () => {
-		it.each(["--version", "-v"])(
-			"prints version for %s and exits before server startup",
-			async (flag) => {
-				process.env = {
-					...originalEnv,
-					HEVY_API_KEY: "test-api-key",
-				};
+		it.each([
+			["--version", undefined],
+			["-v", ""],
+		])(
+			"prints version for %s without an API key and exits before server startup",
+			async (flag, apiKey) => {
+				process.env = { ...originalEnv };
+				if (apiKey === undefined) {
+					delete process.env.HEVY_API_KEY;
+				} else {
+					process.env.HEVY_API_KEY = apiKey;
+				}
 				process.argv = [...originalArgv.slice(0, 2), flag];
 
 				const logSpy = vi
 					.spyOn(console, "log")
 					.mockImplementation(() => undefined);
+				const errorSpy = vi
+					.spyOn(console, "error")
+					.mockImplementation(() => undefined);
+				const exitSpy = vi
+					.spyOn(process, "exit")
+					.mockImplementation(() => undefined as never);
 
 				await runServer();
 
-				expect(logSpy).toHaveBeenCalledWith("dev");
+				expect(errorSpy).toHaveBeenCalledExactlyOnceWith("hevy-mcp vdev");
+				expect(logSpy).not.toHaveBeenCalled();
+				expect(exitSpy).not.toHaveBeenCalled();
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
 
@@ -248,6 +261,8 @@ describe("Server entry", () => {
 				expect(anyStdioModule.__transports).toHaveLength(0);
 
 				logSpy.mockRestore();
+				errorSpy.mockRestore();
+				exitSpy.mockRestore();
 			},
 		);
 
