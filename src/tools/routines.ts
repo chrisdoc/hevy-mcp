@@ -104,11 +104,14 @@ export function registerRoutineTools(
 	} as const;
 	type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-routines",
-		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
-		getRoutinesSchema,
-		readOnlyAnnotations("Get Routines"),
+		{
+			description:
+				"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
+			inputSchema: getRoutinesSchema,
+			annotations: readOnlyAnnotations("Get Routines"),
+		},
 		withErrorHandling(async (args: GetRoutinesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -137,11 +140,14 @@ export function registerRoutineTools(
 	} as const;
 	type GetRoutineParams = InferToolParams<typeof getRoutineSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-routine",
-		"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
-		getRoutineSchema,
-		readOnlyAnnotations("Get Routine"),
+		{
+			description:
+				"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
+			inputSchema: getRoutineSchema,
+			annotations: readOnlyAnnotations("Get Routine"),
+		},
 		withErrorHandling(async (args: GetRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId } = args;
@@ -189,11 +195,14 @@ export function registerRoutineTools(
 	} as const;
 	type CreateRoutineParams = InferToolParams<typeof createRoutineSchema>;
 
-	server.tool(
+	server.registerTool(
 		"create-routine",
-		"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
-		createRoutineSchema,
-		createAnnotations("Create Routine"),
+		{
+			description:
+				"Create a new workout routine in your Hevy account. Requires a title and at least one exercise with sets. Optionally assign to a folder. Returns the full routine details including the new routine ID.",
+			inputSchema: createRoutineSchema,
+			annotations: createAnnotations("Create Routine"),
+		},
 		withErrorHandling(async (args: CreateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { title, folderId, notes, exercises } = args;
@@ -296,11 +305,14 @@ export function registerRoutineTools(
 	} as const;
 	type UpdateRoutineParams = InferToolParams<typeof updateRoutineSchema>;
 
-	server.tool(
+	server.registerTool(
 		"update-routine",
-		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
-		updateRoutineSchema,
-		updateAnnotations("Update Routine"),
+		{
+			description:
+				"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
+			inputSchema: updateRoutineSchema,
+			annotations: updateAnnotations("Update Routine"),
+		},
 		withErrorHandling(async (args: UpdateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId, title, notes, exercises } = args;

@@ -115,11 +115,14 @@ export function registerBodyMeasurementTools(
 		typeof getBodyMeasurementsSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-body-measurements",
-		"Get a paginated list of body measurements for the authenticated user. Returns measurements including weight, body fat, and various circumference measurements.",
-		getBodyMeasurementsSchema,
-		readOnlyAnnotations("Get Body Measurements"),
+		{
+			description:
+				"Get a paginated list of body measurements for the authenticated user. Returns measurements including weight, body fat, and various circumference measurements.",
+			inputSchema: getBodyMeasurementsSchema,
+			annotations: readOnlyAnnotations("Get Body Measurements"),
+		},
 		withErrorHandling(async (args: GetBodyMeasurementsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -154,11 +157,14 @@ export function registerBodyMeasurementTools(
 		typeof getBodyMeasurementSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-body-measurement",
-		"Get a single body measurement by date. Returns all measurement fields for the specified date.",
-		getBodyMeasurementSchema,
-		readOnlyAnnotations("Get Body Measurement"),
+		{
+			description:
+				"Get a single body measurement by date. Returns all measurement fields for the specified date.",
+			inputSchema: getBodyMeasurementSchema,
+			annotations: readOnlyAnnotations("Get Body Measurement"),
+		},
 		withErrorHandling(async (args: GetBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date } = args;
@@ -189,11 +195,14 @@ export function registerBodyMeasurementTools(
 		typeof createBodyMeasurementSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"create-body-measurement",
-		"Create a body measurement entry for a given date. All measurement fields are optional; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
-		createBodyMeasurementSchema,
-		createAnnotations("Create Body Measurement"),
+		{
+			description:
+				"Create a body measurement entry for a given date. All measurement fields are optional; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Returns 409 if an entry already exists for that date — use update-body-measurement instead.",
+			inputSchema: createBodyMeasurementSchema,
+			annotations: createAnnotations("Create Body Measurement"),
+		},
 		withErrorHandling(async (args: CreateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
@@ -222,11 +231,14 @@ export function registerBodyMeasurementTools(
 		typeof updateBodyMeasurementSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"update-body-measurement",
-		"Update an existing body measurement entry for a given date. Only the fields you provide are sent and updated; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Requires at least one measurement field. Returns 404 if no entry exists for the date.",
-		updateBodyMeasurementSchema,
-		updateAnnotations("Update Body Measurement"),
+		{
+			description:
+				"Update an existing body measurement entry for a given date. Only the fields you provide are sent and updated; null values are treated as omitted, since the Hevy API does not support clearing individual fields. Requires at least one measurement field. Returns 404 if no entry exists for the date.",
+			inputSchema: updateBodyMeasurementSchema,
+			annotations: updateAnnotations("Update Body Measurement"),
+		},
 		withErrorHandling(async (args: UpdateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;

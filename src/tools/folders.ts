@@ -40,11 +40,14 @@ export function registerFolderTools(
 		typeof getRoutineFoldersSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-routine-folders",
-		"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
-		getRoutineFoldersSchema,
-		readOnlyAnnotations("Get Routine Folders"),
+		{
+			description:
+				"Get a paginated list of your routine folders, including both default and custom folders. Useful for organizing and browsing your workout routines.",
+			inputSchema: getRoutineFoldersSchema,
+			annotations: readOnlyAnnotations("Get Routine Folders"),
+		},
 		withErrorHandling(async (args: GetRoutineFoldersParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -75,11 +78,14 @@ export function registerFolderTools(
 	} as const;
 	type GetRoutineFolderParams = InferToolParams<typeof getRoutineFolderSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-routine-folder",
-		"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
-		getRoutineFolderSchema,
-		readOnlyAnnotations("Get Routine Folder"),
+		{
+			description:
+				"Get complete details of a specific routine folder by its ID, including name, creation date, and associated routines.",
+			inputSchema: getRoutineFolderSchema,
+			annotations: readOnlyAnnotations("Get Routine Folder"),
+		},
 		withErrorHandling(async (args: GetRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { folderId } = args;
@@ -105,11 +111,14 @@ export function registerFolderTools(
 		typeof createRoutineFolderSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"create-routine-folder",
-		"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
-		createRoutineFolderSchema,
-		createAnnotations("Create Routine Folder"),
+		{
+			description:
+				"Create a new routine folder in your Hevy account. Requires a name for the folder. Returns the full folder details including the new folder ID.",
+			inputSchema: createRoutineFolderSchema,
+			annotations: createAnnotations("Create Routine Folder"),
+		},
 		withErrorHandling(async (args: CreateRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { name } = args;

@@ -42,11 +42,14 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutsParams = InferToolParams<typeof getWorkoutsSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-workouts",
-		"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
-		getWorkoutsSchema,
-		readOnlyAnnotations("Get Workouts"),
+		{
+			description:
+				"Get a paginated list of workouts. Returns workout details including title, description, start/end times, and exercises performed. Results are ordered from newest to oldest.",
+			inputSchema: getWorkoutsSchema,
+			annotations: readOnlyAnnotations("Get Workouts"),
+		},
 		withErrorHandling(async (args: GetWorkoutsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -74,11 +77,14 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutParams = InferToolParams<typeof getWorkoutSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-workout",
-		"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
-		getWorkoutSchema,
-		readOnlyAnnotations("Get Workout"),
+		{
+			description:
+				"Get complete details of a specific workout by ID. Returns all workout information including title, description, start/end times, and detailed exercise data.",
+			inputSchema: getWorkoutSchema,
+			annotations: readOnlyAnnotations("Get Workout"),
+		},
 		withErrorHandling(async (args: GetWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { workoutId } = args;
@@ -95,11 +101,14 @@ export function registerWorkoutTools(
 	);
 
 	// Get workout count
-	server.tool(
+	server.registerTool(
 		"get-workout-count",
-		"Get the total number of workouts on the account. Useful for pagination or statistics.",
-		{},
-		readOnlyAnnotations("Get Workout Count"),
+		{
+			description:
+				"Get the total number of workouts on the account. Useful for pagination or statistics.",
+			inputSchema: {},
+			annotations: readOnlyAnnotations("Get Workout Count"),
+		},
 		withErrorHandling(async () => {
 			const client = requireClient(hevyClient);
 			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
@@ -116,11 +125,14 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutEventsParams = InferToolParams<typeof getWorkoutEventsSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-workout-events",
-		"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
-		getWorkoutEventsSchema,
-		readOnlyAnnotations("Get Workout Events"),
+		{
+			description:
+				"Retrieve a paged list of workout events (updates or deletes) since a given date. Events are ordered from newest to oldest. The intention is to allow clients to keep their local cache of workouts up to date without having to fetch the entire list of workouts.",
+			inputSchema: getWorkoutEventsSchema,
+			annotations: readOnlyAnnotations("Get Workout Events"),
+		},
 		withErrorHandling(async (args: GetWorkoutEventsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize, since } = args;
@@ -176,11 +188,14 @@ export function registerWorkoutTools(
 	} as const;
 	type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
 
-	server.tool(
+	server.registerTool(
 		"create-workout",
-		"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
-		createWorkoutSchema,
-		createAnnotations("Create Workout"),
+		{
+			description:
+				"Create a new workout in your Hevy account. Requires title, start/end times, and at least one exercise with sets. Returns the complete workout details upon successful creation including the newly assigned workout ID.",
+			inputSchema: createWorkoutSchema,
+			annotations: createAnnotations("Create Workout"),
+		},
 		withErrorHandling(async (args: CreateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { title, description, startTime, endTime, isPrivate, exercises } =
@@ -261,11 +276,14 @@ export function registerWorkoutTools(
 	} as const;
 	type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
 
-	server.tool(
+	server.registerTool(
 		"update-workout",
-		"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
-		updateWorkoutSchema,
-		updateAnnotations("Update Workout"),
+		{
+			description:
+				"Update an existing workout by ID. You can modify the title, description, start/end times, privacy setting, and exercise data. Returns the updated workout with all changes applied.",
+			inputSchema: updateWorkoutSchema,
+			annotations: updateAnnotations("Update Workout"),
+		},
 		withErrorHandling(async (args: UpdateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const {

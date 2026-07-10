@@ -12,9 +12,9 @@ type HevyClient = ReturnType<
 >;
 
 function createMockServer() {
-	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
-	return { server, tool };
+	const registerTool = vi.fn();
+	const server = { registerTool } as unknown as McpServer;
+	return { server, registerTool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -22,7 +22,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
+	const handler = match[2] as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
 	}>;
@@ -31,7 +31,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 
 describe("registerTemplateTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		registerTemplateTools(server, null);
 
 		const toolNames = [
@@ -43,7 +43,7 @@ describe("registerTemplateTools", () => {
 		];
 
 		for (const name of toolNames) {
-			const { handler } = getToolRegistration(tool, name);
+			const { handler } = getToolRegistration(registerTool, name);
 			const response = await handler({});
 			expect(response).toMatchObject({
 				isError: true,
@@ -60,7 +60,7 @@ describe("registerTemplateTools", () => {
 	});
 
 	it("get-exercise-templates returns formatted templates from the client", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const template: ExerciseTemplate = {
 			id: "t1",
 			title: "Bench Press",
@@ -76,7 +76,10 @@ describe("registerTemplateTools", () => {
 		} as unknown as HevyClient;
 
 		registerTemplateTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-exercise-templates");
+		const { handler } = getToolRegistration(
+			registerTool,
+			"get-exercise-templates",
+		);
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
@@ -90,13 +93,16 @@ describe("registerTemplateTools", () => {
 	});
 
 	it("get-exercise-template returns an empty response when template is not found", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getExerciseTemplate: vi.fn().mockResolvedValue(null),
 		} as unknown as HevyClient;
 
 		registerTemplateTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-exercise-template");
+		const { handler } = getToolRegistration(
+			registerTool,
+			"get-exercise-template",
+		);
 
 		const response = await handler({ exerciseTemplateId: "missing-id" });
 		expect(hevyClient.getExerciseTemplate).toHaveBeenCalledWith("missing-id");
@@ -106,7 +112,7 @@ describe("registerTemplateTools", () => {
 	});
 
 	it("get-exercise-history returns formatted entries", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getExerciseHistory: vi.fn().mockResolvedValue({
 				exercise_history: [
@@ -129,7 +135,10 @@ describe("registerTemplateTools", () => {
 		} as unknown as HevyClient;
 
 		registerTemplateTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-exercise-history");
+		const { handler } = getToolRegistration(
+			registerTool,
+			"get-exercise-history",
+		);
 
 		const response = await handler({
 			exerciseTemplateId: "t1",
@@ -167,10 +176,10 @@ describe("registerTemplateTools", () => {
 		});
 
 		it("returns error when client is not initialized", async () => {
-			const { server, tool } = createMockServer();
+			const { server, registerTool } = createMockServer();
 			registerTemplateTools(server, null);
 			const { handler } = getToolRegistration(
-				tool,
+				registerTool,
 				"search-exercise-templates",
 			);
 			const response = await handler({ query: "bench", refresh: false });
@@ -188,7 +197,7 @@ describe("registerTemplateTools", () => {
 		});
 
 		it("fetches all pages and filters by query substring", async () => {
-			const { server, tool } = createMockServer();
+			const { server, registerTool } = createMockServer();
 			const benchTemplate: ExerciseTemplate = {
 				id: "t1",
 				title: "Bench Press",
@@ -223,7 +232,7 @@ describe("registerTemplateTools", () => {
 
 			registerTemplateTools(server, hevyClient);
 			const { handler } = getToolRegistration(
-				tool,
+				registerTool,
 				"search-exercise-templates",
 			);
 
@@ -244,7 +253,7 @@ describe("registerTemplateTools", () => {
 		});
 
 		it("uses cached data on subsequent calls without refresh", async () => {
-			const { server, tool } = createMockServer();
+			const { server, registerTool } = createMockServer();
 			const template: ExerciseTemplate = {
 				id: "t1",
 				title: "Bench Press",
@@ -264,7 +273,7 @@ describe("registerTemplateTools", () => {
 
 			registerTemplateTools(server, hevyClient);
 			const { handler } = getToolRegistration(
-				tool,
+				registerTool,
 				"search-exercise-templates",
 			);
 
@@ -276,7 +285,7 @@ describe("registerTemplateTools", () => {
 		});
 
 		it("retries on next call after an initial fetch failure", async () => {
-			const { server, tool } = createMockServer();
+			const { server, registerTool } = createMockServer();
 			const template: ExerciseTemplate = {
 				id: "t1",
 				title: "Bench Press",
@@ -299,7 +308,7 @@ describe("registerTemplateTools", () => {
 
 			registerTemplateTools(server, hevyClient);
 			const { handler } = getToolRegistration(
-				tool,
+				registerTool,
 				"search-exercise-templates",
 			);
 
@@ -322,7 +331,7 @@ describe("registerTemplateTools", () => {
 		});
 
 		it("re-fetches when refresh is true", async () => {
-			const { server, tool } = createMockServer();
+			const { server, registerTool } = createMockServer();
 			const template: ExerciseTemplate = {
 				id: "t1",
 				title: "Deadlift",
@@ -342,7 +351,7 @@ describe("registerTemplateTools", () => {
 
 			registerTemplateTools(server, hevyClient);
 			const { handler } = getToolRegistration(
-				tool,
+				registerTool,
 				"search-exercise-templates",
 			);
 
@@ -354,7 +363,7 @@ describe("registerTemplateTools", () => {
 		});
 
 		it("filters by primaryMuscleGroup when provided", async () => {
-			const { server, tool } = createMockServer();
+			const { server, registerTool } = createMockServer();
 			const chestTemplate: ExerciseTemplate = {
 				id: "t1",
 				title: "Bench Press",
@@ -382,7 +391,7 @@ describe("registerTemplateTools", () => {
 
 			registerTemplateTools(server, hevyClient);
 			const { handler } = getToolRegistration(
-				tool,
+				registerTool,
 				"search-exercise-templates",
 			);
 
@@ -397,7 +406,7 @@ describe("registerTemplateTools", () => {
 		});
 
 		it("returns empty response when no templates match", async () => {
-			const { server, tool } = createMockServer();
+			const { server, registerTool } = createMockServer();
 			const template: ExerciseTemplate = {
 				id: "t1",
 				title: "Squat",
@@ -417,7 +426,7 @@ describe("registerTemplateTools", () => {
 
 			registerTemplateTools(server, hevyClient);
 			const { handler } = getToolRegistration(
-				tool,
+				registerTool,
 				"search-exercise-templates",
 			);
 
@@ -429,13 +438,16 @@ describe("registerTemplateTools", () => {
 	});
 
 	it("create-exercise-template maps input to API payload", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient: HevyClient = {
 			createExerciseTemplate: vi.fn().mockResolvedValue({ id: 42 }),
 		} as unknown as HevyClient;
 
 		registerTemplateTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-exercise-template");
+		const { handler } = getToolRegistration(
+			registerTool,
+			"create-exercise-template",
+		);
 
 		const response = await handler({
 			title: "Custom Curl",

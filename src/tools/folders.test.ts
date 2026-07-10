@@ -9,9 +9,9 @@ type HevyClient = ReturnType<
 >;
 
 function createMockServer() {
-	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
-	return { server, tool };
+	const registerTool = vi.fn();
+	const server = { registerTool } as unknown as McpServer;
+	return { server, registerTool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -19,7 +19,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
+	const handler = match[2] as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
 	}>;
@@ -28,7 +28,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 
 describe("registerFolderTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		registerFolderTools(server, null);
 
 		const toolNames = [
@@ -38,7 +38,7 @@ describe("registerFolderTools", () => {
 		];
 
 		for (const name of toolNames) {
-			const { handler } = getToolRegistration(tool, name);
+			const { handler } = getToolRegistration(registerTool, name);
 			const response = await handler({});
 			expect(response).toMatchObject({
 				isError: true,
@@ -55,7 +55,7 @@ describe("registerFolderTools", () => {
 	});
 
 	it("get-routine-folders returns error response on client failure", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getRoutineFolders: vi
 				.fn()
@@ -63,7 +63,10 @@ describe("registerFolderTools", () => {
 		} as unknown as HevyClient;
 
 		registerFolderTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-routine-folders");
+		const { handler } = getToolRegistration(
+			registerTool,
+			"get-routine-folders",
+		);
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
@@ -83,7 +86,7 @@ describe("registerFolderTools", () => {
 	});
 
 	it("get-routine-folders returns formatted folders from the client", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const folder: RoutineFolder = {
 			id: 1,
 			title: "Strength",
@@ -97,7 +100,10 @@ describe("registerFolderTools", () => {
 		} as unknown as HevyClient;
 
 		registerFolderTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-routine-folders");
+		const { handler } = getToolRegistration(
+			registerTool,
+			"get-routine-folders",
+		);
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
@@ -111,13 +117,13 @@ describe("registerFolderTools", () => {
 	});
 
 	it("get-routine-folder returns an empty response when folder is not found", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getRoutineFolder: vi.fn().mockResolvedValue(null),
 		} as unknown as HevyClient;
 
 		registerFolderTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-routine-folder");
+		const { handler } = getToolRegistration(registerTool, "get-routine-folder");
 
 		const response = await handler({ folderId: "missing-id" });
 		expect(hevyClient.getRoutineFolder).toHaveBeenCalledWith("missing-id");
@@ -127,7 +133,7 @@ describe("registerFolderTools", () => {
 	});
 
 	it("create-routine-folder maps arguments to the request body and formats the response", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const folder: RoutineFolder = {
 			id: 2,
 			title: "Hypertrophy",
@@ -139,7 +145,10 @@ describe("registerFolderTools", () => {
 		} as unknown as HevyClient;
 
 		registerFolderTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-routine-folder");
+		const { handler } = getToolRegistration(
+			registerTool,
+			"create-routine-folder",
+		);
 
 		const response = await handler({ name: "Hypertrophy" } as Record<
 			string,

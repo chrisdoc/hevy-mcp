@@ -82,7 +82,7 @@ vi.mock("@opentelemetry/api", () => ({
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	class MockMcpServer {
 		connect = testDoubles.connect;
-		tool = vi.fn();
+		registerTool = vi.fn();
 	}
 
 	return {

@@ -10,9 +10,9 @@ type HevyClient = ReturnType<
 >;
 
 function createMockServer() {
-	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
-	return { server, tool };
+	const registerTool = vi.fn();
+	const server = { registerTool } as unknown as McpServer;
+	return { server, registerTool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -20,8 +20,11 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const schema = match[2] as Record<string, z.ZodTypeAny>;
-	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
+	const config = match[1] as {
+		inputSchema: Record<string, z.ZodTypeAny>;
+	};
+	const schema = config.inputSchema;
+	const handler = match[2] as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
 	}>;
@@ -30,7 +33,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 
 describe("registerRoutineTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		registerRoutineTools(server, null);
 
 		const toolNames = [
@@ -41,7 +44,7 @@ describe("registerRoutineTools", () => {
 		];
 
 		for (const name of toolNames) {
-			const { handler } = getToolRegistration(tool, name);
+			const { handler } = getToolRegistration(registerTool, name);
 			const response = await handler({});
 			expect(response).toMatchObject({
 				isError: true,
@@ -58,13 +61,13 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("get-routines returns error response when the client rejects", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient: HevyClient = {
 			getRoutines: vi.fn().mockRejectedValue(new Error("Routines API timeout")),
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-routines");
+		const { handler } = getToolRegistration(registerTool, "get-routines");
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
@@ -84,7 +87,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("get-routines returns formatted routines from the client", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "r1",
 			title: "Push Day",
@@ -98,7 +101,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-routines");
+		const { handler } = getToolRegistration(registerTool, "get-routines");
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
@@ -112,7 +115,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("get-routines maps exercise superset_id to supersetId", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine = {
 			id: "r1",
 			title: "Push Day",
@@ -136,7 +139,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-routines");
+		const { handler } = getToolRegistration(registerTool, "get-routines");
 
 		const response = await handler({ page: 1, pageSize: 5 });
 		const parsed = JSON.parse(response.content[0].text) as Array<{
@@ -147,7 +150,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("get-routine maps exercise superset_id to supersetId", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine = {
 			id: "routine-1",
 			title: "Leg C2",
@@ -171,7 +174,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-routine");
+		const { handler } = getToolRegistration(registerTool, "get-routine");
 
 		const response = await handler({ routineId: "routine-1" });
 		const parsed = JSON.parse(response.content[0].text) as {
@@ -183,7 +186,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("create-routine forwards non-null supersetId as superset_id", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Pull Day",
@@ -197,7 +200,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-routine");
+		const { handler } = getToolRegistration(registerTool, "create-routine");
 
 		const args = {
 			title: "Pull Day",
@@ -257,7 +260,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("create-routine maps repRange to rep_range in the request body", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Leg Day",
@@ -271,7 +274,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-routine");
+		const { handler } = getToolRegistration(registerTool, "create-routine");
 
 		const args = {
 			title: "Leg Day",
@@ -332,7 +335,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("create-routine copies reps from fixed repRange when reps is omitted", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Leg Day",
@@ -346,7 +349,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-routine");
+		const { handler } = getToolRegistration(registerTool, "create-routine");
 
 		const response = await handler({
 			title: "Leg Day",
@@ -403,7 +406,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("create-routine copies reps from fixed repRange when reps is null", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Leg Day",
@@ -417,7 +420,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-routine");
+		const { handler } = getToolRegistration(registerTool, "create-routine");
 
 		const response = await handler({
 			title: "Leg Day",
@@ -475,7 +478,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("create-routine includes a rep range display warning when repRange is provided", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "created-routine",
 			title: "Leg Day",
@@ -489,7 +492,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-routine");
+		const { handler } = getToolRegistration(registerTool, "create-routine");
 
 		const response = await handler({
 			title: "Leg Day",
@@ -538,9 +541,9 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("create-routine schema keeps reps null (does not coerce to 0)", () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		registerRoutineTools(server, null);
-		const { schema } = getToolRegistration(tool, "create-routine");
+		const { schema } = getToolRegistration(registerTool, "create-routine");
 
 		const zodSchema = z.object(schema);
 		const parsed = zodSchema.parse({
@@ -560,7 +563,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("update-routine keeps reps when repRange is provided", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "updated-routine",
 			title: "Updated Routine",
@@ -574,7 +577,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "update-routine");
+		const { handler } = getToolRegistration(registerTool, "update-routine");
 
 		await handler({
 			routineId: "routine-123",
@@ -616,7 +619,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("update-routine copies reps from fixed repRange when reps is omitted", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "updated-routine",
 			title: "Updated Routine",
@@ -630,7 +633,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "update-routine");
+		const { handler } = getToolRegistration(registerTool, "update-routine");
 
 		const response = await handler({
 			routineId: "routine-123",
@@ -673,7 +676,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("update-routine omits rep_range when repRange does not contain values", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "updated-routine",
 			title: "Updated Routine",
@@ -688,7 +691,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "update-routine");
+		const { handler } = getToolRegistration(registerTool, "update-routine");
 
 		await handler({
 			routineId: "routine-123",
@@ -736,7 +739,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("update-routine includes a rep range display warning when repRange is provided", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "updated-routine",
 			title: "Updated Routine",
@@ -750,7 +753,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "update-routine");
+		const { handler } = getToolRegistration(registerTool, "update-routine");
 
 		const response = await handler({
 			routineId: "routine-123",
@@ -780,7 +783,7 @@ describe("registerRoutineTools", () => {
 	});
 
 	it("update-routine forwards non-null supersetId as superset_id", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const routine: Routine = {
 			id: "updated-routine",
 			title: "Updated Routine",
@@ -794,7 +797,7 @@ describe("registerRoutineTools", () => {
 		} as unknown as HevyClient;
 
 		registerRoutineTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "update-routine");
+		const { handler } = getToolRegistration(registerTool, "update-routine");
 
 		// Note: The preprocessing happens in the MCP SDK's validation layer,
 		// not in the handler. When testing the handler directly, we pass the

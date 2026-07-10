@@ -90,11 +90,14 @@ export function registerTemplateTools(
 		typeof getExerciseTemplatesSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-exercise-templates",
-		"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
-		getExerciseTemplatesSchema,
-		readOnlyAnnotations("Get Exercise Templates"),
+		{
+			description:
+				"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
+			inputSchema: getExerciseTemplatesSchema,
+			annotations: readOnlyAnnotations("Get Exercise Templates"),
+		},
 		withErrorHandling(async (args: GetExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -129,11 +132,14 @@ export function registerTemplateTools(
 		typeof getExerciseTemplateSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-exercise-template",
-		"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
-		getExerciseTemplateSchema,
-		readOnlyAnnotations("Get Exercise Template"),
+		{
+			description:
+				"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
+			inputSchema: getExerciseTemplateSchema,
+			annotations: readOnlyAnnotations("Get Exercise Template"),
+		},
 		withErrorHandling(async (args: GetExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId } = args;
@@ -169,11 +175,14 @@ export function registerTemplateTools(
 		typeof getExerciseHistorySchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-exercise-history",
-		"Get past sets for a specific exercise template, optionally filtered by start and end dates.",
-		getExerciseHistorySchema,
-		readOnlyAnnotations("Get Exercise History"),
+		{
+			description:
+				"Get past sets for a specific exercise template, optionally filtered by start and end dates.",
+			inputSchema: getExerciseHistorySchema,
+			annotations: readOnlyAnnotations("Get Exercise History"),
+		},
 		withErrorHandling(async (args: GetExerciseHistoryParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId, startDate, endDate } = args;
@@ -210,11 +219,14 @@ export function registerTemplateTools(
 		typeof createExerciseTemplateSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"create-exercise-template",
-		"Create a custom exercise template with title, type, equipment, and muscle groups.",
-		createExerciseTemplateSchema,
-		createAnnotations("Create Exercise Template"),
+		{
+			description:
+				"Create a custom exercise template with title, type, equipment, and muscle groups.",
+			inputSchema: createExerciseTemplateSchema,
+			annotations: createAnnotations("Create Exercise Template"),
+		},
 		withErrorHandling(async (args: CreateExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const {
@@ -268,11 +280,14 @@ export function registerTemplateTools(
 		typeof searchExerciseTemplatesSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"search-exercise-templates",
-		"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call, caches the catalog in memory with a bounded TTL cache, and reuses it for subsequent searches. Use refresh:true to force a re-fetch.",
-		searchExerciseTemplatesSchema,
-		readOnlyAnnotations("Search Exercise Templates"),
+		{
+			description:
+				"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call, caches the catalog in memory with a bounded TTL cache, and reuses it for subsequent searches. Use refresh:true to force a re-fetch.",
+			inputSchema: searchExerciseTemplatesSchema,
+			annotations: readOnlyAnnotations("Search Exercise Templates"),
+		},
 		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;

@@ -6,9 +6,9 @@ import type { HevyClient } from "../utils/hevyClient.js";
 import { registerWorkoutTools } from "./workouts.js";
 
 function createMockServer() {
-	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
-	return { server, tool };
+	const registerTool = vi.fn();
+	const server = { registerTool } as unknown as McpServer;
+	return { server, registerTool };
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -16,7 +16,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
+	const handler = match[2] as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
 	}>;
@@ -25,7 +25,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 
 describe("registerWorkoutTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		registerWorkoutTools(server, null);
 
 		const toolNames = [
@@ -38,7 +38,7 @@ describe("registerWorkoutTools", () => {
 		];
 
 		for (const name of toolNames) {
-			const { handler } = getToolRegistration(tool, name);
+			const { handler } = getToolRegistration(registerTool, name);
 			const response = await handler({});
 			expect(response).toMatchObject({
 				isError: true,
@@ -55,7 +55,7 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("get-workout-events returns error response on client failure", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient = {
 			getWorkoutEvents: vi
 				.fn()
@@ -63,7 +63,7 @@ describe("registerWorkoutTools", () => {
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-workout-events");
+		const { handler } = getToolRegistration(registerTool, "get-workout-events");
 
 		const response = await handler({
 			page: 1,
@@ -88,7 +88,7 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("get-workouts returns formatted workouts from the client", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const workout: Workout = {
 			id: "w1",
 			title: "Morning Workout",
@@ -104,7 +104,7 @@ describe("registerWorkoutTools", () => {
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-workouts");
+		const { handler } = getToolRegistration(registerTool, "get-workouts");
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
@@ -118,13 +118,13 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("get-workout returns an empty response when workout is not found", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient = {
 			getWorkout: vi.fn().mockResolvedValue(null),
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-workout");
+		const { handler } = getToolRegistration(registerTool, "get-workout");
 
 		const response = await handler({ workoutId: "missing-id" });
 		expect(hevyClient.getWorkout).toHaveBeenCalledWith("missing-id");
@@ -134,13 +134,13 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("get-workout-count returns the numeric count from the client", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient = {
 			getWorkoutCount: vi.fn().mockResolvedValue({ workout_count: 42 }),
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-workout-count");
+		const { handler } = getToolRegistration(registerTool, "get-workout-count");
 
 		const response = await handler({});
 		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
@@ -150,13 +150,13 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("get-workout-count returns 0 when workout_count is undefined", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient = {
 			getWorkoutCount: vi.fn().mockResolvedValue({}),
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-workout-count");
+		const { handler } = getToolRegistration(registerTool, "get-workout-count");
 
 		const response = await handler({});
 		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
@@ -166,13 +166,13 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("get-workout-count returns 0 when data is null", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const hevyClient = {
 			getWorkoutCount: vi.fn().mockResolvedValue(null),
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "get-workout-count");
+		const { handler } = getToolRegistration(registerTool, "get-workout-count");
 
 		const response = await handler({});
 		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
@@ -182,7 +182,7 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("create-workout maps arguments to the request body and formats the response", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const createResult: Workout = {
 			id: "created-id",
 			title: "New Workout",
@@ -198,7 +198,7 @@ describe("registerWorkoutTools", () => {
 		} as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-workout");
+		const { handler } = getToolRegistration(registerTool, "create-workout");
 
 		const args = {
 			title: "New Workout",
@@ -261,7 +261,7 @@ describe("registerWorkoutTools", () => {
 	});
 
 	it("create-workout does not send routine_id", async () => {
-		const { server, tool } = createMockServer();
+		const { server, registerTool } = createMockServer();
 		const createResult: Workout = {
 			id: "created-id",
 			title: "Programmed Workout",
@@ -276,7 +276,7 @@ describe("registerWorkoutTools", () => {
 		const hevyClient = { createWorkout } as unknown as HevyClient;
 
 		registerWorkoutTools(server, hevyClient);
-		const { handler } = getToolRegistration(tool, "create-workout");
+		const { handler } = getToolRegistration(registerTool, "create-workout");
 
 		const args = {
 			title: "Programmed Workout",

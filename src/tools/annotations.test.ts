@@ -43,15 +43,15 @@ const UPDATE_TOOLS = [
 const DESTRUCTIVE_TOOLS = [] as const;
 
 function registerAllTools() {
-	const tool = vi.fn();
-	const server = { tool } as unknown as McpServer;
+	const registerTool = vi.fn();
+	const server = { registerTool } as unknown as McpServer;
 	registerWorkoutTools(server, null);
 	registerRoutineTools(server, null);
 	registerTemplateTools(server, null);
 	registerFolderTools(server, null);
 	registerBodyMeasurementTools(server, null);
 	registerUserTools(server, null);
-	return tool;
+	return registerTool;
 }
 
 function getAnnotations(
@@ -62,18 +62,18 @@ function getAnnotations(
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	// server.tool(name, description, schema, annotations, handler)
-	return match[3] as ToolAnnotations;
+	const config = match[1] as { annotations: ToolAnnotations };
+	return config.annotations;
 }
 
 describe("tool annotations", () => {
-	const tool = registerAllTools();
+	const registerTool = registerAllTools();
 
 	it("registers all known tools", () => {
 		const byName = (a: string, b: string) => a.localeCompare(b);
-		const registered = (tool.mock.calls.map(([name]) => name) as string[]).sort(
-			byName,
-		);
+		const registered = (
+			registerTool.mock.calls.map(([name]) => name) as string[]
+		).sort(byName);
 		const expected = [
 			...READ_ONLY_TOOLS,
 			...CREATE_TOOLS,
@@ -84,22 +84,22 @@ describe("tool annotations", () => {
 	});
 
 	it("every tool has a title and closed-world hint", () => {
-		for (const [name] of tool.mock.calls) {
-			const annotations = getAnnotations(tool, name as string);
+		for (const [name] of registerTool.mock.calls) {
+			const annotations = getAnnotations(registerTool, name as string);
 			expect(annotations.title, `${name} title`).toBeTruthy();
 			expect(annotations.openWorldHint, `${name} openWorldHint`).toBe(false);
 		}
 	});
 
 	it.each(READ_ONLY_TOOLS)("%s is read-only", (name) => {
-		const annotations = getAnnotations(tool, name);
+		const annotations = getAnnotations(registerTool, name);
 		expect(annotations.readOnlyHint).toBe(true);
 	});
 
 	it.each(CREATE_TOOLS)(
 		"%s is a non-destructive, non-idempotent write",
 		(name) => {
-			const annotations = getAnnotations(tool, name);
+			const annotations = getAnnotations(registerTool, name);
 			expect(annotations.readOnlyHint).toBe(false);
 			expect(annotations.destructiveHint).toBe(false);
 			expect(annotations.idempotentHint).toBe(false);
@@ -109,7 +109,7 @@ describe("tool annotations", () => {
 	it.each([...UPDATE_TOOLS, ...DESTRUCTIVE_TOOLS])(
 		"%s is a destructive, idempotent write",
 		(name) => {
-			const annotations = getAnnotations(tool, name);
+			const annotations = getAnnotations(registerTool, name);
 			expect(annotations.readOnlyHint).toBe(false);
 			expect(annotations.destructiveHint).toBe(true);
 			expect(annotations.idempotentHint).toBe(true);

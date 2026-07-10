@@ -20,11 +20,14 @@ export function registerUserTools(
 	const getUserInfoSchema = {} as const;
 	type GetUserInfoParams = InferToolParams<typeof getUserInfoSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-user-info",
-		"Get the authenticated user's account info, including user ID, display name, and public profile URL. Useful for verifying which account the API key belongs to.",
-		getUserInfoSchema,
-		readOnlyAnnotations("Get User Info"),
+		{
+			description:
+				"Get the authenticated user's account info, including user ID, display name, and public profile URL. Useful for verifying which account the API key belongs to.",
+			inputSchema: getUserInfoSchema,
+			annotations: readOnlyAnnotations("Get User Info"),
+		},
 		withErrorHandling(async (_args: GetUserInfoParams) => {
 			const client = requireClient(hevyClient);
 			const data: UserInfoResponse = await client.getUserInfo();
