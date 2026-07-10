@@ -16,8 +16,14 @@ import {
 } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
-	createEmptyResponse,
+	exerciseHistoryOutputSchema,
+	exerciseTemplateOutputSchema,
+	exerciseTemplatesOutputSchema,
+} from "../utils/output-schemas.js";
+import {
 	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -86,11 +92,15 @@ export function registerTemplateTools(
 		typeof getExerciseTemplatesSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-exercise-templates",
-		"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
-		getExerciseTemplatesSchema,
-		readOnlyAnnotations("Get Exercise Templates"),
+		{
+			description:
+				"Get a paginated list of exercise templates (default and custom) with details like name, category, equipment, and muscle groups. Useful for browsing or searching available exercises.",
+			inputSchema: getExerciseTemplatesSchema,
+			outputSchema: exerciseTemplatesOutputSchema,
+			annotations: readOnlyAnnotations("Get Exercise Templates"),
+		},
 		withErrorHandling(async (args: GetExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -108,12 +118,15 @@ export function registerTemplateTools(
 				) || [];
 
 			if (templates.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No exercise templates found for the specified parameters",
+					{ exerciseTemplates: [] },
 				);
 			}
 
-			return createJsonResponse(templates);
+			return createStructuredJsonResponse(templates, {
+				exerciseTemplates: templates,
+			});
 		}, "get-exercise-templates"),
 	);
 
@@ -125,11 +138,15 @@ export function registerTemplateTools(
 		typeof getExerciseTemplateSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-exercise-template",
-		"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
-		getExerciseTemplateSchema,
-		readOnlyAnnotations("Get Exercise Template"),
+		{
+			description:
+				"Get complete details of a specific exercise template by its ID, including name, category, equipment, muscle groups, and notes.",
+			inputSchema: getExerciseTemplateSchema,
+			outputSchema: exerciseTemplateOutputSchema,
+			annotations: readOnlyAnnotations("Get Exercise Template"),
+		},
 		withErrorHandling(async (args: GetExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId } = args;
@@ -137,13 +154,16 @@ export function registerTemplateTools(
 				await client.getExerciseTemplate(exerciseTemplateId);
 
 			if (!data) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					`Exercise template with ID ${exerciseTemplateId} not found`,
+					{ exerciseTemplate: null },
 				);
 			}
 
 			const template = formatExerciseTemplate(data);
-			return createJsonResponse(template);
+			return createStructuredJsonResponse(template, {
+				exerciseTemplate: template,
+			});
 		}, "get-exercise-template"),
 	);
 
@@ -165,11 +185,15 @@ export function registerTemplateTools(
 		typeof getExerciseHistorySchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"get-exercise-history",
-		"Get past sets for a specific exercise template, optionally filtered by start and end dates.",
-		getExerciseHistorySchema,
-		readOnlyAnnotations("Get Exercise History"),
+		{
+			description:
+				"Get past sets for a specific exercise template, optionally filtered by start and end dates.",
+			inputSchema: getExerciseHistorySchema,
+			outputSchema: exerciseHistoryOutputSchema,
+			annotations: readOnlyAnnotations("Get Exercise History"),
+		},
 		withErrorHandling(async (args: GetExerciseHistoryParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId, startDate, endDate } = args;
@@ -185,12 +209,15 @@ export function registerTemplateTools(
 				) || [];
 
 			if (history.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					`No exercise history found for template ${exerciseTemplateId}`,
+					{ exerciseHistory: [] },
 				);
 			}
 
-			return createJsonResponse(history);
+			return createStructuredJsonResponse(history, {
+				exerciseHistory: history,
+			});
 		}, "get-exercise-history"),
 	);
 
@@ -264,11 +291,15 @@ export function registerTemplateTools(
 		typeof searchExerciseTemplatesSchema
 	>;
 
-	server.tool(
+	server.registerTool(
 		"search-exercise-templates",
-		"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call, caches the catalog in memory with a bounded TTL cache, and reuses it for subsequent searches. Use refresh:true to force a re-fetch.",
-		searchExerciseTemplatesSchema,
-		readOnlyAnnotations("Search Exercise Templates"),
+		{
+			description:
+				"Search exercise templates by name with optional muscle group filter. Fetches all templates from the Hevy API on first call, caches the catalog in memory with a bounded TTL cache, and reuses it for subsequent searches. Use refresh:true to force a re-fetch.",
+			inputSchema: searchExerciseTemplatesSchema,
+			outputSchema: exerciseTemplatesOutputSchema,
+			annotations: readOnlyAnnotations("Search Exercise Templates"),
+		},
 		withErrorHandling(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
@@ -292,12 +323,16 @@ export function registerTemplateTools(
 			}
 
 			if (results.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					`No exercise templates found matching "${query}"${primaryMuscleGroup ? ` with primary muscle group "${primaryMuscleGroup}"` : ""}`,
+					{ exerciseTemplates: [] },
 				);
 			}
 
-			return createJsonResponse(results.map(formatExerciseTemplate));
+			const exerciseTemplates = results.map(formatExerciseTemplate);
+			return createStructuredJsonResponse(exerciseTemplates, {
+				exerciseTemplates,
+			});
 		}, "search-exercise-templates"),
 	);
 }

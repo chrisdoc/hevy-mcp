@@ -19,8 +19,14 @@ import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
+	routineOutputSchema,
+	routinesOutputSchema,
+} from "../utils/output-schemas.js";
+import {
 	createEmptyResponse,
 	createJsonResponse,
+	createStructuredEmptyResponse,
+	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -100,11 +106,15 @@ export function registerRoutineTools(
 	} as const;
 	type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-routines",
-		"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
-		getRoutinesSchema,
-		readOnlyAnnotations("Get Routines"),
+		{
+			description:
+				"Get a paginated list of your workout routines, including custom and default routines. Useful for browsing or searching your available routines.",
+			inputSchema: getRoutinesSchema,
+			outputSchema: routinesOutputSchema,
+			annotations: readOnlyAnnotations("Get Routines"),
+		},
 		withErrorHandling(async (args: GetRoutinesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
@@ -118,12 +128,13 @@ export function registerRoutineTools(
 				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
 
 			if (routines.length === 0) {
-				return createEmptyResponse(
+				return createStructuredEmptyResponse(
 					"No routines found for the specified parameters",
+					{ routines: [] },
 				);
 			}
 
-			return createJsonResponse(routines);
+			return createStructuredJsonResponse(routines, { routines });
 		}, "get-routines"),
 	);
 
@@ -133,11 +144,15 @@ export function registerRoutineTools(
 	} as const;
 	type GetRoutineParams = InferToolParams<typeof getRoutineSchema>;
 
-	server.tool(
+	server.registerTool(
 		"get-routine",
-		"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
-		getRoutineSchema,
-		readOnlyAnnotations("Get Routine"),
+		{
+			description:
+				"Get a routine by its ID using the direct endpoint. Returns all details for the specified routine.",
+			inputSchema: getRoutineSchema,
+			outputSchema: routineOutputSchema,
+			annotations: readOnlyAnnotations("Get Routine"),
+		},
 		withErrorHandling(async (args: GetRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId } = args;
@@ -145,10 +160,13 @@ export function registerRoutineTools(
 				String(routineId),
 			);
 			if (!data || !data.routine) {
-				return createEmptyResponse(`Routine with ID ${routineId} not found`);
+				return createStructuredEmptyResponse(
+					`Routine with ID ${routineId} not found`,
+					{ routine: null },
+				);
 			}
 			const routine = formatRoutine(data.routine);
-			return createJsonResponse(routine);
+			return createStructuredJsonResponse(routine, { routine });
 		}, "get-routine"),
 	);
 
