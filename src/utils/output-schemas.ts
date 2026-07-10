@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { deletedWorkoutSchema } from "../generated/client/schemas/deletedWorkoutSchema.js";
-import { updatedWorkoutSchema } from "../generated/client/schemas/updatedWorkoutSchema.js";
+
 import { userInfoSchema } from "../generated/client/schemas/userInfoSchema.js";
 
 const optionalNullableNumber = z.number().nullable().optional();
@@ -156,8 +155,21 @@ export const workoutOutputSchema = {
 	workout: formattedWorkoutSchema.nullable(),
 } as const;
 export const workoutCountOutputSchema = { count: z.number().int() } as const;
+export const formattedUpdatedWorkoutSchema = z.object({
+	type: z.literal("updated"),
+	workout: formattedWorkoutSchema,
+});
+
+export const formattedDeletedWorkoutSchema = z.object({
+	type: z.literal("deleted"),
+	id: z.string(),
+	deletedAt: z.string().optional(),
+});
+
 export const workoutEventsOutputSchema = {
-	events: z.array(z.union([updatedWorkoutSchema, deletedWorkoutSchema])),
+	events: z.array(
+		z.union([formattedUpdatedWorkoutSchema, formattedDeletedWorkoutSchema]),
+	),
 } as const;
 export const routinesOutputSchema = {
 	routines: z.array(formattedRoutineSchema),
