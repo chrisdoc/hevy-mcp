@@ -120,6 +120,49 @@ describe("registerWorkoutTools", () => {
 		expect(response.structuredContent).toEqual({ workouts: parsed });
 	});
 
+	it("formats updated and deleted workout events from the client", async () => {
+		const { server, tool } = createMockServer();
+		const workout: Workout = {
+			id: "w1",
+			title: "Morning Workout",
+			start_time: "2025-03-27T07:00:00Z",
+			end_time: "2025-03-27T08:00:00Z",
+			exercises: [],
+		};
+		const hevyClient = {
+			getWorkoutEvents: vi.fn().mockResolvedValue({
+				events: [
+					{ type: "updated", workout },
+					{
+						type: "deleted",
+						id: "deleted-workout",
+						deleted_at: "2025-03-28T07:00:00Z",
+					},
+				],
+			}),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-workout-events");
+
+		const response = await handler({
+			page: 1,
+			pageSize: 5,
+			since: "2025-01-01T00:00:00Z",
+		});
+
+		expect(response.structuredContent).toEqual({
+			events: [
+				{ type: "updated", workout: formatWorkout(workout) },
+				{
+					type: "deleted",
+					id: "deleted-workout",
+					deletedAt: "2025-03-28T07:00:00Z",
+				},
+			],
+		});
+	});
+
 	it("returns structured empty lists for workouts and events", async () => {
 		const { server, tool } = createMockServer();
 		const hevyClient = {
