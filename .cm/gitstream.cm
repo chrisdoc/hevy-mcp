@@ -19,7 +19,7 @@ automations:
     run:
       - action: code-review@v1
         args:
-          approve_on_LGTM: "{{ calc.safe_changes }}"
+          approve_on_LGTM: {{ calc.safe_changes }}
           guidelines: {{ "./REVIEW_RULES.md" | readFile() | dump }}
 
   # Approve only when the AI review passes and the changes are safe.
@@ -52,9 +52,9 @@ automations:
       - pr_ready_for_review
       - commit
     if:
-      - "{{ not pr.draft }}"
-      - "{{ not is.bot_author }}"
-      - "{{ (source.diff.files | match(attr='new_file', regex=r/^src\\/generated\\//) | some) or (source.diff.files | match(attr='original_file', regex=r/^src\\/generated\\//) | some) }}"
+      - {{ not pr.draft }}
+      - {{ not is.bot_author }}
+      - {{ (source.diff.files | match(attr='new_file', regex=r/^src\\/generated\\//) | some) or (source.diff.files | match(attr='original_file', regex=r/^src\\/generated\\//) | some) }}
     run:
       - action: request-changes@v1
         args:
@@ -69,9 +69,9 @@ automations:
       - pr_ready_for_review
       - commit
     if:
-      - "{{ not pr.draft }}"
-      - "{{ not is.bot_author }}"
-      - "{{ source.diff.files | filter(attr='new_file', regex=r/^src\\/tools\\/.*\\.tsx?$/) | matchDiffLines(regex=r/^\\+.*\\bas\\s+(any|unknown)\\b/) | some }}"
+      - {{ not pr.draft }}
+      - {{ not is.bot_author }}
+      - {{ source.diff.files | filter(attr='new_file', regex=r/^src\\/tools\\/.*\\.tsx?$/) | matchDiffLines(regex=r/^\\+.*\\bas\\s+(any|unknown)\\b/) | some }}
     run:
       - action: request-changes@v1
         args:
@@ -86,8 +86,8 @@ automations:
       - pr_ready_for_review
       - commit
     if:
-      - "{{ not pr.draft }}"
-      - "{{ not is.bot_author }}"
+      - {{ not pr.draft }}
+      - {{ not is.bot_author }}
     run:
       - action: explain-code-experts@v1
         args:
@@ -127,7 +127,7 @@ automations:
   # Add estimated review time label for all PRs
   estimated_time_to_review:
     if:
-      - "{{ not (is.bot_author or is.bot_branch) }}"
+      - {{ not (is.bot_author or is.bot_branch) }}
     run:
       - action: add-label@v1
         args:
