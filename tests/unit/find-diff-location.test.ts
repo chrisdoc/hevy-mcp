@@ -251,8 +251,8 @@ describe("findDiffLocation", () => {
 describe("gitStream inline comment configuration", () => {
 	const config = readFileSync(".cm/gitstream.cm", "utf8");
 
-	it("preserves expression result types before gitStream renders the template", () => {
-		expect(config).toContain("approve_on_LGTM: {{ calc.safe_changes }}");
+	it("keeps action arguments correctly typed in YAML", () => {
+		expect(config).toContain("approve_on_LGTM: true");
 		expect(config).toContain("- {{ diff_location.unsafe_assertion.found }}");
 		expect(config).toContain(
 			"start_line: {{ diff_location.unsafe_assertion.start_line }}",

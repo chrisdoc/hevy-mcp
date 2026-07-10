@@ -1,4 +1,5 @@
 import { SpanStatusCode } from "@opentelemetry/api";
+import { debugLog, isDebugEnabled, redactToolArgs } from "./debug.js";
 import { determineErrorType } from "./error-classification.js";
 import { toolDuration, toolErrors, toolInvocations } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
@@ -59,6 +60,12 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (rawArgs: Record<string, unknown>) => {
 		const args = rawArgs ?? {};
+		if (isDebugEnabled()) {
+			debugLog("tool_invocation", {
+				tool: context,
+				params: redactToolArgs(args),
+			});
+		}
 		const argumentKeyCount = Object.keys(args).length;
 		const startTime = Date.now();
 		let isError = false;

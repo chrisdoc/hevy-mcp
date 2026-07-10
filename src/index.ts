@@ -30,6 +30,38 @@ import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js
 const name = serviceName;
 const version = serviceVersion;
 
+const SERVER_INSTRUCTIONS = [
+	[
+		"Hevy MCP connects clients to the authenticated user's Hevy",
+		"workout-tracking data, including workouts, routines, exercise templates,",
+		"routine folders, body measurements, and profile information.",
+		"HEVY_API_KEY must contain a valid Hevy API key.",
+	].join(" "),
+	[
+		"Safety: all get-* and search-* tools are read-only. create-* and",
+		"update-* tools mutate Hevy data. Creates are additive and",
+		"non-idempotent, so repeating one can create duplicates. Updates can",
+		"overwrite existing data. Delete operations are not available.",
+	].join(" "),
+	[
+		"Workflow: search exercise templates first, then use the returned",
+		"template IDs when creating workouts or routines. To create a completed",
+		"workout from a routine, fetch the routine as a plan, then obtain the",
+		"actual completed sets and end time from the user; never invent completion",
+		"data. Use the built-in workflow prompts when they match the task.",
+	].join(" "),
+	[
+		"Pagination: start at page 1 and fetch only the pages needed. Most list",
+		"tools allow pageSize up to 10; get-exercise-templates allows up to 100.",
+	].join(" "),
+	[
+		"Rate limits and retries: minimize repeated calls. If Hevy returns HTTP",
+		"429, follow its retry guidance. Transient read requests retry",
+		"automatically, but write requests do not; confirm uncertain write",
+		"outcomes before trying again.",
+	].join(" "),
+].join("\n\n");
+
 const HELP_TEXT = [
 	"Usage:",
 	"  hevy-mcp [options]",
@@ -41,6 +73,7 @@ const HELP_TEXT = [
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
+	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
 	"",
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
@@ -184,7 +217,10 @@ function buildServer(apiKey: string) {
 						name,
 						version,
 					},
-					{ capabilities: { logging: {} } },
+					{
+						capabilities: { logging: {} },
+						instructions: SERVER_INSTRUCTIONS,
+					},
 				);
 				const server = Sentry.wrapMcpServerWithSentry(baseServer);
 				const clientLogger = createMcpClientLogger(server);
@@ -261,7 +297,7 @@ export async function runServer() {
 	const cliAction = getCliAction(args);
 
 	if (cliAction === "version") {
-		console.log(version);
+		console.error(`${name} v${version}`);
 		return;
 	}
 

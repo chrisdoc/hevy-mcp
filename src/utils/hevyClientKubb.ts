@@ -15,6 +15,7 @@ import type {
 	McpClientLogger,
 	McpClientLogMessage,
 } from "./mcp-client-logger.js";
+import { debugLog } from "./debug.js";
 import { tracer } from "./telemetry.js";
 import { apiCalls, apiDuration } from "./metrics.js";
 import type {
@@ -286,7 +287,7 @@ function shouldRetryRequest(
 	);
 }
 
-function getRequestContext(config: RequestConfig<unknown>) {
+function getRequestContext(config: { method?: string; url?: string }) {
 	const method = (config.method ?? "GET").toUpperCase();
 	const url = config.url ?? "";
 	const rawEndpoint = url.split("?")[0] ?? url;
@@ -548,6 +549,13 @@ export function createClient(
 				url: response.config.url,
 				_startTime: tracedConfig._startTime,
 			});
+			const requestContext = getRequestContext(response.config);
+			debugLog("api_response", {
+				method: requestContext.method,
+				endpoint: requestContext.endpoint,
+				durationMs,
+				status: response.status,
+			});
 
 			finalizeRequestTrace({
 				span: tracedConfig._span,
@@ -565,6 +573,13 @@ export function createClient(
 				method: error.config?.method,
 				url: error.config?.url,
 				_startTime: tracedConfig._startTime,
+			});
+			const requestContext = getRequestContext(error.config ?? {});
+			debugLog("api_response", {
+				method: requestContext.method,
+				endpoint: requestContext.endpoint,
+				durationMs,
+				status: error.response?.status ?? null,
 			});
 
 			finalizeRequestTrace({
