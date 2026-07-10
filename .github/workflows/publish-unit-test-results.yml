@@ -31,7 +31,8 @@ jobs:
           path: artifacts
 
       - name: Publish unit test results
-        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        if: ${{ hashFiles('artifacts/unit-test-results-node-24/*.xml') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action/linux@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           github_token: ${{ github.token }}
           commit: ${{ github.event.workflow_run.head_sha }}

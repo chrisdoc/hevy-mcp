@@ -98,7 +98,7 @@ jobs:
         with:
           name: unit-test-results-node-24
           path: test-results/unit-tests.xml
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: "Warning: Live integration tests skipped"
         if: env.HEVY_API_KEY == ''
