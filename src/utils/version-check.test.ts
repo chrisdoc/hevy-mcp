@@ -27,6 +27,7 @@ function createDependencies() {
 		unlink: vi.fn().mockResolvedValue(undefined),
 		homedir: vi.fn(() => "/home/test-user"),
 		randomUUID: vi.fn(() => "00000000-0000-4000-8000-000000000000" as const),
+		pid: 12_345,
 		now: vi.fn(() => NOW),
 		env: { XDG_CACHE_HOME: "/test-cache" } as NodeJS.ProcessEnv,
 		writeStderr: vi.fn(),
@@ -147,7 +148,7 @@ describe("checkForUpdate", () => {
 		await checkForUpdate(OPTIONS, dependencies);
 
 		const temporaryPath =
-			`/test-cache/hevy-mcp/update-check.json.${process.pid}.` +
+			"/test-cache/hevy-mcp/update-check.json.12345." +
 			"00000000-0000-4000-8000-000000000000.tmp";
 		expect(dependencies.mkdir).toHaveBeenCalledWith("/test-cache/hevy-mcp", {
 			recursive: true,
@@ -163,6 +164,53 @@ describe("checkForUpdate", () => {
 		);
 	});
 
+	it("falls back to replacing the final cache when rename fails", async () => {
+		const dependencies = createDependencies();
+		dependencies.rename.mockRejectedValue(new Error("target exists"));
+		const temporaryPath =
+			"/test-cache/hevy-mcp/update-check.json.12345." +
+			"00000000-0000-4000-8000-000000000000.tmp";
+		const payload = `${JSON.stringify({
+			checkedAt: NOW,
+			latestVersion: "2.0.0",
+		})}\n`;
+
+		await checkForUpdate(OPTIONS, dependencies);
+
+		expect(dependencies.writeFile).toHaveBeenNthCalledWith(
+			1,
+			temporaryPath,
+			payload,
+			"utf8",
+		);
+		expect(dependencies.writeFile).toHaveBeenNthCalledWith(
+			2,
+			"/test-cache/hevy-mcp/update-check.json",
+			payload,
+			"utf8",
+		);
+		expect(dependencies.unlink).toHaveBeenCalledWith(temporaryPath);
+		expect(dependencies.writeStderr).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps rename and fallback failures non-fatal and cleans up", async () => {
+		const dependencies = createDependencies();
+		dependencies.rename.mockRejectedValue(new Error("rename denied"));
+		dependencies.writeFile
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error("fallback denied"));
+		const temporaryPath =
+			"/test-cache/hevy-mcp/update-check.json.12345." +
+			"00000000-0000-4000-8000-000000000000.tmp";
+
+		await expect(
+			checkForUpdate(OPTIONS, dependencies),
+		).resolves.toBeUndefined();
+
+		expect(dependencies.unlink).toHaveBeenCalledWith(temporaryPath);
+		expect(dependencies.writeStderr).toHaveBeenCalledTimes(1);
+	});
+
 	it("still reports an update when the cache write fails", async () => {
 		const dependencies = createDependencies();
 		dependencies.writeFile.mockRejectedValue(new Error("read-only cache"));
@@ -170,6 +218,7 @@ describe("checkForUpdate", () => {
 		await checkForUpdate(OPTIONS, dependencies);
 
 		expect(dependencies.unlink).toHaveBeenCalled();
+		expect(dependencies.rename).not.toHaveBeenCalled();
 		expect(dependencies.writeStderr).toHaveBeenCalledTimes(1);
 	});
 

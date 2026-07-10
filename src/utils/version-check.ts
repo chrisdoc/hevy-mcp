@@ -31,6 +31,7 @@ interface VersionCheckDependencies {
 	unlink: typeof unlink;
 	homedir: typeof homedir;
 	randomUUID: typeof randomUUID;
+	pid: number;
 	now: () => number;
 	env: NodeJS.ProcessEnv;
 	writeStderr: (message: string) => unknown;
@@ -53,6 +54,7 @@ const defaultDependencies: VersionCheckDependencies = {
 	unlink,
 	homedir,
 	randomUUID,
+	pid: process.pid,
 	now: Date.now,
 	env: process.env,
 	writeStderr: (message) => process.stderr.write(message),
@@ -185,22 +187,36 @@ async function writeCache(
 	entry: CacheEntry,
 	dependencies: VersionCheckDependencies,
 ): Promise<void> {
-	const temporaryPath = `${cachePath}.${process.pid}.${dependencies.randomUUID()}.tmp`;
+	const temporaryPath = `${cachePath}.${dependencies.pid}.${dependencies.randomUUID()}.tmp`;
+	const payload = `${JSON.stringify(entry)}\n`;
 
 	try {
 		await dependencies.mkdir(dirname(cachePath), { recursive: true });
-		await dependencies.writeFile(
-			temporaryPath,
-			`${JSON.stringify(entry)}\n`,
-			"utf8",
-		);
-		await dependencies.rename(temporaryPath, cachePath);
+		await dependencies.writeFile(temporaryPath, payload, "utf8");
 	} catch {
 		try {
 			await dependencies.unlink(temporaryPath);
 		} catch {
 			// Cache cleanup failures are non-fatal.
 		}
+		return;
+	}
+
+	try {
+		await dependencies.rename(temporaryPath, cachePath);
+		return;
+	} catch {
+		try {
+			await dependencies.writeFile(cachePath, payload, "utf8");
+		} catch {
+			// Cache writes are deliberately non-fatal.
+		}
+	}
+
+	try {
+		await dependencies.unlink(temporaryPath);
+	} catch {
+		// Cache cleanup failures are non-fatal.
 	}
 }
 
