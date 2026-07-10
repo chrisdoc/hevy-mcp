@@ -1,12 +1,22 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import {
+	copyFile,
+	mkdir,
+	mkdtemp,
+	readFile,
+	rm,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runServerManifest } from "../../scripts/server-manifest.mjs";
 
 const rootDir = resolve(import.meta.dirname, "../..");
 const serverManifestScript = join(rootDir, "scripts/server-manifest.mjs");
+const execFileAsync = promisify(execFile);
 const fixtureDirs = new Set<string>();
 let cliImportId = 0;
 
@@ -211,7 +221,15 @@ describe("server manifest metadata", () => {
 		const contents = await readFile(join(fixtureDir, "server.json"), "utf8");
 		const updatedManifest = JSON.parse(contents);
 
-		expect(result.changed).toBe(true);
+		expect(result).toEqual({
+			changed: true,
+			drift: [
+				"name",
+				"version",
+				"packages[0].identifier",
+				"packages[0].version",
+			],
+		});
 		expect(contents).toBe(`${JSON.stringify(updatedManifest, null, "\t")}\n`);
 		expect(updatedManifest).toEqual({
 			...manifest,
@@ -225,6 +243,90 @@ describe("server manifest metadata", () => {
 				},
 			],
 		});
+	});
+
+	it("includes synchronized server.json in npm version commits and tags", async () => {
+		const fixtureDir = await mkdtemp(join(tmpdir(), "hevy-npm-version-"));
+		fixtureDirs.add(fixtureDir);
+		const packageJson = JSON.parse(
+			await readFile(join(rootDir, "package.json"), "utf8"),
+		);
+		const nextVersion = packageJson.version.replace(/\d+$/, (patch: string) =>
+			String(Number(patch) + 1),
+		);
+		const fixturePackageJson = {
+			name: packageJson.name,
+			version: packageJson.version,
+			mcpName: packageJson.mcpName,
+			files: ["server.json"],
+			scripts: {
+				"sync:server-manifest": packageJson.scripts["sync:server-manifest"],
+				version: packageJson.scripts.version,
+			},
+		};
+
+		await mkdir(join(fixtureDir, "scripts"));
+		await Promise.all([
+			writeJson(join(fixtureDir, "package.json"), fixturePackageJson),
+			copyFile(join(rootDir, "server.json"), join(fixtureDir, "server.json")),
+			copyFile(
+				serverManifestScript,
+				join(fixtureDir, "scripts/server-manifest.mjs"),
+			),
+		]);
+		await execFileAsync("git", ["init", "--quiet"], { cwd: fixtureDir });
+		await execFileAsync("git", ["config", "user.name", "Manifest Test"], {
+			cwd: fixtureDir,
+		});
+		await execFileAsync(
+			"git",
+			["config", "user.email", "manifest-test@example.com"],
+			{ cwd: fixtureDir },
+		);
+		await execFileAsync("git", ["add", "."], { cwd: fixtureDir });
+		await execFileAsync("git", ["commit", "--quiet", "-m", "baseline"], {
+			cwd: fixtureDir,
+		});
+
+		await execFileAsync("npm", ["version", "patch"], {
+			cwd: fixtureDir,
+			env: {
+				...process.env,
+				npm_config_sign_git_tag: "false",
+			},
+		});
+
+		const [
+			updatedPackageJson,
+			updatedManifest,
+			committedFiles,
+			head,
+			tag,
+			status,
+		] = await Promise.all([
+			readFile(join(fixtureDir, "package.json"), "utf8").then(JSON.parse),
+			readFile(join(fixtureDir, "server.json"), "utf8").then(JSON.parse),
+			execFileAsync(
+				"git",
+				["show", "--name-only", "--pretty=format:", "HEAD"],
+				{ cwd: fixtureDir },
+			),
+			execFileAsync("git", ["rev-parse", "HEAD"], { cwd: fixtureDir }),
+			execFileAsync("git", ["rev-list", "-n", "1", `v${nextVersion}`], {
+				cwd: fixtureDir,
+			}),
+			execFileAsync("git", ["status", "--porcelain"], { cwd: fixtureDir }),
+		]);
+
+		expect(updatedPackageJson.version).toBe(nextVersion);
+		expect(updatedManifest.version).toBe(nextVersion);
+		expect(updatedManifest.packages[0].version).toBe(nextVersion);
+		expect(committedFiles.stdout.trim().split("\n")).toEqual([
+			"package.json",
+			"server.json",
+		]);
+		expect(tag.stdout.trim()).toBe(head.stdout.trim());
+		expect(status.stdout).toBe("");
 	});
 
 	it("does not rewrite an already synchronized manifest", async () => {
