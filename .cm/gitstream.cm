@@ -25,8 +25,8 @@ automations:
       - pr_created
       - commit
     if:
-      - "{{ actions.linearb_ai_review.outputs.is_LGTM }}"
-      - "{{ calc.safe_changes }}"
+      - {{ actions.linearb_ai_review.outputs.is_LGTM }}
+      - {{ calc.safe_changes }}
     run:
       - action: approve@v1
 
@@ -107,7 +107,7 @@ automations:
   # Add safe changes label for low-risk changes
   label_safe_changes:
     if:
-      - "{{ calc.safe_changes }}"
+      - {{ calc.safe_changes }}
     run:
       - action: add-label@v1
         args:
@@ -121,7 +121,7 @@ automations:
 
 calc:
   etr: "{{ branch | estimatedReviewTime }}"
-  safe_changes: "{{ is.formatting or is.docs or is.tests or is.image }}"
+  safe_changes: {{ is.formatting or is.docs or is.tests or is.image }}
 
 colors:
   red: 'b60205'
