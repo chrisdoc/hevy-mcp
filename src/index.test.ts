@@ -1,3 +1,4 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import createServer, {
@@ -22,6 +23,10 @@ const testDoubles = vi.hoisted(() => ({
 		end: vi.fn(),
 	},
 	connect: vi.fn().mockResolvedValue(undefined),
+	registerPrompt: vi.fn(),
+	tool: vi.fn(),
+	registerTool: vi.fn(),
+	directRegisterToolCalls: 0,
 	sentry: {
 		init: vi.fn(() => ({})),
 		setUser: vi.fn(),
@@ -68,6 +73,13 @@ vi.mock("./utils/metrics.js", () => ({
 	serverStartups: { add: vi.fn() },
 }));
 
+vi.mock("./tools/user.js", () => ({
+	registerUserTools: vi.fn((server: McpServer) => {
+		testDoubles.directRegisterToolCalls += 1;
+		server.registerTool("get-user-info", {}, vi.fn());
+	}),
+}));
+
 vi.mock("@opentelemetry/api", () => ({
 	SpanStatusCode: { OK: 1, ERROR: 2 },
 	trace: { getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })) },
@@ -82,7 +94,10 @@ vi.mock("@opentelemetry/api", () => ({
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => {
 	class MockMcpServer {
 		connect = testDoubles.connect;
-		tool = vi.fn();
+		registerPrompt = testDoubles.registerPrompt;
+		tool = testDoubles.tool;
+		registerTool = testDoubles.registerTool;
+		registerResource = vi.fn();
 	}
 
 	return {
@@ -109,6 +124,12 @@ describe("Server entry", () => {
 		process.env = { ...originalEnv };
 		process.argv = [...originalArgv];
 		vi.clearAllMocks();
+		testDoubles.directRegisterToolCalls = 0;
+		testDoubles.tool.mockImplementation(
+			function (this: { registerTool: () => void }) {
+				this.registerTool();
+			},
+		);
 		const anyStdioModule = stdioModule as { __transports?: unknown[] };
 		if (anyStdioModule.__transports) {
 			anyStdioModule.__transports.length = 0;
@@ -129,6 +150,10 @@ describe("Server entry", () => {
 	it("creates an MCP server instance", () => {
 		const server = createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
+		expect(testDoubles.registerPrompt).toHaveBeenCalledTimes(2);
+		expect(
+			testDoubles.registerPrompt.mock.calls.map(([prompt]) => prompt),
+		).toEqual(["analyze-workout-progress", "create-workout-from-routine"]);
 		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 			"mcp.server.build",
 			expect.objectContaining({
@@ -137,6 +162,17 @@ describe("Server entry", () => {
 				}),
 			}),
 			expect.any(Function),
+		);
+	});
+
+	it("reports the number of tool registration calls on the registration span", () => {
+		createServer({ config: { apiKey: "test-key" } });
+
+		const registrationCount = testDoubles.registerTool.mock.calls.length;
+		expect(registrationCount).toBeGreaterThan(0);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.tools.count",
+			registrationCount,
 		);
 	});
 
