@@ -73,6 +73,7 @@ const HELP_TEXT = [
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
+	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
 	"",
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
