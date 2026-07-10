@@ -142,7 +142,16 @@ If you prefer Bun, swap the launcher fields:
 }
 ```
 
-To run Claude Desktop through Docker instead, use:
+To run Claude Desktop through Docker instead, first create an environment file
+outside the repository containing your real key:
+
+```dotenv
+HEVY_API_KEY=replace_with_your_real_key
+```
+
+Restrict access to that file where supported (for example,
+`chmod 600 /absolute/path/to/hevy-mcp.env`), then use its absolute path in the
+Claude Desktop configuration:
 
 ```json
 {
@@ -153,21 +162,20 @@ To run Claude Desktop through Docker instead, use:
 				"run",
 				"-i",
 				"--rm",
-				"-e",
-				"HEVY_API_KEY",
+				"--env-file",
+				"/absolute/path/to/hevy-mcp.env",
 				"ghcr.io/chrisdoc/hevy-mcp:latest"
-			],
-			"env": {
-				"HEVY_API_KEY": "your_hevy_api_key_here"
-			}
+			]
 		}
 	}
 }
 ```
 
 This configuration runs the same stdio server inside the container; it does
-not expose an HTTP port or start a detached service. Replace `latest` with an
-exact version tag if you want Claude Desktop to stay on a pinned release.
+not expose an HTTP port or start a detached service. Docker reads the key from
+the environment file, so the Claude configuration does not replace an
+inherited key with a placeholder. Replace `latest` with an exact version tag if
+you want Claude Desktop to stay on a pinned release.
 
 ### Cursor Configuration
 
