@@ -7,7 +7,7 @@ import type { ExerciseHistoryEntry } from "../types/ExerciseHistoryEntry.ts";
 import { faker } from "@faker-js/faker";
 
 export function createExerciseHistoryEntry(
-  data?: Partial<ExerciseHistoryEntry>,
+  data?: Partial<ExerciseHistoryEntry>
 ): ExerciseHistoryEntry {
   return {
     ...{

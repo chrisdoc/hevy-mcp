@@ -7,7 +7,7 @@ import type { RoutineFolder } from "../types/RoutineFolder.ts";
 import { faker } from "@faker-js/faker";
 
 export function createRoutineFolder(
-  data?: Partial<RoutineFolder>,
+  data?: Partial<RoutineFolder>
 ): RoutineFolder {
   return {
     ...{

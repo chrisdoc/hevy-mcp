@@ -29,7 +29,7 @@ function getGetV1WorkoutsEventsUrl() {
 export async function getV1WorkoutsEvents(
   headers: GetV1WorkoutsEventsHeaderParams,
   params?: GetV1WorkoutsEventsQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

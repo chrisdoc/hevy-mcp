@@ -3,17 +3,17 @@ import type {
 	ReadResourceCallback,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
 	ExerciseTemplate,
 	RoutineFolder,
 } from "../generated/client/types/index.js";
 import { registerTemplateTools } from "../tools/templates.js";
-import { resetExerciseTemplateCatalogCache } from "../utils/exercise-template-catalog.js";
 import {
 	formatExerciseTemplate,
 	formatRoutineFolder,
 } from "../utils/formatters.js";
+import { createExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { registerHevyResources } from "./hevy.js";
 
 type HevyClient = ReturnType<
@@ -82,10 +82,6 @@ const benchTemplate: ExerciseTemplate = {
 };
 
 describe("registerHevyResources", () => {
-	beforeEach(() => {
-		resetExerciseTemplateCatalogCache();
-	});
-
 	it("registers all four static JSON resources", () => {
 		const { registerResource, server } = createMockServer();
 		registerHevyResources(server, null);
@@ -247,8 +243,9 @@ describe("registerHevyResources", () => {
 		const hevyClient = {
 			getExerciseTemplates: vi.fn().mockReturnValue(pendingCatalog),
 		} as unknown as HevyClient;
-		registerHevyResources(server, hevyClient);
-		registerTemplateTools(server, hevyClient);
+		const catalog = createExerciseTemplateCatalog();
+		registerHevyResources(server, hevyClient, catalog);
+		registerTemplateTools(server, hevyClient, { catalog });
 
 		const registration = getResourceRegistration(
 			registerResource,

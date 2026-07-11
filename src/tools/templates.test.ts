@@ -3,10 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplate } from "../generated/client/types/index.js";
 import { formatExerciseTemplate } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import {
-	registerTemplateTools,
-	resetExerciseTemplateCache,
-} from "./templates.js";
+import { registerTemplateTools } from "./templates.js";
 
 function createMockServer() {
 	const tool = vi.fn();
@@ -211,9 +208,7 @@ describe("registerTemplateTools", () => {
 	});
 
 	describe("search-exercise-templates", () => {
-		beforeEach(() => {
-			resetExerciseTemplateCache();
-		});
+		beforeEach(() => {});
 
 		it("returns error when client is not initialized", async () => {
 			const { server, tool } = createMockServer();

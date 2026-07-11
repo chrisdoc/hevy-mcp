@@ -5,7 +5,7 @@ import type {
 	GetV1BodyMeasurements200,
 	GetV1BodyMeasurementsDate200,
 } from "../generated/client/types/index.js";
-import { withObservability } from "../utils/observability-wrapper.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
@@ -107,6 +107,7 @@ function buildMeasurementPayload(
 export function registerBodyMeasurementTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	wrapHandler: typeof withErrorHandling = withErrorHandling,
 ) {
 	// Get body measurements (paginated list)
 	const getBodyMeasurementsSchema = {
@@ -132,7 +133,7 @@ export function registerBodyMeasurementTools(
 			outputSchema: bodyMeasurementsOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurements"),
 		},
-		withObservability(async (args: GetBodyMeasurementsParams) => {
+		wrapHandler(async (args: GetBodyMeasurementsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
@@ -185,7 +186,7 @@ export function registerBodyMeasurementTools(
 			outputSchema: bodyMeasurementOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurement"),
 		},
-		withObservability(async (args: GetBodyMeasurementParams) => {
+		wrapHandler(async (args: GetBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date } = args;
 			const data: GetV1BodyMeasurementsDate200 =
@@ -232,7 +233,7 @@ export function registerBodyMeasurementTools(
 		}),
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
-		withObservability(async (args: CreateBodyMeasurementParams) => {
+		wrapHandler(async (args: CreateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			await client.createBodyMeasurement({
@@ -273,7 +274,7 @@ export function registerBodyMeasurementTools(
 		}),
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
-		withObservability(async (args: UpdateBodyMeasurementParams) => {
+		wrapHandler(async (args: UpdateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			const payload = buildMeasurementPayload(fields);

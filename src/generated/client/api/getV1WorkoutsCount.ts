@@ -25,7 +25,7 @@ function getGetV1WorkoutsCountUrl() {
  */
 export async function getV1WorkoutsCount(
   headers: GetV1WorkoutsCountHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

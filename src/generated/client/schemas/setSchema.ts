@@ -7,16 +7,14 @@ import { z } from "zod/v4";
 
 export const setSchema = z.object({
   index: z.optional(
-    z
-      .number()
-      .describe("Index indicating the order of the set in the workout."),
+    z.number().describe("Index indicating the order of the set in the workout.")
   ),
   type: z.optional(
     z
       .string()
       .describe(
-        "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
-      ),
+        "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'"
+      )
   ),
   weight_kg: z.number().describe("Weight lifted in kilograms.").nullish(),
   reps: z.number().describe("Number of reps logged for the set").nullish(),
@@ -35,7 +33,7 @@ export const setSchema = z.object({
   custom_metric: z
     .number()
     .describe(
-      "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)",
+      "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)"
     )
     .nullish(),
 });

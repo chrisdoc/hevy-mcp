@@ -7,7 +7,7 @@ import type { PutBodyMeasurement } from "../types/PutBodyMeasurement.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPutBodyMeasurement(
-  data?: Partial<PutBodyMeasurement>,
+  data?: Partial<PutBodyMeasurement>
 ): PutBodyMeasurement {
   return {
     ...{

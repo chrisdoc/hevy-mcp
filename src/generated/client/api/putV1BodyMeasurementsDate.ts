@@ -19,7 +19,7 @@ import type {
 import { fetch } from "../../.kubb/fetch.ts";
 
 function getPutV1BodyMeasurementsDateUrl(
-  date: PutV1BodyMeasurementsDatePathParams["date"],
+  date: PutV1BodyMeasurementsDatePathParams["date"]
 ) {
   const res = { method: "PUT", url: `/v1/body_measurements/${date}` as const };
   return res;
@@ -35,7 +35,7 @@ export async function putV1BodyMeasurementsDate(
   headers: PutV1BodyMeasurementsDateHeaderParams,
   config: Partial<RequestConfig<PutV1BodyMeasurementsDateMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

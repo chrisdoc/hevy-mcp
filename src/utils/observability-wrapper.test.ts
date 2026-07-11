@@ -58,6 +58,7 @@ describe("withObservability", () => {
 		expect(withErrorHandling).toHaveBeenCalledWith(
 			expect.any(Function),
 			"test-context",
+			expect.any(Function),
 		);
 		expect(testDoubles.events).toEqual([
 			"error-handling:start",

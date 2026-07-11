@@ -15,6 +15,7 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - [Quick Start](#quick-start)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
+  - [Cloudflare Worker Deployment](#cloudflare-worker-deployment)
   - [Run with Docker](#run-with-docker)
   - [Claude Desktop Configuration](#claude-desktop-configuration)
   - [Cursor Configuration](#cursor-configuration)
@@ -45,6 +46,7 @@ Pick the workflow that fits your setup:
 | **One-off stdio run** | `HEVY_API_KEY=your_key npx -y hevy-mcp` or `HEVY_API_KEY=your_key bunx hevy-mcp@latest` | Node.js ≥ 20, Hevy API key |
 | **Docker stdio run**  | `docker run -i --rm -e HEVY_API_KEY ghcr.io/chrisdoc/hevy-mcp:latest`                   | Docker, Hevy API key       |
 | **Local development** | `npm install && npm run build && npm start`                                             | `.env` with `HEVY_API_KEY` |
+| **Cloudflare Worker** | `npm install && npm run worker:deploy`                                                  | Cloudflare account         |
 
 ---
 
@@ -113,6 +115,59 @@ Use `latest` to follow the newest stable release. For reproducible deployments,
 pin the exact version shown on the release, using a tag such as
 `ghcr.io/chrisdoc/hevy-mcp:X.Y.Z`. Major (`:X`) and major.minor (`:X.Y`) tags
 are also published for controlled automatic updates.
+
+### Cloudflare Worker Deployment
+
+The repository includes a separate Cloudflare Worker entry point. It preserves
+the local Node.js stdio CLI and exposes Streamable HTTP at exactly `/mcp`:
+
+```bash
+nvm use
+npm install
+
+# Local Worker development
+npm run worker:dev
+
+# Reproducible bundle validation without deploying
+npm run worker:dry-run
+
+# Deploy using your authenticated Wrangler account
+npm run worker:deploy
+```
+
+The Worker does **not** use a shared `HEVY_API_KEY` secret. Every MCP `POST`
+must provide the caller's own Hevy API key:
+
+```http
+Authorization: Bearer YOUR_HEVY_API_KEY
+```
+
+The Worker validates that key with Hevy before handling MCP traffic, then sends
+it to Hevy only as the outbound `api-key` header. It is never placed in URLs,
+session IDs, cache keys, responses, or telemetry. Do not put the key in query
+parameters or Worker configuration.
+
+Browser clients must also configure exact allowed origins through the optional
+comma-separated `MCP_ALLOWED_ORIGINS` Worker variable. For example, add a
+non-secret Wrangler environment variable for:
+
+```text
+MCP_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
+```
+
+Requests without an `Origin` header remain available to desktop and other
+non-browser MCP clients. Browser origins are denied unless they match the list
+exactly; wildcard CORS is intentionally unsupported.
+
+The endpoint is stateless: every authorized `POST /mcp` creates a fresh MCP
+server, Hevy client, transport, and exercise-template cache. There are no MCP
+session IDs, Durable Objects, event replay, or resumable `GET` streams. `GET`
+and `DELETE` return `405`.
+
+This authentication mode is a **custom bearer credential containing a Hevy API
+key**, not OAuth. MCP clients that require OAuth discovery, dynamic client
+registration, or token refresh are not compatible unless they can be configured
+to send a fixed custom `Authorization: Bearer ...` header.
 
 ---
 
@@ -234,7 +289,9 @@ This bootstraps the `hevy-mcp` entry in your client config without manual JSON e
 ## ⚙️ Configuration
 
 Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
-`.env` or system environment).
+`.env` or system environment) for the local stdio CLI. Cloudflare Worker
+requests instead supply the Hevy key in the request-local bearer header shown
+above; do not configure a Worker `HEVY_API_KEY` secret.
 
 Set `HEVY_MCP_API_TIMEOUT` to override the default 30-second Hevy API request
 timeout. Its value is in milliseconds.
@@ -256,7 +313,7 @@ HEVY_MCP_DEBUG=1
 ### 🧠 Exercise Template Cache Behavior
 
 `search-exercise-templates` and the `hevy://exercise-templates` resource use a
-shared in-memory async cache for the full exercise template catalog:
+server-scoped in-memory async cache for the full exercise template catalog:
 
 - **TTL**: 5 minutes per cached catalog entry.
 - **Memory bound**: max 1 catalog entry (LRU bounded cache).
@@ -264,6 +321,8 @@ shared in-memory async cache for the full exercise template catalog:
   fetch when possible.
 - **Manual refresh**: set `refresh: true` in the tool input to invalidate the
   cached catalog and force a re-fetch from the Hevy API.
+- **Tenant isolation**: each Worker request owns a distinct cache, so catalogs
+  from different bearer credentials cannot be shared by a warm Worker isolate.
 
 Paginated `get-exercise-templates` requests still call the API directly to keep
 paging behavior explicit and avoid cross-page invalidation complexity.
@@ -282,11 +341,10 @@ paging behavior explicit and avoid cross-page invalidation complexity.
 <details>
 <summary><strong>⚠️ Migration Note (v1.18.0)</strong></summary>
 
-As of **v1.18.0**, `hevy-mcp` removed HTTP/SSE transport and its previous
-Docker packaging. Docker support is now available again for the stdio server.
-
-Both `npx hevy-mcp` and the official container image use stdio; HTTP ports and
-detached-container deployment are not supported.
+As of **v1.18.0**, `hevy-mcp` removed its previous Node HTTP/SSE transport.
+The local package and official container continue to use stdio. Cloudflare
+deployment now uses the separate stateless Web Standard Streamable HTTP Worker
+entry point described above; the container still does not expose an HTTP port.
 
 </details>
 

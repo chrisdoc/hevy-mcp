@@ -8,7 +8,7 @@ import { createWorkout } from "./createWorkout.ts";
 import { faker } from "@faker-js/faker";
 
 export function createUpdatedWorkout(
-  data?: Partial<UpdatedWorkout>,
+  data?: Partial<UpdatedWorkout>
 ): UpdatedWorkout {
   return {
     ...{

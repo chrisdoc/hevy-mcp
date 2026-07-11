@@ -9,8 +9,6 @@ export const deletedWorkoutSchema = z.object({
   type: z.string().describe("Indicates the type of the event (deleted)"),
   id: z.string().describe("The unique identifier of the deleted workout"),
   deleted_at: z.optional(
-    z
-      .string()
-      .describe("A date string indicating when the workout was deleted"),
+    z.string().describe("A date string indicating when the workout was deleted")
   ),
 });

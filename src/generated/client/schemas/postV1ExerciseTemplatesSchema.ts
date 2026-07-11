@@ -35,9 +35,9 @@ export const postV1ExerciseTemplates403Schema = z.object({
  * @description The exercise template to create.
  */
 export const postV1ExerciseTemplatesMutationRequestSchema = z.lazy(
-  () => createCustomExerciseRequestBodySchema,
+  () => createCustomExerciseRequestBodySchema
 );
 
 export const postV1ExerciseTemplatesMutationResponseSchema = z.lazy(
-  () => postV1ExerciseTemplates200Schema,
+  () => postV1ExerciseTemplates200Schema
 );

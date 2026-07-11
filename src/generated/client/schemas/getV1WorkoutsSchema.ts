@@ -40,5 +40,5 @@ export const getV1Workouts200Schema = z.object({
 export const getV1Workouts400Schema = z.any();
 
 export const getV1WorkoutsQueryResponseSchema = z.lazy(
-  () => getV1Workouts200Schema,
+  () => getV1Workouts200Schema
 );

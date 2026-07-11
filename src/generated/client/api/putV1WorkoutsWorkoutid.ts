@@ -18,7 +18,7 @@ import type {
 import { fetch } from "../../.kubb/fetch.ts";
 
 function getPutV1WorkoutsWorkoutidUrl(
-  workoutId: PutV1WorkoutsWorkoutidPathParams["workoutId"],
+  workoutId: PutV1WorkoutsWorkoutidPathParams["workoutId"]
 ) {
   const res = { method: "PUT", url: `/v1/workouts/${workoutId}` as const };
   return res;
@@ -34,7 +34,7 @@ export async function putV1WorkoutsWorkoutid(
   headers: PutV1WorkoutsWorkoutidHeaderParams,
   config: Partial<RequestConfig<PutV1WorkoutsWorkoutidMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

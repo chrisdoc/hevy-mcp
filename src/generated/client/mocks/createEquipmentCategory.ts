@@ -7,7 +7,7 @@ import type { EquipmentCategory } from "../types/EquipmentCategory.ts";
 import { faker } from "@faker-js/faker";
 
 export function createEquipmentCategory(
-  data?: Partial<EquipmentCategory>,
+  data?: Partial<EquipmentCategory>
 ): EquipmentCategory {
   return (
     data ||

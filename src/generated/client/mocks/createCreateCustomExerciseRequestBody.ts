@@ -10,7 +10,7 @@ import { createMuscleGroup } from "./createMuscleGroup.ts";
 import { faker } from "@faker-js/faker";
 
 export function createCreateCustomExerciseRequestBody(
-  data?: Partial<CreateCustomExerciseRequestBody>,
+  data?: Partial<CreateCustomExerciseRequestBody>
 ): CreateCustomExerciseRequestBody {
   return {
     ...{

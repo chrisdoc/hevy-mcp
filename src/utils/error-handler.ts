@@ -2,10 +2,9 @@
  * Centralized error handling utility for MCP tools
  */
 
-import { isAxiosError } from "axios";
 import { determineErrorType, ErrorType } from "./error-classification.js";
+import { isHevyHttpError } from "./hevy-http-error.js";
 import type { McpToolResponse } from "./response-formatter.js";
-import { Sentry } from "./telemetry.js";
 
 export { ErrorType } from "./error-classification.js";
 
@@ -70,14 +69,11 @@ function formatSecondsLabel(seconds: number): string {
 }
 
 function getRateLimitMessage(error: unknown): string {
-	if (!isAxiosError(error)) {
+	if (!isHevyHttpError(error)) {
 		return "Rate limited by Hevy. Please wait and retry.";
 	}
 
-	const retryAfterHeader = getHeaderValue(
-		error.response?.headers,
-		"retry-after",
-	);
+	const retryAfterHeader = getHeaderValue(error.headers, "retry-after");
 	if (!retryAfterHeader) {
 		return "Rate limited by Hevy (HTTP 429). Please wait and retry your request.";
 	}
@@ -128,7 +124,7 @@ function getUserFacingMessage(error: unknown, defaultMessage: string): string {
 		return getRetryExhaustedMessage(error);
 	}
 
-	if (isAxiosError(error) && error.response?.status === 429) {
+	if (isHevyHttpError(error) && error.status === 429) {
 		return getRateLimitMessage(error);
 	}
 
@@ -153,7 +149,6 @@ export interface ErrorDebugContext {
 	axios?: {
 		status?: number;
 		statusText?: string;
-		data?: unknown;
 		method?: string;
 		url?: string;
 	};
@@ -172,18 +167,15 @@ export function createErrorResponse(
 ): McpToolResponse {
 	const originalErrorMessage = extractErrorMessage(error);
 	let errorMessage = originalErrorMessage;
-	const axiosErrorContext = extractAxiosErrorContext(error);
+	const axiosErrorContext = extractHttpErrorContext(error);
 	const mappedHevyErrorMessage = mapHevyErrorMessageByStatus(
 		axiosErrorContext?.status,
 	);
 
 	if (mappedHevyErrorMessage) {
 		errorMessage = mappedHevyErrorMessage;
-	}
-
-	// Check for axios error with response data
-	if (!mappedHevyErrorMessage && axiosErrorContext?.data) {
-		errorMessage = stringifyErrorData(axiosErrorContext.data);
+	} else if (isHevyHttpError(error) && error.status !== undefined) {
+		errorMessage = `Hevy API request failed (HTTP ${error.status}).`;
 	}
 
 	errorMessage = getUserFacingMessage(error, errorMessage);
@@ -209,10 +201,7 @@ export function createErrorResponse(
 	const errorCodeSuffix = errorCode ? `, Code: ${errorCode}` : "";
 
 	// Log the error for server-side debugging with type information
-	console.error(
-		`${formattedMessage} (Type: ${errorType}${errorCodeSuffix})`,
-		error,
-	);
+	console.error(`${formattedMessage} (Type: ${errorType}${errorCodeSuffix})`);
 
 	return {
 		content: [
@@ -255,19 +244,18 @@ function extractErrorMessage(error: unknown): string {
 	return String(error);
 }
 
-function extractAxiosErrorContext(
+function extractHttpErrorContext(
 	error: unknown,
 ): ErrorDebugContext["axios"] | null {
-	if (!isAxiosError(error)) {
+	if (!isHevyHttpError(error)) {
 		return null;
 	}
 
 	return {
-		status: error.response?.status,
-		statusText: error.response?.statusText,
-		data: error.response?.data,
-		method: error.config?.method,
-		url: error.config?.url,
+		status: error.status,
+		statusText: error.statusText,
+		method: error.method,
+		url: error.endpoint,
 	};
 }
 
@@ -299,22 +287,6 @@ function mapHevyErrorMessageByStatus(status?: number): string | null {
 	return null;
 }
 
-function stringifyErrorData(data: unknown): string {
-	if (typeof data === "string") {
-		return data;
-	}
-
-	if (data && typeof data === "object") {
-		try {
-			return JSON.stringify(data);
-		} catch (_e) {
-			return "Unable to serialize error response data";
-		}
-	}
-
-	return String(data);
-}
-
 /**
  * Wrap an async function with standardized error handling
  *
@@ -329,20 +301,14 @@ function stringifyErrorData(data: unknown): string {
 export function withErrorHandling<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
+	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (rawArgs: Record<string, unknown>) => {
 		const args = rawArgs ?? {};
 		try {
 			return await fn(args as TParams);
 		} catch (error) {
-			Sentry.withScope((scope) => {
-				scope.setTag("mcp.tool.context", context);
-				scope.setContext("mcpTool", {
-					context,
-					argumentKeyCount: Object.keys(args).length,
-				});
-				Sentry.captureException(error);
-			});
+			onError?.(error, context, Object.keys(args).length);
 
 			return createErrorResponse(error, context);
 		}

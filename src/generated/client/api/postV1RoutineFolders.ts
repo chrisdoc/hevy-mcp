@@ -30,7 +30,7 @@ export async function postV1RoutineFolders(
   headers: PostV1RoutineFoldersHeaderParams,
   config: Partial<RequestConfig<PostV1RoutineFoldersMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

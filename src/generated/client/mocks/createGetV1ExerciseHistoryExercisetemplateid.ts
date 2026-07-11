@@ -14,7 +14,7 @@ import { createExerciseHistoryEntry } from "./createExerciseHistoryEntry.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1ExerciseHistoryExercisetemplateidPathParams(
-  data?: Partial<GetV1ExerciseHistoryExercisetemplateidPathParams>,
+  data?: Partial<GetV1ExerciseHistoryExercisetemplateidPathParams>
 ): GetV1ExerciseHistoryExercisetemplateidPathParams {
   return {
     ...{ exerciseTemplateId: faker.string.alpha() },
@@ -23,7 +23,7 @@ export function createGetV1ExerciseHistoryExercisetemplateidPathParams(
 }
 
 export function createGetV1ExerciseHistoryExercisetemplateidQueryParams(
-  data?: Partial<GetV1ExerciseHistoryExercisetemplateidQueryParams>,
+  data?: Partial<GetV1ExerciseHistoryExercisetemplateidQueryParams>
 ): GetV1ExerciseHistoryExercisetemplateidQueryParams {
   return {
     ...{
@@ -35,7 +35,7 @@ export function createGetV1ExerciseHistoryExercisetemplateidQueryParams(
 }
 
 export function createGetV1ExerciseHistoryExercisetemplateidHeaderParams(
-  data?: Partial<GetV1ExerciseHistoryExercisetemplateidHeaderParams>,
+  data?: Partial<GetV1ExerciseHistoryExercisetemplateidHeaderParams>
 ): GetV1ExerciseHistoryExercisetemplateidHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -47,7 +47,7 @@ export function createGetV1ExerciseHistoryExercisetemplateidHeaderParams(
  * @description A list of exercise history entries
  */
 export function createGetV1ExerciseHistoryExercisetemplateid200(
-  data?: Partial<GetV1ExerciseHistoryExercisetemplateid200>,
+  data?: Partial<GetV1ExerciseHistoryExercisetemplateid200>
 ): GetV1ExerciseHistoryExercisetemplateid200 {
   return {
     ...{
@@ -67,7 +67,7 @@ export function createGetV1ExerciseHistoryExercisetemplateid400() {
 }
 
 export function createGetV1ExerciseHistoryExercisetemplateidQueryResponse(
-  data?: Partial<GetV1ExerciseHistoryExercisetemplateidQueryResponse>,
+  data?: Partial<GetV1ExerciseHistoryExercisetemplateidQueryResponse>
 ): GetV1ExerciseHistoryExercisetemplateidQueryResponse {
   return (
     data ||

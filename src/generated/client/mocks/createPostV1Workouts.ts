@@ -15,7 +15,7 @@ import { createWorkout } from "./createWorkout.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPostV1WorkoutsHeaderParams(
-  data?: Partial<PostV1WorkoutsHeaderParams>,
+  data?: Partial<PostV1WorkoutsHeaderParams>
 ): PostV1WorkoutsHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -27,7 +27,7 @@ export function createPostV1WorkoutsHeaderParams(
  * @description The workout was successfully created
  */
 export function createPostV1Workouts201(
-  data?: Partial<PostV1Workouts201>,
+  data?: Partial<PostV1Workouts201>
 ): PostV1Workouts201 {
   return createWorkout(data);
 }
@@ -36,7 +36,7 @@ export function createPostV1Workouts201(
  * @description Invalid request body
  */
 export function createPostV1Workouts400(
-  data?: Partial<PostV1Workouts400>,
+  data?: Partial<PostV1Workouts400>
 ): PostV1Workouts400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -45,13 +45,13 @@ export function createPostV1Workouts400(
 }
 
 export function createPostV1WorkoutsMutationRequest(
-  data?: Partial<PostV1WorkoutsMutationRequest>,
+  data?: Partial<PostV1WorkoutsMutationRequest>
 ): PostV1WorkoutsMutationRequest {
   return createPostWorkoutsRequestBody(data);
 }
 
 export function createPostV1WorkoutsMutationResponse(
-  data?: Partial<PostV1WorkoutsMutationResponse>,
+  data?: Partial<PostV1WorkoutsMutationResponse>
 ): PostV1WorkoutsMutationResponse {
   return data || faker.helpers.arrayElement<any>([createPostV1Workouts201()]);
 }

@@ -68,7 +68,10 @@
 		"version:minor": "npm version minor",
 		"version:major": "npm version major",
 		"release": "changeset publish",
-		"commit": "commit"
+		"commit": "commit",
+		"worker:dev": "wrangler dev",
+		"worker:deploy": "wrangler deploy",
+		"worker:dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.29.0",
@@ -81,7 +84,6 @@
 		"@opentelemetry/sdk-trace-node": "^2.9.0",
 		"@sentry/node": "^10.58.0",
 		"@sentry/opentelemetry": "^10.58.0",
-		"axios": "^1.18.0",
 		"semver": "^7.8.5",
 		"zod": "^4.4.3"
 	},
@@ -113,7 +115,8 @@
 		"tsdown": "^0.22.2",
 		"tsx": "^4.22.4",
 		"typescript": "^6.0.3",
-		"vitest": "^4.1.9"
+		"vitest": "^4.1.9",
+		"wrangler": "^4.110.0"
 	},
 	"engines": {
 		"node": ">=20.0.0"

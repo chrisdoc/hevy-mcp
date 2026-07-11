@@ -25,5 +25,5 @@ export const getV1WorkoutsWorkoutid200Schema = z.lazy(() => workoutSchema);
 export const getV1WorkoutsWorkoutid404Schema = z.any();
 
 export const getV1WorkoutsWorkoutidQueryResponseSchema = z.lazy(
-  () => getV1WorkoutsWorkoutid200Schema,
+  () => getV1WorkoutsWorkoutid200Schema
 );

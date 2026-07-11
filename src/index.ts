@@ -11,53 +11,20 @@ import { serverStartups } from "./utils/metrics.js";
 
 import { SpanStatusCode } from "@opentelemetry/api";
 import { createHmac } from "node:crypto";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { registerWorkoutPrompts } from "./prompts/workouts.js";
-import { registerHevyResources } from "./resources/hevy.js";
-import { registerHevyTools } from "./tools/register.js";
+import { createSharedMcpServer } from "./shared-server.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
+import { isHevyHttpError } from "./utils/hevy-http-error.js";
+import { createNodeHevyClientOptions } from "./utils/hevy-client-observability.js";
 import { createClient } from "./utils/hevyClient.js";
-import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
+import { withObservability } from "./utils/observability-wrapper.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
 import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
 const version = serviceVersion;
-
-const SERVER_INSTRUCTIONS = [
-	[
-		"Hevy MCP connects clients to the authenticated user's Hevy",
-		"workout-tracking data, including workouts, routines, exercise templates,",
-		"routine folders, body measurements, and profile information.",
-		"HEVY_API_KEY must contain a valid Hevy API key.",
-	].join(" "),
-	[
-		"Safety: all get-* and search-* tools are read-only. create-* and",
-		"update-* tools mutate Hevy data. Creates are additive and",
-		"non-idempotent, so repeating one can create duplicates. Updates can",
-		"overwrite existing data. Delete operations are not available.",
-	].join(" "),
-	[
-		"Workflow: search exercise templates first, then use the returned",
-		"template IDs when creating workouts or routines. To create a completed",
-		"workout from a routine, fetch the routine as a plan, then obtain the",
-		"actual completed sets and end time from the user; never invent completion",
-		"data. Use the built-in workflow prompts when they match the task.",
-	].join(" "),
-	[
-		"Pagination: start at page 1 and fetch only the pages needed. Most list",
-		"tools allow pageSize up to 10; get-exercise-templates allows up to 100.",
-	].join(" "),
-	[
-		"Rate limits and retries: minimize repeated calls. If Hevy returns HTTP",
-		"429, follow its retry guidance. Transient read requests retry",
-		"automatically, but write requests do not; confirm uncertain write",
-		"outcomes before trying again.",
-	].join(" "),
-].join("\n\n");
 
 const HELP_TEXT = [
 	"Usage:",
@@ -130,43 +97,10 @@ const serverConfigSchema = z.object({
 export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
-function createToolCountingServer(server: McpServer) {
-	let count = 0;
-
-	const countingServer = new Proxy(server, {
-		get(target, property, receiver) {
-			if (property === "tool") {
-				return (...args: Parameters<McpServer["tool"]>) => {
-					const registeredTool = target.tool(...args);
-					count += 1;
-					return registeredTool;
-				};
-			}
-
-			if (property === "registerTool") {
-				const registerTool: McpServer["registerTool"] = (
-					name,
-					config,
-					callback,
-				) => {
-					const registeredTool = target.registerTool(name, config, callback);
-					count += 1;
-					return registeredTool;
-				};
-				return registerTool;
-			}
-
-			return Reflect.get(target, property, receiver);
-		},
-	});
-
-	return {
-		server: countingServer,
-		getCount: () => count,
-	};
-}
-
 function getHttpStatus(error: unknown): number | undefined {
+	if (isHevyHttpError(error)) {
+		return error.status;
+	}
 	if (!error || typeof error !== "object" || !("response" in error)) {
 		return undefined;
 	}
@@ -243,62 +177,16 @@ function buildServer(apiKey: string) {
 			try {
 				Sentry.setUser({ id: userId });
 				setCurrentUserId(userId);
-
-				const baseServer = new McpServer(
-					{
-						name,
-						version,
-					},
-					{
-						capabilities: { logging: {} },
-						instructions: SERVER_INSTRUCTIONS,
-					},
-				);
-				const server = Sentry.wrapMcpServerWithSentry(baseServer);
-				const clientLogger = createMcpClientLogger(server);
-
-				const hevyClient = tracer.startActiveSpan(
-					"mcp.hevy-client.initialize",
-					(childSpan) => {
-						try {
-							return createClient(apiKey, HEVY_API_BASEURL, {
-								logger: clientLogger,
-							});
-						} finally {
-							childSpan.end();
-						}
-					},
-				);
-				console.error("Hevy client initialized with API key");
-
-				tracer.startActiveSpan("mcp.tools.register", (toolsSpan) => {
-					try {
-						const counting = createToolCountingServer(server);
-						registerHevyTools(counting.server, hevyClient, {
-							logger: clientLogger,
-						});
-						toolsSpan.setAttribute("mcp.tools.count", counting.getCount());
-					} finally {
-						toolsSpan.end();
-					}
+				const server = createSharedMcpServer({
+					apiKey,
+					clientOptions: createNodeHevyClientOptions(),
+					wrapHandler: withObservability,
+					wrapServer: (baseServer) =>
+						Sentry.wrapMcpServerWithSentry(baseServer),
+					onToolsRegistered: (count) =>
+						span.setAttribute("mcp.tools.count", count),
 				});
-
-				registerWorkoutPrompts(server);
-				tracer.startActiveSpan(
-					"mcp.resources.register",
-					{
-						attributes: {
-							"mcp.resources.count": 4,
-						},
-					},
-					(resourcesSpan) => {
-						try {
-							registerHevyResources(server, hevyClient);
-						} finally {
-							resourcesSpan.end();
-						}
-					},
-				);
+				console.error("Hevy client initialized with API key");
 
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;

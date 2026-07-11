@@ -7,7 +7,7 @@ import type { DeletedWorkout } from "../types/DeletedWorkout.ts";
 import { faker } from "@faker-js/faker";
 
 export function createDeletedWorkout(
-  data?: Partial<DeletedWorkout>,
+  data?: Partial<DeletedWorkout>
 ): DeletedWorkout {
   return {
     ...{

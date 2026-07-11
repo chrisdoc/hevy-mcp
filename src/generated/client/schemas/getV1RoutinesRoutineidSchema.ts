@@ -31,5 +31,5 @@ export const getV1RoutinesRoutineid400Schema = z.object({
 });
 
 export const getV1RoutinesRoutineidQueryResponseSchema = z.lazy(
-  () => getV1RoutinesRoutineid200Schema,
+  () => getV1RoutinesRoutineid200Schema
 );

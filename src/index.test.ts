@@ -61,6 +61,10 @@ vi.mock("./utils/hevyClient.js", () => ({
 	})),
 }));
 
+vi.mock("./utils/hevy-client-observability.js", () => ({
+	createNodeHevyClientOptions: vi.fn(() => ({})),
+}));
+
 vi.mock("./utils/graceful-shutdown.js", () => ({
 	installGracefulShutdown: testDoubles.installGracefulShutdown,
 }));

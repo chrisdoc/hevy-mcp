@@ -16,7 +16,7 @@ import { createWorkout } from "./createWorkout.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPutV1WorkoutsWorkoutidPathParams(
-  data?: Partial<PutV1WorkoutsWorkoutidPathParams>,
+  data?: Partial<PutV1WorkoutsWorkoutidPathParams>
 ): PutV1WorkoutsWorkoutidPathParams {
   return {
     ...{ workoutId: faker.string.alpha() },
@@ -25,7 +25,7 @@ export function createPutV1WorkoutsWorkoutidPathParams(
 }
 
 export function createPutV1WorkoutsWorkoutidHeaderParams(
-  data?: Partial<PutV1WorkoutsWorkoutidHeaderParams>,
+  data?: Partial<PutV1WorkoutsWorkoutidHeaderParams>
 ): PutV1WorkoutsWorkoutidHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -37,7 +37,7 @@ export function createPutV1WorkoutsWorkoutidHeaderParams(
  * @description The workout was successfully updated
  */
 export function createPutV1WorkoutsWorkoutid200(
-  data?: Partial<PutV1WorkoutsWorkoutid200>,
+  data?: Partial<PutV1WorkoutsWorkoutid200>
 ): PutV1WorkoutsWorkoutid200 {
   return createWorkout(data);
 }
@@ -46,7 +46,7 @@ export function createPutV1WorkoutsWorkoutid200(
  * @description Invalid request body
  */
 export function createPutV1WorkoutsWorkoutid400(
-  data?: Partial<PutV1WorkoutsWorkoutid400>,
+  data?: Partial<PutV1WorkoutsWorkoutid400>
 ): PutV1WorkoutsWorkoutid400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -55,13 +55,13 @@ export function createPutV1WorkoutsWorkoutid400(
 }
 
 export function createPutV1WorkoutsWorkoutidMutationRequest(
-  data?: Partial<PutV1WorkoutsWorkoutidMutationRequest>,
+  data?: Partial<PutV1WorkoutsWorkoutidMutationRequest>
 ): PutV1WorkoutsWorkoutidMutationRequest {
   return createPostWorkoutsRequestBody(data);
 }
 
 export function createPutV1WorkoutsWorkoutidMutationResponse(
-  data?: Partial<PutV1WorkoutsWorkoutidMutationResponse>,
+  data?: Partial<PutV1WorkoutsWorkoutidMutationResponse>
 ): PutV1WorkoutsWorkoutidMutationResponse {
   return (
     data || faker.helpers.arrayElement<any>([createPutV1WorkoutsWorkoutid200()])
