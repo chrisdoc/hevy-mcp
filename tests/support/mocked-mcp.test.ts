@@ -15,11 +15,13 @@ import { registerTemplateTools } from "../../src/tools/templates.js";
 import {
 	createExerciseTemplateFixture,
 	createExerciseTemplatesResponse,
+	createRoutineFixture,
 	createRoutinesResponse,
 } from "./hevy-fixtures.js";
 import {
 	callTool,
 	cleanupMockedMcpTestState,
+	composeMockedComponentRegistration,
 	createMockedApiScope,
 	createMockedHevyClient,
 	createMockedMcpHarness,
@@ -100,6 +102,37 @@ describe("mocked MCP test support", () => {
 		});
 	});
 
+	it("preserves scope behavior and tracks every supported interceptor builder", async () => {
+		const scope = createMockedApiScope();
+
+		expect(
+			(scope as { readonly [Symbol.toStringTag]?: string })[Symbol.toStringTag],
+		).toBeUndefined();
+		expect(scope.isDone()).toBe(true);
+
+		scope.get("/get").reply(200);
+		scope.post("/post").reply(200);
+		scope.put("/put").reply(200);
+		scope.head("/head").reply(200);
+		scope.patch("/patch").reply(200);
+		scope.merge("/merge").reply(200);
+		scope.delete("/delete").reply(200);
+		scope.options("/options").reply(200);
+		scope.intercept("/intercept", "TRACE").reply(200);
+
+		expect(scope.isDone()).toBe(false);
+		await expect(cleanupMockedMcpTestState()).rejects.toMatchObject({
+			errors: [
+				expect.objectContaining({
+					message: expect.stringContaining("Unused Nock interceptors"),
+				}),
+			],
+		});
+		expect(nock.activeMocks()).not.toEqual(
+			expect.arrayContaining([expect.stringContaining(MOCK_HEVY_API_BASE_URL)]),
+		);
+	});
+
 	it("ignores and preserves unrelated Nock interceptors during cleanup", async () => {
 		const unrelatedInterceptor = nock(MOCK_HEVY_API_BASE_URL).get("/unrelated");
 		unrelatedInterceptor.reply(200, "unrelated response");
@@ -112,13 +145,6 @@ describe("mocked MCP test support", () => {
 		} finally {
 			nock.removeInterceptor(unrelatedInterceptor);
 		}
-	});
-
-	it("passes through non-interceptor Nock scope properties and methods", () => {
-		const scope = createMockedApiScope();
-
-		expect(Reflect.get(scope, "keyedInterceptors")).toBeTypeOf("object");
-		expect(scope.pendingMocks()).toEqual([]);
 	});
 
 	it("aggregates harness close and shared cleanup failures", async () => {
@@ -142,6 +168,57 @@ describe("mocked MCP test support", () => {
 		});
 	});
 
+	it("closes composed registrations once and aggregates transport failures", async () => {
+		const firstRegistration = vi.fn();
+		const secondRegistration = vi.fn();
+		const harness = await createMockedMcpHarness({
+			name: "aggregate-close",
+			register: composeMockedComponentRegistration(
+				firstRegistration,
+				secondRegistration,
+			),
+		});
+		const closeFailures = [
+			new Error("intentional client close failure"),
+			new Error("intentional server close failure"),
+		];
+		const closeClient = harness.client.close.bind(harness.client);
+		const closeServer = harness.server.close.bind(harness.server);
+		vi.spyOn(harness.client, "close").mockRejectedValue(closeFailures[0]);
+		vi.spyOn(harness.server, "close").mockRejectedValue(closeFailures[1]);
+
+		expect(firstRegistration).toHaveBeenCalledWith(
+			harness.server,
+			expect.any(Object),
+		);
+		expect(secondRegistration).toHaveBeenCalledWith(
+			harness.server,
+			expect.any(Object),
+		);
+		await expect(harness.close()).rejects.toMatchObject({
+			errors: closeFailures,
+			message: 'Failed to close mocked MCP harness "aggregate-close"',
+		});
+		await expect(harness.close()).resolves.toBeUndefined();
+
+		vi.restoreAllMocks();
+		await Promise.allSettled([closeClient(), closeServer()]);
+	});
+
+	it("cleans up transports when harness registration fails", async () => {
+		const registrationFailure = new Error("intentional registration failure");
+
+		await expect(
+			createMockedMcpHarness({
+				name: "registration-failure",
+				register: () => {
+					throw registrationFailure;
+				},
+			}),
+		).rejects.toBe(registrationFailure);
+		await expect(cleanupMockedMcpTestState()).resolves.toBeUndefined();
+	});
+
 	it("reports leaked harnesses during cleanup and force-closes them", async () => {
 		await createMockedMcpHarness({
 			name: "intentional-leak",
@@ -159,61 +236,68 @@ describe("mocked MCP test support", () => {
 		});
 	});
 
-	it("cleans up a failed harness setup", async () => {
-		const registrationFailure = new Error("intentional registration failure");
-
-		await expect(
-			createMockedMcpHarness({
-				name: "failed-registration",
-				register: () => {
-					throw registrationFailure;
-				},
-			}),
-		).rejects.toThrow(registrationFailure);
-	});
-
-	it("reports errors closing a harness", async () => {
+	it("aggregates leaked harness close failures without losing leak details", async () => {
 		const harness = await createMockedMcpHarness({
-			name: "failed-close",
-			register: () => undefined,
-		});
-		const closeFailure = new Error("intentional client close failure");
-		const clientClose = vi
-			.spyOn(harness.client, "close")
-			.mockRejectedValueOnce(closeFailure);
-
-		await expect(harness.close()).rejects.toMatchObject({
-			errors: [closeFailure],
-		});
-
-		clientClose.mockRestore();
-		await harness.client.close();
-	});
-
-	it("includes leaked harness close failures in cleanup", async () => {
-		const harness = await createMockedMcpHarness({
-			name: "leaked-failed-close",
+			name: "failing-leak-close",
 			register: () => undefined,
 		});
 		const closeFailure = new Error("intentional leaked close failure");
-		const close = vi.spyOn(harness, "close").mockRejectedValue(closeFailure);
+		const closeSpy = vi.spyOn(harness, "close").mockRejectedValue(closeFailure);
 
-		await expect(cleanupMockedMcpTestState()).rejects.toMatchObject({
-			errors: [
-				expect.objectContaining({
-					message: expect.stringContaining(
-						"Unclosed mocked MCP harnesses: leaked-failed-close",
-					),
-				}),
-				closeFailure,
-			],
-		});
-
-		close.mockRestore();
-		await harness.close();
+		try {
+			await expect(cleanupMockedMcpTestState()).rejects.toMatchObject({
+				errors: [
+					expect.objectContaining({
+						message: expect.stringContaining(
+							"Unclosed mocked MCP harnesses: failing-leak-close",
+						),
+					}),
+					closeFailure,
+				],
+			});
+		} finally {
+			closeSpy.mockRestore();
+			await harness.close();
+		}
 	});
 
-	it("allows teardown without a harness", async () => {
+	it("does not require structured content from writes or failed reads", async () => {
+		const harness = await createMockedMcpHarness({
+			name: "structured-content-branches",
+			register: (server) => {
+				server.registerTool("create-test", {}, async () => ({
+					content: [{ type: "text", text: "created" }],
+				}));
+				server.registerTool("get-failing-test", {}, async () => ({
+					content: [{ type: "text", text: "failed" }],
+					isError: true,
+				}));
+			},
+		});
+
+		try {
+			await expect(
+				callTool(
+					harness.client,
+					"create-test",
+					{},
+					{ requireStructuredContentForReadTools: true },
+				),
+			).resolves.toMatchObject({ text: "created" });
+			await expect(
+				callTool(
+					harness.client,
+					"get-failing-test",
+					{},
+					{ requireStructuredContentForReadTools: true },
+				),
+			).resolves.toMatchObject({ isError: true, text: "failed" });
+		} finally {
+			await harness.close();
+		}
+	});
+
+	it("allows teardown without a harness when shared state is clean", async () => {
 		await expect(
 			teardownMockedMcpTestState(undefined),
 		).resolves.toBeUndefined();
@@ -250,7 +334,6 @@ describe("mocked MCP test support", () => {
 			{ requireStructuredContentForReadTools: true },
 		);
 		expect(firstResult.text).toContain("first-template");
-		await firstHarness.close();
 		await firstHarness.close();
 
 		const secondHarness = await createMockedMcpHarness({
@@ -318,10 +401,16 @@ describe("mocked MCP test support", () => {
 			secondary_muscle_groups: ["shoulders"],
 		});
 		const response = createExerciseTemplatesResponse(callerOwnedTemplates);
+		const routine = createRoutineFixture();
+		const routinesResponse = createRoutinesResponse();
 
 		expect(Object.isFrozen(overridden)).toBe(true);
 		expect(Object.isFrozen(overridden.secondary_muscle_groups)).toBe(true);
 		expect(Object.isFrozen(response.exercise_templates)).toBe(true);
+		expect(Object.isFrozen(routine)).toBe(true);
+		expect(Object.isFrozen(routine.exercises)).toBe(true);
+		expect(Object.isFrozen(routinesResponse)).toBe(true);
+		expect(Object.isFrozen(routinesResponse.routines)).toBe(true);
 		expect(Object.isFrozen(callerOwnedTemplates)).toBe(false);
 		expect(Object.isFrozen(callerOwnedTemplates[0])).toBe(false);
 		expect(() => {
@@ -330,17 +419,9 @@ describe("mocked MCP test support", () => {
 		callerOwnedTemplates[0]!.title = "Still Mutable";
 
 		const fresh = createExerciseTemplateFixture();
-		const routinesResponse = createRoutinesResponse();
 		expect(fresh.title).toBe("Bench Press");
 		expect(fresh.secondary_muscle_groups).toEqual(["triceps"]);
 		expect(response.exercise_templates?.[0]?.title).toBe("Caller Press");
-		expect(routinesResponse.routines?.[0]).toMatchObject({
-			id: "routine-1",
-			title: "Mock Push Day",
-		});
-		expect(Object.isFrozen(routinesResponse)).toBe(true);
-		expect(Object.isFrozen(routinesResponse.routines)).toBe(true);
-		expect(Object.isFrozen(routinesResponse.routines?.[0])).toBe(true);
 	});
 });
 
