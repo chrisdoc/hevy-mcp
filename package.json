@@ -37,6 +37,7 @@
 	"scripts": {
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/cli.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
+		"measure:tokens": "tsx scripts/measure-token-cost.ts",
 		"test": "npm run build && node --env-file-if-exists=.env node_modules/vitest/vitest.mjs --run",
 		"test:unit": "vitest run --exclude 'tests/integration/**' --exclude 'tests/performance/**'",
 		"test:mcp": "vitest run tests/integration/mocked",
@@ -108,6 +109,7 @@
 		"oxfmt": "^0.57.0",
 		"oxlint": "^1.70.0",
 		"oxlint-tsgolint": "^0.24.0",
+		"tiktoken": "^1.0.22",
 		"tsdown": "^0.22.2",
 		"tsx": "^4.22.4",
 		"typescript": "^6.0.3",

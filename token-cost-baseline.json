@@ -1,0 +1,132 @@
+{
+	"schemaVersion": 1,
+	"encoding": "cl100k_base",
+	"measurementScope": "Complete JSON-serialized MCP tools/list result payload: { tools }",
+	"toolCount": 23,
+	"totalTokens": 10928,
+	"averageTokensPerTool": 475.13,
+	"targets": {
+		"advisoryOnly": true,
+		"toolCountMax": 20,
+		"toolCountStatus": "aboveTarget",
+		"averageTokensPerToolMaxExclusive": 600,
+		"averageTokensPerToolStatus": "withinTarget"
+	},
+	"tools": [
+		{
+			"name": "get-exercise-history",
+			"tokens": 779,
+			"percentageOfTotal": 7.13
+		},
+		{
+			"name": "create-body-measurement",
+			"tokens": 670,
+			"percentageOfTotal": 6.13
+		},
+		{
+			"name": "update-body-measurement",
+			"tokens": 668,
+			"percentageOfTotal": 6.11
+		},
+		{
+			"name": "update-workout",
+			"tokens": 647,
+			"percentageOfTotal": 5.92
+		},
+		{
+			"name": "create-workout",
+			"tokens": 630,
+			"percentageOfTotal": 5.77
+		},
+		{
+			"name": "get-workout-events",
+			"tokens": 628,
+			"percentageOfTotal": 5.75
+		},
+		{
+			"name": "get-body-measurement",
+			"tokens": 623,
+			"percentageOfTotal": 5.7
+		},
+		{
+			"name": "get-body-measurements",
+			"tokens": 619,
+			"percentageOfTotal": 5.66
+		},
+		{
+			"name": "get-routines",
+			"tokens": 551,
+			"percentageOfTotal": 5.04
+		},
+		{
+			"name": "create-routine",
+			"tokens": 547,
+			"percentageOfTotal": 5.01
+		},
+		{
+			"name": "update-routine",
+			"tokens": 546,
+			"percentageOfTotal": 5
+		},
+		{
+			"name": "get-routine",
+			"tokens": 524,
+			"percentageOfTotal": 4.8
+		},
+		{
+			"name": "get-workouts",
+			"tokens": 510,
+			"percentageOfTotal": 4.67
+		},
+		{
+			"name": "get-workout",
+			"tokens": 493,
+			"percentageOfTotal": 4.51
+		},
+		{
+			"name": "search-exercise-templates",
+			"tokens": 419,
+			"percentageOfTotal": 3.83
+		},
+		{
+			"name": "create-exercise-template",
+			"tokens": 418,
+			"percentageOfTotal": 3.83
+		},
+		{
+			"name": "get-exercise-templates",
+			"tokens": 294,
+			"percentageOfTotal": 2.69
+		},
+		{
+			"name": "get-exercise-template",
+			"tokens": 269,
+			"percentageOfTotal": 2.46
+		},
+		{
+			"name": "get-routine-folders",
+			"tokens": 255,
+			"percentageOfTotal": 2.33
+		},
+		{
+			"name": "get-user-info",
+			"tokens": 243,
+			"percentageOfTotal": 2.22
+		},
+		{
+			"name": "get-routine-folder",
+			"tokens": 237,
+			"percentageOfTotal": 2.17
+		},
+		{
+			"name": "get-workout-count",
+			"tokens": 191,
+			"percentageOfTotal": 1.75
+		},
+		{
+			"name": "create-routine-folder",
+			"tokens": 164,
+			"percentageOfTotal": 1.5
+		}
+	]
+}
