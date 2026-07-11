@@ -41,6 +41,24 @@ const registerTemplateSurface = composeMockedComponentRegistration(
 	registerHevyResources,
 );
 
+const expectedDefaultAnalyzePrompt = [
+	"Analyze my workout progress over the last 4 weeks.",
+	"Use get-workout-count to establish the available workout total.",
+	"Then call get-workouts with pageSize=10 and continue through pages until the requested date window is fully covered or no more workouts remain.",
+	"Also call get-body-measurements with pageSize=10 and paginate until the same date window is covered or no more measurements remain.",
+	"Base the analysis on retrieved evidence and discuss workout frequency, training volume, exercise variety, consistency, and body-measurement trends.",
+	"Distinguish observations from suggestions, note missing or limited data, and do not make unsupported claims or medical conclusions.",
+].join("\n");
+
+const expectedBoundaryAnalyzePrompt = [
+	"Analyze my workout progress over the last 12 weeks.",
+	"Use get-workout-count to establish the available workout total.",
+	"Then call get-workouts with pageSize=10 and continue through pages until the requested date window is fully covered or no more workouts remain.",
+	"Also call get-body-measurements with pageSize=10 and paginate until the same date window is covered or no more measurements remain.",
+	"Base the analysis on retrieved evidence and discuss workout frequency, training volume, exercise variety, consistency, and body-measurement trends.",
+	"Distinguish observations from suggestions, note missing or limited data, and do not make unsupported claims or medical conclusions.",
+].join("\n");
+
 function parseResource(
 	result: Awaited<
 		ReturnType<
@@ -101,26 +119,16 @@ describe("MCP prompt and resource contracts", () => {
 					role: "user",
 					content: {
 						type: "text",
-						text: expect.stringMatching(
-							/^Analyze my workout progress over the last 4 weeks\.\n/,
-						),
+						text: expectedDefaultAnalyzePrompt,
 					},
 				},
 			]);
-			expect(defaultResult.messages[0]?.content).toMatchObject({
-				type: "text",
-				text: expect.stringContaining(
-					"Use get-workout-count to establish the available workout total.",
-				),
-			});
 			expect(boundaryResult.messages).toEqual([
 				{
 					role: "user",
 					content: {
 						type: "text",
-						text: expect.stringMatching(
-							/^Analyze my workout progress over the last 12 weeks\.\n/,
-						),
+						text: expectedBoundaryAnalyzePrompt,
 					},
 				},
 			]);
@@ -238,7 +246,12 @@ describe("MCP prompt and resource contracts", () => {
 			.reply(
 				200,
 				createRoutineFoldersResponse([
-					createRoutineFolderFixture({ id: 31, title: "Contract Folder" }),
+					createRoutineFolderFixture({
+						id: 31,
+						title: "Contract Folder",
+						created_at: "2026-07-10T08:15:00Z",
+						updated_at: "2026-07-11T06:45:00Z",
+					}),
 				]),
 			);
 
@@ -286,7 +299,14 @@ describe("MCP prompt and resource contracts", () => {
 						isCustom: false,
 					},
 				],
-				[expect.objectContaining({ id: 31, title: "Contract Folder" })],
+				[
+					{
+						id: 31,
+						title: "Contract Folder",
+						createdAt: "2026-07-10T08:15:00Z",
+						updatedAt: "2026-07-11T06:45:00Z",
+					},
+				],
 			]);
 		} finally {
 			await harness.close();
@@ -334,17 +354,129 @@ describe("MCP prompt and resource contracts", () => {
 			name: "resource-non-retry-error-contract",
 			register: registerResourceSurface,
 		});
-		const scope = createMockedApiScope()
+		let requestCount = 0;
+		let retryCount = 0;
+		const initialScope = createMockedApiScope()
 			.get("/v1/user/info")
-			.reply(400, { error: "bad request" });
+			.once()
+			.reply(() => {
+				requestCount++;
+				return [400, { error: "bad request" }];
+			});
+		createMockedApiScope()
+			.get("/v1/user/info")
+			.optionally()
+			.reply(() => {
+				retryCount++;
+				return [500, { error: "unexpected retry" }];
+			});
 
 		try {
 			await expect(
 				harness.client.readResource({ uri: "hevy://user" }),
 			).rejects.toThrow();
-			expect(scope.isDone()).toBe(true);
+			expect(initialScope.isDone()).toBe(true);
+			expect(requestCount).toBe(1);
+			expect(retryCount).toBe(0);
 		} finally {
 			await harness.close();
+		}
+	});
+
+	it("refreshes the shared template catalog exactly at its five-minute TTL", async () => {
+		const initialTime = Date.UTC(2026, 6, 11, 7, 0, 0);
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(initialTime);
+		vi.resetModules();
+
+		const [templatesModule, resourcesModule, catalogModule] = await Promise.all(
+			[
+				import("../../../../src/tools/templates.js"),
+				import("../../../../src/resources/hevy.js"),
+				import("../../../../src/utils/exercise-template-catalog.js"),
+			],
+		);
+		const registerTtlSurface = composeMockedComponentRegistration(
+			templatesModule.registerTemplateTools,
+			resourcesModule.registerHevyResources,
+		);
+		const harness = await createMockedMcpHarness({
+			name: "shared-template-cache-ttl-contract",
+			register: registerTtlSurface,
+		});
+		let initialRequests = 0;
+		let refreshRequests = 0;
+		const initialTemplate = createExerciseTemplateFixture({
+			id: "ttl-initial-template",
+			title: "Initial TTL Press",
+		});
+		const refreshedTemplate = createExerciseTemplateFixture({
+			id: "ttl-refreshed-template",
+			title: "Refetched TTL Press",
+		});
+		const initialScope = createMockedApiScope()
+			.get("/v1/exercise_templates")
+			.query({ page: 1, pageSize: 100 })
+			.once()
+			.reply(() => {
+				initialRequests++;
+				return [200, createExerciseTemplatesResponse([initialTemplate])];
+			});
+		const refreshScope = createMockedApiScope()
+			.get("/v1/exercise_templates")
+			.query({ page: 1, pageSize: 100 })
+			.once()
+			.reply(() => {
+				refreshRequests++;
+				return [200, createExerciseTemplatesResponse([refreshedTemplate])];
+			});
+
+		try {
+			const initialResult = await harness.client.readResource({
+				uri: "hevy://exercise-templates",
+			});
+			expect(parseResource(initialResult).data).toEqual([
+				{
+					id: "ttl-initial-template",
+					title: "Initial TTL Press",
+					type: "weight_reps",
+					primaryMuscleGroup: "chest",
+					secondaryMuscleGroups: ["triceps"],
+					isCustom: false,
+				},
+			]);
+			expect(initialScope.isDone()).toBe(true);
+			expect(initialRequests).toBe(1);
+
+			vi.setSystemTime(initialTime + 299_999);
+			const cachedResult = await harness.client.readResource({
+				uri: "hevy://exercise-templates",
+			});
+			expect(parseResource(cachedResult).data).toEqual(
+				parseResource(initialResult).data,
+			);
+			expect(refreshRequests).toBe(0);
+
+			vi.setSystemTime(initialTime + 300_000);
+			const refreshedResult = await harness.client.readResource({
+				uri: "hevy://exercise-templates",
+			});
+			expect(refreshScope.isDone()).toBe(true);
+			expect(refreshRequests).toBe(1);
+			expect(parseResource(refreshedResult).data).toEqual([
+				{
+					id: "ttl-refreshed-template",
+					title: "Refetched TTL Press",
+					type: "weight_reps",
+					primaryMuscleGroup: "chest",
+					secondaryMuscleGroups: ["triceps"],
+					isCustom: false,
+				},
+			]);
+		} finally {
+			await harness.close();
+			catalogModule.resetExerciseTemplateCatalogCache();
+			vi.useRealTimers();
 		}
 	});
 
