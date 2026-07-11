@@ -14,14 +14,11 @@ import { createHmac } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { registerWorkoutPrompts } from "./prompts/workouts.js";
-import { registerHevyResources } from "./resources/hevy.js";
-import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
-import { registerFolderTools } from "./tools/folders.js";
-import { registerRoutineTools } from "./tools/routines.js";
-import { registerTemplateTools } from "./tools/templates.js";
-import { registerUserTools } from "./tools/user.js";
-import { registerWorkoutTools } from "./tools/workouts.js";
+import {
+	HEVY_MCP_SERVER_INFO,
+	HEVY_MCP_SERVER_OPTIONS,
+	registerHevyMcp,
+} from "./mcp-registration.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { createClient } from "./utils/hevyClient.js";
@@ -29,40 +26,7 @@ import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
 import { scheduleUpdateCheck } from "./utils/version-check.js";
 
-const name = serviceName;
-const version = serviceVersion;
-
-const SERVER_INSTRUCTIONS = [
-	[
-		"Hevy MCP connects clients to the authenticated user's Hevy",
-		"workout-tracking data, including workouts, routines, exercise templates,",
-		"routine folders, body measurements, and profile information.",
-		"HEVY_API_KEY must contain a valid Hevy API key.",
-	].join(" "),
-	[
-		"Safety: all get-* and search-* tools are read-only. create-* and",
-		"update-* tools mutate Hevy data. Creates are additive and",
-		"non-idempotent, so repeating one can create duplicates. Updates can",
-		"overwrite existing data. Delete operations are not available.",
-	].join(" "),
-	[
-		"Workflow: search exercise templates first, then use the returned",
-		"template IDs when creating workouts or routines. To create a completed",
-		"workout from a routine, fetch the routine as a plan, then obtain the",
-		"actual completed sets and end time from the user; never invent completion",
-		"data. Use the built-in workflow prompts when they match the task.",
-	].join(" "),
-	[
-		"Pagination: start at page 1 and fetch only the pages needed. Most list",
-		"tools allow pageSize up to 10; get-exercise-templates allows up to 100.",
-	].join(" "),
-	[
-		"Rate limits and retries: minimize repeated calls. If Hevy returns HTTP",
-		"429, follow its retry guidance. Transient read requests retry",
-		"automatically, but write requests do not; confirm uncertain write",
-		"outcomes before trying again.",
-	].join(" "),
-].join("\n\n");
+const { name, version } = HEVY_MCP_SERVER_INFO;
 
 const HELP_TEXT = [
 	"Usage:",
@@ -250,14 +214,8 @@ function buildServer(apiKey: string) {
 				setCurrentUserId(userId);
 
 				const baseServer = new McpServer(
-					{
-						name,
-						version,
-					},
-					{
-						capabilities: { logging: {} },
-						instructions: SERVER_INSTRUCTIONS,
-					},
+					HEVY_MCP_SERVER_INFO,
+					HEVY_MCP_SERVER_OPTIONS,
 				);
 				const server = Sentry.wrapMcpServerWithSentry(baseServer);
 				const clientLogger = createMcpClientLogger(server);
@@ -276,39 +234,38 @@ function buildServer(apiKey: string) {
 				);
 				console.error("Hevy client initialized with API key");
 
-				tracer.startActiveSpan("mcp.tools.register", (toolsSpan) => {
-					try {
-						const counting = createToolCountingServer(server);
-						registerWorkoutTools(counting.server, hevyClient);
-						registerRoutineTools(counting.server, hevyClient);
-						registerTemplateTools(counting.server, hevyClient, {
-							logger: clientLogger,
+				const counting = createToolCountingServer(server);
+				registerHevyMcp(server, hevyClient, {
+					toolServer: counting.server,
+					templateTools: { logger: clientLogger },
+					registerTools: (register) => {
+						tracer.startActiveSpan("mcp.tools.register", (toolsSpan) => {
+							try {
+								register();
+								toolsSpan.setAttribute("mcp.tools.count", counting.getCount());
+							} finally {
+								toolsSpan.end();
+							}
 						});
-						registerFolderTools(counting.server, hevyClient);
-						registerBodyMeasurementTools(counting.server, hevyClient);
-						registerUserTools(counting.server, hevyClient);
-						toolsSpan.setAttribute("mcp.tools.count", counting.getCount());
-					} finally {
-						toolsSpan.end();
-					}
+					},
+					registerResources: (register) => {
+						tracer.startActiveSpan(
+							"mcp.resources.register",
+							{
+								attributes: {
+									"mcp.resources.count": 4,
+								},
+							},
+							(resourcesSpan) => {
+								try {
+									register();
+								} finally {
+									resourcesSpan.end();
+								}
+							},
+						);
+					},
 				});
-
-				registerWorkoutPrompts(server);
-				tracer.startActiveSpan(
-					"mcp.resources.register",
-					{
-						attributes: {
-							"mcp.resources.count": 4,
-						},
-					},
-					(resourcesSpan) => {
-						try {
-							registerHevyResources(server, hevyClient);
-						} finally {
-							resourcesSpan.end();
-						}
-					},
-				);
 
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;

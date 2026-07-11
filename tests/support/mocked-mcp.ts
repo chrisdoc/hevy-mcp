@@ -1,9 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { ServerOptions } from "@modelcontextprotocol/sdk/server/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
 	CallToolResultSchema,
 	type CallToolResult,
+	type Implementation,
 } from "@modelcontextprotocol/sdk/types.js";
 import nock, { type Interceptor, type Scope } from "nock";
 import { resetExerciseTemplateCatalogCache } from "../../src/utils/exercise-template-catalog.js";
@@ -28,6 +30,8 @@ export interface MockedMcpHarness {
 interface CreateMockedMcpHarnessOptions {
 	name: string;
 	register: MockedComponentRegistration;
+	serverInfo?: Implementation;
+	serverOptions?: ServerOptions;
 }
 
 interface CallToolOptions {
@@ -129,10 +133,12 @@ export function disableMockedMcpExternalNetworking(
 export async function createMockedMcpHarness({
 	name,
 	register,
+	serverInfo = { name, version: "1.0.0" },
+	serverOptions,
 }: CreateMockedMcpHarnessOptions): Promise<MockedMcpHarness> {
 	resetExerciseTemplateCatalogCache();
 
-	const server = new McpServer({ name, version: "1.0.0" });
+	const server = new McpServer(serverInfo, serverOptions);
 	const client = new Client({ name: `${name}-client`, version: "1.0.0" });
 	const hevyClient = createMockedHevyClient();
 	const [clientTransport, serverTransport] =
