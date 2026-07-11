@@ -1,8 +1,3 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import nock from "nock";
 import {
 	afterAll,
 	afterEach,
@@ -13,103 +8,60 @@ import {
 	it,
 	vi,
 } from "vitest";
+import nock from "nock";
 import { registerWorkoutTools } from "../../../src/tools/workouts.js";
-import { createClient } from "../../../src/utils/hevyClient.js";
-
-const HEVY_API_BASEURL = "https://api.hevyapp.com";
-const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
-
-function getApiScope() {
-	return nock(HEVY_API_BASEURL, {
-		reqheaders: {
-			"api-key": MOCK_HEVY_API_KEY,
-		},
-	});
-}
-
-async function callTool(
-	client: Client,
-	name: string,
-	arguments_: Record<string, unknown>,
-) {
-	const result = await client.request(
-		{
-			method: "tools/call",
-			params: {
-				name,
-				arguments: arguments_,
-			},
-		},
-		CallToolResultSchema,
-	);
-
-	const firstContent = result.content[0];
-	if (!firstContent || firstContent.type !== "text") {
-		throw new Error("Expected text content in MCP tool response");
-	}
-
-	return {
-		isError: result.isError,
-		text: firstContent.text,
-		structuredContent: result.structuredContent,
-	};
-}
+import {
+	createWorkoutCountResponse,
+	createWorkoutFixture,
+} from "../../support/hevy-fixtures.js";
+import {
+	callTool,
+	createMockedApiScope,
+	createMockedMcpHarness,
+	disableMockedMcpExternalNetworking,
+	type MockedMcpHarness,
+	parseToolText,
+	teardownMockedMcpTestState,
+} from "../../support/mocked-mcp.js";
 
 describe("Hevy MCP workout detail endpoints mocked tests", () => {
-	let server: McpServer | null = null;
-	let client: Client | null = null;
+	let harness: MockedMcpHarness | null = null;
+	let restoreExternalNetworking: (() => void) | undefined;
 
 	beforeAll(() => {
-		nock.disableNetConnect();
+		restoreExternalNetworking = disableMockedMcpExternalNetworking(() =>
+			nock.enableNetConnect(),
+		);
 	});
 
 	beforeEach(async () => {
-		server = new McpServer({
+		harness = await createMockedMcpHarness({
 			name: "hevy-mcp-workout-detail-test",
-			version: "1.0.0",
+			register: (server, hevyClient) => {
+				registerWorkoutTools(server, hevyClient);
+			},
 		});
-
-		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
-		registerWorkoutTools(server, hevyClient);
-
-		client = new Client({
-			name: "hevy-mcp-workout-detail-test-client",
-			version: "1.0.0",
-		});
-
-		const [clientTransport, serverTransport] =
-			InMemoryTransport.createLinkedPair();
-		await Promise.all([
-			client.connect(clientTransport),
-			server.connect(serverTransport),
-		]);
 	});
 
 	afterEach(async () => {
-		if (client) {
-			await client.close();
-		}
-		if (server) {
-			await server.close();
-		}
-
-		expect(nock.isDone()).toBe(true);
-		nock.cleanAll();
+		const harnessToClose = harness;
+		harness = null;
+		await teardownMockedMcpTestState(harnessToClose);
 	});
 
 	afterAll(() => {
-		nock.enableNetConnect();
+		restoreExternalNetworking?.();
 	});
 
 	it("mocks get-workout-count through MCP transport", async () => {
-		if (!client) throw new Error("Client not initialized");
+		if (!harness) throw new Error("Harness not initialized");
 
-		getApiScope().get("/v1/workouts/count").reply(200, {
-			workout_count: 42,
-		});
+		createMockedApiScope()
+			.get("/v1/workouts/count")
+			.reply(200, createWorkoutCountResponse());
 
-		const result = await callTool(client, "get-workout-count", {});
-		const payload = JSON.parse(result.text) as { count: number };
+		const result = await callTool(harness.client, "get-workout-count", {});
+		const payload = parseToolText<{ count: number }>(result);
 
 		expect(result.isError).toBeFalsy();
 		expect(payload.count).toBe(42);
@@ -117,14 +69,14 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 	});
 
 	it("mocks get-workout-events through MCP transport", async () => {
-		if (!client) throw new Error("Client not initialized");
+		if (!harness) throw new Error("Harness not initialized");
 
 		const consoleErrorSpy = vi
 			.spyOn(console, "error")
 			.mockImplementation(() => undefined);
 
 		try {
-			getApiScope()
+			createMockedApiScope()
 				.get("/v1/workouts/events")
 				.query(true)
 				.reply(200, {
@@ -144,15 +96,17 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 					],
 				});
 
-			const result = await callTool(client, "get-workout-events", {
+			const result = await callTool(harness.client, "get-workout-events", {
 				page: 1,
 				pageSize: 5,
 				since: "1970-01-01T00:00:00Z",
 			});
-			const payload = JSON.parse(result.text) as Array<{
-				type?: string;
-				workout?: { id?: string };
-			}>;
+			const payload = parseToolText<
+				Array<{
+					type?: string;
+					workout?: { id?: string };
+				}>
+			>(result);
 
 			expect(result.isError).toBeFalsy();
 			expect(Array.isArray(payload)).toBe(true);
@@ -168,27 +122,26 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 	});
 
 	it("mocks get-workout for a known workout through MCP transport", async () => {
-		if (!client) throw new Error("Client not initialized");
+		if (!harness) throw new Error("Harness not initialized");
 
-		getApiScope().get("/v1/workouts/workout-1").reply(200, {
-			id: "workout-1",
-			title: "Mock Detail Workout",
-			description: "Lower body session",
-			start_time: "2025-03-27T07:00:00Z",
-			end_time: "2025-03-27T08:00:00Z",
-			created_at: "2025-03-27T07:00:00Z",
-			updated_at: "2025-03-27T08:00:00Z",
-			exercises: [],
-		});
+		createMockedApiScope()
+			.get("/v1/workouts/workout-1")
+			.reply(
+				200,
+				createWorkoutFixture({
+					title: "Mock Detail Workout",
+					description: "Lower body session",
+				}),
+			);
 
-		const result = await callTool(client, "get-workout", {
+		const result = await callTool(harness.client, "get-workout", {
 			workoutId: "workout-1",
 		});
-		const payload = JSON.parse(result.text) as {
+		const payload = parseToolText<{
 			id?: string;
 			title?: string;
 			duration?: string;
-		};
+		}>(result);
 
 		expect(result.isError).toBeFalsy();
 		expect(payload).toMatchObject({
