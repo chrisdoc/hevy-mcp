@@ -508,8 +508,8 @@ duplicated contract logic across live and mocked suites.
   connect/close; cache reset; disabled external network; interceptor checks;
   text/structured response helpers; named fixture factories; and removal of
   workflow/job/step `HEVY_API_KEY` inheritance from deterministic PR lanes.
-- **Dependencies:** None. The harness can use the repository's current primary
-  runtime while TS-01 resolves the longer-term support declaration.
+- **Dependencies:** None. The harness uses the repository's defined Node 24
+  primary runtime.
 - **Acceptance criteria:**
   - Both existing mocked MCP files use the shared harness.
   - Unexpected network, unused interceptors, leaked clients/servers, and cache
