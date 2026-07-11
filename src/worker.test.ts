@@ -8,6 +8,7 @@ import {
 	parseAllowedOrigins,
 	parseBearerApiKey,
 } from "./worker.js";
+import worker from "./worker.js";
 
 const validHeaders = {
 	accept: "application/json, text/event-stream",
@@ -126,6 +127,28 @@ describe("Cloudflare Worker routes and CORS", () => {
 			expect(result.headers.get("allow")).toBe("POST, OPTIONS");
 		},
 	);
+
+	it("preserves CORS headers on supported origins for error responses", async () => {
+		const result = await handler(
+			new Request("https://worker.example/mcp", {
+				method: "GET",
+				headers: { origin: "https://browser.example" },
+			}),
+			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+		);
+		expect(result.status).toBe(405);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://browser.example",
+		);
+	});
+
+	it("delegates the default Worker export for unsupported requests", async () => {
+		const result = await worker.fetch(
+			new Request("https://worker.example/mcp", { method: "GET" }),
+			{},
+		);
+		expect(result.status).toBe(405);
+	});
 
 	it("returns a generic bearer challenge for missing credentials", async () => {
 		const result = await handler(

@@ -5,6 +5,11 @@ import { withTelemetry } from "./telemetry-wrapper.js";
 
 const testDoubles = vi.hoisted(() => ({
 	events: [] as string[],
+	scope: {
+		setTag: vi.fn(),
+		setContext: vi.fn(),
+	},
+	captureException: vi.fn(),
 }));
 
 vi.mock("./error-handler.js", () => ({
@@ -12,17 +17,32 @@ vi.mock("./error-handler.js", () => ({
 		(
 			fn: (args: Record<string, unknown>) => Promise<unknown>,
 			_context: string,
+			onError?: (
+				error: unknown,
+				context: string,
+				argumentKeyCount: number,
+			) => void,
 		) =>
 			async (args: Record<string, unknown>) => {
 				testDoubles.events.push("error-handling:start");
 				try {
 					return await fn(args);
-				} catch {
+				} catch (error) {
 					testDoubles.events.push("error-handling:catch");
+					onError?.(error, _context, Object.keys(args).length);
 					return { content: [], isError: true };
 				}
 			},
 	),
+}));
+
+vi.mock("./telemetry.js", () => ({
+	Sentry: {
+		withScope: vi.fn((callback: (scope: typeof testDoubles.scope) => void) =>
+			callback(testDoubles.scope),
+		),
+		captureException: testDoubles.captureException,
+	},
 }));
 
 vi.mock("./telemetry-wrapper.js", () => ({
@@ -68,5 +88,14 @@ describe("withObservability", () => {
 			"error-handling:catch",
 		]);
 		expect(result).toEqual({ content: [], isError: true });
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"mcp.tool.context",
+			"test-context",
+		);
+		expect(testDoubles.scope.setContext).toHaveBeenCalledWith("mcpTool", {
+			context: "test-context",
+			argumentKeyCount: 1,
+		});
+		expect(testDoubles.captureException).toHaveBeenCalledWith(error);
 	});
 });

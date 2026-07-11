@@ -7,6 +7,7 @@ import createServer, {
 	runServer,
 } from "./index.js";
 import { createClient } from "./utils/hevyClient.js";
+import { HevyHttpError } from "./utils/hevy-http-error.js";
 import { Sentry } from "./utils/telemetry.js";
 
 const originalEnv = { ...process.env };
@@ -357,6 +358,26 @@ describe("Server entry", () => {
 
 		expect(errorSpy).toHaveBeenCalledWith(
 			"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
+		);
+		errorSpy.mockRestore();
+	});
+
+	it("reports a safe status for a Hevy HTTP startup validation failure", async () => {
+		testDoubles.getUserInfo.mockRejectedValueOnce(
+			new HevyHttpError("upstream unavailable", {
+				status: 503,
+				method: "GET",
+				endpoint: "/v1/user/info",
+			}),
+		);
+		const errorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+
+		await createServer({ config: { apiKey: "test-key" } });
+
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability. Diagnostic: HTTP 503.",
 		);
 		errorSpy.mockRestore();
 	});

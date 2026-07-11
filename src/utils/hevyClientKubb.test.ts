@@ -173,6 +173,21 @@ describe("native-fetch Hevy client", () => {
 		expect(sleep).toHaveBeenCalledWith(5_000);
 	});
 
+	it("honors date-form Retry-After headers and returns text responses", async () => {
+		const retryAt = new Date(Date.now() + 60_000).toUTCString();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				jsonResponse({ error: "slow down" }, 429, { "retry-after": retryAt }),
+			)
+			.mockResolvedValueOnce(new Response("plain-text response"));
+		const sleep = vi.fn().mockResolvedValue(undefined);
+		const client = createClient("key", undefined, { fetch: fetchMock, sleep });
+
+		await expect(client.getUserInfo()).resolves.toBe("plain-text response");
+		expect(sleep).toHaveBeenCalledWith(5_000);
+	});
+
 	it("retries transient network failures for GET requests", async () => {
 		const fetchMock = vi
 			.fn()
@@ -221,6 +236,34 @@ describe("native-fetch Hevy client", () => {
 		expect(JSON.stringify(onRequestComplete.mock.calls)).not.toContain(
 			"private-workout-id",
 		);
+	});
+
+	it("routes every public client helper through the configured native client", async () => {
+		const fetchMock = vi.fn(async () => jsonResponse({}));
+		const client = createClient("key", undefined, { fetch: fetchMock });
+
+		await Promise.all([
+			client.updateWorkout("workout-id", {} as never),
+			client.getWorkoutCount(),
+			client.getWorkoutEvents(),
+			client.getRoutines(),
+			client.getRoutineById("routine-id"),
+			client.createRoutine({} as never),
+			client.updateRoutine("routine-id", {} as never),
+			client.getExerciseTemplates(),
+			client.getExerciseTemplate("template-id"),
+			client.getExerciseHistory("template-id"),
+			client.createExerciseTemplate({} as never),
+			client.getRoutineFolders(),
+			client.createRoutineFolder({} as never),
+			client.getRoutineFolder("folder-id"),
+			client.getBodyMeasurements(),
+			client.getBodyMeasurement("2026-07-11"),
+			client.createBodyMeasurement({} as never),
+			client.updateBodyMeasurement("2026-07-11", {} as never),
+		]);
+
+		expect(fetchMock).toHaveBeenCalledTimes(18);
 	});
 
 	it("times out requests with a sanitized network error", async () => {
