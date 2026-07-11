@@ -1,7 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createSharedMcpServer } from "./shared-server.js";
-import { isHevyHttpError } from "./utils/hevy-http-error.js";
+import {
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+	isHevyHttpError,
+} from "./utils/hevy-http-error.js";
 import { createClient, type HevyClient } from "./utils/hevyClient.js";
 
 const MCP_PATH = "/mcp";
@@ -10,6 +14,28 @@ const AUTH_VALIDATION_TIMEOUT_MS = 5_000;
 const CORS_ALLOWED_HEADERS =
 	"Authorization, Content-Type, Accept, MCP-Protocol-Version";
 const CORS_ALLOWED_METHODS = "POST, OPTIONS";
+const SAFE_HEVY_ERROR_CODES = new Set([
+	"HEVY_INVALID_ENDPOINT",
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+]);
+const SAFE_HEVY_ENDPOINTS = new Set([
+	"unknown",
+	"/v1/body_measurements",
+	"/v1/body_measurements/:date",
+	"/v1/exercise_history/:exerciseTemplateId",
+	"/v1/exercise_templates",
+	"/v1/exercise_templates/:exerciseTemplateId",
+	"/v1/routine_folders",
+	"/v1/routine_folders/:folderId",
+	"/v1/routines",
+	"/v1/routines/:routineId",
+	"/v1/user/info",
+	"/v1/workouts",
+	"/v1/workouts/:workoutId",
+	"/v1/workouts/count",
+	"/v1/workouts/events",
+]);
 
 export interface WorkerEnv {
 	MCP_ALLOWED_ORIGINS?: string;
@@ -103,6 +129,44 @@ function createDefaultTransport(): WebStandardStreamableHTTPServerTransport {
 	});
 }
 
+function classifyError(error: unknown): string {
+	if (isHevyHttpError(error)) return "HevyHttpError";
+	if (error instanceof TypeError) return "TypeError";
+	if (error instanceof RangeError) return "RangeError";
+	if (error instanceof ReferenceError) return "ReferenceError";
+	if (error instanceof SyntaxError) return "SyntaxError";
+	if (error instanceof URIError) return "URIError";
+	if (error instanceof EvalError) return "EvalError";
+	if (error instanceof AggregateError) return "AggregateError";
+	if (error instanceof DOMException) return "DOMException";
+	if (error instanceof Error) return "Error";
+	return "UnknownError";
+}
+
+function logWorkerFailure(context: string, error: unknown): void {
+	const diagnostic: Record<string, string | number> = {
+		context,
+		errorType: classifyError(error),
+	};
+	if (isHevyHttpError(error)) {
+		if (error.code && SAFE_HEVY_ERROR_CODES.has(error.code)) {
+			diagnostic.code = error.code;
+		}
+		if (
+			error.status !== undefined &&
+			Number.isInteger(error.status) &&
+			error.status >= 100 &&
+			error.status <= 599
+		) {
+			diagnostic.status = error.status;
+		}
+		if (SAFE_HEVY_ENDPOINTS.has(error.endpoint)) {
+			diagnostic.endpoint = error.endpoint;
+		}
+	}
+	console.error("Cloudflare Worker failure", diagnostic);
+}
+
 export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 	const createValidationClient =
 		dependencies.createValidationClient ?? createDefaultValidationClient;
@@ -163,13 +227,14 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 			const hevyClient = createRequestClient(apiKey);
 			const server = createServer(apiKey, hevyClient);
 			const transport = createTransport();
-			transport.onerror = () => {
-				console.error("Streamable HTTP transport error");
+			transport.onerror = (error) => {
+				logWorkerFailure("streamable-http-transport", error);
 			};
 			await server.connect(transport);
 			const mcpResponse = await transport.handleRequest(request);
 			return withCors(mcpResponse, origin);
-		} catch {
+		} catch (error) {
+			logWorkerFailure("mcp-request-processing", error);
 			return response("Unable to process MCP request", 500, origin);
 		}
 	};

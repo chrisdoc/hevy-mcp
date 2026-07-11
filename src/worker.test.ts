@@ -271,6 +271,7 @@ describe("real stateless SDK transport", () => {
 
 	it("never echoes a bearer key when server construction fails", async () => {
 		const secret = "super-secret-value";
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const handler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
 			createRequestClient: () => createMockClient(),
@@ -284,5 +285,42 @@ describe("real stateless SDK transport", () => {
 		);
 		expect(result.status).toBe(500);
 		expect(await result.text()).not.toContain(secret);
+		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
+		expect(diagnostic).toContain("mcp-request-processing");
+		expect(diagnostic).toContain("errorType");
+		expect(diagnostic).toContain("Error");
+		expect(diagnostic).not.toContain(secret);
+		stderrSpy.mockRestore();
+	});
+
+	it("logs only allowlisted Hevy error metadata", async () => {
+		const secret = "sentinel-bearer-value";
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient: () => createMockClient(),
+			createServer: () => {
+				throw new HevyHttpError(`Bearer ${secret}`, {
+					status: 503,
+					method: "GET",
+					endpoint: "/v1/workouts/:workoutId",
+					code: "HEVY_RETRY_EXHAUSTED",
+					headers: new Headers({ authorization: `Bearer ${secret}` }),
+				});
+			},
+		});
+		const result = await handler(
+			mcpRequest({}, { ...validHeaders, authorization: `Bearer ${secret}` }),
+			{},
+		);
+		expect(result.status).toBe(500);
+		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
+		expect(diagnostic).toContain("HevyHttpError");
+		expect(diagnostic).toContain("HEVY_RETRY_EXHAUSTED");
+		expect(diagnostic).toContain("/v1/workouts/:workoutId");
+		expect(diagnostic).toContain("503");
+		expect(diagnostic).not.toContain(secret);
+		expect(diagnostic).not.toContain("authorization");
+		stderrSpy.mockRestore();
 	});
 });
