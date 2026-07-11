@@ -155,7 +155,7 @@ Always provide the API key through `HEVY_API_KEY`.
 
 Do **not** pass API keys via CLI arguments
 (`--hevy-api-key=...`, `--hevyApiKey=...`, `hevy-api-key=...`). These CLI
-forms are deprecated and insecure.
+forms are unsupported and insecure.
 
 **CRITICAL:** Without this API key:
 
