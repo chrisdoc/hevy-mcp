@@ -198,7 +198,13 @@ async function runConcurrentScenario() {
 							"get-workout",
 							{ workoutId: id },
 						);
-						expect(result.structuredContent).toMatchObject({ workout: { id } });
+						expect(result.structuredContent).toMatchObject({
+							workout: {
+								id,
+								title: `Performance Workout ${id}`,
+								description: "Deterministic child-local fixture",
+							},
+						});
 						state.completedIterations += 1;
 					} finally {
 						state.durations[index] = measuredDuration(startedAt);

@@ -293,7 +293,7 @@ these names rather than duplicating selectors:
 	"test:stdio": "vitest run <current stdio/process baseline>",
 	"test:pack": "node tests/package/npm-pack-smoke.mjs",
 	"test:live": "node --env-file-if-exists=.env scripts/run-live-tests.mjs",
-	"test:nightly": "node tests/nightly/test_hevy_mcp.mjs",
+	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
 	"test:performance": "npm run build && vitest run tests/performance/performance.test.ts",
 	"test:coverage": "unit and mocked MCP coverage via their named lanes",
 	"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:pack"
