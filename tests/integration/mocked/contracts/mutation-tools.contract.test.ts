@@ -1,5 +1,9 @@
 import nock from "nock";
 import {
+	CallToolResultSchema,
+	type CallToolResult,
+} from "@modelcontextprotocol/sdk/types.js";
+import {
 	afterAll,
 	afterEach,
 	beforeAll,
@@ -17,7 +21,6 @@ import {
 	disableMockedMcpExternalNetworking,
 	parseToolText,
 	type MockedMcpHarness,
-	type MockedToolResult,
 } from "../../../support/mocked-mcp.js";
 
 type HttpMethod = "post" | "put";
@@ -509,15 +512,37 @@ async function createHarness(name: string): Promise<MockedMcpHarness> {
 	return createMockedMcpHarness({ name, register: registerHevyMcp });
 }
 
-function expectPublicError(
-	result: MockedToolResult,
+async function callRawTool(
+	client: MockedMcpHarness["client"],
+	name: string,
+	arguments_: Record<string, unknown>,
+): Promise<CallToolResult> {
+	return client.request(
+		{
+			method: "tools/call",
+			params: { name, arguments: arguments_ },
+		},
+		CallToolResultSchema,
+	);
+}
+
+function expectExactTextContent(
+	result: CallToolResult,
 	expectedText: string,
-): void {
-	expect(result).toEqual({
-		isError: true,
-		structuredContent: undefined,
-		text: expectedText,
-	});
+): string {
+	expect(result.content).toEqual([{ type: "text", text: expectedText }]);
+	expect(result.structuredContent).toBeUndefined();
+
+	const content = result.content[0];
+	if (!content || content.type !== "text") {
+		throw new Error("Expected exactly one MCP text content item");
+	}
+	return content.text;
+}
+
+function expectPublicError(result: CallToolResult, expectedText: string): void {
+	expect(result.isError).toBe(true);
+	expectExactTextContent(result, expectedText);
 }
 
 describe("deterministic mutation MCP contracts", () => {
@@ -554,20 +579,17 @@ describe("deterministic mutation MCP contracts", () => {
 			const harness = await createHarness(`${contract.name}-success`);
 
 			try {
-				const result = await callTool(
+				const result = await callRawTool(
 					harness.client,
 					contract.name,
 					contract.args,
 				);
 
-				expect(result).toEqual({
-					isError: undefined,
-					structuredContent: undefined,
-					text: contract.expectedText,
-				});
+				expect(result.isError).toBeUndefined();
+				const text = expectExactTextContent(result, contract.expectedText);
 				if (contract.expectedJson !== undefined) {
 					expect(
-						parseToolText(result, `${contract.name} success response`),
+						parseToolText({ text }, `${contract.name} success response`),
 					).toEqual(contract.expectedJson);
 				}
 			} finally {
@@ -609,7 +631,7 @@ describe("deterministic mutation MCP contracts", () => {
 		const harness = await createHarness("update-body-measurement-date-only");
 
 		try {
-			const result = await callTool(harness.client, contract.name, {
+			const result = await callRawTool(harness.client, contract.name, {
 				date: "2026-07-10",
 			});
 
@@ -617,7 +639,10 @@ describe("deterministic mutation MCP contracts", () => {
 				result,
 				"[update-body-measurement] Error: No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
 			);
-			expect(result.text).not.toContain("Invalid arguments for tool");
+			expect(result.content[0]).toEqual({
+				type: "text",
+				text: expect.not.stringContaining("Invalid arguments for tool"),
+			});
 			expect(requestCount).toBe(0);
 		} finally {
 			await harness.close();
@@ -644,7 +669,7 @@ describe("deterministic mutation MCP contracts", () => {
 			const harness = await createHarness(`${name}-upstream-error`);
 
 			try {
-				const result = await callTool(
+				const result = await callRawTool(
 					harness.client,
 					contract.name,
 					contract.args,
