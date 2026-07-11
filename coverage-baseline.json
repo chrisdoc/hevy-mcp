@@ -1,0 +1,55 @@
+{
+	"schemaVersion": 1,
+	"sourcePolicy": {
+		"include": ["src/**/*.ts"],
+		"exclude": ["src/**/*.test.ts", "src/generated/**"]
+	},
+	"provenance": {
+		"mergedMainSha": "0f03660348a5a83a6d0af313b0df773b4d2781ff",
+		"node": "v24.18.0",
+		"vitest": "4.1.10",
+		"command": "npx --no-install vitest run --coverage --exclude 'tests/integration/hevy-mcp.integration.test.ts' --exclude 'tests/performance/**'"
+	},
+	"files": [
+		"src/cli.ts",
+		"src/index.ts",
+		"src/prompts/workouts.ts",
+		"src/resources/hevy.ts",
+		"src/tools/body-measurements.ts",
+		"src/tools/folders.ts",
+		"src/tools/routines.ts",
+		"src/tools/templates.ts",
+		"src/tools/user.ts",
+		"src/tools/workouts.ts",
+		"src/utils/cache.ts",
+		"src/utils/config.ts",
+		"src/utils/debug.ts",
+		"src/utils/error-classification.ts",
+		"src/utils/error-handler.ts",
+		"src/utils/exercise-template-catalog.ts",
+		"src/utils/formatters.ts",
+		"src/utils/graceful-shutdown.ts",
+		"src/utils/hevyClient.ts",
+		"src/utils/hevyClientKubb.ts",
+		"src/utils/json-parser.ts",
+		"src/utils/mcp-client-logger.ts",
+		"src/utils/metrics.ts",
+		"src/utils/observability-wrapper.ts",
+		"src/utils/output-schemas.ts",
+		"src/utils/response-formatter.ts",
+		"src/utils/schemas.ts",
+		"src/utils/stdio-observability.ts",
+		"src/utils/telemetry-wrapper.ts",
+		"src/utils/telemetry.ts",
+		"src/utils/tool-annotations.ts",
+		"src/utils/tool-descriptions.ts",
+		"src/utils/tool-helpers.ts",
+		"src/utils/version-check.ts"
+	],
+	"metrics": {
+		"statements": { "covered": 1287, "total": 1329 },
+		"lines": { "covered": 1275, "total": 1317 },
+		"functions": { "covered": 241, "total": 258 },
+		"branches": { "covered": 821, "total": 907 }
+	}
+}

@@ -5,11 +5,14 @@ coverage:
   status:
     project:
       default:
-        # basic
-        target: auto
+        target: 85%
         threshold: 0%
         base: auto
-    patch: yes
+    patch:
+      default:
+        target: 90%
+        threshold: 0%
+        base: auto
 
 ignore:
-  - "src/generated/**/*" # Ignore all files in the generated directory
+  - "src/generated/**"

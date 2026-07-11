@@ -16,7 +16,7 @@ Vitest selectors.
 | `npm run test:live`        | Read-only source canary against Hevy.                                                      | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.               |
 | `npm run test:nightly`     | Published/source launcher canary configured by the nightly or release workflow.            | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.   |
 | `npm run test:performance` | Builds, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline.    | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.            |
-| `npm run test:coverage`    | Unit and mocked MCP coverage reports in their existing separate directories.               | Deterministic. Issue #611 owns the merged denominator and ratchet.             |
+| `npm run test:coverage`    | One aggregate deterministic report plus the exact project ratchet.                         | Deterministic; never runs live or performance tests.                           |
 | `npm run test:pr`          | Deterministic named lanes expected on every pull request.                                  | No live credentials or live network.                                           |
 
 The current contract, stdio, and package commands are intentionally narrow but
@@ -31,13 +31,17 @@ npm run test:pr
 npm run test:performance
 ```
 
-CI can add reporters and coverage settings after `--` while retaining the same
-selector, for example:
+The canonical coverage policy and baseline are documented in
+[`docs/coverage-policy.md`](./coverage-policy.md). Collect and enforce it with:
 
 ```sh
-npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
-npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
+npm run test:coverage
 ```
+
+This writes the single authoritative `coverage/coverage-summary.json` and
+`coverage/lcov.info`. The collection includes unit/co-located, mocked MCP,
+contract, and stdio-relevant Vitest tests while excluding live integration and
+spawned performance tests.
 
 Explicit live commands are separate and credential-gated:
 

@@ -5,8 +5,15 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			reportsDirectory: "coverage",
-			reporter: ["text", "lcov"],
-			exclude: ["tests/performance/**"],
+			include: ["src/**/*.ts"],
+			exclude: ["src/**/*.test.ts", "src/generated/**", "tests/performance/**"],
+			reporter: ["text", "json-summary", "lcov"],
+			thresholds: {
+				statements: 85,
+				lines: 85,
+				functions: 85,
+				branches: 75,
+			},
 		},
 	},
 });

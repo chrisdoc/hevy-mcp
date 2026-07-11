@@ -87,21 +87,21 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
 
-      - name: Run mocked integration tests with coverage
-        if: matrix.node-version == '24.x'
-        run: npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
-
       - name: Run mocked integration tests
-        if: matrix.node-version == '26.x'
+        if: ${{ !cancelled() }}
         run: npm run test:mcp
 
-      - name: Run unit tests with coverage and JUnit output
+      - name: Run unit tests with JUnit output
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
+        run: npm run test:unit -- --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
 
-      - name: Run unit tests with coverage
+      - name: Run unit tests
         if: ${{ !cancelled() && matrix.node-version == '26.x' }}
-        run: npm run test:unit -- --coverage
+        run: npm run test:unit
+
+      - name: Collect aggregate coverage and enforce ratchet
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npm run test:coverage
 
       - name: Run contract baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
@@ -140,7 +140,8 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/unit/lcov.info,./coverage/mocked/lcov.info
+          files: ./coverage/lcov.info
+          disable_search: true
 
   docker:
     name: Build and smoke test Docker image
