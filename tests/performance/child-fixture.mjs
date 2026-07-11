@@ -1,5 +1,3 @@
-import nock from "nock";
-
 const PREFIX = "HEVY_PERFORMANCE_FIXTURE_RESULT=";
 const API_BASE = "https://api.hevyapp.com";
 const API_KEY = "performance-fixture-api-key";
@@ -28,19 +26,13 @@ const result = {
 	verified: false,
 };
 
-function describeRequest(request) {
-	const method = request?.method ?? "UNKNOWN";
-	const path = request?.path ?? request?.pathname ?? request?.href ?? "unknown";
-	return `${method} ${path}`;
-}
-
-nock.emitter.on("no match", (request) => {
-	result.unexpectedRequests.push(describeRequest(request));
-});
+const expectedRequests = [];
 
 process.once("exit", () => {
 	try {
-		result.pendingMocks = nock.pendingMocks();
+		result.pendingMocks = expectedRequests.map(
+			({ method, path }) => `${method} ${path}`,
+		);
 		result.verified =
 			result.setupFailure === null &&
 			result.cleanupFailure === null &&
@@ -64,24 +56,15 @@ try {
 		throw new Error("child fixture requires the dedicated fake API key");
 	}
 
-	nock.disableNetConnect();
-	globalThis.fetch = async (input) => {
-		const url =
-			typeof input === "string"
-				? input
-				: input instanceof URL
-					? input.href
-					: input instanceof Request
-						? input.url
-						: "<unsupported-fetch-input>";
-		result.blockedFetchRequests.push(url);
-		if (url !== EXPECTED_UPDATE_CHECK_URL) {
-			result.unexpectedRequests.push(`FETCH ${url}`);
-		}
-		throw new Error("performance fixture blocked global fetch");
-	};
-
-	const scope = () => nock(API_BASE, { reqheaders: { "api-key": API_KEY } });
+	const scope = () => ({
+		get(path) {
+			return {
+				reply(_status, body) {
+					expectedRequests.push({ method: "GET", path, body });
+				},
+			};
+		},
+	});
 	const observed = (kind, body) => () => {
 		result.observedRequestCount += 1;
 		result[`${kind}RequestCount`] += 1;
@@ -141,6 +124,45 @@ try {
 		}
 		result.expectedRequestCount += 100;
 	}
+
+	globalThis.fetch = async (input, init) => {
+		const request = input instanceof Request ? input : undefined;
+		const url = new URL(
+			request?.url ??
+				(typeof input === "string"
+					? input
+					: input instanceof URL
+						? input.href
+						: "<unsupported-fetch-input>"),
+		);
+		if (url.href === EXPECTED_UPDATE_CHECK_URL) {
+			result.blockedFetchRequests.push(url.href);
+			throw new Error("performance fixture blocked update check");
+		}
+
+		const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
+		const headers = new Headers(init?.headers ?? request?.headers);
+		const requestDescription = `${method} ${url.href}`;
+		if (url.origin !== API_BASE || headers.get("api-key") !== API_KEY) {
+			result.unexpectedRequests.push(requestDescription);
+			throw new Error("performance fixture blocked unexpected fetch");
+		}
+
+		const index = expectedRequests.findIndex(
+			(expected) =>
+				expected.method === method && expected.path === url.pathname,
+		);
+		if (index === -1) {
+			result.unexpectedRequests.push(requestDescription);
+			throw new Error("performance fixture received an unexpected fetch");
+		}
+
+		const [{ body }] = expectedRequests.splice(index, 1);
+		return new Response(JSON.stringify(body()), {
+			status: 200,
+			headers: { "content-type": "application/json" },
+		});
+	};
 } catch (error) {
 	result.setupFailure = error instanceof Error ? error.message : String(error);
 	process.exitCode = 1;
