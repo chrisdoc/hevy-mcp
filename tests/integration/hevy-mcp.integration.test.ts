@@ -4,164 +4,108 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+	CallToolResultSchema,
+	ErrorCode,
+	type CallToolResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { registerWorkoutTools } from "../../src/tools/workouts.js";
+import { registerBodyMeasurementTools } from "../../src/tools/body-measurements.js";
+import { registerFolderTools } from "../../src/tools/folders.js";
 import { registerRoutineTools } from "../../src/tools/routines.js";
 import { registerTemplateTools } from "../../src/tools/templates.js";
-import { registerFolderTools } from "../../src/tools/folders.js";
 import { registerUserTools } from "../../src/tools/user.js";
-import { registerBodyMeasurementTools } from "../../src/tools/body-measurements.js";
+import { registerWorkoutTools } from "../../src/tools/workouts.js";
 import { createClient } from "../../src/utils/hevyClient.js";
+import {
+	bodyMeasurementsOutputSchema,
+	exerciseTemplatesOutputSchema,
+	routineFoldersOutputSchema,
+	routinesOutputSchema,
+	userOutputSchema,
+	workoutCountOutputSchema,
+	workoutEventsOutputSchema,
+	workoutsOutputSchema,
+} from "../../src/utils/output-schemas.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
-const hevyApiKey = process.env.HEVY_API_KEY || "";
-const describeLive = describe.runIf(Boolean(hevyApiKey));
+const liveMode = process.env.HEVY_LIVE_TEST === "1";
+const hevyApiKey = process.env.HEVY_API_KEY ?? "";
 
-// --- WORKOUTS SCHEMAS ---
-const FormattedWorkoutSetSchema = z.object({
-	type: z.string().optional(),
-	weight: z.number().nullable().optional(),
-	reps: z.number().nullable().optional(),
-	distance: z.number().nullable().optional(),
-	duration: z.number().nullable().optional(),
-	rpe: z.number().nullable().optional(),
-	customMetric: z.number().nullable().optional(),
-});
+if (liveMode && !hevyApiKey) {
+	throw new Error(
+		"HEVY_LIVE_TEST=1 requires HEVY_API_KEY to run credentialed live tests",
+	);
+}
 
-const FormattedWorkoutExerciseSchema = z.object({
-	name: z.string().optional(),
-	notes: z.string().nullable().optional(),
-	sets: z.array(FormattedWorkoutSetSchema).optional(),
-});
+const describeLive = describe.runIf(liveMode);
 
-const FormattedWorkoutSchema = z.object({
-	id: z.string().optional(),
-	title: z.string().optional(),
-	description: z.string().nullable().optional(),
-	startTime: z.union([z.string(), z.number()]).optional(),
-	endTime: z.union([z.string(), z.number()]).optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
-	duration: z.string(),
-	exercises: z.array(FormattedWorkoutExerciseSchema).optional(),
-});
+function isEmptyStructuredValue(value: unknown): boolean {
+	return value === null || (Array.isArray(value) && value.length === 0);
+}
 
-const GetWorkoutsResponseSchema = z.array(FormattedWorkoutSchema);
+function assertReadOutput<
+	TShape extends z.ZodRawShape,
+	TKey extends keyof TShape & string,
+>(
+	result: CallToolResult,
+	outputSchema: TShape,
+	key: TKey,
+	options: { emptyText?: RegExp } = {},
+): z.output<TShape[TKey]> {
+	z.object(outputSchema).parse(result.structuredContent);
+	const structuredValue = z.parse(
+		outputSchema[key],
+		result.structuredContent?.[key],
+	);
+	const firstContent = result.content[0];
 
-// --- ROUTINES SCHEMAS ---
-const FormattedRoutineSetSchema = z.object({
-	index: z.number().optional(),
-	type: z.string().optional(),
-	weight: z.number().nullable().optional(),
-	reps: z.number().nullable().optional(),
-	distance: z.number().nullable().optional(),
-	duration: z.number().nullable().optional(),
-	customMetric: z.number().nullable().optional(),
-	repRange: z
-		.object({
-			start: z.number().nullable().optional(),
-			end: z.number().nullable().optional(),
-		})
-		.nullable()
-		.optional(),
-	rpe: z.number().nullable().optional(),
-});
+	if (!firstContent || firstContent.type !== "text") {
+		throw new Error("Expected text content in MCP tool response");
+	}
 
-const FormattedRoutineExerciseSchema = z.object({
-	name: z.string().optional(),
-	index: z.number().optional(),
-	exerciseTemplateId: z.string().optional(),
-	notes: z.string().nullable().optional(),
-	supersetId: z.number().nullable().optional(),
-	restSeconds: z.union([z.string(), z.number()]).nullable().optional(),
-	sets: z.array(FormattedRoutineSetSchema).optional(),
-});
+	try {
+		const legacyValue: unknown = JSON.parse(firstContent.text);
+		expect(legacyValue).toEqual(structuredValue);
+	} catch (error) {
+		if (!(error instanceof SyntaxError) || !options.emptyText) {
+			throw error;
+		}
 
-const FormattedRoutineSchema = z.object({
-	id: z.string().optional(),
-	title: z.string().optional(),
-	folderId: z.number().nullable().optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
-	exercises: z.array(FormattedRoutineExerciseSchema).optional(),
-});
+		expect(firstContent.text).toMatch(options.emptyText);
+		expect(isEmptyStructuredValue(structuredValue)).toBe(true);
+	}
 
-const GetRoutinesResponseSchema = z.array(FormattedRoutineSchema);
+	return structuredValue;
+}
 
-// --- EXERCISE TEMPLATES SCHEMAS ---
-const FormattedExerciseTemplateSchema = z.object({
-	id: z.string().optional(),
-	title: z.string().optional(),
-	type: z.string().optional(),
-	primaryMuscleGroup: z.string().optional(),
-	secondaryMuscleGroups: z.array(z.string()).optional(),
-	isCustom: z.boolean().optional(),
-});
-
-const GetExerciseTemplatesResponseSchema = z.array(
-	FormattedExerciseTemplateSchema,
-);
-
-// --- ROUTINE FOLDERS SCHEMAS ---
-const FormattedRoutineFolderSchema = z.object({
-	id: z.number().optional(),
-	title: z.string().optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
-});
-
-const GetRoutineFoldersResponseSchema = z.array(FormattedRoutineFolderSchema);
-
-// --- USER SCHEMAS ---
-const UserInfoResponseSchema = z.object({
-	id: z.string().optional(),
-	name: z.string().optional(),
-	url: z.string().nullable().optional(),
-});
-
-// --- BODY MEASUREMENTS SCHEMAS ---
-const FormattedBodyMeasurementSchema = z.object({
-	date: z.string(),
-	weightKg: z.number().nullable(),
-	leanMassKg: z.number().nullable(),
-	fatPercent: z.number().nullable(),
-	neckCm: z.number().nullable(),
-	shoulderCm: z.number().nullable(),
-	chestCm: z.number().nullable(),
-	leftBicepCm: z.number().nullable(),
-	rightBicepCm: z.number().nullable(),
-	leftForearmCm: z.number().nullable(),
-	rightForearmCm: z.number().nullable(),
-	abdomen: z.number().nullable(),
-	waist: z.number().nullable(),
-	hips: z.number().nullable(),
-	leftThigh: z.number().nullable(),
-	rightThigh: z.number().nullable(),
-	leftCalf: z.number().nullable(),
-	rightCalf: z.number().nullable(),
-});
-
-const GetBodyMeasurementsResponseSchema = z.array(
-	FormattedBodyMeasurementSchema,
-);
-
-describeLive("Hevy MCP Server Integration Tests", () => {
+describeLive("Hevy MCP live read-only canaries", () => {
 	let server: McpServer | null = null;
 	let client: Client | null = null;
 
+	async function callTool(
+		name: string,
+		arguments_: Record<string, unknown> = {},
+	): Promise<CallToolResult> {
+		if (!client) throw new Error("Client not initialized");
+
+		return client.request(
+			{
+				method: "tools/call",
+				params: { name, arguments: arguments_ },
+			},
+			CallToolResultSchema,
+		);
+	}
+
 	beforeEach(async () => {
-		// Create server instance
 		server = new McpServer({
-			name: "hevy-mcp-test",
+			name: "hevy-mcp-live-test",
 			version: "1.0.0",
 		});
 
-		// Create Hevy client
 		const hevyClient = createClient(hevyApiKey, HEVY_API_BASEURL);
-
-		// Register all tool groups
 		registerWorkoutTools(server, hevyClient);
 		registerRoutineTools(server, hevyClient);
 		registerTemplateTools(server, hevyClient);
@@ -169,13 +113,11 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		registerUserTools(server, hevyClient);
 		registerBodyMeasurementTools(server, hevyClient);
 
-		// Create client
 		client = new Client({
-			name: "hevy-mcp-test-client",
+			name: "hevy-mcp-live-test-client",
 			version: "1.0.0",
 		});
 
-		// Connect client and server
 		const [clientTransport, serverTransport] =
 			InMemoryTransport.createLinkedPair();
 		await Promise.all([
@@ -185,228 +127,176 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 	});
 
 	afterEach(async () => {
-		if (server) {
-			await server.close();
-		}
+		if (client) await client.close();
+		if (server) await server.close();
+		client = null;
+		server = null;
 	});
 
 	afterAll(async () => {
-		if (client) {
-			await client.close();
-		}
+		if (client) await client.close();
+		if (server) await server.close();
 	});
 
-	describe("Get Workouts", () => {
-		it("should be able to get workouts", async () => {
+	describe("handshake and tool inventory", () => {
+		it("connects and advertises representative read tools with output schemas", async () => {
 			if (!client) throw new Error("Client not initialized");
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-workouts",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
-					},
-				},
-				CallToolResultSchema,
-			);
+			await expect(client.ping()).resolves.toBeDefined();
+			expect(client.getServerCapabilities()).toHaveProperty("tools");
+			expect(client.getServerVersion()).toMatchObject({
+				name: "hevy-mcp-live-test",
+				version: "1.0.0",
+			});
 
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
+			const { tools } = await client.listTools();
+			const representativeReadTools = [
+				"get-workouts",
+				"get-routines",
+				"get-exercise-templates",
+				"get-routine-folders",
+				"get-body-measurements",
+				"get-user-info",
+				"get-workout-count",
+				"get-workout-events",
+			];
 
-			// Validate the response schema with Zod
-			GetWorkoutsResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(Array.isArray(responseData)).toBe(true);
-			expect(responseData.length).toBeGreaterThan(0);
-			expect(responseData[0].id).toBeDefined();
-			expect(responseData[0].title).toBeDefined();
-			expect(responseData[0].title.length).toBeGreaterThanOrEqual(3);
-			expect(responseData[0].createdAt).toBeDefined();
-		});
-	});
-
-	describe("Get Routines", () => {
-		it("should be able to get routines", async () => {
-			if (!client) throw new Error("Client not initialized");
-
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-routines",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
-					},
-				},
-				CallToolResultSchema,
-			);
-
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
-
-			// Validate the response schema with Zod
-			GetRoutinesResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(Array.isArray(responseData)).toBe(true);
-			if (responseData.length > 0) {
-				expect(responseData[0].id).toBeDefined();
-				expect(responseData[0].title).toBeDefined();
+			for (const name of representativeReadTools) {
+				const tool = tools.find((candidate) => candidate.name === name);
+				expect(tool, `${name} inventory entry`).toBeDefined();
+				expect(tool?.annotations?.readOnlyHint, `${name} read-only hint`).toBe(
+					true,
+				);
+				expect(tool?.outputSchema, `${name} output schema`).toMatchObject({
+					type: "object",
+					properties: expect.any(Object),
+				});
 			}
 		});
 	});
 
-	describe("Get Exercise Templates", () => {
-		it("should be able to get exercise templates", async () => {
-			if (!client) throw new Error("Client not initialized");
+	describe("representative endpoint shape and production structured-output validation", () => {
+		it("validates routines against the production contract", async () => {
+			const result = await callTool("get-routines", {
+				page: 1,
+				pageSize: 5,
+			});
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-exercise-templates",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
-					},
-				},
-				CallToolResultSchema,
+			assertReadOutput(result, routinesOutputSchema, "routines", {
+				emptyText: /^No routines found/,
+			});
+		});
+
+		it("validates exercise templates against the production contract", async () => {
+			const result = await callTool("get-exercise-templates", {
+				page: 1,
+				pageSize: 5,
+			});
+
+			assertReadOutput(
+				result,
+				exerciseTemplatesOutputSchema,
+				"exerciseTemplates",
+				{ emptyText: /^No exercise templates found/ },
 			);
+		});
 
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
+		it("validates routine folders against the production contract", async () => {
+			const result = await callTool("get-routine-folders", {
+				page: 1,
+				pageSize: 5,
+			});
 
-			// Validate the response schema with Zod
-			GetExerciseTemplatesResponseSchema.parse(responseData);
+			assertReadOutput(result, routineFoldersOutputSchema, "routineFolders", {
+				emptyText: /^No routine folders found/,
+			});
+		});
 
-			expect(responseData).toBeDefined();
-			expect(Array.isArray(responseData)).toBe(true);
-			expect(responseData.length).toBeGreaterThan(0);
-			expect(responseData[0].id).toBeDefined();
-			expect(responseData[0].title).toBeDefined();
+		it("validates body measurements against the production contract", async () => {
+			const result = await callTool("get-body-measurements", {
+				page: 1,
+				pageSize: 5,
+			});
+
+			assertReadOutput(
+				result,
+				bodyMeasurementsOutputSchema,
+				"bodyMeasurements",
+				{ emptyText: /^No body measurements found/ },
+			);
+		});
+
+		it("validates user info against the production contract", async () => {
+			const result = await callTool("get-user-info");
+
+			assertReadOutput(result, userOutputSchema, "user", {
+				emptyText: /^No user info found/,
+			});
+		});
+
+		it("validates workout events against the production contract", async () => {
+			const result = await callTool("get-workout-events", {
+				page: 1,
+				pageSize: 5,
+				since: "1970-01-01T00:00:00Z",
+			});
+
+			assertReadOutput(result, workoutEventsOutputSchema, "events", {
+				emptyText: /^No workout events found/,
+			});
 		});
 	});
 
-	describe("Get Routine Folders", () => {
-		it("should be able to get routine folders", async () => {
-			if (!client) throw new Error("Client not initialized");
-
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-routine-folders",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
-					},
-				},
-				CallToolResultSchema,
+	describe("pagination and count consistency", () => {
+		it("keeps adjacent workout pages unique and bounded by total count", async () => {
+			const [firstResult, secondResult, countResult] = await Promise.all([
+				callTool("get-workouts", { page: 1, pageSize: 2 }),
+				callTool("get-workouts", { page: 2, pageSize: 2 }),
+				callTool("get-workout-count"),
+			]);
+			const firstPage = assertReadOutput(
+				firstResult,
+				workoutsOutputSchema,
+				"workouts",
+				{ emptyText: /^No workouts found/ },
+			);
+			const secondPage = assertReadOutput(
+				secondResult,
+				workoutsOutputSchema,
+				"workouts",
+				{ emptyText: /^No workouts found/ },
+			);
+			const count = assertReadOutput(
+				countResult,
+				workoutCountOutputSchema,
+				"count",
+			);
+			const observedIds = [...firstPage, ...secondPage].map(
+				(workout) => workout.id,
 			);
 
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
-
-			// Validate the response schema with Zod
-			GetRoutineFoldersResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(Array.isArray(responseData)).toBe(true);
-			if (responseData.length > 0) {
-				expect(responseData[0].id).toBeDefined();
-				expect(responseData[0].title).toBeDefined();
-			}
+			expect(new Set(observedIds).size).toBe(observedIds.length);
+			expect(count).toBeGreaterThanOrEqual(new Set(observedIds).size);
 		});
 	});
 
-	describe("Get User Info", () => {
-		it("should be able to get user info", async () => {
-			if (!client) throw new Error("Client not initialized");
-
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-user-info",
-						arguments: {},
-					},
-				},
-				CallToolResultSchema,
-			);
-
-			expect(result).toBeDefined();
+	describe("stable error classification", () => {
+		it("classifies invalid read input without an upstream request", async () => {
+			const result = await callTool("get-workouts", {
+				page: 0,
+				pageSize: 1,
+			});
 			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toBeUndefined();
+			expect(firstContent).toMatchObject({ type: "text" });
+			if (!firstContent || firstContent.type !== "text") {
+				throw new Error("Expected text content in MCP error response");
 			}
-			const responseData = JSON.parse(firstContent.text);
-
-			// Validate the response schema with Zod
-			UserInfoResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(responseData.name).toBeDefined();
-		});
-	});
-
-	describe("Get Body Measurements", () => {
-		it("should be able to get body measurements", async () => {
-			if (!client) throw new Error("Client not initialized");
-
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-body-measurements",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
-					},
-				},
-				CallToolResultSchema,
+			expect(firstContent.text).toContain(
+				`MCP error ${ErrorCode.InvalidParams}`,
 			);
-
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
-
-			// Validate the response schema with Zod
-			GetBodyMeasurementsResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(Array.isArray(responseData)).toBe(true);
-			if (responseData.length > 0) {
-				expect(responseData[0].date).toBeDefined();
-			}
 		});
 	});
 });

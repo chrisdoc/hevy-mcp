@@ -38,6 +38,7 @@
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/cli.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
 		"test": "node --env-file .env node_modules/vitest/vitest.mjs --run",
+		"test:live": "cross-env HEVY_LIVE_TEST=1 vitest run tests/integration/hevy-mcp.integration.test.ts",
 		"openapi": "node ./scripts/openapi-spec.js",
 		"build": "tsdown",
 		"build:client": "kubb generate",

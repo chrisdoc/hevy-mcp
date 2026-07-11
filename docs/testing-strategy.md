@@ -290,7 +290,7 @@ the public script names should be stable:
 	"test:contract": "vitest run tests/contract",
 	"test:stdio": "vitest run tests/stdio",
 	"test:pack": "node tests/package/npm-pack-smoke.mjs",
-	"test:live": "vitest run tests/integration/hevy-mcp.integration.test.ts",
+	"test:live": "cross-env HEVY_LIVE_TEST=1 vitest run tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node tests/nightly/test_hevy_mcp.mjs",
 	"test:performance": "vitest run tests/performance",
 	"test:coverage": "vitest run --coverage",
@@ -298,9 +298,9 @@ the public script names should be stable:
 }
 ```
 
-`test:live` and `test:nightly` must fail fast with a clear message when they are
-explicitly invoked without required credentials. They should not silently turn
-an intentional live job into a skipped success.
+`npm run test:live` and `test:nightly` must fail fast with a clear message when
+they are explicitly invoked without required credentials. They should not
+silently turn an intentional live job into a skipped success.
 
 ## CI gate matrix
 

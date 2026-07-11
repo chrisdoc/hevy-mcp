@@ -13,8 +13,12 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { z } from "zod";
 import { registerWorkoutTools } from "../../../src/tools/workouts.js";
 import { createClient } from "../../../src/utils/hevyClient.js";
+import { workoutEventsOutputSchema } from "../../../src/utils/output-schemas.js";
+import { deletedWorkoutEventFixture } from "../../fixtures/workout-event-deleted.sanitized.js";
+import { updatedWorkoutEventWithExtraFieldsFixture } from "../../fixtures/workout-event-updated-extra-fields.sanitized.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
@@ -116,7 +120,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 		expect(result.structuredContent).toEqual({ count: 42 });
 	});
 
-	it("mocks get-workout-events through MCP transport", async () => {
+	it("normalizes sanitized updated and deleted event fixtures through MCP", async () => {
 		if (!client) throw new Error("Client not initialized");
 
 		const consoleErrorSpy = vi
@@ -131,16 +135,8 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 					page: 1,
 					page_count: 1,
 					events: [
-						{
-							type: "updated",
-							workout: {
-								id: "workout-1",
-								title: "Updated Workout",
-								start_time: "2025-03-27T08:00:00Z",
-								end_time: "2025-03-27T08:30:00Z",
-								exercises: [],
-							},
-						},
+						updatedWorkoutEventWithExtraFieldsFixture,
+						deletedWorkoutEventFixture,
 					],
 				});
 
@@ -149,19 +145,45 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 				pageSize: 5,
 				since: "1970-01-01T00:00:00Z",
 			});
-			const payload = JSON.parse(result.text) as Array<{
-				type?: string;
-				workout?: { id?: string };
-			}>;
+			const structuredContent = z
+				.object(workoutEventsOutputSchema)
+				.parse(result.structuredContent);
+			const payload: unknown = JSON.parse(result.text);
 
 			expect(result.isError).toBeFalsy();
-			expect(Array.isArray(payload)).toBe(true);
-			expect(payload.length).toBeGreaterThan(0);
-			expect(payload[0]).toMatchObject({
+			expect(payload).toEqual(structuredContent.events);
+			expect(result.structuredContent).not.toHaveProperty(
+				"events.0.workout.exercises.0.muscle_group",
+			);
+			expect(result.structuredContent).not.toHaveProperty(
+				"events.0.workout.upstream_only_marker",
+			);
+			expect(result.structuredContent).not.toHaveProperty(
+				"events.1.deleted_at",
+			);
+			expect(result.structuredContent).not.toHaveProperty(
+				"events.1.upstream_only_marker",
+			);
+			expect(structuredContent.events).toHaveLength(2);
+			expect(structuredContent.events[0]).toMatchObject({
 				type: "updated",
-				workout: { id: "workout-1" },
+				workout: { id: "fixture-workout-updated-001" },
 			});
-			expect(result.structuredContent).toEqual({ events: payload });
+			expect(structuredContent.events[0]).not.toHaveProperty(
+				"workout.exercises.0.muscle_group",
+			);
+			expect(structuredContent.events[0]).not.toHaveProperty(
+				"workout.upstream_only_marker",
+			);
+			expect(structuredContent.events[1]).toEqual({
+				type: "deleted",
+				id: "fixture-workout-deleted-001",
+				deletedAt: "2025-01-16T10:00:00Z",
+			});
+			expect(structuredContent.events[1]).not.toHaveProperty("deleted_at");
+			expect(structuredContent.events[1]).not.toHaveProperty(
+				"upstream_only_marker",
+			);
 		} finally {
 			consoleErrorSpy.mockRestore();
 		}
