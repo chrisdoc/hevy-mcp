@@ -166,15 +166,17 @@ and `DELETE` return `405`.
 
 #### Automated deployments
 
-GitHub Actions deploys internal pull requests targeting `main` to a stable
-Cloudflare preview alias named `pr-<PR number>`. The alias URL is reported in
-the workflow job summary and on the GitHub `preview` environment. Pull requests
-from forks still run the normal build and tests, but the deployment job is
-skipped so Cloudflare credentials are never exposed to fork code.
+The preview deployment workflow deploys internal pull requests targeting
+`main` to a stable Cloudflare preview alias named `pr-<PR number>`. The alias
+URL is reported in the workflow job summary and on the GitHub `preview`
+environment. Pull requests from forks still run the normal build and tests,
+but the preview deployment job is skipped so Cloudflare credentials are never
+exposed to fork code.
 
-After the `Build and Test` workflow succeeds for a push to `main`, the exact
-tested commit is deployed through the GitHub `production` environment. The
-production MCP endpoint is:
+For pushes to `main`, the `Build and Test` workflow runs its production job
+only after both the Node.js `build` matrix and the `docker` smoke-test job pass.
+That gated job deploys the same trusted push commit through the GitHub
+`production` environment. The production MCP endpoint is:
 
 ```text
 https://hevy.chrisdoc.dev/mcp

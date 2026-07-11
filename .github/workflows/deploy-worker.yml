@@ -1,4 +1,4 @@
-name: Deploy Cloudflare Worker
+name: Deploy Cloudflare Worker Preview
 
 on:
   pull_request:
@@ -8,11 +8,6 @@ on:
       - opened
       - reopened
       - synchronize
-  workflow_run:
-    workflows:
-      - Build and Test
-    types:
-      - completed
 
 permissions:
   contents: read
@@ -77,7 +72,15 @@ jobs:
           const upload = entries.findLast(
             (entry) => entry.type === "version-upload",
           );
-          const previewUrl = new URL(upload?.preview_alias_url ?? "");
+          const previewAliasUrl = upload?.preview_alias_url;
+
+          if (!previewAliasUrl) {
+            throw new Error(
+              "Wrangler did not return preview_alias_url; verify the preview alias upload completed successfully",
+            );
+          }
+
+          const previewUrl = new URL(previewAliasUrl);
 
           if (
             previewUrl.protocol !== "https:" ||
@@ -102,42 +105,3 @@ jobs:
             ].join("\n"),
           );
           NODE
-
-  production:
-    name: Deploy production
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.repository.full_name == github.repository &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: cloudflare-worker-production
-      cancel-in-progress: false
-    environment:
-      name: production
-      url: https://hevy.chrisdoc.dev/mcp
-
-    steps:
-      - name: Checkout tested commit
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Deploy tested version
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: >-
-          npx wrangler deploy
-          --message "GitHub main at ${{ github.event.workflow_run.head_sha }}"
