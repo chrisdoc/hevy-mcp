@@ -102,6 +102,24 @@ function getCliAction(args: string[]): "start" | "version" | "help" {
 }
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
+const STARTUP_PROBE_TIMEOUT_MS = 5_000;
+
+const INVALID_API_KEY_MESSAGE =
+	"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.";
+const API_KEY_VALIDATION_WARNING =
+	"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.";
+const SAFE_NETWORK_ERROR_CODES = new Set([
+	"EAI_AGAIN",
+	"ECONNABORTED",
+	"ECONNREFUSED",
+	"ECONNRESET",
+	"ENETUNREACH",
+	"ENOTFOUND",
+	"ERR_NETWORK",
+	"ERR_SOCKET_TIMEOUT",
+	"ETIMEDOUT",
+	"HEVY_RETRY_EXHAUSTED",
+]);
 
 const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 
@@ -162,6 +180,66 @@ function createToolCountingServer(server: McpServer) {
 		server: countingServer,
 		getCount: () => count,
 	};
+}
+
+function getHttpStatus(error: unknown): number | undefined {
+	if (!error || typeof error !== "object" || !("response" in error)) {
+		return undefined;
+	}
+
+	const response = error.response;
+	if (!response || typeof response !== "object" || !("status" in response)) {
+		return undefined;
+	}
+
+	return typeof response.status === "number" &&
+		Number.isInteger(response.status) &&
+		response.status >= 100 &&
+		response.status <= 599
+		? response.status
+		: undefined;
+}
+
+function getSafeValidationDiagnostic(error: unknown): string | undefined {
+	const status = getHttpStatus(error);
+	if (status !== undefined) {
+		return `HTTP ${status}`;
+	}
+
+	if (!error || typeof error !== "object" || !("code" in error)) {
+		return undefined;
+	}
+
+	const code = error.code;
+	return typeof code === "string" && SAFE_NETWORK_ERROR_CODES.has(code)
+		? code
+		: undefined;
+}
+
+async function validateApiKey(apiKey: string) {
+	// Keep the startup probe separate from the normal MCP-aware client. The
+	// server is not connected yet, so structured client logging is intentionally
+	// omitted until the normal client is built below.
+	const startupProbeClient = createClient(apiKey, HEVY_API_BASEURL, {
+		maxGetRetries: 0,
+		timeoutMs: STARTUP_PROBE_TIMEOUT_MS,
+	});
+
+	try {
+		await startupProbeClient.getUserInfo();
+	} catch (error) {
+		const status = getHttpStatus(error);
+		if (status === 401 || status === 403) {
+			throw new Error(INVALID_API_KEY_MESSAGE);
+		}
+
+		const diagnostic = getSafeValidationDiagnostic(error);
+		console.error(
+			diagnostic
+				? `${API_KEY_VALIDATION_WARNING} Diagnostic: ${diagnostic}.`
+				: API_KEY_VALIDATION_WARNING,
+		);
+	}
 }
 
 function buildServer(apiKey: string, confirmMutations: boolean) {
@@ -264,10 +342,10 @@ function buildServer(apiKey: string, confirmMutations: boolean) {
 	);
 }
 
-export function createServer({ config }: { config: ServerConfig }) {
+export async function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey, confirmMutations } = serverConfigSchema.parse(config);
-	const server = buildServer(apiKey, confirmMutations);
-	return server;
+	await validateApiKey(apiKey);
+	return buildServer(apiKey, confirmMutations);
 }
 
 export default createServer;
@@ -301,7 +379,9 @@ export async function runServer() {
 				const { apiKey, confirmMutations } = cfg;
 				assertApiKey(apiKey);
 
-				const server = buildServer(apiKey, confirmMutations);
+				const server = await createServer({
+					config: { apiKey, confirmMutations },
+				});
 				console.error("Starting MCP server in stdio mode");
 				const transport = createInstrumentedStdioTransport(
 					new StdioServerTransport(),

@@ -67,6 +67,8 @@ export const HEVY_RETRY_EXHAUSTED_ERROR_CODE = "HEVY_RETRY_EXHAUSTED";
 
 export interface HevyClientOptions {
 	logger?: McpClientLogger;
+	maxGetRetries?: number;
+	timeoutMs?: number;
 }
 
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
@@ -122,6 +124,23 @@ function getApiTimeoutMs(): number {
 	}
 
 	return Math.trunc(parsed);
+}
+
+function normalizeMaxGetRetries(value: number | undefined): number {
+	if (value === undefined || !Number.isFinite(value) || value < 0) {
+		return MAX_GET_RETRIES;
+	}
+
+	return Math.floor(value);
+}
+
+function normalizeTimeoutMs(value: number | undefined): number {
+	if (value === undefined || !Number.isFinite(value) || value <= 0) {
+		return getApiTimeoutMs();
+	}
+
+	const normalizedValue = Math.floor(value);
+	return normalizedValue > 0 ? normalizedValue : getApiTimeoutMs();
 }
 
 function sleep(ms: number): Promise<void> {
@@ -312,6 +331,7 @@ function markRetryExhausted(error: AxiosError, retryCount: number): void {
 async function requestWithRetries<TData, TVariables>(
 	axiosInstance: AxiosInstance,
 	config: RequestConfig<TVariables>,
+	maxGetRetries: number,
 	logger?: McpClientLogger,
 ): Promise<ResponseConfig<TData>> {
 	let retryCount = 0;
@@ -345,7 +365,7 @@ async function requestWithRetries<TData, TVariables>(
 				throw error;
 			}
 
-			if (retryCount >= MAX_GET_RETRIES) {
+			if (retryCount >= maxGetRetries) {
 				emitClientLog(logger, {
 					level: status === 429 ? "warning" : "error",
 					logger: "hevy-api",
@@ -353,7 +373,7 @@ async function requestWithRetries<TData, TVariables>(
 						message: "Hevy API request failed after retries",
 						status,
 						attempt: retryCount + 1,
-						maxAttempts: MAX_GET_RETRIES + 1,
+						maxAttempts: maxGetRetries + 1,
 						method,
 						endpoint,
 					},
@@ -375,7 +395,7 @@ async function requestWithRetries<TData, TVariables>(
 							: "Retrying Hevy API request",
 					status,
 					attempt: retryCount + 1,
-					maxAttempts: MAX_GET_RETRIES + 1,
+					maxAttempts: maxGetRetries + 1,
 					delayMs: retryDelayMs,
 					...(status === 429 ? { retryAfterMs: retryAfterMs ?? null } : {}),
 					method,
@@ -389,6 +409,7 @@ async function requestWithRetries<TData, TVariables>(
 
 function createResilientClient(
 	axiosInstance: AxiosInstance,
+	maxGetRetries: number,
 	logger?: McpClientLogger,
 ): KubbClient {
 	let clientConfig: Partial<RequestConfig<unknown>> = {
@@ -402,7 +423,12 @@ function createResilientClient(
 	>(
 		config: RequestConfig<TVariables>,
 	): Promise<ResponseConfig<TData>> => {
-		return requestWithRetries<TData, TVariables>(axiosInstance, config, logger);
+		return requestWithRetries<TData, TVariables>(
+			axiosInstance,
+			config,
+			maxGetRetries,
+			logger,
+		);
 	}) as KubbClient;
 
 	resilientClient.getConfig = () => ({
@@ -485,10 +511,12 @@ export function createClient(
 	options: HevyClientOptions = {},
 ) {
 	const { logger } = options;
+	const maxGetRetries = normalizeMaxGetRetries(options.maxGetRetries);
+	const timeoutMs = normalizeTimeoutMs(options.timeoutMs);
 	// Create an axios instance with the API key
 	const axiosInstance = axios.create({
 		baseURL: baseUrl,
-		timeout: getApiTimeoutMs(),
+		timeout: timeoutMs,
 		headers: {
 			"api-key": apiKey,
 		},
@@ -572,7 +600,7 @@ export function createClient(
 		"api-key": apiKey,
 	};
 
-	const client = createResilientClient(axiosInstance, logger);
+	const client = createResilientClient(axiosInstance, maxGetRetries, logger);
 
 	// Return an object with all the API methods using ReturnType for automatic type inference
 	// All API calls use wrapApi to ensure TypeScript validates arg order matches generated API
