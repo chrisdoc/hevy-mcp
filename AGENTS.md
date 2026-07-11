@@ -136,7 +136,8 @@ npm start
 Only list commands here that are known to be flaky or unsupported in some
 environments. Other documented commands (including `npm run check:types`) are
 expected to succeed locally; treat failures as issues to fix rather than
-environmental flakiness. See `README.md` for the canonical list of commands.
+environmental flakiness. See `CONTRIBUTING.md` for the canonical list of
+commands.
 
 `npm run check:types` is expected to pass locally before opening a PR; see the
 "Type checking validation" section below.
