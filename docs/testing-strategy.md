@@ -278,22 +278,24 @@ The live suite complements deterministic tests; it must not compensate for
 missing mocks. The packed tarball lane validates the candidate artifact, while
 the nightly `npx`/`bunx @latest` checks validate the currently published one.
 
-## Proposed package scripts
+## Named package scripts
 
-Exact implementation can be adjusted to avoid duplicate Vitest discovery, but
-the public script names should be stable:
+TS-06 implements the stable public script names below. The exact selectors,
+lane ownership, deterministic/live boundaries, and current downstream scope are
+documented in [`docs/test-lanes.md`](./test-lanes.md). CI and contributors use
+these names rather than duplicating selectors:
 
 ```json
 {
-	"test:unit": "vitest run --exclude 'tests/integration/**'",
+	"test:unit": "vitest run --exclude 'tests/integration/**' --exclude 'tests/performance/**'",
 	"test:mcp": "vitest run tests/integration/mocked",
-	"test:contract": "vitest run tests/contract",
-	"test:stdio": "vitest run tests/stdio",
+	"test:contract": "vitest run <current contract baseline>",
+	"test:stdio": "vitest run <current stdio/process baseline>",
 	"test:pack": "node tests/package/npm-pack-smoke.mjs",
-	"test:live": "vitest run tests/integration/hevy-mcp.integration.test.ts",
-	"test:nightly": "node tests/nightly/test_hevy_mcp.mjs",
-	"test:performance": "vitest run tests/performance",
-	"test:coverage": "vitest run --coverage",
+	"test:live": "node --env-file-if-exists=.env scripts/run-live-tests.mjs",
+	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
+	"test:performance": "npm run build && vitest run tests/performance/performance.test.ts",
+	"test:coverage": "unit and mocked MCP coverage via their named lanes",
 	"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:pack"
 }
 ```
@@ -427,10 +429,13 @@ coverage is already high.
 
 ## Local mocked performance methodology
 
-Performance tests must use a built server, deterministic mocked HTTP, warmed and
-cold measurements where relevant, a fixed machine/runner description, and
-multiple iterations. Record median, p95, maximum, error count, and memory trend;
-exclude dependency installation and build time from request latency.
+Performance tests build first, then spawn `dist/cli.mjs` over MCP stdio with a
+child-local preload that installs deterministic Nock fixtures and blocks both
+Node HTTP(S) and `fetch`. The child reports exact fixture use through a prefixed,
+machine-readable stderr marker. Record configured/completed iterations, median,
+p95, maximum, correctness failures, exact fixture verification, and server
+process RSS (with a nullable non-Linux fallback); label runner memory separately.
+Exclude dependency installation and build time from request latency.
 
 Initial **non-gating** targets:
 
@@ -588,8 +593,8 @@ duplicated contract logic across live and mocked suites.
   performance helpers.
 - **Acceptance criteria:**
   - Local and CI use the same named scripts.
-  - Performance results include environment, iterations, p50/p95/max, failures,
-    and memory observations.
+  - Performance results include environment, configured/completed iterations,
+    p50/p95/max, fixture verification, failures, and server memory observations.
   - Initial non-gating targets are reported for 2–4 weeks.
   - Correctness failures gate immediately; timing gates remain informational
     until variance is reviewed.

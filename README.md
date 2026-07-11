@@ -333,8 +333,9 @@ Compatibility note: with MCP SDK v1.29.0, clients using the default must send
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
 - **Type Check**: `npm run check:types`
-- **Unit Tests**: `npx vitest run --exclude 'tests/integration/**'`
-- **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
+- **Unit Tests**: `npm run test:unit`
+- **Full Vitest Discovery**: `npm test` (builds first; live tests skip when
+  `HEVY_API_KEY` is absent)
 - **Changeset Check**: `npm run check:changeset`
 
 For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).

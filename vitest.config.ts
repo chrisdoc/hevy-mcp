@@ -6,6 +6,7 @@ export default defineConfig({
 			provider: "v8",
 			reportsDirectory: "coverage",
 			reporter: ["text", "lcov"],
+			exclude: ["tests/performance/**"],
 		},
 	},
 });
