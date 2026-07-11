@@ -19,6 +19,7 @@ try {
 }
 
 const { name, version } = parsed;
+const isStandaloneBuild = process.env.HEVY_MCP_BUILD_MODE === "standalone";
 
 if (process.env.HEVY_MCP_RELEASE === "true") {
 	const missing: string[] = [];
@@ -49,9 +50,10 @@ if (
 	);
 }
 export default defineConfig({
-	entry: ["src/index.ts", "src/cli.ts"],
+	entry: isStandaloneBuild ? ["src/cli.ts"] : ["src/index.ts", "src/cli.ts"],
 	format: ["esm"],
-	target: "esnext",
+	platform: isStandaloneBuild ? "node" : undefined,
+	target: isStandaloneBuild ? "node24" : "esnext",
 	define: {
 		__HEVY_MCP_BUILD__: "true",
 		__HEVY_MCP_NAME__: JSON.stringify(name),
@@ -60,13 +62,25 @@ export default defineConfig({
 			process.env.OTEL_COLLECTOR_TOKEN ?? "",
 		),
 	},
-	sourcemap: true,
+	sourcemap: !isStandaloneBuild,
 	clean: true,
-	dts: true,
+	dts: !isStandaloneBuild,
+	deps: isStandaloneBuild
+		? {
+				alwaysBundle: [/.*/],
+				onlyBundle: false,
+			}
+		: undefined,
 	banner: {
 		js: "#!/usr/bin/env node\n// Generated with tsdown\n// https://tsdown.dev",
 	},
 	outDir: "dist",
+	outputOptions: isStandaloneBuild
+		? {
+				codeSplitting: false,
+				entryFileNames: "standalone.mjs",
+			}
+		: undefined,
 	inputOptions: {
 		onLog(level, log, defaultHandler) {
 			if (

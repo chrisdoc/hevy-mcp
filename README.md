@@ -103,6 +103,12 @@ The server uses stdio, so `-i` keeps standard input open for the MCP client.
 form forwards the variable from the host environment without putting the key
 in the command arguments.
 
+The image uses the official Node.js LTS Alpine base, runs as the non-root
+`node` user, and ships the application and its third-party runtime dependencies
+as a standalone bundle. It does not include an application `/app/node_modules`
+directory; the official Node base image may still contain its own globally
+packaged npm or Corepack files.
+
 Use `latest` to follow the newest stable release. For reproducible deployments,
 pin the exact version shown on the release, using a tag such as
 `ghcr.io/chrisdoc/hevy-mcp:X.Y.Z`. Major (`:X`) and major.minor (`:X.Y`) tags
