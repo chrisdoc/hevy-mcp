@@ -3,6 +3,7 @@ import {
 	createScenarioState,
 	finalizeScenario,
 	recordFailure,
+	recordFixtureResult,
 } from "../performance/scenario.js";
 
 describe("failure-safe performance scenarios", () => {
@@ -21,5 +22,34 @@ describe("failure-safe performance scenarios", () => {
 			durationsMs: { p50: 12.5, p95: 12.5, max: 12.5 },
 			correctness: { failureCount: 1 },
 		});
+	});
+
+	it("records failed fixture verification in the scenario result", () => {
+		const state = createScenarioState("mcp-tools-list", 1, {
+			description: "informational",
+			p95Milliseconds: null,
+			informationalOnly: true,
+		});
+		recordFixtureResult(state, 1, {
+			version: 1,
+			mode: "tools-list",
+			expectedRequestCount: 1,
+			observedRequestCount: 0,
+			startupRequestCount: 0,
+			scenarioRequestCount: 0,
+			pendingMocks: ["GET /v1/user/info"],
+			unexpectedRequests: [],
+			blockedFetchRequests: [],
+			setupFailure: null,
+			cleanupFailure: null,
+			verified: false,
+		});
+
+		const scenario = finalizeScenario(state, 1);
+		expect(scenario.fixtureVerification).toMatchObject({
+			processCount: 1,
+			verifiedProcessCount: 0,
+		});
+		expect(scenario.correctness.failures).toHaveLength(1);
 	});
 });

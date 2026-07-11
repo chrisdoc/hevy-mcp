@@ -1,11 +1,14 @@
+import { readFileSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { FixtureResult } from "../performance/fixture-result.js";
 import {
 	createPerformanceReport,
 	performanceReportSchema,
 	percentile,
+	PERFORMANCE_SUMMARY_PATH,
 	summarizeDurations,
 	type PerformanceScenario,
+	writePerformanceReport,
 } from "../performance/report.js";
 
 function fixtureResult(): FixtureResult {
@@ -122,5 +125,26 @@ describe("performance report schema", () => {
 		);
 		delete (invalid.scenarios[0] as Partial<PerformanceScenario>).memory;
 		expect(() => performanceReportSchema.parse(invalid)).toThrow();
+	});
+
+	it("writes a schema-validated report with an explicit CI commit", () => {
+		const previousCommit = process.env.GITHUB_SHA;
+		process.env.GITHUB_SHA = "test-commit";
+		try {
+			writePerformanceReport(
+				createPerformanceReport(
+					scenarioNames.map((name) => ({ ...scenario(), name })),
+				),
+			);
+			expect(
+				JSON.parse(readFileSync(PERFORMANCE_SUMMARY_PATH, "utf8")),
+			).toMatchObject({
+				environment: { commit: "test-commit" },
+			});
+		} finally {
+			if (previousCommit === undefined) delete process.env.GITHUB_SHA;
+			else process.env.GITHUB_SHA = previousCommit;
+			rmSync("test-results/performance", { force: true, recursive: true });
+		}
 	});
 });
