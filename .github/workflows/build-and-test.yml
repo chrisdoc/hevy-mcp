@@ -53,11 +53,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run type check
-        run: npm run check:types
+      - parallel:
+          - name: Run type check
+            run: npm run check:types
 
-      - name: Check server manifest
-        run: npm run check:server-manifest
+          - name: Check server manifest
+            run: npm run check:server-manifest
+
+          - name: Run Check
+            run: npm run check
 
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
@@ -75,9 +79,6 @@ jobs:
             startsWith(github.head_ref, 'mergify/merge-queue/')
           )
         run: npx changeset status --since=origin/${{ github.base_ref }}
-
-      - name: Run Check
-        run: npm run check
 
       - name: Run nightly diagnostics redaction regression tests
         if: matrix.node-version == '24.x'
