@@ -14,19 +14,22 @@ env:
 
 jobs:
   mcp-integration-test:
-    name: MCP integration test (${{ matrix.launcher.name }})
+    name: MCP integration test (${{ matrix.launcher.name }}, ${{ matrix.launcher.validation_level }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         launcher:
           - name: npx
+            validation_level: Node 24 published-package smoke
             command: npx
             args_json: '["-y", "hevy-mcp@latest"]'
           - name: bunx
+            validation_level: launcher smoke only; not a Bun runtime support claim
             command: bunx
             args_json: '["hevy-mcp@latest"]'
           - name: source
+            validation_level: Node 24 primary source runtime
             command: node
             args_json: '["dist/cli.mjs"]'
 

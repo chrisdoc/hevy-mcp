@@ -140,7 +140,7 @@ This strategy builds on completed work rather than restarting it:
 | High     | Mocked MCP coverage is representative, not a complete per-tool contract matrix. | Two files in `tests/integration/mocked/`; 23 advertised tools; 16 mocked tests at baseline.                                                           | Uncovered tools, invalid inputs, error classes, annotations, or output parity can regress in deterministic PR lanes.              |
 | High     | Coverage excludes unimported files by default.                                  | `vitest.config.ts` has no explicit `coverage.include`; separate unit/mocked LCOV reports.                                                             | A high percentage can coexist with untested production modules, making thresholds misleading.                                     |
 | High     | No deterministic packed-tarball stdio boundary exists.                          | Nightly uses published `@latest` or built source; `prepack` exists, but no PR lane installs the exact `npm pack` artifact.                            | Packaging, `files`, shebang, exports, manifest, or dependency errors can escape source tests.                                     |
-| High     | Runtime declarations disagree.                                                  | `.nvmrc` is 24; CI tests 24/26; `AGENTS.md` says >=24; `package.json` says >=20.                                                                      | Users may run an allowed but untested runtime, or maintainers may unintentionally break a claimed support range.                  |
+| High     | Runtime declarations can drift without a shared policy check.                   | TS-01 aligns `.nvmrc`, package metadata, docs, Docker/release, and CI around Node 24 primary plus Node 26 npm-package compatibility.                  | Future edits could again advertise an untested runtime unless deterministic validation keeps the canonical surfaces aligned.      |
 | Medium   | MCP process and lifecycle coverage is selective.                                | In-memory calls and nightly smoke exist; no central matrix for capability negotiation, close behavior, invalid protocol calls, or list notifications. | SDK upgrades or registration changes can break protocol behavior beyond successful tool calls.                                    |
 | Medium   | Stateful and sequence behavior lacks a contract suite.                          | Exercise-template cache and utilities have unit tests, but no systematic multi-call MCP scenarios.                                                    | Cache isolation, invalidation, repeated calls, and concurrent calls may corrupt state or leak between clients.                    |
 | Medium   | Upstream drift review is not a named workflow.                                  | `openapi-spec.json`, generated `src/generated/`, and live canaries exist without a committed diff/fixture policy.                                     | Hevy changes can be noticed late or reviewed as noisy generated output without explicit contract implications.                    |
@@ -187,10 +187,12 @@ current `main` includes the fix.
 7. **Keep live tests read-only and scheduled/manual/release.** They require an
    explicit secret-bearing environment, modest request volume, and diagnostic
    redaction. Secrets must not be available to deterministic PR lanes.
-8. **Treat Node support as a decision, not an assumed bump.** Ticket TS-01 must
-   align `.nvmrc`, CI, docs, Docker, and `engines` by either testing the wider
-   range or narrowing the claim through a separately reviewed compatibility
-   decision.
+8. **Use an explicit two-level Node support policy.** Node 24.x is primary for
+   development, release, and the official Docker image. Node 26.x is the
+   npm-package compatibility lane. The canonical engine range is
+   `^24.0.0 || ^26.0.0`; Node 20–23 and unvalidated future majors are not
+   support claims. Bun remains a nightly `bunx` launcher smoke, not a versioned
+   server-runtime promise.
 
 ## MCP contract standard
 
@@ -306,15 +308,15 @@ an intentional live job into a skipped success.
 
 | Gate                    | Node/runtime                                     | Secret                                     | Blocking policy                     | Artifact/diagnostic                         |
 | ----------------------- | ------------------------------------------------ | ------------------------------------------ | ----------------------------------- | ------------------------------------------- |
-| Static/build            | Runtime policy matrix, currently 24/26           | None                                       | Blocking PR                         | Build and concise logs                      |
-| Unit + coverage         | Primary Node, currently 24                       | None                                       | Blocking PR                         | JUnit + unit LCOV                           |
-| Unit compatibility      | Additional supported/tested Nodes                | None                                       | Blocking PR                         | Concise log                                 |
-| Mocked MCP contract     | Primary + compatibility Nodes                    | None                                       | Blocking PR                         | JUnit + mocked LCOV                         |
+| Static/build            | Node 24 primary + Node 26 npm compatibility      | None                                       | Blocking PR                         | Build and concise logs                      |
+| Unit + coverage         | Node 24 primary                                  | None                                       | Blocking PR                         | JUnit + unit LCOV                           |
+| Unit compatibility      | Node 26 npm-package compatibility                | None                                       | Blocking PR                         | Concise log                                 |
+| Mocked MCP contract     | Node 24 primary + Node 26 npm compatibility      | None                                       | Blocking PR                         | JUnit + mocked LCOV                         |
 | Built stdio             | Primary Node                                     | None; child-scoped loopback fixture server | Blocking PR                         | Redacted stderr on failure                  |
 | Packed npm tarball      | Primary Node; add Bun only if support is claimed | None; child-scoped loopback fixture server | Blocking PR                         | Tarball file list, size, binary result      |
 | Performance trend       | Primary Node, stable hosted runner class         | None                                       | Non-gating for first 2–4 weeks      | JSON summary + history artifact             |
 | Live source canary      | `.nvmrc` Node                                    | `HEVY_API_KEY`                             | Nightly/manual and release blocking | Redacted category summary                   |
-| Published package smoke | `npx` and `bunx`                                 | `HEVY_API_KEY`                             | Nightly blocking/alerting           | Package version, launcher, category summary |
+| Published package smoke | Node 24 `npx`; `bunx` launcher smoke only        | `HEVY_API_KEY`                             | Nightly blocking/alerting           | Package version, launcher, category summary |
 
 The current build workflow defines `HEVY_API_KEY` at workflow scope, so every
 job and step can inherit it even though the PR workflow runs deterministic
@@ -491,6 +493,9 @@ duplicated contract logic across live and mocked suites.
   - Runtime declarations and CI jobs no longer contradict one another.
   - Every claimed Node major has an explicit validation level.
   - No version bump is implied without compatibility evidence and review.
+- **Implemented policy:** Node 24.x is primary; Node 26.x is the npm-package
+  compatibility lane; `^24.0.0 || ^26.0.0` is the canonical engine range; Bun
+  is a nightly launcher smoke only.
 
 ### TS-02 — Shared mocked MCP/Nock harness
 

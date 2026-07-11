@@ -40,19 +40,21 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 
 Pick the workflow that fits your setup:
 
-| Scenario              | Command                                                                                 | Requirements               |
-| :-------------------- | :-------------------------------------------------------------------------------------- | :------------------------- |
-| **One-off stdio run** | `HEVY_API_KEY=your_key npx -y hevy-mcp` or `HEVY_API_KEY=your_key bunx hevy-mcp@latest` | Node.js ≥ 20, Hevy API key |
-| **Docker stdio run**  | `docker run -i --rm -e HEVY_API_KEY ghcr.io/chrisdoc/hevy-mcp:latest`                   | Docker, Hevy API key       |
-| **Local development** | `npm install && npm run build && npm start`                                             | `.env` with `HEVY_API_KEY` |
+| Scenario              | Command                                                                                 | Requirements                           |
+| :-------------------- | :-------------------------------------------------------------------------------------- | :------------------------------------- |
+| **One-off stdio run** | `HEVY_API_KEY=your_key npx -y hevy-mcp` or `HEVY_API_KEY=your_key bunx hevy-mcp@latest` | Node.js 24 or 26, Hevy API key         |
+| **Docker stdio run**  | `docker run -i --rm -e HEVY_API_KEY ghcr.io/chrisdoc/hevy-mcp:latest`                   | Docker, Hevy API key                   |
+| **Local development** | `npm install && npm run build && npm start`                                             | Node.js 24, `.env` with `HEVY_API_KEY` |
 
 ---
 
 ## 🛠️ Prerequisites
 
-- **Node.js**: v20 or higher (strongly recommended to use the exact version pinned in `.nvmrc`).
+- **Node.js**: v24 for development and the primary runtime, or v26 for npm
+  package compatibility.
 - **npm**: v10 or higher.
-- **Bun** (optional): If you want to launch with `bunx`.
+- **Bun** (optional): `bunx hevy-mcp@latest` receives a nightly launcher smoke;
+  this is not a versioned Bun server-runtime support promise.
 - **Docker** (optional): If you want an isolated container-based stdio setup.
 - **Hevy API key**: Required for all operations (available with Hevy PRO).
 
@@ -63,7 +65,8 @@ Pick the workflow that fits your setup:
 ### Run via npx or bunx
 
 You can launch the server directly without cloning. Both launchers are covered
-by nightly smoke tests:
+by nightly smoke tests. The npm package supports Node.js 24.x and 26.x; the
+`bunx` check validates only that the latest published package can be launched:
 
 ```bash
 # npm launcher
@@ -72,6 +75,19 @@ HEVY_API_KEY=your_hevy_api_key_here npx -y hevy-mcp
 # bun launcher
 HEVY_API_KEY=your_hevy_api_key_here bunx hevy-mcp@latest
 ```
+
+### Runtime support policy
+
+| Runtime or distribution                                      | Validation level                                                                                               |
+| :----------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| Node.js 24.x                                                 | Primary: local development, release validation, the official Docker image, and the full deterministic CI lane. |
+| Node.js 26.x                                                 | npm-package compatibility: install, type, manifest, style, build, mocked integration, and unit checks in CI.   |
+| Node.js 20–23 and odd or otherwise unvalidated future majors | Unsupported; the package does not claim compatibility.                                                         |
+| Bun via `bunx`                                               | Nightly launcher smoke for `hevy-mcp@latest`; not a versioned Bun runtime guarantee.                           |
+
+The canonical npm engine range is `^24.0.0 || ^26.0.0`. Contributors should
+use the Node 24 version selected by `.nvmrc` unless they are explicitly checking
+the Node 26 compatibility lane.
 
 ### Manual Installation
 
@@ -337,6 +353,7 @@ Compatibility note: with MCP SDK v1.29.0, clients using the default must send
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
 - **Type Check**: `npm run check:types`
+- **Runtime Policy Check**: `npm run check:runtime-support`
 - **Unit Tests**: `npx vitest run --exclude 'tests/integration/**'`
 - **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
 - **Changeset Check**: `npm run check:changeset`

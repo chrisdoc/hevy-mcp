@@ -5,7 +5,9 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v24+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
+- The codebase is TypeScript. Node.js 24.x is the primary development, release,
+  and official Docker runtime; Node.js 26.x is the npm-package compatibility
+  lane. Other Node majors and Bun as a server runtime are not support claims.
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
@@ -148,8 +150,14 @@ HEVY_API_KEY=your_hevy_api_key_here
 
 ### Node.js Version
 
-- **Supported:** Node.js >= 24
-- **Recommended:** Use the exact version pinned in `.nvmrc` (CI uses this exact version)
+- **Supported npm package runtimes:** Node.js 24.x and 26.x, expressed by
+  `engines.node` as `^24.0.0 || ^26.0.0`.
+- **Primary:** Node.js 24.x for development, release validation, and the official
+  Docker image. Use the major pinned in `.nvmrc`.
+- **Compatibility:** Node.js 26.x receives the deterministic npm-package CI
+  checks but is not the development or release runtime.
+- **Not claimed:** Node.js 20–23, odd or otherwise unvalidated future majors,
+  and Bun as a server runtime. The nightly `bunx` job is only a launcher smoke.
 - If you use `nvm`, run `nvm use` in the repo root to match `.nvmrc`
 - Use `node --version` to verify current version
 

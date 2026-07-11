@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 
+# Node 24 is the primary runtime used by the official image.
+
 FROM node:24-alpine AS build
 
 WORKDIR /app

@@ -47,6 +47,7 @@
 		"check": "oxlint . --type-aware --type-check && oxfmt . --check",
 		"check:fix": "oxlint . --type-aware --type-check && oxfmt . --write",
 		"check:types": "tsc --noEmit",
+		"check:runtime-support": "node scripts/runtime-support.mjs",
 		"check:changeset": "changeset status --since=origin/main",
 		"check:server-manifest": "node scripts/server-manifest.mjs check",
 		"sync:server-manifest": "node scripts/server-manifest.mjs sync",
@@ -103,7 +104,7 @@
 		"vitest": "^4.1.9"
 	},
 	"engines": {
-		"node": ">=20.0.0"
+		"node": "^24.0.0 || ^26.0.0"
 	},
 	"mcpName": "io.github.chrisdoc/hevy-mcp"
 }
