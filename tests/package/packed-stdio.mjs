@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
 import {
+	access,
 	chmod,
 	mkdir,
 	mkdtemp,
@@ -23,7 +24,10 @@ import {
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import {
+	DEFAULT_INHERITED_ENV_VARS,
+	StdioClientTransport,
+} from "@modelcontextprotocol/sdk/client/stdio.js";
 import { JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
 
 const execFileAsync = promisify(execFile);
@@ -31,6 +35,7 @@ const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const networkGuardPath = join(sourceRoot, "tests/package/network-guard.mjs");
 const fixtureApiKey = "fixture-only-api-key";
 const closeTimeoutMs = 5_000;
+const signalTimeoutMs = 2_000;
 
 function assertPathInside(path, parent, label) {
 	const childRelative = relative(parent, path);
@@ -105,6 +110,7 @@ class AuditedStdioClientTransport extends StdioClientTransport {
 	childProcess = undefined;
 	/** @type {Promise<{ code: number | null, signal: string | null }> | undefined} */
 	childExit = undefined;
+	onChildStarted = undefined;
 
 	start() {
 		const started = super.start();
@@ -116,7 +122,8 @@ class AuditedStdioClientTransport extends StdioClientTransport {
 		child.stdout.on("data", (chunk) => {
 			this.rawStdoutChunks.push(Buffer.from(chunk));
 		});
-		return started;
+		const childStarted = this.onChildStarted?.(child);
+		return Promise.all([started, childStarted]).then(() => undefined);
 	}
 }
 
@@ -139,6 +146,151 @@ function processExists(pid) {
 			return false;
 		}
 		throw error;
+	}
+}
+
+function readProcessTable() {
+	const output = execFileSync("ps", ["-eo", "pid=,ppid=,pgid=,sid=,comm="], {
+		encoding: "utf8",
+	});
+	return output
+		.trim()
+		.split("\n")
+		.filter(Boolean)
+		.map((line) => {
+			const [pid, ppid, pgid, sid, ...command] = line.trim().split(/\s+/);
+			return {
+				pid: Number(pid),
+				ppid: Number(ppid),
+				pgid: Number(pgid),
+				sid: Number(sid),
+				command: command.join(" "),
+			};
+		});
+}
+
+function processIdentity(pid) {
+	return readProcessTable().find((entry) => entry.pid === pid);
+}
+
+function processGroupMembers(processGroupId) {
+	return readProcessTable().filter((entry) => entry.pgid === processGroupId);
+}
+
+async function resolveLinuxSetsid() {
+	if (process.platform !== "linux") {
+		return undefined;
+	}
+
+	const setsidPath = "/usr/bin/setsid";
+	try {
+		await access(setsidPath);
+	} catch (error) {
+		throw new Error(`Linux process containment requires ${setsidPath}`, {
+			cause: error,
+		});
+	}
+	return setsidPath;
+}
+
+async function verifyDedicatedProcessGroup(pid) {
+	await waitFor(
+		() => {
+			const identity = processIdentity(pid);
+			return identity?.pgid === pid && identity.sid === pid;
+		},
+		signalTimeoutMs,
+		`PID ${pid} to become its process-group and session leader`,
+	);
+	const identity = processIdentity(pid);
+	assert.ok(identity, `MCP child PID ${pid} disappeared during containment`);
+	assert.equal(
+		identity.pgid,
+		pid,
+		"setsid child is not its process-group leader",
+	);
+	assert.equal(identity.sid, pid, "setsid child is not its session leader");
+}
+
+function signalProcessGroup(processGroupId, signal) {
+	try {
+		process.kill(-processGroupId, signal);
+	} catch (error) {
+		if (error?.code !== "ESRCH") {
+			throw error;
+		}
+	}
+}
+
+async function emptyProcessGroup(processGroupId) {
+	const members = processGroupMembers(processGroupId);
+	if (members.length === 0) {
+		return;
+	}
+
+	const summary = members
+		.map(({ pid, ppid, command }) => `${pid}(ppid=${ppid},${command})`)
+		.join(", ");
+	const leakError = new Error(
+		`MCP process group ${processGroupId} remained after SDK close: ${summary}`,
+	);
+
+	signalProcessGroup(processGroupId, "SIGTERM");
+	try {
+		await waitFor(
+			() => processGroupMembers(processGroupId).length === 0,
+			signalTimeoutMs,
+			`process group ${processGroupId} to exit after SIGTERM`,
+		);
+	} catch {
+		signalProcessGroup(processGroupId, "SIGKILL");
+		await waitFor(
+			() => processGroupMembers(processGroupId).length === 0,
+			signalTimeoutMs,
+			`process group ${processGroupId} to exit after SIGKILL`,
+		);
+	}
+
+	assert.deepEqual(
+		processGroupMembers(processGroupId),
+		[],
+		`MCP process group ${processGroupId} was not emptied`,
+	);
+	throw leakError;
+}
+
+async function terminateObservedProcesses(pids) {
+	const remaining = [...pids].filter(processExists);
+	for (const pid of remaining) {
+		try {
+			process.kill(pid, "SIGTERM");
+		} catch (error) {
+			if (error?.code !== "ESRCH") {
+				throw error;
+			}
+		}
+	}
+	try {
+		await waitFor(
+			() => remaining.every((pid) => !processExists(pid)),
+			signalTimeoutMs,
+			"observed MCP processes to exit after SIGTERM",
+		);
+	} catch {
+		for (const pid of remaining.filter(processExists)) {
+			try {
+				process.kill(pid, "SIGKILL");
+			} catch (error) {
+				if (error?.code !== "ESRCH") {
+					throw error;
+				}
+			}
+		}
+		await waitFor(
+			() => remaining.every((pid) => !processExists(pid)),
+			signalTimeoutMs,
+			"observed MCP processes to exit after SIGKILL",
+		);
 	}
 }
 
@@ -294,8 +446,23 @@ async function closeFixture(server) {
 	});
 }
 
-function sanitizedEnv({ home, cache, fixtureUrl, guardLog }) {
-	return {
+function sanitizedEnv({
+	home,
+	cache,
+	fixtureUrl,
+	guardLog,
+	readRoot,
+	writeRoot,
+}) {
+	const fixtureOrigin = new URL(fixtureUrl);
+	assert.equal(fixtureOrigin.protocol, "http:");
+	assert.ok(
+		fixtureOrigin.hostname === "127.0.0.1" || fixtureOrigin.hostname === "::1",
+		"fixture must use an exact numeric loopback host",
+	);
+	assert.match(fixtureOrigin.port, /^[1-9]\d*$/, "fixture port is required");
+
+	const env = {
 		PATH: process.env.PATH ?? "",
 		HOME: home,
 		TMPDIR: dirname(home),
@@ -307,9 +474,44 @@ function sanitizedEnv({ home, cache, fixtureUrl, guardLog }) {
 		HEVY_MCP_TEST_API_BASE_URL: fixtureUrl,
 		HEVY_MCP_TEST_DISABLE_UPDATE_CHECK: "1",
 		HEVY_MCP_TEST_NETWORK_GUARD_LOG: guardLog,
+		HEVY_MCP_TEST_ALLOWED_HOST: fixtureOrigin.hostname,
+		HEVY_MCP_TEST_ALLOWED_PORT: fixtureOrigin.port,
 		SENTRY_DSN: "*",
-		NODE_OPTIONS: `--import=${pathToFileURL(networkGuardPath).href}`,
+		NODE_OPTIONS: [
+			"--permission",
+			`--allow-fs-read=${readRoot}`,
+			`--allow-fs-read=${networkGuardPath}`,
+			`--allow-fs-write=${writeRoot}`,
+			`--import=${pathToFileURL(networkGuardPath).href}`,
+		].join(" "),
 	};
+	for (const name of DEFAULT_INHERITED_ENV_VARS) {
+		env[name] ??= "";
+	}
+	return env;
+}
+
+function assertSanitizedEnv(env) {
+	assert.equal(env.HEVY_API_KEY, fixtureApiKey);
+	assert.ok(env.NODE_OPTIONS.includes("--permission"));
+	assert.ok(!env.NODE_OPTIONS.includes("--allow-child-process"));
+	assert.ok(!env.NODE_OPTIONS.includes("--allow-worker"));
+	assert.ok(!env.NODE_OPTIONS.includes("--allow-addons"));
+	assert.ok(!env.NODE_OPTIONS.includes("--allow-wasi"));
+
+	const childValues = new Set(Object.values(env));
+	for (const [name, value] of Object.entries(process.env)) {
+		if (
+			value &&
+			/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)/i.test(name) &&
+			name !== "HEVY_API_KEY"
+		) {
+			assert.ok(
+				!childValues.has(value),
+				`child environment inherited sensitive value from ${name}`,
+			);
+		}
+	}
 }
 
 async function inspectInstalledExports(mainPath, env) {
@@ -344,8 +546,15 @@ async function run() {
 	let client;
 	let transport;
 	let childPid;
-	let descendantMonitor;
+	let processGroupId;
+	let processGroupMonitor;
+	/** @type {Promise<void> | undefined} */
+	let processGroupVerification;
+	let processGroupVerified = false;
+	let transportClosed = false;
+	let monitorError;
 	const observedDescendants = new Set();
+	const observedProcessGroupMembers = new Set();
 	let primaryError;
 	const cleanupErrors = [];
 
@@ -532,7 +741,10 @@ async function run() {
 			cache: isolatedCache,
 			fixtureUrl,
 			guardLog,
+			readRoot: consumerDirectory,
+			writeRoot: temporaryRoot,
 		});
+		assertSanitizedEnv(childEnv);
 		const exportedSurface = await inspectInstalledExports(
 			join(installedPackageRoot, installedPackage.main),
 			childEnv,
@@ -544,13 +756,52 @@ async function run() {
 			"runServer",
 		]);
 
+		const setsidPath = await resolveLinuxSetsid();
 		transport = new AuditedStdioClientTransport({
-			command: executableLink,
-			args: [],
+			command: setsidPath ?? executableLink,
+			args: setsidPath ? [executableLink] : [],
 			env: childEnv,
 			cwd: consumerDirectory,
 			stderr: "pipe",
 		});
+		transport.onChildStarted = (child) => {
+			childPid = child.pid;
+			if (process.platform === "linux") {
+				processGroupId = child.pid;
+				const monitorContainedProcesses = () => {
+					try {
+						for (const member of processGroupMembers(processGroupId)) {
+							observedProcessGroupMembers.add(member.pid);
+						}
+						for (const pid of collectDescendants(child.pid)) {
+							observedDescendants.add(pid);
+						}
+					} catch (error) {
+						monitorError ??= error;
+					}
+				};
+				monitorContainedProcesses();
+				processGroupMonitor = setInterval(monitorContainedProcesses, 20);
+				processGroupMonitor.unref();
+				processGroupVerification = verifyDedicatedProcessGroup(child.pid).then(
+					() => {
+						processGroupVerified = true;
+						for (const member of processGroupMembers(processGroupId)) {
+							observedProcessGroupMembers.add(member.pid);
+						}
+					},
+				);
+				return processGroupVerification;
+			}
+
+			processGroupMonitor = setInterval(() => {
+				for (const pid of collectDescendants(child.pid)) {
+					observedDescendants.add(pid);
+				}
+			}, 20);
+			processGroupMonitor.unref();
+			return undefined;
+		};
 		let stderr = "";
 		transport.stderr.on("data", (chunk) => {
 			stderr += chunk.toString("utf8");
@@ -560,13 +811,17 @@ async function run() {
 			{ capabilities: {} },
 		);
 		await client.connect(transport);
-		childPid = transport.childProcess.pid;
-		descendantMonitor = setInterval(() => {
-			for (const pid of collectDescendants(childPid)) {
-				observedDescendants.add(pid);
-			}
-		}, 20);
-		descendantMonitor.unref();
+		assert.equal(childPid, transport.childProcess.pid);
+		if (process.platform === "linux") {
+			assert.ok(processGroupVerification);
+			await processGroupVerification;
+			assert.equal(processGroupVerified, true);
+			assert.equal(monitorError, undefined);
+			assert.ok(
+				observedProcessGroupMembers.has(childPid),
+				"process-group monitoring did not observe the MCP child",
+			);
+		}
 
 		const serverVersion = client.getServerVersion();
 		assert.equal(serverVersion?.name, installedPackage.name);
@@ -598,6 +853,7 @@ async function run() {
 
 		await closeWithTimeout(() => client.close(), "MCP client close");
 		client = undefined;
+		transportClosed = true;
 		await waitFor(
 			() => !processExists(childPid),
 			closeTimeoutMs,
@@ -612,6 +868,9 @@ async function run() {
 			`MCP child exited via signal ${exit.signal}`,
 		);
 		assert.equal(exit.code, 0, `MCP child exited with code ${exit.code}`);
+		if (processGroupId) {
+			await emptyProcessGroup(processGroupId);
+		}
 
 		const rawStdout = auditRawStdout(transport.rawStdoutChunks);
 		assert.ok(
@@ -629,68 +888,75 @@ async function run() {
 		assert.equal(
 			await readFile(guardLog, "utf8"),
 			"",
-			"network guard recorded an attempt",
+			"package isolation guard recorded an attempt",
 		);
 	} catch (error) {
 		primaryError = error;
 	} finally {
-		if (descendantMonitor) {
-			clearInterval(descendantMonitor);
-		}
-		if (childPid && processExists(childPid)) {
-			for (const pid of collectDescendants(childPid)) {
-				observedDescendants.add(pid);
-			}
-		}
-
 		if (client) {
 			try {
 				await closeWithTimeout(() => client.close(), "MCP client cleanup");
+				transportClosed = true;
 			} catch (error) {
 				cleanupErrors.push(error);
 			}
 		}
-		if (transport && childPid && processExists(childPid)) {
+		if (transport && !transportClosed) {
 			try {
 				await closeWithTimeout(
 					() => transport.close(),
 					"stdio transport cleanup",
 				);
+				transportClosed = true;
 			} catch (error) {
 				cleanupErrors.push(error);
 			}
 		}
-		if (childPid && processExists(childPid)) {
+
+		if (processGroupMonitor) {
+			clearInterval(processGroupMonitor);
+		}
+		if (monitorError) {
+			cleanupErrors.push(
+				new Error("process-group monitoring failed", { cause: monitorError }),
+			);
+		}
+
+		if (process.platform === "linux" && processGroupId) {
 			try {
-				transport.childProcess.kill("SIGTERM");
-				await waitFor(
-					() => !processExists(childPid),
-					2_000,
-					"SIGTERM child exit",
-				);
-			} catch {
+				assert.ok(processGroupVerification);
+				await processGroupVerification;
+			} catch (error) {
+				cleanupErrors.push(error);
+			}
+			if (processGroupVerified) {
 				try {
-					transport.childProcess.kill("SIGKILL");
-					await waitFor(
-						() => !processExists(childPid),
-						2_000,
-						"SIGKILL child exit",
+					await emptyProcessGroup(processGroupId);
+				} catch (error) {
+					cleanupErrors.push(error);
+				}
+			} else {
+				try {
+					await terminateObservedProcesses(
+						new Set([
+							childPid,
+							...observedProcessGroupMembers,
+							...observedDescendants,
+						]),
 					);
 				} catch (error) {
 					cleanupErrors.push(error);
 				}
 			}
-		}
-		if (childPid && processExists(childPid)) {
-			cleanupErrors.push(new Error(`MCP child PID ${childPid} leaked`));
-		}
-		for (const descendantPid of observedDescendants) {
-			if (processExists(descendantPid)) {
-				cleanupErrors.push(
-					new Error(
-						`MCP descendant PID ${descendantPid} leaked or was orphaned`,
-					),
-				);
+		} else if (childPid) {
+			for (const pid of collectDescendants(childPid)) {
+				observedDescendants.add(pid);
+			}
+			const observedPids = new Set([childPid, ...observedDescendants]);
+			try {
+				await terminateObservedProcesses(observedPids);
+			} catch (error) {
+				cleanupErrors.push(error);
 			}
 		}
 		try {
