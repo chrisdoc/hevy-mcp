@@ -19,6 +19,7 @@ import {
 } from "../utils/formatters.js";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "../utils/hevyClient.js";
+import { createSafeErrorDiagnostic } from "../utils/safe-error-diagnostic.js";
 import {
 	exerciseHistoryOutputSchema,
 	exerciseTemplateOutputSchema,
@@ -340,7 +341,7 @@ export function registerTemplateTools(
 					} catch (error) {
 						console.error(
 							"Failed to emit structured exercise template cache log",
-							error,
+							createSafeErrorDiagnostic(error),
 						);
 					}
 				},

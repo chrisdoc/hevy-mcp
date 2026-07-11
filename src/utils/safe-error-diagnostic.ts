@@ -92,6 +92,9 @@ const SAFE_SOURCE_SUFFIXES: ReadonlyArray<readonly [string, SafeSourceId]> = [
 	["/src/worker.ts", "worker"],
 ];
 
+const PROJECT_PATH_MARKER = "/hevy-mcp/";
+const MAX_STACK_POSITION = 1_000_000;
+
 function classifyError(error: unknown): SafeErrorCategory {
 	if (isHevyHttpError(error)) return "HevyHttpError";
 	if (error instanceof TypeError) return "TypeError";
@@ -153,13 +156,30 @@ function parseSafeStackFrames(error: unknown): SafeStackFrame[] | undefined {
 		if (!match) continue;
 		const [, rawSource, rawLine, rawColumn] = match;
 		if (!rawSource || !rawLine || !rawColumn) continue;
+		if (
+			rawSource.includes("?") ||
+			rawSource.includes("#") ||
+			(!rawSource.startsWith("/") && !rawSource.startsWith("file:///")) ||
+			!rawSource.includes(PROJECT_PATH_MARKER)
+		) {
+			continue;
+		}
 		const source = SAFE_SOURCE_SUFFIXES.find(([suffix]) =>
 			rawSource.endsWith(suffix),
 		)?.[1];
 		if (!source) continue;
 		const line = Number(rawLine);
 		const column = Number(rawColumn);
-		if (!Number.isSafeInteger(line) || !Number.isSafeInteger(column)) continue;
+		if (
+			!Number.isSafeInteger(line) ||
+			!Number.isSafeInteger(column) ||
+			line < 1 ||
+			column < 1 ||
+			line > MAX_STACK_POSITION ||
+			column > MAX_STACK_POSITION
+		) {
+			continue;
+		}
 		frames.push({ source, line, column });
 		if (frames.length === 3) break;
 	}

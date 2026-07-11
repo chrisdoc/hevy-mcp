@@ -6,6 +6,7 @@ import { determineErrorType, ErrorType } from "./error-classification.js";
 import { type HevyHttpError, isHevyHttpError } from "./hevy-http-error.js";
 import type { McpToolResponse } from "./response-formatter.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "./tool-helpers.js";
 
 export { ErrorType } from "./error-classification.js";
 
@@ -117,6 +118,13 @@ function getRetryExhaustedMessage(error: unknown): string {
 }
 
 function getUserFacingMessage(error: unknown, defaultMessage: string): string {
+	if (
+		error instanceof Error &&
+		error.message === HEVY_CLIENT_NOT_INITIALIZED_ERROR
+	) {
+		return HEVY_CLIENT_NOT_INITIALIZED_ERROR;
+	}
+
 	if (isRetryExhaustedError(error)) {
 		return getRetryExhaustedMessage(error);
 	}
@@ -160,8 +168,7 @@ export function createErrorResponse(
 	error: unknown,
 	context?: string,
 ): McpToolResponse {
-	const originalErrorMessage = extractErrorMessage(error);
-	let errorMessage = originalErrorMessage;
+	let errorMessage = "The request failed unexpectedly. Please try again.";
 	const safeDiagnostic = createSafeErrorDiagnostic(error);
 	const axiosErrorContext: ErrorDebugContext["axios"] | null =
 		safeDiagnostic.status !== undefined ||
@@ -213,35 +220,6 @@ export function createErrorResponse(
 		isError: true,
 		errorContext,
 	};
-}
-
-function extractErrorMessage(error: unknown): string {
-	if (error instanceof Error) {
-		return error.message;
-	}
-
-	if (typeof error === "string") {
-		return error;
-	}
-
-	if (
-		error &&
-		typeof error === "object" &&
-		"message" in error &&
-		typeof error.message === "string"
-	) {
-		return error.message;
-	}
-
-	if (error && typeof error === "object") {
-		try {
-			return JSON.stringify(error);
-		} catch (_e) {
-			return "Unknown error object";
-		}
-	}
-
-	return String(error);
 }
 
 function mapHevyErrorMessageByStatus(status?: number): string | null {

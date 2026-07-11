@@ -226,6 +226,40 @@ describe("registerHevyResources", () => {
 		]);
 	});
 
+	it("stops safely when routine folder pagination metadata is malformed", async () => {
+		const folder: RoutineFolder = {
+			id: 1,
+			title: "Only page",
+			created_at: "2025-01-01T00:00:00Z",
+			updated_at: "2025-01-01T00:00:00Z",
+		};
+		const { registerResource, server } = createMockServer();
+		const getRoutineFolders = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 0,
+			routine_folders: [folder],
+		});
+		registerHevyResources(server, {
+			getRoutineFolders,
+		} as unknown as HevyClient);
+		const registration = getResourceRegistration(
+			registerResource,
+			"routine-folders",
+		);
+
+		const result = await registration.handler(new URL(registration.uri), {
+			signal: AbortSignal.timeout(1000),
+			requestId: 7,
+			sendNotification: vi.fn(),
+			sendRequest: vi.fn(),
+		});
+
+		expect(getRoutineFolders).toHaveBeenCalledOnce();
+		expect(parseJsonContent(result).data).toEqual([
+			formatRoutineFolder(folder),
+		]);
+	});
+
 	it("shares the template catalog cache and in-flight fetch with search", async () => {
 		const { registerResource, server, tool } = createMockServer();
 		let resolveCatalog!: (value: {

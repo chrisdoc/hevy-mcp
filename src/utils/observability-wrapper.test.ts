@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HevyHttpError } from "./hevy-http-error.js";
 import { withObservability } from "./observability-wrapper.js";
 import { Sentry } from "./telemetry.js";
@@ -22,6 +22,10 @@ vi.mock("./telemetry-wrapper.js", () => ({
 vi.mock("./telemetry.js", () => ({ Sentry: testDoubles.sentry }));
 
 describe("withObservability", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
 	it("captures only a fixed event and safe structured diagnostics", async () => {
 		const secret = "sentinel-api-key-value";
 		const error = new HevyHttpError(secret, {
@@ -88,6 +92,28 @@ describe("withObservability", () => {
 		await expect(wrapped({})).resolves.toMatchObject({ isError: true });
 		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(
 			"telemetry secret",
+		);
+		stderrSpy.mockRestore();
+	});
+
+	it("omits optional tags for ordinary errors", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const wrapped = withObservability(async () => {
+			throw new Error("private ordinary failure");
+		}, "test-context");
+
+		await expect(wrapped({})).resolves.toMatchObject({ isError: true });
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"error.category",
+			"Error",
+		);
+		expect(testDoubles.scope.setTag).not.toHaveBeenCalledWith(
+			"error.code",
+			expect.anything(),
+		);
+		expect(testDoubles.scope.setTag).not.toHaveBeenCalledWith(
+			"http.status_code",
+			expect.anything(),
 		);
 		stderrSpy.mockRestore();
 	});

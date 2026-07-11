@@ -52,7 +52,10 @@ describe("createSafeErrorDiagnostic", () => {
 		error.stack = [
 			`Error: ${SECRET}`,
 			`    at attacker (https://attacker.example/${SECRET}:1:2)`,
-			`    at forged (/tmp/src/worker.ts:${SECRET}:2)`,
+			"    at forged (/tmp/src/worker.ts:1:2)",
+			"    at query (/home/user/hevy-mcp/src/worker.ts?token=secret:1:2)",
+			"    at zero (/home/user/hevy-mcp/src/worker.ts:0:2)",
+			"    at huge (/home/user/hevy-mcp/src/worker.ts:1000001:2)",
 			"not a V8 frame /home/user/hevy-mcp/src/worker.ts:8:9",
 		].join("\n");
 

@@ -450,26 +450,92 @@ describe("native-fetch Hevy client", () => {
 		expect(sleep).toHaveBeenCalledWith(300);
 	});
 
-	it("routes every public client helper through the native client", async () => {
-		const fetchMock = vi.fn(async () => jsonResponse({}));
+	it("maps public client helpers to the expected native requests", async () => {
+		const fetchMock = vi.fn(
+			async (_input: string | URL | Request, _init?: RequestInit) =>
+				jsonResponse({}),
+		);
 		const client = createClient("key", undefined, { fetch: fetchMock });
+		const cases: Array<{
+			invoke: () => Promise<unknown>;
+			method: string;
+			path: string;
+		}> = [
+			{
+				invoke: () => client.getWorkoutCount(),
+				method: "GET",
+				path: "/v1/workouts/count",
+			},
+			{
+				invoke: () => client.getWorkoutEvents(),
+				method: "GET",
+				path: "/v1/workouts/events",
+			},
+			{
+				invoke: () => client.getRoutines(),
+				method: "GET",
+				path: "/v1/routines",
+			},
+			{
+				invoke: () => client.getRoutineById("routine-id"),
+				method: "GET",
+				path: "/v1/routines/routine-id",
+			},
+			{
+				invoke: () => client.createRoutine({} as never),
+				method: "POST",
+				path: "/v1/routines",
+			},
+			{
+				invoke: () => client.getExerciseTemplates(),
+				method: "GET",
+				path: "/v1/exercise_templates",
+			},
+			{
+				invoke: () => client.getExerciseTemplate("template-id"),
+				method: "GET",
+				path: "/v1/exercise_templates/template-id",
+			},
+			{
+				invoke: () => client.getExerciseHistory("template-id"),
+				method: "GET",
+				path: "/v1/exercise_history/template-id",
+			},
+			{
+				invoke: () => client.createExerciseTemplate({} as never),
+				method: "POST",
+				path: "/v1/exercise_templates",
+			},
+			{
+				invoke: () => client.getRoutineFolders(),
+				method: "GET",
+				path: "/v1/routine_folders",
+			},
+			{
+				invoke: () => client.getBodyMeasurements(),
+				method: "GET",
+				path: "/v1/body_measurements",
+			},
+			{
+				invoke: () => client.getBodyMeasurement("2026-07-11"),
+				method: "GET",
+				path: "/v1/body_measurements/2026-07-11",
+			},
+		];
 
-		await Promise.all([
-			client.getWorkoutCount(),
-			client.getWorkoutEvents(),
-			client.getRoutines(),
-			client.getRoutineById("routine-id"),
-			client.createRoutine({} as never),
-			client.getExerciseTemplates(),
-			client.getExerciseTemplate("template-id"),
-			client.getExerciseHistory("template-id"),
-			client.createExerciseTemplate({} as never),
-			client.getRoutineFolders(),
-			client.getBodyMeasurements(),
-			client.getBodyMeasurement("2026-07-11"),
-		]);
-
-		expect(fetchMock).toHaveBeenCalledTimes(12);
+		for (const testCase of cases) {
+			fetchMock.mockClear();
+			await testCase.invoke();
+			const [input, init] = fetchMock.mock.calls[0] ?? [];
+			const requestUrl =
+				input instanceof Request
+					? input.url
+					: input instanceof URL
+						? input.href
+						: input;
+			expect(new URL(requestUrl).pathname).toBe(testCase.path);
+			expect(init?.method).toBe(testCase.method);
+		}
 	});
 
 	it("rejects invalid endpoint overrides before making a request", async () => {

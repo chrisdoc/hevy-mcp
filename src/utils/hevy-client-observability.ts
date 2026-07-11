@@ -2,6 +2,7 @@ import { SpanStatusCode } from "@opentelemetry/api";
 import { debugLog } from "./debug.js";
 import type { HevyClientOptions } from "./hevyClientKubb.js";
 import { apiCalls, apiDuration } from "./metrics.js";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 import { getCurrentUserId, tracer } from "./telemetry.js";
 
 /** Node-only adapter; the Worker graph never imports telemetry or metrics. */
@@ -28,7 +29,13 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 			span.setStatus({
 				code: observation.error ? SpanStatusCode.ERROR : SpanStatusCode.OK,
 			});
-			if (observation.error) span.recordException(observation.error);
+			if (observation.error) {
+				const diagnostic = createSafeErrorDiagnostic(observation.error);
+				span.addEvent("hevy.api.failure", {
+					"error.category": diagnostic.category,
+					...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+				});
+			}
 			span.end();
 			apiCalls.add(1, {
 				method: observation.method,
