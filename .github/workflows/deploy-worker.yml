@@ -44,6 +44,63 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check whether the preview Worker exists
+        id: preview_worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          response_body="$(mktemp)"
+          trap 'rm -f "$response_body"' EXIT
+
+          set +e
+          http_status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "$response_body" \
+              --write-out "%{http_code}" \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --request GET \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              --header "Content-Type: application/json" \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/hevy-mcp-preview/settings"
+          )"
+          curl_exit=$?
+          set -e
+
+          if (( curl_exit != 0 )); then
+            echo "Cloudflare preview Worker existence check failed during transport (curl exit ${curl_exit})." >&2
+            exit "$curl_exit"
+          fi
+
+          case "$http_status" in
+            200)
+              echo "bootstrap=false" >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo "bootstrap=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Cloudflare preview Worker existence check returned unexpected HTTP ${http_status}; refusing to bootstrap." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Bootstrap dedicated preview Worker
+        if: steps.preview_worker.outputs.bootstrap == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: >-
+          npx wrangler deploy .github/workers/preview-bootstrap.ts
+          --config wrangler.preview.jsonc
+          --keep-vars
+          --message "Bootstrap inert hevy-mcp-preview Worker for GitHub PR versions"
+
       - name: Upload preview version
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -51,13 +108,15 @@ jobs:
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
         run: >-
           npx wrangler versions upload
+          --config wrangler.preview.jsonc
+          --keep-vars
           --preview-alias pr-${{ github.event.pull_request.number }}
           --message "GitHub PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request.head.sha }}"
 
       - name: Publish preview URL
         id: preview_url
         env:
-          EXPECTED_PREFIX: pr-${{ github.event.pull_request.number }}-hevy-mcp.
+          EXPECTED_PREFIX: pr-${{ github.event.pull_request.number }}-hevy-mcp-preview.
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
         run: |
           node <<'NODE'

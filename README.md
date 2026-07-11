@@ -167,16 +167,26 @@ and `DELETE` return `405`.
 #### Automated deployments
 
 The preview deployment workflow deploys internal pull requests targeting
-`main` to a stable Cloudflare preview alias named `pr-<PR number>`. The alias
-URL is reported in the workflow job summary and on the GitHub `preview`
-environment. Pull requests from forks still run the normal build and tests,
-but the preview deployment job is skipped so Cloudflare credentials are never
-exposed to fork code.
+`main` to a dedicated `hevy-mcp-preview` Worker. On first use, the workflow
+automatically creates that Worker with an inert `404` deployment before it
+uploads the real PR version. Each pull request gets a stable alias at:
+
+```text
+https://pr-<PR number>-hevy-mcp-preview.<subdomain>.workers.dev/mcp
+```
+
+The URL is reported in the workflow job summary and on the GitHub `preview`
+environment. Preview URLs are public unless they are separately protected with
+Cloudflare Access. Pull requests from forks still run the normal build and
+tests, but the preview deployment job is skipped so Cloudflare credentials are
+never exposed to fork code.
 
 For pushes to `main`, the `Build and Test` workflow runs its production job
 only after both the Node.js `build` matrix and the `docker` smoke-test job pass.
-That gated job deploys the same trusted push commit through the GitHub
-`production` environment. The production MCP endpoint is:
+That gated job deploys the same trusted push commit to the production
+`hevy-mcp` Worker through the GitHub `production` environment. Production is
+touched only by CI for trusted pushes to `main`. The production MCP endpoint
+is:
 
 ```text
 https://hevy.chrisdoc.dev/mcp
@@ -198,8 +208,9 @@ No `HEVY_API_KEY` deployment secret is required or supported. Each caller sends
 their own key in `Authorization: Bearer ...` as described above. The custom
 domain and Worker route for `hevy.chrisdoc.dev` are managed separately by
 Terraform in the private `chrisdoc/infra` repository; this repository does not
-create or modify that binding. The generic production `workers.dev` route is
-disabled, while version and alias preview URLs remain enabled.
+create or modify that binding. Terraform and custom routes must never target
+the `hevy-mcp-preview` Worker. The generic production `workers.dev` route is
+disabled, while version and alias URLs remain enabled on the preview Worker.
 
 After production deployment, this unauthenticated smoke test should return
 HTTP `401` without sending any credential:
