@@ -16,7 +16,7 @@ import type {
 	McpClientLogMessage,
 } from "./mcp-client-logger.js";
 import { debugLog } from "./debug.js";
-import { tracer } from "./telemetry.js";
+import { getCurrentUserId, tracer } from "./telemetry.js";
 import { apiCalls, apiDuration } from "./metrics.js";
 import type {
 	GetV1BodyMeasurementsQueryParams,
@@ -529,12 +529,14 @@ export function createClient(
 		const url = config.url ?? "";
 		// Extract clean endpoint path without query params for high-cardinality safety
 		const endpoint = url.split("?")[0] ?? url;
+		const userId = getCurrentUserId();
 		tracedConfig._span = tracer.startSpan(`hevy.api.${method}`, {
 			attributes: {
 				"http.method": method,
 				"http.url": url,
 				"http.base_url": config.baseURL ?? "",
 				"hevy.api.endpoint": endpoint,
+				...(userId ? { "user.id": userId } : {}),
 			},
 		});
 		tracedConfig._startTime = Date.now();

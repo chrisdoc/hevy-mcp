@@ -44,6 +44,7 @@ const telemetryTestDoubles = vi.hoisted(() => {
 			| ((response: Record<string, unknown>) => Record<string, unknown>),
 		responseErrorHandler: undefined as undefined | ((error: unknown) => never),
 		tracerStartSpan: vi.fn(),
+		getCurrentUserId: vi.fn(),
 		apiCallsAdd: vi.fn(),
 		apiDurationRecord: vi.fn(),
 	};
@@ -67,6 +68,7 @@ vi.mock("axios", () => ({
 }));
 
 vi.mock("./telemetry.js", () => ({
+	getCurrentUserId: telemetryTestDoubles.getCurrentUserId,
 	tracer: {
 		startSpan: telemetryTestDoubles.tracerStartSpan,
 	},
@@ -226,6 +228,7 @@ describe("hevyClientKubb", () => {
 		telemetryTestDoubles.tracerStartSpan.mockReturnValue(
 			telemetryTestDoubles.span,
 		);
+		telemetryTestDoubles.getCurrentUserId.mockReturnValue(undefined);
 
 		axiosTestDoubles.create.mockImplementation(
 			(config: { baseURL?: string }) => ({
@@ -990,6 +993,51 @@ describe("hevyClientKubb", () => {
 			method: "POST",
 			endpoint: "/v1/workouts",
 		});
+	});
+
+	it("associates API request spans with the current user", () => {
+		createClient("test-api-key", "https://api.hevyapp.com");
+		telemetryTestDoubles.getCurrentUserId.mockReturnValue("user-123");
+
+		telemetryTestDoubles.requestHandler?.({
+			method: "get",
+			url: "/v1/workouts",
+			baseURL: "https://api.hevyapp.com",
+		});
+
+		expect(telemetryTestDoubles.tracerStartSpan).toHaveBeenCalledWith(
+			"hevy.api.GET",
+			{
+				attributes: {
+					"http.method": "GET",
+					"http.url": "/v1/workouts",
+					"http.base_url": "https://api.hevyapp.com",
+					"hevy.api.endpoint": "/v1/workouts",
+					"user.id": "user-123",
+				},
+			},
+		);
+	});
+
+	it("omits the user ID attribute when no current user is available", () => {
+		createClient("test-api-key", "https://api.hevyapp.com");
+
+		telemetryTestDoubles.requestHandler?.({
+			method: "get",
+			url: "/v1/workouts",
+			baseURL: "https://api.hevyapp.com",
+		});
+
+		const spanOptions = telemetryTestDoubles.tracerStartSpan.mock.calls[0]?.[1];
+		expect(spanOptions).toEqual({
+			attributes: {
+				"http.method": "GET",
+				"http.url": "/v1/workouts",
+				"http.base_url": "https://api.hevyapp.com",
+				"hevy.api.endpoint": "/v1/workouts",
+			},
+		});
+		expect(spanOptions?.attributes).not.toHaveProperty("user.id");
 	});
 
 	it("records failed API responses and rethrows the original error", () => {
