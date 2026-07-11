@@ -3,17 +3,24 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { dirname } from "node:path";
 import { z } from "zod";
+import { fixtureResultSchema } from "./fixture-result.js";
 
-export const PERFORMANCE_REPORT_VERSION = "1.0.0";
+export const PERFORMANCE_REPORT_VERSION = "2.0.0";
 export const PERFORMANCE_SUMMARY_PATH = "test-results/performance/summary.json";
 
 const durationStatisticsSchema = z.object({
-	p50: z.number().nonnegative(),
-	p95: z.number().nonnegative(),
-	max: z.number().nonnegative(),
+	p50: z.number().positive(),
+	p95: z.number().positive(),
+	max: z.number().positive(),
 });
 
-const memoryObservationSchema = z.object({
+const failureSchema = z.object({
+	iteration: z.number().int().positive(),
+	phase: z.enum(["setup", "iteration", "verification", "cleanup"]),
+	message: z.string().min(1),
+});
+
+const runnerMemorySchema = z.object({
 	heapUsedBeforeBytes: z.number().int().nonnegative(),
 	heapUsedAfterBytes: z.number().int().nonnegative(),
 	heapUsedDeltaBytes: z.number().int(),
@@ -22,9 +29,11 @@ const memoryObservationSchema = z.object({
 	rssDeltaBytes: z.number().int(),
 });
 
-const failureSchema = z.object({
+const serverMemoryObservationSchema = z.object({
 	iteration: z.number().int().positive(),
-	message: z.string().min(1),
+	phase: z.enum(["initialized", "scenario-complete"]),
+	rssBytes: z.number().int().nonnegative().nullable(),
+	unavailableReason: z.string().min(1).nullable(),
 });
 
 export const performanceScenarioSchema = z.object({
@@ -35,13 +44,25 @@ export const performanceScenarioSchema = z.object({
 		"concurrent-20-call-burst",
 		"sequential-100-mocked-reads",
 	]),
-	iterations: z.number().int().positive(),
+	configuredIterations: z.number().int().positive(),
+	completedIterations: z.number().int().nonnegative(),
 	durationsMs: durationStatisticsSchema,
 	correctness: z.object({
 		failureCount: z.number().int().nonnegative(),
 		failures: z.array(failureSchema),
 	}),
-	memory: memoryObservationSchema,
+	fixtureVerification: z.object({
+		processCount: z.number().int().nonnegative(),
+		verifiedProcessCount: z.number().int().nonnegative(),
+		results: z.array(fixtureResultSchema),
+	}),
+	memory: z.object({
+		serverProcess: z.object({
+			source: z.literal("/proc/<pid>/status VmRSS with nullable fallback"),
+			observations: z.array(serverMemoryObservationSchema),
+		}),
+		parentRunner: runnerMemorySchema,
+	}),
 	target: z.object({
 		description: z.string().min(1),
 		p95Milliseconds: z.number().positive().nullable(),
@@ -61,12 +82,15 @@ export const performanceReportSchema = z.object({
 		cpuCount: z.number().int().positive(),
 		runner: z.string().min(1),
 		commit: z.string().min(1),
+		builtCli: z.literal("dist/cli.mjs"),
+		transport: z.literal("spawned stdio"),
 	}),
 	configuration: z.object({
-		fixtureMode: z.literal("nock-local-mock"),
-		networkPolicy: z.literal("outbound-disabled"),
+		fixtureMode: z.literal("child-local-nock-preload"),
+		networkPolicy: z.literal("child-http-and-fetch-disabled"),
 		timingGate: z.literal("informational-only"),
 		observationWindow: z.literal("2-4 weeks"),
+		buildExcludedFromSamples: z.literal(true),
 	}),
 	correctness: z.object({
 		failureCount: z.number().int().nonnegative(),
@@ -76,9 +100,10 @@ export const performanceReportSchema = z.object({
 			}),
 		),
 	}),
-	scenarios: z.array(performanceScenarioSchema).min(1).max(5),
+	scenarios: z.array(performanceScenarioSchema).length(5),
 });
 
+export type PerformanceFailure = z.infer<typeof failureSchema>;
 export type PerformanceScenario = z.infer<typeof performanceScenarioSchema>;
 export type PerformanceReport = z.infer<typeof performanceReportSchema>;
 
@@ -92,7 +117,7 @@ export function percentile(values: number[], fraction: number) {
 
 	const sorted = [...values].sort((left, right) => left - right);
 	const index = Math.ceil(fraction * sorted.length) - 1;
-	return sorted[index] ?? sorted[sorted.length - 1] ?? 0;
+	return sorted[index] ?? sorted[sorted.length - 1]!;
 }
 
 export function summarizeDurations(values: number[]) {
@@ -103,7 +128,7 @@ export function summarizeDurations(values: number[]) {
 	};
 }
 
-export function observeMemory(
+export function observeRunnerMemory(
 	before: NodeJS.MemoryUsage,
 	after: NodeJS.MemoryUsage,
 ) {
@@ -118,10 +143,7 @@ export function observeMemory(
 }
 
 function getCommit() {
-	if (process.env.GITHUB_SHA) {
-		return process.env.GITHUB_SHA;
-	}
-
+	if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
 	try {
 		return execFileSync("git", ["rev-parse", "HEAD"], {
 			encoding: "utf8",
@@ -154,17 +176,17 @@ export function createPerformanceReport(
 			cpuCount: Math.max(cpu.length, 1),
 			runner: process.env.RUNNER_NAME ?? process.env.RUNNER_OS ?? os.hostname(),
 			commit: getCommit(),
+			builtCli: "dist/cli.mjs",
+			transport: "spawned stdio",
 		},
 		configuration: {
-			fixtureMode: "nock-local-mock",
-			networkPolicy: "outbound-disabled",
+			fixtureMode: "child-local-nock-preload",
+			networkPolicy: "child-http-and-fetch-disabled",
 			timingGate: "informational-only",
 			observationWindow: "2-4 weeks",
+			buildExcludedFromSamples: true,
 		},
-		correctness: {
-			failureCount: failures.length,
-			failures,
-		},
+		correctness: { failureCount: failures.length, failures },
 		scenarios,
 	});
 }

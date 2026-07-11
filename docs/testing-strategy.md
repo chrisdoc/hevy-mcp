@@ -294,7 +294,7 @@ these names rather than duplicating selectors:
 	"test:pack": "node tests/package/npm-pack-smoke.mjs",
 	"test:live": "node --env-file-if-exists=.env scripts/run-live-tests.mjs",
 	"test:nightly": "node tests/nightly/test_hevy_mcp.mjs",
-	"test:performance": "vitest run tests/performance/performance.test.ts",
+	"test:performance": "npm run build && vitest run tests/performance/performance.test.ts",
 	"test:coverage": "unit and mocked MCP coverage via their named lanes",
 	"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:pack"
 }
@@ -429,10 +429,13 @@ coverage is already high.
 
 ## Local mocked performance methodology
 
-Performance tests must use a built server, deterministic mocked HTTP, warmed and
-cold measurements where relevant, a fixed machine/runner description, and
-multiple iterations. Record median, p95, maximum, error count, and memory trend;
-exclude dependency installation and build time from request latency.
+Performance tests build first, then spawn `dist/cli.mjs` over MCP stdio with a
+child-local preload that installs deterministic Nock fixtures and blocks both
+Node HTTP(S) and `fetch`. The child reports exact fixture use through a prefixed,
+machine-readable stderr marker. Record configured/completed iterations, median,
+p95, maximum, correctness failures, exact fixture verification, and server
+process RSS (with a nullable non-Linux fallback); label runner memory separately.
+Exclude dependency installation and build time from request latency.
 
 Initial **non-gating** targets:
 
@@ -590,8 +593,8 @@ duplicated contract logic across live and mocked suites.
   performance helpers.
 - **Acceptance criteria:**
   - Local and CI use the same named scripts.
-  - Performance results include environment, iterations, p50/p95/max, failures,
-    and memory observations.
+  - Performance results include environment, configured/completed iterations,
+    p50/p95/max, fixture verification, failures, and server memory observations.
   - Initial non-gating targets are reported for 2–4 weeks.
   - Correctness failures gate immediately; timing gates remain informational
     until variance is reviewed.

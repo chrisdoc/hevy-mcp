@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { FixtureResult } from "../performance/fixture-result.js";
 import {
 	createPerformanceReport,
 	performanceReportSchema,
@@ -7,19 +8,55 @@ import {
 	type PerformanceScenario,
 } from "../performance/report.js";
 
+function fixtureResult(): FixtureResult {
+	return {
+		version: 1,
+		mode: "startup",
+		expectedRequestCount: 1,
+		observedRequestCount: 1,
+		startupRequestCount: 1,
+		scenarioRequestCount: 0,
+		pendingMocks: [],
+		unexpectedRequests: [],
+		blockedFetchRequests: [],
+		setupFailure: null,
+		cleanupFailure: null,
+		verified: true,
+	};
+}
+
 function scenario(): PerformanceScenario {
 	return {
 		name: "startup-initialization",
-		iterations: 5,
+		configuredIterations: 5,
+		completedIterations: 5,
 		durationsMs: { p50: 3, p95: 5, max: 5 },
 		correctness: { failureCount: 0, failures: [] },
+		fixtureVerification: {
+			processCount: 1,
+			verifiedProcessCount: 1,
+			results: [fixtureResult()],
+		},
 		memory: {
-			heapUsedBeforeBytes: 100,
-			heapUsedAfterBytes: 120,
-			heapUsedDeltaBytes: 20,
-			rssBeforeBytes: 200,
-			rssAfterBytes: 240,
-			rssDeltaBytes: 40,
+			serverProcess: {
+				source: "/proc/<pid>/status VmRSS with nullable fallback",
+				observations: [
+					{
+						iteration: 1,
+						phase: "initialized",
+						rssBytes: 1024,
+						unavailableReason: null,
+					},
+				],
+			},
+			parentRunner: {
+				heapUsedBeforeBytes: 100,
+				heapUsedAfterBytes: 120,
+				heapUsedDeltaBytes: 20,
+				rssBeforeBytes: 200,
+				rssAfterBytes: 240,
+				rssDeltaBytes: 40,
+			},
 		},
 		target: {
 			description: "Informational startup target",
@@ -29,10 +66,17 @@ function scenario(): PerformanceScenario {
 	};
 }
 
+const scenarioNames: PerformanceScenario["name"][] = [
+	"startup-initialization",
+	"mcp-tools-list",
+	"representative-mocked-read",
+	"concurrent-20-call-burst",
+	"sequential-100-mocked-reads",
+];
+
 describe("performance report statistics", () => {
 	it("uses nearest-rank percentiles without mutating the sample", () => {
 		const values = [5, 1, 4, 2, 3];
-
 		expect(percentile(values, 0.5)).toBe(3);
 		expect(percentile(values, 0.95)).toBe(5);
 		expect(values).toEqual([5, 1, 4, 2, 3]);
@@ -40,12 +84,7 @@ describe("performance report statistics", () => {
 
 	it("summarizes p50, p95, and maximum durations", () => {
 		const values = Array.from({ length: 20 }, (_, index) => index + 1);
-
-		expect(summarizeDurations(values)).toEqual({
-			p50: 10,
-			p95: 19,
-			max: 20,
-		});
+		expect(summarizeDurations(values)).toEqual({ p50: 10, p95: 19, max: 20 });
 	});
 
 	it("rejects invalid percentile inputs", () => {
@@ -55,28 +94,33 @@ describe("performance report statistics", () => {
 });
 
 describe("performance report schema", () => {
-	it("accepts a versioned report with reproducibility metadata", () => {
-		const report = createPerformanceReport([scenario()]);
-
+	it("accepts five versioned scenarios with reproducibility metadata", () => {
+		const report = createPerformanceReport(
+			scenarioNames.map((name) => ({ ...scenario(), name })),
+		);
 		expect(() => performanceReportSchema.parse(report)).not.toThrow();
 		expect(report).toMatchObject({
-			version: "1.0.0",
+			version: "2.0.0",
+			environment: {
+				builtCli: "dist/cli.mjs",
+				transport: "spawned stdio",
+			},
 			configuration: {
-				fixtureMode: "nock-local-mock",
-				networkPolicy: "outbound-disabled",
-				timingGate: "informational-only",
-				observationWindow: "2-4 weeks",
+				fixtureMode: "child-local-nock-preload",
+				networkPolicy: "child-http-and-fetch-disabled",
+				buildExcludedFromSamples: true,
 			},
 			correctness: { failureCount: 0 },
 		});
-		expect(report.environment.commit).not.toBe("");
-		expect(report.environment.nodeVersion).toBe(process.version);
 	});
 
-	it("rejects reports that omit memory observations", () => {
-		const invalid = structuredClone(createPerformanceReport([scenario()]));
+	it("rejects reports that omit server memory observations", () => {
+		const invalid = structuredClone(
+			createPerformanceReport(
+				scenarioNames.map((name) => ({ ...scenario(), name })),
+			),
+		);
 		delete (invalid.scenarios[0] as Partial<PerformanceScenario>).memory;
-
 		expect(() => performanceReportSchema.parse(invalid)).toThrow();
 	});
 });

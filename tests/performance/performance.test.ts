@@ -1,20 +1,25 @@
 import { performance } from "node:perf_hooks";
-import nock from "nock";
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import {
-	assertPerformanceMocksComplete,
 	callPerformanceTool,
 	createPerformanceHarness,
-	getPerformanceApiScope,
+	measuredDuration,
+	observeServerRss,
+	type PerformanceHarness,
 } from "./harness.js";
 import {
 	createPerformanceReport,
-	observeMemory,
 	performanceReportSchema,
-	summarizeDurations,
 	type PerformanceScenario,
 	writePerformanceReport,
 } from "./report.js";
+import {
+	createScenarioState,
+	finalizeScenario,
+	recordFailure,
+	recordFixtureResult,
+	type ScenarioState,
+} from "./scenario.js";
 
 const STARTUP_ITERATIONS = 10;
 const TOOLS_LIST_ITERATIONS = 20;
@@ -22,294 +27,304 @@ const MOCKED_READ_ITERATIONS = 20;
 const CONCURRENT_CALLS = 20;
 const SEQUENTIAL_CALLS = 100;
 
-type ScenarioName = PerformanceScenario["name"];
-
-class PerformanceScenarioFailure extends Error {
-	constructor(public readonly scenario: PerformanceScenario) {
-		super(
-			`${scenario.name} failed: ${scenario.correctness.failures[0]?.message}`,
-		);
+async function closeHarness(
+	state: ScenarioState,
+	harness: PerformanceHarness,
+	iteration: number,
+) {
+	state.serverMemory.push(
+		observeServerRss(harness.pid, iteration, "scenario-complete"),
+	);
+	try {
+		recordFixtureResult(state, iteration, await harness.close());
+	} catch (error) {
+		recordFailure(state, iteration, "cleanup", error);
 	}
 }
 
-function errorMessage(error: unknown) {
-	return error instanceof Error ? error.message : String(error);
-}
-
-function createScenario(
-	name: ScenarioName,
-	iterations: number,
-	durations: number[],
-	memoryBefore: NodeJS.MemoryUsage,
-	memoryAfter: NodeJS.MemoryUsage,
-	target: PerformanceScenario["target"],
-	failures: PerformanceScenario["correctness"]["failures"] = [],
-): PerformanceScenario {
-	return {
-		name,
-		iterations,
-		durationsMs: summarizeDurations(durations.length > 0 ? durations : [0]),
-		correctness: {
-			failureCount: failures.length,
-			failures,
+async function runStartupScenario() {
+	const state = createScenarioState(
+		"startup-initialization",
+		STARTUP_ITERATIONS,
+		{
+			description: "Startup plus MCP initialize p95 below 2 seconds",
+			p95Milliseconds: 2_000,
+			informationalOnly: true,
 		},
-		memory: observeMemory(memoryBefore, memoryAfter),
-		target,
-	};
+	);
+	const scenarioStartedAt = performance.now();
+
+	for (let iteration = 1; iteration <= STARTUP_ITERATIONS; iteration += 1) {
+		const startedAt = performance.now();
+		let harness: PerformanceHarness | undefined;
+		try {
+			harness = await createPerformanceHarness("startup");
+			state.durations.push(measuredDuration(startedAt));
+			state.completedIterations += 1;
+			state.serverMemory.push(
+				observeServerRss(harness.pid, iteration, "initialized"),
+			);
+		} catch (error) {
+			state.durations.push(measuredDuration(startedAt));
+			recordFailure(state, iteration, "setup", error);
+		}
+		if (harness) await closeHarness(state, harness, iteration);
+	}
+
+	return finalizeScenario(state, measuredDuration(scenarioStartedAt));
 }
 
-async function measureIterations(
-	name: ScenarioName,
-	iterations: number,
-	target: PerformanceScenario["target"],
-	operation: (iteration: number) => Promise<void>,
+async function runSingleProcessScenario(
+	state: ScenarioState,
+	mode:
+		| "tools-list"
+		| "representative-read"
+		| "concurrent-reads"
+		| "sequential-reads",
+	operation: (harness: PerformanceHarness) => Promise<void>,
 ) {
-	const durations: number[] = [];
-	const memoryBefore = process.memoryUsage();
-
-	for (let iteration = 1; iteration <= iterations; iteration += 1) {
-		const startedAt = performance.now();
-		try {
-			await operation(iteration);
-			durations.push(performance.now() - startedAt);
-		} catch (error) {
-			durations.push(performance.now() - startedAt);
-			const scenario = createScenario(
-				name,
-				iterations,
-				durations,
-				memoryBefore,
-				process.memoryUsage(),
-				target,
-				[{ iteration, message: errorMessage(error) }],
+	const scenarioStartedAt = performance.now();
+	let harness: PerformanceHarness | undefined;
+	try {
+		harness = await createPerformanceHarness(mode);
+		state.serverMemory.push(observeServerRss(harness.pid, 1, "initialized"));
+		await operation(harness);
+	} catch (error) {
+		if (state.durations.length === 0) {
+			state.durations.push(measuredDuration(scenarioStartedAt));
+		}
+		recordFailure(state, 1, "setup", error);
+	} finally {
+		if (harness) {
+			await closeHarness(
+				state,
+				harness,
+				Math.max(state.completedIterations, 1),
 			);
-			throw new PerformanceScenarioFailure(scenario);
 		}
 	}
+	return finalizeScenario(state, measuredDuration(scenarioStartedAt));
+}
 
-	return createScenario(
-		name,
-		iterations,
-		durations,
-		memoryBefore,
-		process.memoryUsage(),
-		target,
+async function runToolsListScenario() {
+	const state = createScenarioState("mcp-tools-list", TOOLS_LIST_ITERATIONS, {
+		description: "MCP tools/list p95 below 100 milliseconds",
+		p95Milliseconds: 100,
+		informationalOnly: true,
+	});
+	return runSingleProcessScenario(state, "tools-list", async (harness) => {
+		for (
+			let iteration = 1;
+			iteration <= TOOLS_LIST_ITERATIONS;
+			iteration += 1
+		) {
+			const startedAt = performance.now();
+			try {
+				const result = await harness.client.listTools();
+				expect(result.tools.length).toBeGreaterThan(0);
+				expect(result.tools.map(({ name }) => name)).toContain(
+					"get-workout-count",
+				);
+				state.completedIterations += 1;
+			} catch (error) {
+				recordFailure(state, iteration, "iteration", error);
+			} finally {
+				state.durations.push(measuredDuration(startedAt));
+			}
+		}
+	});
+}
+
+async function runRepresentativeReadScenario() {
+	const state = createScenarioState(
+		"representative-mocked-read",
+		MOCKED_READ_ITERATIONS,
+		{
+			description: "Representative mocked read p95 below 500 milliseconds",
+			p95Milliseconds: 500,
+			informationalOnly: true,
+		},
+	);
+	return runSingleProcessScenario(
+		state,
+		"representative-read",
+		async (harness) => {
+			for (
+				let iteration = 1;
+				iteration <= MOCKED_READ_ITERATIONS;
+				iteration += 1
+			) {
+				const startedAt = performance.now();
+				try {
+					const result = await callPerformanceTool(
+						harness.client,
+						"get-workout-count",
+						{},
+					);
+					expect(result.structuredContent).toEqual({ count: iteration });
+					state.completedIterations += 1;
+				} catch (error) {
+					recordFailure(state, iteration, "iteration", error);
+				} finally {
+					state.durations.push(measuredDuration(startedAt));
+				}
+			}
+		},
 	);
 }
 
-async function measureConcurrentBurst(
-	operation: (iteration: number) => Promise<void>,
-) {
-	const memoryBefore = process.memoryUsage();
-	const durations = Array.from({ length: CONCURRENT_CALLS }, () => 0);
-	const startedAt = Array.from({ length: CONCURRENT_CALLS }, () =>
-		performance.now(),
-	);
-	const results = await Promise.allSettled(
-		Array.from({ length: CONCURRENT_CALLS }, async (_, index) => {
-			try {
-				await operation(index + 1);
-			} finally {
-				durations[index] = performance.now() - (startedAt[index] ?? 0);
-			}
-		}),
-	);
-	const failures: PerformanceScenario["correctness"]["failures"] =
-		results.flatMap((result, index) =>
-			result.status === "rejected"
-				? [{ iteration: index + 1, message: errorMessage(result.reason) }]
-				: [],
-		);
-	try {
-		assertPerformanceMocksComplete();
-	} catch (error) {
-		failures.push({
-			iteration: CONCURRENT_CALLS,
-			message: errorMessage(error),
-		});
-	}
-
-	const scenario = createScenario(
+async function runConcurrentScenario() {
+	const state = createScenarioState(
 		"concurrent-20-call-burst",
 		CONCURRENT_CALLS,
-		durations,
-		memoryBefore,
-		process.memoryUsage(),
 		{
 			description: "20 concurrent calls preserve response correlation",
 			p95Milliseconds: null,
 			informationalOnly: true,
 		},
-		failures,
 	);
-
-	if (failures.length > 0) {
-		throw new PerformanceScenarioFailure(scenario);
-	}
-
-	return scenario;
-}
-
-function workoutFixture(id: string) {
-	return {
-		id,
-		title: `Performance Workout ${id}`,
-		description: "Deterministic local fixture",
-		start_time: "2026-01-01T08:00:00Z",
-		end_time: "2026-01-01T09:00:00Z",
-		created_at: "2026-01-01T08:00:00Z",
-		updated_at: "2026-01-01T09:00:00Z",
-		exercises: [],
-	};
-}
-
-beforeAll(() => {
-	nock.disableNetConnect();
-});
-
-afterAll(() => {
-	nock.cleanAll();
-	nock.enableNetConnect();
-});
-
-it("records the deterministic local performance baseline", async () => {
-	const scenarios: PerformanceScenario[] = [];
-
-	try {
-		scenarios.push(
-			await measureIterations(
-				"startup-initialization",
-				STARTUP_ITERATIONS,
-				{
-					description: "Startup plus MCP initialize p95 below 2 seconds",
-					p95Milliseconds: 2_000,
-					informationalOnly: true,
-				},
-				async () => {
-					const harness = await createPerformanceHarness();
-					await harness.close();
-				},
-			),
-		);
-
-		const listHarness = await createPerformanceHarness();
-		try {
-			scenarios.push(
-				await measureIterations(
-					"mcp-tools-list",
-					TOOLS_LIST_ITERATIONS,
-					{
-						description: "MCP tools/list p95 below 100 milliseconds",
-						p95Milliseconds: 100,
-						informationalOnly: true,
-					},
-					async () => {
-						const result = await listHarness.client.listTools();
-						expect(result.tools.length).toBeGreaterThan(0);
-						expect(result.tools.map(({ name }) => name)).toContain(
-							"get-workout-count",
-						);
-					},
-				),
-			);
-		} finally {
-			await listHarness.close();
-		}
-
-		const readHarness = await createPerformanceHarness();
-		try {
-			scenarios.push(
-				await measureIterations(
-					"representative-mocked-read",
-					MOCKED_READ_ITERATIONS,
-					{
-						description:
-							"Representative mocked read p95 below 500 milliseconds",
-						p95Milliseconds: 500,
-						informationalOnly: true,
-					},
-					async (iteration) => {
-						getPerformanceApiScope()
-							.get("/v1/workouts/count")
-							.reply(200, { workout_count: iteration });
-						const result = await callPerformanceTool(
-							readHarness.client,
-							"get-workout-count",
-							{},
-						);
-						expect(result.structuredContent).toEqual({ count: iteration });
-						assertPerformanceMocksComplete();
-					},
-				),
-			);
-		} finally {
-			await readHarness.close();
-		}
-
-		const concurrentHarness = await createPerformanceHarness();
-		try {
-			for (let index = 1; index <= CONCURRENT_CALLS; index += 1) {
-				const id = `concurrent-${index}`;
-				getPerformanceApiScope()
-					.get(`/v1/workouts/${id}`)
-					.reply(200, workoutFixture(id));
-			}
-
-			scenarios.push(
-				await measureConcurrentBurst(async (iteration) => {
+	return runSingleProcessScenario(
+		state,
+		"concurrent-reads",
+		async (harness) => {
+			const results = await Promise.allSettled(
+				Array.from({ length: CONCURRENT_CALLS }, async (_, index) => {
+					const iteration = index + 1;
 					const id = `concurrent-${iteration}`;
-					const result = await callPerformanceTool(
-						concurrentHarness.client,
-						"get-workout",
-						{ workoutId: id },
-					);
-					expect(result.structuredContent).toMatchObject({
-						workout: { id },
-					});
+					const startedAt = performance.now();
+					try {
+						const result = await callPerformanceTool(
+							harness.client,
+							"get-workout",
+							{ workoutId: id },
+						);
+						expect(result.structuredContent).toMatchObject({ workout: { id } });
+						state.completedIterations += 1;
+					} finally {
+						state.durations[index] = measuredDuration(startedAt);
+					}
 				}),
 			);
-		} finally {
-			await concurrentHarness.close();
-		}
+			for (const [index, result] of results.entries()) {
+				if (result.status === "rejected") {
+					recordFailure(state, index + 1, "iteration", result.reason);
+				}
+			}
+		},
+	);
+}
 
-		const sequentialHarness = await createPerformanceHarness();
-		try {
-			scenarios.push(
-				await measureIterations(
-					"sequential-100-mocked-reads",
-					SEQUENTIAL_CALLS,
-					{
-						description:
-							"100 sequential mocked reads remain correct and leak-free",
-						p95Milliseconds: null,
-						informationalOnly: true,
-					},
-					async (iteration) => {
-						getPerformanceApiScope()
-							.get("/v1/workouts/count")
-							.reply(200, { workout_count: iteration });
-						const result = await callPerformanceTool(
-							sequentialHarness.client,
-							"get-workout-count",
-							{},
-						);
-						expect(result.structuredContent).toEqual({ count: iteration });
-						assertPerformanceMocksComplete();
-					},
-				),
-			);
-		} finally {
-			await sequentialHarness.close();
-		}
+async function runSequentialScenario() {
+	const state = createScenarioState(
+		"sequential-100-mocked-reads",
+		SEQUENTIAL_CALLS,
+		{
+			description: "100 sequential mocked reads remain ordered and correct",
+			p95Milliseconds: null,
+			informationalOnly: true,
+		},
+	);
+	return runSingleProcessScenario(
+		state,
+		"sequential-reads",
+		async (harness) => {
+			for (let iteration = 1; iteration <= SEQUENTIAL_CALLS; iteration += 1) {
+				const startedAt = performance.now();
+				try {
+					const result = await callPerformanceTool(
+						harness.client,
+						"get-workout-count",
+						{},
+					);
+					expect(result.structuredContent).toEqual({ count: iteration });
+					state.completedIterations += 1;
+				} catch (error) {
+					recordFailure(state, iteration, "iteration", error);
+				} finally {
+					state.durations.push(measuredDuration(startedAt));
+				}
+			}
+		},
+	);
+}
+
+async function runFailureSafe(
+	runner: () => Promise<PerformanceScenario>,
+	fallback: ScenarioState,
+) {
+	const startedAt = performance.now();
+	try {
+		return await runner();
 	} catch (error) {
-		if (error instanceof PerformanceScenarioFailure) {
-			scenarios.push(error.scenario);
-		}
-		throw error;
-	} finally {
-		const report = createPerformanceReport(scenarios);
+		recordFailure(fallback, 1, "setup", error);
+		return finalizeScenario(fallback, measuredDuration(startedAt));
+	}
+}
+
+it("records the spawned built-CLI performance baseline", async () => {
+	const scenarios: PerformanceScenario[] = [];
+	scenarios.push(
+		await runFailureSafe(
+			runStartupScenario,
+			createScenarioState("startup-initialization", STARTUP_ITERATIONS, {
+				description: "Startup plus MCP initialize p95 below 2 seconds",
+				p95Milliseconds: 2_000,
+				informationalOnly: true,
+			}),
+		),
+	);
+	scenarios.push(
+		await runFailureSafe(
+			runToolsListScenario,
+			createScenarioState("mcp-tools-list", TOOLS_LIST_ITERATIONS, {
+				description: "MCP tools/list p95 below 100 milliseconds",
+				p95Milliseconds: 100,
+				informationalOnly: true,
+			}),
+		),
+	);
+	scenarios.push(
+		await runFailureSafe(
+			runRepresentativeReadScenario,
+			createScenarioState(
+				"representative-mocked-read",
+				MOCKED_READ_ITERATIONS,
+				{
+					description: "Representative mocked read p95 below 500 milliseconds",
+					p95Milliseconds: 500,
+					informationalOnly: true,
+				},
+			),
+		),
+	);
+	scenarios.push(
+		await runFailureSafe(
+			runConcurrentScenario,
+			createScenarioState("concurrent-20-call-burst", CONCURRENT_CALLS, {
+				description: "20 concurrent calls preserve response correlation",
+				p95Milliseconds: null,
+				informationalOnly: true,
+			}),
+		),
+	);
+	scenarios.push(
+		await runFailureSafe(
+			runSequentialScenario,
+			createScenarioState("sequential-100-mocked-reads", SEQUENTIAL_CALLS, {
+				description: "100 sequential mocked reads remain ordered and correct",
+				p95Milliseconds: null,
+				informationalOnly: true,
+			}),
+		),
+	);
+
+	let report: ReturnType<typeof createPerformanceReport>;
+	try {
+		report = createPerformanceReport(scenarios);
 		performanceReportSchema.parse(report);
-		writePerformanceReport(report);
+	} finally {
+		// Scenario runners never omit entries; writing occurs before correctness gates.
+		writePerformanceReport(createPerformanceReport(scenarios));
 	}
 
 	expect(scenarios.map(({ name }) => name)).toEqual([
@@ -319,7 +334,5 @@ it("records the deterministic local performance baseline", async () => {
 		"concurrent-20-call-burst",
 		"sequential-100-mocked-reads",
 	]);
-	expect(
-		scenarios.every(({ correctness }) => correctness.failureCount === 0),
-	).toBe(true);
-}, 30_000);
+	expect(report.correctness.failures).toEqual([]);
+}, 60_000);

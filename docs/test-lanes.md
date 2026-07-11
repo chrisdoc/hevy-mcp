@@ -15,7 +15,7 @@ Vitest selectors.
 | `npm run test:pack`        | Builds and inspects the `npm pack --dry-run` inventory, binary mapping, and package files. | Deterministic. Issue #609 owns install-and-spawn coverage of the real tarball. |
 | `npm run test:live`        | Read-only source canary against Hevy.                                                      | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.               |
 | `npm run test:nightly`     | Published/source launcher canary configured by the nightly or release workflow.            | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.   |
-| `npm run test:performance` | Local mocked performance and correctness trend baseline.                                   | Nock only, fake API key, and all outbound network disabled.                    |
+| `npm run test:performance` | Builds, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline.    | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.            |
 | `npm run test:coverage`    | Unit and mocked MCP coverage reports in their existing separate directories.               | Deterministic. Issue #611 owns the merged denominator and ratchet.             |
 | `npm run test:pr`          | Deterministic named lanes expected on every pull request.                                  | No live credentials or live network.                                           |
 
@@ -52,29 +52,40 @@ Neither live command belongs in deterministic pull-request jobs.
 
 ## Performance scenarios and report
 
-`npm run test:performance` uses the real MCP SDK, `McpServer`, linked
-`InMemoryTransport`, deterministic Nock fixtures, and a fake API key. It never
-contacts live Hevy. Issue #609 remains responsible for process-boundary and
-installed-tarball testing.
+`npm run test:performance` builds first, then uses the MCP SDK
+`StdioClientTransport` to spawn the real `dist/cli.mjs` with `process.execPath`.
+Build time is therefore outside every latency sample. A child-only Node
+`--import` preload installs deterministic Nock fixtures before the CLI loads,
+requires the dedicated fake API key, disables Node HTTP(S) connections, and
+rejects `globalThis.fetch` so the background update check cannot contact npm.
+The expected blocked npm-registry URL is recorded; any other fetch target is an
+unexpected request and fails fixture verification. It never contacts live Hevy.
+Issue #609 remains responsible for the broader installed-tarball expansion.
 
 The lane records exactly five stable scenarios:
 
-1. `startup-initialization` — 10 full server/client initialization iterations.
-2. `mcp-tools-list` — 20 MCP `tools/list` calls.
-3. `representative-mocked-read` — 20 Nock-backed `get-workout-count` calls.
+1. `startup-initialization` — 10 process launches through MCP initialize.
+2. `mcp-tools-list` — 20 MCP `tools/list` calls on one initialized process.
+3. `representative-mocked-read` — 20 child-mocked `get-workout-count` calls.
 4. `concurrent-20-call-burst` — one burst of 20 correlated mocked workout reads.
 5. `sequential-100-mocked-reads` — 100 ordered mocked reads.
 
 The versioned JSON report is written to the ignored stable path
 `test-results/performance/summary.json`. It includes the commit, Node/runtime
 environment, platform, architecture, CPU/runner metadata, fixture/network mode,
-per-scenario iteration counts, p50/p95/max durations, correctness failures, and
-memory observations.
+configured/completed iteration counts, p50/p95/max durations, correctness
+failures, exact child fixture verification, and server-process RSS observations
+from `/proc/<pid>/status` on Linux (nullable with an explicit reason elsewhere).
+Parent/runner memory is labeled separately.
 
 ### Gates and initial targets
 
-Correctness, fixture completion, schema validity, and network isolation gate the
-lane immediately. Timing is informational only:
+Every scenario contributes an entry even when setup or cleanup fails, and a
+failed attempt records its measured duration rather than a fabricated zero. The
+schema-validated report is written before the Vitest correctness assertion.
+Missing/malformed child markers, mode/count mismatches, pending mocks,
+unexpected requests, setup failures, and cleanup failures gate immediately.
+Timing remains informational only:
 
 - Startup plus initialize p95: less than 2 seconds.
 - MCP `tools/list` p95: less than 100 ms.

@@ -1,63 +1,159 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { performance } from "node:perf_hooks";
+import type { Readable } from "node:stream";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import nock from "nock";
-import { registerWorkoutPrompts } from "../../src/prompts/workouts.js";
-import { registerHevyResources } from "../../src/resources/hevy.js";
-import { registerBodyMeasurementTools } from "../../src/tools/body-measurements.js";
-import { registerFolderTools } from "../../src/tools/folders.js";
-import { registerRoutineTools } from "../../src/tools/routines.js";
-import { registerTemplateTools } from "../../src/tools/templates.js";
-import { registerUserTools } from "../../src/tools/user.js";
-import { registerWorkoutTools } from "../../src/tools/workouts.js";
-import { resetExerciseTemplateCatalogCache } from "../../src/utils/exercise-template-catalog.js";
-import { createClient } from "../../src/utils/hevyClient.js";
+import {
+	FIXTURE_RESULT_PREFIX,
+	parseFixtureResult,
+	type FixtureMode,
+	type FixtureResult,
+} from "./fixture-result.js";
 
-export const PERFORMANCE_API_BASEURL = "https://api.hevyapp.com";
 export const PERFORMANCE_API_KEY = "performance-fixture-api-key";
 
-export function getPerformanceApiScope() {
-	return nock(PERFORMANCE_API_BASEURL, {
-		reqheaders: {
-			"api-key": PERFORMANCE_API_KEY,
-		},
+export interface ServerMemoryObservation {
+	iteration: number;
+	phase: "initialized" | "scenario-complete";
+	rssBytes: number | null;
+	unavailableReason: string | null;
+}
+
+export function parseProcStatusRss(status: string): number | null {
+	const match = /^VmRSS:\s+(\d+)\s+kB$/mu.exec(status);
+	if (!match?.[1]) return null;
+	const kibibytes = Number(match[1]);
+	return Number.isSafeInteger(kibibytes) ? kibibytes * 1024 : null;
+}
+
+export function observeServerRss(
+	pid: number | null,
+	iteration: number,
+	phase: ServerMemoryObservation["phase"],
+): ServerMemoryObservation {
+	if (process.platform !== "linux") {
+		return {
+			iteration,
+			phase,
+			rssBytes: null,
+			unavailableReason: `server RSS is unavailable on ${process.platform}`,
+		};
+	}
+	if (pid === null) {
+		return {
+			iteration,
+			phase,
+			rssBytes: null,
+			unavailableReason: "server process ID is unavailable",
+		};
+	}
+
+	try {
+		const rssBytes = parseProcStatusRss(
+			readFileSync(`/proc/${pid}/status`, "utf8"),
+		);
+		return {
+			iteration,
+			phase,
+			rssBytes,
+			unavailableReason:
+				rssBytes === null ? "VmRSS was missing from proc status" : null,
+		};
+	} catch (error) {
+		return {
+			iteration,
+			phase,
+			rssBytes: null,
+			unavailableReason: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+function withTimeout(promise: Promise<void>, timeoutMs = 2_000) {
+	return new Promise<void>((resolvePromise) => {
+		const timer = setTimeout(resolvePromise, timeoutMs);
+		void promise.then(() => {
+			clearTimeout(timer);
+			resolvePromise();
+		});
 	});
 }
 
-export async function createPerformanceHarness() {
-	resetExerciseTemplateCatalogCache();
-	const server = new McpServer({
-		name: "hevy-mcp-performance",
-		version: "1.0.0",
+export interface PerformanceHarness {
+	client: Client;
+	pid: number | null;
+	close: () => Promise<FixtureResult>;
+}
+
+export async function createPerformanceHarness(
+	mode: FixtureMode,
+): Promise<PerformanceHarness> {
+	const stderrChunks: string[] = [];
+	const transport = new StdioClientTransport({
+		command: process.execPath,
+		args: [
+			"--import",
+			resolve("tests/performance/child-fixture.mjs"),
+			resolve("dist/cli.mjs"),
+		],
+		cwd: process.cwd(),
+		env: {
+			...process.env,
+			HEVY_API_KEY: PERFORMANCE_API_KEY,
+			HEVY_PERFORMANCE_FIXTURE_MODE: mode,
+			OTEL_COLLECTOR_TOKEN: "",
+			SENTRY_DSN: "",
+		},
+		stderr: "pipe",
 	});
-	const hevyClient = createClient(PERFORMANCE_API_KEY, PERFORMANCE_API_BASEURL);
-
-	registerWorkoutTools(server, hevyClient);
-	registerRoutineTools(server, hevyClient);
-	registerTemplateTools(server, hevyClient);
-	registerFolderTools(server, hevyClient);
-	registerUserTools(server, hevyClient);
-	registerBodyMeasurementTools(server, hevyClient);
-	registerWorkoutPrompts(server);
-	registerHevyResources(server, hevyClient);
-
-	const client = new Client({
-		name: "hevy-mcp-performance-client",
-		version: "1.0.0",
+	const stderr = transport.stderr as Readable | null;
+	let resolveFixtureMarker: () => void = () => undefined;
+	const fixtureMarkerSeen = new Promise<void>((resolvePromise) => {
+		resolveFixtureMarker = resolvePromise;
 	});
-	const [clientTransport, serverTransport] =
-		InMemoryTransport.createLinkedPair();
-	await Promise.all([
-		client.connect(clientTransport),
-		server.connect(serverTransport),
-	]);
+	stderr?.setEncoding("utf8");
+	stderr?.on("data", (chunk: string) => {
+		stderrChunks.push(chunk);
+		if (stderrChunks.join("").includes(FIXTURE_RESULT_PREFIX)) {
+			resolveFixtureMarker();
+		}
+	});
 
+	const client = new Client(
+		{ name: "hevy-mcp-performance-client", version: "1.0.0" },
+		{ capabilities: {} },
+	);
+
+	try {
+		await client.connect(transport);
+	} catch (error) {
+		try {
+			await client.close();
+		} catch {
+			// Preserve the connection error; scenario reporting records the failure.
+		}
+		if (stderr) await withTimeout(fixtureMarkerSeen);
+		const detail = stderrChunks.join("").trim();
+		throw new Error(
+			`failed to initialize built CLI${detail ? `: ${detail}` : ""}`,
+			{ cause: error },
+		);
+	}
+
+	let closed = false;
 	return {
 		client,
+		pid: transport.pid,
 		async close() {
+			if (closed) {
+				throw new Error("performance harness was closed more than once");
+			}
+			closed = true;
 			await client.close();
-			await server.close();
+			if (stderr) await withTimeout(fixtureMarkerSeen);
+			return parseFixtureResult(stderrChunks.join(""), mode);
 		},
 	};
 }
@@ -88,10 +184,6 @@ export async function callPerformanceTool(
 	};
 }
 
-export function assertPerformanceMocksComplete() {
-	if (!nock.isDone()) {
-		throw new Error(
-			`Unused performance fixtures: ${nock.pendingMocks().join(", ")}`,
-		);
-	}
+export function measuredDuration(startedAt: number) {
+	return Math.max(performance.now() - startedAt, Number.EPSILON);
 }
