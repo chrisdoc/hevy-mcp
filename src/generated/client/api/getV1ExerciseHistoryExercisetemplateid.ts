@@ -18,7 +18,7 @@ import type {
 import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1ExerciseHistoryExercisetemplateidUrl(
-  exerciseTemplateId: GetV1ExerciseHistoryExercisetemplateidPathParams["exerciseTemplateId"],
+  exerciseTemplateId: GetV1ExerciseHistoryExercisetemplateidPathParams["exerciseTemplateId"]
 ) {
   const res = {
     method: "GET",
@@ -35,7 +35,7 @@ export async function getV1ExerciseHistoryExercisetemplateid(
   exerciseTemplateId: GetV1ExerciseHistoryExercisetemplateidPathParams["exerciseTemplateId"],
   headers: GetV1ExerciseHistoryExercisetemplateidHeaderParams,
   params?: GetV1ExerciseHistoryExercisetemplateidQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 
@@ -46,7 +46,7 @@ export async function getV1ExerciseHistoryExercisetemplateid(
   >({
     method: "GET",
     url: getGetV1ExerciseHistoryExercisetemplateidUrl(
-      exerciseTemplateId,
+      exerciseTemplateId
     ).url.toString(),
     params,
     ...requestConfig,

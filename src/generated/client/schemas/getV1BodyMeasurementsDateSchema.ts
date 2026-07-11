@@ -18,7 +18,7 @@ export const getV1BodyMeasurementsDateHeaderParamsSchema = z.object({
  * @description The body measurement for the given date
  */
 export const getV1BodyMeasurementsDate200Schema = z.lazy(
-  () => bodyMeasurementSchema,
+  () => bodyMeasurementSchema
 );
 
 /**
@@ -29,5 +29,5 @@ export const getV1BodyMeasurementsDate404Schema = z.object({
 });
 
 export const getV1BodyMeasurementsDateQueryResponseSchema = z.lazy(
-  () => getV1BodyMeasurementsDate200Schema,
+  () => getV1BodyMeasurementsDate200Schema
 );

@@ -45,7 +45,8 @@ describe("createMcpClientLogger", () => {
 	});
 
 	it("reports rejected sends to stderr without rejecting the caller", async () => {
-		const sendError = new Error("transport failed");
+		const secret = "sentinel-rejected-send";
+		const sendError = new Error(secret);
 		const errorSpy = vi
 			.spyOn(console, "error")
 			.mockImplementation(() => undefined);
@@ -59,12 +60,14 @@ describe("createMcpClientLogger", () => {
 
 		expect(errorSpy).toHaveBeenCalledWith(
 			"Failed to send structured log message to MCP client",
-			sendError,
+			{ category: "Error" },
 		);
+		expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(secret);
 	});
 
 	it("reports synchronous server failures without throwing", () => {
-		const connectionError = new Error("connection check failed");
+		const secret = "sentinel-connection-check";
+		const connectionError = new Error(secret);
 		const errorSpy = vi
 			.spyOn(console, "error")
 			.mockImplementation(() => undefined);
@@ -78,7 +81,8 @@ describe("createMcpClientLogger", () => {
 		expect(() => logger(message)).not.toThrow();
 		expect(errorSpy).toHaveBeenCalledWith(
 			"Failed to send structured log message to MCP client",
-			connectionError,
+			{ category: "Error" },
 		);
+		expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(secret);
 	});
 });

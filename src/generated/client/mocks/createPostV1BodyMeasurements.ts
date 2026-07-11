@@ -14,7 +14,7 @@ import { createBodyMeasurement } from "./createBodyMeasurement.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPostV1BodyMeasurementsHeaderParams(
-  data?: Partial<PostV1BodyMeasurementsHeaderParams>,
+  data?: Partial<PostV1BodyMeasurementsHeaderParams>
 ): PostV1BodyMeasurementsHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -33,7 +33,7 @@ export function createPostV1BodyMeasurements200() {
  * @description Invalid request body
  */
 export function createPostV1BodyMeasurements400(
-  data?: Partial<PostV1BodyMeasurements400>,
+  data?: Partial<PostV1BodyMeasurements400>
 ): PostV1BodyMeasurements400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -45,7 +45,7 @@ export function createPostV1BodyMeasurements400(
  * @description A measurement for this date already exists
  */
 export function createPostV1BodyMeasurements409(
-  data?: Partial<PostV1BodyMeasurements409>,
+  data?: Partial<PostV1BodyMeasurements409>
 ): PostV1BodyMeasurements409 {
   return {
     ...{ error: faker.string.alpha() },
@@ -54,13 +54,13 @@ export function createPostV1BodyMeasurements409(
 }
 
 export function createPostV1BodyMeasurementsMutationRequest(
-  data?: Partial<PostV1BodyMeasurementsMutationRequest>,
+  data?: Partial<PostV1BodyMeasurementsMutationRequest>
 ): PostV1BodyMeasurementsMutationRequest {
   return createBodyMeasurement(data);
 }
 
 export function createPostV1BodyMeasurementsMutationResponse(
-  data?: Partial<PostV1BodyMeasurementsMutationResponse>,
+  data?: Partial<PostV1BodyMeasurementsMutationResponse>
 ): PostV1BodyMeasurementsMutationResponse {
   return (
     data || faker.helpers.arrayElement<any>([createPostV1BodyMeasurements200()])

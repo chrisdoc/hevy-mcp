@@ -237,7 +237,10 @@ Always perform these validation steps after making changes:
 
 ```
 src/
-├── index.ts           # Main entry point - register tools here
+├── cli.ts             # Node.js stdio executable entrypoint
+├── index.ts           # Node-only stdio server, telemetry, and observability
+├── worker.ts          # Cloudflare Worker Streamable HTTP entrypoint
+├── shared-server.ts   # Runtime-neutral shared MCP server construction
 ├── tools/             # MCP tool implementations (+ co-located *.test.ts)
 │   ├── annotations.ts       # Workout annotation tools
 │   ├── body-measurements.ts # Body measurement tools
@@ -255,9 +258,17 @@ src/
     ├── response-formatter.ts # MCP response utilities
     ├── formatters.ts      # Data formatting helpers
     ├── hevyClient.ts      # API client factory
-    ├── hevyClientKubb.ts  # Kubb client wrapper
-    └── config.ts          # Configuration parsing
+    ├── hevyClientKubb.ts  # Worker-safe native-fetch Kubb client wrapper
+    ├── config.ts          # Node.js configuration parsing
+    ├── telemetry.ts       # Node-only OpenTelemetry/Sentry setup
+    └── stdio-observability.ts # Node-only stdio instrumentation
 ```
+
+`src/shared-server.ts`, the tool/resource/prompt modules it imports, and the
+native-fetch Hevy client must remain safe for both Node.js and Cloudflare
+Workers. Keep Node built-ins, stdio transports, process lifecycle handling,
+and telemetry/observability wiring behind the Node-only `src/cli.ts` and
+`src/index.ts` path. `src/worker.ts` must not import that Node-only path.
 
 ### Testing Structure
 

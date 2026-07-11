@@ -21,5 +21,5 @@ export const getV1UserInfo200Schema = z.lazy(() => userInfoResponseSchema);
 export const getV1UserInfo404Schema = z.any();
 
 export const getV1UserInfoQueryResponseSchema = z.lazy(
-  () => getV1UserInfo200Schema,
+  () => getV1UserInfo200Schema
 );

@@ -13,7 +13,7 @@ import { createRoutine } from "./createRoutine.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1RoutinesQueryParams(
-  data?: Partial<GetV1RoutinesQueryParams>,
+  data?: Partial<GetV1RoutinesQueryParams>
 ): GetV1RoutinesQueryParams {
   return {
     ...{ page: faker.number.int(), pageSize: faker.number.int() },
@@ -22,7 +22,7 @@ export function createGetV1RoutinesQueryParams(
 }
 
 export function createGetV1RoutinesHeaderParams(
-  data?: Partial<GetV1RoutinesHeaderParams>,
+  data?: Partial<GetV1RoutinesHeaderParams>
 ): GetV1RoutinesHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -34,7 +34,7 @@ export function createGetV1RoutinesHeaderParams(
  * @description A paginated list of routines
  */
 export function createGetV1Routines200(
-  data?: Partial<GetV1Routines200>,
+  data?: Partial<GetV1Routines200>
 ): GetV1Routines200 {
   return {
     ...{
@@ -56,7 +56,7 @@ export function createGetV1Routines400() {
 }
 
 export function createGetV1RoutinesQueryResponse(
-  data?: Partial<GetV1RoutinesQueryResponse>,
+  data?: Partial<GetV1RoutinesQueryResponse>
 ): GetV1RoutinesQueryResponse {
   return data || faker.helpers.arrayElement<any>([createGetV1Routines200()]);
 }

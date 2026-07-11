@@ -7,7 +7,7 @@ import type { PostWorkoutsRequestSet } from "../types/PostWorkoutsRequestSet.ts"
 import { faker } from "@faker-js/faker";
 
 export function createPostWorkoutsRequestSet(
-  data?: Partial<PostWorkoutsRequestSet>,
+  data?: Partial<PostWorkoutsRequestSet>
 ): PostWorkoutsRequestSet {
   return {
     ...{

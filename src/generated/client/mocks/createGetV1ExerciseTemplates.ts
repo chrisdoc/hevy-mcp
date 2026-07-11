@@ -13,7 +13,7 @@ import { createExerciseTemplate } from "./createExerciseTemplate.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1ExerciseTemplatesQueryParams(
-  data?: Partial<GetV1ExerciseTemplatesQueryParams>,
+  data?: Partial<GetV1ExerciseTemplatesQueryParams>
 ): GetV1ExerciseTemplatesQueryParams {
   return {
     ...{ page: faker.number.int(), pageSize: faker.number.int() },
@@ -22,7 +22,7 @@ export function createGetV1ExerciseTemplatesQueryParams(
 }
 
 export function createGetV1ExerciseTemplatesHeaderParams(
-  data?: Partial<GetV1ExerciseTemplatesHeaderParams>,
+  data?: Partial<GetV1ExerciseTemplatesHeaderParams>
 ): GetV1ExerciseTemplatesHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -34,7 +34,7 @@ export function createGetV1ExerciseTemplatesHeaderParams(
  * @description A paginated list of exercise templates
  */
 export function createGetV1ExerciseTemplates200(
-  data?: Partial<GetV1ExerciseTemplates200>,
+  data?: Partial<GetV1ExerciseTemplates200>
 ): GetV1ExerciseTemplates200 {
   return {
     ...{
@@ -56,7 +56,7 @@ export function createGetV1ExerciseTemplates400() {
 }
 
 export function createGetV1ExerciseTemplatesQueryResponse(
-  data?: Partial<GetV1ExerciseTemplatesQueryResponse>,
+  data?: Partial<GetV1ExerciseTemplatesQueryResponse>
 ): GetV1ExerciseTemplatesQueryResponse {
   return (
     data || faker.helpers.arrayElement<any>([createGetV1ExerciseTemplates200()])

@@ -26,7 +26,7 @@ function getGetV1UserInfoUrl() {
  */
 export async function getV1UserInfo(
   headers: GetV1UserInfoHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

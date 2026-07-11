@@ -6,6 +6,7 @@ import createServer, {
 	createServer as namedCreateServer,
 	runServer,
 } from "./index.js";
+import { HevyHttpError } from "./utils/hevy-http-error.js";
 import { createClient } from "./utils/hevyClient.js";
 import { Sentry } from "./utils/telemetry.js";
 
@@ -59,6 +60,10 @@ vi.mock("./utils/hevyClient.js", () => ({
 		mockedClient: true,
 		getUserInfo: testDoubles.getUserInfo,
 	})),
+}));
+
+vi.mock("./utils/hevy-client-observability.js", () => ({
+	createNodeHevyClientOptions: vi.fn(() => ({})),
 }));
 
 vi.mock("./utils/graceful-shutdown.js", () => ({
@@ -354,6 +359,28 @@ describe("Server entry", () => {
 		expect(errorSpy).toHaveBeenCalledWith(
 			"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
 		);
+		errorSpy.mockRestore();
+	});
+
+	it("reports a safe project-owned HTTP status during startup validation", async () => {
+		const secret = "sentinel-startup-value";
+		testDoubles.getUserInfo.mockRejectedValueOnce(
+			new HevyHttpError(secret, {
+				status: 503,
+				method: "GET",
+				endpoint: "/v1/user/info",
+				headers: new Headers({ authorization: `Bearer ${secret}` }),
+				data: { secret },
+			}),
+		);
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		await createServer({ config: { apiKey: secret } });
+
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability. Diagnostic: HTTP 503.",
+		);
+		expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(secret);
 		errorSpy.mockRestore();
 	});
 

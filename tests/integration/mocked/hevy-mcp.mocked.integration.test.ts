@@ -20,7 +20,6 @@ import { registerRoutineTools } from "../../../src/tools/routines.js";
 import { registerTemplateTools } from "../../../src/tools/templates.js";
 import { registerUserTools } from "../../../src/tools/user.js";
 import { registerWorkoutTools } from "../../../src/tools/workouts.js";
-import { resetExerciseTemplateCatalogCache } from "../../../src/utils/exercise-template-catalog.js";
 import { createClient } from "../../../src/utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
@@ -78,7 +77,6 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 	});
 
 	beforeEach(async () => {
-		resetExerciseTemplateCatalogCache();
 		server = new McpServer({
 			name: "hevy-mcp-mocked-test",
 			version: "1.0.0",

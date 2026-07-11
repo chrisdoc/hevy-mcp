@@ -79,7 +79,7 @@ describe("registerRoutineTools", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("Routines API timeout"),
+					text: expect.stringContaining("The request failed unexpectedly"),
 				},
 			],
 		});

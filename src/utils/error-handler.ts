@@ -2,10 +2,11 @@
  * Centralized error handling utility for MCP tools
  */
 
-import { isAxiosError } from "axios";
 import { determineErrorType, ErrorType } from "./error-classification.js";
+import { type HevyHttpError, isHevyHttpError } from "./hevy-http-error.js";
 import type { McpToolResponse } from "./response-formatter.js";
-import { Sentry } from "./telemetry.js";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "./tool-helpers.js";
 
 export { ErrorType } from "./error-classification.js";
 
@@ -69,15 +70,8 @@ function formatSecondsLabel(seconds: number): string {
 	return `${roundedSeconds} second${suffix}`;
 }
 
-function getRateLimitMessage(error: unknown): string {
-	if (!isAxiosError(error)) {
-		return "Rate limited by Hevy. Please wait and retry.";
-	}
-
-	const retryAfterHeader = getHeaderValue(
-		error.response?.headers,
-		"retry-after",
-	);
+function getRateLimitMessage(error: HevyHttpError): string {
+	const retryAfterHeader = getHeaderValue(error.headers, "retry-after");
 	if (!retryAfterHeader) {
 		return "Rate limited by Hevy (HTTP 429). Please wait and retry your request.";
 	}
@@ -124,11 +118,18 @@ function getRetryExhaustedMessage(error: unknown): string {
 }
 
 function getUserFacingMessage(error: unknown, defaultMessage: string): string {
+	if (
+		error instanceof Error &&
+		error.message === HEVY_CLIENT_NOT_INITIALIZED_ERROR
+	) {
+		return HEVY_CLIENT_NOT_INITIALIZED_ERROR;
+	}
+
 	if (isRetryExhaustedError(error)) {
 		return getRetryExhaustedMessage(error);
 	}
 
-	if (isAxiosError(error) && error.response?.status === 429) {
+	if (isHevyHttpError(error) && error.status === 429) {
 		return getRateLimitMessage(error);
 	}
 
@@ -142,9 +143,7 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 	type: ErrorType;
 }
 
-/**
- * Structured debug context that preserves original error details
- */
+/** Structured debug context containing only bounded, safe metadata. */
 export interface ErrorDebugContext {
 	sourceContext?: string;
 	originalErrorMessage: string;
@@ -153,7 +152,6 @@ export interface ErrorDebugContext {
 	axios?: {
 		status?: number;
 		statusText?: string;
-		data?: unknown;
 		method?: string;
 		url?: string;
 	};
@@ -170,35 +168,38 @@ export function createErrorResponse(
 	error: unknown,
 	context?: string,
 ): McpToolResponse {
-	const originalErrorMessage = extractErrorMessage(error);
-	let errorMessage = originalErrorMessage;
-	const axiosErrorContext = extractAxiosErrorContext(error);
+	let errorMessage = "The request failed unexpectedly. Please try again.";
+	const safeDiagnostic = createSafeErrorDiagnostic(error);
+	const axiosErrorContext: ErrorDebugContext["axios"] | null =
+		safeDiagnostic.status !== undefined ||
+		safeDiagnostic.method !== undefined ||
+		safeDiagnostic.endpoint !== undefined
+			? {
+					status: safeDiagnostic.status,
+					method: safeDiagnostic.method,
+					url: safeDiagnostic.endpoint,
+				}
+			: null;
 	const mappedHevyErrorMessage = mapHevyErrorMessageByStatus(
 		axiosErrorContext?.status,
 	);
 
 	if (mappedHevyErrorMessage) {
 		errorMessage = mappedHevyErrorMessage;
-	}
-
-	// Check for axios error with response data
-	if (!mappedHevyErrorMessage && axiosErrorContext?.data) {
-		errorMessage = stringifyErrorData(axiosErrorContext.data);
+	} else if (isHevyHttpError(error) && error.status !== undefined) {
+		errorMessage = `Hevy API request failed (HTTP ${error.status}).`;
 	}
 
 	errorMessage = getUserFacingMessage(error, errorMessage);
 
 	// Extract error code if available (for logging purposes)
-	const errorCode =
-		error instanceof Error && "code" in error
-			? (error as { code?: string }).code
-			: undefined;
+	const errorCode = safeDiagnostic.code;
 
 	// Determine error type based on error characteristics
 	const errorType = determineErrorType(error, errorMessage);
 	const errorContext: ErrorDebugContext = {
 		sourceContext: context,
-		originalErrorMessage,
+		originalErrorMessage: `${safeDiagnostic.category} occurred`,
 		errorCode,
 		errorType,
 		axios: axiosErrorContext ?? undefined,
@@ -206,13 +207,8 @@ export function createErrorResponse(
 
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${errorMessage}`;
-	const errorCodeSuffix = errorCode ? `, Code: ${errorCode}` : "";
 
-	// Log the error for server-side debugging with type information
-	console.error(
-		`${formattedMessage} (Type: ${errorType}${errorCodeSuffix})`,
-		error,
-	);
+	console.error("MCP tool failure", safeDiagnostic);
 
 	return {
 		content: [
@@ -223,51 +219,6 @@ export function createErrorResponse(
 		],
 		isError: true,
 		errorContext,
-	};
-}
-
-function extractErrorMessage(error: unknown): string {
-	if (error instanceof Error) {
-		return error.message;
-	}
-
-	if (typeof error === "string") {
-		return error;
-	}
-
-	if (
-		error &&
-		typeof error === "object" &&
-		"message" in error &&
-		typeof error.message === "string"
-	) {
-		return error.message;
-	}
-
-	if (error && typeof error === "object") {
-		try {
-			return JSON.stringify(error);
-		} catch (_e) {
-			return "Unknown error object";
-		}
-	}
-
-	return String(error);
-}
-
-function extractAxiosErrorContext(
-	error: unknown,
-): ErrorDebugContext["axios"] | null {
-	if (!isAxiosError(error)) {
-		return null;
-	}
-
-	return {
-		status: error.response?.status,
-		statusText: error.response?.statusText,
-		data: error.response?.data,
-		method: error.config?.method,
-		url: error.config?.url,
 	};
 }
 
@@ -299,22 +250,6 @@ function mapHevyErrorMessageByStatus(status?: number): string | null {
 	return null;
 }
 
-function stringifyErrorData(data: unknown): string {
-	if (typeof data === "string") {
-		return data;
-	}
-
-	if (data && typeof data === "object") {
-		try {
-			return JSON.stringify(data);
-		} catch (_e) {
-			return "Unable to serialize error response data";
-		}
-	}
-
-	return String(data);
-}
-
 /**
  * Wrap an async function with standardized error handling
  *
@@ -329,20 +264,20 @@ function stringifyErrorData(data: unknown): string {
 export function withErrorHandling<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
+	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (rawArgs: Record<string, unknown>) => {
 		const args = rawArgs ?? {};
 		try {
 			return await fn(args as TParams);
 		} catch (error) {
-			Sentry.withScope((scope) => {
-				scope.setTag("mcp.tool.context", context);
-				scope.setContext("mcpTool", {
-					context,
-					argumentKeyCount: Object.keys(args).length,
+			try {
+				onError?.(error, context, Object.keys(args).length);
+			} catch {
+				console.error("MCP error observer failure", {
+					category: "ObserverError",
 				});
-				Sentry.captureException(error);
-			});
+			}
 
 			return createErrorResponse(error, context);
 		}

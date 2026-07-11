@@ -14,7 +14,7 @@ import { createBodyMeasurement } from "./createBodyMeasurement.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1BodyMeasurementsDatePathParams(
-  data?: Partial<GetV1BodyMeasurementsDatePathParams>,
+  data?: Partial<GetV1BodyMeasurementsDatePathParams>
 ): GetV1BodyMeasurementsDatePathParams {
   return {
     ...{ date: faker.date.anytime().toISOString().substring(0, 10) },
@@ -23,7 +23,7 @@ export function createGetV1BodyMeasurementsDatePathParams(
 }
 
 export function createGetV1BodyMeasurementsDateHeaderParams(
-  data?: Partial<GetV1BodyMeasurementsDateHeaderParams>,
+  data?: Partial<GetV1BodyMeasurementsDateHeaderParams>
 ): GetV1BodyMeasurementsDateHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -35,7 +35,7 @@ export function createGetV1BodyMeasurementsDateHeaderParams(
  * @description The body measurement for the given date
  */
 export function createGetV1BodyMeasurementsDate200(
-  data?: Partial<GetV1BodyMeasurementsDate200>,
+  data?: Partial<GetV1BodyMeasurementsDate200>
 ): GetV1BodyMeasurementsDate200 {
   return createBodyMeasurement(data);
 }
@@ -44,7 +44,7 @@ export function createGetV1BodyMeasurementsDate200(
  * @description Body measurement not found
  */
 export function createGetV1BodyMeasurementsDate404(
-  data?: Partial<GetV1BodyMeasurementsDate404>,
+  data?: Partial<GetV1BodyMeasurementsDate404>
 ): GetV1BodyMeasurementsDate404 {
   return {
     ...{ error: faker.string.alpha() },
@@ -53,7 +53,7 @@ export function createGetV1BodyMeasurementsDate404(
 }
 
 export function createGetV1BodyMeasurementsDateQueryResponse(
-  data?: Partial<GetV1BodyMeasurementsDateQueryResponse>,
+  data?: Partial<GetV1BodyMeasurementsDateQueryResponse>
 ): GetV1BodyMeasurementsDateQueryResponse {
   return (
     data ||

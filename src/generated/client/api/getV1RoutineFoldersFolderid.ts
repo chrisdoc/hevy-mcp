@@ -17,7 +17,7 @@ import type {
 import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1RoutineFoldersFolderidUrl(
-  folderId: GetV1RoutineFoldersFolderidPathParams["folderId"],
+  folderId: GetV1RoutineFoldersFolderidPathParams["folderId"]
 ) {
   const res = {
     method: "GET",
@@ -33,7 +33,7 @@ function getGetV1RoutineFoldersFolderidUrl(
 export async function getV1RoutineFoldersFolderid(
   folderId: GetV1RoutineFoldersFolderidPathParams["folderId"],
   headers: GetV1RoutineFoldersFolderidHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

@@ -40,5 +40,5 @@ export const getV1RoutineFolders200Schema = z.object({
 export const getV1RoutineFolders400Schema = z.any();
 
 export const getV1RoutineFoldersQueryResponseSchema = z.lazy(
-  () => getV1RoutineFolders200Schema,
+  () => getV1RoutineFolders200Schema
 );

@@ -14,7 +14,7 @@ import { createRoutine } from "./createRoutine.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1RoutinesRoutineidPathParams(
-  data?: Partial<GetV1RoutinesRoutineidPathParams>,
+  data?: Partial<GetV1RoutinesRoutineidPathParams>
 ): GetV1RoutinesRoutineidPathParams {
   return {
     ...{ routineId: faker.string.alpha() },
@@ -23,7 +23,7 @@ export function createGetV1RoutinesRoutineidPathParams(
 }
 
 export function createGetV1RoutinesRoutineidHeaderParams(
-  data?: Partial<GetV1RoutinesRoutineidHeaderParams>,
+  data?: Partial<GetV1RoutinesRoutineidHeaderParams>
 ): GetV1RoutinesRoutineidHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -35,7 +35,7 @@ export function createGetV1RoutinesRoutineidHeaderParams(
  * @description The routine with the provided id
  */
 export function createGetV1RoutinesRoutineid200(
-  data?: Partial<GetV1RoutinesRoutineid200>,
+  data?: Partial<GetV1RoutinesRoutineid200>
 ): GetV1RoutinesRoutineid200 {
   return {
     ...{
@@ -51,7 +51,7 @@ export function createGetV1RoutinesRoutineid200(
  * @description Invalid request body
  */
 export function createGetV1RoutinesRoutineid400(
-  data?: Partial<GetV1RoutinesRoutineid400>,
+  data?: Partial<GetV1RoutinesRoutineid400>
 ): GetV1RoutinesRoutineid400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -60,7 +60,7 @@ export function createGetV1RoutinesRoutineid400(
 }
 
 export function createGetV1RoutinesRoutineidQueryResponse(
-  data?: Partial<GetV1RoutinesRoutineidQueryResponse>,
+  data?: Partial<GetV1RoutinesRoutineidQueryResponse>
 ): GetV1RoutinesRoutineidQueryResponse {
   return (
     data || faker.helpers.arrayElement<any>([createGetV1RoutinesRoutineid200()])

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
 	ExerciseHistoryEntry,
 	ExerciseTemplate,
@@ -440,6 +440,27 @@ describe("Formatters", () => {
 			expect(calculateDuration("2025-03-27T07:00:00Z", "not-a-date")).toBe(
 				"Unknown duration",
 			);
+		});
+
+		it("sanitizes diagnostic output when timestamp coercion throws", () => {
+			const secret = "sentinel-timestamp-secret";
+			const errorSpy = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => undefined);
+			const hostileTimestamp = {
+				[Symbol.toPrimitive]() {
+					throw new Error(secret);
+				},
+			};
+
+			expect(
+				calculateDuration(hostileTimestamp as never, "2025-03-27T08:00:00Z"),
+			).toBe("Unknown duration");
+			expect(errorSpy).toHaveBeenCalledWith("Error calculating duration", {
+				category: "Error",
+			});
+			expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(secret);
+			errorSpy.mockRestore();
 		});
 	});
 

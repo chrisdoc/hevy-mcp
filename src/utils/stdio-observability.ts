@@ -2,8 +2,9 @@ import { SpanStatusCode } from "@opentelemetry/api";
 import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { deserializeMessage } from "@modelcontextprotocol/sdk/shared/stdio.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { Sentry, tracer } from "./telemetry.js";
 import { stdioParseErrors } from "./metrics.js";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { Sentry, tracer } from "./telemetry.js";
 
 const UTF8_BOM = "\uFEFF";
 /** Maximum escaped characters included in a malformed stdin shape preview. */
@@ -250,6 +251,7 @@ export function deserializeMessageWithObservability(
 				}
 				return message;
 			} catch (error) {
+				const diagnostic = createSafeErrorDiagnostic(error);
 				const failurePosition = parseFailurePosition(error);
 				const failureLocation = getFailureLocation(
 					failurePosition,
@@ -257,7 +259,9 @@ export function deserializeMessageWithObservability(
 				);
 
 				span.setStatus({ code: SpanStatusCode.ERROR });
-				span.recordException(error as Error);
+				span.addEvent("mcp.stdio.parse.failure", {
+					"error.category": diagnostic.category,
+				});
 				span.setAttribute("mcp.stdio.parse.failure.location", failureLocation);
 				if (failurePosition !== null) {
 					span.setAttribute(
@@ -282,9 +286,9 @@ export function deserializeMessageWithObservability(
 						failureLocation,
 						failurePosition,
 						failureStage: "deserializeMessage",
-						errorName: error instanceof Error ? error.name : "UnknownError",
+						errorCategory: diagnostic.category,
 					});
-					Sentry.captureException(error);
+					Sentry.captureMessage("MCP stdin parse failure", "error");
 				});
 
 				reportStdinParseFailure(

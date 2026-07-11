@@ -28,7 +28,7 @@ function getGetV1WorkoutsUrl() {
 export async function getV1Workouts(
   headers: GetV1WorkoutsHeaderParams,
   params?: GetV1WorkoutsQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

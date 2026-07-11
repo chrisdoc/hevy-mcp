@@ -13,7 +13,7 @@ import { createRoutineFolder } from "./createRoutineFolder.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1RoutineFoldersQueryParams(
-  data?: Partial<GetV1RoutineFoldersQueryParams>,
+  data?: Partial<GetV1RoutineFoldersQueryParams>
 ): GetV1RoutineFoldersQueryParams {
   return {
     ...{ page: faker.number.int(), pageSize: faker.number.int() },
@@ -22,7 +22,7 @@ export function createGetV1RoutineFoldersQueryParams(
 }
 
 export function createGetV1RoutineFoldersHeaderParams(
-  data?: Partial<GetV1RoutineFoldersHeaderParams>,
+  data?: Partial<GetV1RoutineFoldersHeaderParams>
 ): GetV1RoutineFoldersHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -34,7 +34,7 @@ export function createGetV1RoutineFoldersHeaderParams(
  * @description A paginated list of routine folders
  */
 export function createGetV1RoutineFolders200(
-  data?: Partial<GetV1RoutineFolders200>,
+  data?: Partial<GetV1RoutineFolders200>
 ): GetV1RoutineFolders200 {
   return {
     ...{
@@ -56,7 +56,7 @@ export function createGetV1RoutineFolders400() {
 }
 
 export function createGetV1RoutineFoldersQueryResponse(
-  data?: Partial<GetV1RoutineFoldersQueryResponse>,
+  data?: Partial<GetV1RoutineFoldersQueryResponse>
 ): GetV1RoutineFoldersQueryResponse {
   return (
     data || faker.helpers.arrayElement<any>([createGetV1RoutineFolders200()])

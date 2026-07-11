@@ -36,9 +36,9 @@ export const putV1BodyMeasurementsDate404Schema = z.object({
 });
 
 export const putV1BodyMeasurementsDateMutationRequestSchema = z.lazy(
-  () => putBodyMeasurementSchema,
+  () => putBodyMeasurementSchema
 );
 
 export const putV1BodyMeasurementsDateMutationResponseSchema = z.lazy(
-  () => putV1BodyMeasurementsDate200Schema,
+  () => putV1BodyMeasurementsDate200Schema
 );
