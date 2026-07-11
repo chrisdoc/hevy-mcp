@@ -17,7 +17,7 @@ import type {
 import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1BodyMeasurementsDateUrl(
-  date: GetV1BodyMeasurementsDatePathParams["date"],
+  date: GetV1BodyMeasurementsDatePathParams["date"]
 ) {
   const res = { method: "GET", url: `/v1/body_measurements/${date}` as const };
   return res;
@@ -30,7 +30,7 @@ function getGetV1BodyMeasurementsDateUrl(
 export async function getV1BodyMeasurementsDate(
   date: GetV1BodyMeasurementsDatePathParams["date"],
   headers: GetV1BodyMeasurementsDateHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

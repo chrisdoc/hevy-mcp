@@ -14,7 +14,7 @@ import type {
 	PutV1RoutinesRoutineid200,
 	Routine,
 } from "../generated/client/types/index.js";
-import { withObservability } from "../utils/observability-wrapper.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
@@ -99,6 +99,7 @@ const repRangeDisplayWarningText =
 export function registerRoutineTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	wrapHandler: typeof withErrorHandling = withErrorHandling,
 ) {
 	// Get routines
 	const getRoutinesSchema = {
@@ -126,7 +127,7 @@ export function registerRoutineTools(
 			outputSchema: routinesOutputSchema,
 			annotations: readOnlyAnnotations("Get Routines"),
 		},
-		withObservability(async (args: GetRoutinesParams) => {
+		wrapHandler(async (args: GetRoutinesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1Routines200 = await client.getRoutines({
@@ -171,7 +172,7 @@ export function registerRoutineTools(
 			outputSchema: routineOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine"),
 		},
-		withObservability(async (args: GetRoutineParams) => {
+		wrapHandler(async (args: GetRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId } = args;
 			const data: GetV1RoutinesRoutineid200 = await client.getRoutineById(
@@ -233,7 +234,7 @@ export function registerRoutineTools(
 		}),
 		createRoutineSchema,
 		createAnnotations("Create Routine"),
-		withObservability(async (args: CreateRoutineParams) => {
+		wrapHandler(async (args: CreateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { title, folderId, notes, exercises } = args;
 			let usesRepRanges = false;
@@ -352,7 +353,7 @@ export function registerRoutineTools(
 		}),
 		updateRoutineSchema,
 		updateAnnotations("Update Routine"),
-		withObservability(async (args: UpdateRoutineParams) => {
+		wrapHandler(async (args: UpdateRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId, title, notes, exercises } = args;
 			let usesRepRanges = false;

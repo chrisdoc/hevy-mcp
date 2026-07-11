@@ -17,7 +17,7 @@ import { createRoutine } from "./createRoutine.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPutV1RoutinesRoutineidPathParams(
-  data?: Partial<PutV1RoutinesRoutineidPathParams>,
+  data?: Partial<PutV1RoutinesRoutineidPathParams>
 ): PutV1RoutinesRoutineidPathParams {
   return {
     ...{ routineId: faker.string.alpha() },
@@ -26,7 +26,7 @@ export function createPutV1RoutinesRoutineidPathParams(
 }
 
 export function createPutV1RoutinesRoutineidHeaderParams(
-  data?: Partial<PutV1RoutinesRoutineidHeaderParams>,
+  data?: Partial<PutV1RoutinesRoutineidHeaderParams>
 ): PutV1RoutinesRoutineidHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -38,7 +38,7 @@ export function createPutV1RoutinesRoutineidHeaderParams(
  * @description The routine was successfully updated
  */
 export function createPutV1RoutinesRoutineid200(
-  data?: Partial<PutV1RoutinesRoutineid200>,
+  data?: Partial<PutV1RoutinesRoutineid200>
 ): PutV1RoutinesRoutineid200 {
   return createRoutine(data);
 }
@@ -47,7 +47,7 @@ export function createPutV1RoutinesRoutineid200(
  * @description Invalid request body
  */
 export function createPutV1RoutinesRoutineid400(
-  data?: Partial<PutV1RoutinesRoutineid400>,
+  data?: Partial<PutV1RoutinesRoutineid400>
 ): PutV1RoutinesRoutineid400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -59,7 +59,7 @@ export function createPutV1RoutinesRoutineid400(
  * @description Routine doesn\'t exist or doesn\'t belong to the user
  */
 export function createPutV1RoutinesRoutineid404(
-  data?: Partial<PutV1RoutinesRoutineid404>,
+  data?: Partial<PutV1RoutinesRoutineid404>
 ): PutV1RoutinesRoutineid404 {
   return {
     ...{ error: faker.string.alpha() },
@@ -68,13 +68,13 @@ export function createPutV1RoutinesRoutineid404(
 }
 
 export function createPutV1RoutinesRoutineidMutationRequest(
-  data?: Partial<PutV1RoutinesRoutineidMutationRequest>,
+  data?: Partial<PutV1RoutinesRoutineidMutationRequest>
 ): PutV1RoutinesRoutineidMutationRequest {
   return createPutRoutinesRequestBody(data);
 }
 
 export function createPutV1RoutinesRoutineidMutationResponse(
-  data?: Partial<PutV1RoutinesRoutineidMutationResponse>,
+  data?: Partial<PutV1RoutinesRoutineidMutationResponse>
 ): PutV1RoutinesRoutineidMutationResponse {
   return (
     data || faker.helpers.arrayElement<any>([createPutV1RoutinesRoutineid200()])

@@ -30,7 +30,7 @@ export async function postV1Workouts(
   headers: PostV1WorkoutsHeaderParams,
   config: Partial<RequestConfig<PostV1WorkoutsMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

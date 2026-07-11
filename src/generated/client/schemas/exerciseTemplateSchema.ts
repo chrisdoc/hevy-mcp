@@ -10,18 +10,16 @@ export const exerciseTemplateSchema = z.object({
   title: z.optional(z.string().describe("The exercise title.")),
   type: z.optional(z.string().describe("The exercise type.")),
   primary_muscle_group: z.optional(
-    z.string().describe("The primary muscle group of the exercise."),
+    z.string().describe("The primary muscle group of the exercise.")
   ),
   secondary_muscle_groups: z.optional(
-    z
-      .array(z.string())
-      .describe("The secondary muscle groups of the exercise."),
+    z.array(z.string()).describe("The secondary muscle groups of the exercise.")
   ),
   is_custom: z.optional(
     z
       .boolean()
       .describe(
-        "A boolean indicating whether the exercise is a custom exercise.",
-      ),
+        "A boolean indicating whether the exercise is a custom exercise."
+      )
   ),
 });

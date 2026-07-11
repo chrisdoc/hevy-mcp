@@ -6,7 +6,10 @@ import type {
 	RoutineFolder,
 	UserInfoResponse,
 } from "../generated/client/types/index.js";
-import { getExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import {
+	createExerciseTemplateCatalog,
+	type ExerciseTemplateCatalog,
+} from "../utils/exercise-template-catalog.js";
 import {
 	formatExerciseTemplate,
 	formatRoutineFolder,
@@ -67,6 +70,7 @@ async function fetchAllRoutineFolders(
 export function registerHevyResources(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	catalog: ExerciseTemplateCatalog = createExerciseTemplateCatalog(),
 ): void {
 	server.registerResource(
 		"user-profile",
@@ -107,7 +111,7 @@ export function registerHevyResources(
 		},
 		async (uri) => {
 			const client = requireClient(hevyClient);
-			const templates = await getExerciseTemplateCatalog(client);
+			const templates = await catalog.get(client);
 			return createJsonResourceResult(
 				uri,
 				templates.map(formatExerciseTemplate),

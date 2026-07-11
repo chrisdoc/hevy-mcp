@@ -9,6 +9,7 @@ import { Sentry } from "./telemetry.js";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
+		addEvent: vi.fn(),
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
 		recordException: vi.fn(),
@@ -46,7 +47,7 @@ vi.mock("@modelcontextprotocol/sdk/shared/stdio.js", async () => {
 vi.mock("./telemetry.js", () => ({
 	Sentry: {
 		withScope: vi.fn((cb: (scope: unknown) => void) => cb(testDoubles.scope)),
-		captureException: vi.fn(),
+		captureMessage: vi.fn(),
 	},
 	tracer: {
 		startActiveSpan: testDoubles.startActiveSpan,
@@ -136,7 +137,7 @@ describe("stdio observability", () => {
 			method: "ping",
 		});
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
-		expect(Sentry.captureException).not.toHaveBeenCalled();
+		expect(Sentry.captureMessage).not.toHaveBeenCalled();
 		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 			"mcp.stdio.deserialize",
 			expect.objectContaining({
@@ -168,7 +169,15 @@ describe("stdio observability", () => {
 			"mcp.stdio.parse.failure.location",
 			"line_start_bom",
 		);
-		expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			"MCP stdin parse failure",
+			"error",
+		);
+		expect(testDoubles.span.recordException).not.toHaveBeenCalled();
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
+			"mcp.stdio.parse.failure",
+			{ "error.category": "SyntaxError" },
+		);
 		expect(testDoubles.scope.setContext).toHaveBeenCalledWith(
 			"mcpStdioParse",
 			expect.objectContaining({
@@ -546,7 +555,7 @@ describe("stdio observability", () => {
 		);
 		expect(testDoubles.scope.setContext).toHaveBeenCalledWith(
 			"mcpStdioParse",
-			expect.objectContaining({ errorName: "UnknownError" }),
+			expect.objectContaining({ errorCategory: "UnknownError" }),
 		);
 	});
 

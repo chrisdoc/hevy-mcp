@@ -102,7 +102,7 @@ describe("registerBodyMeasurementTools", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("Body measurements request failed"),
+					text: expect.stringContaining("The request failed unexpectedly"),
 				},
 			],
 		});
@@ -340,7 +340,7 @@ describe("registerBodyMeasurementTools", () => {
 				content: [
 					{
 						type: "text",
-						text: expect.stringContaining("No measurement fields provided"),
+						text: expect.stringContaining("The request failed unexpectedly"),
 					},
 				],
 			});

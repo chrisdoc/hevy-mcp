@@ -15,7 +15,7 @@ import { createCreateCustomExerciseRequestBody } from "./createCreateCustomExerc
 import { faker } from "@faker-js/faker";
 
 export function createPostV1ExerciseTemplatesHeaderParams(
-  data?: Partial<PostV1ExerciseTemplatesHeaderParams>,
+  data?: Partial<PostV1ExerciseTemplatesHeaderParams>
 ): PostV1ExerciseTemplatesHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -27,7 +27,7 @@ export function createPostV1ExerciseTemplatesHeaderParams(
  * @description The exercise template was successfully created
  */
 export function createPostV1ExerciseTemplates200(
-  data?: Partial<PostV1ExerciseTemplates200>,
+  data?: Partial<PostV1ExerciseTemplates200>
 ): PostV1ExerciseTemplates200 {
   return {
     ...{ id: faker.number.int() },
@@ -39,7 +39,7 @@ export function createPostV1ExerciseTemplates200(
  * @description Invalid request body
  */
 export function createPostV1ExerciseTemplates400(
-  data?: Partial<PostV1ExerciseTemplates400>,
+  data?: Partial<PostV1ExerciseTemplates400>
 ): PostV1ExerciseTemplates400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -51,7 +51,7 @@ export function createPostV1ExerciseTemplates400(
  * @description Exceeds custom exercise limit
  */
 export function createPostV1ExerciseTemplates403(
-  data?: Partial<PostV1ExerciseTemplates403>,
+  data?: Partial<PostV1ExerciseTemplates403>
 ): PostV1ExerciseTemplates403 {
   return {
     ...{ error: faker.string.alpha() },
@@ -63,13 +63,13 @@ export function createPostV1ExerciseTemplates403(
  * @description The exercise template to create.
  */
 export function createPostV1ExerciseTemplatesMutationRequest(
-  data?: Partial<PostV1ExerciseTemplatesMutationRequest>,
+  data?: Partial<PostV1ExerciseTemplatesMutationRequest>
 ): PostV1ExerciseTemplatesMutationRequest {
   return createCreateCustomExerciseRequestBody(data);
 }
 
 export function createPostV1ExerciseTemplatesMutationResponse(
-  data?: Partial<PostV1ExerciseTemplatesMutationResponse>,
+  data?: Partial<PostV1ExerciseTemplatesMutationResponse>
 ): PostV1ExerciseTemplatesMutationResponse {
   return (
     data ||

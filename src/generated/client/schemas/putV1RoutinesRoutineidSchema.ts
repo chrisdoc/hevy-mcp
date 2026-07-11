@@ -35,9 +35,9 @@ export const putV1RoutinesRoutineid404Schema = z.object({
 });
 
 export const putV1RoutinesRoutineidMutationRequestSchema = z.lazy(
-  () => putRoutinesRequestBodySchema,
+  () => putRoutinesRequestBodySchema
 );
 
 export const putV1RoutinesRoutineidMutationResponseSchema = z.lazy(
-  () => putV1RoutinesRoutineid200Schema,
+  () => putV1RoutinesRoutineid200Schema
 );

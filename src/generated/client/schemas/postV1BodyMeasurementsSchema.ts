@@ -30,9 +30,9 @@ export const postV1BodyMeasurements409Schema = z.object({
 });
 
 export const postV1BodyMeasurementsMutationRequestSchema = z.lazy(
-  () => bodyMeasurementSchema,
+  () => bodyMeasurementSchema
 );
 
 export const postV1BodyMeasurementsMutationResponseSchema = z.lazy(
-  () => postV1BodyMeasurements200Schema,
+  () => postV1BodyMeasurements200Schema
 );

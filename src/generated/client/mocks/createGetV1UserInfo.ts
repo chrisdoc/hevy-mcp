@@ -12,7 +12,7 @@ import { createUserInfoResponse } from "./createUserInfoResponse.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1UserInfoHeaderParams(
-  data?: Partial<GetV1UserInfoHeaderParams>,
+  data?: Partial<GetV1UserInfoHeaderParams>
 ): GetV1UserInfoHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -24,7 +24,7 @@ export function createGetV1UserInfoHeaderParams(
  * @description The authenticated user\'s info
  */
 export function createGetV1UserInfo200(
-  data?: Partial<GetV1UserInfo200>,
+  data?: Partial<GetV1UserInfo200>
 ): GetV1UserInfo200 {
   return createUserInfoResponse(data);
 }
@@ -37,7 +37,7 @@ export function createGetV1UserInfo404() {
 }
 
 export function createGetV1UserInfoQueryResponse(
-  data?: Partial<GetV1UserInfoQueryResponse>,
+  data?: Partial<GetV1UserInfoQueryResponse>
 ): GetV1UserInfoQueryResponse {
   return data || faker.helpers.arrayElement<any>([createGetV1UserInfo200()]);
 }

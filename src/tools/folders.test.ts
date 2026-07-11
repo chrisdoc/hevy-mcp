@@ -75,7 +75,7 @@ describe("registerFolderTools", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("Routine folders request failed"),
+					text: expect.stringContaining("The request failed unexpectedly"),
 				},
 			],
 		});

@@ -8,10 +8,10 @@ import type {
 	GetV1ExerciseTemplatesExercisetemplateid200,
 	PostV1ExerciseTemplates200,
 } from "../generated/client/types/index.js";
-import { withObservability } from "../utils/observability-wrapper.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import {
-	getExerciseTemplateCatalog,
-	resetExerciseTemplateCatalogCache,
+	createExerciseTemplateCatalog,
+	type ExerciseTemplateCatalog,
 } from "../utils/exercise-template-catalog.js";
 import {
 	formatExerciseHistoryEntry,
@@ -19,6 +19,7 @@ import {
 } from "../utils/formatters.js";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "../utils/hevyClient.js";
+import { createSafeErrorDiagnostic } from "../utils/safe-error-diagnostic.js";
 import {
 	exerciseHistoryOutputSchema,
 	exerciseTemplateOutputSchema,
@@ -42,11 +43,9 @@ import {
 } from "../utils/schemas.js";
 
 export interface TemplateToolOptions {
+	catalog?: ExerciseTemplateCatalog;
 	logger?: McpClientLogger;
-}
-/** Reset the exercise template cache (exposed for testing). */
-export function resetExerciseTemplateCache(): void {
-	resetExerciseTemplateCatalogCache();
+	wrapHandler?: typeof withErrorHandling;
 }
 
 /**
@@ -57,7 +56,11 @@ export function registerTemplateTools(
 	hevyClient: HevyClient | null,
 	options: TemplateToolOptions = {},
 ) {
-	const { logger } = options;
+	const {
+		catalog = createExerciseTemplateCatalog(),
+		logger,
+		wrapHandler = withErrorHandling,
+	} = options;
 	// Get exercise templates
 	const getExerciseTemplatesSchema = {
 		page: z.coerce.number().int().gte(1).default(1),
@@ -87,7 +90,7 @@ export function registerTemplateTools(
 			outputSchema: exerciseTemplatesOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Templates"),
 		},
-		withObservability(async (args: GetExerciseTemplatesParams) => {
+		wrapHandler(async (args: GetExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1ExerciseTemplates200 = await client.getExerciseTemplates(
@@ -144,7 +147,7 @@ export function registerTemplateTools(
 			outputSchema: exerciseTemplateOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Template"),
 		},
-		withObservability(async (args: GetExerciseTemplateParams) => {
+		wrapHandler(async (args: GetExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId } = args;
 			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
@@ -198,7 +201,7 @@ export function registerTemplateTools(
 			outputSchema: exerciseHistoryOutputSchema,
 			annotations: readOnlyAnnotations("Get Exercise History"),
 		},
-		withObservability(async (args: GetExerciseHistoryParams) => {
+		wrapHandler(async (args: GetExerciseHistoryParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId, startDate, endDate } = args;
 			const data: GetV1ExerciseHistoryExercisetemplateid200 =
@@ -250,7 +253,7 @@ export function registerTemplateTools(
 		}),
 		createExerciseTemplateSchema,
 		createAnnotations("Create Exercise Template"),
-		withObservability(async (args: CreateExerciseTemplateParams) => {
+		wrapHandler(async (args: CreateExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const {
 				title,
@@ -319,10 +322,10 @@ export function registerTemplateTools(
 			outputSchema: exerciseTemplatesOutputSchema,
 			annotations: readOnlyAnnotations("Search Exercise Templates"),
 		},
-		withObservability(async (args: SearchExerciseTemplatesParams) => {
+		wrapHandler(async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
-			const catalog = await getExerciseTemplateCatalog(client, {
+			const templates = await catalog.get(client, {
 				refresh,
 				onRefreshed: (refreshedCatalog, reason) => {
 					try {
@@ -338,7 +341,7 @@ export function registerTemplateTools(
 					} catch (error) {
 						console.error(
 							"Failed to emit structured exercise template cache log",
-							error,
+							createSafeErrorDiagnostic(error),
 						);
 					}
 				},
@@ -346,7 +349,7 @@ export function registerTemplateTools(
 
 			// Filter by query (case-insensitive title substring match)
 			const queryLower = query.toLowerCase();
-			let results = catalog.filter((t) =>
+			let results = templates.filter((t) =>
 				(t.title ?? "").toLowerCase().includes(queryLower),
 			);
 

@@ -14,10 +14,10 @@ export const getV1WorkoutsCountHeaderParamsSchema = z.object({
  */
 export const getV1WorkoutsCount200Schema = z.object({
   workout_count: z.optional(
-    z.int().default(42).describe("The total number of workouts"),
+    z.int().default(42).describe("The total number of workouts")
   ),
 });
 
 export const getV1WorkoutsCountQueryResponseSchema = z.lazy(
-  () => getV1WorkoutsCount200Schema,
+  () => getV1WorkoutsCount200Schema
 );

@@ -1,3 +1,25 @@
+## 3.1.0
+
+### Minor Changes
+
+- [#640](https://github.com/chrisdoc/hevy-mcp/pull/640) [`9a85015`](https://github.com/chrisdoc/hevy-mcp/commit/9a850156b1861b5e4dda26afbe59c164fd3fbc22) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add a stateless Cloudflare Worker Streamable HTTP endpoint at `/mcp` with per-request Hevy bearer authentication, exact-origin CORS controls, request-scoped caching, and a Worker-safe native-fetch API client.
+
+### Patch Changes
+
+- [#645](https://github.com/chrisdoc/hevy-mcp/pull/645) [`f2ba282`](https://github.com/chrisdoc/hevy-mcp/commit/f2ba28263d50c2cad571970e9279f53dca346fbb) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Isolate pull request previews on a dedicated Worker that is safely bootstrapped
+  on first use, while keeping production deployments restricted to trusted main
+  branch CI and the custom production domain.
+
+## 3.0.0
+
+### Major Changes
+
+- [#617](https://github.com/chrisdoc/hevy-mcp/pull/617) [`0f03660`](https://github.com/chrisdoc/hevy-mcp/commit/0f03660348a5a83a6d0af313b0df773b4d2781ff) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Deprecated CLI API-key arguments were removed; HEVY_API_KEY is now required.
+
+### Patch Changes
+
+- [#624](https://github.com/chrisdoc/hevy-mcp/pull/624) [`f68b258`](https://github.com/chrisdoc/hevy-mcp/commit/f68b258201033b700759c5b0899a0dc2298ebc8d) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Package the Docker image as a non-root standalone bundle without application `node_modules`.
+
 ## 2.0.0
 
 ### Major Changes

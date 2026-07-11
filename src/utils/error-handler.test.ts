@@ -1,552 +1,229 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createErrorResponse, withErrorHandling } from "./error-handler";
-import { Sentry } from "./telemetry.js";
+import { describe, expect, it, vi } from "vitest";
+import { ErrorType } from "./error-classification.js";
+import { createErrorResponse, withErrorHandling } from "./error-handler.js";
+import { HevyHttpError } from "./hevy-http-error.js";
 
-function createMockAxiosError(status: number, data: unknown): unknown {
-	return {
-		isAxiosError: true,
-		name: "AxiosError",
-		message: `Request failed with status code ${status}`,
-		config: { method: "post", url: "/v1/body_measurements" },
-		response: { status, statusText: "Error", data },
-	};
+function httpError(status: number, data?: unknown, headers?: Headers) {
+	return new HevyHttpError(`HTTP ${status}`, {
+		status,
+		statusText: "Error",
+		data,
+		headers,
+		method: "GET",
+		endpoint: "/v1/user/info",
+	});
 }
 
-const testDoubles = vi.hoisted(() => ({
-	scope: { setTag: vi.fn(), setContext: vi.fn() },
-}));
+describe("createErrorResponse", () => {
+	it("formats ordinary errors with context", () => {
+		const result = createErrorResponse(
+			new Error("Bearer secret-ordinary-error"),
+			"test-tool",
+		);
+		expect(result).toMatchObject({
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: "[test-tool] Error: The request failed unexpectedly. Please try again.",
+				},
+			],
+		});
+		expect(JSON.stringify(result)).not.toContain("secret-ordinary-error");
+	});
 
-vi.mock("./telemetry.js", () => ({
-	Sentry: {
-		withScope: vi.fn((callback: (scope: unknown) => void) =>
-			callback(testDoubles.scope),
-		),
-		captureException: vi.fn(),
-	},
-}));
+	it.each([
+		[401, "The Hevy API key is invalid or has expired"],
+		[404, "The requested resource was not found"],
+		[409, "A conflict occurred"],
+		[422, "The request failed Hevy validation"],
+		[503, "Hevy API experienced an error"],
+	])("maps HTTP %s to a safe Hevy message", (status, expected) => {
+		const result = createErrorResponse(httpError(status));
+		expect(result.content[0]?.text).toContain(expected);
+	});
 
-describe("Error Handler", () => {
-	describe("createErrorResponse", () => {
-		// Mock console.error to prevent test output pollution
-		const _originalConsoleError = console.error;
-		const _originalConsoleDebug = console.debug;
+	it("does not expose parsed upstream payloads for unmapped statuses", () => {
+		const secret = "upstream-secret-value";
+		const error = httpError(400, { error: secret });
+		error.message = secret;
+		error.code = secret;
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const result = createErrorResponse(error);
+		expect(result.content[0]?.text).toContain(
+			"Hevy API request failed (HTTP 400)",
+		);
+		expect(JSON.stringify(result)).not.toContain(secret);
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		stderrSpy.mockRestore();
+	});
 
-		// Setup mocks before each test
-		vi.spyOn(console, "error").mockImplementation(() => {});
-		vi.spyOn(console, "debug").mockImplementation(() => {});
+	it("omits hostile HTTP metadata from retained debug context", () => {
+		const secret = "sentinel-http-context";
+		const error = new HevyHttpError(secret, {
+			status: 999,
+			statusText: secret,
+			method: secret,
+			endpoint: `https://attacker.example/${secret}`,
+			code: secret,
+			headers: new Headers({ authorization: secret }),
+			data: { secret },
+			cause: new Error(secret),
+		});
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-		// Restore original console methods after all tests
-		afterAll(() => {
-			vi.restoreAllMocks();
+		const result = createErrorResponse(error);
+
+		expect(result.errorContext).toEqual(
+			expect.objectContaining({ axios: undefined }),
+		);
+		expect(JSON.stringify(result.errorContext)).not.toContain(secret);
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		stderrSpy.mockRestore();
+	});
+
+	it("includes bounded Retry-After guidance for rate limits", () => {
+		const result = createErrorResponse(
+			httpError(429, undefined, new Headers({ "retry-after": "3" })),
+		);
+		expect(result.content[0]?.text).toContain("about 3 seconds");
+	});
+
+	it("accepts bounded numeric and array Retry-After header records", () => {
+		const numericHeaderError = httpError(429);
+		Object.defineProperty(numericHeaderError, "headers", {
+			value: { "retry-after": 1 },
+		});
+		const arrayHeaderError = httpError(429);
+		Object.defineProperty(arrayHeaderError, "headers", {
+			value: { "RETRY-AFTER": ["2", "ignored"] },
 		});
 
-		it("should create a proper error response from an Error object", () => {
-			const error = new Error("Test error message");
-			const response = createErrorResponse(error);
+		expect(createErrorResponse(numericHeaderError).content[0]?.text).toContain(
+			"about 1 second",
+		);
+		expect(createErrorResponse(arrayHeaderError).content[0]?.text).toContain(
+			"about 2 seconds",
+		);
+	});
 
-			expect(response).toMatchObject({
-				content: [
-					{
-						type: "text",
-						text: "Error: Test error message",
-					},
-				],
-				isError: true,
-				errorContext: {
-					originalErrorMessage: "Test error message",
-				},
-			});
-			expect(console.error).toHaveBeenCalled();
-		});
-
-		it("should create a proper error response from a string", () => {
-			const response = createErrorResponse("String error message");
-
-			expect(response).toMatchObject({
-				content: [
-					{
-						type: "text",
-						text: "Error: String error message",
-					},
-				],
-				isError: true,
-				errorContext: {
-					originalErrorMessage: "String error message",
-				},
-			});
-		});
-
-		it("uses axios string response data when available", () => {
-			const response = createErrorResponse({
-				isAxiosError: true,
-				response: {
-					data: "Service unavailable",
-				},
-			});
-
-			expect(response.content[0].text).toBe("Error: Service unavailable");
-		});
-
-		it("stringifies axios object response data when possible", () => {
-			const response = createErrorResponse({
-				isAxiosError: true,
-				response: {
-					data: { message: "validation failed", retryable: false },
-				},
-			});
-
-			expect(response.content[0].text).toBe(
-				'Error: {"message":"validation failed","retryable":false}',
+	it("handles HTTP-date, missing, and malformed Retry-After guidance", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-07-11T12:00:00.000Z"));
+		try {
+			const dateResult = createErrorResponse(
+				httpError(
+					429,
+					undefined,
+					new Headers({
+						"retry-after": "Sat, 11 Jul 2026 12:00:05 GMT",
+					}),
+				),
 			);
-		});
-
-		it("falls back when axios object response data is not serializable", () => {
-			const circular: { self?: unknown } = {};
-			circular.self = circular;
-
-			const response = createErrorResponse({
-				isAxiosError: true,
-				response: {
-					data: circular,
-				},
-			});
-
-			expect(response.content[0].text).toBe(
-				"Error: Unable to serialize error response data",
+			const missingResult = createErrorResponse(httpError(429));
+			const malformedResult = createErrorResponse(
+				httpError(429, undefined, new Headers({ "retry-after": "not-a-date" })),
 			);
-		});
 
-		it("should include context in the error message when provided", () => {
-			const error = new Error("Test error with context");
-			const response = createErrorResponse(error, "TestContext");
-
-			expect(response.content[0].text).toBe(
-				"[TestContext] Error: Test error with context",
+			expect(dateResult.content[0]?.text).toContain("about 5 seconds");
+			expect(missingResult.content[0]?.text).toContain(
+				"Please wait and retry your request",
 			);
-			expect(response).toMatchObject({
-				errorContext: {
-					sourceContext: "TestContext",
-					originalErrorMessage: "Test error with context",
-				},
-			});
-		});
-
-		it("should handle errors with code property", () => {
-			const errorWithCode = new Error("Error with code");
-			// Add a code property to the error
-			Object.defineProperty(errorWithCode, "code", {
-				value: "ERR_TEST_CODE",
-				enumerable: true,
-			});
-
-			const response = createErrorResponse(errorWithCode);
-
-			expect(response.content[0].text).toBe("Error: Error with code");
-			expect(response).toMatchObject({
-				errorContext: {
-					errorCode: "ERR_TEST_CODE",
-					originalErrorMessage: "Error with code",
-				},
-			});
-			expect(console.debug).not.toHaveBeenCalled();
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("Code: ERR_TEST_CODE"),
-				errorWithCode,
+			expect(malformedResult.content[0]?.text).toContain(
+				"Please wait and retry your request",
 			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("classifies exhausted retries as network errors", () => {
+		const error = httpError(503);
+		error.hevyRetryExhausted = true;
+		error.hevyRetryCount = 2;
+		const result = createErrorResponse(error);
+		expect(result.errorContext).toMatchObject({
+			errorType: ErrorType.NETWORK_ERROR,
 		});
+		expect(result.content[0]?.text).toContain("after 3 attempts");
+	});
 
-		it.each([
-			{
-				status: 401,
-				expectedMessage:
-					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
-			},
-			{
-				status: 403,
-				expectedMessage:
-					"The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
-			},
-			{
-				status: 404,
-				expectedMessage: "The requested resource was not found in Hevy.",
-			},
-			{
-				status: 409,
-				expectedMessage:
-					"A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.",
-			},
-			{
-				status: 422,
-				expectedMessage:
-					"The request failed Hevy validation. Check the field values and try again.",
-			},
-			{
-				status: 429,
-				expectedMessage:
-					"Rate limited by Hevy (HTTP 429). Please wait and retry your request.",
-			},
-			{
-				status: 503,
-				expectedMessage: "Hevy API experienced an error. Please retry later.",
-			},
-		])(
-			"maps axios status $status to actionable Hevy message",
-			({ status, expectedMessage }) => {
-				const responseBody = {
-					error: "original_api_error",
-					detail: `raw detail for status ${status}`,
-				};
-				const response = createErrorResponse(
-					createMockAxiosError(status, responseBody),
-					"TestContext",
-				);
+	it("uses generic retry exhaustion guidance without a finite retry count", () => {
+		const error = httpError(503);
+		error.hevyRetryExhausted = true;
+		error.hevyRetryCount = Number.NaN;
 
-				expect(response.content[0].text).toBe(
-					`[TestContext] Error: ${expectedMessage}`,
-				);
-				expect(response).toMatchObject({
-					isError: true,
-					errorContext: {
-						sourceContext: "TestContext",
-						originalErrorMessage: `Request failed with status code ${status}`,
-						axios: {
-							status,
-							data: responseBody,
-							method: "post",
-							url: "/v1/body_measurements",
-						},
-					},
-				});
+		const result = createErrorResponse(error);
+
+		expect(result.content[0]?.text).toContain("after multiple attempts");
+	});
+
+	it("does not expose non-Error thrown values in client responses", () => {
+		const cyclic: Record<string, unknown> = {};
+		cyclic.self = cyclic;
+		const cases: unknown[] = [
+			"Bearer secret-string",
+			{ message: "secret-object-message" },
+			{ reason: "secret-structured-value" },
+			cyclic,
+			17,
+		];
+
+		for (const thrownValue of cases) {
+			const result = createErrorResponse(thrownValue);
+			expect(result.content[0]?.text).toContain(
+				"The request failed unexpectedly",
+			);
+			expect(JSON.stringify(result)).not.toContain("secret-");
+		}
+	});
+
+	it("does not include full URLs or credentials in HTTP debug context", () => {
+		const result = createErrorResponse(httpError(500));
+		expect(result.errorContext).toMatchObject({
+			axios: { method: "GET", url: "/v1/user/info", status: 500 },
+		});
+		expect(JSON.stringify(result)).not.toContain("api-key");
+	});
+});
+
+describe("withErrorHandling", () => {
+	it("returns successful values unchanged", async () => {
+		const expected = { content: [{ type: "text" as const, text: "ok" }] };
+		const wrapped = withErrorHandling(async () => expected, "test");
+		await expect(wrapped({})).resolves.toBe(expected);
+	});
+
+	it("normalizes nullish arguments and reports original failures", async () => {
+		const onError = vi.fn();
+		const wrapped = withErrorHandling(
+			async () => {
+				throw new Error("failed");
+			},
+			"test",
+			onError,
+		);
+		const result = await wrapped(null as never);
+		expect(result.isError).toBe(true);
+		expect(onError).toHaveBeenCalledWith(expect.any(Error), "test", 0);
+	});
+
+	it("does not replace normalized responses when observers fail", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const wrapped = withErrorHandling(
+			async () => {
+				throw new Error("original failure");
+			},
+			"test",
+			() => {
+				throw new Error("observer secret");
 			},
 		);
 
-		it("includes Retry-After in 429 error messages", () => {
-			const response = createErrorResponse({
-				isAxiosError: true,
-				response: {
-					headers: { "retry-after": "12" },
-					status: 429,
-				},
-			});
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait about 12 seconds before retrying.",
-			);
-		});
-
-		it("reads Retry-After from header getters with array values", () => {
-			const response = createErrorResponse({
-				isAxiosError: true,
-				response: {
-					headers: { get: () => [4] },
-					status: 429,
-				},
-			});
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait about 4 seconds before retrying.",
-			);
-		});
-
-		it("includes HTTP-date Retry-After values in 429 error messages", () => {
-			const now = Date.parse("2026-07-09T19:40:00Z");
-			vi.spyOn(Date, "now").mockReturnValue(now);
-			const response = createErrorResponse({
-				isAxiosError: true,
-				response: {
-					headers: {
-						"retry-after": new Date(now + 2_000).toUTCString(),
-					},
-					status: 429,
-				},
-			});
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait about 2 seconds before retrying.",
-			);
-		});
-
-		it("falls back to the generic message for invalid Retry-After values", () => {
-			const response = createErrorResponse({
-				isAxiosError: true,
-				response: {
-					headers: { "retry-after": "not-a-date" },
-					status: 429,
-				},
-			});
-
-			expect(response.content[0].text).toBe(
-				"Error: Rate limited by Hevy (HTTP 429). " +
-					"Please wait and retry your request.",
-			);
-		});
-
-		it("prioritizes exhausted retry errors over status mappings", () => {
-			const response = createErrorResponse({
-				hevyRetryCount: 2,
-				hevyRetryExhausted: true,
-				isAxiosError: true,
-				response: { status: 503 },
-			});
-
-			expect(response.content[0].text).toBe(
-				"Error: Unable to complete the request after 3 attempts " +
-					"to the Hevy API due to transient failures. Please try again shortly.",
-			);
-		});
-
-		it("describes exhausted retry errors without a retry count", () => {
-			const response = createErrorResponse({
-				hevyRetryExhausted: true,
-				isAxiosError: true,
-				response: { status: 503 },
-			});
-
-			expect(response.content[0].text).toBe(
-				"Error: Unable to complete the request after multiple attempts " +
-					"to the Hevy API due to transient failures. Please try again shortly.",
-			);
-		});
-
-		it("uses raw axios string data when no Hevy status mapping exists", () => {
-			const response = createErrorResponse(
-				createMockAxiosError(400, "plain upstream message"),
-				"TestContext",
-			);
-
-			expect(response.content[0].text).toBe(
-				"[TestContext] Error: plain upstream message",
-			);
-			expect(response).toMatchObject({
-				errorContext: {
-					originalErrorMessage: "Request failed with status code 400",
-					axios: {
-						status: 400,
-						data: "plain upstream message",
-					},
-				},
-			});
-		});
-
-		it("serializes axios object data when no Hevy status mapping exists", () => {
-			const responseBody = {
-				detail: "Missing workout entry",
-			};
-			const response = createErrorResponse(
-				createMockAxiosError(400, responseBody),
-				"TestContext",
-			);
-
-			expect(response.content[0].text).toBe(
-				`[TestContext] Error: ${JSON.stringify(responseBody)}`,
-			);
-		});
-
-		it("stringifies axios primitive data when no Hevy status mapping exists", () => {
-			const response = createErrorResponse(
-				createMockAxiosError(400, 42),
-				"TestContext",
-			);
-
-			expect(response.content[0].text).toBe("[TestContext] Error: 42");
-		});
-
-		it("serializes object errors without a message field", () => {
-			const response = createErrorResponse({
-				detail: "Missing workout entry",
-			});
-
-			expect(response.content[0].text).toBe(
-				'Error: {"detail":"Missing workout entry"}',
-			);
-			expect(response).toMatchObject({
-				errorContext: {
-					originalErrorMessage: '{"detail":"Missing workout entry"}',
-				},
-			});
-		});
-
-		it("falls back when error objects cannot be serialized", () => {
-			const circularError: { self?: unknown } = {};
-			circularError.self = circularError;
-
-			const response = createErrorResponse(circularError);
-
-			expect(response.content[0].text).toBe("Error: Unknown error object");
-			expect(response).toMatchObject({
-				errorContext: {
-					originalErrorMessage: "Unknown error object",
-				},
-			});
-		});
-
-		it("falls back when axios response data cannot be serialized", () => {
-			const circularData: { self?: unknown } = {};
-			circularData.self = circularData;
-
-			const response = createErrorResponse(
-				createMockAxiosError(400, circularData),
-				"TestContext",
-			);
-
-			expect(response.content[0].text).toBe(
-				"[TestContext] Error: Unable to serialize error response data",
-			);
-			expect(response).toMatchObject({
-				errorContext: {
-					axios: {
-						status: 400,
-						data: circularData,
-					},
-				},
-			});
-		});
-
-		it("stringifies non-object thrown values", () => {
-			const response = createErrorResponse(0);
-
-			expect(response.content[0].text).toBe("Error: 0");
-			expect(response).toMatchObject({
-				errorContext: {
-					originalErrorMessage: "0",
-				},
-			});
-		});
-
-		it("classifies network-related errors as NETWORK_ERROR", () => {
-			const error = new Error("Network request failed");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: NETWORK_ERROR)"),
-				error,
-			);
-		});
-
-		it("classifies validation errors as VALIDATION_ERROR", () => {
-			const error = new Error("Validation failed: required field missing");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: VALIDATION_ERROR)"),
-				error,
-			);
-		});
-
-		it("classifies not found errors as NOT_FOUND", () => {
-			const error = new Error("Resource not found");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: NOT_FOUND)"),
-				error,
-			);
-		});
-
-		it("classifies API errors as API_ERROR", () => {
-			const error = new Error("API server error 500");
-			createErrorResponse(error);
-			expect(console.error).toHaveBeenCalledWith(
-				expect.stringContaining("(Type: API_ERROR)"),
-				error,
-			);
-		});
-	});
-
-	describe("withErrorHandling", () => {
-		beforeEach(() => {
-			vi.clearAllMocks();
-			vi.spyOn(console, "error").mockImplementation(() => {});
-		});
-
-		it("returns successful handler results unchanged", async () => {
-			const response = {
-				content: [{ type: "text" as const, text: "Success" }],
-			};
-			const handler = vi.fn().mockResolvedValue(response);
-
-			const result = await withErrorHandling(
-				handler,
-				"TestContext",
-			)({
-				param: "test",
-			});
-
-			expect(result).toBe(response);
-			expect(handler).toHaveBeenCalledWith({ param: "test" });
-			expect(Sentry.captureException).not.toHaveBeenCalled();
-		});
-
-		it("normalizes nullish arguments to an empty object", async () => {
-			const handler = vi.fn().mockResolvedValue({ content: [] });
-			const wrapped = withErrorHandling(handler, "NullArgsContext");
-
-			await Reflect.apply(wrapped, undefined, [null]);
-
-			expect(handler).toHaveBeenCalledWith({});
-		});
-
-		it("captures and formats thrown errors", async () => {
-			const error = new Error("Function error");
-			const handler = vi.fn().mockRejectedValue(error);
-
-			const result = await withErrorHandling(
-				handler,
-				"ErrorTest",
-			)({
-				param: "test",
-			});
-
-			expect(result).toMatchObject({
-				isError: true,
-				content: [{ type: "text", text: "[ErrorTest] Error: Function error" }],
-				errorContext: {
-					sourceContext: "ErrorTest",
-					originalErrorMessage: "Function error",
-				},
-			});
-			expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
-				"mcp.tool.context",
-				"ErrorTest",
-			);
-			expect(testDoubles.scope.setContext).toHaveBeenCalledWith("mcpTool", {
-				context: "ErrorTest",
-				argumentKeyCount: 1,
-			});
-			expect(Sentry.captureException).toHaveBeenCalledWith(error);
-		});
-
-		it("captures and formats rejected non-Error values", async () => {
-			const handler = vi.fn().mockRejectedValue(42);
-
-			const result = await withErrorHandling(handler, "NumberErrorTest")({});
-
-			expect(result).toMatchObject({
-				isError: true,
-				content: [{ type: "text", text: "[NumberErrorTest] Error: 42" }],
-			});
-			expect(Sentry.captureException).toHaveBeenCalledWith(42);
-		});
-
-		it("preserves axios-specific formatted responses", async () => {
-			const axiosLikeError = {
-				message: "Request failed with status code 503",
-				isAxiosError: true,
-				response: {
-					data: {
-						error: "service unavailable",
-						code: "E_SERVICE_UNAVAILABLE",
-					},
-				},
-			};
-			const handler = vi.fn().mockRejectedValue(axiosLikeError);
-
-			const result = await withErrorHandling(handler, "AxiosContext")({});
-
-			expect(result).toMatchObject({ isError: true });
-			expect(result.content[0]?.text).toContain("service unavailable");
-			expect(result.content[0]?.text).toContain("E_SERVICE_UNAVAILABLE");
-			expect(Sentry.captureException).toHaveBeenCalledWith(axiosLikeError);
-		});
+		await expect(wrapped({})).resolves.toMatchObject({ isError: true });
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(
+			"observer secret",
+		);
+		stderrSpy.mockRestore();
 	});
 });

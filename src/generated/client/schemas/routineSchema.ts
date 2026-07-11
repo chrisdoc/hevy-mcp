@@ -12,10 +12,10 @@ export const routineSchema = z.object({
   updated_at: z.optional(
     z
       .string()
-      .describe("ISO 8601 timestamp of when the routine was last updated."),
+      .describe("ISO 8601 timestamp of when the routine was last updated.")
   ),
   created_at: z.optional(
-    z.string().describe("ISO 8601 timestamp of when the routine was created."),
+    z.string().describe("ISO 8601 timestamp of when the routine was created.")
   ),
   exercises: z.optional(
     z.array(
@@ -24,27 +24,27 @@ export const routineSchema = z.object({
           z
             .number()
             .describe(
-              "Index indicating the order of the exercise in the routine.",
-            ),
+              "Index indicating the order of the exercise in the routine."
+            )
         ),
         title: z.optional(z.string().describe("Title of the exercise")),
         rest_seconds: z.optional(
           z
             .string()
-            .describe("The rest time in seconds between sets of the exercise"),
+            .describe("The rest time in seconds between sets of the exercise")
         ),
         notes: z.optional(z.string().describe("Routine notes on the exercise")),
         exercise_template_id: z.optional(
           z
             .string()
             .describe(
-              "The id of the exercise template. This can be used to fetch the exercise template.",
-            ),
+              "The id of the exercise template. This can be used to fetch the exercise template."
+            )
         ),
         supersets_id: z
           .number()
           .describe(
-            "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
+            "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset."
           )
           .nullish(),
         sets: z.optional(
@@ -54,15 +54,15 @@ export const routineSchema = z.object({
                 z
                   .number()
                   .describe(
-                    "Index indicating the order of the set in the routine.",
-                  ),
+                    "Index indicating the order of the set in the routine."
+                  )
               ),
               type: z.optional(
                 z
                   .string()
                   .describe(
-                    "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
-                  ),
+                    "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'"
+                  )
               ),
               weight_kg: z
                 .number()
@@ -96,19 +96,19 @@ export const routineSchema = z.object({
               rpe: z
                 .number()
                 .describe(
-                  "RPE (Relative perceived exertion) value logged for the set",
+                  "RPE (Relative perceived exertion) value logged for the set"
                 )
                 .nullish(),
               custom_metric: z
                 .number()
                 .describe(
-                  "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)",
+                  "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)"
                 )
                 .nullish(),
-            }),
-          ),
+            })
+          )
         ),
-      }),
-    ),
+      })
+    )
   ),
 });

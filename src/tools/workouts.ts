@@ -12,7 +12,7 @@ import type {
 	PostWorkoutsRequestSetTypeEnumKey,
 	PutV1WorkoutsWorkoutid200,
 } from "../generated/client/types/index.js";
-import { withObservability } from "../utils/observability-wrapper.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
@@ -68,6 +68,7 @@ function formatWorkoutEvent(event: WorkoutEvent): FormattedWorkoutEvent {
 export function registerWorkoutTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	wrapHandler: typeof withErrorHandling = withErrorHandling,
 ) {
 	// Get workouts
 	const getWorkoutsSchema = {
@@ -96,7 +97,7 @@ export function registerWorkoutTools(
 			outputSchema: workoutsOutputSchema,
 			annotations: readOnlyAnnotations("Get Workouts"),
 		},
-		withObservability(async (args: GetWorkoutsParams) => {
+		wrapHandler(async (args: GetWorkoutsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1Workouts200 = await client.getWorkouts({
@@ -140,7 +141,7 @@ export function registerWorkoutTools(
 			outputSchema: workoutOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout"),
 		},
-		withObservability(async (args: GetWorkoutParams) => {
+		wrapHandler(async (args: GetWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { workoutId } = args;
 			const data: GetV1WorkoutsWorkoutid200 =
@@ -174,7 +175,7 @@ export function registerWorkoutTools(
 			outputSchema: workoutCountOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout Count"),
 		},
-		withObservability(async () => {
+		wrapHandler(async () => {
 			const client = requireClient(hevyClient);
 			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
@@ -210,7 +211,7 @@ export function registerWorkoutTools(
 			outputSchema: workoutEventsOutputSchema,
 			annotations: readOnlyAnnotations("Get Workout Events"),
 		},
-		withObservability(async (args: GetWorkoutEventsParams) => {
+		wrapHandler(async (args: GetWorkoutEventsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize, since } = args;
 			const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
@@ -278,7 +279,7 @@ export function registerWorkoutTools(
 		}),
 		createWorkoutSchema,
 		createAnnotations("Create Workout"),
-		withObservability(async (args: CreateWorkoutParams) => {
+		wrapHandler(async (args: CreateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { title, description, startTime, endTime, isPrivate, exercises } =
 				args;
@@ -374,7 +375,7 @@ export function registerWorkoutTools(
 		}),
 		updateWorkoutSchema,
 		updateAnnotations("Update Workout"),
-		withObservability(async (args: UpdateWorkoutParams) => {
+		wrapHandler(async (args: UpdateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const {
 				workoutId,

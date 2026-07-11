@@ -1,0 +1,13 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "hevy-mcp-preview",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-07-11",
+	"workers_dev": false,
+	"preview_urls": true,
+	"observability": {
+		"enabled": false,
+	},
+	// This Worker is only a container for PR version aliases. Deliberately do
+	// not add routes or custom domains here: production belongs to `hevy-mcp`.
+}

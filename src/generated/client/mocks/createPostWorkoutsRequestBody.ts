@@ -8,7 +8,7 @@ import { createPostWorkoutsRequestExercise } from "./createPostWorkoutsRequestEx
 import { faker } from "@faker-js/faker";
 
 export function createPostWorkoutsRequestBody(
-  data?: Partial<PostWorkoutsRequestBody>,
+  data?: Partial<PostWorkoutsRequestBody>
 ): PostWorkoutsRequestBody {
   return {
     ...{
@@ -21,7 +21,7 @@ export function createPostWorkoutsRequestBody(
           is_private: faker.datatype.boolean(),
           get exercises() {
             return faker.helpers.multiple(() =>
-              createPostWorkoutsRequestExercise(),
+              createPostWorkoutsRequestExercise()
             );
           },
         };

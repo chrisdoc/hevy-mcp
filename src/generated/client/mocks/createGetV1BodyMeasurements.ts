@@ -13,7 +13,7 @@ import { createBodyMeasurement } from "./createBodyMeasurement.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1BodyMeasurementsQueryParams(
-  data?: Partial<GetV1BodyMeasurementsQueryParams>,
+  data?: Partial<GetV1BodyMeasurementsQueryParams>
 ): GetV1BodyMeasurementsQueryParams {
   return {
     ...{ page: faker.number.int(), pageSize: faker.number.int() },
@@ -22,7 +22,7 @@ export function createGetV1BodyMeasurementsQueryParams(
 }
 
 export function createGetV1BodyMeasurementsHeaderParams(
-  data?: Partial<GetV1BodyMeasurementsHeaderParams>,
+  data?: Partial<GetV1BodyMeasurementsHeaderParams>
 ): GetV1BodyMeasurementsHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -34,7 +34,7 @@ export function createGetV1BodyMeasurementsHeaderParams(
  * @description A paginated list of body measurements
  */
 export function createGetV1BodyMeasurements200(
-  data?: Partial<GetV1BodyMeasurements200>,
+  data?: Partial<GetV1BodyMeasurements200>
 ): GetV1BodyMeasurements200 {
   return {
     ...{
@@ -63,7 +63,7 @@ export function createGetV1BodyMeasurements404() {
 }
 
 export function createGetV1BodyMeasurementsQueryResponse(
-  data?: Partial<GetV1BodyMeasurementsQueryResponse>,
+  data?: Partial<GetV1BodyMeasurementsQueryResponse>
 ): GetV1BodyMeasurementsQueryResponse {
   return (
     data || faker.helpers.arrayElement<any>([createGetV1BodyMeasurements200()])

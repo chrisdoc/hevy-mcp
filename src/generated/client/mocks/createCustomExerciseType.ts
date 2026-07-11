@@ -7,7 +7,7 @@ import type { CustomExerciseType } from "../types/CustomExerciseType.ts";
 import { faker } from "@faker-js/faker";
 
 export function createCustomExerciseType(
-  data?: Partial<CustomExerciseType>,
+  data?: Partial<CustomExerciseType>
 ): CustomExerciseType {
   return (
     data ||
