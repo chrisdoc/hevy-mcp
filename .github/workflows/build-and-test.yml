@@ -30,7 +30,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    name: Build and test (Node ${{ matrix.node-version }}, ${{ matrix.support-level }})
+    name: Build and test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -55,6 +55,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Summarize runtime support level
+        run: |
+          echo "## Runtime support lane" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Node: ${{ matrix.node-version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Level: ${{ matrix.support-level }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check runtime support policy
         run: npm run check:runtime-support
