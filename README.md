@@ -182,13 +182,17 @@ That gated job deploys the same trusted push commit through the GitHub
 https://hevy.chrisdoc.dev/mcp
 ```
 
-Repository administrators must create `preview` and `production` GitHub
-environments and provide these environment secrets in each:
+Repository administrators configure these repository Actions secrets:
 
 ```text
 CLOUDFLARE_API_TOKEN=<workers-deploy-token>
 CLOUDFLARE_ACCOUNT_ID=<cloudflare-account-id>
 ```
+
+The workflows retain the `preview` and `production` GitHub environments so
+deployment status and URLs are recorded. Environment protection rules are
+optional policy configuration; the Cloudflare credentials remain repository
+secrets.
 
 No `HEVY_API_KEY` deployment secret is required or supported. Each caller sends
 their own key in `Authorization: Bearer ...` as described above. The custom
