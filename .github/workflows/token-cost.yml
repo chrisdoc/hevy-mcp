@@ -1,0 +1,142 @@
+name: MCP Tool Token Cost
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  measure:
+    name: Measure MCP tool token cost
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout current revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ env.HEAD_SHA }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install current dependencies
+        run: npm ci
+
+      - name: Checkout exact pull request base
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: token-cost-base
+
+      - name: Prepare comparison baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            cp token-cost-baseline.json token-cost-base.json
+            exit 0
+          fi
+
+          if [[ -f token-cost-base/scripts/measure-token-cost.ts ]] &&
+             node -e 'const p=require("./token-cost-base/package.json"); process.exit(p.scripts?.["measure:tokens"] && (p.devDependencies?.tiktoken || p.dependencies?.tiktoken) ? 0 : 1)'; then
+            echo "Measuring the exact pull request base revision."
+            npm --prefix token-cost-base ci
+            npm --prefix token-cost-base run measure:tokens -- \
+              --output "$GITHUB_WORKSPACE/token-cost-base.json"
+            echo "Measured the exact pull request base revision."
+          else
+            cp token-cost-baseline.json token-cost-base.json
+            echo "Base revision predates token measurement; using the committed launch baseline."
+          fi
+
+      - name: Measure current revision
+        run: >-
+          npm run measure:tokens --
+          --output token-cost-current.json
+          --baseline token-cost-base.json
+          --markdown token-cost-report.md
+
+      - name: Add report to job summary
+        run: cat token-cost-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload token cost artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: token-cost-${{ env.HEAD_SHA }}
+          path: |
+            token-cost-current.json
+            token-cost-base.json
+            token-cost-report.md
+          if-no-files-found: error
+
+  comment:
+    name: Update pull request comment
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: measure
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Download token cost report
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.0
+        with:
+          name: token-cost-${{ env.HEAD_SHA }}
+
+      - name: Create or update token cost comment
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const fs = require("node:fs");
+            const marker = "<!-- hevy-mcp-token-cost -->";
+            const report = fs.readFileSync("token-cost-report.md", "utf8");
+            const body = `${marker}\n${report}`;
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existing = comments.find(
+              (comment) =>
+                comment.user?.login === "github-actions[bot]" &&
+                comment.body?.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
