@@ -1,6 +1,7 @@
 import childProcess from "node:child_process";
 import dgram from "node:dgram";
-import { appendFileSync, readFileSync } from "node:fs";
+import dns from "node:dns";
+import fs from "node:fs";
 import http from "node:http";
 import http2 from "node:http2";
 import https from "node:https";
@@ -9,10 +10,9 @@ import net from "node:net";
 import tls from "node:tls";
 import workerThreads from "node:worker_threads";
 
-const logPath = process.env.HEVY_MCP_TEST_NETWORK_GUARD_LOG;
-if (!logPath) {
-	throw new Error("HEVY_MCP_TEST_NETWORK_GUARD_LOG is required");
-}
+const denialMarkerPrefix = "HEVY_MCP_PACKED_STDIO_GUARD_DENIAL_V1 ";
+const writeCapturedStderr = fs.writeSync.bind(fs, 2);
+const readFileSync = fs.readFileSync.bind(fs);
 
 const allowedHostname = process.env.HEVY_MCP_TEST_ALLOWED_HOST;
 const allowedPortText = process.env.HEVY_MCP_TEST_ALLOWED_PORT;
@@ -70,9 +70,12 @@ function normalizePort(port) {
 	return undefined;
 }
 
-function recordAndReject(kind, api, metadata = {}) {
-	const attempt = { kind, api, ...metadata };
-	appendFileSync(logPath, `${JSON.stringify(attempt)}\n`, { mode: 0o600 });
+function recordAndReject(kind, api) {
+	const marker = `${denialMarkerPrefix}${JSON.stringify({ kind, api })}\n`;
+	if (marker.length > 256) {
+		throw new Error("Package isolation guard denial marker exceeded its bound");
+	}
+	writeCapturedStderr(marker);
 	throw new Error(`Package isolation guard blocked ${kind} access via ${api}`);
 }
 
@@ -83,10 +86,7 @@ function assertAllowed(api, hostname, port) {
 		normalizedHostname !== allowedHostname ||
 		normalizedPort !== allowedPort
 	) {
-		recordAndReject("network", api, {
-			hostname: normalizedHostname ?? "<missing>",
-			port: normalizedPort ?? null,
-		});
+		recordAndReject("network", api);
 	}
 }
 
@@ -198,6 +198,53 @@ tls.connect = function guardedTlsConnect(...args) {
 	assertAllowed("tls.connect", target.hostname, target.port);
 	return originalTlsConnect.apply(this, args);
 };
+
+const dnsMethods = [
+	"lookup",
+	"lookupService",
+	"resolve",
+	"resolve4",
+	"resolve6",
+	"resolveAny",
+	"resolveCaa",
+	"resolveCname",
+	"resolveMx",
+	"resolveNaptr",
+	"resolveNs",
+	"resolvePtr",
+	"resolveSoa",
+	"resolveSrv",
+	"resolveTlsa",
+	"resolveTxt",
+	"reverse",
+];
+
+for (const method of dnsMethods) {
+	dns[method] = rejectCapability("dns", `dns.${method}`);
+}
+
+for (const method of dnsMethods) {
+	if (typeof dns.promises[method] === "function") {
+		dns.promises[method] = rejectCapability("dns", `dns.promises.${method}`);
+	}
+}
+
+for (const method of dnsMethods.filter(
+	(method) => method !== "lookup" && method !== "lookupService",
+)) {
+	if (typeof dns.Resolver.prototype[method] === "function") {
+		dns.Resolver.prototype[method] = rejectCapability(
+			"dns",
+			`dns.Resolver.${method}`,
+		);
+	}
+	if (typeof dns.promises.Resolver.prototype[method] === "function") {
+		dns.promises.Resolver.prototype[method] = rejectCapability(
+			"dns",
+			`dns.promises.Resolver.${method}`,
+		);
+	}
+}
 
 for (const method of [
 	"spawn",

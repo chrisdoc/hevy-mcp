@@ -43,7 +43,8 @@ pull_request_rules:
     conditions:
       - base = main
       - "#approved-reviews-by >= 2"
-      - check-success = ci/build
+      - check-success = "Build and test (Node 24.x)"
+      - check-success = "Build and test (Node 26.x)"
       - check-success = "Build and smoke test Docker image"
       - check-success = "Packed package stdio boundary (Node 24)"
     actions:

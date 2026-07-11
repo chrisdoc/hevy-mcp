@@ -8,7 +8,6 @@ import {
 	readFile,
 	realpath,
 	rm,
-	writeFile,
 } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -33,6 +32,11 @@ import { JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
 const execFileAsync = promisify(execFile);
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const networkGuardPath = join(sourceRoot, "tests/package/network-guard.mjs");
+const networkGuardProbePath = join(
+	sourceRoot,
+	"tests/package/network-guard-probe.mjs",
+);
+const denialMarkerPrefix = "HEVY_MCP_PACKED_STDIO_GUARD_DENIAL_V1 ";
 const fixtureApiKey = "fixture-only-api-key";
 const closeTimeoutMs = 5_000;
 const signalTimeoutMs = 2_000;
@@ -137,18 +141,6 @@ function readTextContent(result) {
 	return first.text;
 }
 
-function processExists(pid) {
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch (error) {
-		if (error?.code === "ESRCH") {
-			return false;
-		}
-		throw error;
-	}
-}
-
 function readProcessTable() {
 	const output = execFileSync("ps", ["-eo", "pid=,ppid=,pgid=,sid=,comm="], {
 		encoding: "utf8",
@@ -175,6 +167,33 @@ function processIdentity(pid) {
 
 function processGroupMembers(processGroupId) {
 	return readProcessTable().filter((entry) => entry.pgid === processGroupId);
+}
+
+function assertSafeProcessGroupTarget(processGroupId) {
+	assert.ok(
+		Number.isInteger(processGroupId) && processGroupId > 1,
+		`invalid MCP process-group target ${processGroupId}`,
+	);
+	const parentIdentity = processIdentity(process.pid);
+	assert.ok(parentIdentity, "could not read the parent process identity");
+	assert.notEqual(
+		processGroupId,
+		parentIdentity.pgid,
+		"refusing to target the parent process group",
+	);
+}
+
+function containedProcessGroupMembers(processGroupId) {
+	assertSafeProcessGroupTarget(processGroupId);
+	const members = processGroupMembers(processGroupId);
+	for (const member of members) {
+		assert.equal(
+			member.sid,
+			processGroupId,
+			`process group ${processGroupId} contains PID ${member.pid} from session ${member.sid}`,
+		);
+	}
+	return members;
 }
 
 async function resolveLinuxSetsid() {
@@ -213,6 +232,7 @@ async function verifyDedicatedProcessGroup(pid) {
 }
 
 function signalProcessGroup(processGroupId, signal) {
+	assertSafeProcessGroupTarget(processGroupId);
 	try {
 		process.kill(-processGroupId, signal);
 	} catch (error) {
@@ -223,7 +243,7 @@ function signalProcessGroup(processGroupId, signal) {
 }
 
 async function emptyProcessGroup(processGroupId) {
-	const members = processGroupMembers(processGroupId);
+	const members = containedProcessGroupMembers(processGroupId);
 	if (members.length === 0) {
 		return;
 	}
@@ -238,60 +258,25 @@ async function emptyProcessGroup(processGroupId) {
 	signalProcessGroup(processGroupId, "SIGTERM");
 	try {
 		await waitFor(
-			() => processGroupMembers(processGroupId).length === 0,
+			() => containedProcessGroupMembers(processGroupId).length === 0,
 			signalTimeoutMs,
 			`process group ${processGroupId} to exit after SIGTERM`,
 		);
 	} catch {
 		signalProcessGroup(processGroupId, "SIGKILL");
 		await waitFor(
-			() => processGroupMembers(processGroupId).length === 0,
+			() => containedProcessGroupMembers(processGroupId).length === 0,
 			signalTimeoutMs,
 			`process group ${processGroupId} to exit after SIGKILL`,
 		);
 	}
 
 	assert.deepEqual(
-		processGroupMembers(processGroupId),
+		containedProcessGroupMembers(processGroupId),
 		[],
 		`MCP process group ${processGroupId} was not emptied`,
 	);
 	throw leakError;
-}
-
-async function terminateObservedProcesses(pids) {
-	const remaining = [...pids].filter(processExists);
-	for (const pid of remaining) {
-		try {
-			process.kill(pid, "SIGTERM");
-		} catch (error) {
-			if (error?.code !== "ESRCH") {
-				throw error;
-			}
-		}
-	}
-	try {
-		await waitFor(
-			() => remaining.every((pid) => !processExists(pid)),
-			signalTimeoutMs,
-			"observed MCP processes to exit after SIGTERM",
-		);
-	} catch {
-		for (const pid of remaining.filter(processExists)) {
-			try {
-				process.kill(pid, "SIGKILL");
-			} catch (error) {
-				if (error?.code !== "ESRCH") {
-					throw error;
-				}
-			}
-		}
-		await waitFor(
-			() => remaining.every((pid) => !processExists(pid)),
-			signalTimeoutMs,
-			"observed MCP processes to exit after SIGKILL",
-		);
-	}
 }
 
 function directChildren(pid) {
@@ -385,6 +370,40 @@ function auditRawStdout(chunks) {
 	return raw;
 }
 
+function parseGuardDenials(stderr, label) {
+	const denials = [];
+	for (const line of stderr.split("\n")) {
+		if (!line.startsWith(denialMarkerPrefix)) {
+			continue;
+		}
+		let denial;
+		try {
+			denial = JSON.parse(line.slice(denialMarkerPrefix.length));
+		} catch (error) {
+			throw new Error(`${label} emitted a malformed guard denial marker`, {
+				cause: error,
+			});
+		}
+		assert.deepEqual(
+			Object.keys(denial).sort(),
+			["api", "kind"],
+			`${label} guard marker exposed unexpected fields`,
+		);
+		assert.equal(typeof denial.kind, "string");
+		assert.equal(typeof denial.api, "string");
+		denials.push(denial);
+	}
+	return denials;
+}
+
+function assertNoGuardDenials(stderr, label) {
+	assert.deepEqual(
+		parseGuardDenials(stderr, label),
+		[],
+		`${label} triggered a package isolation denial`,
+	);
+}
+
 function createFixture() {
 	const expected = new Map([
 		["GET /v1/user/info", 0],
@@ -446,14 +465,7 @@ async function closeFixture(server) {
 	});
 }
 
-function sanitizedEnv({
-	home,
-	cache,
-	fixtureUrl,
-	guardLog,
-	readRoot,
-	writeRoot,
-}) {
+function sanitizedEnv({ home, cache, fixtureUrl, readRoots }) {
 	const fixtureOrigin = new URL(fixtureUrl);
 	assert.equal(fixtureOrigin.protocol, "http:");
 	assert.ok(
@@ -473,15 +485,13 @@ function sanitizedEnv({
 		NODE_ENV: "test",
 		HEVY_MCP_TEST_API_BASE_URL: fixtureUrl,
 		HEVY_MCP_TEST_DISABLE_UPDATE_CHECK: "1",
-		HEVY_MCP_TEST_NETWORK_GUARD_LOG: guardLog,
 		HEVY_MCP_TEST_ALLOWED_HOST: fixtureOrigin.hostname,
 		HEVY_MCP_TEST_ALLOWED_PORT: fixtureOrigin.port,
 		SENTRY_DSN: "*",
 		NODE_OPTIONS: [
 			"--permission",
-			`--allow-fs-read=${readRoot}`,
+			...readRoots.map((readRoot) => `--allow-fs-read=${readRoot}`),
 			`--allow-fs-read=${networkGuardPath}`,
-			`--allow-fs-write=${writeRoot}`,
 			`--import=${pathToFileURL(networkGuardPath).href}`,
 		].join(" "),
 	};
@@ -498,6 +508,7 @@ function assertSanitizedEnv(env) {
 	assert.ok(!env.NODE_OPTIONS.includes("--allow-worker"));
 	assert.ok(!env.NODE_OPTIONS.includes("--allow-addons"));
 	assert.ok(!env.NODE_OPTIONS.includes("--allow-wasi"));
+	assert.ok(!env.NODE_OPTIONS.includes("--allow-fs-write"));
 
 	const childValues = new Set(Object.values(env));
 	for (const [name, value] of Object.entries(process.env)) {
@@ -512,6 +523,44 @@ function assertSanitizedEnv(env) {
 			);
 		}
 	}
+}
+
+async function runNetworkGuardProbe(env) {
+	const result = await execFileAsync(
+		process.execPath,
+		[networkGuardProbePath],
+		{
+			env,
+			maxBuffer: 1024 * 1024,
+		},
+	);
+	const expectedApis = [
+		"fetch",
+		"http.request",
+		"https.request",
+		"net.connect",
+		"tls.connect",
+		"child_process.spawn",
+		"worker_threads.Worker",
+		"dgram.createSocket",
+		"http2.connect",
+		"dns.lookup",
+		"dns.promises.lookup",
+		"dns.promises.lookupService",
+		"dns.Resolver.resolve4",
+		"dns.promises.Resolver.resolve4",
+	];
+	assert.deepEqual(
+		parseJsonOutput(result.stdout, "network guard probe"),
+		expectedApis,
+	);
+	assert.deepEqual(
+		parseGuardDenials(result.stderr, "network guard probe").map(
+			({ api }) => api,
+		),
+		expectedApis,
+		"caught guard denials were erasable or incomplete",
+	);
 }
 
 async function inspectInstalledExports(mainPath, env) {
@@ -541,7 +590,6 @@ async function run() {
 	const consumerDirectory = join(temporaryRoot, "consumer");
 	const isolatedHome = join(temporaryRoot, "home");
 	const isolatedCache = join(temporaryRoot, "cache");
-	const guardLog = join(temporaryRoot, "network-attempts.jsonl");
 	const { server: fixture, expected, unexpected } = createFixture();
 	let client;
 	let transport;
@@ -553,6 +601,7 @@ async function run() {
 	let processGroupVerified = false;
 	let transportClosed = false;
 	let monitorError;
+	let stderr = "";
 	const observedDescendants = new Set();
 	const observedProcessGroupMembers = new Set();
 	let primaryError;
@@ -564,7 +613,6 @@ async function run() {
 			mkdir(consumerDirectory),
 			mkdir(isolatedHome),
 			mkdir(isolatedCache),
-			writeFile(guardLog, "", { mode: 0o600 }),
 		]);
 
 		const sourcePackage = parseJsonOutput(
@@ -736,13 +784,19 @@ async function run() {
 		await chmod(executablePath, 0o755);
 
 		const fixtureUrl = await listenFixture(fixture);
+		const probeEnv = sanitizedEnv({
+			home: isolatedHome,
+			cache: isolatedCache,
+			fixtureUrl,
+			readRoots: [sourceRoot],
+		});
+		assertSanitizedEnv(probeEnv);
+		await runNetworkGuardProbe(probeEnv);
 		const childEnv = sanitizedEnv({
 			home: isolatedHome,
 			cache: isolatedCache,
 			fixtureUrl,
-			guardLog,
-			readRoot: consumerDirectory,
-			writeRoot: temporaryRoot,
+			readRoots: [consumerDirectory],
 		});
 		assertSanitizedEnv(childEnv);
 		const exportedSurface = await inspectInstalledExports(
@@ -802,7 +856,6 @@ async function run() {
 			processGroupMonitor.unref();
 			return undefined;
 		};
-		let stderr = "";
 		transport.stderr.on("data", (chunk) => {
 			stderr += chunk.toString("utf8");
 		});
@@ -854,11 +907,6 @@ async function run() {
 		await closeWithTimeout(() => client.close(), "MCP client close");
 		client = undefined;
 		transportClosed = true;
-		await waitFor(
-			() => !processExists(childPid),
-			closeTimeoutMs,
-			"MCP child exit",
-		);
 		const childExit = transport.childExit;
 		assert.ok(childExit, "MCP child exit promise was not initialized");
 		const exit = await childExit;
@@ -881,15 +929,11 @@ async function run() {
 			!stderr.includes(fixtureApiKey),
 			"fixture key appeared on stderr",
 		);
+		assertNoGuardDenials(stderr, "installed MCP package");
 		assert.deepEqual(unexpected, [], "fixture received unexpected requests");
 		for (const [route, count] of expected) {
 			assert.equal(count, 1, `${route} was requested ${count} times`);
 		}
-		assert.equal(
-			await readFile(guardLog, "utf8"),
-			"",
-			"package isolation guard recorded an attempt",
-		);
 	} catch (error) {
 		primaryError = error;
 	} finally {
@@ -929,35 +973,27 @@ async function run() {
 			} catch (error) {
 				cleanupErrors.push(error);
 			}
-			if (processGroupVerified) {
-				try {
-					await emptyProcessGroup(processGroupId);
-				} catch (error) {
-					cleanupErrors.push(error);
-				}
-			} else {
-				try {
-					await terminateObservedProcesses(
-						new Set([
-							childPid,
-							...observedProcessGroupMembers,
-							...observedDescendants,
-						]),
-					);
-				} catch (error) {
-					cleanupErrors.push(error);
-				}
-			}
-		} else if (childPid) {
-			for (const pid of collectDescendants(childPid)) {
-				observedDescendants.add(pid);
-			}
-			const observedPids = new Set([childPid, ...observedDescendants]);
 			try {
-				await terminateObservedProcesses(observedPids);
+				await emptyProcessGroup(processGroupId);
 			} catch (error) {
 				cleanupErrors.push(error);
 			}
+		}
+		if (observedDescendants.size > 0) {
+			cleanupErrors.push(
+				new Error(
+					`MCP child created forbidden descendants: ${[...observedDescendants].join(", ")}`,
+				),
+			);
+		}
+		try {
+			assert.ok(
+				!stderr.includes(fixtureApiKey),
+				"fixture key appeared on captured stderr",
+			);
+			assertNoGuardDenials(stderr, "installed MCP package");
+		} catch (error) {
+			cleanupErrors.push(error);
 		}
 		try {
 			await closeFixture(fixture);
