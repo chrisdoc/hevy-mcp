@@ -72,7 +72,6 @@ const HELP_TEXT = [
 	"  -h, --help                 Show this help message and exit",
 	"  -v, --version              Show version and exit",
 	"  --confirm-mutations        Require confirmation before mutating Hevy data",
-	"  --hevy-api-key=<api-key>   (deprecated, use HEVY_API_KEY env var)",
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
@@ -83,8 +82,6 @@ const HELP_TEXT = [
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
 	"  HEVY_API_KEY=your-key npx hevy-mcp --confirm-mutations",
-	"  npx hevy-mcp --hevy-api-key=your-key",
-	"  npm start -- --hevy-api-key=your-key",
 ].join("\n");
 
 function getCliAction(args: string[]): "start" | "version" | "help" {
