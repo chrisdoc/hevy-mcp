@@ -164,6 +164,63 @@ server, Hevy client, transport, and exercise-template cache. There are no MCP
 session IDs, Durable Objects, event replay, or resumable `GET` streams. `GET`
 and `DELETE` return `405`.
 
+#### Automated deployments
+
+The preview deployment workflow deploys internal pull requests targeting
+`main` to a dedicated `hevy-mcp-preview` Worker. On first use, the workflow
+automatically creates that Worker with an inert `404` deployment before it
+uploads the real PR version. Each pull request gets a stable alias at:
+
+```text
+https://pr-<PR number>-hevy-mcp-preview.<subdomain>.workers.dev/mcp
+```
+
+The URL is reported in the workflow job summary and on the GitHub `preview`
+environment. Preview URLs are public unless they are separately protected with
+Cloudflare Access. Pull requests from forks still run the normal build and
+tests, but the preview deployment job is skipped so Cloudflare credentials are
+never exposed to fork code.
+
+For pushes to `main`, the `Build and Test` workflow runs its production job
+only after both the Node.js `build` matrix and the `docker` smoke-test job pass.
+That gated job deploys the same trusted push commit to the production
+`hevy-mcp` Worker through the GitHub `production` environment. Production is
+touched only by CI for trusted pushes to `main`. The production MCP endpoint
+is:
+
+```text
+https://hevy.chrisdoc.dev/mcp
+```
+
+Repository administrators configure these repository Actions secrets:
+
+```text
+CLOUDFLARE_API_TOKEN=<workers-deploy-token>
+CLOUDFLARE_ACCOUNT_ID=<cloudflare-account-id>
+```
+
+The workflows retain the `preview` and `production` GitHub environments so
+deployment status and URLs are recorded. Environment protection rules are
+optional policy configuration; the Cloudflare credentials remain repository
+secrets.
+
+No `HEVY_API_KEY` deployment secret is required or supported. Each caller sends
+their own key in `Authorization: Bearer ...` as described above. The custom
+domain and Worker route for `hevy.chrisdoc.dev` are managed separately by
+Terraform in the private `chrisdoc/infra` repository; this repository does not
+create or modify that binding. Terraform and custom routes must never target
+the `hevy-mcp-preview` Worker. The generic production `workers.dev` route is
+disabled, while version and alias URLs remain enabled on the preview Worker.
+
+After production deployment, this unauthenticated smoke test should return
+HTTP `401` without sending any credential:
+
+```bash
+curl --request POST --silent --show-error \
+	--output /dev/null --write-out '%{http_code}\n' \
+	https://hevy.chrisdoc.dev/mcp
+```
+
 This authentication mode is a **custom bearer credential containing a Hevy API
 key**, not OAuth. MCP clients that require OAuth discovery, dynamic client
 registration, or token refresh are not compatible unless they can be configured

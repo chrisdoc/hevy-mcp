@@ -1,0 +1,166 @@
+name: Deploy Cloudflare Worker Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  preview:
+    name: Deploy PR preview
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cloudflare-worker-preview-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    environment:
+      name: preview
+      url: ${{ steps.preview_url.outputs.url }}
+
+    steps:
+      - name: Checkout pull request commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check whether the preview Worker exists
+        id: preview_worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          response_body="$(mktemp)"
+          trap 'rm -f "$response_body"' EXIT
+
+          set +e
+          http_status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "$response_body" \
+              --write-out "%{http_code}" \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --request GET \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              --header "Content-Type: application/json" \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/hevy-mcp-preview/settings"
+          )"
+          curl_exit=$?
+          set -e
+
+          if (( curl_exit != 0 )); then
+            echo "Cloudflare preview Worker existence check failed during transport (curl exit ${curl_exit})." >&2
+            exit "$curl_exit"
+          fi
+
+          case "$http_status" in
+            200)
+              echo "bootstrap=false" >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo "bootstrap=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Cloudflare preview Worker existence check returned unexpected HTTP ${http_status}; refusing to bootstrap." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Bootstrap dedicated preview Worker
+        if: steps.preview_worker.outputs.bootstrap == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: >-
+          npx wrangler deploy .github/workers/preview-bootstrap.ts
+          --config wrangler.preview.jsonc
+          --keep-vars
+          --message "Bootstrap inert hevy-mcp-preview Worker for GitHub PR versions"
+
+      - name: Upload preview version
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+        run: >-
+          npx wrangler versions upload
+          --config wrangler.preview.jsonc
+          --keep-vars
+          --preview-alias pr-${{ github.event.pull_request.number }}
+          --message "GitHub PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request.head.sha }}"
+
+      - name: Publish preview URL
+        id: preview_url
+        env:
+          EXPECTED_PREFIX: pr-${{ github.event.pull_request.number }}-hevy-mcp-preview.
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const entries = fs
+            .readFileSync(process.env.WRANGLER_OUTPUT_FILE_PATH, "utf8")
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .map((line) => JSON.parse(line));
+          const upload = entries.findLast(
+            (entry) => entry.type === "version-upload",
+          );
+          const previewAliasUrl = upload?.preview_alias_url;
+
+          if (!previewAliasUrl) {
+            throw new Error(
+              "Wrangler did not return preview_alias_url; verify the preview alias upload completed successfully",
+            );
+          }
+
+          const previewUrl = new URL(previewAliasUrl);
+
+          if (
+            previewUrl.protocol !== "https:" ||
+            !previewUrl.hostname.startsWith(process.env.EXPECTED_PREFIX) ||
+            !previewUrl.hostname.endsWith(".workers.dev")
+          ) {
+            throw new Error("Wrangler did not return the expected preview alias URL");
+          }
+
+          const mcpUrl = new URL("/mcp", previewUrl);
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `url=${mcpUrl.href}\n`);
+          fs.appendFileSync(
+            process.env.GITHUB_STEP_SUMMARY,
+            [
+              "## Cloudflare Worker preview",
+              "",
+              `- Alias: \`pr-${{ github.event.pull_request.number }}\``,
+              `- MCP endpoint: ${mcpUrl.href}`,
+              `- Commit: \`${{ github.event.pull_request.head.sha }}\``,
+              "",
+            ].join("\n"),
+          );
+          NODE
