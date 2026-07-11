@@ -278,22 +278,24 @@ The live suite complements deterministic tests; it must not compensate for
 missing mocks. The packed tarball lane validates the candidate artifact, while
 the nightly `npx`/`bunx @latest` checks validate the currently published one.
 
-## Proposed package scripts
+## Named package scripts
 
-Exact implementation can be adjusted to avoid duplicate Vitest discovery, but
-the public script names should be stable:
+TS-06 implements the stable public script names below. The exact selectors,
+lane ownership, deterministic/live boundaries, and current downstream scope are
+documented in [`docs/test-lanes.md`](./test-lanes.md). CI and contributors use
+these names rather than duplicating selectors:
 
 ```json
 {
-	"test:unit": "vitest run --exclude 'tests/integration/**'",
+	"test:unit": "vitest run --exclude 'tests/integration/**' --exclude 'tests/performance/**'",
 	"test:mcp": "vitest run tests/integration/mocked",
-	"test:contract": "vitest run tests/contract",
-	"test:stdio": "vitest run tests/stdio",
+	"test:contract": "vitest run <current contract baseline>",
+	"test:stdio": "vitest run <current stdio/process baseline>",
 	"test:pack": "node tests/package/npm-pack-smoke.mjs",
-	"test:live": "vitest run tests/integration/hevy-mcp.integration.test.ts",
+	"test:live": "node --env-file-if-exists=.env scripts/run-live-tests.mjs",
 	"test:nightly": "node tests/nightly/test_hevy_mcp.mjs",
-	"test:performance": "vitest run tests/performance",
-	"test:coverage": "vitest run --coverage",
+	"test:performance": "vitest run tests/performance/performance.test.ts",
+	"test:coverage": "unit and mocked MCP coverage via their named lanes",
 	"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:pack"
 }
 ```

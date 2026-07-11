@@ -14,7 +14,6 @@ permissions:
 env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
 jobs:
   upload-source-event:
@@ -90,19 +89,43 @@ jobs:
 
       - name: Run mocked integration tests with coverage
         if: matrix.node-version == '24.x'
-        run: npx vitest run tests/integration/mocked --coverage --coverage.reportsDirectory=coverage/mocked
+        run: npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
 
       - name: Run mocked integration tests
         if: matrix.node-version == '26.x'
-        run: npx vitest run tests/integration/mocked
+        run: npm run test:mcp
 
       - name: Run unit tests with coverage and JUnit output
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx vitest run --coverage --coverage.reportsDirectory=coverage/unit --exclude "tests/integration/**" --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
+        run: npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
 
       - name: Run unit tests with coverage
         if: ${{ !cancelled() && matrix.node-version == '26.x' }}
-        run: npx vitest run --coverage --exclude "tests/integration/**"
+        run: npm run test:unit -- --coverage
+
+      - name: Run contract baseline
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npm run test:contract
+
+      - name: Run stdio baseline
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npm run test:stdio
+
+      - name: Run package baseline
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npm run test:pack
+
+      - name: Run performance baseline
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npm run test:performance
+
+      - name: Upload performance summary
+        if: ${{ always() && matrix.node-version == '24.x' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: performance-summary-node-24
+          path: test-results/performance/summary.json
+          if-no-files-found: error
 
       - name: Upload unit test results
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
@@ -111,10 +134,6 @@ jobs:
           name: unit-test-results-node-24
           path: test-results/unit-tests.xml
           if-no-files-found: warn
-
-      - name: "Warning: Live integration tests skipped"
-        if: env.HEVY_API_KEY == ''
-        run: echo "HEVY_API_KEY is not set; live integration tests are skipped."
 
       - name: Upload results to Codecov
         if: matrix.node-version == '24.x'
