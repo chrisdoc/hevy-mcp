@@ -171,6 +171,14 @@ jobs:
       - name: Smoke test help output without an API key
         run: docker run --rm hevy-mcp:ci --help
 
+      - name: Verify hardened runtime structure
+        run: |
+          docker run --rm --entrypoint sh hevy-mcp:ci -c '
+            test "$(id -u)" -ne 0 &&
+            test ! -e /app/node_modules &&
+            test -f /app/standalone.mjs
+          '
+
   otel-cicd-action:
     if: always()
     name: OpenTelemetry Export Trace

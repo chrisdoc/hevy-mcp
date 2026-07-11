@@ -1,31 +1,15 @@
-.git
-.github
-.changeset
+# Deny everything by default so local credentials and unrelated repository
+# files are never sent to the Docker daemon or retained in its build cache.
+**
 
-.env
-.env.*
-!.env.sample
-*.pem
-*.key
-.npmrc
+# Docker must still be able to read the build definition and ignore rules.
+!Dockerfile
+!.dockerignore
 
-node_modules
-dist
-coverage
-test-results
-tests
-*.tsbuildinfo
-
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-.DS_Store
-Thumbs.db
-.idea
-.vscode
-*.swp
-*.swo
-*~
+# Standalone build inputs.
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsdown.config.ts
+!src/
+!src/**

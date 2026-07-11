@@ -50,6 +50,7 @@
 		"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:pack",
 		"openapi": "node ./scripts/openapi-spec.js",
 		"build": "tsdown",
+		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown",
 		"build:client": "kubb generate",
 		"prepack": "npm run check:server-manifest && npm run build",
 		"start": "node --env-file .env dist/cli.mjs",
