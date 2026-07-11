@@ -2,11 +2,20 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import nock from "nock";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { registerTemplateTools } from "../../src/tools/templates.js";
 import {
 	createExerciseTemplateFixture,
 	createExerciseTemplatesResponse,
+	createRoutinesResponse,
 } from "./hevy-fixtures.js";
 import {
 	callTool,
@@ -105,6 +114,13 @@ describe("mocked MCP test support", () => {
 		}
 	});
 
+	it("passes through non-interceptor Nock scope properties and methods", () => {
+		const scope = createMockedApiScope();
+
+		expect(Reflect.get(scope, "keyedInterceptors")).toBeTypeOf("object");
+		expect(scope.pendingMocks()).toEqual([]);
+	});
+
 	it("aggregates harness close and shared cleanup failures", async () => {
 		const closeFailure = new Error("intentional close failure");
 		createMockedApiScope().get("/unused-during-teardown").reply(200);
@@ -143,6 +159,66 @@ describe("mocked MCP test support", () => {
 		});
 	});
 
+	it("cleans up a failed harness setup", async () => {
+		const registrationFailure = new Error("intentional registration failure");
+
+		await expect(
+			createMockedMcpHarness({
+				name: "failed-registration",
+				register: () => {
+					throw registrationFailure;
+				},
+			}),
+		).rejects.toThrow(registrationFailure);
+	});
+
+	it("reports errors closing a harness", async () => {
+		const harness = await createMockedMcpHarness({
+			name: "failed-close",
+			register: () => undefined,
+		});
+		const closeFailure = new Error("intentional client close failure");
+		const clientClose = vi
+			.spyOn(harness.client, "close")
+			.mockRejectedValueOnce(closeFailure);
+
+		await expect(harness.close()).rejects.toMatchObject({
+			errors: [closeFailure],
+		});
+
+		clientClose.mockRestore();
+		await harness.client.close();
+	});
+
+	it("includes leaked harness close failures in cleanup", async () => {
+		const harness = await createMockedMcpHarness({
+			name: "leaked-failed-close",
+			register: () => undefined,
+		});
+		const closeFailure = new Error("intentional leaked close failure");
+		const close = vi.spyOn(harness, "close").mockRejectedValue(closeFailure);
+
+		await expect(cleanupMockedMcpTestState()).rejects.toMatchObject({
+			errors: [
+				expect.objectContaining({
+					message: expect.stringContaining(
+						"Unclosed mocked MCP harnesses: leaked-failed-close",
+					),
+				}),
+				closeFailure,
+			],
+		});
+
+		close.mockRestore();
+		await harness.close();
+	});
+
+	it("allows teardown without a harness", async () => {
+		await expect(
+			teardownMockedMcpTestState(undefined),
+		).resolves.toBeUndefined();
+	});
+
 	it("isolates the exercise-template cache between fresh harnesses", async () => {
 		const register = (
 			server: Parameters<typeof registerTemplateTools>[0],
@@ -174,6 +250,7 @@ describe("mocked MCP test support", () => {
 			{ requireStructuredContentForReadTools: true },
 		);
 		expect(firstResult.text).toContain("first-template");
+		await firstHarness.close();
 		await firstHarness.close();
 
 		const secondHarness = await createMockedMcpHarness({
@@ -253,9 +330,17 @@ describe("mocked MCP test support", () => {
 		callerOwnedTemplates[0]!.title = "Still Mutable";
 
 		const fresh = createExerciseTemplateFixture();
+		const routinesResponse = createRoutinesResponse();
 		expect(fresh.title).toBe("Bench Press");
 		expect(fresh.secondary_muscle_groups).toEqual(["triceps"]);
 		expect(response.exercise_templates?.[0]?.title).toBe("Caller Press");
+		expect(routinesResponse.routines?.[0]).toMatchObject({
+			id: "routine-1",
+			title: "Mock Push Day",
+		});
+		expect(Object.isFrozen(routinesResponse)).toBe(true);
+		expect(Object.isFrozen(routinesResponse.routines)).toBe(true);
+		expect(Object.isFrozen(routinesResponse.routines?.[0])).toBe(true);
 	});
 });
 
@@ -272,6 +357,7 @@ describe.sequential("mocked MCP external network isolation", () => {
 				nock.disableNetConnect(),
 			);
 
+			restore();
 			restore();
 
 			await expect(requestText(url)).rejects.toThrow(/Disallowed net connect/);
