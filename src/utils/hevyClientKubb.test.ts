@@ -323,4 +323,81 @@ describe("native-fetch Hevy client", () => {
 		).rejects.toMatchObject({ code: HEVY_REQUEST_ABORTED_ERROR_CODE });
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
+
+	it("falls back to exponential backoff for invalid Retry-After values", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				jsonResponse({ error: "slow down" }, 429, {
+					"retry-after": "not-a-date",
+				}),
+			)
+			.mockResolvedValueOnce(jsonResponse({ ok: true }));
+		const sleep = vi.fn().mockResolvedValue(undefined);
+		const client = createClient("key", undefined, { fetch: fetchMock, sleep });
+
+		await expect(client.getUserInfo()).resolves.toEqual({ ok: true });
+		expect(sleep).toHaveBeenCalledWith(300);
+	});
+
+	it("uses the default retry delay when no sleep override is provided", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ error: "busy" }, 503))
+			.mockResolvedValueOnce(jsonResponse({ ok: true }));
+		const client = createClient("key", undefined, { fetch: fetchMock });
+
+		await expect(client.getUserInfo()).resolves.toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("contains logger failures while reporting request failures", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const client = createClient("key", undefined, {
+			fetch: vi.fn(async () => jsonResponse({ error: "invalid" }, 400)),
+			logger: () => {
+				throw new Error("logger failed");
+			},
+		});
+
+		try {
+			await expect(client.getUserInfo()).rejects.toMatchObject({ status: 400 });
+			expect(stderrSpy).toHaveBeenCalledWith(
+				"Failed to emit structured Hevy API log",
+			);
+		} finally {
+			stderrSpy.mockRestore();
+		}
+	});
+
+	it("rejects invalid endpoint overrides before making a request", async () => {
+		const fetchMock = vi.fn();
+		const client = createClient("key", undefined, {
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+
+		await expect(
+			client.getUserInfo({ url: "/not-hevy" }),
+		).rejects.toMatchObject({
+			code: "HEVY_INVALID_ENDPOINT",
+			endpoint: "unknown",
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("sends form data without JSON serialization", async () => {
+		const formData = new FormData();
+		formData.set("example", "value");
+		const fetchMock = vi.fn(
+			async (_input: string | URL | Request, init?: RequestInit) => {
+				expect(init?.body).toBe(formData);
+				expect(new Headers(init?.headers).has("content-type")).toBe(false);
+				return jsonResponse({});
+			},
+		);
+		const client = createClient("key", undefined, { fetch: fetchMock });
+
+		await client.createWorkout(formData as never);
+	});
 });
