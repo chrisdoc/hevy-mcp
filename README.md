@@ -343,6 +343,7 @@ Compatibility note: with MCP SDK v1.29.0, clients using the default must send
 - **Full Vitest Discovery**: `npm test` (builds first; live tests skip when
   `HEVY_API_KEY` is absent)
 - **Changeset Check**: `npm run check:changeset`
+- **Tool Token Cost**: `npm run measure:tokens` ([measurement guide](./docs/token-cost-tracking.md))
 
 For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).
 

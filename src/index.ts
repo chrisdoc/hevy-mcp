@@ -16,12 +16,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerHevyResources } from "./resources/hevy.js";
-import { registerBodyMeasurementTools } from "./tools/body-measurements.js";
-import { registerFolderTools } from "./tools/folders.js";
-import { registerRoutineTools } from "./tools/routines.js";
-import { registerTemplateTools } from "./tools/templates.js";
-import { registerUserTools } from "./tools/user.js";
-import { registerWorkoutTools } from "./tools/workouts.js";
+import { registerHevyTools } from "./tools/register.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { createClient } from "./utils/hevyClient.js";
@@ -279,14 +274,9 @@ function buildServer(apiKey: string) {
 				tracer.startActiveSpan("mcp.tools.register", (toolsSpan) => {
 					try {
 						const counting = createToolCountingServer(server);
-						registerWorkoutTools(counting.server, hevyClient);
-						registerRoutineTools(counting.server, hevyClient);
-						registerTemplateTools(counting.server, hevyClient, {
+						registerHevyTools(counting.server, hevyClient, {
 							logger: clientLogger,
 						});
-						registerFolderTools(counting.server, hevyClient);
-						registerBodyMeasurementTools(counting.server, hevyClient);
-						registerUserTools(counting.server, hevyClient);
 						toolsSpan.setAttribute("mcp.tools.count", counting.getCount());
 					} finally {
 						toolsSpan.end();
