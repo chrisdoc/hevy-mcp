@@ -1,3 +1,13 @@
+## 3.0.0
+
+### Major Changes
+
+- [#617](https://github.com/chrisdoc/hevy-mcp/pull/617) [`0f03660`](https://github.com/chrisdoc/hevy-mcp/commit/0f03660348a5a83a6d0af313b0df773b4d2781ff) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Deprecated CLI API-key arguments were removed; HEVY_API_KEY is now required.
+
+### Patch Changes
+
+- [#624](https://github.com/chrisdoc/hevy-mcp/pull/624) [`f68b258`](https://github.com/chrisdoc/hevy-mcp/commit/f68b258201033b700759c5b0899a0dc2298ebc8d) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Package the Docker image as a non-root standalone bundle without application `node_modules`.
+
 ## 2.0.0
 
 ### Major Changes
