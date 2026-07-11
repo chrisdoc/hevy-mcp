@@ -79,6 +79,12 @@ jobs:
       - name: Run Check
         run: npm run check
 
+      - name: Run nightly diagnostics redaction regression tests
+        if: matrix.node-version == '24.x'
+        run: node --test tests/nightly/diagnostics.test.mjs
+        env:
+          HEVY_API_KEY: ""
+
       - name: Run build
         run: npm run build
         env:

@@ -54,6 +54,9 @@ jobs:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_MCP_COMMAND: node
           HEVY_MCP_ARGS_JSON: '["dist/cli.mjs"]'
+          HEVY_MCP_LAUNCHER: release-source
+          HEVY_MCP_SOURCE_REVISION: ${{ github.sha }}
+          HEVY_MCP_DIAGNOSTICS_PATH: test-results/release-source.json
 
       - name: Create Release PR or Publish
         id: changesets
