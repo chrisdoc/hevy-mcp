@@ -63,6 +63,8 @@ interface RouteContract {
 interface ResponseContract {
 	readonly body: unknown;
 	readonly emptyText?: string;
+	readonly expectedJsonText?: unknown;
+	readonly expectedStructured: Record<string, unknown>;
 }
 
 interface UpstreamFailureContract {
@@ -85,11 +87,165 @@ interface ReadToolContract {
 	readonly upstreamFailure: UpstreamFailureContract;
 }
 
-const workout = createWorkoutFixture();
-const routine = createRoutineFixture();
+const workout = createWorkoutFixture({
+	exercises: [
+		{
+			index: 0,
+			title: "Bench Press",
+			notes: "Pause on the chest",
+			exercise_template_id: "template-1",
+			supersets_id: 7,
+			sets: [
+				{
+					index: 0,
+					type: "normal",
+					weight_kg: 100,
+					reps: 5,
+					distance_meters: null,
+					duration_seconds: null,
+					rpe: 8.5,
+					custom_metric: null,
+				},
+			],
+		},
+	],
+});
+const expectedWorkout = {
+	id: "workout-1",
+	title: "Mock Workout",
+	description: "Upper body session",
+	startTime: "2025-03-27T07:00:00Z",
+	endTime: "2025-03-27T08:00:00Z",
+	createdAt: "2025-03-27T07:00:00Z",
+	updatedAt: "2025-03-27T08:00:00Z",
+	duration: "1h 0m 0s",
+	exercises: [
+		{
+			index: 0,
+			name: "Bench Press",
+			exerciseTemplateId: "template-1",
+			notes: "Pause on the chest",
+			supersetsId: 7,
+			sets: [
+				{
+					index: 0,
+					type: "normal",
+					weight: 100,
+					reps: 5,
+					distance: null,
+					duration: null,
+					rpe: 8.5,
+					customMetric: null,
+				},
+			],
+		},
+	],
+};
+const routine = createRoutineFixture({
+	exercises: [
+		{
+			index: 0,
+			title: "Bench Press",
+			rest_seconds: "120",
+			notes: "Controlled eccentric",
+			exercise_template_id: "template-1",
+			supersets_id: null,
+			sets: [
+				{
+					index: 0,
+					type: "normal",
+					weight_kg: 95,
+					reps: null,
+					rep_range: { start: 6, end: 8 },
+					distance_meters: null,
+					duration_seconds: null,
+					rpe: 8,
+					custom_metric: null,
+				},
+			],
+		},
+	],
+});
+const expectedRoutine = {
+	id: "routine-1",
+	title: "Mock Push Day",
+	folderId: 10,
+	createdAt: "2025-03-26T19:00:00Z",
+	updatedAt: "2025-03-26T19:15:00Z",
+	exercises: [
+		{
+			name: "Bench Press",
+			index: 0,
+			exerciseTemplateId: "template-1",
+			notes: "Controlled eccentric",
+			supersetId: null,
+			restSeconds: "120",
+			sets: [
+				{
+					index: 0,
+					type: "normal",
+					weight: 95,
+					reps: null,
+					repRange: { start: 6, end: 8 },
+					distance: null,
+					duration: null,
+					rpe: 8,
+					customMetric: null,
+				},
+			],
+		},
+	],
+};
 const exerciseTemplate = createExerciseTemplateFixture();
+const expectedExerciseTemplate = {
+	id: "template-1",
+	title: "Bench Press",
+	type: "weight_reps",
+	primaryMuscleGroup: "chest",
+	secondaryMuscleGroups: ["triceps"],
+	isCustom: false,
+};
 const routineFolder = createRoutineFolderFixture();
-const bodyMeasurement = createBodyMeasurementFixture();
+const expectedRoutineFolder = {
+	id: 10,
+	title: "Mock Folder",
+	createdAt: "2025-03-26T09:00:00Z",
+	updatedAt: "2025-03-26T09:00:00Z",
+};
+const bodyMeasurement = createBodyMeasurementFixture({
+	lean_mass_kg: null,
+	neck_cm: 38.2,
+	shoulder_cm: null,
+	chest_cm: 102.4,
+	left_bicep_cm: null,
+	right_bicep_cm: 36.1,
+	waist: 82.7,
+});
+const expectedBodyMeasurement = {
+	date: "2025-03-25",
+	weightKg: 80.5,
+	leanMassKg: null,
+	fatPercent: 19.3,
+	neckCm: 38.2,
+	shoulderCm: null,
+	chestCm: 102.4,
+	leftBicepCm: null,
+	rightBicepCm: 36.1,
+	leftForearmCm: null,
+	rightForearmCm: null,
+	abdomen: null,
+	waist: 82.7,
+	hips: null,
+	leftThigh: null,
+	rightThigh: null,
+	leftCalf: null,
+	rightCalf: null,
+};
+const expectedUser = {
+	id: "user-1",
+	name: "Mock User",
+	url: "https://hevy.com/user/mock-user",
+};
 const defaultSince = "1970-01-01T00:00:00Z";
 const historyStart = "2025-01-01T00:00:00Z";
 const historyEnd = "2025-03-31T23:59:59Z";
@@ -108,10 +264,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		},
 		validArguments: { page: "2", pageSize: "10" },
 		invalidArguments: { page: 0 },
-		success: { body: createWorkoutsResponse([workout], { page: 2 }) },
+		success: {
+			body: createWorkoutsResponse([workout], { page: 2 }),
+			expectedStructured: { workouts: [expectedWorkout] },
+			expectedJsonText: [expectedWorkout],
+		},
 		empty: {
 			body: createWorkoutsResponse([], { page: 2 }),
 			emptyText: "No workouts found for the specified parameters",
+			expectedStructured: { workouts: [] },
 		},
 		upstreamFailure: {
 			status: 400,
@@ -127,10 +288,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/workouts/workout-1" },
 		validArguments: { workoutId: "workout-1" },
 		invalidArguments: { workoutId: "" },
-		success: { body: workout },
+		success: {
+			body: workout,
+			expectedStructured: { workout: expectedWorkout },
+			expectedJsonText: expectedWorkout,
+		},
 		empty: {
 			body: null,
 			emptyText: "Workout with ID workout-1 not found",
+			expectedStructured: { workout: null },
 		},
 		upstreamFailure: {
 			status: 401,
@@ -147,8 +313,16 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/workouts/count" },
 		validArguments: {},
 		invalidArguments: null,
-		success: { body: createWorkoutCountResponse(42) },
-		empty: { body: createWorkoutCountResponse(0) },
+		success: {
+			body: createWorkoutCountResponse(42),
+			expectedStructured: { count: 42 },
+			expectedJsonText: { count: 42 },
+		},
+		empty: {
+			body: createWorkoutCountResponse(0),
+			expectedStructured: { count: 0 },
+			expectedJsonText: { count: 0 },
+		},
 		upstreamFailure: {
 			status: 403,
 			responseBody: { error: "redacted" },
@@ -173,10 +347,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 				page_count: 1,
 				events: [{ type: "updated", workout }],
 			},
+			expectedStructured: {
+				events: [{ type: "updated", workout: expectedWorkout }],
+			},
+			expectedJsonText: [{ type: "updated", workout: expectedWorkout }],
 		},
 		empty: {
 			body: { page: 1, page_count: 1, events: [] },
 			emptyText: `No workout events found for the specified parameters since ${defaultSince}`,
+			expectedStructured: { events: [] },
 		},
 		upstreamFailure: {
 			status: 404,
@@ -193,10 +372,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/routines", query: { page: 1, pageSize: 5 } },
 		validArguments: {},
 		invalidArguments: { pageSize: 11 },
-		success: { body: createRoutinesResponse([routine]) },
+		success: {
+			body: createRoutinesResponse([routine]),
+			expectedStructured: { routines: [expectedRoutine] },
+			expectedJsonText: [expectedRoutine],
+		},
 		empty: {
 			body: createRoutinesResponse([]),
 			emptyText: "No routines found for the specified parameters",
+			expectedStructured: { routines: [] },
 		},
 		upstreamFailure: {
 			status: 429,
@@ -212,14 +396,19 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/routines/routine-1" },
 		validArguments: { routineId: "routine-1" },
 		invalidArguments: { routineId: "" },
-		success: { body: { routine } },
+		success: {
+			body: { routine },
+			expectedStructured: { routine: expectedRoutine },
+			expectedJsonText: expectedRoutine,
+		},
 		empty: {
 			body: {},
 			emptyText: "Routine with ID routine-1 not found",
+			expectedStructured: { routine: null },
 		},
 		upstreamFailure: {
-			status: 500,
-			responseBody: { error: "server failure" },
+			status: 408,
+			responseBody: { error: "request timeout" },
 			attempts: 4,
 			expectedText: retryExhaustedText("get-routine"),
 		},
@@ -236,10 +425,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		invalidArguments: { pageSize: 101 },
 		success: {
 			body: createExerciseTemplatesResponse([exerciseTemplate], { page: 3 }),
+			expectedStructured: {
+				exerciseTemplates: [expectedExerciseTemplate],
+			},
+			expectedJsonText: [expectedExerciseTemplate],
 		},
 		empty: {
 			body: createExerciseTemplatesResponse([], { page: 3 }),
 			emptyText: "No exercise templates found for the specified parameters",
+			expectedStructured: { exerciseTemplates: [] },
 		},
 		upstreamFailure: {
 			status: 502,
@@ -255,10 +449,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/exercise_templates/template-1" },
 		validArguments: { exerciseTemplateId: "template-1" },
 		invalidArguments: { exerciseTemplateId: "" },
-		success: { body: exerciseTemplate },
+		success: {
+			body: exerciseTemplate,
+			expectedStructured: { exerciseTemplate: expectedExerciseTemplate },
+			expectedJsonText: expectedExerciseTemplate,
+		},
 		empty: {
 			body: null,
 			emptyText: "Exercise template with ID template-1 not found",
+			expectedStructured: { exerciseTemplate: null },
 		},
 		upstreamFailure: {
 			status: 503,
@@ -299,10 +498,37 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 					},
 				],
 			},
+			expectedStructured: {
+				exerciseHistory: [
+					{
+						workoutId: "workout-1",
+						workoutTitle: "Mock Workout",
+						workoutStartTime: "2025-03-27T07:00:00Z",
+						workoutEndTime: "2025-03-27T08:00:00Z",
+						exerciseTemplateId: "template-1",
+						weight: 100,
+						reps: 5,
+						setType: "normal",
+					},
+				],
+			},
+			expectedJsonText: [
+				{
+					workoutId: "workout-1",
+					workoutTitle: "Mock Workout",
+					workoutStartTime: "2025-03-27T07:00:00Z",
+					workoutEndTime: "2025-03-27T08:00:00Z",
+					exerciseTemplateId: "template-1",
+					weight: 100,
+					reps: 5,
+					setType: "normal",
+				},
+			],
 		},
 		empty: {
 			body: { exercise_history: [] },
 			emptyText: "No exercise history found for template template-1",
+			expectedStructured: { exerciseHistory: [] },
 		},
 		upstreamFailure: {
 			networkError: "network failure",
@@ -324,13 +550,20 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 			refresh: true,
 		},
 		invalidArguments: { query: "" },
-		success: { body: createExerciseTemplatesResponse([exerciseTemplate]) },
+		success: {
+			body: createExerciseTemplatesResponse([exerciseTemplate]),
+			expectedStructured: {
+				exerciseTemplates: [expectedExerciseTemplate],
+			},
+			expectedJsonText: [expectedExerciseTemplate],
+		},
 		empty: {
 			body: createExerciseTemplatesResponse([
 				createExerciseTemplateFixture({ id: "template-2", title: "Squat" }),
 			]),
 			emptyText:
 				'No exercise templates found matching "bench" with primary muscle group "chest"',
+			expectedStructured: { exerciseTemplates: [] },
 		},
 		upstreamFailure: {
 			status: 400,
@@ -350,10 +583,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		},
 		validArguments: {},
 		invalidArguments: { page: -1 },
-		success: { body: createRoutineFoldersResponse([routineFolder]) },
+		success: {
+			body: createRoutineFoldersResponse([routineFolder]),
+			expectedStructured: { routineFolders: [expectedRoutineFolder] },
+			expectedJsonText: [expectedRoutineFolder],
+		},
 		empty: {
 			body: createRoutineFoldersResponse([]),
 			emptyText: "No routine folders found for the specified parameters",
+			expectedStructured: { routineFolders: [] },
 		},
 		upstreamFailure: {
 			status: 401,
@@ -370,10 +608,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/routine_folders/10" },
 		validArguments: { folderId: "10" },
 		invalidArguments: { folderId: "" },
-		success: { body: routineFolder },
+		success: {
+			body: routineFolder,
+			expectedStructured: { routineFolder: expectedRoutineFolder },
+			expectedJsonText: expectedRoutineFolder,
+		},
 		empty: {
 			body: null,
 			emptyText: "Routine folder with ID 10 not found",
+			expectedStructured: { routineFolder: null },
 		},
 		upstreamFailure: {
 			status: 403,
@@ -393,10 +636,17 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		},
 		validArguments: {},
 		invalidArguments: { pageSize: 0 },
-		success: { body: createBodyMeasurementsResponse([bodyMeasurement]) },
+		success: {
+			body: createBodyMeasurementsResponse([bodyMeasurement]),
+			expectedStructured: {
+				bodyMeasurements: [expectedBodyMeasurement],
+			},
+			expectedJsonText: [expectedBodyMeasurement],
+		},
 		empty: {
 			body: createBodyMeasurementsResponse([]),
 			emptyText: "No body measurements found for the specified parameters",
+			expectedStructured: { bodyMeasurements: [] },
 		},
 		upstreamFailure: {
 			status: 404,
@@ -413,10 +663,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/body_measurements/2025-03-25" },
 		validArguments: { date: "2025-03-25" },
 		invalidArguments: { date: "03/25/2025" },
-		success: { body: bodyMeasurement },
+		success: {
+			body: bodyMeasurement,
+			expectedStructured: { bodyMeasurement: expectedBodyMeasurement },
+			expectedJsonText: expectedBodyMeasurement,
+		},
 		empty: {
 			body: null,
 			emptyText: "No body measurement found for date 2025-03-25",
+			expectedStructured: { bodyMeasurement: null },
 		},
 		upstreamFailure: {
 			status: 422,
@@ -433,10 +688,15 @@ const READ_TOOL_CONTRACTS: readonly ReadToolContract[] = [
 		route: { path: "/v1/user/info" },
 		validArguments: {},
 		invalidArguments: null,
-		success: { body: createUserInfoResponse() },
+		success: {
+			body: createUserInfoResponse(),
+			expectedStructured: { user: expectedUser },
+			expectedJsonText: expectedUser,
+		},
 		empty: {
 			body: {},
 			emptyText: "No user info found for the authenticated user",
+			expectedStructured: { user: null },
 		},
 		upstreamFailure: {
 			status: 504,
@@ -523,7 +783,7 @@ function mockFailure(contract: ReadToolContract): {
 	return { requestCount: () => requests };
 }
 
-function validateStructuredContent(
+function parseStructuredContent(
 	contract: ReadToolContract,
 	structuredContent: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
@@ -533,21 +793,18 @@ function validateStructuredContent(
 
 function expectSuccessfulJsonParity(
 	contract: ReadToolContract,
+	response: ResponseContract,
 	result: Awaited<ReturnType<typeof callTool>>,
 ): void {
-	const structured = validateStructuredContent(
-		contract,
-		result.structuredContent,
-	);
+	const structured = parseStructuredContent(contract, result.structuredContent);
 	const parsedText = parseToolText<unknown>(result, contract.name);
-	const expectedTextPayload =
-		contract.outputKey === "count"
-			? structured
-			: structured[contract.outputKey];
 
 	expect(result.isError, contract.name).toBeFalsy();
+	expect(structured, `${contract.name} exact structuredContent`).toEqual(
+		response.expectedStructured,
+	);
 	expect(parsedText, `${contract.name} JSON text parity`).toEqual(
-		expectedTextPayload,
+		response.expectedJsonText,
 	);
 }
 
@@ -569,6 +826,7 @@ describe("deterministic structured-read MCP contracts", () => {
 	});
 
 	afterEach(async () => {
+		vi.useRealTimers();
 		vi.restoreAllMocks();
 		const harnessToClose = harness;
 		harness = null;
@@ -579,12 +837,28 @@ describe("deterministic structured-read MCP contracts", () => {
 		restoreExternalNetworking?.();
 	});
 
-	it("tracks exactly every structured read in the production inventory", () => {
+	it("tracks exactly every runtime-registered structured read-only tool", async () => {
+		if (!harness) throw new Error("Harness not initialized");
+		const { tools } = await harness.client.listTools();
+		const registeredReads = tools
+			.filter(
+				(tool) =>
+					tool.annotations?.readOnlyHint === true &&
+					tool.outputSchema !== undefined,
+			)
+			.map(({ name }) => name);
+
+		expect(READ_TOOL_CONTRACTS).toHaveLength(15);
+		expect(sorted(READ_TOOL_CONTRACTS.map(({ name }) => name))).toEqual(
+			sorted(registeredReads),
+		);
+	});
+
+	it("keeps the shared structured-read inventory in sync", () => {
 		const inventoriedReads = MCP_TOOL_CONTRACTS.filter(
 			({ kind, structuredOutput }) => kind === "read" && structuredOutput,
 		).map(({ name }) => name);
 
-		expect(READ_TOOL_CONTRACTS).toHaveLength(15);
 		expect(sorted(READ_TOOL_CONTRACTS.map(({ name }) => name))).toEqual(
 			sorted(inventoriedReads),
 		);
@@ -608,7 +882,7 @@ describe("deterministic structured-read MCP contracts", () => {
 					{ requireStructuredContentForReadTools: true },
 				);
 
-				expectSuccessfulJsonParity(contract, result);
+				expectSuccessfulJsonParity(contract, contract.success, result);
 				expect(requests.requestCount()).toBe(1);
 			});
 
@@ -623,12 +897,19 @@ describe("deterministic structured-read MCP contracts", () => {
 					{ requireStructuredContentForReadTools: true },
 				);
 
-				validateStructuredContent(contract, result.structuredContent);
+				const structured = parseStructuredContent(
+					contract,
+					result.structuredContent,
+				);
 				expect(result.isError, contract.name).toBeFalsy();
+				expect(
+					structured,
+					`${contract.name} exact empty structuredContent`,
+				).toEqual(contract.empty.expectedStructured);
 				if (contract.empty.emptyText !== undefined) {
 					expect(result.text).toBe(contract.empty.emptyText);
 				} else {
-					expectSuccessfulJsonParity(contract, result);
+					expectSuccessfulJsonParity(contract, contract.empty, result);
 				}
 				expect(requests.requestCount()).toBe(1);
 			});
@@ -655,10 +936,33 @@ describe("deterministic structured-read MCP contracts", () => {
 				if (!harness) throw new Error("Harness not initialized");
 				vi.spyOn(console, "error").mockImplementation(() => undefined);
 				const requests = mockFailure(contract);
+				const usesRetries = contract.upstreamFailure.attempts === 4;
 
-				const result = await callTool(harness.client, contract.name, {
-					...contract.validArguments,
-				});
+				let result: Awaited<ReturnType<typeof callTool>>;
+				try {
+					const outcomePromise = callTool(harness.client, contract.name, {
+						...contract.validArguments,
+					}).then(
+						(value) => ({ value }),
+						(error: unknown) => ({ error }),
+					);
+					if (usesRetries) {
+						while (requests.requestCount() === 0) {
+							await new Promise<void>((resolve) => setImmediate(resolve));
+						}
+						vi.useFakeTimers({ toFake: ["setTimeout"] });
+						while (
+							requests.requestCount() < contract.upstreamFailure.attempts
+						) {
+							await vi.advanceTimersToNextTimerAsync();
+						}
+					}
+					const outcome = await outcomePromise;
+					if ("error" in outcome) throw outcome.error;
+					result = outcome.value;
+				} finally {
+					if (usesRetries) vi.useRealTimers();
+				}
 
 				expect(result.isError).toBe(true);
 				expect(result.text).toBe(contract.upstreamFailure.expectedText);
