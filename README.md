@@ -73,25 +73,6 @@ HEVY_API_KEY=your_hevy_api_key_here npx -y hevy-mcp
 HEVY_API_KEY=your_hevy_api_key_here bunx hevy-mcp@latest
 ```
 
-### Prerelease channel
-
-Install `hevy-mcp@beta` to opt into changes merged to `main` that have not yet
-reached a stable release:
-
-```bash
-npm install hevy-mcp@beta
-
-# npx launcher
-npx -y hevy-mcp@beta
-
-# bun launcher
-bunx hevy-mcp@beta
-```
-
-Beta builds may be less stable and can change before their stable release.
-`npm install hevy-mcp@latest` remains the stable channel. To switch back from
-beta, install `hevy-mcp@latest` again.
-
 ### Manual Installation
 
 ```bash
