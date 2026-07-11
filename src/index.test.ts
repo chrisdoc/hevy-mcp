@@ -342,6 +342,22 @@ describe("Server entry", () => {
 		},
 	);
 
+	it("continues after a generic startup validation failure", async () => {
+		testDoubles.getUserInfo.mockRejectedValueOnce(
+			new Error("network unavailable"),
+		);
+		const errorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+
+		await createServer({ config: { apiKey: "test-key" } });
+
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
+		);
+		errorSpy.mockRestore();
+	});
+
 	describe("runServer", () => {
 		it.each([
 			["--version", undefined],
