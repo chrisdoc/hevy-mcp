@@ -24,9 +24,9 @@ export const postV1RoutineFolders400Schema = z.object({
 });
 
 export const postV1RoutineFoldersMutationRequestSchema = z.lazy(
-  () => postRoutineFolderRequestBodySchema,
+  () => postRoutineFolderRequestBodySchema
 );
 
 export const postV1RoutineFoldersMutationResponseSchema = z.lazy(
-  () => postV1RoutineFolders201Schema,
+  () => postV1RoutineFolders201Schema
 );

@@ -31,7 +31,7 @@ export async function postV1ExerciseTemplates(
   headers: PostV1ExerciseTemplatesHeaderParams,
   config: Partial<RequestConfig<PostV1ExerciseTemplatesMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

@@ -11,16 +11,22 @@ import { z } from "zod/v4";
 export const createCustomExerciseRequestBodySchema = z.object({
   exercise: z.object({
     title: z.optional(
-      z.string().describe("The title of the exercise template."),
+      z.string().describe("The title of the exercise template.")
     ),
     get exercise_type() {
       return customExerciseTypeSchema.optional();
     },
     get equipment_category() {
-      return equipmentCategorySchema.and(z.any()).optional();
+      return equipmentCategorySchema
+        .and(z.any())
+        .describe("The equipment category of the exercise template.")
+        .optional();
     },
     get muscle_group() {
-      return muscleGroupSchema.and(z.any()).optional();
+      return muscleGroupSchema
+        .and(z.any())
+        .describe("The muscle group of the exercise template.")
+        .optional();
     },
     get other_muscles() {
       return z

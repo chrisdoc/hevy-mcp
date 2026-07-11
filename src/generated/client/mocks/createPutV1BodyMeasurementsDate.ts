@@ -15,7 +15,7 @@ import { createPutBodyMeasurement } from "./createPutBodyMeasurement.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPutV1BodyMeasurementsDatePathParams(
-  data?: Partial<PutV1BodyMeasurementsDatePathParams>,
+  data?: Partial<PutV1BodyMeasurementsDatePathParams>
 ): PutV1BodyMeasurementsDatePathParams {
   return {
     ...{ date: faker.date.anytime().toISOString().substring(0, 10) },
@@ -24,7 +24,7 @@ export function createPutV1BodyMeasurementsDatePathParams(
 }
 
 export function createPutV1BodyMeasurementsDateHeaderParams(
-  data?: Partial<PutV1BodyMeasurementsDateHeaderParams>,
+  data?: Partial<PutV1BodyMeasurementsDateHeaderParams>
 ): PutV1BodyMeasurementsDateHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -43,7 +43,7 @@ export function createPutV1BodyMeasurementsDate200() {
  * @description Invalid request body
  */
 export function createPutV1BodyMeasurementsDate400(
-  data?: Partial<PutV1BodyMeasurementsDate400>,
+  data?: Partial<PutV1BodyMeasurementsDate400>
 ): PutV1BodyMeasurementsDate400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -55,7 +55,7 @@ export function createPutV1BodyMeasurementsDate400(
  * @description No measurement found for the given date
  */
 export function createPutV1BodyMeasurementsDate404(
-  data?: Partial<PutV1BodyMeasurementsDate404>,
+  data?: Partial<PutV1BodyMeasurementsDate404>
 ): PutV1BodyMeasurementsDate404 {
   return {
     ...{ error: faker.string.alpha() },
@@ -64,13 +64,13 @@ export function createPutV1BodyMeasurementsDate404(
 }
 
 export function createPutV1BodyMeasurementsDateMutationRequest(
-  data?: Partial<PutV1BodyMeasurementsDateMutationRequest>,
+  data?: Partial<PutV1BodyMeasurementsDateMutationRequest>
 ): PutV1BodyMeasurementsDateMutationRequest {
   return createPutBodyMeasurement(data);
 }
 
 export function createPutV1BodyMeasurementsDateMutationResponse(
-  data?: Partial<PutV1BodyMeasurementsDateMutationResponse>,
+  data?: Partial<PutV1BodyMeasurementsDateMutationResponse>
 ): PutV1BodyMeasurementsDateMutationResponse {
   return (
     data ||

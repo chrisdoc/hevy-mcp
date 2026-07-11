@@ -45,5 +45,5 @@ export const getV1BodyMeasurements400Schema = z.any();
 export const getV1BodyMeasurements404Schema = z.any();
 
 export const getV1BodyMeasurementsQueryResponseSchema = z.lazy(
-  () => getV1BodyMeasurements200Schema,
+  () => getV1BodyMeasurements200Schema
 );

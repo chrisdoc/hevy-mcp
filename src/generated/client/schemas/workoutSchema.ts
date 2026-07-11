@@ -9,30 +9,30 @@ export const workoutSchema = z.object({
   id: z.optional(z.string().describe("The workout ID.")),
   title: z.optional(z.string().describe("The workout title.")),
   routine_id: z.optional(
-    z.string().describe("The ID of the routine that this workout belongs to."),
+    z.string().describe("The ID of the routine that this workout belongs to.")
   ),
   description: z.optional(z.string().describe("The workout description.")),
   start_time: z.optional(
     z
       .string()
       .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have started.",
-      ),
+        "ISO 8601 timestamp of when the workout was recorded to have started."
+      )
   ),
   end_time: z.optional(
     z
       .string()
       .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have ended.",
-      ),
+        "ISO 8601 timestamp of when the workout was recorded to have ended."
+      )
   ),
   updated_at: z.optional(
     z
       .string()
-      .describe("ISO 8601 timestamp of when the workout was last updated."),
+      .describe("ISO 8601 timestamp of when the workout was last updated.")
   ),
   created_at: z.optional(
-    z.string().describe("ISO 8601 timestamp of when the workout was created."),
+    z.string().describe("ISO 8601 timestamp of when the workout was created.")
   ),
   exercises: z.optional(
     z.array(
@@ -41,8 +41,8 @@ export const workoutSchema = z.object({
           z
             .number()
             .describe(
-              "Index indicating the order of the exercise in the workout.",
-            ),
+              "Index indicating the order of the exercise in the workout."
+            )
         ),
         title: z.optional(z.string().describe("Title of the exercise")),
         notes: z.optional(z.string().describe("Notes on the exercise")),
@@ -50,13 +50,13 @@ export const workoutSchema = z.object({
           z
             .string()
             .describe(
-              "The id of the exercise template. This can be used to fetch the exercise template.",
-            ),
+              "The id of the exercise template. This can be used to fetch the exercise template."
+            )
         ),
         supersets_id: z
           .number()
           .describe(
-            "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
+            "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset."
           )
           .nullish(),
         sets: z.optional(
@@ -66,15 +66,15 @@ export const workoutSchema = z.object({
                 z
                   .number()
                   .describe(
-                    "Index indicating the order of the set in the workout.",
-                  ),
+                    "Index indicating the order of the set in the workout."
+                  )
               ),
               type: z.optional(
                 z
                   .string()
                   .describe(
-                    "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
-                  ),
+                    "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'"
+                  )
               ),
               weight_kg: z
                 .number()
@@ -95,19 +95,19 @@ export const workoutSchema = z.object({
               rpe: z
                 .number()
                 .describe(
-                  "RPE (Relative perceived exertion) value logged for the set",
+                  "RPE (Relative perceived exertion) value logged for the set"
                 )
                 .nullish(),
               custom_metric: z
                 .number()
                 .describe(
-                  "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)",
+                  "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)"
                 )
                 .nullish(),
-            }),
-          ),
+            })
+          )
         ),
-      }),
-    ),
+      })
+    )
   ),
 });

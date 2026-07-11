@@ -1,4 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerBodyMeasurementTools } from "./body-measurements.js";
@@ -9,7 +11,9 @@ import { registerUserTools } from "./user.js";
 import { registerWorkoutTools } from "./workouts.js";
 
 export interface RegisterHevyToolsOptions {
+	catalog?: ExerciseTemplateCatalog;
 	logger?: McpClientLogger;
+	wrapHandler?: typeof withErrorHandling;
 }
 
 /** Register every Hevy tool in its production ordering. */
@@ -18,10 +22,15 @@ export function registerHevyTools(
 	hevyClient: HevyClient | null,
 	options: RegisterHevyToolsOptions = {},
 ) {
-	registerWorkoutTools(server, hevyClient);
-	registerRoutineTools(server, hevyClient);
-	registerTemplateTools(server, hevyClient, { logger: options.logger });
-	registerFolderTools(server, hevyClient);
-	registerBodyMeasurementTools(server, hevyClient);
-	registerUserTools(server, hevyClient);
+	const wrapHandler = options.wrapHandler ?? withErrorHandling;
+	registerWorkoutTools(server, hevyClient, wrapHandler);
+	registerRoutineTools(server, hevyClient, wrapHandler);
+	registerTemplateTools(server, hevyClient, {
+		catalog: options.catalog,
+		logger: options.logger,
+		wrapHandler,
+	});
+	registerFolderTools(server, hevyClient, wrapHandler);
+	registerBodyMeasurementTools(server, hevyClient, wrapHandler);
+	registerUserTools(server, hevyClient, wrapHandler);
 }

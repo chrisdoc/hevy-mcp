@@ -28,7 +28,7 @@ function getGetV1RoutinesUrl() {
 export async function getV1Routines(
   headers: GetV1RoutinesHeaderParams,
   params?: GetV1RoutinesQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

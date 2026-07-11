@@ -11,7 +11,7 @@ import type {
 import { faker } from "@faker-js/faker";
 
 export function createGetV1WorkoutsCountHeaderParams(
-  data?: Partial<GetV1WorkoutsCountHeaderParams>,
+  data?: Partial<GetV1WorkoutsCountHeaderParams>
 ): GetV1WorkoutsCountHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -23,7 +23,7 @@ export function createGetV1WorkoutsCountHeaderParams(
  * @description The total count of workouts
  */
 export function createGetV1WorkoutsCount200(
-  data?: Partial<GetV1WorkoutsCount200>,
+  data?: Partial<GetV1WorkoutsCount200>
 ): GetV1WorkoutsCount200 {
   return {
     ...{ workout_count: faker.number.int() },
@@ -32,7 +32,7 @@ export function createGetV1WorkoutsCount200(
 }
 
 export function createGetV1WorkoutsCountQueryResponse(
-  data?: Partial<GetV1WorkoutsCountQueryResponse>,
+  data?: Partial<GetV1WorkoutsCountQueryResponse>
 ): GetV1WorkoutsCountQueryResponse {
   return (
     data || faker.helpers.arrayElement<any>([createGetV1WorkoutsCount200()])

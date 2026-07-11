@@ -15,7 +15,7 @@ import { createRoutineFolder } from "./createRoutineFolder.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPostV1RoutineFoldersHeaderParams(
-  data?: Partial<PostV1RoutineFoldersHeaderParams>,
+  data?: Partial<PostV1RoutineFoldersHeaderParams>
 ): PostV1RoutineFoldersHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -27,7 +27,7 @@ export function createPostV1RoutineFoldersHeaderParams(
  * @description The routine folder was successfully created
  */
 export function createPostV1RoutineFolders201(
-  data?: Partial<PostV1RoutineFolders201>,
+  data?: Partial<PostV1RoutineFolders201>
 ): PostV1RoutineFolders201 {
   return createRoutineFolder(data);
 }
@@ -36,7 +36,7 @@ export function createPostV1RoutineFolders201(
  * @description Invalid request body
  */
 export function createPostV1RoutineFolders400(
-  data?: Partial<PostV1RoutineFolders400>,
+  data?: Partial<PostV1RoutineFolders400>
 ): PostV1RoutineFolders400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -45,13 +45,13 @@ export function createPostV1RoutineFolders400(
 }
 
 export function createPostV1RoutineFoldersMutationRequest(
-  data?: Partial<PostV1RoutineFoldersMutationRequest>,
+  data?: Partial<PostV1RoutineFoldersMutationRequest>
 ): PostV1RoutineFoldersMutationRequest {
   return createPostRoutineFolderRequestBody(data);
 }
 
 export function createPostV1RoutineFoldersMutationResponse(
-  data?: Partial<PostV1RoutineFoldersMutationResponse>,
+  data?: Partial<PostV1RoutineFoldersMutationResponse>
 ): PostV1RoutineFoldersMutationResponse {
   return (
     data || faker.helpers.arrayElement<any>([createPostV1RoutineFolders201()])

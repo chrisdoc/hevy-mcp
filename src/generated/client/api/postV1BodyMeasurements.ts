@@ -31,7 +31,7 @@ export async function postV1BodyMeasurements(
   headers: PostV1BodyMeasurementsHeaderParams,
   config: Partial<RequestConfig<PostV1BodyMeasurementsMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

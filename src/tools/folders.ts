@@ -7,7 +7,7 @@ import type {
 	PostV1RoutineFolders201,
 	RoutineFolder,
 } from "../generated/client/types/index.js";
-import { withObservability } from "../utils/observability-wrapper.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutineFolder } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
@@ -33,6 +33,7 @@ import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 export function registerFolderTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
+	wrapHandler: typeof withErrorHandling = withErrorHandling,
 ) {
 	// Get routine folders
 	const getRoutineFoldersSchema = {
@@ -58,7 +59,7 @@ export function registerFolderTools(
 			outputSchema: routineFoldersOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine Folders"),
 		},
-		withObservability(async (args: GetRoutineFoldersParams) => {
+		wrapHandler(async (args: GetRoutineFoldersParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1RoutineFolders200 = await client.getRoutineFolders({
@@ -106,7 +107,7 @@ export function registerFolderTools(
 			outputSchema: routineFolderOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine Folder"),
 		},
-		withObservability(async (args: GetRoutineFolderParams) => {
+		wrapHandler(async (args: GetRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { folderId } = args;
 			const data: GetV1RoutineFoldersFolderid200 =
@@ -144,7 +145,7 @@ export function registerFolderTools(
 		}),
 		createRoutineFolderSchema,
 		createAnnotations("Create Routine Folder"),
-		withObservability(async (args: CreateRoutineFolderParams) => {
+		wrapHandler(async (args: CreateRoutineFolderParams) => {
 			const client = requireClient(hevyClient);
 			const { name } = args;
 			const data: PostV1RoutineFolders201 = await client.createRoutineFolder({

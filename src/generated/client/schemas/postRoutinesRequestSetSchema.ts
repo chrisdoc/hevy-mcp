@@ -9,7 +9,7 @@ export const postRoutinesRequestSetSchema = z.object({
   type: z.optional(
     z
       .enum(["warmup", "normal", "failure", "dropset"])
-      .describe("The type of the set."),
+      .describe("The type of the set.")
   ),
   weight_kg: z.number().describe("The weight in kilograms.").nullish(),
   reps: z.int().describe("The number of repetitions.").nullish(),
@@ -18,13 +18,13 @@ export const postRoutinesRequestSetSchema = z.object({
   custom_metric: z
     .number()
     .describe(
-      "A custom metric for the set. Currently used for steps and floors.",
+      "A custom metric for the set. Currently used for steps and floors."
     )
     .nullish(),
   rep_range: z
     .object({
       start: z.optional(
-        z.number().describe("Starting rep count for the range"),
+        z.number().describe("Starting rep count for the range")
       ),
       end: z.optional(z.number().describe("Ending rep count for the range")),
     })

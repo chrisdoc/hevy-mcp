@@ -13,15 +13,15 @@ export const postRoutinesRequestBodySchema = z.object({
       folder_id: z
         .number()
         .describe(
-          'The folder id the routine should be added to. Pass null to insert the routine into default "My Routines" folder',
+          'The folder id the routine should be added to. Pass null to insert the routine into default "My Routines" folder'
         )
         .nullish(),
       notes: z.optional(
-        z.string().describe("Additional notes for the routine."),
+        z.string().describe("Additional notes for the routine.")
       ),
       get exercises() {
         return z.array(postRoutinesRequestExerciseSchema).optional();
       },
-    }),
+    })
   ),
 });

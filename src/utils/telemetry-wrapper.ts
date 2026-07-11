@@ -3,6 +3,7 @@ import { debugLog, isDebugEnabled, redactToolArgs } from "./debug.js";
 import { determineErrorType } from "./error-classification.js";
 import { toolDuration, toolErrors, toolInvocations } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 import { getCurrentUserId, tracer } from "./telemetry.js";
 
 /** Whitelist of safe argument keys that can be logged without exposing PII. */
@@ -112,21 +113,24 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 				} catch (error) {
 					isError = true;
 					span.setStatus({ code: SpanStatusCode.ERROR });
-					span.recordException(error as Error);
+					const diagnostic = createSafeErrorDiagnostic(error);
+					span.addEvent("mcp.tool.failure", {
+						"error.category": diagnostic.category,
+						...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+						...(diagnostic.status !== undefined
+							? { "http.status_code": diagnostic.status }
+							: {}),
+						...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
+						...(diagnostic.endpoint
+							? { "hevy.api.endpoint": diagnostic.endpoint }
+							: {}),
+					});
 
 					const errorType = determineErrorType(
 						error,
-						error instanceof Error ? error.message : String(error),
+						`${diagnostic.category} occurred`,
 					);
 					span.setAttribute("error.type", errorType);
-
-					const rawCode =
-						error instanceof Error && "code" in error
-							? (error as { code?: unknown }).code
-							: undefined;
-					if (rawCode !== undefined && rawCode !== null) {
-						span.setAttribute("error.code", String(rawCode as string | number));
-					}
 
 					toolErrors.add(1, {
 						tool_name: context,

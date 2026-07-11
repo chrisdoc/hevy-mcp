@@ -12,18 +12,18 @@ export const exerciseHistoryEntrySchema = z.object({
     z
       .string()
       .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have started.",
-      ),
+        "ISO 8601 timestamp of when the workout was recorded to have started."
+      )
   ),
   workout_end_time: z.optional(
     z
       .string()
       .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have ended.",
-      ),
+        "ISO 8601 timestamp of when the workout was recorded to have ended."
+      )
   ),
   exercise_template_id: z.optional(
-    z.string().describe("The exercise template ID"),
+    z.string().describe("The exercise template ID")
   ),
   weight_kg: z.number().describe("The weight in kilograms").nullish(),
   reps: z.int().describe("The number of repetitions").nullish(),
@@ -32,6 +32,6 @@ export const exerciseHistoryEntrySchema = z.object({
   rpe: z.number().describe("The Rating of Perceived Exertion").nullish(),
   custom_metric: z.number().describe("A custom metric for the set").nullish(),
   set_type: z.optional(
-    z.string().describe("The type of set (warmup, normal, failure, dropset)"),
+    z.string().describe("The type of set (warmup, normal, failure, dropset)")
   ),
 });

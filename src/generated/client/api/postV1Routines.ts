@@ -31,7 +31,7 @@ export async function postV1Routines(
   headers: PostV1RoutinesHeaderParams,
   config: Partial<RequestConfig<PostV1RoutinesMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

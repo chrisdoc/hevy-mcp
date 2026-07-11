@@ -7,7 +7,7 @@ import type { BodyMeasurement } from "../types/BodyMeasurement.ts";
 import { faker } from "@faker-js/faker";
 
 export function createBodyMeasurement(
-  data?: Partial<BodyMeasurement>,
+  data?: Partial<BodyMeasurement>
 ): BodyMeasurement {
   return {
     ...{

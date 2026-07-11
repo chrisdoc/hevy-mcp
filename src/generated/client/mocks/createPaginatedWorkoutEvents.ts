@@ -9,7 +9,7 @@ import { createUpdatedWorkout } from "./createUpdatedWorkout.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPaginatedWorkoutEvents(
-  data?: Partial<PaginatedWorkoutEvents>,
+  data?: Partial<PaginatedWorkoutEvents>
 ): PaginatedWorkoutEvents {
   return {
     ...{
@@ -20,7 +20,7 @@ export function createPaginatedWorkoutEvents(
           faker.helpers.arrayElement<any>([
             createUpdatedWorkout(),
             createDeletedWorkout(),
-          ]),
+          ])
         );
       },
       ...(data || {}),

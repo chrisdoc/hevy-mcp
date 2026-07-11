@@ -13,7 +13,7 @@ import { createExerciseTemplate } from "./createExerciseTemplate.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1ExerciseTemplatesExercisetemplateidPathParams(
-  data?: Partial<GetV1ExerciseTemplatesExercisetemplateidPathParams>,
+  data?: Partial<GetV1ExerciseTemplatesExercisetemplateidPathParams>
 ): GetV1ExerciseTemplatesExercisetemplateidPathParams {
   return {
     ...{ exerciseTemplateId: faker.string.alpha() },
@@ -22,7 +22,7 @@ export function createGetV1ExerciseTemplatesExercisetemplateidPathParams(
 }
 
 export function createGetV1ExerciseTemplatesExercisetemplateidHeaderParams(
-  data?: Partial<GetV1ExerciseTemplatesExercisetemplateidHeaderParams>,
+  data?: Partial<GetV1ExerciseTemplatesExercisetemplateidHeaderParams>
 ): GetV1ExerciseTemplatesExercisetemplateidHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -34,7 +34,7 @@ export function createGetV1ExerciseTemplatesExercisetemplateidHeaderParams(
  * @description Success
  */
 export function createGetV1ExerciseTemplatesExercisetemplateid200(
-  data?: Partial<GetV1ExerciseTemplatesExercisetemplateid200>,
+  data?: Partial<GetV1ExerciseTemplatesExercisetemplateid200>
 ): GetV1ExerciseTemplatesExercisetemplateid200 {
   return createExerciseTemplate(data);
 }
@@ -47,7 +47,7 @@ export function createGetV1ExerciseTemplatesExercisetemplateid404() {
 }
 
 export function createGetV1ExerciseTemplatesExercisetemplateidQueryResponse(
-  data?: Partial<GetV1ExerciseTemplatesExercisetemplateidQueryResponse>,
+  data?: Partial<GetV1ExerciseTemplatesExercisetemplateidQueryResponse>
 ): GetV1ExerciseTemplatesExercisetemplateidQueryResponse {
   return (
     data ||

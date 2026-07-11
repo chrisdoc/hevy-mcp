@@ -28,7 +28,7 @@ function getGetV1RoutineFoldersUrl() {
 export async function getV1RoutineFolders(
   headers: GetV1RoutineFoldersHeaderParams,
   params?: GetV1RoutineFoldersQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

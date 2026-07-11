@@ -17,7 +17,7 @@ import type {
 import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1RoutinesRoutineidUrl(
-  routineId: GetV1RoutinesRoutineidPathParams["routineId"],
+  routineId: GetV1RoutinesRoutineidPathParams["routineId"]
 ) {
   const res = { method: "GET", url: `/v1/routines/${routineId}` as const };
   return res;
@@ -30,7 +30,7 @@ function getGetV1RoutinesRoutineidUrl(
 export async function getV1RoutinesRoutineid(
   routineId: GetV1RoutinesRoutineidPathParams["routineId"],
   headers: GetV1RoutinesRoutineidHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

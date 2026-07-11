@@ -31,9 +31,9 @@ export const postV1Routines403Schema = z.object({
 });
 
 export const postV1RoutinesMutationRequestSchema = z.lazy(
-  () => postRoutinesRequestBodySchema,
+  () => postRoutinesRequestBodySchema
 );
 
 export const postV1RoutinesMutationResponseSchema = z.lazy(
-  () => postV1Routines201Schema,
+  () => postV1Routines201Schema
 );

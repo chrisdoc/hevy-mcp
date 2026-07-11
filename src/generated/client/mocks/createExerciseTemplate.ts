@@ -7,7 +7,7 @@ import type { ExerciseTemplate } from "../types/ExerciseTemplate.ts";
 import { faker } from "@faker-js/faker";
 
 export function createExerciseTemplate(
-  data?: Partial<ExerciseTemplate>,
+  data?: Partial<ExerciseTemplate>
 ): ExerciseTemplate {
   return {
     ...{
@@ -16,7 +16,7 @@ export function createExerciseTemplate(
       type: faker.string.alpha(),
       primary_muscle_group: faker.string.alpha(),
       secondary_muscle_groups: faker.helpers.multiple(() =>
-        faker.string.alpha(),
+        faker.string.alpha()
       ),
       is_custom: faker.datatype.boolean(),
     },

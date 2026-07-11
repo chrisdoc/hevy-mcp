@@ -19,7 +19,7 @@ import type {
 import { fetch } from "../../.kubb/fetch.ts";
 
 function getPutV1RoutinesRoutineidUrl(
-  routineId: PutV1RoutinesRoutineidPathParams["routineId"],
+  routineId: PutV1RoutinesRoutineidPathParams["routineId"]
 ) {
   const res = { method: "PUT", url: `/v1/routines/${routineId}` as const };
   return res;
@@ -35,7 +35,7 @@ export async function putV1RoutinesRoutineid(
   headers: PutV1RoutinesRoutineidHeaderParams,
   config: Partial<RequestConfig<PutV1RoutinesRoutineidMutationRequest>> & {
     client?: Client;
-  } = {},
+  } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

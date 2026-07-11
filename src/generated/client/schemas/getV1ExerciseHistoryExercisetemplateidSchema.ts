@@ -16,15 +16,15 @@ export const getV1ExerciseHistoryExercisetemplateidQueryParamsSchema = z
       z.iso
         .datetime()
         .describe(
-          "Optional start date for filtering exercise history (ISO 8601 format)",
-        ),
+          "Optional start date for filtering exercise history (ISO 8601 format)"
+        )
     ),
     end_date: z.optional(
       z.iso
         .datetime()
         .describe(
-          "Optional end date for filtering exercise history (ISO 8601 format)",
-        ),
+          "Optional end date for filtering exercise history (ISO 8601 format)"
+        )
     ),
   })
   .optional();
@@ -49,5 +49,5 @@ export const getV1ExerciseHistoryExercisetemplateid200Schema = z.object({
 export const getV1ExerciseHistoryExercisetemplateid400Schema = z.any();
 
 export const getV1ExerciseHistoryExercisetemplateidQueryResponseSchema = z.lazy(
-  () => getV1ExerciseHistoryExercisetemplateid200Schema,
+  () => getV1ExerciseHistoryExercisetemplateid200Schema
 );
