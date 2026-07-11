@@ -79,6 +79,35 @@ function parseResource(
 	};
 }
 
+async function cleanupFreshCatalogTestState(
+	close: () => Promise<void>,
+	resetCatalog: () => void,
+) {
+	let closeFailed = false;
+	let closeError: unknown;
+	let resetFailed = false;
+	let resetError: unknown;
+
+	try {
+		await close();
+	} catch (error) {
+		closeFailed = true;
+		closeError = error;
+	} finally {
+		try {
+			resetCatalog();
+		} catch (error) {
+			resetFailed = true;
+			resetError = error;
+		} finally {
+			vi.useRealTimers();
+		}
+	}
+
+	if (closeFailed) throw closeError;
+	if (resetFailed) throw resetError;
+}
+
 describe("MCP prompt and resource contracts", () => {
 	let restoreExternalNetworking: (() => void) | undefined;
 
@@ -385,53 +414,56 @@ describe("MCP prompt and resource contracts", () => {
 
 	it("refreshes the shared template catalog exactly at its five-minute TTL", async () => {
 		const initialTime = Date.UTC(2026, 6, 11, 7, 0, 0);
-		vi.useFakeTimers({ toFake: ["Date"] });
-		vi.setSystemTime(initialTime);
-		vi.resetModules();
-
-		const [templatesModule, resourcesModule, catalogModule] = await Promise.all(
-			[
-				import("../../../../src/tools/templates.js"),
-				import("../../../../src/resources/hevy.js"),
-				import("../../../../src/utils/exercise-template-catalog.js"),
-			],
-		);
-		const registerTtlSurface = composeMockedComponentRegistration(
-			templatesModule.registerTemplateTools,
-			resourcesModule.registerHevyResources,
-		);
-		const harness = await createMockedMcpHarness({
-			name: "shared-template-cache-ttl-contract",
-			register: registerTtlSurface,
-		});
-		let initialRequests = 0;
-		let refreshRequests = 0;
-		const initialTemplate = createExerciseTemplateFixture({
-			id: "ttl-initial-template",
-			title: "Initial TTL Press",
-		});
-		const refreshedTemplate = createExerciseTemplateFixture({
-			id: "ttl-refreshed-template",
-			title: "Refetched TTL Press",
-		});
-		const initialScope = createMockedApiScope()
-			.get("/v1/exercise_templates")
-			.query({ page: 1, pageSize: 100 })
-			.once()
-			.reply(() => {
-				initialRequests++;
-				return [200, createExerciseTemplatesResponse([initialTemplate])];
-			});
-		const refreshScope = createMockedApiScope()
-			.get("/v1/exercise_templates")
-			.query({ page: 1, pageSize: 100 })
-			.once()
-			.reply(() => {
-				refreshRequests++;
-				return [200, createExerciseTemplatesResponse([refreshedTemplate])];
-			});
+		let harness: Awaited<ReturnType<typeof createMockedMcpHarness>> | undefined;
+		let resetCatalog = () => {};
 
 		try {
+			vi.useFakeTimers({ toFake: ["Date"] });
+			vi.setSystemTime(initialTime);
+			vi.resetModules();
+
+			const [templatesModule, resourcesModule, catalogModule] =
+				await Promise.all([
+					import("../../../../src/tools/templates.js"),
+					import("../../../../src/resources/hevy.js"),
+					import("../../../../src/utils/exercise-template-catalog.js"),
+				]);
+			resetCatalog = catalogModule.resetExerciseTemplateCatalogCache;
+			const registerTtlSurface = composeMockedComponentRegistration(
+				templatesModule.registerTemplateTools,
+				resourcesModule.registerHevyResources,
+			);
+			harness = await createMockedMcpHarness({
+				name: "shared-template-cache-ttl-contract",
+				register: registerTtlSurface,
+			});
+			let initialRequests = 0;
+			let refreshRequests = 0;
+			const initialTemplate = createExerciseTemplateFixture({
+				id: "ttl-initial-template",
+				title: "Initial TTL Press",
+			});
+			const refreshedTemplate = createExerciseTemplateFixture({
+				id: "ttl-refreshed-template",
+				title: "Refetched TTL Press",
+			});
+			const initialScope = createMockedApiScope()
+				.get("/v1/exercise_templates")
+				.query({ page: 1, pageSize: 100 })
+				.once()
+				.reply(() => {
+					initialRequests++;
+					return [200, createExerciseTemplatesResponse([initialTemplate])];
+				});
+			const refreshScope = createMockedApiScope()
+				.get("/v1/exercise_templates")
+				.query({ page: 1, pageSize: 100 })
+				.once()
+				.reply(() => {
+					refreshRequests++;
+					return [200, createExerciseTemplatesResponse([refreshedTemplate])];
+				});
+
 			const initialResult = await harness.client.readResource({
 				uri: "hevy://exercise-templates",
 			});
@@ -474,10 +506,30 @@ describe("MCP prompt and resource contracts", () => {
 				},
 			]);
 		} finally {
-			await harness.close();
-			catalogModule.resetExerciseTemplateCatalogCache();
-			vi.useRealTimers();
+			await cleanupFreshCatalogTestState(
+				async () => harness?.close(),
+				resetCatalog,
+			);
 		}
+	});
+
+	it("restores fresh catalog state when harness cleanup rejects", async () => {
+		const closeError = new Error("harness close failed");
+		const close = vi.fn(async () => {
+			throw closeError;
+		});
+		const resetCatalog = vi.fn();
+
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(Date.UTC(2026, 6, 11, 7, 0, 0));
+		expect(vi.isFakeTimers()).toBe(true);
+
+		await expect(
+			cleanupFreshCatalogTestState(close, resetCatalog),
+		).rejects.toBe(closeError);
+		expect(close).toHaveBeenCalledOnce();
+		expect(resetCatalog).toHaveBeenCalledOnce();
+		expect(vi.isFakeTimers()).toBe(false);
 	});
 
 	it("retries a transient GET resource failure three times before rejecting", async () => {
