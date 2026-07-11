@@ -13,6 +13,7 @@ import {
 	vi,
 } from "vitest";
 import { registerHevyMcp } from "../../../../src/mcp-registration.js";
+import { MCP_TOOL_CONTRACTS } from "../../../support/mcp-contract-inventory.js";
 import {
 	callTool,
 	cleanupMockedMcpTestState,
@@ -496,6 +497,10 @@ function requiredContract(name: MutationContract["name"]): MutationContract {
 	return contract;
 }
 
+function sorted(values: readonly string[]): string[] {
+	return [...values].sort();
+}
+
 function addRequestInterceptor(
 	contract: MutationContract,
 	status: number,
@@ -566,6 +571,35 @@ describe("deterministic mutation MCP contracts", () => {
 	afterAll(() => {
 		restoreExternalNetworking?.();
 		restoreConsoleError?.();
+	});
+
+	it("keeps every mutation case manifest synchronized with production inventory", () => {
+		const inventoryMutations = MCP_TOOL_CONTRACTS.filter(
+			({ kind }) => kind === "mutation",
+		);
+		const inventoryMutationNames = inventoryMutations.map(({ name }) => name);
+		const upstreamErrorNames = [
+			...new Set(upstreamErrorCases.map(({ name }) => name)),
+		];
+
+		expect(sorted(mutationContracts.map(({ name }) => name))).toEqual(
+			sorted(inventoryMutationNames),
+		);
+		expect(sorted(validationCases.map(({ name }) => name))).toEqual(
+			sorted(inventoryMutationNames),
+		);
+		expect(sorted(upstreamErrorNames)).toEqual(sorted(inventoryMutationNames));
+
+		for (const contract of inventoryMutations) {
+			expect(contract.contractCategories, contract.name).toEqual(
+				expect.arrayContaining([
+					"success",
+					"input-validation",
+					"upstream-errors",
+					"non-retry",
+				]),
+			);
+		}
 	});
 
 	it.each(mutationContracts)(
@@ -654,18 +688,21 @@ describe("deterministic mutation MCP contracts", () => {
 		async ({ name, status, response, transportError, expectedText }) => {
 			const contract = requiredContract(name);
 			let requestCount = 0;
+			let unexpectedRetryCount = 0;
 			const scope = createMockedApiScope();
 			scope.on("request", () => requestCount++);
 			const interceptor = scope[contract.method](contract.path, contract.body);
 			if (transportError) {
 				interceptor.replyWithError(transportError);
-				scope[contract.method](contract.path, contract.body)
-					.optionally()
-					.reply(contract.successStatus, contract.successBody);
 			} else {
-				scope.persist();
 				interceptor.reply(status ?? 500, response);
 			}
+			scope[contract.method](contract.path, contract.body)
+				.optionally()
+				.reply(() => {
+					unexpectedRetryCount++;
+					return [contract.successStatus, contract.successBody];
+				});
 			const harness = await createHarness(`${name}-upstream-error`);
 
 			try {
@@ -677,6 +714,7 @@ describe("deterministic mutation MCP contracts", () => {
 
 				expectPublicError(result, expectedText);
 				expect(requestCount).toBe(1);
+				expect(unexpectedRetryCount).toBe(0);
 			} finally {
 				await harness.close();
 			}
