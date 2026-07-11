@@ -10,20 +10,12 @@ const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
 const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
 const EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE = 1;
 
-const exerciseTemplateCatalogCache = new AsyncTtlCache<
-	string,
-	ExerciseTemplate[]
->({
-	ttlMs: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-	maxSize: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
-});
-
 export type ExerciseTemplateCatalogRefreshReason =
 	| "explicit-refresh"
 	| "initial-load"
 	| "ttl-expired";
 
-interface ExerciseTemplateCatalogOptions {
+export interface ExerciseTemplateCatalogOptions {
 	refresh?: boolean;
 	onRefreshed?: (
 		catalog: ExerciseTemplate[],
@@ -69,28 +61,40 @@ async function fetchExerciseTemplateCatalog(
 	return allTemplates;
 }
 
-export function getExerciseTemplateCatalog(
-	hevyClient: HevyClient,
-	options: ExerciseTemplateCatalogOptions = {},
-): Promise<ExerciseTemplate[]> {
-	const reason = options.refresh
-		? "explicit-refresh"
-		: exerciseTemplateCatalogCache.size === 0
-			? "initial-load"
-			: "ttl-expired";
-
-	return exerciseTemplateCatalogCache.getOrFetch(
-		EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
-		async () => {
-			const catalog = await fetchExerciseTemplateCatalog(hevyClient);
-			options.onRefreshed?.(catalog, reason);
-			return catalog;
-		},
-		options,
-	);
+export interface ExerciseTemplateCatalog {
+	get(
+		hevyClient: HevyClient,
+		options?: ExerciseTemplateCatalogOptions,
+	): Promise<ExerciseTemplate[]>;
+	reset(): void;
 }
 
-/** Reset the exercise template catalog cache (exposed for testing). */
-export function resetExerciseTemplateCatalogCache(): void {
-	exerciseTemplateCatalogCache.clear();
+/** Create a cache owned by one MCP server/request lifecycle. */
+export function createExerciseTemplateCatalog(): ExerciseTemplateCatalog {
+	const cache = new AsyncTtlCache<string, ExerciseTemplate[]>({
+		ttlMs: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+		maxSize: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+	});
+
+	return {
+		get(hevyClient, options = {}) {
+			const reason = options.refresh
+				? "explicit-refresh"
+				: cache.size === 0
+					? "initial-load"
+					: "ttl-expired";
+			return cache.getOrFetch(
+				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
+				async () => {
+					const catalog = await fetchExerciseTemplateCatalog(hevyClient);
+					options.onRefreshed?.(catalog, reason);
+					return catalog;
+				},
+				options,
+			);
+		},
+		reset() {
+			cache.clear();
+		},
+	};
 }

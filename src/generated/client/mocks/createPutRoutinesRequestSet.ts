@@ -7,7 +7,7 @@ import type { PutRoutinesRequestSet } from "../types/PutRoutinesRequestSet.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPutRoutinesRequestSet(
-  data?: Partial<PutRoutinesRequestSet>,
+  data?: Partial<PutRoutinesRequestSet>
 ): PutRoutinesRequestSet {
   return {
     ...{

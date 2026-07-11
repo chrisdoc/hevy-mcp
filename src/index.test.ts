@@ -6,6 +6,7 @@ import createServer, {
 	createServer as namedCreateServer,
 	runServer,
 } from "./index.js";
+import { HevyHttpError } from "./utils/hevy-http-error.js";
 import { createClient } from "./utils/hevyClient.js";
 import { Sentry } from "./utils/telemetry.js";
 
@@ -26,11 +27,6 @@ const testDoubles = vi.hoisted(() => ({
 	isConnected: vi.fn(() => false),
 	sendLoggingMessage: vi.fn().mockResolvedValue(undefined),
 	registerPrompt: vi.fn(),
-	registerWorkoutTools: vi.fn(),
-	registerRoutineTools: vi.fn(),
-	registerTemplateTools: vi.fn(),
-	registerFolderTools: vi.fn(),
-	registerBodyMeasurementTools: vi.fn(),
 	tool: vi.fn(),
 	registerTool: vi.fn(),
 	directRegisterToolCalls: 0,
@@ -66,59 +62,8 @@ vi.mock("./utils/hevyClient.js", () => ({
 	})),
 }));
 
-vi.mock("./tools/workouts.js", () => ({
-	registerWorkoutTools: (
-		server: McpServer,
-		client: unknown,
-		options: unknown,
-	) => {
-		testDoubles.registerWorkoutTools(server, client, options);
-		server.tool("mock-workout-tool", {}, vi.fn());
-	},
-}));
-
-vi.mock("./tools/routines.js", () => ({
-	registerRoutineTools: (
-		server: McpServer,
-		client: unknown,
-		options: unknown,
-	) => {
-		testDoubles.registerRoutineTools(server, client, options);
-		server.tool("mock-routine-tool", {}, vi.fn());
-	},
-}));
-
-vi.mock("./tools/templates.js", () => ({
-	registerTemplateTools: (
-		server: McpServer,
-		client: unknown,
-		options: unknown,
-	) => {
-		testDoubles.registerTemplateTools(server, client, options);
-		server.tool("mock-template-tool", {}, vi.fn());
-	},
-}));
-
-vi.mock("./tools/folders.js", () => ({
-	registerFolderTools: (
-		server: McpServer,
-		client: unknown,
-		options: unknown,
-	) => {
-		testDoubles.registerFolderTools(server, client, options);
-		server.tool("mock-folder-tool", {}, vi.fn());
-	},
-}));
-
-vi.mock("./tools/body-measurements.js", () => ({
-	registerBodyMeasurementTools: (
-		server: McpServer,
-		client: unknown,
-		options: unknown,
-	) => {
-		testDoubles.registerBodyMeasurementTools(server, client, options);
-		server.tool("mock-body-measurement-tool", {}, vi.fn());
-	},
+vi.mock("./utils/hevy-client-observability.js", () => ({
+	createNodeHevyClientOptions: vi.fn(() => ({})),
 }));
 
 vi.mock("./utils/graceful-shutdown.js", () => ({
@@ -240,7 +185,6 @@ describe("Server entry", () => {
 		expect(() => configSchema.parse({ apiKey: "" })).toThrow();
 		const parsed = configSchema.parse({ apiKey: "abc" });
 		expect(parsed.apiKey).toBe("abc");
-		expect(parsed.confirmMutations).toBe(false);
 	});
 
 	it("creates an MCP server instance after validating the API key", async () => {
@@ -262,30 +206,6 @@ describe("Server entry", () => {
 				}),
 			}),
 			expect.any(Function),
-		);
-	});
-
-	it("propagates confirmMutations to every mutating tool registration", async () => {
-		await createServer({
-			config: { apiKey: "test-key", confirmMutations: true },
-		});
-
-		for (const registration of [
-			testDoubles.registerWorkoutTools,
-			testDoubles.registerRoutineTools,
-			testDoubles.registerFolderTools,
-			testDoubles.registerBodyMeasurementTools,
-		]) {
-			expect(registration).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.anything(),
-				{ confirmMutations: true },
-			);
-		}
-		expect(testDoubles.registerTemplateTools).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.anything(),
-			expect.objectContaining({ confirmMutations: true }),
 		);
 	});
 
@@ -426,36 +346,45 @@ describe("Server entry", () => {
 		},
 	);
 
-	describe("runServer", () => {
-		it.each([
-			["--confirm-mutations", {}, ["--confirm-mutations"]],
-			["HEVY_MCP_CONFIRM_MUTATIONS=1", { HEVY_MCP_CONFIRM_MUTATIONS: "1" }, []],
-		])(
-			"enables mutation confirmation registrations with %s",
-			async (_label, envOverride, args) => {
-				process.env = {
-					...originalEnv,
-					HEVY_API_KEY: "test-api-key",
-					...envOverride,
-				};
-				process.argv = [...originalArgv.slice(0, 2), ...args];
-
-				await runServer();
-
-				for (const registration of [
-					testDoubles.registerWorkoutTools,
-					testDoubles.registerRoutineTools,
-					testDoubles.registerTemplateTools,
-					testDoubles.registerFolderTools,
-					testDoubles.registerBodyMeasurementTools,
-				]) {
-					expect(registration.mock.calls.at(-1)?.[2]).toMatchObject({
-						confirmMutations: true,
-					});
-				}
-			},
+	it("continues after a generic startup validation failure", async () => {
+		testDoubles.getUserInfo.mockRejectedValueOnce(
+			new Error("network unavailable"),
 		);
+		const errorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
 
+		await createServer({ config: { apiKey: "test-key" } });
+
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.",
+		);
+		errorSpy.mockRestore();
+	});
+
+	it("reports a safe project-owned HTTP status during startup validation", async () => {
+		const secret = "sentinel-startup-value";
+		testDoubles.getUserInfo.mockRejectedValueOnce(
+			new HevyHttpError(secret, {
+				status: 503,
+				method: "GET",
+				endpoint: "/v1/user/info",
+				headers: new Headers({ authorization: `Bearer ${secret}` }),
+				data: { secret },
+			}),
+		);
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		await createServer({ config: { apiKey: secret } });
+
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability. Diagnostic: HTTP 503.",
+		);
+		expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(secret);
+		errorSpy.mockRestore();
+	});
+
+	describe("runServer", () => {
 		it.each([
 			["--version", undefined],
 			["-v", ""],

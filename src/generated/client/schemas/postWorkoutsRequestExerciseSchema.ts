@@ -8,7 +8,7 @@ import { z } from "zod/v4";
 
 export const postWorkoutsRequestExerciseSchema = z.object({
   exercise_template_id: z.optional(
-    z.string().describe("The ID of the exercise template."),
+    z.string().describe("The ID of the exercise template.")
   ),
   superset_id: z.int().describe("The ID of the superset.").nullish(),
   notes: z.string().describe("Additional notes for the exercise.").nullish(),

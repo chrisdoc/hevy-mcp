@@ -7,7 +7,7 @@ import type { UserInfoResponse } from "../types/UserInfoResponse.ts";
 import { createUserInfo } from "./createUserInfo.ts";
 
 export function createUserInfoResponse(
-  data?: Partial<UserInfoResponse>,
+  data?: Partial<UserInfoResponse>
 ): UserInfoResponse {
   return {
     ...{

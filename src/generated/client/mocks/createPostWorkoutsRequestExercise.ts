@@ -8,7 +8,7 @@ import { createPostWorkoutsRequestSet } from "./createPostWorkoutsRequestSet.ts"
 import { faker } from "@faker-js/faker";
 
 export function createPostWorkoutsRequestExercise(
-  data?: Partial<PostWorkoutsRequestExercise>,
+  data?: Partial<PostWorkoutsRequestExercise>
 ): PostWorkoutsRequestExercise {
   return {
     ...{

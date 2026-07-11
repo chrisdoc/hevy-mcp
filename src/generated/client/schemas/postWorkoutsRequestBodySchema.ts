@@ -15,15 +15,15 @@ export const postWorkoutsRequestBodySchema = z.object({
         .describe("A description for the workout workout.")
         .nullish(),
       start_time: z.optional(
-        z.string().describe("The time the workout started."),
+        z.string().describe("The time the workout started.")
       ),
       end_time: z.optional(z.string().describe("The time the workout ended.")),
       is_private: z.optional(
-        z.boolean().describe("A boolean indicating if the workout is private."),
+        z.boolean().describe("A boolean indicating if the workout is private.")
       ),
       get exercises() {
         return z.array(postWorkoutsRequestExerciseSchema).optional();
       },
-    }),
+    })
   ),
 });

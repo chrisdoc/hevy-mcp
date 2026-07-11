@@ -18,7 +18,7 @@ export const getV1RoutineFoldersFolderidHeaderParamsSchema = z.object({
  * @description Success
  */
 export const getV1RoutineFoldersFolderid200Schema = z.lazy(
-  () => routineFolderSchema,
+  () => routineFolderSchema
 );
 
 /**
@@ -27,5 +27,5 @@ export const getV1RoutineFoldersFolderid200Schema = z.lazy(
 export const getV1RoutineFoldersFolderid404Schema = z.any();
 
 export const getV1RoutineFoldersFolderidQueryResponseSchema = z.lazy(
-  () => getV1RoutineFoldersFolderid200Schema,
+  () => getV1RoutineFoldersFolderid200Schema
 );

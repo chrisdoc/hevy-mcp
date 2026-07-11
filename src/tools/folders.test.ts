@@ -94,7 +94,7 @@ describe("registerFolderTools", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("Routine folders request failed"),
+					text: expect.stringContaining("The request failed unexpectedly"),
 				},
 			],
 		});
@@ -246,7 +246,9 @@ describe("registerFolderTools", () => {
 		).handler({ name: "Guarded Folder" });
 
 		expect(response.isError).toBe(true);
-		expect(response.content[0]?.text).toContain("elicitation transport failed");
+		expect(response.content[0]?.text).toContain(
+			"The request failed unexpectedly. Please try again.",
+		);
 		expect(createRoutineFolder).not.toHaveBeenCalled();
 	});
 });

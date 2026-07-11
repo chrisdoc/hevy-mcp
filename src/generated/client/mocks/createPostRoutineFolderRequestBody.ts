@@ -7,7 +7,7 @@ import type { PostRoutineFolderRequestBody } from "../types/PostRoutineFolderReq
 import { faker } from "@faker-js/faker";
 
 export function createPostRoutineFolderRequestBody(
-  data?: Partial<PostRoutineFolderRequestBody>,
+  data?: Partial<PostRoutineFolderRequestBody>
 ): PostRoutineFolderRequestBody {
   return {
     ...{ routine_folder: { title: faker.string.alpha() } },

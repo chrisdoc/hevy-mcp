@@ -29,7 +29,7 @@ function getGetV1BodyMeasurementsUrl() {
 export async function getV1BodyMeasurements(
   headers: GetV1BodyMeasurementsHeaderParams,
   params?: GetV1BodyMeasurementsQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

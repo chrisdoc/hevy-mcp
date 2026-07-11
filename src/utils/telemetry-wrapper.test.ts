@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HevyHttpError } from "./hevy-http-error.js";
 import { getCurrentUserId } from "./telemetry.js";
 import { withTelemetry } from "./telemetry-wrapper.js";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
+		addEvent: vi.fn(),
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
 		recordException: vi.fn(),
@@ -207,9 +209,11 @@ describe("withTelemetry", () => {
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
 
-	it("records thrown errors and rethrows the original value unchanged", async () => {
-		const error = Object.assign(new Error("Something went wrong"), {
-			code: "ERR_GENERIC",
+	it("records only safe diagnostics and rethrows the original value unchanged", async () => {
+		const secret = "sentinel-telemetry-secret";
+		const error = Object.assign(new Error(secret), {
+			code: secret,
+			cause: new Error(secret),
 		});
 		const handler = vi.fn().mockRejectedValue(error);
 
@@ -217,14 +221,16 @@ describe("withTelemetry", () => {
 
 		await expect(promise).rejects.toBe(error);
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
-		expect(testDoubles.span.recordException).toHaveBeenCalledWith(error);
+		expect(testDoubles.span.recordException).not.toHaveBeenCalled();
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
+			"error.category": "Error",
+		});
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"error.type",
 			"UNKNOWN_ERROR",
 		);
-		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"error.code",
-			"ERR_GENERIC",
+		expect(JSON.stringify(testDoubles.span.addEvent.mock.calls)).not.toContain(
+			secret,
 		);
 		expect(testDoubles.toolErrorsAdd).toHaveBeenCalledWith(1, {
 			tool_name: "ThrownErrorContext",
@@ -246,13 +252,34 @@ describe("withTelemetry", () => {
 		const promise = withTelemetry(handler, "NonErrorContext")({});
 
 		await expect(promise).rejects.toBe("string failure");
-		expect(testDoubles.span.recordException).toHaveBeenCalledWith(
-			"string failure",
-		);
+		expect(testDoubles.span.recordException).not.toHaveBeenCalled();
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
+			"error.category": "UnknownError",
+		});
 		expect(testDoubles.toolErrorsAdd).toHaveBeenCalledWith(1, {
 			tool_name: "NonErrorContext",
 			error_type: "UNKNOWN_ERROR",
 		});
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
+	});
+
+	it("records allowlisted Hevy metadata without the raw error", async () => {
+		const error = new HevyHttpError("private upstream message", {
+			status: 503,
+			method: "GET",
+			endpoint: "/v1/user/info",
+			code: "HEVY_RETRY_EXHAUSTED",
+		});
+		const handler = vi.fn().mockRejectedValue(error);
+
+		await expect(withTelemetry(handler, "HevyContext")({})).rejects.toBe(error);
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
+			"error.category": "HevyHttpError",
+			"error.code": "HEVY_RETRY_EXHAUSTED",
+			"http.status_code": 503,
+			"http.method": "GET",
+			"hevy.api.endpoint": "/v1/user/info",
+		});
+		expect(testDoubles.span.recordException).not.toHaveBeenCalled();
 	});
 });

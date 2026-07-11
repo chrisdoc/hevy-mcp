@@ -40,5 +40,5 @@ export const getV1ExerciseTemplates200Schema = z.object({
 export const getV1ExerciseTemplates400Schema = z.any();
 
 export const getV1ExerciseTemplatesQueryResponseSchema = z.lazy(
-  () => getV1ExerciseTemplates200Schema,
+  () => getV1ExerciseTemplates200Schema
 );

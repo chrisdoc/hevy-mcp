@@ -11,16 +11,16 @@ export const routineFolderSchema = z.object({
     z
       .number()
       .describe(
-        "The routine folder index. Describes the order of the folder in the list.",
-      ),
+        "The routine folder index. Describes the order of the folder in the list."
+      )
   ),
   title: z.optional(z.string().describe("The routine folder title.")),
   updated_at: z.optional(
     z
       .string()
-      .describe("ISO 8601 timestamp of when the folder was last updated."),
+      .describe("ISO 8601 timestamp of when the folder was last updated.")
   ),
   created_at: z.optional(
-    z.string().describe("ISO 8601 timestamp of when the folder was created."),
+    z.string().describe("ISO 8601 timestamp of when the folder was created.")
   ),
 });

@@ -5,7 +5,7 @@ import type {
 	GetV1BodyMeasurements200,
 	GetV1BodyMeasurementsDate200,
 } from "../generated/client/types/index.js";
-import { withObservability } from "../utils/observability-wrapper.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatBodyMeasurement } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
@@ -111,8 +111,11 @@ function buildMeasurementPayload(
 export function registerBodyMeasurementTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
-	options: MutationToolOptions = {},
+	options: MutationToolOptions & {
+		wrapHandler?: typeof withErrorHandling;
+	} = {},
 ) {
+	const wrapHandler = options.wrapHandler ?? withErrorHandling;
 	// Get body measurements (paginated list)
 	const getBodyMeasurementsSchema = {
 		page: z.coerce.number().int().gte(1).default(1),
@@ -137,7 +140,7 @@ export function registerBodyMeasurementTools(
 			outputSchema: bodyMeasurementsOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurements"),
 		},
-		withObservability(async (args: GetBodyMeasurementsParams) => {
+		wrapHandler(async (args: GetBodyMeasurementsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
@@ -190,7 +193,7 @@ export function registerBodyMeasurementTools(
 			outputSchema: bodyMeasurementOutputSchema,
 			annotations: readOnlyAnnotations("Get Body Measurement"),
 		},
-		withObservability(async (args: GetBodyMeasurementParams) => {
+		wrapHandler(async (args: GetBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date } = args;
 			const data: GetV1BodyMeasurementsDate200 =
@@ -237,7 +240,7 @@ export function registerBodyMeasurementTools(
 		}),
 		createBodyMeasurementSchema,
 		createAnnotations("Create Body Measurement"),
-		withObservability(async (args: CreateBodyMeasurementParams) => {
+		wrapHandler(async (args: CreateBodyMeasurementParams) => {
 			const { date, ...fields } = args;
 			const fieldCount = Object.values(fields).filter(
 				(value) => value != null,
@@ -287,7 +290,7 @@ export function registerBodyMeasurementTools(
 		}),
 		updateBodyMeasurementSchema,
 		updateAnnotations("Update Body Measurement"),
-		withObservability(async (args: UpdateBodyMeasurementParams) => {
+		wrapHandler(async (args: UpdateBodyMeasurementParams) => {
 			const { date, ...fields } = args;
 			const payload = buildMeasurementPayload(fields);
 			const fieldNames = Object.keys(payload);
@@ -296,7 +299,6 @@ export function registerBodyMeasurementTools(
 					"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
 				);
 			}
-
 			const confirmation = await confirmMutation(server, {
 				confirmMutations: options.confirmMutations,
 				message: `Update body measurement for ${date}: ${fieldNames.join(", ")}?`,

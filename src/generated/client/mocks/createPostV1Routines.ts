@@ -16,7 +16,7 @@ import { createRoutine } from "./createRoutine.ts";
 import { faker } from "@faker-js/faker";
 
 export function createPostV1RoutinesHeaderParams(
-  data?: Partial<PostV1RoutinesHeaderParams>,
+  data?: Partial<PostV1RoutinesHeaderParams>
 ): PostV1RoutinesHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -28,7 +28,7 @@ export function createPostV1RoutinesHeaderParams(
  * @description The routine was successfully created
  */
 export function createPostV1Routines201(
-  data?: Partial<PostV1Routines201>,
+  data?: Partial<PostV1Routines201>
 ): PostV1Routines201 {
   return createRoutine(data);
 }
@@ -37,7 +37,7 @@ export function createPostV1Routines201(
  * @description Invalid request body
  */
 export function createPostV1Routines400(
-  data?: Partial<PostV1Routines400>,
+  data?: Partial<PostV1Routines400>
 ): PostV1Routines400 {
   return {
     ...{ error: faker.string.alpha() },
@@ -49,7 +49,7 @@ export function createPostV1Routines400(
  * @description Routine limit exceeded
  */
 export function createPostV1Routines403(
-  data?: Partial<PostV1Routines403>,
+  data?: Partial<PostV1Routines403>
 ): PostV1Routines403 {
   return {
     ...{ error: faker.string.alpha() },
@@ -58,13 +58,13 @@ export function createPostV1Routines403(
 }
 
 export function createPostV1RoutinesMutationRequest(
-  data?: Partial<PostV1RoutinesMutationRequest>,
+  data?: Partial<PostV1RoutinesMutationRequest>
 ): PostV1RoutinesMutationRequest {
   return createPostRoutinesRequestBody(data);
 }
 
 export function createPostV1RoutinesMutationResponse(
-  data?: Partial<PostV1RoutinesMutationResponse>,
+  data?: Partial<PostV1RoutinesMutationResponse>
 ): PostV1RoutinesMutationResponse {
   return data || faker.helpers.arrayElement<any>([createPostV1Routines201()]);
 }

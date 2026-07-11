@@ -3,17 +3,17 @@ import type {
 	ReadResourceCallback,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
 	ExerciseTemplate,
 	RoutineFolder,
 } from "../generated/client/types/index.js";
 import { registerTemplateTools } from "../tools/templates.js";
-import { resetExerciseTemplateCatalogCache } from "../utils/exercise-template-catalog.js";
 import {
 	formatExerciseTemplate,
 	formatRoutineFolder,
 } from "../utils/formatters.js";
+import { createExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { registerHevyResources } from "./hevy.js";
 
 type HevyClient = ReturnType<
@@ -82,10 +82,6 @@ const benchTemplate: ExerciseTemplate = {
 };
 
 describe("registerHevyResources", () => {
-	beforeEach(() => {
-		resetExerciseTemplateCatalogCache();
-	});
-
 	it("registers all four static JSON resources", () => {
 		const { registerResource, server } = createMockServer();
 		registerHevyResources(server, null);
@@ -230,6 +226,40 @@ describe("registerHevyResources", () => {
 		]);
 	});
 
+	it("stops safely when routine folder pagination metadata is malformed", async () => {
+		const folder: RoutineFolder = {
+			id: 1,
+			title: "Only page",
+			created_at: "2025-01-01T00:00:00Z",
+			updated_at: "2025-01-01T00:00:00Z",
+		};
+		const { registerResource, server } = createMockServer();
+		const getRoutineFolders = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 0,
+			routine_folders: [folder],
+		});
+		registerHevyResources(server, {
+			getRoutineFolders,
+		} as unknown as HevyClient);
+		const registration = getResourceRegistration(
+			registerResource,
+			"routine-folders",
+		);
+
+		const result = await registration.handler(new URL(registration.uri), {
+			signal: AbortSignal.timeout(1000),
+			requestId: 7,
+			sendNotification: vi.fn(),
+			sendRequest: vi.fn(),
+		});
+
+		expect(getRoutineFolders).toHaveBeenCalledOnce();
+		expect(parseJsonContent(result).data).toEqual([
+			formatRoutineFolder(folder),
+		]);
+	});
+
 	it("shares the template catalog cache and in-flight fetch with search", async () => {
 		const { registerResource, server, tool } = createMockServer();
 		let resolveCatalog!: (value: {
@@ -247,8 +277,9 @@ describe("registerHevyResources", () => {
 		const hevyClient = {
 			getExerciseTemplates: vi.fn().mockReturnValue(pendingCatalog),
 		} as unknown as HevyClient;
-		registerHevyResources(server, hevyClient);
-		registerTemplateTools(server, hevyClient);
+		const catalog = createExerciseTemplateCatalog();
+		registerHevyResources(server, hevyClient, catalog);
+		registerTemplateTools(server, hevyClient, { catalog });
 
 		const registration = getResourceRegistration(
 			registerResource,

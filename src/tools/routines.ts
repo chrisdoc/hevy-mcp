@@ -14,7 +14,7 @@ import type {
 	PutV1RoutinesRoutineid200,
 	Routine,
 } from "../generated/client/types/index.js";
-import { withObservability } from "../utils/observability-wrapper.js";
+import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
@@ -103,8 +103,11 @@ const repRangeDisplayWarningText =
 export function registerRoutineTools(
 	server: McpServer,
 	hevyClient: HevyClient | null,
-	options: MutationToolOptions = {},
+	options: MutationToolOptions & {
+		wrapHandler?: typeof withErrorHandling;
+	} = {},
 ) {
+	const wrapHandler = options.wrapHandler ?? withErrorHandling;
 	// Get routines
 	const getRoutinesSchema = {
 		page: z.coerce.number().int().gte(1).default(1),
@@ -131,7 +134,7 @@ export function registerRoutineTools(
 			outputSchema: routinesOutputSchema,
 			annotations: readOnlyAnnotations("Get Routines"),
 		},
-		withObservability(async (args: GetRoutinesParams) => {
+		wrapHandler(async (args: GetRoutinesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1Routines200 = await client.getRoutines({
@@ -176,7 +179,7 @@ export function registerRoutineTools(
 			outputSchema: routineOutputSchema,
 			annotations: readOnlyAnnotations("Get Routine"),
 		},
-		withObservability(async (args: GetRoutineParams) => {
+		wrapHandler(async (args: GetRoutineParams) => {
 			const client = requireClient(hevyClient);
 			const { routineId } = args;
 			const data: GetV1RoutinesRoutineid200 = await client.getRoutineById(
@@ -238,7 +241,7 @@ export function registerRoutineTools(
 		}),
 		createRoutineSchema,
 		createAnnotations("Create Routine"),
-		withObservability(async (args: CreateRoutineParams) => {
+		wrapHandler(async (args: CreateRoutineParams) => {
 			const { title, folderId, notes, exercises } = args;
 			const folderSummary = folderId ? ` in folder ${folderId}` : "";
 			const confirmation = await confirmMutation(server, {
@@ -364,7 +367,7 @@ export function registerRoutineTools(
 		}),
 		updateRoutineSchema,
 		updateAnnotations("Update Routine"),
-		withObservability(async (args: UpdateRoutineParams) => {
+		wrapHandler(async (args: UpdateRoutineParams) => {
 			const { routineId, title, notes, exercises } = args;
 			const confirmation = await confirmMutation(server, {
 				confirmMutations: options.confirmMutations,

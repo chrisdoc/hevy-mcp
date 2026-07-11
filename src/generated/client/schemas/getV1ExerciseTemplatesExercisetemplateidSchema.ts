@@ -20,7 +20,7 @@ export const getV1ExerciseTemplatesExercisetemplateidHeaderParamsSchema =
  * @description Success
  */
 export const getV1ExerciseTemplatesExercisetemplateid200Schema = z.lazy(
-  () => exerciseTemplateSchema,
+  () => exerciseTemplateSchema
 );
 
 /**

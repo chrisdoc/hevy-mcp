@@ -28,7 +28,7 @@ export const getV1WorkoutsEventsHeaderParamsSchema = z.object({
  * @description A paginated list of workout events
  */
 export const getV1WorkoutsEvents200Schema = z.lazy(
-  () => paginatedWorkoutEventsSchema,
+  () => paginatedWorkoutEventsSchema
 );
 
 /**
@@ -37,5 +37,5 @@ export const getV1WorkoutsEvents200Schema = z.lazy(
 export const getV1WorkoutsEvents500Schema = z.any();
 
 export const getV1WorkoutsEventsQueryResponseSchema = z.lazy(
-  () => getV1WorkoutsEvents200Schema,
+  () => getV1WorkoutsEvents200Schema
 );

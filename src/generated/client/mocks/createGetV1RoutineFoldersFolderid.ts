@@ -13,7 +13,7 @@ import { createRoutineFolder } from "./createRoutineFolder.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1RoutineFoldersFolderidPathParams(
-  data?: Partial<GetV1RoutineFoldersFolderidPathParams>,
+  data?: Partial<GetV1RoutineFoldersFolderidPathParams>
 ): GetV1RoutineFoldersFolderidPathParams {
   return {
     ...{ folderId: faker.string.alpha() },
@@ -22,7 +22,7 @@ export function createGetV1RoutineFoldersFolderidPathParams(
 }
 
 export function createGetV1RoutineFoldersFolderidHeaderParams(
-  data?: Partial<GetV1RoutineFoldersFolderidHeaderParams>,
+  data?: Partial<GetV1RoutineFoldersFolderidHeaderParams>
 ): GetV1RoutineFoldersFolderidHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -34,7 +34,7 @@ export function createGetV1RoutineFoldersFolderidHeaderParams(
  * @description Success
  */
 export function createGetV1RoutineFoldersFolderid200(
-  data?: Partial<GetV1RoutineFoldersFolderid200>,
+  data?: Partial<GetV1RoutineFoldersFolderid200>
 ): GetV1RoutineFoldersFolderid200 {
   return createRoutineFolder(data);
 }
@@ -47,7 +47,7 @@ export function createGetV1RoutineFoldersFolderid404() {
 }
 
 export function createGetV1RoutineFoldersFolderidQueryResponse(
-  data?: Partial<GetV1RoutineFoldersFolderidQueryResponse>,
+  data?: Partial<GetV1RoutineFoldersFolderidQueryResponse>
 ): GetV1RoutineFoldersFolderidQueryResponse {
   return (
     data ||

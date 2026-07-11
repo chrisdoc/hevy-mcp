@@ -3,10 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplate } from "../generated/client/types/index.js";
 import { formatExerciseTemplate } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import {
-	registerTemplateTools,
-	resetExerciseTemplateCache,
-} from "./templates.js";
+import { registerTemplateTools } from "./templates.js";
 
 function createMockServer(
 	options: {
@@ -234,9 +231,7 @@ describe("registerTemplateTools", () => {
 	});
 
 	describe("search-exercise-templates", () => {
-		beforeEach(() => {
-			resetExerciseTemplateCache();
-		});
+		beforeEach(() => {});
 
 		it("returns error when client is not initialized", async () => {
 			const { server, tool } = createMockServer();
@@ -512,6 +507,43 @@ describe("registerTemplateTools", () => {
 					reason: "explicit-refresh",
 				},
 			});
+		});
+
+		it("sanitizes failures from the optional refresh logger", async () => {
+			const { server, tool } = createMockServer();
+			const secret = "sentinel-refresh-logger";
+			const stderrSpy = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => undefined);
+			const hevyClient: HevyClient = {
+				getExerciseTemplates: vi.fn().mockResolvedValue({
+					page: 1,
+					page_count: 1,
+					exercise_templates: [],
+				}),
+			} as unknown as HevyClient;
+
+			registerTemplateTools(server, hevyClient, {
+				logger: () => {
+					throw new Error(secret);
+				},
+			});
+			const { handler } = getToolRegistration(
+				tool,
+				"search-exercise-templates",
+			);
+
+			await expect(
+				handler({ query: "bench", refresh: false }),
+			).resolves.toMatchObject({
+				structuredContent: { exerciseTemplates: [] },
+			});
+			expect(stderrSpy).toHaveBeenCalledWith(
+				"Failed to emit structured exercise template cache log",
+				expect.objectContaining({ category: "Error" }),
+			);
+			expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+			stderrSpy.mockRestore();
 		});
 
 		it("does not log a cache refresh when the catalog fetch fails", async () => {

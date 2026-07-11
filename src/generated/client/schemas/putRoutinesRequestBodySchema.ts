@@ -14,6 +14,6 @@ export const putRoutinesRequestBodySchema = z.object({
       get exercises() {
         return z.array(putRoutinesRequestExerciseSchema).optional();
       },
-    }),
+    })
   ),
 });

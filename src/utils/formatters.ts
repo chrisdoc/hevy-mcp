@@ -14,6 +14,7 @@ import type {
 	FormattedRoutineFolder,
 	FormattedWorkout,
 } from "./output-schemas.js";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 
 export type {
 	FormattedBodyMeasurement,
@@ -172,7 +173,10 @@ export function calculateDuration(
 
 		return `${hours}h ${minutes}m ${seconds}s`;
 	} catch (error) {
-		console.error("Error calculating duration:", error);
+		console.error(
+			"Error calculating duration",
+			createSafeErrorDiagnostic(error),
+		);
 		return "Unknown duration";
 	}
 }

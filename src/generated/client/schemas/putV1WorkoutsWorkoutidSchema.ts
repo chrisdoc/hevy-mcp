@@ -28,9 +28,9 @@ export const putV1WorkoutsWorkoutid400Schema = z.object({
 });
 
 export const putV1WorkoutsWorkoutidMutationRequestSchema = z.lazy(
-  () => postWorkoutsRequestBodySchema,
+  () => postWorkoutsRequestBodySchema
 );
 
 export const putV1WorkoutsWorkoutidMutationResponseSchema = z.lazy(
-  () => putV1WorkoutsWorkoutid200Schema,
+  () => putV1WorkoutsWorkoutid200Schema
 );

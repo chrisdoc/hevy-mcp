@@ -106,7 +106,7 @@ describe("registerWorkoutTools", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("Workout events endpoint failed"),
+					text: expect.stringContaining("The request failed unexpectedly"),
 				},
 			],
 		});
@@ -230,7 +230,8 @@ describe("registerWorkoutTools", () => {
 
 		expect(response.isError).toBe(true);
 		expect(response.structuredContent).toBeUndefined();
-		expect(responseText).toContain("Unsupported workout event type: mystery");
+		expect(responseText).toContain("The request failed unexpectedly");
+		expect(responseText).not.toContain("mystery");
 		expect(responseText).not.toContain("should-not-be-treated-as-deleted");
 		expect(responseText).not.toContain("sensitive-event-payload");
 	});

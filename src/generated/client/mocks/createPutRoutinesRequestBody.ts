@@ -8,7 +8,7 @@ import { createPutRoutinesRequestExercise } from "./createPutRoutinesRequestExer
 import { faker } from "@faker-js/faker";
 
 export function createPutRoutinesRequestBody(
-  data?: Partial<PutRoutinesRequestBody>,
+  data?: Partial<PutRoutinesRequestBody>
 ): PutRoutinesRequestBody {
   return {
     ...{
@@ -18,7 +18,7 @@ export function createPutRoutinesRequestBody(
           notes: faker.string.alpha(),
           get exercises() {
             return faker.helpers.multiple(() =>
-              createPutRoutinesRequestExercise(),
+              createPutRoutinesRequestExercise()
             );
           },
         };

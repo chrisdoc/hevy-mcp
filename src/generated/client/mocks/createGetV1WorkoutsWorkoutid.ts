@@ -13,7 +13,7 @@ import { createWorkout } from "./createWorkout.ts";
 import { faker } from "@faker-js/faker";
 
 export function createGetV1WorkoutsWorkoutidPathParams(
-  data?: Partial<GetV1WorkoutsWorkoutidPathParams>,
+  data?: Partial<GetV1WorkoutsWorkoutidPathParams>
 ): GetV1WorkoutsWorkoutidPathParams {
   return {
     ...{ workoutId: faker.string.alpha() },
@@ -22,7 +22,7 @@ export function createGetV1WorkoutsWorkoutidPathParams(
 }
 
 export function createGetV1WorkoutsWorkoutidHeaderParams(
-  data?: Partial<GetV1WorkoutsWorkoutidHeaderParams>,
+  data?: Partial<GetV1WorkoutsWorkoutidHeaderParams>
 ): GetV1WorkoutsWorkoutidHeaderParams {
   return {
     ...{ "api-key": faker.string.uuid() },
@@ -34,7 +34,7 @@ export function createGetV1WorkoutsWorkoutidHeaderParams(
  * @description Success
  */
 export function createGetV1WorkoutsWorkoutid200(
-  data?: Partial<GetV1WorkoutsWorkoutid200>,
+  data?: Partial<GetV1WorkoutsWorkoutid200>
 ): GetV1WorkoutsWorkoutid200 {
   return createWorkout(data);
 }
@@ -47,7 +47,7 @@ export function createGetV1WorkoutsWorkoutid404() {
 }
 
 export function createGetV1WorkoutsWorkoutidQueryResponse(
-  data?: Partial<GetV1WorkoutsWorkoutidQueryResponse>,
+  data?: Partial<GetV1WorkoutsWorkoutidQueryResponse>
 ): GetV1WorkoutsWorkoutidQueryResponse {
   return (
     data || faker.helpers.arrayElement<any>([createGetV1WorkoutsWorkoutid200()])

@@ -28,7 +28,7 @@ function getGetV1ExerciseTemplatesUrl() {
 export async function getV1ExerciseTemplates(
   headers: GetV1ExerciseTemplatesHeaderParams,
   params?: GetV1ExerciseTemplatesQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {}
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

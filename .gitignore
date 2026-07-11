@@ -22,6 +22,7 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 *.lcov
+/test-results/
 
 # nyc test coverage
 .nyc_output
@@ -115,6 +116,7 @@ dist
 
 # Serverless directories
 .serverless/
+.wrangler/
 
 # FuseBox cache
 .fusebox/

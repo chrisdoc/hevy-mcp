@@ -24,9 +24,9 @@ export const postV1Workouts400Schema = z.object({
 });
 
 export const postV1WorkoutsMutationRequestSchema = z.lazy(
-  () => postWorkoutsRequestBodySchema,
+  () => postWorkoutsRequestBodySchema
 );
 
 export const postV1WorkoutsMutationResponseSchema = z.lazy(
-  () => postV1Workouts201Schema,
+  () => postV1Workouts201Schema
 );

@@ -1,4 +1,4 @@
-import { isAxiosError } from "axios";
+import { isHevyHttpError } from "./hevy-http-error.js";
 
 /**
  * Specific error types for better categorization.
@@ -28,7 +28,7 @@ export function determineErrorType(error: unknown, message: string): ErrorType {
 		return ErrorType.NETWORK_ERROR;
 	}
 
-	if (isAxiosError(error) && error.response?.status === 429) {
+	if (isHevyHttpError(error) && error.status === 429) {
 		return ErrorType.RATE_LIMIT;
 	}
 

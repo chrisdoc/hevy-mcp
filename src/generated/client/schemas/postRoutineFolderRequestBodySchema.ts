@@ -9,8 +9,8 @@ export const postRoutineFolderRequestBodySchema = z.object({
   routine_folder: z.optional(
     z.object({
       title: z.optional(
-        z.string().describe("The title of the routine folder."),
+        z.string().describe("The title of the routine folder.")
       ),
-    }),
+    })
   ),
 });
