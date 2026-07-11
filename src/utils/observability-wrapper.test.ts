@@ -1,101 +1,94 @@
 import { describe, expect, it, vi } from "vitest";
-import { withErrorHandling } from "./error-handler.js";
+import { HevyHttpError } from "./hevy-http-error.js";
 import { withObservability } from "./observability-wrapper.js";
-import { withTelemetry } from "./telemetry-wrapper.js";
+import { Sentry } from "./telemetry.js";
 
 const testDoubles = vi.hoisted(() => ({
-	events: [] as string[],
-	scope: {
-		setTag: vi.fn(),
-		setContext: vi.fn(),
-	},
-	captureException: vi.fn(),
-}));
-
-vi.mock("./error-handler.js", () => ({
-	withErrorHandling: vi.fn(
-		(
-			fn: (args: Record<string, unknown>) => Promise<unknown>,
-			_context: string,
-			onError?: (
-				error: unknown,
-				context: string,
-				argumentKeyCount: number,
-			) => void,
-		) =>
-			async (args: Record<string, unknown>) => {
-				testDoubles.events.push("error-handling:start");
-				try {
-					return await fn(args);
-				} catch (error) {
-					testDoubles.events.push("error-handling:catch");
-					onError?.(error, _context, Object.keys(args).length);
-					return { content: [], isError: true };
-				}
-			},
-	),
-}));
-
-vi.mock("./telemetry.js", () => ({
-	Sentry: {
-		withScope: vi.fn((callback: (scope: typeof testDoubles.scope) => void) =>
+	scope: { setTag: vi.fn(), setContext: vi.fn() },
+	sentry: {
+		withScope: vi.fn((callback: (scope: unknown) => void) =>
 			callback(testDoubles.scope),
 		),
-		captureException: testDoubles.captureException,
+		captureMessage: vi.fn(),
 	},
 }));
 
 vi.mock("./telemetry-wrapper.js", () => ({
-	withTelemetry: vi.fn(
-		(
-			fn: (args: Record<string, unknown>) => Promise<unknown>,
-			_context: string,
-		) =>
-			async (args: Record<string, unknown>) => {
-				testDoubles.events.push("telemetry:start");
-				try {
-					return await fn(args);
-				} catch (error) {
-					testDoubles.events.push("telemetry:catch");
-					throw error;
-				}
-			},
-	),
+	withTelemetry:
+		(fn: (args: Record<string, unknown>) => Promise<unknown>) =>
+		(args: Record<string, unknown>) =>
+			fn(args),
 }));
+vi.mock("./telemetry.js", () => ({ Sentry: testDoubles.sentry }));
 
 describe("withObservability", () => {
-	it("keeps telemetry inside error handling so it sees original exceptions", async () => {
-		const error = new Error("boom");
-		const handler = vi.fn(async () => {
-			testDoubles.events.push("handler");
-			throw error;
+	it("captures only a fixed event and safe structured diagnostics", async () => {
+		const secret = "sentinel-api-key-value";
+		const error = new HevyHttpError(secret, {
+			status: 503,
+			method: "GET",
+			endpoint: "/v1/user/info",
+			code: "HEVY_RETRY_EXHAUSTED",
+			headers: new Headers({ authorization: `Bearer ${secret}` }),
+			data: { secret },
 		});
+		error.stack = `${secret}\n    at /home/user/hevy-mcp/src/utils/observability-wrapper.ts:21:4`;
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const wrapped = withObservability(async () => {
+			throw error;
+		}, "get-user-info");
 
-		const wrapped = withObservability(handler, "test-context");
-		const result = await wrapped({ page: 1 });
+		const result = await wrapped({ page: 1, query: "bench" });
 
-		expect(withTelemetry).toHaveBeenCalledWith(handler, "test-context");
-		expect(withErrorHandling).toHaveBeenCalledWith(
-			expect.any(Function),
-			"test-context",
-			expect.any(Function),
-		);
-		expect(testDoubles.events).toEqual([
-			"error-handling:start",
-			"telemetry:start",
-			"handler",
-			"telemetry:catch",
-			"error-handling:catch",
-		]);
-		expect(result).toEqual({ content: [], isError: true });
+		expect(result.isError).toBe(true);
 		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
-			"mcp.tool.context",
-			"test-context",
+			"error.category",
+			"HevyHttpError",
+		);
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"error.code",
+			"HEVY_RETRY_EXHAUSTED",
+		);
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"http.status_code",
+			"503",
+		);
+		expect(testDoubles.scope.setContext).toHaveBeenCalledWith(
+			"safeError",
+			expect.objectContaining({
+				category: "HevyHttpError",
+				status: 503,
+				endpoint: "/v1/user/info",
+				frames: [{ source: "observability-wrapper", line: 21, column: 4 }],
+			}),
 		);
 		expect(testDoubles.scope.setContext).toHaveBeenCalledWith("mcpTool", {
-			context: "test-context",
-			argumentKeyCount: 1,
+			argumentKeyCount: 2,
 		});
-		expect(testDoubles.captureException).toHaveBeenCalledWith(error);
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			"MCP tool failure",
+			"error",
+		);
+		expect(
+			JSON.stringify(testDoubles.scope.setContext.mock.calls),
+		).not.toContain(secret);
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		stderrSpy.mockRestore();
+	});
+
+	it("still returns an MCP error when Sentry reporting throws", async () => {
+		testDoubles.sentry.withScope.mockImplementationOnce(() => {
+			throw new Error("telemetry secret");
+		});
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const wrapped = withObservability(async () => {
+			throw new Error("handler failure");
+		}, "test-context");
+
+		await expect(wrapped({})).resolves.toMatchObject({ isError: true });
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(
+			"telemetry secret",
+		);
+		stderrSpy.mockRestore();
 	});
 });

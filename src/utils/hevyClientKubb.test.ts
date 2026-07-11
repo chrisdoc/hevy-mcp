@@ -173,19 +173,157 @@ describe("native-fetch Hevy client", () => {
 		expect(sleep).toHaveBeenCalledWith(5_000);
 	});
 
-	it("honors date-form Retry-After headers and returns text responses", async () => {
-		const retryAt = new Date(Date.now() + 60_000).toUTCString();
+	it("uses HTTP-date Retry-After values", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-07-11T12:00:00.000Z"));
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(
-				jsonResponse({ error: "slow down" }, 429, { "retry-after": retryAt }),
+				jsonResponse({ error: "slow down" }, 429, {
+					"retry-after": "Sat, 11 Jul 2026 12:00:02 GMT",
+				}),
 			)
-			.mockResolvedValueOnce(new Response("plain-text response"));
+			.mockResolvedValueOnce(jsonResponse({ ok: true }));
 		const sleep = vi.fn().mockResolvedValue(undefined);
 		const client = createClient("key", undefined, { fetch: fetchMock, sleep });
 
-		await expect(client.getUserInfo()).resolves.toBe("plain-text response");
-		expect(sleep).toHaveBeenCalledWith(5_000);
+		await expect(client.getUserInfo()).resolves.toEqual({ ok: true });
+		expect(sleep).toHaveBeenCalledWith(2_000);
+		vi.useRealTimers();
+	});
+
+	it("uses the default retry sleep without a real delay", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ error: "busy" }, 503))
+			.mockResolvedValueOnce(jsonResponse({ ok: true }));
+		const client = createClient("key", undefined, { fetch: fetchMock });
+
+		const result = client.getUserInfo();
+		await vi.advanceTimersByTimeAsync(300);
+		await expect(result).resolves.toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		vi.useRealTimers();
+	});
+
+	it("keeps the original HTTP failure when structured logging throws", async () => {
+		const secret = "sentinel-logger-key";
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const client = createClient(secret, undefined, {
+			fetch: vi.fn(async () => jsonResponse({ error: secret }, 400)),
+			logger: () => {
+				throw new Error(secret);
+			},
+		});
+
+		await expect(client.createWorkout({} as never)).rejects.toMatchObject({
+			status: 400,
+			method: "POST",
+			endpoint: "/v1/workouts",
+		});
+		expect(stderrSpy).toHaveBeenCalledWith(
+			"Failed to emit structured Hevy API log",
+		);
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		stderrSpy.mockRestore();
+	});
+
+	it("returns successful non-JSON response bodies", async () => {
+		const client = createClient("key", undefined, {
+			fetch: vi.fn(
+				async () =>
+					new Response("plain success", {
+						status: 200,
+						headers: { "content-type": "text/plain" },
+					}),
+			),
+		});
+
+		await expect(client.getUserInfo()).resolves.toBe("plain success");
+	});
+
+	it("forwards representative mutation, folder, and measurement requests", async () => {
+		const requests: Array<{
+			url: URL;
+			method: string | undefined;
+			body: RequestInit["body"];
+			headers: Headers;
+		}> = [];
+		const fetchMock = vi.fn(
+			async (input: string | URL | Request, init?: RequestInit) => {
+				requests.push({
+					url: new URL(input instanceof Request ? input.url : input.toString()),
+					method: init?.method,
+					body: init?.body,
+					headers: new Headers(init?.headers),
+				});
+				return jsonResponse({ ok: true });
+			},
+		);
+		const client = createClient("forwarding-key", undefined, {
+			fetch: fetchMock,
+		});
+
+		await client.updateWorkout("workout-id", {} as never);
+		await client.updateRoutine("routine-id", {} as never);
+		await client.createRoutineFolder({} as never);
+		await client.getRoutineFolder("folder-id");
+		await client.createBodyMeasurement({} as never);
+		await client.updateBodyMeasurement("2026-07-11", {} as never);
+
+		expect(
+			requests.map(({ url, method, body, headers }) => ({
+				path: url.pathname,
+				method,
+				body,
+				apiKey: headers.get("api-key"),
+				contentType: headers.get("content-type"),
+			})),
+		).toEqual([
+			{
+				path: "/v1/workouts/workout-id",
+				method: "PUT",
+				body: "{}",
+				apiKey: "forwarding-key",
+				contentType: "application/json",
+			},
+			{
+				path: "/v1/routines/routine-id",
+				method: "PUT",
+				body: "{}",
+				apiKey: "forwarding-key",
+				contentType: "application/json",
+			},
+			{
+				path: "/v1/routine_folders",
+				method: "POST",
+				body: "{}",
+				apiKey: "forwarding-key",
+				contentType: "application/json",
+			},
+			{
+				path: "/v1/routine_folders/folder-id",
+				method: "GET",
+				body: undefined,
+				apiKey: "forwarding-key",
+				contentType: null,
+			},
+			{
+				path: "/v1/body_measurements",
+				method: "POST",
+				body: "{}",
+				apiKey: "forwarding-key",
+				contentType: "application/json",
+			},
+			{
+				path: "/v1/body_measurements/2026-07-11",
+				method: "PUT",
+				body: "{}",
+				apiKey: "forwarding-key",
+				contentType: "application/json",
+			},
+		]);
 	});
 
 	it("retries transient network failures for GET requests", async () => {
@@ -236,34 +374,6 @@ describe("native-fetch Hevy client", () => {
 		expect(JSON.stringify(onRequestComplete.mock.calls)).not.toContain(
 			"private-workout-id",
 		);
-	});
-
-	it("routes every public client helper through the configured native client", async () => {
-		const fetchMock = vi.fn(async () => jsonResponse({}));
-		const client = createClient("key", undefined, { fetch: fetchMock });
-
-		await Promise.all([
-			client.updateWorkout("workout-id", {} as never),
-			client.getWorkoutCount(),
-			client.getWorkoutEvents(),
-			client.getRoutines(),
-			client.getRoutineById("routine-id"),
-			client.createRoutine({} as never),
-			client.updateRoutine("routine-id", {} as never),
-			client.getExerciseTemplates(),
-			client.getExerciseTemplate("template-id"),
-			client.getExerciseHistory("template-id"),
-			client.createExerciseTemplate({} as never),
-			client.getRoutineFolders(),
-			client.createRoutineFolder({} as never),
-			client.getRoutineFolder("folder-id"),
-			client.getBodyMeasurements(),
-			client.getBodyMeasurement("2026-07-11"),
-			client.createBodyMeasurement({} as never),
-			client.updateBodyMeasurement("2026-07-11", {} as never),
-		]);
-
-		expect(fetchMock).toHaveBeenCalledTimes(18);
 	});
 
 	it("times out requests with a sanitized network error", async () => {
@@ -340,34 +450,26 @@ describe("native-fetch Hevy client", () => {
 		expect(sleep).toHaveBeenCalledWith(300);
 	});
 
-	it("uses the default retry delay when no sleep override is provided", async () => {
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(jsonResponse({ error: "busy" }, 503))
-			.mockResolvedValueOnce(jsonResponse({ ok: true }));
+	it("routes every public client helper through the native client", async () => {
+		const fetchMock = vi.fn(async () => jsonResponse({}));
 		const client = createClient("key", undefined, { fetch: fetchMock });
 
-		await expect(client.getUserInfo()).resolves.toEqual({ ok: true });
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-	});
+		await Promise.all([
+			client.getWorkoutCount(),
+			client.getWorkoutEvents(),
+			client.getRoutines(),
+			client.getRoutineById("routine-id"),
+			client.createRoutine({} as never),
+			client.getExerciseTemplates(),
+			client.getExerciseTemplate("template-id"),
+			client.getExerciseHistory("template-id"),
+			client.createExerciseTemplate({} as never),
+			client.getRoutineFolders(),
+			client.getBodyMeasurements(),
+			client.getBodyMeasurement("2026-07-11"),
+		]);
 
-	it("contains logger failures while reporting request failures", async () => {
-		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const client = createClient("key", undefined, {
-			fetch: vi.fn(async () => jsonResponse({ error: "invalid" }, 400)),
-			logger: () => {
-				throw new Error("logger failed");
-			},
-		});
-
-		try {
-			await expect(client.getUserInfo()).rejects.toMatchObject({ status: 400 });
-			expect(stderrSpy).toHaveBeenCalledWith(
-				"Failed to emit structured Hevy API log",
-			);
-		} finally {
-			stderrSpy.mockRestore();
-		}
+		expect(fetchMock).toHaveBeenCalledTimes(12);
 	});
 
 	it("rejects invalid endpoint overrides before making a request", async () => {

@@ -3,8 +3,9 @@
  */
 
 import { determineErrorType, ErrorType } from "./error-classification.js";
-import { isHevyHttpError } from "./hevy-http-error.js";
+import { type HevyHttpError, isHevyHttpError } from "./hevy-http-error.js";
 import type { McpToolResponse } from "./response-formatter.js";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 
 export { ErrorType } from "./error-classification.js";
 
@@ -68,11 +69,7 @@ function formatSecondsLabel(seconds: number): string {
 	return `${roundedSeconds} second${suffix}`;
 }
 
-function getRateLimitMessage(error: unknown): string {
-	if (!isHevyHttpError(error)) {
-		return "Rate limited by Hevy. Please wait and retry.";
-	}
-
+function getRateLimitMessage(error: HevyHttpError): string {
 	const retryAfterHeader = getHeaderValue(error.headers, "retry-after");
 	if (!retryAfterHeader) {
 		return "Rate limited by Hevy (HTTP 429). Please wait and retry your request.";
@@ -138,9 +135,7 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 	type: ErrorType;
 }
 
-/**
- * Structured debug context that preserves original error details
- */
+/** Structured debug context containing only bounded, safe metadata. */
 export interface ErrorDebugContext {
 	sourceContext?: string;
 	originalErrorMessage: string;
@@ -167,7 +162,17 @@ export function createErrorResponse(
 ): McpToolResponse {
 	const originalErrorMessage = extractErrorMessage(error);
 	let errorMessage = originalErrorMessage;
-	const axiosErrorContext = extractHttpErrorContext(error);
+	const safeDiagnostic = createSafeErrorDiagnostic(error);
+	const axiosErrorContext: ErrorDebugContext["axios"] | null =
+		safeDiagnostic.status !== undefined ||
+		safeDiagnostic.method !== undefined ||
+		safeDiagnostic.endpoint !== undefined
+			? {
+					status: safeDiagnostic.status,
+					method: safeDiagnostic.method,
+					url: safeDiagnostic.endpoint,
+				}
+			: null;
 	const mappedHevyErrorMessage = mapHevyErrorMessageByStatus(
 		axiosErrorContext?.status,
 	);
@@ -181,16 +186,13 @@ export function createErrorResponse(
 	errorMessage = getUserFacingMessage(error, errorMessage);
 
 	// Extract error code if available (for logging purposes)
-	const errorCode =
-		error instanceof Error && "code" in error
-			? (error as { code?: string }).code
-			: undefined;
+	const errorCode = safeDiagnostic.code;
 
 	// Determine error type based on error characteristics
 	const errorType = determineErrorType(error, errorMessage);
 	const errorContext: ErrorDebugContext = {
 		sourceContext: context,
-		originalErrorMessage,
+		originalErrorMessage: `${safeDiagnostic.category} occurred`,
 		errorCode,
 		errorType,
 		axios: axiosErrorContext ?? undefined,
@@ -198,10 +200,8 @@ export function createErrorResponse(
 
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${errorMessage}`;
-	const errorCodeSuffix = errorCode ? `, Code: ${errorCode}` : "";
 
-	// Log the error for server-side debugging with type information
-	console.error(`${formattedMessage} (Type: ${errorType}${errorCodeSuffix})`);
+	console.error("MCP tool failure", safeDiagnostic);
 
 	return {
 		content: [
@@ -242,21 +242,6 @@ function extractErrorMessage(error: unknown): string {
 	}
 
 	return String(error);
-}
-
-function extractHttpErrorContext(
-	error: unknown,
-): ErrorDebugContext["axios"] | null {
-	if (!isHevyHttpError(error)) {
-		return null;
-	}
-
-	return {
-		status: error.status,
-		statusText: error.statusText,
-		method: error.method,
-		url: error.endpoint,
-	};
 }
 
 function mapHevyErrorMessageByStatus(status?: number): string | null {
@@ -308,7 +293,13 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 		try {
 			return await fn(args as TParams);
 		} catch (error) {
-			onError?.(error, context, Object.keys(args).length);
+			try {
+				onError?.(error, context, Object.keys(args).length);
+			} catch {
+				console.error("MCP error observer failure", {
+					category: "ObserverError",
+				});
+			}
 
 			return createErrorResponse(error, context);
 		}

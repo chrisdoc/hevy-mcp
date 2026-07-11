@@ -36,11 +36,41 @@ describe("createErrorResponse", () => {
 
 	it("does not expose parsed upstream payloads for unmapped statuses", () => {
 		const secret = "upstream-secret-value";
-		const result = createErrorResponse(httpError(400, { error: secret }));
+		const error = httpError(400, { error: secret });
+		error.message = secret;
+		error.code = secret;
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const result = createErrorResponse(error);
 		expect(result.content[0]?.text).toContain(
 			"Hevy API request failed (HTTP 400)",
 		);
 		expect(JSON.stringify(result)).not.toContain(secret);
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		stderrSpy.mockRestore();
+	});
+
+	it("omits hostile HTTP metadata from retained debug context", () => {
+		const secret = "sentinel-http-context";
+		const error = new HevyHttpError(secret, {
+			status: 999,
+			statusText: secret,
+			method: secret,
+			endpoint: `https://attacker.example/${secret}`,
+			code: secret,
+			headers: new Headers({ authorization: secret }),
+			data: { secret },
+			cause: new Error(secret),
+		});
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const result = createErrorResponse(error);
+
+		expect(result.errorContext).toEqual(
+			expect.objectContaining({ axios: undefined }),
+		);
+		expect(JSON.stringify(result.errorContext)).not.toContain(secret);
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		stderrSpy.mockRestore();
 	});
 
 	it("includes bounded Retry-After guidance for rate limits", () => {
@@ -89,5 +119,24 @@ describe("withErrorHandling", () => {
 		const result = await wrapped(null as never);
 		expect(result.isError).toBe(true);
 		expect(onError).toHaveBeenCalledWith(expect.any(Error), "test", 0);
+	});
+
+	it("does not replace normalized responses when observers fail", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const wrapped = withErrorHandling(
+			async () => {
+				throw new Error("original failure");
+			},
+			"test",
+			() => {
+				throw new Error("observer secret");
+			},
+		);
+
+		await expect(wrapped({})).resolves.toMatchObject({ isError: true });
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(
+			"observer secret",
+		);
+		stderrSpy.mockRestore();
 	});
 });

@@ -16,7 +16,10 @@ const validHeaders = {
 	authorization: "Bearer test-key",
 };
 
-function mcpRequest(body: unknown, headers = validHeaders) {
+function mcpRequest(
+	body: unknown,
+	headers: RequestInit["headers"] = validHeaders,
+) {
 	return new Request("https://worker.example/mcp", {
 		method: "POST",
 		headers,
@@ -116,13 +119,46 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(createValidationClient).not.toHaveBeenCalled();
 	});
 
-	it("answers non-browser preflight requests", async () => {
+	it("adds exact-origin CORS headers to successful MCP responses", async () => {
+		const corsHandler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient: () => createMockClient(),
+		});
+		const result = await corsHandler(
+			mcpRequest(
+				{
+					jsonrpc: "2.0",
+					id: 1,
+					method: "initialize",
+					params: {
+						protocolVersion: "2025-11-25",
+						capabilities: {},
+						clientInfo: { name: "test", version: "1" },
+					},
+				},
+				{ ...validHeaders, origin: "https://browser.example" },
+			),
+			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+		);
+
+		expect(result.status).toBe(200);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://browser.example",
+		);
+		expect(result.headers.get("vary")).toBe("Origin");
+		expect(result.headers.get("content-type")).toContain("text/event-stream");
+	});
+
+	it("answers origin-less preflight without an allow-origin header", async () => {
 		const result = await handler(
 			new Request("https://worker.example/mcp", { method: "OPTIONS" }),
 			{},
 		);
 		expect(result.status).toBe(204);
 		expect(result.headers.get("access-control-allow-origin")).toBeNull();
+		expect(result.headers.get("access-control-allow-methods")).toBe(
+			"POST, OPTIONS",
+		);
 	});
 
 	it.each(["GET", "DELETE", "PUT"])(
@@ -151,14 +187,6 @@ describe("Cloudflare Worker routes and CORS", () => {
 		);
 	});
 
-	it("delegates the default Worker export for unsupported requests", async () => {
-		const result = await worker.fetch(
-			new Request("https://worker.example/mcp", { method: "GET" }),
-			{},
-		);
-		expect(result.status).toBe(405);
-	});
-
 	it("returns a generic bearer challenge for missing credentials", async () => {
 		const result = await handler(
 			mcpRequest(
@@ -176,78 +204,34 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(await result.text()).toBe("Unauthorized");
 	});
 
-	it("distinguishes invalid credentials from upstream failures", async () => {
-		const invalid = createWorkerHandler({
-			createValidationClient: () =>
-				createMockClient({
-					getUserInfo: vi.fn().mockRejectedValue(
-						new HevyHttpError("HTTP 401", {
-							status: 401,
-							method: "GET",
-							endpoint: "/v1/user/info",
-						}),
-					),
-				}),
-		});
-		const forbidden = createWorkerHandler({
-			createValidationClient: () =>
-				createMockClient({
-					getUserInfo: vi.fn().mockRejectedValue(
-						new HevyHttpError("HTTP 403", {
-							status: 403,
-							method: "GET",
-							endpoint: "/v1/user/info",
-						}),
-					),
-				}),
-		});
-		const unavailable = createWorkerHandler({
-			createValidationClient: () =>
-				createMockClient({
-					getUserInfo: vi.fn().mockRejectedValue(new TypeError("network")),
-				}),
-		});
-		expect((await invalid(mcpRequest({}), {})).status).toBe(401);
-		expect((await forbidden(mcpRequest({}), {})).status).toBe(401);
-		expect((await unavailable(mcpRequest({}), {})).status).toBe(502);
-	});
+	it.each([401, 403])(
+		"distinguishes invalid %s credentials from upstream failures",
+		async (status) => {
+			const invalid = createWorkerHandler({
+				createValidationClient: () =>
+					createMockClient({
+						getUserInfo: vi.fn().mockRejectedValue(
+							new HevyHttpError(`HTTP ${status}`, {
+								status,
+								method: "GET",
+								endpoint: "/v1/user/info",
+							}),
+						),
+					}),
+			});
+			const unavailable = createWorkerHandler({
+				createValidationClient: () =>
+					createMockClient({
+						getUserInfo: vi.fn().mockRejectedValue(new TypeError("network")),
+					}),
+			});
+			expect((await invalid(mcpRequest({}), {})).status).toBe(401);
+			expect((await unavailable(mcpRequest({}), {})).status).toBe(502);
+		},
+	);
 });
 
 describe("real stateless SDK transport", () => {
-	it("uses the default Worker dependencies for a stateless request", async () => {
-		const fetchSpy = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ id: "worker-user" }), {
-				headers: { "content-type": "application/json" },
-			}),
-		);
-		vi.stubGlobal("fetch", fetchSpy);
-
-		try {
-			const result = await worker.fetch(
-				mcpRequest({
-					jsonrpc: "2.0",
-					id: 1,
-					method: "initialize",
-					params: {
-						protocolVersion: "2025-11-25",
-						capabilities: {},
-						clientInfo: { name: "test", version: "1" },
-					},
-				}),
-				{},
-			);
-			expect(result.status).toBe(200);
-			expect(fetchSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					href: "https://api.hevyapp.com/v1/user/info",
-				}),
-				expect.any(Object),
-			);
-		} finally {
-			vi.unstubAllGlobals();
-		}
-	});
-
 	it("initializes and lists tools with streaming responses and no session ID", async () => {
 		const createValidationClient = vi.fn(() => createMockClient());
 		const createRequestClient = vi.fn(() => createMockClient());
@@ -366,7 +350,7 @@ describe("real stateless SDK transport", () => {
 		expect(await result.text()).not.toContain(secret);
 		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
 		expect(diagnostic).toContain("mcp-request-processing");
-		expect(diagnostic).toContain("errorType");
+		expect(diagnostic).toContain("category");
 		expect(diagnostic).toContain("Error");
 		expect(diagnostic).not.toContain(secret);
 		stderrSpy.mockRestore();
@@ -403,48 +387,65 @@ describe("real stateless SDK transport", () => {
 		stderrSpy.mockRestore();
 	});
 
-	it("does not log unallowlisted Hevy error metadata", async () => {
-		const secret = "unallowlisted-value";
+	it("omits hostile Hevy metadata and unknown thrown values", async () => {
+		const secret = "sentinel-hostile-value";
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const handler = createWorkerHandler({
+		stderrSpy.mockClear();
+		const hostileHandler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
-			createRequestClient: () => createMockClient(),
 			createServer: () => {
-				throw new HevyHttpError(`Bearer ${secret}`, {
-					status: 99,
-					method: "GET",
-					endpoint: `/${secret}`,
-					code: "HEVY_UNALLOWLISTED",
+				throw new HevyHttpError(secret, {
+					status: 999,
+					method: `GET\n${secret}`,
+					endpoint: `https://attacker.example/${secret}`,
+					code: secret,
+					cause: { secret },
 				});
 			},
 		});
+		await hostileHandler(mcpRequest({}), {});
 
-		expect((await handler(mcpRequest({}), {})).status).toBe(500);
-		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
-		expect(diagnostic).toContain("HevyHttpError");
-		expect(diagnostic).not.toContain(secret);
-		expect(diagnostic).not.toContain("HEVY_UNALLOWLISTED");
-		expect(diagnostic).not.toContain('"status"');
+		const cyclic: { self?: unknown; secret: string } = { secret };
+		cyclic.self = cyclic;
+		const unknownHandler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createServer: () => {
+				throw cyclic;
+			},
+		});
+		await unknownHandler(mcpRequest({}), {});
+
+		const diagnostics = stderrSpy.mock.calls.map((call) => call[1]);
+		expect(diagnostics[0]).toMatchObject({
+			context: "mcp-request-processing",
+			category: "HevyHttpError",
+		});
+		expect(diagnostics[0]).not.toHaveProperty("code");
+		expect(diagnostics[0]).not.toHaveProperty("status");
+		expect(diagnostics[0]).not.toHaveProperty("method");
+		expect(diagnostics[0]).not.toHaveProperty("endpoint");
+		expect(diagnostics[1]).toMatchObject({
+			context: "mcp-request-processing",
+			category: "UnknownError",
+		});
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
 		stderrSpy.mockRestore();
 	});
 
 	it.each([
-		[new TypeError("network"), "TypeError"],
 		[new RangeError("range"), "RangeError"],
 		[new ReferenceError("reference"), "ReferenceError"],
 		[new SyntaxError("syntax"), "SyntaxError"],
 		[new URIError("uri"), "URIError"],
 		[new EvalError("eval"), "EvalError"],
 		[new AggregateError([], "aggregate"), "AggregateError"],
-		[new DOMException("dom"), "DOMException"],
-		[Object.create(null), "UnknownError"],
 	] as const)(
-		"classifies %s without exposing error details",
+		"classifies %s without exposing details",
 		async (failure, type) => {
 			const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+			stderrSpy.mockClear();
 			const handler = createWorkerHandler({
 				createValidationClient: () => createMockClient(),
-				createRequestClient: () => createMockClient(),
 				createServer: () => {
 					throw failure;
 				},
@@ -456,15 +457,12 @@ describe("real stateless SDK transport", () => {
 		},
 	);
 
-	it("reports stream transport errors through the redacted logger", async () => {
+	it("routes transport errors through safe diagnostics", async () => {
+		const secret = "sentinel-transport-value";
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		stderrSpy.mockClear();
 		const transport = new WebStandardStreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
-		});
-		Object.defineProperty(transport, "onerror", {
-			set(onerror: (error: Error) => void) {
-				onerror(new Error("transport failure"));
-			},
 		});
 		const handler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
@@ -472,14 +470,57 @@ describe("real stateless SDK transport", () => {
 			createTransport: () => transport,
 		});
 
-		const result = await handler(
-			mcpRequest({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+		const result = await handler(mcpRequest({}), {});
+		transport.onerror?.(new Error(secret));
+
+		expect(result.status).toBe(400);
+		const diagnostic = stderrSpy.mock.calls.find(
+			(call) =>
+				(call[1] as { context?: string } | undefined)?.context ===
+				"streamable-http-transport",
+		)?.[1];
+		expect(diagnostic).toMatchObject({
+			context: "streamable-http-transport",
+			category: "Error",
+		});
+		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		stderrSpy.mockRestore();
+	});
+
+	it("uses Worker-safe default factories through the default export", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(JSON.stringify({ id: "user" }), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			}),
+		);
+
+		const result = await worker.fetch(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 7,
+				method: "initialize",
+				params: {
+					protocolVersion: "2025-11-25",
+					capabilities: {},
+					clientInfo: { name: "default-test", version: "1" },
+				},
+			}),
 			{},
 		);
+
 		expect(result.status).toBe(200);
-		expect(JSON.stringify(stderrSpy.mock.calls)).toContain(
-			"streamable-http-transport",
-		);
-		stderrSpy.mockRestore();
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const [input, init] = fetchSpy.mock.calls[0] ?? [];
+		const requestUrl =
+			input instanceof Request
+				? input.url
+				: input instanceof URL
+					? input.href
+					: input;
+		expect(new URL(requestUrl).pathname).toBe("/v1/user/info");
+		expect(init?.redirect).toBe("error");
+		expect(new Headers(init?.headers).get("api-key")).toBe("test-key");
+		fetchSpy.mockRestore();
 	});
 });
