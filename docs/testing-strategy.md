@@ -574,6 +574,9 @@ duplicated contract logic across live and mocked suites.
   - Package file list, binary entry, `server.json`, and version metadata are
     asserted.
   - Non-MCP stdout and orphan child processes fail the lane.
+- **Named follow-up:** `TS-05-Docker-stdio` will add image-level MCP stdio
+  coverage separately. This ticket keeps the existing blocking Docker build
+  and unauthenticated `--version`/`--help` smoke checks unchanged.
 
 ### TS-06 — Named test lanes + local performance baseline
 

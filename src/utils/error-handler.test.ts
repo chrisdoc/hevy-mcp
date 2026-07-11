@@ -151,7 +151,6 @@ describe("Error Handler", () => {
 			expect(console.debug).not.toHaveBeenCalled();
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("Code: ERR_TEST_CODE"),
-				errorWithCode,
 			);
 		});
 
@@ -421,7 +420,6 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: NETWORK_ERROR)"),
-				error,
 			);
 		});
 
@@ -430,7 +428,6 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: VALIDATION_ERROR)"),
-				error,
 			);
 		});
 
@@ -439,7 +436,6 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: NOT_FOUND)"),
-				error,
 			);
 		});
 
@@ -448,7 +444,23 @@ describe("Error Handler", () => {
 			createErrorResponse(error);
 			expect(console.error).toHaveBeenCalledWith(
 				expect.stringContaining("(Type: API_ERROR)"),
-				error,
+			);
+		});
+
+		it("does not log raw axios request credentials", () => {
+			const secret = "fixture-only-secret";
+			createErrorResponse({
+				isAxiosError: true,
+				message: "Request failed with status code 404",
+				config: {
+					headers: { "api-key": secret },
+					url: "/v1/workouts/missing",
+				},
+				response: { status: 404, data: { error: "not found" } },
+			});
+
+			expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(
+				secret,
 			);
 		});
 	});

@@ -27,6 +27,7 @@ import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { createClient } from "./utils/hevyClient.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
+import { resolveApiBaseUrl } from "./utils/test-api-base-url.js";
 import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
@@ -94,7 +95,6 @@ function getCliAction(args: string[]): "start" | "version" | "help" {
 	return "start";
 }
 
-const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const STARTUP_PROBE_TIMEOUT_MS = 5_000;
 
 const INVALID_API_KEY_MESSAGE =
@@ -205,11 +205,11 @@ function getSafeValidationDiagnostic(error: unknown): string | undefined {
 		: undefined;
 }
 
-async function validateApiKey(apiKey: string) {
+async function validateApiKey(apiKey: string, apiBaseUrl: string) {
 	// Keep the startup probe separate from the normal MCP-aware client. The
 	// server is not connected yet, so structured client logging is intentionally
 	// omitted until the normal client is built below.
-	const startupProbeClient = createClient(apiKey, HEVY_API_BASEURL, {
+	const startupProbeClient = createClient(apiKey, apiBaseUrl, {
 		maxGetRetries: 0,
 		timeoutMs: STARTUP_PROBE_TIMEOUT_MS,
 	});
@@ -231,7 +231,7 @@ async function validateApiKey(apiKey: string) {
 	}
 }
 
-function buildServer(apiKey: string) {
+function buildServer(apiKey: string, apiBaseUrl: string) {
 	const userId = fingerprintApiKey(apiKey);
 
 	return tracer.startActiveSpan(
@@ -266,7 +266,7 @@ function buildServer(apiKey: string) {
 					"mcp.hevy-client.initialize",
 					(childSpan) => {
 						try {
-							return createClient(apiKey, HEVY_API_BASEURL, {
+							return createClient(apiKey, apiBaseUrl, {
 								logger: clientLogger,
 							});
 						} finally {
@@ -324,8 +324,9 @@ function buildServer(apiKey: string) {
 
 export async function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey } = serverConfigSchema.parse(config);
-	await validateApiKey(apiKey);
-	return buildServer(apiKey);
+	const apiBaseUrl = resolveApiBaseUrl();
+	await validateApiKey(apiKey, apiBaseUrl);
+	return buildServer(apiKey, apiBaseUrl);
 }
 
 export default createServer;

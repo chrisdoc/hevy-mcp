@@ -209,10 +209,7 @@ export function createErrorResponse(
 	const errorCodeSuffix = errorCode ? `, Code: ${errorCode}` : "";
 
 	// Log the error for server-side debugging with type information
-	console.error(
-		`${formattedMessage} (Type: ${errorType}${errorCodeSuffix})`,
-		error,
-	);
+	console.error(`${formattedMessage} (Type: ${errorType}${errorCodeSuffix})`);
 
 	return {
 		content: [

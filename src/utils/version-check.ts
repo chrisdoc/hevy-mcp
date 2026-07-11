@@ -43,6 +43,7 @@ interface SchedulerDependencies {
 		options: UpdateCheckOptions,
 		dependencies?: Partial<VersionCheckDependencies>,
 	) => Promise<void>;
+	env: NodeJS.ProcessEnv;
 }
 
 const defaultDependencies: VersionCheckDependencies = {
@@ -63,7 +64,16 @@ const defaultDependencies: VersionCheckDependencies = {
 const defaultSchedulerDependencies: SchedulerDependencies = {
 	setImmediate,
 	checkForUpdate,
+	env: process.env,
 };
+
+export function isUpdateCheckDisabledForTest(
+	env: NodeJS.ProcessEnv = process.env,
+): boolean {
+	return (
+		env.NODE_ENV === "test" && env.HEVY_MCP_TEST_DISABLE_UPDATE_CHECK === "1"
+	);
+}
 
 function getCachePath(dependencies: VersionCheckDependencies): string {
 	const cacheRoot =
@@ -264,6 +274,10 @@ export function scheduleUpdateCheck(
 	overrides: Partial<SchedulerDependencies> = {},
 ): void {
 	const dependencies = { ...defaultSchedulerDependencies, ...overrides };
+	if (isUpdateCheckDisabledForTest(dependencies.env)) {
+		return;
+	}
+
 	const immediate = dependencies.setImmediate(() => {
 		void dependencies.checkForUpdate(options).catch(() => undefined);
 	});

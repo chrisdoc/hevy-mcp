@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkForUpdate, scheduleUpdateCheck } from "./version-check.js";
+import {
+	checkForUpdate,
+	isUpdateCheckDisabledForTest,
+	scheduleUpdateCheck,
+} from "./version-check.js";
 
 const NOW = Date.UTC(2026, 6, 10, 12);
 const DAY_MS = 24 * 60 * 60 * 1_000;
@@ -298,6 +302,45 @@ describe("checkForUpdate", () => {
 });
 
 describe("scheduleUpdateCheck", () => {
+	it.each([
+		["unset", { NODE_ENV: "test" }, false],
+		[
+			"wrong value",
+			{ NODE_ENV: "test", HEVY_MCP_TEST_DISABLE_UPDATE_CHECK: "true" },
+			false,
+		],
+		[
+			"outside test",
+			{
+				NODE_ENV: "production",
+				HEVY_MCP_TEST_DISABLE_UPDATE_CHECK: "1",
+			},
+			false,
+		],
+		[
+			"explicit test seam",
+			{ NODE_ENV: "test", HEVY_MCP_TEST_DISABLE_UPDATE_CHECK: "1" },
+			true,
+		],
+	])("handles %s update-check gating", (_label, env, disabled) => {
+		expect(isUpdateCheckDisabledForTest(env)).toBe(disabled);
+	});
+
+	it("does not schedule when the explicit test seam is enabled", () => {
+		const setImmediate = vi.fn();
+
+		scheduleUpdateCheck(OPTIONS, {
+			setImmediate,
+			checkForUpdate: vi.fn(),
+			env: {
+				NODE_ENV: "test",
+				HEVY_MCP_TEST_DISABLE_UPDATE_CHECK: "1",
+			},
+		});
+
+		expect(setImmediate).not.toHaveBeenCalled();
+	});
+
 	it("uses an unref'ed immediate and absorbs check rejection", async () => {
 		let scheduledCallback: (() => void) | undefined;
 		const unref = vi.fn();
@@ -310,6 +353,7 @@ describe("scheduleUpdateCheck", () => {
 		scheduleUpdateCheck(OPTIONS, {
 			setImmediate,
 			checkForUpdate: check,
+			env: {},
 		});
 
 		expect(check).not.toHaveBeenCalled();

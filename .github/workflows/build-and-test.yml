@@ -146,11 +146,35 @@ jobs:
       - name: Smoke test help output without an API key
         run: docker run --rm hevy-mcp:ci --help
 
+  package-stdio:
+    name: Packed package stdio boundary (Node 24)
+    runs-on: ubuntu-latest
+    env:
+      HEVY_API_KEY: ""
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run packed package stdio boundary without live credentials
+        run: |
+          test -z "${HEVY_API_KEY:-}"
+          unset HEVY_API_KEY
+          npm run test:package-stdio
+
   otel-cicd-action:
     if: always()
     name: OpenTelemetry Export Trace
     runs-on: ubuntu-latest
-    needs: [build, docker]
+    needs: [build, docker, package-stdio]
     steps:
       - name: Export workflow
         uses: corentinmusard/otel-cicd-action@f2d88ecf54d9dd3e01ea95e25f93603212ee93d3 # v4.0.1

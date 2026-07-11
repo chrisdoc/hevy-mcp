@@ -204,6 +204,29 @@ describe("Server entry", () => {
 		);
 	});
 
+	it("uses one validated test-only base URL for startup and runtime clients", async () => {
+		process.env = {
+			...originalEnv,
+			NODE_ENV: "test",
+			HEVY_MCP_TEST_API_BASE_URL: "http://127.0.0.1:4321",
+		};
+
+		await createServer({ config: { apiKey: "test-key" } });
+
+		expect(createClient).toHaveBeenNthCalledWith(
+			1,
+			"test-key",
+			"http://127.0.0.1:4321",
+			{ maxGetRetries: 0, timeoutMs: 5_000 },
+		);
+		expect(createClient).toHaveBeenNthCalledWith(
+			2,
+			"test-key",
+			"http://127.0.0.1:4321",
+			{ logger: expect.any(Function) },
+		);
+	});
+
 	it("advertises logging, rich instructions, and one client logger", async () => {
 		await createServer({ config: { apiKey: "test-key" } });
 
