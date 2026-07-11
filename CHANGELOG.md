@@ -1,3 +1,15 @@
+## 3.1.0
+
+### Minor Changes
+
+- [#640](https://github.com/chrisdoc/hevy-mcp/pull/640) [`9a85015`](https://github.com/chrisdoc/hevy-mcp/commit/9a850156b1861b5e4dda26afbe59c164fd3fbc22) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add a stateless Cloudflare Worker Streamable HTTP endpoint at `/mcp` with per-request Hevy bearer authentication, exact-origin CORS controls, request-scoped caching, and a Worker-safe native-fetch API client.
+
+### Patch Changes
+
+- [#645](https://github.com/chrisdoc/hevy-mcp/pull/645) [`f2ba282`](https://github.com/chrisdoc/hevy-mcp/commit/f2ba28263d50c2cad571970e9279f53dca346fbb) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Isolate pull request previews on a dedicated Worker that is safely bootstrapped
+  on first use, while keeping production deployments restricted to trusted main
+  branch CI and the custom production domain.
+
 ## 3.0.0
 
 ### Major Changes
