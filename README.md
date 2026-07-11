@@ -164,6 +164,46 @@ server, Hevy client, transport, and exercise-template cache. There are no MCP
 session IDs, Durable Objects, event replay, or resumable `GET` streams. `GET`
 and `DELETE` return `405`.
 
+#### Automated deployments
+
+GitHub Actions deploys internal pull requests targeting `main` to a stable
+Cloudflare preview alias named `pr-<PR number>`. The alias URL is reported in
+the workflow job summary and on the GitHub `preview` environment. Pull requests
+from forks still run the normal build and tests, but the deployment job is
+skipped so Cloudflare credentials are never exposed to fork code.
+
+After the `Build and Test` workflow succeeds for a push to `main`, the exact
+tested commit is deployed through the GitHub `production` environment. The
+production MCP endpoint is:
+
+```text
+https://hevy.chrisdoc.dev/mcp
+```
+
+Repository administrators must create `preview` and `production` GitHub
+environments and provide these environment secrets in each:
+
+```text
+CLOUDFLARE_API_TOKEN=<workers-deploy-token>
+CLOUDFLARE_ACCOUNT_ID=<cloudflare-account-id>
+```
+
+No `HEVY_API_KEY` deployment secret is required or supported. Each caller sends
+their own key in `Authorization: Bearer ...` as described above. The custom
+domain and Worker route for `hevy.chrisdoc.dev` are managed separately by
+Terraform in the private `chrisdoc/infra` repository; this repository does not
+create or modify that binding. The generic production `workers.dev` route is
+disabled, while version and alias preview URLs remain enabled.
+
+After production deployment, this unauthenticated smoke test should return
+HTTP `401` without sending any credential:
+
+```bash
+curl --request POST --silent --show-error \
+	--output /dev/null --write-out '%{http_code}\n' \
+	https://hevy.chrisdoc.dev/mcp
+```
+
 This authentication mode is a **custom bearer credential containing a Hevy API
 key**, not OAuth. MCP clients that require OAuth discovery, dynamic client
 registration, or token refresh are not compatible unless they can be configured
