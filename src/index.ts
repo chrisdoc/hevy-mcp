@@ -71,7 +71,6 @@ const HELP_TEXT = [
 	"Options:",
 	"  -h, --help                 Show this help message and exit",
 	"  -v, --version              Show version and exit",
-	"  --hevy-api-key=<api-key>   (deprecated, use HEVY_API_KEY env var)",
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
@@ -79,8 +78,6 @@ const HELP_TEXT = [
 	"",
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
-	"  npx hevy-mcp --hevy-api-key=your-key",
-	"  npm start -- --hevy-api-key=your-key",
 ].join("\n");
 
 function getCliAction(args: string[]): "start" | "version" | "help" {
@@ -358,7 +355,7 @@ export async function runServer() {
 		},
 		async (span) => {
 			try {
-				const cfg = parseConfig(args, process.env);
+				const cfg = parseConfig(process.env);
 				const apiKey = cfg.apiKey;
 				assertApiKey(apiKey);
 

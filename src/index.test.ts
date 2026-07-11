@@ -13,7 +13,6 @@ const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
 const TEST_KEY_HMAC_SHA256 = "2cb0b5f95a";
 const TEST_API_KEY_HMAC_SHA256 = "0eefd4f47c";
-const CLI_KEY_HMAC_SHA256 = "85a3f127af";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -407,6 +406,7 @@ describe("Server entry", () => {
 				expect(helpText).toContain("HEVY_API_KEY");
 				expect(helpText).toContain("HEVY_MCP_DEBUG=1");
 				expect(helpText).toContain("Examples:");
+				expect(helpText).not.toContain("--hevy-api-key");
 				expect(createClient).not.toHaveBeenCalled();
 				expect(testDoubles.startActiveSpan).not.toHaveBeenCalled();
 				expect(testDoubles.installGracefulShutdown).not.toHaveBeenCalled();
@@ -504,35 +504,57 @@ describe("Server entry", () => {
 			expect(events).toEqual(["connected", "scheduled"]);
 		});
 
-		it("prefers CLI --hevy-api-key argument over environment variable", async () => {
+		it.each([
+			"--hevy-api-key=cli-key",
+			"--hevyApiKey=cli-key",
+			"hevy-api-key=cli-key",
+		])("ignores removed CLI API key argument %s", async (legacyArg) => {
 			process.env = {
 				...originalEnv,
 				HEVY_API_KEY: "env-key",
 			};
-			process.argv = [...originalArgv.slice(0, 2), "--hevy-api-key=cli-key"];
+			process.argv = [...originalArgv.slice(0, 2), legacyArg];
 
 			await runServer();
 			expect(createClient).toHaveBeenNthCalledWith(
 				1,
-				"cli-key",
+				"env-key",
 				"https://api.hevyapp.com",
 				{ maxGetRetries: 0, timeoutMs: 5_000 },
 			);
 			expect(createClient).toHaveBeenNthCalledWith(
 				2,
-				"cli-key",
+				"env-key",
 				"https://api.hevyapp.com",
 				{ logger: expect.any(Function) },
 			);
-			expect(Sentry.setUser).toHaveBeenCalledWith({
-				id: CLI_KEY_HMAC_SHA256,
-			});
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
 			).not.toContain("cli-key");
-			expect(
-				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
-			).not.toContain("env-key");
+		});
+
+		it("does not use a removed CLI API key argument when HEVY_API_KEY is missing", async () => {
+			process.env = { ...originalEnv };
+			delete process.env.HEVY_API_KEY;
+			process.argv = [...originalArgv.slice(0, 2), "--hevy-api-key=cli-key"];
+
+			const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+				throw new Error("process.exit called");
+			});
+			const errorSpy = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => undefined);
+
+			await expect(runServer()).rejects.toThrow("process.exit called");
+			expect(exitSpy).toHaveBeenCalledWith(1);
+			expect(errorSpy).toHaveBeenCalledWith(
+				"Hevy API key is required. Provide it via the HEVY_API_KEY environment variable.",
+			);
+			expect(createClient).not.toHaveBeenCalled();
+			expect(testDoubles.getUserInfo).not.toHaveBeenCalled();
+
+			exitSpy.mockRestore();
+			errorSpy.mockRestore();
 		});
 
 		it("marks the connect span as failed when stdio connection throws", async () => {

@@ -230,10 +230,6 @@ This bootstraps the `hevy-mcp` entry in your client config without manual JSON e
 Supply your Hevy API key via the `HEVY_API_KEY` environment variable (in
 `.env` or system environment).
 
-> ⚠️ CLI API key arguments (`--hevy-api-key=...`, `--hevyApiKey=...`,
-> `hevy-api-key=...`) are still accepted for backward compatibility, but are
-> deprecated and insecure. Use `HEVY_API_KEY` instead.
-
 Set `HEVY_MCP_API_TIMEOUT` to override the default 30-second Hevy API request
 timeout. Its value is in milliseconds.
 
