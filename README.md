@@ -103,6 +103,12 @@ The server uses stdio, so `-i` keeps standard input open for the MCP client.
 form forwards the variable from the host environment without putting the key
 in the command arguments.
 
+The image uses the official Node.js LTS Alpine base, runs as the non-root
+`node` user, and ships the application and its third-party runtime dependencies
+as a standalone bundle. It does not include an application `/app/node_modules`
+directory; the official Node base image may still contain its own globally
+packaged npm or Corepack files.
+
 Use `latest` to follow the newest stable release. For reproducible deployments,
 pin the exact version shown on the release, using a tag such as
 `ghcr.io/chrisdoc/hevy-mcp:X.Y.Z`. Major (`:X`) and major.minor (`:X.Y`) tags
@@ -333,9 +339,11 @@ Compatibility note: with MCP SDK v1.29.0, clients using the default must send
 - **Build**: `npm run build`
 - **Lint/Format**: `npm run check` (uses oxlint/oxfmt)
 - **Type Check**: `npm run check:types`
-- **Unit Tests**: `npx vitest run --exclude 'tests/integration/**'`
-- **Full Test Suite**: `npm test` (requires `HEVY_API_KEY`)
+- **Unit Tests**: `npm run test:unit`
+- **Full Vitest Discovery**: `npm test` (builds first; live tests skip when
+  `HEVY_API_KEY` is absent)
 - **Changeset Check**: `npm run check:changeset`
+- **Tool Token Cost**: `npm run measure:tokens` ([measurement guide](./docs/token-cost-tracking.md))
 
 For a detailed senior engineer guide, please refer to [AGENTS.md](./AGENTS.md).
 
