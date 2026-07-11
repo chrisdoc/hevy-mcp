@@ -634,6 +634,16 @@ duplicated contract logic across live and mocked suites.
     class, and schema path without dumping full payloads.
   - Redaction failure blocks CI.
 
+The implemented nightly artifact is one JSON file per launcher. It contains
+only allowlisted launcher/runtime/version metadata, categorized pass/fail
+results, normalized error classes, concise schema paths, totals, and bounded
+stderr-observation metadata. It never contains raw stderr, commands or
+arguments, error messages/stacks/causes, URLs, IDs, headers, request/response or
+MCP payloads, trace data, or user data. Nightly workflow artifacts are retained
+for **7 days**; raw logs or stderr payloads must not be uploaded alongside them.
+The source revision is populated only for source-build launchers; registry
+launchers rely on the package/server version reported by the connected server.
+
 ## Definition of done
 
 The strategy is implemented when:
