@@ -1,28 +1,23 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-alpine AS build
+FROM node:lts-alpine AS build
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY . .
-RUN npm run build
+COPY tsconfig.json tsdown.config.ts ./
+COPY src/ ./src/
+RUN npm run build:standalone
 
-FROM node:24-trixie-slim AS production-dependencies
-
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
-FROM gcr.io/distroless/nodejs24-debian13:nonroot AS runtime
+FROM node:lts-alpine AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /app
 
-COPY --from=production-dependencies --chown=65532:65532 /app/node_modules ./node_modules
-COPY --from=build --chown=65532:65532 /app/dist ./dist
+COPY --from=build --chown=node:node /app/dist/standalone.mjs ./standalone.mjs
 
-ENTRYPOINT ["/nodejs/bin/node", "dist/cli.mjs"]
+USER node
+
+ENTRYPOINT ["node", "/app/standalone.mjs"]

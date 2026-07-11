@@ -40,6 +40,7 @@
 		"test": "node --env-file .env node_modules/vitest/vitest.mjs --run",
 		"openapi": "node ./scripts/openapi-spec.js",
 		"build": "tsdown",
+		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown",
 		"build:client": "kubb generate",
 		"prepack": "npm run check:server-manifest && npm run build",
 		"start": "node --env-file .env dist/cli.mjs",
