@@ -24,6 +24,24 @@ describe("failure-safe performance scenarios", () => {
 		});
 	});
 
+	it("preserves the operation phase separately from setup failures", () => {
+		const state = createScenarioState("mcp-tools-list", 20, {
+			description: "informational",
+			p95Milliseconds: 100,
+			informationalOnly: true,
+		});
+		recordFailure(state, 1, "operation", new Error("operation failed"));
+
+		const scenario = finalizeScenario(state, 12.5);
+		expect(scenario.correctness.failures).toEqual([
+			{
+				iteration: 1,
+				phase: "operation",
+				message: "operation failed",
+			},
+		]);
+	});
+
 	it("records failed fixture verification in the scenario result", () => {
 		const state = createScenarioState("mcp-tools-list", 1, {
 			description: "informational",

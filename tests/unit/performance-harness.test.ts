@@ -66,6 +66,15 @@ function emitFixtureMarker() {
 	for (const listener of harnessMocks.dataListeners) listener(fixtureMarker());
 }
 
+function emitSplitFixtureMarker() {
+	const marker = fixtureMarker();
+	const splitAt = FIXTURE_RESULT_PREFIX.length - 3;
+	for (const listener of harnessMocks.dataListeners) {
+		listener(marker.slice(0, splitAt));
+		listener(marker.slice(splitAt));
+	}
+}
+
 function resetHarnessMocks() {
 	harnessMocks.dataListeners.splice(0);
 	harnessMocks.Client.mockClear();
@@ -138,6 +147,20 @@ describe("performance harness helpers", () => {
 			verified: true,
 		});
 		await expect(harness.close()).rejects.toThrow("closed more than once");
+	});
+
+	it("detects a fixture marker split across stderr chunks", async () => {
+		resetHarnessMocks();
+		harnessMocks.client.connect.mockImplementation(async () => {
+			emitSplitFixtureMarker();
+		});
+
+		const harness = await createPerformanceHarness("startup");
+
+		await expect(harness.close()).resolves.toMatchObject({
+			mode: "startup",
+			verified: true,
+		});
 	});
 
 	it("includes fixture diagnostics when client initialization fails", async () => {

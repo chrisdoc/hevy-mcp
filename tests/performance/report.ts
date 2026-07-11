@@ -16,7 +16,7 @@ const durationStatisticsSchema = z.object({
 
 const failureSchema = z.object({
 	iteration: z.number().int().positive(),
-	phase: z.enum(["setup", "iteration", "verification", "cleanup"]),
+	phase: z.enum(["setup", "operation", "iteration", "verification", "cleanup"]),
 	message: z.string().min(1),
 });
 

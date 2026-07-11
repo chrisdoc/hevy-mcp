@@ -87,15 +87,21 @@ async function runSingleProcessScenario(
 	let harness: PerformanceHarness | undefined;
 	try {
 		harness = await createPerformanceHarness(mode);
-		state.serverMemory.push(observeServerRss(harness.pid, 1, "initialized"));
-		await operation(harness);
 	} catch (error) {
-		if (state.durations.length === 0) {
-			state.durations.push(measuredDuration(scenarioStartedAt));
-		}
+		state.durations.push(measuredDuration(scenarioStartedAt));
 		recordFailure(state, 1, "setup", error);
-	} finally {
-		if (harness) {
+	}
+
+	if (harness) {
+		try {
+			state.serverMemory.push(observeServerRss(harness.pid, 1, "initialized"));
+			await operation(harness);
+		} catch (error) {
+			if (state.durations.length === 0) {
+				state.durations.push(measuredDuration(scenarioStartedAt));
+			}
+			recordFailure(state, 1, "operation", error);
+		} finally {
 			await closeHarness(
 				state,
 				harness,
@@ -324,14 +330,10 @@ it("records the spawned built-CLI performance baseline", async () => {
 		),
 	);
 
-	let report: ReturnType<typeof createPerformanceReport>;
-	try {
-		report = createPerformanceReport(scenarios);
-		performanceReportSchema.parse(report);
-	} finally {
-		// Scenario runners never omit entries; writing occurs before correctness gates.
-		writePerformanceReport(createPerformanceReport(scenarios));
-	}
+	const report = createPerformanceReport(scenarios);
+	performanceReportSchema.parse(report);
+	// Scenario runners never omit entries; writing occurs before correctness gates.
+	writePerformanceReport(report);
 
 	expect(scenarios.map(({ name }) => name)).toEqual([
 		"startup-initialization",

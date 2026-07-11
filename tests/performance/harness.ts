@@ -113,12 +113,22 @@ export async function createPerformanceHarness(
 	const fixtureMarkerSeen = new Promise<void>((resolvePromise) => {
 		resolveFixtureMarker = resolvePromise;
 	});
+	let fixtureMarkerSearchTail = "";
+	let fixtureMarkerFound = false;
 	stderr?.setEncoding("utf8");
 	stderr?.on("data", (chunk: string) => {
 		stderrChunks.push(chunk);
-		if (stderrChunks.join("").includes(FIXTURE_RESULT_PREFIX)) {
+		if (fixtureMarkerFound) return;
+
+		const markerSearchBuffer = fixtureMarkerSearchTail + chunk;
+		if (markerSearchBuffer.includes(FIXTURE_RESULT_PREFIX)) {
+			fixtureMarkerFound = true;
 			resolveFixtureMarker();
+			return;
 		}
+		fixtureMarkerSearchTail = markerSearchBuffer.slice(
+			-(FIXTURE_RESULT_PREFIX.length - 1),
+		);
 	});
 
 	const client = new Client(
