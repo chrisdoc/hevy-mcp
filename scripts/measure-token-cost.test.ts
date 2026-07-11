@@ -1,5 +1,12 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+	mkdtemp,
+	readFile,
+	rm,
+	stat,
+	symlink,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -65,6 +72,30 @@ describe("parseArgs", () => {
 	it("rejects unknown options and missing values", () => {
 		expect(() => parseArgs(["--wat"])).toThrow("Unknown option: --wat");
 		expect(() => parseArgs(["--output"])).toThrow("Missing value for --output");
+		expect(() => parseArgs(["--output", "--baseline", "base.json"])).toThrow(
+			"Missing value for --output",
+		);
+		expect(() => parseArgs(["--markdown", "-h"])).toThrow(
+			"Missing value for --markdown",
+		);
+	});
+
+	it("allows legitimate hyphen-prefixed path values", () => {
+		expect(
+			parseArgs([
+				"--output",
+				"-result.json",
+				"--baseline",
+				"-base.json",
+				"--markdown",
+				"-report.md",
+			]),
+		).toEqual({
+			help: false,
+			outputPath: "-result.json",
+			baselinePath: "-base.json",
+			markdownPath: "-report.md",
+		});
 	});
 });
 
@@ -77,6 +108,18 @@ describe("measureTokenPayload", () => {
 			totalTokens: 0,
 			averageTokensPerTool: 0,
 			tools: [],
+		});
+	});
+
+	it("reports zero shares when an encoder returns no tokens", () => {
+		const report = measureTokenPayload([tool("alpha", "empty")], {
+			encode: () => [],
+		});
+
+		expect(report).toMatchObject({
+			totalTokens: 0,
+			averageTokensPerTool: 0,
+			tools: [{ name: "alpha", tokens: 0, percentageOfTotal: 0 }],
 		});
 	});
 
@@ -231,6 +274,14 @@ describe("formatMarkdown", () => {
 			"### Baseline unavailable\n\nNot available.",
 		);
 	});
+
+	it("renders above-target statuses", () => {
+		const report = reportWith();
+		report.targets.toolCountStatus = "aboveTarget";
+		report.targets.averageTokensPerToolStatus = "aboveTarget";
+
+		expect(formatMarkdown(report).match(/Above target/g)).toHaveLength(2);
+	});
 });
 
 describe("formatTable", () => {
@@ -271,6 +322,18 @@ describe("registered tool measurement", () => {
 		expect(free).toHaveBeenCalledOnce();
 	});
 
+	it("instantiates and frees the configured real tokenizer", async () => {
+		const report = await measureRegisteredTools({
+			listTools: async () => [tool("alpha", "measured")],
+		});
+
+		expect(report).toMatchObject({
+			encoding: TOKEN_ENCODING,
+			toolCount: 1,
+		});
+		expect(report.totalTokens).toBeGreaterThan(0);
+	});
+
 	it("frees the encoder when tool collection fails", async () => {
 		const free = vi.fn();
 		await expect(
@@ -296,6 +359,15 @@ describe("run", () => {
 			expect.stringContaining("Usage: npm run measure:tokens -- [options]"),
 		);
 		expect(measureTools).not.toHaveBeenCalled();
+	});
+
+	it("prints a measurement without requiring output paths", async () => {
+		const current = reportWith();
+		const log = vi.fn();
+
+		await run([], { log, measureTools: async () => current });
+
+		expect(log).toHaveBeenCalledWith(formatTable(current));
 	});
 
 	it("writes JSON and Markdown with a compatible baseline", async () => {
@@ -328,6 +400,10 @@ describe("run", () => {
 			expect(await readFile(markdownPath, "utf8")).toContain(
 				"### Change from baseline",
 			);
+			if (process.platform !== "win32") {
+				expect((await stat(outputPath)).mode & 0o777).toBe(0o600);
+				expect((await stat(markdownPath)).mode & 0o777).toBe(0o600);
+			}
 			expect(log).toHaveBeenCalledWith(formatTable(current));
 		} finally {
 			await rm(directory, { recursive: true, force: true });
@@ -356,9 +432,14 @@ describe("run", () => {
 				expect(error).toHaveBeenCalledWith(
 					expect.stringContaining(expectedError),
 				);
-				expect(await readFile(markdownPath, "utf8")).toContain(
-					"### Baseline unavailable",
-				);
+				const markdown = await readFile(markdownPath, "utf8");
+				expect(markdown).toContain("### Baseline unavailable");
+				if (_case === "malformed") {
+					expect(markdown).toContain(
+						"The comparison baseline could not be read; see the workflow logs for details.",
+					);
+					expect(markdown).not.toContain("Could not read the baseline");
+				}
 			} finally {
 				await rm(directory, { recursive: true, force: true });
 			}
@@ -379,15 +460,67 @@ describe("run", () => {
 			});
 
 			expect(error).toHaveBeenCalledWith(
-				expect.stringContaining("Could not read the baseline"),
+				expect.stringContaining(
+					`Could not read the baseline at ${baselinePath}`,
+				),
 			);
-			expect(await readFile(markdownPath, "utf8")).toContain(
-				"Current measurements are still valid",
+			const markdown = await readFile(markdownPath, "utf8");
+			expect(markdown).toContain(
+				"The comparison baseline could not be read; see the workflow logs for details.",
 			);
+			expect(markdown).toContain("Current measurements are still valid");
+			expect(markdown).not.toContain(baselinePath);
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
 	});
+
+	it.each([
+		["JSON", "--output", "result.json"],
+		["Markdown", "--markdown", "report.md"],
+	])(
+		"rejects an existing %s output without overwriting it",
+		async (_case, flag, name) => {
+			const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
+			try {
+				const outputPath = join(directory, name);
+				await writeFile(outputPath, "keep me");
+
+				await expect(
+					run([flag, outputPath], {
+						log: vi.fn(),
+						measureTools: async () => reportWith(),
+					}),
+				).rejects.toMatchObject({ code: "EEXIST" });
+				expect(await readFile(outputPath, "utf8")).toBe("keep me");
+			} finally {
+				await rm(directory, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it.skipIf(process.platform === "win32")(
+		"rejects a symlink output without following it",
+		async () => {
+			const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
+			try {
+				const targetPath = join(directory, "target.json");
+				const outputPath = join(directory, "result.json");
+				await writeFile(targetPath, "keep target");
+				await symlink(targetPath, outputPath);
+
+				await expect(
+					run(["--output", outputPath], {
+						log: vi.fn(),
+						measureTools: async () => reportWith(),
+					}),
+				).rejects.toMatchObject({ code: "EEXIST" });
+				expect(await readFile(targetPath, "utf8")).toBe("keep target");
+			} finally {
+				await rm(directory, { recursive: true, force: true });
+			}
+		},
+	);
 });
 
 describe("runCli", () => {
@@ -411,6 +544,18 @@ describe("runCli", () => {
 			}),
 		).toBe(1);
 		expect(error).toHaveBeenCalledWith("measurement failed");
+	});
+
+	it("reports failures through console.error by default", async () => {
+		const consoleError = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+		try {
+			expect(await runCli(["--unknown"])).toBe(1);
+			expect(consoleError).toHaveBeenCalledWith("Unknown option: --unknown");
+		} finally {
+			consoleError.mockRestore();
+		}
 	});
 });
 

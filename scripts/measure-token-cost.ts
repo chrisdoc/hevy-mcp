@@ -8,7 +8,7 @@ import { get_encoding } from "tiktoken";
 import { registerHevyTools } from "../src/tools/register.js";
 
 export const TOKEN_COST_SCHEMA_VERSION = 1;
-export const TOKEN_ENCODING = "cl100k_base";
+export const TOKEN_ENCODING = "o200k_base";
 export const MEASUREMENT_SCOPE =
 	"Complete JSON-serialized MCP tools/list result payload: { tools }";
 export const TOOL_COUNT_TARGET = 20;
@@ -78,6 +78,15 @@ export interface RunDependencies {
 	error?: (message: string) => void;
 }
 
+const OPTION_TOKENS = new Set([
+	"--help",
+	"-h",
+	"--output",
+	"-o",
+	"--baseline",
+	"--markdown",
+]);
+
 export function parseArgs(args: string[]): CliOptions {
 	const options: CliOptions = { help: false };
 
@@ -102,7 +111,7 @@ export function parseArgs(args: string[]): CliOptions {
 		}
 
 		const value = args[index + 1];
-		if (!value || value.startsWith("-")) {
+		if (!value || OPTION_TOKENS.has(value)) {
 			throw new Error(`Missing value for ${argument}`);
 		}
 
@@ -385,21 +394,32 @@ export async function measureRegisteredTools(
 async function loadBaseline(path: string): Promise<{
 	report?: TokenCostReport;
 	unavailableReason?: string;
+	diagnostic?: string;
 }> {
 	try {
 		const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
 		if (!isCompatibleBaseline(parsed)) {
 			return {
-				unavailableReason: `The baseline at \`${path}\` is incompatible with schema version ${TOKEN_COST_SCHEMA_VERSION}, encoding \`${TOKEN_ENCODING}\`, or the current measurement scope.`,
+				unavailableReason: `The comparison baseline is incompatible with schema version ${TOKEN_COST_SCHEMA_VERSION}, encoding \`${TOKEN_ENCODING}\`, or the current measurement scope.`,
 			};
 		}
 		return { report: parsed };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		return {
-			unavailableReason: `Could not read the baseline at \`${path}\`: ${message}`,
+			unavailableReason:
+				"The comparison baseline could not be read; see the workflow logs for details.",
+			diagnostic: `Could not read the baseline at ${path}: ${message}`,
 		};
 	}
+}
+
+async function writeNewOutput(path: string, contents: string): Promise<void> {
+	await writeFile(path, contents, {
+		encoding: "utf8",
+		flag: "wx",
+		mode: 0o600,
+	});
 }
 
 function helpText(): string {
@@ -431,20 +451,29 @@ export async function run(
 	const report = await (dependencies.measureTools ?? measureRegisteredTools)();
 	let comparison: BaselineComparison | undefined;
 	let baselineUnavailableReason: string | undefined;
+	let baselineDiagnostic: string | undefined;
 	if (options.baselinePath) {
 		const baseline = await loadBaseline(options.baselinePath);
 		if (baseline.report) comparison = compareReports(report, baseline.report);
-		else baselineUnavailableReason = baseline.unavailableReason;
+		else {
+			baselineUnavailableReason = baseline.unavailableReason;
+			baselineDiagnostic = baseline.diagnostic;
+		}
 	}
 
 	log(formatTable(report));
-	if (baselineUnavailableReason) error(baselineUnavailableReason);
+	if (baselineUnavailableReason) {
+		error(baselineDiagnostic ?? baselineUnavailableReason);
+	}
 
 	if (options.outputPath) {
-		await writeFile(options.outputPath, `${JSON.stringify(report, null, 2)}\n`);
+		await writeNewOutput(
+			options.outputPath,
+			`${JSON.stringify(report, null, 2)}\n`,
+		);
 	}
 	if (options.markdownPath) {
-		await writeFile(
+		await writeNewOutput(
 			options.markdownPath,
 			formatMarkdown(report, comparison, baselineUnavailableReason),
 		);

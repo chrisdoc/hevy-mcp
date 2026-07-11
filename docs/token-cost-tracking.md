@@ -23,6 +23,8 @@ npm run measure:tokens -- \
 
 Use `npm run measure:tokens -- --help` for the full option list. Unknown
 options and missing option values are rejected with a nonzero exit status.
+Output files are created with owner-only permissions and are never overwritten.
+Choose fresh paths or remove obsolete output files before rerunning the command.
 
 ## Measurement semantics
 
@@ -32,7 +34,7 @@ options and missing option values are rejected with a nonzero exit status.
 - Each per-tool value encodes one complete tool object independently. Shared
   envelope punctuation and separators are only present in the total, so the
   per-tool values need not sum exactly to it.
-- Results use `cl100k_base` from `tiktoken`. This is a stable comparison proxy,
+- Results use `o200k_base` from `tiktoken`. This is a stable comparison proxy,
   not a promise of the exact count used by every model or MCP client.
 - JSON is deterministic, camelCase, and schema-versioned. It deliberately has
   no timestamp so an unchanged tool set produces an unchanged result.
@@ -44,8 +46,8 @@ advertised when tracking was introduced. It is a first-run fallback for pull
 request bases that predate the measurement script. Once the base revision has
 the script and package wiring, CI measures that exact base SHA instead.
 
-The current launch baseline is **10,928 total tokens**, averaging **475.13
-tokens per tool** with `cl100k_base`.
+The current launch baseline is **11,249 total tokens**, averaging **489.09
+tokens per tool** with `o200k_base`.
 
 The project tracks these advisory goals:
 
@@ -61,6 +63,12 @@ The token-cost workflow runs for pull requests targeting `main`, pushes to
 `main`, and manual dispatches. It writes the Markdown report to the Actions job
 summary and uploads the current JSON, comparison JSON, and Markdown report in
 an artifact named for the head SHA.
+
+Pull requests compare against the exact base revision when that revision has
+token-measurement support. Dependency installation or measurement failures on
+an eligible base fail the workflow instead of silently dropping the comparison.
+Only bases that predate the measurement script and package wiring use the
+committed launch baseline as a fallback.
 
 For same-repository pull requests, a separate least-privilege job creates or
 updates one hidden-marker comment. Fork pull requests still measure, summarize,

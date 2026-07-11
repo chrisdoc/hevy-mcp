@@ -45,7 +45,7 @@ jobs:
       - name: Prepare comparison baseline
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
 
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
             cp token-cost-baseline.json token-cost-base.json
@@ -54,14 +54,11 @@ jobs:
 
           if [[ -f token-cost-base/scripts/measure-token-cost.ts ]] &&
              node -e 'const p=require("./token-cost-base/package.json"); process.exit(p.scripts?.["measure:tokens"] && (p.devDependencies?.tiktoken || p.dependencies?.tiktoken) ? 0 : 1)'; then
-            if npm --prefix token-cost-base ci &&
-               npm --prefix token-cost-base run measure:tokens -- \
-                 --output "$GITHUB_WORKSPACE/token-cost-base.json"; then
-              echo "Measured the exact pull request base revision."
-            else
-              echo '{}' > token-cost-base.json
-              echo "Base measurement failed; the report will mark the baseline unavailable."
-            fi
+            echo "Measuring the exact pull request base revision."
+            npm --prefix token-cost-base ci
+            npm --prefix token-cost-base run measure:tokens -- \
+              --output "$GITHUB_WORKSPACE/token-cost-base.json"
+            echo "Measured the exact pull request base revision."
           else
             cp token-cost-baseline.json token-cost-base.json
             echo "Base revision predates token measurement; using the committed launch baseline."
