@@ -250,6 +250,7 @@ function createNativeClient(
 				const response = await fetchImplementation(url, {
 					method,
 					headers,
+					redirect: "error",
 					body:
 						normalized.data instanceof FormData
 							? normalized.data

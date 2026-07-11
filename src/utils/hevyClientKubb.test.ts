@@ -1,3 +1,5 @@
+import { createServer as createHttpServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { describe, expect, it, vi } from "vitest";
 import { HevyHttpError } from "./hevy-http-error.js";
 import {
@@ -14,6 +16,22 @@ function jsonResponse(
 	return new Response(JSON.stringify(data), {
 		status,
 		headers: { "content-type": "application/json", ...headers },
+	});
+}
+
+function listen(server: ReturnType<typeof createHttpServer>): Promise<number> {
+	return new Promise((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", () => {
+			server.off("error", reject);
+			resolve((server.address() as AddressInfo).port);
+		});
+	});
+}
+
+function close(server: ReturnType<typeof createHttpServer>): Promise<void> {
+	return new Promise((resolve, reject) => {
+		server.close((error) => (error ? reject(error) : resolve()));
 	});
 }
 
@@ -39,6 +57,46 @@ describe("native-fetch Hevy client", () => {
 				page: 2,
 			},
 		);
+		expect(fetchMock.mock.calls[0]?.[1]?.redirect).toBe("error");
+	});
+
+	it("never forwards the api-key to a cross-origin redirect target", async () => {
+		const secret = "redirect-confidential-key";
+		let destinationRequests = 0;
+		let destinationApiKey: string | string[] | undefined;
+		const destination = createHttpServer((request, response) => {
+			destinationRequests += 1;
+			destinationApiKey = request.headers["api-key"];
+			response.writeHead(200, { "content-type": "application/json" });
+			response.end('{"received":true}');
+		});
+		const destinationPort = await listen(destination);
+		const origin = createHttpServer((request, response) => {
+			expect(request.headers["api-key"]).toBe(secret);
+			response.writeHead(302, {
+				location: `http://127.0.0.1:${destinationPort}/stolen`,
+			});
+			response.end();
+		});
+		const originPort = await listen(origin);
+
+		try {
+			const client = createClient(secret, `http://127.0.0.1:${originPort}`, {
+				maxGetRetries: 0,
+			});
+			const error = await client.getUserInfo().catch((cause: unknown) => cause);
+
+			expect(error).toBeInstanceOf(HevyHttpError);
+			expect(error).toMatchObject({
+				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+				endpoint: "/v1/user/info",
+			});
+			expect(JSON.stringify(error)).not.toContain(secret);
+			expect(destinationRequests).toBe(0);
+			expect(destinationApiKey).toBeUndefined();
+		} finally {
+			await Promise.all([close(origin), close(destination)]);
+		}
 	});
 
 	it("serializes JSON writes and does not retry failed POST requests", async () => {
