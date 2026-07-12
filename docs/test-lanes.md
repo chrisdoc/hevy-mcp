@@ -14,7 +14,7 @@ Vitest selectors.
 | `npm run test:stdio`            | Current stdio instrumentation and graceful-shutdown/process regression baseline.           | Deterministic. Issue #609 owns full spawned built-stdio coverage.              |
 | `npm run test:pack`             | Builds and inspects the `npm pack --dry-run` inventory, binary mapping, and package files. | Deterministic. Issue #609 owns install-and-spawn coverage of the real tarball. |
 | `npm run test:live`             | Read-only source canary against Hevy.                                                      | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.               |
-| `npm run test:worker-http:live` | Read-only local Wrangler Worker canary against Hevy.                                       | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.   |
+| `npm run test:worker-http:live` | Local Wrangler Worker canary with comprehensive bounded representative reads against Hevy. | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.   |
 | `npm run test:nightly`          | Published/source launcher canary configured by the nightly or release workflow.            | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.   |
 | `npm run test:performance`      | Builds, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline.    | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.            |
 | `npm run test:coverage`         | Unit and mocked MCP coverage reports in their existing separate directories.               | Deterministic. Issue #611 owns the merged denominator and ratchet.             |
@@ -53,6 +53,9 @@ HEVY_MCP_COMMAND=node \
 None of the live commands belong in deterministic pull-request jobs. The live
 Worker lane starts `wrangler dev --local`, sends the API key only through the
 MCP client's bearer header, and uses the default production Hevy API endpoint.
+Its production calls are bounded representative reads;
+`search-exercise-templates` is checked through `tools/list` only because calling
+it would load the full exercise catalog.
 
 ## Performance scenarios and report
 

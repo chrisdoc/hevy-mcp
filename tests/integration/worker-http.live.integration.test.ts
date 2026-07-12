@@ -17,7 +17,7 @@ const LIVE_TESTS_ENABLED =
 	Boolean(process.env.HEVY_API_KEY);
 const describeLive = LIVE_TESTS_ENABLED ? describe.sequential : describe.skip;
 
-const REQUIRED_READ_TOOLS = [
+const INVOKED_READ_TOOLS = [
 	"get-user-info",
 	"get-workout-count",
 	"get-workouts",
@@ -28,11 +28,15 @@ const REQUIRED_READ_TOOLS = [
 	"get-exercise-templates",
 	"get-exercise-template",
 	"get-exercise-history",
-	"search-exercise-templates",
 	"get-routine-folders",
 	"get-routine-folder",
 	"get-body-measurements",
 	"get-body-measurement",
+] as const;
+const DISCOVERY_ONLY_READ_TOOLS = ["search-exercise-templates"] as const;
+const REQUIRED_READ_TOOLS = [
+	...INVOKED_READ_TOOLS,
+	...DISCOVERY_ONLY_READ_TOOLS,
 ] as const;
 
 let wrangler: ChildProcessWithoutNullStreams | undefined;
@@ -234,7 +238,7 @@ async function startWrangler(): Promise<void> {
 
 async function callReadTool(
 	client: Client,
-	name: (typeof REQUIRED_READ_TOOLS)[number],
+	name: (typeof INVOKED_READ_TOOLS)[number],
 	arguments_: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
 	let result;
@@ -420,22 +424,20 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 						"tools/get-exercise-template/exerciseTemplate/id",
 					);
 
+					const endDate = new Date();
+					const startDate = new Date(
+						endDate.getTime() - 7 * 24 * 60 * 60 * 1000,
+					);
 					const history = await callReadTool(client, "get-exercise-history", {
 						exerciseTemplateId,
+						startDate: startDate.toISOString(),
+						endDate: endDate.toISOString(),
 					});
 					assertCondition(
 						Array.isArray(history.exerciseHistory),
 						"tools/get-exercise-history/exerciseHistory",
 					);
 				}
-
-				const search = await callReadTool(client, "search-exercise-templates", {
-					query: "bench",
-				});
-				assertCondition(
-					Array.isArray(search.exerciseTemplates),
-					"tools/search-exercise-templates/exerciseTemplates",
-				);
 
 				const folders = await callReadTool(client, "get-routine-folders", {
 					page: 1,
