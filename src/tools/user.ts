@@ -7,8 +7,7 @@ import {
 	createStructuredEmptyResponse,
 	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
-import { readOnlyAnnotations } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+import { describeTool, readOnlyAnnotations } from "../utils/tool-definition.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 
 export function registerUserTools(

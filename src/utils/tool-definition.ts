@@ -1,12 +1,25 @@
-/**
- * Shared MCP tool annotation factories.
- *
- * All hevy-mcp tools talk to the Hevy API, a closed, fully specified domain
- * limited to the authenticated user's own data, so openWorldHint is false
- * across the board.
- */
-
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+
+interface ToolDescriptionParts {
+	summary: string;
+	aliases: readonly string[];
+	useCase: string;
+	importantNotes: string;
+}
+
+export function describeTool({
+	summary,
+	aliases,
+	useCase,
+	importantNotes,
+}: ToolDescriptionParts): string {
+	return [
+		summary,
+		`Aliases: ${aliases.join(", ")}.`,
+		`<use_case>${useCase}</use_case>`,
+		`<important_notes>${importantNotes}</important_notes>`,
+	].join(" ");
+}
 
 /** Read-only tools (get-*, search-*): no side effects. */
 export function readOnlyAnnotations(title: string): ToolAnnotations {
@@ -47,4 +60,19 @@ export function destructiveAnnotations(title: string): ToolAnnotations {
 		idempotentHint: true,
 		openWorldHint: false,
 	};
+}
+
+/**
+ * Preprocessor for MCP clients that send JSON-stringified complex parameters.
+ */
+export function parseJsonArray(val: unknown): unknown {
+	if (typeof val === "string") {
+		try {
+			return JSON.parse(val);
+		} catch {
+			// Let Zod validation handle the error.
+			return val;
+		}
+	}
+	return val;
 }

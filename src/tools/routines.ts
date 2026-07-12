@@ -17,7 +17,6 @@ import type {
 import { withErrorHandling } from "../utils/error-handler.js";
 import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	routineOutputSchema,
 	routinesOutputSchema,
@@ -30,10 +29,11 @@ import {
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
+	describeTool,
+	parseJsonArray,
 	readOnlyAnnotations,
 	updateAnnotations,
-} from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+} from "../utils/tool-definition.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import {
 	setTypeEnum,

@@ -22,9 +22,9 @@ import {
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
+	describeTool,
 	readOnlyAnnotations,
-} from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+} from "../utils/tool-definition.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 
 /**

@@ -19,10 +19,10 @@ import {
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
+	describeTool,
 	readOnlyAnnotations,
 	updateAnnotations,
-} from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+} from "../utils/tool-definition.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { zNullableNumber } from "../utils/schemas.js";
 

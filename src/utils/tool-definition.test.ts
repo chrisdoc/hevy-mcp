@@ -1,5 +1,67 @@
 import { describe, expect, it } from "vitest";
-import { parseJsonArray } from "./json-parser";
+import {
+	createAnnotations,
+	describeTool,
+	destructiveAnnotations,
+	parseJsonArray,
+	readOnlyAnnotations,
+	updateAnnotations,
+} from "./tool-definition";
+
+describe("describeTool", () => {
+	it("combines all description metadata", () => {
+		expect(
+			describeTool({
+				summary: "Read-only. Lists workouts.",
+				aliases: ["list workouts", "workout history"],
+				useCase: "Use to browse completed training sessions.",
+				importantNotes: "Results are paginated.",
+			}),
+		).toBe(
+			"Read-only. Lists workouts. Aliases: list workouts, workout history. <use_case>Use to browse completed training sessions.</use_case> <important_notes>Results are paginated.</important_notes>",
+		);
+	});
+});
+
+describe("tool annotations", () => {
+	it("creates exact read-only metadata", () => {
+		expect(readOnlyAnnotations("Get Workouts")).toEqual({
+			title: "Get Workouts",
+			readOnlyHint: true,
+			openWorldHint: false,
+		});
+	});
+
+	it("creates exact create metadata", () => {
+		expect(createAnnotations("Create Workout")).toEqual({
+			title: "Create Workout",
+			readOnlyHint: false,
+			destructiveHint: false,
+			idempotentHint: false,
+			openWorldHint: false,
+		});
+	});
+
+	it("creates exact update metadata", () => {
+		expect(updateAnnotations("Update Workout")).toEqual({
+			title: "Update Workout",
+			readOnlyHint: false,
+			destructiveHint: true,
+			idempotentHint: true,
+			openWorldHint: false,
+		});
+	});
+
+	it("creates exact destructive metadata", () => {
+		expect(destructiveAnnotations("Delete Workout")).toEqual({
+			title: "Delete Workout",
+			readOnlyHint: false,
+			destructiveHint: true,
+			idempotentHint: true,
+			openWorldHint: false,
+		});
+	});
+});
 
 describe("parseJsonArray", () => {
 	describe("JSON string inputs", () => {
