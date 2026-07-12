@@ -109,9 +109,18 @@ describe("server RSS observations", () => {
 	});
 
 	it("reads the current process and handles inaccessible process status files", () => {
-		expect(
-			observeServerRss(process.pid, 1, "scenario-complete").rssBytes,
-		).toBeTypeOf("number");
+		if (process.platform === "linux") {
+			expect(
+				observeServerRss(process.pid, 1, "scenario-complete").rssBytes,
+			).toBeTypeOf("number");
+		} else {
+			expect(
+				observeServerRss(process.pid, 1, "scenario-complete"),
+			).toMatchObject({
+				rssBytes: null,
+				unavailableReason: expect.any(String),
+			});
+		}
 		expect(observeServerRss(-1, 2, "initialized")).toMatchObject({
 			rssBytes: null,
 			unavailableReason: expect.any(String),

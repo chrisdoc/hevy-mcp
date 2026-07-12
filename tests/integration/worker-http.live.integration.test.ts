@@ -268,9 +268,13 @@ function optionalStringId(
 	schemaPath: string,
 ): string | undefined {
 	if (!value?.[0]) return undefined;
-	assertCondition(typeof value[0].id === "string", `${schemaPath}/0/id`);
-	assertCondition(value[0].id.length > 0, `${schemaPath}/0/id`);
-	return value[0].id;
+	const id = value[0].id;
+	assertCondition(
+		typeof id === "string" || typeof id === "number",
+		`${schemaPath}/0/id`,
+	);
+	assertCondition(String(id).length > 0, `${schemaPath}/0/id`);
+	return String(id);
 }
 
 describeLive("live Wrangler Worker HTTP integration", () => {
@@ -460,7 +464,7 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 						"tools/get-routine-folder/routineFolder",
 					);
 					assertCondition(
-						folder.routineFolder.id === folderId,
+						String(folder.routineFolder.id) === folderId,
 						"tools/get-routine-folder/routineFolder/id",
 					);
 				}
