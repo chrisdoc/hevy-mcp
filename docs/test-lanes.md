@@ -6,18 +6,19 @@ Vitest selectors.
 
 ## Lane ownership
 
-| Command                    | Current owner and purpose                                                                  | Network and credentials                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `npm run test:unit`        | Repository unit/component tests, excluding integration and performance discovery.          | Deterministic; no network or credentials.                                      |
-| `npm run test:mcp`         | Existing Nock-backed, in-memory MCP client/server integration coverage.                    | Outbound network disabled by the tests; fake API key only.                     |
-| `npm run test:contract`    | Current registration, output-schema, and server-manifest contract baseline.                | Deterministic. Issue #607 owns expansion to the complete MCP contract matrix.  |
-| `npm run test:stdio`       | Current stdio instrumentation and graceful-shutdown/process regression baseline.           | Deterministic. Issue #609 owns full spawned built-stdio coverage.              |
-| `npm run test:pack`        | Builds and inspects the `npm pack --dry-run` inventory, binary mapping, and package files. | Deterministic. Issue #609 owns install-and-spawn coverage of the real tarball. |
-| `npm run test:live`        | Read-only source canary against Hevy.                                                      | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.               |
-| `npm run test:nightly`     | Published/source launcher canary configured by the nightly or release workflow.            | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.   |
-| `npm run test:performance` | Builds, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline.    | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.            |
-| `npm run test:coverage`    | Unit and mocked MCP coverage reports in their existing separate directories.               | Deterministic. Issue #611 owns the merged denominator and ratchet.             |
-| `npm run test:pr`          | Deterministic named lanes expected on every pull request.                                  | No live credentials or live network.                                           |
+| Command                         | Current owner and purpose                                                                  | Network and credentials                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `npm run test:unit`             | Repository unit/component tests, excluding integration and performance discovery.          | Deterministic; no network or credentials.                                      |
+| `npm run test:mcp`              | Existing Nock-backed, in-memory MCP client/server integration coverage.                    | Outbound network disabled by the tests; fake API key only.                     |
+| `npm run test:contract`         | Current registration, output-schema, and server-manifest contract baseline.                | Deterministic. Issue #607 owns expansion to the complete MCP contract matrix.  |
+| `npm run test:stdio`            | Current stdio instrumentation and graceful-shutdown/process regression baseline.           | Deterministic. Issue #609 owns full spawned built-stdio coverage.              |
+| `npm run test:pack`             | Builds and inspects the `npm pack --dry-run` inventory, binary mapping, and package files. | Deterministic. Issue #609 owns install-and-spawn coverage of the real tarball. |
+| `npm run test:live`             | Read-only source canary against Hevy.                                                      | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.               |
+| `npm run test:worker-http:live` | Read-only local Wrangler Worker canary against Hevy.                                       | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.   |
+| `npm run test:nightly`          | Published/source launcher canary configured by the nightly or release workflow.            | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.   |
+| `npm run test:performance`      | Builds, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline.    | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.            |
+| `npm run test:coverage`         | Unit and mocked MCP coverage reports in their existing separate directories.               | Deterministic. Issue #611 owns the merged denominator and ratchet.             |
+| `npm run test:pr`               | Deterministic named lanes expected on every pull request.                                  | No live credentials or live network.                                           |
 
 The current contract, stdio, and package commands are intentionally narrow but
 real. They do not claim the complete scope assigned to issues #607 and #609.
@@ -43,12 +44,15 @@ Explicit live commands are separate and credential-gated:
 
 ```sh
 npm run test:live
+HEVY_RUN_LIVE_WORKER_TESTS=1 npm run test:worker-http:live
 HEVY_MCP_COMMAND=node \
 	HEVY_MCP_ARGS_JSON='["dist/cli.mjs"]' \
 	npm run test:nightly
 ```
 
-Neither live command belongs in deterministic pull-request jobs.
+None of the live commands belong in deterministic pull-request jobs. The live
+Worker lane starts `wrangler dev --local`, sends the API key only through the
+MCP client's bearer header, and uses the default production Hevy API endpoint.
 
 ## Performance scenarios and report
 
