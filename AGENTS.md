@@ -256,8 +256,7 @@ src/
 └── utils/             # Shared helper functions
     ├── tool-helpers.ts    # Type inference utilities (InferToolParams)
     ├── error-handler.ts   # Centralized error handling (withErrorHandling)
-    ├── response-formatter.ts # MCP response utilities
-    ├── formatters.ts      # Data formatting helpers
+    ├── response-formatter.ts # Output schemas, formatting, and MCP responses
     ├── hevyClient.ts      # API client factory
     ├── hevyClientKubb.ts  # Worker-safe native-fetch Kubb client wrapper
     ├── config.ts          # Node.js configuration parsing
@@ -350,7 +349,9 @@ server.tool(
 3. **Infer parameter types** using `InferToolParams<typeof schema>`
 4. **Implement handler** with typed parameters (no manual assertions)
 5. **Wrap with error handling** using `withErrorHandling` from `src/utils/error-handler.ts`
-6. **Format outputs** using helpers in `src/utils/formatters.ts`
+6. **Define and render responses** in `src/utils/response-formatter.ts`,
+   co-locating Zod output schemas, raw-to-public normalization, legacy text
+   projection, and MCP response assembly
 7. **Register tools** in `src/index.ts`
 8. **Add unit tests** co-located with implementation
 
