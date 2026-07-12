@@ -30,6 +30,7 @@ const testDoubles = vi.hoisted(() => ({
 	tool: vi.fn(),
 	registerTool: vi.fn(),
 	directRegisterToolCalls: 0,
+	useLegacyToolRegistration: false,
 	invokeProxyFallback: false,
 	getUserInfo: vi.fn().mockResolvedValue({}),
 	close: vi.fn().mockResolvedValue(undefined),
@@ -102,7 +103,11 @@ vi.mock("./utils/metrics.js", () => ({
 vi.mock("./tools/user.js", () => ({
 	registerUserTools: vi.fn((server: McpServer) => {
 		testDoubles.directRegisterToolCalls += 1;
-		server.registerTool("get-user-info", {}, vi.fn());
+		if (testDoubles.useLegacyToolRegistration) {
+			server.tool("get-user-info", {}, vi.fn());
+		} else {
+			server.registerTool("get-user-info", {}, vi.fn());
+		}
 		if (testDoubles.invokeProxyFallback) {
 			server.isConnected();
 		}
@@ -164,6 +169,7 @@ describe("Server entry", () => {
 		testDoubles.connect.mockResolvedValue(undefined);
 		testDoubles.close.mockResolvedValue(undefined);
 		testDoubles.directRegisterToolCalls = 0;
+		testDoubles.useLegacyToolRegistration = false;
 		testDoubles.invokeProxyFallback = false;
 		testDoubles.tool.mockImplementation(
 			function (this: { registerTool: () => void }) {
@@ -265,6 +271,23 @@ describe("Server entry", () => {
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.tools.count",
 			registrationCount,
+		);
+	});
+
+	it("includes legacy tool registrations in the registration span count", async () => {
+		testDoubles.useLegacyToolRegistration = true;
+		testDoubles.tool.mockImplementationOnce(() => undefined);
+
+		await createServer({ config: { apiKey: "test-key" } });
+
+		expect(testDoubles.tool).toHaveBeenCalledWith(
+			"get-user-info",
+			{},
+			expect.any(Function),
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.tools.count",
+			testDoubles.registerTool.mock.calls.length + 1,
 		);
 	});
 
