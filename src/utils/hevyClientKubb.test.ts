@@ -57,7 +57,7 @@ describe("native-fetch Hevy client", () => {
 				page: 2,
 			},
 		);
-		expect(fetchMock.mock.calls[0]?.[1]?.redirect).toBe("error");
+		expect(fetchMock.mock.calls[0]?.[1]?.redirect).toBe("manual");
 	});
 
 	it("never forwards the api-key to a cross-origin redirect target", async () => {
@@ -88,7 +88,7 @@ describe("native-fetch Hevy client", () => {
 
 			expect(error).toBeInstanceOf(HevyHttpError);
 			expect(error).toMatchObject({
-				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+				status: 302,
 				endpoint: "/v1/user/info",
 			});
 			expect(JSON.stringify(error)).not.toContain(secret);

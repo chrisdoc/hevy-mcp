@@ -58,6 +58,12 @@ jobs:
           HEVY_MCP_SOURCE_REVISION: ${{ github.sha }}
           HEVY_MCP_DIAGNOSTICS_PATH: test-results/release-source.json
 
+      - name: Test live local Worker HTTP path
+        run: npm run test:worker-http:live
+        env:
+          HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+          HEVY_RUN_LIVE_WORKER_TESTS: "1"
+
       - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@v1

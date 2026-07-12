@@ -13,12 +13,14 @@ const CORS_ALLOWED_HEADERS =
 const CORS_ALLOWED_METHODS = "POST, OPTIONS";
 
 export interface WorkerEnv {
+	// Trusted deployment/test binding; invalid values fail closed before auth.
+	HEVY_API_BASE_URL?: string;
 	MCP_ALLOWED_ORIGINS?: string;
 }
 
 interface WorkerDependencies {
-	createValidationClient?: (apiKey: string) => HevyClient;
-	createRequestClient?: (apiKey: string) => HevyClient;
+	createValidationClient?: (apiKey: string, baseUrl: string) => HevyClient;
+	createRequestClient?: (apiKey: string, baseUrl: string) => HevyClient;
 	createServer?: (apiKey: string, hevyClient: HevyClient) => McpServer;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
 }
@@ -80,15 +82,43 @@ function validateOrigin(
 	return origin;
 }
 
-function createDefaultValidationClient(apiKey: string): HevyClient {
-	return createClient(apiKey, HEVY_API_BASE_URL, {
+function resolveHevyApiBaseUrl(value: string | undefined): string {
+	if (value === undefined) return HEVY_API_BASE_URL;
+
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new TypeError("Invalid Hevy API base URL");
+	}
+	if (
+		(url.protocol !== "http:" && url.protocol !== "https:") ||
+		url.username ||
+		url.password ||
+		url.search ||
+		url.hash ||
+		url.pathname.replace(/\/+$/, "")
+	) {
+		throw new TypeError("Invalid Hevy API base URL");
+	}
+	return url.origin;
+}
+
+function createDefaultValidationClient(
+	apiKey: string,
+	baseUrl: string,
+): HevyClient {
+	return createClient(apiKey, baseUrl, {
 		maxGetRetries: 0,
 		timeoutMs: AUTH_VALIDATION_TIMEOUT_MS,
 	});
 }
 
-function createDefaultRequestClient(apiKey: string): HevyClient {
-	return createClient(apiKey, HEVY_API_BASE_URL);
+function createDefaultRequestClient(
+	apiKey: string,
+	baseUrl: string,
+): HevyClient {
+	return createClient(apiKey, baseUrl);
 }
 
 function createDefaultServer(
@@ -131,6 +161,12 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		const originResult = validateOrigin(request, env);
 		if (originResult instanceof Response) return originResult;
 		const origin = originResult;
+		let hevyApiBaseUrl: string;
+		try {
+			hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
+		} catch {
+			return response("Worker configuration error", 500, origin);
+		}
 
 		if (request.method === "OPTIONS") {
 			const headers = origin ? corsHeaders(origin) : new Headers();
@@ -154,7 +190,7 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		}
 
 		try {
-			await createValidationClient(apiKey).getUserInfo();
+			await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo();
 		} catch (error) {
 			if (
 				isHevyHttpError(error) &&
@@ -168,7 +204,7 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		}
 
 		try {
-			const hevyClient = createRequestClient(apiKey);
+			const hevyClient = createRequestClient(apiKey, hevyApiBaseUrl);
 			const server = createServer(apiKey, hevyClient);
 			const transport = createTransport();
 			transport.onerror = (error) => {
