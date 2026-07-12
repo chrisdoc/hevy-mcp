@@ -129,4 +129,45 @@ describe("runCli", () => {
 		vi.doUnmock("node:fs");
 		vi.doUnmock("node:url");
 	});
+
+	it("does not start when no CLI entrypoint path is available", async () => {
+		const argv = process.argv;
+		const { runServer } = await import("./index.js");
+		vi.mocked(runServer).mockClear();
+
+		try {
+			process.argv = ["node"];
+			vi.resetModules();
+
+			await import("./cli.js");
+
+			expect(runServer).not.toHaveBeenCalled();
+		} finally {
+			process.argv = argv;
+		}
+	});
+
+	it("does not start when the CLI entrypoint path cannot be resolved", async () => {
+		const argv = process.argv;
+		const entrypoint = "/virtual/hevy-mcp.mjs";
+		const { runServer } = await import("./index.js");
+		vi.mocked(runServer).mockClear();
+
+		try {
+			process.argv = ["node", entrypoint];
+			vi.resetModules();
+			vi.doMock("node:fs", () => ({
+				realpathSync: () => {
+					throw new Error("entrypoint unavailable");
+				},
+			}));
+
+			await import("./cli.js");
+
+			expect(runServer).not.toHaveBeenCalled();
+		} finally {
+			process.argv = argv;
+			vi.doUnmock("node:fs");
+		}
+	});
 });
