@@ -90,4 +90,43 @@ describe("runCli", () => {
 		);
 		expect(runServer).not.toHaveBeenCalled();
 	});
+
+	it("reports and exits when the CLI entrypoint cannot start", async () => {
+		const argv = process.argv;
+		const apiKey = process.env.HEVY_API_KEY;
+		const entrypoint = "/virtual/hevy-mcp.mjs";
+		const errorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+		const exitSpy = vi
+			.spyOn(process, "exit")
+			.mockImplementation(() => undefined as never);
+
+		process.argv = ["node", entrypoint];
+		process.env.HEVY_API_KEY = "test-api-key";
+		vi.resetModules();
+		vi.doMock("node:fs", () => ({ realpathSync: () => entrypoint }));
+		vi.doMock("node:url", () => ({ fileURLToPath: () => entrypoint }));
+
+		const { runServer } = await import("./index.js");
+		vi.mocked(runServer).mockRejectedValueOnce(new Error("startup failed"));
+		await import("./cli.js");
+
+		await vi.waitFor(() => {
+			expect(exitSpy).toHaveBeenCalledExactlyOnceWith(1);
+		});
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Fatal error in main()",
+			expect.any(Object),
+		);
+
+		process.argv = argv;
+		if (apiKey === undefined) {
+			delete process.env.HEVY_API_KEY;
+		} else {
+			process.env.HEVY_API_KEY = apiKey;
+		}
+		vi.doUnmock("node:fs");
+		vi.doUnmock("node:url");
+	});
 });
