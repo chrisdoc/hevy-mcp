@@ -47,6 +47,7 @@ export async function runCli(
 	const cliAction = getCliAction(args);
 
 	if (cliAction === "version") {
+		// Stdio MCP protocol output must remain reserved for server messages.
 		console.error(`${SERVER_NAME} v${SERVER_VERSION}`);
 		return;
 	}
@@ -61,18 +62,36 @@ export async function runCli(
 	await dependencies.runServer(apiKey);
 }
 
-function isMainModule(): boolean {
-	if (process.argv[1] === undefined) return false;
+export function isMainModule(
+	argv: readonly string[],
+	moduleUrl: string,
+	resolveRealpath: (path: string) => string,
+): boolean {
+	if (argv[1] === undefined) return false;
 	try {
-		return realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+		return resolveRealpath(argv[1]) === fileURLToPath(moduleUrl);
 	} catch {
 		return false;
 	}
 }
 
-if (isMainModule()) {
-	void runCli().catch((error) => {
+export async function runCliIfMain(
+	isMain: boolean,
+	execute: () => Promise<void>,
+	exit: (code: number) => void,
+): Promise<void> {
+	if (!isMain) return;
+
+	try {
+		await execute();
+	} catch (error) {
 		console.error("Fatal error in main()", createSafeErrorDiagnostic(error));
-		process.exit(1);
-	});
+		exit(1);
+	}
 }
+
+void runCliIfMain(
+	isMainModule(process.argv, import.meta.url, realpathSync),
+	runCli,
+	process.exit.bind(process),
+);

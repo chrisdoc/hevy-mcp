@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runCli } from "./cli.js";
+import { isMainModule, runCli, runCliIfMain } from "./cli.js";
 import { SERVER_NAME, SERVER_VERSION } from "./server-metadata.js";
 
 vi.mock("./index.js", () => ({ runServer: vi.fn() }));
@@ -169,5 +169,80 @@ describe("runCli", () => {
 			process.argv = argv;
 			vi.doUnmock("node:fs");
 		}
+	});
+});
+
+describe("CLI direct entry", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("does nothing when the CLI module is imported", async () => {
+		const execute = vi.fn();
+		const exit = vi.fn();
+
+		await runCliIfMain(false, execute, exit);
+
+		expect(execute).not.toHaveBeenCalled();
+		expect(exit).not.toHaveBeenCalled();
+	});
+
+	it("executes the CLI when loaded as the direct entrypoint", async () => {
+		const execute = vi.fn().mockResolvedValue(undefined);
+		const exit = vi.fn();
+
+		await runCliIfMain(true, execute, exit);
+
+		expect(execute).toHaveBeenCalledExactlyOnceWith();
+		expect(exit).not.toHaveBeenCalled();
+	});
+
+	it("reports a safe fatal diagnostic and exits after direct rejection", async () => {
+		const rejection = new Error("boom") as Error & { apiKey: string };
+		rejection.apiKey = "must-not-leak";
+		const execute = vi.fn().mockRejectedValue(rejection);
+		const exit = vi.fn();
+		const errorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+
+		await runCliIfMain(true, execute, exit);
+
+		expect(errorSpy).toHaveBeenCalledTimes(1);
+		expect(errorSpy.mock.calls[0]?.[0]).toBe("Fatal error in main()");
+		expect(errorSpy.mock.calls[0]?.[1]).toEqual({ category: "Error" });
+		expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("must-not-leak");
+		expect(exit).toHaveBeenCalledExactlyOnceWith(1);
+	});
+
+	it("recognizes direct and symlinked entrypoints by real path", () => {
+		const resolveRealpath = vi.fn().mockReturnValue("/app/dist/cli.mjs");
+
+		expect(
+			isMainModule(
+				["node", "/app/bin/hevy-mcp"],
+				"file:///app/dist/cli.mjs",
+				resolveRealpath,
+			),
+		).toBe(true);
+		expect(resolveRealpath).toHaveBeenCalledExactlyOnceWith(
+			"/app/bin/hevy-mcp",
+		);
+	});
+
+	it("rejects missing, different, and unreadable entrypoints", () => {
+		const resolveRealpath = vi.fn((path: string) => {
+			if (path === "/unreadable") throw new Error("unreadable");
+			return path;
+		});
+		const moduleUrl = "file:///app/dist/cli.mjs";
+
+		expect(isMainModule(["node"], moduleUrl, resolveRealpath)).toBe(false);
+		expect(
+			isMainModule(["node", "/app/dist/other.mjs"], moduleUrl, resolveRealpath),
+		).toBe(false);
+		expect(
+			isMainModule(["node", "/unreadable"], moduleUrl, resolveRealpath),
+		).toBe(false);
 	});
 });

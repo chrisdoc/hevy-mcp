@@ -6,6 +6,7 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
+import { isBuiltin } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -194,7 +195,7 @@ function findRuntimeBoundaryViolations({
 		);
 
 		for (const specifier of getRuntimeSpecifiers(sourceFile)) {
-			if (specifier.startsWith("node:")) {
+			if (isBuiltin(specifier)) {
 				violations.push([...chain, specifier].join(" -> "));
 				continue;
 			}
@@ -282,19 +283,27 @@ describe("Worker repository source runtime dependency boundary", () => {
 		).not.toThrow();
 	});
 
-	it("reports the full local chain to a synthetic Node builtin", () => {
-		const { sourceRoot } = createFixture({
-			"entry.ts": 'import "./middle.js";',
-			"middle.ts": 'import "node:fs";',
-		});
+	it.each(["node:fs", "fs", "fs/promises", "path", "crypto", "node:test"])(
+		"reports the full local chain to synthetic Node builtin %s",
+		(specifier) => {
+			const { sourceRoot } = createFixture({
+				"entry.ts": 'import "./middle.js";',
+				"middle.ts": `import ${JSON.stringify(specifier)};`,
+			});
 
-		expect(() =>
-			assertWorkerRuntimeBoundary({
-				sourceRoot,
-				entrypoints: [join(sourceRoot, "entry.ts")],
-			}),
-		).toThrow("src/entry.ts -> src/middle.ts -> node:fs");
-	});
+			expect(() =>
+				assertWorkerRuntimeBoundary({
+					sourceRoot,
+					entrypoints: [join(sourceRoot, "entry.ts")],
+				}),
+			).toThrow(
+				[
+					"Worker-safe repository source dependency boundary violated (third-party node_modules excluded):",
+					`- src/entry.ts -> src/middle.ts -> ${specifier}`,
+				].join("\n"),
+			);
+		},
+	);
 
 	it("reports the full local chain to a synthetic src/node module", () => {
 		const { sourceRoot } = createFixture({
