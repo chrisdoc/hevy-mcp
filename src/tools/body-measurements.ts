@@ -22,9 +22,9 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { zNullableNumber } from "../utils/schemas.js";
+import { defineTool } from "./define-tool.js";
 
 const bodyMeasurementFieldsSchema = {
 	weightKg: zNullableNumber.describe("Body weight in kilograms"),
@@ -118,22 +118,21 @@ export function registerBodyMeasurementTools(
 		typeof getBodyMeasurementsSchema
 	>;
 
-	server.registerTool(
-		"get-body-measurements",
-		{
-			description: describeTool({
-				summary: "Read-only. Lists dated body measurements for the account.",
-				aliases: ["body stats history", "list weigh-ins", "measurement log"],
-				useCase:
-					"Use to browse measurement history; use get-body-measurement for one exact date.",
-				importantNotes:
-					"Results are paginated; page starts at 1 and pageSize is limited to 10.",
-			}),
-			inputSchema: getBodyMeasurementsSchema,
-			outputSchema: bodyMeasurementsOutputSchema,
-			annotations: readOnlyAnnotations("Get Body Measurements"),
+	defineTool(server, {
+		name: "get-body-measurements",
+		description: {
+			summary: "Read-only. Lists dated body measurements for the account.",
+			aliases: ["body stats history", "list weigh-ins", "measurement log"],
+			useCase:
+				"Use to browse measurement history; use get-body-measurement for one exact date.",
+			importantNotes:
+				"Results are paginated; page starts at 1 and pageSize is limited to 10.",
 		},
-		wrapHandler(async (args: GetBodyMeasurementsParams) => {
+		inputSchema: getBodyMeasurementsSchema,
+		outputSchema: bodyMeasurementsOutputSchema,
+		annotations: readOnlyAnnotations("Get Body Measurements"),
+		wrapHandler,
+		handler: async (args: GetBodyMeasurementsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
@@ -156,8 +155,8 @@ export function registerBodyMeasurementTools(
 			return createStructuredJsonResponse(measurements, {
 				bodyMeasurements: measurements,
 			});
-		}, "get-body-measurements"),
-	);
+		},
+	});
 
 	// Get single body measurement by date
 	const getBodyMeasurementSchema = {
@@ -170,23 +169,21 @@ export function registerBodyMeasurementTools(
 		typeof getBodyMeasurementSchema
 	>;
 
-	server.registerTool(
-		"get-body-measurement",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Retrieves the body measurement entry for one date.",
-				aliases: ["get weigh-in", "show body stats", "measurement by date"],
-				useCase:
-					"Use when the exact measurement date is known; use get-body-measurements to browse dates.",
-				importantNotes:
-					"date must use YYYY-MM-DD; at most one entry exists per date.",
-			}),
-			inputSchema: getBodyMeasurementSchema,
-			outputSchema: bodyMeasurementOutputSchema,
-			annotations: readOnlyAnnotations("Get Body Measurement"),
+	defineTool(server, {
+		name: "get-body-measurement",
+		description: {
+			summary: "Read-only. Retrieves the body measurement entry for one date.",
+			aliases: ["get weigh-in", "show body stats", "measurement by date"],
+			useCase:
+				"Use when the exact measurement date is known; use get-body-measurements to browse dates.",
+			importantNotes:
+				"date must use YYYY-MM-DD; at most one entry exists per date.",
 		},
-		wrapHandler(async (args: GetBodyMeasurementParams) => {
+		inputSchema: getBodyMeasurementSchema,
+		outputSchema: bodyMeasurementOutputSchema,
+		annotations: readOnlyAnnotations("Get Body Measurement"),
+		wrapHandler,
+		handler: async (args: GetBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date } = args;
 			const data: GetV1BodyMeasurementsDate200 =
@@ -203,8 +200,8 @@ export function registerBodyMeasurementTools(
 			return createStructuredJsonResponse(bodyMeasurement, {
 				bodyMeasurement,
 			});
-		}, "get-body-measurement"),
-	);
+		},
+	});
 
 	// Create body measurement
 	const createBodyMeasurementSchema = {
@@ -220,9 +217,9 @@ export function registerBodyMeasurementTools(
 		typeof createBodyMeasurementSchema
 	>;
 
-	server.tool(
-		"create-body-measurement",
-		describeTool({
+	defineTool(server, {
+		name: "create-body-measurement",
+		description: {
 			summary:
 				"Writes to the Hevy account by creating a dated body measurement.",
 			aliases: ["log weigh-in", "add body stats", "record measurements"],
@@ -230,10 +227,11 @@ export function registerBodyMeasurementTools(
 				"Use for a date without an entry; use update-body-measurement when that date already exists.",
 			importantNotes:
 				"date must use YYYY-MM-DD and be unique. Null fields are omitted and cannot clear values; an existing date returns 409.",
-		}),
-		createBodyMeasurementSchema,
-		createAnnotations("Create Body Measurement"),
-		wrapHandler(async (args: CreateBodyMeasurementParams) => {
+		},
+		inputSchema: createBodyMeasurementSchema,
+		annotations: createAnnotations("Create Body Measurement"),
+		wrapHandler,
+		handler: async (args: CreateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			await client.createBodyMeasurement({
@@ -244,8 +242,8 @@ export function registerBodyMeasurementTools(
 			return createTextResponse(
 				`Body measurement for ${date} created successfully.`,
 			);
-		}, "create-body-measurement"),
-	);
+		},
+	});
 
 	// Update body measurement
 	const updateBodyMeasurementSchema = {
@@ -261,9 +259,9 @@ export function registerBodyMeasurementTools(
 		typeof updateBodyMeasurementSchema
 	>;
 
-	server.tool(
-		"update-body-measurement",
-		describeTool({
+	defineTool(server, {
+		name: "update-body-measurement",
+		description: {
 			summary:
 				"Mutates the Hevy account by updating a body measurement for a date.",
 			aliases: ["edit weigh-in", "correct body stats", "change measurements"],
@@ -271,10 +269,11 @@ export function registerBodyMeasurementTools(
 				"Use to change fields on an existing date; use create-body-measurement for a new date.",
 			importantNotes:
 				"date must use YYYY-MM-DD and already exist. Provide at least one numeric field; nulls are omitted and cannot clear stored values.",
-		}),
-		updateBodyMeasurementSchema,
-		updateAnnotations("Update Body Measurement"),
-		wrapHandler(async (args: UpdateBodyMeasurementParams) => {
+		},
+		inputSchema: updateBodyMeasurementSchema,
+		annotations: updateAnnotations("Update Body Measurement"),
+		wrapHandler,
+		handler: async (args: UpdateBodyMeasurementParams) => {
 			const client = requireClient(hevyClient);
 			const { date, ...fields } = args;
 			const payload = buildMeasurementPayload(fields);
@@ -288,6 +287,6 @@ export function registerBodyMeasurementTools(
 			return createTextResponse(
 				`Body measurement for ${date} updated successfully.`,
 			);
-		}, "update-body-measurement"),
-	);
+		},
+	});
 }

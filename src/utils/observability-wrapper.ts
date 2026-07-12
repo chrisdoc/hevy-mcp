@@ -7,10 +7,13 @@ import { withTelemetry } from "./telemetry-wrapper.js";
 /**
  * Wrap an MCP tool handler with telemetry inside error response handling.
  */
-export function withObservability<TParams extends Record<string, unknown>>(
-	fn: (args: TParams) => Promise<McpToolResponse>,
+export function withObservability<
+	TParams extends Record<string, unknown>,
+	TResponse extends McpToolResponse,
+>(
+	fn: (args: TParams) => Promise<TResponse>,
 	context: string,
-): (args: Record<string, unknown>) => Promise<McpToolResponse> {
+): (args: TParams) => Promise<McpToolResponse> {
 	return withErrorHandling(
 		withTelemetry(fn, context),
 		context,

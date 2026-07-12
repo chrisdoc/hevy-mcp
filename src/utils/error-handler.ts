@@ -254,25 +254,27 @@ function mapHevyErrorMessageByStatus(status?: number): string | null {
  * Wrap an async function with standardized error handling
  *
  * This function preserves the parameter types of the wrapped function while
- * providing error handling. The returned function accepts Record<string, unknown>
- * (as required by MCP SDK) but internally casts to the original parameter type.
+ * providing error handling.
  *
  * @param fn - The async function to wrap
  * @param context - Context information for error messages
  * @returns A function that catches errors and returns standardized error responses
  */
-export function withErrorHandling<TParams extends Record<string, unknown>>(
-	fn: (args: TParams) => Promise<McpToolResponse>,
+export function withErrorHandling<
+	TParams extends Record<string, unknown>,
+	TResponse extends McpToolResponse,
+>(
+	fn: (args: TParams) => Promise<TResponse>,
 	context: string,
 	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
-): (args: Record<string, unknown>) => Promise<McpToolResponse> {
-	return async (rawArgs: Record<string, unknown>) => {
-		const args = rawArgs ?? {};
+): (args: TParams) => Promise<McpToolResponse> {
+	return async (args: TParams) => {
 		try {
-			return await fn(args as TParams);
+			return await fn(args);
 		} catch (error) {
 			try {
-				onError?.(error, context, Object.keys(args).length);
+				const argumentKeyCount = args == null ? 0 : Object.keys(args).length;
+				onError?.(error, context, argumentKeyCount);
 			} catch {
 				console.error("MCP error observer failure", {
 					category: "ObserverError",

@@ -6,6 +6,24 @@ import { formatBodyMeasurement } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerBodyMeasurementTools } from "./body-measurements.js";
 
+type ToolInputSchema =
+	| Record<string, z.ZodTypeAny>
+	| z.ZodType<Record<string, unknown>>;
+
+function isZodObject(schema: ToolInputSchema): schema is z.ZodObject {
+	return schema instanceof z.ZodObject;
+}
+
+function parseToolInput(
+	schema: ToolInputSchema,
+	input: unknown,
+): Record<string, unknown> {
+	if (isZodObject(schema)) {
+		return schema.parse(input);
+	}
+	return z.object(schema).parse(input);
+}
+
 function createMockServer() {
 	const tool = vi.fn();
 	const server = { tool, registerTool: tool } as unknown as McpServer;
@@ -18,7 +36,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
 	const config = match[1] as
-		| { inputSchema?: Record<string, z.ZodTypeAny>; outputSchema?: unknown }
+		| { inputSchema?: ToolInputSchema; outputSchema?: unknown }
 		| undefined;
 	const schema =
 		config?.inputSchema ?? (match[2] as Record<string, z.ZodTypeAny>);
@@ -298,7 +316,7 @@ describe("registerBodyMeasurementTools", () => {
 		registerBodyMeasurementTools(server, {} as unknown as HevyClient);
 		const { schema } = getToolRegistration(tool, "create-body-measurement");
 
-		const parsed = z.object(schema).parse({
+		const parsed = parseToolInput(schema, {
 			date: "2025-04-01",
 			weightKg: "81.5",
 			waist: "82",
@@ -313,7 +331,7 @@ describe("registerBodyMeasurementTools", () => {
 		registerBodyMeasurementTools(server, {} as unknown as HevyClient);
 		const { schema } = getToolRegistration(tool, "create-body-measurement");
 
-		const parsed = z.object(schema).parse({
+		const parsed = parseToolInput(schema, {
 			date: "2025-04-01",
 			weightKg: "",
 		});
@@ -353,10 +371,10 @@ describe("registerBodyMeasurementTools", () => {
 		registerBodyMeasurementTools(server, {} as unknown as HevyClient);
 		const { schema } = getToolRegistration(tool, "update-body-measurement");
 
-		const dateOnly = z.object(schema).parse({ date: "2025-04-01" });
+		const dateOnly = parseToolInput(schema, { date: "2025-04-01" });
 		expect(dateOnly).toEqual({ date: "2025-04-01" });
 
-		const withNull = z.object(schema).parse({
+		const withNull = parseToolInput(schema, {
 			date: "2025-04-01",
 			weightKg: null,
 		});

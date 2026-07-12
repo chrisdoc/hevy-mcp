@@ -1,4 +1,4 @@
-interface ToolDescriptionParts {
+export interface ToolDescriptionParts {
 	summary: string;
 	aliases: readonly string[];
 	useCase: string;

@@ -6,6 +6,16 @@ import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerRoutineTools } from "./routines.js";
 
+type ToolInputSchema =
+	| Record<string, z.ZodTypeAny>
+	| z.ZodType<Record<string, unknown>>;
+
+function parseToolInput(schema: ToolInputSchema, input: unknown) {
+	return schema instanceof z.ZodObject
+		? schema.parse(input)
+		: z.object(schema).parse(input);
+}
+
 function createMockServer() {
 	const tool = vi.fn();
 	const server = { tool, registerTool: tool } as unknown as McpServer;
@@ -18,7 +28,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
 	const config = match[1] as
-		| { inputSchema?: Record<string, z.ZodTypeAny>; outputSchema?: unknown }
+		| { inputSchema?: ToolInputSchema; outputSchema?: unknown }
 		| undefined;
 	const schema =
 		config?.inputSchema ?? (match[2] as Record<string, z.ZodTypeAny>);
@@ -572,8 +582,7 @@ describe("registerRoutineTools", () => {
 		registerRoutineTools(server, null);
 		const { schema } = getToolRegistration(tool, "create-routine");
 
-		const zodSchema = z.object(schema);
-		const parsed = zodSchema.parse({
+		const parsed = parseToolInput(schema, {
 			title: "Leg Day",
 			folderId: null,
 			exercises: [

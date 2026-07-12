@@ -43,16 +43,15 @@ const UPDATE_TOOLS = [
 const DESTRUCTIVE_TOOLS = [] as const;
 
 function registerAllTools() {
-	const tool = vi.fn();
 	const registerTool = vi.fn();
-	const server = { tool, registerTool } as unknown as McpServer;
+	const server = { registerTool } as unknown as McpServer;
 	registerWorkoutTools(server, null);
 	registerRoutineTools(server, null);
 	registerTemplateTools(server, null);
 	registerFolderTools(server, null);
 	registerBodyMeasurementTools(server, null);
 	registerUserTools(server, null);
-	return { tool, registerTool };
+	return { registerTool };
 }
 
 function getAnnotations(
@@ -62,15 +61,10 @@ function getAnnotations(
 	const registered = spies.registerTool.mock.calls.find(
 		([toolName]) => toolName === name,
 	);
-	if (registered) {
-		return (registered[1] as { annotations: ToolAnnotations }).annotations;
-	}
-	const match = spies.tool.mock.calls.find(([toolName]) => toolName === name);
-	if (!match) {
+	if (!registered) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	// server.tool(name, description, schema, annotations, handler)
-	return match[3] as ToolAnnotations;
+	return (registered[1] as { annotations: ToolAnnotations }).annotations;
 }
 
 function getDescription(
@@ -80,15 +74,10 @@ function getDescription(
 	const registered = spies.registerTool.mock.calls.find(
 		([toolName]) => toolName === name,
 	);
-	if (registered) {
-		return (registered[1] as { description: string }).description;
-	}
-	const match = spies.tool.mock.calls.find(([toolName]) => toolName === name);
-	if (!match) {
+	if (!registered) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	// server.tool(name, description, schema, annotations, handler)
-	return match[1] as string;
+	return (registered[1] as { description: string }).description;
 }
 
 describe("tool annotations", () => {
@@ -96,10 +85,9 @@ describe("tool annotations", () => {
 
 	it("registers all known tools", () => {
 		const byName = (a: string, b: string) => a.localeCompare(b);
-		const registered = [
-			...spies.tool.mock.calls.map(([name]) => name as string),
-			...spies.registerTool.mock.calls.map(([name]) => name as string),
-		].sort(byName);
+		const registered = spies.registerTool.mock.calls
+			.map(([name]) => name as string)
+			.sort(byName);
 		const expected = [
 			...READ_ONLY_TOOLS,
 			...CREATE_TOOLS,

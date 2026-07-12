@@ -34,8 +34,8 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import { defineTool } from "./define-tool.js";
 import {
 	equipmentCategoryEnum,
 	exerciseTypeEnum,
@@ -70,27 +70,22 @@ export function registerTemplateTools(
 		typeof getExerciseTemplatesSchema
 	>;
 
-	server.registerTool(
-		"get-exercise-templates",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Lists default and custom exercise templates with equipment and muscle metadata.",
-				aliases: [
-					"browse exercises",
-					"list exercise catalog",
-					"show movements",
-				],
-				useCase:
-					"Use for page-by-page catalog browsing; use search-exercise-templates for a name lookup across the full catalog.",
-				importantNotes:
-					"Results are paginated; page starts at 1 and pageSize is limited to 100.",
-			}),
-			inputSchema: getExerciseTemplatesSchema,
-			outputSchema: exerciseTemplatesOutputSchema,
-			annotations: readOnlyAnnotations("Get Exercise Templates"),
+	defineTool(server, {
+		name: "get-exercise-templates",
+		description: {
+			summary:
+				"Read-only. Lists default and custom exercise templates with equipment and muscle metadata.",
+			aliases: ["browse exercises", "list exercise catalog", "show movements"],
+			useCase:
+				"Use for page-by-page catalog browsing; use search-exercise-templates for a name lookup across the full catalog.",
+			importantNotes:
+				"Results are paginated; page starts at 1 and pageSize is limited to 100.",
 		},
-		wrapHandler(async (args: GetExerciseTemplatesParams) => {
+		inputSchema: getExerciseTemplatesSchema,
+		outputSchema: exerciseTemplatesOutputSchema,
+		annotations: readOnlyAnnotations("Get Exercise Templates"),
+		wrapHandler,
+		handler: async (args: GetExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1ExerciseTemplates200 = await client.getExerciseTemplates(
@@ -116,8 +111,8 @@ export function registerTemplateTools(
 			return createStructuredJsonResponse(templates, {
 				exerciseTemplates: templates,
 			});
-		}, "get-exercise-templates"),
-	);
+		},
+	});
 
 	// Get single exercise template by ID
 	const getExerciseTemplateSchema = {
@@ -127,27 +122,26 @@ export function registerTemplateTools(
 		typeof getExerciseTemplateSchema
 	>;
 
-	server.registerTool(
-		"get-exercise-template",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Retrieves complete metadata for one exercise template by ID.",
-				aliases: [
-					"show exercise details",
-					"fetch movement",
-					"exercise template info",
-				],
-				useCase:
-					"Use after locating an exact template; use search-exercise-templates when only a name is known.",
-				importantNotes:
-					"Requires an exerciseTemplateId from a template list, search, routine, or workout.",
-			}),
-			inputSchema: getExerciseTemplateSchema,
-			outputSchema: exerciseTemplateOutputSchema,
-			annotations: readOnlyAnnotations("Get Exercise Template"),
+	defineTool(server, {
+		name: "get-exercise-template",
+		description: {
+			summary:
+				"Read-only. Retrieves complete metadata for one exercise template by ID.",
+			aliases: [
+				"show exercise details",
+				"fetch movement",
+				"exercise template info",
+			],
+			useCase:
+				"Use after locating an exact template; use search-exercise-templates when only a name is known.",
+			importantNotes:
+				"Requires an exerciseTemplateId from a template list, search, routine, or workout.",
 		},
-		wrapHandler(async (args: GetExerciseTemplateParams) => {
+		inputSchema: getExerciseTemplateSchema,
+		outputSchema: exerciseTemplateOutputSchema,
+		annotations: readOnlyAnnotations("Get Exercise Template"),
+		wrapHandler,
+		handler: async (args: GetExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId } = args;
 			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
@@ -164,8 +158,8 @@ export function registerTemplateTools(
 			return createStructuredJsonResponse(template, {
 				exerciseTemplate: template,
 			});
-		}, "get-exercise-template"),
-	);
+		},
+	});
 
 	// Get exercise history for a template
 	const getExerciseHistorySchema = {
@@ -185,23 +179,22 @@ export function registerTemplateTools(
 		typeof getExerciseHistorySchema
 	>;
 
-	server.registerTool(
-		"get-exercise-history",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Retrieves past performed sets for one exercise template.",
-				aliases: ["exercise progress", "past sets", "movement history"],
-				useCase:
-					"Use to analyze performance for one movement; use get-workouts for complete sessions.",
-				importantNotes:
-					"Requires an exerciseTemplateId. Optional startDate and endDate must be ISO 8601 datetimes with an offset.",
-			}),
-			inputSchema: getExerciseHistorySchema,
-			outputSchema: exerciseHistoryOutputSchema,
-			annotations: readOnlyAnnotations("Get Exercise History"),
+	defineTool(server, {
+		name: "get-exercise-history",
+		description: {
+			summary:
+				"Read-only. Retrieves past performed sets for one exercise template.",
+			aliases: ["exercise progress", "past sets", "movement history"],
+			useCase:
+				"Use to analyze performance for one movement; use get-workouts for complete sessions.",
+			importantNotes:
+				"Requires an exerciseTemplateId. Optional startDate and endDate must be ISO 8601 datetimes with an offset.",
 		},
-		wrapHandler(async (args: GetExerciseHistoryParams) => {
+		inputSchema: getExerciseHistorySchema,
+		outputSchema: exerciseHistoryOutputSchema,
+		annotations: readOnlyAnnotations("Get Exercise History"),
+		wrapHandler,
+		handler: async (args: GetExerciseHistoryParams) => {
 			const client = requireClient(hevyClient);
 			const { exerciseTemplateId, startDate, endDate } = args;
 			const data: GetV1ExerciseHistoryExercisetemplateid200 =
@@ -225,8 +218,8 @@ export function registerTemplateTools(
 			return createStructuredJsonResponse(history, {
 				exerciseHistory: history,
 			});
-		}, "get-exercise-history"),
-	);
+		},
+	});
 
 	// Create a custom exercise template
 	const createExerciseTemplateSchema = {
@@ -240,9 +233,9 @@ export function registerTemplateTools(
 		typeof createExerciseTemplateSchema
 	>;
 
-	server.tool(
-		"create-exercise-template",
-		describeTool({
+	defineTool(server, {
+		name: "create-exercise-template",
+		description: {
 			summary:
 				"Writes to the Hevy account by creating a custom exercise template.",
 			aliases: ["add custom exercise", "create movement", "define exercise"],
@@ -250,10 +243,11 @@ export function registerTemplateTools(
 				"Use only when the needed movement is absent; search-exercise-templates should check existing templates first.",
 			importantNotes:
 				"Requires title, exercise type, equipment category, and primary muscle group. Retrying or reusing a title can create duplicates.",
-		}),
-		createExerciseTemplateSchema,
-		createAnnotations("Create Exercise Template"),
-		wrapHandler(async (args: CreateExerciseTemplateParams) => {
+		},
+		inputSchema: createExerciseTemplateSchema,
+		annotations: createAnnotations("Create Exercise Template"),
+		wrapHandler,
+		handler: async (args: CreateExerciseTemplateParams) => {
 			const client = requireClient(hevyClient);
 			const {
 				title,
@@ -278,8 +272,8 @@ export function registerTemplateTools(
 				id: response?.id,
 				message: "Exercise template created successfully",
 			});
-		}, "create-exercise-template"),
-	);
+		},
+	});
 
 	// Search exercise templates (cached)
 	const searchExerciseTemplatesSchema = {
@@ -306,23 +300,22 @@ export function registerTemplateTools(
 		typeof searchExerciseTemplatesSchema
 	>;
 
-	server.registerTool(
-		"search-exercise-templates",
-		{
-			description: describeTool({
-				summary:
-					"Read-only for the Hevy account. Searches the full exercise template catalog by title substring.",
-				aliases: ["find exercise", "look up movement", "search exercise IDs"],
-				useCase:
-					"Use when a name or partial name is known, especially to discover IDs for workouts and routines; use get-exercise-templates for page browsing.",
-				importantNotes:
-					"Matching is case-insensitive. The catalog is cached locally for 5 minutes; refresh:true re-fetches all pages and changes only local cache state.",
-			}),
-			inputSchema: searchExerciseTemplatesSchema,
-			outputSchema: exerciseTemplatesOutputSchema,
-			annotations: readOnlyAnnotations("Search Exercise Templates"),
+	defineTool(server, {
+		name: "search-exercise-templates",
+		description: {
+			summary:
+				"Read-only for the Hevy account. Searches the full exercise template catalog by title substring.",
+			aliases: ["find exercise", "look up movement", "search exercise IDs"],
+			useCase:
+				"Use when a name or partial name is known, especially to discover IDs for workouts and routines; use get-exercise-templates for page browsing.",
+			importantNotes:
+				"Matching is case-insensitive. The catalog is cached locally for 5 minutes; refresh:true re-fetches all pages and changes only local cache state.",
 		},
-		wrapHandler(async (args: SearchExerciseTemplatesParams) => {
+		inputSchema: searchExerciseTemplatesSchema,
+		outputSchema: exerciseTemplatesOutputSchema,
+		annotations: readOnlyAnnotations("Search Exercise Templates"),
+		wrapHandler,
+		handler: async (args: SearchExerciseTemplatesParams) => {
 			const client = requireClient(hevyClient);
 			const { query, primaryMuscleGroup, refresh } = args;
 			const templates = await catalog.get(client, {
@@ -371,6 +364,6 @@ export function registerTemplateTools(
 			return createStructuredJsonResponse(exerciseTemplates, {
 				exerciseTemplates,
 			});
-		}, "search-exercise-templates"),
-	);
+		},
+	});
 }

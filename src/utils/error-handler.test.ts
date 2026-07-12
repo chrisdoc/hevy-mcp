@@ -194,7 +194,7 @@ describe("withErrorHandling", () => {
 		await expect(wrapped({})).resolves.toBe(expected);
 	});
 
-	it("normalizes nullish arguments and reports original failures", async () => {
+	it("reports zero argument keys for a nullish direct invocation", async () => {
 		const onError = vi.fn();
 		const wrapped = withErrorHandling(
 			async () => {

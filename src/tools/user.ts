@@ -8,8 +8,8 @@ import {
 	createStructuredJsonResponse,
 } from "../utils/response-formatter.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
+import { defineTool } from "./define-tool.js";
 
 export function registerUserTools(
 	server: McpServer,
@@ -20,23 +20,22 @@ export function registerUserTools(
 	const getUserInfoSchema = {} as const;
 	type GetUserInfoParams = InferToolParams<typeof getUserInfoSchema>;
 
-	server.registerTool(
-		"get-user-info",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Returns the authenticated account's user ID, display name, and public profile URL.",
-				aliases: ["who am I", "account info", "verify Hevy user"],
-				useCase:
-					"Use to confirm which Hevy account is connected before reading or writing account data.",
-				importantNotes:
-					"Accepts no inputs and reports only the account associated with the configured credentials.",
-			}),
-			inputSchema: getUserInfoSchema,
-			outputSchema: userOutputSchema,
-			annotations: readOnlyAnnotations("Get User Info"),
+	defineTool(server, {
+		name: "get-user-info",
+		description: {
+			summary:
+				"Read-only. Returns the authenticated account's user ID, display name, and public profile URL.",
+			aliases: ["who am I", "account info", "verify Hevy user"],
+			useCase:
+				"Use to confirm which Hevy account is connected before reading or writing account data.",
+			importantNotes:
+				"Accepts no inputs and reports only the account associated with the configured credentials.",
 		},
-		wrapHandler(async (_args: GetUserInfoParams) => {
+		inputSchema: getUserInfoSchema,
+		outputSchema: userOutputSchema,
+		annotations: readOnlyAnnotations("Get User Info"),
+		wrapHandler,
+		handler: async (_args: GetUserInfoParams) => {
 			const client = requireClient(hevyClient);
 			const data: UserInfoResponse = await client.getUserInfo();
 			if (!data?.data) {
@@ -46,6 +45,6 @@ export function registerUserTools(
 				);
 			}
 			return createStructuredJsonResponse(data.data, { user: data.data });
-		}, "get-user-info"),
-	);
+		},
+	});
 }

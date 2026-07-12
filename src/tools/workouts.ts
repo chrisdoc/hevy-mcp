@@ -34,9 +34,9 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { setTypeEnum } from "../utils/schemas.js";
+import { defineTool } from "./define-tool.js";
 
 type WorkoutEvent = GetV1WorkoutsEvents200["events"][number];
 type FormattedWorkoutEvent =
@@ -77,27 +77,22 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutsParams = InferToolParams<typeof getWorkoutsSchema>;
 
-	server.registerTool(
-		"get-workouts",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Lists workouts from newest to oldest with exercise and timing details.",
-				aliases: [
-					"list workout history",
-					"show recent workouts",
-					"browse logs",
-				],
-				useCase:
-					"Use to browse or page through workout history; use get-workout when a workout ID is already known.",
-				importantNotes:
-					"Results are paginated; page starts at 1 and pageSize is limited to 10.",
-			}),
-			inputSchema: getWorkoutsSchema,
-			outputSchema: workoutsOutputSchema,
-			annotations: readOnlyAnnotations("Get Workouts"),
+	defineTool(server, {
+		name: "get-workouts",
+		description: {
+			summary:
+				"Read-only. Lists workouts from newest to oldest with exercise and timing details.",
+			aliases: ["list workout history", "show recent workouts", "browse logs"],
+			useCase:
+				"Use to browse or page through workout history; use get-workout when a workout ID is already known.",
+			importantNotes:
+				"Results are paginated; page starts at 1 and pageSize is limited to 10.",
 		},
-		wrapHandler(async (args: GetWorkoutsParams) => {
+		inputSchema: getWorkoutsSchema,
+		outputSchema: workoutsOutputSchema,
+		annotations: readOnlyAnnotations("Get Workouts"),
+		wrapHandler,
+		handler: async (args: GetWorkoutsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize } = args;
 			const data: GetV1Workouts200 = await client.getWorkouts({
@@ -116,8 +111,8 @@ export function registerWorkoutTools(
 			}
 
 			return createStructuredJsonResponse(workouts, { workouts });
-		}, "get-workouts"),
-	);
+		},
+	});
 
 	// Get single workout by ID
 	const getWorkoutSchema = {
@@ -125,23 +120,22 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutParams = InferToolParams<typeof getWorkoutSchema>;
 
-	server.registerTool(
-		"get-workout",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Retrieves complete details for one workout by its ID.",
-				aliases: ["show workout", "fetch workout details", "open workout log"],
-				useCase:
-					"Use after get-workouts identifies the exact workout; do not use for browsing multiple workouts.",
-				importantNotes:
-					"Requires a workoutId discovered from a workout list, event, or prior create response.",
-			}),
-			inputSchema: getWorkoutSchema,
-			outputSchema: workoutOutputSchema,
-			annotations: readOnlyAnnotations("Get Workout"),
+	defineTool(server, {
+		name: "get-workout",
+		description: {
+			summary:
+				"Read-only. Retrieves complete details for one workout by its ID.",
+			aliases: ["show workout", "fetch workout details", "open workout log"],
+			useCase:
+				"Use after get-workouts identifies the exact workout; do not use for browsing multiple workouts.",
+			importantNotes:
+				"Requires a workoutId discovered from a workout list, event, or prior create response.",
 		},
-		wrapHandler(async (args: GetWorkoutParams) => {
+		inputSchema: getWorkoutSchema,
+		outputSchema: workoutOutputSchema,
+		annotations: readOnlyAnnotations("Get Workout"),
+		wrapHandler,
+		handler: async (args: GetWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { workoutId } = args;
 			const data: GetV1WorkoutsWorkoutid200 =
@@ -156,32 +150,31 @@ export function registerWorkoutTools(
 
 			const workout = formatWorkout(data);
 			return createStructuredJsonResponse(workout, { workout });
-		}, "get-workout"),
-	);
+		},
+	});
 
 	// Get workout count
-	server.registerTool(
-		"get-workout-count",
-		{
-			description: describeTool({
-				summary: "Read-only. Returns the total workout count for the account.",
-				aliases: ["count workouts", "how many workouts", "workout total"],
-				useCase:
-					"Use for totals, statistics, or estimating pages; use get-workouts for actual workout records.",
-				importantNotes:
-					"Returns only a count and accepts no paging or date filters.",
-			}),
-			inputSchema: {},
-			outputSchema: workoutCountOutputSchema,
-			annotations: readOnlyAnnotations("Get Workout Count"),
+	defineTool(server, {
+		name: "get-workout-count",
+		description: {
+			summary: "Read-only. Returns the total workout count for the account.",
+			aliases: ["count workouts", "how many workouts", "workout total"],
+			useCase:
+				"Use for totals, statistics, or estimating pages; use get-workouts for actual workout records.",
+			importantNotes:
+				"Returns only a count and accepts no paging or date filters.",
 		},
-		wrapHandler(async () => {
+		inputSchema: {},
+		outputSchema: workoutCountOutputSchema,
+		annotations: readOnlyAnnotations("Get Workout Count"),
+		wrapHandler,
+		handler: async () => {
 			const client = requireClient(hevyClient);
 			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
 			return createStructuredJsonResponse({ count }, { count });
-		}, "get-workout-count"),
-	);
+		},
+	});
 
 	// Get workout events (updates/deletes)
 	const getWorkoutEventsSchema = {
@@ -191,27 +184,26 @@ export function registerWorkoutTools(
 	} as const;
 	type GetWorkoutEventsParams = InferToolParams<typeof getWorkoutEventsSchema>;
 
-	server.registerTool(
-		"get-workout-events",
-		{
-			description: describeTool({
-				summary:
-					"Read-only. Lists workout update and delete events since a timestamp, newest first.",
-				aliases: [
-					"sync workout changes",
-					"workout change feed",
-					"deleted workouts",
-				],
-				useCase:
-					"Use to incrementally synchronize a local workout cache; use get-workouts for the current workout list.",
-				importantNotes:
-					"since must be a timestamp string; events are paginated with pageSize at most 10, and the default since value reads from 1970.",
-			}),
-			inputSchema: getWorkoutEventsSchema,
-			outputSchema: workoutEventsOutputSchema,
-			annotations: readOnlyAnnotations("Get Workout Events"),
+	defineTool(server, {
+		name: "get-workout-events",
+		description: {
+			summary:
+				"Read-only. Lists workout update and delete events since a timestamp, newest first.",
+			aliases: [
+				"sync workout changes",
+				"workout change feed",
+				"deleted workouts",
+			],
+			useCase:
+				"Use to incrementally synchronize a local workout cache; use get-workouts for the current workout list.",
+			importantNotes:
+				"since must be a timestamp string; events are paginated with pageSize at most 10, and the default since value reads from 1970.",
 		},
-		wrapHandler(async (args: GetWorkoutEventsParams) => {
+		inputSchema: getWorkoutEventsSchema,
+		outputSchema: workoutEventsOutputSchema,
+		annotations: readOnlyAnnotations("Get Workout Events"),
+		wrapHandler,
+		handler: async (args: GetWorkoutEventsParams) => {
 			const client = requireClient(hevyClient);
 			const { page, pageSize, since } = args;
 			const data: GetV1WorkoutsEvents200 = await client.getWorkoutEvents({
@@ -230,8 +222,8 @@ export function registerWorkoutTools(
 			}
 
 			return createStructuredJsonResponse(events, { events });
-		}, "get-workout-events"),
-	);
+		},
+	});
 
 	// Create workout
 	const createWorkoutSchema = {
@@ -267,19 +259,20 @@ export function registerWorkoutTools(
 	} as const;
 	type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
 
-	server.tool(
-		"create-workout",
-		describeTool({
+	defineTool(server, {
+		name: "create-workout",
+		description: {
 			summary: "Writes to the Hevy account by creating a new workout.",
 			aliases: ["log workout", "add workout", "record training session"],
 			useCase:
 				"Use to add a completed workout; use update-workout only when modifying an existing workout ID.",
 			importantNotes:
 				"Requires UTC startTime/endTime in YYYY-MM-DDTHH:mm:ssZ form and exercise template IDs. Retrying can create duplicates.",
-		}),
-		createWorkoutSchema,
-		createAnnotations("Create Workout"),
-		wrapHandler(async (args: CreateWorkoutParams) => {
+		},
+		inputSchema: createWorkoutSchema,
+		annotations: createAnnotations("Create Workout"),
+		wrapHandler,
+		handler: async (args: CreateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const { title, description, startTime, endTime, isPrivate, exercises } =
 				args;
@@ -321,8 +314,8 @@ export function registerWorkoutTools(
 				pretty: true,
 				indent: 2,
 			});
-		}, "create-workout"),
-	);
+		},
+	});
 
 	// Update workout
 	const updateWorkoutSchema = {
@@ -359,9 +352,10 @@ export function registerWorkoutTools(
 	} as const;
 	type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
 
-	server.tool(
-		"update-workout",
-		describeTool({
+	defineTool(server, {
+		name: "update-workout",
+		context: "update-workout-operation",
+		description: {
 			summary: "Mutates the Hevy account by replacing an existing workout.",
 			aliases: [
 				"edit workout",
@@ -372,10 +366,11 @@ export function registerWorkoutTools(
 				"Use to revise a known workout; use create-workout for a new training session.",
 			importantNotes:
 				"Requires workoutId plus the complete title, times, privacy, exercises, and sets payload; omitted optional values may be cleared or defaulted.",
-		}),
-		updateWorkoutSchema,
-		updateAnnotations("Update Workout"),
-		wrapHandler(async (args: UpdateWorkoutParams) => {
+		},
+		inputSchema: updateWorkoutSchema,
+		annotations: updateAnnotations("Update Workout"),
+		wrapHandler,
+		handler: async (args: UpdateWorkoutParams) => {
 			const client = requireClient(hevyClient);
 			const {
 				workoutId,
@@ -427,6 +422,6 @@ export function registerWorkoutTools(
 				pretty: true,
 				indent: 2,
 			});
-		}, "update-workout-operation"),
-	);
+		},
+	});
 }
