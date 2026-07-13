@@ -1,3 +1,12 @@
+## 3.1.1
+
+### Patch Changes
+
+- [#649](https://github.com/chrisdoc/hevy-mcp/pull/649) [`b22fe76`](https://github.com/chrisdoc/hevy-mcp/commit/b22fe76d117a694cf412db116f6803cf416596db) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Support runtime-safe Worker HTTP integration configuration and prevent
+  authentication requests from following upstream redirects.
+
+- [#650](https://github.com/chrisdoc/hevy-mcp/pull/650) [`94e785b`](https://github.com/chrisdoc/hevy-mcp/commit/94e785bee096f170c44b3b9f143851577ce4711b) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Fix live Wrangler Worker integration test assertions for routine folder IDs, which are numeric in the Hevy API but were asserted as strings.
+
 ## 3.1.0
 
 ### Minor Changes
