@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createSharedMcpServer } from "./shared-server.js";
 import type { HevyClient } from "./utils/hevyClient.js";
@@ -15,6 +15,10 @@ const validHeaders = {
 	"content-type": "application/json",
 	authorization: "Bearer test-key",
 };
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
 function mcpRequest(
 	body: unknown,
@@ -519,8 +523,76 @@ describe("real stateless SDK transport", () => {
 					? input.href
 					: input;
 		expect(new URL(requestUrl).pathname).toBe("/v1/user/info");
-		expect(init?.redirect).toBe("error");
+		expect(new URL(requestUrl).origin).toBe("https://api.hevyapp.com");
+		expect(init?.redirect).toBe("manual");
 		expect(new Headers(init?.headers).get("api-key")).toBe("test-key");
+		fetchSpy.mockRestore();
+	});
+
+	it("uses a normalized override for authentication and tool requests", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+			async () =>
+				new Response(
+					JSON.stringify({
+						data: {
+							id: "override-user",
+							name: "Override User",
+							url: "https://hevy.com/user/override-user",
+						},
+					}),
+					{
+						status: 200,
+						headers: { "content-type": "application/json" },
+					},
+				),
+		);
+
+		const result = await worker.fetch(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 8,
+				method: "tools/call",
+				params: { name: "get-user-info", arguments: {} },
+			}),
+			{ HEVY_API_BASE_URL: "https://fake-hevy.example///" },
+		);
+
+		expect(result.status).toBe(200);
+		expect(JSON.stringify(await parseMcpResponse(result))).toContain(
+			"override-user",
+		);
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		for (const [input, init] of fetchSpy.mock.calls) {
+			const requestUrl =
+				input instanceof Request
+					? input.url
+					: input instanceof URL
+						? input.href
+						: input;
+			expect(new URL(requestUrl).origin).toBe("https://fake-hevy.example");
+			expect(new URL(requestUrl).pathname).toBe("/v1/user/info");
+			expect(new Headers(init?.headers).get("api-key")).toBe("test-key");
+		}
+		fetchSpy.mockRestore();
+	});
+
+	it.each([
+		"/relative",
+		"ftp://fake-hevy.example",
+		"https://user:password@fake-hevy.example",
+		"https://fake-hevy.example/v1",
+		"https://fake-hevy.example?target=production",
+		"not a URL",
+	])("fails closed for malformed override %s", async (baseUrl) => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
+		const result = await worker.fetch(
+			mcpRequest({ jsonrpc: "2.0", id: 9, method: "tools/list" }),
+			{ HEVY_API_BASE_URL: baseUrl },
+		);
+
+		expect(result.status).toBe(500);
+		expect(await result.text()).toBe("Worker configuration error");
+		expect(fetchSpy).not.toHaveBeenCalled();
 		fetchSpy.mockRestore();
 	});
 });
