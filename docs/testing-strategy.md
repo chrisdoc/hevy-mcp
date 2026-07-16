@@ -98,7 +98,7 @@ record a new merged-main baseline after fixing the denominator.
 | Mocked MCP integration | `tests/integration/mocked/`                          | Real SDK `Client`, `McpServer`, and `InMemoryTransport` with Nock at the Axios HTTP seam.               |
 | Live Vitest canary     | `tests/integration/hevy-mcp.integration.test.ts`     | Read-only validation against the real API, skipped without `HEVY_API_KEY`.                              |
 | Process-level nightly  | `tests/nightly/test_hevy_mcp.mjs`                    | Real stdio JSON-RPC against `npx`, `bunx`, and built source.                                            |
-| Release checks         | `.github/workflows/release.yml`                      | Unit, live integration, and source stdio checks run before publishing.                                  |
+| Release checks         | `.github/workflows/release.yml`                      | Unit, live integration, source stdio, and non-blocking Worker HTTP smoke test run before publishing.    |
 | CI runtime matrix      | `.github/workflows/build-and-test.yml`               | Node 24 and 26 build, type, style, unit, and mocked integration checks.                                 |
 | Docker smoke           | `.github/workflows/build-and-test.yml`, `Dockerfile` | Image build plus unauthenticated `--version` and `--help` smoke checks.                                 |
 | Coverage               | `vitest.config.ts`, `codecov.yml`                    | V8/LCOV reports, Codecov project comparison, patch status, generated-code exclusion.                    |
