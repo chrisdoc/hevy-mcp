@@ -31,7 +31,7 @@ type OutputShape = z.ZodRawShape;
 type OutputFor<TShape extends OutputShape> = z.output<z.ZodObject<TShape>>;
 
 export interface ResponseContract<TData> {
-	readonly render: (data: TData) => McpToolResponse;
+	render(data: TData): McpToolResponse;
 }
 
 export interface StructuredResponseContract<

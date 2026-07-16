@@ -1,6 +1,6 @@
 import { withErrorHandling } from "./error-handler.js";
 import type { McpToolResponse } from "./response-formatter.js";
-import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { resolveErrorPolicy } from "./error-policy.js";
 import { Sentry } from "./telemetry.js";
 import { withTelemetry } from "./telemetry-wrapper.js";
 
@@ -15,7 +15,7 @@ export function withObservability<TParams extends Record<string, unknown>>(
 		withTelemetry(fn, context),
 		context,
 		(error, _toolContext, argumentKeyCount) => {
-			const diagnostic = createSafeErrorDiagnostic(error);
+			const { diagnostic } = resolveErrorPolicy(error, "");
 			Sentry.withScope((scope) => {
 				scope.setTag("error.category", diagnostic.category);
 				if (diagnostic.code) scope.setTag("error.code", diagnostic.code);

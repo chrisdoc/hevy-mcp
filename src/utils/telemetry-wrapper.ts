@@ -1,9 +1,8 @@
 import { SpanStatusCode } from "@opentelemetry/api";
 import { debugLog, isDebugEnabled, redactToolArgs } from "./debug.js";
-import { determineErrorType } from "./error-classification.js";
+import { resolveErrorPolicy } from "./error-policy.js";
 import { toolDuration, toolErrors, toolInvocations } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
-import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 import { getCurrentUserId, tracer } from "./telemetry.js";
 
 /** Whitelist of safe argument keys that can be logged without exposing PII. */
@@ -113,7 +112,8 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 				} catch (error) {
 					isError = true;
 					span.setStatus({ code: SpanStatusCode.ERROR });
-					const diagnostic = createSafeErrorDiagnostic(error);
+					const policy = resolveErrorPolicy(error, "");
+					const { diagnostic } = policy;
 					span.addEvent("mcp.tool.failure", {
 						"error.category": diagnostic.category,
 						...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
@@ -126,10 +126,7 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 							: {}),
 					});
 
-					const errorType = determineErrorType(
-						error,
-						`${diagnostic.category} occurred`,
-					);
+					const errorType = policy.type;
 					span.setAttribute("error.type", errorType);
 
 					toolErrors.add(1, {
