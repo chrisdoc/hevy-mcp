@@ -13,7 +13,7 @@ import {
 	formatRoutine,
 	formatRoutineFolder,
 	formatWorkout,
-} from "./formatters";
+} from "./response-formatter.js";
 
 describe("Formatters", () => {
 	describe("formatWorkout", () => {

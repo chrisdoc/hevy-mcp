@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplate } from "../generated/client/types/index.js";
-import { formatExerciseTemplate } from "../utils/formatters.js";
+import { formatExerciseTemplate } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerTemplateTools } from "./templates.js";
 
