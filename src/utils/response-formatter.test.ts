@@ -1,163 +1,179 @@
+import { z } from "zod";
 import { describe, expect, it } from "vitest";
+
+import type { Routine, Workout } from "../generated/client/types/index.js";
 import {
-	createEmptyResponse,
-	createJsonResponse,
-	createStructuredEmptyResponse,
-	createStructuredJsonResponse,
-	createTextResponse,
-} from "./response-formatter";
+	bodyMeasurementsResponse,
+	createRoutineResponse,
+	defineJsonResponseContract,
+	defineStructuredResponseContract,
+	exerciseHistoryResponse,
+	exerciseTemplatesResponse,
+	respond,
+	routineFoldersResponse,
+	routinesResponse,
+	workoutResponse,
+	workoutsResponse,
+} from "./response-formatter.js";
 
-describe("Response Formatter", () => {
-	describe("createJsonResponse", () => {
-		it("should format JSON data with default pretty printing", () => {
-			const testData = { name: "Test", value: 123, nested: { key: "value" } };
-			const response = createJsonResponse(testData);
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(testData, null, 2),
-					},
-				],
-			});
+describe("response contracts", () => {
+	it("returns canonical schema output and strips unknown fields", () => {
+		const contract = defineStructuredResponseContract({
+			outputSchema: {
+				item: z.object({ id: z.string(), count: z.coerce.number() }),
+			},
+			normalize: () => ({
+				item: { id: "item-1", count: "3", ignored: true },
+				ignoredWrapper: true,
+			}),
+			legacyJson: ({ item }) => item,
 		});
 
-		it("should format JSON data without pretty printing when specified", () => {
-			const testData = { name: "Test", value: 123 };
-			const response = createJsonResponse(testData, { pretty: false });
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(testData),
-					},
-				],
-			});
-		});
-
-		it("should use custom indentation when specified", () => {
-			const testData = { name: "Test", value: 123 };
-			const response = createJsonResponse(testData, {
-				pretty: true,
-				indent: 4,
-			});
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(testData, null, 4),
-					},
-				],
-			});
-		});
-
-		it("should handle arrays correctly", () => {
-			const testArray = [1, 2, 3, { name: "Test" }];
-			const response = createJsonResponse(testArray);
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(testArray, null, 2),
-					},
-				],
-			});
-		});
-
-		it("should handle null and undefined values", () => {
-			expect(createJsonResponse(null).content[0].text).toBe("null");
-			expect(createJsonResponse(undefined).content[0].text).toBe("null");
+		expect(respond(contract, undefined)).toEqual({
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify({ id: "item-1", count: 3 }, null, 2),
+				},
+			],
+			structuredContent: { item: { id: "item-1", count: 3 } },
 		});
 	});
 
-	describe("structured responses", () => {
-		it("preserves the legacy JSON text byte-for-byte", () => {
-			const data = { id: "workout-1", values: [1, 2] };
-			const legacy = createJsonResponse(data);
-			const structuredContent = { workout: data };
+	it("fails locally when normalized structured output is invalid", () => {
+		const contract = defineStructuredResponseContract({
+			outputSchema: { count: z.number().int() },
+			normalize: () => ({ count: "not-a-number" }),
+			legacyJson: (output) => output,
+		});
 
-			expect(createStructuredJsonResponse(data, structuredContent)).toEqual({
-				...legacy,
+		expect(() => respond(contract, undefined)).toThrow();
+	});
+
+	it("keeps structured wrappers while projecting legacy text unwrapped", () => {
+		const workout: Workout = {
+			id: "workout-1",
+			title: "Workout",
+			start_time: "2025-01-01T10:00:00Z",
+			end_time: "2025-01-01T11:00:00Z",
+			exercises: [],
+		};
+		const response = respond(workoutsResponse, [workout]);
+		const structured = z
+			.object(workoutsResponse.outputSchema)
+			.parse(response.structuredContent);
+
+		expect(structured).toMatchObject({
+			workouts: [{ id: "workout-1", duration: "1h 0m 0s" }],
+		});
+		expect(JSON.parse(response.content[0].text)).toEqual(structured.workouts);
+	});
+
+	it("preserves empty-list and null result messages", () => {
+		expect(respond(workoutsResponse, [])).toEqual({
+			content: [
+				{
+					type: "text",
+					text: "No workouts found for the specified parameters",
+				},
+			],
+			structuredContent: { workouts: [] },
+		});
+		expect(
+			respond(workoutResponse, {
+				workout: null,
+				workoutId: "missing",
+			}),
+		).toEqual({
+			content: [{ type: "text", text: "Workout with ID missing not found" }],
+			structuredContent: { workout: null },
+		});
+	});
+
+	it.each([
+		{
+			name: "workouts",
+			render: () => respond(workoutsResponse, undefined),
+			structuredContent: { workouts: [] },
+			text: "No workouts found for the specified parameters",
+		},
+		{
+			name: "routines",
+			render: () => respond(routinesResponse, undefined),
+			structuredContent: { routines: [] },
+			text: "No routines found for the specified parameters",
+		},
+		{
+			name: "exercise templates",
+			render: () => respond(exerciseTemplatesResponse, undefined),
+			structuredContent: { exerciseTemplates: [] },
+			text: "No exercise templates found for the specified parameters",
+		},
+		{
+			name: "exercise history",
+			render: () =>
+				respond(exerciseHistoryResponse, {
+					history: undefined,
+					exerciseTemplateId: "template-1",
+				}),
+			structuredContent: { exerciseHistory: [] },
+			text: "No exercise history found for template template-1",
+		},
+		{
+			name: "routine folders",
+			render: () => respond(routineFoldersResponse, undefined),
+			structuredContent: { routineFolders: [] },
+			text: "No routine folders found for the specified parameters",
+		},
+		{
+			name: "body measurements",
+			render: () => respond(bodyMeasurementsResponse, undefined),
+			structuredContent: { bodyMeasurements: [] },
+			text: "No body measurements found for the specified parameters",
+		},
+	])(
+		"normalizes undefined $name data to its canonical empty response",
+		({ render, structuredContent, text }) => {
+			expect(render()).toEqual({
+				content: [{ type: "text", text }],
 				structuredContent,
 			});
+		},
+	);
+
+	it("supports JSON-only and text-only contracts without structured content", () => {
+		const jsonContract = defineJsonResponseContract((value: unknown) => ({
+			json: value,
+		}));
+		const textContract = defineJsonResponseContract((message: string) => ({
+			text: message,
+		}));
+
+		expect(respond(jsonContract, undefined)).toEqual({
+			content: [{ type: "text", text: "null" }],
 		});
-
-		it("preserves empty response text with structured empty values", () => {
-			const message = "No workouts found for the specified parameters";
-
-			expect(createStructuredEmptyResponse(message, { workouts: [] })).toEqual({
-				...createEmptyResponse(message),
-				structuredContent: { workouts: [] },
-			});
-
-			expect(
-				createStructuredEmptyResponse("Workout not found", { workout: null }),
-			).toMatchObject({
-				content: [{ type: "text", text: "Workout not found" }],
-				structuredContent: { workout: null },
-			});
-		});
-	});
-
-	describe("createTextResponse", () => {
-		it("should create a text response with the provided message", () => {
-			const message = "This is a test message";
-			const response = createTextResponse(message);
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: message,
-					},
-				],
-			});
-		});
-
-		it("should handle empty strings", () => {
-			const response = createTextResponse("");
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: "",
-					},
-				],
-			});
+		expect(respond(textContract, "done")).toEqual({
+			content: [{ type: "text", text: "done" }],
 		});
 	});
 
-	describe("createEmptyResponse", () => {
-		it("should create an empty response with default message", () => {
-			const response = createEmptyResponse();
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: "No data found",
-					},
-				],
-			});
+	it("preserves the routine rep-range warning as a second content block", () => {
+		const routine: Routine = {
+			id: "routine-1",
+			title: "Routine",
+			exercises: [],
+		};
+		const response = respond(createRoutineResponse, {
+			routine,
+			usesRepRanges: true,
 		});
 
-		it("should create an empty response with custom message", () => {
-			const customMessage = "Custom empty message";
-			const response = createEmptyResponse(customMessage);
-
-			expect(response).toEqual({
-				content: [
-					{
-						type: "text",
-						text: customMessage,
-					},
-				],
-			});
+		expect(response.content).toHaveLength(2);
+		expect(JSON.parse(response.content[0].text)).toMatchObject({
+			id: "routine-1",
 		});
+		expect(response.content[1].text).toContain("rep ranges");
+		expect(response.content[1].text).toContain("issues/261");
+		expect(response.structuredContent).toBeUndefined();
 	});
 });

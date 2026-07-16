@@ -5,10 +5,7 @@ import type {
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { withErrorHandling } from "../utils/error-handler.js";
-import type {
-	McpToolResponse,
-	StructuredMcpToolResponse,
-} from "../utils/response-formatter.js";
+import type { McpToolResponse } from "../utils/response-formatter.js";
 import {
 	describeTool,
 	type ToolDescriptionParts,
@@ -38,9 +35,7 @@ interface DefineStructuredTool<
 	TOutput extends Record<string, z.ZodTypeAny>,
 > extends DefineToolBase<TInput> {
 	outputSchema: TOutput;
-	handler: (
-		args: InferToolParams<TInput>,
-	) => Promise<StructuredMcpToolResponse<InferToolParams<TOutput>>>;
+	handler: (args: InferToolParams<TInput>) => Promise<McpToolResponse>;
 }
 
 export function defineTool<

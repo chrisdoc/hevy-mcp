@@ -5,20 +5,14 @@ import type {
 	GetV1RoutineFolders200,
 	GetV1RoutineFoldersFolderid200,
 	PostV1RoutineFolders201,
-	RoutineFolder,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
-import { formatRoutineFolder } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
-	routineFolderOutputSchema,
-	routineFoldersOutputSchema,
-} from "../utils/output-schemas.js";
-import {
-	createEmptyResponse,
-	createJsonResponse,
-	createStructuredEmptyResponse,
-	createStructuredJsonResponse,
+	createRoutineFolderResponse,
+	respond,
+	routineFolderResponse,
+	routineFoldersResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -55,7 +49,7 @@ export function registerFolderTools(
 				"Results are paginated; page starts at 1 and pageSize is limited to 10.",
 		},
 		inputSchema: getRoutineFoldersSchema,
-		outputSchema: routineFoldersOutputSchema,
+		outputSchema: routineFoldersResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Routine Folders"),
 		wrapHandler,
 		handler: async (args: GetRoutineFoldersParams) => {
@@ -66,22 +60,7 @@ export function registerFolderTools(
 				pageSize,
 			});
 
-			// Process routine folders to extract relevant information
-			const folders =
-				data?.routine_folders?.map((folder: RoutineFolder) =>
-					formatRoutineFolder(folder),
-				) || [];
-
-			if (folders.length === 0) {
-				return createStructuredEmptyResponse(
-					"No routine folders found for the specified parameters",
-					{ routineFolders: [] },
-				);
-			}
-
-			return createStructuredJsonResponse(folders, {
-				routineFolders: folders,
-			});
+			return respond(routineFoldersResponse, data?.routine_folders);
 		},
 	});
 
@@ -102,7 +81,7 @@ export function registerFolderTools(
 				"Requires a folderId from get-routine-folders or a prior create response.",
 		},
 		inputSchema: getRoutineFolderSchema,
-		outputSchema: routineFolderOutputSchema,
+		outputSchema: routineFolderResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Routine Folder"),
 		wrapHandler,
 		handler: async (args: GetRoutineFolderParams) => {
@@ -111,15 +90,10 @@ export function registerFolderTools(
 			const data: GetV1RoutineFoldersFolderid200 =
 				await client.getRoutineFolder(folderId);
 
-			if (!data) {
-				return createStructuredEmptyResponse(
-					`Routine folder with ID ${folderId} not found`,
-					{ routineFolder: null },
-				);
-			}
-
-			const folder = formatRoutineFolder(data);
-			return createStructuredJsonResponse(folder, { routineFolder: folder });
+			return respond(routineFolderResponse, {
+				routineFolder: data,
+				folderId,
+			});
 		},
 	});
 
@@ -153,17 +127,7 @@ export function registerFolderTools(
 				},
 			});
 
-			if (!data) {
-				return createEmptyResponse(
-					"Failed to create routine folder: Server returned no data",
-				);
-			}
-
-			const folder = formatRoutineFolder(data);
-			return createJsonResponse(folder, {
-				pretty: true,
-				indent: 2,
-			});
+			return respond(createRoutineFolderResponse, data);
 		},
 	});
 }

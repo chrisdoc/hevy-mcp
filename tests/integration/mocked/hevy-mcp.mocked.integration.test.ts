@@ -179,6 +179,13 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			page: 1,
 			pageSize: 1,
 		});
+		const structuredContent = result.structuredContent as {
+			workouts: Array<{
+				id: string;
+				title: string;
+				duration: string;
+			}>;
+		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
@@ -186,11 +193,13 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		}>;
 
 		expect(result.isError).toBeFalsy();
-		expect(payload[0]).toMatchObject({
+		expect(structuredContent.workouts[0]).toMatchObject({
 			id: "workout-1",
 			title: "Mock Workout",
 			duration: "1h 0m 0s",
 		});
+		expect(typeof structuredContent.workouts[0]?.id).toBe("string");
+		expect(payload).toEqual(structuredContent.workouts);
 	});
 
 	it("accepts nullable workout fields through MCP output validation", async () => {
@@ -292,6 +301,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			folderId: 10,
 			exercises: [{ restSeconds: 60 }],
 		});
+		expect(typeof structuredContent.routines[0]?.id).toBe("string");
 		expect(structuredContent.routines[0]?.exercises[0]?.restSeconds).toBe(60);
 		expect(payload).toEqual(structuredContent.routines);
 	});
@@ -363,6 +373,13 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			page: 1,
 			pageSize: 1,
 		});
+		const structuredContent = result.structuredContent as {
+			exerciseTemplates: Array<{
+				id: string;
+				title: string;
+				primaryMuscleGroup: string;
+			}>;
+		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
@@ -370,11 +387,13 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		}>;
 
 		expect(result.isError).toBeFalsy();
-		expect(payload[0]).toMatchObject({
+		expect(structuredContent.exerciseTemplates[0]).toMatchObject({
 			id: "template-1",
 			title: "Bench Press",
 			primaryMuscleGroup: "chest",
 		});
+		expect(typeof structuredContent.exerciseTemplates[0]?.id).toBe("string");
+		expect(payload).toEqual(structuredContent.exerciseTemplates);
 	});
 
 	it("mocks get-routine-folders through MCP transport", async () => {
@@ -400,16 +419,24 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			page: 1,
 			pageSize: 1,
 		});
+		const structuredContent = result.structuredContent as {
+			routineFolders: Array<{
+				id: number;
+				title: string;
+			}>;
+		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: number;
 			title: string;
 		}>;
 
 		expect(result.isError).toBeFalsy();
-		expect(payload[0]).toMatchObject({
+		expect(structuredContent.routineFolders[0]).toMatchObject({
 			id: 10,
 			title: "Mock Folder",
 		});
+		expect(typeof structuredContent.routineFolders[0]?.id).toBe("number");
+		expect(payload).toEqual(structuredContent.routineFolders);
 	});
 
 	it("mocks get-body-measurements through MCP transport", async () => {

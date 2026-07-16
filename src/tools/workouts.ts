@@ -13,21 +13,16 @@ import type {
 	PutV1WorkoutsWorkoutid200,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
-import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
-	type FormattedWorkout,
-	workoutCountOutputSchema,
-	workoutEventsOutputSchema,
-	workoutOutputSchema,
-	workoutsOutputSchema,
-} from "../utils/output-schemas.js";
-import {
-	createEmptyResponse,
-	createJsonResponse,
-	createStructuredEmptyResponse,
-	createStructuredJsonResponse,
+	createWorkoutResponse,
+	respond,
+	updateWorkoutResponse,
+	workoutCountResponse,
+	workoutEventsResponse,
+	workoutResponse,
+	workoutsResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -37,30 +32,6 @@ import {
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 import { setTypeEnum } from "../utils/schemas.js";
 import { defineTool } from "./define-tool.js";
-
-type WorkoutEvent = GetV1WorkoutsEvents200["events"][number];
-type FormattedWorkoutEvent =
-	| { type: "updated"; workout: FormattedWorkout }
-	| { type: "deleted"; id: string; deletedAt?: string };
-
-function formatWorkoutEvent(event: WorkoutEvent): FormattedWorkoutEvent {
-	if (event.type === "updated" && "workout" in event) {
-		return {
-			type: "updated",
-			workout: formatWorkout(event.workout),
-		};
-	}
-
-	if (event.type === "deleted" && "id" in event) {
-		return {
-			type: "deleted",
-			id: event.id,
-			deletedAt: event.deleted_at,
-		};
-	}
-
-	throw new Error(`Unsupported workout event type: ${event.type}`);
-}
 
 /**
  * Register all workout-related tools with the MCP server
@@ -89,7 +60,7 @@ export function registerWorkoutTools(
 				"Results are paginated; page starts at 1 and pageSize is limited to 10.",
 		},
 		inputSchema: getWorkoutsSchema,
-		outputSchema: workoutsOutputSchema,
+		outputSchema: workoutsResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workouts"),
 		wrapHandler,
 		handler: async (args: GetWorkoutsParams) => {
@@ -100,17 +71,7 @@ export function registerWorkoutTools(
 				pageSize,
 			});
 
-			const workouts =
-				data?.workouts?.map((workout) => formatWorkout(workout)) || [];
-
-			if (workouts.length === 0) {
-				return createStructuredEmptyResponse(
-					"No workouts found for the specified parameters",
-					{ workouts: [] },
-				);
-			}
-
-			return createStructuredJsonResponse(workouts, { workouts });
+			return respond(workoutsResponse, data?.workouts);
 		},
 	});
 
@@ -132,7 +93,7 @@ export function registerWorkoutTools(
 				"Requires a workoutId discovered from a workout list, event, or prior create response.",
 		},
 		inputSchema: getWorkoutSchema,
-		outputSchema: workoutOutputSchema,
+		outputSchema: workoutResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workout"),
 		wrapHandler,
 		handler: async (args: GetWorkoutParams) => {
@@ -141,15 +102,7 @@ export function registerWorkoutTools(
 			const data: GetV1WorkoutsWorkoutid200 =
 				await client.getWorkout(workoutId);
 
-			if (!data) {
-				return createStructuredEmptyResponse(
-					`Workout with ID ${workoutId} not found`,
-					{ workout: null },
-				);
-			}
-
-			const workout = formatWorkout(data);
-			return createStructuredJsonResponse(workout, { workout });
+			return respond(workoutResponse, { workout: data, workoutId });
 		},
 	});
 
@@ -165,14 +118,14 @@ export function registerWorkoutTools(
 				"Returns only a count and accepts no paging or date filters.",
 		},
 		inputSchema: {},
-		outputSchema: workoutCountOutputSchema,
+		outputSchema: workoutCountResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workout Count"),
 		wrapHandler,
 		handler: async () => {
 			const client = requireClient(hevyClient);
 			const data: GetV1WorkoutsCount200 = await client.getWorkoutCount();
 			const count = data?.workout_count ?? 0;
-			return createStructuredJsonResponse({ count }, { count });
+			return respond(workoutCountResponse, count);
 		},
 	});
 
@@ -200,7 +153,7 @@ export function registerWorkoutTools(
 				"since must be a timestamp string; events are paginated with pageSize at most 10, and the default since value reads from 1970.",
 		},
 		inputSchema: getWorkoutEventsSchema,
-		outputSchema: workoutEventsOutputSchema,
+		outputSchema: workoutEventsResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workout Events"),
 		wrapHandler,
 		handler: async (args: GetWorkoutEventsParams) => {
@@ -212,16 +165,7 @@ export function registerWorkoutTools(
 				since,
 			});
 
-			const events = data?.events?.map(formatWorkoutEvent) || [];
-
-			if (events.length === 0) {
-				return createStructuredEmptyResponse(
-					`No workout events found for the specified parameters since ${since}`,
-					{ events: [] },
-				);
-			}
-
-			return createStructuredJsonResponse(events, { events });
+			return respond(workoutEventsResponse, { events: data?.events, since });
 		},
 	});
 
@@ -303,17 +247,7 @@ export function registerWorkoutTools(
 
 			const data: PostV1Workouts201 = await client.createWorkout(requestBody);
 
-			if (!data) {
-				return createEmptyResponse(
-					"Failed to create workout: Server returned no data",
-				);
-			}
-
-			const workout = formatWorkout(data);
-			return createJsonResponse(workout, {
-				pretty: true,
-				indent: 2,
-			});
+			return respond(createWorkoutResponse, data);
 		},
 	});
 
@@ -354,7 +288,6 @@ export function registerWorkoutTools(
 
 	defineTool(server, {
 		name: "update-workout",
-		context: "update-workout-operation",
 		description: {
 			summary: "Mutates the Hevy account by replacing an existing workout.",
 			aliases: [
@@ -411,17 +344,7 @@ export function registerWorkoutTools(
 				requestBody,
 			);
 
-			if (!data) {
-				return createEmptyResponse(
-					`Failed to update workout with ID ${workoutId}`,
-				);
-			}
-
-			const workout = formatWorkout(data);
-			return createJsonResponse(workout, {
-				pretty: true,
-				indent: 2,
-			});
+			return respond(updateWorkoutResponse, { workout: data, workoutId });
 		},
 	});
 }

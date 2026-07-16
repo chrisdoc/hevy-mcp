@@ -9,9 +9,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { withErrorHandling } from "../utils/error-handler.js";
 import {
-	createStructuredJsonResponse,
-	createTextResponse,
+	defineJsonResponseContract,
+	defineStructuredResponseContract,
 	type McpToolResponse,
+	respond,
 } from "../utils/response-formatter.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 import { defineTool } from "./define-tool.js";
@@ -72,6 +73,11 @@ describe("defineTool", () => {
 		const inputSchema = { page: z.number().default(3) } as const;
 		const outputSchema = { value: z.number() } as const;
 		const annotations = readOnlyAnnotations("Define Tool Test");
+		const responseContract = defineStructuredResponseContract({
+			outputSchema,
+			normalize: ({ value }: { value: number }) => ({ value }),
+			legacyJson: ({ value }) => ({ value }),
+		});
 
 		const result = defineTool(mockServer, {
 			name: "metadata-test",
@@ -81,8 +87,7 @@ describe("defineTool", () => {
 			outputSchema,
 			annotations,
 			wrapHandler: wrapper,
-			handler: async ({ page }) =>
-				createStructuredJsonResponse({ value: page }, { value: page }),
+			handler: async ({ page }) => respond(responseContract, { value: page }),
 		});
 
 		expect(result).toBe(registeredTool);
@@ -121,6 +126,14 @@ describe("defineTool", () => {
 				return handler(args);
 			};
 		};
+		const structuredContract = defineStructuredResponseContract({
+			outputSchema: { value: z.number() },
+			normalize: ({ value }: { value: number }) => ({ value }),
+			legacyJson: ({ value }) => ({ value }),
+		});
+		const legacyContract = defineJsonResponseContract((message: string) => ({
+			text: message,
+		}));
 
 		defineTool(server, {
 			name: "structured-test",
@@ -129,8 +142,7 @@ describe("defineTool", () => {
 			outputSchema: { value: z.number() },
 			annotations: readOnlyAnnotations("Structured Test"),
 			wrapHandler: wrapper,
-			handler: async ({ value }) =>
-				createStructuredJsonResponse({ value }, { value }),
+			handler: async ({ value }) => respond(structuredContract, { value }),
 		});
 		defineTool(server, {
 			name: "legacy-test",
@@ -138,7 +150,7 @@ describe("defineTool", () => {
 			inputSchema: { message: z.string().default("legacy response") },
 			annotations: readOnlyAnnotations("Legacy Test"),
 			wrapHandler: wrapper,
-			handler: async ({ message }) => createTextResponse(message),
+			handler: async ({ message }) => respond(legacyContract, message),
 		});
 
 		const [clientTransport, serverTransport] =

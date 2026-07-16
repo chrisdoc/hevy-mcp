@@ -12,21 +12,16 @@ import type {
 	PutRoutinesRequestSet,
 	PutRoutinesRequestSetTypeEnumKey,
 	PutV1RoutinesRoutineid200,
-	Routine,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
-import { formatRoutine } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
-	routineOutputSchema,
-	routinesOutputSchema,
-} from "../utils/output-schemas.js";
-import {
-	createEmptyResponse,
-	createJsonResponse,
-	createStructuredEmptyResponse,
-	createStructuredJsonResponse,
+	createRoutineResponse,
+	respond,
+	routineResponse,
+	routinesResponse,
+	updateRoutineResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -34,12 +29,12 @@ import {
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
-import { defineTool } from "./define-tool.js";
 import {
 	setTypeEnum,
 	zNullableInt,
 	zOptionalRepRange,
 } from "../utils/schemas.js";
+import { defineTool } from "./define-tool.js";
 
 function buildRepRange(repRange?: {
 	start?: number | null;
@@ -87,12 +82,6 @@ function getFixedRepsFromRepRange(
 	return start;
 }
 
-const repRangeDisplayWarningText =
-	"Note: Hevy's public API stores rep ranges (rep_range), but the Hevy apps may " +
-	"not display them because they rely on an internal-only exercise field " +
-	"(input_modifier). See https://github.com/chrisdoc/hevy-mcp/issues/261 for " +
-	"details/workarounds.";
-
 /**
  * Register all routine-related tools with the MCP server
  */
@@ -119,7 +108,7 @@ export function registerRoutineTools(
 				"Results are paginated; page starts at 1 and pageSize is limited to 10.",
 		},
 		inputSchema: getRoutinesSchema,
-		outputSchema: routinesOutputSchema,
+		outputSchema: routinesResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Routines"),
 		wrapHandler,
 		handler: async (args: GetRoutinesParams) => {
@@ -130,18 +119,7 @@ export function registerRoutineTools(
 				pageSize,
 			});
 
-			// Process routines to extract relevant information
-			const routines =
-				data?.routines?.map((routine: Routine) => formatRoutine(routine)) || [];
-
-			if (routines.length === 0) {
-				return createStructuredEmptyResponse(
-					"No routines found for the specified parameters",
-					{ routines: [] },
-				);
-			}
-
-			return createStructuredJsonResponse(routines, { routines });
+			return respond(routinesResponse, data?.routines);
 		},
 	});
 
@@ -163,7 +141,7 @@ export function registerRoutineTools(
 				"Requires a routineId from get-routines or a prior create response.",
 		},
 		inputSchema: getRoutineSchema,
-		outputSchema: routineOutputSchema,
+		outputSchema: routineResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Routine"),
 		wrapHandler,
 		handler: async (args: GetRoutineParams) => {
@@ -172,14 +150,10 @@ export function registerRoutineTools(
 			const data: GetV1RoutinesRoutineid200 = await client.getRoutineById(
 				String(routineId),
 			);
-			if (!data || !data.routine) {
-				return createStructuredEmptyResponse(
-					`Routine with ID ${routineId} not found`,
-					{ routine: null },
-				);
-			}
-			const routine = formatRoutine(data.routine);
-			return createStructuredJsonResponse(routine, { routine });
+			return respond(routineResponse, {
+				routine: data?.routine,
+				routineId,
+			});
 		},
 	});
 
@@ -275,26 +249,10 @@ export function registerRoutineTools(
 				},
 			});
 
-			if (!data) {
-				return createEmptyResponse(
-					"Failed to create routine: Server returned no data",
-				);
-			}
-
-			const routine = formatRoutine(data);
-			const response = createJsonResponse(routine, {
-				pretty: true,
-				indent: 2,
+			return respond(createRoutineResponse, {
+				routine: data,
+				usesRepRanges,
 			});
-
-			if (usesRepRanges) {
-				response.content.push({
-					type: "text",
-					text: repRangeDisplayWarningText,
-				});
-			}
-
-			return response;
 		},
 	});
 
@@ -398,26 +356,11 @@ export function registerRoutineTools(
 				},
 			);
 
-			if (!data) {
-				return createEmptyResponse(
-					`Failed to update routine with ID ${routineId}`,
-				);
-			}
-
-			const routine = formatRoutine(data);
-			const response = createJsonResponse(routine, {
-				pretty: true,
-				indent: 2,
+			return respond(updateRoutineResponse, {
+				routine: data,
+				routineId,
+				usesRepRanges,
 			});
-
-			if (usesRepRanges) {
-				response.content.push({
-					type: "text",
-					text: repRangeDisplayWarningText,
-				});
-			}
-
-			return response;
 		},
 	});
 }

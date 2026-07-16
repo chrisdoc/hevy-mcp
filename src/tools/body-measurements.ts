@@ -6,16 +6,13 @@ import type {
 	GetV1BodyMeasurementsDate200,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
-import { formatBodyMeasurement } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
-	bodyMeasurementOutputSchema,
-	bodyMeasurementsOutputSchema,
-} from "../utils/output-schemas.js";
-import {
-	createStructuredEmptyResponse,
-	createStructuredJsonResponse,
-	createTextResponse,
+	bodyMeasurementResponse,
+	bodyMeasurementsResponse,
+	createBodyMeasurementResponse,
+	respond,
+	updateBodyMeasurementResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -129,7 +126,7 @@ export function registerBodyMeasurementTools(
 				"Results are paginated; page starts at 1 and pageSize is limited to 10.",
 		},
 		inputSchema: getBodyMeasurementsSchema,
-		outputSchema: bodyMeasurementsOutputSchema,
+		outputSchema: bodyMeasurementsResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Body Measurements"),
 		wrapHandler,
 		handler: async (args: GetBodyMeasurementsParams) => {
@@ -140,21 +137,7 @@ export function registerBodyMeasurementTools(
 				pageSize,
 			});
 
-			const measurements =
-				data?.body_measurements?.map((measurement: BodyMeasurement) =>
-					formatBodyMeasurement(measurement),
-				) || [];
-
-			if (measurements.length === 0) {
-				return createStructuredEmptyResponse(
-					"No body measurements found for the specified parameters",
-					{ bodyMeasurements: [] },
-				);
-			}
-
-			return createStructuredJsonResponse(measurements, {
-				bodyMeasurements: measurements,
-			});
+			return respond(bodyMeasurementsResponse, data?.body_measurements);
 		},
 	});
 
@@ -180,7 +163,7 @@ export function registerBodyMeasurementTools(
 				"date must use YYYY-MM-DD; at most one entry exists per date.",
 		},
 		inputSchema: getBodyMeasurementSchema,
-		outputSchema: bodyMeasurementOutputSchema,
+		outputSchema: bodyMeasurementResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Body Measurement"),
 		wrapHandler,
 		handler: async (args: GetBodyMeasurementParams) => {
@@ -189,16 +172,9 @@ export function registerBodyMeasurementTools(
 			const data: GetV1BodyMeasurementsDate200 =
 				await client.getBodyMeasurement(date);
 
-			if (!data) {
-				return createStructuredEmptyResponse(
-					`No body measurement found for date ${date}`,
-					{ bodyMeasurement: null },
-				);
-			}
-
-			const bodyMeasurement = formatBodyMeasurement(data);
-			return createStructuredJsonResponse(bodyMeasurement, {
-				bodyMeasurement,
+			return respond(bodyMeasurementResponse, {
+				bodyMeasurement: data,
+				date,
 			});
 		},
 	});
@@ -239,9 +215,7 @@ export function registerBodyMeasurementTools(
 				...buildMeasurementPayload(fields),
 			});
 
-			return createTextResponse(
-				`Body measurement for ${date} created successfully.`,
-			);
+			return respond(createBodyMeasurementResponse, date);
 		},
 	});
 
@@ -284,9 +258,7 @@ export function registerBodyMeasurementTools(
 			}
 			await client.updateBodyMeasurement(date, payload);
 
-			return createTextResponse(
-				`Body measurement for ${date} updated successfully.`,
-			);
+			return respond(updateBodyMeasurementResponse, date);
 		},
 	});
 }
