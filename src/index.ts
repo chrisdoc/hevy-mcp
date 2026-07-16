@@ -14,7 +14,6 @@ import { createHmac } from "node:crypto";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { createSharedMcpServer } from "./shared-server.js";
-import { assertApiKey, parseConfig } from "./utils/config.js";
 import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { isHevyHttpError } from "./utils/hevy-http-error.js";
 import { createNodeHevyClientOptions } from "./utils/hevy-client-observability.js";
@@ -25,36 +24,6 @@ import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
 const version = serviceVersion;
-
-const HELP_TEXT = [
-	"Usage:",
-	"  hevy-mcp [options]",
-	"",
-	"Options:",
-	"  -h, --help                 Show this help message and exit",
-	"  -v, --version              Show version and exit",
-	"",
-	"Environment:",
-	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
-	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
-	"",
-	"Examples:",
-	"  HEVY_API_KEY=your-key npx hevy-mcp",
-].join("\n");
-
-function getCliAction(args: string[]): "start" | "version" | "help" {
-	for (const arg of args) {
-		if (arg === "--version" || arg === "-v") {
-			return "version";
-		}
-
-		if (arg === "--help" || arg === "-h") {
-			return "help";
-		}
-	}
-
-	return "start";
-}
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const STARTUP_PROBE_TIMEOUT_MS = 5_000;
@@ -208,20 +177,7 @@ export async function createServer({ config }: { config: ServerConfig }) {
 
 export default createServer;
 
-export async function runServer() {
-	const args = process.argv.slice(2);
-	const cliAction = getCliAction(args);
-
-	if (cliAction === "version") {
-		console.error(`${name} v${version}`);
-		return;
-	}
-
-	if (cliAction === "help") {
-		console.log(HELP_TEXT);
-		return;
-	}
-
+export async function runServer(apiKey: string) {
 	serverStartups.add(1, { version });
 
 	await tracer.startActiveSpan(
@@ -233,10 +189,6 @@ export async function runServer() {
 		},
 		async (span) => {
 			try {
-				const cfg = parseConfig(process.env);
-				const apiKey = cfg.apiKey;
-				assertApiKey(apiKey);
-
 				const server = await createServer({ config: { apiKey } });
 				console.error("Starting MCP server in stdio mode");
 				const transport = createInstrumentedStdioTransport(
