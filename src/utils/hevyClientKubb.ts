@@ -83,12 +83,6 @@ const SAFE_DYNAMIC_ENDPOINTS = [
 	["/v1/workouts/", "/v1/workouts/:workoutId"],
 ] as const;
 
-function wrapApi<T extends (...args: Parameters<T>) => ReturnType<T>>(
-	fn: T,
-): (...args: Parameters<T>) => ReturnType<T> {
-	return fn;
-}
-
 function normalizePositiveInteger(value: number | undefined, fallback: number) {
 	return value === undefined || !Number.isFinite(value) || value <= 0
 		? fallback
@@ -370,60 +364,58 @@ export function createClient(
 		getWorkouts: (
 			params?: GetV1WorkoutsQueryParams,
 		): ReturnType<typeof api.getV1Workouts> =>
-			wrapApi(api.getV1Workouts)(headers, params, { client }),
+			api.getV1Workouts(headers, params, { client }),
 		getWorkout: (
 			workoutId: string,
 		): ReturnType<typeof api.getV1WorkoutsWorkoutid> =>
-			wrapApi(api.getV1WorkoutsWorkoutid)(workoutId, headers, { client }),
+			api.getV1WorkoutsWorkoutid(workoutId, headers, { client }),
 		createWorkout: (
 			data: PostV1WorkoutsMutationRequest,
 		): ReturnType<typeof api.postV1Workouts> =>
-			wrapApi(api.postV1Workouts)(data, headers, { client }),
+			api.postV1Workouts(data, headers, { client }),
 		updateWorkout: (
 			workoutId: string,
 			data: PutV1WorkoutsWorkoutidMutationRequest,
 		): ReturnType<typeof api.putV1WorkoutsWorkoutid> =>
-			wrapApi(api.putV1WorkoutsWorkoutid)(workoutId, data, headers, { client }),
+			api.putV1WorkoutsWorkoutid(workoutId, data, headers, { client }),
 		getWorkoutCount: (): ReturnType<typeof api.getV1WorkoutsCount> =>
-			wrapApi(api.getV1WorkoutsCount)(headers, { client }),
+			api.getV1WorkoutsCount(headers, { client }),
 		getWorkoutEvents: (
 			params?: GetV1WorkoutsEventsQueryParams,
 		): ReturnType<typeof api.getV1WorkoutsEvents> =>
-			wrapApi(api.getV1WorkoutsEvents)(headers, params, { client }),
+			api.getV1WorkoutsEvents(headers, params, { client }),
 		getRoutines: (
 			params?: GetV1RoutinesQueryParams,
 		): ReturnType<typeof api.getV1Routines> =>
-			wrapApi(api.getV1Routines)(headers, params, { client }),
+			api.getV1Routines(headers, params, { client }),
 		getRoutineById: (
 			routineId: string,
 		): ReturnType<typeof api.getV1RoutinesRoutineid> =>
-			wrapApi(api.getV1RoutinesRoutineid)(routineId, headers, { client }),
+			api.getV1RoutinesRoutineid(routineId, headers, { client }),
 		createRoutine: (
 			data: PostV1RoutinesMutationRequest,
 		): ReturnType<typeof api.postV1Routines> =>
-			wrapApi(api.postV1Routines)(data, headers, { client }),
+			api.postV1Routines(data, headers, { client }),
 		updateRoutine: (
 			routineId: string,
 			data: PutV1RoutinesRoutineidMutationRequest,
 		): ReturnType<typeof api.putV1RoutinesRoutineid> =>
-			wrapApi(api.putV1RoutinesRoutineid)(routineId, data, headers, { client }),
+			api.putV1RoutinesRoutineid(routineId, data, headers, { client }),
 		getExerciseTemplates: (
 			params?: GetV1ExerciseTemplatesQueryParams,
 		): ReturnType<typeof api.getV1ExerciseTemplates> =>
-			wrapApi(api.getV1ExerciseTemplates)(headers, params, { client }),
+			api.getV1ExerciseTemplates(headers, params, { client }),
 		getExerciseTemplate: (
 			templateId: string,
 		): ReturnType<typeof api.getV1ExerciseTemplatesExercisetemplateid> =>
-			wrapApi(api.getV1ExerciseTemplatesExercisetemplateid)(
-				templateId,
-				headers,
-				{ client },
-			),
+			api.getV1ExerciseTemplatesExercisetemplateid(templateId, headers, {
+				client,
+			}),
 		getExerciseHistory: (
 			exerciseTemplateId: string,
 			params?: GetV1ExerciseHistoryExercisetemplateidQueryParams,
 		): ReturnType<typeof api.getV1ExerciseHistoryExercisetemplateid> =>
-			wrapApi(api.getV1ExerciseHistoryExercisetemplateid)(
+			api.getV1ExerciseHistoryExercisetemplateid(
 				exerciseTemplateId,
 				headers,
 				params,
@@ -432,41 +424,39 @@ export function createClient(
 		createExerciseTemplate: (
 			data: PostV1ExerciseTemplatesMutationRequest,
 		): ReturnType<typeof api.postV1ExerciseTemplates> =>
-			wrapApi(api.postV1ExerciseTemplates)(data, headers, { client }),
+			api.postV1ExerciseTemplates(data, headers, { client }),
 		getRoutineFolders: (
 			params?: GetV1RoutineFoldersQueryParams,
 		): ReturnType<typeof api.getV1RoutineFolders> =>
-			wrapApi(api.getV1RoutineFolders)(headers, params, { client }),
+			api.getV1RoutineFolders(headers, params, { client }),
 		createRoutineFolder: (
 			data: PostV1RoutineFoldersMutationRequest,
 		): ReturnType<typeof api.postV1RoutineFolders> =>
-			wrapApi(api.postV1RoutineFolders)(data, headers, { client }),
+			api.postV1RoutineFolders(data, headers, { client }),
 		getRoutineFolder: (
 			folderId: string,
 		): ReturnType<typeof api.getV1RoutineFoldersFolderid> =>
-			wrapApi(api.getV1RoutineFoldersFolderid)(folderId, headers, { client }),
+			api.getV1RoutineFoldersFolderid(folderId, headers, { client }),
 		getBodyMeasurements: (
 			params?: GetV1BodyMeasurementsQueryParams,
 		): ReturnType<typeof api.getV1BodyMeasurements> =>
-			wrapApi(api.getV1BodyMeasurements)(headers, params, { client }),
+			api.getV1BodyMeasurements(headers, params, { client }),
 		getBodyMeasurement: (
 			date: string,
 		): ReturnType<typeof api.getV1BodyMeasurementsDate> =>
-			wrapApi(api.getV1BodyMeasurementsDate)(date, headers, { client }),
+			api.getV1BodyMeasurementsDate(date, headers, { client }),
 		createBodyMeasurement: (
 			data: PostV1BodyMeasurementsMutationRequest,
 		): ReturnType<typeof api.postV1BodyMeasurements> =>
-			wrapApi(api.postV1BodyMeasurements)(data, headers, { client }),
+			api.postV1BodyMeasurements(data, headers, { client }),
 		updateBodyMeasurement: (
 			date: string,
 			data: PutV1BodyMeasurementsDateMutationRequest,
 		): ReturnType<typeof api.putV1BodyMeasurementsDate> =>
-			wrapApi(api.putV1BodyMeasurementsDate)(date, data, headers, { client }),
+			api.putV1BodyMeasurementsDate(date, data, headers, { client }),
 		getUserInfo: (
 			config: Partial<RequestConfig> = {},
 		): ReturnType<typeof api.getV1UserInfo> =>
-			wrapApi(api.getV1UserInfo)(headers, { ...config, client }),
+			api.getV1UserInfo(headers, { ...config, client }),
 	};
 }
-
-export type HevyApiClient = ReturnType<typeof createClient>;
