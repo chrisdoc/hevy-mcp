@@ -12,7 +12,7 @@ import { registerTemplateTools } from "../tools/templates.js";
 import {
 	formatExerciseTemplate,
 	formatRoutineFolder,
-} from "../utils/formatters.js";
+} from "../utils/response-formatter.js";
 import { createExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { registerHevyResources } from "./hevy.js";
 
