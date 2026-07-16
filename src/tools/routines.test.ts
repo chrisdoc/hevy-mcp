@@ -1,10 +1,24 @@
+/* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Routine } from "../generated/client/types/index.js";
 import { formatRoutine } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import { registerRoutineTools } from "./routines.js";
+import { createToolRuntime } from "./tool-runtime.js";
+import { registerToolDefinition } from "./define-tool.js";
+import { routineToolDefinitions } from "./routines.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+
+function registerRoutineTools(server: McpServer, client: HevyClient | null) {
+	const runtime = createToolRuntime({
+		client,
+		catalog: {} as ExerciseTemplateCatalog,
+	});
+	for (const definition of routineToolDefinitions) {
+		registerToolDefinition(server, runtime, definition);
+	}
+}
 
 function createMockServer() {
 	const tool = vi.fn();
@@ -29,7 +43,6 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	}>;
 	return { schema, outputSchema: config?.outputSchema, handler };
 }
-
 describe("registerRoutineTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
 		const { server, tool } = createMockServer();
@@ -42,9 +55,19 @@ describe("registerRoutineTools", () => {
 			"update-routine",
 		];
 
+		const toolArgs: Record<string, Record<string, unknown>> = {
+			"get-routines": { page: 1, pageSize: 5 },
+			"get-routine": { routineId: "routine-id" },
+			"create-routine": { title: "Routine", exercises: [] },
+			"update-routine": {
+				routineId: "routine-id",
+				title: "Routine",
+				exercises: [],
+			},
+		};
 		for (const name of toolNames) {
 			const { handler } = getToolRegistration(tool, name);
-			const response = await handler({});
+			const response = await handler(toolArgs[name] ?? {});
 			expect(response).toMatchObject({
 				isError: true,
 				content: [
@@ -70,7 +93,7 @@ describe("registerRoutineTools", () => {
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
-		expect(hevyClient.getRoutines).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.getRoutines)).toHaveBeenCalledWith({
 			page: 1,
 			pageSize: 5,
 		});
@@ -104,7 +127,7 @@ describe("registerRoutineTools", () => {
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
-		expect(hevyClient.getRoutines).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.getRoutines)).toHaveBeenCalledWith({
 			page: 1,
 			pageSize: 5,
 		});
@@ -207,7 +230,9 @@ describe("registerRoutineTools", () => {
 			exercises?: Array<{ supersetId?: number | null }>;
 		};
 
-		expect(hevyClient.getRoutineById).toHaveBeenCalledWith("routine-1");
+		expect(vi.mocked(hevyClient.getRoutineById)).toHaveBeenCalledWith(
+			"routine-1",
+		);
 		expect(parsed.exercises?.[0]).toMatchObject({ supersetId: 1 });
 		expect(response.structuredContent).toEqual({ routine: parsed });
 	});
@@ -244,9 +269,6 @@ describe("registerRoutineTools", () => {
 							type: "normal" as const,
 							weight: 80,
 							reps: 8,
-							distance: null,
-							duration: null,
-							customMetric: null,
 						},
 					],
 				},
@@ -255,7 +277,7 @@ describe("registerRoutineTools", () => {
 
 		const response = await handler(args as Record<string, unknown>);
 
-		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.createRoutine)).toHaveBeenCalledWith({
 			routine: {
 				title: "Pull Day",
 				folder_id: null,
@@ -330,7 +352,7 @@ describe("registerRoutineTools", () => {
 
 		await handler(args as Record<string, unknown>);
 
-		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.createRoutine)).toHaveBeenCalledWith({
 			routine: {
 				title: "Leg Day",
 				folder_id: null,
@@ -399,7 +421,7 @@ describe("registerRoutineTools", () => {
 			],
 		} as Record<string, unknown>);
 
-		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.createRoutine)).toHaveBeenCalledWith({
 			routine: {
 				title: "Leg Day",
 				folder_id: null,
@@ -471,7 +493,7 @@ describe("registerRoutineTools", () => {
 			],
 		} as Record<string, unknown>);
 
-		expect(hevyClient.createRoutine).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.createRoutine)).toHaveBeenCalledWith({
 			routine: {
 				title: "Leg Day",
 				folder_id: null,
@@ -542,7 +564,7 @@ describe("registerRoutineTools", () => {
 			],
 		} as Record<string, unknown>);
 
-		expect(hevyClient.createRoutine).toHaveBeenCalledWith(
+		expect(vi.mocked(hevyClient.createRoutine)).toHaveBeenCalledWith(
 			expect.objectContaining({
 				routine: expect.objectContaining({
 					exercises: [
@@ -626,7 +648,7 @@ describe("registerRoutineTools", () => {
 			],
 		} as Record<string, unknown>);
 
-		expect(hevyClient.updateRoutine).toHaveBeenCalledWith(
+		expect(vi.mocked(hevyClient.updateRoutine)).toHaveBeenCalledWith(
 			"routine-123",
 			expect.objectContaining({
 				routine: expect.objectContaining({
@@ -681,7 +703,7 @@ describe("registerRoutineTools", () => {
 			],
 		} as Record<string, unknown>);
 
-		expect(hevyClient.updateRoutine).toHaveBeenCalledWith(
+		expect(vi.mocked(hevyClient.updateRoutine)).toHaveBeenCalledWith(
 			"routine-123",
 			expect.objectContaining({
 				routine: expect.objectContaining({
@@ -853,29 +875,32 @@ describe("registerRoutineTools", () => {
 		await handler(args as Record<string, unknown>);
 
 		// Verify that the handler correctly processed the exercises array
-		expect(hevyClient.updateRoutine).toHaveBeenCalledWith("routine-123", {
-			routine: {
-				title: "Updated Routine",
-				notes: "Test notes",
-				exercises: [
-					{
-						exercise_template_id: "template-id",
-						superset_id: 77,
-						rest_seconds: 90,
-						notes: "Test notes",
-						sets: [
-							{
-								type: "normal",
-								weight_kg: 100,
-								reps: 10,
-								distance_meters: null,
-								duration_seconds: null,
-								custom_metric: null,
-							},
-						],
-					},
-				],
+		expect(vi.mocked(hevyClient.updateRoutine)).toHaveBeenCalledWith(
+			"routine-123",
+			{
+				routine: {
+					title: "Updated Routine",
+					notes: "Test notes",
+					exercises: [
+						{
+							exercise_template_id: "template-id",
+							superset_id: 77,
+							rest_seconds: 90,
+							notes: "Test notes",
+							sets: [
+								{
+									type: "normal",
+									weight_kg: 100,
+									reps: 10,
+									distance_meters: null,
+									duration_seconds: null,
+									custom_metric: null,
+								},
+							],
+						},
+					],
+				},
 			},
-		});
+		);
 	});
 });
