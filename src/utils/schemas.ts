@@ -101,3 +101,9 @@ const equipmentCategoryValues = [
 	"other",
 ] as const;
 export const equipmentCategoryEnum = z.enum(equipmentCategoryValues);
+export const utcSecondTimestamp = z
+	.string()
+	.regex(
+		/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/,
+		"Must use the UTC format YYYY-MM-DDTHH:mm:ssZ",
+	);
