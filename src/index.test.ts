@@ -269,7 +269,7 @@ describe("Server entry", () => {
 
 		await createServer({ config: { apiKey: "test-key" } });
 
-		expect(testDoubles.isConnected).toHaveBeenCalledTimes(23);
+		expect(testDoubles.isConnected).toHaveBeenCalledTimes(25);
 	});
 	it("exports createServer as both default and named exports", async () => {
 		expect(namedCreateServer).toBe(createServer);

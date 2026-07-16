@@ -51,6 +51,47 @@ function extractSafeArgs(
 	return attributes;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object";
+}
+
+function getWorkflowTelemetry(result: McpToolResponse): {
+	name: string;
+	pagination: Record<string, number>;
+	cacheStatus: string;
+	itemsScanned: number;
+} | null {
+	const structuredContent = result.structuredContent;
+	if (!isRecord(structuredContent)) return null;
+	const workflow = structuredContent.workflow;
+	if (!isRecord(workflow)) return null;
+	const name = workflow.name;
+	const paginationValue = workflow.pagination;
+	const cacheStatus = workflow.cacheStatus;
+	const itemsScanned = workflow.itemsScanned;
+	if (
+		typeof name !== "string" ||
+		!isRecord(paginationValue) ||
+		typeof cacheStatus !== "string" ||
+		typeof itemsScanned !== "number" ||
+		!Number.isSafeInteger(itemsScanned) ||
+		itemsScanned < 0
+	) {
+		return null;
+	}
+	const pagination: Record<string, number> = {};
+	for (const [key, value] of Object.entries(paginationValue)) {
+		if (
+			typeof value === "number" &&
+			Number.isSafeInteger(value) &&
+			value >= 0
+		) {
+			pagination[key] = value;
+		}
+	}
+	return { name, pagination, cacheStatus, itemsScanned };
+}
+
 /**
  * Wrap an MCP tool handler with its existing OpenTelemetry span and metrics.
  */
@@ -83,6 +124,7 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 			{
 				attributes: {
 					"mcp.tool.name": context,
+					"workflow.name": context,
 					"mcp.tool.args.key_count": argumentKeyCount,
 					"mcp.tool.args.keys": whitelistedKeys.join(","),
 					...(userId ? { "user.id": userId } : {}),
@@ -107,6 +149,20 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 							0,
 						);
 						span.setAttribute("mcp.tool.result.text_length", textLength);
+					}
+					const workflow = getWorkflowTelemetry(result);
+					if (workflow) {
+						span.setAttribute("workflow.name", workflow.name);
+						span.setAttribute("workflow.cache_status", workflow.cacheStatus);
+						span.setAttribute("workflow.items_scanned", workflow.itemsScanned);
+						for (const [resource, pageCount] of Object.entries(
+							workflow.pagination,
+						)) {
+							span.setAttribute(
+								`workflow.pagination.${resource}.pages`,
+								pageCount,
+							);
+						}
 					}
 					return result;
 				} catch (error) {

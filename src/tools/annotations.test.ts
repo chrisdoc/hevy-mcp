@@ -21,6 +21,8 @@ const READ_ONLY_TOOLS = [
 	"get-body-measurements",
 	"get-body-measurement",
 	"get-user-info",
+	"get-training-summary",
+	"search-routines",
 ] as const;
 
 const CREATE_TOOLS = [

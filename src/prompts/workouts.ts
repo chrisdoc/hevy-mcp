@@ -28,9 +28,8 @@ export function registerWorkoutPrompts(server: McpServer) {
 						type: "text",
 						text: [
 							`Analyze my workout progress over the last ${weeks} weeks.`,
-							"Use get-workout-count to establish the available workout total.",
-							"Then call get-workouts with pageSize=10 and continue through pages until the requested date window is fully covered or no more workouts remain.",
-							"Also call get-body-measurements with pageSize=10 and paginate until the same date window is covered or no more measurements remain.",
+							"Call get-training-summary with the requested weeks; it combines recent workouts and body measurements into one compact evidence set.",
+							"Use the returned period, workout frequency, volume, exercise variety, session list, and measurement trend fields rather than issuing separate count and pagination calls.",
 							"Base the analysis on retrieved evidence and discuss workout frequency, training volume, exercise variety, consistency, and body-measurement trends.",
 							"Distinguish observations from suggestions, note missing or limited data, and do not make unsupported claims or medical conclusions.",
 						].join("\n"),

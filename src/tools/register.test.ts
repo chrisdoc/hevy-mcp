@@ -30,6 +30,8 @@ const EXPECTED_TOOL_NAMES = [
 	"create-body-measurement",
 	"update-body-measurement",
 	"get-user-info",
+	"get-training-summary",
+	"search-routines",
 ] as const;
 
 describe("registerHevyTools", () => {

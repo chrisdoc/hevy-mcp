@@ -118,6 +118,7 @@ describe("withTelemetry", () => {
 			{
 				attributes: {
 					"mcp.tool.name": "TestContext",
+					"workflow.name": "TestContext",
 					"mcp.tool.args.key_count": 0,
 					"mcp.tool.args.keys": "",
 				},
@@ -137,6 +138,42 @@ describe("withTelemetry", () => {
 			},
 		);
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
+	});
+	it("records workflow pagination, cache, and scan attributes", async () => {
+		const handler = vi.fn().mockResolvedValue({
+			content: [{ type: "text" as const, text: "{}" }],
+			structuredContent: {
+				workflow: {
+					name: "training-summary",
+					pagination: { workouts: 2, bodyMeasurements: 1 },
+					cacheStatus: "not-used",
+					itemsScanned: 14,
+				},
+			},
+		});
+
+		await withTelemetry(handler, "get-training-summary")({});
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"workflow.name",
+			"training-summary",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"workflow.cache_status",
+			"not-used",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"workflow.items_scanned",
+			14,
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"workflow.pagination.workouts.pages",
+			2,
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"workflow.pagination.bodyMeasurements.pages",
+			1,
+		);
 	});
 
 	it("preserves safe argument ordering, scalar values, truncation, and user ID", async () => {
@@ -161,6 +198,7 @@ describe("withTelemetry", () => {
 			{
 				attributes: {
 					"mcp.tool.name": "ArgsContext",
+					"workflow.name": "ArgsContext",
 					"mcp.tool.args.key_count": 6,
 					"mcp.tool.args.keys": "page,pageSize,query,includeCustom",
 					"user.id": "user-123",
