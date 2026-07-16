@@ -2,9 +2,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Workout } from "../generated/client/types/index.js";
-import { formatWorkout } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import { workoutEventsOutputSchema } from "../utils/output-schemas.js";
+import {
+	formatWorkout,
+	workoutEventsResponse,
+} from "../utils/response-formatter.js";
 import { registerWorkoutTools } from "./workouts.js";
 
 function createMockServer() {
@@ -177,9 +179,11 @@ describe("registerWorkoutTools", () => {
 		expect(response.structuredContent).not.toHaveProperty(
 			"events.0.workout.exercises.0.muscle_group",
 		);
-		expect(outputSchema).toBe(workoutEventsOutputSchema);
+		expect(outputSchema).toBe(workoutEventsResponse.outputSchema);
 		expect(() =>
-			z.object(workoutEventsOutputSchema).parse(response.structuredContent),
+			z
+				.object(workoutEventsResponse.outputSchema)
+				.parse(response.structuredContent),
 		).not.toThrow();
 	});
 
@@ -480,5 +484,120 @@ describe("registerWorkoutTools", () => {
 				],
 			},
 		});
+	});
+
+	it("update-workout sends the canonical request and formats the result", async () => {
+		const { server, tool } = createMockServer();
+		const updatedWorkout: Workout = {
+			id: "updated-id",
+			title: "Updated Workout",
+			description: "Updated workout description",
+			start_time: "2025-03-27T09:00:00Z",
+			end_time: "2025-03-27T10:00:00Z",
+			created_at: "2025-03-27T07:00:00Z",
+			updated_at: "2025-03-27T10:00:00Z",
+			exercises: [],
+		};
+		const updateWorkout = vi.fn().mockResolvedValue(updatedWorkout);
+		const hevyClient = { updateWorkout } as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-workout");
+		const args = {
+			workoutId: "updated-id",
+			title: "Updated Workout",
+			description: null,
+			startTime: "2025-03-27T09:00:00Z",
+			endTime: "2025-03-27T10:00:00Z",
+			isPrivate: true,
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					supersetId: null,
+					notes: "Updated notes",
+					sets: [
+						{
+							type: "normal" as const,
+							weightKg: 82.5,
+							reps: 6,
+							distanceMeters: 100,
+							durationSeconds: 45,
+							rpe: 8,
+							customMetric: 2,
+						},
+					],
+				},
+			],
+		};
+
+		const response = await handler(args);
+
+		expect(updateWorkout).toHaveBeenCalledWith("updated-id", {
+			workout: {
+				title: "Updated Workout",
+				description: null,
+				start_time: "2025-03-27T09:00:00Z",
+				end_time: "2025-03-27T10:00:00Z",
+				is_private: true,
+				exercises: [
+					{
+						exercise_template_id: "template-id",
+						superset_id: null,
+						notes: "Updated notes",
+						sets: [
+							{
+								type: "normal",
+								weight_kg: 82.5,
+								reps: 6,
+								distance_meters: 100,
+								duration_seconds: 45,
+								rpe: 8,
+								custom_metric: 2,
+							},
+						],
+					},
+				],
+			},
+		});
+		expect(JSON.parse(response.content[0].text)).toEqual(
+			formatWorkout(updatedWorkout),
+		);
+		expect(response.structuredContent).toBeUndefined();
+	});
+
+	it("update-workout reports an absent API result", async () => {
+		const { server, tool } = createMockServer();
+		const updateWorkout = vi.fn().mockResolvedValue(undefined);
+		const hevyClient = { updateWorkout } as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-workout");
+		const response = await handler({
+			workoutId: "missing-id",
+			title: "Missing Workout",
+			description: null,
+			startTime: "2025-03-27T09:00:00Z",
+			endTime: "2025-03-27T10:00:00Z",
+			isPrivate: false,
+			exercises: [],
+		});
+
+		expect(updateWorkout).toHaveBeenCalledWith("missing-id", {
+			workout: {
+				title: "Missing Workout",
+				description: null,
+				start_time: "2025-03-27T09:00:00Z",
+				end_time: "2025-03-27T10:00:00Z",
+				is_private: false,
+				exercises: [],
+			},
+		});
+		expect(response.content).toEqual([
+			{
+				type: "text",
+				text: "Failed to update workout with ID missing-id",
+			},
+		]);
+		expect(response.structuredContent).toBeUndefined();
 	});
 });

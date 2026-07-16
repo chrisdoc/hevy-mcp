@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Routine } from "../generated/client/types/index.js";
-import { formatRoutine } from "../utils/formatters.js";
+import { formatRoutine } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerRoutineTools } from "./routines.js";
 
