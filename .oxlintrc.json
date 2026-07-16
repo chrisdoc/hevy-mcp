@@ -6,7 +6,9 @@
 		"**/dist",
 		"**/src/generated",
 		"**/coverage",
-		"**/.agents"
+		"**/.agents",
+		"**/.opencode",
+		"**/.*"
 	],
 	"categories": {
 		"correctness": "error"
