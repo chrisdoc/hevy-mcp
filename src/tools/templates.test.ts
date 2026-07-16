@@ -1,10 +1,14 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+/* oxlint-disable typescript/unbound-method */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplate } from "../generated/client/types/index.js";
 import { formatExerciseTemplate } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import { registerTemplateTools } from "./templates.js";
-
+import type { McpClientLogger } from "../utils/mcp-client-logger.js";
+import { createExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import { createToolRuntime } from "./tool-runtime.js";
+import { registerToolDefinition } from "./define-tool.js";
+import { templateToolDefinitions } from "./templates.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 function createMockServer() {
 	const tool = vi.fn();
 	const server = { tool, registerTool: tool } as unknown as McpServer;
@@ -24,11 +28,36 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	const config = match[1] as { outputSchema?: unknown } | undefined;
 	return { outputSchema: config?.outputSchema, handler };
 }
+function registerTestTools(
+	server: McpServer,
+	client: HevyClient | null,
+	options: { logger?: McpClientLogger } = {},
+) {
+	const catalog = client
+		? createExerciseTemplateCatalog(client)
+		: {
+				get: () =>
+					Promise.reject(
+						new Error(
+							"API client not initialized. Please provide HEVY_API_KEY.",
+						),
+					),
+				reset: () => undefined,
+			};
+	const runtime = createToolRuntime({
+		client,
+		catalog,
+		logger: options.logger,
+	});
+	for (const definition of templateToolDefinitions) {
+		registerToolDefinition(server, runtime, definition);
+	}
+}
 
-describe("registerTemplateTools", () => {
+describe("templateToolDefinitions", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
 		const { server, tool } = createMockServer();
-		registerTemplateTools(server, null);
+		registerTestTools(server, null);
 
 		const toolNames = [
 			"get-exercise-templates",
@@ -40,7 +69,22 @@ describe("registerTemplateTools", () => {
 
 		for (const name of toolNames) {
 			const { handler } = getToolRegistration(tool, name);
-			const response = await handler({});
+			const args: Record<string, unknown> =
+				name === "get-exercise-templates"
+					? { page: 1, pageSize: 5 }
+					: name === "get-exercise-template"
+						? { exerciseTemplateId: "template-id" }
+						: name === "get-exercise-history"
+							? { exerciseTemplateId: "template-id" }
+							: name === "create-exercise-template"
+								? {
+										title: "Custom",
+										exerciseType: "weight_reps",
+										equipmentCategory: "barbell",
+										muscleGroup: "chest",
+									}
+								: { query: "bench" };
+			const response = await handler(args);
 			expect(response).toMatchObject({
 				isError: true,
 				content: [
@@ -71,12 +115,12 @@ describe("registerTemplateTools", () => {
 				.mockResolvedValue({ exercise_templates: [template] }),
 		} as unknown as HevyClient;
 
-		registerTemplateTools(server, hevyClient);
+		registerTestTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-exercise-templates");
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
-		expect(hevyClient.getExerciseTemplates).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledWith({
 			page: 1,
 			pageSize: 5,
 		});
@@ -92,11 +136,13 @@ describe("registerTemplateTools", () => {
 			getExerciseTemplate: vi.fn().mockResolvedValue(null),
 		} as unknown as HevyClient;
 
-		registerTemplateTools(server, hevyClient);
+		registerTestTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-exercise-template");
 
 		const response = await handler({ exerciseTemplateId: "missing-id" });
-		expect(hevyClient.getExerciseTemplate).toHaveBeenCalledWith("missing-id");
+		expect(vi.mocked(hevyClient.getExerciseTemplate)).toHaveBeenCalledWith(
+			"missing-id",
+		);
 		expect(response.content[0]?.text).toBe(
 			"Exercise template with ID missing-id not found",
 		);
@@ -116,7 +162,7 @@ describe("registerTemplateTools", () => {
 		const hevyClient = {
 			getExerciseTemplate: vi.fn().mockResolvedValue(template),
 		} as unknown as HevyClient;
-		registerTemplateTools(server, hevyClient);
+		registerTestTools(server, hevyClient);
 
 		const response = await getToolRegistration(
 			tool,
@@ -150,7 +196,7 @@ describe("registerTemplateTools", () => {
 			}),
 		} as unknown as HevyClient;
 
-		registerTemplateTools(server, hevyClient);
+		registerTestTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-exercise-history");
 
 		const response = await handler({
@@ -159,10 +205,13 @@ describe("registerTemplateTools", () => {
 			endDate: "2024-02-01T00:00:00Z",
 		});
 
-		expect(hevyClient.getExerciseHistory).toHaveBeenCalledWith("t1", {
-			start_date: "2024-01-01T00:00:00Z",
-			end_date: "2024-02-01T00:00:00Z",
-		});
+		expect(vi.mocked(hevyClient.getExerciseHistory)).toHaveBeenCalledWith(
+			"t1",
+			{
+				start_date: "2024-01-01T00:00:00Z",
+				end_date: "2024-02-01T00:00:00Z",
+			},
+		);
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([
@@ -192,7 +241,7 @@ describe("registerTemplateTools", () => {
 				.mockResolvedValue({ exercise_templates: [] }),
 			getExerciseHistory: vi.fn().mockResolvedValue({ exercise_history: [] }),
 		} as unknown as HevyClient;
-		registerTemplateTools(server, hevyClient);
+		registerTestTools(server, hevyClient);
 
 		const templates = await getToolRegistration(
 			tool,
@@ -212,7 +261,7 @@ describe("registerTemplateTools", () => {
 
 		it("returns error when client is not initialized", async () => {
 			const { server, tool } = createMockServer();
-			registerTemplateTools(server, null);
+			registerTestTools(server, null);
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -265,7 +314,7 @@ describe("registerTemplateTools", () => {
 					}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient);
+			registerTestTools(server, hevyClient);
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -273,12 +322,18 @@ describe("registerTemplateTools", () => {
 
 			const response = await handler({ query: "bench", refresh: false });
 
-			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(2);
-			expect(hevyClient.getExerciseTemplates).toHaveBeenNthCalledWith(1, {
+			expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(
+				2,
+			);
+			expect(
+				vi.mocked(hevyClient.getExerciseTemplates),
+			).toHaveBeenNthCalledWith(1, {
 				page: 1,
 				pageSize: 100,
 			});
-			expect(hevyClient.getExerciseTemplates).toHaveBeenNthCalledWith(2, {
+			expect(
+				vi.mocked(hevyClient.getExerciseTemplates),
+			).toHaveBeenNthCalledWith(2, {
 				page: 2,
 				pageSize: 100,
 			});
@@ -307,7 +362,7 @@ describe("registerTemplateTools", () => {
 					}),
 				} as unknown as HevyClient;
 
-				registerTemplateTools(server, hevyClient);
+				registerTestTools(server, hevyClient);
 				const { handler } = getToolRegistration(
 					tool,
 					"search-exercise-templates",
@@ -318,7 +373,9 @@ describe("registerTemplateTools", () => {
 					refresh: false,
 				});
 
-				expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(1);
+				expect(
+					vi.mocked(hevyClient.getExerciseTemplates),
+				).toHaveBeenCalledTimes(1);
 				expect(JSON.parse(response.content[0].text)).toEqual([
 					formatExerciseTemplate(template),
 				]);
@@ -344,7 +401,7 @@ describe("registerTemplateTools", () => {
 				}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient);
+			registerTestTools(server, hevyClient);
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -354,7 +411,9 @@ describe("registerTemplateTools", () => {
 			await handler({ query: "bench", refresh: false });
 
 			// API should only be called once — second call uses cache
-			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(
+				1,
+			);
 		});
 
 		it("retries on next call after an initial fetch failure", async () => {
@@ -379,7 +438,7 @@ describe("registerTemplateTools", () => {
 					}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient);
+			registerTestTools(server, hevyClient);
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -396,7 +455,9 @@ describe("registerTemplateTools", () => {
 				refresh: false,
 			});
 
-			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(2);
+			expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(
+				2,
+			);
 			const parsed = JSON.parse(
 				successfulResponse.content[0].text,
 			) as unknown[];
@@ -422,7 +483,7 @@ describe("registerTemplateTools", () => {
 				}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient);
+			registerTestTools(server, hevyClient);
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -432,7 +493,9 @@ describe("registerTemplateTools", () => {
 			await handler({ query: "dead", refresh: true });
 
 			// API should be called twice — refresh busts the cache
-			expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(2);
+			expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(
+				2,
+			);
 		});
 
 		it("logs successful initial and explicit refreshes but stays silent on cache hits", async () => {
@@ -454,7 +517,7 @@ describe("registerTemplateTools", () => {
 				}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient, { logger });
+			registerTestTools(server, hevyClient, { logger });
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -500,7 +563,7 @@ describe("registerTemplateTools", () => {
 				}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient, {
+			registerTestTools(server, hevyClient, {
 				logger: () => {
 					throw new Error(secret);
 				},
@@ -532,7 +595,7 @@ describe("registerTemplateTools", () => {
 					.mockRejectedValue(new Error("catalog fetch failed")),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient, { logger });
+			registerTestTools(server, hevyClient, { logger });
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -571,7 +634,7 @@ describe("registerTemplateTools", () => {
 				}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient);
+			registerTestTools(server, hevyClient);
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -607,7 +670,7 @@ describe("registerTemplateTools", () => {
 				}),
 			} as unknown as HevyClient;
 
-			registerTemplateTools(server, hevyClient);
+			registerTestTools(server, hevyClient);
 			const { handler } = getToolRegistration(
 				tool,
 				"search-exercise-templates",
@@ -627,7 +690,7 @@ describe("registerTemplateTools", () => {
 			createExerciseTemplate: vi.fn().mockResolvedValue({ id: 42 }),
 		} as unknown as HevyClient;
 
-		registerTemplateTools(server, hevyClient);
+		registerTestTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "create-exercise-template");
 
 		const response = await handler({
@@ -638,7 +701,7 @@ describe("registerTemplateTools", () => {
 			otherMuscles: ["forearms"],
 		});
 
-		expect(hevyClient.createExerciseTemplate).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.createExerciseTemplate)).toHaveBeenCalledWith({
 			exercise: {
 				title: "Custom Curl",
 				exercise_type: "weight_reps",
