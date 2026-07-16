@@ -141,6 +141,47 @@ function writeJson(
 	response.end(JSON.stringify(body));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requireRecord(value: unknown, label: string): Record<string, unknown> {
+	if (!isRecord(value)) {
+		throw new Error(`Expected ${label} to be an object`);
+	}
+	return value;
+}
+
+function requireArrayField(
+	record: Record<string, unknown>,
+	field: string,
+): unknown[] {
+	const value = record[field];
+	if (!Array.isArray(value)) {
+		throw new Error(`Expected ${field} to be an array`);
+	}
+	return value;
+}
+
+function requireToolListPayload(
+	result: unknown,
+	field: string,
+): { firstItem: Record<string, unknown>; items: unknown[]; text: string } {
+	const resultRecord = requireRecord(result, "MCP tool response");
+	const content = requireArrayField(resultRecord, "content");
+	const firstContent = requireRecord(content[0], "content[0]");
+	if (firstContent.type !== "text" || typeof firstContent.text !== "string") {
+		throw new Error("Expected text content in MCP tool response");
+	}
+	const structuredContent = requireRecord(
+		resultRecord.structuredContent,
+		"structuredContent",
+	);
+	const items = requireArrayField(structuredContent, field);
+	const firstItem = requireRecord(items[0], `${field}[0]`);
+	return { firstItem, items, text: firstContent.text };
+}
+
 async function waitForWranglerReady(): Promise<void> {
 	const deadline = Date.now() + STARTUP_TIMEOUT_MS;
 	let lastError: unknown;
@@ -323,20 +364,25 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 					method: request.method ?? "",
 					url: request.url ?? "",
 				});
-				if (request.url !== "/v1/user/info" || request.method !== "GET") {
+				if (request.method !== "GET") {
 					writeJson(response, 404, { error: "not found" });
 					return;
 				}
 				const apiKey = request.headers["api-key"];
-				if (apiKey === INVALID_API_KEY) {
+				const pathname = new URL(request.url ?? "/", "http://fake-hevy.local")
+					.pathname;
+				if (pathname === "/v1/user/info" && apiKey === INVALID_API_KEY) {
 					writeJson(response, 401, { error: "invalid key" });
 					return;
 				}
-				if (apiKey === UPSTREAM_FAILURE_API_KEY) {
+				if (
+					pathname === "/v1/user/info" &&
+					apiKey === UPSTREAM_FAILURE_API_KEY
+				) {
 					writeJson(response, 503, { error: "temporarily unavailable" });
 					return;
 				}
-				if (apiKey === REDIRECT_API_KEY) {
+				if (pathname === "/v1/user/info" && apiKey === REDIRECT_API_KEY) {
 					response.writeHead(302, { location: redirectDestinationUrl });
 					response.end();
 					return;
@@ -345,13 +391,83 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 					writeJson(response, 403, { error: "forbidden" });
 					return;
 				}
-				writeJson(response, 200, {
-					data: {
-						id: "fake-user-id",
-						name: "Fake Hevy User",
-						url: "https://hevy.com/user/fake-user-id",
-					},
-				});
+				switch (pathname) {
+					case "/v1/user/info":
+						writeJson(response, 200, {
+							data: {
+								id: "fake-user-id",
+								name: "Fake Hevy User",
+								url: "https://hevy.com/user/fake-user-id",
+							},
+						});
+						return;
+					case "/v1/workouts":
+						writeJson(response, 200, {
+							page: 1,
+							page_count: 1,
+							workouts: [
+								{
+									id: "worker-workout-1",
+									title: "Worker Workout",
+									description: "Worker HTTP contract fixture",
+									start_time: "2025-03-27T07:00:00Z",
+									end_time: "2025-03-27T08:00:00Z",
+									created_at: "2025-03-27T07:00:00Z",
+									updated_at: "2025-03-27T08:00:00Z",
+									exercises: [],
+								},
+							],
+						});
+						return;
+					case "/v1/routines":
+						writeJson(response, 200, {
+							page: 1,
+							page_count: 1,
+							routines: [
+								{
+									id: "worker-routine-1",
+									title: "Worker Routine",
+									folder_id: 10,
+									created_at: "2025-03-26T19:00:00Z",
+									updated_at: "2025-03-26T19:15:00Z",
+									exercises: [],
+								},
+							],
+						});
+						return;
+					case "/v1/exercise_templates":
+						writeJson(response, 200, {
+							page: 1,
+							page_count: 1,
+							exercise_templates: [
+								{
+									id: "worker-template-1",
+									title: "Worker Bench Press",
+									type: "weight_reps",
+									primary_muscle_group: "chest",
+									secondary_muscle_groups: ["triceps"],
+									is_custom: false,
+								},
+							],
+						});
+						return;
+					case "/v1/routine_folders":
+						writeJson(response, 200, {
+							page: 1,
+							page_count: 1,
+							routine_folders: [
+								{
+									id: 10,
+									title: "Worker Folder",
+									created_at: "2025-03-26T09:00:00Z",
+									updated_at: "2025-03-26T09:00:00Z",
+								},
+							],
+						});
+						return;
+					default:
+						writeJson(response, 404, { error: "not found" });
+				}
 			});
 			const fakeHevyPort = await listen(fakeHevyServer, "0.0.0.0");
 			fakeHevyBaseUrl = `http://${localNetworkAddress()}:${fakeHevyPort}`;
@@ -466,6 +582,67 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 						!request.url.includes(VALID_API_KEY),
 				),
 			).toBe(true);
+		} finally {
+			await client.close();
+		}
+	});
+
+	it("preserves representative list response shapes through Worker HTTP", async () => {
+		const client = new Client({
+			name: "worker-http-contract-client",
+			version: "1.0.0",
+		});
+		const transport = new StreamableHTTPClientTransport(
+			new URL(`${workerBaseUrl}/mcp`),
+			{
+				requestInit: {
+					headers: { authorization: `Bearer ${VALID_API_KEY}` },
+				},
+			},
+		);
+		try {
+			await client.connect(transport);
+			const calls = [
+				{
+					expectedId: "worker-workout-1",
+					field: "workouts",
+					name: "get-workouts",
+				},
+				{
+					expectedId: "worker-routine-1",
+					field: "routines",
+					name: "get-routines",
+				},
+				{
+					expectedId: "worker-template-1",
+					field: "exerciseTemplates",
+					name: "get-exercise-templates",
+				},
+			] as const;
+
+			for (const call of calls) {
+				const result = await client.callTool({
+					name: call.name,
+					arguments: { page: 1, pageSize: 1 },
+				});
+				const payload = requireToolListPayload(result, call.field);
+				expect(payload.firstItem.id).toBe(call.expectedId);
+				expect(typeof payload.firstItem.id).toBe("string");
+				expect(JSON.parse(payload.text)).toEqual(payload.items);
+			}
+
+			const folderResult = await client.callTool({
+				name: "get-routine-folders",
+				arguments: { page: 1, pageSize: 1 },
+			});
+			const folderPayload = requireToolListPayload(
+				folderResult,
+				"routineFolders",
+			);
+			expect(folderPayload.firstItem.id).toBe(10);
+			expect(typeof folderPayload.firstItem.id).toBe("number");
+			expect(JSON.parse(folderPayload.text)).toEqual(folderPayload.items);
+			expect(transport.sessionId).toBeUndefined();
 		} finally {
 			await client.close();
 		}

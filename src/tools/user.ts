@@ -2,11 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { UserInfoResponse } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import { userOutputSchema } from "../utils/output-schemas.js";
-import {
-	createStructuredEmptyResponse,
-	createStructuredJsonResponse,
-} from "../utils/response-formatter.js";
+import { respond, userResponse } from "../utils/response-formatter.js";
 import { describeTool, readOnlyAnnotations } from "../utils/tool-definition.js";
 import { requireClient, type InferToolParams } from "../utils/tool-helpers.js";
 
@@ -32,19 +28,13 @@ export function registerUserTools(
 					"Accepts no inputs and reports only the account associated with the configured credentials.",
 			}),
 			inputSchema: getUserInfoSchema,
-			outputSchema: userOutputSchema,
+			outputSchema: userResponse.outputSchema,
 			annotations: readOnlyAnnotations("Get User Info"),
 		},
 		wrapHandler(async (_args: GetUserInfoParams) => {
 			const client = requireClient(hevyClient);
 			const data: UserInfoResponse = await client.getUserInfo();
-			if (!data?.data) {
-				return createStructuredEmptyResponse(
-					"No user info found for the authenticated user",
-					{ user: null },
-				);
-			}
-			return createStructuredJsonResponse(data.data, { user: data.data });
+			return respond(userResponse, data?.data);
 		}, "get-user-info"),
 	);
 }

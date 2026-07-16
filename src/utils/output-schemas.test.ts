@@ -14,8 +14,6 @@ import {
 	formatRoutine,
 	formatRoutineFolder,
 	formatWorkout,
-} from "./formatters.js";
-import {
 	type FormattedRoutine,
 	type FormattedWorkout,
 	formattedBodyMeasurementSchema,
@@ -25,9 +23,9 @@ import {
 	formattedRoutineExerciseSchema,
 	formattedRoutineSchema,
 	formattedWorkoutSchema,
-	userOutputSchema,
-	workoutEventsOutputSchema,
-} from "./output-schemas.js";
+	userResponse,
+	workoutEventsResponse,
+} from "./response-formatter.js";
 
 describe("formatted output schemas", () => {
 	it("accepts every formatter output", () => {
@@ -118,7 +116,7 @@ describe("formatted output schemas", () => {
 
 	it("uses formatted schemas for events and generated contract for user info", () => {
 		expect(() =>
-			workoutEventsOutputSchema.events.parse([
+			workoutEventsResponse.outputSchema.events.parse([
 				{ type: "deleted", id: "workout-1", deletedAt: "2025-01-01" },
 				{
 					type: "updated",
@@ -133,7 +131,7 @@ describe("formatted output schemas", () => {
 			]),
 		).not.toThrow();
 		expect(() =>
-			userOutputSchema.user.parse({
+			userResponse.outputSchema.user.parse({
 				id: "user-1",
 				name: "Chris",
 				url: "https://hevy.com/user/chris",

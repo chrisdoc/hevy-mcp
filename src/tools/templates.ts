@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 // Import types from generated client
 import type {
-	ExerciseTemplate,
 	GetV1ExerciseHistoryExercisetemplateid200,
 	GetV1ExerciseTemplates200,
 	GetV1ExerciseTemplatesExercisetemplateid200,
@@ -13,22 +12,16 @@ import {
 	createExerciseTemplateCatalog,
 	type ExerciseTemplateCatalog,
 } from "../utils/exercise-template-catalog.js";
-import {
-	formatExerciseHistoryEntry,
-	formatExerciseTemplate,
-} from "../utils/formatters.js";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { createSafeErrorDiagnostic } from "../utils/safe-error-diagnostic.js";
 import {
-	exerciseHistoryOutputSchema,
-	exerciseTemplateOutputSchema,
-	exerciseTemplatesOutputSchema,
-} from "../utils/output-schemas.js";
-import {
-	createJsonResponse,
-	createStructuredEmptyResponse,
-	createStructuredJsonResponse,
+	createExerciseTemplateResponse,
+	exerciseHistoryResponse,
+	exerciseTemplateResponse,
+	exerciseTemplatesResponse,
+	respond,
+	searchExerciseTemplatesResponse,
 } from "../utils/response-formatter.js";
 import {
 	createAnnotations,
@@ -87,7 +80,7 @@ export function registerTemplateTools(
 					"Results are paginated; page starts at 1 and pageSize is limited to 100.",
 			}),
 			inputSchema: getExerciseTemplatesSchema,
-			outputSchema: exerciseTemplatesOutputSchema,
+			outputSchema: exerciseTemplatesResponse.outputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Templates"),
 		},
 		wrapHandler(async (args: GetExerciseTemplatesParams) => {
@@ -100,22 +93,7 @@ export function registerTemplateTools(
 				},
 			);
 
-			// Process exercise templates to extract relevant information
-			const templates =
-				data?.exercise_templates?.map((template: ExerciseTemplate) =>
-					formatExerciseTemplate(template),
-				) || [];
-
-			if (templates.length === 0) {
-				return createStructuredEmptyResponse(
-					"No exercise templates found for the specified parameters",
-					{ exerciseTemplates: [] },
-				);
-			}
-
-			return createStructuredJsonResponse(templates, {
-				exerciseTemplates: templates,
-			});
+			return respond(exerciseTemplatesResponse, data?.exercise_templates);
 		}, "get-exercise-templates"),
 	);
 
@@ -144,7 +122,7 @@ export function registerTemplateTools(
 					"Requires an exerciseTemplateId from a template list, search, routine, or workout.",
 			}),
 			inputSchema: getExerciseTemplateSchema,
-			outputSchema: exerciseTemplateOutputSchema,
+			outputSchema: exerciseTemplateResponse.outputSchema,
 			annotations: readOnlyAnnotations("Get Exercise Template"),
 		},
 		wrapHandler(async (args: GetExerciseTemplateParams) => {
@@ -153,16 +131,9 @@ export function registerTemplateTools(
 			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
 				await client.getExerciseTemplate(exerciseTemplateId);
 
-			if (!data) {
-				return createStructuredEmptyResponse(
-					`Exercise template with ID ${exerciseTemplateId} not found`,
-					{ exerciseTemplate: null },
-				);
-			}
-
-			const template = formatExerciseTemplate(data);
-			return createStructuredJsonResponse(template, {
-				exerciseTemplate: template,
+			return respond(exerciseTemplateResponse, {
+				exerciseTemplate: data,
+				exerciseTemplateId,
 			});
 		}, "get-exercise-template"),
 	);
@@ -198,7 +169,7 @@ export function registerTemplateTools(
 					"Requires an exerciseTemplateId. Optional startDate and endDate must be ISO 8601 datetimes with an offset.",
 			}),
 			inputSchema: getExerciseHistorySchema,
-			outputSchema: exerciseHistoryOutputSchema,
+			outputSchema: exerciseHistoryResponse.outputSchema,
 			annotations: readOnlyAnnotations("Get Exercise History"),
 		},
 		wrapHandler(async (args: GetExerciseHistoryParams) => {
@@ -210,20 +181,9 @@ export function registerTemplateTools(
 					...(endDate ? { end_date: endDate } : {}),
 				});
 
-			const history =
-				data?.exercise_history?.map((entry) =>
-					formatExerciseHistoryEntry(entry),
-				) || [];
-
-			if (history.length === 0) {
-				return createStructuredEmptyResponse(
-					`No exercise history found for template ${exerciseTemplateId}`,
-					{ exerciseHistory: [] },
-				);
-			}
-
-			return createStructuredJsonResponse(history, {
-				exerciseHistory: history,
+			return respond(exerciseHistoryResponse, {
+				history: data?.exercise_history,
+				exerciseTemplateId,
 			});
 		}, "get-exercise-history"),
 	);
@@ -274,10 +234,7 @@ export function registerTemplateTools(
 					},
 				});
 
-			return createJsonResponse({
-				id: response?.id,
-				message: "Exercise template created successfully",
-			});
+			return respond(createExerciseTemplateResponse, response);
 		}, "create-exercise-template"),
 	);
 
@@ -319,7 +276,7 @@ export function registerTemplateTools(
 					"Matching is case-insensitive. The catalog is cached locally for 5 minutes; refresh:true re-fetches all pages and changes only local cache state.",
 			}),
 			inputSchema: searchExerciseTemplatesSchema,
-			outputSchema: exerciseTemplatesOutputSchema,
+			outputSchema: searchExerciseTemplatesResponse.outputSchema,
 			annotations: readOnlyAnnotations("Search Exercise Templates"),
 		},
 		wrapHandler(async (args: SearchExerciseTemplatesParams) => {
@@ -360,16 +317,10 @@ export function registerTemplateTools(
 				);
 			}
 
-			if (results.length === 0) {
-				return createStructuredEmptyResponse(
-					`No exercise templates found matching "${query}"${primaryMuscleGroup ? ` with primary muscle group "${primaryMuscleGroup}"` : ""}`,
-					{ exerciseTemplates: [] },
-				);
-			}
-
-			const exerciseTemplates = results.map(formatExerciseTemplate);
-			return createStructuredJsonResponse(exerciseTemplates, {
-				exerciseTemplates,
+			return respond(searchExerciseTemplatesResponse, {
+				results,
+				query,
+				primaryMuscleGroup,
 			});
 		}, "search-exercise-templates"),
 	);

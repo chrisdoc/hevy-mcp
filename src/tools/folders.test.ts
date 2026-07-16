@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import type { RoutineFolder } from "../generated/client/types/index.js";
-import { formatRoutineFolder } from "../utils/formatters.js";
+import { formatRoutineFolder } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { registerFolderTools } from "./folders.js";
 
