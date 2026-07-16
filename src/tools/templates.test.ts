@@ -298,6 +298,7 @@ describe("templateToolDefinitions", () => {
 				secondary_muscle_groups: ["glutes"],
 				is_custom: false,
 			};
+			const untitledTemplate: ExerciseTemplate = { id: "untitled" };
 
 			const hevyClient: HevyClient = {
 				getExerciseTemplates: vi
@@ -305,7 +306,7 @@ describe("templateToolDefinitions", () => {
 					.mockResolvedValueOnce({
 						page: 1,
 						page_count: 2,
-						exercise_templates: [benchTemplate],
+						exercise_templates: [benchTemplate, untitledTemplate],
 					})
 					.mockResolvedValueOnce({
 						page: 2,

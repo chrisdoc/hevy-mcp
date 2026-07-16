@@ -63,4 +63,17 @@ describe("exercise template catalog", () => {
 			[{ id: "shared", title: "Shared" }],
 		]);
 	});
+
+	it("returns an empty catalog when a page omits its template array", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ page: 1, page_count: 1 }), {
+				headers: { "content-type": "application/json" },
+			}),
+		);
+		const client = createClient("key", undefined, { fetch: fetchMock });
+		const catalog = createExerciseTemplateCatalog(client);
+
+		await expect(catalog.get()).resolves.toEqual([]);
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
 });

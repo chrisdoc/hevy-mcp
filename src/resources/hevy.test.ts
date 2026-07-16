@@ -284,6 +284,29 @@ describe("registerHevyResources", () => {
 		]);
 	});
 
+	it("returns an empty folder resource when the API omits the page", async () => {
+		const { registerResource, server } = createMockServer();
+		const getRoutineFolders = vi.fn().mockResolvedValue(undefined);
+		registerHevyResources(
+			server,
+			createTestRuntime({ getRoutineFolders } as unknown as HevyClient),
+		);
+		const registration = getResourceRegistration(
+			registerResource,
+			"routine-folders",
+		);
+
+		const result = await registration.handler(new URL(registration.uri), {
+			signal: AbortSignal.timeout(1000),
+			requestId: 8,
+			sendNotification: vi.fn(),
+			sendRequest: vi.fn(),
+		});
+
+		expect(getRoutineFolders).toHaveBeenCalledOnce();
+		expect(parseJsonContent(result).data).toEqual([]);
+	});
+
 	it("shares the template catalog cache and in-flight fetch with search", async () => {
 		const { registerResource, server, tool } = createMockServer();
 		let resolveCatalog!: (value: {

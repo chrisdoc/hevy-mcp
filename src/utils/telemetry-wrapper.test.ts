@@ -176,6 +176,72 @@ describe("withTelemetry", () => {
 		);
 	});
 
+	it("ignores malformed workflow metadata and filters invalid page counts", async () => {
+		const malformedResults = [
+			{ workflow: null },
+			{
+				workflow: {
+					name: "malformed",
+					pagination: null,
+					cacheStatus: "not-used",
+					itemsScanned: 0,
+				},
+			},
+			{
+				workflow: {
+					name: "malformed",
+					pagination: {},
+					cacheStatus: "not-used",
+					itemsScanned: -1,
+				},
+			},
+		];
+
+		for (const structuredContent of malformedResults) {
+			await withTelemetry(
+				vi.fn().mockResolvedValue({ content: [], structuredContent }),
+				"MalformedWorkflow",
+			)({});
+		}
+
+		await withTelemetry(
+			vi.fn().mockResolvedValue({
+				content: [],
+				structuredContent: {
+					workflow: {
+						name: "filtered",
+						pagination: {
+							valid: 2,
+							negative: -1,
+							fractional: 1.5,
+							text: "2",
+						},
+						cacheStatus: "not-used",
+						itemsScanned: 1,
+					},
+				},
+			}),
+			"FilteredWorkflow",
+		)({});
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"workflow.pagination.valid.pages",
+			2,
+		);
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"workflow.pagination.negative.pages",
+			-1,
+		);
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"workflow.pagination.fractional.pages",
+			1.5,
+		);
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"workflow.pagination.text.pages",
+			"2",
+		);
+	});
+
 	it("preserves safe argument ordering, scalar values, truncation, and user ID", async () => {
 		vi.mocked(getCurrentUserId).mockReturnValue("user-123");
 		const handler = vi.fn().mockResolvedValue({ content: [] });
