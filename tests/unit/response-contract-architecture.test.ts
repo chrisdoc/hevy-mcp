@@ -1,15 +1,24 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const toolsDirectory = new URL("../../src/tools/", import.meta.url);
-const toolSources = readdirSync(toolsDirectory)
-	.filter((file) => file.endsWith(".ts") && !file.endsWith(".test.ts"))
+const definitionFiles = [
+	"workouts.ts",
+	"routines.ts",
+	"templates.ts",
+	"folders.ts",
+	"body-measurements.ts",
+	"user.ts",
+] as const;
+const toolSources = definitionFiles
 	.map((file) => readFileSync(new URL(file, toolsDirectory), "utf8"))
 	.join("\n");
 
 describe("tool response architecture", () => {
-	it("routes every successful tool path through respond contracts", () => {
-		expect(toolSources.match(/return respond\(/g)).toHaveLength(23);
+	it("requires every definition to provide a response contract", () => {
+		expect(toolSources.match(/responseContract:/g)).toHaveLength(23);
+		expect(toolSources.match(/execute:/g)).toHaveLength(23);
+		expect(toolSources).not.toMatch(/return respond\(/);
 		expect(toolSources).not.toMatch(
 			/create(?:Json|StructuredJson|Empty|StructuredEmpty|Text)Response/,
 		);

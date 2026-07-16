@@ -271,6 +271,9 @@ describe("server manifest metadata", () => {
 			),
 		]);
 		await execFileAsync("git", ["init", "--quiet"], { cwd: fixtureDir });
+		await execFileAsync("git", ["config", "core.hooksPath", "/dev/null"], {
+			cwd: fixtureDir,
+		});
 		await execFileAsync("git", ["config", "user.name", "Manifest Test"], {
 			cwd: fixtureDir,
 		});
