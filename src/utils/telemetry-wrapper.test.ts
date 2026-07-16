@@ -242,6 +242,22 @@ describe("withTelemetry", () => {
 		);
 	});
 
+	it("ignores array-shaped workflow metadata", async () => {
+		const handler = vi.fn().mockResolvedValue({
+			content: [{ type: "text" as const, text: "{}" }],
+			structuredContent: {
+				workflow: [],
+			},
+		});
+
+		await withTelemetry(handler, "array-workflow")({});
+
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"workflow.name",
+			expect.anything(),
+		);
+	});
+
 	it("preserves safe argument ordering, scalar values, truncation, and user ID", async () => {
 		vi.mocked(getCurrentUserId).mockReturnValue("user-123");
 		const handler = vi.fn().mockResolvedValue({ content: [] });

@@ -254,47 +254,52 @@ function getRetryExhaustedMessage(error: unknown): string {
 	return "Unable to complete the request after multiple attempts to the Hevy API due to transient failures. Please try again shortly.";
 }
 
-/** Classify an error using only bounded status, names, and supplied text. */
+/** Classify an error using bounded status, names, and supplied text. */
 export function determineErrorType(error: unknown, message: string): ErrorType {
 	if (isRetryExhausted(error)) return ErrorType.NETWORK_ERROR;
 	if (extractErrorStatus(error) === 429) return ErrorType.RATE_LIMIT;
 
-	const messageLower = message.toLowerCase();
+	let originalMessage = "";
 	let nameLower = "";
 	try {
-		nameLower = error instanceof Error ? error.name.toLowerCase() : "";
+		if (error instanceof Error) {
+			originalMessage = error.message.slice(0, 512);
+			nameLower = error.name.toLowerCase();
+		}
 	} catch {
+		originalMessage = "";
 		nameLower = "";
 	}
+	const classificationText = `${message}\n${originalMessage}`.toLowerCase();
 
 	if (
 		nameLower.includes("network") ||
-		messageLower.includes("network") ||
-		messageLower.includes("fetch") ||
-		messageLower.includes("timeout")
+		classificationText.includes("network") ||
+		classificationText.includes("fetch") ||
+		classificationText.includes("timeout")
 	) {
 		return ErrorType.NETWORK_ERROR;
 	}
 	if (
 		nameLower.includes("validation") ||
-		messageLower.includes("validation") ||
-		messageLower.includes("invalid") ||
-		messageLower.includes("required")
+		classificationText.includes("validation") ||
+		classificationText.includes("invalid") ||
+		classificationText.includes("required")
 	) {
 		return ErrorType.VALIDATION_ERROR;
 	}
 	if (
-		messageLower.includes("not found") ||
-		messageLower.includes("404") ||
-		messageLower.includes("does not exist")
+		classificationText.includes("not found") ||
+		classificationText.includes("404") ||
+		classificationText.includes("does not exist")
 	) {
 		return ErrorType.NOT_FOUND;
 	}
 	if (
 		nameLower.includes("api") ||
-		messageLower.includes("api") ||
-		messageLower.includes("server error") ||
-		messageLower.includes("500")
+		classificationText.includes("api") ||
+		classificationText.includes("server error") ||
+		classificationText.includes("500")
 	) {
 		return ErrorType.API_ERROR;
 	}
@@ -344,7 +349,7 @@ function parseSafeStackFrames(error: unknown): SafeStackFrame[] | undefined {
 	}
 
 	const frames: SafeStackFrame[] = [];
-	for (const frameLine of error.stack.split("\n").slice(1)) {
+	for (const frameLine of error.stack.split(/\r?\n/).slice(1)) {
 		const match =
 			/^\s{4}at (?:[^()\r\n]+ \()?([^()\s\r\n]+):(\d+):(\d+)\)?$/.exec(
 				frameLine,

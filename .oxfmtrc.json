@@ -19,6 +19,11 @@
 		"**/coverage",
 		"**/CHANGELOG.md",
 		"**/.agents",
-		"**/.*"
+		"**/.entire",
+		"**/.factory",
+		"**/.gemini",
+		"**/.omp",
+		"**/.opencode",
+		"**/.pi"
 	]
 }

@@ -17,6 +17,10 @@ export async function fetchAllPages<T>(
 
 	while (true) {
 		const result = await loader(page, pageSize);
+		if (result.items.length === 0) {
+			return items;
+		}
+		// The current page has already been appended before this boundary check.
 		items.push(...result.items);
 		const pageCount = result.pageCount;
 		if (

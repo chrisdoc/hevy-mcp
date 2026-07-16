@@ -8,22 +8,35 @@ import {
 } from "../utils/tool-helpers.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 
-export interface ToolDefinition<
+type ToolDefinitionBase<
 	TSchema extends Record<string, z.ZodTypeAny>,
 	TResult,
-> {
+> = {
 	readonly name: string;
 	readonly description: string;
 	readonly inputSchema: TSchema;
 	readonly annotations: ToolAnnotations;
-	readonly kind: "read" | "write";
-	readonly outputSchema?: z.ZodRawShape;
 	readonly responseContract: ResponseContract<TResult>;
 	execute(
 		runtime: ToolRuntime,
 		args: InferToolParams<TSchema>,
 	): Promise<TResult>;
-}
+};
+
+export type ToolDefinition<
+	TSchema extends Record<string, z.ZodTypeAny>,
+	TResult,
+> = ToolDefinitionBase<TSchema, TResult> &
+	(
+		| {
+				readonly kind: "read";
+				readonly outputSchema: z.ZodRawShape;
+		  }
+		| {
+				readonly kind: "write";
+				readonly outputSchema?: never;
+		  }
+	);
 
 export function registerToolDefinition(
 	server: McpServer,
@@ -42,9 +55,6 @@ export function registerToolDefinition(
 	const callback = (args: Record<string, unknown>) => handler(args);
 
 	if (definition.kind === "read") {
-		if (!definition.outputSchema) {
-			throw new Error(`Read tool ${definition.name} requires outputSchema`);
-		}
 		server.registerTool(
 			definition.name,
 			{

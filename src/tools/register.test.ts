@@ -42,11 +42,15 @@ describe("registerHevyTools", () => {
 
 	beforeEach(async () => {
 		server = new McpServer({ name: "tool-list-test", version: "1.0.0" });
+		const catalog: ExerciseTemplateCatalog = {
+			get: async () => [],
+			reset: () => {},
+		};
 		registerHevyTools(
 			server,
 			createToolRuntime({
 				client: null,
-				catalog: {} as ExerciseTemplateCatalog,
+				catalog,
 			}),
 		);
 		client = new Client({ name: "tool-list-client", version: "1.0.0" });

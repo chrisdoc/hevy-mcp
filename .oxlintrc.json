@@ -7,8 +7,12 @@
 		"**/src/generated",
 		"**/coverage",
 		"**/.agents",
+		"**/.entire",
+		"**/.factory",
+		"**/.gemini",
+		"**/.omp",
 		"**/.opencode",
-		"**/.*"
+		"**/.pi"
 	],
 	"categories": {
 		"correctness": "error"

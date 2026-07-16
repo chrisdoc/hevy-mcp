@@ -31,6 +31,11 @@ describe("get-training-summary", () => {
 								},
 							],
 						},
+						{
+							id: "today",
+							start_time: "2026-07-16T23:59:59Z",
+							end_time: "2026-07-16T23:59:59Z",
+						},
 					],
 				})
 				.mockResolvedValueOnce({
@@ -70,7 +75,7 @@ describe("get-training-summary", () => {
 				pageSize: 10,
 			});
 			expect(summary.workouts).toMatchObject({
-				count: 1,
+				count: 2,
 				totalDurationSeconds: 90000,
 				exerciseCount: 1,
 				setCount: 2,
@@ -84,7 +89,7 @@ describe("get-training-summary", () => {
 				name: "training-summary",
 				pagination: { workouts: 2, bodyMeasurements: 1 },
 				cacheStatus: "not-used",
-				itemsScanned: 4,
+				itemsScanned: 5,
 			});
 		} finally {
 			vi.useRealTimers();

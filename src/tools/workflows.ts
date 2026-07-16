@@ -33,6 +33,14 @@ type RecentPageResult<T> = {
 	itemsScanned: number;
 };
 
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function parseUtcDate(value: string): number | undefined {
+	const normalized = value.length === 10 ? `${value}T00:00:00.000Z` : value;
+	const timestamp = Date.parse(normalized);
+	return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
 async function fetchRecentPages<T>(
 	loader: (
 		page: number,
@@ -46,12 +54,25 @@ async function fetchRecentPages<T>(
 	const items: T[] = [];
 	let page = 1;
 	let itemsScanned = 0;
+	const startTimestamp = parseUtcDate(startDate);
+	const endTimestamp = parseUtcDate(endDate);
+	if (startTimestamp === undefined || endTimestamp === undefined) {
+		return { items, pages: 0, itemsScanned };
+	}
+	const endExclusiveTimestamp = endTimestamp + MILLISECONDS_PER_DAY;
+
 	while (true) {
 		const result = await loader(page, pageSize);
 		itemsScanned += result.items.length;
+		if (result.items.length === 0) break;
 		for (const item of result.items) {
 			const date = getDate(item);
-			if (date !== undefined && date >= startDate && date <= endDate) {
+			const timestamp = date === undefined ? undefined : parseUtcDate(date);
+			if (
+				timestamp !== undefined &&
+				timestamp >= startTimestamp &&
+				timestamp < endExclusiveTimestamp
+			) {
 				items.push(item);
 			}
 		}
@@ -60,7 +81,9 @@ async function fetchRecentPages<T>(
 			.map(getDate)
 			.filter((date): date is string => date !== undefined)
 			.at(-1);
-		if (lastDate !== undefined && lastDate < startDate) {
+		const lastTimestamp =
+			lastDate === undefined ? undefined : parseUtcDate(lastDate);
+		if (lastTimestamp !== undefined && lastTimestamp < startTimestamp) {
 			break;
 		}
 		const pageCount = result.pageCount;

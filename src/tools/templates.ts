@@ -241,7 +241,7 @@ const searchExerciseTemplatesDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof searchExerciseTemplatesSchema>,
 	) => {
-		void runtime.getClient();
+		const _client = runtime.getClient();
 		const { query, primaryMuscleGroup, refresh } = args;
 		const templates = await runtime.catalog.get({
 			refresh,

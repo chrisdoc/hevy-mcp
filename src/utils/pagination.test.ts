@@ -17,6 +17,16 @@ describe("fetchAllPages", () => {
 		expect(loader).toHaveBeenNthCalledWith(1, 1, 10);
 	});
 
+	it("stops when a page is empty even if the reported count keeps growing", async () => {
+		const loader = vi.fn(async (page: number) => ({
+			items: page === 1 ? ["first-page"] : [],
+			pageCount: 1_000,
+		}));
+
+		await expect(fetchAllPages(loader, 10)).resolves.toEqual(["first-page"]);
+		expect(loader).toHaveBeenCalledTimes(2);
+	});
+
 	it.each([
 		[undefined, "missing"],
 		[Number.NaN, "NaN"],

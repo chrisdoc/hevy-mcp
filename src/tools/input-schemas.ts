@@ -35,9 +35,16 @@ export function paginationShape({
 
 export const nonEmptyId = z.string().min(1);
 
+const CALENDAR_DATE_MESSAGE = "Date must be in YYYY-MM-DD format";
 export const calendarDate = z
 	.string()
-	.regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format");
+	.regex(/^\d{4}-\d{2}-\d{2}$/, CALENDAR_DATE_MESSAGE)
+	.refine((value) => {
+		const parsed = new Date(`${value}T00:00:00.000Z`);
+		return (
+			!Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value)
+		);
+	}, CALENDAR_DATE_MESSAGE);
 
 export const workoutSetShape = {
 	type: setTypeEnum,
