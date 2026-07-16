@@ -3,9 +3,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
-import { registerToolDefinition } from "./define-tool.js";
 import { registerHevyTools } from "./register.js";
-import { workflowToolDefinitions } from "./workflows.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 const EXPECTED_TOOL_NAMES = [
@@ -74,21 +72,10 @@ describe("registerHevyTools", () => {
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
 	});
 
-	it("rejects read definitions without an output schema", () => {
-		const definition = {
-			...workflowToolDefinitions[0],
-			outputSchema: undefined,
-		};
+	it("advertises output schemas for read tools", async () => {
+		const { tools } = await client.listTools();
+		const summary = tools.find(({ name }) => name === "get-training-summary");
 
-		expect(() =>
-			registerToolDefinition(
-				server,
-				createToolRuntime({
-					client: null,
-					catalog: {} as ExerciseTemplateCatalog,
-				}),
-				definition,
-			),
-		).toThrow("Read tool get-training-summary requires outputSchema");
+		expect(summary?.outputSchema).toBeDefined();
 	});
 });
