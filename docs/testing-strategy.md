@@ -91,20 +91,20 @@ record a new merged-main baseline after fixing the denominator.
 
 ## Current architecture inventory and strengths
 
-| Area                   | Current evidence                                     | Strength to preserve                                                                           |
-| ---------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Test runner            | `vitest.config.ts`, `package.json`                   | Fast TypeScript-native Vitest suite with V8 coverage.                                          |
-| Unit/component tests   | `src/**/*.test.ts`, `tests/unit/`                    | Broad coverage of tools, utilities, schemas, CLI behavior, telemetry, shutdown, and manifests. |
-| Mocked MCP integration | `tests/integration/mocked/`                          | Real SDK `Client`, `McpServer`, and `InMemoryTransport` with Nock at the Axios HTTP seam.      |
-| Live Vitest canary     | `tests/integration/hevy-mcp.integration.test.ts`     | Read-only validation against the real API, skipped without `HEVY_API_KEY`.                     |
-| Process-level nightly  | `tests/nightly/test_hevy_mcp.mjs`                    | Real stdio JSON-RPC against `npx`, `bunx`, and built source.                                   |
-| Release checks         | `.github/workflows/release.yml`                      | Unit, live integration, and source stdio checks run before publishing.                         |
-| CI runtime matrix      | `.github/workflows/build-and-test.yml`               | Node 24 and 26 build, type, style, unit, and mocked integration checks.                        |
-| Docker smoke           | `.github/workflows/build-and-test.yml`, `Dockerfile` | Image build plus unauthenticated `--version` and `--help` smoke checks.                        |
-| Coverage               | `vitest.config.ts`, `codecov.yml`                    | V8/LCOV reports, Codecov project comparison, patch status, generated-code exclusion.           |
-| Schema contracts       | `src/utils/output-schemas.ts`                        | Production-owned Zod output schemas and structured responses for read tools.                   |
-| Prompts/resources      | `src/prompts/`, `src/resources/`                     | Dedicated registrations and focused tests; resource calls also have mocked MCP coverage.       |
-| SDK-sensitive stdio    | `src/utils/stdio-observability.ts` and its tests     | Private SDK access is isolated and has focused buffering/protocol regression tests.            |
+| Area                   | Current evidence                                     | Strength to preserve                                                                                    |
+| ---------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Test runner            | `vitest.config.ts`, `package.json`                   | Fast TypeScript-native Vitest suite with V8 coverage.                                                   |
+| Unit/component tests   | `src/**/*.test.ts`, `tests/unit/`                    | Broad coverage of tools, utilities, schemas, CLI behavior, telemetry, shutdown, and manifests.          |
+| Mocked MCP integration | `tests/integration/mocked/`                          | Real SDK `Client`, `McpServer`, and `InMemoryTransport` with Nock at the Axios HTTP seam.               |
+| Live Vitest canary     | `tests/integration/hevy-mcp.integration.test.ts`     | Read-only validation against the real API, skipped without `HEVY_API_KEY`.                              |
+| Process-level nightly  | `tests/nightly/test_hevy_mcp.mjs`                    | Real stdio JSON-RPC against `npx`, `bunx`, and built source.                                            |
+| Release checks         | `.github/workflows/release.yml`                      | Unit, live integration, and source stdio checks run before publishing.                                  |
+| CI runtime matrix      | `.github/workflows/build-and-test.yml`               | Node 24 and 26 build, type, style, unit, and mocked integration checks.                                 |
+| Docker smoke           | `.github/workflows/build-and-test.yml`, `Dockerfile` | Image build plus unauthenticated `--version` and `--help` smoke checks.                                 |
+| Coverage               | `vitest.config.ts`, `codecov.yml`                    | V8/LCOV reports, Codecov project comparison, patch status, generated-code exclusion.                    |
+| Response contracts     | `src/utils/response-formatter.ts`                    | Co-located Zod output schemas, raw-to-public formatting, legacy text projection, and response assembly. |
+| Prompts/resources      | `src/prompts/`, `src/resources/`                     | Dedicated registrations and focused tests; resource calls also have mocked MCP coverage.                |
+| SDK-sensitive stdio    | `src/utils/stdio-observability.ts` and its tests     | Private SDK access is isolated and has focused buffering/protocol regression tests.                     |
 
 This strategy builds on completed work rather than restarting it:
 
@@ -134,19 +134,19 @@ This strategy builds on completed work rather than restarting it:
 
 ## Evidence-based gaps and risks
 
-| Severity | Gap/risk                                                                        | Evidence                                                                                                                                              | Consequence                                                                                                                       |
-| -------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Critical | Production output schemas and live canary schemas have separate ownership.      | `src/utils/output-schemas.ts`; test-local schemas in `tests/integration/hevy-mcp.integration.test.ts`; July 10 run and PR #594.                       | A live payload can satisfy a permissive canary assertion but fail SDK output validation, or tests can drift away from production. |
-| High     | Mocked MCP coverage is representative, not a complete per-tool contract matrix. | Two files in `tests/integration/mocked/`; 23 advertised tools; 16 mocked tests at baseline.                                                           | Uncovered tools, invalid inputs, error classes, annotations, or output parity can regress in deterministic PR lanes.              |
-| High     | Coverage excludes unimported files by default.                                  | `vitest.config.ts` has no explicit `coverage.include`; separate unit/mocked LCOV reports.                                                             | A high percentage can coexist with untested production modules, making thresholds misleading.                                     |
-| High     | No deterministic packed-tarball stdio boundary exists.                          | Nightly uses published `@latest` or built source; `prepack` exists, but no PR lane installs the exact `npm pack` artifact.                            | Packaging, `files`, shebang, exports, manifest, or dependency errors can escape source tests.                                     |
-| High     | Runtime declarations disagree.                                                  | `.nvmrc` is 24; CI tests 24/26; `AGENTS.md` says >=24; `package.json` says >=20.                                                                      | Users may run an allowed but untested runtime, or maintainers may unintentionally break a claimed support range.                  |
-| Medium   | MCP process and lifecycle coverage is selective.                                | In-memory calls and nightly smoke exist; no central matrix for capability negotiation, close behavior, invalid protocol calls, or list notifications. | SDK upgrades or registration changes can break protocol behavior beyond successful tool calls.                                    |
-| Medium   | Stateful and sequence behavior lacks a contract suite.                          | Exercise-template cache and utilities have unit tests, but no systematic multi-call MCP scenarios.                                                    | Cache isolation, invalidation, repeated calls, and concurrent calls may corrupt state or leak between clients.                    |
-| Medium   | Upstream drift review is not a named workflow.                                  | `openapi-spec.json`, generated `src/generated/`, and live canaries exist without a committed diff/fixture policy.                                     | Hevy changes can be noticed late or reviewed as noisy generated output without explicit contract implications.                    |
-| Medium   | Diagnostics can expose excessive upstream detail.                               | July 10 failed logs included a large Axios/request dump; debug/redaction foundations exist in `src/utils/debug.test.ts`.                              | Secrets, user data, headers, or noisy internals can appear in CI artifacts and slow diagnosis.                                    |
-| Medium   | No performance history or concurrency lane.                                     | No benchmark/performance scripts or trend artifact in `package.json` and workflows.                                                                   | Regressions in startup, list calls, mocked reads, or resource usage are detected only by users.                                   |
-| Low      | Test commands do not express a stable taxonomy.                                 | CI invokes long Vitest commands directly; `package.json` has only broad `test`.                                                                       | Local and CI behavior can diverge, and ownership/onboarding remain unclear.                                                       |
+| Severity | Gap/risk                                                                        | Evidence                                                                                                                                                  | Consequence                                                                                                                       |
+| -------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Critical | Production output schemas and live canary schemas have separate ownership.      | Response contracts in `src/utils/response-formatter.ts`; test-local schemas in `tests/integration/hevy-mcp.integration.test.ts`; July 10 run and PR #594. | A live payload can satisfy a permissive canary assertion but fail SDK output validation, or tests can drift away from production. |
+| High     | Mocked MCP coverage is representative, not a complete per-tool contract matrix. | Two files in `tests/integration/mocked/`; 23 advertised tools; 16 mocked tests at baseline.                                                               | Uncovered tools, invalid inputs, error classes, annotations, or output parity can regress in deterministic PR lanes.              |
+| High     | Coverage excludes unimported files by default.                                  | `vitest.config.ts` has no explicit `coverage.include`; separate unit/mocked LCOV reports.                                                                 | A high percentage can coexist with untested production modules, making thresholds misleading.                                     |
+| High     | No deterministic packed-tarball stdio boundary exists.                          | Nightly uses published `@latest` or built source; `prepack` exists, but no PR lane installs the exact `npm pack` artifact.                                | Packaging, `files`, shebang, exports, manifest, or dependency errors can escape source tests.                                     |
+| High     | Runtime declarations disagree.                                                  | `.nvmrc` is 24; CI tests 24/26; `AGENTS.md` says >=24; `package.json` says >=20.                                                                          | Users may run an allowed but untested runtime, or maintainers may unintentionally break a claimed support range.                  |
+| Medium   | MCP process and lifecycle coverage is selective.                                | In-memory calls and nightly smoke exist; no central matrix for capability negotiation, close behavior, invalid protocol calls, or list notifications.     | SDK upgrades or registration changes can break protocol behavior beyond successful tool calls.                                    |
+| Medium   | Stateful and sequence behavior lacks a contract suite.                          | Exercise-template cache and utilities have unit tests, but no systematic multi-call MCP scenarios.                                                        | Cache isolation, invalidation, repeated calls, and concurrent calls may corrupt state or leak between clients.                    |
+| Medium   | Upstream drift review is not a named workflow.                                  | `openapi-spec.json`, generated `src/generated/`, and live canaries exist without a committed diff/fixture policy.                                         | Hevy changes can be noticed late or reviewed as noisy generated output without explicit contract implications.                    |
+| Medium   | Diagnostics can expose excessive upstream detail.                               | July 10 failed logs included a large Axios/request dump; debug/redaction foundations exist in `src/utils/debug.test.ts`.                                  | Secrets, user data, headers, or noisy internals can appear in CI artifacts and slow diagnosis.                                    |
+| Medium   | No performance history or concurrency lane.                                     | No benchmark/performance scripts or trend artifact in `package.json` and workflows.                                                                       | Regressions in startup, list calls, mocked reads, or resource usage are detected only by users.                                   |
+| Low      | Test commands do not express a stable taxonomy.                                 | CI invokes long Vitest commands directly; `package.json` has only broad `test`.                                                                           | Local and CI behavior can diverge, and ownership/onboarding remain unclear.                                                       |
 
 ### July 10 `get-workout-events` example
 
@@ -237,10 +237,12 @@ of every tool, resource, and prompt. For each applicable item it must validate:
 
 ## Data integrity and upstream drift strategy
 
-1. **Production schemas are the oracle.** Export reusable, repository-owned
-   output schemas from `src/utils/output-schemas.ts` and use them in mocked MCP,
-   live Vitest, and spawned canary assertions. Tests should not maintain a
-   second permissive definition of the same output.
+1. **Production response contracts are the oracle.** Export reusable,
+   repository-owned Zod output schemas from
+   `src/utils/response-formatter.ts`, where raw-to-public normalization,
+   legacy text projection, and response assembly are co-located. Use those
+   schemas in mocked MCP, live Vitest, and spawned canary assertions. Tests
+   should not maintain a second permissive definition of the same output.
 2. **Use named fixtures.** Store sanitized fixtures by behavior, such as
    `workout-events.updated-with-extra-upstream-fields.json`, rather than generic
    `response.json`. Each fixture records source category, capture date, applied
@@ -362,7 +364,7 @@ achievable without excluding difficult production code.
 
 Risk-heavy modules should have stronger behavioral expectations than the global
 percentage: `src/index.ts`, `src/cli.ts`, `src/utils/hevyClientKubb.ts`,
-`src/utils/error-handler.ts`, `src/utils/output-schemas.ts`,
+`src/utils/error-handler.ts`, `src/utils/response-formatter.ts`,
 `src/utils/stdio-observability.ts`, cache/catalog behavior, and every mutation
 tool. Critical branch/error behavior should be enumerated even when aggregate
 coverage is already high.

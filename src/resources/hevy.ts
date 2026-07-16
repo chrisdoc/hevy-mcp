@@ -13,7 +13,7 @@ import {
 import {
 	formatExerciseTemplate,
 	formatRoutineFolder,
-} from "../utils/formatters.js";
+} from "../utils/response-formatter.js";
 import { requireClient } from "../utils/tool-helpers.js";
 
 type HevyClient = ReturnType<
