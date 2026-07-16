@@ -1,12 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-
-const utcSecondTimestamp = z
-	.string()
-	.regex(
-		/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/,
-		"Must use the UTC format YYYY-MM-DDTHH:mm:ssZ",
-	);
+import { utcSecondTimestamp } from "../utils/schemas.js";
 
 /** Register guided workout workflow prompts. */
 export function registerWorkoutPrompts(server: McpServer) {

@@ -2,7 +2,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools } from "./register.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 const EXPECTED_TOOL_NAMES = [
 	"get-workouts",
@@ -36,7 +38,13 @@ describe("registerHevyTools", () => {
 
 	beforeEach(async () => {
 		server = new McpServer({ name: "tool-list-test", version: "1.0.0" });
-		registerHevyTools(server, null);
+		registerHevyTools(
+			server,
+			createToolRuntime({
+				client: null,
+				catalog: {} as ExerciseTemplateCatalog,
+			}),
+		);
 		client = new Client({ name: "tool-list-client", version: "1.0.0" });
 
 		const [clientTransport, serverTransport] =
