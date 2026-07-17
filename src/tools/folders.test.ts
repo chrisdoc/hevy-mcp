@@ -1,14 +1,31 @@
+/* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import type { RoutineFolder } from "../generated/client/types/index.js";
 import { formatRoutineFolder } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import { registerFolderTools } from "./folders.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import { registerToolDefinition } from "./define-tool.js";
+import { folderToolDefinitions } from "./folders.js";
+import { createToolRuntime } from "./tool-runtime.js";
 
 function createMockServer() {
 	const tool = vi.fn();
 	const server = { tool, registerTool: tool } as unknown as McpServer;
 	return { server, tool };
+}
+
+function registerFolderDefinitions(
+	server: McpServer,
+	client: HevyClient | null,
+) {
+	const runtime = createToolRuntime({
+		client,
+		catalog: {} as ExerciseTemplateCatalog,
+	});
+	for (const definition of folderToolDefinitions) {
+		registerToolDefinition(server, runtime, definition);
+	}
 }
 
 function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
@@ -25,10 +42,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	return { outputSchema: config?.outputSchema, handler };
 }
 
-describe("registerFolderTools", () => {
+describe("folder tool definitions", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
 		const { server, tool } = createMockServer();
-		registerFolderTools(server, null);
+		registerFolderDefinitions(server, null);
 
 		const toolNames = [
 			"get-routine-folders",
@@ -36,9 +53,15 @@ describe("registerFolderTools", () => {
 			"create-routine-folder",
 		];
 
+		const argumentsByTool: Record<string, Record<string, unknown>> = {
+			"get-routine-folders": { page: 1, pageSize: 5 },
+			"get-routine-folder": { folderId: "missing-id" },
+			"create-routine-folder": { name: "Test" },
+		};
+
 		for (const name of toolNames) {
 			const { handler } = getToolRegistration(tool, name);
-			const response = await handler({});
+			const response = await handler(argumentsByTool[name] ?? {});
 			expect(response).toMatchObject({
 				isError: true,
 				content: [
@@ -61,12 +84,12 @@ describe("registerFolderTools", () => {
 				.mockRejectedValue(new Error("Routine folders request failed")),
 		} as unknown as HevyClient;
 
-		registerFolderTools(server, hevyClient);
+		registerFolderDefinitions(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-routine-folders");
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
-		expect(hevyClient.getRoutineFolders).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenCalledWith({
 			page: 1,
 			pageSize: 5,
 		});
@@ -95,12 +118,12 @@ describe("registerFolderTools", () => {
 				.mockResolvedValue({ routine_folders: [folder] }),
 		} as unknown as HevyClient;
 
-		registerFolderTools(server, hevyClient);
+		registerFolderDefinitions(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-routine-folders");
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
-		expect(hevyClient.getRoutineFolders).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenCalledWith({
 			page: 1,
 			pageSize: 5,
 		});
@@ -115,7 +138,7 @@ describe("registerFolderTools", () => {
 		const hevyClient = {
 			getRoutineFolders: vi.fn().mockResolvedValue({ routine_folders: [] }),
 		} as unknown as HevyClient;
-		registerFolderTools(server, hevyClient);
+		registerFolderDefinitions(server, hevyClient);
 
 		const response = await getToolRegistration(
 			tool,
@@ -134,11 +157,13 @@ describe("registerFolderTools", () => {
 			getRoutineFolder: vi.fn().mockResolvedValue(null),
 		} as unknown as HevyClient;
 
-		registerFolderTools(server, hevyClient);
+		registerFolderDefinitions(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-routine-folder");
 
 		const response = await handler({ folderId: "missing-id" });
-		expect(hevyClient.getRoutineFolder).toHaveBeenCalledWith("missing-id");
+		expect(vi.mocked(hevyClient.getRoutineFolder)).toHaveBeenCalledWith(
+			"missing-id",
+		);
 		expect(response.content[0]?.text).toBe(
 			"Routine folder with ID missing-id not found",
 		);
@@ -151,7 +176,7 @@ describe("registerFolderTools", () => {
 		const hevyClient = {
 			getRoutineFolder: vi.fn().mockResolvedValue(folder),
 		} as unknown as HevyClient;
-		registerFolderTools(server, hevyClient);
+		registerFolderDefinitions(server, hevyClient);
 
 		const response = await getToolRegistration(
 			tool,
@@ -174,7 +199,7 @@ describe("registerFolderTools", () => {
 			createRoutineFolder: vi.fn().mockResolvedValue(folder),
 		} as unknown as HevyClient;
 
-		registerFolderTools(server, hevyClient);
+		registerFolderDefinitions(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "create-routine-folder");
 
 		const response = await handler({ name: "Hypertrophy" } as Record<
@@ -182,7 +207,7 @@ describe("registerFolderTools", () => {
 			unknown
 		>);
 
-		expect(hevyClient.createRoutineFolder).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.createRoutineFolder)).toHaveBeenCalledWith({
 			routine_folder: {
 				title: "Hypertrophy",
 			},

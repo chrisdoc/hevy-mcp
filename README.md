@@ -14,8 +14,8 @@ A Hevy API key, available with Hevy PRO, is required.
 
 ## Quick Start
 
-Use local stdio when your MCP client can launch a command. Hosted Streamable
-HTTP setup is documented below but is temporarily unavailable.
+Use local stdio when your MCP client can launch a command, or use the hosted
+Streamable HTTP endpoint when your client supports fixed authorization headers.
 
 ### Option A: Local stdio
 
@@ -109,14 +109,10 @@ You can also add the local npm server to supported clients with
 npx add-mcp hevy-mcp --env "HEVY_API_KEY=your-hevy-api-key"
 ```
 
-### Option B: Hosted Streamable HTTP — temporarily unavailable
+### Option B: Hosted Streamable HTTP
 
-> [!WARNING]
-> `https://hevy.chrisdoc.dev/mcp` is currently intercepted by an interactive
-> Cloudflare challenge, so non-browser MCP clients cannot connect. Use local
-> stdio until the route is restored.
-
-When available, the hosted endpoint does not require Node.js, Bun, or Docker:
+The hosted endpoint is available to browser and non-browser MCP clients. It
+does not require Node.js, Bun, or Docker:
 
 ```text
 https://hevy.chrisdoc.dev/mcp

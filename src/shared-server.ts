@@ -13,6 +13,7 @@ import { createClient } from "./utils/hevyClient.js";
 import type { HevyClient } from "./utils/hevyClient.js";
 import type { HevyClientOptions } from "./utils/hevyClientKubb.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
+import { createToolRuntime } from "./tools/tool-runtime.js";
 
 export interface SharedServerOptions {
 	apiKey: string;
@@ -66,18 +67,18 @@ export function createSharedMcpServer(options: SharedServerOptions): McpServer {
 			...options.clientOptions,
 			logger,
 		});
-	const wrapHandler = options.wrapHandler ?? withErrorHandling;
-	const catalog = createExerciseTemplateCatalog();
+	const runtime = createToolRuntime({
+		client: hevyClient,
+		catalog: createExerciseTemplateCatalog(hevyClient),
+		logger,
+		wrapHandler: options.wrapHandler ?? withErrorHandling,
+	});
 	const counting = createToolCountingServer(server);
 
-	registerHevyTools(counting.server, hevyClient, {
-		catalog,
-		logger,
-		wrapHandler,
-	});
+	registerHevyTools(counting.server, runtime);
 	options.onToolsRegistered?.(counting.getCount());
 
 	registerWorkoutPrompts(server);
-	registerHevyResources(server, hevyClient, catalog);
+	registerHevyResources(server, runtime);
 	return server;
 }

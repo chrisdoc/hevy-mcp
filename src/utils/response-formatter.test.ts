@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Routine, Workout } from "../generated/client/types/index.js";
 import {
 	bodyMeasurementsResponse,
+	compactRoutinesResponse,
 	createRoutineResponse,
 	defineJsonResponseContract,
 	defineStructuredResponseContract,
@@ -12,8 +13,13 @@ import {
 	respond,
 	routineFoldersResponse,
 	routinesResponse,
+	trainingSummaryResponse,
 	workoutResponse,
 	workoutsResponse,
+} from "./response-formatter.js";
+import type {
+	CompactRoutinesResult,
+	TrainingSummaryResult,
 } from "./response-formatter.js";
 
 describe("response contracts", () => {
@@ -175,5 +181,85 @@ describe("response contracts", () => {
 		expect(response.content[1].text).toContain("rep ranges");
 		expect(response.content[1].text).toContain("issues/261");
 		expect(response.structuredContent).toBeUndefined();
+	});
+
+	it("renders empty and populated workflow responses", () => {
+		const emptySummary: TrainingSummaryResult = {
+			period: { startDate: "2026-07-01", endDate: "2026-07-16", weeks: 2 },
+			workouts: {
+				count: 0,
+				totalDurationSeconds: 0,
+				exerciseCount: 0,
+				setCount: 0,
+				uniqueExerciseTemplateIds: [],
+				sessions: [],
+			},
+			bodyMeasurements: {
+				count: 0,
+				latest: null,
+				earliest: null,
+				weightChangeKg: null,
+			},
+			workflow: {
+				name: "training-summary",
+				pagination: { workouts: 0, bodyMeasurements: 0 },
+				cacheStatus: "not-used",
+				itemsScanned: 0,
+			},
+		};
+		const emptyResponse = respond(trainingSummaryResponse, emptySummary);
+		expect(emptyResponse.content[0]?.text).toBe(
+			"No workouts or body measurements found for the specified period",
+		);
+		expect(emptyResponse.structuredContent).toEqual(emptySummary);
+
+		const populatedResponse = respond(trainingSummaryResponse, {
+			...emptySummary,
+			workouts: {
+				...emptySummary.workouts,
+				count: 1,
+			},
+		});
+		expect(JSON.parse(populatedResponse.content[0]?.text ?? "null")).toEqual(
+			populatedResponse.structuredContent,
+		);
+	});
+
+	it("renders empty and populated compact routine responses", () => {
+		const empty: CompactRoutinesResult = {
+			routines: [],
+			workflow: {
+				name: "routine-discovery",
+				pagination: { routines: 0 },
+				cacheStatus: "not-used",
+				itemsScanned: 0,
+			},
+		};
+		const emptyResponse = respond(compactRoutinesResponse, empty);
+		expect(emptyResponse.content[0]?.text).toBe(
+			"No routines found matching the query",
+		);
+
+		const populated = respond(compactRoutinesResponse, {
+			...empty,
+			routines: [
+				{
+					id: "routine-1",
+					title: "Push",
+					folderId: null,
+					exerciseCount: 1,
+					setCount: 2,
+				},
+			],
+		});
+		expect(JSON.parse(populated.content[0]?.text ?? "null")).toEqual([
+			{
+				id: "routine-1",
+				title: "Push",
+				folderId: null,
+				exerciseCount: 1,
+				setCount: 2,
+			},
+		]);
 	});
 });

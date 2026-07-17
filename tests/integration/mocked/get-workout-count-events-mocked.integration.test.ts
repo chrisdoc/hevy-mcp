@@ -13,7 +13,9 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { registerWorkoutTools } from "../../../src/tools/workouts.js";
+import { registerHevyTools } from "../../../src/tools/register.js";
+import { createToolRuntime } from "../../../src/tools/tool-runtime.js";
+import { createExerciseTemplateCatalog } from "../../../src/utils/exercise-template-catalog.js";
 import { createClient } from "../../../src/utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
@@ -70,7 +72,11 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 		});
 
 		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
-		registerWorkoutTools(server, hevyClient);
+		const runtime = createToolRuntime({
+			client: hevyClient,
+			catalog: createExerciseTemplateCatalog(hevyClient),
+		});
+		registerHevyTools(server, runtime);
 
 		client = new Client({
 			name: "hevy-mcp-workout-detail-test-client",

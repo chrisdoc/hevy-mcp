@@ -31,7 +31,7 @@ type OutputShape = z.ZodRawShape;
 type OutputFor<TShape extends OutputShape> = z.output<z.ZodObject<TShape>>;
 
 export interface ResponseContract<TData> {
-	readonly render: (data: TData) => McpToolResponse;
+	render(data: TData): McpToolResponse;
 }
 
 export interface StructuredResponseContract<
@@ -242,6 +242,33 @@ export const formattedBodyMeasurementSchema = z.object({
 	leftCalf: z.number().nullable(),
 	rightCalf: z.number().nullable(),
 });
+const workflowTelemetrySchema = z.object({
+	name: z.string(),
+	pagination: z.record(z.string(), z.number().int().nonnegative()),
+	cacheStatus: z.enum(["hit", "miss", "not-used"]),
+	itemsScanned: z.number().int().nonnegative(),
+});
+
+export const trainingSummarySessionSchema = z.object({
+	id: z.string().optional(),
+	title: z.string().optional(),
+	startTime: z.string().optional(),
+	endTime: z.string().optional(),
+	durationSeconds: z.number().int().nonnegative().nullable(),
+	exerciseCount: z.number().int().nonnegative(),
+	setCount: z.number().int().nonnegative(),
+});
+
+export const compactRoutineSchema = z.object({
+	id: z.string().optional(),
+	title: z.string().optional(),
+	folderId: z.number().nullable(),
+	updatedAt: z.string().optional(),
+	exerciseCount: z.number().int().nonnegative(),
+	setCount: z.number().int().nonnegative(),
+});
+
+export type WorkflowTelemetry = z.infer<typeof workflowTelemetrySchema>;
 
 export type FormattedWorkoutSet = z.infer<typeof formattedWorkoutSetSchema>;
 export type FormattedWorkoutExercise = z.infer<
@@ -317,6 +344,46 @@ const bodyMeasurementOutputSchema = {
 	bodyMeasurement: formattedBodyMeasurementSchema.nullable(),
 } as const;
 const userOutputSchema = { user: userInfoSchema.nullable() } as const;
+const trainingSummaryOutputSchema = {
+	period: z.object({
+		startDate: z.string(),
+		endDate: z.string(),
+		weeks: z.number().int().positive(),
+	}),
+	workouts: z.object({
+		count: z.number().int().nonnegative(),
+		totalDurationSeconds: z.number().int().nonnegative(),
+		exerciseCount: z.number().int().nonnegative(),
+		setCount: z.number().int().nonnegative(),
+		uniqueExerciseTemplateIds: z.array(z.string()),
+		sessions: z.array(trainingSummarySessionSchema),
+	}),
+	bodyMeasurements: z.object({
+		count: z.number().int().nonnegative(),
+		latest: z
+			.object({
+				date: z.string(),
+				weightKg: z.number().nullable(),
+				leanMassKg: z.number().nullable(),
+				fatPercent: z.number().nullable(),
+			})
+			.nullable(),
+		earliest: z
+			.object({
+				date: z.string(),
+				weightKg: z.number().nullable(),
+				leanMassKg: z.number().nullable(),
+				fatPercent: z.number().nullable(),
+			})
+			.nullable(),
+		weightChangeKg: z.number().nullable(),
+	}),
+	workflow: workflowTelemetrySchema,
+} as const;
+const compactRoutinesOutputSchema = {
+	routines: z.array(compactRoutineSchema),
+	workflow: workflowTelemetrySchema,
+} as const;
 
 type ExerciseWithSupersetVariants = {
 	supersets_id?: number | null;
@@ -738,6 +805,30 @@ export const userResponse = defineStructuredResponseContract({
 	legacyJson: ({ user }) => user,
 	text: (_data, { user }) =>
 		user === null ? "No user info found for the authenticated user" : undefined,
+});
+export type TrainingSummaryResult = z.output<
+	z.ZodObject<typeof trainingSummaryOutputSchema>
+>;
+export type CompactRoutinesResult = z.output<
+	z.ZodObject<typeof compactRoutinesOutputSchema>
+>;
+
+export const trainingSummaryResponse = defineStructuredResponseContract({
+	outputSchema: trainingSummaryOutputSchema,
+	normalize: (data: TrainingSummaryResult) => data,
+	legacyJson: (output) => output,
+	text: (data) =>
+		data.workouts.count === 0 && data.bodyMeasurements.count === 0
+			? "No workouts or body measurements found for the specified period"
+			: undefined,
+});
+
+export const compactRoutinesResponse = defineStructuredResponseContract({
+	outputSchema: compactRoutinesOutputSchema,
+	normalize: (data: CompactRoutinesResult) => data,
+	legacyJson: ({ routines }) => routines,
+	text: (_data, { routines }) =>
+		routines.length === 0 ? "No routines found matching the query" : undefined,
 });
 
 export const createWorkoutResponse = defineJsonResponseContract(
