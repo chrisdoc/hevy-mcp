@@ -367,9 +367,28 @@ The bearer value is your Hevy API key, not an OAuth token. The Worker validates
 the key with Hevy on each request, does not store it, and forwards it upstream
 only as Hevy's required `api-key` header.
 
-The endpoint does not expose legacy SSE or a `GET` event stream. Clients that
-require OAuth discovery, dynamic registration, token refresh, or legacy SSE are
-not compatible unless they can send the fixed custom header above.
+### OAuth for Claude.ai and other remote MCP clients
+
+Workers deployed with an `OAUTH_KV` namespace binding (see
+[CONTRIBUTING.md](./CONTRIBUTING.md)) additionally expose a full OAuth 2.1
+layer for clients that cannot send a fixed header, such as Claude.ai custom
+connectors:
+
+- RFC 8414 / RFC 9728 discovery metadata under `/.well-known/`
+- Dynamic client registration (`/register`) and PKCE token exchange (`/token`)
+- An `/authorize` page where you paste your Hevy API key once; the key is
+  validated with Hevy and stored encrypted inside the OAuth grant
+
+Add the Worker URL ending in `/mcp` as a Claude.ai custom connector and
+complete the authorization flow in the browser. Direct
+`Authorization: Bearer <hevy-api-key>` requests keep working unchanged — the
+OAuth layer is purely additive — and rotating your Hevy API key invalidates
+every OAuth grant created with it.
+
+The endpoint does not expose legacy SSE or a `GET` event stream. Without the
+opt-in OAuth layer, clients that require OAuth discovery, dynamic
+registration, or token refresh are not compatible unless they can send the
+fixed custom header above.
 
 ### Self-host the Worker
 

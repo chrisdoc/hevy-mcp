@@ -241,6 +241,7 @@ src/
 ├── cli.ts             # Node.js stdio executable entrypoint
 ├── index.ts           # Node-only stdio server, telemetry, and observability
 ├── worker.ts          # Cloudflare Worker Streamable HTTP entrypoint
+├── worker-oauth.ts    # Optional Worker OAuth 2.1 layer (Claude.ai remote MCP)
 ├── shared-server.ts   # Runtime-neutral shared MCP server construction
 ├── tools/             # MCP tool implementations (+ co-located *.test.ts)
 │   ├── annotations.ts       # Workout annotation tools

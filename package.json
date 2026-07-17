@@ -76,6 +76,7 @@
 		"worker:dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run"
 	},
 	"dependencies": {
+		"@cloudflare/workers-oauth-provider": "^0.8.2",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@opentelemetry/api": "^1.9.0",
 		"@opentelemetry/exporter-metrics-otlp-http": "^0.220.0",
