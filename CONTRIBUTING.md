@@ -251,9 +251,9 @@ With the binding present, `src/worker-oauth.ts` (backed by
 - `/authorize` (a form that validates the submitted Hevy API key against Hevy
   and stores it encrypted inside the OAuth grant)
 
-Bearer values containing a colon are treated as OAuth access tokens
-(`userId:grantId:secret`); Hevy API keys never contain a colon, so they keep
-using the direct path. With OAuth enabled, unauthenticated `POST /mcp`
+Bearer values matching the OAuth access-token shape (`userId:grantId:secret`)
+are routed to the OAuth layer; Hevy API keys never contain a colon, so they
+keep using the direct path. With OAuth enabled, unauthenticated `POST /mcp`
 requests receive the RFC 9728 challenge (`WWW-Authenticate` with
 `resource_metadata`) instead of the bare `Bearer` challenge so OAuth clients
 can discover the flow. Without the `OAUTH_KV` binding, Worker behavior is

@@ -3,6 +3,8 @@ import {
 	OAuthProvider,
 	type OAuthHelpers,
 } from "@cloudflare/workers-oauth-provider";
+import { z } from "zod";
+import { createSafeErrorDiagnostic } from "./utils/safe-error-diagnostic.js";
 
 const MCP_PATH = "/mcp";
 const AUTHORIZE_PATH = "/authorize";
@@ -41,16 +43,33 @@ export interface HevyOAuthWorker<Env> {
 
 /**
  * Access tokens minted by the OAuth provider always have the shape
- * `userId:grantId:secret`. Hevy API keys never contain a colon, so the
- * presence of one is what routes a bearer value to the OAuth layer instead
- * of the legacy direct-API-key path.
+ * `userId:grantId:secret`. Hevy API keys never contain a colon, so a
+ * bearer value matching this shape routes to the OAuth layer while
+ * everything else keeps using the legacy direct-API-key path.
  */
 export function hasOAuthAccessTokenShape(token: string): boolean {
-	return token.includes(":");
+	return /^[^:]+:[^:]+:[^:]+$/.test(token);
 }
 
+function isKvNamespaceLike(value: unknown): boolean {
+	if (typeof value !== "object" || value === null) return false;
+	const kv = value as Record<string, unknown>;
+	return (
+		typeof kv.get === "function" &&
+		typeof kv.put === "function" &&
+		typeof kv.delete === "function" &&
+		typeof kv.list === "function"
+	);
+}
+
+/**
+ * OAuth is enabled only when OAUTH_KV is bound to something that actually
+ * looks like a KV namespace. A misconfigured binding (e.g. a plain string
+ * var) must not route requests into the OAuth provider, where it would
+ * fail at runtime.
+ */
 export function isOAuthEnabled(env: { OAUTH_KV?: unknown }): boolean {
-	return env.OAUTH_KV != null;
+	return isKvNamespaceLike(env.OAUTH_KV);
 }
 
 async function deriveUserId(apiKey: string): Promise<string> {
@@ -73,6 +92,31 @@ export function encodeAuthRequest(authRequest: AuthRequest): string {
 		.replace(/=+$/, "");
 }
 
+/**
+ * Shape an authorization request must have before this Worker completes it.
+ * PKCE with S256 is mandatory (the MCP authorization spec requires PKCE):
+ * without a stored code challenge the provider would treat the grant as
+ * non-PKCE and allow the authorization code to be redeemed without a
+ * verifier. `parseAuthRequest` output (`state` always a string, possibly
+ * empty) and round-tripped payloads both satisfy this schema; unknown
+ * fields such as `resource` pass through untouched.
+ */
+const authRequestSchema = z.looseObject({
+	responseType: z.literal("code"),
+	clientId: z.string().min(1),
+	redirectUri: z.string().min(1),
+	scope: z.array(z.string()),
+	state: z.string(),
+	codeChallenge: z.string().min(1),
+	codeChallengeMethod: z.literal("S256"),
+	resource: z.union([z.string(), z.array(z.string())]).optional(),
+});
+
+export function validateAuthRequest(value: unknown): AuthRequest | null {
+	const result = authRequestSchema.safeParse(value);
+	return result.success ? result.data : null;
+}
+
 export function decodeAuthRequest(encoded: string): AuthRequest | null {
 	let parsed: unknown;
 	try {
@@ -83,20 +127,7 @@ export function decodeAuthRequest(encoded: string): AuthRequest | null {
 	} catch {
 		return null;
 	}
-	if (typeof parsed !== "object" || parsed === null) return null;
-	const candidate = parsed as Record<string, unknown>;
-	if (
-		typeof candidate.responseType !== "string" ||
-		typeof candidate.clientId !== "string" ||
-		candidate.clientId === "" ||
-		typeof candidate.redirectUri !== "string" ||
-		typeof candidate.state !== "string" ||
-		!Array.isArray(candidate.scope) ||
-		candidate.scope.some((scope) => typeof scope !== "string")
-	) {
-		return null;
-	}
-	return candidate as unknown as AuthRequest;
+	return validateAuthRequest(parsed);
 }
 
 function escapeHtml(value: string): string {
@@ -224,14 +255,19 @@ export async function handleAuthorizeGet(
 	request: Request,
 	helpers: OAuthHelpers,
 ): Promise<Response> {
-	let authRequest: AuthRequest;
+	let parsedRequest: AuthRequest;
 	try {
-		authRequest = await helpers.parseAuthRequest(request);
+		parsedRequest = await helpers.parseAuthRequest(request);
 	} catch {
 		return authorizeErrorResponse("Invalid authorization request.", 400);
 	}
-	if (!authRequest.clientId) {
-		return authorizeErrorResponse("Invalid authorization request.", 400);
+	const authRequest = validateAuthRequest(parsedRequest);
+	if (!authRequest) {
+		return authorizeErrorResponse(
+			"Invalid authorization request. This server requires the " +
+				"authorization code flow with PKCE (S256 code challenge).",
+			400,
+		);
 	}
 	const client = await helpers.lookupClient(authRequest.clientId);
 	if (!client) {
@@ -301,18 +337,29 @@ export async function handleAuthorizePost<Env>(
 		);
 	}
 
-	const props: HevyGrantProps = { hevyApiKey: apiKey };
-	const { redirectTo } = await helpers.completeAuthorization({
-		request: authRequest,
-		userId: await deriveUserId(apiKey),
-		metadata: {},
-		scope: authRequest.scope,
-		props,
-	});
-	return new Response(null, {
-		status: 302,
-		headers: { Location: redirectTo, "Cache-Control": "no-store" },
-	});
+	try {
+		const props: HevyGrantProps = { hevyApiKey: apiKey };
+		const { redirectTo } = await helpers.completeAuthorization({
+			request: authRequest,
+			userId: await deriveUserId(apiKey),
+			metadata: {},
+			scope: authRequest.scope,
+			props,
+		});
+		return new Response(null, {
+			status: 302,
+			headers: { Location: redirectTo, "Cache-Control": "no-store" },
+		});
+	} catch (error) {
+		console.error("Cloudflare Worker failure", {
+			context: "oauth-complete-authorization",
+			...createSafeErrorDiagnostic(error),
+		});
+		return authorizeErrorResponse(
+			"Authorization could not be completed. Please try again.",
+			502,
+		);
+	}
 }
 
 function oauthUnauthorizedResponse(request: Request): Response {
@@ -337,7 +384,8 @@ async function handleAuthorizedMcpRequest<Env>(
 	ctx: object,
 	dependencies: HevyOAuthDependencies<Env>,
 ): Promise<Response> {
-	const props = (ctx as { props?: Partial<HevyGrantProps> }).props;
+	const props = (ctx as { props?: Partial<HevyGrantProps> } | null | undefined)
+		?.props;
 	const apiKey =
 		typeof props?.hevyApiKey === "string" ? props.hevyApiKey : null;
 	if (!apiKey) return oauthUnauthorizedResponse(request);

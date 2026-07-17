@@ -320,7 +320,17 @@ export function createWorkerFetchHandler(
 		env: WorkerEnv,
 		ctx?: object,
 	): Promise<Response> {
-		if (!isOAuthEnabled(env)) return legacyHandler(request, env);
+		if (!isOAuthEnabled(env)) {
+			if (env.OAUTH_KV != null) {
+				logWorkerFailure(
+					"oauth-kv-misconfigured",
+					new TypeError(
+						"OAUTH_KV binding is not a KV namespace; OAuth stays disabled",
+					),
+				);
+			}
+			return legacyHandler(request, env);
+		}
 
 		const url = new URL(request.url);
 		if (url.pathname === MCP_PATH) {

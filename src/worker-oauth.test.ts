@@ -81,7 +81,9 @@ describe("OAuth helpers", () => {
 		["3f2c8a9e-1b7d-4c6a-9e2f-abc123def456", false],
 		["plain-api-key", false],
 		["user:grant:secret", true],
-		["a:b", true],
+		["a:b", false],
+		["a:b:c:d", false],
+		["::secret", false],
 	])("classifies bearer value %j as OAuth token: %j", (token, expected) => {
 		expect(hasOAuthAccessTokenShape(token)).toBe(expected);
 	});
@@ -101,6 +103,33 @@ describe("OAuth helpers", () => {
 				JSON.stringify({
 					...sampleAuthRequest,
 					scope: [42],
+				}),
+			),
+		],
+		[
+			"missing PKCE code challenge",
+			btoa(
+				JSON.stringify({
+					...sampleAuthRequest,
+					codeChallenge: undefined,
+				}),
+			),
+		],
+		[
+			"plain PKCE method",
+			btoa(
+				JSON.stringify({
+					...sampleAuthRequest,
+					codeChallengeMethod: "plain",
+				}),
+			),
+		],
+		[
+			"implicit flow response type",
+			btoa(
+				JSON.stringify({
+					...sampleAuthRequest,
+					responseType: "token",
 				}),
 			),
 		],
@@ -135,6 +164,45 @@ describe("authorize endpoint", () => {
 		expect(body).toContain("Claude");
 		expect(body).toContain('name="oauth_request"');
 		expect(body).toContain('name="hevy_api_key"');
+	});
+
+	it("rejects authorization requests without a PKCE challenge", async () => {
+		const result = await handleAuthorizeGet(
+			new Request(
+				"https://worker.example/authorize?response_type=code&client_id=client-123",
+			),
+			createFakeHelpers({
+				parseAuthRequest: vi.fn().mockResolvedValue({
+					...sampleAuthRequest,
+					codeChallenge: undefined,
+				}),
+			}),
+		);
+		expect(result.status).toBe(400);
+		expect(await result.text()).toContain("PKCE");
+	});
+
+	it("returns a safe 502 when completing authorization fails", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const result = await handleAuthorizePost(
+			authorizePostRequest({
+				oauth_request: encodeAuthRequest(sampleAuthRequest),
+				hevy_api_key: "some-key",
+			}),
+			{},
+			createFakeHelpers({
+				completeAuthorization: vi
+					.fn()
+					.mockRejectedValue(new Error("kv exploded")),
+			}),
+			createDependencies(),
+		);
+		expect(result.status).toBe(502);
+		expect(await result.text()).toContain("could not be completed");
+		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
+		expect(diagnostic).toContain("oauth-complete-authorization");
+		expect(diagnostic).not.toContain("kv exploded");
+		stderrSpy.mockRestore();
 	});
 
 	it("rejects unknown clients", async () => {
@@ -363,6 +431,40 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(result.status).toBe(404);
 	});
 
+	it("falls back to legacy behavior when OAUTH_KV is not a KV namespace", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const { handler } = createHandlerWithEnv();
+		const env = { OAUTH_KV: "not-a-kv-namespace" };
+
+		const discovery = await handler(
+			new Request(
+				"https://worker.example/.well-known/oauth-authorization-server",
+			),
+			env,
+			{},
+		);
+		expect(discovery.status).toBe(404);
+
+		const legacy = await handler(
+			new Request("https://worker.example/mcp", {
+				method: "POST",
+				headers: {
+					accept: "application/json, text/event-stream",
+					"content-type": "application/json",
+					authorization: "Bearer raw-hevy-api-key",
+				},
+				body: JSON.stringify(initializeBody),
+			}),
+			env,
+			{},
+		);
+		expect(legacy.status).toBe(200);
+		expect(JSON.stringify(stderrSpy.mock.calls)).toContain(
+			"oauth-kv-misconfigured",
+		);
+		stderrSpy.mockRestore();
+	});
+
 	it("challenges unauthenticated /mcp requests with resource metadata", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(
@@ -531,6 +633,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(tokens.token_type.toLowerCase()).toBe("bearer");
 		expect(hasOAuthAccessTokenShape(tokens.access_token)).toBe(true);
 		expect(tokens.access_token).not.toContain("users-hevy-api-key");
+		expect(tokens.refresh_token).toBeTruthy();
 
 		// The Hevy API key is never stored in plaintext in KV.
 		const kvDump = JSON.stringify([...env.OAUTH_KV.store.entries()]);
@@ -562,7 +665,43 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		// The decrypted grant props resupply the original Hevy API key.
 		expect(requestClients).toEqual(["users-hevy-api-key"]);
 
-		// 6. A bogus OAuth-shaped token is rejected with a challenge.
+		// 6. The refresh-token grant issues a new working access token.
+		const refreshResult = await handler(
+			new Request("https://worker.example/token", {
+				method: "POST",
+				body: new URLSearchParams({
+					grant_type: "refresh_token",
+					refresh_token: tokens.refresh_token as string,
+					client_id: client.client_id,
+				}),
+			}),
+			env,
+			{},
+		);
+		expect(refreshResult.status).toBe(200);
+		const refreshed = (await refreshResult.json()) as {
+			access_token: string;
+		};
+		const refreshedMcpResult = await mcpHandler(
+			new Request("https://worker.example/mcp", {
+				method: "POST",
+				headers: {
+					accept: "application/json, text/event-stream",
+					"content-type": "application/json",
+					authorization: `Bearer ${refreshed.access_token}`,
+				},
+				body: JSON.stringify(initializeBody),
+			}),
+			env,
+			{},
+		);
+		expect(refreshedMcpResult.status).toBe(200);
+		expect(requestClients).toEqual([
+			"users-hevy-api-key",
+			"users-hevy-api-key",
+		]);
+
+		// 7. A bogus OAuth-shaped token is rejected with a challenge.
 		const rejected = await mcpHandler(
 			new Request("https://worker.example/mcp", {
 				method: "POST",
