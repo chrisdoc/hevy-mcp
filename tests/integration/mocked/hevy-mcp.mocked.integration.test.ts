@@ -14,12 +14,9 @@ import {
 	vi,
 } from "vitest";
 import { registerHevyResources } from "../../../src/resources/hevy.js";
-import { registerBodyMeasurementTools } from "../../../src/tools/body-measurements.js";
-import { registerFolderTools } from "../../../src/tools/folders.js";
-import { registerRoutineTools } from "../../../src/tools/routines.js";
-import { registerTemplateTools } from "../../../src/tools/templates.js";
-import { registerUserTools } from "../../../src/tools/user.js";
-import { registerWorkoutTools } from "../../../src/tools/workouts.js";
+import { registerHevyTools } from "../../../src/tools/register.js";
+import { createToolRuntime } from "../../../src/tools/tool-runtime.js";
+import { createExerciseTemplateCatalog } from "../../../src/utils/exercise-template-catalog.js";
 import { createClient } from "../../../src/utils/hevyClient.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
@@ -83,14 +80,13 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 
 		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
+		const runtime = createToolRuntime({
+			client: hevyClient,
+			catalog: createExerciseTemplateCatalog(hevyClient),
+		});
 
-		registerWorkoutTools(server, hevyClient);
-		registerRoutineTools(server, hevyClient);
-		registerTemplateTools(server, hevyClient);
-		registerFolderTools(server, hevyClient);
-		registerUserTools(server, hevyClient);
-		registerBodyMeasurementTools(server, hevyClient);
-		registerHevyResources(server, hevyClient);
+		registerHevyTools(server, runtime);
+		registerHevyResources(server, runtime);
 
 		client = new Client({
 			name: "hevy-mcp-mocked-test-client",

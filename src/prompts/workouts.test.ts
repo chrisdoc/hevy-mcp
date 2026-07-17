@@ -72,7 +72,7 @@ describe("workout prompts", () => {
 		]);
 		expect(result.messages[0]?.content).toEqual(
 			expect.objectContaining({
-				text: expect.stringContaining("pageSize=10"),
+				text: expect.stringContaining("get-training-summary"),
 			}),
 		);
 	});

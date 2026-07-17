@@ -6,7 +6,13 @@
 		"**/dist",
 		"**/src/generated",
 		"**/coverage",
-		"**/.agents"
+		"**/.agents",
+		"**/.entire",
+		"**/.factory",
+		"**/.gemini",
+		"**/.omp",
+		"**/.opencode",
+		"**/.pi"
 	],
 	"categories": {
 		"correctness": "error"

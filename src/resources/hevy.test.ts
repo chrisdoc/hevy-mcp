@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/unbound-method */
 import type {
 	McpServer,
 	ReadResourceCallback,
@@ -8,17 +9,39 @@ import type {
 	ExerciseTemplate,
 	RoutineFolder,
 } from "../generated/client/types/index.js";
-import { registerTemplateTools } from "../tools/templates.js";
+import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	formatExerciseTemplate,
 	formatRoutineFolder,
 } from "../utils/response-formatter.js";
-import { createExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import {
+	createExerciseTemplateCatalog,
+	type ExerciseTemplateCatalog,
+} from "../utils/exercise-template-catalog.js";
+import { createToolRuntime, type ToolRuntime } from "../tools/tool-runtime.js";
+import { registerToolDefinition } from "../tools/define-tool.js";
+import { templateToolDefinitions } from "../tools/templates.js";
 import { registerHevyResources } from "./hevy.js";
 
-type HevyClient = ReturnType<
-	typeof import("../utils/hevyClientKubb.js").createClient
->;
+function createTestRuntime(
+	client: HevyClient | null,
+	catalog?: ExerciseTemplateCatalog,
+) {
+	return createToolRuntime({
+		client,
+		catalog:
+			catalog ??
+			(client
+				? createExerciseTemplateCatalog(client)
+				: ({} as ExerciseTemplateCatalog)),
+	});
+}
+
+function registerTemplateDefinitions(server: McpServer, runtime: ToolRuntime) {
+	for (const definition of templateToolDefinitions) {
+		registerToolDefinition(server, runtime, definition);
+	}
+}
 
 function createMockServer() {
 	const registerResource = vi.fn();
@@ -84,7 +107,7 @@ const benchTemplate: ExerciseTemplate = {
 describe("registerHevyResources", () => {
 	it("registers all four static JSON resources", () => {
 		const { registerResource, server } = createMockServer();
-		registerHevyResources(server, null);
+		registerHevyResources(server, createTestRuntime(null));
 
 		expect(registerResource).toHaveBeenCalledTimes(4);
 		expect(
@@ -129,7 +152,7 @@ describe("registerHevyResources", () => {
 			}),
 			getWorkoutCount: vi.fn().mockResolvedValue({ workout_count: 42 }),
 		} as unknown as HevyClient;
-		registerHevyResources(server, hevyClient);
+		registerHevyResources(server, createTestRuntime(hevyClient));
 
 		const userRegistration = getResourceRegistration(
 			registerResource,
@@ -199,7 +222,7 @@ describe("registerHevyResources", () => {
 					routine_folders: [secondFolder],
 				}),
 		} as unknown as HevyClient;
-		registerHevyResources(server, hevyClient);
+		registerHevyResources(server, createTestRuntime(hevyClient));
 
 		const registration = getResourceRegistration(
 			registerResource,
@@ -212,11 +235,11 @@ describe("registerHevyResources", () => {
 			sendRequest: vi.fn(),
 		});
 
-		expect(hevyClient.getRoutineFolders).toHaveBeenNthCalledWith(1, {
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(1, {
 			page: 1,
 			pageSize: 10,
 		});
-		expect(hevyClient.getRoutineFolders).toHaveBeenNthCalledWith(2, {
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(2, {
 			page: 2,
 			pageSize: 10,
 		});
@@ -239,9 +262,10 @@ describe("registerHevyResources", () => {
 			page_count: 0,
 			routine_folders: [folder],
 		});
-		registerHevyResources(server, {
-			getRoutineFolders,
-		} as unknown as HevyClient);
+		registerHevyResources(
+			server,
+			createTestRuntime({ getRoutineFolders } as unknown as HevyClient),
+		);
 		const registration = getResourceRegistration(
 			registerResource,
 			"routine-folders",
@@ -258,6 +282,29 @@ describe("registerHevyResources", () => {
 		expect(parseJsonContent(result).data).toEqual([
 			formatRoutineFolder(folder),
 		]);
+	});
+
+	it("returns an empty folder resource when the API omits the page", async () => {
+		const { registerResource, server } = createMockServer();
+		const getRoutineFolders = vi.fn().mockResolvedValue(undefined);
+		registerHevyResources(
+			server,
+			createTestRuntime({ getRoutineFolders } as unknown as HevyClient),
+		);
+		const registration = getResourceRegistration(
+			registerResource,
+			"routine-folders",
+		);
+
+		const result = await registration.handler(new URL(registration.uri), {
+			signal: AbortSignal.timeout(1000),
+			requestId: 8,
+			sendNotification: vi.fn(),
+			sendRequest: vi.fn(),
+		});
+
+		expect(getRoutineFolders).toHaveBeenCalledOnce();
+		expect(parseJsonContent(result).data).toEqual([]);
 	});
 
 	it("shares the template catalog cache and in-flight fetch with search", async () => {
@@ -277,9 +324,10 @@ describe("registerHevyResources", () => {
 		const hevyClient = {
 			getExerciseTemplates: vi.fn().mockReturnValue(pendingCatalog),
 		} as unknown as HevyClient;
-		const catalog = createExerciseTemplateCatalog();
-		registerHevyResources(server, hevyClient, catalog);
-		registerTemplateTools(server, hevyClient, { catalog });
+		const catalog = createExerciseTemplateCatalog(hevyClient);
+		const runtime = createTestRuntime(hevyClient, catalog);
+		registerHevyResources(server, runtime);
+		registerTemplateDefinitions(server, runtime);
 
 		const registration = getResourceRegistration(
 			registerResource,
@@ -299,7 +347,7 @@ describe("registerHevyResources", () => {
 			refresh: false,
 		});
 
-		expect(hevyClient.getExerciseTemplates).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(1);
 		resolveCatalog({
 			page: 1,
 			page_count: 1,
@@ -320,7 +368,7 @@ describe("registerHevyResources", () => {
 
 	it("propagates initialization and API failures", async () => {
 		const { registerResource, server } = createMockServer();
-		registerHevyResources(server, null);
+		registerHevyResources(server, createTestRuntime(null));
 		const userRegistration = getResourceRegistration(
 			registerResource,
 			"user-profile",
@@ -336,9 +384,12 @@ describe("registerHevyResources", () => {
 
 		const apiFailure = new Error("Hevy API unavailable");
 		const failedServer = createMockServer();
-		registerHevyResources(failedServer.server, {
-			getWorkoutCount: vi.fn().mockRejectedValue(apiFailure),
-		} as unknown as HevyClient);
+		registerHevyResources(
+			failedServer.server,
+			createTestRuntime({
+				getWorkoutCount: vi.fn().mockRejectedValue(apiFailure),
+			} as unknown as HevyClient),
+		);
 		const countRegistration = getResourceRegistration(
 			failedServer.registerResource,
 			"workout-count",

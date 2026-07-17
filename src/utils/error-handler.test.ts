@@ -32,6 +32,16 @@ describe("createErrorResponse", () => {
 		expect(JSON.stringify(result)).not.toContain("secret-ordinary-error");
 	});
 
+	it("classifies the original error message when the safe message is generic", () => {
+		const result = createErrorResponse(
+			new Error("request validation failed"),
+			"test-tool",
+		);
+		expect(result.errorContext).toMatchObject({
+			errorType: ErrorType.VALIDATION_ERROR,
+		});
+	});
+
 	it.each([
 		[401, "The Hevy API key is invalid or has expired"],
 		[404, "The requested resource was not found"],
