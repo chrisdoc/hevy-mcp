@@ -1,3 +1,11 @@
+## 3.2.1
+
+### Patch Changes
+
+- [#681](https://github.com/chrisdoc/hevy-mcp/pull/681) [`9e62d02`](https://github.com/chrisdoc/hevy-mcp/commit/9e62d028d1bc872892a447e1e7cfc9ed7e45ed2c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - promote the hosted Cloudflare MCP endpoint in the README
+
+- [#679](https://github.com/chrisdoc/hevy-mcp/pull/679) [`d232da2`](https://github.com/chrisdoc/hevy-mcp/commit/d232da27da688c225f7cd04fe2ba990831ad5f4c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - update readme
+
 ## 3.2.0
 
 ### Minor Changes
