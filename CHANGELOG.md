@@ -1,3 +1,9 @@
+## 3.2.0
+
+### Minor Changes
+
+- [#672](https://github.com/chrisdoc/hevy-mcp/pull/672) [`79a9f84`](https://github.com/chrisdoc/hevy-mcp/commit/79a9f8420f16127f6174b70f9017a3e233e410fb) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add composite training workflows and compact routine discovery
+
 ## 3.1.1
 
 ### Patch Changes
