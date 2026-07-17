@@ -9,9 +9,10 @@
 [![Build and Test](https://github.com/chrisdoc/hevy-mcp/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/chrisdoc/hevy-mcp/actions/workflows/build-and-test.yml)
 [![Codecov](https://codecov.io/gh/chrisdoc/hevy-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/chrisdoc/hevy-mcp)
 [![GitHub stars](https://img.shields.io/github/stars/chrisdoc/hevy-mcp?style=flat)](https://github.com/chrisdoc/hevy-mcp/stargazers)
+[![Hosted on Cloudflare](https://img.shields.io/badge/Hosted_on-Cloudflare-F38020?logo=cloudflare&logoColor=white)](#hosted-cloudflare-endpoint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-[Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Quick start](#quick-start) · [Explore all 25 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
 
 </div>
 
@@ -42,10 +43,12 @@ training question with evidence from the user's workout history.
   custom exercises, and body measurements.
 - **Search without huge responses:** discover routines and exercise templates with
   compact, AI-friendly results.
-- **Use your preferred MCP client:** run it with Codex, Claude Desktop, Cursor,
-  or any client that supports stdio MCP servers.
-- **Start without installing a package globally:** launch the latest release with
-  `npx`, `bunx`, or the official Docker image.
+- **Connect from your preferred MCP client:** use the hosted Streamable HTTP
+  endpoint or run locally with Codex, Claude Desktop, Cursor, and other clients.
+- **Start without installing anything:** connect directly to the production
+  Cloudflare Worker—no Node.js, package download, or Docker container required.
+- **Keep local control when you want it:** run the same server with `npx`, `bunx`,
+  or the official Docker image.
 
 Try asking:
 
@@ -69,13 +72,68 @@ requires a Hevy PRO subscription.
 
 ### 2. Connect `hevy-mcp` to your client
 
-Choose the client you use. The local server communicates over stdio and sends
-requests directly to the Hevy API.
+The hosted Cloudflare endpoint is the fastest way to start. It runs remotely,
+so your client does not need Node.js, Bun, Docker, or a local server process.
 
-#### Codex
+#### Connect to the hosted endpoint
+
+Production URL:
+
+```text
+https://hevy.chrisdoc.dev/mcp
+```
+
+The endpoint uses Streamable HTTP. Send your Hevy API key as a bearer token on
+every request.
+
+##### Codex
 
 Codex CLI, the Codex desktop app, and the IDE extension share the same MCP
-configuration. Add the server from a terminal:
+configuration. Make your Hevy API key available in the environment that starts
+Codex, then add the hosted server:
+
+```bash
+export HEVY_API_KEY=your-hevy-api-key
+codex mcp add hevy \
+  --url https://hevy.chrisdoc.dev/mcp \
+  --bearer-token-env-var HEVY_API_KEY
+```
+
+Codex stores the environment variable name, not the key itself, in its MCP
+configuration. Restart Codex or begin a new session, then run `codex mcp list`
+to verify the server is configured.
+
+##### Other Streamable HTTP clients
+
+Clients that accept a remote MCP URL and fixed headers commonly use this shape:
+
+```json
+{
+	"mcpServers": {
+		"hevy": {
+			"url": "https://hevy.chrisdoc.dev/mcp",
+			"headers": {
+				"Authorization": "Bearer your-hevy-api-key"
+			}
+		}
+	}
+}
+```
+
+Exact configuration keys vary by client. The hosted server requires support for
+Streamable HTTP and a fixed `Authorization` header.
+
+> [!IMPORTANT]
+> Treat the bearer value like a password. The Worker validates it with Hevy for
+> each request, does not store it, and forwards it to Hevy only as the required
+> `api-key` header.
+
+#### Run locally instead
+
+Choose local stdio if you prefer to run the server on your own machine or your
+client cannot attach a fixed authorization header to remote MCP requests.
+
+##### Codex
 
 ```bash
 codex mcp add hevy \
@@ -83,11 +141,7 @@ codex mcp add hevy \
   -- npx -y hevy-mcp
 ```
 
-This stores the key in your user-local Codex MCP configuration. Then restart
-Codex or begin a new session. Run `codex mcp list` to verify that the server is
-configured.
-
-#### Claude Desktop or Cursor
+##### Claude Desktop or Cursor
 
 Add this `mcpServers` entry to your client configuration:
 
@@ -105,7 +159,7 @@ Add this `mcpServers` entry to your client configuration:
 }
 ```
 
-Common configuration locations:
+Common local configuration locations:
 
 - **Claude Desktop on macOS:**
   `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -115,7 +169,7 @@ Common configuration locations:
 
 Restart or reconnect the client after saving the file.
 
-#### Any stdio MCP client
+##### Any stdio MCP client
 
 Configure your client to launch this command with `HEVY_API_KEY` in the child
 process environment:
@@ -124,7 +178,8 @@ process environment:
 npx -y hevy-mcp
 ```
 
-`npx` requires Node.js 20 or newer.
+`npx` requires Node.js 20 or newer. Restart or reconnect your client after
+saving its configuration.
 
 <details>
 <summary><strong>Use bunx instead</strong></summary>
@@ -207,13 +262,17 @@ supports tool confirmations.
 ## How it works
 
 ```text
-Your AI assistant  →  MCP over stdio  →  hevy-mcp  →  Hevy API
+Hosted:  Your AI assistant  →  Streamable HTTP  →  Cloudflare Worker  →  Hevy API
+Local:   Your AI assistant  →  MCP over stdio   →  local hevy-mcp     →  Hevy API
 ```
 
-The local server runs on your machine. Your MCP client provides the API key to
-the child process, and `hevy-mcp` uses it only to authenticate requests to Hevy.
-Read tools retrieve data; mutation tools create or replace data only when your
-assistant calls them.
+The hosted endpoint creates a fresh MCP server and Hevy client for each request.
+It validates the supplied key with Hevy, keeps no shared user session, and does
+not persist the key. The local server follows the same tool contract but runs on
+your machine and receives the key through its child-process environment.
+
+In either mode, read tools retrieve data; mutation tools create or replace data
+only when your assistant calls them.
 
 ## Guided prompts
 
@@ -276,16 +335,20 @@ corresponding delete tools.
 | `exercise-templates` | `hevy://exercise-templates` | Full formatted exercise template catalog.    |
 | `routine-folders`    | `hevy://routine-folders`    | Full formatted list of Hevy routine folders. |
 
-## Hosted and self-hosted HTTP
+## Hosted Cloudflare endpoint
 
-> [!WARNING]
-> The hosted endpoint at `https://hevy.chrisdoc.dev/mcp` is temporarily
-> unavailable because an interactive Cloudflare challenge prevents non-browser
-> MCP clients from connecting. Use local stdio until the route is restored.
+The production MCP server is live at:
 
-When available, the hosted endpoint uses stateless **Streamable HTTP** at
-`POST /mcp`. Clients must send their Hevy API key as a fixed authorization
-header:
+```text
+https://hevy.chrisdoc.dev/mcp
+```
+
+It is the quickest way to use `hevy-mcp`: there is nothing to install or keep
+running locally, and it exposes the same 25 tools as the npm package and Docker
+image.
+
+The Cloudflare Worker uses stateless **Streamable HTTP** at `POST /mcp`.
+Clients must send their Hevy API key as a fixed authorization header:
 
 ```json
 {
@@ -300,10 +363,15 @@ header:
 }
 ```
 
-The bearer value is a custom Hevy credential, not OAuth. The endpoint does not
-expose legacy SSE or a `GET` event stream. Clients that require OAuth discovery,
-dynamic registration, token refresh, or legacy SSE are not compatible unless
-they can send the fixed custom header above.
+The bearer value is your Hevy API key, not an OAuth token. The Worker validates
+the key with Hevy on each request, does not store it, and forwards it upstream
+only as Hevy's required `api-key` header.
+
+The endpoint does not expose legacy SSE or a `GET` event stream. Clients that
+require OAuth discovery, dynamic registration, token refresh, or legacy SSE are
+not compatible unless they can send the fixed custom header above.
+
+### Self-host the Worker
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) to deploy the Cloudflare Worker for
 self-hosted Streamable HTTP.
@@ -341,8 +409,9 @@ server-scoped in-memory catalog cache:
 
 - Keep `HEVY_API_KEY` out of source control, URLs, logs, and screenshots.
 - Local clients provide the key through the child process environment.
-- The hosted Worker validates each key with Hevy, does not store it, and sends
-  it upstream only as Hevy's `api-key` header.
+- Hosted clients send the key only in the `Authorization: Bearer` header. The
+  Worker validates each key with Hevy, does not store it, and sends it upstream
+  only as Hevy's `api-key` header.
 - Browser requests to a self-hosted Worker must exactly match an origin in
   `MCP_ALLOWED_ORIGINS`; wildcard CORS is intentionally unsupported.
 - Create operations can produce duplicates when retried. Update operations
@@ -356,8 +425,10 @@ server-scoped in-memory catalog cache:
   `npx -y hevy-mcp --version` in a terminal.
 - **Codex cannot see the server:** run `codex mcp list`, then start a new Codex
   session after confirming the `hevy` entry exists.
-- **Authentication fails:** confirm the key is active, belongs to a Hevy PRO
-  account, and is available to the MCP child process as `HEVY_API_KEY`.
+- **Hosted authentication fails:** confirm the key is active, belongs to a Hevy
+  PRO account, and is sent as `Authorization: Bearer <HEVY_API_KEY>`.
+- **Local authentication fails:** confirm the key is active and available to the
+  MCP child process as `HEVY_API_KEY`.
 - **Need diagnostics:** set `HEVY_MCP_DEBUG=1`. Diagnostic output goes to stderr
   and does not interfere with MCP messages on stdout.
 
