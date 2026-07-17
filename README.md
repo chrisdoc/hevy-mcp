@@ -171,7 +171,7 @@ These server-provided prompts coordinate multiple tools for common workflows:
 
 ## Capabilities
 
-`hevy-mcp` registers 23 tools:
+`hevy-mcp` registers 25 tools:
 
 | Category                   | Tool                        | Description                                                           |
 | -------------------------- | --------------------------- | --------------------------------------------------------------------- |
@@ -181,10 +181,12 @@ These server-provided prompts coordinate multiple tools for common workflows:
 | Workouts                   | `get-workout-events`        | List workout update and delete events since a timestamp.              |
 | Workouts                   | `create-workout`            | Create a completed workout in Hevy.                                   |
 | Workouts                   | `update-workout`            | Replace an existing workout by ID.                                    |
+| Workouts and measurements  | `get-training-summary`      | Summarize recent workout activity and body-measurement trends.        |
 | Routines                   | `get-routines`              | List custom and default workout routines.                             |
 | Routines                   | `get-routine`               | Get one routine and its exercise configuration by ID.                 |
 | Routines                   | `create-routine`            | Create a reusable workout routine.                                    |
 | Routines                   | `update-routine`            | Replace an existing routine's content.                                |
+| Routines                   | `search-routines`           | Find routines by title with compact metadata.                         |
 | Routine folders            | `get-routine-folders`       | List default and custom routine folders.                              |
 | Routine folders            | `get-routine-folder`        | Get one routine folder's metadata by ID.                              |
 | Routine folders            | `create-routine-folder`     | Create a routine folder.                                              |
@@ -228,8 +230,8 @@ corresponding delete tools.
 
 The local executable does **not** support `PORT`, `HEVY_MCP_TRANSPORT`, or
 `--transport`. It always uses stdio and does not provide local HTTP or SSE
-behavior. Use the hosted endpoint after its route is restored, or deploy the
-separate Cloudflare Worker when Streamable HTTP is required now.
+behavior. Use the hosted endpoint above, or deploy the separate Cloudflare
+Worker when self-hosted Streamable HTTP is required.
 
 ## Cache behavior
 
