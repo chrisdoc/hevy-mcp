@@ -113,8 +113,11 @@ const HTML_RESPONSE_HEADERS: Record<string, string> = {
 	"Cache-Control": "no-store",
 	"X-Frame-Options": "DENY",
 	"Referrer-Policy": "no-referrer",
+	// No form-action directive: Chrome applies it to the redirect that
+	// follows the form submission, which would block the 302 back to the
+	// OAuth client's redirect_uri (e.g. claude.ai) after approval.
 	"Content-Security-Policy":
-		"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; " +
+		"default-src 'none'; style-src 'unsafe-inline'; " +
 		"frame-ancestors 'none'; base-uri 'none'",
 };
 
