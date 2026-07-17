@@ -1,12 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it, vi } from "vitest";
-import { registerBodyMeasurementTools } from "./body-measurements.js";
-import { registerFolderTools } from "./folders.js";
-import { registerRoutineTools } from "./routines.js";
-import { registerTemplateTools } from "./templates.js";
-import { registerUserTools } from "./user.js";
-import { registerWorkoutTools } from "./workouts.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import { createToolRuntime } from "./tool-runtime.js";
+import { registerHevyTools } from "./register.js";
 
 const READ_ONLY_TOOLS = [
 	"get-workouts",
@@ -24,6 +21,8 @@ const READ_ONLY_TOOLS = [
 	"get-body-measurements",
 	"get-body-measurement",
 	"get-user-info",
+	"get-training-summary",
+	"search-routines",
 ] as const;
 
 const CREATE_TOOLS = [
@@ -46,12 +45,11 @@ function registerAllTools() {
 	const tool = vi.fn();
 	const registerTool = vi.fn();
 	const server = { tool, registerTool } as unknown as McpServer;
-	registerWorkoutTools(server, null);
-	registerRoutineTools(server, null);
-	registerTemplateTools(server, null);
-	registerFolderTools(server, null);
-	registerBodyMeasurementTools(server, null);
-	registerUserTools(server, null);
+	const runtime = createToolRuntime({
+		client: null,
+		catalog: {} as ExerciseTemplateCatalog,
+	});
+	registerHevyTools(server, runtime);
 	return { tool, registerTool };
 }
 

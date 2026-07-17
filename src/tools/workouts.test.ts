@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -7,7 +8,20 @@ import {
 	formatWorkout,
 	workoutEventsResponse,
 } from "../utils/response-formatter.js";
-import { registerWorkoutTools } from "./workouts.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import { createToolRuntime } from "./tool-runtime.js";
+import { registerToolDefinition } from "./define-tool.js";
+import { workoutToolDefinitions } from "./workouts.js";
+
+function registerWorkoutTools(server: McpServer, client: HevyClient | null) {
+	const runtime = createToolRuntime({
+		client,
+		catalog: {} as ExerciseTemplateCatalog,
+	});
+	for (const definition of workoutToolDefinitions) {
+		registerToolDefinition(server, runtime, definition);
+	}
+}
 
 function createMockServer() {
 	const tool = vi.fn();
@@ -43,9 +57,32 @@ describe("registerWorkoutTools", () => {
 			"update-workout",
 		];
 
+		const toolArgs: Record<string, Record<string, unknown>> = {
+			"get-workouts": { page: 1, pageSize: 5 },
+			"get-workout": { workoutId: "workout-id" },
+			"get-workout-count": {},
+			"get-workout-events": {
+				page: 1,
+				pageSize: 5,
+				since: "1970-01-01T00:00:00Z",
+			},
+			"create-workout": {
+				title: "Workout",
+				startTime: "2025-01-01T00:00:00Z",
+				endTime: "2025-01-01T01:00:00Z",
+				exercises: [],
+			},
+			"update-workout": {
+				workoutId: "workout-id",
+				title: "Workout",
+				startTime: "2025-01-01T00:00:00Z",
+				endTime: "2025-01-01T01:00:00Z",
+				exercises: [],
+			},
+		};
 		for (const name of toolNames) {
 			const { handler } = getToolRegistration(tool, name);
-			const response = await handler({});
+			const response = await handler(toolArgs[name] ?? {});
 			expect(response).toMatchObject({
 				isError: true,
 				content: [
@@ -77,7 +114,7 @@ describe("registerWorkoutTools", () => {
 			since: "2025-01-01T00:00:00Z",
 		});
 
-		expect(hevyClient.getWorkoutEvents).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.getWorkoutEvents)).toHaveBeenCalledWith({
 			page: 1,
 			pageSize: 5,
 			since: "2025-01-01T00:00:00Z",
@@ -114,7 +151,7 @@ describe("registerWorkoutTools", () => {
 
 		const response = await handler({ page: 1, pageSize: 5 });
 
-		expect(hevyClient.getWorkouts).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.getWorkouts)).toHaveBeenCalledWith({
 			page: 1,
 			pageSize: 5,
 		});
@@ -275,7 +312,7 @@ describe("registerWorkoutTools", () => {
 		const { handler } = getToolRegistration(tool, "get-workout");
 
 		const response = await handler({ workoutId: "missing-id" });
-		expect(hevyClient.getWorkout).toHaveBeenCalledWith("missing-id");
+		expect(vi.mocked(hevyClient.getWorkout)).toHaveBeenCalledWith("missing-id");
 		expect(response.content[0]?.text).toBe(
 			"Workout with ID missing-id not found",
 		);
@@ -292,7 +329,7 @@ describe("registerWorkoutTools", () => {
 		const { handler } = getToolRegistration(tool, "get-workout-count");
 
 		const response = await handler({});
-		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(hevyClient.getWorkoutCount)).toHaveBeenCalledTimes(1);
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual({ count: 42 });
@@ -309,7 +346,7 @@ describe("registerWorkoutTools", () => {
 		const { handler } = getToolRegistration(tool, "get-workout-count");
 
 		const response = await handler({});
-		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(hevyClient.getWorkoutCount)).toHaveBeenCalledTimes(1);
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual({ count: 0 });
@@ -325,7 +362,7 @@ describe("registerWorkoutTools", () => {
 		const { handler } = getToolRegistration(tool, "get-workout-count");
 
 		const response = await handler({});
-		expect(hevyClient.getWorkoutCount).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(hevyClient.getWorkoutCount)).toHaveBeenCalledTimes(1);
 
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual({ count: 0 });
@@ -378,7 +415,7 @@ describe("registerWorkoutTools", () => {
 
 		const response = await handler(args as Record<string, unknown>);
 
-		expect(hevyClient.createWorkout).toHaveBeenCalledWith({
+		expect(vi.mocked(hevyClient.createWorkout)).toHaveBeenCalledWith({
 			workout: {
 				title: "New Workout",
 				description: null,

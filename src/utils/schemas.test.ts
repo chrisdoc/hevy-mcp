@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { calendarDate } from "../tools/input-schemas.js";
 import {
 	equipmentCategoryEnum,
 	exerciseTypeEnum,
 	muscleGroupEnum,
 	setTypeEnum,
+	utcSecondTimestamp,
 	zNullableInt,
 	zNullableNumber,
 	zOptionalRepRange,
@@ -41,5 +43,16 @@ describe("shared tool schemas", () => {
 		expect(muscleGroupEnum.parse("chest")).toBe("chest");
 		expect(exerciseTypeEnum.parse("weight_reps")).toBe("weight_reps");
 		expect(equipmentCategoryEnum.parse("dumbbell")).toBe("dumbbell");
+	});
+
+	it("rejects calendar rollovers and non-UTC timestamp variants", () => {
+		expect(calendarDate.safeParse("2026-02-29").success).toBe(false);
+		expect(calendarDate.safeParse("2026-07-16").success).toBe(true);
+		expect(utcSecondTimestamp.safeParse("2026-02-29T12:00:00Z").success).toBe(
+			false,
+		);
+		expect(
+			utcSecondTimestamp.safeParse("2026-07-16T12:00:00+00:00").success,
+		).toBe(false);
 	});
 });

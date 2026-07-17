@@ -1,4 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as stdioModule from "@modelcontextprotocol/sdk/server/stdio.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import createServer, {
@@ -99,16 +98,6 @@ vi.mock("./utils/metrics.js", () => ({
 	serverStartups: { add: vi.fn() },
 }));
 
-vi.mock("./tools/user.js", () => ({
-	registerUserTools: vi.fn((server: McpServer) => {
-		testDoubles.directRegisterToolCalls += 1;
-		server.registerTool("get-user-info", {}, vi.fn());
-		if (testDoubles.invokeProxyFallback) {
-			server.isConnected();
-		}
-	}),
-}));
-
 vi.mock("@opentelemetry/api", () => ({
 	SpanStatusCode: { OK: 1, ERROR: 2 },
 	trace: { getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })) },
@@ -168,6 +157,13 @@ describe("Server entry", () => {
 		testDoubles.tool.mockImplementation(
 			function (this: { registerTool: () => void }) {
 				this.registerTool();
+			},
+		);
+		testDoubles.registerTool.mockImplementation(
+			function (this: { isConnected: () => void }) {
+				if (testDoubles.invokeProxyFallback) {
+					this.isConnected();
+				}
 			},
 		);
 		const anyStdioModule = stdioModule as { __transports?: unknown[] };
@@ -273,9 +269,8 @@ describe("Server entry", () => {
 
 		await createServer({ config: { apiKey: "test-key" } });
 
-		expect(testDoubles.isConnected).toHaveBeenCalledTimes(1);
+		expect(testDoubles.isConnected).toHaveBeenCalledTimes(25);
 	});
-
 	it("exports createServer as both default and named exports", async () => {
 		expect(namedCreateServer).toBe(createServer);
 		const server = await namedCreateServer({ config: { apiKey: "named-key" } });

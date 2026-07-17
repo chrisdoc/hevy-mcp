@@ -1,7 +1,23 @@
+/* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { HevyClient } from "../utils/hevyClient.js";
-import { registerUserTools } from "./user.js";
+import { registerToolDefinition } from "./define-tool.js";
+import { createToolRuntime } from "./tool-runtime.js";
+import { userToolDefinitions } from "./user.js";
+
+function registerUserDefinition(server: McpServer, client: HevyClient | null) {
+	const catalog: ExerciseTemplateCatalog = {
+		get: vi.fn(),
+		reset: vi.fn(),
+	};
+	registerToolDefinition(
+		server,
+		createToolRuntime({ client, catalog }),
+		userToolDefinitions[0],
+	);
+}
 
 function createMockServer() {
 	const tool = vi.fn();
@@ -23,10 +39,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	return { outputSchema: config?.outputSchema, handler };
 }
 
-describe("registerUserTools", () => {
+describe("userToolDefinitions", () => {
 	it("returns error response when Hevy client is not initialized", async () => {
 		const { server, tool } = createMockServer();
-		registerUserTools(server, null);
+		registerUserDefinition(server, null);
 
 		const { handler } = getToolRegistration(tool, "get-user-info");
 		const response = await handler({});
@@ -49,12 +65,12 @@ describe("registerUserTools", () => {
 			getUserInfo: vi.fn().mockRejectedValue(new Error("User API timeout")),
 		} as unknown as HevyClient;
 
-		registerUserTools(server, hevyClient);
+		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
 
 		const response = await handler({});
 
-		expect(hevyClient.getUserInfo).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(hevyClient.getUserInfo)).toHaveBeenCalledTimes(1);
 		expect(response).toMatchObject({
 			isError: true,
 			content: [
@@ -77,12 +93,12 @@ describe("registerUserTools", () => {
 			getUserInfo: vi.fn().mockResolvedValue({ data: userInfo }),
 		} as unknown as HevyClient;
 
-		registerUserTools(server, hevyClient);
+		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
 
 		const response = await handler({});
 
-		expect(hevyClient.getUserInfo).toHaveBeenCalled();
+		expect(vi.mocked(hevyClient.getUserInfo)).toHaveBeenCalled();
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(userInfo);
 		expect(response.structuredContent).toEqual({ user: userInfo });
@@ -94,7 +110,7 @@ describe("registerUserTools", () => {
 			getUserInfo: vi.fn().mockResolvedValue({}),
 		} as unknown as HevyClient;
 
-		registerUserTools(server, hevyClient);
+		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
 
 		const response = await handler({});

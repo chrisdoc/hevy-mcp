@@ -2,7 +2,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools } from "./register.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 const EXPECTED_TOOL_NAMES = [
 	"get-workouts",
@@ -28,6 +30,8 @@ const EXPECTED_TOOL_NAMES = [
 	"create-body-measurement",
 	"update-body-measurement",
 	"get-user-info",
+	"get-training-summary",
+	"search-routines",
 ] as const;
 
 describe("registerHevyTools", () => {
@@ -36,7 +40,17 @@ describe("registerHevyTools", () => {
 
 	beforeEach(async () => {
 		server = new McpServer({ name: "tool-list-test", version: "1.0.0" });
-		registerHevyTools(server, null);
+		const catalog: ExerciseTemplateCatalog = {
+			get: async () => [],
+			reset: () => {},
+		};
+		registerHevyTools(
+			server,
+			createToolRuntime({
+				client: null,
+				catalog,
+			}),
+		);
 		client = new Client({ name: "tool-list-client", version: "1.0.0" });
 
 		const [clientTransport, serverTransport] =
@@ -56,5 +70,12 @@ describe("registerHevyTools", () => {
 
 		expect(tools).toHaveLength(EXPECTED_TOOL_NAMES.length);
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
+	});
+
+	it("advertises output schemas for read tools", async () => {
+		const { tools } = await client.listTools();
+		const summary = tools.find(({ name }) => name === "get-training-summary");
+
+		expect(summary?.outputSchema).toBeDefined();
 	});
 });

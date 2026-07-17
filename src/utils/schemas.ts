@@ -101,3 +101,14 @@ const equipmentCategoryValues = [
 	"other",
 ] as const;
 export const equipmentCategoryEnum = z.enum(equipmentCategoryValues);
+const UTC_TIMESTAMP_MESSAGE = "Must use the UTC format YYYY-MM-DDTHH:mm:ssZ";
+export const utcSecondTimestamp = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, UTC_TIMESTAMP_MESSAGE)
+	.refine((value) => {
+		const parsed = new Date(value);
+		return (
+			!Number.isNaN(parsed.getTime()) &&
+			parsed.toISOString().replace(".000Z", "Z") === value
+		);
+	}, UTC_TIMESTAMP_MESSAGE);

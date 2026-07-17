@@ -18,6 +18,12 @@
 		"**/src/generated",
 		"**/coverage",
 		"**/CHANGELOG.md",
-		"**/.agents"
+		"**/.agents",
+		"**/.entire",
+		"**/.factory",
+		"**/.gemini",
+		"**/.omp",
+		"**/.opencode",
+		"**/.pi"
 	]
 }
