@@ -5,7 +5,7 @@ import {
 	tracer,
 	serviceName,
 	serviceVersion,
-	setCurrentUserId,
+	setCurrentUserHash,
 } from "./utils/telemetry.js";
 import { serverStartups } from "./utils/metrics.js";
 
@@ -79,9 +79,9 @@ const SAFE_NETWORK_ERROR_CODES = new Set([
 const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 
 function fingerprintApiKey(apiKey: string) {
-	// HMAC-SHA-256 gives Sentry a deterministic pseudonymous user ID without
-	// sending, logging, or storing the raw Hevy API key.
-	// Trimmed to 10 characters to keep it compact and readable in Sentry & OTel traces.
+	// HMAC-SHA-256 gives Sentry and OTel a deterministic pseudonymous user
+	// hash without sending, logging, or storing the raw Hevy API key.
+	// Trimmed to 10 characters to keep it compact and readable in traces.
 	return createHmac("sha256", apiKey)
 		.update(SENTRY_USER_ID_CONTEXT)
 		.digest("hex")
@@ -161,7 +161,8 @@ async function validateApiKey(apiKey: string) {
 }
 
 function buildServer(apiKey: string) {
-	const userId = fingerprintApiKey(apiKey);
+	const userHash = fingerprintApiKey(apiKey);
+	setCurrentUserHash(userHash);
 
 	return tracer.startActiveSpan(
 		"mcp.server.build",
@@ -170,13 +171,12 @@ function buildServer(apiKey: string) {
 				"mcp.server.name": name,
 				"mcp.server.version": version,
 				"mcp.transport": "stdio",
-				"user.id": userId,
+				"user.hash": userHash,
 			},
 		},
 		(span) => {
 			try {
-				Sentry.setUser({ id: userId });
-				setCurrentUserId(userId);
+				Sentry.setUser({ id: userHash });
 				const server = createSharedMcpServer({
 					apiKey,
 					clientOptions: createNodeHevyClientOptions(),
@@ -224,11 +224,22 @@ export async function runServer() {
 
 	serverStartups.add(1, { version });
 
+	// Seed the user context before config validation so startup failures for a
+	// supplied key retain the same trace correlation as normal tool calls.
+	const configuredApiKey = process.env.HEVY_API_KEY;
+	const initialUserHash = configuredApiKey
+		? fingerprintApiKey(configuredApiKey)
+		: undefined;
+	if (initialUserHash) {
+		setCurrentUserHash(initialUserHash);
+	}
+
 	await tracer.startActiveSpan(
 		"mcp.server.run",
 		{
 			attributes: {
 				"mcp.transport": "stdio",
+				...(initialUserHash ? { "user.hash": initialUserHash } : {}),
 			},
 		},
 		async (span) => {
@@ -236,6 +247,11 @@ export async function runServer() {
 				const cfg = parseConfig(process.env);
 				const apiKey = cfg.apiKey;
 				assertApiKey(apiKey);
+				const userHash = fingerprintApiKey(apiKey);
+				if (userHash !== initialUserHash) {
+					setCurrentUserHash(userHash);
+					span.setAttribute("user.hash", userHash);
+				}
 
 				const server = await createServer({ config: { apiKey } });
 				console.error("Starting MCP server in stdio mode");

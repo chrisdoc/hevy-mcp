@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HevyHttpError } from "./hevy-http-error.js";
-import { getCurrentUserId } from "./telemetry.js";
+import { getCurrentUserHash } from "./telemetry.js";
 import { withTelemetry } from "./telemetry-wrapper.js";
 
 const testDoubles = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ const testDoubles = vi.hoisted(() => ({
 
 vi.mock("./telemetry.js", () => ({
 	tracer: { startActiveSpan: testDoubles.startActiveSpan },
-	getCurrentUserId: vi.fn(() => undefined),
+	getCurrentUserHash: vi.fn(() => undefined),
 }));
 
 vi.mock("./metrics.js", () => ({
@@ -39,7 +39,7 @@ describe("withTelemetry", () => {
 	beforeEach(() => {
 		delete process.env.HEVY_MCP_DEBUG;
 		vi.clearAllMocks();
-		vi.mocked(getCurrentUserId).mockReturnValue(undefined);
+		vi.mocked(getCurrentUserHash).mockReturnValue(undefined);
 	});
 
 	it("emits redacted debug input from the central tool wrapper", async () => {
@@ -258,8 +258,8 @@ describe("withTelemetry", () => {
 		);
 	});
 
-	it("preserves safe argument ordering, scalar values, truncation, and user ID", async () => {
-		vi.mocked(getCurrentUserId).mockReturnValue("user-123");
+	it("preserves safe argument ordering, scalar values, truncation, and user hash", async () => {
+		vi.mocked(getCurrentUserHash).mockReturnValue("user-123");
 		const handler = vi.fn().mockResolvedValue({ content: [] });
 		const longQuery = "a".repeat(120);
 
@@ -283,7 +283,7 @@ describe("withTelemetry", () => {
 					"workflow.name": "ArgsContext",
 					"mcp.tool.args.key_count": 6,
 					"mcp.tool.args.keys": "page,pageSize,query,includeCustom",
-					"user.id": "user-123",
+					"user.hash": "user-123",
 					"mcp.tool.args.page": 2,
 					"mcp.tool.args.pageSize": 10,
 					"mcp.tool.args.query": `${"a".repeat(100)}...`,

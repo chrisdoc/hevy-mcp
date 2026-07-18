@@ -20,7 +20,11 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import type { SpanProcessor } from "@opentelemetry/sdk-trace";
+import type {
+	ReadableSpan,
+	Span,
+	SpanProcessor,
+} from "@opentelemetry/sdk-trace";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import {
 	MeterProvider,
@@ -73,9 +77,28 @@ const sentryClient = Sentry.init({
 });
 
 // --- OpenTelemetry tracer provider (dual export) ---
-const spanProcessors: SpanProcessor[] = [new SentrySpanProcessor()];
+let currentUserHash: string | undefined;
 
-// Span processor 2: OTel Collector → Honeycomb (traces) — only if token is available
+class UserHashSpanProcessor implements SpanProcessor {
+	onStart(span: Span): void {
+		if (currentUserHash) {
+			span.setAttribute("user.hash", currentUserHash);
+		}
+	}
+
+	onEnd(_span: ReadableSpan): void {}
+
+	async forceFlush(): Promise<void> {}
+
+	async shutdown(): Promise<void> {}
+}
+
+const spanProcessors: SpanProcessor[] = [
+	new UserHashSpanProcessor(),
+	new SentrySpanProcessor(),
+];
+
+// OTel Collector → Honeycomb traces — only if token is available
 if (collectorToken) {
 	spanProcessors.push(
 		new BatchSpanProcessor(
@@ -144,12 +167,10 @@ export const serviceInfo: ServiceInfo = { name, version } as const;
 export { name as serviceName, version as serviceVersion };
 
 // --- User context for span attributes ---
-let currentUserId: string | undefined;
-
-export function setCurrentUserId(id: string): void {
-	currentUserId = id;
+export function setCurrentUserHash(hash: string): void {
+	currentUserHash = hash;
 }
 
-export function getCurrentUserId(): string | undefined {
-	return currentUserId;
+export function getCurrentUserHash(): string | undefined {
+	return currentUserHash;
 }
