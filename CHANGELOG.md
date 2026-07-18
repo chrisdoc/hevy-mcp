@@ -1,3 +1,13 @@
+## 3.3.0
+
+### Minor Changes
+
+- [#682](https://github.com/chrisdoc/hevy-mcp/pull/682) [`c979b6a`](https://github.com/chrisdoc/hevy-mcp/commit/c979b6a1ce7eb11a91d63781828875f0bcde2fb3) Thanks [@planecore](https://github.com/planecore)! - Add an optional OAuth 2.1 layer to the Cloudflare Worker so remote MCP clients such as Claude.ai custom connectors can connect without a fixed Authorization header. When an `OAUTH_KV` namespace is bound, the Worker serves RFC 8414 / RFC 9728 discovery metadata, dynamic client registration, and PKCE token exchange, plus an `/authorize` page that validates the submitted Hevy API key against Hevy and stores it encrypted inside the OAuth grant. Without the binding, Worker behavior is unchanged, and direct Hevy-API-key bearer requests keep working in both modes.
+
+### Patch Changes
+
+- [#683](https://github.com/chrisdoc/hevy-mcp/pull/683) [`90a4577`](https://github.com/chrisdoc/hevy-mcp/commit/90a4577818493cfcbe997fb2ae842ff8a478168f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use the OpenTelemetry `user.hash` semantic convention and propagate the user hash to every recorded span.
+
 ## 3.2.1
 
 ### Patch Changes
