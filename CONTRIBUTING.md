@@ -226,6 +226,39 @@ Wildcards are unsupported. Browser requests with an unmatched `Origin` receive
 `403`; non-browser requests without `Origin` remain accepted. Test both origin
 and bearer-auth behavior when changing Worker request handling.
 
+### Optional OAuth layer for remote MCP clients
+
+Clients that cannot send a fixed `Authorization` header (for example Claude.ai
+custom connectors) can use OAuth 2.1 instead. The layer is opt-in per
+deployment: create a KV namespace and bind it as `OAUTH_KV` in
+`wrangler.jsonc`:
+
+```bash
+npx wrangler kv namespace create OAUTH_KV
+```
+
+```jsonc
+"kv_namespaces": [{ "binding": "OAUTH_KV", "id": "<namespace-id>" }]
+```
+
+With the binding present, `src/worker-oauth.ts` (backed by
+`@cloudflare/workers-oauth-provider`) additionally serves:
+
+- `/.well-known/oauth-authorization-server` and
+  `/.well-known/oauth-protected-resource` discovery metadata
+- `/register` (RFC 7591 dynamic client registration)
+- `/token` (authorization code + PKCE and refresh-token grants)
+- `/authorize` (a form that validates the submitted Hevy API key against Hevy
+  and stores it encrypted inside the OAuth grant)
+
+Bearer values matching the OAuth access-token shape (`userId:grantId:secret`)
+are routed to the OAuth layer; Hevy API keys never contain a colon, so they
+keep using the direct path. With OAuth enabled, unauthenticated `POST /mcp`
+requests receive the RFC 9728 challenge (`WWW-Authenticate` with
+`resource_metadata`) instead of the bare `Bearer` challenge so OAuth clients
+can discover the flow. Without the `OAUTH_KV` binding, Worker behavior is
+unchanged.
+
 Internal pull requests receive preview Worker deployments through
 `.github/workflows/deploy-worker.yml`. Fork pull requests do not receive
 deployment credentials. Production deployment remains gated by the repository's
