@@ -664,7 +664,9 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		);
 
 		expect(missing.status).toBe(401);
-		expect(missing.headers.get("www-authenticate")).toBe("Bearer");
+		expect(missing.headers.get("www-authenticate")).toContain(
+			`resource_metadata="${workerBaseUrl}/.well-known/oauth-protected-resource/mcp"`,
+		);
 		expect(malformed.status).toBe(401);
 		expect(hevyRequests).toHaveLength(0);
 	});

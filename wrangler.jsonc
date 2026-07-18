@@ -6,12 +6,17 @@
 	"workers_dev": false,
 	"preview_urls": true,
 	"observability": {
-		"enabled": false,
+		"traces": {
+			"enabled": true,
+		},
+		"logs": {
+			"enabled": true,
+		},
 	},
-	// Optional OAuth 2.1 layer for remote MCP clients such as Claude.ai
-	// custom connectors. Create the namespace with
-	// `npx wrangler kv namespace create OAUTH_KV` and uncomment with the
-	// returned id. Without this binding the Worker serves only direct
-	// Hevy-API-key bearer auth, exactly as before.
-	// "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "<namespace-id>" }],
+	"kv_namespaces": [
+		{
+			"binding": "OAUTH_KV",
+			"id": "4650aad553c0490ab50dbda88a70a7ec",
+		},
+	],
 }
