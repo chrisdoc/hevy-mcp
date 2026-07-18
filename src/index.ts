@@ -161,9 +161,6 @@ async function validateApiKey(apiKey: string) {
 }
 
 function buildServer(apiKey: string) {
-	const userHash = fingerprintApiKey(apiKey);
-	setCurrentUserHash(userHash);
-
 	return tracer.startActiveSpan(
 		"mcp.server.build",
 		{
@@ -171,12 +168,10 @@ function buildServer(apiKey: string) {
 				"mcp.server.name": name,
 				"mcp.server.version": version,
 				"mcp.transport": "stdio",
-				"user.hash": userHash,
 			},
 		},
 		(span) => {
 			try {
-				Sentry.setUser({ id: userHash });
 				const server = createSharedMcpServer({
 					apiKey,
 					clientOptions: createNodeHevyClientOptions(),
@@ -202,6 +197,9 @@ function buildServer(apiKey: string) {
 
 export async function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey } = serverConfigSchema.parse(config);
+	const userHash = fingerprintApiKey(apiKey);
+	setCurrentUserHash(userHash);
+	Sentry.setUser({ id: userHash });
 	await validateApiKey(apiKey);
 	return buildServer(apiKey);
 }
@@ -232,6 +230,7 @@ export async function runServer() {
 		: undefined;
 	if (initialUserHash) {
 		setCurrentUserHash(initialUserHash);
+		Sentry.setUser({ id: initialUserHash });
 	}
 
 	await tracer.startActiveSpan(
@@ -239,7 +238,6 @@ export async function runServer() {
 		{
 			attributes: {
 				"mcp.transport": "stdio",
-				...(initialUserHash ? { "user.hash": initialUserHash } : {}),
 			},
 		},
 		async (span) => {

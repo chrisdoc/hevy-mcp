@@ -86,7 +86,6 @@ vi.mock("./utils/telemetry.js", () => ({
 	serviceName: "hevy-mcp",
 	serviceVersion: "dev",
 	setCurrentUserHash: vi.fn(),
-	getCurrentUserHash: vi.fn(() => undefined),
 }));
 
 vi.mock("./utils/metrics.js", () => ({
@@ -200,7 +199,6 @@ describe("Server entry", () => {
 			expect.objectContaining({
 				attributes: expect.objectContaining({
 					"mcp.server.name": "hevy-mcp",
-					"user.hash": TEST_KEY_HMAC_SHA256,
 				}),
 			}),
 			expect.any(Function),
@@ -496,9 +494,7 @@ describe("Server entry", () => {
 			expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 				"mcp.server.run",
 				expect.objectContaining({
-					attributes: expect.objectContaining({
-						"user.hash": TEST_API_KEY_HMAC_SHA256,
-					}),
+					attributes: { "mcp.transport": "stdio" },
 				}),
 				expect.any(Function),
 			);
@@ -670,12 +666,13 @@ describe("Server entry", () => {
 				expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 					"mcp.server.run",
 					expect.objectContaining({
-						attributes: expect.objectContaining({
-							"user.hash": TEST_SECRET_API_KEY_HMAC_SHA256,
-						}),
+						attributes: { "mcp.transport": "stdio" },
 					}),
 					expect.any(Function),
 				);
+				expect(Sentry.setUser).toHaveBeenCalledWith({
+					id: TEST_SECRET_API_KEY_HMAC_SHA256,
+				});
 				errorSpy.mockRestore();
 				stdoutSpy.mockRestore();
 			},

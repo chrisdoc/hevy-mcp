@@ -3,7 +3,7 @@ import { debugLog } from "./debug.js";
 import type { HevyClientOptions } from "./hevyClientKubb.js";
 import { apiCalls, apiDuration } from "./metrics.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
-import { getCurrentUserHash, tracer } from "./telemetry.js";
+import { tracer } from "./telemetry.js";
 
 /** Node-only adapter; the Worker graph never imports telemetry or metrics. */
 export function createNodeHevyClientOptions(): HevyClientOptions {
@@ -21,9 +21,6 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 					"http.method": observation.method,
 					"http.status_code": observation.status,
 					"hevy.api.endpoint": observation.endpoint,
-					...(getCurrentUserHash()
-						? { "user.hash": getCurrentUserHash() }
-						: {}),
 				},
 			});
 			span.setStatus({

@@ -170,7 +170,3 @@ export { name as serviceName, version as serviceVersion };
 export function setCurrentUserHash(hash: string): void {
 	currentUserHash = hash;
 }
-
-export function getCurrentUserHash(): string | undefined {
-	return currentUserHash;
-}

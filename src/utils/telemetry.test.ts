@@ -174,7 +174,6 @@ describe("telemetry initialization", () => {
 		expect(noUserHashSetAttribute).not.toHaveBeenCalled();
 
 		mod.setCurrentUserHash("hash-123");
-		expect(mod.getCurrentUserHash()).toBe("hash-123");
 
 		const setAttribute = vi.fn();
 		processor.onStart({ setAttribute }, {});

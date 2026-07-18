@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HevyHttpError } from "./hevy-http-error.js";
 import { createNodeHevyClientOptions } from "./hevy-client-observability.js";
-import { getCurrentUserHash } from "./telemetry.js";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -17,7 +16,6 @@ const testDoubles = vi.hoisted(() => ({
 testDoubles.startSpan.mockReturnValue(testDoubles.span);
 
 vi.mock("./telemetry.js", () => ({
-	getCurrentUserHash: vi.fn(() => undefined),
 	tracer: { startSpan: testDoubles.startSpan },
 }));
 
@@ -34,11 +32,9 @@ describe("createNodeHevyClientOptions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		delete process.env.HEVY_MCP_API_TIMEOUT;
-		vi.mocked(getCurrentUserHash).mockReturnValue(undefined);
 	});
 
 	it("records successful requests with bounded operational metadata", () => {
-		vi.mocked(getCurrentUserHash).mockReturnValue("user-123");
 		const options = createNodeHevyClientOptions();
 
 		options.onRequestComplete?.({
@@ -53,7 +49,6 @@ describe("createNodeHevyClientOptions", () => {
 				"http.method": "GET",
 				"http.status_code": 200,
 				"hevy.api.endpoint": "/v1/user/info",
-				"user.hash": "user-123",
 			},
 		});
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
