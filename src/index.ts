@@ -247,11 +247,6 @@ export async function runServer() {
 				const cfg = parseConfig(process.env);
 				const apiKey = cfg.apiKey;
 				assertApiKey(apiKey);
-				const userHash = fingerprintApiKey(apiKey);
-				if (userHash !== initialUserHash) {
-					setCurrentUserHash(userHash);
-					span.setAttribute("user.hash", userHash);
-				}
 
 				const server = await createServer({ config: { apiKey } });
 				console.error("Starting MCP server in stdio mode");

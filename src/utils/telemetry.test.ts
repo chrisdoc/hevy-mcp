@@ -159,6 +159,7 @@ describe("telemetry initialization", () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
 		mod.setCurrentUserHash("hash-123");
+		expect(mod.getCurrentUserHash()).toBe("hash-123");
 
 		const providerOptions = testDoubles.nodeTracerProviderOptions as {
 			spanProcessors: Array<{
