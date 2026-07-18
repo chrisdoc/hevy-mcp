@@ -158,8 +158,6 @@ describe("telemetry initialization", () => {
 	it("adds the current user hash to every started span", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
-		mod.setCurrentUserHash("hash-123");
-		expect(mod.getCurrentUserHash()).toBe("hash-123");
 
 		const providerOptions = testDoubles.nodeTracerProviderOptions as {
 			spanProcessors: Array<{
@@ -170,6 +168,13 @@ describe("telemetry initialization", () => {
 		if (!processor) {
 			throw new Error("Expected user hash span processor");
 		}
+
+		const noUserHashSetAttribute = vi.fn();
+		processor.onStart({ setAttribute: noUserHashSetAttribute }, {});
+		expect(noUserHashSetAttribute).not.toHaveBeenCalled();
+
+		mod.setCurrentUserHash("hash-123");
+		expect(mod.getCurrentUserHash()).toBe("hash-123");
 
 		const setAttribute = vi.fn();
 		processor.onStart({ setAttribute }, {});
