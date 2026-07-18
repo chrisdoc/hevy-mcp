@@ -13,6 +13,7 @@ const originalEnv = { ...process.env };
 const originalArgv = [...process.argv];
 const TEST_KEY_HMAC_SHA256 = "2cb0b5f95a";
 const TEST_API_KEY_HMAC_SHA256 = "0eefd4f47c";
+const TEST_SECRET_API_KEY_HMAC_SHA256 = "e09f100508";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -84,8 +85,7 @@ vi.mock("./utils/telemetry.js", () => ({
 	},
 	serviceName: "hevy-mcp",
 	serviceVersion: "dev",
-	setCurrentUserId: vi.fn(),
-	getCurrentUserId: vi.fn(() => undefined),
+	setCurrentUserHash: vi.fn(),
 }));
 
 vi.mock("./utils/metrics.js", () => ({
@@ -491,6 +491,13 @@ describe("Server entry", () => {
 			expect(Sentry.setUser).toHaveBeenCalledWith({
 				id: TEST_API_KEY_HMAC_SHA256,
 			});
+			expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+				"mcp.server.run",
+				expect.objectContaining({
+					attributes: { "mcp.transport": "stdio" },
+				}),
+				expect.any(Function),
+			);
 			expect(
 				JSON.stringify(vi.mocked(Sentry.setUser).mock.calls),
 			).not.toContain(secret);
@@ -656,6 +663,16 @@ describe("Server entry", () => {
 					"https://api.hevyapp.com",
 					{ maxGetRetries: 0, timeoutMs: 5_000 },
 				);
+				expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+					"mcp.server.run",
+					expect.objectContaining({
+						attributes: { "mcp.transport": "stdio" },
+					}),
+					expect.any(Function),
+				);
+				expect(Sentry.setUser).toHaveBeenCalledWith({
+					id: TEST_SECRET_API_KEY_HMAC_SHA256,
+				});
 				errorSpy.mockRestore();
 				stdoutSpy.mockRestore();
 			},

@@ -3,7 +3,7 @@ import { debugLog, isDebugEnabled, redactToolArgs } from "./debug.js";
 import { resolveErrorPolicy } from "./error-policy.js";
 import { toolDuration, toolErrors, toolInvocations } from "./metrics.js";
 import type { McpToolResponse } from "./response-formatter.js";
-import { getCurrentUserId, tracer } from "./telemetry.js";
+import { tracer } from "./telemetry.js";
 
 /** Whitelist of safe argument keys that can be logged without exposing PII. */
 const ARGUMENT_WHITELIST = new Set([
@@ -113,7 +113,6 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 
 		toolInvocations.add(1, { tool_name: context });
 
-		const userId = getCurrentUserId();
 		const safeArgs = extractSafeArgs(args);
 		const whitelistedKeys = Object.keys(safeArgs).map((key) =>
 			key.replace("mcp.tool.args.", ""),
@@ -127,7 +126,6 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 					"workflow.name": context,
 					"mcp.tool.args.key_count": argumentKeyCount,
 					"mcp.tool.args.keys": whitelistedKeys.join(","),
-					...(userId ? { "user.id": userId } : {}),
 					...safeArgs,
 				},
 			},
