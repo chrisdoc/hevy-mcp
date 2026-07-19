@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json",
+  "mcpServers": {
+    "honeycomb": {
+      "type": "http",
+      "url": "https://mcp.eu1.honeycomb.io/mcp",
+      "oauth": {
+        "clientId": "hcboc_01kxn9217kzf3gr4gcsx31pc81"
+      },
+      "auth": {
+        "type": "oauth",
+        "credentialId": "mcp_oauth:profile:default:https://mcp.eu1.honeycomb.io/mcp",
+        "tokenUrl": "https://ui.eu1.honeycomb.io/oauth/token",
+        "clientId": "hcboc_01kxn9217kzf3gr4gcsx31pc81",
+        "resource": "https://mcp.eu1.honeycomb.io/mcp"
+      }
+    }
+  }
+}
