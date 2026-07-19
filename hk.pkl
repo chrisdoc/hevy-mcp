@@ -58,8 +58,8 @@ hooks {
             ["changeset"] {
                 check = "npm run check:changeset"
             }
-            ["unit-tests"] {
-                check = "npm test"
+            ["pr-tests"] {
+                check = "npm run test:pr"
             }
         }
     }
