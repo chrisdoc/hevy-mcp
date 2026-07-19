@@ -292,7 +292,8 @@ The project uses a generated API client via Kubb that creates:
 
 - `kubb.config.ts` - API client generation configuration
 - `oxlint and oxfmt configuration` - Code formatting and linting rules (tabs, 80 char lines, double quotes)
-- `lefthook.yml` - Git hooks for pre-commit formatting and commit message linting
+- `hk.pkl` and `mise.toml` - Git hooks for formatting, tests, commit message
+  linting, and tool installation
 
 ## Development Patterns
 

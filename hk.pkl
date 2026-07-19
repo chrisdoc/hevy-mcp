@@ -1,0 +1,73 @@
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+    ["oxlint"] {
+        glob = List(
+            "**/*.js",
+            "**/*.ts",
+            "**/*.cjs",
+            "**/*.mjs",
+            "**/*.d.cts",
+            "**/*.d.mts",
+            "**/*.jsx",
+            "**/*.tsx",
+        )
+        check = "npx oxlint --type-aware --type-check {{files}}"
+    }
+    ["oxfmt"] {
+        glob = List(
+            "**/*.js",
+            "**/*.ts",
+            "**/*.cjs",
+            "**/*.mjs",
+            "**/*.d.cts",
+            "**/*.d.mts",
+            "**/*.jsx",
+            "**/*.tsx",
+            "**/*.json",
+            "**/*.jsonc",
+            "**/*.md",
+        )
+        depends = "oxlint"
+        check = "npx oxfmt --check {{files}}"
+        fix = "npx oxfmt --write {{files}}"
+    }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps {
+            ...linters
+            ["tests"] {
+                check = "npm run test:unit"
+            }
+        }
+    }
+    ["commit-msg"] {
+        steps {
+            ["commitlint"] {
+                check = "npx commitlint --edit {{commit_msg_file}}"
+            }
+        }
+    }
+    ["pre-push"] {
+        steps {
+            ["changeset"] {
+                check = "npm run check:changeset"
+            }
+            ["pr-tests"] {
+                check = "npm run test:pr"
+            }
+        }
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}

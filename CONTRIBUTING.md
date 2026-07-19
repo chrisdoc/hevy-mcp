@@ -150,10 +150,21 @@ Also run the narrow checks related to your change. In particular:
 - Run `npm run test:live` only when a real Hevy API canary is appropriate and a
   safe credential is available.
 
-`npm run check` runs both oxlint and oxfmt in check mode. The project uses the
-Oxc tools for fast, consistent type-aware linting and formatting. Fix reported
-code warnings rather than assuming they are harmless. Use `npm run check:fix`
-for automated fixes, then inspect the resulting diff.
+`npm run check` runs both oxlint and oxfmt in check mode using the local npm
+dependencies. The project uses the Oxc tools for fast, consistent type-aware
+linting and formatting. Fix reported code warnings rather than assuming they
+are harmless. Use `npm run check:fix` for automated fixes, then inspect the
+resulting diff. `check:fix` modifies files in the working tree but does not
+stage them; review and stage the changes manually. hk uses the same tools for
+Git hook execution.
+
+Git hooks are managed by hk, replacing the former Lefthook setup. The
+`hk.pkl` configuration runs formatting and unit tests on pre-commit, commit
+message linting on commit-msg, and changeset plus PR validation checks on
+pre-push. hk is managed by mise in `mise.toml`; after installing mise, run
+`mise install` and `mise exec hk -- hk install --mise` once per clone to enable
+the repository's Git hooks without requiring mise activation. CI runs the npm
+validation scripts directly.
 
 ## Generated API client
 
