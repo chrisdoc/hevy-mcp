@@ -42,7 +42,7 @@ hooks {
         steps {
             ...linters
             ["tests"] {
-                check = "npm test"
+                check = "npm run test:unit"
             }
         }
     }
@@ -59,7 +59,7 @@ hooks {
                 check = "npm run check:changeset"
             }
             ["unit-tests"] {
-                check = "npm run test:unit"
+                check = "npm test"
             }
         }
     }
