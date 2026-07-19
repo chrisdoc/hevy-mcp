@@ -150,18 +150,6 @@ function setResultAttributes(
 			telemetry.setCountBucket,
 		);
 	}
-	if (telemetry.folderSelected !== undefined) {
-		span.setAttribute(
-			"mcp.tool.result.folder_selected",
-			telemetry.folderSelected,
-		);
-	}
-	if (telemetry.usesRepRanges !== undefined) {
-		span.setAttribute(
-			"mcp.tool.result.uses_rep_ranges",
-			telemetry.usesRepRanges,
-		);
-	}
 	setWorkflowAttributes(span, telemetry.workflow);
 }
 
@@ -183,12 +171,6 @@ function resultMetricAttributes(
 	}
 	if (telemetry.setCountBucket) {
 		attributes["mcp.tool.result.set_count_bucket"] = telemetry.setCountBucket;
-	}
-	if (telemetry.folderSelected !== undefined) {
-		attributes["mcp.tool.result.folder_selected"] = telemetry.folderSelected;
-	}
-	if (telemetry.usesRepRanges !== undefined) {
-		attributes["mcp.tool.result.uses_rep_ranges"] = telemetry.usesRepRanges;
 	}
 	return attributes;
 }

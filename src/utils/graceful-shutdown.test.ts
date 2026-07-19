@@ -67,6 +67,32 @@ describe("installGracefulShutdown", () => {
 		expect(process.listenerCount("SIGTERM")).toBe(0);
 	});
 
+	it("awaits asynchronous completion observers before settling", async () => {
+		const process = new FakeProcess();
+		const completion = Promise.withResolvers<void>();
+		const onComplete = vi.fn(() => completion.promise);
+		const controller = installGracefulShutdown({
+			target: { close: vi.fn().mockResolvedValue(undefined) },
+			process,
+			flush: vi.fn().mockResolvedValue(undefined),
+			onComplete,
+		});
+
+		process.emit("SIGTERM");
+		const shutdown = controller.getShutdownPromise();
+		await Promise.resolve();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(onComplete).toHaveBeenCalledWith(true);
+		expect(process.listenerCount("SIGTERM")).toBe(1);
+
+		completion.resolve();
+		await shutdown;
+
+		expect(process.listenerCount("SIGTERM")).toBe(0);
+	});
+
 	it.each(["SIGINT", "SIGTERM"] satisfies ShutdownSignal[])(
 		"handles %s",
 		async (signal) => {

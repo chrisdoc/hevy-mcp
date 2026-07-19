@@ -650,21 +650,11 @@ function workoutResultTelemetry(
 
 function routineResultTelemetry(
 	routine: Routine | null | undefined,
-	usesRepRanges = false,
 ): ToolResultTelemetry {
 	const exercises = routine?.exercises ?? [];
 	return {
 		itemCountBucket: bucketCount(routine ? 1 : 0),
 		...exerciseSetCountTelemetry(exercises),
-		folderSelected:
-			routine?.folder_id !== undefined && routine.folder_id !== null,
-		usesRepRanges:
-			usesRepRanges ||
-			exercises.some((exercise) =>
-				exercise.sets?.some(
-					(set) => set.rep_range?.start != null || set.rep_range?.end != null,
-				),
-			),
 	};
 }
 
@@ -985,7 +975,7 @@ export const createRoutineResponse = defineJsonResponseContract(
 						: [],
 				}
 			: { text: "Failed to create routine: Server returned no data" },
-	(data) => routineResultTelemetry(data.routine, data.usesRepRanges),
+	(data) => routineResultTelemetry(data.routine),
 );
 
 export const updateRoutineResponse = defineJsonResponseContract(
@@ -1002,7 +992,7 @@ export const updateRoutineResponse = defineJsonResponseContract(
 						: [],
 				}
 			: { text: `Failed to update routine with ID ${data.routineId}` },
-	(data) => routineResultTelemetry(data.routine, data.usesRepRanges),
+	(data) => routineResultTelemetry(data.routine),
 );
 
 export const createExerciseTemplateResponse = defineJsonResponseContract(
@@ -1012,7 +1002,6 @@ export const createExerciseTemplateResponse = defineJsonResponseContract(
 			message: "Exercise template created successfully",
 		},
 	}),
-	(response) => ({ itemCountBucket: bucketCount(response ? 1 : 0) }),
 );
 
 export const createRoutineFolderResponse = defineJsonResponseContract(

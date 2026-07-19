@@ -30,7 +30,7 @@ interface GracefulShutdownOptions {
 	logError?: (message: string) => void;
 	flush?: () => Promise<void>;
 	forcedExitTimeoutMs?: number;
-	onComplete?: (succeeded: boolean) => void;
+	onComplete?: (succeeded: boolean) => void | Promise<void>;
 	scheduleForcedExit?: ScheduleForcedExit;
 }
 
@@ -78,13 +78,19 @@ export function installGracefulShutdown({
 	let shutdownPromise: Promise<void> | undefined;
 	let completionReported = false;
 
-	const reportCompletion = (succeeded: boolean) => {
-		if (completionReported) return;
+	const reportCompletion = (succeeded: boolean): Promise<void> | undefined => {
+		if (completionReported) return undefined;
 		completionReported = true;
 		try {
-			onComplete?.(succeeded);
+			const completion = onComplete?.(succeeded);
+			return completion
+				? Promise.resolve(completion).catch(() => {
+						logError("Graceful shutdown completion observer failed");
+					})
+				: undefined;
 		} catch {
 			logError("Graceful shutdown completion observer failed");
+			return undefined;
 		}
 	};
 
@@ -112,8 +118,14 @@ export function installGracefulShutdown({
 		}
 
 		const forcedExitTimer = scheduleForcedExit(() => {
-			reportCompletion(false);
-			processLike.exit(processLike.exitCode ?? 0);
+			const completion = reportCompletion(false);
+			if (completion) {
+				void completion.finally(() =>
+					processLike.exit(processLike.exitCode ?? 0),
+				);
+			} else {
+				processLike.exit(processLike.exitCode ?? 0);
+			}
 		}, forcedExitTimeoutMs);
 		// This fallback must survive successful shutdown so it can terminate a
 		// process held open by unrelated handles, without keeping the process alive
@@ -152,8 +164,8 @@ export function installGracefulShutdown({
 					return;
 				}
 			} finally {
+				await reportCompletion(!shutdownFailed);
 				shutdownSettled = true;
-				reportCompletion(!shutdownFailed);
 				cleanup();
 			}
 		})();

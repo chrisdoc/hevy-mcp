@@ -276,9 +276,10 @@ describe("response contracts", () => {
 			usesRepRanges: false,
 		});
 
-		expect(getResultTelemetry(response)).toMatchObject({
-			folderSelected: false,
-			usesRepRanges: false,
+		expect(getResultTelemetry(response)).toEqual({
+			itemCountBucket: "1",
+			exerciseCountBucket: "1",
+			setCountBucket: "1",
 		});
 	});
 });

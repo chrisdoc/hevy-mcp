@@ -300,8 +300,6 @@ describe("withTelemetry", () => {
 			itemCountBucket: "51+",
 			exerciseCountBucket: "11-50",
 			setCountBucket: "51+",
-			folderSelected: true,
-			usesRepRanges: true,
 		});
 
 		await withTelemetry(

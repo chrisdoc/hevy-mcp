@@ -39,7 +39,6 @@ argument-key count as a bucket, and the following structural values:
 - booleans such as `includeCustom` and `refresh`;
 - result content-block count and structured-content presence;
 - result item, exercise, and set count buckets;
-- `folder_selected` and `uses_rep_ranges` booleans;
 - workflow page counts, bounded workflow name, cache status, and `items_scanned`.
 
 These fields describe shape only. They never contain a value from the argument
@@ -54,6 +53,12 @@ character set, and limited to 64 characters; malformed or missing values become
 a session ID, request ID, progress token, prompt, argument, result, or user
 hash. The server version is supplied by the service resource (`service.version`)
 and server lifecycle spans.
+
+The Sentry MCP wrapper is configured with input/output capture disabled.
+`beforeSendSpan` removes MCP request/session identifiers, progress tokens,
+logging/progress text, resource URIs, and unsanitized client identity fields
+before Sentry export; the stdio instrumentation remains the source for the
+sanitized client dimensions above.
 
 The pseudonymous user hash is span-only correlation data. It is not a metric
 dimension and must not be used to construct per-user behavior histories.
@@ -74,9 +79,9 @@ Never send or inspect for telemetry:
 
 ## Regression guard
 
-`src/index.test.ts`, `src/utils/telemetry-wrapper.test.ts`,
-`src/utils/stdio-observability.test.ts`, and
-`src/utils/mcp-session-observability.test.ts` assert the capture settings,
+`src/index.test.ts`, `src/utils/telemetry.test.ts`,
+`src/utils/telemetry-wrapper.test.ts`, `src/utils/stdio-observability.test.ts`,
+and `src/utils/mcp-session-observability.test.ts` assert the capture settings,
 allowlisted attributes, sanitized client metadata, and secret-sentinel absence.
 Any telemetry field change must update this dictionary and its regression tests
 in the same change.

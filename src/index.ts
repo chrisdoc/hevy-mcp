@@ -2,6 +2,7 @@
 // OpenTelemetry and Sentry are ready before application code runs.
 import {
 	Sentry,
+	flushTelemetry,
 	tracer,
 	serviceName,
 	serviceVersion,
@@ -286,10 +287,12 @@ export async function runServer() {
 				});
 				installGracefulShutdown({
 					target: server,
-					onComplete: (succeeded) =>
+					onComplete: async (succeeded) => {
 						recordMcpSessionTermination(
 							resolveSessionTerminationCategory(succeeded),
-						),
+						);
+						await flushTelemetry();
+					},
 				});
 
 				span.setStatus({ code: SpanStatusCode.OK });
