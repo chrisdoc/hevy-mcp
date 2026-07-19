@@ -44,6 +44,7 @@ export interface HevyRequestObservation {
 	endpoint: string;
 	status: number;
 	durationMs: number;
+	retryCount: number;
 	error?: HevyHttpError;
 }
 
@@ -272,6 +273,7 @@ function createNativeClient(
 					endpoint,
 					status: response.status,
 					durationMs: Date.now() - startedAt,
+					retryCount,
 				});
 				return {
 					data: data as TData,
@@ -300,6 +302,7 @@ function createNativeClient(
 					endpoint,
 					status: error.status ?? 0,
 					durationMs: Date.now() - startedAt,
+					retryCount,
 					error,
 				});
 				const canRetry = method === "GET" && isRetryable(error);

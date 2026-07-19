@@ -21,6 +21,10 @@ import { createNodeHevyClientOptions } from "./utils/hevy-client-observability.j
 import { createClient } from "./utils/hevyClient.js";
 import { withObservability } from "./utils/observability-wrapper.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
+import {
+	recordMcpSessionTermination,
+	resolveSessionTerminationCategory,
+} from "./utils/mcp-session-observability.js";
 import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
@@ -177,7 +181,10 @@ function buildServer(apiKey: string) {
 					clientOptions: createNodeHevyClientOptions(),
 					wrapHandler: withObservability,
 					wrapServer: (baseServer) =>
-						Sentry.wrapMcpServerWithSentry(baseServer),
+						Sentry.wrapMcpServerWithSentry(baseServer, {
+							recordInputs: false,
+							recordOutputs: false,
+						}),
 					onToolsRegistered: (count) =>
 						span.setAttribute("mcp.tools.count", count),
 				});
@@ -232,6 +239,7 @@ export async function runServer() {
 		setCurrentUserHash(initialUserHash);
 		Sentry.setUser({ id: initialUserHash });
 	}
+	let connectAttempted = false;
 
 	await tracer.startActiveSpan(
 		"mcp.server.run",
@@ -251,6 +259,7 @@ export async function runServer() {
 				const transport = createInstrumentedStdioTransport(
 					new StdioServerTransport(),
 				);
+				connectAttempted = true;
 
 				await tracer.startActiveSpan(
 					"mcp.server.connect",
@@ -275,10 +284,19 @@ export async function runServer() {
 					packageName: serviceName,
 					currentVersion: serviceVersion,
 				});
-				installGracefulShutdown({ target: server });
+				installGracefulShutdown({
+					target: server,
+					onComplete: (succeeded) =>
+						recordMcpSessionTermination(
+							resolveSessionTerminationCategory(succeeded),
+						),
+				});
 
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (e) {
+				recordMcpSessionTermination(
+					connectAttempted ? "connect_failure" : "startup_failure",
+				);
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
 			} finally {

@@ -63,12 +63,15 @@ vi.mock("./telemetry.js", () => ({
 
 vi.mock("./metrics.js", () => ({
 	toolInvocations: { add: vi.fn() },
+	toolOutcomes: { add: vi.fn() },
 	toolErrors: { add: vi.fn() },
 	toolDuration: { record: vi.fn() },
 	apiCalls: { add: vi.fn() },
 	apiDuration: { record: vi.fn() },
 	stdioParseErrors: { add: vi.fn() },
 	serverStartups: { add: vi.fn() },
+	sessionStarted: { add: vi.fn() },
+	sessionEnded: { add: vi.fn() },
 }));
 
 vi.mock("@opentelemetry/api", () => ({
@@ -147,6 +150,41 @@ describe("stdio observability", () => {
 			}),
 			expect.any(Function),
 		);
+	});
+
+	it("captures only sanitized initialize client metadata", () => {
+		deserializeMessageWithObservability(
+			JSON.stringify({
+				jsonrpc: "2.0",
+				id: 1,
+				method: "initialize",
+				params: {
+					protocolVersion: "2025-11-25",
+					clientInfo: { name: "Claude Desktop", version: "1.2.3" },
+					privatePrompt: "do not capture this",
+				},
+			}),
+			{
+				lastChunkByteLength: 128,
+				lastChunkStartsWithUtf8Bom: false,
+			},
+		);
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.client.name",
+			"Claude Desktop",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.client.version",
+			"1.2.3",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.protocol.version",
+			"2025-11-25",
+		);
+		expect(
+			JSON.stringify(testDoubles.span.setAttribute.mock.calls),
+		).not.toContain("do not capture this");
 	});
 
 	it("captures parse failures with structured metadata", () => {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HevyHttpError } from "./hevy-http-error.js";
 import { withTelemetry } from "./telemetry-wrapper.js";
+import { attachResultTelemetry } from "./result-telemetry.js";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -15,6 +16,7 @@ const testDoubles = vi.hoisted(() => ({
 		return callback(testDoubles.span);
 	}),
 	toolInvocationsAdd: vi.fn(),
+	toolOutcomesAdd: vi.fn(),
 	toolErrorsAdd: vi.fn(),
 	toolDurationRecord: vi.fn(),
 }));
@@ -22,11 +24,13 @@ const testDoubles = vi.hoisted(() => ({
 vi.mock("./telemetry.js", () => ({
 	tracer: { startActiveSpan: testDoubles.startActiveSpan },
 }));
-
 vi.mock("./metrics.js", () => ({
 	toolInvocations: { add: testDoubles.toolInvocationsAdd },
+	toolOutcomes: { add: testDoubles.toolOutcomesAdd },
 	toolErrors: { add: testDoubles.toolErrorsAdd },
 	toolDuration: { record: testDoubles.toolDurationRecord },
+	sessionStarted: { add: vi.fn() },
+	sessionEnded: { add: vi.fn() },
 }));
 
 vi.mock("@opentelemetry/api", () => ({
@@ -101,24 +105,32 @@ describe("withTelemetry", () => {
 	it("records successful invocations and normalizes nullish arguments", async () => {
 		const response = { content: [{ type: "text" as const, text: "Success" }] };
 		const handler = vi.fn().mockResolvedValue(response);
-		const wrapped = withTelemetry(handler, "TestContext");
+		const wrapped = withTelemetry(handler, "TestContext", {
+			feature: "workouts",
+			kind: "read",
+			operation: "get",
+		});
 
 		const result = await Reflect.apply(wrapped, undefined, [null]);
 
 		expect(result).toBe(response);
 		expect(handler).toHaveBeenCalledWith({});
-		expect(testDoubles.toolInvocationsAdd).toHaveBeenCalledWith(1, {
-			tool_name: "TestContext",
-		});
+		expect(testDoubles.toolInvocationsAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({ tool_name: "TestContext" }),
+		);
 		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 			"mcp.tool.TestContext",
 			{
-				attributes: {
+				attributes: expect.objectContaining({
 					"mcp.tool.name": "TestContext",
-					"workflow.name": "TestContext",
-					"mcp.tool.args.key_count": 0,
+					"hevy.feature": "workouts",
+					"mcp.tool.kind": "read",
+					"mcp.tool.operation": "get",
+					"mcp.tool.args.key_count_bucket": "0",
 					"mcp.tool.args.keys": "",
-				},
+					"mcp.client.name": "unknown",
+				}),
 			},
 			expect.any(Function),
 		);
@@ -127,27 +139,37 @@ describe("withTelemetry", () => {
 			"mcp.tool.result.is_error",
 			false,
 		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.tool.outcome",
+			"success",
+		);
+		expect(testDoubles.toolOutcomesAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({ outcome: "success" }),
+		);
 		expect(testDoubles.toolDurationRecord).toHaveBeenCalledWith(
 			expect.any(Number),
-			{
+			expect.objectContaining({
 				tool_name: "TestContext",
 				is_error: "false",
-			},
+				outcome: "success",
+				"mcp.tool.result.has_structured_content": false,
+			}),
 		);
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
-	it("records workflow pagination, cache, and scan attributes", async () => {
-		const handler = vi.fn().mockResolvedValue({
-			content: [{ type: "text" as const, text: "{}" }],
-			structuredContent: {
-				workflow: {
-					name: "training-summary",
-					pagination: { workouts: 2, bodyMeasurements: 1 },
-					cacheStatus: "not-used",
-					itemsScanned: 14,
-				},
+
+	it("records explicit workflow telemetry without inspecting result text", async () => {
+		const response = { content: [{ type: "text" as const, text: "private" }] };
+		attachResultTelemetry(response, {
+			workflow: {
+				name: "training-summary",
+				pagination: { workouts: 2, bodyMeasurements: 1 },
+				cacheStatus: "not-used",
+				itemsScanned: 14,
 			},
 		});
+		const handler = vi.fn().mockResolvedValue(response);
 
 		await withTelemetry(handler, "get-training-summary")({});
 
@@ -171,83 +193,25 @@ describe("withTelemetry", () => {
 			"workflow.pagination.bodyMeasurements.pages",
 			1,
 		);
+		expect(
+			JSON.stringify(testDoubles.span.setAttribute.mock.calls),
+		).not.toContain("private");
 	});
 
-	it("ignores malformed workflow metadata and filters invalid page counts", async () => {
-		const malformedResults = [
-			{ workflow: null },
-			{
-				workflow: {
-					name: "malformed",
-					pagination: null,
-					cacheStatus: "not-used",
-					itemsScanned: 0,
-				},
-			},
-			{
-				workflow: {
-					name: "malformed",
-					pagination: {},
-					cacheStatus: "not-used",
-					itemsScanned: -1,
-				},
-			},
-		];
-
-		for (const structuredContent of malformedResults) {
-			await withTelemetry(
-				vi.fn().mockResolvedValue({ content: [], structuredContent }),
-				"MalformedWorkflow",
-			)({});
-		}
-
-		await withTelemetry(
-			vi.fn().mockResolvedValue({
-				content: [],
-				structuredContent: {
-					workflow: {
-						name: "filtered",
-						pagination: {
-							valid: 2,
-							negative: -1,
-							fractional: 1.5,
-							text: "2",
-						},
-						cacheStatus: "not-used",
-						itemsScanned: 1,
-					},
-				},
-			}),
-			"FilteredWorkflow",
-		)({});
-
-		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"workflow.pagination.valid.pages",
-			2,
-		);
-		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
-			"workflow.pagination.negative.pages",
-			-1,
-		);
-		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
-			"workflow.pagination.fractional.pages",
-			1.5,
-		);
-		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
-			"workflow.pagination.text.pages",
-			"2",
-		);
-	});
-
-	it("ignores array-shaped workflow metadata", async () => {
-		const handler = vi.fn().mockResolvedValue({
+	it("ignores unregistered result metadata", async () => {
+		const response = {
 			content: [{ type: "text" as const, text: "{}" }],
 			structuredContent: {
-				workflow: [],
+				workflow: {
+					name: "malformed",
+					pagination: { private: 2 },
+					cacheStatus: "not-used",
+					itemsScanned: 1,
+				},
 			},
-		});
+		};
 
-		await withTelemetry(handler, "array-workflow")({});
+		await withTelemetry(vi.fn().mockResolvedValue(response), "Workflow")({});
 
 		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
 			"workflow.name",
@@ -255,9 +219,9 @@ describe("withTelemetry", () => {
 		);
 	});
 
-	it("preserves safe argument ordering, scalar values, and truncation", async () => {
+	it("records only bounded argument structure", async () => {
 		const handler = vi.fn().mockResolvedValue({ content: [] });
-		const longQuery = "a".repeat(120);
+		const secretQuery = "private-routine-title-sentinel";
 
 		await withTelemetry(
 			handler,
@@ -266,39 +230,36 @@ describe("withTelemetry", () => {
 			page: 2,
 			privateNote: "hidden",
 			pageSize: 10,
-			query: longQuery,
+			query: secretQuery,
 			includeCustom: true,
 			limit: null,
+			workoutId: "private-workout-id",
+			date: "2026-07-10",
 		});
 
-		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
-			"mcp.tool.ArgsContext",
-			{
-				attributes: {
-					"mcp.tool.name": "ArgsContext",
-					"workflow.name": "ArgsContext",
-					"mcp.tool.args.key_count": 6,
-					"mcp.tool.args.keys": "page,pageSize,query,includeCustom",
-					"mcp.tool.args.page": 2,
-					"mcp.tool.args.pageSize": 10,
-					"mcp.tool.args.query": `${"a".repeat(100)}...`,
-					"mcp.tool.args.includeCustom": true,
-				},
-			},
-			expect.any(Function),
-		);
+		const spanCall = JSON.stringify(testDoubles.startActiveSpan.mock.calls);
+		expect(spanCall).not.toContain(secretQuery);
+		expect(spanCall).not.toContain("private-workout-id");
+		expect(spanCall).not.toContain("2026-07-10");
+		expect(spanCall).toContain('"mcp.tool.args.query.present":true');
+		expect(spanCall).toContain('"mcp.tool.args.page.bucket":"2-10"');
+		expect(spanCall).toContain('"mcp.tool.args.pageSize.bucket":"2-10"');
+		expect(spanCall).toContain('"mcp.tool.args.includeCustom":true');
 	});
 
-	it("records result error status and content attributes without toolErrors", async () => {
-		const handler = vi.fn().mockResolvedValue({
+	it("records returned MCP errors as a distinct safe outcome", async () => {
+		const response = {
 			isError: true,
 			content: [
-				{ type: "text" as const, text: "Hello" },
-				{ type: "text" as const, text: "World" },
+				{ type: "text" as const, text: "private returned error detail" },
+				{ type: "text" as const, text: "second private detail" },
 			],
-		});
+		};
 
-		await withTelemetry(handler, "ReturnedErrorContext")({});
+		await withTelemetry(
+			vi.fn().mockResolvedValue(response),
+			"ReturnedErrorContext",
+		)({});
 
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
@@ -310,18 +271,65 @@ describe("withTelemetry", () => {
 			2,
 		);
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"mcp.tool.result.text_length",
-			10,
+			"mcp.tool.result.has_structured_content",
+			false,
 		);
 		expect(testDoubles.toolErrorsAdd).not.toHaveBeenCalled();
+		expect(testDoubles.toolOutcomesAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({ outcome: "returned_error" }),
+		);
 		expect(testDoubles.toolDurationRecord).toHaveBeenCalledWith(
 			expect.any(Number),
-			{
+			expect.objectContaining({
 				tool_name: "ReturnedErrorContext",
 				is_error: "true",
-			},
+				outcome: "returned_error",
+				"mcp.tool.result.has_structured_content": false,
+			}),
 		);
+		expect(
+			JSON.stringify(testDoubles.span.setAttribute.mock.calls),
+		).not.toContain("private returned error detail");
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
+	});
+
+	it("records bounded large result shape metadata", async () => {
+		const response = { content: [] };
+		attachResultTelemetry(response, {
+			itemCountBucket: "51+",
+			exerciseCountBucket: "11-50",
+			setCountBucket: "51+",
+			hasNotes: true,
+			folderSelected: true,
+			usesRepRanges: true,
+		});
+
+		await withTelemetry(
+			vi.fn().mockResolvedValue(response),
+			"WriteContext",
+		)({});
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.tool.result.item_count_bucket",
+			"51+",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.tool.result.exercise_count_bucket",
+			"11-50",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.tool.result.set_count_bucket",
+			"51+",
+		);
+		expect(testDoubles.toolDurationRecord).toHaveBeenCalledWith(
+			expect.any(Number),
+			expect.objectContaining({
+				"mcp.tool.result.item_count_bucket": "51+",
+				"mcp.tool.result.exercise_count_bucket": "11-50",
+				"mcp.tool.result.set_count_bucket": "51+",
+			}),
+		);
 	});
 
 	it("records only safe diagnostics and rethrows the original value unchanged", async () => {
@@ -347,16 +355,20 @@ describe("withTelemetry", () => {
 		expect(JSON.stringify(testDoubles.span.addEvent.mock.calls)).not.toContain(
 			secret,
 		);
-		expect(testDoubles.toolErrorsAdd).toHaveBeenCalledWith(1, {
-			tool_name: "ThrownErrorContext",
-			error_type: "UNKNOWN_ERROR",
-		});
+		expect(testDoubles.toolErrorsAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({
+				tool_name: "ThrownErrorContext",
+				error_type: "UNKNOWN_ERROR",
+			}),
+		);
 		expect(testDoubles.toolDurationRecord).toHaveBeenCalledWith(
 			expect.any(Number),
-			{
+			expect.objectContaining({
 				tool_name: "ThrownErrorContext",
 				is_error: "true",
-			},
+				outcome: "thrown_error",
+			}),
 		);
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
@@ -371,10 +383,13 @@ describe("withTelemetry", () => {
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
 			"error.category": "UnknownError",
 		});
-		expect(testDoubles.toolErrorsAdd).toHaveBeenCalledWith(1, {
-			tool_name: "NonErrorContext",
-			error_type: "UNKNOWN_ERROR",
-		});
+		expect(testDoubles.toolErrorsAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({
+				tool_name: "NonErrorContext",
+				error_type: "UNKNOWN_ERROR",
+			}),
+		);
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
 

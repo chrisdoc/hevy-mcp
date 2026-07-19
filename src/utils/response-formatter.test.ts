@@ -17,6 +17,7 @@ import {
 	workoutResponse,
 	workoutsResponse,
 } from "./response-formatter.js";
+import { getResultTelemetry } from "./result-telemetry.js";
 import type {
 	CompactRoutinesResult,
 	TrainingSummaryResult,
@@ -261,5 +262,25 @@ describe("response contracts", () => {
 				setCount: 2,
 			},
 		]);
+	});
+	it("does not infer structural result flags from null fields", () => {
+		const response = respond(createRoutineResponse, {
+			routine: {
+				folder_id: null,
+				exercises: [
+					{
+						notes: undefined,
+						sets: [{ rep_range: null }],
+					},
+				],
+			},
+			usesRepRanges: false,
+		});
+
+		expect(getResultTelemetry(response)).toMatchObject({
+			hasNotes: false,
+			folderSelected: false,
+			usesRepRanges: false,
+		});
 	});
 });

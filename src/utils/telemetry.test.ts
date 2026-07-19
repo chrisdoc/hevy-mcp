@@ -89,6 +89,7 @@ describe("telemetry initialization", () => {
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
 			expect.objectContaining({
+				sendDefaultPii: false,
 				skipOpenTelemetrySetup: true,
 				registerEsmLoaderHooks: false,
 				ignoreErrors: ["EPIPE", "broken pipe"],

@@ -213,6 +213,7 @@ describe("installGracefulShutdown", () => {
 		const closeDeferred = Promise.withResolvers<void>();
 		let forceExit: (() => void) | undefined;
 		const unref = vi.fn();
+		const onComplete = vi.fn();
 		const scheduleForcedExit = vi.fn(
 			(callback: () => void, _timeoutMs: number) => {
 				forceExit = callback;
@@ -225,6 +226,7 @@ describe("installGracefulShutdown", () => {
 			logError: vi.fn(),
 			flush: vi.fn().mockResolvedValue(undefined),
 			scheduleForcedExit,
+			onComplete,
 		});
 
 		process.emit("SIGTERM");
@@ -241,9 +243,11 @@ describe("installGracefulShutdown", () => {
 		process.exitCode = 7;
 		forceExit?.();
 		expect(process.exit).toHaveBeenCalledWith(7);
+		expect(onComplete).toHaveBeenCalledWith(false);
 
 		closeDeferred.resolve();
 		await controller.getShutdownPromise();
+		expect(onComplete).toHaveBeenCalledTimes(1);
 	});
 
 	it("uses a shutdown failure selected after the fallback was scheduled", async () => {

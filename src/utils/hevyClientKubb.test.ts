@@ -152,11 +152,18 @@ describe("native-fetch Hevy client", () => {
 			.mockResolvedValueOnce(jsonResponse({ error: "busy" }, 503))
 			.mockResolvedValueOnce(jsonResponse({ ok: true }));
 		const sleep = vi.fn().mockResolvedValue(undefined);
-		const client = createClient("key", undefined, { fetch: fetchMock, sleep });
+		const observations: number[] = [];
+		const client = createClient("key", undefined, {
+			fetch: fetchMock,
+			sleep,
+			onRequestComplete: (observation) =>
+				observations.push(observation.retryCount),
+		});
 
 		await expect(client.getUserInfo()).resolves.toEqual({ ok: true });
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(sleep).toHaveBeenCalledWith(300);
+		expect(observations).toEqual([0, 1]);
 	});
 
 	it("honors and caps Retry-After for 429 responses", async () => {

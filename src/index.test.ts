@@ -90,12 +90,15 @@ vi.mock("./utils/telemetry.js", () => ({
 
 vi.mock("./utils/metrics.js", () => ({
 	toolInvocations: { add: vi.fn() },
+	toolOutcomes: { add: vi.fn() },
 	toolErrors: { add: vi.fn() },
 	toolDuration: { record: vi.fn() },
 	apiCalls: { add: vi.fn() },
 	apiDuration: { record: vi.fn() },
 	stdioParseErrors: { add: vi.fn() },
 	serverStartups: { add: vi.fn() },
+	sessionStarted: { add: vi.fn() },
+	sessionEnded: { add: vi.fn() },
 }));
 
 vi.mock("@opentelemetry/api", () => ({
@@ -186,6 +189,10 @@ describe("Server entry", () => {
 	it("creates an MCP server instance after validating the API key", async () => {
 		const server = await createServer({ config: { apiKey: "test-key" } });
 		expect(server).toBeDefined();
+		expect(testDoubles.sentry.wrapMcpServerWithSentry).toHaveBeenCalledWith(
+			expect.anything(),
+			{ recordInputs: false, recordOutputs: false },
+		);
 		expect(testDoubles.getUserInfo).toHaveBeenCalledTimes(1);
 		expect(testDoubles.getUserInfo.mock.invocationCallOrder[0]).toBeLessThan(
 			testDoubles.mcpServerConstructor.mock.invocationCallOrder[0],
@@ -516,9 +523,12 @@ describe("Server entry", () => {
 			);
 			expect(spanNames).toContain("mcp.server.run");
 			expect(spanNames).toContain("mcp.server.connect");
-			expect(testDoubles.installGracefulShutdown).toHaveBeenCalledWith({
-				target: expect.objectContaining({ close: testDoubles.close }),
-			});
+			expect(testDoubles.installGracefulShutdown).toHaveBeenCalledWith(
+				expect.objectContaining({
+					target: expect.objectContaining({ close: testDoubles.close }),
+					onComplete: expect.any(Function),
+				}),
+			);
 			expect(testDoubles.connect.mock.invocationCallOrder[0]).toBeLessThan(
 				testDoubles.installGracefulShutdown.mock.invocationCallOrder[0] ?? 0,
 			);

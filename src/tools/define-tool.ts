@@ -6,12 +6,13 @@ import {
 	createTypedToolHandler,
 	type InferToolParams,
 } from "../utils/tool-helpers.js";
+import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 
 type ToolDefinitionBase<
 	TSchema extends Record<string, z.ZodTypeAny>,
 	TResult,
-> = {
+> = Pick<ToolTelemetryMetadata, "feature" | "operation"> & {
 	readonly name: string;
 	readonly description: string;
 	readonly inputSchema: TSchema;
@@ -51,8 +52,12 @@ export function registerToolDefinition(
 				await definition.execute(runtime, args),
 			),
 	);
-	const handler = runtime.wrapHandler(directHandler, definition.name);
-	const callback = (args: Record<string, unknown>) => handler(args);
+	const handler = runtime.wrapHandler(directHandler, definition.name, {
+		feature: definition.feature,
+		kind: definition.kind,
+		operation: definition.operation,
+	});
+	const callback = handler;
 
 	if (definition.kind === "read") {
 		server.registerTool(

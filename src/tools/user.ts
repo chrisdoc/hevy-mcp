@@ -12,6 +12,8 @@ const getUserInfoDefinition: ToolDefinition<
 	UserInfoResponse["data"]
 > = {
 	name: "get-user-info",
+	feature: "profile",
+	operation: "get",
 	description: describeTool({
 		summary:
 			"Read-only. Returns the authenticated account's user ID, display name, and public profile URL.",

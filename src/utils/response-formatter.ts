@@ -18,6 +18,11 @@ import type {
 	Workout,
 } from "../generated/client/types/index.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import {
+	attachResultTelemetry,
+	bucketCount,
+	type ToolResultTelemetry,
+} from "./result-telemetry.js";
 
 /**
  * MCP tool response type aligned with MCP SDK CallToolResult while keeping
@@ -30,15 +35,14 @@ export type McpToolResponse = Omit<CallToolResult, "content"> & {
 type OutputShape = z.ZodRawShape;
 type OutputFor<TShape extends OutputShape> = z.output<z.ZodObject<TShape>>;
 
-export interface ResponseContract<TData> {
-	render(data: TData): McpToolResponse;
-}
-
 export interface StructuredResponseContract<
 	TData,
 	TShape extends OutputShape,
 > extends ResponseContract<TData> {
 	readonly outputSchema: TShape;
+}
+export interface ResponseContract<TData> {
+	render(data: TData): McpToolResponse;
 }
 
 interface StructuredContractDefinition<TData, TShape extends OutputShape> {
@@ -53,6 +57,7 @@ interface StructuredContractDefinition<TData, TShape extends OutputShape> {
 		data: TData,
 		output: OutputFor<TShape>,
 	) => readonly string[];
+	readonly telemetry?: (data: TData) => ToolResultTelemetry | undefined;
 }
 
 interface JsonContractPresentation {
@@ -86,28 +91,32 @@ export function defineStructuredResponseContract<
 				jsonText(definition.legacyJson(structuredContent));
 			const additionalText =
 				definition.additionalText?.(data, structuredContent) ?? [];
-
-			return {
+			const response: McpToolResponse = {
 				content: [textContent(text), ...additionalText.map(textContent)],
 				structuredContent,
 			};
+			attachResultTelemetry(response, definition.telemetry?.(data));
+			return response;
 		},
 	};
 }
 
 export function defineJsonResponseContract<TData>(
 	present: (data: TData) => JsonContractPresentation,
+	telemetry?: (data: TData) => ToolResultTelemetry | undefined,
 ): ResponseContract<TData> {
 	return {
 		render(data) {
 			const presentation = present(data);
 			const text = presentation.text ?? jsonText(presentation.json);
-			return {
+			const response: McpToolResponse = {
 				content: [
 					textContent(text),
 					...(presentation.additionalText ?? []).map(textContent),
 				],
 			};
+			attachResultTelemetry(response, telemetry?.(data));
+			return response;
 		},
 	};
 }
@@ -616,6 +625,80 @@ function formatWorkoutEvent(event: WorkoutEvent) {
 	throw new Error(`Unsupported workout event type: ${event.type}`);
 }
 
+function exerciseSetCountTelemetry(
+	exercises: readonly { sets?: readonly unknown[] }[],
+): Pick<ToolResultTelemetry, "exerciseCountBucket" | "setCountBucket"> {
+	const setCount = exercises.reduce(
+		(total, exercise) => total + (exercise.sets?.length ?? 0),
+		0,
+	);
+	return {
+		exerciseCountBucket: bucketCount(exercises.length),
+		setCountBucket: bucketCount(setCount),
+	};
+}
+
+function workoutResultTelemetry(
+	workout: Workout | null | undefined,
+): ToolResultTelemetry {
+	const exercises = workout?.exercises ?? [];
+	return {
+		itemCountBucket: bucketCount(workout ? 1 : 0),
+		...exerciseSetCountTelemetry(exercises),
+		hasNotes:
+			hasNonEmptyText(workout?.description) ||
+			exercises.some((exercise) => hasNonEmptyText(exercise.notes)),
+	};
+}
+
+function hasNonEmptyText(value: unknown): boolean {
+	return typeof value === "string" && value.length > 0;
+}
+
+function routineResultTelemetry(
+	routine: Routine | null | undefined,
+	usesRepRanges = false,
+): ToolResultTelemetry {
+	const exercises = routine?.exercises ?? [];
+	return {
+		itemCountBucket: bucketCount(routine ? 1 : 0),
+		...exerciseSetCountTelemetry(exercises),
+		hasNotes: exercises.some((exercise) => hasNonEmptyText(exercise.notes)),
+		folderSelected:
+			routine?.folder_id !== undefined && routine.folder_id !== null,
+		usesRepRanges:
+			usesRepRanges ||
+			exercises.some((exercise) =>
+				exercise.sets?.some(
+					(set) => set.rep_range?.start != null || set.rep_range?.end != null,
+				),
+			),
+	};
+}
+
+const SAFE_WORKFLOW_NAMES: Record<
+	string,
+	NonNullable<ToolResultTelemetry["workflow"]>["name"]
+> = {
+	"training-summary": "training-summary",
+	"routine-discovery": "routine-discovery",
+};
+
+function workflowResultTelemetry(workflow: {
+	name: string;
+	pagination: Readonly<Record<string, number>>;
+	cacheStatus: "hit" | "miss" | "not-used";
+	itemsScanned: number;
+}): ToolResultTelemetry["workflow"] {
+	const name = SAFE_WORKFLOW_NAMES[workflow.name];
+	if (!name) return undefined;
+	return {
+		name,
+		pagination: workflow.pagination,
+		cacheStatus: workflow.cacheStatus,
+		itemsScanned: workflow.itemsScanned,
+	};
+}
 export const workoutsResponse = defineStructuredResponseContract({
 	outputSchema: workoutsOutputSchema,
 	normalize: (workouts: readonly Workout[] | undefined) => ({
@@ -626,6 +709,9 @@ export const workoutsResponse = defineStructuredResponseContract({
 		workouts.length === 0
 			? "No workouts found for the specified parameters"
 			: undefined,
+	telemetry: (workouts) => ({
+		itemCountBucket: bucketCount(workouts?.length ?? 0),
+	}),
 });
 
 export const workoutResponse = defineStructuredResponseContract({
@@ -637,12 +723,14 @@ export const workoutResponse = defineStructuredResponseContract({
 	legacyJson: ({ workout }) => workout,
 	text: ({ workoutId }, { workout }) =>
 		workout === null ? `Workout with ID ${workoutId} not found` : undefined,
+	telemetry: ({ workout }) => workoutResultTelemetry(workout),
 });
 
 export const workoutCountResponse = defineStructuredResponseContract({
 	outputSchema: workoutCountOutputSchema,
 	normalize: (count: number) => ({ count }),
 	legacyJson: (output) => output,
+	telemetry: (count) => ({ itemCountBucket: bucketCount(count) }),
 });
 
 export const workoutEventsResponse = defineStructuredResponseContract({
@@ -656,6 +744,9 @@ export const workoutEventsResponse = defineStructuredResponseContract({
 		events.length === 0
 			? `No workout events found for the specified parameters since ${since}`
 			: undefined,
+	telemetry: (data) => ({
+		itemCountBucket: bucketCount(data.events?.length ?? 0),
+	}),
 });
 
 export const routinesResponse = defineStructuredResponseContract({
@@ -668,6 +759,9 @@ export const routinesResponse = defineStructuredResponseContract({
 		routines.length === 0
 			? "No routines found for the specified parameters"
 			: undefined,
+	telemetry: (routines) => ({
+		itemCountBucket: bucketCount(routines?.length ?? 0),
+	}),
 });
 
 export const routineResponse = defineStructuredResponseContract({
@@ -679,6 +773,7 @@ export const routineResponse = defineStructuredResponseContract({
 	legacyJson: ({ routine }) => routine,
 	text: ({ routineId }, { routine }) =>
 		routine === null ? `Routine with ID ${routineId} not found` : undefined,
+	telemetry: ({ routine }) => routineResultTelemetry(routine),
 });
 
 export const exerciseTemplatesResponse = defineStructuredResponseContract({
@@ -691,6 +786,9 @@ export const exerciseTemplatesResponse = defineStructuredResponseContract({
 		exerciseTemplates.length === 0
 			? "No exercise templates found for the specified parameters"
 			: undefined,
+	telemetry: (templates) => ({
+		itemCountBucket: bucketCount(templates?.length ?? 0),
+	}),
 });
 
 export const exerciseTemplateResponse = defineStructuredResponseContract({
@@ -708,6 +806,9 @@ export const exerciseTemplateResponse = defineStructuredResponseContract({
 		exerciseTemplate === null
 			? `Exercise template with ID ${exerciseTemplateId} not found`
 			: undefined,
+	telemetry: ({ exerciseTemplate }) => ({
+		itemCountBucket: bucketCount(exerciseTemplate ? 1 : 0),
+	}),
 });
 
 export const exerciseHistoryResponse = defineStructuredResponseContract({
@@ -723,6 +824,9 @@ export const exerciseHistoryResponse = defineStructuredResponseContract({
 		exerciseHistory.length === 0
 			? `No exercise history found for template ${exerciseTemplateId}`
 			: undefined,
+	telemetry: (data) => ({
+		itemCountBucket: bucketCount(data.history?.length ?? 0),
+	}),
 });
 
 export const searchExerciseTemplatesResponse = defineStructuredResponseContract(
@@ -738,6 +842,9 @@ export const searchExerciseTemplatesResponse = defineStructuredResponseContract(
 			exerciseTemplates.length === 0
 				? `No exercise templates found matching "${query}"${primaryMuscleGroup ? ` with primary muscle group "${primaryMuscleGroup}"` : ""}`
 				: undefined,
+		telemetry: (data) => ({
+			itemCountBucket: bucketCount(data.results.length),
+		}),
 	},
 );
 
@@ -751,6 +858,9 @@ export const routineFoldersResponse = defineStructuredResponseContract({
 		routineFolders.length === 0
 			? "No routine folders found for the specified parameters"
 			: undefined,
+	telemetry: (folders) => ({
+		itemCountBucket: bucketCount(folders?.length ?? 0),
+	}),
 });
 
 export const routineFolderResponse = defineStructuredResponseContract({
@@ -768,6 +878,9 @@ export const routineFolderResponse = defineStructuredResponseContract({
 		routineFolder === null
 			? `Routine folder with ID ${folderId} not found`
 			: undefined,
+	telemetry: ({ routineFolder }) => ({
+		itemCountBucket: bucketCount(routineFolder ? 1 : 0),
+	}),
 });
 
 export const bodyMeasurementsResponse = defineStructuredResponseContract({
@@ -780,6 +893,9 @@ export const bodyMeasurementsResponse = defineStructuredResponseContract({
 		bodyMeasurements.length === 0
 			? "No body measurements found for the specified parameters"
 			: undefined,
+	telemetry: (measurements) => ({
+		itemCountBucket: bucketCount(measurements?.length ?? 0),
+	}),
 });
 
 export const bodyMeasurementResponse = defineStructuredResponseContract({
@@ -797,6 +913,9 @@ export const bodyMeasurementResponse = defineStructuredResponseContract({
 		bodyMeasurement === null
 			? `No body measurement found for date ${date}`
 			: undefined,
+	telemetry: ({ bodyMeasurement }) => ({
+		itemCountBucket: bucketCount(bodyMeasurement ? 1 : 0),
+	}),
 });
 
 export const userResponse = defineStructuredResponseContract({
@@ -805,6 +924,7 @@ export const userResponse = defineStructuredResponseContract({
 	legacyJson: ({ user }) => user,
 	text: (_data, { user }) =>
 		user === null ? "No user info found for the authenticated user" : undefined,
+	telemetry: (user) => ({ itemCountBucket: bucketCount(user ? 1 : 0) }),
 });
 export type TrainingSummaryResult = z.output<
 	z.ZodObject<typeof trainingSummaryOutputSchema>
@@ -821,6 +941,12 @@ export const trainingSummaryResponse = defineStructuredResponseContract({
 		data.workouts.count === 0 && data.bodyMeasurements.count === 0
 			? "No workouts or body measurements found for the specified period"
 			: undefined,
+	telemetry: (data) => ({
+		itemCountBucket: bucketCount(
+			data.workouts.count + data.bodyMeasurements.count,
+		),
+		workflow: workflowResultTelemetry(data.workflow),
+	}),
 });
 
 export const compactRoutinesResponse = defineStructuredResponseContract({
@@ -829,6 +955,10 @@ export const compactRoutinesResponse = defineStructuredResponseContract({
 	legacyJson: ({ routines }) => routines,
 	text: (_data, { routines }) =>
 		routines.length === 0 ? "No routines found matching the query" : undefined,
+	telemetry: (data) => ({
+		itemCountBucket: bucketCount(data.routines.length),
+		workflow: workflowResultTelemetry(data.workflow),
+	}),
 });
 
 export const createWorkoutResponse = defineJsonResponseContract(
@@ -836,6 +966,7 @@ export const createWorkoutResponse = defineJsonResponseContract(
 		workout
 			? { json: formatWorkout(workout) }
 			: { text: "Failed to create workout: Server returned no data" },
+	(workout) => workoutResultTelemetry(workout),
 );
 
 export const updateWorkoutResponse = defineJsonResponseContract(
@@ -843,6 +974,7 @@ export const updateWorkoutResponse = defineJsonResponseContract(
 		data.workout
 			? { json: formatWorkout(data.workout) }
 			: { text: `Failed to update workout with ID ${data.workoutId}` },
+	(data) => workoutResultTelemetry(data.workout),
 );
 
 const repRangeDisplayWarningText =
@@ -861,6 +993,7 @@ export const createRoutineResponse = defineJsonResponseContract(
 						: [],
 				}
 			: { text: "Failed to create routine: Server returned no data" },
+	(data) => routineResultTelemetry(data.routine, data.usesRepRanges),
 );
 
 export const updateRoutineResponse = defineJsonResponseContract(
@@ -877,6 +1010,7 @@ export const updateRoutineResponse = defineJsonResponseContract(
 						: [],
 				}
 			: { text: `Failed to update routine with ID ${data.routineId}` },
+	(data) => routineResultTelemetry(data.routine, data.usesRepRanges),
 );
 
 export const createExerciseTemplateResponse = defineJsonResponseContract(
@@ -886,6 +1020,7 @@ export const createExerciseTemplateResponse = defineJsonResponseContract(
 			message: "Exercise template created successfully",
 		},
 	}),
+	(response) => ({ itemCountBucket: bucketCount(response ? 1 : 0) }),
 );
 
 export const createRoutineFolderResponse = defineJsonResponseContract(
@@ -895,16 +1030,19 @@ export const createRoutineFolderResponse = defineJsonResponseContract(
 			: {
 					text: "Failed to create routine folder: Server returned no data",
 				},
+	(folder) => ({ itemCountBucket: bucketCount(folder ? 1 : 0) }),
 );
 
 export const createBodyMeasurementResponse = defineJsonResponseContract(
 	(date: string) => ({
 		text: `Body measurement for ${date} created successfully.`,
 	}),
+	() => ({ itemCountBucket: "1" }),
 );
 
 export const updateBodyMeasurementResponse = defineJsonResponseContract(
 	(date: string) => ({
 		text: `Body measurement for ${date} updated successfully.`,
 	}),
+	() => ({ itemCountBucket: "1" }),
 );
