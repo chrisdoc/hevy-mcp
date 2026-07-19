@@ -14,16 +14,31 @@ export function withObservability<TParams extends Record<string, unknown>>(
 	return withErrorHandling(
 		withTelemetry(fn, context),
 		context,
-		(error, _toolContext, argumentKeyCount) => {
+		(error, toolContext, argumentKeyCount) => {
 			const { diagnostic } = resolveErrorPolicy(error, "");
 			Sentry.withScope((scope) => {
+				scope.setTag("mcp.tool.context", toolContext);
 				scope.setTag("error.category", diagnostic.category);
 				if (diagnostic.code) scope.setTag("error.code", diagnostic.code);
 				if (diagnostic.status !== undefined) {
 					scope.setTag("http.status_code", String(diagnostic.status));
 				}
-				scope.setContext("mcpTool", { argumentKeyCount });
+				if (diagnostic.endpoint) {
+					scope.setTag("hevy.api.endpoint", diagnostic.endpoint);
+				}
+				scope.setContext("mcpTool", {
+					context: toolContext,
+					argumentKeyCount,
+				});
 				scope.setContext("safeError", { ...diagnostic });
+				scope.setFingerprint([
+					"mcp-tool-failure",
+					toolContext,
+					diagnostic.category,
+					diagnostic.code ?? "none",
+					String(diagnostic.status ?? "none"),
+					diagnostic.endpoint ?? "none",
+				]);
 				Sentry.captureMessage("MCP tool failure", "error");
 			});
 		},
