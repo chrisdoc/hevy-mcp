@@ -297,6 +297,12 @@ function createNativeClient(
 								cause,
 							},
 						);
+				const canRetry = method === "GET" && isRetryable(error);
+				if (canRetry && retryCount >= maxGetRetries) {
+					error.hevyRetryExhausted = true;
+					error.hevyRetryCount = retryCount;
+					error.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
+				}
 				options.onRequestComplete?.({
 					method,
 					endpoint,
@@ -305,7 +311,6 @@ function createNativeClient(
 					retryCount,
 					error,
 				});
-				const canRetry = method === "GET" && isRetryable(error);
 				if (!canRetry) {
 					emitClientLog(options.logger, {
 						level: "error",
@@ -319,10 +324,7 @@ function createNativeClient(
 					});
 					throw error;
 				}
-				if (retryCount >= maxGetRetries) {
-					error.hevyRetryExhausted = true;
-					error.hevyRetryCount = retryCount;
-					error.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
+				if (error.hevyRetryExhausted) {
 					throw error;
 				}
 				retryCount += 1;
