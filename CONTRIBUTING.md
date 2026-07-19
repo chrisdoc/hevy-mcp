@@ -154,7 +154,9 @@ Also run the narrow checks related to your change. In particular:
 dependencies. The project uses the Oxc tools for fast, consistent type-aware
 linting and formatting. Fix reported code warnings rather than assuming they
 are harmless. Use `npm run check:fix` for automated fixes, then inspect the
-resulting diff. hk uses the same tools for Git hook execution.
+resulting diff. `check:fix` modifies files in the working tree but does not
+stage them; review and stage the changes manually. hk uses the same tools for
+Git hook execution.
 
 hk is managed by mise in `mise.toml`. After installing mise, run `mise install`
 and `hk install --mise` once per clone to enable the repository's Git hooks. CI
