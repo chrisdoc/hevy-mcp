@@ -645,14 +645,7 @@ function workoutResultTelemetry(
 	return {
 		itemCountBucket: bucketCount(workout ? 1 : 0),
 		...exerciseSetCountTelemetry(exercises),
-		hasNotes:
-			hasNonEmptyText(workout?.description) ||
-			exercises.some((exercise) => hasNonEmptyText(exercise.notes)),
 	};
-}
-
-function hasNonEmptyText(value: unknown): boolean {
-	return typeof value === "string" && value.length > 0;
 }
 
 function routineResultTelemetry(
@@ -663,7 +656,6 @@ function routineResultTelemetry(
 	return {
 		itemCountBucket: bucketCount(routine ? 1 : 0),
 		...exerciseSetCountTelemetry(exercises),
-		hasNotes: exercises.some((exercise) => hasNonEmptyText(exercise.notes)),
 		folderSelected:
 			routine?.folder_id !== undefined && routine.folder_id !== null,
 		usesRepRanges:

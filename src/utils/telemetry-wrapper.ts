@@ -150,9 +150,6 @@ function setResultAttributes(
 			telemetry.setCountBucket,
 		);
 	}
-	if (telemetry.hasNotes !== undefined) {
-		span.setAttribute("mcp.tool.result.has_notes", telemetry.hasNotes);
-	}
 	if (telemetry.folderSelected !== undefined) {
 		span.setAttribute(
 			"mcp.tool.result.folder_selected",
@@ -186,9 +183,6 @@ function resultMetricAttributes(
 	}
 	if (telemetry.setCountBucket) {
 		attributes["mcp.tool.result.set_count_bucket"] = telemetry.setCountBucket;
-	}
-	if (telemetry.hasNotes !== undefined) {
-		attributes["mcp.tool.result.has_notes"] = telemetry.hasNotes;
 	}
 	if (telemetry.folderSelected !== undefined) {
 		attributes["mcp.tool.result.folder_selected"] = telemetry.folderSelected;

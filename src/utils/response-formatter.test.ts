@@ -269,7 +269,6 @@ describe("response contracts", () => {
 				folder_id: null,
 				exercises: [
 					{
-						notes: undefined,
 						sets: [{ rep_range: null }],
 					},
 				],
@@ -278,7 +277,6 @@ describe("response contracts", () => {
 		});
 
 		expect(getResultTelemetry(response)).toMatchObject({
-			hasNotes: false,
 			folderSelected: false,
 			usesRepRanges: false,
 		});

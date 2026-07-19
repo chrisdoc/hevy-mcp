@@ -11,7 +11,7 @@ the equivalent span attribute filters.
 | ---------------------- | ---------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
 | Feature adoption       | `mcp.tool.invocations` | `hevy.feature`, `mcp.tool.operation`                          | Which Hevy areas and operations are used?                    |
 | Read/write split       | `mcp.tool.invocations` | `mcp.tool.kind`                                               | Are users primarily reading or writing?                      |
-| Discovery entry points | `mcp.tool.invocations` | `mcp.tool.operation = search`, `mcp.tool.name`                | Which bounded search tools start workflows?                  |
+| Discovery entry points | `mcp.tool.invocations` | `hevy.feature`, `mcp.tool.operation`, `tool_name`             | Which bounded search tools start workflows?                  |
 | Workflow adoption      | `mcp.tool.invocations` | `hevy.feature = workflows`, `mcp.tool.operation`              | How often are training summaries and routine discovery used? |
 | Write adoption         | `mcp.tool.invocations` | `mcp.tool.kind = write`, `hevy.feature`, `mcp.tool.operation` | How frequently are writes made by feature?                   |
 
@@ -27,8 +27,8 @@ WHERE transport = "stdio"
 
 | Panel                       | Source                 | Grouping/filter                                                | Question answered                                             |
 | --------------------------- | ---------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
-| User-visible outcome rate   | `mcp.tool.outcomes`    | `mcp.tool.name`, `outcome`                                     | Which tools return MCP errors versus succeed?                 |
-| Thrown-error rate           | `mcp.tool.errors`      | `mcp.tool.name`, `error_type`                                  | Which tools raise uncaught failures?                          |
+| User-visible outcome rate   | `mcp.tool.outcomes`    | `tool_name`, `outcome`                                         | Which tools return MCP errors versus succeed?                 |
+| Thrown-error rate           | `mcp.tool.errors`      | `tool_name`, `error_type`                                      | Which tools raise uncaught failures?                          |
 | Client compatibility        | `mcp.tool.outcomes`    | `client_name`, `client_version`, `protocol_version`, `outcome` | Which sanitized client/protocol combinations fail more often? |
 | Tool latency                | `mcp.tool.duration_ms` | `hevy.feature`, `mcp.tool.operation`, `outcome`                | Which bounded feature operations are slow?                    |
 | Result shape versus latency | `mcp.tool.duration_ms` | `mcp.tool.result.item_count_bucket`, `hevy.feature`            | Do large result shapes correlate with latency?                |

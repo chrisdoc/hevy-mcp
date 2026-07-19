@@ -39,7 +39,7 @@ argument-key count as a bucket, and the following structural values:
 - booleans such as `includeCustom` and `refresh`;
 - result content-block count and structured-content presence;
 - result item, exercise, and set count buckets;
-- `has_notes`, `folder_selected`, and `uses_rep_ranges` booleans;
+- `folder_selected` and `uses_rep_ranges` booleans;
 - workflow page counts, bounded workflow name, cache status, and `items_scanned`.
 
 These fields describe shape only. They never contain a value from the argument

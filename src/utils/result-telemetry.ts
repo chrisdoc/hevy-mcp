@@ -13,7 +13,6 @@ export interface ToolResultTelemetry {
 	readonly itemCountBucket?: ResultCountBucket;
 	readonly exerciseCountBucket?: ResultCountBucket;
 	readonly setCountBucket?: ResultCountBucket;
-	readonly hasNotes?: boolean;
 	readonly folderSelected?: boolean;
 	readonly usesRepRanges?: boolean;
 	readonly workflow?: WorkflowResultTelemetry;

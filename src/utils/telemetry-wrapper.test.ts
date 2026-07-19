@@ -300,7 +300,6 @@ describe("withTelemetry", () => {
 			itemCountBucket: "51+",
 			exerciseCountBucket: "11-50",
 			setCountBucket: "51+",
-			hasNotes: true,
 			folderSelected: true,
 			usesRepRanges: true,
 		});
