@@ -158,9 +158,13 @@ resulting diff. `check:fix` modifies files in the working tree but does not
 stage them; review and stage the changes manually. hk uses the same tools for
 Git hook execution.
 
-hk is managed by mise in `mise.toml`. After installing mise, run `mise install`
-and `hk install --mise` once per clone to enable the repository's Git hooks. CI
-runs the npm validation scripts directly.
+Git hooks are managed by hk, replacing the former Lefthook setup. The
+`hk.pkl` configuration runs formatting and unit tests on pre-commit, commit
+message linting on commit-msg, and changeset plus PR validation checks on
+pre-push. hk is managed by mise in `mise.toml`; after installing mise, run
+`mise install` and `mise exec hk -- hk install --mise` once per clone to enable
+the repository's Git hooks without requiring mise activation. CI runs the npm
+validation scripts directly.
 
 ## Generated API client
 
