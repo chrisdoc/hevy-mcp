@@ -73,6 +73,7 @@ export function createSharedMcpServer(options: SharedServerOptions): McpServer {
 	const runtime = createToolRuntime({
 		client: hevyClient,
 		catalog: createExerciseTemplateCatalog(hevyClient),
+		logger,
 		wrapHandler: options.wrapHandler ?? defaultToolHandlerWrapper,
 	});
 	const counting = createToolCountingServer(server);
