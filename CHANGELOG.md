@@ -1,3 +1,9 @@
+## 3.4.0
+
+### Minor Changes
+
+- [#692](https://github.com/chrisdoc/hevy-mcp/pull/692) [`6b576ec`](https://github.com/chrisdoc/hevy-mcp/commit/6b576ec10f7e47645475605dd272b7032b11c719) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Improve Sentry MCP tool-failure diagnostics by preserving tool context and grouping failures by their normalized error dimensions.
+
 ## 3.3.0
 
 ### Minor Changes
