@@ -56,9 +56,10 @@ and server lifecycle spans.
 
 The Sentry MCP wrapper is configured with input/output capture disabled.
 `beforeSendSpan` removes MCP request/session identifiers, progress tokens,
-logging/progress text, resource URIs, and unsanitized client identity fields
-before Sentry export; the stdio instrumentation remains the source for the
-sanitized client dimensions above.
+logging/method text and metadata, resource URIs, prompt names, raw protocol
+versions, and unsanitized client identity fields before Sentry export; the
+stdio instrumentation remains the source for the sanitized client dimensions
+above.
 
 The pseudonymous user hash is span-only correlation data. It is not a metric
 dimension and must not be used to construct per-user behavior histories.

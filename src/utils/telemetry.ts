@@ -154,6 +154,7 @@ export async function flushTelemetry(timeoutMs = 1_000): Promise<void> {
 	const flushPromise = Promise.allSettled([
 		tracerProvider.forceFlush(),
 		...(meterProvider ? [meterProvider.forceFlush()] : []),
+		Sentry.flush(timeoutMs),
 	]);
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	const timeoutPromise = new Promise<void>((resolve) => {

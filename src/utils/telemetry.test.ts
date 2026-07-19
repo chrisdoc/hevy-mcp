@@ -20,9 +20,9 @@ const testDoubles = vi.hoisted(() => ({
 	periodicExportingMetricReader: vi.fn(),
 	nodeTracerProviderOptions: undefined as unknown,
 }));
-
 vi.mock("@sentry/node", () => ({
 	init: testDoubles.sentryInit,
+	flush: vi.fn().mockResolvedValue(true),
 	validateOpenTelemetrySetup: testDoubles.validateOpenTelemetrySetup,
 	SentryContextManager: vi.fn(),
 }));
@@ -105,6 +105,8 @@ describe("telemetry initialization", () => {
 			data: {
 				"mcp.request.id": "request-secret",
 				"mcp.progress.token": "progress-secret",
+				"mcp.prompt.name": "private-prompt",
+				"mcp.protocol.version": "private-protocol",
 				"mcp.client.name": "Private Client",
 				"mcp.tool.name": "get-workouts",
 			},
@@ -118,6 +120,8 @@ describe("telemetry initialization", () => {
 		expect(span.data).toEqual({
 			"mcp.request.id": "request-secret",
 			"mcp.progress.token": "progress-secret",
+			"mcp.prompt.name": "private-prompt",
+			"mcp.protocol.version": "private-protocol",
 			"mcp.client.name": "Private Client",
 			"mcp.tool.name": "get-workouts",
 		});
