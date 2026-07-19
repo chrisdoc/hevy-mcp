@@ -4,10 +4,17 @@
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"keywords": [
 		"api",
+		"exercise",
 		"fitness",
+		"fitness-tracker",
+		"health",
 		"hevy",
 		"mcp",
-		"model context protocol"
+		"model context protocol",
+		"training",
+		"workout",
+		"workout-planner",
+		"workout-tracker"
 	],
 	"homepage": "https://github.com/chrisdoc/hevy-mcp#readme",
 	"bugs": {
