@@ -5,6 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterAll, beforeAll, describe, it } from "vitest";
+import { parseWorkerHttpUrl } from "../support/worker-http-live-config.js";
 
 const LOOPBACK = "127.0.0.1";
 const STARTUP_TIMEOUT_MS = 20_000;
@@ -15,6 +16,9 @@ const MAX_CAPTURED_LOG_LENGTH = 32 * 1024;
 const LIVE_TESTS_ENABLED =
 	process.env.HEVY_RUN_LIVE_WORKER_TESTS === "1" &&
 	Boolean(process.env.HEVY_API_KEY);
+const remoteWorkerHttpUrl = parseWorkerHttpUrl(
+	process.env.HEVY_WORKER_HTTP_URL,
+);
 const describeLive = LIVE_TESTS_ENABLED ? describe.sequential : describe.skip;
 
 const INVOKED_READ_TOOLS = [
@@ -183,6 +187,7 @@ async function waitForWranglerReady(): Promise<void> {
 }
 
 async function stopWrangler(): Promise<void> {
+	if (remoteWorkerHttpUrl) return;
 	if (!wrangler || wrangler.exitCode !== null || wrangler.pid === undefined)
 		return;
 
@@ -215,6 +220,13 @@ async function stopWrangler(): Promise<void> {
 			`Wrangler did not exit after SIGKILL.\n${redactedWranglerLogs()}`,
 		);
 	}
+}
+
+function workerHttpEndpoint(): URL {
+	if (remoteWorkerHttpUrl) return new URL(remoteWorkerHttpUrl);
+	if (!workerBaseUrl)
+		throw new Error("Live Worker endpoint was not initialized");
+	return new URL(`${workerBaseUrl}/mcp`);
 }
 
 async function startWrangler(): Promise<void> {
@@ -277,12 +289,12 @@ function optionalStringId(
 	return String(id);
 }
 
-describeLive("live Wrangler Worker HTTP integration", () => {
+describeLive("live Worker HTTP integration", () => {
 	let client: Client;
 
 	beforeAll(
 		async () => {
-			await startWrangler();
+			if (!remoteWorkerHttpUrl) await startWrangler();
 			const apiKey = process.env.HEVY_API_KEY;
 			assertCondition(apiKey, "configuration/HEVY_API_KEY");
 			client = new Client({
@@ -290,7 +302,7 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				version: "1.0.0",
 			});
 			const transport = new StreamableHTTPClientTransport(
-				new URL(`${workerBaseUrl}/mcp`),
+				workerHttpEndpoint(),
 				{
 					requestInit: {
 						headers: { authorization: `Bearer ${apiKey}` },

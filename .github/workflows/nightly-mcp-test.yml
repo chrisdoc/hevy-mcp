@@ -78,3 +78,27 @@ jobs:
           path: ${{ matrix.launcher.diagnostics_path }}
           if-no-files-found: warn
           retention-days: 7
+
+  worker-http-live:
+    name: Hosted Worker HTTP integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run hosted Worker HTTP integration test
+        run: npm run test:worker-http:live
+        env:
+          HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+          HEVY_RUN_LIVE_WORKER_TESTS: "1"
+          HEVY_WORKER_HTTP_URL: "https://hevy.chrisdoc.dev/mcp"
