@@ -11,7 +11,7 @@ export function withObservability<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
-): (args: TParams) => Promise<McpToolResponse> {
+): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return withErrorHandling(
 		withTelemetry(fn, context, metadata),
 		context,

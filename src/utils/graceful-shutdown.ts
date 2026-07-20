@@ -118,14 +118,8 @@ export function installGracefulShutdown({
 		}
 
 		const forcedExitTimer = scheduleForcedExit(() => {
-			const completion = reportCompletion(false);
-			if (completion) {
-				void completion.finally(() =>
-					processLike.exit(processLike.exitCode ?? 0),
-				);
-			} else {
-				processLike.exit(processLike.exitCode ?? 0);
-			}
+			void reportCompletion(false);
+			processLike.exit(shutdownSettled ? (processLike.exitCode ?? 0) : 1);
 		}, forcedExitTimeoutMs);
 		// This fallback must survive successful shutdown so it can terminate a
 		// process held open by unrelated handles, without keeping the process alive

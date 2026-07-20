@@ -6,28 +6,32 @@ or bounded bucket.
 
 ## Approved bounded dimensions
 
-| Field                          | Allowed values                                                                         | Applies to                                    |
-| ------------------------------ | -------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `hevy.feature`                 | `workouts`, `routines`, `templates`, `measurements`, `folders`, `profile`, `workflows` | Tool spans and tool metrics                   |
-| `mcp.tool.kind`                | `read`, `write`                                                                        | Tool spans and tool metrics                   |
-| `mcp.tool.operation`           | `list`, `get`, `search`, `create`, `update`, `count`, `sync`                           | Tool spans and tool metrics                   |
-| `outcome` / `mcp.tool.outcome` | `success`, `returned_error`, `thrown_error`                                            | Tool outcome and duration metrics; tool spans |
-| Result count buckets           | `0`, `1`, `2-10`, `11-50`, `51+`                                                       | Result-shape spans and tool duration metrics  |
-| Retry count buckets            | `0`, `1`, `2-10`, `11-50`, `51+`                                                       | API spans and API calls/duration metrics      |
-| Session termination            | `clean`, `startup_failure`, `connect_failure`, `tool_failure`, `unknown`               | Session metrics                               |
-| Session duration buckets       | `<1s`, `1-10s`, `10-60s`, `1-5m`, `5m+`                                                | Session metrics                               |
-| Tool-call buckets              | `0`, `1`, `2-10`, `11-50`, `51+`                                                       | Session metrics                               |
-| Cache status                   | `hit`, `miss`, `not-used`                                                              | Workflow spans                                |
-| API method                     | HTTP method from the client allowlist                                                  | API spans and metrics                         |
-| API endpoint                   | Normalized static endpoint or a placeholder path containing no identifier              | API spans and metrics                         |
-| HTTP status                    | Numeric status code                                                                    | API diagnostics and metrics                   |
+| Field                          | Allowed values                                                                               | Applies to                                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `hevy.feature`                 | `workouts`, `routines`, `templates`, `measurements`, `folders`, `profile`, `workflows`       | Tool spans and tool metrics                   |
+| `mcp.tool.kind`                | `read`, `write`                                                                              | Tool spans and tool metrics                   |
+| `mcp.tool.operation`           | `list`, `get`, `search`, `create`, `update`, `count`, `sync`                                 | Tool spans and tool metrics                   |
+| `outcome` / `mcp.tool.outcome` | `success`, `returned_error`, `thrown_error`                                                  | Tool outcome and duration metrics; tool spans |
+| `error_type`                   | `API_ERROR`, `RATE_LIMIT`, `VALIDATION_ERROR`, `NOT_FOUND`, `NETWORK_ERROR`, `UNKNOWN_ERROR` | Tool error metrics                            |
+| Result count buckets           | `0`, `1`, `2-10`, `11-50`, `51+`                                                             | Result-shape spans and tool duration metrics  |
+| Retry count buckets            | `0`, `1`, `2-10`, `11-50`, `51+`                                                             | API spans and API calls/duration metrics      |
+| Session termination            | `clean`, `startup_failure`, `connect_failure`, `tool_failure`, `unknown`                     | Session metrics                               |
+| Session duration buckets       | `<1s`, `1-10s`, `10-60s`, `1-5m`, `5m+`                                                      | Session metrics                               |
+| Tool-call buckets              | `0`, `1`, `2-10`, `11-50`, `51+`                                                             | Session metrics                               |
+| Cache status                   | `hit`, `miss`, `not-used`                                                                    | Workflow spans                                |
+| API method                     | HTTP method from the client allowlist                                                        | API spans and metrics                         |
+| API endpoint                   | Normalized static endpoint or a placeholder path containing no identifier                    | API spans and metrics                         |
+| HTTP status                    | Numeric status code                                                                          | API diagnostics and metrics                   |
 
 API error categories and codes are emitted only after `createSafeErrorDiagnostic`
 normalization. Categories are the finite `SafeErrorCategory` union; codes are
 the finite allowlist in `error-policy.ts`. Neither field contains an upstream
 message or arbitrary error value.
-The exact tool name remains available as `mcp.tool.name` / `tool_name` for
-short-lived debugging. It is not a product taxonomy dimension.
+The exact tool name remains available as `mcp.tool.name` / `tool_name` only
+for short-lived debugging. Access is limited to repository maintainers and
+the on-call operator for at most 24 hours; it must not appear in saved
+product or reliability dashboards, queries, or exports. It is not a product
+taxonomy dimension.
 
 ## Structural fields
 
@@ -47,11 +51,12 @@ or result body.
 ## Session and client fields
 
 The stdio initialize message may provide client name, client version, and MCP
-protocol version. Each value is trimmed, restricted to a safe printable
-character set, and limited to 64 characters; malformed or missing values become
-`unknown`. The transport is always `stdio` for this path. Metrics never contain
-a session ID, request ID, progress token, prompt, argument, result, or user
-hash. The server version is supplied by the service resource (`service.version`)
+protocol version. Each value is trimmed, restricted to the safe token
+character set `[A-Za-z0-9._+:/@-]`, and limited to 64 characters; malformed or
+missing values become `unknown`. The transport is always `stdio` for this
+path. Metrics never contain a session ID, request ID, progress token, prompt,
+argument, result, or user hash.
+The server version is supplied by the service resource (`service.version`)
 and server lifecycle spans.
 
 The Sentry MCP wrapper is configured with input/output capture disabled.

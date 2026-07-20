@@ -158,6 +158,20 @@ describe("withTelemetry", () => {
 		);
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
+	it("preserves successful results when result telemetry fails", async () => {
+		const response = { content: [] };
+		testDoubles.span.setAttribute.mockImplementationOnce(() => {
+			throw new Error("telemetry failed");
+		});
+
+		await expect(
+			withTelemetry(
+				vi.fn().mockResolvedValue(response),
+				"TelemetryFailure",
+			)({}),
+		).resolves.toBe(response);
+		expect(testDoubles.span.end).toHaveBeenCalledOnce();
+	});
 
 	it("records explicit workflow telemetry without inspecting result text", async () => {
 		const response = { content: [{ type: "text" as const, text: "private" }] };

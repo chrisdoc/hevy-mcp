@@ -95,11 +95,11 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
 	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
-): (args: TParams) => Promise<McpToolResponse> {
-	return async (args: TParams) => {
-		const normalizedArgs = args ?? {};
+): (args: Record<string, unknown>) => Promise<McpToolResponse> {
+	return async (rawArgs: Record<string, unknown>) => {
+		const normalizedArgs = rawArgs ?? {};
 		try {
-			return await fn(normalizedArgs);
+			return await fn(normalizedArgs as TParams);
 		} catch (error) {
 			try {
 				onError?.(error, context, Object.keys(normalizedArgs).length);

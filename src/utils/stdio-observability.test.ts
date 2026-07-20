@@ -160,7 +160,7 @@ describe("stdio observability", () => {
 				method: "initialize",
 				params: {
 					protocolVersion: "2025-11-25",
-					clientInfo: { name: "Claude Desktop", version: "1.2.3" },
+					clientInfo: { name: "Claude-Desktop", version: "1.2.3" },
 					privatePrompt: "do not capture this",
 				},
 			}),
@@ -172,7 +172,7 @@ describe("stdio observability", () => {
 
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.client.name",
-			"Claude Desktop",
+			"Claude-Desktop",
 		);
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.client.version",

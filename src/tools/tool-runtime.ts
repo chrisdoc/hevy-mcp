@@ -17,7 +17,7 @@ export type ToolHandlerWrapper = <TParams extends Record<string, unknown>>(
 	fn: ToolHandler<TParams>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
-) => ToolHandler<TParams>;
+) => ToolHandler;
 export interface ToolRuntime {
 	readonly client: HevyClient | null;
 	readonly catalog: ExerciseTemplateCatalog;

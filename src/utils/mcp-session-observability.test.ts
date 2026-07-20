@@ -28,11 +28,11 @@ describe("MCP session observability", () => {
 				method: "initialize",
 				params: {
 					protocolVersion: "2025-11-25",
-					clientInfo: { name: "Claude Desktop", version: "1.2.3" },
+					clientInfo: { name: "Claude-Desktop", version: "1.2.3" },
 				},
 			}),
 		).toEqual({
-			name: "Claude Desktop",
+			name: "Claude-Desktop",
 			version: "1.2.3",
 			protocolVersion: "2025-11-25",
 		});
@@ -56,7 +56,7 @@ describe("MCP session observability", () => {
 				},
 			}),
 		).toEqual({
-			name: "private client metadata",
+			name: "unknown",
 			version: "unknown",
 			protocolVersion: "unknown",
 		});
@@ -67,7 +67,7 @@ describe("MCP session observability", () => {
 			method: "initialize",
 			params: {
 				protocolVersion: "2025-11-25",
-				clientInfo: { name: "Claude Desktop", version: "1.2.3" },
+				clientInfo: { name: "Claude-Desktop", version: "1.2.3" },
 			},
 		});
 		recordMcpToolInvocation();
@@ -77,7 +77,7 @@ describe("MCP session observability", () => {
 		expect(testDoubles.sessionStartedAdd).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({
-				client_name: "Claude Desktop",
+				client_name: "Claude-Desktop",
 				client_version: "1.2.3",
 				protocol_version: "2025-11-25",
 				transport: "stdio",

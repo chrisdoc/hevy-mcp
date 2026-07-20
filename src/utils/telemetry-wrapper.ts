@@ -104,7 +104,9 @@ function setWorkflowAttributes(
 		bodyMeasurements: true,
 		routines: true,
 	};
-	for (const [resource, pageCount] of Object.entries(workflow.pagination)) {
+	for (const [resource, pageCount] of Object.entries(
+		workflow.pagination ?? {},
+	)) {
 		if (
 			allowedResources[resource] === true &&
 			Number.isSafeInteger(pageCount) &&
@@ -209,8 +211,8 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
-): (args: TParams) => Promise<McpToolResponse> {
-	return async (rawArgs: TParams) => {
+): (args: Record<string, unknown>) => Promise<McpToolResponse> {
+	return async (rawArgs: Record<string, unknown>) => {
 		const args = rawArgs ?? {};
 		if (isDebugEnabled()) {
 			debugLog("tool_invocation", {
@@ -247,17 +249,27 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 			},
 			async (span) => {
 				try {
-					const result = await fn(args);
+					const result = await fn(args as TParams);
 					const isError = Boolean(result.isError);
-					if (isError) recordMcpToolFailure();
+					if (isError) {
+						try {
+							recordMcpToolFailure();
+						} catch {
+							// Metrics failures must not change the tool result.
+						}
+					}
 					outcome = isError ? "returned_error" : "success";
-					span.setStatus({
-						code: isError ? SpanStatusCode.ERROR : SpanStatusCode.OK,
-					});
-					setResultAttributes(span, result);
-					resultMetrics = resultMetricAttributes(result);
-					span.setAttribute("mcp.tool.outcome", outcome);
-					toolOutcomes.add(1, { ...metrics, outcome });
+					try {
+						span.setStatus({
+							code: isError ? SpanStatusCode.ERROR : SpanStatusCode.OK,
+						});
+						setResultAttributes(span, result);
+						resultMetrics = resultMetricAttributes(result);
+						span.setAttribute("mcp.tool.outcome", outcome);
+						toolOutcomes.add(1, { ...metrics, outcome });
+					} catch {
+						// Instrumentation failures must not surface as tool errors.
+					}
 					return result;
 				} catch (error) {
 					outcome = "thrown_error";
