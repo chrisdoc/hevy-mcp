@@ -4,7 +4,7 @@ import { withObservability } from "./observability-wrapper.js";
 import { Sentry } from "./telemetry.js";
 
 const testDoubles = vi.hoisted(() => ({
-	scope: { setTag: vi.fn(), setContext: vi.fn() },
+	scope: { setTag: vi.fn(), setContext: vi.fn(), setFingerprint: vi.fn() },
 	sentry: {
 		withScope: vi.fn((callback: (scope: unknown) => void) =>
 			callback(testDoubles.scope),
@@ -57,6 +57,14 @@ describe("withObservability", () => {
 			"http.status_code",
 			"503",
 		);
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"mcp.tool.context",
+			"get-user-info",
+		);
+		expect(testDoubles.scope.setTag).toHaveBeenCalledWith(
+			"hevy.api.endpoint",
+			"/v1/user/info",
+		);
 		expect(testDoubles.scope.setContext).toHaveBeenCalledWith(
 			"safeError",
 			expect.objectContaining({
@@ -67,8 +75,17 @@ describe("withObservability", () => {
 			}),
 		);
 		expect(testDoubles.scope.setContext).toHaveBeenCalledWith("mcpTool", {
+			context: "get-user-info",
 			argumentKeyCount: 2,
 		});
+		expect(testDoubles.scope.setFingerprint).toHaveBeenCalledWith([
+			"mcp-tool-failure",
+			"get-user-info",
+			"HevyHttpError",
+			"HEVY_RETRY_EXHAUSTED",
+			"503",
+			"/v1/user/info",
+		]);
 		expect(Sentry.captureMessage).toHaveBeenCalledWith(
 			"MCP tool failure",
 			"error",

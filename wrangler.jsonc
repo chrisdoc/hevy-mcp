@@ -6,6 +6,17 @@
 	"workers_dev": false,
 	"preview_urls": true,
 	"observability": {
-		"enabled": false,
+		"traces": {
+			"enabled": true,
+		},
+		"logs": {
+			"enabled": true,
+		},
 	},
+	"kv_namespaces": [
+		{
+			"binding": "OAUTH_KV",
+			"id": "4650aad553c0490ab50dbda88a70a7ec",
+		},
+	],
 }

@@ -4,6 +4,13 @@ import { createSharedMcpServer } from "./shared-server.js";
 import { isHevyHttpError } from "./utils/hevy-http-error.js";
 import { createClient, type HevyClient } from "./utils/hevyClient.js";
 import { createSafeErrorDiagnostic } from "./utils/safe-error-diagnostic.js";
+import {
+	createHevyOAuthProvider,
+	hasOAuthAccessTokenShape,
+	type HevyApiKeyValidation,
+	type HevyOAuthWorker,
+	isOAuthEnabled,
+} from "./worker-oauth.js";
 
 const MCP_PATH = "/mcp";
 const HEVY_API_BASE_URL = "https://api.hevyapp.com";
@@ -16,6 +23,10 @@ export interface WorkerEnv {
 	// Trusted deployment/test binding; invalid values fail closed before auth.
 	HEVY_API_BASE_URL?: string;
 	MCP_ALLOWED_ORIGINS?: string;
+	// Optional KV namespace binding. When present, the Worker additionally
+	// exposes OAuth 2.1 endpoints for remote MCP clients such as Claude.ai.
+	// When absent, behavior is identical to the pre-OAuth Worker.
+	OAUTH_KV?: unknown;
 }
 
 interface WorkerDependencies {
@@ -24,6 +35,8 @@ interface WorkerDependencies {
 	createServer?: (apiKey: string, hevyClient: HevyClient) => McpServer;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
 }
+
+type ResolvedWorkerDependencies = Required<WorkerDependencies>;
 
 export function parseBearerApiKey(authorization: string | null): string | null {
 	if (!authorization) return null;
@@ -141,14 +154,61 @@ function logWorkerFailure(context: string, error: unknown): void {
 	});
 }
 
+function resolveWorkerDependencies(
+	dependencies: WorkerDependencies,
+): ResolvedWorkerDependencies {
+	return {
+		createValidationClient:
+			dependencies.createValidationClient ?? createDefaultValidationClient,
+		createRequestClient:
+			dependencies.createRequestClient ?? createDefaultRequestClient,
+		createServer: dependencies.createServer ?? createDefaultServer,
+		createTransport: dependencies.createTransport ?? createDefaultTransport,
+	};
+}
+
+async function validateHevyApiKey(
+	apiKey: string,
+	hevyApiBaseUrl: string,
+	createValidationClient: ResolvedWorkerDependencies["createValidationClient"],
+): Promise<HevyApiKeyValidation> {
+	try {
+		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo();
+		return "valid";
+	} catch (error) {
+		if (
+			isHevyHttpError(error) &&
+			(error.status === 401 || error.status === 403)
+		) {
+			return "invalid";
+		}
+		return "unavailable";
+	}
+}
+
+async function serveMcpRequest(
+	request: Request,
+	apiKey: string,
+	hevyApiBaseUrl: string,
+	dependencies: ResolvedWorkerDependencies,
+): Promise<Response> {
+	try {
+		const hevyClient = dependencies.createRequestClient(apiKey, hevyApiBaseUrl);
+		const server = dependencies.createServer(apiKey, hevyClient);
+		const transport = dependencies.createTransport();
+		transport.onerror = (error) => {
+			logWorkerFailure("streamable-http-transport", error);
+		};
+		await server.connect(transport);
+		return await transport.handleRequest(request);
+	} catch (error) {
+		logWorkerFailure("mcp-request-processing", error);
+		return new Response("Unable to process MCP request", { status: 500 });
+	}
+}
+
 export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
-	const createValidationClient =
-		dependencies.createValidationClient ?? createDefaultValidationClient;
-	const createRequestClient =
-		dependencies.createRequestClient ?? createDefaultRequestClient;
-	const createServer = dependencies.createServer ?? createDefaultServer;
-	const createTransport =
-		dependencies.createTransport ?? createDefaultTransport;
+	const resolved = resolveWorkerDependencies(dependencies);
 
 	return async function handleRequest(
 		request: Request,
@@ -189,41 +249,109 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 			});
 		}
 
-		try {
-			await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo();
-		} catch (error) {
-			if (
-				isHevyHttpError(error) &&
-				(error.status === 401 || error.status === 403)
-			) {
-				return response("Unauthorized", 401, origin, {
-					"WWW-Authenticate": "Bearer",
-				});
-			}
+		const validation = await validateHevyApiKey(
+			apiKey,
+			hevyApiBaseUrl,
+			resolved.createValidationClient,
+		);
+		if (validation === "invalid") {
+			return response("Unauthorized", 401, origin, {
+				"WWW-Authenticate": "Bearer",
+			});
+		}
+		if (validation !== "valid") {
 			return response("Hevy API is temporarily unavailable", 502, origin);
 		}
 
-		try {
-			const hevyClient = createRequestClient(apiKey, hevyApiBaseUrl);
-			const server = createServer(apiKey, hevyClient);
-			const transport = createTransport();
-			transport.onerror = (error) => {
-				logWorkerFailure("streamable-http-transport", error);
-			};
-			await server.connect(transport);
-			const mcpResponse = await transport.handleRequest(request);
-			return withCors(mcpResponse, origin);
-		} catch (error) {
-			logWorkerFailure("mcp-request-processing", error);
-			return response("Unable to process MCP request", 500, origin);
-		}
+		return withCors(
+			await serveMcpRequest(request, apiKey, hevyApiBaseUrl, resolved),
+			origin,
+		);
 	};
 }
 
-const handleRequest = createWorkerHandler();
+function createWorkerOAuthProvider(
+	resolved: ResolvedWorkerDependencies,
+): HevyOAuthWorker<WorkerEnv> {
+	return createHevyOAuthProvider<WorkerEnv>({
+		validateApiKey: async (apiKey, env) => {
+			let hevyApiBaseUrl: string;
+			try {
+				hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
+			} catch {
+				return "config-error";
+			}
+			return validateHevyApiKey(
+				apiKey,
+				hevyApiBaseUrl,
+				resolved.createValidationClient,
+			);
+		},
+		serveMcp: async (request, env, apiKey) => {
+			let hevyApiBaseUrl: string;
+			try {
+				hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
+			} catch {
+				return new Response("Worker configuration error", { status: 500 });
+			}
+			return serveMcpRequest(request, apiKey, hevyApiBaseUrl, resolved);
+		},
+	});
+}
+
+/**
+ * Compose the legacy direct-API-key handler with the optional OAuth layer.
+ *
+ * Without an `OAUTH_KV` binding every request takes the legacy path, so
+ * existing deployments are unaffected. With the binding, `/mcp` requests
+ * whose bearer value looks like an OAuth access token (and unauthenticated
+ * ones, so clients receive the RFC 9728 discovery challenge) go through the
+ * OAuth provider, while raw Hevy API keys keep using the legacy path.
+ */
+export function createWorkerFetchHandler(
+	dependencies: WorkerDependencies = {},
+) {
+	const resolved = resolveWorkerDependencies(dependencies);
+	const legacyHandler = createWorkerHandler(dependencies);
+	const oauthProvider = createWorkerOAuthProvider(resolved);
+
+	return async function handleWorkerFetch(
+		request: Request,
+		env: WorkerEnv,
+		ctx?: object,
+	): Promise<Response> {
+		if (!isOAuthEnabled(env)) {
+			if (env.OAUTH_KV != null) {
+				logWorkerFailure(
+					"oauth-kv-misconfigured",
+					new TypeError(
+						"OAUTH_KV binding is not a KV namespace; OAuth stays disabled",
+					),
+				);
+			}
+			return legacyHandler(request, env);
+		}
+
+		const url = new URL(request.url);
+		if (url.pathname === MCP_PATH) {
+			if (request.method !== "POST") return legacyHandler(request, env);
+			const bearer = parseBearerApiKey(request.headers.get("authorization"));
+			if (bearer && !hasOAuthAccessTokenShape(bearer)) {
+				return legacyHandler(request, env);
+			}
+			const originResult = validateOrigin(request, env);
+			if (originResult instanceof Response) return originResult;
+			const oauthResponse = await oauthProvider.fetch(request, env, ctx ?? {});
+			return withCors(oauthResponse, originResult);
+		}
+		return oauthProvider.fetch(request, env, ctx ?? {});
+	};
+}
+
+const handleWorkerFetch = createWorkerFetchHandler();
 
 export default {
-	fetch(request: Request, env: WorkerEnv): Promise<Response> {
-		return handleRequest(request, env);
+	fetch(request: Request, env: WorkerEnv, ctx?: object): Promise<Response> {
+		return handleWorkerFetch(request, env, ctx);
 	},
 };

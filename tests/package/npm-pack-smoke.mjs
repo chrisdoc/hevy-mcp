@@ -40,7 +40,12 @@ if (result.status !== 0) process.exit(result.status ?? 1);
 
 let packResult;
 try {
-	[packResult] = JSON.parse(result.stdout);
+	const parsed = JSON.parse(result.stdout);
+	packResult = Array.isArray(parsed)
+		? parsed[0]
+		: parsed.files
+			? parsed
+			: Object.values(parsed)[0];
 } catch (error) {
 	throw new Error(`Could not parse npm pack output: ${error.message}`);
 }

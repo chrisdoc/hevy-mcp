@@ -1,3 +1,27 @@
+## 3.4.0
+
+### Minor Changes
+
+- [#692](https://github.com/chrisdoc/hevy-mcp/pull/692) [`6b576ec`](https://github.com/chrisdoc/hevy-mcp/commit/6b576ec10f7e47645475605dd272b7032b11c719) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Improve Sentry MCP tool-failure diagnostics by preserving tool context and grouping failures by their normalized error dimensions.
+
+## 3.3.0
+
+### Minor Changes
+
+- [#682](https://github.com/chrisdoc/hevy-mcp/pull/682) [`c979b6a`](https://github.com/chrisdoc/hevy-mcp/commit/c979b6a1ce7eb11a91d63781828875f0bcde2fb3) Thanks [@planecore](https://github.com/planecore)! - Add an optional OAuth 2.1 layer to the Cloudflare Worker so remote MCP clients such as Claude.ai custom connectors can connect without a fixed Authorization header. When an `OAUTH_KV` namespace is bound, the Worker serves RFC 8414 / RFC 9728 discovery metadata, dynamic client registration, and PKCE token exchange, plus an `/authorize` page that validates the submitted Hevy API key against Hevy and stores it encrypted inside the OAuth grant. Without the binding, Worker behavior is unchanged, and direct Hevy-API-key bearer requests keep working in both modes.
+
+### Patch Changes
+
+- [#683](https://github.com/chrisdoc/hevy-mcp/pull/683) [`90a4577`](https://github.com/chrisdoc/hevy-mcp/commit/90a4577818493cfcbe997fb2ae842ff8a478168f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use the OpenTelemetry `user.hash` semantic convention and propagate the user hash to every recorded span.
+
+## 3.2.1
+
+### Patch Changes
+
+- [#681](https://github.com/chrisdoc/hevy-mcp/pull/681) [`9e62d02`](https://github.com/chrisdoc/hevy-mcp/commit/9e62d028d1bc872892a447e1e7cfc9ed7e45ed2c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - promote the hosted Cloudflare MCP endpoint in the README
+
+- [#679](https://github.com/chrisdoc/hevy-mcp/pull/679) [`d232da2`](https://github.com/chrisdoc/hevy-mcp/commit/d232da27da688c225f7cd04fe2ba990831ad5f4c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - update readme
+
 ## 3.2.0
 
 ### Minor Changes

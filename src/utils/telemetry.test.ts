@@ -17,6 +17,7 @@ const testDoubles = vi.hoisted(() => ({
 	batchSpanProcessor: vi.fn(),
 	meterProvider: vi.fn(),
 	periodicExportingMetricReader: vi.fn(),
+	nodeTracerProviderOptions: undefined as unknown,
 }));
 
 vi.mock("@sentry/node", () => ({
@@ -63,6 +64,9 @@ vi.mock("@opentelemetry/sdk-trace-base", () => ({
 
 vi.mock("@opentelemetry/sdk-trace-node", () => {
 	class MockNodeTracerProvider {
+		constructor(options: unknown) {
+			testDoubles.nodeTracerProviderOptions = options;
+		}
 		register = testDoubles.register;
 	}
 	return { NodeTracerProvider: MockNodeTracerProvider };
@@ -150,5 +154,30 @@ describe("telemetry initialization", () => {
 		expect(mod.Sentry).toBeDefined();
 		expect(mod.serviceName).toBe("hevy-mcp");
 		expect(mod.serviceVersion).toBe("dev");
+	});
+	it("adds the current user hash to every started span", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+
+		const providerOptions = testDoubles.nodeTracerProviderOptions as {
+			spanProcessors: Array<{
+				onStart: (span: unknown, parentContext: unknown) => void;
+			}>;
+		};
+		const processor = providerOptions.spanProcessors[0];
+		if (!processor) {
+			throw new Error("Expected user hash span processor");
+		}
+
+		const noUserHashSetAttribute = vi.fn();
+		processor.onStart({ setAttribute: noUserHashSetAttribute }, {});
+		expect(noUserHashSetAttribute).not.toHaveBeenCalled();
+
+		mod.setCurrentUserHash("hash-123");
+
+		const setAttribute = vi.fn();
+		processor.onStart({ setAttribute }, {});
+
+		expect(setAttribute).toHaveBeenCalledWith("user.hash", "hash-123");
 	});
 });

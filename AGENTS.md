@@ -241,6 +241,7 @@ src/
 ├── cli.ts             # Node.js stdio executable entrypoint
 ├── index.ts           # Node-only stdio server, telemetry, and observability
 ├── worker.ts          # Cloudflare Worker Streamable HTTP entrypoint
+├── worker-oauth.ts    # Optional Worker OAuth 2.1 layer (Claude.ai remote MCP)
 ├── shared-server.ts   # Runtime-neutral shared MCP server construction
 ├── tools/             # MCP tool implementations (+ co-located *.test.ts)
 │   ├── annotations.ts       # Workout annotation tools
@@ -291,7 +292,8 @@ The project uses a generated API client via Kubb that creates:
 
 - `kubb.config.ts` - API client generation configuration
 - `oxlint and oxfmt configuration` - Code formatting and linting rules (tabs, 80 char lines, double quotes)
-- `lefthook.yml` - Git hooks for pre-commit formatting and commit message linting
+- `hk.pkl` and `mise.toml` - Git hooks for formatting, tests, commit message
+  linting, and tool installation
 
 ## Development Patterns
 

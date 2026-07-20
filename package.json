@@ -1,13 +1,20 @@
 {
 	"name": "hevy-mcp",
-	"version": "3.2.0",
+	"version": "3.4.0",
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"keywords": [
 		"api",
+		"exercise",
 		"fitness",
+		"fitness-tracker",
+		"health",
 		"hevy",
 		"mcp",
-		"model context protocol"
+		"model context protocol",
+		"training",
+		"workout",
+		"workout-planner",
+		"workout-tracker"
 	],
 	"homepage": "https://github.com/chrisdoc/hevy-mcp#readme",
 	"bugs": {
@@ -76,6 +83,7 @@
 		"worker:dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run"
 	},
 	"dependencies": {
+		"@cloudflare/workers-oauth-provider": "^0.8.2",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@opentelemetry/api": "^1.9.0",
 		"@opentelemetry/exporter-metrics-otlp-http": "^0.220.0",
@@ -108,7 +116,6 @@
 		"@vitest/coverage-v8": "^4.1.9",
 		"abstract-syntax-tree": "^2.22.0",
 		"cross-env": "^10.1.0",
-		"lefthook": "^2.1.9",
 		"nock": "^14.0.16",
 		"oxfmt": "^0.58.0",
 		"oxlint": "^1.70.0",

@@ -5,7 +5,7 @@ import {
 	tracer,
 	serviceName,
 	serviceVersion,
-	setCurrentUserId,
+	setCurrentUserHash,
 } from "./utils/telemetry.js";
 import { serverStartups } from "./utils/metrics.js";
 
@@ -79,9 +79,9 @@ const SAFE_NETWORK_ERROR_CODES = new Set([
 const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 
 function fingerprintApiKey(apiKey: string) {
-	// HMAC-SHA-256 gives Sentry a deterministic pseudonymous user ID without
-	// sending, logging, or storing the raw Hevy API key.
-	// Trimmed to 10 characters to keep it compact and readable in Sentry & OTel traces.
+	// HMAC-SHA-256 gives Sentry and OTel a deterministic pseudonymous user
+	// hash without sending, logging, or storing the raw Hevy API key.
+	// Trimmed to 10 characters to keep it compact and readable in traces.
 	return createHmac("sha256", apiKey)
 		.update(SENTRY_USER_ID_CONTEXT)
 		.digest("hex")
@@ -161,8 +161,6 @@ async function validateApiKey(apiKey: string) {
 }
 
 function buildServer(apiKey: string) {
-	const userId = fingerprintApiKey(apiKey);
-
 	return tracer.startActiveSpan(
 		"mcp.server.build",
 		{
@@ -170,13 +168,10 @@ function buildServer(apiKey: string) {
 				"mcp.server.name": name,
 				"mcp.server.version": version,
 				"mcp.transport": "stdio",
-				"user.id": userId,
 			},
 		},
 		(span) => {
 			try {
-				Sentry.setUser({ id: userId });
-				setCurrentUserId(userId);
 				const server = createSharedMcpServer({
 					apiKey,
 					clientOptions: createNodeHevyClientOptions(),
@@ -202,6 +197,9 @@ function buildServer(apiKey: string) {
 
 export async function createServer({ config }: { config: ServerConfig }) {
 	const { apiKey } = serverConfigSchema.parse(config);
+	const userHash = fingerprintApiKey(apiKey);
+	setCurrentUserHash(userHash);
+	Sentry.setUser({ id: userHash });
 	await validateApiKey(apiKey);
 	return buildServer(apiKey);
 }
@@ -223,6 +221,17 @@ export async function runServer() {
 	}
 
 	serverStartups.add(1, { version });
+
+	// Seed the user context before config validation so startup failures for a
+	// supplied key retain the same trace correlation as normal tool calls.
+	const configuredApiKey = process.env.HEVY_API_KEY;
+	const initialUserHash = configuredApiKey
+		? fingerprintApiKey(configuredApiKey)
+		: undefined;
+	if (initialUserHash) {
+		setCurrentUserHash(initialUserHash);
+		Sentry.setUser({ id: initialUserHash });
+	}
 
 	await tracer.startActiveSpan(
 		"mcp.server.run",
