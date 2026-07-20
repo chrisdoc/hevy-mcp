@@ -24,6 +24,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create changeset
-        uses: mscharley/dependency-changesets-action@v1.2.4
+        uses: mscharley/dependency-changesets-action@v1.2.5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
