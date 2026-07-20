@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { codecovRollupPlugin } from "@codecov/rollup-plugin";
 import { sentryRollupPlugin } from "@sentry/rollup-plugin";
 import { defineConfig } from "tsdown";
 
@@ -20,6 +21,9 @@ try {
 
 const { name, version } = parsed;
 const isStandaloneBuild = process.env.HEVY_MCP_BUILD_MODE === "standalone";
+const codecovToken = process.env.CODECOV_TOKEN?.trim() || undefined;
+const enableCodecovBundleAnalysis =
+	!isStandaloneBuild && codecovToken !== undefined;
 
 if (process.env.HEVY_MCP_RELEASE === "true") {
 	const missing: string[] = [];
@@ -107,5 +111,12 @@ export default defineConfig({
 				name: `${name}@${version}`,
 			},
 		}),
+		...(enableCodecovBundleAnalysis
+			? codecovRollupPlugin({
+					enableBundleAnalysis: true,
+					bundleName: "hevy-mcp",
+					uploadToken: codecovToken,
+				})
+			: []),
 	],
 });
