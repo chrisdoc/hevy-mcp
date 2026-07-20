@@ -5,20 +5,22 @@ import { setTimeout as delay } from "node:timers/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterAll, beforeAll, describe, it } from "vitest";
-import { parseWorkerHttpUrl } from "../support/worker-http-live-config.js";
+import {
+	cloudflareChallengeStatus,
+	parseWorkerHttpUrl,
+} from "../support/worker-http-live-config.js";
 
 const LOOPBACK = "127.0.0.1";
 const STARTUP_TIMEOUT_MS = 20_000;
 const MAX_STARTUP_ATTEMPTS = 3;
 const SHUTDOWN_TIMEOUT_MS = 3_000;
 const REQUEST_TIMEOUT_MS = 30_000;
+const PREFLIGHT_TIMEOUT_MS = 5_000;
 const MAX_CAPTURED_LOG_LENGTH = 32 * 1024;
 const LIVE_TESTS_ENABLED =
 	process.env.HEVY_RUN_LIVE_WORKER_TESTS === "1" &&
 	Boolean(process.env.HEVY_API_KEY);
-const remoteWorkerHttpUrl = parseWorkerHttpUrl(
-	process.env.HEVY_WORKER_HTTP_URL,
-);
+let remoteWorkerHttpUrl: URL | undefined;
 const describeLive = LIVE_TESTS_ENABLED ? describe.sequential : describe.skip;
 
 const INVOKED_READ_TOOLS = [
@@ -229,6 +231,39 @@ function workerHttpEndpoint(): URL {
 	return new URL(`${workerBaseUrl}/mcp`);
 }
 
+/**
+ * Probe hosted mode without credentials so an explicit Cloudflare challenge
+ * is distinguishable from ordinary MCP-layer responses such as 401 or 405.
+ * Other statuses and transport errors remain the responsibility of MCP
+ * initialization, which preserves its existing transient/auth handling.
+ */
+async function preflightRemoteWorkerHttp(): Promise<void> {
+	if (!remoteWorkerHttpUrl) return;
+
+	let response: Response;
+	try {
+		response = await fetch(remoteWorkerHttpUrl, {
+			method: "GET",
+			redirect: "manual",
+			signal: AbortSignal.timeout(PREFLIGHT_TIMEOUT_MS),
+		});
+	} catch {
+		return;
+	}
+
+	const status = response.status;
+	const challengeStatus = cloudflareChallengeStatus(
+		status,
+		response.headers.get("cf-mitigated"),
+	);
+	if (response.body) await response.body.cancel().catch(() => undefined);
+	if (challengeStatus !== undefined) {
+		throw new Error(
+			`Hosted Worker endpoint preflight returned HTTP ${challengeStatus}: Cloudflare challenge detected`,
+		);
+	}
+}
+
 async function startWrangler(): Promise<void> {
 	const failures: string[] = [];
 	for (let attempt = 1; attempt <= MAX_STARTUP_ATTEMPTS; attempt += 1) {
@@ -294,9 +329,13 @@ describeLive("live Worker HTTP integration", () => {
 
 	beforeAll(
 		async () => {
+			remoteWorkerHttpUrl = parseWorkerHttpUrl(
+				process.env.HEVY_WORKER_HTTP_URL,
+			);
 			if (!remoteWorkerHttpUrl) await startWrangler();
 			const apiKey = process.env.HEVY_API_KEY;
 			assertCondition(apiKey, "configuration/HEVY_API_KEY");
+			await preflightRemoteWorkerHttp();
 			client = new Client({
 				name: "worker-http-live-integration",
 				version: "1.0.0",
