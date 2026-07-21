@@ -1,103 +1,216 @@
 import { SpanStatusCode } from "@opentelemetry/api";
 import { debugLog, isDebugEnabled, redactToolArgs } from "./debug.js";
 import { resolveErrorPolicy } from "./error-policy.js";
-import { toolDuration, toolErrors, toolInvocations } from "./metrics.js";
+import {
+	toolDuration,
+	toolErrors,
+	toolInvocations,
+	toolOutcomes,
+} from "./metrics.js";
+import {
+	getCurrentMcpClientMetadata,
+	recordMcpToolFailure,
+	recordMcpToolInvocation,
+} from "./mcp-session-observability.js";
+import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
+import type { ToolResultTelemetry } from "./result-telemetry.js";
+import { bucketCount, getResultTelemetry } from "./result-telemetry.js";
 import type { McpToolResponse } from "./response-formatter.js";
 import { tracer } from "./telemetry.js";
+import type { ToolTelemetryMetadata } from "./tool-taxonomy.js";
 
-/** Whitelist of safe argument keys that can be logged without exposing PII. */
-const ARGUMENT_WHITELIST = new Set([
-	"page",
-	"pageSize",
-	"since",
-	"workoutId",
-	"routineId",
-	"folderId",
-	"exerciseTemplateId",
-	"date",
-	"startDate",
-	"endDate",
-	"updatedSince",
-	"includeCustom",
-	"limit",
-	"offset",
-	"refresh",
-	"query",
-	"primaryMuscleGroup",
-]);
+const STRUCTURAL_ARGUMENT_KEYS: Record<string, true> = {
+	page: true,
+	pageSize: true,
+	since: true,
+	workoutId: true,
+	routineId: true,
+	folderId: true,
+	exerciseTemplateId: true,
+	date: true,
+	startDate: true,
+	endDate: true,
+	updatedSince: true,
+	includeCustom: true,
+	limit: true,
+	offset: true,
+	refresh: true,
+	query: true,
+	primaryMuscleGroup: true,
+};
 
-function extractSafeArgs(
-	args: Record<string, unknown>,
-): Record<string, string | number | boolean> {
+const BUCKETED_ARGUMENT_KEYS: Record<string, true> = {
+	page: true,
+	pageSize: true,
+	limit: true,
+	offset: true,
+};
+
+const PRESENCE_ONLY_ARGUMENT_KEYS: Record<string, true> = {
+	since: true,
+	workoutId: true,
+	routineId: true,
+	folderId: true,
+	exerciseTemplateId: true,
+	date: true,
+	startDate: true,
+	endDate: true,
+	updatedSince: true,
+	query: true,
+	primaryMuscleGroup: true,
+};
+
+function extractSafeArgs(args: Record<string, unknown>): {
+	attributes: Record<string, string | number | boolean>;
+	keys: string[];
+} {
 	const attributes: Record<string, string | number | boolean> = {};
+	const keys: string[] = [];
 	for (const [key, value] of Object.entries(args)) {
-		if (!ARGUMENT_WHITELIST.has(key)) {
+		if (STRUCTURAL_ARGUMENT_KEYS[key] !== true) continue;
+		keys.push(key);
+
+		if (PRESENCE_ONLY_ARGUMENT_KEYS[key] === true) {
+			if (value !== undefined && value !== null) {
+				attributes[`mcp.tool.args.${key}.present`] = true;
+			}
 			continue;
 		}
 
+		if (BUCKETED_ARGUMENT_KEYS[key] === true && typeof value === "number") {
+			attributes[`mcp.tool.args.${key}.bucket`] = bucketCount(value);
+			continue;
+		}
+
+		if (typeof value === "boolean") {
+			attributes[`mcp.tool.args.${key}`] = value;
+		}
+	}
+	return { attributes, keys };
+}
+
+function setWorkflowAttributes(
+	span: {
+		setAttribute(key: string, value: string | number | boolean): void;
+	},
+	workflow: ToolResultTelemetry["workflow"],
+): void {
+	if (!workflow) return;
+	span.setAttribute("workflow.name", workflow.name);
+	span.setAttribute("workflow.cache_status", workflow.cacheStatus);
+	span.setAttribute("workflow.items_scanned", workflow.itemsScanned);
+	const allowedResources: Record<string, true> = {
+		workouts: true,
+		bodyMeasurements: true,
+		routines: true,
+	};
+	for (const [resource, pageCount] of Object.entries(
+		workflow.pagination ?? {},
+	)) {
 		if (
-			typeof value !== "string" &&
-			typeof value !== "number" &&
-			typeof value !== "boolean"
+			allowedResources[resource] === true &&
+			Number.isSafeInteger(pageCount) &&
+			pageCount >= 0
 		) {
-			continue;
+			span.setAttribute(`workflow.pagination.${resource}.pages`, pageCount);
 		}
+	}
+}
 
-		attributes[`mcp.tool.args.${key}`] =
-			key === "query" && typeof value === "string" && value.length > 100
-				? `${value.slice(0, 100)}...`
-				: value;
+function setResultAttributes(
+	span: {
+		setAttribute(key: string, value: string | number | boolean): void;
+	},
+	result: McpToolResponse,
+): void {
+	span.setAttribute("mcp.tool.result.is_error", Boolean(result.isError));
+	span.setAttribute(
+		"mcp.tool.result.has_structured_content",
+		"structuredContent" in result && result.structuredContent !== undefined,
+	);
+	if (Array.isArray(result.content)) {
+		span.setAttribute("mcp.tool.result.content_count", result.content.length);
+	}
+
+	const telemetry = getResultTelemetry(result);
+	if (!telemetry) return;
+	if (telemetry.itemCountBucket) {
+		span.setAttribute(
+			"mcp.tool.result.item_count_bucket",
+			telemetry.itemCountBucket,
+		);
+	}
+	if (telemetry.exerciseCountBucket) {
+		span.setAttribute(
+			"mcp.tool.result.exercise_count_bucket",
+			telemetry.exerciseCountBucket,
+		);
+	}
+	if (telemetry.setCountBucket) {
+		span.setAttribute(
+			"mcp.tool.result.set_count_bucket",
+			telemetry.setCountBucket,
+		);
+	}
+	setWorkflowAttributes(span, telemetry.workflow);
+}
+
+function resultMetricAttributes(
+	result: McpToolResponse,
+): Record<string, string | boolean> {
+	const attributes: Record<string, string | boolean> = {
+		"mcp.tool.result.has_structured_content":
+			"structuredContent" in result && result.structuredContent !== undefined,
+	};
+	const telemetry = getResultTelemetry(result);
+	if (!telemetry) return attributes;
+	if (telemetry.itemCountBucket) {
+		attributes["mcp.tool.result.item_count_bucket"] = telemetry.itemCountBucket;
+	}
+	if (telemetry.exerciseCountBucket) {
+		attributes["mcp.tool.result.exercise_count_bucket"] =
+			telemetry.exerciseCountBucket;
+	}
+	if (telemetry.setCountBucket) {
+		attributes["mcp.tool.result.set_count_bucket"] = telemetry.setCountBucket;
 	}
 	return attributes;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
+function taxonomyAttributes(
+	metadata: ToolTelemetryMetadata | undefined,
+): Record<string, string> {
+	return metadata
+		? {
+				"hevy.feature": metadata.feature,
+				"mcp.tool.kind": metadata.kind,
+				"mcp.tool.operation": metadata.operation,
+			}
+		: {};
 }
 
-function getWorkflowTelemetry(result: McpToolResponse): {
-	name: string;
-	pagination: Record<string, number>;
-	cacheStatus: string;
-	itemsScanned: number;
-} | null {
-	const structuredContent = result.structuredContent;
-	if (!isRecord(structuredContent)) return null;
-	const workflow = structuredContent.workflow;
-	if (!isRecord(workflow)) return null;
-	const name = workflow.name;
-	const paginationValue = workflow.pagination;
-	const cacheStatus = workflow.cacheStatus;
-	const itemsScanned = workflow.itemsScanned;
-	if (
-		typeof name !== "string" ||
-		!isRecord(paginationValue) ||
-		typeof cacheStatus !== "string" ||
-		typeof itemsScanned !== "number" ||
-		!Number.isSafeInteger(itemsScanned) ||
-		itemsScanned < 0
-	) {
-		return null;
-	}
-	const pagination: Record<string, number> = {};
-	for (const [key, value] of Object.entries(paginationValue)) {
-		if (
-			typeof value === "number" &&
-			Number.isSafeInteger(value) &&
-			value >= 0
-		) {
-			pagination[key] = value;
-		}
-	}
-	return { name, pagination, cacheStatus, itemsScanned };
+function metricAttributes(
+	context: string,
+	metadata: ToolTelemetryMetadata | undefined,
+	clientAttributes: McpClientMetricAttributes,
+): Record<string, string> {
+	return {
+		tool_name: context,
+		...taxonomyAttributes(metadata),
+		...clientAttributes,
+	};
 }
 
 /**
- * Wrap an MCP tool handler with its existing OpenTelemetry span and metrics.
+ * Privacy contract: this wrapper records only bounded tool taxonomy, structural
+ * argument presence/buckets, safe result-shape metadata, and allowlisted error
+ * diagnostics. It MUST NOT read or emit prompt text, tool arguments, result
+ * bodies, identifiers, dates, titles, notes, descriptions, or measurements.
  */
 export function withTelemetry<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
+	metadata?: ToolTelemetryMetadata,
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (rawArgs: Record<string, unknown>) => {
 		const args = rawArgs ?? {};
@@ -107,65 +220,62 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 				params: redactToolArgs(args),
 			});
 		}
+		const { attributes: safeArgs, keys: safeArgumentKeys } =
+			extractSafeArgs(args);
+		const clientAttributes = recordMcpToolInvocation();
+		let resultMetrics: Record<string, string | boolean> = {};
+		const clientMetadata = getCurrentMcpClientMetadata();
+		const metrics = metricAttributes(context, metadata, clientAttributes);
 		const argumentKeyCount = Object.keys(args).length;
 		const startTime = Date.now();
-		let isError = false;
+		let outcome: "success" | "returned_error" | "thrown_error" = "success";
 
-		toolInvocations.add(1, { tool_name: context });
-
-		const safeArgs = extractSafeArgs(args);
-		const whitelistedKeys = Object.keys(safeArgs).map((key) =>
-			key.replace("mcp.tool.args.", ""),
-		);
+		toolInvocations.add(1, metrics);
 
 		return tracer.startActiveSpan(
 			`mcp.tool.${context}`,
 			{
 				attributes: {
 					"mcp.tool.name": context,
-					"workflow.name": context,
-					"mcp.tool.args.key_count": argumentKeyCount,
-					"mcp.tool.args.keys": whitelistedKeys.join(","),
+					...taxonomyAttributes(metadata),
+					"mcp.client.name": clientMetadata.name,
+					"mcp.client.version": clientMetadata.version,
+					"mcp.protocol.version": clientMetadata.protocolVersion,
+					"mcp.transport": "stdio",
+					"mcp.tool.args.key_count_bucket": bucketCount(argumentKeyCount),
+					"mcp.tool.args.keys": safeArgumentKeys.join(","),
 					...safeArgs,
 				},
 			},
 			async (span) => {
 				try {
 					const result = await fn(args as TParams);
-					isError = Boolean(result.isError);
-					span.setStatus({
-						code: isError ? SpanStatusCode.ERROR : SpanStatusCode.OK,
-					});
-					span.setAttribute("mcp.tool.result.is_error", isError);
-					if (result.content) {
-						span.setAttribute(
-							"mcp.tool.result.content_count",
-							result.content.length,
-						);
-						const textLength = result.content.reduce(
-							(sum, item) => sum + (item.text?.length ?? 0),
-							0,
-						);
-						span.setAttribute("mcp.tool.result.text_length", textLength);
-					}
-					const workflow = getWorkflowTelemetry(result);
-					if (workflow) {
-						span.setAttribute("workflow.name", workflow.name);
-						span.setAttribute("workflow.cache_status", workflow.cacheStatus);
-						span.setAttribute("workflow.items_scanned", workflow.itemsScanned);
-						for (const [resource, pageCount] of Object.entries(
-							workflow.pagination,
-						)) {
-							span.setAttribute(
-								`workflow.pagination.${resource}.pages`,
-								pageCount,
-							);
+					const isError = Boolean(result.isError);
+					if (isError) {
+						try {
+							recordMcpToolFailure();
+						} catch {
+							// Metrics failures must not change the tool result.
 						}
+					}
+					outcome = isError ? "returned_error" : "success";
+					try {
+						span.setStatus({
+							code: isError ? SpanStatusCode.ERROR : SpanStatusCode.OK,
+						});
+						setResultAttributes(span, result);
+						resultMetrics = resultMetricAttributes(result);
+						span.setAttribute("mcp.tool.outcome", outcome);
+						toolOutcomes.add(1, { ...metrics, outcome });
+					} catch {
+						// Instrumentation failures must not surface as tool errors.
 					}
 					return result;
 				} catch (error) {
-					isError = true;
+					outcome = "thrown_error";
+					recordMcpToolFailure();
 					span.setStatus({ code: SpanStatusCode.ERROR });
+					span.setAttribute("mcp.tool.outcome", outcome);
 					const policy = resolveErrorPolicy(error, "");
 					const { diagnostic } = policy;
 					span.addEvent("mcp.tool.failure", {
@@ -184,14 +294,17 @@ export function withTelemetry<TParams extends Record<string, unknown>>(
 					span.setAttribute("error.type", errorType);
 
 					toolErrors.add(1, {
-						tool_name: context,
+						...metrics,
 						error_type: errorType,
 					});
+					toolOutcomes.add(1, { ...metrics, outcome });
 					throw error;
 				} finally {
 					toolDuration.record(Date.now() - startTime, {
-						tool_name: context,
-						is_error: String(isError),
+						...metrics,
+						...resultMetrics,
+						is_error: String(outcome !== "success"),
+						outcome,
 					});
 					span.end();
 				}

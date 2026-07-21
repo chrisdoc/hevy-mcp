@@ -42,12 +42,14 @@ describe("createNodeHevyClientOptions", () => {
 			endpoint: "/v1/user/info",
 			status: 200,
 			durationMs: 12,
+			retryCount: 0,
 		});
 
 		expect(testDoubles.startSpan).toHaveBeenCalledWith("hevy.api.GET", {
 			attributes: {
 				"http.method": "GET",
 				"http.status_code": 200,
+				"hevy.api.retry_count_bucket": "0",
 				"hevy.api.endpoint": "/v1/user/info",
 			},
 		});
@@ -58,10 +60,12 @@ describe("createNodeHevyClientOptions", () => {
 			method: "GET",
 			endpoint: "/v1/user/info",
 			status_code: 200,
+			retry_count_bucket: "0",
 		});
 		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(12, {
 			method: "GET",
 			endpoint: "/v1/user/info",
+			retry_count_bucket: "0",
 		});
 	});
 
@@ -82,6 +86,7 @@ describe("createNodeHevyClientOptions", () => {
 			endpoint: "/v1/user/info",
 			status: 503,
 			durationMs: 25,
+			retryCount: 1,
 			error,
 		});
 
@@ -89,6 +94,12 @@ describe("createNodeHevyClientOptions", () => {
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("hevy.api.failure", {
 			"error.category": "HevyHttpError",
 		});
+		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({
+				error_category: "HevyHttpError",
+			}),
+		);
 		expect(JSON.stringify(testDoubles.span.addEvent.mock.calls)).not.toContain(
 			secret,
 		);
@@ -107,6 +118,7 @@ describe("createNodeHevyClientOptions", () => {
 			endpoint: "/v1/user/info",
 			status: 0,
 			durationMs: 25,
+			retryCount: 0,
 			error,
 		});
 

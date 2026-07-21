@@ -10,7 +10,7 @@ import { workflowToolDefinitions } from "./workflows.js";
 import { workoutToolDefinitions } from "./workouts.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 
-const hevyToolDefinitions = [
+export const hevyToolDefinitions = [
 	...workoutToolDefinitions,
 	...routineToolDefinitions,
 	...templateToolDefinitions,

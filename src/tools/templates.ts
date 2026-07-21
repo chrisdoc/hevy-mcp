@@ -82,6 +82,8 @@ const searchExerciseTemplatesSchema = {
 
 const getExerciseTemplatesDefinition = {
 	name: "get-exercise-templates",
+	feature: "templates" as const,
+	operation: "list" as const,
 	description: describeTool({
 		summary:
 			"Read-only. Lists default and custom exercise templates with equipment and muscle metadata.",
@@ -113,6 +115,8 @@ const getExerciseTemplatesDefinition = {
 
 const getExerciseTemplateDefinition = {
 	name: "get-exercise-template",
+	feature: "templates" as const,
+	operation: "get" as const,
 	description: describeTool({
 		summary:
 			"Read-only. Retrieves complete metadata for one exercise template by ID.",
@@ -148,6 +152,8 @@ const getExerciseTemplateDefinition = {
 
 const getExerciseHistoryDefinition = {
 	name: "get-exercise-history",
+	feature: "templates" as const,
+	operation: "get" as const,
 	description: describeTool({
 		summary:
 			"Read-only. Retrieves past performed sets for one exercise template.",
@@ -182,6 +188,8 @@ const getExerciseHistoryDefinition = {
 
 const createExerciseTemplateDefinition = {
 	name: "create-exercise-template",
+	feature: "templates" as const,
+	operation: "create" as const,
 	description: describeTool({
 		summary:
 			"Writes to the Hevy account by creating a custom exercise template.",
@@ -223,6 +231,8 @@ const createExerciseTemplateDefinition = {
 
 const searchExerciseTemplatesDefinition = {
 	name: "search-exercise-templates",
+	feature: "templates" as const,
+	operation: "search" as const,
 	description: describeTool({
 		summary:
 			"Read-only for the Hevy account. Searches the full exercise template catalog by title substring.",

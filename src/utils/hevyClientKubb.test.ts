@@ -152,11 +152,18 @@ describe("native-fetch Hevy client", () => {
 			.mockResolvedValueOnce(jsonResponse({ error: "busy" }, 503))
 			.mockResolvedValueOnce(jsonResponse({ ok: true }));
 		const sleep = vi.fn().mockResolvedValue(undefined);
-		const client = createClient("key", undefined, { fetch: fetchMock, sleep });
+		const observations: number[] = [];
+		const client = createClient("key", undefined, {
+			fetch: fetchMock,
+			sleep,
+			onRequestComplete: (observation) =>
+				observations.push(observation.retryCount),
+		});
 
 		await expect(client.getUserInfo()).resolves.toEqual({ ok: true });
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(sleep).toHaveBeenCalledWith(300);
+		expect(observations).toEqual([0, 1]);
 	});
 
 	it("honors and caps Retry-After for 429 responses", async () => {
@@ -342,10 +349,16 @@ describe("native-fetch Hevy client", () => {
 
 	it("marks exhausted GET retries without exposing the original request", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse({}, 503));
+		const observations: Array<{ retryCount: number; code?: string }> = [];
 		const client = createClient("key", undefined, {
 			fetch: fetchMock,
 			maxGetRetries: 1,
 			sleep: vi.fn(),
+			onRequestComplete: (observation) =>
+				observations.push({
+					retryCount: observation.retryCount,
+					code: observation.error?.code,
+				}),
 		});
 
 		await expect(client.getUserInfo()).rejects.toMatchObject({
@@ -354,8 +367,11 @@ describe("native-fetch Hevy client", () => {
 			hevyRetryExhausted: true,
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(observations).toEqual([
+			{ retryCount: 0 },
+			{ retryCount: 1, code: HEVY_RETRY_EXHAUSTED_ERROR_CODE },
+		]);
 	});
-
 	it("reports sanitized request observations through an injected hook", async () => {
 		const onRequestComplete = vi.fn();
 		const client = createClient("key", undefined, {

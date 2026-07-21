@@ -38,6 +38,8 @@ const getRoutinesDefinition: ToolDefinition<
 	GetRoutinesResult
 > = {
 	name: "get-routines",
+	feature: "routines",
+	operation: "list",
 	description: describeTool({
 		summary: "Read-only. Lists custom and default workout routines.",
 		aliases: ["list routines", "show workout plans", "browse saved routines"],
@@ -71,6 +73,8 @@ const getRoutineDefinition: ToolDefinition<
 	GetRoutineResult
 > = {
 	name: "get-routine",
+	feature: "routines",
+	operation: "get",
 	description: describeTool({
 		summary:
 			"Read-only. Retrieves one routine and its exercise configuration by ID.",
@@ -109,6 +113,8 @@ const createRoutineDefinition: ToolDefinition<
 	CreateRoutineResult
 > = {
 	name: "create-routine",
+	feature: "routines",
+	operation: "create",
 	description: describeTool({
 		summary: "Writes to the Hevy account by creating a new workout routine.",
 		aliases: ["add routine", "build workout plan", "save training template"],
@@ -147,6 +153,8 @@ const updateRoutineDefinition: ToolDefinition<
 	UpdateRoutineResult
 > = {
 	name: "update-routine",
+	feature: "routines",
+	operation: "update",
 	description: describeTool({
 		summary:
 			"Mutates the Hevy account by replacing an existing routine's content.",

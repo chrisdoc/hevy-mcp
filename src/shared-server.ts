@@ -7,20 +7,23 @@ import {
 	SERVER_VERSION,
 } from "./server-metadata.js";
 import { registerHevyTools } from "./tools/register.js";
-import { withErrorHandling } from "./utils/error-handler.js";
 import { createExerciseTemplateCatalog } from "./utils/exercise-template-catalog.js";
 import { createClient } from "./utils/hevyClient.js";
 import type { HevyClient } from "./utils/hevyClient.js";
 import type { HevyClientOptions } from "./utils/hevyClientKubb.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
-import { createToolRuntime } from "./tools/tool-runtime.js";
+import {
+	createToolRuntime,
+	defaultToolHandlerWrapper,
+} from "./tools/tool-runtime.js";
+import type { ToolHandlerWrapper } from "./tools/tool-runtime.js";
 
 export interface SharedServerOptions {
 	apiKey: string;
 	clientOptions?: HevyClientOptions;
-	hevyClient?: HevyClient;
 	onToolsRegistered?: (count: number) => void;
-	wrapHandler?: typeof withErrorHandling;
+	hevyClient?: HevyClient;
+	wrapHandler?: ToolHandlerWrapper;
 	wrapServer?: (server: McpServer) => McpServer;
 }
 
@@ -71,7 +74,7 @@ export function createSharedMcpServer(options: SharedServerOptions): McpServer {
 		client: hevyClient,
 		catalog: createExerciseTemplateCatalog(hevyClient),
 		logger,
-		wrapHandler: options.wrapHandler ?? withErrorHandling,
+		wrapHandler: options.wrapHandler ?? defaultToolHandlerWrapper,
 	});
 	const counting = createToolCountingServer(server);
 
