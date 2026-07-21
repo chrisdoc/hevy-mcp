@@ -10,6 +10,7 @@
  */
 
 import * as Sentry from "@sentry/node";
+import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
 import {
 	SentryPropagator,
 	SentrySampler,
@@ -68,6 +69,7 @@ const isValidDsn =
 // --- Sentry (error monitoring + traces) ---
 const sentryClient = Sentry.init({
 	dsn: isValidDsn ? rawDsn : undefined,
+	beforeSendSpan: sanitizeSentryMcpSpan,
 	release: sentryRelease,
 	tracesSampleRate: 1.0,
 	sendDefaultPii: false,
@@ -123,9 +125,10 @@ tracerProvider.register({
 	contextManager: new Sentry.SentryContextManager(),
 });
 
+let meterProvider: MeterProvider | undefined;
 // --- OpenTelemetry meter provider (→ Collector → Honeycomb metrics) ---
 if (collectorToken) {
-	const meterProvider = new MeterProvider({
+	meterProvider = new MeterProvider({
 		resource,
 		readers: [
 			new PeriodicExportingMetricReader({
@@ -146,6 +149,23 @@ trace.setGlobalTracerProvider(tracerProvider);
 
 // Validate that Sentry + OpenTelemetry are wired correctly
 Sentry.validateOpenTelemetrySetup();
+
+export async function flushTelemetry(timeoutMs = 1_000): Promise<void> {
+	const flushPromise = Promise.allSettled([
+		tracerProvider.forceFlush(),
+		...(meterProvider ? [meterProvider.forceFlush()] : []),
+		Sentry.flush(timeoutMs),
+	]);
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	const timeoutPromise = new Promise<void>((resolve) => {
+		timeout = setTimeout(resolve, timeoutMs);
+	});
+	try {
+		await Promise.race([flushPromise, timeoutPromise]);
+	} finally {
+		clearTimeout(timeout);
+	}
+}
 
 // --- Shared instances for the rest of the codebase ---
 export const tracer = trace.getTracer(name);

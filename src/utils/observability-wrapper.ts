@@ -3,16 +3,17 @@ import type { McpToolResponse } from "./response-formatter.js";
 import { resolveErrorPolicy } from "./error-policy.js";
 import { Sentry } from "./telemetry.js";
 import { withTelemetry } from "./telemetry-wrapper.js";
+import type { ToolTelemetryMetadata } from "./tool-taxonomy.js";
+import { bucketCount } from "./result-telemetry.js";
 
-/**
- * Wrap an MCP tool handler with telemetry inside error response handling.
- */
+/** Wrap an MCP tool handler with telemetry inside error response handling. */
 export function withObservability<TParams extends Record<string, unknown>>(
 	fn: (args: TParams) => Promise<McpToolResponse>,
 	context: string,
+	metadata?: ToolTelemetryMetadata,
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return withErrorHandling(
-		withTelemetry(fn, context),
+		withTelemetry(fn, context, metadata),
 		context,
 		(error, toolContext, argumentKeyCount) => {
 			const { diagnostic } = resolveErrorPolicy(error, "");
@@ -28,7 +29,7 @@ export function withObservability<TParams extends Record<string, unknown>>(
 				}
 				scope.setContext("mcpTool", {
 					context: toolContext,
-					argumentKeyCount,
+					argumentKeyCountBucket: bucketCount(argumentKeyCount),
 				});
 				scope.setContext("safeError", { ...diagnostic });
 				scope.setFingerprint([

@@ -50,6 +50,8 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 	GetV1BodyMeasurements200["body_measurements"]
 > = {
 	name: "get-body-measurements",
+	feature: "measurements",
+	operation: "list",
 	description: describeTool({
 		summary: "Read-only. Lists dated body measurements for the account.",
 		aliases: ["body stats history", "list weigh-ins", "measurement log"],
@@ -80,6 +82,8 @@ const getBodyMeasurementDefinition: ToolDefinition<
 	}
 > = {
 	name: "get-body-measurement",
+	feature: "measurements",
+	operation: "get",
 	description: describeTool({
 		summary: "Read-only. Retrieves the body measurement entry for one date.",
 		aliases: ["get weigh-in", "show body stats", "measurement by date"],
@@ -107,6 +111,8 @@ const createBodyMeasurementDefinition: ToolDefinition<
 	string
 > = {
 	name: "create-body-measurement",
+	feature: "measurements",
+	operation: "create",
 	description: describeTool({
 		summary: "Writes to the Hevy account by creating a dated body measurement.",
 		aliases: ["log weigh-in", "add body stats", "record measurements"],
@@ -134,6 +140,8 @@ const updateBodyMeasurementDefinition: ToolDefinition<
 	string
 > = {
 	name: "update-body-measurement",
+	feature: "measurements",
+	operation: "update",
 	description: describeTool({
 		summary:
 			"Mutates the Hevy account by updating a body measurement for a date.",

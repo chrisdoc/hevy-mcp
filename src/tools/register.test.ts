@@ -3,7 +3,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
-import { registerHevyTools } from "./register.js";
+import { registerHevyTools, hevyToolDefinitions } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 const EXPECTED_TOOL_NAMES = [
@@ -70,6 +70,31 @@ describe("registerHevyTools", () => {
 
 		expect(tools).toHaveLength(EXPECTED_TOOL_NAMES.length);
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
+	});
+
+	it("declares bounded feature, kind, and operation metadata for every tool", () => {
+		expect(hevyToolDefinitions).toHaveLength(EXPECTED_TOOL_NAMES.length);
+		for (const definition of hevyToolDefinitions) {
+			expect([
+				"workouts",
+				"routines",
+				"templates",
+				"measurements",
+				"folders",
+				"profile",
+				"workflows",
+			]).toContain(definition.feature);
+			expect(["read", "write"]).toContain(definition.kind);
+			expect([
+				"list",
+				"get",
+				"search",
+				"create",
+				"update",
+				"count",
+				"sync",
+			]).toContain(definition.operation);
+		}
 	});
 
 	it("advertises output schemas for read tools", async () => {

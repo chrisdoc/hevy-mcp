@@ -76,7 +76,7 @@ describe("withObservability", () => {
 		);
 		expect(testDoubles.scope.setContext).toHaveBeenCalledWith("mcpTool", {
 			context: "get-user-info",
-			argumentKeyCount: 2,
+			argumentKeyCountBucket: "2-10",
 		});
 		expect(testDoubles.scope.setFingerprint).toHaveBeenCalledWith([
 			"mcp-tool-failure",

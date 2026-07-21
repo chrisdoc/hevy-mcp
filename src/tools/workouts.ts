@@ -59,6 +59,8 @@ type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
 export const workoutToolDefinitions = [
 	{
 		name: "get-workouts",
+		feature: "workouts" as const,
+		operation: "list" as const,
 		description: describeTool({
 			summary:
 				"Read-only. Lists workouts from newest to oldest with exercise and timing details.",
@@ -83,6 +85,8 @@ export const workoutToolDefinitions = [
 	},
 	{
 		name: "get-workout",
+		feature: "workouts" as const,
+		operation: "get" as const,
 		description: describeTool({
 			summary:
 				"Read-only. Retrieves complete details for one workout by its ID.",
@@ -106,6 +110,8 @@ export const workoutToolDefinitions = [
 	},
 	{
 		name: "get-workout-count",
+		feature: "workouts" as const,
+		operation: "count" as const,
 		description: describeTool({
 			summary: "Read-only. Returns the total workout count for the account.",
 			aliases: ["count workouts", "how many workouts", "workout total"],
@@ -128,6 +134,8 @@ export const workoutToolDefinitions = [
 	},
 	{
 		name: "get-workout-events",
+		feature: "workouts" as const,
+		operation: "sync" as const,
 		description: describeTool({
 			summary:
 				"Read-only. Lists workout update and delete events since a timestamp, newest first.",
@@ -159,6 +167,8 @@ export const workoutToolDefinitions = [
 	},
 	{
 		name: "create-workout",
+		feature: "workouts" as const,
+		operation: "create" as const,
 		description: describeTool({
 			summary: "Writes to the Hevy account by creating a new workout.",
 			aliases: ["log workout", "add workout", "record training session"],
@@ -180,6 +190,8 @@ export const workoutToolDefinitions = [
 	},
 	{
 		name: "update-workout",
+		feature: "workouts" as const,
+		operation: "update" as const,
 		description: describeTool({
 			summary: "Mutates the Hevy account by replacing an existing workout.",
 			aliases: [

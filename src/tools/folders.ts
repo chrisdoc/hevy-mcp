@@ -39,6 +39,8 @@ type CreateRoutineFolderParams = InferToolParams<
 
 const getRoutineFoldersDefinition = {
 	name: "get-routine-folders",
+	feature: "folders" as const,
+	operation: "list" as const,
 	description: describeTool({
 		summary: "Read-only. Lists default and custom routine folders.",
 		aliases: ["list folders", "browse routine groups", "show plan folders"],
@@ -73,6 +75,8 @@ const getRoutineFoldersDefinition = {
 
 const getRoutineFolderDefinition = {
 	name: "get-routine-folder",
+	feature: "folders" as const,
+	operation: "get" as const,
 	description: describeTool({
 		summary: "Read-only. Retrieves one routine folder's metadata by ID.",
 		aliases: ["show folder", "folder details", "routine folder metadata"],
@@ -113,6 +117,8 @@ const getRoutineFolderDefinition = {
 
 const createRoutineFolderDefinition = {
 	name: "create-routine-folder",
+	feature: "folders" as const,
+	operation: "create" as const,
 	description: describeTool({
 		summary: "Writes to the Hevy account by creating a new routine folder.",
 		aliases: ["add folder", "organize routines", "create plan group"],
