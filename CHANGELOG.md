@@ -1,3 +1,9 @@
+## 3.4.1
+
+### Patch Changes
+
+- [#700](https://github.com/chrisdoc/hevy-mcp/pull/700) [`e2f2610`](https://github.com/chrisdoc/hevy-mcp/commit/e2f261071567be8d5ba009dc1d9df8d128c7a037) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add privacy-safe MCP telemetry taxonomy, bounded tool outcomes, session compatibility signals, and dashboard guidance.
+
 ## 3.4.0
 
 ### Minor Changes
