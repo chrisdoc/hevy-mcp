@@ -87,10 +87,6 @@ export function createErrorResponse(
 /**
  * Wrap an async function with standardized error handling
  *
- * This function preserves the parameter types of the wrapped function while
- * providing error handling. The returned function accepts Record<string, unknown>
- * (as required by MCP SDK) but internally casts to the original parameter type.
- *
  * @param fn - The async function to wrap
  * @param context - Context information for error messages
  * @returns A function that catches errors and returns standardized error responses
@@ -101,12 +97,12 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
 	return async (rawArgs: Record<string, unknown>) => {
-		const args = rawArgs ?? {};
+		const normalizedArgs = rawArgs ?? {};
 		try {
-			return await fn(args as TParams);
+			return await fn(normalizedArgs as TParams);
 		} catch (error) {
 			try {
-				onError?.(error, context, Object.keys(args).length);
+				onError?.(error, context, Object.keys(normalizedArgs).length);
 			} catch {
 				console.error("MCP error observer failure", {
 					category: "ObserverError",

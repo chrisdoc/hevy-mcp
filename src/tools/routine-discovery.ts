@@ -96,6 +96,8 @@ async function discoverRoutines(
 export const routineDiscoveryToolDefinitions = [
 	{
 		name: "search-routines",
+		feature: "workflows" as const,
+		operation: "search" as const,
 		description: describeTool({
 			summary:
 				"Read-only. Discovers routines by title and returns compact metadata without full set payloads.",

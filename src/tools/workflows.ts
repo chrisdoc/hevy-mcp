@@ -263,6 +263,8 @@ export async function getTrainingSummary(
 export const workflowToolDefinitions = [
 	{
 		name: "get-training-summary",
+		feature: "workflows" as const,
+		operation: "get" as const,
 		description: describeTool({
 			summary:
 				"Read-only. Summarizes recent workout activity and body-measurement trends in one call.",

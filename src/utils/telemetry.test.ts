@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
 
 const originalEnv = { ...process.env };
 
@@ -19,9 +20,9 @@ const testDoubles = vi.hoisted(() => ({
 	periodicExportingMetricReader: vi.fn(),
 	nodeTracerProviderOptions: undefined as unknown,
 }));
-
 vi.mock("@sentry/node", () => ({
 	init: testDoubles.sentryInit,
+	flush: vi.fn().mockResolvedValue(true),
 	validateOpenTelemetrySetup: testDoubles.validateOpenTelemetrySetup,
 	SentryContextManager: vi.fn(),
 }));
@@ -89,9 +90,44 @@ describe("telemetry initialization", () => {
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
 			expect.objectContaining({
+				sendDefaultPii: false,
 				skipOpenTelemetrySetup: true,
 				registerEsmLoaderHooks: false,
 				ignoreErrors: ["EPIPE", "broken pipe"],
+			}),
+		);
+	});
+
+	it("sanitizes Sentry MCP correlation and client metadata", async () => {
+		vi.resetModules();
+		await import("./telemetry.js");
+		const span = {
+			data: {
+				"mcp.request.id": "request-secret",
+				"mcp.progress.token": "progress-secret",
+				"mcp.prompt.name": "private-prompt",
+				"mcp.protocol.version": "private-protocol",
+				"mcp.client.name": "Private Client",
+				"mcp.tool.name": "get-workouts",
+			},
+		};
+
+		const sanitized = sanitizeSentryMcpSpan(span);
+
+		expect(sanitized.data).toEqual({
+			"mcp.tool.name": "get-workouts",
+		});
+		expect(span.data).toEqual({
+			"mcp.request.id": "request-secret",
+			"mcp.progress.token": "progress-secret",
+			"mcp.prompt.name": "private-prompt",
+			"mcp.protocol.version": "private-protocol",
+			"mcp.client.name": "Private Client",
+			"mcp.tool.name": "get-workouts",
+		});
+		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				beforeSendSpan: expect.any(Function),
 			}),
 		);
 	});

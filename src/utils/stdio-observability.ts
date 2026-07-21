@@ -5,10 +5,23 @@ import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { stdioParseErrors } from "./metrics.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 import { Sentry, tracer } from "./telemetry.js";
+import { recordMcpSessionStart } from "./mcp-session-observability.js";
 
 const UTF8_BOM = "\uFEFF";
 /** Maximum escaped characters included in a malformed stdin shape preview. */
 const STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH = 200;
+const SAFE_MCP_METHODS: Record<string, true> = {
+	initialize: true,
+	"notifications/initialized": true,
+	"notifications/cancelled": true,
+	ping: true,
+	"tools/call": true,
+	"tools/list": true,
+	"resources/read": true,
+	"resources/list": true,
+	"prompts/get": true,
+	"prompts/list": true,
+};
 const REDACTED_CONTENT_MARKER = "[REDACTED]";
 
 export interface StdioChunkSnapshot {
@@ -244,10 +257,16 @@ export function deserializeMessageWithObservability(
 				const message = deserializeMessage(normalizedLine);
 				span.setStatus({ code: SpanStatusCode.OK });
 				if (message && typeof message === "object" && "method" in message) {
-					span.setAttribute(
-						"mcp.method",
-						String((message as { method: unknown }).method),
-					);
+					const method = message.method;
+					if (typeof method === "string" && SAFE_MCP_METHODS[method] === true) {
+						span.setAttribute("mcp.method", method);
+					}
+					if (method === "initialize") {
+						const client = recordMcpSessionStart(message);
+						span.setAttribute("mcp.client.name", client.name);
+						span.setAttribute("mcp.client.version", client.version);
+						span.setAttribute("mcp.protocol.version", client.protocolVersion);
+					}
 				}
 				return message;
 			} catch (error) {
