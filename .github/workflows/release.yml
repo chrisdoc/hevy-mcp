@@ -43,6 +43,8 @@ jobs:
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
       - name: Run unit tests
         run: npx vitest run --exclude 'tests/integration/**'
+      - name: Verify published package
+        run: npm run test:pack
       - name: Run integration tests
         run: npx vitest run tests/integration
         env:
@@ -53,7 +55,7 @@ jobs:
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_MCP_COMMAND: node
-          HEVY_MCP_ARGS_JSON: '["dist/cli.mjs"]'
+          HEVY_MCP_ARGS_JSON: '["packages/node/dist/cli.mjs"]'
           HEVY_MCP_LAUNCHER: release-source
           HEVY_MCP_SOURCE_REVISION: ${{ github.sha }}
           HEVY_MCP_DIAGNOSTICS_PATH: test-results/release-source.json
@@ -84,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${{ steps.changesets.outputs.published }}" = "true" ]; then
-            VERSION=$(node -p 'const pkgs = JSON.parse(process.env.PKGS); pkgs[0]?.version || ""')
+            VERSION=$(node -p 'const pkgs = JSON.parse(process.env.PKGS); pkgs.find((pkg) => pkg.name === "hevy-mcp")?.version || ""')
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "released=true" >> "$GITHUB_OUTPUT"
           else

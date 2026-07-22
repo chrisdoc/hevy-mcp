@@ -5,9 +5,9 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { get_encoding } from "tiktoken";
-import { registerHevyTools } from "../src/tools/register.js";
-import { createToolRuntime } from "../src/tools/tool-runtime.js";
-import type { ExerciseTemplateCatalog } from "../src/utils/exercise-template-catalog.js";
+import { registerHevyTools } from "../packages/core/src/tools/register.js";
+import { createToolRuntime } from "../packages/core/src/tools/tool-runtime.js";
+import type { ExerciseTemplateCatalog } from "../packages/core/src/utils/exercise-template-catalog.js";
 
 export const TOKEN_COST_SCHEMA_VERSION = 1;
 export const TOKEN_ENCODING = "o200k_base";

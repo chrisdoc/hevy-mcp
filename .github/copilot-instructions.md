@@ -5,7 +5,9 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v24+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
+- The codebase is TypeScript (Node.js v24+) organized into runtime-neutral
+  `@hevy-mcp/hevy-client` and `@hevy-mcp/core` workspaces plus the Node and
+  Worker adapters under `packages/node` and `packages/worker`.
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
@@ -209,7 +211,8 @@ Always perform these validation steps after making changes:
 - **ALWAYS** run unit tests after any source code changes
 - **ALWAYS** run build validation before committing changes
 - **ALWAYS** use type inference (`InferToolParams`) instead of manual type assertions
-- **DO NOT** attempt to fix TypeScript errors in `src/generated/` - these are auto-generated files
+- **DO NOT** attempt to fix TypeScript errors in
+  `packages/hevy-client/src/generated/` - these are auto-generated files
 - **DO NOT** commit `.env` files containing real API keys
 - **DO NOT** use `as any` or `as unknown` type assertions in tool handlers
 
@@ -297,27 +300,28 @@ server.tool(
 
 ### Adding New MCP Tools
 
-1. **Create new tool file** in `src/tools/`
+1. **Create new tool file** in `packages/core/src/tools/`
 2. **Define Zod schema** with `as const` assertion
 3. **Infer parameter types** using `InferToolParams<typeof schema>`
 4. **Implement handler** with typed parameters (no manual assertions)
-5. **Wrap with error handling** using `withErrorHandling` from `src/utils/error-handler.ts`
-6. **Define and render responses** in `src/utils/response-formatter.ts`,
+5. **Wrap with error handling** using `withErrorHandling` from
+   `packages/core/src/utils/error-handler.ts`
+6. **Define and render responses** in `packages/core/src/utils/response-formatter.ts`,
    co-locating Zod output schemas, raw-to-public normalization, legacy text
    projection, and MCP response assembly
-7. **Register tools** in `src/index.ts`
+7. **Register tools** in `packages/core/src/tools/register.ts`
 8. **Add unit tests** co-located with implementation
 
 ### Working with Generated Code
 
-- **NEVER** edit files in `src/generated/` directly
+- **NEVER** edit files in `packages/hevy-client/src/generated/` directly
 - Regenerate API client: `npm run build:client`
 - If OpenAPI spec changes, refresh `openapi-spec.json` with `npm run openapi` first
-- Generated types are available in `src/generated/client/types/index.ts`
+- Generated types are available through `@hevy-mcp/hevy-client/types`
 
 ### Error Handling
 
-- Use centralized error handling from `src/utils/error-handler.ts`
+- Use centralized error handling from `packages/core/src/utils/error-handler.ts`
 - Wrap handlers with `withErrorHandling(fn, "context-name")`
 - Follow existing error response patterns in tool implementations
 - Error responses automatically include `isError: true` flag
@@ -344,17 +348,17 @@ server.tool(
 
 ## Key Utilities Reference
 
-### Type Inference (`src/utils/tool-helpers.ts`)
+### Type Inference (`packages/core/src/utils/tool-helpers.ts`)
 
 - **`InferToolParams<T>`**: Infers TypeScript types from Zod schema objects
 - **`createTypedToolHandler`**: Optional wrapper for automatic validation (MCP SDK already validates)
 
-### Error Handling (`src/utils/error-handler.ts`)
+### Error Handling (`packages/core/src/utils/error-handler.ts`)
 
 - **`withErrorHandling<TParams>(fn, context)`**: Wraps handlers with error handling while preserving parameter types
 - **`createErrorResponse(error, context?)`**: Creates standardized error responses
 
-### Response Formatting (`src/utils/response-formatter.ts`)
+### Response Formatting (`packages/core/src/utils/response-formatter.ts`)
 
 - **`createJsonResponse(data, options?)`**: Creates JSON-formatted MCP responses
 - **`createTextResponse(text)`**: Creates text-formatted MCP responses

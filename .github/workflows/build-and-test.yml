@@ -54,6 +54,18 @@ jobs:
         run: npm ci
 
       - parallel:
+          - name: Validate workspace topology
+            run: npm run check:workspaces
+
+          - name: Check package boundaries
+            run: npm run check:boundaries
+
+          - name: Check package export maps
+            run: npm run check:exports
+
+          - name: Check release candidates
+            run: npm run check:release-candidates
+
           - name: Run type check
             run: npm run check:types
 
@@ -134,6 +146,10 @@ jobs:
       - name: Run package baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         run: npm run test:pack
+
+      - name: Build and scan Worker dry run
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npm run worker:dry-run
 
       - name: Run performance baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}

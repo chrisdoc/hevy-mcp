@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("src/index.ts - Environment Variable Loading", () => {
+describe("Node package environment variable loading", () => {
 	let originalEnv: NodeJS.ProcessEnv;
 
 	beforeEach(() => {
@@ -344,9 +344,9 @@ describe("package.json script changes validation", () => {
 			// Verify the expected command structure
 			const inspectCommand =
 				"pnpm run build && pnpm dlx @modelcontextprotocol/inspector@latest node --env-file .env dist/index.mjs";
-			const startCommand = "node --env-file .env dist/cli.mjs";
+			const startCommand = "node --env-file .env packages/node/dist/cli.mjs";
 			const devCommand =
-				"tsx watch --env-file .env --clear-screen=false src/cli.ts";
+				"tsx watch --env-file .env --clear-screen=false packages/node/src/cli.ts";
 
 			expect(inspectCommand).toContain("--env-file .env");
 			expect(startCommand).toContain("--env-file .env");
@@ -354,11 +354,11 @@ describe("package.json script changes validation", () => {
 		});
 
 		it("should verify --env-file comes before the script path", () => {
-			const command = "node --env-file .env dist/cli.mjs";
+			const command = "node --env-file .env packages/node/dist/cli.mjs";
 			const parts = command.split(" ");
 
 			const envFileIndex = parts.indexOf("--env-file");
-			const scriptIndex = parts.indexOf("dist/cli.mjs");
+			const scriptIndex = parts.indexOf("packages/node/dist/cli.mjs");
 
 			expect(envFileIndex).toBeGreaterThan(0);
 			expect(scriptIndex).toBeGreaterThan(envFileIndex);

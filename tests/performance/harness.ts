@@ -96,7 +96,7 @@ export async function createPerformanceHarness(
 		args: [
 			"--import",
 			resolve("tests/performance/child-fixture.mjs"),
-			resolve("dist/cli.mjs"),
+			resolve("packages/node/dist/cli.mjs"),
 		],
 		cwd: process.cwd(),
 		env: {

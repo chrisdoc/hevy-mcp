@@ -82,7 +82,7 @@ export const performanceReportSchema = z.object({
 		cpuCount: z.number().int().positive(),
 		runner: z.string().min(1),
 		commit: z.string().min(1),
-		builtCli: z.literal("dist/cli.mjs"),
+		builtCli: z.literal("packages/node/dist/cli.mjs"),
 		transport: z.literal("spawned stdio"),
 	}),
 	configuration: z.object({
@@ -176,7 +176,7 @@ export function createPerformanceReport(
 			cpuCount: Math.max(cpu.length, 1),
 			runner: process.env.RUNNER_NAME ?? process.env.RUNNER_OS ?? os.hostname(),
 			commit: getCommit(),
-			builtCli: "dist/cli.mjs",
+			builtCli: "packages/node/dist/cli.mjs",
 			transport: "spawned stdio",
 		},
 		configuration: {

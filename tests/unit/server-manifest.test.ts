@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runServerManifest } from "../../scripts/server-manifest.mjs";
 
 const rootDir = resolve(import.meta.dirname, "../..");
+const nodePackagePath = join(rootDir, "packages/node/package.json");
 const serverManifestScript = join(rootDir, "scripts/server-manifest.mjs");
 const fixtureDirs = new Set<string>();
 let cliImportId = 0;
@@ -142,7 +143,7 @@ async function createFixture() {
 	const fixtureDir = await mkdtemp(join(tmpdir(), "hevy-server-manifest-"));
 	fixtureDirs.add(fixtureDir);
 	const packageJson: PackageFixture = JSON.parse(
-		await readFile(join(rootDir, "package.json"), "utf8"),
+		await readFile(nodePackagePath, "utf8"),
 	);
 	const manifest: ManifestFixture = JSON.parse(
 		await readFile(join(rootDir, "server.json"), "utf8"),
@@ -156,9 +157,7 @@ async function createFixture() {
 
 describe("server manifest metadata", () => {
 	it("matches package metadata and is included in the npm package", async () => {
-		const packageJson = JSON.parse(
-			await readFile(join(rootDir, "package.json"), "utf8"),
-		);
+		const packageJson = JSON.parse(await readFile(nodePackagePath, "utf8"));
 		const manifest = JSON.parse(
 			await readFile(join(rootDir, "server.json"), "utf8"),
 		);
