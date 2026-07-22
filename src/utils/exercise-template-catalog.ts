@@ -1,7 +1,7 @@
 import type {
 	ExerciseTemplate,
 	GetV1ExerciseTemplates200,
-} from "../generated/client/types/index.js";
+} from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "./hevyClient.js";
 import { AsyncTtlCache } from "./cache.js";
 import { fetchAllPages } from "./pagination.js";

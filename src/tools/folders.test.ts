@@ -1,7 +1,7 @@
 /* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
-import type { RoutineFolder } from "../generated/client/types/index.js";
+import type { RoutineFolder } from "@hevy-mcp/hevy-client/types";
 import { formatRoutineFolder } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";

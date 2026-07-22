@@ -114,7 +114,7 @@ function runHarness(env) {
 	});
 }
 
-test("normalizes supported failure classes without payload fields", () => {
+void test("normalizes supported failure classes without payload fields", () => {
 	assert.deepEqual(normalizeError(createAxiosFixture(), "$.response"), {
 		errorClass: "axios",
 		schemaPath: "$.response",
@@ -142,7 +142,7 @@ test("normalizes supported failure classes without payload fields", () => {
 	);
 });
 
-test("configuration failures write safe diagnostics without launching", async (t) => {
+void test("configuration failures write safe diagnostics without launching", async (t) => {
 	const cases = [
 		{
 			name: "missing API key",
@@ -202,7 +202,7 @@ test("configuration failures write safe diagnostics without launching", async (t
 	}
 });
 
-test("console and upload summary exclude every forbidden sentinel", async () => {
+void test("console and upload summary exclude every forbidden sentinel", async () => {
 	const summary = createDiagnostics({
 		launcher: "npx",
 		packageVersion: "2.0.0",
@@ -276,7 +276,7 @@ test("console and upload summary exclude every forbidden sentinel", async () => 
 	);
 });
 
-test("default-deny model drops unsafe metadata and schema paths", async () => {
+void test("default-deny model drops unsafe metadata and schema paths", async () => {
 	const summary = createDiagnostics({
 		launcher: FORBIDDEN.url,
 		packageVersion: FORBIDDEN.user,

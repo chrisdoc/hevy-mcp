@@ -1,0 +1,29 @@
+{
+	"$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+	"name": "io.github.chrisdoc/hevy-mcp",
+	"title": "Hevy MCP Server",
+	"description": "MCP server for managing workouts, routines, and exercise data through the Hevy API",
+	"repository": {
+		"url": "https://github.com/chrisdoc/hevy-mcp",
+		"source": "github"
+	},
+	"version": "3.4.1",
+	"packages": [
+		{
+			"registryType": "npm",
+			"identifier": "hevy-mcp",
+			"version": "3.4.1",
+			"transport": {
+				"type": "stdio"
+			},
+			"environmentVariables": [
+				{
+					"name": "HEVY_API_KEY",
+					"description": "API key for authenticating with the Hevy API",
+					"isRequired": true,
+					"isSecret": true
+				}
+			]
+		}
+	]
+}

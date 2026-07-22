@@ -1,3 +1,4 @@
+/** @deprecated Use `@hevy-mcp/core` from the runtime adapter workspaces. */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerHevyResources } from "./resources/hevy.js";

@@ -1,3 +1,7 @@
+/**
+ * @deprecated Transitional root compatibility facade. New code must import
+ * from the public `hevy-mcp` workspace in `packages/node`.
+ */
 // Telemetry must be initialized before any other imports so that
 // OpenTelemetry and Sentry are ready before application code runs.
 import {

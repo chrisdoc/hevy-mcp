@@ -2,7 +2,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import type { Workout } from "../generated/client/types/index.js";
+import type { Workout } from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	formatWorkout,

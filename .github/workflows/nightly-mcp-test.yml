@@ -33,7 +33,7 @@ jobs:
           - name: source
             id: source
             command: node
-            args_json: '["dist/cli.mjs"]'
+            args_json: '["packages/node/dist/cli.mjs"]'
             diagnostics_path: test-results/nightly-source.json
 
     steps:

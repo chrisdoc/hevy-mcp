@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const toolsDirectory = new URL("../../src/tools/", import.meta.url);
+const toolsDirectory = new URL(
+	"../../packages/core/src/tools/",
+	import.meta.url,
+);
 const definitionFiles = [
 	"workouts.ts",
 	"routines.ts",

@@ -1,6 +1,6 @@
 /* oxlint-disable typescript/unbound-method */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ExerciseTemplate } from "../generated/client/types/index.js";
+import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
 import { formatExerciseTemplate } from "../utils/response-formatter.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";

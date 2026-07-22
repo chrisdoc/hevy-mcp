@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
 	ExerciseTemplate,
 	RoutineFolder,
-} from "../generated/client/types/index.js";
+} from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "../utils/hevyClient.js";
 import {
 	formatExerciseTemplate,

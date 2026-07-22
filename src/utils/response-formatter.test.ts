@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
 
-import type { Routine, Workout } from "../generated/client/types/index.js";
+import type { Routine, Workout } from "@hevy-mcp/hevy-client/types";
 import {
 	bodyMeasurementsResponse,
 	compactRoutinesResponse,

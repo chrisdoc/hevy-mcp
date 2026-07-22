@@ -1,6 +1,6 @@
 {
-	"name": "hevy-mcp",
-	"version": "3.4.1",
+	"name": "@hevy-mcp/repository",
+	"private": true,
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"keywords": [
 		"api",
@@ -26,23 +26,16 @@
 		"type": "git",
 		"url": "git+https://github.com/chrisdoc/hevy-mcp.git"
 	},
-	"bin": {
-		"hevy-mcp": "dist/cli.mjs"
+	"directories": {
+		"doc": "docs",
+		"test": "tests"
 	},
-	"files": [
-		"dist",
-		"README.md",
-		"server.json"
+	"workspaces": [
+		"packages/*"
 	],
 	"type": "module",
-	"main": "dist/index.mjs",
-	"module": "src/index.ts",
-	"types": "dist/index.d.mts",
-	"publishConfig": {
-		"access": "public"
-	},
 	"scripts": {
-		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env dist/cli.mjs",
+		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env packages/node/dist/cli.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
 		"measure:tokens": "tsx scripts/measure-token-cost.ts",
 		"test": "npm run build && node --env-file-if-exists=.env node_modules/vitest/vitest.mjs --run",
@@ -59,20 +52,25 @@
 		"test:coverage": "npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit && npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked",
 		"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:worker-http && npm run test:pack",
 		"openapi": "node ./scripts/openapi-spec.js",
-		"build": "tsdown",
-		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown",
-		"build:client": "kubb generate",
+		"build": "npm run build --workspace hevy-mcp",
+		"build:standalone": "npm run build:standalone --workspace hevy-mcp",
+		"build:client": "npm run build:client --workspace @hevy-mcp/hevy-client && npx prettier --ignore-unknown --write packages/hevy-client/src/generated",
 		"prepack": "npm run check:server-manifest && npm run build",
-		"start": "node --env-file .env dist/cli.mjs",
-		"dev": "tsx watch --env-file .env --clear-screen=false src/cli.ts",
+		"start": "node --env-file .env packages/node/dist/cli.mjs",
+		"dev": "tsx watch --env-file .env --clear-screen=false packages/node/src/cli.ts",
 		"check": "oxlint . --type-aware --type-check && oxfmt . --check",
 		"check:fix": "oxlint . --type-aware --type-check && oxfmt . --write",
-		"check:types": "tsc --noEmit",
-		"check:changeset": "changeset status --since=origin/main",
+		"check:types": "tsc --noEmit && npm run check:types --workspaces --if-present",
+		"check:workspaces": "node scripts/check-workspaces.mjs",
+		"check:boundaries": "node scripts/check-package-boundaries.mjs",
+		"check:exports": "node scripts/check-package-exports.mjs",
+		"check:release-candidates": "node scripts/check-release-candidates.mjs",
+		"build:packages": "npm run build --workspaces --if-present",
+		"check:changeset": "changeset status --since=origin/main && node scripts/check-release-candidates.mjs",
 		"check:server-manifest": "node scripts/server-manifest.mjs check",
 		"sync:server-manifest": "node scripts/server-manifest.mjs sync",
 		"version:changesets": "changeset version && npm run sync:server-manifest",
-		"version": "npm run sync:server-manifest && git add server.json",
+		"version": "npm run sync:server-manifest && git add server.json packages/node/server.json",
 		"version:patch": "npm version patch",
 		"version:minor": "npm version minor",
 		"version:major": "npm version major",
@@ -80,26 +78,12 @@
 		"commit": "commit",
 		"worker:dev": "wrangler dev",
 		"worker:deploy": "wrangler deploy",
-		"worker:dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run"
-	},
-	"dependencies": {
-		"@cloudflare/workers-oauth-provider": "^0.8.2",
-		"@modelcontextprotocol/sdk": "^1.29.0",
-		"@opentelemetry/api": "^1.9.0",
-		"@opentelemetry/exporter-metrics-otlp-http": "^0.220.0",
-		"@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
-		"@opentelemetry/resources": "^2.9.0",
-		"@opentelemetry/sdk-metrics": "^2.9.0",
-		"@opentelemetry/sdk-trace-base": "^2.9.0",
-		"@opentelemetry/sdk-trace-node": "^2.9.0",
-		"@sentry/node": "^10.58.0",
-		"@sentry/opentelemetry": "^10.58.0",
-		"semver": "^7.8.5",
-		"zod": "^4.4.3"
+		"worker:dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run && node scripts/check-worker-bundle.mjs"
 	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^0.7.0",
 		"@changesets/cli": "^2.31.0",
+		"@cloudflare/workers-oauth-provider": "^0.8.2",
 		"@codecov/rollup-plugin": "^2.0.1",
 		"@commitlint/cli": "^21.0.2",
 		"@commitlint/config-conventional": "^21.0.2",
@@ -111,6 +95,16 @@
 		"@kubb/plugin-oas": "^4.38.0",
 		"@kubb/plugin-ts": "^4.38.0",
 		"@kubb/plugin-zod": "^4.38.0",
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@opentelemetry/api": "^1.9.0",
+		"@opentelemetry/exporter-metrics-otlp-http": "^0.220.0",
+		"@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
+		"@opentelemetry/resources": "^2.9.0",
+		"@opentelemetry/sdk-metrics": "^2.9.0",
+		"@opentelemetry/sdk-trace-base": "^2.9.0",
+		"@opentelemetry/sdk-trace-node": "^2.9.0",
+		"@sentry/node": "^10.58.0",
+		"@sentry/opentelemetry": "^10.58.0",
 		"@sentry/rollup-plugin": "^5.3.0",
 		"@types/node": "^26.0.0",
 		"@types/semver": "^7.7.1",
@@ -121,12 +115,14 @@
 		"oxfmt": "^0.59.0",
 		"oxlint": "^1.70.0",
 		"oxlint-tsgolint": "^0.25.0",
+		"semver": "^7.8.5",
 		"tiktoken": "^1.0.22",
 		"tsdown": "^0.22.2",
 		"tsx": "^4.22.4",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.9",
-		"wrangler": "^4.110.0"
+		"wrangler": "^4.110.0",
+		"zod": "^4.4.3"
 	},
 	"engines": {
 		"node": ">=20.0.0"

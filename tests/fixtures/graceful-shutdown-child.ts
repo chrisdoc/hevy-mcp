@@ -1,5 +1,5 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { installGracefulShutdown } from "../../src/utils/graceful-shutdown.js";
+import { installGracefulShutdown } from "../../packages/node/src/utils/graceful-shutdown.js";
 
 const transport = new StdioServerTransport();
 await transport.start();

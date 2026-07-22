@@ -2,7 +2,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import type { BodyMeasurement } from "../generated/client/types/index.js";
+import type { BodyMeasurement } from "@hevy-mcp/hevy-client/types";
 import { formatBodyMeasurement } from "../utils/response-formatter.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { HevyClient } from "../utils/hevyClient.js";

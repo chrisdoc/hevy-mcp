@@ -5,7 +5,7 @@ import type {
 	Routine,
 	RoutineFolder,
 	Workout,
-} from "../generated/client/types/index.js";
+} from "@hevy-mcp/hevy-client/types";
 import {
 	calculateDuration,
 	formatExerciseHistoryEntry,
