@@ -24,7 +24,6 @@ import { nonEmptyId, paginationShape } from "./input-schemas.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
-	recordExpected404,
 } from "../utils/hevy-error-policy.js";
 
 const getRoutineFoldersSchema = paginationShape({
@@ -76,8 +75,7 @@ const getRoutineFoldersDefinition = {
 			};
 		} catch (error) {
 			if (isExpectedListPageNotFound(error, page)) {
-				recordExpected404("end_of_list");
-				return { items: [], page };
+				return { items: [], page, expected404Outcome: "end_of_list" };
 			}
 			throw error;
 		}
@@ -110,6 +108,7 @@ const getRoutineFolderDefinition = {
 	): Promise<{
 		routineFolder: GetV1RoutineFoldersFolderid200 | null | undefined;
 		folderId: string;
+		expected404Outcome?: "not_found";
 	}> => {
 		const { folderId } = args;
 		try {
@@ -119,8 +118,11 @@ const getRoutineFolderDefinition = {
 			return { routineFolder: data, folderId };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
-				recordExpected404("not_found");
-				return { routineFolder: null, folderId };
+				return {
+					routineFolder: null,
+					folderId,
+					expected404Outcome: "not_found",
+				};
 			}
 			throw error;
 		}
@@ -130,6 +132,7 @@ const getRoutineFolderDefinition = {
 	{
 		routineFolder: GetV1RoutineFoldersFolderid200 | null | undefined;
 		folderId: string;
+		expected404Outcome?: "not_found";
 	}
 >;
 

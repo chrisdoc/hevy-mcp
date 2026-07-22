@@ -26,7 +26,6 @@ import type { PaginatedToolResult } from "../utils/response-formatter.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
-	recordExpected404,
 } from "../utils/hevy-error-policy.js";
 
 const getBodyMeasurementsSchema = {
@@ -87,8 +86,7 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 			};
 		} catch (error) {
 			if (isExpectedListPageNotFound(error, page)) {
-				recordExpected404("end_of_list");
-				return { items: [], page };
+				return { items: [], page, expected404Outcome: "end_of_list" };
 			}
 			throw error;
 		}
@@ -127,8 +125,11 @@ const getBodyMeasurementDefinition: ToolDefinition<
 			return { bodyMeasurement: data, date };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
-				recordExpected404("not_found");
-				return { bodyMeasurement: null, date };
+				return {
+					bodyMeasurement: null,
+					date,
+					expected404Outcome: "not_found",
+				};
 			}
 			throw error;
 		}

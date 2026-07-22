@@ -33,7 +33,6 @@ import type { InferToolParams } from "../utils/tool-helpers.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
-	recordExpected404,
 } from "../utils/hevy-error-policy.js";
 
 const getWorkoutsSchema = paginationShape({
@@ -93,8 +92,11 @@ export const workoutToolDefinitions = [
 				};
 			} catch (error) {
 				if (isExpectedListPageNotFound(error, args.page)) {
-					recordExpected404("end_of_list");
-					return { items: [], page: args.page };
+					return {
+						items: [],
+						page: args.page,
+						expected404Outcome: "end_of_list",
+					};
 				}
 				throw error;
 			}
@@ -126,8 +128,11 @@ export const workoutToolDefinitions = [
 				return { workout: data, workoutId: args.workoutId };
 			} catch (error) {
 				if (isExpectedReadNotFound(error)) {
-					recordExpected404("not_found");
-					return { workout: null, workoutId: args.workoutId };
+					return {
+						workout: null,
+						workoutId: args.workoutId,
+						expected404Outcome: "not_found",
+					};
 				}
 				throw error;
 			}
@@ -196,8 +201,12 @@ export const workoutToolDefinitions = [
 				};
 			} catch (error) {
 				if (isExpectedListPageNotFound(error, args.page)) {
-					recordExpected404("end_of_list");
-					return { events: [], since: args.since, page: args.page };
+					return {
+						events: [],
+						since: args.since,
+						page: args.page,
+						expected404Outcome: "end_of_list",
+					};
 				}
 				throw error;
 			}

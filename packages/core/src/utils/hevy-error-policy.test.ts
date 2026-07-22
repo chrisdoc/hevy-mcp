@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HevyHttpError } from "./hevy-http-error.js";
+import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import {
 	isExpectedListPageNotFound,
 	isExpectedMutationNotFound,

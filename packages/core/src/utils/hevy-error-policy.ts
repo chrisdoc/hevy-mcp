@@ -1,13 +1,8 @@
 import { extractErrorStatus } from "./error-policy.js";
-import { isHevyHttpError } from "./hevy-http-error.js";
-import { expectedHevy404s } from "./metrics.js";
+import { isHevyHttpError } from "@hevy-mcp/hevy-client";
 
 export type HevyReadOperation = "get" | "list";
 export type Expected404Outcome = "not_found" | "end_of_list";
-
-export function recordExpected404(outcome: Expected404Outcome): void {
-	expectedHevy404s.add(1, { outcome });
-}
 
 const READ_RESOURCE_ENDPOINTS = new Set([
 	"/v1/body_measurements/:date",

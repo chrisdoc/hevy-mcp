@@ -30,7 +30,6 @@ import type { PaginatedToolResult } from "../utils/response-formatter.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
-	recordExpected404,
 } from "../utils/hevy-error-policy.js";
 
 const getRoutinesSchema = paginationShape({
@@ -70,8 +69,7 @@ const getRoutinesDefinition: ToolDefinition<
 			return { items: data?.routines ?? [], page, pageCount: data?.page_count };
 		} catch (error) {
 			if (isExpectedListPageNotFound(error, page)) {
-				recordExpected404("end_of_list");
-				return { items: [], page };
+				return { items: [], page, expected404Outcome: "end_of_list" };
 			}
 			throw error;
 		}
@@ -113,8 +111,11 @@ const getRoutineDefinition: ToolDefinition<
 			return { routine: data?.routine, routineId };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
-				recordExpected404("not_found");
-				return { routine: null, routineId };
+				return {
+					routine: null,
+					routineId,
+					expected404Outcome: "not_found",
+				};
 			}
 			throw error;
 		}

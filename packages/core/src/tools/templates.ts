@@ -30,7 +30,6 @@ import {
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
-	recordExpected404,
 } from "../utils/hevy-error-policy.js";
 
 const getExerciseTemplatesSchema = paginationShape({
@@ -119,8 +118,7 @@ const getExerciseTemplatesDefinition = {
 			};
 		} catch (error) {
 			if (isExpectedListPageNotFound(error, page)) {
-				recordExpected404("end_of_list");
-				return { items: [], page };
+				return { items: [], page, expected404Outcome: "end_of_list" };
 			}
 			throw error;
 		}
@@ -161,8 +159,11 @@ const getExerciseTemplateDefinition = {
 			return { exerciseTemplate: data, exerciseTemplateId };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
-				recordExpected404("not_found");
-				return { exerciseTemplate: null, exerciseTemplateId };
+				return {
+					exerciseTemplate: null,
+					exerciseTemplateId,
+					expected404Outcome: "not_found",
+				};
 			}
 			throw error;
 		}
