@@ -14,6 +14,7 @@ describe("published Node package documentation", () => {
 
 		expect(packageJson.name).toBe("hevy-mcp");
 		expect(packageJson.bin?.["hevy-mcp"]).toBe("dist/cli.mjs");
+		expect(packageJson.scripts?.prepack).toContain("npm run build");
 		expect(readme).toContain("npx -y hevy-mcp");
 		expect(readme).toContain("HEVY_API_KEY");
 		expect(readme).toContain("createNodeMcpServer");

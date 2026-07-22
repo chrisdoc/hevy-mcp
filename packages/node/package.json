@@ -25,6 +25,7 @@
 	},
 	"scripts": {
 		"build": "tsdown -c tsdown.config.ts",
+		"prepack": "node ../../scripts/server-manifest.mjs check && npm run build",
 		"check:types": "tsc --noEmit -p tsconfig.json",
 		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown -c tsdown.config.ts"
 	},
