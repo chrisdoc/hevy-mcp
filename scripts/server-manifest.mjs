@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -24,6 +24,22 @@ async function readJson(path, label) {
 		return { contents, value: JSON.parse(contents) };
 	} catch (error) {
 		throw new Error(`${label} is not valid JSON: ${error.message}`);
+	}
+}
+
+async function resolvePackageMetadata(rootDir) {
+	const nodePackagePath = resolve(rootDir, "packages/node/package.json");
+	try {
+		await access(nodePackagePath);
+		return {
+			packagePath: nodePackagePath,
+			packageLabel: "packages/node/package.json",
+		};
+	} catch {
+		return {
+			packagePath: resolve(rootDir, "package.json"),
+			packageLabel: "package.json",
+		};
 	}
 }
 
@@ -126,17 +142,35 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 		`Invalid mode ${JSON.stringify(mode)}; expected "check" or "sync"`,
 	);
 
-	const packagePath = resolve(rootDir, "package.json");
+	const { packagePath, packageLabel } = await resolvePackageMetadata(rootDir);
 	const manifestPath = resolve(rootDir, "server.json");
+	const packageManifestPath = resolve(rootDir, "packages/node/server.json");
 	const [{ value: packageJson }, { value: manifest }] = await Promise.all([
-		readJson(packagePath, "package.json"),
+		readJson(packagePath, packageLabel),
 		readJson(manifestPath, "server.json"),
 	]);
+	let packageManifest;
+	try {
+		packageManifest = (
+			await readJson(packageManifestPath, "packages/node/server.json")
+		).value;
+	} catch (error) {
+		if (error.message.startsWith("Unable to read")) {
+			packageManifest = undefined;
+		} else {
+			throw error;
+		}
+	}
 
 	validatePackageJson(packageJson);
 	validateManifestShape(manifest);
 
 	const drift = findDrift(packageJson, manifest);
+	if (
+		packageManifest &&
+		JSON.stringify(packageManifest) !== JSON.stringify(manifest)
+	)
+		drift.push("packages/node/server.json");
 	if (mode === "check") {
 		assert(
 			drift.length === 0,
@@ -156,6 +190,12 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 
 	const updatedContents = `${JSON.stringify(manifest, null, "\t")}\n`;
 	await writeFile(manifestPath, updatedContents, "utf8");
+	try {
+		await access(resolve(rootDir, "packages/node"));
+		await writeFile(packageManifestPath, updatedContents, "utf8");
+	} catch {
+		// Fixture repositories and pre-cutover checkouts only have root server.json.
+	}
 
 	return { changed: true, drift };
 }

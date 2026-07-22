@@ -12,7 +12,7 @@ This project uses a generated API client from the Hevy OpenAPI specification. To
 import type {
   GetV1Workouts200,
   PostV1Workouts201,
-} from "../generated/client/types/index.js";
+} from "@hevy-mcp/hevy-client/types";
 
 // Explicit type annotation using generated type
 const data: GetV1Workouts200 = await hevyClient.getWorkouts({
@@ -59,7 +59,7 @@ const data = await hevyClient.getWorkouts({ page, pageSize });
 
 ### Step 2: Check the Client Wrapper
 
-Open `src/utils/hevyClientKubb.ts` and find the method:
+Open `packages/hevy-client/src/hevy-client-kubb.ts` and find the method:
 
 ```typescript
 getWorkouts: (params?: GetV1WorkoutsQueryParams): ReturnType<typeof api.getV1Workouts> =>
@@ -70,7 +70,7 @@ The return type is `ReturnType<typeof api.getV1Workouts>`.
 
 ### Step 3: Check the Generated API Function
 
-Open `src/generated/client/api/getV1Workouts.ts`:
+Open `packages/hevy-client/src/generated/client/api/getV1Workouts.ts`:
 
 ```typescript
 export async function getV1Workouts(...) {
@@ -85,7 +85,7 @@ export async function getV1Workouts(...) {
 
 ### Step 4: Find the Response Type
 
-Open `src/generated/client/types/GetV1Workouts.ts`:
+Open `packages/hevy-client/src/generated/client/types/GetV1Workouts.ts`:
 
 ```typescript
 export type GetV1WorkoutsQueryResponse = GetV1Workouts200;
@@ -144,7 +144,7 @@ Use `GetV1Workouts200` as the type annotation.
 
 When adding a new tool or handler:
 
-- [ ] Import the response type from `../generated/client/types/index.js`
+- [ ] Import the response type from `@hevy-mcp/hevy-client/types`
 - [ ] Add explicit type annotation: `const data: ResponseType = await hevyClient.method()`
 - [ ] Verify type checking passes: `npm run check:types`
 - [ ] Verify tests pass: `npx vitest run --exclude tests/integration/**`
@@ -169,7 +169,7 @@ This means:
 
 If the hevyClient method returns a different type than expected:
 
-1. Check `src/utils/hevyClientKubb.ts` for the actual return type
+1. Check `packages/hevy-client/src/hevy-client-kubb.ts` for the actual return type
 2. Verify you're using the `QueryResponse` or `MutationResponse` type, not the `Query` or `Mutation` type
 3. The response types usually end in `200`, `201`, etc. (HTTP status codes)
 
@@ -190,7 +190,7 @@ After running `npm run build:client`:
 When reviewing PRs that add/modify API calls:
 
 - [ ] All `await hevyClient.*()` calls have explicit type annotations
-- [ ] Type imports are from `../generated/client/types/index.js`
+- [ ] Type imports are from `@hevy-mcp/hevy-client/types`
 - [ ] No manual type assertions (`as { ... }`)
 - [ ] TypeScript checks pass
 - [ ] Tests pass

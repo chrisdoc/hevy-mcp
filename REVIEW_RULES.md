@@ -3,7 +3,8 @@
 Review only the changed code. Report concrete, actionable violations on changed
 lines; do not speculate about unrelated code.
 
-- Do not manually edit files under `src/generated/`. Generated API client
+- Do not manually edit files under `packages/hevy-client/src/generated/`.
+  Generated API client
   changes must come from the configured generation workflow.
 - Define tool parameter schemas with Zod and infer handler parameter types with
   `InferToolParams<typeof schema>`.
