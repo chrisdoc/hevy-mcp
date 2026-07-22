@@ -81,19 +81,19 @@ telemetry dictionary whenever the SDK or dashboard definitions change.
 
 Automated guards that must remain green:
 
-- [x] Sentry MCP input capture is explicitly disabled; `src/index.test.ts`
+- [x] Sentry MCP input capture is explicitly disabled; `packages/node/src/index.test.ts`
       asserts `recordInputs: false`.
-- [x] Sentry MCP output capture is explicitly disabled; `src/index.test.ts`
+- [x] Sentry MCP output capture is explicitly disabled; `packages/node/src/index.test.ts`
       asserts `recordOutputs: false`.
 - [x] Metric dimensions have fixed taxonomies or bounded sanitization;
-      `src/tools/register.test.ts` and `src/utils/telemetry-wrapper.test.ts`
+      `packages/core/src/tools/register.test.ts` and `packages/node/src/utils/tool-observer.test.ts`
       cover the declared fields.
 - [x] Raw queries, IDs, dates, titles, notes, descriptions, and measurements
       are excluded; privacy regression tests assert secret-sentinel absence.
 - [x] Returned MCP errors and thrown errors have separate outcomes;
-      `src/utils/telemetry-wrapper.test.ts` covers both paths.
+      `packages/node/src/utils/tool-observer.test.ts` covers both paths.
 - [x] Session termination and sanitized client/protocol fields are covered by
-      `src/utils/mcp-session-observability.test.ts`.
+      `packages/node/src/utils/mcp-session-observability.test.ts`.
 - [x] Backend retention and dashboard access policy are documented above.
 
 Before publishing or changing a panel:

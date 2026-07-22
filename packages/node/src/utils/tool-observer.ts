@@ -11,16 +11,77 @@ import {
 	toolInvocations,
 	toolOutcomes,
 } from "./metrics.js";
-import { tracer } from "./telemetry.js";
+import {
+	getCurrentMcpClientMetadata,
+	recordMcpToolFailure,
+	recordMcpToolInvocation,
+} from "./mcp-session-observability.js";
+import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
+import { Sentry, tracer } from "./telemetry.js";
 
-function createAttributes(invocation: SafeToolInvocation) {
+type AttributeValue = string | number | boolean;
+
+const WORKFLOW_PAGINATION_RESOURCES = new Set([
+	"workouts",
+	"bodyMeasurements",
+	"routines",
+]);
+
+function taxonomyAttributes(
+	invocation: SafeToolInvocation,
+): Record<string, string> {
+	const taxonomy = invocation.taxonomy;
+	return taxonomy
+		? {
+				"hevy.feature": taxonomy.feature,
+				"mcp.tool.kind": taxonomy.kind,
+				"mcp.tool.operation": taxonomy.operation,
+			}
+		: {};
+}
+
+function metricAttributes(
+	invocation: SafeToolInvocation,
+	clientAttributes: McpClientMetricAttributes,
+): Record<string, string> {
 	return {
-		"mcp.tool.name": invocation.name,
-		"mcp.transport": "stdio",
-		"mcp.tool.argument_key_count_bucket":
-			invocation.argumentKeyCountBucket ?? "unknown",
-		"mcp.tool.argument_keys": invocation.argumentKeys?.join(",") ?? "",
+		tool_name: invocation.name,
+		...taxonomyAttributes(invocation),
+		...clientAttributes,
 	};
+}
+
+function createAttributes(
+	invocation: SafeToolInvocation,
+): Record<string, AttributeValue> {
+	const clientMetadata = getCurrentMcpClientMetadata();
+	const attributes: Record<string, AttributeValue> = {
+		"mcp.tool.name": invocation.name,
+		...taxonomyAttributes(invocation),
+		"mcp.client.name": clientMetadata.name,
+		"mcp.client.version": clientMetadata.version,
+		"mcp.protocol.version": clientMetadata.protocolVersion,
+		"mcp.transport": "stdio",
+		"mcp.tool.args.key_count_bucket":
+			invocation.argumentKeyCountBucket ?? "unknown",
+		"mcp.tool.args.keys": invocation.argumentKeys?.join(",") ?? "",
+	};
+	for (const key of Object.keys(invocation.argumentPresence ?? {})) {
+		attributes[`mcp.tool.args.${key}.present`] = true;
+	}
+	for (const [key, bucket] of Object.entries(
+		invocation.numericArgumentBuckets ?? {},
+	)) {
+		if (bucket !== undefined) {
+			attributes[`mcp.tool.args.${key}.bucket`] = bucket;
+		}
+	}
+	for (const [key, value] of Object.entries(
+		invocation.booleanArguments ?? {},
+	)) {
+		if (value !== undefined) attributes[`mcp.tool.args.${key}`] = value;
+	}
+	return attributes;
 }
 
 function setResultAttributes(span: Span, completion: SafeToolCompletion): void {
@@ -31,7 +92,10 @@ function setResultAttributes(span: Span, completion: SafeToolCompletion): void {
 		"mcp.tool.result.has_structured_content",
 		result.hasStructuredContent,
 	);
-	span.setAttribute("mcp.tool.result.content_count", result.contentCount);
+	span.setAttribute(
+		"mcp.tool.result.content_count_bucket",
+		result.contentCountBucket,
+	);
 	const summary = result.summary;
 	if (!summary) return;
 	if (summary.itemCountBucket) {
@@ -59,10 +123,105 @@ function setResultAttributes(span: Span, completion: SafeToolCompletion): void {
 		for (const [resource, pageCount] of Object.entries(
 			summary.workflow.pagination,
 		)) {
-			if (Number.isSafeInteger(pageCount) && pageCount >= 0) {
+			if (
+				WORKFLOW_PAGINATION_RESOURCES.has(resource) &&
+				Number.isSafeInteger(pageCount) &&
+				pageCount >= 0
+			) {
 				span.setAttribute(`workflow.pagination.${resource}.pages`, pageCount);
 			}
 		}
+	}
+}
+
+function resultMetricAttributes(
+	completion: SafeToolCompletion,
+): Record<string, string | boolean> {
+	const result = completion.result;
+	if (!result) return {};
+	const attributes: Record<string, string | boolean> = {
+		"mcp.tool.result.has_structured_content": result.hasStructuredContent,
+		"mcp.tool.result.content_count_bucket": result.contentCountBucket,
+	};
+	const summary = result.summary;
+	if (summary?.itemCountBucket) {
+		attributes["mcp.tool.result.item_count_bucket"] = summary.itemCountBucket;
+	}
+	if (summary?.exerciseCountBucket) {
+		attributes["mcp.tool.result.exercise_count_bucket"] =
+			summary.exerciseCountBucket;
+	}
+	if (summary?.setCountBucket) {
+		attributes["mcp.tool.result.set_count_bucket"] = summary.setCountBucket;
+	}
+	return attributes;
+}
+
+function setSafeErrorAttributes(
+	span: Span,
+	completion: SafeToolCompletion,
+): string {
+	const diagnostic = completion.error;
+	const errorType = completion.errorType ?? "UNKNOWN_ERROR";
+	if (diagnostic) {
+		span.addEvent("mcp.tool.failure", {
+			"error.category": diagnostic.category,
+			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+			...(diagnostic.status !== undefined
+				? { "http.status_code": diagnostic.status }
+				: {}),
+			...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
+			...(diagnostic.endpoint
+				? { "hevy.api.endpoint": diagnostic.endpoint }
+				: {}),
+		});
+	}
+	span.setAttribute("error.type", errorType);
+	return errorType;
+}
+
+function captureSafeToolFailure(
+	invocation: SafeToolInvocation,
+	completion: SafeToolCompletion,
+): void {
+	const diagnostic = completion.error;
+	const category = diagnostic?.category ?? "UnknownError";
+	try {
+		Sentry.withScope((scope) => {
+			scope.setTag("mcp.tool.context", invocation.name);
+			scope.setTag("error.category", category);
+			if (diagnostic?.code) scope.setTag("error.code", diagnostic.code);
+			if (diagnostic?.status !== undefined) {
+				scope.setTag("http.status_code", String(diagnostic.status));
+			}
+			if (diagnostic?.endpoint) {
+				scope.setTag("hevy.api.endpoint", diagnostic.endpoint);
+			}
+			scope.setContext("mcpTool", {
+				context: invocation.name,
+				argumentKeyCountBucket: invocation.argumentKeyCountBucket ?? "unknown",
+			});
+			scope.setContext("safeError", diagnostic ? { ...diagnostic } : {});
+			scope.setFingerprint([
+				"mcp-tool-failure",
+				invocation.name,
+				category,
+				diagnostic?.code ?? "none",
+				String(diagnostic?.status ?? "none"),
+				diagnostic?.endpoint ?? "none",
+			]);
+			Sentry.captureMessage("MCP tool failure", "error");
+		});
+	} catch {
+		// Sentry failures must never affect tool responses.
+	}
+}
+
+function bestEffort(operation: () => void): void {
+	try {
+		operation();
+	} catch {
+		// Observability failures must never alter tool behavior.
 	}
 }
 
@@ -71,7 +230,9 @@ export function createNodeToolObserver(): ToolObserver {
 	return {
 		start(invocation): ToolObservationScope {
 			const startedAt = Date.now();
-			toolInvocations.add(1, { tool: invocation.name });
+			const clientAttributes = recordMcpToolInvocation();
+			const metrics = metricAttributes(invocation, clientAttributes);
+			bestEffort(() => toolInvocations.add(1, metrics));
 			let completion: SafeToolCompletion | undefined;
 			let activeSpan: Span | undefined;
 			return {
@@ -81,13 +242,7 @@ export function createNodeToolObserver(): ToolObserver {
 						{ attributes: createAttributes(invocation) },
 						async (span) => {
 							activeSpan = span;
-							try {
-								return await operation();
-							} catch (error) {
-								span.recordException(error as Error);
-								span.setStatus({ code: SpanStatusCode.ERROR });
-								throw error;
-							}
+							return operation();
 						},
 					);
 				},
@@ -98,14 +253,15 @@ export function createNodeToolObserver(): ToolObserver {
 						0,
 						nextCompletion.durationMs || Date.now() - startedAt,
 					);
-					toolDuration.record(durationMs, { tool: invocation.name });
-					toolOutcomes.add(1, {
-						tool: invocation.name,
-						outcome: nextCompletion.outcome,
-					});
-					if (nextCompletion.outcome === "thrown_error") {
-						toolErrors.add(1, { tool: invocation.name });
-					}
+					const isError = nextCompletion.outcome !== "success";
+					if (isError) bestEffort(recordMcpToolFailure);
+					bestEffort(() =>
+						toolOutcomes.add(1, {
+							...metrics,
+							outcome: nextCompletion.outcome,
+						}),
+					);
+					let errorType: string | undefined;
 					try {
 						if (activeSpan) {
 							activeSpan.setStatus({
@@ -120,11 +276,34 @@ export function createNodeToolObserver(): ToolObserver {
 								nextCompletion.outcome,
 							);
 							setResultAttributes(activeSpan, nextCompletion);
+							if (nextCompletion.outcome === "thrown_error") {
+								errorType = setSafeErrorAttributes(activeSpan, nextCompletion);
+							}
 						}
 					} catch {
 						// Instrumentation metadata must never alter the MCP response.
 					} finally {
-						activeSpan?.end();
+						if (nextCompletion.outcome === "thrown_error") {
+							bestEffort(() =>
+								captureSafeToolFailure(invocation, nextCompletion),
+							);
+							bestEffort(() =>
+								toolErrors.add(1, {
+									...metrics,
+									error_type:
+										errorType ?? nextCompletion.errorType ?? "UNKNOWN_ERROR",
+								}),
+							);
+						}
+						bestEffort(() =>
+							toolDuration.record(durationMs, {
+								...metrics,
+								...resultMetricAttributes(nextCompletion),
+								is_error: String(isError),
+								outcome: nextCompletion.outcome,
+							}),
+						);
+						bestEffort(() => activeSpan?.end());
 						activeSpan = undefined;
 					}
 				},

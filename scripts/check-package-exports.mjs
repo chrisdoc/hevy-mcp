@@ -53,6 +53,11 @@ for (const [relative, allowed] of expected) {
 					`${relative}: export ${key}.${condition} uses an unstable target`,
 				);
 			}
+			if (relative === "packages/node" && !value.startsWith("./dist/")) {
+				errors.push(
+					`${relative}: public export ${key}.${condition} must target built dist files`,
+				);
+			}
 			if (value.startsWith("./dist/") && relative !== "packages/node") {
 				try {
 					await access(resolve(root, relative, value));

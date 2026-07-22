@@ -1,12 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { createHevyMcpServer } from "@hevy-mcp/core";
+import {
+	createHevyMcpServer,
+	createSafeErrorDiagnostic,
+	type CreateHevyMcpServerOptions,
+	type HevyClientFactoryContext,
+} from "@hevy-mcp/core";
 import {
 	createHevyClient,
 	isHevyHttpError,
 	type HevyClient,
 } from "@hevy-mcp/hevy-client";
-import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import {
 	createHevyOAuthProvider,
 	hasOAuthAccessTokenShape,
@@ -34,8 +38,14 @@ export interface WorkerEnv {
 
 interface WorkerDependencies {
 	createValidationClient?: (apiKey: string, baseUrl: string) => HevyClient;
-	createRequestClient?: (apiKey: string, baseUrl: string) => HevyClient;
-	createServer?: (apiKey: string, hevyClient: HevyClient) => McpServer;
+	createRequestClient?: (
+		apiKey: string,
+		baseUrl: string,
+		onLog: HevyClientFactoryContext["onLog"],
+	) => HevyClient;
+	createServer?: (
+		createClient: CreateHevyMcpServerOptions["createClient"],
+	) => McpServer;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
 }
 
@@ -135,16 +145,15 @@ function createDefaultValidationClient(
 function createDefaultRequestClient(
 	apiKey: string,
 	baseUrl: string,
+	onLog: HevyClientFactoryContext["onLog"],
 ): HevyClient {
-	return createHevyClient({ apiKey, baseUrl });
+	return createHevyClient({ apiKey, baseUrl, onLog });
 }
 
 function createDefaultServer(
-	apiKey: string,
-	hevyClient: HevyClient,
+	createClient: CreateHevyMcpServerOptions["createClient"],
 ): McpServer {
-	void apiKey;
-	return createHevyMcpServer({ createClient: () => hevyClient });
+	return createHevyMcpServer({ createClient });
 }
 
 function createDefaultTransport(): WebStandardStreamableHTTPServerTransport {
@@ -199,8 +208,9 @@ async function serveMcpRequest(
 	dependencies: ResolvedWorkerDependencies,
 ): Promise<Response> {
 	try {
-		const hevyClient = dependencies.createRequestClient(apiKey, hevyApiBaseUrl);
-		const server = dependencies.createServer(apiKey, hevyClient);
+		const server = dependencies.createServer(({ onLog }) =>
+			dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),
+		);
 		const transport = dependencies.createTransport();
 		transport.onerror = (error) => {
 			logWorkerFailure("streamable-http-transport", error);

@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { createHevyMcpServer } from "@hevy-mcp/core";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import {
+	createHevyMcpServer,
+	type CreateHevyMcpServerOptions,
+} from "@hevy-mcp/core";
+import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import {
 	createWorkerHandler,
@@ -239,8 +242,9 @@ describe("real stateless SDK transport", () => {
 	it("initializes and lists tools with streaming responses and no session ID", async () => {
 		const createValidationClient = vi.fn(() => createMockClient());
 		const createRequestClient = vi.fn(() => createMockClient());
-		const createServer = vi.fn((apiKey: string, hevyClient: HevyClient) =>
-			createHevyMcpServer({ createClient: () => hevyClient }),
+		const createServer = vi.fn(
+			(createClient: CreateHevyMcpServerOptions["createClient"]) =>
+				createHevyMcpServer({ createClient }),
 		);
 		const createTransport = vi.fn(
 			() =>
@@ -291,6 +295,68 @@ describe("real stateless SDK transport", () => {
 		expect(createTransport.mock.results[0]?.value).not.toBe(
 			createTransport.mock.results[1]?.value,
 		);
+	});
+
+	it("forwards request-client logs through the connected MCP server", async () => {
+		const event: HevyClientLogEvent = {
+			level: "warning",
+			logger: "hevy-api",
+			data: {
+				message: "Retrying Hevy API request",
+				status: 429,
+				method: "GET",
+				endpoint: "/v1/user/info",
+				attempt: 1,
+				maxAttempts: 3,
+				delayMs: 100,
+			},
+		};
+		let requestOnLog: ((event: HevyClientLogEvent) => void) | undefined;
+		const createRequestClient = vi.fn(
+			(
+				_apiKey: string,
+				_baseUrl: string,
+				onLog: (event: HevyClientLogEvent) => void,
+			) => {
+				requestOnLog = onLog;
+				return createMockClient();
+			},
+		);
+		const sendLoggingMessage = vi.fn().mockResolvedValue(undefined);
+		const createServer = vi.fn(
+			(createClient: CreateHevyMcpServerOptions["createClient"]) => {
+				const server = createHevyMcpServer({ createClient });
+				vi.spyOn(server, "sendLoggingMessage").mockImplementation(
+					sendLoggingMessage,
+				);
+				return server;
+			},
+		);
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient,
+			createServer,
+		});
+
+		const result = await handler(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 3,
+				method: "initialize",
+				params: {
+					protocolVersion: "2025-11-25",
+					capabilities: {},
+					clientInfo: { name: "logging-test", version: "1" },
+				},
+			}),
+			{},
+		);
+		requestOnLog?.(event);
+
+		expect(result.status).toBe(200);
+		expect(createRequestClient).toHaveBeenCalledTimes(1);
+		expect(createServer).toHaveBeenCalledTimes(1);
+		expect(sendLoggingMessage).toHaveBeenCalledWith(event);
 	});
 
 	it("keeps exercise catalogs isolated between distinct bearer keys", async () => {

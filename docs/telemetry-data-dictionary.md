@@ -85,9 +85,10 @@ Never send or inspect for telemetry:
 
 ## Regression guard
 
-`src/index.test.ts`, `src/utils/telemetry.test.ts`,
-`src/utils/telemetry-wrapper.test.ts`, `src/utils/stdio-observability.test.ts`,
-and `src/utils/mcp-session-observability.test.ts` assert the capture settings,
+`packages/node/src/index.test.ts`, `packages/node/src/utils/telemetry.test.ts`,
+`packages/node/src/utils/tool-observer.test.ts`,
+`packages/node/src/utils/stdio-observability.test.ts`,
+and `packages/node/src/utils/mcp-session-observability.test.ts` assert the capture settings,
 allowlisted attributes, sanitized client metadata, and secret-sentinel absence.
 Any telemetry field change must update this dictionary and its regression tests
 in the same change.

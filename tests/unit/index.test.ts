@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("src/index.ts - Environment Variable Loading", () => {
+describe("Node package environment variable loading", () => {
 	let originalEnv: NodeJS.ProcessEnv;
 
 	beforeEach(() => {
@@ -346,7 +346,7 @@ describe("package.json script changes validation", () => {
 				"pnpm run build && pnpm dlx @modelcontextprotocol/inspector@latest node --env-file .env dist/index.mjs";
 			const startCommand = "node --env-file .env packages/node/dist/cli.mjs";
 			const devCommand =
-				"tsx watch --env-file .env --clear-screen=false src/cli.ts";
+				"tsx watch --env-file .env --clear-screen=false packages/node/src/cli.ts";
 
 			expect(inspectCommand).toContain("--env-file .env");
 			expect(startCommand).toContain("--env-file .env");

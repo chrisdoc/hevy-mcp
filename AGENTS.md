@@ -8,8 +8,8 @@
 - The codebase is TypeScript (Node.js v24+) organized as four workspaces: the
   runtime-neutral `@hevy-mcp/hevy-client` and `@hevy-mcp/core` packages, the
   Node package in `packages/node`, and the Cloudflare package in
-  `packages/worker`. Root `src/` files are transitional compatibility facades
-  and must not become new implementation dependencies.
+  `packages/worker`. All implementation lives under `packages/*`; the root is
+  a private workspace orchestrator and must not gain a runtime `src/` tree.
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 - **MCP SDK internals sensitivity:** `packages/node/src/utils/stdio-observability.ts`

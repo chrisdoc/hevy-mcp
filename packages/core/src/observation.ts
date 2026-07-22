@@ -1,17 +1,74 @@
-import type { SafeErrorDiagnostic } from "./utils/error-policy.js";
-import type { ToolResultTelemetry } from "./utils/result-telemetry.js";
+import type { ErrorType, SafeErrorDiagnostic } from "./utils/error-policy.js";
+import type {
+	ResultCountBucket,
+	ToolResultTelemetry,
+} from "./utils/result-telemetry.js";
+import type { ToolTelemetryMetadata } from "./utils/tool-taxonomy.js";
+
+export type SafeToolArgumentKey =
+	| "date"
+	| "endDate"
+	| "exerciseTemplateId"
+	| "folderId"
+	| "includeCustom"
+	| "limit"
+	| "offset"
+	| "page"
+	| "pageSize"
+	| "primaryMuscleGroup"
+	| "query"
+	| "refresh"
+	| "routineId"
+	| "since"
+	| "startDate"
+	| "updatedSince"
+	| "workoutId";
+
+export type SafeToolPresenceArgumentKey = Extract<
+	SafeToolArgumentKey,
+	| "date"
+	| "endDate"
+	| "exerciseTemplateId"
+	| "folderId"
+	| "primaryMuscleGroup"
+	| "query"
+	| "routineId"
+	| "since"
+	| "startDate"
+	| "updatedSince"
+	| "workoutId"
+>;
+
+export type SafeToolNumericArgumentKey = Extract<
+	SafeToolArgumentKey,
+	"limit" | "offset" | "page" | "pageSize"
+>;
+
+export type SafeToolBooleanArgumentKey = Extract<
+	SafeToolArgumentKey,
+	"includeCustom" | "refresh"
+>;
 
 export interface ToolInvocationObservation {
 	readonly name: string;
-	readonly argumentKeys?: readonly string[];
-	readonly taxonomy?: string;
-	readonly argumentKeyCountBucket?: "0" | "1" | "2-5" | "6+";
+	readonly taxonomy?: ToolTelemetryMetadata;
+	readonly argumentKeys?: readonly SafeToolArgumentKey[];
+	readonly argumentPresence?: Partial<
+		Readonly<Record<SafeToolPresenceArgumentKey, true>>
+	>;
+	readonly numericArgumentBuckets?: Partial<
+		Readonly<Record<SafeToolNumericArgumentKey, ResultCountBucket>>
+	>;
+	readonly booleanArguments?: Partial<
+		Readonly<Record<SafeToolBooleanArgumentKey, boolean>>
+	>;
+	readonly argumentKeyCountBucket?: ResultCountBucket;
 }
 
 export interface ToolResultObservation {
 	readonly isError: boolean;
 	readonly hasStructuredContent: boolean;
-	readonly contentCount: number;
+	readonly contentCountBucket: ResultCountBucket;
 	readonly summary?: ToolResultTelemetry;
 }
 
@@ -19,6 +76,7 @@ export interface ToolCompletionObservation {
 	readonly outcome: "success" | "returned_error" | "thrown_error";
 	readonly durationMs: number;
 	readonly result?: ToolResultObservation;
+	readonly errorType?: ErrorType;
 	readonly error?: SafeErrorDiagnostic;
 }
 
@@ -44,7 +102,7 @@ export function memoizeObservationScope(
 		run<T>(operation: () => Promise<T>): Promise<T> {
 			if (!operationPromise) {
 				try {
-					operationPromise = Promise.resolve().then(operation);
+					operationPromise = Promise.resolve(scope.run(operation));
 				} catch (error) {
 					operationPromise = Promise.reject(error);
 				}

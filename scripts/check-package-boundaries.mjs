@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { builtinModules } from "node:module";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as ast from "typescript/unstable/ast";
 import { API } from "typescript/unstable/sync";
@@ -54,9 +54,35 @@ export const packageRules = new Map([
 	],
 ]);
 
-const internalPackages = [...packageRules.keys()].map(
-	(relativePackage) => `@hevy-mcp/${relativePackage.split("/")[1]}`,
-);
+// Keep this list aligned with the actual workspace package names. The Node
+// workspace is public and is therefore intentionally named `hevy-mcp`, not
+// `@hevy-mcp/node`.
+const internalPackages = [
+	"@hevy-mcp/hevy-client",
+	"@hevy-mcp/core",
+	"hevy-mcp",
+	"@hevy-mcp/worker",
+];
+
+export function findRetiredRootSourceFiles(files, projectRoot) {
+	return files.map((file) => relative(projectRoot, file).replaceAll("\\", "/"));
+}
+
+async function collectOptional(directory) {
+	try {
+		return await collect(directory);
+	} catch (error) {
+		if (
+			error &&
+			typeof error === "object" &&
+			"code" in error &&
+			error.code === "ENOENT"
+		) {
+			return [];
+		}
+		throw error;
+	}
+}
 
 async function collect(directory) {
 	const entries = await readdir(directory, { withFileTypes: true });
@@ -259,7 +285,10 @@ export async function checkBoundaries(projectRoot = root) {
 		}
 	}
 
-	const rootFiles = await collect(resolve(projectRoot, "src"));
+	const rootFiles = await collectOptional(resolve(projectRoot, "src"));
+	for (const file of findRetiredRootSourceFiles(rootFiles, projectRoot)) {
+		failures.push(`retired root implementation remains: ${file}`);
+	}
 	const rootInspections = inspectFilesWithCompiler(rootFiles);
 	for (const file of rootFiles) {
 		const { edges } = rootInspections.get(file);

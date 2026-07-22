@@ -35,4 +35,8 @@ export function findImportViolations(options: {
 }): string[];
 
 export const packageRules: Map<string, BoundaryRule>;
+export function findRetiredRootSourceFiles(
+	files: string[],
+	projectRoot: string,
+): string[];
 export function checkBoundaries(projectRoot?: string): Promise<string[]>;
