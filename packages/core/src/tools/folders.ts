@@ -7,6 +7,7 @@ import type {
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import type { ToolDefinition } from "./define-tool.js";
+import type { PaginatedToolResult } from "../utils/response-formatter.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
 	createRoutineFolderResponse,
@@ -20,6 +21,11 @@ import {
 import { describeTool } from "../utils/tool-descriptions.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { nonEmptyId, paginationShape } from "./input-schemas.js";
+import {
+	isExpectedListPageNotFound,
+	isExpectedReadNotFound,
+	recordExpected404,
+} from "../utils/hevy-error-policy.js";
 
 const getRoutineFoldersSchema = paginationShape({
 	defaultPageSize: 5,
@@ -57,20 +63,28 @@ const getRoutineFoldersDefinition = {
 	execute: async (
 		runtime: ToolRuntime,
 		args: GetRoutineFoldersParams,
-	): Promise<RoutineFolder[] | undefined> => {
+	): Promise<PaginatedToolResult<RoutineFolder>> => {
 		const { page, pageSize } = args;
-		const data: GetV1RoutineFolders200 = await runtime
-			.getClient()
-			.getRoutineFolders({
+		try {
+			const data: GetV1RoutineFolders200 = await runtime
+				.getClient()
+				.getRoutineFolders({ page, pageSize });
+			return {
+				items: data?.routine_folders ?? [],
 				page,
-				pageSize,
-			});
-
-		return data?.routine_folders;
+				pageCount: data?.page_count,
+			};
+		} catch (error) {
+			if (isExpectedListPageNotFound(error, page)) {
+				recordExpected404("end_of_list");
+				return { items: [], page };
+			}
+			throw error;
+		}
 	},
 } satisfies ToolDefinition<
 	typeof getRoutineFoldersSchema,
-	RoutineFolder[] | undefined
+	PaginatedToolResult<RoutineFolder>
 >;
 
 const getRoutineFolderDefinition = {
@@ -98,14 +112,18 @@ const getRoutineFolderDefinition = {
 		folderId: string;
 	}> => {
 		const { folderId } = args;
-		const data: GetV1RoutineFoldersFolderid200 | null = await runtime
-			.getClient()
-			.getRoutineFolder(folderId);
-
-		return {
-			routineFolder: data,
-			folderId,
-		};
+		try {
+			const data: GetV1RoutineFoldersFolderid200 | null = await runtime
+				.getClient()
+				.getRoutineFolder(folderId);
+			return { routineFolder: data, folderId };
+		} catch (error) {
+			if (isExpectedReadNotFound(error)) {
+				recordExpected404("not_found");
+				return { routineFolder: null, folderId };
+			}
+			throw error;
+		}
 	},
 } satisfies ToolDefinition<
 	typeof getRoutineFolderSchema,

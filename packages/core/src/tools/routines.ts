@@ -26,13 +26,21 @@ import {
 } from "./input-schemas.js";
 import { buildRoutinePayload } from "./payload-mappers.js";
 import type { ToolDefinition } from "./define-tool.js";
+import type { PaginatedToolResult } from "../utils/response-formatter.js";
+import {
+	isExpectedListPageNotFound,
+	isExpectedReadNotFound,
+	recordExpected404,
+} from "../utils/hevy-error-policy.js";
 
 const getRoutinesSchema = paginationShape({
 	defaultPageSize: 5,
 	maxPageSize: 10,
 });
 
-type GetRoutinesResult = GetV1Routines200["routines"];
+type GetRoutinesResult = PaginatedToolResult<
+	NonNullable<GetV1Routines200["routines"]>[number]
+>;
 const getRoutinesDefinition: ToolDefinition<
 	typeof getRoutinesSchema,
 	GetRoutinesResult
@@ -54,11 +62,19 @@ const getRoutinesDefinition: ToolDefinition<
 	annotations: readOnlyAnnotations("Get Routines"),
 	responseContract: routinesResponse,
 	execute: async (runtime, { page, pageSize }) => {
-		const data: GetV1Routines200 = await runtime.getClient().getRoutines({
-			page,
-			pageSize,
-		});
-		return data?.routines;
+		try {
+			const data: GetV1Routines200 = await runtime.getClient().getRoutines({
+				page,
+				pageSize,
+			});
+			return { items: data?.routines ?? [], page, pageCount: data?.page_count };
+		} catch (error) {
+			if (isExpectedListPageNotFound(error, page)) {
+				recordExpected404("end_of_list");
+				return { items: [], page };
+			}
+			throw error;
+		}
 	},
 };
 
@@ -90,10 +106,18 @@ const getRoutineDefinition: ToolDefinition<
 	annotations: readOnlyAnnotations("Get Routine"),
 	responseContract: routineResponse,
 	execute: async (runtime, { routineId }) => {
-		const data: GetV1RoutinesRoutineid200 = await runtime
-			.getClient()
-			.getRoutineById(String(routineId));
-		return { routine: data?.routine, routineId };
+		try {
+			const data: GetV1RoutinesRoutineid200 = await runtime
+				.getClient()
+				.getRoutineById(String(routineId));
+			return { routine: data?.routine, routineId };
+		} catch (error) {
+			if (isExpectedReadNotFound(error)) {
+				recordExpected404("not_found");
+				return { routine: null, routineId };
+			}
+			throw error;
+		}
 	},
 };
 

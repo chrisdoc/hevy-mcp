@@ -27,6 +27,11 @@ import {
 	exerciseTypeEnum,
 	muscleGroupEnum,
 } from "../utils/schemas.js";
+import {
+	isExpectedListPageNotFound,
+	isExpectedReadNotFound,
+	recordExpected404,
+} from "../utils/hevy-error-policy.js";
 
 const getExerciseTemplatesSchema = paginationShape({
 	defaultPageSize: 5,
@@ -103,13 +108,22 @@ const getExerciseTemplatesDefinition = {
 		args: InferToolParams<typeof getExerciseTemplatesSchema>,
 	) => {
 		const { page, pageSize } = args;
-		const data: GetV1ExerciseTemplates200 = await runtime
-			.getClient()
-			.getExerciseTemplates({
+		try {
+			const data: GetV1ExerciseTemplates200 = await runtime
+				.getClient()
+				.getExerciseTemplates({ page, pageSize });
+			return {
+				items: data?.exercise_templates ?? [],
 				page,
-				pageSize,
-			});
-		return data?.exercise_templates;
+				pageCount: data?.page_count,
+			};
+		} catch (error) {
+			if (isExpectedListPageNotFound(error, page)) {
+				recordExpected404("end_of_list");
+				return { items: [], page };
+			}
+			throw error;
+		}
 	},
 };
 
@@ -140,13 +154,18 @@ const getExerciseTemplateDefinition = {
 		args: InferToolParams<typeof getExerciseTemplateSchema>,
 	) => {
 		const { exerciseTemplateId } = args;
-		const data: GetV1ExerciseTemplatesExercisetemplateid200 = await runtime
-			.getClient()
-			.getExerciseTemplate(exerciseTemplateId);
-		return {
-			exerciseTemplate: data,
-			exerciseTemplateId,
-		};
+		try {
+			const data: GetV1ExerciseTemplatesExercisetemplateid200 = await runtime
+				.getClient()
+				.getExerciseTemplate(exerciseTemplateId);
+			return { exerciseTemplate: data, exerciseTemplateId };
+		} catch (error) {
+			if (isExpectedReadNotFound(error)) {
+				recordExpected404("not_found");
+				return { exerciseTemplate: null, exerciseTemplateId };
+			}
+			throw error;
+		}
 	},
 };
 

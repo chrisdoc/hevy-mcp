@@ -302,8 +302,28 @@ export type FormattedBodyMeasurement = z.infer<
 	typeof formattedBodyMeasurementSchema
 >;
 
+const paginationOutputSchema = {
+	page: z.number().int().positive(),
+	pageCount: z.number().int().nonnegative().optional(),
+	hasNextPage: z.boolean().optional(),
+} as const;
+export type PaginatedToolResult<T> = {
+	items: readonly T[];
+	page: number;
+	pageCount?: number;
+};
+type PaginatedInput<T> = PaginatedToolResult<T> | readonly T[] | undefined;
+function normalizePaginatedInput<T>(
+	data: PaginatedInput<T>,
+): PaginatedToolResult<T> {
+	if (data === undefined) return { items: [], page: 1 };
+	if ("items" in data) return data;
+	return { items: data, page: 1 };
+}
+
 const workoutsOutputSchema = {
 	workouts: z.array(formattedWorkoutSchema),
+	...paginationOutputSchema,
 } as const;
 const workoutOutputSchema = {
 	workout: formattedWorkoutSchema.nullable(),
@@ -324,14 +344,20 @@ const workoutEventsOutputSchema = {
 	events: z.array(
 		z.union([formattedUpdatedWorkoutSchema, formattedDeletedWorkoutSchema]),
 	),
+	...paginationOutputSchema,
 } as const;
 const routinesOutputSchema = {
 	routines: z.array(formattedRoutineSchema),
+	...paginationOutputSchema,
 } as const;
 const routineOutputSchema = {
 	routine: formattedRoutineSchema.nullable(),
 } as const;
 const exerciseTemplatesOutputSchema = {
+	exerciseTemplates: z.array(formattedExerciseTemplateSchema),
+	...paginationOutputSchema,
+} as const;
+const exerciseTemplateSearchOutputSchema = {
 	exerciseTemplates: z.array(formattedExerciseTemplateSchema),
 } as const;
 const exerciseTemplateOutputSchema = {
@@ -342,12 +368,14 @@ const exerciseHistoryOutputSchema = {
 } as const;
 const routineFoldersOutputSchema = {
 	routineFolders: z.array(formattedRoutineFolderSchema),
+	...paginationOutputSchema,
 } as const;
 const routineFolderOutputSchema = {
 	routineFolder: formattedRoutineFolderSchema.nullable(),
 } as const;
 const bodyMeasurementsOutputSchema = {
 	bodyMeasurements: z.array(formattedBodyMeasurementSchema),
+	...paginationOutputSchema,
 } as const;
 const bodyMeasurementOutputSchema = {
 	bodyMeasurement: formattedBodyMeasurementSchema.nullable(),
@@ -683,16 +711,25 @@ function workflowResultTelemetry(workflow: {
 }
 export const workoutsResponse = defineStructuredResponseContract({
 	outputSchema: workoutsOutputSchema,
-	normalize: (workouts: readonly Workout[] | undefined) => ({
-		workouts: workouts?.map(formatWorkout) ?? [],
-	}),
+	normalize: (input: PaginatedInput<Workout>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			workouts: data.items.map(formatWorkout),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ workouts }) => workouts,
 	text: (_data, { workouts }) =>
 		workouts.length === 0
 			? "No workouts found for the specified parameters"
 			: undefined,
 	telemetry: (workouts) => ({
-		itemCountBucket: bucketCount(workouts?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(workouts).items.length,
+		),
 	}),
 });
 
@@ -720,7 +757,15 @@ export const workoutEventsResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		events: readonly WorkoutEvent[] | undefined;
 		since: string;
-	}) => ({ events: data.events?.map(formatWorkoutEvent) ?? [] }),
+		page: number;
+		pageCount?: number;
+	}) => ({
+		events: data.events?.map(formatWorkoutEvent) ?? [],
+		page: data.page,
+		pageCount: data.pageCount,
+		hasNextPage:
+			data.pageCount === undefined ? undefined : data.page < data.pageCount,
+	}),
 	legacyJson: ({ events }) => events,
 	text: ({ since }, { events }) =>
 		events.length === 0
@@ -733,16 +778,25 @@ export const workoutEventsResponse = defineStructuredResponseContract({
 
 export const routinesResponse = defineStructuredResponseContract({
 	outputSchema: routinesOutputSchema,
-	normalize: (routines: readonly Routine[] | undefined) => ({
-		routines: routines?.map(formatRoutine) ?? [],
-	}),
+	normalize: (input: PaginatedInput<Routine>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			routines: data.items.map(formatRoutine),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ routines }) => routines,
 	text: (_data, { routines }) =>
 		routines.length === 0
 			? "No routines found for the specified parameters"
 			: undefined,
 	telemetry: (routines) => ({
-		itemCountBucket: bucketCount(routines?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(routines).items.length,
+		),
 	}),
 });
 
@@ -760,16 +814,25 @@ export const routineResponse = defineStructuredResponseContract({
 
 export const exerciseTemplatesResponse = defineStructuredResponseContract({
 	outputSchema: exerciseTemplatesOutputSchema,
-	normalize: (templates: readonly ExerciseTemplate[] | undefined) => ({
-		exerciseTemplates: templates?.map(formatExerciseTemplate) ?? [],
-	}),
+	normalize: (input: PaginatedInput<ExerciseTemplate>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			exerciseTemplates: data.items.map(formatExerciseTemplate),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ exerciseTemplates }) => exerciseTemplates,
 	text: (_data, { exerciseTemplates }) =>
 		exerciseTemplates.length === 0
 			? "No exercise templates found for the specified parameters"
 			: undefined,
 	telemetry: (templates) => ({
-		itemCountBucket: bucketCount(templates?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(templates).items.length,
+		),
 	}),
 });
 
@@ -813,7 +876,7 @@ export const exerciseHistoryResponse = defineStructuredResponseContract({
 
 export const searchExerciseTemplatesResponse = defineStructuredResponseContract(
 	{
-		outputSchema: exerciseTemplatesOutputSchema,
+		outputSchema: exerciseTemplateSearchOutputSchema,
 		normalize: (data: {
 			results: readonly ExerciseTemplate[];
 			query: string;
@@ -832,16 +895,23 @@ export const searchExerciseTemplatesResponse = defineStructuredResponseContract(
 
 export const routineFoldersResponse = defineStructuredResponseContract({
 	outputSchema: routineFoldersOutputSchema,
-	normalize: (folders: readonly RoutineFolder[] | undefined) => ({
-		routineFolders: folders?.map(formatRoutineFolder) ?? [],
-	}),
+	normalize: (input: PaginatedInput<RoutineFolder>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			routineFolders: data.items.map(formatRoutineFolder),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ routineFolders }) => routineFolders,
 	text: (_data, { routineFolders }) =>
 		routineFolders.length === 0
 			? "No routine folders found for the specified parameters"
 			: undefined,
 	telemetry: (folders) => ({
-		itemCountBucket: bucketCount(folders?.length ?? 0),
+		itemCountBucket: bucketCount(normalizePaginatedInput(folders).items.length),
 	}),
 });
 
@@ -867,16 +937,25 @@ export const routineFolderResponse = defineStructuredResponseContract({
 
 export const bodyMeasurementsResponse = defineStructuredResponseContract({
 	outputSchema: bodyMeasurementsOutputSchema,
-	normalize: (measurements: readonly BodyMeasurement[] | undefined) => ({
-		bodyMeasurements: measurements?.map(formatBodyMeasurement) ?? [],
-	}),
+	normalize: (input: PaginatedInput<BodyMeasurement>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			bodyMeasurements: data.items.map(formatBodyMeasurement),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ bodyMeasurements }) => bodyMeasurements,
 	text: (_data, { bodyMeasurements }) =>
 		bodyMeasurements.length === 0
 			? "No body measurements found for the specified parameters"
 			: undefined,
 	telemetry: (measurements) => ({
-		itemCountBucket: bucketCount(measurements?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(measurements).items.length,
+		),
 	}),
 });
 
