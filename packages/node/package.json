@@ -1,0 +1,58 @@
+{
+	"name": "hevy-mcp",
+	"version": "3.4.1",
+	"private": false,
+	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
+	"bin": {
+		"hevy-mcp": "dist/cli.mjs"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"server.json"
+	],
+	"type": "module",
+	"main": "dist/index.mjs",
+	"types": "dist/index.d.mts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"import": "./dist/index.mjs"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown -c tsdown.config.ts",
+		"prepack": "node ../../scripts/server-manifest.mjs check && npm run build",
+		"check:types": "tsc --noEmit -p tsconfig.json",
+		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown -c tsdown.config.ts"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@opentelemetry/api": "^1.9.0",
+		"@opentelemetry/exporter-metrics-otlp-http": "^0.220.0",
+		"@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
+		"@opentelemetry/resources": "^2.9.0",
+		"@opentelemetry/sdk-metrics": "^2.9.0",
+		"@opentelemetry/sdk-trace-base": "^2.9.0",
+		"@opentelemetry/sdk-trace-node": "^2.9.0",
+		"@sentry/node": "^10.58.0",
+		"@sentry/opentelemetry": "^10.58.0",
+		"semver": "^7.8.5",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@hevy-mcp/core": "*",
+		"@hevy-mcp/hevy-client": "*",
+		"@types/node": "^26.0.0",
+		"cross-env": "^10.1.0",
+		"tsdown": "^0.22.2",
+		"typescript": "^7.0.2"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"mcpName": "io.github.chrisdoc/hevy-mcp"
+}

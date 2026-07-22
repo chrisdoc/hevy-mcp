@@ -7,10 +7,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createClient } from "../../src/utils/hevyClient.js";
-import { createExerciseTemplateCatalog } from "../../src/utils/exercise-template-catalog.js";
-import { createToolRuntime } from "../../src/tools/tool-runtime.js";
-import { registerHevyTools } from "../../src/tools/register.js";
+import { createHevyClient } from "../../packages/hevy-client/src/hevy-client.js";
+import { createExerciseTemplateCatalog } from "../../packages/core/src/utils/exercise-template-catalog.js";
+import { createToolRuntime } from "../../packages/core/src/tools/tool-runtime.js";
+import { registerHevyTools } from "../../packages/core/src/tools/register.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const hevyApiKey = process.env.HEVY_API_KEY || "";
@@ -156,7 +156,10 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		});
 
 		// Create Hevy client
-		const hevyClient = createClient(hevyApiKey, HEVY_API_BASEURL);
+		const hevyClient = createHevyClient({
+			apiKey: hevyApiKey,
+			baseUrl: HEVY_API_BASEURL,
+		});
 		const runtime = createToolRuntime({
 			client: hevyClient,
 			catalog: createExerciseTemplateCatalog(hevyClient),

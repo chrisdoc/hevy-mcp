@@ -13,10 +13,10 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { registerHevyTools } from "../../../src/tools/register.js";
-import { createToolRuntime } from "../../../src/tools/tool-runtime.js";
-import { createExerciseTemplateCatalog } from "../../../src/utils/exercise-template-catalog.js";
-import { createClient } from "../../../src/utils/hevyClient.js";
+import { registerHevyTools } from "../../../packages/core/src/tools/register.js";
+import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
+import { createExerciseTemplateCatalog } from "../../../packages/core/src/utils/exercise-template-catalog.js";
+import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
@@ -71,7 +71,10 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 			version: "1.0.0",
 		});
 
-		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
+		const hevyClient = createHevyClient({
+			apiKey: MOCK_HEVY_API_KEY,
+			baseUrl: HEVY_API_BASEURL,
+		});
 		const runtime = createToolRuntime({
 			client: hevyClient,
 			catalog: createExerciseTemplateCatalog(hevyClient),

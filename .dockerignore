@@ -9,7 +9,14 @@
 # Standalone build inputs.
 !package.json
 !package-lock.json
+!tsconfig.base.json
 !tsconfig.json
-!tsdown.config.ts
-!src/
-!src/**
+!packages/
+!packages/hevy-client/
+!packages/hevy-client/**
+!packages/core/
+!packages/core/**
+!packages/node/
+!packages/node/**
+!packages/worker/
+!packages/worker/**

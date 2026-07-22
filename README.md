@@ -22,6 +22,12 @@ app. It lets AI assistants read, analyze, create, and update your Hevy workouts,
 routines, exercise templates, and body measurements through authenticated Hevy
 API requests.
 
+The repository is organized as a private workspace with explicit runtime
+boundaries: `@hevy-mcp/hevy-client` owns the web-safe Hevy client,
+`@hevy-mcp/core` owns MCP tools and server construction, `hevy-mcp` is the
+published Node.js stdio adapter, and `@hevy-mcp/worker` is the private
+Cloudflare HTTP/OAuth adapter. Only the Node workspace is publishable.
+
 > A Hevy API key, available with **Hevy PRO**, is required.
 
 ## See it in action

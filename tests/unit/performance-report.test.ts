@@ -105,7 +105,7 @@ describe("performance report schema", () => {
 		expect(report).toMatchObject({
 			version: "2.0.0",
 			environment: {
-				builtCli: "dist/cli.mjs",
+				builtCli: "packages/node/dist/cli.mjs",
 				transport: "spawned stdio",
 			},
 			configuration: {
