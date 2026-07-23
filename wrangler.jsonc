@@ -3,14 +3,19 @@
 	"name": "hevy-mcp",
 	"main": "packages/worker/src/worker.ts",
 	"compatibility_date": "2026-07-11",
+	"compatibility_flags": ["global_fetch_strictly_public"],
 	"workers_dev": false,
 	"preview_urls": true,
 	"observability": {
+		"enabled": true,
 		"traces": {
 			"enabled": true,
+			"destinations": ["otel"],
 		},
 		"logs": {
 			"enabled": true,
+			"invocation_logs": true,
+			"destinations": ["otel-logs"],
 		},
 	},
 	"kv_namespaces": [
