@@ -42,6 +42,9 @@ export interface WorkerEnv {
 	// Optional comma-separated exact-origin override. When omitted, the known
 	// browser client origins above are allowed.
 	MCP_ALLOWED_ORIGINS?: string;
+	// Development-only escape hatch for local and preview browser clients.
+	// Production deployments must leave this unset.
+	MCP_DISABLE_ORIGIN_CHECK?: string;
 	// Optional KV namespace binding. When present, the Worker additionally
 	// exposes OAuth 2.1 endpoints for remote MCP clients such as Claude.ai.
 	// When absent, behavior is identical to the pre-OAuth Worker.
@@ -114,6 +117,9 @@ function validateOrigin(
 ): string | null | Response {
 	const origin = request.headers.get("origin");
 	if (!origin) return null;
+	if (env.MCP_DISABLE_ORIGIN_CHECK?.trim().toLowerCase() === "true") {
+		return origin;
+	}
 	if (origin === new URL(request.url).origin) return origin;
 	if (!parseAllowedOrigins(env.MCP_ALLOWED_ORIGINS).has(origin)) {
 		console.warn({

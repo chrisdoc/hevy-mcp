@@ -128,6 +128,20 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(rejected.headers.get("vary")).toBe("Origin");
 	});
 
+	it("can disable origin validation explicitly for non-production clients", async () => {
+		const result = await handler(
+			new Request("https://worker.example/mcp", {
+				headers: { origin: "http://localhost:6274" },
+			}),
+			{ MCP_DISABLE_ORIGIN_CHECK: "true" },
+		);
+
+		expect(result.status).toBe(405);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"http://localhost:6274",
+		);
+	});
+
 	it("answers browser preflight without bearer authentication", async () => {
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
