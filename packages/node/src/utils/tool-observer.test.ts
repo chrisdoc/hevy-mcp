@@ -239,6 +239,36 @@ describe("createNodeToolObserver", () => {
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
 
+	it("uses prompt-specific telemetry for prompt failures", async () => {
+		const promptInvocation = {
+			name: "create-workout-from-routine",
+			kind: "prompt",
+			argumentKeyCountBucket: "0",
+		} satisfies SafeToolInvocation;
+		const scope = createNodeToolObserver().start(promptInvocation);
+		if (!scope) throw new Error("Expected the Node observer to create a scope");
+
+		await expect(
+			scope.run(() => Promise.reject(new Error("prompt failure"))),
+		).rejects.toThrow();
+		await scope.finish({
+			outcome: "thrown_error",
+			durationMs: 3,
+			errorType: ErrorType.UNKNOWN_ERROR,
+			error: { category: "Error", status: 500 },
+		});
+
+		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
+			"MCP prompt failure",
+			"error",
+		);
+		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
+			"mcp-prompt-failure",
+			"Error",
+			"500",
+		]);
+	});
+
 	it("marks returned MCP errors as session failures without error exceptions", async () => {
 		const scope = startScope();
 		await scope.run(() => Promise.resolve("returned error"));

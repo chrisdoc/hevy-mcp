@@ -47,8 +47,8 @@ describe("workout prompts", () => {
 					title: "Create Workout From Routine",
 					description: expect.stringContaining("routine"),
 					arguments: expect.arrayContaining([
-						expect.objectContaining({ name: "routineId", required: true }),
-						expect.objectContaining({ name: "startTime", required: true }),
+						expect.objectContaining({ name: "routineId", required: false }),
+						expect.objectContaining({ name: "startTime", required: false }),
 					]),
 				}),
 			]),
@@ -141,5 +141,18 @@ describe("workout prompts", () => {
 				},
 			}),
 		).rejects.toThrow();
+	});
+
+	it("returns a generic preview when routine arguments are omitted", async () => {
+		const result = await client.getPrompt({
+			name: "create-workout-from-routine",
+			arguments: {},
+		});
+
+		expect(result.messages[0]?.content).toEqual(
+			expect.objectContaining({
+				text: "Provide a routineId and startTime to generate the full prompt.",
+			}),
+		);
 	});
 });
