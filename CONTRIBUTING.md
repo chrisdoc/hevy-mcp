@@ -264,8 +264,9 @@ and bearer-auth behavior when changing Worker request handling.
 
 Clients that cannot send a fixed `Authorization` header (for example Claude.ai
 custom connectors) can use OAuth 2.1 instead. The layer is opt-in per
-deployment: create a KV namespace and bind it as `OAUTH_KV` in
-`wrangler.jsonc`:
+deployment: create a KV namespace and bind it as `OAUTH_KV` in the relevant
+Wrangler config (`wrangler.jsonc` for production or `wrangler.preview.jsonc`
+for PR previews):
 
 ```bash
 npx wrangler kv namespace create OAUTH_KV
@@ -297,6 +298,9 @@ Internal pull requests receive preview Worker deployments through
 `.github/workflows/deploy-worker.yml`. Fork pull requests do not receive
 deployment credentials. Production deployment remains gated by the repository's
 trusted CI/release workflows.
+
+PR previews use a dedicated non-production OAuth KV namespace, so preview
+grants never share production OAuth state.
 
 ## Git and pull requests
 
