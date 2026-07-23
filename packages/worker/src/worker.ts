@@ -31,6 +31,7 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 	"https://claude.com", // Anthropic Claude web connector
 	"https://www.claude.com", // Anthropic Claude web connector
 	"https://chatgpt.com", // OpenAI ChatGPT connectors
+	"https://chat.openai.com", // Legacy ChatGPT web origin
 	"https://vscode.dev", // VS Code for the Web
 	"https://github.dev", // github.dev web editor
 ] as const;

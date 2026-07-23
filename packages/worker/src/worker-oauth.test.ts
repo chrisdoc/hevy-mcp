@@ -580,6 +580,33 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		});
 	});
 
+	it("registers a ChatGPT legacy browser client from its web origin", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const result = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://chat.openai.com",
+				},
+				body: JSON.stringify({
+					client_name: "ChatGPT",
+					redirect_uris: [
+						"https://chatgpt.com/connector_platform_oauth_redirect",
+					],
+					token_endpoint_auth_method: "none",
+				}),
+			}),
+			env,
+			{},
+		);
+
+		expect(result.status).toBe(201);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://chat.openai.com",
+		);
+	});
+
 	it("rejects unconfigured OAuth browser origins", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(

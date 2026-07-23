@@ -238,6 +238,7 @@ https://www.claude.ai
 https://claude.com
 https://www.claude.com
 https://chatgpt.com
+https://chat.openai.com
 https://vscode.dev
 https://github.dev
 ```
