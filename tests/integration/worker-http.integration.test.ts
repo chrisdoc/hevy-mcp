@@ -9,7 +9,7 @@ import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const LOOPBACK = "127.0.0.1";
-const BROWSER_ORIGIN = "https://browser.example";
+const BROWSER_ORIGIN = "https://chatgpt.com";
 const VALID_API_KEY = "valid-test-key";
 const INVALID_API_KEY = "invalid-test-key";
 const UPSTREAM_FAILURE_API_KEY = "upstream-failure-key";
@@ -715,7 +715,7 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(hevyRequests).toHaveLength(3);
 	});
 
-	it("allows CORS preflight from arbitrary browser origins", async () => {
+	it("allows configured CORS origins and rejects unconfigured origins", async () => {
 		const first = await fetch(`${workerBaseUrl}/mcp`, {
 			method: "OPTIONS",
 			headers: { origin: BROWSER_ORIGIN },
@@ -732,10 +732,8 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(first.headers.get("access-control-allow-methods")).toBe(
 			"POST, OPTIONS",
 		);
-		expect(second.status).toBe(204);
-		expect(second.headers.get("access-control-allow-origin")).toBe(
-			"https://another-browser.example",
-		);
+		expect(second.status).toBe(403);
+		expect(second.headers.get("access-control-allow-origin")).toBeNull();
 		expect(hevyRequests).toHaveLength(0);
 	});
 

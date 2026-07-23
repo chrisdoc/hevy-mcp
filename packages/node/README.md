@@ -447,8 +447,9 @@ server-scoped in-memory catalog cache:
 - Hosted clients send the key only in the `Authorization: Bearer` header. The
   Worker validates each key with Hevy, does not store it, and sends it upstream
   only as Hevy's `api-key` header.
-- Browser requests from any origin receive CORS headers, but MCP requests
-  still require bearer authentication.
+- Browser requests must come from an exact allowlisted origin. The default
+  allowlist includes Claude.ai, ChatGPT, VS Code for the Web, and github.dev;
+  self-hosted deployments can override it with `MCP_ALLOWED_ORIGINS`.
 - Create operations can produce duplicates when retried. Update operations
   replace existing records. Review tool inputs and use client confirmations.
 

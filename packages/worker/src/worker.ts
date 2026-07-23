@@ -25,10 +25,22 @@ const AUTH_VALIDATION_TIMEOUT_MS = 5_000;
 const CORS_ALLOWED_HEADERS =
 	"Authorization, Content-Type, Accept, MCP-Protocol-Version";
 const CORS_ALLOWED_METHODS = "POST, OPTIONS";
+export const DEFAULT_ALLOWED_ORIGINS = [
+	"https://claude.ai", // Anthropic Claude web connector
+	"https://www.claude.ai", // Anthropic Claude web connector
+	"https://claude.com", // Anthropic Claude web connector
+	"https://www.claude.com", // Anthropic Claude web connector
+	"https://chatgpt.com", // OpenAI ChatGPT connectors
+	"https://vscode.dev", // VS Code for the Web
+	"https://github.dev", // github.dev web editor
+] as const;
 
 export interface WorkerEnv {
 	// Trusted deployment/test binding; invalid values fail closed before auth.
 	HEVY_API_BASE_URL?: string;
+	// Optional comma-separated exact-origin override. When omitted, the known
+	// browser client origins above are allowed.
+	MCP_ALLOWED_ORIGINS?: string;
 	// Optional KV namespace binding. When present, the Worker additionally
 	// exposes OAuth 2.1 endpoints for remote MCP clients such as Claude.ai.
 	// When absent, behavior is identical to the pre-OAuth Worker.
@@ -54,6 +66,27 @@ export function parseBearerApiKey(authorization: string | null): string | null {
 	if (!authorization) return null;
 	const match = /^Bearer ([^\s,]+)$/i.exec(authorization);
 	return match?.[1] ?? null;
+}
+
+export function parseAllowedOrigins(value: string | undefined): Set<string> {
+	const origins =
+		value === undefined ? DEFAULT_ALLOWED_ORIGINS : value.split(",");
+	return new Set(origins.map((origin) => origin.trim()).filter(Boolean));
+}
+
+function validateOrigin(
+	request: Request,
+	env: WorkerEnv,
+): string | null | Response {
+	const origin = request.headers.get("origin");
+	if (!origin) return null;
+	if (!parseAllowedOrigins(env.MCP_ALLOWED_ORIGINS).has(origin)) {
+		return new Response("Forbidden", {
+			status: 403,
+			headers: { Vary: "Origin" },
+		});
+	}
+	return origin;
 }
 
 function corsHeaders(origin: string): Headers {
@@ -209,7 +242,9 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		if (url.pathname !== MCP_PATH)
 			return new Response("Not found", { status: 404 });
 
-		const origin = request.headers.get("origin");
+		const originResult = validateOrigin(request, env);
+		if (originResult instanceof Response) return originResult;
+		const origin = originResult;
 		let hevyApiBaseUrl: string;
 		try {
 			hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
@@ -321,6 +356,9 @@ export function createWorkerFetchHandler(
 			return legacyHandler(request, env);
 		}
 
+		const originResult = validateOrigin(request, env);
+		if (originResult instanceof Response) return originResult;
+		const origin = originResult;
 		const url = new URL(request.url);
 		if (url.pathname === MCP_PATH) {
 			if (request.method !== "POST") return legacyHandler(request, env);
@@ -328,11 +366,10 @@ export function createWorkerFetchHandler(
 			if (bearer && !hasOAuthAccessTokenShape(bearer)) {
 				return legacyHandler(request, env);
 			}
-			const origin = request.headers.get("origin");
 			const oauthResponse = await oauthProvider.fetch(request, env, ctx ?? {});
 			return withCors(oauthResponse, origin);
 		}
-		return oauthProvider.fetch(request, env, ctx ?? {});
+		return withCors(await oauthProvider.fetch(request, env, ctx ?? {}), origin);
 	};
 }
 

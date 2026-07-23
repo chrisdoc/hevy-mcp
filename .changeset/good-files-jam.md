@@ -2,4 +2,4 @@
 "hevy-mcp": patch
 ---
 
-Allow browser-based MCP clients from any origin to connect to the hosted Worker.
+Allow supported browser-based MCP clients to connect to the hosted Worker with exact-origin validation.

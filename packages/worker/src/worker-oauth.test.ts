@@ -531,7 +531,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			new Request("https://worker.example/mcp", {
 				method: "POST",
 				headers: {
-					origin: "https://browser.example",
+					origin: "https://claude.ai",
 					authorization: "Bearer user:grant:secret",
 				},
 				body: "{}",
@@ -541,7 +541,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		);
 		expect(result.status).toBe(401);
 		expect(result.headers.get("access-control-allow-origin")).toBe(
-			"https://browser.example",
+			"https://claude.ai",
 		);
 	});
 
@@ -575,6 +575,29 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			redirect_uris: ["https://chatgpt.com/connector_platform_oauth_redirect"],
 			token_endpoint_auth_method: "none",
 		});
+	});
+
+	it("rejects unconfigured OAuth browser origins", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const result = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://browser.example",
+				},
+				body: JSON.stringify({
+					client_name: "Untrusted client",
+					redirect_uris: ["https://browser.example/callback"],
+				}),
+			}),
+			env,
+			{},
+		);
+
+		expect(result.status).toBe(403);
+		expect(result.headers.get("access-control-allow-origin")).toBeNull();
+		expect(result.headers.get("vary")).toBe("Origin");
 	});
 
 	it("completes the full OAuth flow and serves MCP requests", async () => {
