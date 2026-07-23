@@ -127,7 +127,10 @@ describe("templateToolDefinitions", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatExerciseTemplate(template)]);
-		expect(response.structuredContent).toEqual({ exerciseTemplates: parsed });
+		expect(response.structuredContent).toMatchObject({
+			exerciseTemplates: parsed,
+			page: 1,
+		});
 	});
 
 	it("get-exercise-template returns an empty response when template is not found", async () => {
@@ -252,7 +255,10 @@ describe("templateToolDefinitions", () => {
 			"get-exercise-history",
 		).handler({ exerciseTemplateId: "t1" });
 
-		expect(templates.structuredContent).toEqual({ exerciseTemplates: [] });
+		expect(templates.structuredContent).toMatchObject({
+			exerciseTemplates: [],
+			page: 1,
+		});
 		expect(history.structuredContent).toEqual({ exerciseHistory: [] });
 	});
 

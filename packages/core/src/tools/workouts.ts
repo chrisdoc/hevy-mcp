@@ -30,6 +30,10 @@ import {
 } from "../utils/tool-annotations.js";
 import { describeTool } from "../utils/tool-descriptions.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
+import {
+	isExpectedListPageNotFound,
+	isExpectedReadNotFound,
+} from "../utils/hevy-error-policy.js";
 
 const getWorkoutsSchema = paginationShape({
 	defaultPageSize: 5,
@@ -76,11 +80,26 @@ export const workoutToolDefinitions = [
 		kind: "read" as const,
 		responseContract: workoutsResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutsParams) => {
-			const data: GetV1Workouts200 = await runtime.getClient().getWorkouts({
-				page: args.page,
-				pageSize: args.pageSize,
-			});
-			return data?.workouts;
+			try {
+				const data: GetV1Workouts200 = await runtime.getClient().getWorkouts({
+					page: args.page,
+					pageSize: args.pageSize,
+				});
+				return {
+					items: data?.workouts ?? [],
+					page: args.page,
+					pageCount: data?.page_count,
+				};
+			} catch (error) {
+				if (isExpectedListPageNotFound(error, args.page)) {
+					return {
+						items: [],
+						page: args.page,
+						expected404Outcome: "end_of_list",
+					};
+				}
+				throw error;
+			}
 		},
 	},
 	{
@@ -102,10 +121,21 @@ export const workoutToolDefinitions = [
 		kind: "read" as const,
 		responseContract: workoutResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutParams) => {
-			const data: GetV1WorkoutsWorkoutid200 = await runtime
-				.getClient()
-				.getWorkout(args.workoutId);
-			return { workout: data, workoutId: args.workoutId };
+			try {
+				const data: GetV1WorkoutsWorkoutid200 = await runtime
+					.getClient()
+					.getWorkout(args.workoutId);
+				return { workout: data, workoutId: args.workoutId };
+			} catch (error) {
+				if (isExpectedReadNotFound(error)) {
+					return {
+						workout: null,
+						workoutId: args.workoutId,
+						expected404Outcome: "not_found",
+					};
+				}
+				throw error;
+			}
 		},
 	},
 	{
@@ -155,14 +185,31 @@ export const workoutToolDefinitions = [
 		kind: "read" as const,
 		responseContract: workoutEventsResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutEventsParams) => {
-			const data: GetV1WorkoutsEvents200 = await runtime
-				.getClient()
-				.getWorkoutEvents({
-					page: args.page,
-					pageSize: args.pageSize,
+			try {
+				const data: GetV1WorkoutsEvents200 = await runtime
+					.getClient()
+					.getWorkoutEvents({
+						page: args.page,
+						pageSize: args.pageSize,
+						since: args.since,
+					});
+				return {
+					events: data?.events,
 					since: args.since,
-				});
-			return { events: data?.events, since: args.since };
+					page: args.page,
+					pageCount: data?.page_count,
+				};
+			} catch (error) {
+				if (isExpectedListPageNotFound(error, args.page)) {
+					return {
+						events: [],
+						since: args.since,
+						page: args.page,
+						expected404Outcome: "end_of_list",
+					};
+				}
+				throw error;
+			}
 		},
 	},
 	{

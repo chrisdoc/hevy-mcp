@@ -58,7 +58,7 @@
 		"prepack": "npm run check:server-manifest && npm run build",
 		"start": "node --env-file .env packages/node/dist/cli.mjs",
 		"dev": "tsx watch --env-file .env --clear-screen=false packages/node/src/cli.ts",
-		"check": "oxlint . --type-aware --type-check && oxfmt . --check",
+		"check": "oxlint . --type-aware --type-check && node scripts/check-worker-import-boundary.mjs && oxfmt . --check",
 		"check:fix": "oxlint . --type-aware --type-check && oxfmt . --write",
 		"check:types": "tsc --noEmit && npm run check:types --workspaces --if-present",
 		"check:workspaces": "node scripts/check-workspaces.mjs",

@@ -302,8 +302,29 @@ export type FormattedBodyMeasurement = z.infer<
 	typeof formattedBodyMeasurementSchema
 >;
 
+const paginationOutputSchema = {
+	page: z.number().int().positive(),
+	pageCount: z.number().int().nonnegative().optional(),
+	hasNextPage: z.boolean().optional(),
+} as const;
+export type PaginatedToolResult<T> = {
+	items: readonly T[];
+	page: number;
+	pageCount?: number;
+	expected404Outcome?: "not_found" | "end_of_list";
+};
+type PaginatedInput<T> = PaginatedToolResult<T> | readonly T[] | undefined;
+function normalizePaginatedInput<T>(
+	data: PaginatedInput<T>,
+): PaginatedToolResult<T> {
+	if (data === undefined) return { items: [], page: 1 };
+	if ("items" in data) return data;
+	return { items: data, page: 1 };
+}
+
 const workoutsOutputSchema = {
 	workouts: z.array(formattedWorkoutSchema),
+	...paginationOutputSchema,
 } as const;
 const workoutOutputSchema = {
 	workout: formattedWorkoutSchema.nullable(),
@@ -324,14 +345,20 @@ const workoutEventsOutputSchema = {
 	events: z.array(
 		z.union([formattedUpdatedWorkoutSchema, formattedDeletedWorkoutSchema]),
 	),
+	...paginationOutputSchema,
 } as const;
 const routinesOutputSchema = {
 	routines: z.array(formattedRoutineSchema),
+	...paginationOutputSchema,
 } as const;
 const routineOutputSchema = {
 	routine: formattedRoutineSchema.nullable(),
 } as const;
 const exerciseTemplatesOutputSchema = {
+	exerciseTemplates: z.array(formattedExerciseTemplateSchema),
+	...paginationOutputSchema,
+} as const;
+const exerciseTemplateSearchOutputSchema = {
 	exerciseTemplates: z.array(formattedExerciseTemplateSchema),
 } as const;
 const exerciseTemplateOutputSchema = {
@@ -342,12 +369,14 @@ const exerciseHistoryOutputSchema = {
 } as const;
 const routineFoldersOutputSchema = {
 	routineFolders: z.array(formattedRoutineFolderSchema),
+	...paginationOutputSchema,
 } as const;
 const routineFolderOutputSchema = {
 	routineFolder: formattedRoutineFolderSchema.nullable(),
 } as const;
 const bodyMeasurementsOutputSchema = {
 	bodyMeasurements: z.array(formattedBodyMeasurementSchema),
+	...paginationOutputSchema,
 } as const;
 const bodyMeasurementOutputSchema = {
 	bodyMeasurement: formattedBodyMeasurementSchema.nullable(),
@@ -683,16 +712,26 @@ function workflowResultTelemetry(workflow: {
 }
 export const workoutsResponse = defineStructuredResponseContract({
 	outputSchema: workoutsOutputSchema,
-	normalize: (workouts: readonly Workout[] | undefined) => ({
-		workouts: workouts?.map(formatWorkout) ?? [],
-	}),
+	normalize: (input: PaginatedInput<Workout>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			workouts: data.items.map(formatWorkout),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ workouts }) => workouts,
 	text: (_data, { workouts }) =>
 		workouts.length === 0
 			? "No workouts found for the specified parameters"
 			: undefined,
 	telemetry: (workouts) => ({
-		itemCountBucket: bucketCount(workouts?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(workouts).items.length,
+		),
+		expected404Outcome: normalizePaginatedInput(workouts).expected404Outcome,
 	}),
 });
 
@@ -701,11 +740,15 @@ export const workoutResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		workout: Workout | null | undefined;
 		workoutId: string;
+		expected404Outcome?: "not_found";
 	}) => ({ workout: data.workout ? formatWorkout(data.workout) : null }),
 	legacyJson: ({ workout }) => workout,
 	text: ({ workoutId }, { workout }) =>
 		workout === null ? `Workout with ID ${workoutId} not found` : undefined,
-	telemetry: ({ workout }) => workoutResultTelemetry(workout),
+	telemetry: ({ workout, expected404Outcome }) => ({
+		...workoutResultTelemetry(workout),
+		expected404Outcome,
+	}),
 });
 
 export const workoutCountResponse = defineStructuredResponseContract({
@@ -720,7 +763,16 @@ export const workoutEventsResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		events: readonly WorkoutEvent[] | undefined;
 		since: string;
-	}) => ({ events: data.events?.map(formatWorkoutEvent) ?? [] }),
+		page: number;
+		pageCount?: number;
+		expected404Outcome?: "end_of_list";
+	}) => ({
+		events: data.events?.map(formatWorkoutEvent) ?? [],
+		page: data.page,
+		pageCount: data.pageCount,
+		hasNextPage:
+			data.pageCount === undefined ? undefined : data.page < data.pageCount,
+	}),
 	legacyJson: ({ events }) => events,
 	text: ({ since }, { events }) =>
 		events.length === 0
@@ -728,21 +780,32 @@ export const workoutEventsResponse = defineStructuredResponseContract({
 			: undefined,
 	telemetry: (data) => ({
 		itemCountBucket: bucketCount(data.events?.length ?? 0),
+		expected404Outcome: data.expected404Outcome,
 	}),
 });
 
 export const routinesResponse = defineStructuredResponseContract({
 	outputSchema: routinesOutputSchema,
-	normalize: (routines: readonly Routine[] | undefined) => ({
-		routines: routines?.map(formatRoutine) ?? [],
-	}),
+	normalize: (input: PaginatedInput<Routine>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			routines: data.items.map(formatRoutine),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ routines }) => routines,
 	text: (_data, { routines }) =>
 		routines.length === 0
 			? "No routines found for the specified parameters"
 			: undefined,
 	telemetry: (routines) => ({
-		itemCountBucket: bucketCount(routines?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(routines).items.length,
+		),
+		expected404Outcome: normalizePaginatedInput(routines).expected404Outcome,
 	}),
 });
 
@@ -751,25 +814,39 @@ export const routineResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		routine: Routine | null | undefined;
 		routineId: string;
+		expected404Outcome?: "not_found";
 	}) => ({ routine: data.routine ? formatRoutine(data.routine) : null }),
 	legacyJson: ({ routine }) => routine,
 	text: ({ routineId }, { routine }) =>
 		routine === null ? `Routine with ID ${routineId} not found` : undefined,
-	telemetry: ({ routine }) => routineResultTelemetry(routine),
+	telemetry: ({ routine, expected404Outcome }) => ({
+		...routineResultTelemetry(routine),
+		expected404Outcome,
+	}),
 });
 
 export const exerciseTemplatesResponse = defineStructuredResponseContract({
 	outputSchema: exerciseTemplatesOutputSchema,
-	normalize: (templates: readonly ExerciseTemplate[] | undefined) => ({
-		exerciseTemplates: templates?.map(formatExerciseTemplate) ?? [],
-	}),
+	normalize: (input: PaginatedInput<ExerciseTemplate>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			exerciseTemplates: data.items.map(formatExerciseTemplate),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ exerciseTemplates }) => exerciseTemplates,
 	text: (_data, { exerciseTemplates }) =>
 		exerciseTemplates.length === 0
 			? "No exercise templates found for the specified parameters"
 			: undefined,
 	telemetry: (templates) => ({
-		itemCountBucket: bucketCount(templates?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(templates).items.length,
+		),
+		expected404Outcome: normalizePaginatedInput(templates).expected404Outcome,
 	}),
 });
 
@@ -778,6 +855,7 @@ export const exerciseTemplateResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		exerciseTemplate: ExerciseTemplate | null | undefined;
 		exerciseTemplateId: string;
+		expected404Outcome?: "not_found";
 	}) => ({
 		exerciseTemplate: data.exerciseTemplate
 			? formatExerciseTemplate(data.exerciseTemplate)
@@ -788,8 +866,9 @@ export const exerciseTemplateResponse = defineStructuredResponseContract({
 		exerciseTemplate === null
 			? `Exercise template with ID ${exerciseTemplateId} not found`
 			: undefined,
-	telemetry: ({ exerciseTemplate }) => ({
+	telemetry: ({ exerciseTemplate, expected404Outcome }) => ({
 		itemCountBucket: bucketCount(exerciseTemplate ? 1 : 0),
+		expected404Outcome,
 	}),
 });
 
@@ -813,7 +892,7 @@ export const exerciseHistoryResponse = defineStructuredResponseContract({
 
 export const searchExerciseTemplatesResponse = defineStructuredResponseContract(
 	{
-		outputSchema: exerciseTemplatesOutputSchema,
+		outputSchema: exerciseTemplateSearchOutputSchema,
 		normalize: (data: {
 			results: readonly ExerciseTemplate[];
 			query: string;
@@ -832,16 +911,24 @@ export const searchExerciseTemplatesResponse = defineStructuredResponseContract(
 
 export const routineFoldersResponse = defineStructuredResponseContract({
 	outputSchema: routineFoldersOutputSchema,
-	normalize: (folders: readonly RoutineFolder[] | undefined) => ({
-		routineFolders: folders?.map(formatRoutineFolder) ?? [],
-	}),
+	normalize: (input: PaginatedInput<RoutineFolder>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			routineFolders: data.items.map(formatRoutineFolder),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ routineFolders }) => routineFolders,
 	text: (_data, { routineFolders }) =>
 		routineFolders.length === 0
 			? "No routine folders found for the specified parameters"
 			: undefined,
 	telemetry: (folders) => ({
-		itemCountBucket: bucketCount(folders?.length ?? 0),
+		itemCountBucket: bucketCount(normalizePaginatedInput(folders).items.length),
+		expected404Outcome: normalizePaginatedInput(folders).expected404Outcome,
 	}),
 });
 
@@ -850,6 +937,7 @@ export const routineFolderResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		routineFolder: RoutineFolder | null | undefined;
 		folderId: string;
+		expected404Outcome?: "not_found";
 	}) => ({
 		routineFolder: data.routineFolder
 			? formatRoutineFolder(data.routineFolder)
@@ -860,23 +948,35 @@ export const routineFolderResponse = defineStructuredResponseContract({
 		routineFolder === null
 			? `Routine folder with ID ${folderId} not found`
 			: undefined,
-	telemetry: ({ routineFolder }) => ({
+	telemetry: ({ routineFolder, expected404Outcome }) => ({
 		itemCountBucket: bucketCount(routineFolder ? 1 : 0),
+		expected404Outcome,
 	}),
 });
 
 export const bodyMeasurementsResponse = defineStructuredResponseContract({
 	outputSchema: bodyMeasurementsOutputSchema,
-	normalize: (measurements: readonly BodyMeasurement[] | undefined) => ({
-		bodyMeasurements: measurements?.map(formatBodyMeasurement) ?? [],
-	}),
+	normalize: (input: PaginatedInput<BodyMeasurement>) => {
+		const data = normalizePaginatedInput(input);
+		return {
+			bodyMeasurements: data.items.map(formatBodyMeasurement),
+			page: data.page,
+			pageCount: data.pageCount,
+			hasNextPage:
+				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		};
+	},
 	legacyJson: ({ bodyMeasurements }) => bodyMeasurements,
 	text: (_data, { bodyMeasurements }) =>
 		bodyMeasurements.length === 0
 			? "No body measurements found for the specified parameters"
 			: undefined,
 	telemetry: (measurements) => ({
-		itemCountBucket: bucketCount(measurements?.length ?? 0),
+		itemCountBucket: bucketCount(
+			normalizePaginatedInput(measurements).items.length,
+		),
+		expected404Outcome:
+			normalizePaginatedInput(measurements).expected404Outcome,
 	}),
 });
 
@@ -885,6 +985,7 @@ export const bodyMeasurementResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		bodyMeasurement: BodyMeasurement | null | undefined;
 		date: string;
+		expected404Outcome?: "not_found";
 	}) => ({
 		bodyMeasurement: data.bodyMeasurement
 			? formatBodyMeasurement(data.bodyMeasurement)
@@ -895,8 +996,9 @@ export const bodyMeasurementResponse = defineStructuredResponseContract({
 		bodyMeasurement === null
 			? `No body measurement found for date ${date}`
 			: undefined,
-	telemetry: ({ bodyMeasurement }) => ({
+	telemetry: ({ bodyMeasurement, expected404Outcome }) => ({
 		itemCountBucket: bucketCount(bodyMeasurement ? 1 : 0),
+		expected404Outcome,
 	}),
 });
 

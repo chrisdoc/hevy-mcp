@@ -4,7 +4,7 @@ import { deserializeMessage } from "@modelcontextprotocol/sdk/shared/stdio.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { stdioParseErrors } from "./metrics.js";
-import { Sentry, tracer } from "./telemetry.js";
+import { tracer } from "./telemetry.js";
 import { recordMcpSessionStart } from "./mcp-session-observability.js";
 
 const UTF8_BOM = "\uFEFF";
@@ -290,25 +290,6 @@ export function deserializeMessageWithObservability(
 				}
 
 				stdioParseErrors.add(1, { failure_location: failureLocation });
-
-				Sentry.withScope((scope) => {
-					scope.setTag("mcp.transport", "stdio");
-					scope.setTag("mcp.stdio.parse.failure.location", failureLocation);
-					scope.setContext("mcpStdioParse", {
-						lineCharLength: line.length,
-						lineByteLength,
-						lineHadLeadingBom,
-						bomStripped: lineHadLeadingBom,
-						lastChunkByteLength: chunkSnapshot.lastChunkByteLength,
-						lastChunkStartsWithUtf8Bom:
-							chunkSnapshot.lastChunkStartsWithUtf8Bom,
-						failureLocation,
-						failurePosition,
-						failureStage: "deserializeMessage",
-						errorCategory: diagnostic.category,
-					});
-					Sentry.captureMessage("MCP stdin parse failure", "error");
-				});
 
 				reportStdinParseFailure(
 					error,

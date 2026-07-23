@@ -14,6 +14,7 @@ export interface ToolResultTelemetry {
 	readonly exerciseCountBucket?: ResultCountBucket;
 	readonly setCountBucket?: ResultCountBucket;
 	readonly workflow?: WorkflowResultTelemetry;
+	readonly expected404Outcome?: "not_found" | "end_of_list" | "mutation_error";
 }
 
 export function bucketCount(value: number): ResultCountBucket {

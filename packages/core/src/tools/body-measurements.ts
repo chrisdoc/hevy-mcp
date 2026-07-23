@@ -22,10 +22,18 @@ import {
 	paginationShape,
 } from "./input-schemas.js";
 import { buildMeasurementPayload } from "./payload-mappers.js";
+import type { PaginatedToolResult } from "../utils/response-formatter.js";
+import {
+	isExpectedListPageNotFound,
+	isExpectedReadNotFound,
+} from "../utils/hevy-error-policy.js";
 
 const getBodyMeasurementsSchema = {
 	...paginationShape({ defaultPageSize: 10, maxPageSize: 10 }),
 } as const;
+type GetBodyMeasurementsResult = PaginatedToolResult<
+	NonNullable<GetV1BodyMeasurements200["body_measurements"]>[number]
+>;
 
 const getBodyMeasurementSchema = {
 	date: calendarDate.describe("The date of the body measurement (YYYY-MM-DD)"),
@@ -47,7 +55,7 @@ const updateBodyMeasurementSchema = {
 
 const getBodyMeasurementsDefinition: ToolDefinition<
 	typeof getBodyMeasurementsSchema,
-	GetV1BodyMeasurements200["body_measurements"]
+	GetBodyMeasurementsResult
 > = {
 	name: "get-body-measurements",
 	feature: "measurements",
@@ -67,10 +75,21 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 	responseContract: bodyMeasurementsResponse,
 	execute: async (runtime: ToolRuntime, args) => {
 		const { page, pageSize } = args;
-		const data: GetV1BodyMeasurements200 = await runtime
-			.getClient()
-			.getBodyMeasurements({ page, pageSize });
-		return data?.body_measurements;
+		try {
+			const data: GetV1BodyMeasurements200 = await runtime
+				.getClient()
+				.getBodyMeasurements({ page, pageSize });
+			return {
+				items: data?.body_measurements ?? [],
+				page,
+				pageCount: data?.page_count,
+			};
+		} catch (error) {
+			if (isExpectedListPageNotFound(error, page)) {
+				return { items: [], page, expected404Outcome: "end_of_list" };
+			}
+			throw error;
+		}
 	},
 };
 
@@ -99,10 +118,21 @@ const getBodyMeasurementDefinition: ToolDefinition<
 	responseContract: bodyMeasurementResponse,
 	execute: async (runtime: ToolRuntime, args) => {
 		const { date } = args;
-		const data: GetV1BodyMeasurementsDate200 = await runtime
-			.getClient()
-			.getBodyMeasurement(date);
-		return { bodyMeasurement: data, date };
+		try {
+			const data: GetV1BodyMeasurementsDate200 = await runtime
+				.getClient()
+				.getBodyMeasurement(date);
+			return { bodyMeasurement: data, date };
+		} catch (error) {
+			if (isExpectedReadNotFound(error)) {
+				return {
+					bodyMeasurement: null,
+					date,
+					expected404Outcome: "not_found",
+				};
+			}
+			throw error;
+		}
 	},
 };
 

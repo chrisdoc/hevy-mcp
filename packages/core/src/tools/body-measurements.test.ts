@@ -152,7 +152,10 @@ describe("bodyMeasurementToolDefinitions", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatBodyMeasurement(sampleMeasurement)]);
-		expect(response.structuredContent).toEqual({ bodyMeasurements: parsed });
+		expect(response.structuredContent).toMatchObject({
+			bodyMeasurements: parsed,
+			page: 1,
+		});
 	});
 
 	it("get-body-measurements returns empty response when no measurements found", async () => {
@@ -168,7 +171,10 @@ describe("bodyMeasurementToolDefinitions", () => {
 		expect(response.content[0]?.text).toBe(
 			"No body measurements found for the specified parameters",
 		);
-		expect(response.structuredContent).toEqual({ bodyMeasurements: [] });
+		expect(response.structuredContent).toMatchObject({
+			bodyMeasurements: [],
+			page: 1,
+		});
 	});
 
 	it("get-body-measurement returns a formatted measurement for a given date", async () => {
