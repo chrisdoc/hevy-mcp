@@ -199,9 +199,12 @@ describe("authorize endpoint", () => {
 		);
 		expect(result.status).toBe(502);
 		expect(await result.text()).toContain("could not be completed");
-		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
-		expect(diagnostic).toContain("oauth-complete-authorization");
-		expect(diagnostic).not.toContain("kv exploded");
+		const diagnostic = stderrSpy.mock.calls[0]?.[0];
+		expect(diagnostic).toMatchObject({
+			event: "worker.error",
+			context: "oauth-complete-authorization",
+		});
+		expect(JSON.stringify(diagnostic)).not.toContain("kv exploded");
 		stderrSpy.mockRestore();
 	});
 

@@ -74,6 +74,39 @@ export function parseAllowedOrigins(value: string | undefined): Set<string> {
 	return new Set(origins.map((origin) => origin.trim()).filter(Boolean));
 }
 
+interface WorkerRequestLogContext {
+	requestId: string;
+	method: string;
+	path: string;
+	origin: string | null;
+	userAgent: string | null;
+	authMode: "none" | "invalid" | "bearer" | "oauth";
+	oauthEnabled: boolean;
+}
+
+function createRequestLogContext(
+	request: Request,
+	env: WorkerEnv,
+): WorkerRequestLogContext {
+	const authorization = request.headers.get("authorization");
+	const bearer = parseBearerApiKey(authorization);
+	return {
+		requestId: request.headers.get("cf-ray") ?? crypto.randomUUID(),
+		method: request.method,
+		path: new URL(request.url).pathname,
+		origin: request.headers.get("origin"),
+		userAgent: request.headers.get("user-agent"),
+		authMode: !authorization
+			? "none"
+			: !bearer
+				? "invalid"
+				: hasOAuthAccessTokenShape(bearer)
+					? "oauth"
+					: "bearer",
+		oauthEnabled: isOAuthEnabled(env),
+	};
+}
+
 function validateOrigin(
 	request: Request,
 	env: WorkerEnv,
@@ -81,6 +114,13 @@ function validateOrigin(
 	const origin = request.headers.get("origin");
 	if (!origin) return null;
 	if (!parseAllowedOrigins(env.MCP_ALLOWED_ORIGINS).has(origin)) {
+		console.warn({
+			event: "worker.origin_rejected",
+			requestId: request.headers.get("cf-ray") ?? null,
+			method: request.method,
+			path: new URL(request.url).pathname,
+			origin,
+		});
 		return new Response("Forbidden", {
 			status: 403,
 			headers: { Vary: "Origin" },
@@ -170,10 +210,27 @@ function createDefaultTransport(): WebStandardStreamableHTTPServerTransport {
 	});
 }
 
-function logWorkerFailure(context: string, error: unknown): void {
-	console.error("Cloudflare Worker failure", {
+function logWorkerFailure(
+	context: string,
+	error: unknown,
+	fields: Partial<WorkerRequestLogContext> = {},
+): void {
+	console.error({
+		event: "worker.error",
 		context,
+		...fields,
 		...createSafeErrorDiagnostic(error),
+	});
+}
+function logOAuthResponse(
+	context: WorkerRequestLogContext,
+	response: Response,
+): void {
+	if (response.status < 400) return;
+	console.warn({
+		event: "worker.oauth_response",
+		...context,
+		status: response.status,
 	});
 }
 
@@ -344,32 +401,65 @@ export function createWorkerFetchHandler(
 		env: WorkerEnv,
 		ctx?: object,
 	): Promise<Response> {
-		if (!isOAuthEnabled(env)) {
-			if (env.OAUTH_KV != null) {
-				logWorkerFailure(
-					"oauth-kv-misconfigured",
-					new TypeError(
-						"OAUTH_KV binding is not a KV namespace; OAuth stays disabled",
-					),
-				);
+		const logContext = createRequestLogContext(request, env);
+		const startedAt = Date.now();
+		let response: Response | undefined;
+		try {
+			if (!isOAuthEnabled(env)) {
+				if (env.OAUTH_KV != null) {
+					logWorkerFailure(
+						"oauth-kv-misconfigured",
+						new TypeError(
+							"OAUTH_KV binding is not a KV namespace; OAuth stays disabled",
+						),
+						logContext,
+					);
+				}
+				response = await legacyHandler(request, env);
+				return response;
 			}
-			return legacyHandler(request, env);
-		}
 
-		const originResult = validateOrigin(request, env);
-		if (originResult instanceof Response) return originResult;
-		const origin = originResult;
-		const url = new URL(request.url);
-		if (url.pathname === MCP_PATH) {
-			if (request.method !== "POST") return legacyHandler(request, env);
-			const bearer = parseBearerApiKey(request.headers.get("authorization"));
-			if (bearer && !hasOAuthAccessTokenShape(bearer)) {
-				return legacyHandler(request, env);
+			const originResult = validateOrigin(request, env);
+			if (originResult instanceof Response) {
+				response = originResult;
+				return response;
+			}
+			const origin = originResult;
+			const url = new URL(request.url);
+			if (url.pathname === MCP_PATH) {
+				if (request.method !== "POST") {
+					response = await legacyHandler(request, env);
+					return response;
+				}
+				const bearer = parseBearerApiKey(request.headers.get("authorization"));
+				if (bearer && !hasOAuthAccessTokenShape(bearer)) {
+					response = await legacyHandler(request, env);
+					return response;
+				}
+				const oauthResponse = await oauthProvider.fetch(
+					request,
+					env,
+					ctx ?? {},
+				);
+				logOAuthResponse(logContext, oauthResponse);
+				response = withCors(oauthResponse, origin);
+				return response;
 			}
 			const oauthResponse = await oauthProvider.fetch(request, env, ctx ?? {});
-			return withCors(oauthResponse, origin);
+			logOAuthResponse(logContext, oauthResponse);
+			response = withCors(oauthResponse, origin);
+			return response;
+		} catch (error) {
+			logWorkerFailure("request", error, logContext);
+			throw error;
+		} finally {
+			console.log({
+				event: "worker.request",
+				...logContext,
+				status: response?.status ?? null,
+				durationMs: Date.now() - startedAt,
+			});
 		}
-		return withCors(await oauthProvider.fetch(request, env, ctx ?? {}), origin);
 	};
 }
 
