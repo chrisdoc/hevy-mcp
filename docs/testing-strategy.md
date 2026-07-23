@@ -266,15 +266,15 @@ of every tool, resource, and prompt. For each applicable item it must validate:
 
 ## Target layered architecture and test pyramid
 
-| Layer                       | Purpose                                                    |                      Pull request                      |          Nightly/manual          |                      Release                       |
-| --------------------------- | ---------------------------------------------------------- | :----------------------------------------------------: | :------------------------------: | :------------------------------------------------: |
-| Static/build                | Format, lint, types, manifest, build, changeset            |              Required, Node policy matrix              | Optional scheduled compatibility |                      Required                      |
-| Unit/component              | Pure logic, tools with fakes, schemas, errors, telemetry   |                        Required                        |                —                 |          Required through PR/main result           |
-| Mocked HTTP + in-memory MCP | Complete deterministic MCP contract over Nock              |                  Required, no secrets                  |    Optional diagnostic rerun     |          Required through PR/main result           |
-| Built stdio                 | Spawn `dist/cli.mjs`; protocol purity and lifecycle        |                Required on primary Node                |  Optional compatibility matrix   |                      Required                      |
-| Packed tarball smoke        | `npm pack`, install tarball, spawn binary, inspect package |                Required on primary Node                |  Optional npm/Bun compatibility  |                      Required                      |
-| Live Hevy canary            | Read-only provider drift and credentialed behavior         |             Never in deterministic PR lane             |       Scheduled and manual       | Required before publish for selected source checks |
-| Performance trend           | Mocked startup, latency, concurrency, sequential stability | Record initially; gate only regressions after baseline |          Trend artifact          |             Informational until stable             |
+| Layer                       | Purpose                                                           |                      Pull request                      |          Nightly/manual          |                      Release                       |
+| --------------------------- | ----------------------------------------------------------------- | :----------------------------------------------------: | :------------------------------: | :------------------------------------------------: |
+| Static/build                | Format, lint, types, manifest, build, changeset                   |              Required, Node policy matrix              | Optional scheduled compatibility |                      Required                      |
+| Unit/component              | Pure logic, tools with fakes, schemas, errors, telemetry          |                        Required                        |                —                 |          Required through PR/main result           |
+| Mocked HTTP + in-memory MCP | Complete deterministic MCP contract over Nock                     |                  Required, no secrets                  |    Optional diagnostic rerun     |          Required through PR/main result           |
+| Built stdio                 | Spawn `packages/node/dist/cli.mjs`; protocol purity and lifecycle |                Required on primary Node                |  Optional compatibility matrix   |                      Required                      |
+| Packed tarball smoke        | `npm pack`, install tarball, spawn binary, inspect package        |                Required on primary Node                |  Optional npm/Bun compatibility  |                      Required                      |
+| Live Hevy canary            | Read-only provider drift and credentialed behavior                |             Never in deterministic PR lane             |       Scheduled and manual       | Required before publish for selected source checks |
+| Performance trend           | Mocked startup, latency, concurrency, sequential stability        | Record initially; gate only regressions after baseline |          Trend artifact          |             Informational until stable             |
 
 The live suite complements deterministic tests; it must not compensate for
 missing mocks. The packed tarball lane validates the candidate artifact, while
@@ -433,9 +433,10 @@ coverage is already high.
 
 ## Local mocked performance methodology
 
-Performance tests build first, then spawn `dist/cli.mjs` over MCP stdio with a
-child-local preload that installs deterministic Nock fixtures and blocks both
-Node HTTP(S) and `fetch`. The child reports exact fixture use through a prefixed,
+Performance tests build first, then spawn `packages/node/dist/cli.mjs` over MCP
+stdio with a child-local preload that installs deterministic Nock fixtures and
+blocks both Node HTTP(S) and `fetch`. The child reports exact fixture use through a
+prefixed,
 machine-readable stderr marker. Record configured/completed iterations, median,
 p95, maximum, correctness failures, exact fixture verification, and server
 process RSS (with a nullable non-Linux fallback); label runner memory separately.
