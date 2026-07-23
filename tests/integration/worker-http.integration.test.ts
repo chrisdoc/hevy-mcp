@@ -9,7 +9,7 @@ import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const LOOPBACK = "127.0.0.1";
-const ALLOWED_ORIGIN = "https://allowed.example";
+const BROWSER_ORIGIN = "https://chatgpt.com";
 const VALID_API_KEY = "valid-test-key";
 const INVALID_API_KEY = "invalid-test-key";
 const UPSTREAM_FAILURE_API_KEY = "upstream-failure-key";
@@ -115,8 +115,6 @@ function spawnWrangler(workerPort: number, inspectorPort: number): void {
 			"warn",
 			"--var",
 			`HEVY_API_BASE_URL:${fakeHevyBaseUrl}`,
-			"--var",
-			`MCP_ALLOWED_ORIGINS:${ALLOWED_ORIGIN}`,
 		],
 		{
 			cwd: process.cwd(),
@@ -717,25 +715,25 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(hevyRequests).toHaveLength(3);
 	});
 
-	it("allows configured CORS preflight and denies other origins", async () => {
-		const allowed = await fetch(`${workerBaseUrl}/mcp`, {
+	it("allows configured CORS origins and rejects unconfigured origins", async () => {
+		const first = await fetch(`${workerBaseUrl}/mcp`, {
 			method: "OPTIONS",
-			headers: { origin: ALLOWED_ORIGIN },
+			headers: { origin: BROWSER_ORIGIN },
 		});
-		const denied = await fetch(`${workerBaseUrl}/mcp`, {
+		const second = await fetch(`${workerBaseUrl}/mcp`, {
 			method: "OPTIONS",
-			headers: { origin: "https://denied.example" },
+			headers: { origin: "https://another-browser.example" },
 		});
 
-		expect(allowed.status).toBe(204);
-		expect(allowed.headers.get("access-control-allow-origin")).toBe(
-			ALLOWED_ORIGIN,
+		expect(first.status).toBe(204);
+		expect(first.headers.get("access-control-allow-origin")).toBe(
+			BROWSER_ORIGIN,
 		);
-		expect(allowed.headers.get("access-control-allow-methods")).toBe(
+		expect(first.headers.get("access-control-allow-methods")).toBe(
 			"POST, OPTIONS",
 		);
-		expect(denied.status).toBe(403);
-		expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+		expect(second.status).toBe(403);
+		expect(second.headers.get("access-control-allow-origin")).toBeNull();
 		expect(hevyRequests).toHaveLength(0);
 	});
 

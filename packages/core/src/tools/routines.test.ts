@@ -134,7 +134,10 @@ describe("registerRoutineTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatRoutine(routine)]);
-		expect(response.structuredContent).toEqual({ routines: parsed });
+		expect(response.structuredContent).toMatchObject({
+			routines: parsed,
+			page: 1,
+		});
 	});
 
 	it("returns structured empty results for routine reads", async () => {
@@ -153,7 +156,10 @@ describe("registerRoutineTools", () => {
 			routineId: "missing-id",
 		});
 
-		expect(routines.structuredContent).toEqual({ routines: [] });
+		expect(routines.structuredContent).toMatchObject({
+			routines: [],
+			page: 1,
+		});
 		expect(routine.structuredContent).toEqual({ routine: null });
 		expect(routines.content[0]?.text).toBe(
 			"No routines found for the specified parameters",

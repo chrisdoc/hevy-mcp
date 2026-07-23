@@ -76,15 +76,21 @@ describe("response contracts", () => {
 		expect(JSON.parse(response.content[0].text)).toEqual(structured.workouts);
 	});
 
+	it("does not claim the end of pagination when pageCount is unavailable", () => {
+		const response = respond(workoutsResponse, { items: [], page: 2 });
+		expect(response.structuredContent).toMatchObject({ page: 2 });
+		expect(response.structuredContent).toHaveProperty("hasNextPage", undefined);
+	});
+
 	it("preserves empty-list and null result messages", () => {
-		expect(respond(workoutsResponse, [])).toEqual({
+		expect(respond(workoutsResponse, [])).toMatchObject({
 			content: [
 				{
 					type: "text",
 					text: "No workouts found for the specified parameters",
 				},
 			],
-			structuredContent: { workouts: [] },
+			structuredContent: { workouts: [], page: 1 },
 		});
 		expect(
 			respond(workoutResponse, {
@@ -141,9 +147,17 @@ describe("response contracts", () => {
 	])(
 		"normalizes undefined $name data to its canonical empty response",
 		({ render, structuredContent, text }) => {
-			expect(render()).toEqual({
+			const paginated =
+				"workouts" in structuredContent ||
+				"routines" in structuredContent ||
+				"exerciseTemplates" in structuredContent ||
+				"routineFolders" in structuredContent ||
+				"bodyMeasurements" in structuredContent;
+			expect(render()).toMatchObject({
 				content: [{ type: "text", text }],
-				structuredContent,
+				structuredContent: paginated
+					? { ...structuredContent, page: 1 }
+					: structuredContent,
 			});
 		},
 	);

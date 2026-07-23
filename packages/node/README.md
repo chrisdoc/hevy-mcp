@@ -414,17 +414,16 @@ self-hosted Streamable HTTP.
 
 ## Advanced configuration
 
-| Setting                | Default                        | Scope                         | Notes                                                                                                                                   |
-| ---------------------- | ------------------------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `HEVY_API_KEY`         | None; required                 | Local stdio                   | Hevy API key from the Hevy app. Never pass it in a URL.                                                                                 |
-| `HEVY_MCP_API_TIMEOUT` | `30000` ms                     | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 30 seconds.                                                      |
-| `HEVY_MCP_DEBUG`       | Disabled                       | Local stdio                   | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.                                 |
-| `MCP_ALLOWED_ORIGINS`  | No browser origins allowed     | Self-hosted Worker            | Optional comma-separated exact origins. Wildcards are unsupported. Requests without `Origin`, such as desktop clients, remain accepted. |
-| `XDG_CACHE_HOME`       | `~/.cache`                     | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                                        |
-| `SENTRY_DSN`           | Packaged project DSN           | Optional local Node telemetry | Overrides the Sentry destination. An empty value disables Sentry export. The Worker does not import Node telemetry.                     |
-| `SENTRY_RELEASE`       | `hevy-mcp@<installed-version>` | Optional local Node telemetry | Overrides the release label attached to local Sentry events and traces.                                                                 |
-| `-h`, `--help`         | N/A                            | Local stdio CLI               | Print supported options and exit.                                                                                                       |
-| `-v`, `--version`      | N/A                            | Local stdio CLI               | Print the installed version and exit.                                                                                                   |
+| Setting                | Default                        | Scope                         | Notes                                                                                                               |
+| ---------------------- | ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `HEVY_API_KEY`         | None; required                 | Local stdio                   | Hevy API key from the Hevy app. Never pass it in a URL.                                                             |
+| `HEVY_MCP_API_TIMEOUT` | `30000` ms                     | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 30 seconds.                                  |
+| `HEVY_MCP_DEBUG`       | Disabled                       | Local stdio                   | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.             |
+| `XDG_CACHE_HOME`       | `~/.cache`                     | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                    |
+| `SENTRY_DSN`           | Packaged project DSN           | Optional local Node telemetry | Overrides the Sentry destination. An empty value disables Sentry export. The Worker does not import Node telemetry. |
+| `SENTRY_RELEASE`       | `hevy-mcp@<installed-version>` | Optional local Node telemetry | Overrides the release label attached to local Sentry events and traces.                                             |
+| `-h`, `--help`         | N/A                            | Local stdio CLI               | Print supported options and exit.                                                                                   |
+| `-v`, `--version`      | N/A                            | Local stdio CLI               | Print the installed version and exit.                                                                               |
 
 The local executable is stdio-only. It does not support `PORT`,
 `HEVY_MCP_TRANSPORT`, or `--transport`, and it does not provide local HTTP or
@@ -448,8 +447,9 @@ server-scoped in-memory catalog cache:
 - Hosted clients send the key only in the `Authorization: Bearer` header. The
   Worker validates each key with Hevy, does not store it, and sends it upstream
   only as Hevy's `api-key` header.
-- Browser requests to a self-hosted Worker must exactly match an origin in
-  `MCP_ALLOWED_ORIGINS`; wildcard CORS is intentionally unsupported.
+- Browser requests must come from an exact allowlisted origin. The default
+  allowlist includes Claude.ai, ChatGPT, VS Code for the Web, and github.dev;
+  self-hosted deployments can override it with `MCP_ALLOWED_ORIGINS`.
 - Create operations can produce duplicates when retried. Update operations
   replace existing records. Review tool inputs and use client confirmations.
 

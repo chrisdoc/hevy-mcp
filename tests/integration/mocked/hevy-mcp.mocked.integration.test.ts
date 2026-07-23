@@ -686,7 +686,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 	});
 
-	it("returns MCP error output when Hevy API returns 404", async () => {
+	it("returns structured not-found output when Hevy API returns 404", async () => {
 		if (!client) throw new Error("Client not initialized");
 		const consoleErrorSpy = vi
 			.spyOn(console, "error")
@@ -701,9 +701,11 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 				workoutId: "missing-workout",
 			});
 
-			expect(result.isError).toBe(true);
-			expect(result.text).toContain("[get-workout] Error");
-			expect(result.text.toLowerCase()).toContain("not found");
+			expect(result.isError).toBeFalsy();
+			expect(result.structuredContent).toEqual({ workout: null });
+			expect(result.text).toContain(
+				"Workout with ID missing-workout not found",
+			);
 		} finally {
 			consoleErrorSpy.mockRestore();
 		}

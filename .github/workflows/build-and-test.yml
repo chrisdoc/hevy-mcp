@@ -107,6 +107,10 @@ jobs:
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
           CODECOV_TOKEN: ${{ matrix.node-version == '24.x' && secrets.CODECOV_TOKEN || '' }}
 
+      - name: Verify Worker bundle
+        if: matrix.node-version == '24.x'
+        run: npm run worker:dry-run
+
       - name: Run Worker HTTP integration tests
         if: matrix.node-version == '24.x'
         run: npm run test:worker-http

@@ -7,6 +7,7 @@ import {
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import {
+	DEFAULT_ALLOWED_ORIGINS,
 	createWorkerHandler,
 	parseAllowedOrigins,
 	parseBearerApiKey,
@@ -71,11 +72,16 @@ describe("Worker authentication helpers", () => {
 	])("parses %j safely", (value, expected) => {
 		expect(parseBearerApiKey(value)).toBe(expected);
 	});
-
-	it("parses exact comma-separated origins", () => {
-		expect([
-			...parseAllowedOrigins("https://a.example, https://b.example"),
-		]).toEqual(["https://a.example", "https://b.example"]);
+	it("uses exact browser origins by default and supports overrides", () => {
+		expect([...parseAllowedOrigins(undefined)]).toEqual([
+			...DEFAULT_ALLOWED_ORIGINS,
+		]);
+		expect(new Set(DEFAULT_ALLOWED_ORIGINS).size).toBe(
+			DEFAULT_ALLOWED_ORIGINS.length,
+		);
+		expect([...parseAllowedOrigins("https://custom.example")]).toEqual([
+			"https://custom.example",
+		]);
 	});
 });
 
@@ -91,12 +97,24 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(result.status).toBe(404);
 	});
 
-	it("allows requests without Origin and rejects unconfigured browser origins", async () => {
+	it("allows configured browser origins and rejects unconfigured origins", async () => {
 		const noOrigin = await handler(
 			new Request("https://worker.example/mcp"),
 			{},
 		);
 		expect(noOrigin.status).toBe(405);
+
+		const allowed = await handler(
+			new Request("https://worker.example/mcp", {
+				headers: { origin: "https://chatgpt.com" },
+			}),
+			{},
+		);
+		expect(allowed.status).toBe(405);
+		expect(allowed.headers.get("access-control-allow-origin")).toBe(
+			"https://chatgpt.com",
+		);
+		expect(allowed.headers.get("vary")).toBe("Origin");
 
 		const rejected = await handler(
 			new Request("https://worker.example/mcp", {
@@ -105,20 +123,21 @@ describe("Cloudflare Worker routes and CORS", () => {
 			{},
 		);
 		expect(rejected.status).toBe(403);
+		expect(rejected.headers.get("access-control-allow-origin")).toBeNull();
 		expect(rejected.headers.get("vary")).toBe("Origin");
 	});
 
-	it("answers validated preflight without bearer authentication", async () => {
+	it("answers browser preflight without bearer authentication", async () => {
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
 				method: "OPTIONS",
-				headers: { origin: "https://browser.example" },
+				headers: { origin: "https://vscode.dev" },
 			}),
-			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+			{},
 		);
 		expect(result.status).toBe(204);
 		expect(result.headers.get("access-control-allow-origin")).toBe(
-			"https://browser.example",
+			"https://vscode.dev",
 		);
 		expect(result.headers.get("access-control-allow-methods")).toBe(
 			"POST, OPTIONS",
@@ -126,7 +145,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(createValidationClient).not.toHaveBeenCalled();
 	});
 
-	it("adds exact-origin CORS headers to successful MCP responses", async () => {
+	it("reflects browser-origin CORS headers on successful MCP responses", async () => {
 		const corsHandler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
 			createRequestClient: () => createMockClient(),
@@ -143,14 +162,14 @@ describe("Cloudflare Worker routes and CORS", () => {
 						clientInfo: { name: "test", version: "1" },
 					},
 				},
-				{ ...validHeaders, origin: "https://browser.example" },
+				{ ...validHeaders, origin: "https://github.dev" },
 			),
-			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+			{},
 		);
 
 		expect(result.status).toBe(200);
 		expect(result.headers.get("access-control-allow-origin")).toBe(
-			"https://browser.example",
+			"https://github.dev",
 		);
 		expect(result.headers.get("vary")).toBe("Origin");
 		expect(result.headers.get("content-type")).toContain("text/event-stream");
@@ -180,17 +199,17 @@ describe("Cloudflare Worker routes and CORS", () => {
 		},
 	);
 
-	it("preserves CORS headers on supported origins for error responses", async () => {
+	it("preserves CORS headers on browser error responses", async () => {
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
 				method: "GET",
-				headers: { origin: "https://browser.example" },
+				headers: { origin: "https://claude.ai" },
 			}),
-			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+			{},
 		);
 		expect(result.status).toBe(405);
 		expect(result.headers.get("access-control-allow-origin")).toBe(
-			"https://browser.example",
+			"https://claude.ai",
 		);
 	});
 
