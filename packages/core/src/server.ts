@@ -72,7 +72,7 @@ export function createHevyMcpServer(
 	const counting = createCountingServer(server);
 	registerHevyTools(counting.server, runtime);
 	options.onToolsRegistered?.(counting.getCount());
-	registerWorkoutPrompts(server);
+	registerWorkoutPrompts(server, options.observer);
 	registerHevyResources(server, runtime);
 	return server;
 }

@@ -439,6 +439,10 @@ server-scoped in-memory catalog cache:
 - Browser requests must come from an exact allowlisted origin. The default
   allowlist includes Claude.ai, ChatGPT, VS Code for the Web, and github.dev;
   self-hosted deployments can override it with `MCP_ALLOWED_ORIGINS`.
+- Local development can copy `.dev.vars.example` to `.dev.vars` to disable
+  Origin validation for MCP Inspector. PR preview Workers use the same
+  development-only setting because their browser origins are dynamic. Never
+  set `MCP_DISABLE_ORIGIN_CHECK=true` on a production Worker.
 - Create operations can produce duplicates when retried. Update operations
   replace existing records. Review tool inputs and use client confirmations.
 

@@ -238,6 +238,7 @@ https://www.claude.ai
 https://claude.com
 https://www.claude.com
 https://chatgpt.com
+https://chat.openai.com
 https://vscode.dev
 https://github.dev
 ```
@@ -249,6 +250,12 @@ comma-separated Worker variable:
 MCP_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
 ```
 
+Local development can disable Origin validation for browser tools such as MCP
+Inspector by copying `.dev.vars.example` to `.dev.vars`. The dedicated PR
+preview Worker also sets `MCP_DISABLE_ORIGIN_CHECK=true` because preview URLs
+are dynamic. Do not set this variable on production Workers; it disables the
+Origin allowlist while still reflecting CORS headers for the requesting origin.
+
 Wildcards are unsupported. Browser requests with an unmatched `Origin` receive
 `403`; non-browser requests without `Origin` remain accepted. Test both origin
 and bearer-auth behavior when changing Worker request handling.
@@ -257,8 +264,9 @@ and bearer-auth behavior when changing Worker request handling.
 
 Clients that cannot send a fixed `Authorization` header (for example Claude.ai
 custom connectors) can use OAuth 2.1 instead. The layer is opt-in per
-deployment: create a KV namespace and bind it as `OAUTH_KV` in
-`wrangler.jsonc`:
+deployment: create a KV namespace and bind it as `OAUTH_KV` in the relevant
+Wrangler config (`wrangler.jsonc` for production or `wrangler.preview.jsonc`
+for PR previews):
 
 ```bash
 npx wrangler kv namespace create OAUTH_KV
@@ -290,6 +298,9 @@ Internal pull requests receive preview Worker deployments through
 `.github/workflows/deploy-worker.yml`. Fork pull requests do not receive
 deployment credentials. Production deployment remains gated by the repository's
 trusted CI/release workflows.
+
+PR previews use a dedicated non-production OAuth KV namespace, so preview
+grants never share production OAuth state.
 
 ## Git and pull requests
 

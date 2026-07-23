@@ -31,6 +31,7 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 	"https://claude.com", // Anthropic Claude web connector
 	"https://www.claude.com", // Anthropic Claude web connector
 	"https://chatgpt.com", // OpenAI ChatGPT connectors
+	"https://chat.openai.com", // Legacy ChatGPT web origin
 	"https://vscode.dev", // VS Code for the Web
 	"https://github.dev", // github.dev web editor
 ] as const;
@@ -41,6 +42,9 @@ export interface WorkerEnv {
 	// Optional comma-separated exact-origin override. When omitted, the known
 	// browser client origins above are allowed.
 	MCP_ALLOWED_ORIGINS?: string;
+	// Development-only escape hatch for local and preview browser clients.
+	// Production deployments must leave this unset.
+	MCP_DISABLE_ORIGIN_CHECK?: string;
 	// Optional KV namespace binding. When present, the Worker additionally
 	// exposes OAuth 2.1 endpoints for remote MCP clients such as Claude.ai.
 	// When absent, behavior is identical to the pre-OAuth Worker.
@@ -74,13 +78,57 @@ export function parseAllowedOrigins(value: string | undefined): Set<string> {
 	return new Set(origins.map((origin) => origin.trim()).filter(Boolean));
 }
 
+interface WorkerRequestLogContext {
+	requestId: string;
+	method: string;
+	path: string;
+	origin: string | null;
+	userAgent: string | null;
+	authMode: "none" | "invalid" | "bearer" | "oauth";
+	oauthEnabled: boolean;
+}
+
+function createRequestLogContext(
+	request: Request,
+	env: WorkerEnv,
+): WorkerRequestLogContext {
+	const authorization = request.headers.get("authorization");
+	const bearer = parseBearerApiKey(authorization);
+	return {
+		requestId: request.headers.get("cf-ray") ?? crypto.randomUUID(),
+		method: request.method,
+		path: new URL(request.url).pathname,
+		origin: request.headers.get("origin"),
+		userAgent: request.headers.get("user-agent"),
+		authMode: !authorization
+			? "none"
+			: !bearer
+				? "invalid"
+				: hasOAuthAccessTokenShape(bearer)
+					? "oauth"
+					: "bearer",
+		oauthEnabled: isOAuthEnabled(env),
+	};
+}
+
 function validateOrigin(
 	request: Request,
 	env: WorkerEnv,
 ): string | null | Response {
 	const origin = request.headers.get("origin");
 	if (!origin) return null;
+	if (env.MCP_DISABLE_ORIGIN_CHECK?.trim().toLowerCase() === "true") {
+		return origin;
+	}
+	if (origin === new URL(request.url).origin) return origin;
 	if (!parseAllowedOrigins(env.MCP_ALLOWED_ORIGINS).has(origin)) {
+		console.warn({
+			event: "worker.origin_rejected",
+			requestId: request.headers.get("cf-ray") ?? null,
+			method: request.method,
+			path: new URL(request.url).pathname,
+			origin,
+		});
 		return new Response("Forbidden", {
 			status: 403,
 			headers: { Vary: "Origin" },
@@ -170,10 +218,27 @@ function createDefaultTransport(): WebStandardStreamableHTTPServerTransport {
 	});
 }
 
-function logWorkerFailure(context: string, error: unknown): void {
-	console.error("Cloudflare Worker failure", {
+function logWorkerFailure(
+	context: string,
+	error: unknown,
+	fields: Partial<WorkerRequestLogContext> = {},
+): void {
+	console.error({
+		event: "worker.error",
 		context,
+		...fields,
 		...createSafeErrorDiagnostic(error),
+	});
+}
+function logOAuthResponse(
+	context: WorkerRequestLogContext,
+	status: number,
+): void {
+	if (status < 400) return;
+	console.warn({
+		event: "worker.oauth_response",
+		...context,
+		status,
 	});
 }
 
@@ -344,32 +409,68 @@ export function createWorkerFetchHandler(
 		env: WorkerEnv,
 		ctx?: object,
 	): Promise<Response> {
-		if (!isOAuthEnabled(env)) {
-			if (env.OAUTH_KV != null) {
-				logWorkerFailure(
-					"oauth-kv-misconfigured",
-					new TypeError(
-						"OAUTH_KV binding is not a KV namespace; OAuth stays disabled",
-					),
-				);
+		const logContext = createRequestLogContext(request, env);
+		const startedAt = Date.now();
+		let responseStatus: number | null = null;
+		try {
+			if (!isOAuthEnabled(env)) {
+				if (env.OAUTH_KV != null) {
+					logWorkerFailure(
+						"oauth-kv-misconfigured",
+						new TypeError(
+							"OAUTH_KV binding is not a KV namespace; OAuth stays disabled",
+						),
+						logContext,
+					);
+				}
+				const legacyResponse = await legacyHandler(request, env);
+				responseStatus = legacyResponse.status;
+				return legacyResponse;
 			}
-			return legacyHandler(request, env);
-		}
 
-		const originResult = validateOrigin(request, env);
-		if (originResult instanceof Response) return originResult;
-		const origin = originResult;
-		const url = new URL(request.url);
-		if (url.pathname === MCP_PATH) {
-			if (request.method !== "POST") return legacyHandler(request, env);
-			const bearer = parseBearerApiKey(request.headers.get("authorization"));
-			if (bearer && !hasOAuthAccessTokenShape(bearer)) {
-				return legacyHandler(request, env);
+			const originResult = validateOrigin(request, env);
+			if (originResult instanceof Response) {
+				responseStatus = originResult.status;
+				return originResult;
+			}
+			const origin = originResult;
+			const url = new URL(request.url);
+			if (url.pathname === MCP_PATH) {
+				if (request.method !== "POST") {
+					const legacyResponse = await legacyHandler(request, env);
+					responseStatus = legacyResponse.status;
+					return legacyResponse;
+				}
+				const bearer = parseBearerApiKey(request.headers.get("authorization"));
+				if (bearer && !hasOAuthAccessTokenShape(bearer)) {
+					const legacyResponse = await legacyHandler(request, env);
+					responseStatus = legacyResponse.status;
+					return legacyResponse;
+				}
+				const oauthResponse = await oauthProvider.fetch(
+					request,
+					env,
+					ctx ?? {},
+				);
+				responseStatus = oauthResponse.status;
+				logOAuthResponse(logContext, responseStatus);
+				return withCors(oauthResponse, origin);
 			}
 			const oauthResponse = await oauthProvider.fetch(request, env, ctx ?? {});
+			responseStatus = oauthResponse.status;
+			logOAuthResponse(logContext, responseStatus);
 			return withCors(oauthResponse, origin);
+		} catch (error) {
+			logWorkerFailure("request", error, logContext);
+			throw error;
+		} finally {
+			console.log({
+				event: "worker.request",
+				...logContext,
+				status: responseStatus,
+				durationMs: Date.now() - startedAt,
+			});
 		}
-		return withCors(await oauthProvider.fetch(request, env, ctx ?? {}), origin);
 	};
 }
 

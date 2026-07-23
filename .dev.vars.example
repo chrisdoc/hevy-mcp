@@ -1,0 +1,2 @@
+# Local-only browser development. Keep this disabled in production.
+MCP_DISABLE_ORIGIN_CHECK=true

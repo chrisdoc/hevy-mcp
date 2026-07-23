@@ -2,7 +2,7 @@ import type {
 	AuthRequest,
 	OAuthHelpers,
 } from "@cloudflare/workers-oauth-provider";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import {
@@ -16,7 +16,14 @@ import {
 } from "./worker-oauth.js";
 import { createWorkerFetchHandler } from "./worker.js";
 
+beforeEach(() => {
+	vi.stubGlobal("Cloudflare", {
+		compatibilityFlags: { global_fetch_strictly_public: true },
+	});
+});
+
 afterEach(() => {
+	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
@@ -199,9 +206,12 @@ describe("authorize endpoint", () => {
 		);
 		expect(result.status).toBe(502);
 		expect(await result.text()).toContain("could not be completed");
-		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
-		expect(diagnostic).toContain("oauth-complete-authorization");
-		expect(diagnostic).not.toContain("kv exploded");
+		const diagnostic = stderrSpy.mock.calls[0]?.[0];
+		expect(diagnostic).toMatchObject({
+			event: "worker.error",
+			context: "oauth-complete-authorization",
+		});
+		expect(JSON.stringify(diagnostic)).not.toContain("kv exploded");
 		stderrSpy.mockRestore();
 	});
 
@@ -405,6 +415,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(metadata.registration_endpoint).toBe(
 			"https://worker.example/register",
 		);
+		expect(metadata.client_id_metadata_document_supported).toBe(true);
 		expect(metadata.code_challenge_methods_supported).toEqual(["S256"]);
 
 		const resource = await handler(
@@ -577,6 +588,33 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		});
 	});
 
+	it("registers a ChatGPT legacy browser client from its web origin", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const result = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://chat.openai.com",
+				},
+				body: JSON.stringify({
+					client_name: "ChatGPT",
+					redirect_uris: [
+						"https://chatgpt.com/connector_platform_oauth_redirect",
+					],
+					token_endpoint_auth_method: "none",
+				}),
+			}),
+			env,
+			{},
+		);
+
+		expect(result.status).toBe(201);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://chat.openai.com",
+		);
+	});
+
 	it("rejects unconfigured OAuth browser origins", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(
@@ -652,6 +690,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		const approval = await handler(
 			new Request("https://worker.example/authorize", {
 				method: "POST",
+				headers: { origin: "https://worker.example" },
 				body: new URLSearchParams({
 					oauth_request: encodedRequest as string,
 					hevy_api_key: "users-hevy-api-key",
@@ -773,6 +812,162 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			{},
 		);
 		expect(rejected.status).toBe(401);
+	});
+
+	it("completes the CIMD OAuth flow and serves MCP requests", async () => {
+		const clientId = "https://chatgpt.com/oauth/hevy-mcp/client.json";
+		const cimdRedirectUri = "https://chatgpt.com/connector/oauth/test-callback";
+		const metadata = {
+			client_id: clientId,
+			client_name: "ChatGPT",
+			redirect_uris: [cimdRedirectUri],
+			token_endpoint_auth_methods_supported: ["none", "private_key_jwt"],
+		};
+		const fetchMock = vi.fn(async () => Response.json(metadata));
+		vi.stubGlobal("fetch", fetchMock);
+		const { handler, env } = createHandlerWithEnv();
+
+		const verifier = base64UrlEncode(
+			crypto.getRandomValues(new Uint8Array(32)),
+		);
+		const challenge = base64UrlEncode(
+			new Uint8Array(
+				await crypto.subtle.digest(
+					"SHA-256",
+					new TextEncoder().encode(verifier),
+				),
+			),
+		);
+		const resource = "https://worker.example/mcp";
+		const authorizeUrl = new URL("https://worker.example/authorize");
+		authorizeUrl.searchParams.set("response_type", "code");
+		authorizeUrl.searchParams.set("client_id", clientId);
+		authorizeUrl.searchParams.set("redirect_uri", cimdRedirectUri);
+		authorizeUrl.searchParams.set("state", "cimd-state");
+		authorizeUrl.searchParams.set("code_challenge", challenge);
+		authorizeUrl.searchParams.set("code_challenge_method", "S256");
+		authorizeUrl.searchParams.set("resource", resource);
+
+		const consent = await handler(new Request(authorizeUrl), env, {});
+		expect(consent.status).toBe(200);
+		const consentHtml = await consent.text();
+		expect(consentHtml).toContain("ChatGPT");
+		const encodedRequest = /name="oauth_request" value="([^"]+)"/.exec(
+			consentHtml,
+		)?.[1];
+		expect(encodedRequest).toBeTruthy();
+
+		const approval = await handler(
+			new Request("https://worker.example/authorize", {
+				method: "POST",
+				headers: { origin: "https://worker.example" },
+				body: new URLSearchParams({
+					oauth_request: encodedRequest as string,
+					hevy_api_key: "cimd-users-hevy-api-key",
+				}),
+			}),
+			env,
+			{},
+		);
+		expect(approval.status).toBe(302);
+		const redirect = new URL(approval.headers.get("location") as string);
+		expect(redirect.origin + redirect.pathname).toBe(cimdRedirectUri);
+		expect(redirect.searchParams.get("state")).toBe("cimd-state");
+		const code = redirect.searchParams.get("code");
+		expect(code).toBeTruthy();
+
+		const tokenResult = await handler(
+			new Request("https://worker.example/token", {
+				method: "POST",
+				body: new URLSearchParams({
+					grant_type: "authorization_code",
+					code: code as string,
+					redirect_uri: cimdRedirectUri,
+					client_id: clientId,
+					code_verifier: verifier,
+					resource,
+				}),
+			}),
+			env,
+			{},
+		);
+		expect(tokenResult.status).toBe(200);
+		const tokens = (await tokenResult.json()) as {
+			access_token: string;
+			token_type: string;
+		};
+		expect(tokens.token_type.toLowerCase()).toBe("bearer");
+		expect(hasOAuthAccessTokenShape(tokens.access_token)).toBe(true);
+		expect(
+			[...env.OAUTH_KV.store.keys()].some((key) => key.startsWith("client:")),
+		).toBe(false);
+
+		const requestClients: string[] = [];
+		const { handler: mcpHandler } = createHandlerWithEnv({
+			createRequestClient: (apiKey: string) => {
+				requestClients.push(apiKey);
+				return createMockClient();
+			},
+		});
+		const mcpResult = await mcpHandler(
+			new Request("https://worker.example/mcp", {
+				method: "POST",
+				headers: {
+					accept: "application/json, text/event-stream",
+					"content-type": "application/json",
+					authorization: `Bearer ${tokens.access_token}`,
+				},
+				body: JSON.stringify(initializeBody),
+			}),
+			env,
+			{},
+		);
+		expect(mcpResult.status).toBe(200);
+		expect(await parseMcpResponse(mcpResult)).toMatchObject({ id: 1 });
+		expect(requestClients).toEqual(["cimd-users-hevy-api-key"]);
+		expect(fetchMock).toHaveBeenCalled();
+	});
+
+	it.each([
+		{
+			name: "a mismatched client ID",
+			metadata: {
+				client_id: "https://chatgpt.com/oauth/hevy-mcp/other.json",
+				client_name: "ChatGPT",
+				redirect_uris: ["https://chatgpt.com/connector/oauth/test-callback"],
+			},
+		},
+		{
+			name: "a missing redirect URI",
+			metadata: {
+				client_id: "https://chatgpt.com/oauth/hevy-mcp/client.json",
+				client_name: "ChatGPT",
+				redirect_uris: ["https://chatgpt.com/connector/oauth/other-callback"],
+			},
+		},
+	])("rejects CIMD authorization with $name", async ({ metadata }) => {
+		const clientId = "https://chatgpt.com/oauth/hevy-mcp/client.json";
+		const redirectUri = "https://chatgpt.com/connector/oauth/test-callback";
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Response.json(metadata)),
+		);
+		const { handler, env } = createHandlerWithEnv();
+		const authorizeUrl = new URL("https://worker.example/authorize");
+		authorizeUrl.searchParams.set("response_type", "code");
+		authorizeUrl.searchParams.set("client_id", clientId);
+		authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+		authorizeUrl.searchParams.set("state", "invalid-cimd-state");
+		authorizeUrl.searchParams.set("code_challenge", "challenge");
+		authorizeUrl.searchParams.set("code_challenge_method", "S256");
+
+		const result = await handler(new Request(authorizeUrl), env, {});
+		expect(result.status).toBe(400);
+		expect(await result.text()).toContain("Invalid authorization request.");
+		const keyNames = [...env.OAUTH_KV.store.keys()];
+		expect(keyNames.some((key) => key.startsWith("client:"))).toBe(false);
+		expect(keyNames.some((key) => key.startsWith("grant:"))).toBe(false);
+		expect(keyNames.some((key) => key.startsWith("token:"))).toBe(false);
 	});
 
 	it("returns 401 when the stored Hevy API key was revoked upstream", async () => {

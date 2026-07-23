@@ -351,7 +351,8 @@ export async function handleAuthorizePost<Env>(
 			headers: { Location: redirectTo, "Cache-Control": "no-store" },
 		});
 	} catch (error) {
-		console.error("Cloudflare Worker failure", {
+		console.error({
+			event: "worker.error",
 			context: "oauth-complete-authorization",
 			...createSafeErrorDiagnostic(error),
 		});
@@ -406,8 +407,8 @@ async function handleAuthorizedMcpRequest<Env>(
 /**
  * Build the OAuth provider that fronts the Worker when an `OAUTH_KV`
  * namespace is bound. It implements OAuth 2.1 authorization code flow with
- * PKCE, dynamic client registration, and RFC 8414 / RFC 9728 discovery
- * metadata, which is what remote MCP clients such as Claude.ai require.
+ * PKCE, CIMD client metadata with DCR fallback, and RFC 8414 / RFC 9728
+ * discovery metadata for remote MCP clients including ChatGPT.
  */
 export function createHevyOAuthProvider<Env extends object>(
 	dependencies: HevyOAuthDependencies<Env>,
@@ -444,6 +445,7 @@ export function createHevyOAuthProvider<Env extends object>(
 		authorizeEndpoint: AUTHORIZE_PATH,
 		tokenEndpoint: TOKEN_PATH,
 		clientRegistrationEndpoint: REGISTER_PATH,
+		clientIdMetadataDocumentEnabled: true,
 		allowPlainPKCE: false,
 		resourceMetadata: { resource_name: "Hevy MCP Server" },
 	});
