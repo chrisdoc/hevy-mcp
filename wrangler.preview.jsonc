@@ -16,6 +16,7 @@
 		"MCP_DISABLE_ORIGIN_CHECK": "true",
 	},
 	"observability": {
+		"enabled": true,
 		"traces": {
 			"enabled": true,
 			"destinations": ["otel"],
