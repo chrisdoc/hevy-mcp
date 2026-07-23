@@ -230,16 +230,10 @@ npm run worker:deploy
 is a production-affecting operation. Prefer `worker:dry-run` for local bundle
 verification unless deployment is explicitly intended.
 
-Browser clients require exact origin allowlisting through the optional
-comma-separated Worker variable:
-
-```text
-MCP_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
-```
-
-Wildcards are unsupported. Browser requests with an unmatched `Origin` receive
-`403`; non-browser requests without `Origin` remain accepted. Test both origin
-and bearer-auth behavior when changing Worker request handling.
+Browser clients may connect from any origin. The Worker reflects a request's
+`Origin` in its CORS response while continuing to require bearer
+authentication for MCP requests. Test both browser-origin and bearer-auth
+behavior when changing Worker request handling.
 
 ### Optional OAuth layer for remote MCP clients
 

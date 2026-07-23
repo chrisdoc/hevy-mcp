@@ -6,11 +6,7 @@ import {
 } from "@hevy-mcp/core";
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
-import {
-	createWorkerHandler,
-	parseAllowedOrigins,
-	parseBearerApiKey,
-} from "./worker.js";
+import { createWorkerHandler, parseBearerApiKey } from "./worker.js";
 import worker from "./worker.js";
 
 const validHeaders = {
@@ -71,12 +67,6 @@ describe("Worker authentication helpers", () => {
 	])("parses %j safely", (value, expected) => {
 		expect(parseBearerApiKey(value)).toBe(expected);
 	});
-
-	it("parses exact comma-separated origins", () => {
-		expect([
-			...parseAllowedOrigins("https://a.example, https://b.example"),
-		]).toEqual(["https://a.example", "https://b.example"]);
-	});
 });
 
 describe("Cloudflare Worker routes and CORS", () => {
@@ -91,30 +81,33 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(result.status).toBe(404);
 	});
 
-	it("allows requests without Origin and rejects unconfigured browser origins", async () => {
+	it("allows requests with or without an Origin", async () => {
 		const noOrigin = await handler(
 			new Request("https://worker.example/mcp"),
 			{},
 		);
 		expect(noOrigin.status).toBe(405);
 
-		const rejected = await handler(
+		const browserOrigin = await handler(
 			new Request("https://worker.example/mcp", {
 				headers: { origin: "https://browser.example" },
 			}),
 			{},
 		);
-		expect(rejected.status).toBe(403);
-		expect(rejected.headers.get("vary")).toBe("Origin");
+		expect(browserOrigin.status).toBe(405);
+		expect(browserOrigin.headers.get("access-control-allow-origin")).toBe(
+			"https://browser.example",
+		);
+		expect(browserOrigin.headers.get("vary")).toBe("Origin");
 	});
 
-	it("answers validated preflight without bearer authentication", async () => {
+	it("answers browser preflight without bearer authentication", async () => {
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
 				method: "OPTIONS",
 				headers: { origin: "https://browser.example" },
 			}),
-			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+			{},
 		);
 		expect(result.status).toBe(204);
 		expect(result.headers.get("access-control-allow-origin")).toBe(
@@ -126,7 +119,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(createValidationClient).not.toHaveBeenCalled();
 	});
 
-	it("adds exact-origin CORS headers to successful MCP responses", async () => {
+	it("reflects browser-origin CORS headers on successful MCP responses", async () => {
 		const corsHandler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
 			createRequestClient: () => createMockClient(),
@@ -145,7 +138,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 				},
 				{ ...validHeaders, origin: "https://browser.example" },
 			),
-			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+			{},
 		);
 
 		expect(result.status).toBe(200);
@@ -180,13 +173,13 @@ describe("Cloudflare Worker routes and CORS", () => {
 		},
 	);
 
-	it("preserves CORS headers on supported origins for error responses", async () => {
+	it("preserves CORS headers on browser error responses", async () => {
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
 				method: "GET",
 				headers: { origin: "https://browser.example" },
 			}),
-			{ MCP_ALLOWED_ORIGINS: "https://browser.example" },
+			{},
 		);
 		expect(result.status).toBe(405);
 		expect(result.headers.get("access-control-allow-origin")).toBe(

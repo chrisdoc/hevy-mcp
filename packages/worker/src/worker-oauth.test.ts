@@ -525,7 +525,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(get.status).toBe(405);
 	});
 
-	it("rejects disallowed browser origins before the OAuth provider", async () => {
+	it("allows browser origins to reach the OAuth provider", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
@@ -539,7 +539,42 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			env,
 			{},
 		);
-		expect(result.status).toBe(403);
+		expect(result.status).toBe(401);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://browser.example",
+		);
+	});
+
+	it("registers a ChatGPT browser client from its web origin", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const result = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://chatgpt.com",
+				},
+				body: JSON.stringify({
+					client_name: "ChatGPT",
+					redirect_uris: [
+						"https://chatgpt.com/connector_platform_oauth_redirect",
+					],
+					token_endpoint_auth_method: "none",
+				}),
+			}),
+			env,
+			{},
+		);
+
+		expect(result.status).toBe(201);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://chatgpt.com",
+		);
+		expect(await result.json()).toMatchObject({
+			client_name: "ChatGPT",
+			redirect_uris: ["https://chatgpt.com/connector_platform_oauth_redirect"],
+			token_endpoint_auth_method: "none",
+		});
 	});
 
 	it("completes the full OAuth flow and serves MCP requests", async () => {

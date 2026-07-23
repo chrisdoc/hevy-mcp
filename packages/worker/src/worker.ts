@@ -29,7 +29,6 @@ const CORS_ALLOWED_METHODS = "POST, OPTIONS";
 export interface WorkerEnv {
 	// Trusted deployment/test binding; invalid values fail closed before auth.
 	HEVY_API_BASE_URL?: string;
-	MCP_ALLOWED_ORIGINS?: string;
 	// Optional KV namespace binding. When present, the Worker additionally
 	// exposes OAuth 2.1 endpoints for remote MCP clients such as Claude.ai.
 	// When absent, behavior is identical to the pre-OAuth Worker.
@@ -57,15 +56,6 @@ export function parseBearerApiKey(authorization: string | null): string | null {
 	return match?.[1] ?? null;
 }
 
-export function parseAllowedOrigins(value: string | undefined): Set<string> {
-	return new Set(
-		(value ?? "")
-			.split(",")
-			.map((origin) => origin.trim())
-			.filter(Boolean),
-	);
-}
-
 function corsHeaders(origin: string): Headers {
 	return new Headers({
 		"Access-Control-Allow-Origin": origin,
@@ -91,21 +81,6 @@ function response(
 	headers?: Headers | Record<string, string>,
 ): Response {
 	return withCors(new Response(message, { status, headers }), origin);
-}
-
-function validateOrigin(
-	request: Request,
-	env: WorkerEnv,
-): string | null | Response {
-	const origin = request.headers.get("origin");
-	if (!origin) return null;
-	if (!parseAllowedOrigins(env.MCP_ALLOWED_ORIGINS).has(origin)) {
-		return new Response("Forbidden", {
-			status: 403,
-			headers: { Vary: "Origin" },
-		});
-	}
-	return origin;
 }
 
 function resolveHevyApiBaseUrl(value: string | undefined): string {
@@ -234,9 +209,7 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		if (url.pathname !== MCP_PATH)
 			return new Response("Not found", { status: 404 });
 
-		const originResult = validateOrigin(request, env);
-		if (originResult instanceof Response) return originResult;
-		const origin = originResult;
+		const origin = request.headers.get("origin");
 		let hevyApiBaseUrl: string;
 		try {
 			hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
@@ -355,10 +328,9 @@ export function createWorkerFetchHandler(
 			if (bearer && !hasOAuthAccessTokenShape(bearer)) {
 				return legacyHandler(request, env);
 			}
-			const originResult = validateOrigin(request, env);
-			if (originResult instanceof Response) return originResult;
+			const origin = request.headers.get("origin");
 			const oauthResponse = await oauthProvider.fetch(request, env, ctx ?? {});
-			return withCors(oauthResponse, originResult);
+			return withCors(oauthResponse, origin);
 		}
 		return oauthProvider.fetch(request, env, ctx ?? {});
 	};
