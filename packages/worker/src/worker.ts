@@ -232,13 +232,13 @@ function logWorkerFailure(
 }
 function logOAuthResponse(
 	context: WorkerRequestLogContext,
-	response: Response,
+	status: number,
 ): void {
-	if (response.status < 400) return;
+	if (status < 400) return;
 	console.warn({
 		event: "worker.oauth_response",
 		...context,
-		status: response.status,
+		status,
 	});
 }
 
@@ -411,7 +411,7 @@ export function createWorkerFetchHandler(
 	): Promise<Response> {
 		const logContext = createRequestLogContext(request, env);
 		const startedAt = Date.now();
-		let response: Response | undefined;
+		let responseStatus: number | null = null;
 		try {
 			if (!isOAuthEnabled(env)) {
 				if (env.OAUTH_KV != null) {
@@ -423,40 +423,43 @@ export function createWorkerFetchHandler(
 						logContext,
 					);
 				}
-				response = await legacyHandler(request, env);
-				return response;
+				const legacyResponse = await legacyHandler(request, env);
+				responseStatus = legacyResponse.status;
+				return legacyResponse;
 			}
 
 			const originResult = validateOrigin(request, env);
 			if (originResult instanceof Response) {
-				response = originResult;
-				return response;
+				responseStatus = originResult.status;
+				return originResult;
 			}
 			const origin = originResult;
 			const url = new URL(request.url);
 			if (url.pathname === MCP_PATH) {
 				if (request.method !== "POST") {
-					response = await legacyHandler(request, env);
-					return response;
+					const legacyResponse = await legacyHandler(request, env);
+					responseStatus = legacyResponse.status;
+					return legacyResponse;
 				}
 				const bearer = parseBearerApiKey(request.headers.get("authorization"));
 				if (bearer && !hasOAuthAccessTokenShape(bearer)) {
-					response = await legacyHandler(request, env);
-					return response;
+					const legacyResponse = await legacyHandler(request, env);
+					responseStatus = legacyResponse.status;
+					return legacyResponse;
 				}
 				const oauthResponse = await oauthProvider.fetch(
 					request,
 					env,
 					ctx ?? {},
 				);
-				logOAuthResponse(logContext, oauthResponse);
-				response = withCors(oauthResponse, origin);
-				return response;
+				responseStatus = oauthResponse.status;
+				logOAuthResponse(logContext, responseStatus);
+				return withCors(oauthResponse, origin);
 			}
 			const oauthResponse = await oauthProvider.fetch(request, env, ctx ?? {});
-			logOAuthResponse(logContext, oauthResponse);
-			response = withCors(oauthResponse, origin);
-			return response;
+			responseStatus = oauthResponse.status;
+			logOAuthResponse(logContext, responseStatus);
+			return withCors(oauthResponse, origin);
 		} catch (error) {
 			logWorkerFailure("request", error, logContext);
 			throw error;
@@ -464,7 +467,7 @@ export function createWorkerFetchHandler(
 			console.log({
 				event: "worker.request",
 				...logContext,
-				status: response?.status ?? null,
+				status: responseStatus,
 				durationMs: Date.now() - startedAt,
 			});
 		}
