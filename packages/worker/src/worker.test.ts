@@ -128,6 +128,38 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(rejected.headers.get("vary")).toBe("Origin");
 	});
 
+	it("allows opaque origins for OAuth form submissions only", async () => {
+		const oauthKv = {
+			get: vi.fn().mockResolvedValue(null),
+			put: vi.fn(),
+			delete: vi.fn(),
+			list: vi.fn().mockResolvedValue({ keys: [], list_complete: true }),
+		};
+		const fetchHandler = createWorkerFetchHandler();
+		const oauthForm = await fetchHandler(
+			new Request("https://worker.example/authorize", {
+				method: "POST",
+				headers: {
+					origin: "null",
+					"content-type": "application/x-www-form-urlencoded",
+				},
+				body: "",
+			}),
+			{ OAUTH_KV: oauthKv },
+		);
+		expect(oauthForm.status).toBe(400);
+		expect(oauthForm.headers.get("access-control-allow-origin")).toBe("null");
+
+		const mcp = await fetchHandler(
+			new Request("https://worker.example/mcp", {
+				method: "OPTIONS",
+				headers: { origin: "null" },
+			}),
+			{ OAUTH_KV: oauthKv },
+		);
+		expect(mcp.status).toBe(403);
+	});
+
 	it("can disable origin validation explicitly for non-production clients", async () => {
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
