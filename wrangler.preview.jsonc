@@ -21,6 +21,7 @@
 		},
 		"logs": {
 			"enabled": true,
+			"invocation_logs": true,
 		},
 	},
 	// This Worker is only a container for PR version aliases. Deliberately do
