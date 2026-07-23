@@ -16,7 +16,12 @@
 		"MCP_DISABLE_ORIGIN_CHECK": "true",
 	},
 	"observability": {
-		"enabled": false,
+		"traces": {
+			"enabled": true,
+		},
+		"logs": {
+			"enabled": true,
+		},
 	},
 	// This Worker is only a container for PR version aliases. Deliberately do
 	// not add routes or custom domains here: production belongs to `hevy-mcp`.
