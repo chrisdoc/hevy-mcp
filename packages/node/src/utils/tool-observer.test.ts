@@ -248,7 +248,9 @@ describe("createNodeToolObserver", () => {
 		const scope = createNodeToolObserver().start(promptInvocation);
 		if (!scope) throw new Error("Expected the Node observer to create a scope");
 
-		await expect(scope.run(() => Promise.reject(new Error("prompt failure")))).rejects.toThrow();
+		await expect(
+			scope.run(() => Promise.reject(new Error("prompt failure"))),
+		).rejects.toThrow();
 		await scope.finish({
 			outcome: "thrown_error",
 			durationMs: 3,
