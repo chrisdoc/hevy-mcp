@@ -203,11 +203,8 @@ describe("createNodeToolObserver", () => {
 		);
 		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
 			"mcp-tool-failure",
-			"get-workouts",
 			"HevyHttpError",
-			"ETIMEDOUT",
 			"503",
-			"/v1/workouts",
 		]);
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
 			"error.category": "HevyHttpError",
