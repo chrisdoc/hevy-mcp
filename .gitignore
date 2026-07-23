@@ -141,3 +141,4 @@ dist
 .env
 .env.sentry-build-plugin
 .aider*
+.dev.vars

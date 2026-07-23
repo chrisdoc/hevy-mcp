@@ -5,6 +5,9 @@
 	"compatibility_date": "2026-07-11",
 	"workers_dev": false,
 	"preview_urls": true,
+	"vars": {
+		"MCP_DISABLE_ORIGIN_CHECK": "true",
+	},
 	"observability": {
 		"enabled": false,
 	},

@@ -238,6 +238,7 @@ https://www.claude.ai
 https://claude.com
 https://www.claude.com
 https://chatgpt.com
+https://chat.openai.com
 https://vscode.dev
 https://github.dev
 ```
@@ -248,6 +249,12 @@ comma-separated Worker variable:
 ```text
 MCP_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
 ```
+
+Local development can disable Origin validation for browser tools such as MCP
+Inspector by copying `.dev.vars.example` to `.dev.vars`. The dedicated PR
+preview Worker also sets `MCP_DISABLE_ORIGIN_CHECK=true` because preview URLs
+are dynamic. Do not set this variable on production Workers; it disables the
+Origin allowlist while still reflecting CORS headers for the requesting origin.
 
 Wildcards are unsupported. Browser requests with an unmatched `Origin` receive
 `403`; non-browser requests without `Origin` remain accepted. Test both origin

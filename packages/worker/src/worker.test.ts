@@ -9,6 +9,7 @@ import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import {
 	DEFAULT_ALLOWED_ORIGINS,
 	createWorkerHandler,
+	createWorkerFetchHandler,
 	parseAllowedOrigins,
 	parseBearerApiKey,
 } from "./worker.js";
@@ -125,6 +126,20 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(rejected.status).toBe(403);
 		expect(rejected.headers.get("access-control-allow-origin")).toBeNull();
 		expect(rejected.headers.get("vary")).toBe("Origin");
+	});
+
+	it("can disable origin validation explicitly for non-production clients", async () => {
+		const result = await handler(
+			new Request("https://worker.example/mcp", {
+				headers: { origin: "http://localhost:6274" },
+			}),
+			{ MCP_DISABLE_ORIGIN_CHECK: "true" },
+		);
+
+		expect(result.status).toBe(405);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"http://localhost:6274",
+		);
 	});
 
 	it("answers browser preflight without bearer authentication", async () => {
@@ -255,6 +270,61 @@ describe("Cloudflare Worker routes and CORS", () => {
 			expect((await unavailable(mcpRequest({}), {})).status).toBe(502);
 		},
 	);
+	it("logs safe structured request outcomes", async () => {
+		const secret = "sentinel-structured-log-value";
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const fetchHandler = createWorkerFetchHandler();
+
+		const result = await fetchHandler(
+			new Request("https://worker.example/mcp", {
+				method: "OPTIONS",
+				headers: {
+					authorization: `Bearer ${secret}`,
+					origin: "https://blocked.example",
+					"user-agent": "structured-log-test",
+				},
+			}),
+			{},
+		);
+
+		expect(result.status).toBe(403);
+		const requestLog = logSpy.mock.calls
+			.map(([entry]) => entry)
+			.find(
+				(entry) =>
+					typeof entry === "object" &&
+					entry !== null &&
+					"event" in entry &&
+					entry.event === "worker.request",
+			);
+		expect(requestLog).toMatchObject({
+			event: "worker.request",
+			method: "OPTIONS",
+			path: "/mcp",
+			origin: "https://blocked.example",
+			authMode: "bearer",
+			status: 403,
+		});
+		const originLog = warnSpy.mock.calls
+			.map(([entry]) => entry)
+			.find(
+				(entry) =>
+					typeof entry === "object" &&
+					entry !== null &&
+					"event" in entry &&
+					entry.event === "worker.origin_rejected",
+			);
+		expect(originLog).toMatchObject({
+			event: "worker.origin_rejected",
+			method: "OPTIONS",
+			path: "/mcp",
+			origin: "https://blocked.example",
+		});
+		expect(
+			JSON.stringify([...logSpy.mock.calls, ...warnSpy.mock.calls]),
+		).not.toContain(secret);
+	});
 });
 
 describe("real stateless SDK transport", () => {
@@ -504,7 +574,7 @@ describe("real stateless SDK transport", () => {
 		});
 		await unknownHandler(mcpRequest({}), {});
 
-		const diagnostics = stderrSpy.mock.calls.map((call) => call[1]);
+		const diagnostics = stderrSpy.mock.calls.map((call) => call[0]);
 		expect(diagnostics[0]).toMatchObject({
 			context: "mcp-request-processing",
 			category: "HevyHttpError",
@@ -565,9 +635,9 @@ describe("real stateless SDK transport", () => {
 		expect(result.status).toBe(400);
 		const diagnostic = stderrSpy.mock.calls.find(
 			(call) =>
-				(call[1] as { context?: string } | undefined)?.context ===
+				(call[0] as { context?: string } | undefined)?.context ===
 				"streamable-http-transport",
-		)?.[1];
+		)?.[0];
 		expect(diagnostic).toMatchObject({
 			context: "streamable-http-transport",
 			category: "Error",

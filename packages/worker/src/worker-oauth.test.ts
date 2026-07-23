@@ -199,9 +199,12 @@ describe("authorize endpoint", () => {
 		);
 		expect(result.status).toBe(502);
 		expect(await result.text()).toContain("could not be completed");
-		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
-		expect(diagnostic).toContain("oauth-complete-authorization");
-		expect(diagnostic).not.toContain("kv exploded");
+		const diagnostic = stderrSpy.mock.calls[0]?.[0];
+		expect(diagnostic).toMatchObject({
+			event: "worker.error",
+			context: "oauth-complete-authorization",
+		});
+		expect(JSON.stringify(diagnostic)).not.toContain("kv exploded");
 		stderrSpy.mockRestore();
 	});
 
@@ -577,6 +580,33 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		});
 	});
 
+	it("registers a ChatGPT legacy browser client from its web origin", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const result = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://chat.openai.com",
+				},
+				body: JSON.stringify({
+					client_name: "ChatGPT",
+					redirect_uris: [
+						"https://chatgpt.com/connector_platform_oauth_redirect",
+					],
+					token_endpoint_auth_method: "none",
+				}),
+			}),
+			env,
+			{},
+		);
+
+		expect(result.status).toBe(201);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://chat.openai.com",
+		);
+	});
+
 	it("rejects unconfigured OAuth browser origins", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(
@@ -652,6 +682,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		const approval = await handler(
 			new Request("https://worker.example/authorize", {
 				method: "POST",
+				headers: { origin: "https://worker.example" },
 				body: new URLSearchParams({
 					oauth_request: encodedRequest as string,
 					hevy_api_key: "users-hevy-api-key",
