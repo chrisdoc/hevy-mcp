@@ -51,6 +51,8 @@ export type SafeToolBooleanArgumentKey = Extract<
 
 export interface ToolInvocationObservation {
 	readonly name: string;
+	/** The MCP primitive being observed; omitted values remain tool-compatible. */
+	readonly kind?: "tool" | "prompt";
 	readonly taxonomy?: ToolTelemetryMetadata;
 	readonly argumentKeys?: readonly SafeToolArgumentKey[];
 	readonly argumentPresence?: Partial<

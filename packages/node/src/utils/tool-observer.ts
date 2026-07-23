@@ -55,8 +55,10 @@ function createAttributes(
 	invocation: SafeToolInvocation,
 ): Record<string, AttributeValue> {
 	const clientMetadata = getCurrentMcpClientMetadata();
+	const isPrompt = invocation.kind === "prompt";
 	const attributes: Record<string, AttributeValue> = {
-		"mcp.tool.name": invocation.name,
+		[isPrompt ? "mcp.prompt.name" : "mcp.tool.name"]: invocation.name,
+		"mcp.operation.kind": invocation.kind ?? "tool",
 		...taxonomyAttributes(invocation),
 		"mcp.client.name": clientMetadata.name,
 		"mcp.client.version": clientMetadata.version,
@@ -188,7 +190,12 @@ function captureSafeToolFailure(
 	const category = diagnostic?.category ?? "UnknownError";
 	try {
 		Sentry.withScope((scope) => {
-			scope.setTag("mcp.tool.context", invocation.name);
+			const isPrompt = invocation.kind === "prompt";
+			if (isPrompt) {
+				scope.setTag("mcp.prompt.name", invocation.name);
+			} else {
+				scope.setTag("mcp.tool.context", invocation.name);
+			}
 			scope.setTag("error.category", category);
 			if (diagnostic?.code) scope.setTag("error.code", diagnostic.code);
 			if (diagnostic?.status !== undefined) {
@@ -197,20 +204,23 @@ function captureSafeToolFailure(
 			if (diagnostic?.endpoint) {
 				scope.setTag("hevy.api.endpoint", diagnostic.endpoint);
 			}
-			scope.setContext("mcpTool", {
+			scope.setContext(invocation.kind === "prompt" ? "mcpPrompt" : "mcpTool", {
 				context: invocation.name,
 				argumentKeyCountBucket: invocation.argumentKeyCountBucket ?? "unknown",
 			});
 			scope.setContext("safeError", diagnostic ? { ...diagnostic } : {});
 			scope.setFingerprint([
-				"mcp-tool-failure",
-				invocation.name,
+				isPrompt ? "mcp-prompt-failure" : "mcp-tool-failure",
+				...(isPrompt ? [] : [invocation.name]),
 				category,
-				diagnostic?.code ?? "none",
+				...(isPrompt ? [] : [diagnostic?.code ?? "none"]),
 				String(diagnostic?.status ?? "none"),
-				diagnostic?.endpoint ?? "none",
+				...(isPrompt ? [] : [diagnostic?.endpoint ?? "none"]),
 			]);
-			Sentry.captureMessage("MCP tool failure", "error");
+			Sentry.captureMessage(
+				isPrompt ? "MCP prompt failure" : "MCP tool failure",
+				"error",
+			);
 		});
 	} catch {
 		// Sentry failures must never affect tool responses.
