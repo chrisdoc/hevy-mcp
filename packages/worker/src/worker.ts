@@ -113,6 +113,7 @@ function validateOrigin(
 ): string | null | Response {
 	const origin = request.headers.get("origin");
 	if (!origin) return null;
+	if (origin === new URL(request.url).origin) return origin;
 	if (!parseAllowedOrigins(env.MCP_ALLOWED_ORIGINS).has(origin)) {
 		console.warn({
 			event: "worker.origin_rejected",

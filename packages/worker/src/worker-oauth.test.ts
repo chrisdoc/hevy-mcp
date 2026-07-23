@@ -655,6 +655,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		const approval = await handler(
 			new Request("https://worker.example/authorize", {
 				method: "POST",
+				headers: { origin: "https://worker.example" },
 				body: new URLSearchParams({
 					oauth_request: encodedRequest as string,
 					hevy_api_key: "users-hevy-api-key",
