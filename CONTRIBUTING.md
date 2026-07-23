@@ -254,7 +254,19 @@ npm run worker:deploy
 is a production-affecting operation. Prefer `worker:dry-run` for local bundle
 verification unless deployment is explicitly intended.
 
-Browser clients require exact origin allowlisting through the optional
+Browser clients must send an exact origin from the Worker's default allowlist:
+
+```text
+https://claude.ai
+https://www.claude.ai
+https://claude.com
+https://www.claude.com
+https://chatgpt.com
+https://vscode.dev
+https://github.dev
+```
+
+Self-hosted deployments can replace this list with the optional
 comma-separated Worker variable:
 
 ```text

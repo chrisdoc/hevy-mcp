@@ -525,13 +525,13 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(get.status).toBe(405);
 	});
 
-	it("rejects disallowed browser origins before the OAuth provider", async () => {
+	it("allows browser origins to reach the OAuth provider", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
 				method: "POST",
 				headers: {
-					origin: "https://browser.example",
+					origin: "https://claude.ai",
 					authorization: "Bearer user:grant:secret",
 				},
 				body: "{}",
@@ -539,7 +539,65 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			env,
 			{},
 		);
+		expect(result.status).toBe(401);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://claude.ai",
+		);
+	});
+
+	it("registers a ChatGPT browser client from its web origin", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const result = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://chatgpt.com",
+				},
+				body: JSON.stringify({
+					client_name: "ChatGPT",
+					redirect_uris: [
+						"https://chatgpt.com/connector_platform_oauth_redirect",
+					],
+					token_endpoint_auth_method: "none",
+				}),
+			}),
+			env,
+			{},
+		);
+
+		expect(result.status).toBe(201);
+		expect(result.headers.get("access-control-allow-origin")).toBe(
+			"https://chatgpt.com",
+		);
+		expect(await result.json()).toMatchObject({
+			client_name: "ChatGPT",
+			redirect_uris: ["https://chatgpt.com/connector_platform_oauth_redirect"],
+			token_endpoint_auth_method: "none",
+		});
+	});
+
+	it("rejects unconfigured OAuth browser origins", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const result = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://browser.example",
+				},
+				body: JSON.stringify({
+					client_name: "Untrusted client",
+					redirect_uris: ["https://browser.example/callback"],
+				}),
+			}),
+			env,
+			{},
+		);
+
 		expect(result.status).toBe(403);
+		expect(result.headers.get("access-control-allow-origin")).toBeNull();
+		expect(result.headers.get("vary")).toBe("Origin");
 	});
 
 	it("completes the full OAuth flow and serves MCP requests", async () => {

@@ -130,7 +130,10 @@ describe("folder tool definitions", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatRoutineFolder(folder)]);
-		expect(response.structuredContent).toEqual({ routineFolders: parsed });
+		expect(response.structuredContent).toMatchObject({
+			routineFolders: parsed,
+			page: 1,
+		});
 	});
 
 	it("get-routine-folders returns a structured empty list", async () => {
@@ -145,7 +148,10 @@ describe("folder tool definitions", () => {
 			"get-routine-folders",
 		).handler({ page: 1, pageSize: 5 });
 
-		expect(response.structuredContent).toEqual({ routineFolders: [] });
+		expect(response.structuredContent).toMatchObject({
+			routineFolders: [],
+			page: 1,
+		});
 		expect(response.content[0]?.text).toBe(
 			"No routine folders found for the specified parameters",
 		);

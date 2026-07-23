@@ -170,7 +170,12 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 				type: "updated",
 				workout: { id: "workout-1" },
 			});
-			expect(result.structuredContent).toEqual({ events: payload });
+			expect(result.structuredContent).toEqual({
+				events: payload,
+				page: 1,
+				pageCount: 1,
+				hasNextPage: false,
+			});
 		} finally {
 			consoleErrorSpy.mockRestore();
 		}

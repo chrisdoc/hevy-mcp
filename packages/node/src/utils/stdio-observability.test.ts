@@ -5,7 +5,6 @@ import {
 	deserializeMessageWithObservability,
 	createInstrumentedStdioTransport,
 } from "./stdio-observability.js";
-import { Sentry } from "./telemetry.js";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -18,10 +17,6 @@ const testDoubles = vi.hoisted(() => ({
 		const callback = args.at(-1) as (span: unknown) => unknown;
 		return callback(testDoubles.span);
 	}),
-	withScope: vi.fn((callback: (scope: unknown) => void) =>
-		callback({ setTag: vi.fn(), setContext: vi.fn() }),
-	),
-	captureMessage: vi.fn(),
 	parseErrors: { add: vi.fn() },
 	recordSessionStart: vi.fn(() => ({
 		name: "test-client",
@@ -50,10 +45,6 @@ vi.mock("@modelcontextprotocol/sdk/shared/stdio.js", async () => {
 });
 
 vi.mock("./telemetry.js", () => ({
-	Sentry: {
-		withScope: testDoubles.withScope,
-		captureMessage: testDoubles.captureMessage,
-	},
 	tracer: { startActiveSpan: testDoubles.startActiveSpan },
 }));
 
@@ -172,17 +163,13 @@ describe("package-local stdio observability", () => {
 			1,
 			expect.objectContaining({ failure_location: expect.any(String) }),
 		);
-		expect(testDoubles.captureMessage).toHaveBeenCalledWith(
-			"MCP stdin parse failure",
-			"error",
-		);
 	});
 
 	it.each([
 		'{"api_key":"credential-sentinel"',
 		"{Authorization: Bearer bearer-sentinel",
 		'{"private-workout-field":"private-workout-sentinel"',
-	])("redacts malformed content from stderr and telemetry: %s", (line) => {
+	])("redacts malformed content from stderr: %s", (line) => {
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		expect(() =>
@@ -199,9 +186,6 @@ describe("package-local stdio observability", () => {
 		expect(diagnostic).not.toContain("bearer-sentinel");
 		expect(diagnostic).not.toContain("private-workout-sentinel");
 		expect(shapePreview.length).toBeLessThanOrEqual(200);
-		expect(JSON.stringify(testDoubles.withScope.mock.calls)).not.toContain(
-			line,
-		);
 	});
 
 	it("keeps the SDK-internal transport adapter package-local", () => {
@@ -315,9 +299,5 @@ describe("package-local stdio observability", () => {
 				lastChunkStartsWithUtf8Bom: false,
 			}),
 		).toThrow(parserError);
-		expect(Sentry.captureMessage).toHaveBeenCalledWith(
-			"MCP stdin parse failure",
-			"error",
-		);
 	});
 });

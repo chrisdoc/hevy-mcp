@@ -32,6 +32,11 @@ export const toolErrors = meter.createCounter("mcp.tool.errors", {
 	description: "Total MCP tool errors",
 });
 
+/** Expected Hevy 404s handled as not-found, end-of-list, or caller errors. */
+export const expectedHevy404s = meter.createCounter("hevy.expected_404s", {
+	description: "Expected Hevy 404 outcomes",
+});
+
 /** MCP tool execution duration in milliseconds. */
 export const toolDuration = meter.createHistogram("mcp.tool.duration_ms", {
 	description: "MCP tool execution duration in milliseconds",

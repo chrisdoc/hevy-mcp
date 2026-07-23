@@ -158,7 +158,11 @@ describe("registerWorkoutTools", () => {
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
 		expect(parsed).toEqual([formatWorkout(workout)]);
-		expect(response.structuredContent).toEqual({ workouts: parsed });
+		expect(response.structuredContent).toEqual({
+			workouts: parsed,
+			page: 1,
+			pageCount: undefined,
+		});
 	});
 
 	it("formats updated and deleted workout events from the client", async () => {
@@ -212,6 +216,8 @@ describe("registerWorkoutTools", () => {
 					deletedAt: "2025-03-28T07:00:00Z",
 				},
 			],
+			page: 1,
+			pageCount: undefined,
 		});
 		expect(response.structuredContent).not.toHaveProperty(
 			"events.0.workout.exercises.0.muscle_group",
@@ -288,9 +294,18 @@ describe("registerWorkoutTools", () => {
 			since: "1970-01-01T00:00:00Z",
 		});
 
-		expect(workouts.structuredContent).toEqual({ workouts: [] });
-		expect(events.structuredContent).toEqual({ events: [] });
-		expect(eventsWithoutEvents.structuredContent).toEqual({ events: [] });
+		expect(workouts.structuredContent).toMatchObject({
+			workouts: [],
+			page: 1,
+		});
+		expect(events.structuredContent).toMatchObject({
+			events: [],
+			page: 1,
+		});
+		expect(eventsWithoutEvents.structuredContent).toMatchObject({
+			events: [],
+			page: 1,
+		});
 		expect(workouts.content[0]?.text).toBe(
 			"No workouts found for the specified parameters",
 		);
