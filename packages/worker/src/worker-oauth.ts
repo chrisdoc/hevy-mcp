@@ -351,7 +351,8 @@ export async function handleAuthorizePost<Env>(
 			headers: { Location: redirectTo, "Cache-Control": "no-store" },
 		});
 	} catch (error) {
-		console.error("Cloudflare Worker failure", {
+		console.error({
+			event: "worker.error",
 			context: "oauth-complete-authorization",
 			...createSafeErrorDiagnostic(error),
 		});
