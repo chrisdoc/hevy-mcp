@@ -18,10 +18,12 @@
 	"observability": {
 		"traces": {
 			"enabled": true,
+			"destinations": ["otel"],
 		},
 		"logs": {
 			"enabled": true,
 			"invocation_logs": true,
+			"destinations": ["otel-logs"],
 		},
 	},
 	// This Worker is only a container for PR version aliases. Deliberately do

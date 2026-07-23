@@ -9,10 +9,12 @@
 	"observability": {
 		"traces": {
 			"enabled": true,
+			"destinations": ["otel"],
 		},
 		"logs": {
 			"enabled": true,
 			"invocation_logs": true,
+			"destinations": ["otel-logs"],
 		},
 	},
 	"kv_namespaces": [
