@@ -266,6 +266,27 @@ describe("createNodeToolObserver", () => {
 		]);
 	});
 
+	it("keeps sanitized status-less error codes distinct in Sentry", async () => {
+		const scope = startScope();
+
+		await scope.finish({
+			outcome: "thrown_error",
+			durationMs: 7,
+			errorType: ErrorType.NETWORK_ERROR,
+			error: {
+				category: "Error",
+				code: "ENOTFOUND",
+			},
+		});
+
+		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
+			"mcp-tool-failure",
+			"Error",
+			"none",
+			"ENOTFOUND",
+		]);
+	});
+
 	it("marks returned MCP errors as session failures without error exceptions", async () => {
 		const scope = startScope();
 		await scope.run(() => Promise.resolve("returned error"));
