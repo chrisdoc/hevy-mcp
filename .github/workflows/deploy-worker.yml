@@ -24,6 +24,9 @@ jobs:
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     concurrency:
       group: cloudflare-worker-preview-pr-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -115,6 +118,40 @@ jobs:
           --preview-alias pr-${{ github.event.pull_request.number }}
           --message "GitHub PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request.head.sha }}"
 
+      - name: Activate preview version
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+        run: |
+          version_id="$(node <<'NODE'
+          const fs = require("node:fs");
+
+          const entries = fs
+            .readFileSync(process.env.WRANGLER_OUTPUT_FILE_PATH, "utf8")
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .map((line) => JSON.parse(line));
+          const upload = entries.findLast(
+            (entry) => entry.type === "version-upload",
+          );
+          const versionId = upload?.version_id ?? upload?.id;
+
+          if (!versionId) {
+            throw new Error(
+              "Wrangler did not return version_id; verify the preview version upload completed successfully",
+            );
+          }
+
+          process.stdout.write(versionId);
+          NODE
+          )"
+          npx wrangler versions deploy "$version_id" \
+            --config wrangler.preview.jsonc \
+            --yes \
+            --message "Activate GitHub PR #${{ github.event.pull_request.number }} preview"
+
       - name: Publish preview URL
         id: preview_url
         env:
@@ -167,6 +204,55 @@ jobs:
           );
           NODE
 
+      - name: Create or update preview URL comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PREVIEW_URL: ${{ steps.preview_url.outputs.url }}
+          PREVIEW_ALIAS: pr-${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const marker = "<!-- hevy-mcp-cloudflare-preview -->";
+            const body = [
+              marker,
+              "## Cloudflare Worker preview",
+              "",
+              `- MCP endpoint: ${process.env.PREVIEW_URL}`,
+              `- Alias: \`${process.env.PREVIEW_ALIAS}\``,
+              `- Commit: \`${process.env.HEAD_SHA}\``,
+              "",
+            ].join("\n");
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existing = comments.find(
+              (comment) =>
+                comment.user?.login === "github-actions[bot]" &&
+                comment.body?.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
   cleanup-preview:
     name: Cleanup PR preview
     if: >-
@@ -198,9 +284,44 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-cleanup-output.ndjson
         run: >-
           npx wrangler versions upload .github/workers/preview-bootstrap.ts
           --config wrangler.preview.jsonc
           --keep-vars
           --preview-alias pr-${{ github.event.pull_request.number }}
           --message "Cleanup GitHub PR #${{ github.event.pull_request.number }} after merge"
+
+      - name: Activate inert cleanup version
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-cleanup-output.ndjson
+        run: |
+          version_id="$(node <<'NODE'
+          const fs = require("node:fs");
+
+          const entries = fs
+            .readFileSync(process.env.WRANGLER_OUTPUT_FILE_PATH, "utf8")
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .map((line) => JSON.parse(line));
+          const upload = entries.findLast(
+            (entry) => entry.type === "version-upload",
+          );
+          const versionId = upload?.version_id ?? upload?.id;
+
+          if (!versionId) {
+            throw new Error(
+              "Wrangler did not return version_id; verify the cleanup version upload completed successfully",
+            );
+          }
+
+          process.stdout.write(versionId);
+          NODE
+          )"
+          npx wrangler versions deploy "$version_id" \
+            --config wrangler.preview.jsonc \
+            --yes \
+            --message "Activate inert cleanup for GitHub PR #${{ github.event.pull_request.number }}"
