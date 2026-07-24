@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"hevy": {
+			"command": "npx",
+			"args": ["-y", "hevy-mcp"]
+		}
+	}
+}

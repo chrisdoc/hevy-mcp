@@ -145,6 +145,7 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 	const { packagePath, packageLabel } = await resolvePackageMetadata(rootDir);
 	const manifestPath = resolve(rootDir, "server.json");
 	const packageManifestPath = resolve(rootDir, "packages/node/server.json");
+	const pluginPath = resolve(rootDir, "plugin.json");
 	const [{ value: packageJson }, { value: manifest }] = await Promise.all([
 		readJson(packagePath, packageLabel),
 		readJson(manifestPath, "server.json"),
@@ -161,6 +162,16 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 			throw error;
 		}
 	}
+	let pluginJson;
+	try {
+		pluginJson = (await readJson(pluginPath, "plugin.json")).value;
+	} catch (error) {
+		if (error.message.startsWith("Unable to read")) {
+			pluginJson = undefined;
+		} else {
+			throw error;
+		}
+	}
 
 	validatePackageJson(packageJson);
 	validateManifestShape(manifest);
@@ -171,10 +182,13 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 		JSON.stringify(packageManifest) !== JSON.stringify(manifest)
 	)
 		drift.push("packages/node/server.json");
+	if (pluginJson && pluginJson.version !== packageJson.version) {
+		drift.push("plugin.json");
+	}
 	if (mode === "check") {
 		assert(
 			drift.length === 0,
-			`server.json is out of sync with package.json: ${drift.join(", ")}. Run npm run sync:server-manifest.`,
+			`server.json or plugin.json is out of sync with package.json: ${drift.join(", ")}. Run npm run sync:server-manifest.`,
 		);
 		return { changed: false, drift };
 	}
@@ -197,6 +211,12 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 		// Fixture repositories and pre-cutover checkouts only have root server.json.
 	}
 
+	if (pluginJson && pluginJson.version !== packageJson.version) {
+		pluginJson.version = packageJson.version;
+		const updatedPluginContents = `${JSON.stringify(pluginJson, null, 2)}\n`;
+		await writeFile(pluginPath, updatedPluginContents, "utf8");
+	}
+
 	return { changed: true, drift };
 }
 
@@ -209,8 +229,8 @@ if (isCli) {
 		const result = await runServerManifest({ mode: process.argv[2] });
 		console.log(
 			result.changed
-				? "Synchronized server.json with package.json."
-				: "server.json is synchronized with package.json.",
+				? "Synchronized server.json and plugin.json with package.json."
+				: "server.json and plugin.json are synchronized with package.json.",
 		);
 	} catch (error) {
 		console.error(`server-manifest: ${error.message}`);
