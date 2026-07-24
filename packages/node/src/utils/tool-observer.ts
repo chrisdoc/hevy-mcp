@@ -213,7 +213,7 @@ function captureSafeToolFailure(
 				isPrompt ? "mcp-prompt-failure" : "mcp-tool-failure",
 				category,
 				String(diagnostic?.status ?? "none"),
-				...(!isPrompt && diagnostic?.status === undefined && diagnostic.code
+				...(diagnostic && diagnostic.status === undefined && diagnostic.code
 					? [diagnostic.code]
 					: []),
 			]);
