@@ -20,6 +20,7 @@ import {
 } from "./worker-oauth.js";
 
 const MCP_PATH = "/mcp";
+const OAUTH_AUTHORIZE_PATH = "/authorize";
 const HEVY_API_BASE_URL = "https://api.hevyapp.com";
 const AUTH_VALIDATION_TIMEOUT_MS = 5_000;
 const CORS_ALLOWED_HEADERS =
@@ -116,17 +117,28 @@ function validateOrigin(
 	env: WorkerEnv,
 ): string | null | Response {
 	const origin = request.headers.get("origin");
+	const url = new URL(request.url);
 	if (!origin) return null;
+	if (
+		origin === "null" &&
+		request.method === "POST" &&
+		url.pathname === OAUTH_AUTHORIZE_PATH &&
+		isOAuthEnabled(env)
+	) {
+		// Sandboxed browser contexts submit OAuth consent forms with an opaque
+		// origin. Keep this exception route-specific; never allow it for MCP.
+		return origin;
+	}
 	if (env.MCP_DISABLE_ORIGIN_CHECK?.trim().toLowerCase() === "true") {
 		return origin;
 	}
-	if (origin === new URL(request.url).origin) return origin;
+	if (origin === url.origin) return origin;
 	if (!parseAllowedOrigins(env.MCP_ALLOWED_ORIGINS).has(origin)) {
 		console.warn({
 			event: "worker.origin_rejected",
 			requestId: request.headers.get("cf-ray") ?? null,
 			method: request.method,
-			path: new URL(request.url).pathname,
+			path: url.pathname,
 			origin,
 		});
 		return new Response("Forbidden", {
