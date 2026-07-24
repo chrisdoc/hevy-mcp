@@ -90,29 +90,50 @@ Stable lane names and their detailed ownership live in
 [docs/test-lanes.md](./docs/test-lanes.md). Use these scripts instead of copying
 raw Vitest selectors into automation.
 
-| Command                         | Purpose                                                                                                 | Credentials/network                                                                                  |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `npm run test:unit`             | Unit and component tests, excluding integration and performance discovery.                              | Deterministic; no live credentials or network.                                                       |
-| `npm run test:mcp`              | Nock-backed in-memory MCP integration tests under `tests/integration/mocked`.                           | Deterministic; fake key and blocked outbound network.                                                |
-| `npm run test:contract`         | Tool registration, output-schema, and server-manifest contract baseline.                                | Deterministic.                                                                                       |
-| `npm run test:stdio`            | Stdio instrumentation and graceful-shutdown/process regression baseline.                                | Deterministic.                                                                                       |
-| `npm run test:pack`             | Build and inspect the `npm pack --dry-run` inventory, binary mapping, and package files.                | Deterministic.                                                                                       |
-| `npm run test:live`             | Read-only source canary against the real Hevy API.                                                      | Requires `HEVY_API_KEY`; preflight fails before Vitest starts when absent.                           |
-| `npm run test:worker-http:live` | Local Wrangler Worker canary with comprehensive bounded representative reads against the real Hevy API. | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.                         |
-| `npm run test:nightly`          | Published/source launcher canary used by nightly and release workflows.                                 | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.                         |
-| `npm run test:performance`      | Build and spawn `dist/cli.mjs` for mocked correctness and latency/memory trend scenarios.               | Deterministic; fake key, child-local Nock, and blocked child network.                                |
-| `npm run test:coverage`         | Produce separate unit and mocked MCP coverage reports.                                                  | Deterministic.                                                                                       |
-| `npm run test:pr`               | Run the deterministic unit, mocked MCP, contract, stdio, and package lanes expected on pull requests.   | Deterministic; does not include the separate performance lane.                                       |
-| `npm test`                      | Build, then run full Vitest discovery with optional `.env` loading.                                     | Broad local command; use the named lanes when you need explicit deterministic or live test behavior. |
+| Command                         | Purpose                                                                                                           | Credentials/network                                                                                                              |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test:unit`             | Unit and component tests, excluding integration and performance discovery.                                        | Deterministic; no live credentials or network.                                                                                   |
+| `npm run test:mcp`              | Nock-backed in-memory MCP integration tests under `tests/integration/mocked`.                                     | Deterministic; fake key and blocked outbound network.                                                                            |
+| `npm run test:contract`         | Tool registration, output-schema, and server-manifest contract baseline.                                          | Deterministic.                                                                                                                   |
+| `npm run test:stdio`            | Stdio instrumentation and graceful-shutdown/process regression baseline.                                          | Deterministic.                                                                                                                   |
+| `npm run test:pack`             | Build and inspect the `npm pack --dry-run` inventory, binary mapping, and package files.                          | Deterministic.                                                                                                                   |
+| `npm run test:live`             | Read-only source canary against the real Hevy API.                                                                | Requires `HEVY_API_KEY`; preflight fails before Vitest starts when absent.                                                       |
+| `npm run test:worker-http:live` | Local Wrangler or hosted Worker canary with comprehensive bounded representative reads against the real Hevy API. | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; set `HEVY_WORKER_HTTP_URL` for hosted mode; trusted CI/nightly only. |
+| `npm run test:nightly`          | Published/source launcher canary used by nightly and release workflows.                                           | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.                                                     |
+| `npm run test:performance`      | Build and spawn `packages/node/dist/cli.mjs` for mocked correctness and latency/memory trend scenarios.           | Deterministic; fake key, child-local Nock, and blocked child network.                                                            |
+| `npm run test:coverage`         | Produce separate unit and mocked MCP coverage reports.                                                            | Deterministic.                                                                                                                   |
+| `npm run test:pr`               | Run the deterministic unit, mocked MCP, contract, stdio, and package lanes expected on pull requests.             | Deterministic; does not include the separate performance lane.                                                                   |
+| `npm test`                      | Build, then run full Vitest discovery with optional `.env` loading.                                               | Broad local command; use the named lanes when you need explicit deterministic or live test behavior.                             |
 
 The live integration file under `tests/integration` is credential-gated in its
 own implementation, but contributors should use the explicit `test:live` lane
 for a real API canary. Do not describe `test:live` as skipped without a key: its
 launcher intentionally exits with an error before starting tests.
 
-The live Worker lane invokes only bounded read paths. It verifies
-`search-exercise-templates` registration through `tools/list` without invoking
+The live Worker lane supports two modes:
+
+- By default it starts an isolated local `wrangler dev --local` process and
+  exercises the Worker locally.
+- Set `HEVY_WORKER_HTTP_URL` to an HTTPS URL with the exact `/mcp` path to test a
+  hosted Worker instead. For example:
+
+  ```bash
+  HEVY_RUN_LIVE_WORKER_TESTS=1 \
+  HEVY_WORKER_HTTP_URL=https://hevy.chrisdoc.dev/mcp \
+  npm run test:worker-http:live
+  ```
+
+Both modes require `HEVY_RUN_LIVE_WORKER_TESTS=1`, `HEVY_API_KEY`, and use the
+key only as the MCP client's bearer credential. The test never passes the key
+to Wrangler or includes it in diagnostics. It invokes only bounded read paths:
+`search-exercise-templates` is verified through `tools/list` without invoking
 the full-catalog search against production.
+
+The nightly workflow runs the hosted mode against
+`https://hevy.chrisdoc.dev/mcp` with the repository's `HEVY_API_KEY` secret.
+This coverage remains outside deterministic pull-request CI because it depends
+on live Hevy data, network access, and the availability of the deployed Worker;
+the normal PR Worker lane uses a fake upstream and local fixtures instead.
 
 The normal pull request baseline is:
 
@@ -149,6 +170,9 @@ Also run the narrow checks related to your change. In particular:
   change; see [docs/token-cost-tracking.md](./docs/token-cost-tracking.md).
 - Run `npm run test:live` only when a real Hevy API canary is appropriate and a
   safe credential is available.
+- Run `npm run test:worker-http:live` locally only with a safe
+  `HEVY_API_KEY`; use `HEVY_WORKER_HTTP_URL` when validating the hosted Worker
+  path. The nightly job owns the hosted read-only coverage.
 
 `npm run check` runs both oxlint and oxfmt in check mode using the local npm
 dependencies. The project uses the Oxc tools for fast, consistent type-aware
