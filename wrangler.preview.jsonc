@@ -23,7 +23,6 @@
 		},
 		"logs": {
 			"enabled": true,
-			"invocation_logs": true,
 			"destinations": ["otel-logs"],
 		},
 	},

@@ -211,11 +211,11 @@ function captureSafeToolFailure(
 			scope.setContext("safeError", diagnostic ? { ...diagnostic } : {});
 			scope.setFingerprint([
 				isPrompt ? "mcp-prompt-failure" : "mcp-tool-failure",
-				...(isPrompt ? [] : [invocation.name]),
 				category,
-				...(isPrompt ? [] : [diagnostic?.code ?? "none"]),
 				String(diagnostic?.status ?? "none"),
-				...(isPrompt ? [] : [diagnostic?.endpoint ?? "none"]),
+				...(diagnostic && diagnostic.status === undefined && diagnostic.code
+					? [diagnostic.code]
+					: []),
 			]);
 			Sentry.captureMessage(
 				isPrompt ? "MCP prompt failure" : "MCP tool failure",
