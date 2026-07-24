@@ -316,7 +316,7 @@ describe("server manifest metadata", () => {
 		const checkResult = await runCli("check", fixtureDir);
 		expect(checkResult).toMatchObject({
 			exitCode: undefined,
-			stdout: "server.json is synchronized with package.json.",
+			stdout: "server.json and plugin.json are synchronized with package.json.",
 		});
 
 		manifest.version = "9.8.7";
@@ -324,7 +324,7 @@ describe("server manifest metadata", () => {
 		const syncResult = await runCli("sync", fixtureDir);
 		expect(syncResult).toMatchObject({
 			exitCode: undefined,
-			stdout: "Synchronized server.json with package.json.",
+			stdout: "Synchronized server.json and plugin.json with package.json.",
 		});
 	});
 });

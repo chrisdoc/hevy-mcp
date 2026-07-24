@@ -165,6 +165,30 @@ Add this `mcpServers` entry to your client configuration:
 }
 ```
 
+##### Google Antigravity
+
+Install the plugin automatically with a single command:
+
+```bash
+agy plugin install https://github.com/chrisdoc/hevy-mcp
+```
+
+After installation, the plugin automatically registers the server under the `"hevy"` key. You can then configure your API key by running the `/mcp` command in the Antigravity terminal, or by editing your global client configuration file (`~/.gemini/config/mcp_config.json`) to include your credentials:
+
+```json
+{
+	"mcpServers": {
+		"hevy": {
+			"command": "npx",
+			"args": ["-y", "hevy-mcp"],
+			"env": {
+				"HEVY_API_KEY": "your-actual-api-key"
+			}
+		}
+	}
+}
+```
+
 Common local configuration locations:
 
 - **Claude Desktop on macOS:**
