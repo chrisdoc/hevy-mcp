@@ -399,10 +399,10 @@ only as Hevy's required `api-key` header.
 
 ### OAuth for Claude.ai and other remote MCP clients
 
-Workers deployed with an `OAUTH_KV` namespace binding (see
-[CONTRIBUTING.md](./CONTRIBUTING.md)) additionally expose a full OAuth 2.1
-layer for clients that cannot send a fixed header, such as Claude.ai custom
-connectors:
+The hosted production Worker is deployed with an `OAUTH_KV` namespace binding,
+so it exposes a full OAuth 2.1 layer for clients that cannot send a fixed
+header, such as Claude.ai custom connectors. Self-hosted Workers can opt in by
+following the `OAUTH_KV` setup in [CONTRIBUTING.md](./CONTRIBUTING.md):
 
 - RFC 8414 / RFC 9728 discovery metadata under `/.well-known/`
 - Dynamic client registration (`/register`) and PKCE token exchange (`/token`)
