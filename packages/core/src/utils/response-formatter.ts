@@ -268,6 +268,49 @@ export const trainingSummarySessionSchema = z.object({
 	setCount: z.number().int().nonnegative(),
 });
 
+export const trainingSummaryWeekSchema = z.object({
+	startDate: z.string(),
+	endDate: z.string(),
+	workoutCount: z.number().int().nonnegative(),
+	totalDurationSeconds: z.number().int().nonnegative(),
+	exerciseCount: z.number().int().nonnegative(),
+	setCount: z.number().int().nonnegative(),
+	workingSetCount: z.number().int().nonnegative(),
+});
+
+export const trainingSummaryExerciseSessionSchema = z.object({
+	workoutId: z.string().optional(),
+	workoutTitle: z.string().optional(),
+	startTime: z.string(),
+	setCount: z.number().int().nonnegative(),
+	workingSetCount: z.number().int().nonnegative(),
+	totalReps: z.number().nonnegative().nullable(),
+	weightedRepVolumeKg: z.number().nonnegative().nullable(),
+	topWeightKg: z.number().nullable(),
+	topReps: z.number().nonnegative().nullable(),
+	topRpe: z.number().nullable(),
+	totalDistanceMeters: z.number().nonnegative().nullable(),
+	totalDurationSeconds: z.number().nonnegative().nullable(),
+	totalCustomMetric: z.number().nullable(),
+});
+
+export const trainingSummaryExerciseTrendSchema = z.object({
+	exerciseTemplateId: z.string(),
+	title: z.string().optional(),
+	sessionCount: z.number().int().nonnegative(),
+	setCount: z.number().int().nonnegative(),
+	workingSetCount: z.number().int().nonnegative(),
+	sessions: z.array(trainingSummaryExerciseSessionSchema),
+});
+
+export const trainingSummaryExerciseTrendCoverageSchema = z.object({
+	eligibleExerciseCount: z.number().int().nonnegative(),
+	includedExerciseCount: z.number().int().nonnegative(),
+	exerciseLimit: z.number().int().positive(),
+	sessionsPerExerciseLimit: z.number().int().positive(),
+	truncated: z.boolean(),
+});
+
 export const compactRoutineSchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
@@ -393,8 +436,12 @@ const trainingSummaryOutputSchema = {
 		totalDurationSeconds: z.number().int().nonnegative(),
 		exerciseCount: z.number().int().nonnegative(),
 		setCount: z.number().int().nonnegative(),
+		workingSetCount: z.number().int().nonnegative(),
 		uniqueExerciseTemplateIds: z.array(z.string()),
 		sessions: z.array(trainingSummarySessionSchema),
+		weekly: z.array(trainingSummaryWeekSchema),
+		exerciseTrends: z.array(trainingSummaryExerciseTrendSchema),
+		exerciseTrendCoverage: trainingSummaryExerciseTrendCoverageSchema,
 	}),
 	bodyMeasurements: z.object({
 		count: z.number().int().nonnegative(),

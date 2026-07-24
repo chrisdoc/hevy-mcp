@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { registerRoutinePrompts } from "./routines.js";
 import { registerWorkoutPrompts } from "./workouts.js";
 
 describe("workout prompts", () => {
@@ -11,6 +12,7 @@ describe("workout prompts", () => {
 	beforeEach(async () => {
 		server = new McpServer({ name: "prompt-test-server", version: "1.0.0" });
 		registerWorkoutPrompts(server);
+		registerRoutinePrompts(server);
 
 		client = new Client({ name: "prompt-test-client", version: "1.0.0" });
 		const [clientTransport, serverTransport] =
@@ -25,10 +27,10 @@ describe("workout prompts", () => {
 		await Promise.all([client.close(), server.close()]);
 	});
 
-	it("lists both prompts with discoverable metadata and argument schemas", async () => {
+	it("lists all prompts with discoverable metadata and argument schemas", async () => {
 		const result = await client.listPrompts();
 
-		expect(result.prompts).toHaveLength(2);
+		expect(result.prompts).toHaveLength(3);
 		expect(result.prompts).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -51,6 +53,12 @@ describe("workout prompts", () => {
 						expect.objectContaining({ name: "startTime", required: false }),
 					]),
 				}),
+				expect.objectContaining({
+					name: "create-routine-from-goals",
+					title: "Create Routine From Goals",
+					description: expect.stringContaining("goal"),
+					arguments: undefined,
+				}),
 			]),
 		);
 	});
@@ -72,7 +80,9 @@ describe("workout prompts", () => {
 		]);
 		expect(result.messages[0]?.content).toEqual(
 			expect.objectContaining({
-				text: expect.stringContaining("get-training-summary"),
+				text: expect.stringMatching(
+					/get-training-summary[\s\S]*three to five[\s\S]*two to four[\s\S]*fewer than two[\s\S]*body measurements/,
+				),
 			}),
 		);
 	});
@@ -124,7 +134,7 @@ describe("workout prompts", () => {
 				content: expect.objectContaining({
 					type: "text",
 					text: expect.stringMatching(
-						/get-routine[\s\S]*restSeconds[\s\S]*repRange[\s\S]*endTime[\s\S]*Never invent/,
+						/get-routine[\s\S]*restSeconds[\s\S]*repRange[\s\S]*endTime[\s\S]*Never treat[\s\S]*explicit approval[\s\S]*call create-workout once/,
 					),
 				}),
 			}),
@@ -143,7 +153,7 @@ describe("workout prompts", () => {
 		).rejects.toThrow();
 	});
 
-	it("returns a generic preview when routine arguments are omitted", async () => {
+	it("returns a conversational discovery workflow when workout arguments are omitted", async () => {
 		const result = await client.getPrompt({
 			name: "create-workout-from-routine",
 			arguments: {},
@@ -151,7 +161,40 @@ describe("workout prompts", () => {
 
 		expect(result.messages[0]?.content).toEqual(
 			expect.objectContaining({
-				text: "Provide a routineId and startTime to generate the full prompt.",
+				text: expect.stringMatching(
+					/search-routines[\s\S]*get-routines[\s\S]*timezone[\s\S]*Never invent[\s\S]*explicit approval/,
+				),
+			}),
+		);
+	});
+
+	it("uses provided workout arguments while collecting only the missing value", async () => {
+		const result = await client.getPrompt({
+			name: "create-workout-from-routine",
+			arguments: { routineId: "routine-123" },
+		});
+
+		expect(result.messages[0]?.content).toEqual(
+			expect.objectContaining({
+				text: expect.stringMatching(
+					/Use routine routine-123[\s\S]*Ask when the workout started/,
+				),
+			}),
+		);
+	});
+
+	it("provides a no-argument goal interview and confirmed routine workflow", async () => {
+		const result = await client.getPrompt({
+			name: "create-routine-from-goals",
+		});
+
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0]?.content).toEqual(
+			expect.objectContaining({
+				type: "text",
+				text: expect.stringMatching(
+					/goal[\s\S]*get-training-summary[\s\S]*get-routines[\s\S]*search-exercise-templates[\s\S]*Never guess[\s\S]*explicit approval[\s\S]*exactly once/,
+				),
 			}),
 		);
 	});

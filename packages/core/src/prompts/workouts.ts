@@ -1,67 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { utcSecondTimestamp } from "../utils/schemas.js";
-import { memoizeObservationScope, type ToolObserver } from "../observation.js";
-import { bucketCount } from "../utils/result-telemetry.js";
-import { resolveErrorPolicy } from "../utils/error-policy.js";
-
-type PromptResult = {
-	messages: Array<{
-		role: "user" | "assistant";
-		content: { type: "text"; text: string };
-	}>;
-};
-
-function withPromptObservation<TArgs extends Record<string, unknown>>(
-	name: string,
-	observer: ToolObserver | undefined,
-	handler: (args: TArgs) => Promise<PromptResult> | PromptResult,
-) {
-	return async (args: TArgs): Promise<PromptResult> => {
-		const startedAt = Date.now();
-		let scope;
-		try {
-			scope = memoizeObservationScope(
-				observer?.start({
-					name,
-					kind: "prompt",
-					argumentKeys: Object.keys(args).filter(
-						(key) => key === "routineId",
-					) as "routineId"[],
-					argumentPresence: args.routineId ? { routineId: true } : {},
-					argumentKeyCountBucket: bucketCount(Object.keys(args).length),
-				}),
-			);
-		} catch {
-			scope = undefined;
-		}
-
-		try {
-			const invoke = () => Promise.resolve(handler(args));
-			const result = await (scope ? scope.run(invoke) : invoke());
-			void scope?.finish({
-				outcome: "success",
-				durationMs: Date.now() - startedAt,
-				result: {
-					isError: false,
-					hasStructuredContent: false,
-					contentCountBucket: bucketCount(result.messages.length),
-				},
-			});
-			return result;
-		} catch (error) {
-			const policy = resolveErrorPolicy(error, "MCP prompt failed");
-			void scope?.finish({
-				outcome: "thrown_error",
-				durationMs: Date.now() - startedAt,
-				errorType: policy.type,
-				error: policy.diagnostic,
-			});
-			console.error("MCP prompt failure", policy.diagnostic);
-			throw error;
-		}
-	};
-}
+import type { ToolObserver } from "../observation.js";
+import { withPromptObservation } from "./observation.js";
 
 /** Register guided workout workflow prompts. */
 export function registerWorkoutPrompts(
@@ -95,10 +36,13 @@ export function registerWorkoutPrompts(
 							type: "text",
 							text: [
 								`Analyze my workout progress over the last ${weeks} weeks.`,
-								"Call get-training-summary with the requested weeks; it combines recent workouts and body measurements into one compact evidence set.",
-								"Use the returned period, workout frequency, volume, exercise variety, session list, and measurement trend fields rather than issuing separate count and pagination calls.",
-								"Base the analysis on retrieved evidence and discuss workout frequency, training volume, exercise variety, consistency, and body-measurement trends.",
-								"Distinguish observations from suggestions, note missing or limited data, and do not make unsupported claims or medical conclusions.",
+								"Start with get-training-summary for the requested period. Use its weekly buckets and exercise trends before considering narrower follow-up reads.",
+								"Report: (1) data coverage, (2) three to five evidence-backed findings, (3) two to four prioritized actions for the next one to two weeks, and (4) limitations.",
+								"Cite workout or exercise names, dates, and IDs when available. Keep observations, inferences, and recommendations clearly distinguishable.",
+								"Do not claim progression for an exercise represented by fewer than two sessions. Treat weighted-rep volume as exercise-specific and never compare or sum it across different exercises.",
+								"Lead with training frequency, consistency, working sets, session duration, and exercise-specific performance. Mention body measurements only when at least two comparable readings exist, and never claim that training caused a measurement change.",
+								"If no training goal is known, provide goal-neutral actions and finish with one concise question that would personalize the recommendations.",
+								"When data is missing or limited, say so directly. Do not invent evidence, diagnose injuries, give medical conclusions, or prescribe rehabilitation.",
 							].join("\n"),
 						},
 					},
@@ -132,18 +76,20 @@ export function registerWorkoutPrompts(
 						role: "user",
 						content: {
 							type: "text",
-							text:
-								routineId && startTime
-									? [
-											`Create a workout from routine ${routineId}, starting at ${startTime}.`,
-											"First call get-routine with the routineId and map supported plan fields: routine title to workout title, plus each exerciseTemplateId, supersetId, exercise notes, and set type.",
-											"Do not copy routine-only restSeconds or repRange fields into create-workout.",
-											"Before calling create-workout, confirm or collect the user's actual completed set data for every set, including applicable weight, reps, distance, duration, RPE, or custom metric values.",
-											"Also collect the required endTime in strict UTC YYYY-MM-DDTHH:mm:ssZ format and confirm any other missing required workout fields.",
-											"Never invent completion data. If the actual results or endTime are unavailable, ask the user for them instead of creating the workout.",
-											"Once confirmed, call create-workout with only fields supported by that tool.",
-										].join("\n")
-									: "Provide a routineId and startTime to generate the full prompt.",
+							text: [
+								routineId
+									? `Use routine ${routineId}.`
+									: "Ask which routine was performed. If the user gives a name, use search-routines; if they want to browse, use get-routines. Ask them to choose when multiple routines match, and never guess an ID.",
+								startTime
+									? `Use ${startTime} as the workout start time.`
+									: "Ask when the workout started and for the relevant timezone, then convert it to strict UTC YYYY-MM-DDTHH:mm:ssZ format.",
+								"Fetch the chosen routine with get-routine and use it only as the plan. Map its title and supported exerciseTemplateId, supersetId, exercise notes, and set type fields.",
+								"Do not copy routine-only restSeconds or repRange fields into create-workout.",
+								"Collect the user's actual completed result for every set, including each applicable weight, reps, distance, duration, RPE, or custom metric, plus the required endTime.",
+								"Never treat planned values as completed results unless the user explicitly confirms they performed them. Never invent missing completion data.",
+								"Preview the complete workout and its assumptions. Ask for explicit approval, incorporate any corrections, and only then call create-workout once with supported fields.",
+								"If the result of create-workout is uncertain, report that uncertainty and do not retry automatically because a retry can create a duplicate.",
+							].join("\n"),
 						},
 					},
 				],

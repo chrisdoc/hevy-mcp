@@ -206,8 +206,18 @@ describe("response contracts", () => {
 				totalDurationSeconds: 0,
 				exerciseCount: 0,
 				setCount: 0,
+				workingSetCount: 0,
 				uniqueExerciseTemplateIds: [],
 				sessions: [],
+				weekly: [],
+				exerciseTrends: [],
+				exerciseTrendCoverage: {
+					eligibleExerciseCount: 0,
+					includedExerciseCount: 0,
+					exerciseLimit: 10,
+					sessionsPerExerciseLimit: 6,
+					truncated: false,
+				},
 			},
 			bodyMeasurements: {
 				count: 0,

@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
+import { registerRoutinePrompts } from "./prompts/routines.js";
 import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerHevyResources } from "./resources/hevy.js";
 import {
@@ -73,6 +74,7 @@ export function createHevyMcpServer(
 	registerHevyTools(counting.server, runtime);
 	options.onToolsRegistered?.(counting.getCount());
 	registerWorkoutPrompts(server, options.observer);
+	registerRoutinePrompts(server, options.observer);
 	registerHevyResources(server, runtime);
 	return server;
 }
