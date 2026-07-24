@@ -6,6 +6,7 @@
 	"compatibility_flags": ["global_fetch_strictly_public"],
 	"workers_dev": false,
 	"preview_urls": true,
+	"routes": [{ "pattern": "mcp.hevy-mcp.dev", "custom_domain": true }],
 	"observability": {
 		"enabled": true,
 		"traces": {
