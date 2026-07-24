@@ -19,7 +19,11 @@ export default defineConfig({
 				inline: ["@cloudflare/workers-oauth-provider"],
 			},
 		},
-		exclude: [...configDefaults.exclude, "tests/nightly/**"],
+		exclude: [
+			...configDefaults.exclude,
+			"tests/nightly/**",
+			"tests/cloudflare/**",
+		],
 		coverage: {
 			provider: "v8",
 			reportsDirectory: "coverage",

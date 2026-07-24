@@ -415,6 +415,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(metadata.registration_endpoint).toBe(
 			"https://worker.example/register",
 		);
+		expect(metadata.scopes_supported).toEqual(["mcp"]);
 		expect(metadata.client_id_metadata_document_supported).toBe(true);
 		expect(metadata.code_challenge_methods_supported).toEqual(["S256"]);
 
@@ -516,7 +517,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(await parseMcpResponse(result)).toMatchObject({ id: 1 });
 	});
 
-	it("keeps preflight and 405 handling for /mcp unchanged", async () => {
+	it("keeps preflight handling and routes OAuth GET requests", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const preflight = await handler(
 			new Request("https://worker.example/mcp", { method: "OPTIONS" }),
@@ -533,7 +534,10 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			env,
 			{},
 		);
-		expect(get.status).toBe(405);
+		expect(get.status).toBe(401);
+		expect(get.headers.get("www-authenticate")).toContain(
+			'resource_metadata="https://worker.example/.well-known/oauth-protected-resource/mcp"',
+		);
 	});
 
 	it("allows browser origins to reach the OAuth provider", async () => {

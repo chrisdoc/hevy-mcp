@@ -445,6 +445,7 @@ export function createHevyOAuthProvider<Env extends object>(
 		authorizeEndpoint: AUTHORIZE_PATH,
 		tokenEndpoint: TOKEN_PATH,
 		clientRegistrationEndpoint: REGISTER_PATH,
+		scopesSupported: ["mcp"],
 		clientIdMetadataDocumentEnabled: true,
 		allowPlainPKCE: false,
 		resourceMetadata: { resource_name: "Hevy MCP Server" },

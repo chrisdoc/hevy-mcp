@@ -448,7 +448,7 @@ export function createWorkerFetchHandler(
 			const origin = originResult;
 			const url = new URL(request.url);
 			if (url.pathname === MCP_PATH) {
-				if (request.method !== "POST") {
+				if (request.method === "OPTIONS") {
 					const legacyResponse = await legacyHandler(request, env);
 					responseStatus = legacyResponse.status;
 					return legacyResponse;

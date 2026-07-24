@@ -90,7 +90,7 @@ so your client does not need Node.js, Bun, Docker, or a local server process.
 Production URL:
 
 ```text
-https://hevy.chrisdoc.dev/mcp
+https://mcp.hevy-mcp.dev/mcp
 ```
 
 The endpoint uses Streamable HTTP. Send your Hevy API key as a bearer token on
@@ -105,7 +105,7 @@ Codex, then add the hosted server:
 ```bash
 export HEVY_API_KEY=your-hevy-api-key
 codex mcp add hevy \
-  --url https://hevy.chrisdoc.dev/mcp \
+  --url https://mcp.hevy-mcp.dev/mcp \
   --bearer-token-env-var HEVY_API_KEY
 ```
 
@@ -121,7 +121,7 @@ Clients that accept a remote MCP URL and fixed headers commonly use this shape:
 {
 	"mcpServers": {
 		"hevy": {
-			"url": "https://hevy.chrisdoc.dev/mcp",
+			"url": "https://mcp.hevy-mcp.dev/mcp",
 			"headers": {
 				"Authorization": "Bearer your-hevy-api-key"
 			}
@@ -163,6 +163,30 @@ Add this `mcpServers` entry to your client configuration:
 			"args": ["-y", "hevy-mcp"],
 			"env": {
 				"HEVY_API_KEY": "your-hevy-api-key"
+			}
+		}
+	}
+}
+```
+
+##### Google Antigravity
+
+Install the plugin automatically with a single command:
+
+```bash
+agy plugin install https://github.com/chrisdoc/hevy-mcp
+```
+
+After installation, the plugin automatically registers the server under the `"hevy"` key. You can then configure your API key by running the `/mcp` command in the Antigravity terminal, or by editing your global client configuration file (`~/.gemini/config/mcp_config.json`) to include your credentials:
+
+```json
+{
+	"mcpServers": {
+		"hevy": {
+			"command": "npx",
+			"args": ["-y", "hevy-mcp"],
+			"env": {
+				"HEVY_API_KEY": "your-actual-api-key"
 			}
 		}
 	}
@@ -352,7 +376,7 @@ corresponding delete tools.
 The production MCP server is live at:
 
 ```text
-https://hevy.chrisdoc.dev/mcp
+https://mcp.hevy-mcp.dev/mcp
 ```
 
 It is the quickest way to use `hevy-mcp`: there is nothing to install or keep
@@ -366,7 +390,7 @@ Clients must send their Hevy API key as a fixed authorization header:
 {
 	"mcpServers": {
 		"hevy": {
-			"url": "https://hevy.chrisdoc.dev/mcp",
+			"url": "https://mcp.hevy-mcp.dev/mcp",
 			"headers": {
 				"Authorization": "Bearer your-hevy-api-key"
 			}

@@ -738,11 +738,13 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 	});
 
 	it.each(["GET", "DELETE"])(
-		"returns 405 for unsupported %s",
+		"returns an OAuth challenge for unauthenticated %s",
 		async (method) => {
 			const response = await fetch(`${workerBaseUrl}/mcp`, { method });
-			expect(response.status).toBe(405);
-			expect(response.headers.get("allow")).toBe("POST, OPTIONS");
+			expect(response.status).toBe(401);
+			expect(response.headers.get("www-authenticate")).toContain(
+				"resource_metadata=",
+			);
 			expect(hevyRequests).toHaveLength(0);
 		},
 	);
