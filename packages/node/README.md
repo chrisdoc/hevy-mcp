@@ -35,8 +35,9 @@ training question with evidence from the user's workout history.
 
 ## What can you do with it?
 
-- **Analyze training progress:** summarize 1-12 weeks of workouts and body
-  measurements in one tool call.
+- **Analyze training progress:** summarize 1-12 weeks of weekly consistency,
+  working sets, exercise-specific performance, and optional body-measurement
+  context in one tool call.
 - **Ask questions in plain language:** find recent sessions, frequently trained
   exercises, consistency gaps, routine details, or exercise history.
 - **Plan and log training:** create or update workouts, routines, routine folders,
@@ -62,6 +63,9 @@ Try asking:
 
 > Create a completed workout from my saved routine. Ask me for any missing set
 > results before writing it to Hevy.
+
+> Build one new routine around my goals, schedule, equipment, and recent
+> training. Show me the complete plan before saving it.
 
 ## Quick start
 
@@ -295,15 +299,17 @@ only when your assistant calls them.
 
 These server-provided MCP prompts coordinate common multi-step workflows:
 
-| Prompt                        | Arguments                                | Workflow                                                                                                               |
-| ----------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`  | Calls `get-training-summary`, then analyzes workout activity and body-measurement trends from the returned evidence.   |
-| `create-workout-from-routine` | Required `routineId` and UTC `startTime` | Loads a routine, collects actual completed-set data and an end time, then creates a workout without inventing results. |
+| Prompt                        | Arguments                                | Workflow                                                                                                                                               |
+| ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`  | Uses weekly and exercise-level evidence to produce cited findings, prioritized next steps, and clear data limitations.                                 |
+| `create-workout-from-routine` | Optional `routineId` and UTC `startTime` | Discovers missing inputs, loads the routine as a plan, collects actual results, and previews the completed workout before one approved create call.    |
+| `create-routine-from-goals`   | None                                     | Interviews the user, reviews recent training and routines, resolves existing exercise templates, and previews one routine before an approved creation. |
 
 > [!NOTE]
-> With MCP SDK v1.29.0, clients invoking `analyze-workout-progress` with its
-> default value must send `arguments: {}`. Omitting the entire `arguments`
-> object is rejected by that SDK version before the default is applied.
+> With MCP SDK v1.29.0, clients invoking a prompt that advertises optional
+> arguments must send `arguments: {}` when no values are supplied.
+> `create-routine-from-goals` advertises no arguments and can be invoked without
+> that object.
 
 ## Tools
 
@@ -313,7 +319,7 @@ can request confirmation.
 
 | Category           | Tool                        | Description                                                                       |
 | ------------------ | --------------------------- | --------------------------------------------------------------------------------- |
-| Training analysis  | `get-training-summary`      | Summarize 1-12 weeks of workout activity and body-measurement trends in one call. |
+| Training analysis  | `get-training-summary`      | Summarize weekly consistency and compact exercise trends for the last 1-12 weeks. |
 | Workouts           | `get-workouts`              | List workouts from newest to oldest with exercise and timing details.             |
 | Workouts           | `get-workout`               | Get complete details for one workout by ID.                                       |
 | Workouts           | `get-workout-count`         | Return the account's total workout count.                                         |

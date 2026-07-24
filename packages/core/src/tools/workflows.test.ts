@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { Workout } from "@hevy-mcp/hevy-client/types";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
@@ -79,8 +80,47 @@ describe("get-training-summary", () => {
 				totalDurationSeconds: 90000,
 				exerciseCount: 1,
 				setCount: 2,
+				workingSetCount: 2,
 				uniqueExerciseTemplateIds: ["bench"],
+				exerciseTrendCoverage: {
+					eligibleExerciseCount: 1,
+					includedExerciseCount: 1,
+					exerciseLimit: 10,
+					sessionsPerExerciseLimit: 6,
+					truncated: false,
+				},
 			});
+			expect(summary.period).toEqual({
+				startDate: "2026-06-19",
+				endDate: "2026-07-16",
+				weeks: 4,
+			});
+			expect(summary.workouts.weekly).toEqual([
+				expect.objectContaining({
+					startDate: "2026-06-19",
+					endDate: "2026-06-25",
+					workoutCount: 0,
+				}),
+				expect.objectContaining({
+					startDate: "2026-06-26",
+					endDate: "2026-07-02",
+					workoutCount: 0,
+				}),
+				expect.objectContaining({
+					startDate: "2026-07-03",
+					endDate: "2026-07-09",
+					workoutCount: 0,
+				}),
+				{
+					startDate: "2026-07-10",
+					endDate: "2026-07-16",
+					workoutCount: 2,
+					totalDurationSeconds: 90000,
+					exerciseCount: 1,
+					setCount: 2,
+					workingSetCount: 2,
+				},
+			]);
 			expect(summary.bodyMeasurements).toMatchObject({
 				count: 2,
 				weightChangeKg: -1,
@@ -124,6 +164,138 @@ describe("get-training-summary", () => {
 		});
 		expect(loader).toHaveBeenNthCalledWith(1, 1, 10);
 		expect(loader).toHaveBeenNthCalledWith(2, 2, 10);
+	});
+
+	it("aggregates modality metrics, ranks exercise trends, and caps session detail", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
+		try {
+			const benchWorkouts: Workout[] = Array.from({ length: 7 }, (_, index) => {
+				const day = 10 + index;
+				return {
+					id: `bench-${day}`,
+					title: `Bench ${day}`,
+					start_time: `2026-07-${String(day).padStart(2, "0")}T08:00:00Z`,
+					end_time: `2026-07-${String(day).padStart(2, "0")}T09:00:00Z`,
+					exercises: [
+						{
+							title: "Bench Press",
+							exercise_template_id: "bench",
+							sets:
+								day === 16
+									? [
+											{
+												type: "warmup",
+												weight_kg: 100,
+												reps: 100,
+												rpe: 10,
+											},
+											{
+												type: "normal",
+												weight_kg: 60,
+												reps: 5,
+												rpe: 8,
+												distance_meters: 100,
+												duration_seconds: 30,
+												custom_metric: 2,
+											},
+											{
+												type: "failure",
+												weight_kg: null,
+												reps: 10,
+												rpe: 9,
+												distance_meters: 50,
+												duration_seconds: 20,
+												custom_metric: 3,
+											},
+										]
+									: [{ type: "normal", weight_kg: 50, reps: 5 }],
+						},
+					],
+				};
+			});
+			const tiedExercises = Array.from({ length: 11 }, (_, index) => ({
+				title: `Exercise ${index}`,
+				exercise_template_id: `exercise-${String(index).padStart(2, "0")}`,
+				sets: [{ reps: index + 1 }],
+			}));
+			const latestWorkout = benchWorkouts.at(-1);
+			if (!latestWorkout) throw new Error("Expected a latest workout");
+			latestWorkout.exercises = [
+				...(latestWorkout.exercises ?? []),
+				...tiedExercises,
+			];
+			const runtime = createToolRuntime({
+				client: {
+					getWorkouts: vi.fn().mockResolvedValue({
+						workouts: [...benchWorkouts].reverse(),
+					}),
+					getBodyMeasurements: vi.fn().mockResolvedValue({
+						body_measurements: [],
+					}),
+				} as unknown as HevyClient,
+				catalog: {} as ExerciseTemplateCatalog,
+			});
+
+			const summary = await getTrainingSummary(runtime, 1);
+			const bench = summary.workouts.exerciseTrends[0];
+
+			expect(summary.period).toEqual({
+				startDate: "2026-07-10",
+				endDate: "2026-07-16",
+				weeks: 1,
+			});
+			expect(summary.workouts.workingSetCount).toBe(19);
+			expect(summary.workouts.exerciseTrendCoverage).toEqual({
+				eligibleExerciseCount: 12,
+				includedExerciseCount: 10,
+				exerciseLimit: 10,
+				sessionsPerExerciseLimit: 6,
+				truncated: true,
+			});
+			expect(
+				summary.workouts.exerciseTrends.map(
+					({ exerciseTemplateId }) => exerciseTemplateId,
+				),
+			).toEqual([
+				"bench",
+				"exercise-00",
+				"exercise-01",
+				"exercise-02",
+				"exercise-03",
+				"exercise-04",
+				"exercise-05",
+				"exercise-06",
+				"exercise-07",
+				"exercise-08",
+			]);
+			expect(bench).toMatchObject({
+				exerciseTemplateId: "bench",
+				title: "Bench Press",
+				sessionCount: 7,
+				setCount: 9,
+				workingSetCount: 8,
+			});
+			expect(bench?.sessions).toHaveLength(6);
+			expect(bench?.sessions[0]?.startTime).toBe("2026-07-11T08:00:00Z");
+			expect(bench?.sessions.at(-1)).toEqual({
+				workoutId: "bench-16",
+				workoutTitle: "Bench 16",
+				startTime: "2026-07-16T08:00:00Z",
+				setCount: 3,
+				workingSetCount: 2,
+				totalReps: 15,
+				weightedRepVolumeKg: 300,
+				topWeightKg: 60,
+				topReps: 10,
+				topRpe: 9,
+				totalDistanceMeters: 150,
+				totalDurationSeconds: 50,
+				totalCustomMetric: 5,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("handles incomplete compact data and the composed tool executor", async () => {
@@ -179,6 +351,15 @@ describe("get-training-summary", () => {
 				},
 			]);
 			expect(summary.workouts.uniqueExerciseTemplateIds).toEqual([]);
+			expect(summary.workouts).toMatchObject({
+				workingSetCount: 1,
+				exerciseTrends: [],
+				exerciseTrendCoverage: {
+					eligibleExerciseCount: 0,
+					includedExerciseCount: 0,
+					truncated: false,
+				},
+			});
 			expect(summary.bodyMeasurements).toEqual({
 				count: 1,
 				latest: {
@@ -218,8 +399,28 @@ describe("get-training-summary", () => {
 					totalDurationSeconds: 0,
 					exerciseCount: 0,
 					setCount: 0,
+					workingSetCount: 0,
 					uniqueExerciseTemplateIds: [],
 					sessions: [],
+					weekly: [
+						{
+							startDate: "2026-07-10",
+							endDate: "2026-07-16",
+							workoutCount: 0,
+							totalDurationSeconds: 0,
+							exerciseCount: 0,
+							setCount: 0,
+							workingSetCount: 0,
+						},
+					],
+					exerciseTrends: [],
+					exerciseTrendCoverage: {
+						eligibleExerciseCount: 0,
+						includedExerciseCount: 0,
+						exerciseLimit: 10,
+						sessionsPerExerciseLimit: 6,
+						truncated: false,
+					},
 				},
 				bodyMeasurements: {
 					count: 0,
