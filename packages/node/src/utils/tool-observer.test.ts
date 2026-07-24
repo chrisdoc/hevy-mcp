@@ -203,11 +203,8 @@ describe("createNodeToolObserver", () => {
 		);
 		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
 			"mcp-tool-failure",
-			"get-workouts",
 			"HevyHttpError",
-			"ETIMEDOUT",
 			"503",
-			"/v1/workouts",
 		]);
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
 			"error.category": "HevyHttpError",
@@ -266,6 +263,27 @@ describe("createNodeToolObserver", () => {
 			"mcp-prompt-failure",
 			"Error",
 			"500",
+		]);
+	});
+
+	it("keeps sanitized status-less error codes distinct in Sentry", async () => {
+		const scope = startScope();
+
+		await scope.finish({
+			outcome: "thrown_error",
+			durationMs: 7,
+			errorType: ErrorType.NETWORK_ERROR,
+			error: {
+				category: "Error",
+				code: "ENOTFOUND",
+			},
+		});
+
+		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
+			"mcp-tool-failure",
+			"Error",
+			"none",
+			"ENOTFOUND",
 		]);
 	});
 
