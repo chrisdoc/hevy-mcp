@@ -1,12 +1,30 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "hevy-mcp-preview",
-	"main": "src/worker.ts",
+	"main": "packages/worker/src/worker.ts",
 	"compatibility_date": "2026-07-11",
+	"compatibility_flags": ["global_fetch_strictly_public"],
 	"workers_dev": false,
 	"preview_urls": true,
+	"kv_namespaces": [
+		{
+			"binding": "OAUTH_KV",
+			"id": "df9f8c9c29254712bb75808adb84a447",
+		},
+	],
+	"vars": {
+		"MCP_DISABLE_ORIGIN_CHECK": "true",
+	},
 	"observability": {
-		"enabled": false,
+		"enabled": true,
+		"traces": {
+			"enabled": true,
+			"destinations": ["otel"],
+		},
+		"logs": {
+			"enabled": true,
+			"destinations": ["otel-logs"],
+		},
 	},
 	// This Worker is only a container for PR version aliases. Deliberately do
 	// not add routes or custom domains here: production belongs to `hevy-mcp`.

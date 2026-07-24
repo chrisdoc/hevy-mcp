@@ -12,4 +12,4 @@ coverage:
     patch: yes
 
 ignore:
-  - "src/generated/**/*" # Ignore all files in the generated directory
+  - "packages/hevy-client/src/generated/**/*" # Ignore generated API output

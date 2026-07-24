@@ -11,7 +11,6 @@ permissions:
 env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  HEVY_MCP_RELEASE: "true"
 
 jobs:
   release:
@@ -30,19 +29,22 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
       - run: npm ci
       - run: npm run build
         env:
+          HEVY_MCP_RELEASE: "true"
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
       - name: Run unit tests
         run: npx vitest run --exclude 'tests/integration/**'
+      - name: Verify published package
+        run: npm run test:pack
       - name: Run integration tests
         run: npx vitest run tests/integration
         env:
@@ -53,7 +55,7 @@ jobs:
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_MCP_COMMAND: node
-          HEVY_MCP_ARGS_JSON: '["dist/cli.mjs"]'
+          HEVY_MCP_ARGS_JSON: '["packages/node/dist/cli.mjs"]'
           HEVY_MCP_LAUNCHER: release-source
           HEVY_MCP_SOURCE_REVISION: ${{ github.sha }}
           HEVY_MCP_DIAGNOSTICS_PATH: test-results/release-source.json
@@ -79,12 +81,13 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
+          HEVY_MCP_RELEASE: "true"
       - name: Set Release Outputs
         id: release
         run: |
           set -euo pipefail
           if [ "${{ steps.changesets.outputs.published }}" = "true" ]; then
-            VERSION=$(node -p 'const pkgs = JSON.parse(process.env.PKGS); pkgs[0]?.version || ""')
+            VERSION=$(node -p 'const pkgs = JSON.parse(process.env.PKGS); pkgs.find((pkg) => pkg.name === "hevy-mcp")?.version || ""')
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "released=true" >> "$GITHUB_OUTPUT"
           else

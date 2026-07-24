@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"types": []
+	},
+	"include": [
+		"src/*.ts",
+		"src/generated/.kubb/**/*.ts",
+		"src/generated/client/api/**/*.ts",
+		"src/generated/client/schemas/**/*.ts",
+		"src/generated/client/types/**/*.ts"
+	]
+}

@@ -45,7 +45,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
@@ -54,6 +54,18 @@ jobs:
         run: npm ci
 
       - parallel:
+          - name: Validate workspace topology
+            run: npm run check:workspaces
+
+          - name: Check package boundaries
+            run: npm run check:boundaries
+
+          - name: Check package export maps
+            run: npm run check:exports
+
+          - name: Check release candidates
+            run: npm run check:release-candidates
+
           - name: Run type check
             run: npm run check:types
 
@@ -93,6 +105,11 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
+          CODECOV_TOKEN: ${{ matrix.node-version == '24.x' && secrets.CODECOV_TOKEN || '' }}
+
+      - name: Verify Worker bundle
+        if: matrix.node-version == '24.x'
+        run: npm run worker:dry-run
 
       - name: Run Worker HTTP integration tests
         if: matrix.node-version == '24.x'
@@ -110,6 +127,14 @@ jobs:
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         run: npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
 
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./test-results/unit-tests.xml
+          disable_search: true
+
       - name: Run unit tests with coverage
         if: ${{ !cancelled() && matrix.node-version == '26.x' }}
         run: npm run test:unit -- --coverage
@@ -125,6 +150,10 @@ jobs:
       - name: Run package baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         run: npm run test:pack
+
+      - name: Build and scan Worker dry run
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npm run worker:dry-run
 
       - name: Run performance baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
@@ -201,7 +230,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           cache: npm

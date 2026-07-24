@@ -13,8 +13,10 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { registerWorkoutTools } from "../../../src/tools/workouts.js";
-import { createClient } from "../../../src/utils/hevyClient.js";
+import { registerHevyTools } from "../../../packages/core/src/tools/register.js";
+import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
+import { createExerciseTemplateCatalog } from "../../../packages/core/src/utils/exercise-template-catalog.js";
+import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
@@ -69,8 +71,15 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 			version: "1.0.0",
 		});
 
-		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
-		registerWorkoutTools(server, hevyClient);
+		const hevyClient = createHevyClient({
+			apiKey: MOCK_HEVY_API_KEY,
+			baseUrl: HEVY_API_BASEURL,
+		});
+		const runtime = createToolRuntime({
+			client: hevyClient,
+			catalog: createExerciseTemplateCatalog(hevyClient),
+		});
+		registerHevyTools(server, runtime);
 
 		client = new Client({
 			name: "hevy-mcp-workout-detail-test-client",
@@ -161,7 +170,12 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 				type: "updated",
 				workout: { id: "workout-1" },
 			});
-			expect(result.structuredContent).toEqual({ events: payload });
+			expect(result.structuredContent).toEqual({
+				events: payload,
+				page: 1,
+				pageCount: 1,
+				hasNextPage: false,
+			});
 		} finally {
 			consoleErrorSpy.mockRestore();
 		}

@@ -1,0 +1,13 @@
+{
+	"author": "Christoph Kieslich",
+	"authorUrl": "https://github.com/chrisdoc",
+	"category": "health-wellness",
+	"cloudEndpoint": "https://hevy.chrisdoc.dev/mcp",
+	"description": "Manage Hevy workouts, routines, folders, body measurements, and exercise templates from MCP clients through the Hevy API.",
+	"homepage": "https://github.com/chrisdoc/hevy-mcp",
+	"icon": "https://github.com/chrisdoc.png",
+	"identifier": "chrisdoc-hevy-mcp",
+	"name": "Hevy MCP Server",
+	"tags": ["hevy", "fitness", "workouts", "health", "mcp"],
+	"version": "3.3.0"
+}

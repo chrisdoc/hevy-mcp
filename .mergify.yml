@@ -20,6 +20,8 @@ pull_request_rules:
     conditions:
       - base = main
       - label = queue
+      # Never route the automated Changesets release PR through the queue.
+      - -head ~= ^changeset-release/
     actions:
       queue:
         name: default
@@ -38,6 +40,8 @@ pull_request_rules:
       - base = main
       - "#approved-reviews-by >= 2"
       - check-success = ci/build
+      # Changesets release PRs are merged manually on a cadence; skip auto-merge.
+      - -head ~= ^changeset-release/
     actions:
       merge:
         method: squash
@@ -45,6 +49,8 @@ pull_request_rules:
     conditions:
       - -draft
       - "#commits-behind >= 5"
+      # Never rebase the Changesets release PR (it manages its own commits).
+      - -head ~= ^changeset-release/
     actions:
       update: null
 priority_rules:

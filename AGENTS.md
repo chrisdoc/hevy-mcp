@@ -5,10 +5,17 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v24+), with a clear separation between tool implementations (`src/tools/`), generated API clients (`src/generated/`), and utility logic (`src/utils/`).
+- The codebase is TypeScript (Node.js v24+) organized as four workspaces: the
+  runtime-neutral `@hevy-mcp/hevy-client` and `@hevy-mcp/core` packages, the
+  Node package in `packages/node`, and the Cloudflare package in
+  `packages/worker`. All implementation lives under `packages/*`; the root is
+  a private workspace orchestrator and must not gain a runtime `src/` tree.
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
-- **MCP SDK internals sensitivity:** `src/utils/stdio-observability.ts` depends on MCP SDK stdio internals (private fields such as `_ondata`/`_readBuffer`) for raw chunk instrumentation. Re-run the stdio observability test suite after any `@modelcontextprotocol/sdk` upgrade.
+- **MCP SDK internals sensitivity:** `packages/node/src/utils/stdio-observability.ts`
+  depends on MCP SDK stdio internals (private fields such as `_ondata`/
+  `_readBuffer`) for raw chunk instrumentation. Re-run the stdio observability
+  test suite after any `@modelcontextprotocol/sdk` upgrade.
 
 ## Git & Workflow Standards
 
@@ -27,9 +34,7 @@
 
 ### Documentation and Research
 
-- **Context7**: MUST use Context7 for any library and API documentation needs
 - **GitHub Integration**: MUST use the GitHub MCP server for all GitHub interactions and only use `gh` if there is a problem with the personal access token
-- **AI Feedback**: MUST ask Gemini for feedback (about a design, code review, etc.) but remember Gemini has no memory so everything must be provided in the prompt and you must refer to files using the @ syntax
 
 ## Working Effectively
 
@@ -228,7 +233,8 @@ Always perform these validation steps after making changes:
 - **ALWAYS** run unit tests after any source code changes
 - **ALWAYS** run build validation before committing changes
 - **ALWAYS** use type inference (`InferToolParams`) instead of manual type assertions
-- **DO NOT** attempt to fix TypeScript errors in `src/generated/` - these are auto-generated files
+- **DO NOT** attempt to fix TypeScript errors in
+  `packages/hevy-client/src/generated/` - these are auto-generated files
 - **DO NOT** commit `.env` files containing real API keys
 - **DO NOT** use `as any` or `as unknown` type assertions in tool handlers
 
@@ -237,11 +243,19 @@ Always perform these validation steps after making changes:
 ### Source Code Organization
 
 ```
-src/
-├── cli.ts             # Node.js stdio executable entrypoint
-├── index.ts           # Node-only stdio server, telemetry, and observability
-├── worker.ts          # Cloudflare Worker Streamable HTTP entrypoint
-├── shared-server.ts   # Runtime-neutral shared MCP server construction
+packages/
+├── hevy-client/       # Runtime-neutral native-fetch client and Kubb output
+├── core/              # Runtime-neutral MCP construction and tool implementations
+├── node/              # Public Node.js stdio package and telemetry
+└── worker/            # Cloudflare Worker HTTP and OAuth entrypoints
+
+src/                  # Transitional root compatibility facades and legacy tests
+```
+
+The runtime-neutral implementation lives under `packages/core/src/`:
+
+```
+packages/core/src/
 ├── tools/             # MCP tool implementations (+ co-located *.test.ts)
 │   ├── annotations.ts       # Workout annotation tools
 │   ├── body-measurements.ts # Body measurement tools
@@ -250,25 +264,21 @@ src/
 │   ├── templates.ts         # Exercise template tools
 │   ├── user.ts              # User profile tools
 │   └── workouts.ts          # Workout management tools
-├── generated/         # Auto-generated API client (DO NOT EDIT)
-│   ├── client/        # Kubb-generated client code
-│   └── schemas/       # Zod validation schemas
 └── utils/             # Shared helper functions
     ├── tool-helpers.ts    # Type inference utilities (InferToolParams)
     ├── error-handler.ts   # Centralized error handling (withErrorHandling)
     ├── response-formatter.ts # Output schemas, formatting, and MCP responses
-    ├── hevyClient.ts      # API client factory
-    ├── hevyClientKubb.ts  # Worker-safe native-fetch Kubb client wrapper
-    ├── config.ts          # Node.js configuration parsing
-    ├── telemetry.ts       # Node-only OpenTelemetry/Sentry setup
-    └── stdio-observability.ts # Node-only stdio instrumentation
+    ├── tool-taxonomy.ts   # Safe tool observation taxonomy
+    ├── cache.ts           # Per-server template/cache helpers
+    └── safe-error-diagnostic.ts # Privacy-preserving diagnostics
 ```
 
-`src/shared-server.ts`, the tool/resource/prompt modules it imports, and the
-native-fetch Hevy client must remain safe for both Node.js and Cloudflare
-Workers. Keep Node built-ins, stdio transports, process lifecycle handling,
-and telemetry/observability wiring behind the Node-only `src/cli.ts` and
-`src/index.ts` path. `src/worker.ts` must not import that Node-only path.
+`packages/core` and `packages/hevy-client` must remain safe for both Node.js and
+Cloudflare Workers. Keep Node built-ins, stdio transports, process lifecycle
+handling, and telemetry/observability in `packages/node`. Keep Cloudflare
+bindings and OAuth code in `packages/worker`. The dependency graph is
+`hevy-client → core → node/worker`; runtime packages must never import one
+another.
 
 ### Testing Structure
 
@@ -282,16 +292,20 @@ tests/
 
 The project uses a generated API client via Kubb that creates:
 
-- TypeScript types in `src/generated/client/types/`
-- API methods in `src/generated/client/api/`
-- Zod schemas in `src/generated/client/schemas/`
-- Mock data in `src/generated/client/mocks/`
+- TypeScript types in `packages/hevy-client/src/generated/client/types/`
+- API methods in `packages/hevy-client/src/generated/client/api/`
+- Zod schemas in `packages/hevy-client/src/generated/client/schemas/`
+
+Only the curated `@hevy-mcp/hevy-client/types` and
+`@hevy-mcp/hevy-client/schemas` barrels are package API. Generated API
+functions and `.kubb` internals are private.
 
 ### Configuration Files
 
-- `kubb.config.ts` - API client generation configuration
+- `packages/hevy-client/kubb.config.ts` - API client generation configuration
 - `oxlint and oxfmt configuration` - Code formatting and linting rules (tabs, 80 char lines, double quotes)
-- `lefthook.yml` - Git hooks for pre-commit formatting and commit message linting
+- `hk.pkl` and `mise.toml` - Git hooks for formatting, tests, commit message
+  linting, and tool installation
 
 ## Development Patterns
 
@@ -344,27 +358,28 @@ server.tool(
 
 ### Adding New MCP Tools
 
-1. **Create new tool file** in `src/tools/`
+1. **Create new tool file** in `packages/core/src/tools/`
 2. **Define Zod schema** with `as const` assertion
 3. **Infer parameter types** using `InferToolParams<typeof schema>`
 4. **Implement handler** with typed parameters (no manual assertions)
-5. **Wrap with error handling** using `withErrorHandling` from `src/utils/error-handler.ts`
-6. **Define and render responses** in `src/utils/response-formatter.ts`,
+5. **Wrap with error handling** using `withErrorHandling` from
+   `packages/core/src/utils/error-handler.ts`
+6. **Define and render responses** in `packages/core/src/utils/response-formatter.ts`,
    co-locating Zod output schemas, raw-to-public normalization, legacy text
    projection, and MCP response assembly
-7. **Register tools** in `src/index.ts`
+7. **Register tools** in `packages/core/src/tools/register.ts`
 8. **Add unit tests** co-located with implementation
 
 ### Working with Generated Code
 
-- **NEVER** edit files in `src/generated/` directly
+- **NEVER** edit files in `packages/hevy-client/src/generated/` directly
 - Regenerate API client: `npm run build:client`
 - If OpenAPI spec changes, refresh `openapi-spec.json` with `npm run openapi` first
-- Generated types are available in `src/generated/client/types/index.ts`
+- Generated types are available through `@hevy-mcp/hevy-client/types`
 
 ### Error Handling
 
-- Use centralized error handling from `src/utils/error-handler.ts`
+- Use centralized error handling from `packages/core/src/utils/error-handler.ts`
 - Wrap handlers with `withErrorHandling(fn, "context-name")`
 - Follow existing error response patterns in tool implementations
 - Error responses automatically include `isError: true` flag
@@ -381,7 +396,7 @@ server.tool(
 6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
 7. **Stale webhook references in docs:** Webhook endpoints are not currently
    available in the generated client, so docs should not reference a
-   `src/tools/webhooks.ts` tool implementation.
+   `packages/core/src/tools/webhooks.ts` tool implementation.
 
 ### Performance Expectations
 
@@ -393,17 +408,17 @@ server.tool(
 
 ## Key Utilities Reference
 
-### Type Inference (`src/utils/tool-helpers.ts`)
+### Type Inference (`packages/core/src/utils/tool-helpers.ts`)
 
 - **`InferToolParams<T>`**: Infers TypeScript types from Zod schema objects
 - **`createTypedToolHandler`**: Optional wrapper for automatic validation (MCP SDK already validates)
 
-### Error Handling (`src/utils/error-handler.ts`)
+### Error Handling (`packages/core/src/utils/error-handler.ts`)
 
 - **`withErrorHandling<TParams>(fn, context)`**: Wraps handlers with error handling while preserving parameter types
 - **`createErrorResponse(error, context?)`**: Creates standardized error responses
 
-### Response Formatting (`src/utils/response-formatter.ts`)
+### Response Formatting (`packages/core/src/utils/response-formatter.ts`)
 
 - **`createJsonResponse(data, options?)`**: Creates JSON-formatted MCP responses
 - **`createTextResponse(text)`**: Creates text-formatted MCP responses

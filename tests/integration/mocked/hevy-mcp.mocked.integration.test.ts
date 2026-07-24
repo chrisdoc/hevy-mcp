@@ -13,14 +13,11 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { registerHevyResources } from "../../../src/resources/hevy.js";
-import { registerBodyMeasurementTools } from "../../../src/tools/body-measurements.js";
-import { registerFolderTools } from "../../../src/tools/folders.js";
-import { registerRoutineTools } from "../../../src/tools/routines.js";
-import { registerTemplateTools } from "../../../src/tools/templates.js";
-import { registerUserTools } from "../../../src/tools/user.js";
-import { registerWorkoutTools } from "../../../src/tools/workouts.js";
-import { createClient } from "../../../src/utils/hevyClient.js";
+import { registerHevyResources } from "../../../packages/core/src/resources/hevy.js";
+import { registerHevyTools } from "../../../packages/core/src/tools/register.js";
+import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
+import { createExerciseTemplateCatalog } from "../../../packages/core/src/utils/exercise-template-catalog.js";
+import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
@@ -82,15 +79,17 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			version: "1.0.0",
 		});
 
-		const hevyClient = createClient(MOCK_HEVY_API_KEY, HEVY_API_BASEURL);
+		const hevyClient = createHevyClient({
+			apiKey: MOCK_HEVY_API_KEY,
+			baseUrl: HEVY_API_BASEURL,
+		});
+		const runtime = createToolRuntime({
+			client: hevyClient,
+			catalog: createExerciseTemplateCatalog(hevyClient),
+		});
 
-		registerWorkoutTools(server, hevyClient);
-		registerRoutineTools(server, hevyClient);
-		registerTemplateTools(server, hevyClient);
-		registerFolderTools(server, hevyClient);
-		registerUserTools(server, hevyClient);
-		registerBodyMeasurementTools(server, hevyClient);
-		registerHevyResources(server, hevyClient);
+		registerHevyTools(server, runtime);
+		registerHevyResources(server, runtime);
 
 		client = new Client({
 			name: "hevy-mcp-mocked-test-client",
@@ -687,7 +686,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 	});
 
-	it("returns MCP error output when Hevy API returns 404", async () => {
+	it("returns structured not-found output when Hevy API returns 404", async () => {
 		if (!client) throw new Error("Client not initialized");
 		const consoleErrorSpy = vi
 			.spyOn(console, "error")
@@ -702,9 +701,11 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 				workoutId: "missing-workout",
 			});
 
-			expect(result.isError).toBe(true);
-			expect(result.text).toContain("[get-workout] Error");
-			expect(result.text.toLowerCase()).toContain("not found");
+			expect(result.isError).toBeFalsy();
+			expect(result.structuredContent).toEqual({ workout: null });
+			expect(result.text).toContain(
+				"Workout with ID missing-workout not found",
+			);
 		} finally {
 			consoleErrorSpy.mockRestore();
 		}
