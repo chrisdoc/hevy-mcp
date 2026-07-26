@@ -1,5 +1,5 @@
 {
-	"name": "hevy-cli",
+	"name": "@chrisdoc/hevy-cli",
 	"version": "0.0.0",
 	"description": "Command-line client for the Hevy API",
 	"license": "MIT",

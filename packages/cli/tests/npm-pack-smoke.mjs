@@ -8,7 +8,7 @@ const dir = await mkdtemp(join(tmpdir(), "hevy-cli-pack-"));
 try {
 	await exec(
 		"npm",
-		["pack", "--workspace=hevy-cli", "--pack-destination", dir],
+		["pack", "--workspace=@chrisdoc/hevy-cli", "--pack-destination", dir],
 		{ cwd: new URL("../../..", import.meta.url) },
 	);
 	const names = await (await import("node:fs/promises")).readdir(dir);
@@ -18,7 +18,7 @@ try {
 		(await exec("tar", ["-xOf", join(dir, names[0]), "package/package.json"]))
 			.stdout,
 	);
-	if (manifest.name !== "hevy-cli")
+	if (manifest.name !== "@chrisdoc/hevy-cli")
 		throw new Error("CLI package metadata missing");
 	if (manifest.dependencies && Object.keys(manifest.dependencies).length)
 		throw new Error("CLI has runtime dependencies");

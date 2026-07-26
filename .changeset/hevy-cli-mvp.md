@@ -1,5 +1,5 @@
 ---
-"hevy-cli": minor
+"@chrisdoc/hevy-cli": minor
 "hevy-mcp": patch
 ---
 

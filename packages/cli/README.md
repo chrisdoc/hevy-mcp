@@ -1,9 +1,9 @@
-# hevy-cli
+# @chrisdoc/hevy-cli
 
 Read-only command-line access to the Hevy API.
 
 ```sh
-npm install -g hevy-cli
+npm install -g @chrisdoc/hevy-cli
 export HEVY_API_KEY=your-key
 hevy --help
 ```
