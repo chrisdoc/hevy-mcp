@@ -6,12 +6,11 @@ import {
 	tracer,
 	serviceName,
 	serviceVersion,
-	setCurrentUserHash,
+	setTelemetryUser,
 } from "./utils/telemetry.js";
 import { serverStartups } from "./utils/metrics.js";
 
 import { SpanStatusCode } from "@opentelemetry/api";
-import { createHmac } from "node:crypto";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { createHevyMcpServer } from "@hevy-mcp/core";
@@ -47,6 +46,7 @@ const HELP_TEXT = [
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
 	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
 	"  HEVY_MCP_HTTP_BEARER_TOKEN Protect non-loopback HTTP deployments",
+	"  HEVY_MCP_TELEMETRY=0     Disable all project telemetry",
 	"",
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
@@ -87,17 +87,6 @@ const SAFE_NETWORK_ERROR_CODES = new Set([
 	"HEVY_RETRY_EXHAUSTED",
 ]);
 
-const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
-
-function fingerprintApiKey(apiKey: string) {
-	// HMAC-SHA-256 gives Sentry and OTel a deterministic pseudonymous user
-	// hash without sending, logging, or storing the raw Hevy API key.
-	// Trimmed to 10 characters to keep it compact and readable in traces.
-	return createHmac("sha256", apiKey)
-		.update(SENTRY_USER_ID_CONTEXT)
-		.digest("hex")
-		.slice(0, 10);
-}
 const serverConfigSchema = z.object({
 	apiKey: z
 		.string()
@@ -217,9 +206,7 @@ export async function createNodeMcpServer(
 	transport: NodeTransport = "stdio",
 ) {
 	const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
-	const userHash = fingerprintApiKey(validatedApiKey);
-	setCurrentUserHash(userHash);
-	Sentry.setUser({ id: userHash });
+	setTelemetryUser(validatedApiKey);
 	await validateApiKey(validatedApiKey);
 	return buildServer(validatedApiKey, transport);
 }
@@ -243,12 +230,8 @@ export async function runStdioServer() {
 	// Seed the user context before config validation so startup failures for a
 	// supplied key retain the same trace correlation as normal tool calls.
 	const configuredApiKey = process.env.HEVY_API_KEY;
-	const initialUserHash = configuredApiKey
-		? fingerprintApiKey(configuredApiKey)
-		: undefined;
-	if (initialUserHash) {
-		setCurrentUserHash(initialUserHash);
-		Sentry.setUser({ id: initialUserHash });
+	if (configuredApiKey) {
+		setTelemetryUser(configuredApiKey);
 	}
 	let connectAttempted = false;
 

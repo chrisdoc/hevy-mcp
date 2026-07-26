@@ -28,8 +28,7 @@ const testDoubles = vi.hoisted(() => {
 		createHevyMcpServer: vi.fn(),
 		startStreamableHttpServer: vi.fn(),
 		wrapMcpServerWithSentry: vi.fn((value: unknown) => value),
-		setSentryUser: vi.fn(),
-		setCurrentUserHash: vi.fn(),
+		setTelemetryUser: vi.fn(),
 		flushTelemetry: vi.fn().mockResolvedValue(undefined),
 		serverStartups: { add: vi.fn() },
 		installGracefulShutdown: vi.fn(),
@@ -46,7 +45,6 @@ const testDoubles = vi.hoisted(() => {
 
 vi.mock("./utils/telemetry.js", () => ({
 	Sentry: {
-		setUser: testDoubles.setSentryUser,
 		wrapMcpServerWithSentry: testDoubles.wrapMcpServerWithSentry,
 	},
 	flushTelemetry: testDoubles.flushTelemetry,
@@ -60,7 +58,7 @@ vi.mock("./utils/telemetry.js", () => ({
 	},
 	serviceName: "hevy-mcp",
 	serviceVersion: "3.4.1",
-	setCurrentUserHash: testDoubles.setCurrentUserHash,
+	setTelemetryUser: testDoubles.setTelemetryUser,
 }));
 
 vi.mock("./utils/metrics.js", () => ({
@@ -172,6 +170,9 @@ describe("Node package entrypoint", () => {
 		await expect(
 			createNodeMcpServer({ apiKey: "programmatic-key" }),
 		).resolves.toBe(testDoubles.server);
+		expect(testDoubles.setTelemetryUser).toHaveBeenCalledWith(
+			"programmatic-key",
+		);
 
 		expect(testDoubles.createHevyClient).toHaveBeenNthCalledWith(
 			1,
@@ -245,8 +246,14 @@ describe("Node package entrypoint", () => {
 		process.argv.push(flag);
 
 		await runStdioServer();
-
 		expect(console.log).toHaveBeenCalledWith(expect.stringContaining(output));
+
+		expect(console.log).toHaveBeenCalledWith(
+			expect.stringContaining("HEVY_MCP_TELEMETRY=0"),
+		);
+		expect(console.log).toHaveBeenCalledWith(
+			expect.stringContaining("Disable all project telemetry"),
+		);
 		expect(testDoubles.serverStartups.add).not.toHaveBeenCalled();
 		expect(testDoubles.createHevyClient).not.toHaveBeenCalled();
 	});
@@ -320,6 +327,10 @@ describe("Node package entrypoint", () => {
 		process.env.HEVY_API_KEY = "runtime-key";
 
 		await runStdioServer();
+		expect(testDoubles.setTelemetryUser).toHaveBeenNthCalledWith(
+			1,
+			"runtime-key",
+		);
 
 		expect(testDoubles.serverStartups.add).toHaveBeenCalledWith(1, {
 			version: "3.4.1",
