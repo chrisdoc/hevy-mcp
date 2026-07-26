@@ -432,9 +432,11 @@ The local executable uses stdio by default. To opt into Streamable HTTP, run:
 HEVY_API_KEY=your-hevy-api-key npx hevy-mcp --transport http --host 127.0.0.1 --port 3000
 ```
 
-The MCP endpoint is `http://127.0.0.1:3000/mcp`. HTTP mode validates the Host
-header against the configured bind host. Loopback is the default; exposing the
-server on a LAN address requires `HEVY_MCP_HTTP_BEARER_TOKEN` and a separate
+The MCP endpoint is `http://127.0.0.1:3000/mcp`. For a specific bind host,
+HTTP mode validates the Host header and configured port to protect against DNS
+rebinding. Loopback is the default. Wildcard binds (`0.0.0.0` or `::`) accept
+any hostname so they can be used behind Docker port mappings or a reverse
+proxy; they require `HEVY_MCP_HTTP_BEARER_TOKEN` and rely on that separate
 authentication token. Do not expose an unprotected shared Hevy account to the
 public internet. For Docker HTTP mode, publish the port explicitly:
 

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import {
 	createServer,
 	type IncomingMessage,
@@ -100,7 +100,7 @@ function validateHostHeader(
 			parsed.pathname !== "/" ||
 			parsed.search ||
 			parsed.hash ||
-			(parsed.port ? Number(parsed.port) : 80) !== port
+			(!allowAnyHostname && (parsed.port ? Number(parsed.port) : 80) !== port)
 		) {
 			return false;
 		}
@@ -129,18 +129,21 @@ function readBody(request: IncomingMessage): Promise<unknown> {
 		let size = 0;
 		let rejected = false;
 		const chunks: Buffer[] = [];
-		request.on("data", (chunk: Buffer | string) => {
+		const onData = (chunk: Buffer | string) => {
 			const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
 			size += buffer.byteLength;
 			if (size > MAX_BODY_BYTES) {
 				if (!rejected) {
 					rejected = true;
+					request.removeListener("data", onData);
+					request.resume();
 					reject(new HttpRequestError(413, "Request body is too large."));
 				}
 				return;
 			}
 			if (!rejected) chunks.push(buffer);
-		});
+		};
+		request.on("data", onData);
 		request.once("error", (error) => {
 			if (!rejected) reject(error);
 		});
@@ -173,6 +176,8 @@ function closeServer(server: Server): Promise<void> {
 			return;
 		}
 		server.close((error) => (error ? reject(error) : resolve()));
+		server.closeIdleConnections();
+		server.closeAllConnections();
 	});
 }
 
@@ -182,7 +187,13 @@ function isBearerAuthorized(
 ): boolean {
 	if (!token) return false;
 	const header = request.headers.authorization;
-	return typeof header === "string" && header === `Bearer ${token}`;
+	if (typeof header !== "string") return false;
+	const expected = Buffer.from(`Bearer ${token}`);
+	const actual = Buffer.from(header);
+	return (
+		expected.byteLength === actual.byteLength &&
+		timingSafeEqual(expected, actual)
+	);
 }
 
 function aggregateErrors(errors: unknown[], message: string): unknown {
@@ -215,6 +226,10 @@ export async function startStreamableHttpServer(
 	const cleanupErrors: unknown[] = [];
 	const server = createServer((request, response) => {
 		void handleRequest(request, response).catch((error: unknown) => {
+			if (response.headersSent) {
+				if (!response.writableEnded) response.destroy();
+				return;
+			}
 			if (error instanceof HttpRequestError) {
 				writeJson(response, error.statusCode, error.message);
 				return;

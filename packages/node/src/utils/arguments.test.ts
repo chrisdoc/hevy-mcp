@@ -31,15 +31,10 @@ describe("parseNodeCliOptions", () => {
 		).toEqual({ transport: "http", host: "localhost", port: 8080 });
 	});
 
-	it.each([
-		["--transport", "invalid transport"],
-		["--unknown", "unknown option"],
-	])("rejects %s", (option) => {
-		expect(() =>
-			parseNodeCliOptions(
-				option === "--transport" ? [option, "wat"] : [option],
-			),
-		).toThrow();
+	it("rejects invalid transport and unknown options", () => {
+		for (const argv of [["--transport", "wat"], ["--unknown"]]) {
+			expect(() => parseNodeCliOptions(argv)).toThrow();
+		}
 	});
 
 	it("rejects HTTP-only options in stdio mode", () => {

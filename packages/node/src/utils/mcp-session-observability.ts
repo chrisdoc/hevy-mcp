@@ -128,8 +128,8 @@ export function recordMcpSessionStart(
 	context?: McpSessionContext,
 ): McpClientMetadata {
 	const session = context ?? createMcpSessionContext(message, transport);
-	if (transport === "stdio") activeStdioSession = session;
-	const attributes = metadataAttributes(session.metadata, transport);
+	if (session.transport === "stdio") activeStdioSession = session;
+	const attributes = metadataAttributes(session.metadata, session.transport);
 	sessionStarted.add(1, attributes);
 	return session.metadata;
 }

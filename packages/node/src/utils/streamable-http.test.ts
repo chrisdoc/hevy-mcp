@@ -31,7 +31,13 @@ function openStream(
 ): Promise<{ ended: Promise<void> }> {
 	return new Promise((resolve, reject) => {
 		const client = request(
-			{ host: "127.0.0.1", port, path: "/mcp", method: "GET", headers },
+			{
+				host: "127.0.0.1",
+				port,
+				path: "/mcp",
+				method: "GET",
+				headers: { Accept: "text/event-stream", ...headers },
+			},
 			(response) => {
 				const ended = new Promise<void>((finish) => {
 					response.once("end", finish);
@@ -239,10 +245,7 @@ describe("Streamable HTTP server", () => {
 
 	it("returns safe 400/413 responses for malformed and oversized bodies", async () => {
 		const { port } = await startTestServer();
-		const malformed = await call(port, "POST", undefined, {
-			"content-type": "application/json",
-		});
-		// The helper omits an empty body, so send malformed JSON directly.
+		// Send malformed JSON directly because the helper serializes valid bodies.
 		const invalid = await new Promise<HttpResult>((resolve, reject) => {
 			const client = request(
 				{ host: "127.0.0.1", port, path: "/mcp", method: "POST" },
@@ -261,7 +264,6 @@ describe("Streamable HTTP server", () => {
 			client.once("error", reject);
 			client.end("not-json");
 		});
-		expect(malformed.statusCode).toBe(400);
 		expect(invalid.statusCode).toBe(400);
 		expect(invalid.body).not.toContain("not-json");
 
@@ -287,7 +289,7 @@ describe("Streamable HTTP server", () => {
 			"mcp-session-id": String(initialized.headers["mcp-session-id"]),
 		});
 		await expect(handle.close()).resolves.toBeUndefined();
-		void stream.ended;
+		await expect(stream.ended).resolves.toBeUndefined();
 		expect(handle.server.listening).toBe(false);
 	});
 

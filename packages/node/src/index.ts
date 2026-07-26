@@ -341,15 +341,18 @@ export async function runServer(): Promise<void> {
 		"mcp.server.run",
 		{ attributes: { "mcp.transport": "http" } },
 		async (span) => {
+			let listening = false;
+			serverStartups.add(1, { version });
 			try {
 				const cfg = parseConfig(process.env);
 				assertApiKey(cfg.apiKey);
-				serverStartups.add(1, { version });
+				await validateApiKey(cfg.apiKey);
 				const handle = await startStreamableHttpServer(
 					options,
 					cfg.apiKey,
-					(params) => createNodeMcpServer(params, "http"),
+					(params) => Promise.resolve(buildServer(params.apiKey, "http")),
 				);
+				listening = true;
 				console.error(
 					`Starting MCP server in HTTP mode at ${options.host}:${options.port}/mcp`,
 				);
@@ -365,6 +368,7 @@ export async function runServer(): Promise<void> {
 				});
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (error) {
+				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw error;
 			} finally {

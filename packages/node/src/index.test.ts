@@ -15,15 +15,18 @@ const testDoubles = vi.hoisted(() => {
 		getUserInfo: vi.fn().mockResolvedValue({ id: "user" }),
 	};
 	const runtimeClient = { kind: "runtime-client" };
+	const httpHandle = { close: vi.fn().mockResolvedValue(undefined) };
 
 	return {
 		span,
 		server,
 		startupClient,
 		runtimeClient,
+		httpHandle,
 		transport: { kind: "stdio-transport" },
 		createHevyClient: vi.fn(),
 		createHevyMcpServer: vi.fn(),
+		startStreamableHttpServer: vi.fn(),
 		wrapMcpServerWithSentry: vi.fn((value: unknown) => value),
 		setSentryUser: vi.fn(),
 		setCurrentUserHash: vi.fn(),
@@ -83,6 +86,10 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
 	StdioServerTransport: class StdioServerTransport {},
 }));
 
+vi.mock("./utils/streamable-http.js", () => ({
+	startStreamableHttpServer: testDoubles.startStreamableHttpServer,
+}));
+
 vi.mock("./utils/graceful-shutdown.js", () => ({
 	installGracefulShutdown: testDoubles.installGracefulShutdown,
 }));
@@ -140,6 +147,9 @@ describe("Node package entrypoint", () => {
 		testDoubles.server.connect.mockResolvedValue(undefined);
 		testDoubles.startupClient.getUserInfo.mockResolvedValue({ id: "user" });
 		configureSuccessfulConstruction();
+		testDoubles.startStreamableHttpServer.mockResolvedValue(
+			testDoubles.httpHandle,
+		);
 		process.argv = [originalArgv[0] ?? "node", "hevy-mcp"];
 		delete process.env.HEVY_API_KEY;
 		vi.spyOn(console, "error").mockImplementation(() => {});
@@ -265,6 +275,46 @@ describe("Node package entrypoint", () => {
 			expect(testDoubles.createHevyClient).not.toHaveBeenCalled();
 		},
 	);
+
+	it("validates the HTTP key once and builds sessions without re-probing", async () => {
+		process.env.HEVY_API_KEY = "runtime-key";
+		process.argv.push("--transport", "http");
+		testDoubles.startStreamableHttpServer.mockImplementationOnce(
+			async (
+				_options: unknown,
+				_apiKey: string,
+				factory: (params: { apiKey: string }) => Promise<unknown>,
+			) => {
+				await factory({ apiKey: "runtime-key" });
+				return testDoubles.httpHandle;
+			},
+		);
+
+		await runServer();
+
+		expect(testDoubles.startupClient.getUserInfo).toHaveBeenCalledOnce();
+		expect(testDoubles.createHevyMcpServer).toHaveBeenCalledOnce();
+		expect(testDoubles.installGracefulShutdown).toHaveBeenCalledWith(
+			expect.objectContaining({ target: testDoubles.httpHandle }),
+		);
+	});
+
+	it("fails HTTP startup when the key is rejected", async () => {
+		process.env.HEVY_API_KEY = "invalid-key";
+		process.argv.push("--transport", "http");
+		testDoubles.startupClient.getUserInfo.mockRejectedValueOnce({
+			isHevyHttpError: true,
+			status: 401,
+		});
+
+		await expect(runServer()).rejects.toThrow(
+			"HEVY_API_KEY is invalid or expired",
+		);
+		expect(testDoubles.startStreamableHttpServer).not.toHaveBeenCalled();
+		expect(testDoubles.recordSessionTermination).toHaveBeenCalledWith(
+			"startup_failure",
+		);
+	});
 
 	it("connects stdio and installs lifecycle ownership", async () => {
 		process.env.HEVY_API_KEY = "runtime-key";
