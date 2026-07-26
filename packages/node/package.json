@@ -3,6 +3,10 @@
 	"version": "4.0.0",
 	"private": false,
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/chrisdoc/hevy-mcp"
+	},
 	"bin": {
 		"hevy-mcp": "dist/cli.mjs"
 	},

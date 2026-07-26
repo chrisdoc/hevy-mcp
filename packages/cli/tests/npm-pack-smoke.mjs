@@ -20,6 +20,8 @@ try {
 	);
 	if (manifest.name !== "@chrisdoc/hevy-cli")
 		throw new Error("CLI package metadata missing");
+	if (manifest.repository?.url !== "https://github.com/chrisdoc/hevy-mcp")
+		throw new Error("CLI package repository metadata missing");
 	if (manifest.dependencies && Object.keys(manifest.dependencies).length)
 		throw new Error("CLI has runtime dependencies");
 	await exec("tar", ["-xzf", join(dir, names[0]), "-C", dir]);
