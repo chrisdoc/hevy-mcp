@@ -73,6 +73,7 @@ vi.mock("./mcp-session-observability.js", () => ({
 	recordMcpToolInvocation: testDoubles.recordMcpToolInvocation,
 	recordMcpToolFailure: testDoubles.recordMcpToolFailure,
 	getCurrentMcpClientMetadata: testDoubles.getCurrentMcpClientMetadata,
+	getCurrentMcpTransport: vi.fn(() => "stdio"),
 }));
 
 vi.mock("@opentelemetry/api", () => ({

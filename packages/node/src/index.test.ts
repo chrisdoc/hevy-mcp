@@ -108,7 +108,7 @@ vi.mock("./utils/version-check.js", () => ({
 	scheduleUpdateCheck: testDoubles.scheduleUpdateCheck,
 }));
 
-import { createNodeMcpServer, runStdioServer } from "./index.js";
+import { createNodeMcpServer, runServer, runStdioServer } from "./index.js";
 
 const originalArgv = [...process.argv];
 const originalApiKey = process.env.HEVY_API_KEY;
@@ -240,6 +240,18 @@ describe("Node package entrypoint", () => {
 		expect(testDoubles.serverStartups.add).not.toHaveBeenCalled();
 		expect(testDoubles.createHevyClient).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		["--help", "--transport", "http"],
+		["--version", "--transport", "http"],
+	])(
+		"prioritizes %s over transport dispatch",
+		async (flag, transportFlag, transport) => {
+			process.argv.push(flag, transportFlag, transport);
+			await runServer();
+			expect(testDoubles.createHevyClient).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each(["--version", "-v"])(
 		"prints the package version for %s without starting",

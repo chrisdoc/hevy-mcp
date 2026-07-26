@@ -17,6 +17,8 @@ import { z } from "zod";
 import { createHevyMcpServer } from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { assertApiKey, parseConfig } from "./utils/config.js";
+import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
+import { startStreamableHttpServer } from "./utils/streamable-http.js";
 import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { createNodeHevyClientOptions } from "./utils/hevy-client-observability.js";
 import { createNodeToolObserver } from "./utils/tool-observer.js";
@@ -37,13 +39,18 @@ const HELP_TEXT = [
 	"Options:",
 	"  -h, --help                 Show this help message and exit",
 	"  -v, --version              Show version and exit",
+	"  --transport stdio|http     Select the transport (default: stdio)",
+	"  --host <host>              HTTP bind host (default: 127.0.0.1)",
+	"  --port <port>              HTTP bind port (default: 3000)",
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
 	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
+	"  HEVY_MCP_HTTP_BEARER_TOKEN Protect non-loopback HTTP deployments",
 	"",
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
+	"  HEVY_API_KEY=your-key npx hevy-mcp --transport http --port 3000",
 ].join("\n");
 
 function getCliAction(args: string[]): "start" | "version" | "help" {
@@ -163,14 +170,14 @@ async function validateApiKey(apiKey: string) {
 	}
 }
 
-function buildServer(apiKey: string) {
+function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
 	return tracer.startActiveSpan(
 		"mcp.server.build",
 		{
 			attributes: {
 				"mcp.server.name": name,
 				"mcp.server.version": version,
-				"mcp.transport": "stdio",
+				"mcp.transport": transport,
 			},
 		},
 		(span) => {
@@ -205,13 +212,16 @@ function buildServer(apiKey: string) {
 	);
 }
 
-export async function createNodeMcpServer({ apiKey }: { apiKey: string }) {
+export async function createNodeMcpServer(
+	{ apiKey }: { apiKey: string },
+	transport: NodeTransport = "stdio",
+) {
 	const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
 	const userHash = fingerprintApiKey(validatedApiKey);
 	setCurrentUserHash(userHash);
 	Sentry.setUser({ id: userHash });
 	await validateApiKey(validatedApiKey);
-	return buildServer(validatedApiKey);
+	return buildServer(validatedApiKey, transport);
 }
 
 export async function runStdioServer() {
@@ -302,6 +312,61 @@ export async function runStdioServer() {
 				);
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
+			} finally {
+				span.end();
+			}
+		},
+	);
+}
+
+export async function runServer(): Promise<void> {
+	const args = process.argv.slice(2);
+	const cliAction = getCliAction(args);
+	if (cliAction === "version") {
+		console.error(`${name} v${version}`);
+		return;
+	}
+	if (cliAction === "help") {
+		console.log(HELP_TEXT);
+		return;
+	}
+
+	const options = parseNodeCliOptions(args);
+	if (options.transport === "stdio") {
+		await runStdioServer();
+		return;
+	}
+
+	await tracer.startActiveSpan(
+		"mcp.server.run",
+		{ attributes: { "mcp.transport": "http" } },
+		async (span) => {
+			try {
+				const cfg = parseConfig(process.env);
+				assertApiKey(cfg.apiKey);
+				serverStartups.add(1, { version });
+				const handle = await startStreamableHttpServer(
+					options,
+					cfg.apiKey,
+					(params) => createNodeMcpServer(params, "http"),
+				);
+				console.error(
+					`Starting MCP server in HTTP mode at ${options.host}:${options.port}/mcp`,
+				);
+				scheduleUpdateCheck({
+					packageName: serviceName,
+					currentVersion: serviceVersion,
+				});
+				installGracefulShutdown({
+					target: handle,
+					onComplete: async () => {
+						await flushTelemetry();
+					},
+				});
+				span.setStatus({ code: SpanStatusCode.OK });
+			} catch (error) {
+				span.setStatus({ code: SpanStatusCode.ERROR });
+				throw error;
 			} finally {
 				span.end();
 			}
