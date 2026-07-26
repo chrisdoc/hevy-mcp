@@ -4,6 +4,7 @@ import {
 	parseExerciseId,
 	parseMeasurementDate,
 	parsePagination,
+	parseSearchMaxPages,
 	parseSearchQuery,
 	parseWeeks,
 	parseWorkoutEventsOptions,
@@ -89,13 +90,19 @@ describe("CLI argument validation", () => {
 	});
 
 	it("validates safe resource IDs and search terms", () => {
-		expect(parseWorkoutId("workout-1")).toBe("workout-1");
-		expect(parseExerciseId("exercise-1")).toBe("exercise-1");
+		expect(parseWorkoutId(" workout-1 ")).toBe("workout-1");
+		expect(parseExerciseId(" exercise-1 ")).toBe("exercise-1");
 		for (const value of [undefined, "", "  ", "a/b", "a?b"])
 			invalid(() => parseWorkoutId(value), "Workout ID");
 		for (const value of [undefined, "", "  ", "a/b", "a?b"])
 			invalid(() => parseSearchQuery(value), "Search query");
-		expect(parseSearchQuery(" Bench Press ")).toBe(" bench press ");
+		expect(parseSearchQuery(" Bench Press ")).toBe("bench press");
+		expect(parseSearchMaxPages(args())).toBe(10);
+		expect(parseSearchMaxPages(args({ "max-pages": "25" }))).toBe(25);
+		invalid(
+			() => parseSearchMaxPages(args({ "max-pages": "101" })),
+			"--max-pages must be a positive integer no greater than 100",
+		);
 	});
 
 	it("accepts real calendar dates and rejects impossible dates", () => {
@@ -113,10 +120,17 @@ describe("CLI argument validation", () => {
 	it("coerces positive integer summary weeks", () => {
 		expect(parseWeeks(args())).toBe(1);
 		expect(parseWeeks(args({ weeks: "10" }))).toBe(10);
-		for (const weeks of ["0", "-1", "1.5", "nope"])
+		for (const weeks of [
+			"0",
+			"-1",
+			"1.5",
+			"nope",
+			"999999999999999999999",
+			"521",
+		])
 			invalid(
 				() => parseWeeks(args({ weeks })),
-				"--weeks must be a positive integer",
+				"--weeks must be a positive integer no greater than 520",
 			);
 	});
 });

@@ -30,6 +30,7 @@ export interface CliRuntimeContext extends CommandContext {
 
 type CliFlags = object;
 type JsonFlags = { json?: boolean };
+type SearchFlags = JsonFlags & { "max-pages"?: string };
 type PageFlags = JsonFlags & { page?: string; "page-size"?: string };
 type EventFlags = PageFlags & { since?: string };
 type HistoryFlags = JsonFlags & { "start-date"?: string; "end-date"?: string };
@@ -48,6 +49,10 @@ const booleanFlag = (brief: string) => ({
 });
 
 const jsonFlag = { json: booleanFlag("Print machine-readable JSON") };
+const searchFlags = {
+	...jsonFlag,
+	"max-pages": flag("Maximum API pages to scan (default: 10)"),
+};
 const pageFlags = {
 	...jsonFlag,
 	page: flag("API page number"),
@@ -178,11 +183,11 @@ const routines = buildRouteMap({
 
 const exercises = buildRouteMap({
 	routes: {
-		search: idCommand<JsonFlags>(
+		search: idCommand<SearchFlags>(
 			"exercises",
 			"search",
 			"Search exercise templates",
-			jsonFlag,
+			searchFlags,
 		),
 		get: idCommand<JsonFlags>(
 			"exercises",

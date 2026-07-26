@@ -21,9 +21,12 @@ for (const entry of workspaceEntries) {
 
 const expectedPublishable = new Set(["@chrisdoc/hevy-cli", "hevy-mcp"]);
 const unexpected = publishable.filter((name) => !expectedPublishable.has(name));
-if (unexpected.length > 0) {
+const missing = [...expectedPublishable].filter(
+	(name) => !publishable.includes(name),
+);
+if (unexpected.length > 0 || missing.length > 0) {
 	throw new Error(
-		`Unexpected publishable packages: ${unexpected.join(", ")}; expected @chrisdoc/hevy-cli and hevy-mcp`,
+		`Publishable package mismatch; unexpected: ${unexpected.join(", ") || "none"}; missing: ${missing.join(", ") || "none"}`,
 	);
 }
 

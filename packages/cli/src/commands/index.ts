@@ -8,6 +8,7 @@ import {
 	parseExerciseHistoryOptions,
 	parseExerciseId,
 	parseMeasurementDate,
+	parseSearchMaxPages,
 	parsePagination,
 	parseRoutineId,
 	parseSearchQuery,
@@ -17,6 +18,7 @@ import {
 	UsageError,
 	type CliArgs,
 } from "../arguments.js";
+import { ApiResponseError } from "../errors.js";
 import { normalize, pageEnvelope } from "../output/normalize.js";
 
 type Body = Record<string, unknown>;
@@ -39,7 +41,7 @@ function list(data: Body, source: string, output: string, page: number): Body {
 		count < 0 ||
 		(data.page !== undefined && data.page !== page)
 	)
-		throw new Error("The API returned invalid pagination metadata");
+		throw new ApiResponseError("The API returned invalid pagination metadata");
 	if (count > 0 && page > count)
 		throw new UsageError("Requested page exceeds the API page count");
 	return pageEnvelope(
@@ -129,13 +131,15 @@ export async function execute(
 		}
 		if (sub === "search") {
 			const query = parseSearchQuery(args.positionals[0]);
+			const maxPages = parseSearchMaxPages(args);
 			const matches: unknown[] = [];
 			let pagesScanned = 0;
 			let pageCount = 1;
-			while (pagesScanned < pageCount) {
+			while (pagesScanned < pageCount && pagesScanned < maxPages) {
+				const requestedPage = pagesScanned + 1;
 				const result = body(
 					await client.getExerciseTemplates({
-						page: pagesScanned + 1,
+						page: requestedPage,
 						pageSize: 100,
 					}),
 				);
@@ -143,9 +147,12 @@ export async function execute(
 				if (
 					!Number.isInteger(pageCount) ||
 					pageCount < 0 ||
-					(pageCount > 0 && pageCount < pagesScanned + 1)
+					(result.page !== undefined && result.page !== requestedPage) ||
+					(pageCount > 0 && pageCount < requestedPage)
 				)
-					throw new Error("The API returned invalid pagination metadata");
+					throw new ApiResponseError(
+						"The API returned invalid pagination metadata",
+					);
 				pagesScanned += 1;
 				if (pageCount === 0) break;
 				for (const item of Array.isArray(result.exercise_templates)
@@ -154,7 +161,12 @@ export async function execute(
 					if (text(body(item).title).toLocaleLowerCase().includes(query))
 						matches.push(normalize(item));
 			}
-			return { query, matches, pagesScanned, complete: true };
+			return {
+				query,
+				matches,
+				pagesScanned,
+				complete: pagesScanned >= pageCount,
+			};
 		}
 	}
 	if (command === "measurements") {
@@ -183,6 +195,7 @@ export async function execute(
 		let pageCount = 1;
 		let pagesScanned = 0;
 		const workouts: Body[] = [];
+		let stoppedEarly = false;
 		while (pageNumber <= pageCount) {
 			const result = body(
 				await client.getWorkouts({ page: pageNumber, pageSize: 10 }),
@@ -191,9 +204,12 @@ export async function execute(
 			if (
 				!Number.isInteger(pageCount) ||
 				pageCount < 0 ||
+				(result.page !== undefined && result.page !== pageNumber) ||
 				(pageCount > 0 && pageCount < pageNumber)
 			)
-				throw new Error("The API returned invalid pagination metadata");
+				throw new ApiResponseError(
+					"The API returned invalid pagination metadata",
+				);
 			pagesScanned += 1;
 			if (pageCount === 0) break;
 			const items = Array.isArray(result.workouts)
@@ -202,14 +218,17 @@ export async function execute(
 			for (const workout of items) {
 				const timestamp = Date.parse(text(workout.start_time));
 				if (Number.isNaN(timestamp))
-					throw new Error(
+					throw new ApiResponseError(
 						"The API returned a workout with an invalid timestamp",
 					);
 				if (timestamp >= from.getTime() && timestamp <= to.getTime())
 					workouts.push(workout);
 			}
 			const oldest = items.at(-1)?.start_time;
-			if (oldest && Date.parse(text(oldest)) < from.getTime()) break;
+			if (oldest && Date.parse(text(oldest)) < from.getTime()) {
+				stoppedEarly = true;
+				break;
+			}
 			pageNumber += 1;
 		}
 		let exerciseCount = 0,
@@ -244,7 +263,8 @@ export async function execute(
 			setCount,
 			totalVolumeKg,
 			pagesScanned,
-			complete: pageNumber > pageCount || pagesScanned === pageCount,
+			complete:
+				stoppedEarly || pageNumber > pageCount || pagesScanned === pageCount,
 		};
 	}
 	throw new UsageError("Unknown command; run hevy --help");

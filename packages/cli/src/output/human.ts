@@ -22,6 +22,7 @@ export function human(value: unknown): string {
 							.map(([k, v]) => `${k}=${scalar(v)}`)
 							.join(", ")}`,
 					);
+				else lines.push(`  - ${scalar(child)}`);
 			}
 		} else if (item && typeof item === "object") {
 			lines.push(`${key}:`);

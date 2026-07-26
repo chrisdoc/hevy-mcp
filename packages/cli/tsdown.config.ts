@@ -9,7 +9,7 @@ export default defineConfig({
 	entry: ["src/cli.ts"],
 	format: ["esm"],
 	platform: "node",
-	target: "node20",
+	target: "node24",
 	dts: false,
 	clean: true,
 	outDir: "dist",

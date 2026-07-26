@@ -20,6 +20,8 @@ export interface CliArgs {
 
 export class UsageError extends Error {}
 
+export class ConfigurationError extends Error {}
+
 function parseForUsage<T>(
 	schema: z.ZodType<T>,
 	value: unknown,
@@ -40,6 +42,9 @@ function parseForUsage<T>(
 	}
 }
 
+const safePositiveInteger = (message: string) =>
+	z.number().int().refine(Number.isSafeInteger, message).min(1, message);
+
 const paginationSchema = (
 	source:
 		| typeof getV1WorkoutsQueryParamsSchema
@@ -48,13 +53,17 @@ const paginationSchema = (
 ) =>
 	z.object({
 		page: source.shape.page
-			.pipe(z.number().int().min(1, "must be a positive integer"))
+			.pipe(safePositiveInteger("must be a positive integer"))
 			.default(1),
 		pageSize: source.shape.pageSize
 			.pipe(
 				z
 					.number()
 					.int()
+					.refine(
+						Number.isSafeInteger,
+						"must be a positive integer no greater than 10",
+					)
 					.min(1, "must be a positive integer no greater than 10")
 					.max(10, "must be a positive integer no greater than 10"),
 			)
@@ -63,13 +72,17 @@ const paginationSchema = (
 
 const eventOptionsSchema = z.object({
 	page: getV1WorkoutsEventsQueryParamsSchema.shape.page
-		.pipe(z.number().int().min(1, "must be a positive integer"))
+		.pipe(safePositiveInteger("must be a positive integer"))
 		.default(1),
 	pageSize: getV1WorkoutsEventsQueryParamsSchema.shape.pageSize
 		.pipe(
 			z
 				.number()
 				.int()
+				.refine(
+					Number.isSafeInteger,
+					"must be a positive integer no greater than 10",
+				)
 				.min(1, "must be a positive integer no greater than 10")
 				.max(10, "must be a positive integer no greater than 10"),
 		)
@@ -94,10 +107,8 @@ const exerciseHistoryOptionsSchema = z.object({
 const safePathSegment = (message: string) =>
 	z
 		.string()
-		.refine(
-			(value) => value.trim().length > 0 && !/[/?#]/.test(value),
-			message,
-		);
+		.trim()
+		.refine((value) => value.length > 0 && !/[/?#]/.test(value), message);
 const workoutIdSchema =
 	getV1WorkoutsWorkoutidPathParamsSchema.shape.workoutId.pipe(
 		safePathSegment("is required and must be a safe path segment"),
@@ -121,9 +132,16 @@ const measurementDateSchema =
 	getV1BodyMeasurementsDatePathParamsSchema.shape.date;
 const weeksSchema = z.coerce
 	.number()
-	.int()
-	.min(1, "must be a positive integer")
+	.max(520, "must be a positive integer no greater than 520")
+	.pipe(safePositiveInteger("must be a positive integer no greater than 520"))
 	.default(1);
+const searchOptionsSchema = z.object({
+	maxPages: z.coerce
+		.number()
+		.max(100, "must be a positive integer no greater than 100")
+		.pipe(safePositiveInteger("must be a positive integer"))
+		.default(10),
+});
 
 export function parsePagination(
 	args: CliArgs,
@@ -223,8 +241,17 @@ export function parseSearchQuery(value: string | undefined): string {
 	}).toLocaleLowerCase();
 }
 
+export function parseSearchMaxPages(args: CliArgs): number {
+	return parseForUsage(
+		searchOptionsSchema,
+		{ maxPages: args.options["max-pages"] },
+		{ maxPages: "--max-pages" },
+		{ maxPages: "must be a positive integer no greater than 100" },
+	).maxPages;
+}
+
 export function parseWeeks(args: CliArgs): number {
 	return parseForUsage(weeksSchema, args.options.weeks, "--weeks", {
-		_: "must be a positive integer",
+		_: "must be a positive integer no greater than 520",
 	});
 }

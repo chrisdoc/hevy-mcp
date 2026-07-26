@@ -22,6 +22,16 @@ try {
 		throw new Error("CLI package metadata missing");
 	if (manifest.dependencies && Object.keys(manifest.dependencies).length)
 		throw new Error("CLI has runtime dependencies");
+	await exec("tar", ["-xzf", join(dir, names[0]), "-C", dir]);
+	const version = await exec(
+		"node",
+		[join(dir, "package/dist/cli.mjs"), "--version"],
+		{
+			env: { ...process.env, HEVY_API_KEY: undefined },
+		},
+	);
+	if (version.stdout !== `${manifest.version}\n` || version.stderr !== "")
+		throw new Error("Packed CLI executable did not report its version");
 } finally {
 	await rm(dir, { recursive: true, force: true });
 }
