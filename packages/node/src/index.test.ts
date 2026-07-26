@@ -298,6 +298,8 @@ describe("Node package entrypoint", () => {
 		);
 
 		await runServer();
+		expect(testDoubles.setTelemetryUser).toHaveBeenCalledOnce();
+		expect(testDoubles.setTelemetryUser).toHaveBeenCalledWith("runtime-key");
 
 		expect(testDoubles.startupClient.getUserInfo).toHaveBeenCalledOnce();
 		expect(testDoubles.createHevyMcpServer).toHaveBeenCalledOnce();
@@ -317,6 +319,7 @@ describe("Node package entrypoint", () => {
 		await expect(runServer()).rejects.toThrow(
 			"HEVY_API_KEY is invalid or expired",
 		);
+		expect(testDoubles.setTelemetryUser).toHaveBeenCalledWith("invalid-key");
 		expect(testDoubles.startStreamableHttpServer).not.toHaveBeenCalled();
 		expect(testDoubles.recordSessionTermination).toHaveBeenCalledWith(
 			"startup_failure",

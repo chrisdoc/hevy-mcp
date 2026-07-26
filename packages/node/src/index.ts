@@ -329,6 +329,7 @@ export async function runServer(): Promise<void> {
 			try {
 				const cfg = parseConfig(process.env);
 				assertApiKey(cfg.apiKey);
+				setTelemetryUser(cfg.apiKey);
 				await validateApiKey(cfg.apiKey);
 				const handle = await startStreamableHttpServer(
 					options,
