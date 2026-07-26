@@ -12,13 +12,29 @@
 [![Hosted on Cloudflare](https://img.shields.io/badge/Hosted_on-Cloudflare-F38020?logo=cloudflare&logoColor=white)](#hosted-cloudflare-endpoint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the read-only CLI](#read-only-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
 
 </div>
 
 ## Read-only CLI
 
-The separate [`@chrisdoc/hevy-cli`](https://www.npmjs.com/package/@chrisdoc/hevy-cli) package provides a focused `hevy` command for common Hevy workflows. Install it with `npm install -g @chrisdoc/hevy-cli`, set `HEVY_API_KEY`, and run `hevy --help`. It is an API client, not an MCP wrapper; see [`packages/cli/README.md`](packages/cli/README.md) for commands, JSON output, and exit codes.
+Prefer the terminal? The separate
+[`@chrisdoc/hevy-cli`](https://www.npmjs.com/package/@chrisdoc/hevy-cli)
+package reads workouts, routines, exercises, and body measurements directly
+from the Hevy API. It never creates, updates, or deletes Hevy data.
+
+```sh
+npm install -g @chrisdoc/hevy-cli
+export HEVY_API_KEY=your-hevy-api-key
+
+hevy workouts list --page-size 10
+hevy summary --weeks 4
+```
+
+Add `--json` to any command for scripts and pipelines. The CLI is a standalone
+Hevy API client, not an MCP wrapper. See
+[`packages/cli/README.md`](packages/cli/README.md) for the full command
+reference, pagination behavior, and exit codes.
 
 `hevy-mcp` is an open-source [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server for the [Hevy](https://www.hevyapp.com/) fitness and workout tracking
