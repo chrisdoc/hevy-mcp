@@ -21,6 +21,7 @@
 	},
 	"scripts": {
 		"build": "tsdown",
+		"prepack": "npm run build",
 		"check:types": "tsc --noEmit",
 		"test": "vitest run"
 	},
