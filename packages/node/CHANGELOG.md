@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 4.0.1
+
+### Patch Changes
+
+- [#756](https://github.com/chrisdoc/hevy-mcp/pull/756) [`90756f6`](https://github.com/chrisdoc/hevy-mcp/commit/90756f69d850619baa0ef391e8e4f9fca579dca9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Include repository metadata in published package manifests for npm provenance validation.
+
 ## 4.0.0
 
 ### Major Changes
