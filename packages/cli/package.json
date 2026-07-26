@@ -1,0 +1,30 @@
+{
+	"name": "hevy-cli",
+	"version": "0.0.0",
+	"description": "Command-line client for the Hevy API",
+	"license": "MIT",
+	"bin": {
+		"hevy": "dist/cli.mjs"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"package.json"
+	],
+	"type": "module",
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"check:types": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"@hevy-mcp/hevy-client": "file:../hevy-client"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}
