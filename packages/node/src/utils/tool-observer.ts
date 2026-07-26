@@ -13,6 +13,7 @@ import {
 } from "./metrics.js";
 import {
 	getCurrentMcpClientMetadata,
+	getCurrentMcpTransport,
 	recordMcpToolFailure,
 	recordMcpToolInvocation,
 } from "./mcp-session-observability.js";
@@ -63,7 +64,7 @@ function createAttributes(
 		"mcp.client.name": clientMetadata.name,
 		"mcp.client.version": clientMetadata.version,
 		"mcp.protocol.version": clientMetadata.protocolVersion,
-		"mcp.transport": "stdio",
+		"mcp.transport": getCurrentMcpTransport(),
 		"mcp.tool.args.key_count_bucket":
 			invocation.argumentKeyCountBucket ?? "unknown",
 		"mcp.tool.args.keys": invocation.argumentKeys?.join(",") ?? "",
