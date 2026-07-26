@@ -9,6 +9,7 @@
  * OTel Collector → Honeycomb: performance traces, metrics
  */
 
+import { createHmac } from "node:crypto";
 import * as Sentry from "@sentry/node";
 import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
 import {
@@ -42,6 +43,8 @@ const name =
 const version =
 	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
 
+const telemetryEnabled = process.env.HEVY_MCP_TELEMETRY !== "0";
+
 // Collector token is injected at build time from the OTEL_COLLECTOR_TOKEN
 // GitHub secret via tsdown.config.ts define. The collector forwards
 // traces and metrics to Honeycomb, keeping the Honeycomb API key off the
@@ -58,24 +61,6 @@ const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
 const resource = resourceFromAttributes({
 	"service.name": name,
 	"service.version": version,
-});
-
-const bakedDsn =
-	"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
-const rawDsn = process.env.SENTRY_DSN ?? bakedDsn;
-const isValidDsn =
-	typeof rawDsn === "string" && rawDsn.length > 0 && !rawDsn.startsWith("*");
-
-// --- Sentry (error monitoring + traces) ---
-const sentryClient = Sentry.init({
-	dsn: isValidDsn ? rawDsn : undefined,
-	beforeSendSpan: sanitizeSentryMcpSpan,
-	release: sentryRelease,
-	tracesSampleRate: 1.0,
-	sendDefaultPii: false,
-	skipOpenTelemetrySetup: true,
-	registerEsmLoaderHooks: false,
-	ignoreErrors: ["EPIPE", "broken pipe"],
 });
 
 // --- OpenTelemetry tracer provider (dual export) ---
@@ -95,64 +80,90 @@ class UserHashSpanProcessor implements SpanProcessor {
 	async shutdown(): Promise<void> {}
 }
 
-const spanProcessors: SpanProcessor[] = [
-	new UserHashSpanProcessor(),
-	new SentrySpanProcessor(),
-];
-
-// OTel Collector → Honeycomb traces — only if token is available
-if (collectorToken) {
-	spanProcessors.push(
-		new BatchSpanProcessor(
-			new OTLPTraceExporter({
-				url: `${COLLECTOR_ENDPOINT}/traces`,
-				headers: {
-					Authorization: `Bearer ${collectorToken}`,
-				},
-			}),
-		),
-	);
-}
-
-const tracerProvider = new NodeTracerProvider({
-	resource,
-	sampler: sentryClient ? new SentrySampler(sentryClient) : undefined,
-	spanProcessors,
-});
-
-tracerProvider.register({
-	propagator: new SentryPropagator(),
-	contextManager: new Sentry.SentryContextManager(),
-});
-
+let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
-// --- OpenTelemetry meter provider (→ Collector → Honeycomb metrics) ---
-if (collectorToken) {
-	meterProvider = new MeterProvider({
-		resource,
-		readers: [
-			new PeriodicExportingMetricReader({
-				exporter: new OTLPMetricExporter({
-					url: `${COLLECTOR_ENDPOINT}/metrics`,
+
+if (telemetryEnabled) {
+	const bakedDsn =
+		"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
+	const rawDsn = process.env.SENTRY_DSN ?? bakedDsn;
+	const isValidDsn =
+		typeof rawDsn === "string" && rawDsn.length > 0 && !rawDsn.startsWith("*");
+
+	// --- Sentry (error monitoring + traces) ---
+	const sentryClient = Sentry.init({
+		dsn: isValidDsn ? rawDsn : undefined,
+		beforeSendSpan: sanitizeSentryMcpSpan,
+		release: sentryRelease,
+		tracesSampleRate: 1.0,
+		sendDefaultPii: false,
+		skipOpenTelemetrySetup: true,
+		registerEsmLoaderHooks: false,
+		ignoreErrors: ["EPIPE", "broken pipe"],
+	});
+
+	const spanProcessors: SpanProcessor[] = [
+		new UserHashSpanProcessor(),
+		new SentrySpanProcessor(),
+	];
+
+	// OTel Collector → Honeycomb traces — only if token is available
+	if (collectorToken) {
+		spanProcessors.push(
+			new BatchSpanProcessor(
+				new OTLPTraceExporter({
+					url: `${COLLECTOR_ENDPOINT}/traces`,
 					headers: {
 						Authorization: `Bearer ${collectorToken}`,
 					},
 				}),
-				exportIntervalMillis: 10_000,
-			}),
-		],
+			),
+		);
+	}
+
+	tracerProvider = new NodeTracerProvider({
+		resource,
+		sampler: sentryClient ? new SentrySampler(sentryClient) : undefined,
+		spanProcessors,
 	});
-	metrics.setGlobalMeterProvider(meterProvider);
+
+	tracerProvider.register({
+		propagator: new SentryPropagator(),
+		contextManager: new Sentry.SentryContextManager(),
+	});
+
+	// --- OpenTelemetry meter provider (→ Collector → Honeycomb metrics) ---
+	if (collectorToken) {
+		meterProvider = new MeterProvider({
+			resource,
+			readers: [
+				new PeriodicExportingMetricReader({
+					exporter: new OTLPMetricExporter({
+						url: `${COLLECTOR_ENDPOINT}/metrics`,
+						headers: {
+							Authorization: `Bearer ${collectorToken}`,
+						},
+					}),
+					exportIntervalMillis: 10_000,
+				}),
+			],
+		});
+		metrics.setGlobalMeterProvider(meterProvider);
+	}
+
+	trace.setGlobalTracerProvider(tracerProvider);
+
+	// Validate that Sentry + OpenTelemetry are wired correctly
+	Sentry.validateOpenTelemetrySetup();
 }
 
-trace.setGlobalTracerProvider(tracerProvider);
-
-// Validate that Sentry + OpenTelemetry are wired correctly
-Sentry.validateOpenTelemetrySetup();
-
 export async function flushTelemetry(timeoutMs = 1_000): Promise<void> {
+	if (!telemetryEnabled) {
+		return;
+	}
+
 	const flushPromise = Promise.allSettled([
-		tracerProvider.forceFlush(),
+		...(tracerProvider ? [tracerProvider.forceFlush()] : []),
 		...(meterProvider ? [meterProvider.forceFlush()] : []),
 		Sentry.flush(timeoutMs),
 	]);
@@ -187,6 +198,17 @@ export const serviceInfo: ServiceInfo = { name, version } as const;
 export { name as serviceName, version as serviceVersion };
 
 // --- User context for span attributes ---
-export function setCurrentUserHash(hash: string): void {
-	currentUserHash = hash;
+const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
+
+export function setTelemetryUser(apiKey: string): void {
+	if (!telemetryEnabled) {
+		return;
+	}
+
+	const userHash = createHmac("sha256", apiKey)
+		.update(SENTRY_USER_ID_CONTEXT)
+		.digest("hex")
+		.slice(0, 10);
+	currentUserHash = userHash;
+	Sentry.setUser({ id: userHash });
 }
