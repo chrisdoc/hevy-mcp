@@ -1,8 +1,12 @@
 {
 	"name": "@chrisdoc/hevy-cli",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Command-line client for the Hevy API",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/chrisdoc/hevy-mcp"
+	},
 	"bin": {
 		"hevy": "dist/cli.mjs"
 	},
@@ -17,6 +21,7 @@
 	},
 	"scripts": {
 		"build": "tsdown",
+		"prepack": "npm run build",
 		"check:types": "tsc --noEmit",
 		"test": "vitest run"
 	},

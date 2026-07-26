@@ -12,13 +12,29 @@
 [![Hosted on Cloudflare](https://img.shields.io/badge/Hosted_on-Cloudflare-F38020?logo=cloudflare&logoColor=white)](#hosted-cloudflare-endpoint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the read-only CLI](#read-only-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
 
 </div>
 
 ## Read-only CLI
 
-The separate [`@chrisdoc/hevy-cli`](https://www.npmjs.com/package/@chrisdoc/hevy-cli) package provides a focused `hevy` command for common Hevy workflows. Install it with `npm install -g @chrisdoc/hevy-cli`, set `HEVY_API_KEY`, and run `hevy --help`. It is an API client, not an MCP wrapper; see [`packages/cli/README.md`](packages/cli/README.md) for commands, JSON output, and exit codes.
+Prefer the terminal? The separate
+[`@chrisdoc/hevy-cli`](https://www.npmjs.com/package/@chrisdoc/hevy-cli)
+package reads workouts, routines, exercises, and body measurements directly
+from the Hevy API. It never creates, updates, or deletes Hevy data.
+
+```sh
+npm install -g @chrisdoc/hevy-cli
+export HEVY_API_KEY=your-hevy-api-key
+
+hevy workouts list --page-size 10
+hevy summary --weeks 4
+```
+
+Add `--json` to any command for scripts and pipelines. The CLI is a standalone
+Hevy API client, not an MCP wrapper. See
+[`packages/cli/README.md`](packages/cli/README.md) for the full command
+reference, pagination behavior, and exit codes.
 
 `hevy-mcp` is an open-source [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server for the [Hevy](https://www.hevyapp.com/) fitness and workout tracking
@@ -464,20 +480,37 @@ self-hosted Streamable HTTP.
 
 ## Advanced configuration
 
-| Setting                | Default                        | Scope                         | Notes                                                                                                               |
-| ---------------------- | ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `HEVY_API_KEY`         | None; required                 | Local stdio                   | Hevy API key from the Hevy app. Never pass it in a URL.                                                             |
-| `HEVY_MCP_API_TIMEOUT` | `30000` ms                     | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 30 seconds.                                  |
-| `HEVY_MCP_DEBUG`       | Disabled                       | Local stdio                   | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.             |
-| `XDG_CACHE_HOME`       | `~/.cache`                     | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                    |
-| `SENTRY_DSN`           | Packaged project DSN           | Optional local Node telemetry | Overrides the Sentry destination. An empty value disables Sentry export. The Worker does not import Node telemetry. |
-| `SENTRY_RELEASE`       | `hevy-mcp@<installed-version>` | Optional local Node telemetry | Overrides the release label attached to local Sentry events and traces.                                             |
-| `-h`, `--help`         | N/A                            | Local stdio CLI               | Print supported options and exit.                                                                                   |
-| `-v`, `--version`      | N/A                            | Local stdio CLI               | Print the installed version and exit.                                                                               |
+| Setting                      | Default                        | Scope                         | Notes                                                                                                               |
+| ---------------------------- | ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `HEVY_API_KEY`               | None; required                 | Local stdio or HTTP           | Hevy API key from the Hevy app. Never pass it in a URL.                                                             |
+| `HEVY_MCP_API_TIMEOUT`       | `30000` ms                     | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 30 seconds.                                  |
+| `HEVY_MCP_DEBUG`             | Disabled                       | Local Node                    | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.             |
+| `HEVY_MCP_HTTP_BEARER_TOKEN` | None                           | Non-loopback HTTP             | Required when `--host` is not loopback; use a separate token, never the Hevy API key.                               |
+| `XDG_CACHE_HOME`             | `~/.cache`                     | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                    |
+| `SENTRY_DSN`                 | Packaged project DSN           | Optional local Node telemetry | Overrides the Sentry destination. An empty value disables Sentry export. The Worker does not import Node telemetry. |
+| `SENTRY_RELEASE`             | `hevy-mcp@<installed-version>` | Optional local Node telemetry | Overrides the release label attached to local Sentry events and traces.                                             |
+| `-h`, `--help`               | N/A                            | Local stdio CLI               | Print supported options and exit.                                                                                   |
+| `-v`, `--version`            | N/A                            | Local stdio CLI               | Print the installed version and exit.                                                                               |
 
-The local executable is stdio-only. It does not support `PORT`,
-`HEVY_MCP_TRANSPORT`, or `--transport`, and it does not provide local HTTP or
-SSE behavior.
+The local Node executable uses stdio by default. Opt into local Streamable
+HTTP with:
+
+```bash
+HEVY_API_KEY=your-hevy-api-key npx hevy-mcp --transport http --host 127.0.0.1 --port 3000
+```
+
+The local MCP endpoint is `http://127.0.0.1:3000/mcp`; non-loopback binds
+require the separate `HEVY_MCP_HTTP_BEARER_TOKEN` environment variable. A
+Docker deployment must publish the port explicitly:
+
+```bash
+docker run --rm -p 3000:3000 -e HEVY_API_KEY -e HEVY_MCP_HTTP_BEARER_TOKEN \\
+  ghcr.io/chrisdoc/hevy-mcp:latest --transport http --host 0.0.0.0 --port 3000
+```
+
+This Node HTTP mode is distinct from the stateless Cloudflare Worker HTTP
+endpoint described above: the Node server owns stateful client sessions, while
+the Worker is designed for hosted deployment and does not import Node code.
 
 ### Cache behavior
 
