@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 4.1.0
+
+### Minor Changes
+
+- [#758](https://github.com/chrisdoc/hevy-mcp/pull/758) [`f2b9bff`](https://github.com/chrisdoc/hevy-mcp/commit/f2b9bffbfe1c2fcc2a2f4fcf2a7b087849d49f67) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add opt-in Streamable HTTP transport to the Node package while preserving stdio as the default.
+
 ## 4.0.1
 
 ### Patch Changes
