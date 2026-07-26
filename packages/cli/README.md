@@ -17,6 +17,9 @@ Search and summary report `pagesScanned` and `complete` when they scan multiple
 pages. The MVP does not mutate data.
 
 Credentials are accepted only from `HEVY_API_KEY`; keys in arguments or URLs
-are unsupported. Errors are sent to stderr and success output to stdout. Exit
-codes are 1 for configuration, 2 for usage/validation, 3 for API failures, and
-4 for network/timeout failures.
+are unsupported. Stricli handles command routing, flags, and primitive parsing;
+semantic values are validated with Zod schemas derived from the Hevy client API
+contracts. Errors are sent as one sanitized line to stderr and success output to
+stdout. Usage, validation, and configuration errors exit 2; API failures exit 3,
+and network/timeout failures exit 4. Semantic validation happens before
+any API request, and Zod implementation details are not exposed in diagnostics.

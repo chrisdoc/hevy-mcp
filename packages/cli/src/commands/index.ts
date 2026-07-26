@@ -1,10 +1,20 @@
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import {
+	getV1BodyMeasurementsQueryParamsSchema,
+	getV1RoutinesQueryParamsSchema,
+} from "@hevy-mcp/hevy-client/schemas";
+import {
+	parseExerciseHistoryId,
+	parseExerciseHistoryOptions,
+	parseExerciseId,
+	parseMeasurementDate,
+	parsePagination,
+	parseRoutineId,
+	parseSearchQuery,
+	parseWeeks,
+	parseWorkoutEventsOptions,
+	parseWorkoutId,
 	UsageError,
-	iso,
-	option,
-	positiveInt,
-	requiredId,
 	type CliArgs,
 } from "../arguments.js";
 import { normalize, pageEnvelope } from "../output/normalize.js";
@@ -46,91 +56,79 @@ export async function execute(
 ): Promise<unknown> {
 	const command = args.command;
 	const sub = args.subcommand;
-	const page = positiveInt(args, "page", 1);
-	const pageSize = positiveInt(args, "page-size", 5, 10);
 	if (command === "user" && !sub)
 		return { user: normalize(await client.getUserInfo()) };
 	if (command === "workouts") {
-		if (sub === "list")
+		if (sub === "list") {
+			const { page, pageSize } = parsePagination(args);
 			return list(
 				body(await client.getWorkouts({ page, pageSize })),
 				"workouts",
 				"workouts",
 				page,
 			);
-		if (sub === "get")
+		}
+		if (sub === "get") {
+			const workoutId = parseWorkoutId(args.positionals[0]);
 			return {
-				workout: normalize(
-					await client.getWorkout(
-						requiredId(args.positionals[0], "Workout ID"),
-					),
-				),
+				workout: normalize(await client.getWorkout(workoutId)),
 			};
+		}
 		if (sub === "count")
 			return { count: body(await client.getWorkoutCount()).workout_count ?? 0 };
-		if (sub === "events")
+		if (sub === "events") {
+			const options = parseWorkoutEventsOptions(args);
 			return {
 				...list(
-					body(
-						await client.getWorkoutEvents({
-							page,
-							pageSize,
-							since: iso(option(args, "since"), "--since"),
-						}),
-					),
+					body(await client.getWorkoutEvents(options)),
 					"events",
 					"events",
-					page,
+					options.page,
 				),
-				since: option(args, "since") ?? "1970-01-01T00:00:00Z",
+				since: options.since,
 			};
+		}
 	}
 	if (command === "routines") {
-		if (sub === "list")
+		if (sub === "list") {
+			const { page, pageSize } = parsePagination(
+				args,
+				getV1RoutinesQueryParamsSchema,
+			);
 			return list(
 				body(await client.getRoutines({ page, pageSize })),
 				"routines",
 				"routines",
 				page,
 			);
-		if (sub === "get")
+		}
+		if (sub === "get") {
+			const routineId = parseRoutineId(args.positionals[0]);
 			return {
-				routine: normalize(
-					await client.getRoutineById(
-						requiredId(args.positionals[0], "Routine ID"),
-					),
-				),
+				routine: normalize(await client.getRoutineById(routineId)),
 			};
+		}
 	}
 	if (command === "exercises") {
-		if (sub === "get")
+		if (sub === "get") {
+			const exerciseId = parseExerciseId(args.positionals[0]);
 			return {
-				exercise: normalize(
-					await client.getExerciseTemplate(
-						requiredId(args.positionals[0], "Exercise ID"),
-					),
-				),
+				exercise: normalize(await client.getExerciseTemplate(exerciseId)),
 			};
+		}
 		if (sub === "history") {
-			const start = iso(option(args, "start-date"), "--start-date");
-			const end = iso(option(args, "end-date"), "--end-date");
+			const exerciseId = parseExerciseHistoryId(args.positionals[0]);
+			const options = parseExerciseHistoryOptions(args);
 			return {
-				exerciseTemplateId: requiredId(args.positionals[0], "Exercise ID"),
+				exerciseTemplateId: exerciseId,
 				history: normalize(
-					(
-						await client.getExerciseHistory(args.positionals[0], {
-							start_date: start,
-							end_date: end,
-						})
-					).exercise_history ?? [],
+					(await client.getExerciseHistory(exerciseId, options))
+						.exercise_history ?? [],
 				),
 			};
 		}
 		if (sub === "search") {
-			const query = requiredId(
-				args.positionals[0],
-				"Search query",
-			).toLocaleLowerCase();
+			const query = parseSearchQuery(args.positionals[0]);
 			const matches: unknown[] = [];
 			let pagesScanned = 0;
 			let pageCount = 1;
@@ -160,21 +158,25 @@ export async function execute(
 		}
 	}
 	if (command === "measurements") {
-		if (sub === "list")
+		if (sub === "list") {
+			const { page, pageSize } = parsePagination(
+				args,
+				getV1BodyMeasurementsQueryParamsSchema,
+			);
 			return list(
 				body(await client.getBodyMeasurements({ page, pageSize })),
 				"body_measurements",
 				"measurements",
 				page,
 			);
+		}
 		if (sub === "get") {
-			const date = requiredId(args.positionals[0], "Measurement date");
-			iso(date, "Measurement date", true);
+			const date = parseMeasurementDate(args.positionals[0]);
 			return { measurement: normalize(await client.getBodyMeasurement(date)) };
 		}
 	}
 	if (command === "summary") {
-		const weeks = positiveInt(args, "weeks", 1);
+		const weeks = parseWeeks(args);
 		const to = now();
 		const from = new Date(to.getTime() - weeks * 7 * 24 * 60 * 60 * 1000);
 		let pageNumber = 1;
