@@ -21,7 +21,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		stderr: (text) => process.stderr.write(text),
 	};
 	try {
-		const args = parseArguments(options.argv);
+		const args = await parseArguments(options.argv);
 		if (args.options.help || (!args.command && !args.options.version)) {
 			streams.stdout(HELP);
 			return 0;

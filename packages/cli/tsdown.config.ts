@@ -13,7 +13,10 @@ export default defineConfig({
 	dts: false,
 	clean: true,
 	outDir: "dist",
-	deps: { alwaysBundle: ["@hevy-mcp/hevy-client"], onlyBundle: false },
+	deps: {
+		alwaysBundle: ["@hevy-mcp/hevy-client", "@stricli/core"],
+		onlyBundle: false,
+	},
 	define: { __HEVY_CLI_VERSION__: JSON.stringify(version) },
 	outputOptions: { codeSplitting: false, entryFileNames: "cli.mjs" },
 	banner: { js: "#!/usr/bin/env node" },

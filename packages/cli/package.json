@@ -20,9 +20,9 @@
 		"check:types": "tsc --noEmit",
 		"test": "vitest run"
 	},
-	"dependencies": {},
 	"devDependencies": {
-		"@hevy-mcp/hevy-client": "file:../hevy-client"
+		"@hevy-mcp/hevy-client": "file:../hevy-client",
+		"@stricli/core": "^1.3.0"
 	},
 	"engines": {
 		"node": ">=20.0.0"
