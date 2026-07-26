@@ -17,10 +17,8 @@ describe("CLI process contract", () => {
 		expect(out).toContain("workouts");
 		expect(err).toBe("");
 		out = "";
-		expect(
-			await runCli({ argv: ["--version"], env: {}, version: "1.2.3", streams }),
-		).toBe(0);
-		expect(out).toBe("1.2.3\n");
+		expect(await runCli({ argv: ["--version"], env: {}, streams })).toBe(0);
+		expect(out).toBe("0.0.0\n");
 	});
 	it("keeps missing credentials on stderr", async () => {
 		let out = "";

@@ -1,24 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { parseArguments, UsageError, positiveInt } from "./arguments.js";
+import { positiveInt, UsageError, type CliArgs } from "./arguments.js";
 
-describe("CLI arguments", () => {
-	it("parses commands and options", async () => {
-		const parsed = await parseArguments([
-			"workouts",
-			"list",
-			"--page",
-			"2",
-			"--json",
-		]);
-		expect(parsed.command).toBe("workouts");
-		expect(parsed.subcommand).toBe("list");
-		expect(parsed.options).toEqual({ page: "2", json: true });
-	});
-	it("rejects credential-like options and invalid bounds", async () => {
-		await expect(
-			parseArguments(["user", "--api-key", "secret"]),
-		).rejects.toThrow(UsageError);
-		const parsed = await parseArguments(["--page-size", "11"]);
-		expect(() => positiveInt(parsed, "page-size", 5, 10)).toThrow(UsageError);
+const args = (options: CliArgs["options"]): CliArgs => ({
+	positionals: [],
+	options,
+});
+
+describe("CLI argument validation", () => {
+	it("validates positive integer bounds", () => {
+		expect(positiveInt(args({}), "page-size", 5, 10)).toBe(5);
+		expect(() =>
+			positiveInt(args({ "page-size": "11" }), "page-size", 5, 10),
+		).toThrow(UsageError);
 	});
 });

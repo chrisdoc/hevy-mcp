@@ -1,18 +1,15 @@
 import { createHevyClient, type HevyClient } from "@hevy-mcp/hevy-client";
-import { HELP, parseArguments, UsageError } from "./arguments.js";
 import { getApiKey } from "./auth.js";
 import { diagnostic, EXIT } from "./errors.js";
-import { execute } from "./commands/index.js";
+import { runRoutes } from "./routes.js";
 import { writeResult, type Streams } from "./output/write.js";
 
-declare const __HEVY_CLI_VERSION__: string;
 export interface RunCliOptions {
 	argv: string[];
 	env?: Record<string, string | undefined>;
 	clientFactory?: (key: string) => HevyClient;
 	now?: () => Date;
 	streams?: Streams;
-	version?: string;
 }
 
 export async function runCli(options: RunCliOptions): Promise<number> {
@@ -20,28 +17,38 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		stdout: (text) => process.stdout.write(text),
 		stderr: (text) => process.stderr.write(text),
 	};
+	const state: { result?: unknown; error?: unknown } = {};
+	const stricliProcess = {
+		stdout: { write: streams.stdout },
+		stderr: { write: streams.stderr },
+		exitCode: undefined as number | undefined,
+	};
+	const context = {
+		process: stricliProcess,
+		state,
+		now: options.now ?? (() => new Date()),
+		client: undefined as HevyClient | undefined,
+	};
+	const metaCommand = options.argv.some((value) =>
+		["--help", "-h", "--version", "-v"].includes(value),
+	);
 	try {
-		const args = await parseArguments(options.argv);
-		if (args.options.help || (!args.command && !args.options.version)) {
-			streams.stdout(HELP);
-			return 0;
+		if (!metaCommand) {
+			const key = getApiKey(options.env ?? globalThis.process.env);
+			context.client = (
+				options.clientFactory ?? ((apiKey) => createHevyClient({ apiKey }))
+			)(key);
 		}
-		if (args.options.version) {
-			streams.stdout(`${options.version ?? __HEVY_CLI_VERSION__}\n`);
-			return 0;
+		const exitCode = await runRoutes(options.argv, context);
+		if (state.error !== undefined) throw state.error;
+		if (exitCode !== 0) return EXIT.usage;
+		if (state.result !== undefined) {
+			const json = options.argv.includes("--json");
+			writeResult(state.result, json, streams);
 		}
-		const key = getApiKey(options.env ?? process.env);
-		const client = (
-			options.clientFactory ?? ((apiKey) => createHevyClient({ apiKey }))
-		)(key);
-		const result = await execute(args, client, options.now);
-		writeResult(result, args.options.json === true, streams);
 		return 0;
 	} catch (error) {
-		const isUsage = error instanceof UsageError;
-		const failure = isUsage
-			? { code: EXIT.usage, message: error.message }
-			: diagnostic(error);
+		const failure = diagnostic(error);
 		streams.stderr(`${failure.message}\n`);
 		return failure.code;
 	}
