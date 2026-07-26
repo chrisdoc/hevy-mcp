@@ -16,6 +16,10 @@
 
 </div>
 
+## Read-only CLI
+
+The separate [`@chrisdoc/hevy-cli`](https://www.npmjs.com/package/@chrisdoc/hevy-cli) package provides a focused `hevy` command for common Hevy workflows. Install it with `npm install -g @chrisdoc/hevy-cli`, set `HEVY_API_KEY`, and run `hevy --help`. It is an API client, not an MCP wrapper; see [`packages/cli/README.md`](packages/cli/README.md) for commands, JSON output, and exit codes.
+
 `hevy-mcp` is an open-source [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server for the [Hevy](https://www.hevyapp.com/) fitness and workout tracking
 app. It lets AI assistants read, analyze, create, and update your Hevy workouts,
