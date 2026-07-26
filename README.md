@@ -16,6 +16,10 @@
 
 </div>
 
+## Read-only CLI
+
+The separate [`@chrisdoc/hevy-cli`](https://www.npmjs.com/package/@chrisdoc/hevy-cli) package provides a focused `hevy` command for common Hevy workflows. Install it with `npm install -g @chrisdoc/hevy-cli`, set `HEVY_API_KEY`, and run `hevy --help`. It is an API client, not an MCP wrapper; see [`packages/cli/README.md`](packages/cli/README.md) for commands, JSON output, and exit codes.
+
 `hevy-mcp` is an open-source [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server for the [Hevy](https://www.hevyapp.com/) fitness and workout tracking
 app. It lets AI assistants read, analyze, create, and update your Hevy workouts,
@@ -167,27 +171,54 @@ Add this `mcpServers` entry to your client configuration:
 
 ##### Google Antigravity
 
-Install the plugin automatically with a single command:
+There are two ways to configure the Hevy MCP server for Google Antigravity (`agy`):
 
-```bash
-agy plugin install https://github.com/chrisdoc/hevy-mcp
-```
+###### Option A: Automatic Plugin Installation (Recommended)
 
-After installation, the plugin automatically registers the server under the `"hevy"` key. You can then configure your API key by running the `/mcp` command in the Antigravity terminal, or by editing your global client configuration file (`~/.gemini/config/mcp_config.json`) to include your credentials:
+This utilizes the built-in plugin system:
 
-```json
-{
-	"mcpServers": {
-		"hevy": {
-			"command": "npx",
-			"args": ["-y", "hevy-mcp"],
-			"env": {
-				"HEVY_API_KEY": "your-actual-api-key"
-			}
-		}
-	}
-}
-```
+1. Install the plugin:
+
+   ```bash
+   agy plugin install https://github.com/chrisdoc/hevy-mcp
+   ```
+
+2. Provide the `HEVY_API_KEY` in your host shell environment so the CLI child process can inherit it:
+   - **Persistent:** Save the environment variable `HEVY_API_KEY` in your system/shell configurations:
+     - **macOS / Linux:** Add it to your shell profile configurations (e.g., `~/.zshrc` or `~/.bashrc`):
+       ```bash
+       export HEVY_API_KEY="your-actual-api-key"
+       ```
+     - **Windows:** Add it to your User or System Environment Variables. In PowerShell, you can run:
+       ```powershell
+       [Environment]::SetEnvironmentVariable("HEVY_API_KEY", "your-actual-api-key", "User")
+       ```
+   - **Temporary (Session-only):** If you do not want to persist the key, export it in your active terminal session before running `agy`:
+     ```bash
+     export HEVY_API_KEY="your-actual-api-key"
+     ```
+
+###### Option B: Manual Configuration (No Plugin)
+
+If you prefer configuring it statically via the global configuration file:
+
+1. Open your global MCP configuration file:
+   - **Location:** `~/.gemini/config/mcp_config.json`
+
+2. Add the `hevy` configuration block under the `mcpServers` key. Make sure to merge this entry with any existing servers you have configured rather than replacing the entire file contents:
+   ```json
+   {
+   	"mcpServers": {
+   		"hevy": {
+   			"command": "npx",
+   			"args": ["-y", "hevy-mcp"],
+   			"env": {
+   				"HEVY_API_KEY": "your-actual-api-key"
+   			}
+   		}
+   	}
+   }
+   ```
 
 Common local configuration locations:
 

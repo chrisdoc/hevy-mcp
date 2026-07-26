@@ -19,9 +19,14 @@ for (const entry of workspaceEntries) {
 	if (packageJson.private !== true) publishable.push(packageJson.name);
 }
 
-if (publishable.length !== 1 || publishable[0] !== "hevy-mcp") {
+const expectedPublishable = new Set(["@chrisdoc/hevy-cli", "hevy-mcp"]);
+const unexpected = publishable.filter((name) => !expectedPublishable.has(name));
+const missing = [...expectedPublishable].filter(
+	(name) => !publishable.includes(name),
+);
+if (unexpected.length > 0 || missing.length > 0) {
 	throw new Error(
-		`Expected only hevy-mcp to be publishable; found ${publishable.join(", ") || "none"}`,
+		`Publishable package mismatch; unexpected: ${unexpected.join(", ") || "none"}; missing: ${missing.join(", ") || "none"}`,
 	);
 }
 
@@ -38,4 +43,6 @@ for (const entry of changesetEntries) {
 	}
 }
 
-console.log("Release candidates are limited to hevy-mcp.");
+console.log(
+	"Release candidates are limited to @chrisdoc/hevy-cli and hevy-mcp.",
+);
