@@ -213,7 +213,7 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 
 	if (pluginJson && pluginJson.version !== packageJson.version) {
 		pluginJson.version = packageJson.version;
-		const updatedPluginContents = `${JSON.stringify(pluginJson, null, 2)}\n`;
+		const updatedPluginContents = `${JSON.stringify(pluginJson, null, "\t")}\n`;
 		await writeFile(pluginPath, updatedPluginContents, "utf8");
 	}
 
