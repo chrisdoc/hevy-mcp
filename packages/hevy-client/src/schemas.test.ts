@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	bodyMeasurementSchema,
 	getV1BodyMeasurementsDatePathParamsSchema,
 	getV1BodyMeasurementsQueryParamsSchema,
 	getV1ExerciseHistoryExercisetemplateidPathParamsSchema,
@@ -51,5 +52,8 @@ describe("curated client schema exports", () => {
 		expect(
 			getV1BodyMeasurementsDatePathParamsSchema.parse({ date: "2024-02-29" }),
 		).toEqual({ date: "2024-02-29" });
+		expect(
+			bodyMeasurementSchema.parse({ date: "2024-02-29", weight_kg: 80 }),
+		).toMatchObject({ date: "2024-02-29", weight_kg: 80 });
 	});
 });

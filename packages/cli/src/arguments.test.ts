@@ -10,6 +10,7 @@ import {
 	parseWorkoutEventsOptions,
 	parseWorkoutId,
 	UsageError,
+	requireMutationConfirmation,
 	type CliArgs,
 } from "./arguments.js";
 
@@ -132,5 +133,17 @@ describe("CLI argument validation", () => {
 				() => parseWeeks(args({ weeks })),
 				"--weeks must be a positive integer no greater than 520",
 			);
+	});
+});
+
+describe("mutation confirmation", () => {
+	it("requires an explicit true --yes flag", () => {
+		expect(() =>
+			requireMutationConfirmation(args({ yes: true })),
+		).not.toThrow();
+		for (const yes of [undefined, false])
+			expect(() =>
+				requireMutationConfirmation(args(yes === undefined ? {} : { yes })),
+			).toThrow("Mutation requires --yes");
 	});
 });

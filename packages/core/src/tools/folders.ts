@@ -1,4 +1,3 @@
-import { z } from "zod";
 // Import types from generated client
 import type {
 	GetV1RoutineFolders200,
@@ -20,7 +19,12 @@ import {
 } from "../utils/tool-annotations.js";
 import { describeTool } from "../utils/tool-descriptions.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
-import { nonEmptyId, paginationShape } from "./input-schemas.js";
+import {
+	nonEmptyId,
+	paginationShape,
+	routineFolderInputShape,
+} from "./input-schemas.js";
+import { buildRoutineFolderRequest } from "./payload-mappers.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
@@ -35,9 +39,7 @@ type GetRoutineFoldersParams = InferToolParams<typeof getRoutineFoldersSchema>;
 const getRoutineFolderSchema = { folderId: nonEmptyId } as const;
 type GetRoutineFolderParams = InferToolParams<typeof getRoutineFolderSchema>;
 
-const createRoutineFolderSchema = {
-	name: z.string().min(1),
-} as const;
+const createRoutineFolderSchema = routineFolderInputShape;
 type CreateRoutineFolderParams = InferToolParams<
 	typeof createRoutineFolderSchema
 >;
@@ -156,12 +158,9 @@ const createRoutineFolderDefinition = {
 		runtime: ToolRuntime,
 		args: CreateRoutineFolderParams,
 	): Promise<PostV1RoutineFolders201 | null | undefined> => {
-		const { name } = args;
-		return runtime.getClient().createRoutineFolder({
-			routine_folder: {
-				title: name,
-			},
-		});
+		return runtime
+			.getClient()
+			.createRoutineFolder(buildRoutineFolderRequest(args));
 	},
 } satisfies ToolDefinition<
 	typeof createRoutineFolderSchema,
