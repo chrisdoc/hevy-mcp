@@ -1,6 +1,6 @@
 ---
 name: hevy-cli
-description: Manage Hevy workouts from the terminal: read and summarize training data, search exercise templates, and create or update workouts, routines, exercises, folders, or body measurements.
+description: "Manage Hevy workouts from the terminal: read and summarize training data, search exercise templates, and create or update workouts, routines, exercises, folders, or body measurements."
 ---
 
 # Hevy CLI
