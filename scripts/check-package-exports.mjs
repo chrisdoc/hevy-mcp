@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const expected = new Map([
 	["packages/hevy-client", [".", "./types", "./schemas"]],
-	["packages/core", ["."]],
+	["packages/core", [".", "./mutations"]],
 	["packages/node", ["."]],
 	["packages/worker", ["."]],
 ]);

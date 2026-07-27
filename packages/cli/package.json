@@ -1,6 +1,6 @@
 {
 	"name": "@chrisdoc/hevy-cli",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Command-line client for the Hevy API",
 	"license": "MIT",
 	"repository": {
@@ -26,6 +26,7 @@
 		"test": "vitest run"
 	},
 	"devDependencies": {
+		"@hevy-mcp/core": "file:../core",
 		"@hevy-mcp/hevy-client": "file:../hevy-client",
 		"@stricli/core": "^1.3.0",
 		"zod": "^4.4.3"

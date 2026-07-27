@@ -4,7 +4,6 @@ import type {
 	GetV1ExerciseHistoryExercisetemplateid200,
 	GetV1ExerciseTemplates200,
 	GetV1ExerciseTemplatesExercisetemplateid200,
-	PostV1ExerciseTemplates200,
 } from "@hevy-mcp/hevy-client/types";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
@@ -21,12 +20,13 @@ import {
 } from "../utils/tool-annotations.js";
 import { describeTool } from "../utils/tool-descriptions.js";
 import { type InferToolParams } from "../utils/tool-helpers.js";
-import { nonEmptyId, paginationShape } from "./input-schemas.js";
 import {
-	equipmentCategoryEnum,
-	exerciseTypeEnum,
-	muscleGroupEnum,
-} from "../utils/schemas.js";
+	exerciseTemplateInputShape,
+	nonEmptyId,
+	paginationShape,
+} from "./input-schemas.js";
+import { buildExerciseTemplateRequest } from "./payload-mappers.js";
+import { muscleGroupEnum } from "../utils/schemas.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
@@ -55,13 +55,7 @@ const getExerciseHistorySchema = {
 		.optional(),
 } as const;
 
-const createExerciseTemplateSchema = {
-	title: z.string().min(1),
-	exerciseType: exerciseTypeEnum,
-	equipmentCategory: equipmentCategoryEnum,
-	muscleGroup: muscleGroupEnum,
-	otherMuscles: z.array(muscleGroupEnum).default([]),
-} as const;
+const createExerciseTemplateSchema = exerciseTemplateInputShape;
 
 const searchExerciseTemplatesSchema = {
 	query: z
@@ -227,25 +221,9 @@ const createExerciseTemplateDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof createExerciseTemplateSchema>,
 	) => {
-		const {
-			title,
-			exerciseType,
-			equipmentCategory,
-			muscleGroup,
-			otherMuscles,
-		} = args;
-		const response: PostV1ExerciseTemplates200 = await runtime
+		return runtime
 			.getClient()
-			.createExerciseTemplate({
-				exercise: {
-					title,
-					exercise_type: exerciseType,
-					equipment_category: equipmentCategory,
-					muscle_group: muscleGroup,
-					other_muscles: otherMuscles,
-				},
-			});
-		return response;
+			.createExerciseTemplate(buildExerciseTemplateRequest(args));
 	},
 };
 

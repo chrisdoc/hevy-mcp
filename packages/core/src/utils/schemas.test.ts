@@ -9,6 +9,7 @@ import {
 	zNullableInt,
 	zNullableNumber,
 	zOptionalRepRange,
+	zStrictOptionalRepRange,
 } from "./schemas.js";
 
 describe("shared tool schemas", () => {
@@ -35,6 +36,13 @@ describe("shared tool schemas", () => {
 			start: 5,
 			end: 8,
 		});
+	});
+
+	it("rejects unknown keys in strict repetition ranges", () => {
+		expect(
+			zStrictOptionalRepRange.safeParse({ start: 5, end: 8, extra: true })
+				.success,
+		).toBe(false);
 	});
 
 	it("validates shared enum values and defaults", () => {

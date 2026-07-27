@@ -2,6 +2,9 @@ import { z } from "zod";
 import type { BodyMeasurement } from "@hevy-mcp/hevy-client/types";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
+	equipmentCategoryEnum,
+	exerciseTypeEnum,
+	muscleGroupEnum,
 	setTypeEnum,
 	utcSecondTimestamp,
 	zNullableInt,
@@ -34,6 +37,17 @@ export function paginationShape({
 }
 
 export const nonEmptyId = z.string().min(1);
+export const exerciseTemplateInputShape = {
+	title: z.string().min(1),
+	exerciseType: exerciseTypeEnum,
+	equipmentCategory: equipmentCategoryEnum,
+	muscleGroup: muscleGroupEnum,
+	otherMuscles: z.array(muscleGroupEnum).default([]),
+} as const;
+
+export const routineFolderInputShape = {
+	name: z.string().min(1),
+} as const;
 
 const CALENDAR_DATE_MESSAGE = "Date must be in YYYY-MM-DD format";
 export const calendarDate = z
@@ -182,4 +196,10 @@ export type RoutinePayloadInput = z.infer<
 >;
 export type MeasurementFields = z.infer<
 	z.ZodObject<typeof bodyMeasurementFieldsSchema>
+>;
+export type ExerciseTemplateInput = z.infer<
+	z.ZodObject<typeof exerciseTemplateInputShape>
+>;
+export type RoutineFolderInput = z.infer<
+	z.ZodObject<typeof routineFolderInputShape>
 >;

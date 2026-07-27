@@ -1,3 +1,4 @@
+import type { HevyClient } from "@hevy-mcp/hevy-client";
 import type {
 	BodyMeasurement,
 	PostRoutinesRequestBody,
@@ -12,7 +13,9 @@ import type {
 } from "@hevy-mcp/hevy-client/types";
 import {
 	measurementFieldToApiKey,
+	type ExerciseTemplateInput,
 	type MeasurementFields,
+	type RoutineFolderInput,
 	type RoutinePayloadInput,
 	type WorkoutPayloadInput,
 } from "./input-schemas.js";
@@ -198,4 +201,51 @@ export function buildMeasurementPayload(
 		}
 	}
 	return payload;
+}
+export function buildExerciseTemplateRequest(
+	input: ExerciseTemplateInput,
+): Parameters<HevyClient["createExerciseTemplate"]>[0] {
+	return {
+		exercise: {
+			title: input.title,
+			exercise_type: input.exerciseType,
+			equipment_category: input.equipmentCategory,
+			muscle_group: input.muscleGroup,
+			other_muscles: input.otherMuscles,
+		},
+	};
+}
+
+export function buildRoutineFolderRequest(
+	input: RoutineFolderInput,
+): Parameters<HevyClient["createRoutineFolder"]>[0] {
+	return {
+		routine_folder: {
+			title: input.name,
+		},
+	};
+}
+
+export function mergeMeasurementPayload(
+	existing: BodyMeasurement,
+	changes: MeasurementFields,
+): { payload: MeasurementPayload; measurement: BodyMeasurement } {
+	const payload: MeasurementPayload = {};
+	const measurement = { ...existing };
+
+	for (const [camelKey, apiKey] of Object.entries(measurementFieldToApiKey) as [
+		keyof MeasurementFields,
+		keyof MeasurementPayload,
+	][]) {
+		const changed = changes[camelKey];
+		if (changed !== undefined) {
+			measurement[apiKey] = changed;
+			if (changed !== null) payload[apiKey] = changed;
+			continue;
+		}
+		const existingValue = existing[apiKey];
+		if (existingValue != null) payload[apiKey] = existingValue;
+	}
+
+	return { payload, measurement };
 }
