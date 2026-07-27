@@ -1,5 +1,7 @@
 # Hevy MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.chrisdoc%2Fhevy-mcp.svg)](https://mcptoplist.com/server/io.github.chrisdoc%2Fhevy-mcp)
+
 <div align="center">
 
 **Talk to your Hevy workout data from Claude, Cursor, Codex, and other MCP clients.**
