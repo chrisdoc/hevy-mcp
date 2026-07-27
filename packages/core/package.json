@@ -7,6 +7,10 @@
 		".": {
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
+		},
+		"./mutations": {
+			"types": "./src/mutations.ts",
+			"import": "./src/mutations.ts"
 		}
 	},
 	"scripts": {

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+	buildExerciseTemplateRequest,
 	buildMeasurementPayload,
+	buildRoutineFolderRequest,
 	buildRoutinePayload,
 	buildWorkoutPayload,
+	mergeMeasurementPayload,
 } from "./payload-mappers.js";
 import type {
 	RoutinePayloadInput,
@@ -301,5 +304,48 @@ describe("payload mappers", () => {
 				fatPercent: undefined,
 			}),
 		).toEqual({ weight_kg: 80 });
+	});
+
+	it("builds simple-resource requests and merges measurement changes", () => {
+		expect(
+			buildExerciseTemplateRequest({
+				title: "Cable Row",
+				exerciseType: "weight_reps",
+				equipmentCategory: "machine",
+				muscleGroup: "upper_back",
+				otherMuscles: [],
+			}),
+		).toEqual({
+			exercise: {
+				title: "Cable Row",
+				exercise_type: "weight_reps",
+				equipment_category: "machine",
+				muscle_group: "upper_back",
+				other_muscles: [],
+			},
+		});
+		expect(buildRoutineFolderRequest({ name: "Strength" })).toEqual({
+			routine_folder: { title: "Strength" },
+		});
+
+		expect(
+			mergeMeasurementPayload(
+				{
+					date: "2024-01-02",
+					weight_kg: 80,
+					fat_percent: 20,
+					neck_cm: 40,
+				},
+				{ weightKg: 81, fatPercent: null },
+			),
+		).toEqual({
+			payload: { weight_kg: 81, neck_cm: 40 },
+			measurement: {
+				date: "2024-01-02",
+				weight_kg: 81,
+				fat_percent: null,
+				neck_cm: 40,
+			},
+		});
 	});
 });

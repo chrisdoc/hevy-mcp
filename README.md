@@ -11,17 +11,19 @@
 [![GitHub stars](https://img.shields.io/github/stars/chrisdoc/hevy-mcp?style=flat)](https://github.com/chrisdoc/hevy-mcp/stargazers)
 [![Hosted on Cloudflare](https://img.shields.io/badge/Hosted_on-Cloudflare-F38020?logo=cloudflare&logoColor=white)](#hosted-cloudflare-endpoint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.chrisdoc%2Fhevy-mcp.svg)](https://mcptoplist.com/server/io.github.chrisdoc%2Fhevy-mcp)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the read-only CLI](#read-only-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the Hevy CLI](#hevy-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
 
 </div>
 
-## Read-only CLI
+## Hevy CLI
 
 Prefer the terminal? The separate
 [`@chrisdoc/hevy-cli`](https://www.npmjs.com/package/@chrisdoc/hevy-cli)
 package reads workouts, routines, exercises, and body measurements directly
-from the Hevy API. It never creates, updates, or deletes Hevy data.
+from the Hevy API, and can create or update those resources with explicit
+confirmation. Deletion is not supported.
 
 ```sh
 npm install -g @chrisdoc/hevy-cli

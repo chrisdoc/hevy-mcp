@@ -14,7 +14,7 @@ export function diagnostic(error: unknown): { code: number; message: string } {
 			message: error.message.replace(/https?:\/\/\S+/gi, "[redacted]"),
 		};
 	if (error instanceof HevyHttpError || isHevyHttpError(error)) {
-		if (error.status === 401 || error.status === 403)
+		if (error.status === 401)
 			return {
 				code: EXIT.api,
 				message: "Authentication failed; check HEVY_API_KEY",
