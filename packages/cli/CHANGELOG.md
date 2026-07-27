@@ -1,5 +1,11 @@
 # @chrisdoc/hevy-cli
 
+## 0.2.0
+
+### Minor Changes
+
+- [#772](https://github.com/chrisdoc/hevy-mcp/pull/772) [`76981a1`](https://github.com/chrisdoc/hevy-mcp/commit/76981a12b2ec125d748e22b00ec975a9d49bd951) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add create and update commands for Hevy resources.
+
 ## 0.1.2
 
 ### Patch Changes
