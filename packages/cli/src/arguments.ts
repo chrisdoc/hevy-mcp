@@ -255,3 +255,8 @@ export function parseWeeks(args: CliArgs): number {
 		_: "must be a positive integer no greater than 520",
 	});
 }
+
+export function requireMutationConfirmation(args: CliArgs): void {
+	if (args.options.yes !== true)
+		throw new UsageError("Mutation requires --yes");
+}

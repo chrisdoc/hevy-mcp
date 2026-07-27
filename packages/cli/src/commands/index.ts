@@ -4,6 +4,21 @@ import {
 	getV1RoutinesQueryParamsSchema,
 } from "@hevy-mcp/hevy-client/schemas";
 import {
+	bodyMeasurementFieldsInputSchema,
+	buildExerciseTemplateRequest,
+	buildMeasurementPayload,
+	buildRoutineFolderRequest,
+	buildRoutinePayload,
+	buildWorkoutPayload,
+	createRoutineInputSchema,
+	exerciseTemplateInputSchema,
+	existingBodyMeasurementSchema,
+	mergeMeasurementPayload,
+	routineFolderInputSchema,
+	updateRoutineInputSchema,
+	workoutInputSchema,
+} from "@hevy-mcp/core/mutations";
+import {
 	parseExerciseHistoryId,
 	parseExerciseHistoryOptions,
 	parseExerciseId,
@@ -15,10 +30,16 @@ import {
 	parseWeeks,
 	parseWorkoutEventsOptions,
 	parseWorkoutId,
+	requireMutationConfirmation,
 	UsageError,
 	type CliArgs,
 } from "../arguments.js";
 import { ApiResponseError } from "../errors.js";
+import {
+	loadMutationInput,
+	readDataSource as defaultDataSourceReader,
+	type DataSourceReader,
+} from "../input.js";
 import { normalize, pageEnvelope } from "../output/normalize.js";
 
 type Body = Record<string, unknown>;
@@ -50,11 +71,26 @@ function list(data: Body, source: string, output: string, page: number): Body {
 		Array.isArray(data[source]) ? data[source] : [],
 	);
 }
+const createBodyMeasurementDataSchema = bodyMeasurementFieldsInputSchema.refine(
+	(fields) => Object.values(fields).some((value) => typeof value === "number"),
+	"Include at least one numeric measurement field",
+);
+const updateBodyMeasurementDataSchema = bodyMeasurementFieldsInputSchema.refine(
+	(fields) => Object.keys(fields).length > 0,
+	"Include at least one measurement field",
+);
+
+function mutationData(args: CliArgs): string {
+	const value = args.options.data;
+	if (typeof value !== "string") throw new UsageError("--data is required");
+	return value;
+}
 
 export async function execute(
 	args: CliArgs,
 	client: HevyClient,
 	now = () => new Date(),
+	readDataSource: DataSourceReader = defaultDataSourceReader,
 ): Promise<unknown> {
 	const command = args.command;
 	const sub = args.subcommand;
@@ -75,6 +111,31 @@ export async function execute(
 			return {
 				workout: normalize(await client.getWorkout(workoutId)),
 			};
+		}
+		if (sub === "create") {
+			requireMutationConfirmation(args);
+			const input = await loadMutationInput(
+				mutationData(args),
+				workoutInputSchema,
+				readDataSource,
+			);
+			const response = await client.createWorkout({
+				workout: buildWorkoutPayload(input),
+			});
+			return { workout: normalize(response) };
+		}
+		if (sub === "update") {
+			requireMutationConfirmation(args);
+			const input = await loadMutationInput(
+				mutationData(args),
+				workoutInputSchema,
+				readDataSource,
+			);
+			const workoutId = parseWorkoutId(args.positionals[0]);
+			const response = await client.updateWorkout(workoutId, {
+				workout: buildWorkoutPayload(input),
+			});
+			return { workoutId, workout: normalize(response) };
 		}
 		if (sub === "count")
 			return { count: body(await client.getWorkoutCount()).workout_count ?? 0 };
@@ -110,8 +171,45 @@ export async function execute(
 				routine: normalize(await client.getRoutineById(routineId)),
 			};
 		}
+		if (sub === "create") {
+			requireMutationConfirmation(args);
+			const input = await loadMutationInput(
+				mutationData(args),
+				createRoutineInputSchema,
+				readDataSource,
+			);
+			const { payload, usesRepRanges } = buildRoutinePayload(input, "create");
+			const response = await client.createRoutine({ routine: payload });
+			return { routine: normalize(response), usesRepRanges };
+		}
+		if (sub === "update") {
+			requireMutationConfirmation(args);
+			const input = await loadMutationInput(
+				mutationData(args),
+				updateRoutineInputSchema,
+				readDataSource,
+			);
+			const routineId = parseRoutineId(args.positionals[0]);
+			const { payload, usesRepRanges } = buildRoutinePayload(input, "update");
+			const response = await client.updateRoutine(routineId, {
+				routine: payload,
+			});
+			return { routineId, routine: normalize(response), usesRepRanges };
+		}
 	}
 	if (command === "exercises") {
+		if (sub === "create") {
+			requireMutationConfirmation(args);
+			const input = await loadMutationInput(
+				mutationData(args),
+				exerciseTemplateInputSchema,
+				readDataSource,
+			);
+			const response = await client.createExerciseTemplate(
+				buildExerciseTemplateRequest(input),
+			);
+			return { exerciseTemplate: normalize(response) };
+		}
 		if (sub === "get") {
 			const exerciseId = parseExerciseId(args.positionals[0]);
 			return {
@@ -186,6 +284,52 @@ export async function execute(
 			const date = parseMeasurementDate(args.positionals[0]);
 			return { measurement: normalize(await client.getBodyMeasurement(date)) };
 		}
+		if (sub === "create") {
+			requireMutationConfirmation(args);
+			const input = await loadMutationInput(
+				mutationData(args),
+				createBodyMeasurementDataSchema,
+				readDataSource,
+			);
+			const date = parseMeasurementDate(args.positionals[0]);
+			const wireFields = buildMeasurementPayload(input);
+			await client.createBodyMeasurement({ date, ...wireFields });
+			return { measurement: normalize({ date, ...wireFields }) };
+		}
+		if (sub === "update") {
+			requireMutationConfirmation(args);
+			const input = await loadMutationInput(
+				mutationData(args),
+				updateBodyMeasurementDataSchema,
+				readDataSource,
+			);
+			const date = parseMeasurementDate(args.positionals[0]);
+			const parsed = existingBodyMeasurementSchema.safeParse(
+				await client.getBodyMeasurement(date),
+			);
+			if (!parsed.success || parsed.data.date !== date)
+				throw new ApiResponseError(
+					"The API returned an invalid body measurement",
+				);
+			const { payload, measurement } = mergeMeasurementPayload(
+				parsed.data,
+				input,
+			);
+			await client.updateBodyMeasurement(date, payload);
+			return { measurement: normalize(measurement) };
+		}
+	}
+	if (command === "folders" && sub === "create") {
+		requireMutationConfirmation(args);
+		const input = await loadMutationInput(
+			mutationData(args),
+			routineFolderInputSchema,
+			readDataSource,
+		);
+		const response = await client.createRoutineFolder(
+			buildRoutineFolderRequest(input),
+		);
+		return { folder: normalize(response) };
 	}
 	if (command === "summary") {
 		const weeks = parseWeeks(args);

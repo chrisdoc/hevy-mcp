@@ -14,7 +14,12 @@ export default defineConfig({
 	clean: true,
 	outDir: "dist",
 	deps: {
-		alwaysBundle: ["@hevy-mcp/hevy-client", "@stricli/core", "zod"],
+		alwaysBundle: [
+			"@hevy-mcp/hevy-client",
+			"@hevy-mcp/core",
+			"@stricli/core",
+			"zod",
+		],
 		onlyBundle: false,
 	},
 	define: { __HEVY_CLI_VERSION__: JSON.stringify(version) },

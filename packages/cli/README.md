@@ -1,10 +1,9 @@
 # @chrisdoc/hevy-cli
 
-A read-only command-line client for the Hevy API. Use it to inspect workouts,
-routines, exercises, and body measurements from your terminal, or add `--json`
-to pipe the results into another tool.
-
-The CLI does not create, update, or delete Hevy data.
+The `@chrisdoc/hevy-cli` package is a terminal client for the Hevy API. It
+supports read commands plus create and update commands for workouts, routines,
+custom exercise templates, routine folders, and body measurements. Deletion is
+not supported.
 
 ## Requirements
 
@@ -20,9 +19,11 @@ hevy --help
 ```
 
 The CLI reads credentials only from `HEVY_API_KEY`. It does not accept API keys
-in command arguments or URLs.
+in command arguments, JSON payloads, or URLs.
 
 ## Examples
+
+Read commands do not require confirmation:
 
 ```sh
 # List 10 workouts
@@ -31,60 +32,106 @@ hevy workouts list --page-size 10
 # Search the exercise catalog
 hevy exercises search "bench press"
 
-# Review an exercise over a date range
-hevy exercises history <exercise-template-id> \
-  --start-date 2026-07-01T00:00:00Z \
-  --end-date 2026-07-31T23:59:59Z
-
-# Summarize the last four weeks
-hevy summary --weeks 4
-
 # Pipe one JSON value to jq
 hevy routines list --json | jq
 ```
 
-Run `hevy <command> --help` for the flags and arguments accepted by a command.
+Mutation commands require both `--data` and an explicit `--yes`:
+
+```sh
+# Create a folder from inline camelCase JSON
+hevy folders create --data '{"name":"Strength"}' --yes
+
+# Create a workout from a UTF-8 JSON file
+hevy workouts create --data @workout.json --yes --json
+
+# Replace a routine from JSON piped on stdin
+cat routine.json | hevy routines update routine-123 --data @- --yes --json
+
+# Patch one measurement field
+hevy measurements update 2026-07-27 \
+  --data '{"weightKg":80.5}' --yes --json
+
+# Clear a measurement field explicitly
+hevy measurements update 2026-07-27 \
+  --data '{"fatPercent":null}' --yes --json
+```
+
+`--data` accepts inline JSON, `@path` for a UTF-8 file, or `@-` for stdin.
+Payload keys are camelCase and are supplied without a resource wrapper. The
+CLI validates the complete payload before making an API request.
 
 ## Commands
 
-| Command                                                                                             | What it returns                                   |
-| --------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `hevy user`                                                                                         | Your Hevy user profile                            |
-| `hevy workouts list [--page N] [--page-size N]`                                                     | A page of workouts                                |
-| `hevy workouts get <workout-id>`                                                                    | One workout                                       |
-| `hevy workouts count`                                                                               | Your workout count                                |
-| `hevy workouts events --since <timestamp> [--page N] [--page-size N]`                               | Workout events since an ISO timestamp             |
-| `hevy routines list [--page N] [--page-size N]`                                                     | A page of routines                                |
-| `hevy routines get <routine-id>`                                                                    | One routine                                       |
-| `hevy exercises search <query> [--max-pages N]`                                                     | Exercise templates whose titles contain the query |
-| `hevy exercises get <exercise-template-id>`                                                         | One exercise template                             |
-| `hevy exercises history <exercise-template-id> [--start-date <timestamp>] [--end-date <timestamp>]` | History for one exercise                          |
-| `hevy measurements list [--page N] [--page-size N]`                                                 | A page of body measurements                       |
-| `hevy measurements get <YYYY-MM-DD>`                                                                | Body measurements for one date                    |
-| `hevy summary [--weeks N]`                                                                          | Workout totals for a recent period                |
+### Read
 
-Add `--json` to any command for machine-readable output.
+| Command                                                                                             | What it returns                       |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `hevy user`                                                                                         | Your Hevy user profile                |
+| `hevy workouts list [--page N] [--page-size N]`                                                     | A page of workouts                    |
+| `hevy workouts get <workout-id>`                                                                    | One workout                           |
+| `hevy workouts count`                                                                               | Your workout count                    |
+| `hevy workouts events --since <timestamp> [--page N] [--page-size N]`                               | Workout events since an ISO timestamp |
+| `hevy routines list [--page N] [--page-size N]`                                                     | A page of routines                    |
+| `hevy routines get <routine-id>`                                                                    | One routine                           |
+| `hevy exercises search <query> [--max-pages N]`                                                     | Exercise templates matching the query |
+| `hevy exercises get <exercise-template-id>`                                                         | One exercise template                 |
+| `hevy exercises history <exercise-template-id> [--start-date <timestamp>] [--end-date <timestamp>]` | History for one exercise              |
+| `hevy measurements list [--page N] [--page-size N]`                                                 | A page of body measurements           |
+| `hevy measurements get <YYYY-MM-DD>`                                                                | Measurements for one date             |
+| `hevy summary [--weeks N]`                                                                          | Workout totals for a recent period    |
 
-## Pagination and scans
+### Create and update
+
+| Command                                                      | Payload                                      |
+| ------------------------------------------------------------ | -------------------------------------------- |
+| `hevy workouts create --data <value> --yes`                  | Complete workout                             |
+| `hevy workouts update <workout-id> --data <value> --yes`     | Complete replacement workout                 |
+| `hevy routines create --data <value> --yes`                  | Complete routine, optionally with `folderId` |
+| `hevy routines update <routine-id> --data <value> --yes`     | Complete replacement routine                 |
+| `hevy exercises create --data <value> --yes`                 | Custom exercise template                     |
+| `hevy folders create --data <value> --yes`                   | Routine folder                               |
+| `hevy measurements create <YYYY-MM-DD> --data <value> --yes` | New body measurement                         |
+| `hevy measurements update <YYYY-MM-DD> --data <value> --yes` | Measurement patch                            |
+
+There is no delete command, update-template command, or update-folder command.
+
+## Payloads and safety
+
+Workout and routine updates are full replacements. Include every exercise and
+set that should remain; omitted content is not preserved. A workout update
+requires the same complete workout payload as creation. A routine update cannot
+move a routine between folders because Hevy's update endpoint does not accept
+`folderId`.
+
+Measurement updates are patches over Hevy's replacement PUT endpoint. The CLI
+reads the existing date first, preserves omitted fields, replaces supplied
+numbers, and treats explicit `null` as a clear operation. The date is always
+the positional `YYYY-MM-DD` argument and cannot appear in `--data`. Measurement
+creation needs at least one numeric field; update needs at least one supplied
+field.
+
+Writes are never retried automatically. Creates are not idempotent, and an
+uncertain network result can still have committed. Verify an uncertain write
+with a read before deciding whether to retry. A duplicate measurement date is
+reported by Hevy as HTTP 409. HTTP 403 is reported as a generic API failure
+because Hevy uses it for permissions and routine/custom-exercise quotas.
+
+## Pagination, output, and exit codes
 
 List commands default to page 1 with 5 results per page. `--page-size` accepts
-up to 10. Summary defaults to one week and accepts up to 520.
+up to 10. Summary defaults to one week and accepts up to 520. Exercise search
+checks up to 10 API pages, with 100 templates per page; `--max-pages` accepts
+up to 100.
 
-Exercise search checks up to 10 API pages, with 100 templates per page. Use
-`--max-pages N` to change the limit, up to 100. Search and summary results
-include `pagesScanned` and `complete` so scripts can tell whether a scan reached
-the end of the available data.
+Add `--json` to any command for machine-readable output. Successful commands
+write one JSON value followed by a newline to stdout. Errors write one
+sanitized line to stderr.
 
-## Output and exit codes
-
-Human-readable output is the default. With `--json`, successful commands write
-one JSON value followed by a newline to stdout. Errors write one sanitized line
-to stderr.
-
-| Exit code | Meaning                          |
-| --------- | -------------------------------- |
-| `0`       | Success                          |
-| `1`       | Missing or invalid configuration |
-| `2`       | Invalid command, flag, or value  |
-| `3`       | Hevy API failure                 |
-| `4`       | Network or timeout failure       |
+| Exit code | Meaning                                  |
+| --------- | ---------------------------------------- |
+| `0`       | Success                                  |
+| `1`       | Missing or invalid configuration         |
+| `2`       | Invalid command, flag, payload, or value |
+| `3`       | Hevy API failure                         |
+| `4`       | Network or timeout failure               |

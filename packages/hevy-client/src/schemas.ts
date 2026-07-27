@@ -11,3 +11,4 @@ export { getV1RoutinesRoutineidPathParamsSchema } from "./generated/client/schem
 export { getV1WorkoutsEventsQueryParamsSchema } from "./generated/client/schemas/getV1WorkoutsEventsSchema.js";
 export { getV1WorkoutsQueryParamsSchema } from "./generated/client/schemas/getV1WorkoutsSchema.js";
 export { getV1WorkoutsWorkoutidPathParamsSchema } from "./generated/client/schemas/getV1WorkoutsWorkoutidSchema.js";
+export { bodyMeasurementSchema } from "./generated/client/schemas/bodyMeasurementSchema.js";

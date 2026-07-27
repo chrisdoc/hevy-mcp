@@ -40,14 +40,21 @@ export const zNullableNumber = z.preprocess(
 	z.coerce.number().nullable().optional(),
 );
 
-export const zOptionalRepRange = z.preprocess(
-	(value) => (value === null ? undefined : value),
-	z
-		.object({
-			start: zNullableInt,
-			end: zNullableInt,
-		})
-		.optional(),
+const repRangeShape = {
+	start: zNullableInt,
+	end: zNullableInt,
+} as const;
+
+function optionalRepRangeSchema<T extends z.ZodType>(schema: T) {
+	return z.preprocess((value) => (value === null ? undefined : value), schema);
+}
+
+export const zOptionalRepRange = optionalRepRangeSchema(
+	z.object(repRangeShape).optional(),
+);
+
+export const zStrictOptionalRepRange = optionalRepRangeSchema(
+	z.object(repRangeShape).strict().optional(),
 );
 
 const setTypeValues = ["warmup", "normal", "failure", "dropset"] as const;

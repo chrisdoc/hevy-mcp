@@ -1,14 +1,15 @@
 import { createHevyClient, type HevyClient } from "@hevy-mcp/hevy-client";
 import { getApiKey } from "./auth.js";
 import { diagnostic, EXIT } from "./errors.js";
+import { readDataSource, type DataSourceReader } from "./input.js";
 import { runRoutes } from "./routes.js";
 import { writeResult, type Streams } from "./output/write.js";
-
 export interface RunCliOptions {
 	argv: string[];
 	env?: Record<string, string | undefined>;
 	clientFactory?: (key: string) => HevyClient;
 	now?: () => Date;
+	readDataSource?: DataSourceReader;
 	streams?: Streams;
 }
 
@@ -27,6 +28,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		process: stricliProcess,
 		state,
 		now: options.now ?? (() => new Date()),
+		readDataSource: options.readDataSource ?? readDataSource,
 		client: undefined as HevyClient | undefined,
 	};
 	const metaCommand = options.argv.some((value) =>
