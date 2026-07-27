@@ -1,5 +1,17 @@
 # hevy-mcp
 
+## 4.1.1
+
+### Patch Changes
+
+- [#762](https://github.com/chrisdoc/hevy-mcp/pull/762) [`187b93f`](https://github.com/chrisdoc/hevy-mcp/commit/187b93fb40c57e0827c89326ca9d01e660c608e9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add `HEVY_MCP_TELEMETRY=0` to disable all Node project telemetry while preserving telemetry by default.
+
+## 4.1.0
+
+### Minor Changes
+
+- [#758](https://github.com/chrisdoc/hevy-mcp/pull/758) [`f2b9bff`](https://github.com/chrisdoc/hevy-mcp/commit/f2b9bffbfe1c2fcc2a2f4fcf2a7b087849d49f67) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add opt-in Streamable HTTP transport to the Node package while preserving stdio as the default.
+
 ## 4.0.1
 
 ### Patch Changes
