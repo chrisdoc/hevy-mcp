@@ -13,7 +13,7 @@ local linters = new Mapping<String, Step> {
             "**/*.jsx",
             "**/*.tsx",
         )
-        check = "npx oxlint --type-aware --type-check {{files}}"
+        check = "npx oxlint --type-aware --type-check ."
     }
     ["oxfmt"] {
         glob = List(
