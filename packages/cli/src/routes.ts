@@ -13,6 +13,7 @@ import {
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { execute } from "./commands/index.js";
 import type { CliArgs } from "./arguments.js";
+import type { DataSourceReader } from "./input.js";
 
 declare const __HEVY_CLI_VERSION__: string;
 const cliVersion =
@@ -22,6 +23,7 @@ export interface CliRuntimeContext extends CommandContext {
 	readonly process: StricliProcess;
 	client?: HevyClient;
 	now: () => Date;
+	readDataSource: DataSourceReader;
 	state: {
 		result?: unknown;
 		error?: unknown;
@@ -35,12 +37,20 @@ type PageFlags = JsonFlags & { page?: string; "page-size"?: string };
 type EventFlags = PageFlags & { since?: string };
 type HistoryFlags = JsonFlags & { "start-date"?: string; "end-date"?: string };
 type SummaryFlags = JsonFlags & { weeks?: string };
+type MutationFlags = JsonFlags & { data: string; yes?: boolean };
 
 const flag = (brief: string) => ({
 	brief,
 	kind: "parsed" as const,
 	parse: String,
 	optional: true as const,
+});
+
+const requiredFlag = (brief: string) => ({
+	brief,
+	kind: "parsed" as const,
+	parse: String,
+	optional: false as const,
 });
 const booleanFlag = (brief: string) => ({
 	brief,
@@ -49,6 +59,11 @@ const booleanFlag = (brief: string) => ({
 });
 
 const jsonFlag = { json: booleanFlag("Print machine-readable JSON") };
+const mutationFlags = {
+	...jsonFlag,
+	data: requiredFlag("JSON mutation data, inline or @path or @-"),
+	yes: booleanFlag("Confirm this mutation"),
+};
 const searchFlags = {
 	...jsonFlag,
 	"max-pages": flag("Maximum API pages to scan (default: 10)"),
@@ -101,6 +116,7 @@ async function invoke(
 			toArgs(command, subcommand, flags, positionals),
 			context.client,
 			context.now,
+			context.readDataSource,
 		);
 	} catch (error) {
 		context.state.error = error;
@@ -127,6 +143,7 @@ function idCommand<FLAGS extends object>(
 	subcommand: string,
 	brief: string,
 	flags: FlagParametersForType<FLAGS, CliRuntimeContext>,
+	positionalBrief = "Resource identifier",
 ): Command<CliRuntimeContext> {
 	return buildCommand<FLAGS, [string], CliRuntimeContext>({
 		func: function (this: CliRuntimeContext, values: FLAGS, id: string) {
@@ -136,7 +153,7 @@ function idCommand<FLAGS extends object>(
 			flags,
 			positional: {
 				kind: "tuple",
-				parameters: [{ brief: "Resource identifier", parse: String }],
+				parameters: [{ brief: positionalBrief, parse: String }],
 			},
 		},
 		docs: { brief },
@@ -150,6 +167,18 @@ const workouts = buildRouteMap({
 			"list",
 			"List workouts",
 			pageFlags,
+		),
+		create: noArgsCommand<MutationFlags>(
+			"workouts",
+			"create",
+			"Create a workout",
+			mutationFlags,
+		),
+		update: idCommand<MutationFlags>(
+			"workouts",
+			"update",
+			"Replace a workout",
+			mutationFlags,
 		),
 		get: idCommand<JsonFlags>("workouts", "get", "Get a workout", jsonFlag),
 		count: noArgsCommand<JsonFlags>(
@@ -176,6 +205,18 @@ const routines = buildRouteMap({
 			"List routines",
 			pageFlags,
 		),
+		create: noArgsCommand<MutationFlags>(
+			"routines",
+			"create",
+			"Create a routine",
+			mutationFlags,
+		),
+		update: idCommand<MutationFlags>(
+			"routines",
+			"update",
+			"Replace a routine",
+			mutationFlags,
+		),
 		get: idCommand<JsonFlags>("routines", "get", "Get a routine", jsonFlag),
 	},
 	docs: { brief: "Read routine data" },
@@ -183,6 +224,12 @@ const routines = buildRouteMap({
 
 const exercises = buildRouteMap({
 	routes: {
+		create: noArgsCommand<MutationFlags>(
+			"exercises",
+			"create",
+			"Create an exercise template",
+			mutationFlags,
+		),
 		search: idCommand<SearchFlags>(
 			"exercises",
 			"search",
@@ -219,8 +266,34 @@ const measurements = buildRouteMap({
 			"Get a body measurement",
 			jsonFlag,
 		),
+		create: idCommand<MutationFlags>(
+			"measurements",
+			"create",
+			"Create a body measurement",
+			mutationFlags,
+			"Measurement date (YYYY-MM-DD)",
+		),
+		update: idCommand<MutationFlags>(
+			"measurements",
+			"update",
+			"Update a body measurement",
+			mutationFlags,
+			"Measurement date (YYYY-MM-DD)",
+		),
 	},
 	docs: { brief: "Read body measurements" },
+});
+
+const folders = buildRouteMap({
+	routes: {
+		create: noArgsCommand<MutationFlags>(
+			"folders",
+			"create",
+			"Create a routine folder",
+			mutationFlags,
+		),
+	},
+	docs: { brief: "Create routine folders" },
 });
 
 const root = buildRouteMap({
@@ -235,6 +308,7 @@ const root = buildRouteMap({
 		routines,
 		exercises,
 		measurements,
+		folders,
 		summary: noArgsCommand<SummaryFlags>(
 			"summary",
 			undefined,
@@ -243,7 +317,7 @@ const root = buildRouteMap({
 		),
 	},
 	docs: {
-		brief: "Run read-only commands against the Hevy API",
+		brief: "Run read, create, and update Hevy data commands",
 	},
 });
 

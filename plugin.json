@@ -3,5 +3,5 @@
 	"name": "hevy-mcp",
 	"title": "Hevy MCP Server",
 	"description": "Manage Hevy workouts, routines, folders, body measurements, and exercise templates through the Hevy API.",
-	"version": "4.1.1"
+	"version": "4.1.2"
 }

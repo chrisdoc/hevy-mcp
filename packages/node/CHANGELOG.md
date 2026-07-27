@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 4.1.2
+
+### Patch Changes
+
+- [#764](https://github.com/chrisdoc/hevy-mcp/pull/764) [`c2b7352`](https://github.com/chrisdoc/hevy-mcp/commit/c2b73527966454ccc8cd9fd475f132225fbf2af1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Update runtime dependency versions
+
 ## 4.1.1
 
 ### Patch Changes
