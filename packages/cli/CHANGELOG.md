@@ -1,5 +1,11 @@
 # @chrisdoc/hevy-cli
 
+## 0.1.2
+
+### Patch Changes
+
+- [#761](https://github.com/chrisdoc/hevy-mcp/pull/761) [`205cbff`](https://github.com/chrisdoc/hevy-mcp/commit/205cbffe060fa4d74dac349ac1cc9d2c7f6505cc) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Build the CLI bundle during npm packaging so published installs include the `hevy` executable.
+
 ## 0.1.1
 
 ### Patch Changes
