@@ -2,8 +2,10 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+	Client,
+	StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 const LOOPBACK = "127.0.0.1";
@@ -243,9 +245,12 @@ async function callReadTool(
 ): Promise<Record<string, unknown>> {
 	let result;
 	try {
-		result = await client.callTool({ name, arguments: arguments_ }, undefined, {
-			timeout: REQUEST_TIMEOUT_MS,
-		});
+		result = await client.callTool(
+			{ name, arguments: arguments_ },
+			{
+				timeout: REQUEST_TIMEOUT_MS,
+			},
+		);
 	} catch {
 		throw new Error(`Live Worker request failed for tools/${name}`);
 	}

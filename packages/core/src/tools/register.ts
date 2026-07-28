@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { registerToolDefinition } from "./define-tool.js";
 import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
 import { folderToolDefinitions } from "./folders.js";

@@ -1,4 +1,4 @@
-import type { LoggingMessageNotification } from "@modelcontextprotocol/sdk/types.js";
+import type { LoggingMessageNotification } from "@modelcontextprotocol/server";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 
 export type McpClientLogMessage = LoggingMessageNotification["params"];

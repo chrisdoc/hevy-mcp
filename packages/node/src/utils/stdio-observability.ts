@@ -1,7 +1,7 @@
 import { SpanStatusCode } from "@opentelemetry/api";
-import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { deserializeMessage } from "@modelcontextprotocol/sdk/shared/stdio.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { deserializeMessage } from "@modelcontextprotocol/server";
+import type { JSONRPCMessage } from "@modelcontextprotocol/server";
+import type { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { stdioParseErrors } from "./metrics.js";
 import { tracer } from "./telemetry.js";

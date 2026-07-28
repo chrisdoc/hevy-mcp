@@ -1,13 +1,11 @@
+import type { McpServer } from "@modelcontextprotocol/server";
+
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Workout } from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import {
-	formatWorkout,
-	workoutEventsResponse,
-} from "../utils/response-formatter.js";
+import { formatWorkout } from "../utils/response-formatter.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
@@ -39,7 +37,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 		isError?: boolean;
 		structuredContent?: Record<string, unknown>;
 	}>;
-	const config = match[1] as { outputSchema?: unknown } | undefined;
+	const config = match[1] as { outputSchema?: z.ZodTypeAny } | undefined;
 	return { outputSchema: config?.outputSchema, handler };
 }
 
@@ -222,12 +220,8 @@ describe("registerWorkoutTools", () => {
 		expect(response.structuredContent).not.toHaveProperty(
 			"events.0.workout.exercises.0.muscle_group",
 		);
-		expect(outputSchema).toBe(workoutEventsResponse.outputSchema);
-		expect(() =>
-			z
-				.object(workoutEventsResponse.outputSchema)
-				.parse(response.structuredContent),
-		).not.toThrow();
+		expect(outputSchema).toBeInstanceOf(z.ZodObject);
+		expect(() => outputSchema?.parse(response.structuredContent)).not.toThrow();
 	});
 
 	it("rejects unsupported workout events without leaking payloads", async () => {

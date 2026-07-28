@@ -2,9 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import type { Readable } from "node:stream";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import { Client } from "@modelcontextprotocol/client";
 import {
 	FIXTURE_RESULT_PREFIX,
 	parseFixtureResult,
@@ -173,13 +172,10 @@ export async function callPerformanceTool(
 	name: string,
 	arguments_: Record<string, unknown>,
 ) {
-	const result = await client.request(
-		{
-			method: "tools/call",
-			params: { name, arguments: arguments_ },
-		},
-		CallToolResultSchema,
-	);
+	const result = await client.request({
+		method: "tools/call",
+		params: { name, arguments: arguments_ },
+	});
 	const firstContent = result.content[0];
 	if (!firstContent || firstContent.type !== "text") {
 		throw new Error(`${name} did not return text content`);

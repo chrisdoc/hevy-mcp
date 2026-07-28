@@ -3,9 +3,11 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { networkInterfaces } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
+import {
+	Client,
+	StreamableHTTPClientTransport,
+	LATEST_PROTOCOL_VERSION,
+} from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const LOOPBACK = "127.0.0.1";
