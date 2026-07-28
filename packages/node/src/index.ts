@@ -8,10 +8,10 @@ import {
 	serviceVersion,
 	setTelemetryUser,
 } from "./utils/telemetry.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { serverStartups } from "./utils/metrics.js";
 
 import { SpanStatusCode } from "@opentelemetry/api";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { createHevyMcpServer } from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";

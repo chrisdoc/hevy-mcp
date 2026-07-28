@@ -1,5 +1,6 @@
 import { PassThrough, Writable } from "node:stream";
-import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import * as ServerPackage from "@modelcontextprotocol/server";
+import type { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	deserializeMessageWithObservability,
@@ -29,10 +30,10 @@ const sdkSharedTestDoubles = vi.hoisted(() => ({
 	deserializeMessage: vi.fn(),
 }));
 
-vi.mock("@modelcontextprotocol/sdk/shared/stdio.js", async () => {
-	const actual = await vi.importActual<
-		typeof import("@modelcontextprotocol/sdk/shared/stdio.js")
-	>("@modelcontextprotocol/sdk/shared/stdio.js");
+vi.mock("@modelcontextprotocol/server", async () => {
+	const actual = await vi.importActual<typeof ServerPackage>(
+		"@modelcontextprotocol/server",
+	);
 
 	sdkSharedTestDoubles.deserializeMessage.mockImplementation(
 		actual.deserializeMessage,
@@ -250,7 +251,7 @@ describe("package-local stdio observability", () => {
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const transport = createInstrumentedStdioTransport(
 			new (
-				await import("@modelcontextprotocol/sdk/server/stdio.js")
+				await import("@modelcontextprotocol/server/stdio")
 			).StdioServerTransport(stdin, stdout),
 		);
 		let resolveProcessed!: () => void;

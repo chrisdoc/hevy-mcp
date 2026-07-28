@@ -141,7 +141,7 @@ npm run check:changeset
 Also run the narrow checks related to your change. In particular:
 
 - Run `npm run test:stdio` after changes to process lifecycle, stdio transport,
-  diagnostics, or `@modelcontextprotocol/sdk`.
+  diagnostics, or the MCP TypeScript SDK.
 - Run `npm run test:pack` after package entry point, binary, manifest, or
   published-file changes.
 - Run `npm run check:server-manifest` after server metadata changes.
@@ -200,7 +200,7 @@ both runtimes. `packages/hevy-client` owns the native-fetch Hevy client:
 
 `packages/node/src/utils/stdio-observability.ts` instruments private MCP SDK
 stdio fields such as `_ondata` and `_readBuffer`. After every
-`@modelcontextprotocol/sdk` upgrade,
+`MCP TypeScript SDK` upgrade,
 run the complete stdio observability suite (`npm run test:stdio`) and inspect
 the SDK compatibility assumptions before merging.
 
