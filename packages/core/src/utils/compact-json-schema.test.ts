@@ -39,4 +39,24 @@ describe("compactJsonSchema", () => {
 		});
 		expect(schema.safeParse({ count: "1", name: "set" }).success).toBe(false);
 	});
+	it("omits redundant output object closure metadata", () => {
+		const schema = z.object({
+			nested: z.object({ value: z.string() }),
+		});
+		compactJsonSchema(schema);
+
+		expect(
+			schema["~standard"].jsonSchema.output({ target: "draft-2020-12" }),
+		).toEqual({
+			type: "object",
+			properties: {
+				nested: {
+					type: "object",
+					properties: { value: { type: "string" } },
+					required: ["value"],
+				},
+			},
+			required: ["nested"],
+		});
+	});
 });

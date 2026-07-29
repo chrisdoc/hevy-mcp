@@ -46,6 +46,22 @@ function compactNullableSchema(value: unknown): unknown {
 	);
 }
 
+function omitOutputObjectRestrictions(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(omitOutputObjectRestrictions);
+	}
+	if (!isRecord(value)) {
+		return value;
+	}
+	return Object.fromEntries(
+		Object.entries(value)
+			.filter(
+				([key, nested]) => key !== "additionalProperties" || nested !== false,
+			)
+			.map(([key, nested]) => [key, omitOutputObjectRestrictions(nested)]),
+	);
+}
+
 function convertSchema(
 	schema: z.ZodTypeAny,
 	io: "input" | "output",
@@ -61,13 +77,21 @@ function convertSchema(
 	if (!isRecord(compacted)) {
 		throw new Error("Nullable schema compaction changed the root schema");
 	}
-	delete compacted.$schema;
-	return compacted;
+	const output =
+		io === "output" ? omitOutputObjectRestrictions(compacted) : compacted;
+	if (!isRecord(output)) {
+		throw new Error("Output schema compaction changed the root schema");
+	}
+	delete output.$schema;
+	return output;
 }
 
 /**
- * Keep Zod validation while advertising a more compact, equivalent JSON Schema.
- * Zod emits nullable values as `anyOf`; draft 2020-12 also permits a type array.
+ * Keep Zod validation while advertising a compact JSON Schema.
+ *
+ * Zod emits nullable values as `anyOf`; draft 2020-12 also permits a type
+ * array. The MCP wire envelope does not need a repeated `$schema` marker, and
+ * structured output is validated by the original Zod schema before sending.
  */
 export function compactJsonSchema<TSchema extends z.ZodTypeAny>(
 	schema: TSchema,
