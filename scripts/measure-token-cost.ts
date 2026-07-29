@@ -449,12 +449,12 @@ export function formatMarkdown(
 	lines.push(
 		"### Per-tool breakdown",
 		"",
-		"| Tool | Tokens | Share of total |",
-		"| --- | ---: | ---: |",
+		`| Tool | ${TOOL_COMPONENTS.map((component) => `\`${component}\``).join(" | ")} | Total | Share of total |`,
+		`| --- | ${TOOL_COMPONENTS.map(() => "---:").join(" | ")} | ---: | ---: |`,
 	);
 	for (const tool of current.tools) {
 		lines.push(
-			`| \`${tool.name}\` | ${tool.tokens} | ${tool.percentageOfTotal}% |`,
+			`| \`${tool.name}\` | ${TOOL_COMPONENTS.map((component) => tool.componentTokens[component]).join(" | ")} | ${tool.tokens} | ${tool.percentageOfTotal}% |`,
 		);
 	}
 	lines.push(
@@ -467,26 +467,34 @@ export function formatMarkdown(
 }
 
 export function formatTable(report: TokenCostReport): string {
+	const headers = ["Tool", ...TOOL_COMPONENTS, "Total", "Share"];
 	const rows = report.tools.map((tool) => [
 		tool.name,
+		...TOOL_COMPONENTS.map((component) =>
+			String(tool.componentTokens[component]),
+		),
 		String(tool.tokens),
 		`${tool.percentageOfTotal}%`,
 	]);
-	const nameWidth = Math.max(
-		"Tool".length,
-		...rows.map(([name]) => name.length),
+	const widths = headers.map((header, index) =>
+		Math.max(header.length, ...rows.map((row) => row[index]?.length ?? 0)),
 	);
-	const header = `${"Tool".padEnd(nameWidth)}  Tokens  Share`;
+	const formatRow = (values: string[]) =>
+		values
+			.map((value, index) =>
+				index === 0
+					? value.padEnd(widths[index] ?? value.length)
+					: value.padStart(widths[index] ?? value.length),
+			)
+			.join("  ");
+	const divider = widths.map((width) => "-".repeat(width)).join("  ");
 	return [
 		`MCP tool token cost (${report.encoding})`,
 		`Tools: ${report.toolCount} | Total: ${report.totalTokens} | Average: ${report.averageTokensPerTool}`,
 		`Component totals: ${TOOL_COMPONENTS.map((component) => `${component}=${report.componentTokens[component]}`).join(" | ")}`,
-		header,
-		`${"-".repeat(nameWidth)}  ------  -----`,
-		...rows.map(
-			([name, tokens, share]) =>
-				`${name.padEnd(nameWidth)}  ${tokens.padStart(6)}  ${share.padStart(5)}`,
-		),
+		formatRow(headers),
+		divider,
+		...rows.map(formatRow),
 		"",
 		`Targets: tools ≤ ${report.targets.toolCount.maximumInclusive}; average < ${report.targets.averageTokensPerTool.maximumExclusive} tokens/tool; total ≤ ${report.targets.totalTokens.maximumInclusive} tokens (enforced).`,
 		"Per-tool counts exclude the shared { tools } envelope punctuation.",

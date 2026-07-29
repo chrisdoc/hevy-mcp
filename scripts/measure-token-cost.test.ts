@@ -272,12 +272,15 @@ describe("isCompatibleBaseline", () => {
 });
 
 describe("formatMarkdown", () => {
-	it("renders current totals and explains envelope overhead", () => {
+	it("renders current totals and component columns", () => {
 		const report = reportWith();
 		const markdown = formatMarkdown(report);
 
 		expect(markdown).toContain("## MCP tool token cost");
 		expect(markdown).toContain(`| Total tokens | ${report.totalTokens}`);
+		expect(markdown).toContain(
+			"| Tool | `name` | `description` | `inputSchema` | `outputSchema` | `annotations` | Total | Share of total |",
+		);
 		expect(markdown).toContain("need not sum exactly");
 	});
 
@@ -308,20 +311,21 @@ describe("formatMarkdown", () => {
 });
 
 describe("formatTable", () => {
-	it("aligns headings, values, shares, and advisory guidance", () => {
+	it("aligns component columns, totals, shares, and advisory guidance", () => {
 		const table = formatTable(
 			reportWith([tool("a", "small"), tool("much-longer-name", "large")]),
 		);
 
 		expect(table).toContain(`MCP tool token cost (${TOKEN_ENCODING})`);
-		expect(table).toContain("Tool              Tokens  Share");
-		expect(table).toMatch(/much-longer-name\s+\d+\s+\d+(?:\.\d+)?%/);
+		expect(table).toMatch(
+			/Tool\s+name\s+description\s+inputSchema\s+outputSchema\s+annotations\s+Total\s+Share/,
+		);
+		expect(table).toMatch(/much-longer-name\s+\d+\s+\d+/);
 		expect(table).toContain(
 			`Targets: tools ≤ ${TOOL_COUNT_TARGET}; average < ${AVERAGE_TOKEN_TARGET} tokens/tool; total ≤ ${TOTAL_TOKEN_BUDGET} tokens (enforced).`,
 		);
 	});
 });
-
 describe("registered tool measurement", () => {
 	it("lists tools through the public in-memory MCP APIs", async () => {
 		const tools = await listRegisteredTools();
