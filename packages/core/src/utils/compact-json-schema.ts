@@ -61,6 +61,7 @@ function convertSchema(
 	if (!isRecord(compacted)) {
 		throw new Error("Nullable schema compaction changed the root schema");
 	}
+	delete compacted.$schema;
 	return compacted;
 }
 
