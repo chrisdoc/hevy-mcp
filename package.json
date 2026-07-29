@@ -81,7 +81,7 @@
 		"release": "changeset publish",
 		"commit": "commit",
 		"worker:dev": "wrangler dev",
-		"worker:deploy": "wrangler deploy",
+		"worker:deploy": "wrangler deploy --env production",
 		"worker:dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run && node scripts/check-worker-bundle.mjs"
 	},
 	"devDependencies": {

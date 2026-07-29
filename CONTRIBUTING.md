@@ -230,6 +230,26 @@ npm run worker:deploy
 is a production-affecting operation. Prefer `worker:dry-run` for local bundle
 verification unless deployment is explicitly intended.
 
+The top level of `wrangler.jsonc` is account-neutral. A bare
+`npx wrangler deploy` deploys it to a reachable `workers.dev` URL, making that
+the self-hosting path for a clean clone or fork. Maintainer automation selects
+the account-owned `production` and `preview` named environments explicitly.
+
+`worker:deploy` runs `wrangler deploy --env production`, so it intentionally
+targets the maintainer production environment. `worker:dev` and
+`worker:dry-run` continue to use the portable top-level configuration.
+
+Self-hosters can add account-owned settings to their own environment block or
+fork configuration:
+
+- To enable OAuth, create a KV namespace and bind its ID with the binding name
+  `OAUTH_KV`.
+- Add `routes` or a custom domain only if the hostname belongs to your account;
+  the portable default uses `workers.dev` instead.
+- Add observability destinations only if they exist in your account. The
+  committed `otel` and `otel-logs` destinations belong to the maintainer
+  environments and can be omitted or replaced.
+
 Browser clients must send an exact origin from the Worker's default allowlist:
 
 ```text
@@ -265,8 +285,9 @@ and bearer-auth behavior when changing Worker request handling.
 Clients that cannot send a fixed `Authorization` header (for example Claude.ai
 custom connectors) can use OAuth 2.1 instead. The layer is opt-in per
 deployment: create a KV namespace and bind it as `OAUTH_KV` in the relevant
-Wrangler config (`wrangler.jsonc` for production or `wrangler.preview.jsonc`
-for PR previews):
+Wrangler environment. For example, a fork can add the binding to its own named
+environment; the repository's maintainer bindings live under `env.production`
+and `env.preview`:
 
 ```bash
 npx wrangler kv namespace create OAUTH_KV

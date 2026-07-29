@@ -101,6 +101,8 @@ function spawnWrangler(workerPort: number, inspectorPort: number): void {
 			"--",
 			"wrangler",
 			"dev",
+			"--env",
+			"production",
 			"--local",
 			"--ip",
 			LOOPBACK,
