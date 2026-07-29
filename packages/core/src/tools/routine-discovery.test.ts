@@ -8,7 +8,7 @@ import {
 } from "./routine-discovery.js";
 
 describe("search-routines", () => {
-	it("filters routine titles and returns compact metadata", async () => {
+	it("filters routine titles and returns snake_case compact metadata", async () => {
 		const getRoutines = vi.fn().mockResolvedValue({
 			page: 1,
 			page_count: 1,
@@ -35,10 +35,10 @@ describe("search-routines", () => {
 				{
 					id: "routine-1",
 					title: "Push Day",
-					folderId: 3,
-					updatedAt: "2026-07-15T08:00:00Z",
-					exerciseCount: 1,
-					setCount: 2,
+					folder_id: 3,
+					updated_at: "2026-07-15T08:00:00Z",
+					exercise_count: 1,
+					set_count: 2,
 				},
 			],
 			workflow: {
@@ -51,7 +51,7 @@ describe("search-routines", () => {
 		expect(getRoutines).toHaveBeenCalledWith({ page: 1, pageSize: 10 });
 	});
 
-	it("paginates, respects the limit, and tolerates sparse routines", async () => {
+	it("paginates and respects the snake_case limit result", async () => {
 		const getRoutines = vi
 			.fn()
 			.mockResolvedValueOnce({
@@ -76,46 +76,32 @@ describe("search-routines", () => {
 			client: { getRoutines } as unknown as HevyClient,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
-
-		await expect(
-			discoverRoutines(runtime, { query: undefined, limit: 3 }),
-		).resolves.toEqual({
-			routines: [
-				{
-					title: "Push Day",
-					exerciseCount: 1,
-					setCount: 1,
-				},
-				{
-					exerciseCount: 0,
-					setCount: 0,
-				},
-				{
-					id: "routine-2",
-					title: "Pull Day",
-					updatedAt: "2026-07-16T08:00:00Z",
-					exerciseCount: 2,
-					setCount: 2,
-				},
-			],
-			workflow: {
-				name: "routine-discovery",
-				pagination: { routines: 2 },
-				cacheStatus: "not-used",
-				itemsScanned: 3,
-			},
+		const result = await discoverRoutines(runtime, {
+			query: undefined,
+			limit: 3,
 		});
+		expect(result.routines).toEqual([
+			{ title: "Push Day", exercise_count: 1, set_count: 1 },
+			{ exercise_count: 0, set_count: 0 },
+			{
+				id: "routine-2",
+				title: "Pull Day",
+				updated_at: "2026-07-16T08:00:00Z",
+				exercise_count: 2,
+				set_count: 2,
+			},
+		]);
 		expect(getRoutines).toHaveBeenNthCalledWith(1, { page: 1, pageSize: 10 });
 		expect(getRoutines).toHaveBeenNthCalledWith(2, { page: 2, pageSize: 10 });
 	});
 
-	it("executes the composed search definition", async () => {
-		const getRoutines = vi.fn().mockResolvedValue(undefined);
+	it("executes through the composed search definition", async () => {
 		const runtime = createToolRuntime({
-			client: { getRoutines } as unknown as HevyClient,
+			client: {
+				getRoutines: vi.fn().mockResolvedValue(undefined),
+			} as unknown as HevyClient,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
-
 		await expect(
 			routineDiscoveryToolDefinitions[0].execute(runtime, {
 				query: "push",

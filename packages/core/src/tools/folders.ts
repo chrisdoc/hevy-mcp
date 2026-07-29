@@ -6,13 +6,13 @@ import type {
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import type { ToolDefinition } from "./define-tool.js";
-import type { PaginatedToolResult } from "../utils/response-formatter.js";
+import type { PaginatedToolResult } from "../utils/response-contracts.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
 	createRoutineFolderResponse,
 	routineFolderResponse,
 	routineFoldersResponse,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
@@ -24,7 +24,6 @@ import {
 	paginationShape,
 	routineFolderInputShape,
 } from "./input-schemas.js";
-import { buildRoutineFolderRequest } from "./payload-mappers.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
@@ -36,7 +35,7 @@ const getRoutineFoldersSchema = paginationShape({
 });
 type GetRoutineFoldersParams = InferToolParams<typeof getRoutineFoldersSchema>;
 
-const getRoutineFolderSchema = { folderId: nonEmptyId } as const;
+const getRoutineFolderSchema = { folder_id: nonEmptyId } as const;
 type GetRoutineFolderParams = InferToolParams<typeof getRoutineFolderSchema>;
 
 const createRoutineFolderSchema = routineFolderInputShape;
@@ -59,11 +58,11 @@ const getRoutineFoldersDefinition = {
 		runtime: ToolRuntime,
 		args: GetRoutineFoldersParams,
 	): Promise<PaginatedToolResult<RoutineFolder>> => {
-		const { page, pageSize } = args;
+		const { page, page_size } = args;
 		try {
 			const data: GetV1RoutineFolders200 = await runtime
 				.getClient()
-				.getRoutineFolders({ page, pageSize });
+				.getRoutineFolders({ page, pageSize: page_size });
 			return {
 				items: data?.routine_folders ?? [],
 				page,
@@ -86,7 +85,7 @@ const getRoutineFolderDefinition = {
 	feature: "folders" as const,
 	operation: "get" as const,
 	description:
-		"Read-only. Gets one routine folder by folderId. Use get-routine-folders to discover IDs.",
+		"Read-only. Gets one routine folder by folder_id. Use get-routine-folders to discover IDs.",
 	inputSchema: getRoutineFolderSchema,
 	outputSchema: routineFolderResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Routine Folder"),
@@ -96,21 +95,21 @@ const getRoutineFolderDefinition = {
 		runtime: ToolRuntime,
 		args: GetRoutineFolderParams,
 	): Promise<{
-		routineFolder: GetV1RoutineFoldersFolderid200 | null | undefined;
-		folderId: string;
+		routine_folder: GetV1RoutineFoldersFolderid200 | null | undefined;
+		folder_id: string;
 		expected404Outcome?: "not_found";
 	}> => {
-		const { folderId } = args;
+		const { folder_id } = args;
 		try {
 			const data: GetV1RoutineFoldersFolderid200 | null = await runtime
 				.getClient()
-				.getRoutineFolder(folderId);
-			return { routineFolder: data, folderId };
+				.getRoutineFolder(folder_id);
+			return { routine_folder: data, folder_id };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
 				return {
-					routineFolder: null,
-					folderId,
+					routine_folder: null,
+					folder_id,
 					expected404Outcome: "not_found",
 				};
 			}
@@ -120,8 +119,8 @@ const getRoutineFolderDefinition = {
 } satisfies ToolDefinition<
 	typeof getRoutineFolderSchema,
 	{
-		routineFolder: GetV1RoutineFoldersFolderid200 | null | undefined;
-		folderId: string;
+		routine_folder: GetV1RoutineFoldersFolderid200 | null | undefined;
+		folder_id: string;
 		expected404Outcome?: "not_found";
 	}
 >;
@@ -131,7 +130,7 @@ const createRoutineFolderDefinition = {
 	feature: "folders" as const,
 	operation: "create" as const,
 	description:
-		"Writes a routine folder. Retries or reused names can create duplicates.",
+		"Writes a routine folder. Retries or reused titles can create duplicates.",
 	inputSchema: createRoutineFolderSchema,
 	annotations: createAnnotations("Create Routine Folder"),
 	kind: "write" as const,
@@ -140,9 +139,7 @@ const createRoutineFolderDefinition = {
 		runtime: ToolRuntime,
 		args: CreateRoutineFolderParams,
 	): Promise<PostV1RoutineFolders201 | null | undefined> => {
-		return runtime
-			.getClient()
-			.createRoutineFolder(buildRoutineFolderRequest(args));
+		return runtime.getClient().createRoutineFolder(args);
 	},
 } satisfies ToolDefinition<
 	typeof createRoutineFolderSchema,

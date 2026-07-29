@@ -43,7 +43,7 @@ const EXPECTED_DESCRIPTIONS = {
 	"get-workouts":
 		"Read-only. Lists compact workout summaries newest first. Use get-workout for exercises and sets; results are paginated.",
 	"get-workout":
-		"Read-only. Gets one workout with exercises and sets by workoutId. Use get-workouts to discover IDs.",
+		"Read-only. Gets one workout with exercises and sets by workout_id. Use get-workouts to discover IDs.",
 	"get-workout-count":
 		"Read-only. Returns the total workout count; it does not return records or accept date filters.",
 	"get-workout-events":
@@ -55,7 +55,7 @@ const EXPECTED_DESCRIPTIONS = {
 	"get-routines":
 		"Read-only. Lists compact routine summaries. Use get-routine for exercises and sets; results are paginated.",
 	"get-routine":
-		"Read-only. Gets one routine with exercises and sets by routineId. Use search-routines to discover IDs.",
+		"Read-only. Gets one routine with exercises and sets by routine_id. Use search-routines to discover IDs.",
 	"create-routine":
 		"Writes a reusable routine; use create-workout for completed sessions. Retries can create duplicates.",
 	"update-routine":
@@ -63,7 +63,7 @@ const EXPECTED_DESCRIPTIONS = {
 	"get-exercise-templates":
 		"Read-only. Pages through exercise templates. Use search-exercise-templates when a title is known.",
 	"get-exercise-template":
-		"Read-only. Gets one exercise template by exerciseTemplateId. Use search-exercise-templates to discover IDs.",
+		"Read-only. Gets one exercise template by exercise_template_id. Use search-exercise-templates to discover IDs.",
 	"get-exercise-history":
 		"Read-only. Returns performed sets for one exercise-template ID, optionally bounded by ISO 8601 timestamps.",
 	"create-exercise-template":
@@ -73,9 +73,9 @@ const EXPECTED_DESCRIPTIONS = {
 	"get-routine-folders":
 		"Read-only. Lists routine folders and IDs; results are paginated.",
 	"get-routine-folder":
-		"Read-only. Gets one routine folder by folderId. Use get-routine-folders to discover IDs.",
+		"Read-only. Gets one routine folder by folder_id. Use get-routine-folders to discover IDs.",
 	"create-routine-folder":
-		"Writes a routine folder. Retries or reused names can create duplicates.",
+		"Writes a routine folder. Retries or reused titles can create duplicates.",
 	"get-body-measurements":
 		"Read-only. Lists dated body measurements; results are paginated. Use get-body-measurement for one date.",
 	"get-body-measurement":

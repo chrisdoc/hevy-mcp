@@ -8,7 +8,7 @@ import type {
 import {
 	trainingSummaryResponse,
 	type TrainingSummaryResult,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
@@ -125,13 +125,13 @@ function compactSession(
 	return {
 		...(workout.id ? { id: workout.id } : {}),
 		...(workout.title ? { title: workout.title } : {}),
-		...(workout.start_time ? { startTime: workout.start_time } : {}),
-		...(workout.end_time ? { endTime: workout.end_time } : {}),
+		...(workout.start_time ? { start_time: workout.start_time } : {}),
+		...(workout.end_time ? { end_time: workout.end_time } : {}),
 		...(elapsedSeconds === undefined
 			? {}
-			: { durationSeconds: elapsedSeconds }),
-		exerciseCount: exercises.length,
-		setCount: exercises.reduce(
+			: { duration_seconds: elapsedSeconds }),
+		exercise_count: exercises.length,
+		set_count: exercises.reduce(
 			(total, exercise) => total + (exercise.sets?.length ?? 0),
 			0,
 		),
@@ -140,18 +140,18 @@ function compactSession(
 
 function compactMeasurement(
 	measurement: BodyMeasurement,
-): NonNullable<TrainingSummaryResult["bodyMeasurements"]["latest"]> {
+): NonNullable<TrainingSummaryResult["body_measurements"]["latest"]> {
 	return {
 		date: measurement.date,
 		...(measurement.weight_kg == null
 			? {}
-			: { weightKg: measurement.weight_kg }),
+			: { weight_kg: measurement.weight_kg }),
 		...(measurement.lean_mass_kg == null
 			? {}
-			: { leanMassKg: measurement.lean_mass_kg }),
+			: { lean_mass_kg: measurement.lean_mass_kg }),
 		...(measurement.fat_percent == null
 			? {}
-			: { fatPercent: measurement.fat_percent }),
+			: { fat_percent: measurement.fat_percent }),
 	};
 }
 
@@ -198,7 +198,7 @@ export async function getTrainingSummary(
 
 	const workouts = workoutPages.items;
 	const sessions = workouts.map(compactSession);
-	const uniqueExerciseTemplateIds = [
+	const unique_exercise_template_ids = [
 		...new Set(
 			workouts.flatMap((workout) =>
 				(workout.exercises ?? [])
@@ -218,41 +218,41 @@ export async function getTrainingSummary(
 	const latest = latestMeasurement
 		? compactMeasurement(latestMeasurement)
 		: undefined;
-	const weightChangeKg =
-		latest?.weightKg !== undefined && earliest?.weightKg !== undefined
-			? latest.weightKg - earliest.weightKg
+	const weight_change_kg =
+		latest?.weight_kg !== undefined && earliest?.weight_kg !== undefined
+			? latest.weight_kg - earliest.weight_kg
 			: undefined;
 
 	return {
-		period: { ...period, weeks },
+		period: { start_date: period.startDate, end_date: period.endDate, weeks },
 		workouts: {
 			count: workouts.length,
-			totalDurationSeconds: sessions.reduce(
-				(total, session) => total + (session.durationSeconds ?? 0),
+			total_duration_seconds: sessions.reduce(
+				(total, session) => total + (session.duration_seconds ?? 0),
 				0,
 			),
-			exerciseCount: sessions.reduce(
-				(total, session) => total + session.exerciseCount,
+			exercise_count: sessions.reduce(
+				(total, session) => total + session.exercise_count,
 				0,
 			),
-			setCount: sessions.reduce(
-				(total, session) => total + session.setCount,
+			set_count: sessions.reduce(
+				(total, session) => total + session.set_count,
 				0,
 			),
-			uniqueExerciseTemplateIds,
+			unique_exercise_template_ids,
 			sessions,
 		},
-		bodyMeasurements: {
+		body_measurements: {
 			count: measurements.length,
 			...(latest ? { latest } : {}),
 			...(earliest ? { earliest } : {}),
-			...(weightChangeKg === undefined ? {} : { weightChangeKg }),
+			...(weight_change_kg === undefined ? {} : { weight_change_kg }),
 		},
 		workflow: {
 			name: "training-summary",
 			pagination: {
 				workouts: workoutPages.pages,
-				bodyMeasurements: measurementPages.pages,
+				body_measurements: measurementPages.pages,
 			},
 			cacheStatus: "not-used",
 			itemsScanned: workoutPages.itemsScanned + measurementPages.itemsScanned,

@@ -12,7 +12,7 @@ import {
 	exerciseTemplateResponse,
 	exerciseTemplatesResponse,
 	searchExerciseTemplatesResponse,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import { createSafeErrorDiagnostic } from "../utils/safe-error-diagnostic.js";
 import {
 	createAnnotations,
@@ -25,7 +25,6 @@ import {
 	nonEmptyId,
 	paginationShape,
 } from "./input-schemas.js";
-import { buildExerciseTemplateRequest } from "./payload-mappers.js";
 import { muscleGroupEnum } from "../utils/schemas.js";
 import {
 	isExpectedListPageNotFound,
@@ -38,9 +37,8 @@ const getExerciseTemplatesSchema = paginationShape({
 });
 
 const getExerciseTemplateSchema = {
-	exerciseTemplateId: nonEmptyId,
+	exercise_template_id: nonEmptyId,
 } as const;
-
 const isoDateTimeBase = z.iso.datetime({ offset: true });
 const isoDateTimeWithOffset = z
 	.string()
@@ -51,19 +49,16 @@ const isoDateTimeWithOffset = z
 	.meta({ format: "date-time" });
 
 const getExerciseHistorySchema = {
-	exerciseTemplateId: nonEmptyId,
-	startDate: isoDateTimeWithOffset.optional(),
-	endDate: isoDateTimeWithOffset.optional(),
+	exercise_template_id: nonEmptyId,
+	start_date: isoDateTimeWithOffset.optional(),
+	end_date: isoDateTimeWithOffset.optional(),
 } as const;
-
 const createExerciseTemplateSchema = exerciseTemplateInputShape;
-
 const searchExerciseTemplatesSchema = {
 	query: z.string().min(1),
-	primaryMuscleGroup: muscleGroupEnum.optional(),
+	primary_muscle_group: muscleGroupEnum.optional(),
 	refresh: z.boolean().optional().default(false),
 } as const;
-
 const getExerciseTemplatesDefinition = {
 	name: "get-exercise-templates",
 	feature: "templates" as const,
@@ -79,11 +74,11 @@ const getExerciseTemplatesDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof getExerciseTemplatesSchema>,
 	) => {
-		const { page, pageSize } = args;
+		const { page, page_size } = args;
 		try {
 			const data: GetV1ExerciseTemplates200 = await runtime
 				.getClient()
-				.getExerciseTemplates({ page, pageSize });
+				.getExerciseTemplates({ page, pageSize: page_size });
 			return {
 				items: data?.exercise_templates ?? [],
 				page,
@@ -103,7 +98,7 @@ const getExerciseTemplateDefinition = {
 	feature: "templates" as const,
 	operation: "get" as const,
 	description:
-		"Read-only. Gets one exercise template by exerciseTemplateId. Use search-exercise-templates to discover IDs.",
+		"Read-only. Gets one exercise template by exercise_template_id. Use search-exercise-templates to discover IDs.",
 	inputSchema: getExerciseTemplateSchema,
 	outputSchema: exerciseTemplateResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Exercise Template"),
@@ -113,17 +108,17 @@ const getExerciseTemplateDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof getExerciseTemplateSchema>,
 	) => {
-		const { exerciseTemplateId } = args;
+		const { exercise_template_id } = args;
 		try {
 			const data: GetV1ExerciseTemplatesExercisetemplateid200 = await runtime
 				.getClient()
-				.getExerciseTemplate(exerciseTemplateId);
-			return { exerciseTemplate: data, exerciseTemplateId };
+				.getExerciseTemplate(exercise_template_id);
+			return { exercise_template: data, exercise_template_id };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
 				return {
-					exerciseTemplate: null,
-					exerciseTemplateId,
+					exercise_template: null,
+					exercise_template_id,
 					expected404Outcome: "not_found",
 				};
 			}
@@ -147,16 +142,16 @@ const getExerciseHistoryDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof getExerciseHistorySchema>,
 	) => {
-		const { exerciseTemplateId, startDate, endDate } = args;
+		const { exercise_template_id, start_date, end_date } = args;
 		const data: GetV1ExerciseHistoryExercisetemplateid200 = await runtime
 			.getClient()
-			.getExerciseHistory(exerciseTemplateId, {
-				...(startDate ? { start_date: startDate } : {}),
-				...(endDate ? { end_date: endDate } : {}),
+			.getExerciseHistory(exercise_template_id, {
+				...(start_date ? { start_date } : {}),
+				...(end_date ? { end_date } : {}),
 			});
 		return {
-			history: data?.exercise_history,
-			exerciseTemplateId,
+			exercise_history: data?.exercise_history,
+			exercise_template_id,
 		};
 	},
 };
@@ -175,9 +170,7 @@ const createExerciseTemplateDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof createExerciseTemplateSchema>,
 	) => {
-		return runtime
-			.getClient()
-			.createExerciseTemplate(buildExerciseTemplateRequest(args));
+		return runtime.getClient().createExerciseTemplate(args);
 	},
 };
 
@@ -197,7 +190,7 @@ const searchExerciseTemplatesDefinition = {
 		args: InferToolParams<typeof searchExerciseTemplatesSchema>,
 	) => {
 		const _client = runtime.getClient();
-		const { query, primaryMuscleGroup, refresh } = args;
+		const { query, primary_muscle_group, refresh } = args;
 		const templates = await runtime.catalog.get({
 			refresh,
 			onRefreshed: (refreshedCatalog, reason) => {
@@ -224,16 +217,16 @@ const searchExerciseTemplatesDefinition = {
 		let results = templates.filter((t) =>
 			(t.title ?? "").toLowerCase().includes(queryLower),
 		);
-		if (primaryMuscleGroup !== undefined) {
+		if (primary_muscle_group !== undefined) {
 			results = results.filter(
-				(t) => t.primary_muscle_group === primaryMuscleGroup,
+				(t) => t.primary_muscle_group === primary_muscle_group,
 			);
 		}
 
 		return {
 			results,
 			query,
-			primaryMuscleGroup,
+			primary_muscle_group,
 		};
 	},
 };

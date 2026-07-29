@@ -173,22 +173,22 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		const result = await callTool(client, "get-workouts", {
 			page: 1,
-			pageSize: 1,
+			page_size: 1,
 		});
 		const structuredContent = result.structuredContent as {
 			workouts: Array<{
 				id: string;
 				title: string;
 				duration: string;
-				exerciseCount: number;
-				setCount: number;
+				exercise_count: number;
+				set_count: number;
 			}>;
 		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
-			exerciseCount: number;
-			setCount: number;
+			exercise_count: number;
+			set_count: number;
 			duration: string;
 		}>;
 
@@ -197,8 +197,8 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			id: "workout-1",
 			title: "Mock Workout",
 			duration: "1h 0m 0s",
-			exerciseCount: 0,
-			setCount: 0,
+			exercise_count: 0,
+			set_count: 0,
 		});
 		expect(typeof structuredContent.workouts[0]?.id).toBe("string");
 		expect(structuredContent.workouts[0]).not.toHaveProperty("exercises");
@@ -228,7 +228,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			});
 
 		const result = await callTool(client, "get-workout", {
-			workoutId: "workout-null-fields",
+			workout_id: "workout-null-fields",
 		});
 		const structuredContent = result.structuredContent as {
 			workout: {
@@ -275,32 +275,32 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		const result = await callTool(client, "get-routines", {
 			page: 1,
-			pageSize: 1,
+			page_size: 1,
 		});
 		const structuredContent = result.structuredContent as {
 			routines: Array<{
 				id: string;
 				title: string;
-				folderId: number;
-				exerciseCount: number;
-				setCount: number;
+				folder_id: number;
+				exercise_count: number;
+				set_count: number;
 			}>;
 		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
-			folderId: number;
-			exerciseCount: number;
-			setCount: number;
+			folder_id: number;
+			exercise_count: number;
+			set_count: number;
 		}>;
 
 		expect(result.isError).toBeFalsy();
 		expect(structuredContent.routines[0]).toMatchObject({
 			id: "routine-1",
 			title: "Mock Push Day",
-			folderId: 10,
-			exerciseCount: 1,
-			setCount: 0,
+			folder_id: 10,
+			exercise_count: 1,
+			set_count: 0,
 		});
 		expect(typeof structuredContent.routines[0]?.id).toBe("string");
 		expect(structuredContent.routines[0]).not.toHaveProperty("exercises");
@@ -330,17 +330,17 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			});
 
 		const result = await callTool(client, "get-routine", {
-			routineId: "routine-null-notes",
+			routine_id: "routine-null-notes",
 		});
 		const structuredContent = result.structuredContent as {
 			routine: {
-				folderId?: number;
+				folder_id?: number;
 				exercises: Array<Record<string, unknown>>;
 			};
 		};
 
 		expect(result.isError).toBeFalsy();
-		expect(structuredContent.routine).not.toHaveProperty("folderId");
+		expect(structuredContent.routine).not.toHaveProperty("folder_id");
 		expect(structuredContent.routine.exercises[0]).not.toHaveProperty("notes");
 		expect(result.text).toBe(
 			JSON.stringify(structuredContent.routine, null, 2),
@@ -370,29 +370,29 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		const result = await callTool(client, "get-exercise-templates", {
 			page: 1,
-			pageSize: 1,
+			page_size: 1,
 		});
 		const structuredContent = result.structuredContent as {
-			exerciseTemplates: Array<{
+			exercise_templates: Array<{
 				id: string;
 				title: string;
-				primaryMuscleGroup: string;
+				primary_muscle_group: string;
 			}>;
 		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
-			primaryMuscleGroup: string;
+			primary_muscle_group: string;
 		}>;
 
 		expect(result.isError).toBeFalsy();
-		expect(structuredContent.exerciseTemplates[0]).toMatchObject({
+		expect(structuredContent.exercise_templates[0]).toMatchObject({
 			id: "template-1",
 			title: "Bench Press",
-			primaryMuscleGroup: "chest",
+			primary_muscle_group: "chest",
 		});
-		expect(typeof structuredContent.exerciseTemplates[0]?.id).toBe("string");
-		expect(payload).toEqual(structuredContent.exerciseTemplates);
+		expect(typeof structuredContent.exercise_templates[0]?.id).toBe("string");
+		expect(payload).toEqual(structuredContent.exercise_templates);
 	});
 
 	it("mocks get-routine-folders through MCP transport", async () => {
@@ -416,10 +416,10 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		const result = await callTool(client, "get-routine-folders", {
 			page: 1,
-			pageSize: 1,
+			page_size: 1,
 		});
 		const structuredContent = result.structuredContent as {
-			routineFolders: Array<{
+			routine_folders: Array<{
 				id: number;
 				title: string;
 			}>;
@@ -430,12 +430,12 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		}>;
 
 		expect(result.isError).toBeFalsy();
-		expect(structuredContent.routineFolders[0]).toMatchObject({
+		expect(structuredContent.routine_folders[0]).toMatchObject({
 			id: 10,
 			title: "Mock Folder",
 		});
-		expect(typeof structuredContent.routineFolders[0]?.id).toBe("number");
-		expect(payload).toEqual(structuredContent.routineFolders);
+		expect(typeof structuredContent.routine_folders[0]?.id).toBe("number");
+		expect(payload).toEqual(structuredContent.routine_folders);
 	});
 
 	it("mocks get-body-measurements through MCP transport", async () => {
@@ -458,19 +458,17 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		const result = await callTool(client, "get-body-measurements", {
 			page: 1,
-			pageSize: 1,
+			page_size: 1,
 		});
 		const payload = JSON.parse(result.text) as Array<{
-			date: string;
-			weightKg: number;
-			fatPercent: number;
+			weight_kg: number;
+			fat_percent: number;
 		}>;
 
 		expect(result.isError).toBeFalsy();
 		expect(payload[0]).toMatchObject({
-			date: "2025-03-25",
-			weightKg: 80.5,
-			fatPercent: 19.3,
+			weight_kg: 80.5,
+			fat_percent: 19.3,
 		});
 	});
 
@@ -615,9 +613,9 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 				id: "resource-template-1",
 				title: "Resource Bench Press",
 				type: "weight_reps",
-				primaryMuscleGroup: "chest",
-				secondaryMuscleGroups: ["triceps"],
-				isCustom: false,
+				primary_muscle_group: "chest",
+				secondary_muscle_groups: ["triceps"],
+				is_custom: false,
 			},
 		]);
 
@@ -632,7 +630,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			uri: "hevy://workout-count",
 			mimeType: "application/json",
 		});
-		expect(JSON.parse(countContent.text)).toEqual({ count: 42 });
+		expect(JSON.parse(countContent.text)).toEqual({ workout_count: 42 });
 
 		const foldersResult = await client.readResource({
 			uri: "hevy://routine-folders",
@@ -649,8 +647,8 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			{
 				id: 12,
 				title: "Resource Folder",
-				createdAt: "2025-03-30T09:00:00Z",
-				updatedAt: "2025-03-30T10:00:00Z",
+				created_at: "2025-03-30T09:00:00Z",
+				updated_at: "2025-03-30T10:00:00Z",
 			},
 		]);
 	});
@@ -672,7 +670,9 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			});
 
 		const result = await callTool(client, "create-routine-folder", {
-			name: "Created Folder",
+			routine_folder: {
+				title: "Created Folder",
+			},
 		});
 		const payload = JSON.parse(result.text) as {
 			id: number;
@@ -698,7 +698,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			});
 
 			const result = await callTool(client, "get-workout", {
-				workoutId: "missing-workout",
+				workout_id: "missing-workout",
 			});
 
 			expect(result.isError).toBeFalsy();

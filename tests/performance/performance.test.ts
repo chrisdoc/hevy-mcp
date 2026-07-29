@@ -167,7 +167,9 @@ async function runRepresentativeReadScenario() {
 						"get-workout-count",
 						{},
 					);
-					expect(result.structuredContent).toEqual({ count: iteration });
+					expect(result.structuredContent).toEqual({
+						workout_count: iteration,
+					});
 					state.completedIterations += 1;
 				} catch (error) {
 					recordFailure(state, iteration, "iteration", error);
@@ -202,7 +204,7 @@ async function runConcurrentScenario() {
 						const result = await callPerformanceTool(
 							harness.client,
 							"get-workout",
-							{ workoutId: id },
+							{ workout_id: id },
 						);
 						expect(result.structuredContent).toMatchObject({
 							workout: {
@@ -248,7 +250,9 @@ async function runSequentialScenario() {
 						"get-workout-count",
 						{},
 					);
-					expect(result.structuredContent).toEqual({ count: iteration });
+					expect(result.structuredContent).toEqual({
+						workout_count: iteration,
+					});
 					state.completedIterations += 1;
 				} catch (error) {
 					recordFailure(state, iteration, "iteration", error);

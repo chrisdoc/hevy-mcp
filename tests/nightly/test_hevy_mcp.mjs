@@ -180,7 +180,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-workouts",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (empty) return;
 			assertCondition(Array.isArray(parsed), "$");
@@ -199,10 +199,13 @@ async function main() {
 			);
 			if (empty) return;
 			assertCondition(parsed !== null && typeof parsed === "object", "$");
-			assertCondition(typeof parsed.count === "number", "$.count");
 			assertCondition(
-				Number.isInteger(parsed.count) && parsed.count >= 0,
-				"$.count",
+				typeof parsed.workout_count === "number",
+				"$.workout_count",
+			);
+			assertCondition(
+				Number.isInteger(parsed.workout_count) && parsed.workout_count >= 0,
+				"$.workout_count",
 				"assertion",
 			);
 		});
@@ -210,7 +213,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-workout-events",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (empty) return;
 			assertCondition(Array.isArray(parsed), "$");
@@ -220,7 +223,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-routines",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
 		});
@@ -228,7 +231,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-exercise-templates",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			assertCondition(!empty, "$", "assertion");
 			assertCondition(Array.isArray(parsed), "$");
@@ -264,7 +267,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-routine-folders",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
 		});
@@ -272,7 +275,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-body-measurements",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
 		});
@@ -292,7 +295,7 @@ async function main() {
 				const { empty, parsed } = await callOrIgnoreEmpty(
 					client,
 					"get-workouts",
-					{ page: 1, pageSize },
+					{ page: 1, page_size },
 				);
 				if (empty) return;
 				assertCondition(Array.isArray(parsed), "$");
@@ -303,7 +306,7 @@ async function main() {
 			try {
 				const result = await client.callTool({
 					name: "get-workouts",
-					arguments: { page: 1, pageSize: 999 },
+					arguments: { page: 1, page_size: 999 },
 				});
 				assertCondition(result.isError, "$.isError", "assertion");
 			} catch (error) {
@@ -317,14 +320,14 @@ async function main() {
 				{},
 			);
 			if (countResponse.empty) return;
-			const total = countResponse.parsed.count;
-			assertCondition(Number.isInteger(total), "$.count");
+			const total = countResponse.parsed.workout_count;
+			assertCondition(Number.isInteger(total), "$.workout_count");
 			let fetchedCount = 0;
 			for (let page = 1; page <= 50; page++) {
 				const { empty, parsed } = await callOrIgnoreEmpty(
 					client,
 					"get-workouts",
-					{ page, pageSize: 10 },
+					{ page, page_size: 10 },
 				);
 				if (empty || !Array.isArray(parsed) || parsed.length === 0) break;
 				fetchedCount += parsed.length;
@@ -335,7 +338,7 @@ async function main() {
 		await runTest("get-workout-handles-unknown-id", async () => {
 			const result = await client.callTool({
 				name: "get-workout",
-				arguments: { workoutId: UNKNOWN_WORKOUT_ID },
+				arguments: { workout_id: UNKNOWN_WORKOUT_ID },
 			});
 			if (!result.isError) readFirstText(result);
 		});

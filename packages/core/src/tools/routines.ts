@@ -1,17 +1,15 @@
-import { z } from "zod";
 import type {
 	GetV1Routines200,
 	GetV1RoutinesRoutineid200,
 	PostV1Routines201,
 	PutV1RoutinesRoutineid200,
 } from "@hevy-mcp/hevy-client/types";
-import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createRoutineResponse,
 	routineResponse,
 	routinesResponse,
 	updateRoutineResponse,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
@@ -21,12 +19,12 @@ import {
 import {
 	nonEmptyId,
 	paginationShape,
-	routineExerciseShape,
-	routinePayloadShape,
+	createRoutineInputShape,
+	updateRoutineInputShape,
 } from "./input-schemas.js";
-import { buildRoutinePayload } from "./payload-mappers.js";
+import { buildRoutinePayload } from "./mutation-semantics.js";
 import type { ToolDefinition } from "./define-tool.js";
-import type { PaginatedToolResult } from "../utils/response-formatter.js";
+import type { PaginatedToolResult } from "../utils/response-contracts.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
@@ -54,11 +52,11 @@ const getRoutinesDefinition: ToolDefinition<
 	outputSchema: routinesResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Routines"),
 	responseContract: routinesResponse,
-	execute: async (runtime, { page, pageSize }) => {
+	execute: async (runtime, { page, page_size }) => {
 		try {
 			const data: GetV1Routines200 = await runtime.getClient().getRoutines({
 				page,
-				pageSize,
+				pageSize: page_size,
 			});
 			return { items: data?.routines ?? [], page, pageCount: data?.page_count };
 		} catch (error) {
@@ -70,11 +68,11 @@ const getRoutinesDefinition: ToolDefinition<
 	},
 };
 
-const getRoutineSchema = { routineId: nonEmptyId } as const;
+const getRoutineSchema = { routine_id: nonEmptyId } as const;
 
 type GetRoutineResult = {
 	routine: GetV1RoutinesRoutineid200["routine"] | null;
-	routineId: string;
+	routine_id: string;
 };
 const getRoutineDefinition: ToolDefinition<
 	typeof getRoutineSchema,
@@ -84,24 +82,23 @@ const getRoutineDefinition: ToolDefinition<
 	feature: "routines",
 	operation: "get",
 	description:
-		"Read-only. Gets one routine with exercises and sets by routineId. Use search-routines to discover IDs.",
+		"Read-only. Gets one routine with exercises and sets by routine_id. Use search-routines to discover IDs.",
 	inputSchema: getRoutineSchema,
 	kind: "read",
 	outputSchema: routineResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Routine"),
 	responseContract: routineResponse,
-	execute: async (runtime, { routineId }) => {
+	execute: async (runtime, { routine_id }) => {
 		try {
 			const data: GetV1RoutinesRoutineid200 = await runtime
 				.getClient()
-				.getRoutineById(String(routineId));
-			return { routine: data?.routine, routineId };
+				.getRoutineById(String(routine_id));
+			return { routine: data?.routine, routine_id };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
 				return {
 					routine: null,
-					routineId,
-					expected404Outcome: "not_found",
+					routine_id,
 				};
 			}
 			throw error;
@@ -109,12 +106,7 @@ const getRoutineDefinition: ToolDefinition<
 	},
 };
 
-const routineExercisesSchema = z.preprocess(
-	parseJsonArray,
-	z.array(z.object(routineExerciseShape)),
-);
-
-const createRoutineSchema = routinePayloadShape;
+const createRoutineSchema = createRoutineInputShape;
 
 type CreateRoutineResult = {
 	routine: PostV1Routines201 | null | undefined;
@@ -134,7 +126,10 @@ const createRoutineDefinition: ToolDefinition<
 	annotations: createAnnotations("Create Routine"),
 	responseContract: createRoutineResponse,
 	execute: async (runtime, args) => {
-		const { payload, usesRepRanges } = buildRoutinePayload(args, "create");
+		const { payload, usesRepRanges } = buildRoutinePayload(
+			args.routine,
+			"create",
+		);
 		const data: PostV1Routines201 = await runtime
 			.getClient()
 			.createRoutine({ routine: payload });
@@ -142,16 +137,11 @@ const createRoutineDefinition: ToolDefinition<
 	},
 };
 
-const updateRoutineSchema = {
-	routineId: nonEmptyId,
-	title: z.string().min(1),
-	notes: z.string().optional(),
-	exercises: routineExercisesSchema,
-} as const;
+const updateRoutineSchema = updateRoutineInputShape;
 
 type UpdateRoutineResult = {
 	routine: PutV1RoutinesRoutineid200 | null | undefined;
-	routineId: string;
+	routine_id: string;
 	usesRepRanges: boolean;
 };
 const updateRoutineDefinition: ToolDefinition<
@@ -168,12 +158,15 @@ const updateRoutineDefinition: ToolDefinition<
 	annotations: updateAnnotations("Update Routine"),
 	responseContract: updateRoutineResponse,
 	execute: async (runtime, args) => {
-		const { routineId } = args;
-		const { payload, usesRepRanges } = buildRoutinePayload(args, "update");
+		const { routine_id } = args;
+		const { payload, usesRepRanges } = buildRoutinePayload(
+			args.routine,
+			"update",
+		);
 		const data: PutV1RoutinesRoutineid200 = await runtime
 			.getClient()
-			.updateRoutine(routineId, { routine: payload });
-		return { routine: data, routineId, usesRepRanges };
+			.updateRoutine(routine_id, { routine: payload });
+		return { routine: data, routine_id, usesRepRanges };
 	},
 };
 

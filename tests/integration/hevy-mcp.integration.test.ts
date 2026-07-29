@@ -18,11 +18,11 @@ const describeLive = describe.runIf(Boolean(hevyApiKey));
 const WorkoutSummarySchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
-	startTime: z.string().optional(),
-	endTime: z.string().optional(),
+	start_time: z.string().optional(),
+	end_time: z.string().optional(),
 	duration: z.string(),
-	exerciseCount: z.number().int().nonnegative(),
-	setCount: z.number().int().nonnegative(),
+	exercise_count: z.number().int().nonnegative(),
+	set_count: z.number().int().nonnegative(),
 });
 
 const GetWorkoutsResponseSchema = z.array(WorkoutSummarySchema);
@@ -31,10 +31,10 @@ const GetWorkoutsResponseSchema = z.array(WorkoutSummarySchema);
 const RoutineSummarySchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
-	folderId: z.number().optional(),
-	updatedAt: z.string().optional(),
-	exerciseCount: z.number().int().nonnegative(),
-	setCount: z.number().int().nonnegative(),
+	folder_id: z.number().optional(),
+	updated_at: z.string().optional(),
+	exercise_count: z.number().int().nonnegative(),
+	set_count: z.number().int().nonnegative(),
 });
 
 const GetRoutinesResponseSchema = z.array(RoutineSummarySchema);
@@ -44,9 +44,9 @@ const FormattedExerciseTemplateSchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
 	type: z.string().optional(),
-	primaryMuscleGroup: z.string().optional(),
-	secondaryMuscleGroups: z.array(z.string()).optional(),
-	isCustom: z.boolean().optional(),
+	primary_muscle_group: z.string().optional(),
+	secondary_muscle_groups: z.array(z.string()).optional(),
+	is_custom: z.boolean().optional(),
 });
 
 const GetExerciseTemplatesResponseSchema = z.array(
@@ -57,8 +57,8 @@ const GetExerciseTemplatesResponseSchema = z.array(
 const FormattedRoutineFolderSchema = z.object({
 	id: z.number().optional(),
 	title: z.string().optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
+	created_at: z.string().optional(),
+	updated_at: z.string().optional(),
 });
 
 const GetRoutineFoldersResponseSchema = z.array(FormattedRoutineFolderSchema);
@@ -73,23 +73,23 @@ const UserInfoResponseSchema = z.object({
 // --- BODY MEASUREMENTS SCHEMAS ---
 const FormattedBodyMeasurementSchema = z.object({
 	date: z.string(),
-	weightKg: z.number().optional(),
-	leanMassKg: z.number().optional(),
-	fatPercent: z.number().optional(),
-	neckCm: z.number().optional(),
-	shoulderCm: z.number().optional(),
-	chestCm: z.number().optional(),
-	leftBicepCm: z.number().optional(),
-	rightBicepCm: z.number().optional(),
-	leftForearmCm: z.number().optional(),
-	rightForearmCm: z.number().optional(),
+	weight_kg: z.number().optional(),
+	lean_mass_kg: z.number().optional(),
+	fat_percent: z.number().optional(),
+	neck_cm: z.number().optional(),
+	shoulder_cm: z.number().optional(),
+	chest_cm: z.number().optional(),
+	left_bicep_cm: z.number().optional(),
+	right_bicep_cm: z.number().optional(),
+	left_forearm_cm: z.number().optional(),
+	right_forearm_cm: z.number().optional(),
 	abdomen: z.number().optional(),
 	waist: z.number().optional(),
 	hips: z.number().optional(),
-	leftThigh: z.number().optional(),
-	rightThigh: z.number().optional(),
-	leftCalf: z.number().optional(),
-	rightCalf: z.number().optional(),
+	left_thigh_cm: z.number().optional(),
+	right_thigh_cm: z.number().optional(),
+	left_calf_cm: z.number().optional(),
+	right_calf_cm: z.number().optional(),
 });
 
 const GetBodyMeasurementsResponseSchema = z.array(
@@ -156,7 +156,7 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 					name: "get-workouts",
 					arguments: {
 						page: 1,
-						pageSize: 5,
+						page_size: 5,
 					},
 				},
 			});
@@ -177,8 +177,8 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 			expect(responseData[0].id).toBeDefined();
 			expect(responseData[0].title).toBeDefined();
 			expect(responseData[0].title.length).toBeGreaterThanOrEqual(3);
-			expect(responseData[0].exerciseCount).toBeDefined();
-			expect(responseData[0].setCount).toBeDefined();
+			expect(responseData[0].exercise_count).toBeDefined();
+			expect(responseData[0].set_count).toBeDefined();
 		});
 	});
 
@@ -192,7 +192,7 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 					name: "get-routines",
 					arguments: {
 						page: 1,
-						pageSize: 5,
+						page_size: 5,
 					},
 				},
 			});
@@ -211,8 +211,8 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 			expect(Array.isArray(responseData)).toBe(true);
 			if (responseData.length > 0) {
 				expect(responseData[0].id).toBeDefined();
-				expect(responseData[0].exerciseCount).toBeDefined();
-				expect(responseData[0].setCount).toBeDefined();
+				expect(responseData[0].exercise_count).toBeDefined();
+				expect(responseData[0].set_count).toBeDefined();
 				expect(responseData[0].title).toBeDefined();
 			}
 		});
@@ -228,7 +228,7 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 					name: "get-exercise-templates",
 					arguments: {
 						page: 1,
-						pageSize: 5,
+						page_size: 5,
 					},
 				},
 			});
@@ -261,7 +261,7 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 					name: "get-routine-folders",
 					arguments: {
 						page: 1,
-						pageSize: 5,
+						page_size: 5,
 					},
 				},
 			});
@@ -322,7 +322,7 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 					name: "get-body-measurements",
 					arguments: {
 						page: 1,
-						pageSize: 5,
+						page_size: 5,
 					},
 				},
 			});

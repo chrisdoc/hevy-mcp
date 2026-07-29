@@ -1,7 +1,7 @@
 import type { UserInfoResponse } from "@hevy-mcp/hevy-client/types";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import { userResponse } from "../utils/response-formatter.js";
+import { userResponse } from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 
 const getUserInfoSchema = {} as const;

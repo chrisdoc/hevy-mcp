@@ -295,10 +295,10 @@ only when your assistant calls them.
 
 These server-provided MCP prompts coordinate common multi-step workflows:
 
-| Prompt                        | Arguments                                | Workflow                                                                                                               |
-| ----------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`  | Calls `get-training-summary`, then analyzes workout activity and body-measurement trends from the returned evidence.   |
-| `create-workout-from-routine` | Required `routineId` and UTC `startTime` | Loads a routine, collects actual completed-set data and an end time, then creates a workout without inventing results. |
+| Prompt                        | Arguments                                  | Workflow                                                                                                               |
+| ----------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`    | Calls `get-training-summary`, then analyzes workout activity and body-measurement trends from the returned evidence.   |
+| `create-workout-from-routine` | Required `routine_id` and UTC `start_time` | Loads a routine, collects actual completed-set data and an end time, then creates a workout without inventing results. |
 
 > [!NOTE]
 > With MCP SDK v1.29.0, clients invoking `analyze-workout-progress` with its

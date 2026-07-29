@@ -26,10 +26,9 @@ function withPromptObservation<TArgs extends Record<string, unknown>>(
 					name,
 					kind: "prompt",
 					argumentKeys: Object.keys(args).filter(
-						(key) => key === "routineId",
-					) as "routineId"[],
-					argumentPresence: args.routineId ? { routineId: true } : {},
-					argumentKeyCountBucket: bucketCount(Object.keys(args).length),
+						(key) => key === "routine_id",
+					) as "routine_id"[],
+					argumentPresence: args.routine_id ? { routine_id: true } : {},
 				}),
 			);
 		} catch {
@@ -113,12 +112,12 @@ export function registerWorkoutPrompts(
 			title: "Create Workout From Routine",
 			description: "Create a completed workout from an existing routine.",
 			argsSchema: z.object({
-				routineId: z
+				routine_id: z
 					.string()
 					.min(1)
 					.optional()
 					.describe("Routine ID to use as a guide."),
-				startTime: utcSecondTimestamp
+				start_time: utcSecondTimestamp
 					.optional()
 					.describe("Workout start time in UTC as YYYY-MM-DDTHH:mm:ssZ."),
 			}),
@@ -126,24 +125,24 @@ export function registerWorkoutPrompts(
 		withPromptObservation(
 			"create-workout-from-routine",
 			observer,
-			({ routineId, startTime }) => ({
+			({ routine_id, start_time }) => ({
 				messages: [
 					{
 						role: "user",
 						content: {
 							type: "text",
 							text:
-								routineId && startTime
+								routine_id && start_time
 									? [
-											`Create a workout from routine ${routineId}, starting at ${startTime}.`,
-											"First call get-routine with the routineId and map supported plan fields: routine title to workout title, plus each exerciseTemplateId, supersetId, exercise notes, and set type.",
-											"Do not copy routine-only restSeconds or repRange fields into create-workout.",
-											"Before calling create-workout, confirm or collect the user's actual completed set data for every set, including applicable weightKg, reps, distanceMeters, durationSeconds, RPE, or custom metric values.",
-											"Also collect the required endTime in strict UTC YYYY-MM-DDTHH:mm:ssZ format and confirm any other missing required workout fields.",
-											"Never invent completion data. If the actual results or endTime are unavailable, ask the user for them instead of creating the workout.",
+											`Create a workout from routine ${routine_id}, starting at ${start_time}.`,
+											"First call get-routine with the routine_id and map supported plan fields: routine title to workout title, plus each exercise_template_id, superset_id, exercise notes, and set type.",
+											"Do not copy routine-only rest_seconds or rep_range fields into create-workout.",
+											"Before calling create-workout, confirm or collect the user's actual completed set data for every set, including applicable weight_kg, reps, distance_meters, duration_seconds, rpe, or custom_metric values.",
+											"Also collect the required end_time in strict UTC YYYY-MM-DDTHH:mm:ssZ format and confirm any other missing required workout fields.",
+											"Never invent completion data. If the actual results or end_time are unavailable, ask the user for them instead of creating the workout.",
 											"Once confirmed, call create-workout with only fields supported by that tool.",
 										].join("\n")
-									: "Provide a routineId and startTime to generate the full prompt.",
+									: "Provide a routine_id and start_time to generate the full prompt.",
 						},
 					},
 				],

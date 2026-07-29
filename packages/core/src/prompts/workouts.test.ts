@@ -46,8 +46,8 @@ describe("workout prompts", () => {
 					title: "Create Workout From Routine",
 					description: expect.stringContaining("routine"),
 					arguments: expect.arrayContaining([
-						expect.objectContaining({ name: "routineId", required: false }),
-						expect.objectContaining({ name: "startTime", required: false }),
+						expect.objectContaining({ name: "routine_id", required: false }),
+						expect.objectContaining({ name: "start_time", required: false }),
 					]),
 				}),
 			]),
@@ -111,8 +111,8 @@ describe("workout prompts", () => {
 		const result = await client.getPrompt({
 			name: "create-workout-from-routine",
 			arguments: {
-				routineId: "routine-123",
-				startTime: "2026-07-10T08:00:00Z",
+				routine_id: "routine-123",
+				start_time: "2026-07-10T08:00:00Z",
 			},
 		});
 
@@ -123,7 +123,7 @@ describe("workout prompts", () => {
 				content: expect.objectContaining({
 					type: "text",
 					text: expect.stringMatching(
-						/get-routine[\s\S]*restSeconds[\s\S]*repRange[\s\S]*endTime[\s\S]*Never invent/,
+						/get-routine[\s\S]*rest_seconds[\s\S]*rep_range[\s\S]*end_time[\s\S]*Never invent/,
 					),
 				}),
 			}),
@@ -135,8 +135,8 @@ describe("workout prompts", () => {
 			client.getPrompt({
 				name: "create-workout-from-routine",
 				arguments: {
-					routineId: "routine-123",
-					startTime: "2026-07-10T08:00:00+00:00",
+					routine_id: "routine-123",
+					start_time: "2026-07-10T08:00:00+00:00",
 				},
 			}),
 		).rejects.toThrow();
@@ -150,7 +150,7 @@ describe("workout prompts", () => {
 
 		expect(result.messages[0]?.content).toEqual(
 			expect.objectContaining({
-				text: "Provide a routineId and startTime to generate the full prompt.",
+				text: "Provide a routine_id and start_time to generate the full prompt.",
 			}),
 		);
 	});

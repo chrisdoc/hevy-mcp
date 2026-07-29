@@ -102,4 +102,23 @@ describe("registerHevyTools", () => {
 
 		expect(summary?.outputSchema).toBeDefined();
 	});
+	it("exposes only snake_case public input property names", async () => {
+		const { tools } = await client.listTools();
+		const propertyNames: string[] = [];
+		const visit = (schema: unknown): void => {
+			if (!schema || typeof schema !== "object") return;
+			const record = schema as Record<string, unknown>;
+			if (record.properties && typeof record.properties === "object") {
+				for (const [name, child] of Object.entries(
+					record.properties as Record<string, unknown>,
+				)) {
+					propertyNames.push(name);
+					visit(child);
+				}
+			}
+			if (record.items) visit(record.items);
+		};
+		for (const tool of tools) visit(tool.inputSchema);
+		expect(propertyNames.filter((name) => /[A-Z]/u.test(name))).toEqual([]);
+	});
 });

@@ -7,7 +7,7 @@ import {
 	bodyMeasurementsResponse,
 	createBodyMeasurementResponse,
 	updateBodyMeasurementResponse,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import {
 	readOnlyAnnotations,
 	createAnnotations,
@@ -17,17 +17,17 @@ import {
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
-	bodyMeasurementFieldsSchema,
 	calendarDate,
+	createBodyMeasurementInputShape,
 	paginationShape,
+	updateBodyMeasurementInputShape,
 } from "./input-schemas.js";
-import { buildMeasurementPayload } from "./payload-mappers.js";
-import type { PaginatedToolResult } from "../utils/response-formatter.js";
+import { buildMeasurementPayload } from "./mutation-semantics.js";
+import type { PaginatedToolResult } from "../utils/response-contracts.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
 } from "../utils/hevy-error-policy.js";
-
 const getBodyMeasurementsSchema = {
 	...paginationShape({ defaultPageSize: 10, maxPageSize: 10 }),
 } as const;
@@ -39,15 +39,8 @@ const getBodyMeasurementSchema = {
 	date: calendarDate,
 } as const;
 
-const createBodyMeasurementSchema = {
-	date: calendarDate,
-	...bodyMeasurementFieldsSchema,
-} as const;
-
-const updateBodyMeasurementSchema = {
-	date: calendarDate,
-	...bodyMeasurementFieldsSchema,
-} as const;
+const createBodyMeasurementSchema = createBodyMeasurementInputShape;
+const updateBodyMeasurementSchema = updateBodyMeasurementInputShape;
 
 const getBodyMeasurementsDefinition: ToolDefinition<
 	typeof getBodyMeasurementsSchema,
@@ -64,11 +57,11 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 	kind: "read",
 	responseContract: bodyMeasurementsResponse,
 	execute: async (runtime: ToolRuntime, args) => {
-		const { page, pageSize } = args;
+		const { page, page_size } = args;
 		try {
 			const data: GetV1BodyMeasurements200 = await runtime
 				.getClient()
-				.getBodyMeasurements({ page, pageSize });
+				.getBodyMeasurements({ page, pageSize: page_size });
 			return {
 				items: data?.body_measurements ?? [],
 				page,
@@ -161,7 +154,7 @@ const updateBodyMeasurementDefinition: ToolDefinition<
 		const payload = buildMeasurementPayload(fields);
 		if (Object.keys(payload).length === 0) {
 			throw new Error(
-				"No measurement fields provided. Include at least one numeric measurement field (e.g. weightKg) to update.",
+				"No measurement fields provided. Include at least one numeric measurement field (e.g. weight_kg) to update.",
 			);
 		}
 		await runtime.getClient().updateBodyMeasurement(date, payload);

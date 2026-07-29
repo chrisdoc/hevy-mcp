@@ -10,10 +10,7 @@ import type {
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import {
-	formatExerciseTemplate,
-	formatRoutineFolder,
-} from "../utils/response-formatter.js";
+import { projectRoutineFolder } from "../utils/response-contracts.js";
 import {
 	createExerciseTemplateCatalog,
 	type ExerciseTemplateCatalog,
@@ -195,7 +192,7 @@ describe("registerHevyResources", () => {
 			new URL(countRegistration.uri),
 			createTestContext(2),
 		);
-		expect(parseJsonContent(countResult).data).toEqual({ count: 42 });
+		expect(parseJsonContent(countResult).data).toEqual({ workout_count: 42 });
 	});
 
 	it("fetches and formats all routine folder pages", async () => {
@@ -246,8 +243,8 @@ describe("registerHevyResources", () => {
 			pageSize: 10,
 		});
 		expect(parseJsonContent(result).data).toEqual([
-			formatRoutineFolder(firstFolder),
-			formatRoutineFolder(secondFolder),
+			projectRoutineFolder(firstFolder),
+			projectRoutineFolder(secondFolder),
 		]);
 	});
 
@@ -280,7 +277,7 @@ describe("registerHevyResources", () => {
 
 		expect(getRoutineFolders).toHaveBeenCalledOnce();
 		expect(parseJsonContent(result).data).toEqual([
-			formatRoutineFolder(folder),
+			projectRoutineFolder(folder),
 		]);
 	});
 
@@ -354,11 +351,9 @@ describe("registerHevyResources", () => {
 			resourcePromise,
 			searchPromise,
 		]);
-		expect(parseJsonContent(resourceResult).data).toEqual([
-			formatExerciseTemplate(benchTemplate),
-		]);
+		expect(parseJsonContent(resourceResult).data).toEqual([benchTemplate]);
 		expect(JSON.parse(searchResult.content[0]?.text ?? "null")).toEqual([
-			formatExerciseTemplate(benchTemplate),
+			benchTemplate,
 		]);
 	});
 

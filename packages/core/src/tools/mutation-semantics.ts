@@ -1,53 +1,14 @@
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { BodyMeasurement } from "@hevy-mcp/hevy-client/types";
 import type {
-	BodyMeasurement,
 	PostRoutinesRequestBody,
 	PostRoutinesRequestSet,
-	PostRoutinesRequestSetTypeEnumKey,
-	PostWorkoutsRequestBody,
-	PostWorkoutsRequestSetRpeEnumKey,
-	PostWorkoutsRequestSetTypeEnumKey,
 	PutRoutinesRequestBody,
 	PutRoutinesRequestSet,
-	PutRoutinesRequestSetTypeEnumKey,
 } from "@hevy-mcp/hevy-client/types";
-import {
-	measurementFieldToApiKey,
-	type ExerciseTemplateInput,
-	type MeasurementFields,
-	type RoutineFolderInput,
-	type RoutinePayloadInput,
-	type WorkoutPayloadInput,
+import type {
+	MeasurementFields,
+	RoutinePayloadInput,
 } from "./input-schemas.js";
-
-export type WorkoutPayload = NonNullable<PostWorkoutsRequestBody["workout"]>;
-
-/** Map the public camelCase workout input to the API's snake_case payload. */
-export function buildWorkoutPayload(
-	input: WorkoutPayloadInput,
-): WorkoutPayload {
-	return {
-		title: input.title,
-		description: input.description ?? null,
-		start_time: input.startTime,
-		end_time: input.endTime,
-		is_private: input.isPrivate,
-		exercises: input.exercises.map((exercise) => ({
-			exercise_template_id: exercise.exerciseTemplateId,
-			superset_id: exercise.supersetId ?? null,
-			notes: exercise.notes ?? null,
-			sets: exercise.sets.map((set) => ({
-				type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-				weight_kg: set.weightKg ?? null,
-				reps: set.reps ?? null,
-				distance_meters: set.distanceMeters ?? null,
-				duration_seconds: set.durationSeconds ?? null,
-				rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
-				custom_metric: set.customMetric ?? null,
-			})),
-		})),
-	};
-}
 
 type RoutineRepRange = { start?: number; end?: number } | null;
 
@@ -97,37 +58,38 @@ function buildRoutineSets(
 	mode: "create" | "update",
 ): PostRoutinesRequestSet[] | PutRoutinesRequestSet[] {
 	return sets.map((set) => {
-		const repRange = buildRepRange(set.repRange);
+		const repRange = buildRepRange(set.rep_range);
 		const reps =
 			typeof set.reps === "number"
 				? set.reps
 				: getFixedRepsFromRepRange(repRange);
 		const common = {
-			weight_kg: set.weightKg ?? null,
+			weight_kg: set.weight_kg ?? null,
 			reps: reps ?? null,
-			distance_meters: set.distanceMeters ?? null,
-			duration_seconds: set.durationSeconds ?? null,
-			custom_metric: set.customMetric ?? null,
+			distance_meters: set.distance_meters ?? null,
+			duration_seconds: set.duration_seconds ?? null,
+			custom_metric: set.custom_metric ?? null,
 		};
 
 		if (mode === "create") {
 			return {
 				...common,
-				type: set.type as PostRoutinesRequestSetTypeEnumKey,
+				type: set.type,
 				rep_range: repRange,
 			};
 		}
 		return {
 			...common,
-			type: set.type as PutRoutinesRequestSetTypeEnumKey,
+			type: set.type,
 			...(repRange ? { rep_range: repRange } : {}),
 		};
 	});
 }
 
 /**
- * Build a routine wire payload. Create requests explicitly send null rep_range;
- * update requests omit it when no range is supplied.
+ * Build a routine wire payload while retaining rep-range semantics.
+ * Create requests explicitly send null rep_range; update requests omit it
+ * when no range is supplied.
  */
 export function buildRoutinePayload(
 	input: RoutinePayloadInput,
@@ -154,9 +116,9 @@ export function buildRoutinePayload(
 			usesRepRanges = true;
 		}
 		return {
-			exercise_template_id: exercise.exerciseTemplateId,
-			superset_id: exercise.supersetId ?? null,
-			rest_seconds: exercise.restSeconds ?? null,
+			exercise_template_id: exercise.exercise_template_id,
+			superset_id: exercise.superset_id ?? null,
+			rest_seconds: exercise.rest_seconds ?? null,
 			notes: exercise.notes ?? null,
 			sets,
 		};
@@ -166,7 +128,7 @@ export function buildRoutinePayload(
 		return {
 			payload: {
 				title: input.title,
-				folder_id: input.folderId ?? null,
+				folder_id: input.folder_id ?? null,
 				notes: input.notes ?? "",
 				exercises: exercises as RoutineCreatePayload["exercises"],
 			},
@@ -186,44 +148,38 @@ export function buildRoutinePayload(
 
 export type MeasurementPayload = Omit<BodyMeasurement, "date">;
 
+const measurementKeys = [
+	"weight_kg",
+	"lean_mass_kg",
+	"fat_percent",
+	"neck_cm",
+	"shoulder_cm",
+	"chest_cm",
+	"left_bicep_cm",
+	"right_bicep_cm",
+	"left_forearm_cm",
+	"right_forearm_cm",
+	"abdomen",
+	"waist",
+	"hips",
+	"left_thigh",
+	"right_thigh",
+	"left_calf",
+	"right_calf",
+] as const satisfies readonly (keyof MeasurementPayload)[];
+
 /** Omit nullish measurement values because the API rejects explicit nulls. */
 export function buildMeasurementPayload(
 	fields: Partial<MeasurementFields>,
 ): MeasurementPayload {
 	const payload: MeasurementPayload = {};
-	for (const [camelKey, apiKey] of Object.entries(measurementFieldToApiKey) as [
-		keyof MeasurementFields,
-		keyof MeasurementPayload,
-	][]) {
-		const value = fields[camelKey];
+	for (const key of measurementKeys) {
+		const value = fields[key];
 		if (value != null) {
-			payload[apiKey] = value;
+			payload[key] = value;
 		}
 	}
 	return payload;
-}
-export function buildExerciseTemplateRequest(
-	input: ExerciseTemplateInput,
-): Parameters<HevyClient["createExerciseTemplate"]>[0] {
-	return {
-		exercise: {
-			title: input.title,
-			exercise_type: input.exerciseType,
-			equipment_category: input.equipmentCategory,
-			muscle_group: input.muscleGroup,
-			other_muscles: input.otherMuscles,
-		},
-	};
-}
-
-export function buildRoutineFolderRequest(
-	input: RoutineFolderInput,
-): Parameters<HevyClient["createRoutineFolder"]>[0] {
-	return {
-		routine_folder: {
-			title: input.name,
-		},
-	};
 }
 
 export function mergeMeasurementPayload(
@@ -233,18 +189,15 @@ export function mergeMeasurementPayload(
 	const payload: MeasurementPayload = {};
 	const measurement = { ...existing };
 
-	for (const [camelKey, apiKey] of Object.entries(measurementFieldToApiKey) as [
-		keyof MeasurementFields,
-		keyof MeasurementPayload,
-	][]) {
-		const changed = changes[camelKey];
+	for (const key of measurementKeys) {
+		const changed = changes[key];
 		if (changed !== undefined) {
-			measurement[apiKey] = changed;
-			if (changed !== null) payload[apiKey] = changed;
+			measurement[key] = changed;
+			if (changed !== null) payload[key] = changed;
 			continue;
 		}
-		const existingValue = existing[apiKey];
-		if (existingValue != null) payload[apiKey] = existingValue;
+		const existingValue = existing[key];
+		if (existingValue != null) payload[key] = existingValue;
 	}
 
 	return { payload, measurement };

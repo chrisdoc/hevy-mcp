@@ -7,11 +7,11 @@ import type {
 	PostV1Workouts201,
 	PutV1WorkoutsWorkoutid200,
 } from "@hevy-mcp/hevy-client/types";
-import { buildWorkoutPayload } from "./payload-mappers.js";
 import {
 	paginationShape,
 	nonEmptyId,
-	workoutPayloadShape,
+	updateWorkoutInputShape,
+	workoutInputShape,
 } from "./input-schemas.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
@@ -22,7 +22,7 @@ import {
 	workoutEventsResponse,
 	workoutResponse,
 	workoutsResponse,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
@@ -42,7 +42,7 @@ const getWorkoutsSchema = paginationShape({
 });
 type GetWorkoutsParams = InferToolParams<typeof getWorkoutsSchema>;
 
-const getWorkoutSchema = { workoutId: nonEmptyId } as const;
+const getWorkoutSchema = { workout_id: nonEmptyId } as const;
 type GetWorkoutParams = InferToolParams<typeof getWorkoutSchema>;
 
 const getWorkoutEventsSchema = {
@@ -51,13 +51,10 @@ const getWorkoutEventsSchema = {
 } as const;
 type GetWorkoutEventsParams = InferToolParams<typeof getWorkoutEventsSchema>;
 
-const createWorkoutSchema = workoutPayloadShape;
+const createWorkoutSchema = workoutInputShape;
 type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
 
-const updateWorkoutSchema = {
-	workoutId: nonEmptyId,
-	...workoutPayloadShape,
-} as const;
+const updateWorkoutSchema = updateWorkoutInputShape;
 type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
 
 export const workoutToolDefinitions = [
@@ -76,7 +73,7 @@ export const workoutToolDefinitions = [
 			try {
 				const data: GetV1Workouts200 = await runtime.getClient().getWorkouts({
 					page: args.page,
-					pageSize: args.pageSize,
+					pageSize: args.page_size,
 				});
 				return {
 					items: data?.workouts ?? [],
@@ -100,7 +97,7 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "get" as const,
 		description:
-			"Read-only. Gets one workout with exercises and sets by workoutId. Use get-workouts to discover IDs.",
+			"Read-only. Gets one workout with exercises and sets by workout_id. Use get-workouts to discover IDs.",
 		inputSchema: getWorkoutSchema,
 		outputSchema: workoutResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workout"),
@@ -110,13 +107,13 @@ export const workoutToolDefinitions = [
 			try {
 				const data: GetV1WorkoutsWorkoutid200 = await runtime
 					.getClient()
-					.getWorkout(args.workoutId);
-				return { workout: data, workoutId: args.workoutId };
+					.getWorkout(args.workout_id);
+				return { workout: data, workout_id: args.workout_id };
 			} catch (error) {
 				if (isExpectedReadNotFound(error)) {
 					return {
 						workout: null,
-						workoutId: args.workoutId,
+						workout_id: args.workout_id,
 						expected404Outcome: "not_found",
 					};
 				}
@@ -159,7 +156,7 @@ export const workoutToolDefinitions = [
 					.getClient()
 					.getWorkoutEvents({
 						page: args.page,
-						pageSize: args.pageSize,
+						pageSize: args.page_size,
 						since: args.since,
 					});
 				return {
@@ -193,7 +190,7 @@ export const workoutToolDefinitions = [
 		responseContract: createWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: CreateWorkoutParams) => {
 			const data: PostV1Workouts201 = await runtime.getClient().createWorkout({
-				workout: buildWorkoutPayload(args),
+				workout: args.workout,
 			});
 			return data;
 		},
@@ -211,10 +208,10 @@ export const workoutToolDefinitions = [
 		execute: async (runtime: ToolRuntime, args: UpdateWorkoutParams) => {
 			const data: PutV1WorkoutsWorkoutid200 = await runtime
 				.getClient()
-				.updateWorkout(args.workoutId, {
-					workout: buildWorkoutPayload(args),
+				.updateWorkout(args.workout_id, {
+					workout: args.workout,
 				});
-			return { workout: data, workoutId: args.workoutId };
+			return { workout: data, workout_id: args.workout_id };
 		},
 	},
 ] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];

@@ -4,18 +4,17 @@ import {
 	getV1RoutinesQueryParamsSchema,
 } from "@hevy-mcp/hevy-client/schemas";
 import {
-	bodyMeasurementFieldsInputSchema,
-	buildExerciseTemplateRequest,
 	buildMeasurementPayload,
-	buildRoutineFolderRequest,
 	buildRoutinePayload,
-	buildWorkoutPayload,
+	createBodyMeasurementInputSchema,
 	createRoutineInputSchema,
-	exerciseTemplateInputSchema,
 	existingBodyMeasurementSchema,
+	exerciseTemplateInputSchema,
 	mergeMeasurementPayload,
 	routineFolderInputSchema,
+	updateBodyMeasurementInputSchema,
 	updateRoutineInputSchema,
+	updateWorkoutInputSchema,
 	workoutInputSchema,
 } from "@hevy-mcp/core/mutations";
 import {
@@ -40,7 +39,7 @@ import {
 	readDataSource as defaultDataSourceReader,
 	type DataSourceReader,
 } from "../input.js";
-import { normalize, pageEnvelope } from "../output/normalize.js";
+import { pageEnvelope } from "../output/contracts.js";
 
 type Body = Record<string, unknown>;
 function body(value: unknown): Body {
@@ -71,12 +70,15 @@ function list(data: Body, source: string, output: string, page: number): Body {
 		Array.isArray(data[source]) ? data[source] : [],
 	);
 }
-const createBodyMeasurementDataSchema = bodyMeasurementFieldsInputSchema.refine(
-	(fields) => Object.values(fields).some((value) => typeof value === "number"),
+const createBodyMeasurementDataSchema = createBodyMeasurementInputSchema.refine(
+	(fields) =>
+		Object.entries(fields).some(
+			([key, value]) => key !== "date" && typeof value === "number",
+		),
 	"Include at least one numeric measurement field",
 );
-const updateBodyMeasurementDataSchema = bodyMeasurementFieldsInputSchema.refine(
-	(fields) => Object.keys(fields).length > 0,
+const updateBodyMeasurementDataSchema = updateBodyMeasurementInputSchema.refine(
+	(fields) => Object.keys(fields).some((key) => key !== "date"),
 	"Include at least one measurement field",
 );
 
@@ -94,8 +96,7 @@ export async function execute(
 ): Promise<unknown> {
 	const command = args.command;
 	const sub = args.subcommand;
-	if (command === "user" && !sub)
-		return { user: normalize(await client.getUserInfo()) };
+	if (command === "user" && !sub) return { user: await client.getUserInfo() };
 	if (command === "workouts") {
 		if (sub === "list") {
 			const { page, pageSize } = parsePagination(args);
@@ -109,7 +110,7 @@ export async function execute(
 		if (sub === "get") {
 			const workoutId = parseWorkoutId(args.positionals[0]);
 			return {
-				workout: normalize(await client.getWorkout(workoutId)),
+				workout: await client.getWorkout(workoutId),
 			};
 		}
 		if (sub === "create") {
@@ -119,26 +120,28 @@ export async function execute(
 				workoutInputSchema,
 				readDataSource,
 			);
-			const response = await client.createWorkout({
-				workout: buildWorkoutPayload(input),
-			});
-			return { workout: normalize(response) };
+			const response = await client.createWorkout(input);
+			return { workout: response };
 		}
 		if (sub === "update") {
 			requireMutationConfirmation(args);
 			const input = await loadMutationInput(
 				mutationData(args),
-				workoutInputSchema,
+				updateWorkoutInputSchema,
 				readDataSource,
 			);
 			const workoutId = parseWorkoutId(args.positionals[0]);
+			if (input.workout_id !== workoutId)
+				throw new UsageError("Workout ID does not match --data.workout_id");
 			const response = await client.updateWorkout(workoutId, {
-				workout: buildWorkoutPayload(input),
+				workout: input.workout,
 			});
-			return { workoutId, workout: normalize(response) };
+			return { workout_id: workoutId, workout: response };
 		}
 		if (sub === "count")
-			return { count: body(await client.getWorkoutCount()).workout_count ?? 0 };
+			return {
+				workout_count: body(await client.getWorkoutCount()).workout_count ?? 0,
+			};
 		if (sub === "events") {
 			const options = parseWorkoutEventsOptions(args);
 			return {
@@ -168,7 +171,7 @@ export async function execute(
 		if (sub === "get") {
 			const routineId = parseRoutineId(args.positionals[0]);
 			return {
-				routine: normalize(await client.getRoutineById(routineId)),
+				routine: await client.getRoutineById(routineId),
 			};
 		}
 		if (sub === "create") {
@@ -178,9 +181,12 @@ export async function execute(
 				createRoutineInputSchema,
 				readDataSource,
 			);
-			const { payload, usesRepRanges } = buildRoutinePayload(input, "create");
+			const { payload, usesRepRanges } = buildRoutinePayload(
+				input.routine,
+				"create",
+			);
 			const response = await client.createRoutine({ routine: payload });
-			return { routine: normalize(response), usesRepRanges };
+			return { routine: response, uses_rep_ranges: usesRepRanges };
 		}
 		if (sub === "update") {
 			requireMutationConfirmation(args);
@@ -190,11 +196,20 @@ export async function execute(
 				readDataSource,
 			);
 			const routineId = parseRoutineId(args.positionals[0]);
-			const { payload, usesRepRanges } = buildRoutinePayload(input, "update");
+			if (input.routine_id !== routineId)
+				throw new UsageError("Routine ID does not match --data.routine_id");
+			const { payload, usesRepRanges } = buildRoutinePayload(
+				input.routine,
+				"update",
+			);
 			const response = await client.updateRoutine(routineId, {
 				routine: payload,
 			});
-			return { routineId, routine: normalize(response), usesRepRanges };
+			return {
+				routine_id: routineId,
+				routine: response,
+				uses_rep_ranges: usesRepRanges,
+			};
 		}
 	}
 	if (command === "exercises") {
@@ -205,65 +220,62 @@ export async function execute(
 				exerciseTemplateInputSchema,
 				readDataSource,
 			);
-			const response = await client.createExerciseTemplate(
-				buildExerciseTemplateRequest(input),
-			);
-			return { exerciseTemplate: normalize(response) };
+			const response = await client.createExerciseTemplate(input);
+			return { exercise_template: response };
 		}
 		if (sub === "get") {
 			const exerciseId = parseExerciseId(args.positionals[0]);
 			return {
-				exercise: normalize(await client.getExerciseTemplate(exerciseId)),
+				exercise_template: await client.getExerciseTemplate(exerciseId),
 			};
 		}
 		if (sub === "history") {
 			const exerciseId = parseExerciseHistoryId(args.positionals[0]);
 			const options = parseExerciseHistoryOptions(args);
 			return {
-				exerciseTemplateId: exerciseId,
-				history: normalize(
+				exercise_template_id: exerciseId,
+				exercise_history:
 					(await client.getExerciseHistory(exerciseId, options))
 						.exercise_history ?? [],
-				),
 			};
 		}
 		if (sub === "search") {
 			const query = parseSearchQuery(args.positionals[0]);
 			const maxPages = parseSearchMaxPages(args);
 			const matches: unknown[] = [];
-			let pagesScanned = 0;
-			let pageCount = 1;
-			while (pagesScanned < pageCount && pagesScanned < maxPages) {
-				const requestedPage = pagesScanned + 1;
+			let pages_scanned = 0;
+			let page_count = 1;
+			while (pages_scanned < page_count && pages_scanned < maxPages) {
+				const requestedPage = pages_scanned + 1;
 				const result = body(
 					await client.getExerciseTemplates({
 						page: requestedPage,
 						pageSize: 100,
 					}),
 				);
-				pageCount = result.page_count as number;
+				page_count = result.page_count as number;
 				if (
-					!Number.isInteger(pageCount) ||
-					pageCount < 0 ||
+					!Number.isInteger(page_count) ||
+					page_count < 0 ||
 					(result.page !== undefined && result.page !== requestedPage) ||
-					(pageCount > 0 && pageCount < requestedPage)
+					(page_count > 0 && page_count < requestedPage)
 				)
 					throw new ApiResponseError(
 						"The API returned invalid pagination metadata",
 					);
-				pagesScanned += 1;
-				if (pageCount === 0) break;
+				pages_scanned += 1;
+				if (page_count === 0) break;
 				for (const item of Array.isArray(result.exercise_templates)
 					? result.exercise_templates
 					: [])
 					if (text(body(item).title).toLocaleLowerCase().includes(query))
-						matches.push(normalize(item));
+						matches.push(item);
 			}
 			return {
 				query,
 				matches,
-				pagesScanned,
-				complete: pagesScanned >= pageCount,
+				pages_scanned,
+				complete: pages_scanned >= page_count,
 			};
 		}
 	}
@@ -276,13 +288,15 @@ export async function execute(
 			return list(
 				body(await client.getBodyMeasurements({ page, pageSize })),
 				"body_measurements",
-				"measurements",
+				"body_measurements",
 				page,
 			);
 		}
 		if (sub === "get") {
 			const date = parseMeasurementDate(args.positionals[0]);
-			return { measurement: normalize(await client.getBodyMeasurement(date)) };
+			return {
+				body_measurement: await client.getBodyMeasurement(date),
+			};
 		}
 		if (sub === "create") {
 			requireMutationConfirmation(args);
@@ -291,10 +305,13 @@ export async function execute(
 				createBodyMeasurementDataSchema,
 				readDataSource,
 			);
-			const date = parseMeasurementDate(args.positionals[0]);
-			const wireFields = buildMeasurementPayload(input);
+			const date = parseMeasurementDate(args.positionals[0] ?? input.date);
+			if (input.date !== date)
+				throw new UsageError("Measurement date does not match --data.date");
+			const { date: _date, ...fields } = input;
+			const wireFields = buildMeasurementPayload(fields);
 			await client.createBodyMeasurement({ date, ...wireFields });
-			return { measurement: normalize({ date, ...wireFields }) };
+			return { body_measurement: { date, ...wireFields } };
 		}
 		if (sub === "update") {
 			requireMutationConfirmation(args);
@@ -303,7 +320,9 @@ export async function execute(
 				updateBodyMeasurementDataSchema,
 				readDataSource,
 			);
-			const date = parseMeasurementDate(args.positionals[0]);
+			const date = parseMeasurementDate(args.positionals[0] ?? input.date);
+			if (input.date !== date)
+				throw new UsageError("Measurement date does not match --data.date");
 			const parsed = existingBodyMeasurementSchema.safeParse(
 				await client.getBodyMeasurement(date),
 			);
@@ -311,12 +330,13 @@ export async function execute(
 				throw new ApiResponseError(
 					"The API returned an invalid body measurement",
 				);
+			const { date: _date, ...changes } = input;
 			const { payload, measurement } = mergeMeasurementPayload(
 				parsed.data,
-				input,
+				changes,
 			);
 			await client.updateBodyMeasurement(date, payload);
-			return { measurement: normalize(measurement) };
+			return { body_measurement: measurement };
 		}
 	}
 	if (command === "folders" && sub === "create") {
@@ -326,10 +346,8 @@ export async function execute(
 			routineFolderInputSchema,
 			readDataSource,
 		);
-		const response = await client.createRoutineFolder(
-			buildRoutineFolderRequest(input),
-		);
-		return { folder: normalize(response) };
+		const response = await client.createRoutineFolder(input);
+		return { routine_folder: response };
 	}
 	if (command === "summary") {
 		const weeks = parseWeeks(args);
@@ -399,14 +417,14 @@ export async function execute(
 		}
 		return {
 			weeks,
-			from: from.toISOString(),
-			to: to.toISOString(),
-			workoutCount: workouts.length,
-			totalDurationSeconds,
-			exerciseCount,
-			setCount,
-			totalVolumeKg,
-			pagesScanned,
+			start_date: from.toISOString(),
+			end_date: to.toISOString(),
+			workout_count: workouts.length,
+			total_duration_seconds: totalDurationSeconds,
+			exercise_count: exerciseCount,
+			set_count: setCount,
+			total_volume_kg: totalVolumeKg,
+			pages_scanned: pagesScanned,
 			complete:
 				stoppedEarly || pageNumber > pageCount || pagesScanned === pageCount,
 		};

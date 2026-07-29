@@ -2,9 +2,9 @@ import { z } from "zod";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
 import {
 	compactRoutinesResponse,
-	formatRoutineSummary,
+	summarizeRoutine,
 	type CompactRoutinesResult,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
@@ -60,7 +60,7 @@ async function discoverRoutines(
 	}
 
 	return {
-		routines: routines.slice(0, limit).map(formatRoutineSummary),
+		routines: routines.slice(0, limit).map(summarizeRoutine),
 		workflow: {
 			name: "routine-discovery",
 			pagination: { routines: pages },

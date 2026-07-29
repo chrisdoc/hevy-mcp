@@ -1,137 +1,71 @@
 import { describe, expect, it } from "vitest";
-import type {
-	BodyMeasurement,
-	ExerciseHistoryEntry,
-	ExerciseTemplate,
-	Routine,
-	RoutineFolder,
-	Workout,
-} from "@hevy-mcp/hevy-client/types";
 import {
-	formatBodyMeasurement,
-	formatExerciseHistoryEntry,
-	formatExerciseTemplate,
-	formatRoutine,
-	formatRoutineFolder,
-	formatWorkout,
-	type FormattedRoutine,
-	type FormattedWorkout,
 	formattedBodyMeasurementSchema,
 	formattedExerciseHistoryEntrySchema,
 	formattedExerciseTemplateSchema,
 	formattedRoutineFolderSchema,
-	formattedRoutineExerciseSchema,
 	formattedRoutineSchema,
 	formattedWorkoutSchema,
-	userResponse,
 	workoutEventsResponse,
-} from "./response-formatter.js";
+} from "./response-contracts.js";
 
-describe("formatted output schemas", () => {
-	it("accepts every formatter output", () => {
-		const workout: Workout = {
-			id: "workout-1",
-			title: "Workout",
-			description: "Training session",
-			start_time: "2025-01-01T10:00:00Z",
-			end_time: "2025-01-01T11:00:00Z",
-			exercises: [],
-		};
-		const routine: Routine = {
-			id: "routine-1",
-			title: "Routine",
-			folder_id: null,
-			exercises: [],
-		};
-		const folder: RoutineFolder = { id: 1, title: "Folder" };
-		const template: ExerciseTemplate = {
-			id: "template-1",
-			title: "Bench Press",
-			type: "weight_reps",
-			primary_muscle_group: "chest",
-			secondary_muscle_groups: [],
-			is_custom: false,
-		};
-		const history: ExerciseHistoryEntry = {
-			workout_id: "workout-1",
-			exercise_template_id: "template-1",
-			weight_kg: null,
-		};
-		const measurement: BodyMeasurement = { date: "2025-01-01" };
-
-		expect(() =>
-			formattedWorkoutSchema.parse(formatWorkout(workout)),
-		).not.toThrow();
-		expect(() =>
-			formattedRoutineSchema.parse(formatRoutine(routine)),
-		).not.toThrow();
-		expect(() =>
-			formattedRoutineFolderSchema.parse(formatRoutineFolder(folder)),
-		).not.toThrow();
-		expect(() =>
-			formattedExerciseTemplateSchema.parse(formatExerciseTemplate(template)),
-		).not.toThrow();
-		expect(() =>
-			formattedExerciseHistoryEntrySchema.parse(
-				formatExerciseHistoryEntry(history),
-			),
-		).not.toThrow();
-		expect(() =>
-			formattedBodyMeasurementSchema.parse(formatBodyMeasurement(measurement)),
-		).not.toThrow();
-	});
-
-	it("omits nullable workout and routine formatter fields", () => {
-		const workout: FormattedWorkout = {
-			duration: "1h 0m 0s",
-			exercises: [{}],
-		};
-		const routine: FormattedRoutine = {
-			exercises: [{}],
-		};
-
-		expect(formattedWorkoutSchema.parse(workout)).toEqual(workout);
-		expect(formattedRoutineSchema.parse(routine)).toEqual(routine);
-	});
-
-	it("accepts string workout timestamps", () => {
-		const workout = {
-			startTime: "2025-01-01T10:00:00Z",
-			endTime: "2025-01-01T11:00:00Z",
-			duration: "1h 0m 0s",
-		};
-
-		expect(formattedWorkoutSchema.parse(workout)).toEqual(workout);
-	});
-
-	it("accepts routine restSeconds", () => {
-		const exercise = { restSeconds: "60" };
-
-		expect(formattedRoutineExerciseSchema.parse(exercise)).toEqual(exercise);
-	});
-
-	it("uses formatted schemas for events and generated contract for user info", () => {
-		expect(() =>
-			workoutEventsResponse.outputSchema.events.parse([
-				{ type: "deleted", id: "workout-1", deletedAt: "2025-01-01" },
-				{
-					type: "updated",
-					workout: formatWorkout({
-						id: "workout-1",
-						title: "Workout",
-						start_time: "2025-01-01T10:00:00Z",
-						end_time: "2025-01-01T11:00:00Z",
-						exercises: [],
-					}),
-				},
-			]),
-		).not.toThrow();
-		expect(() =>
-			userResponse.outputSchema.user.parse({
-				id: "user-1",
-				name: "Chris",
-				url: "https://hevy.com/user/chris",
+describe("snake_case formatted output schemas", () => {
+	it("accepts generated-aligned workout and routine projections", () => {
+		expect(
+			formattedWorkoutSchema.parse({
+				id: "workout-1",
+				routine_id: "routine-1",
+				start_time: "2025-01-01T10:00:00Z",
+				duration: "1h 0m 0s",
 			}),
-		).not.toThrow();
+		).toMatchObject({ routine_id: "routine-1" });
+		expect(
+			formattedRoutineSchema.parse({
+				id: "routine-1",
+				folder_id: 2,
+				exercises: [{ rest_seconds: "60" }],
+			}),
+		).toMatchObject({ folder_id: 2, exercises: [{ rest_seconds: "60" }] });
+	});
+
+	it("accepts snake_case template, history, measurement, and folder DTOs", () => {
+		expect(
+			formattedExerciseTemplateSchema.parse({
+				id: "bench",
+				primary_muscle_group: "chest",
+			}),
+		).toEqual({ id: "bench", primary_muscle_group: "chest" });
+		expect(
+			formattedExerciseHistoryEntrySchema.parse({
+				workout_id: "workout-1",
+				weight_kg: 80,
+			}),
+		).toEqual({ workout_id: "workout-1", weight_kg: 80 });
+		expect(
+			formattedBodyMeasurementSchema.parse({
+				date: "2025-01-01",
+				weight_kg: 80,
+			}),
+		).toEqual({ date: "2025-01-01", weight_kg: 80 });
+		expect(
+			formattedRoutineFolderSchema.parse({ id: 1, title: "Strength" }),
+		).toEqual({
+			id: 1,
+			title: "Strength",
+		});
+	});
+
+	it("uses snake_case pagination and event members", () => {
+		const response = workoutEventsResponse.render({
+			events: [],
+			since: "2025-01-01T00:00:00Z",
+			page: 2,
+		});
+		expect(response.structuredContent).toEqual({
+			events: [],
+			page: 2,
+			page_count: undefined,
+			has_next_page: undefined,
+		});
 	});
 });

@@ -615,7 +615,7 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 				},
 				{
 					expectedId: "worker-template-1",
-					field: "exerciseTemplates",
+					field: "exercise_templates",
 					name: "get-exercise-templates",
 				},
 			] as const;
@@ -623,14 +623,14 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 			for (const call of calls) {
 				const result = await client.callTool({
 					name: call.name,
-					arguments: { page: 1, pageSize: 1 },
+					arguments: { page: 1, page_size: 1 },
 				});
 				const payload = requireToolListPayload(result, call.field);
 				expect(payload.firstItem.id).toBe(call.expectedId);
 				expect(typeof payload.firstItem.id).toBe("string");
 				if (call.name === "get-workouts" || call.name === "get-routines") {
-					expect(payload.firstItem.exerciseCount).toBe(0);
-					expect(payload.firstItem.setCount).toBe(0);
+					expect(payload.firstItem.exercise_count).toBe(0);
+					expect(payload.firstItem.set_count).toBe(0);
 					expect(payload.firstItem).not.toHaveProperty("exercises");
 				}
 				expect(JSON.parse(payload.text)).toEqual(payload.items);
@@ -638,11 +638,11 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 
 			const folderResult = await client.callTool({
 				name: "get-routine-folders",
-				arguments: { page: 1, pageSize: 1 },
+				arguments: { page: 1, page_size: 1 },
 			});
 			const folderPayload = requireToolListPayload(
 				folderResult,
-				"routineFolders",
+				"routine_folders",
 			);
 			expect(folderPayload.firstItem.id).toBe(10);
 			expect(typeof folderPayload.firstItem.id).toBe("number");
