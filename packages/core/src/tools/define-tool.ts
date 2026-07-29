@@ -1,6 +1,7 @@
 import type { McpServer, ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { respond, type ResponseContract } from "../utils/response-formatter.js";
+import { compactJsonSchema } from "../utils/compact-json-schema.js";
 import {
 	createTypedToolHandler,
 	type InferToolParams,
@@ -58,12 +59,15 @@ export function registerToolDefinition(
 	});
 	const callback = handler;
 
+	const inputSchema = compactJsonSchema(z.object(definition.inputSchema));
 	const config = {
 		description: definition.description,
-		inputSchema: z.object(definition.inputSchema),
+		inputSchema,
 		annotations: definition.annotations,
 		...(definition.kind === "read"
-			? { outputSchema: z.object(definition.outputSchema) }
+			? {
+					outputSchema: compactJsonSchema(z.object(definition.outputSchema)),
+				}
 			: {}),
 	};
 
