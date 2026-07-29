@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 4.1.3
+
+### Patch Changes
+
+- [#774](https://github.com/chrisdoc/hevy-mcp/pull/774) [`12ca7d5`](https://github.com/chrisdoc/hevy-mcp/commit/12ca7d5362024f06d8c2b0a42e84a92e2087a077) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Migrate the server runtimes and tests to MCP TypeScript SDK v2.
+
 ## 4.1.2
 
 ### Patch Changes
