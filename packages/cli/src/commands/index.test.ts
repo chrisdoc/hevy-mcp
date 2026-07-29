@@ -101,6 +101,20 @@ describe("execute command/API mappings", () => {
 		},
 	);
 
+	it.each([undefined, -1, 1.5, "4"])(
+		"rejects an invalid workout count %p",
+		async (workoutCount) => {
+			const api = client();
+			vi.mocked(api.getWorkoutCount).mockResolvedValue({
+				workout_count: workoutCount,
+			} as never);
+
+			await expect(execute(args("workouts", "count"), api)).rejects.toThrow(
+				ApiResponseError,
+			);
+		},
+	);
+
 	it("emits snake_case search and summary projections", async () => {
 		const api = client();
 		vi.mocked(api.getExerciseTemplates)

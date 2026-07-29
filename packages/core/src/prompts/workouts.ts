@@ -136,11 +136,26 @@ export function registerWorkoutPrompts(
 								routine_id && start_time
 									? [
 											`Create a workout from routine ${routine_id}, starting at ${start_time}.`,
-											"First call get-routine with the routine_id and map supported plan fields: routine title to workout title, plus each exercise_template_id, superset_id, exercise notes, and set type.",
-											"Do not copy routine-only rest_seconds or rep_range fields into create-workout.",
-											"Before calling create-workout, confirm or collect the user's actual completed set data for every set, including applicable weight_kg, reps, distance_meters, duration_seconds, rpe, or custom_metric values.",
-											"Also collect the required end_time in strict UTC YYYY-MM-DDTHH:mm:ssZ format and confirm any other missing required workout fields.",
-											"Never invent completion data. If the actual results or end_time are unavailable, ask the user for them instead of creating the workout.",
+											[
+												"First call get-routine with the routine_id and map supported plan fields:",
+												"routine title to workout title, plus each exercise_template_id, superset_id, exercise notes, and set type.",
+											].join(" "),
+											[
+												"Do not copy routine-only rest_seconds or rep_range fields into",
+												"create-workout.",
+											].join(" "),
+											[
+												"Before calling create-workout, confirm or collect the user's actual completed set data for every set,",
+												"including applicable weight_kg, reps, distance_meters, duration_seconds, rpe, or custom_metric values.",
+											].join(" "),
+											[
+												"Also collect the required end_time in strict UTC YYYY-MM-DDTHH:mm:ssZ format and confirm",
+												"any other missing required workout fields.",
+											].join(" "),
+											[
+												"Never invent completion data. If the actual results or end_time are unavailable, ask the user for them",
+												"instead of creating the workout.",
+											].join(" "),
 											"Once confirmed, call create-workout with only fields supported by that tool.",
 										].join("\n")
 									: "Provide a routine_id and start_time to generate the full prompt.",

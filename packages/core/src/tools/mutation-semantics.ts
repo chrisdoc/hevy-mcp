@@ -8,7 +8,6 @@ import type {
 	PutRoutinesRequestBody,
 	PutRoutinesRequestSet,
 } from "@hevy-mcp/hevy-client/types";
-import { workoutExercisesSchema } from "./input-schemas.js";
 import type {
 	MeasurementFields,
 	RoutinePayloadInput,
@@ -156,6 +155,12 @@ export function buildRoutinePayload(
 export type WorkoutUpdatePayload = NonNullable<
 	PostWorkoutsRequestBody["workout"]
 >;
+type WorkoutUpdateExercise = NonNullable<
+	NonNullable<WorkoutUpdatePayload["exercises"]>[number]
+>;
+type WorkoutUpdateSet = NonNullable<
+	NonNullable<WorkoutUpdateExercise["sets"]>[number]
+>;
 
 const workoutUpdateMetadataSchema = z.object({
 	title: z.string().min(1),
@@ -163,23 +168,32 @@ const workoutUpdateMetadataSchema = z.object({
 	end_time: utcSecondTimestamp,
 });
 
-function preserveWorkoutExercises(current: Workout): WorkoutExerciseInput[] {
-	const mappedExercises = current.exercises?.map((exercise) => ({
-		exercise_template_id: exercise.exercise_template_id,
-		superset_id: exercise.supersets_id ?? null,
-		notes: exercise.notes ?? null,
-		sets: exercise.sets?.map((set) => ({
-			type: set.type,
-			weight_kg: set.weight_kg ?? null,
-			reps: set.reps ?? null,
-			distance_meters: set.distance_meters ?? null,
-			duration_seconds: set.duration_seconds ?? null,
-			rpe: set.rpe ?? null,
-			custom_metric: set.custom_metric ?? null,
-		})),
-	}));
-
-	return workoutExercisesSchema.parse(mappedExercises);
+/**
+ * Map fetched API exercises to the update shape without validating legacy data.
+ * Caller-supplied replacement exercises are still validated by their input schema.
+ */
+function preserveWorkoutExercises(
+	current: Workout,
+): NonNullable<WorkoutUpdatePayload["exercises"]> {
+	return (
+		current.exercises?.map((exercise) => ({
+			exercise_template_id: exercise.exercise_template_id,
+			superset_id: exercise.supersets_id ?? null,
+			notes: exercise.notes ?? null,
+			sets:
+				exercise.sets?.map((set) => ({
+					...(set.type === undefined
+						? {}
+						: { type: set.type as WorkoutUpdateSet["type"] }),
+					weight_kg: set.weight_kg ?? null,
+					reps: set.reps ?? null,
+					distance_meters: set.distance_meters ?? null,
+					duration_seconds: set.duration_seconds ?? null,
+					rpe: set.rpe as WorkoutUpdateSet["rpe"],
+					custom_metric: set.custom_metric ?? null,
+				})) ?? [],
+		})) ?? []
+	);
 }
 
 export function buildWorkoutUpdatePayload(
@@ -254,8 +268,10 @@ export function mergeMeasurementPayload(
 	for (const key of measurementKeys) {
 		const changed = changes[key];
 		if (changed !== undefined) {
-			measurement[key] = changed;
-			if (changed !== null) payload[key] = changed;
+			if (changed !== null) {
+				measurement[key] = changed;
+				payload[key] = changed;
+			}
 			continue;
 		}
 		const existingValue = existing[key];

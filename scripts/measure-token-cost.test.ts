@@ -279,7 +279,10 @@ describe("formatMarkdown", () => {
 		expect(markdown).toContain("## MCP tool token cost");
 		expect(markdown).toContain(`| Total tokens | ${report.totalTokens}`);
 		expect(markdown).toContain(
-			"| Tool | `name` | `description` | `inputSchema` | `outputSchema` | `annotations` | Total | Share of total |",
+			[
+				"| Tool | `name` | `description` | `inputSchema` | ",
+				"`outputSchema` | `annotations` | Total | Share of total |",
+			].join(""),
 		);
 		expect(markdown).toContain("need not sum exactly");
 	});
@@ -333,7 +336,10 @@ describe("formatTable", () => {
 		);
 		expect(table).toMatch(/much-longer-name\s+\d+\s+\d+/);
 		expect(table).toContain(
-			`Targets: tools ≤ ${TOOL_COUNT_TARGET}; average < ${AVERAGE_TOKEN_TARGET} tokens/tool; total ≤ ${TOTAL_TOKEN_BUDGET} tokens (enforced).`,
+			[
+				`Targets: tools ≤ ${TOOL_COUNT_TARGET}; average < ${AVERAGE_TOKEN_TARGET} tokens/tool; `,
+				`total ≤ ${TOTAL_TOKEN_BUDGET} tokens (enforced).`,
+			].join(""),
 		);
 	});
 });

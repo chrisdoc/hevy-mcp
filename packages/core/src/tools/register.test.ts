@@ -79,6 +79,7 @@ describe("registerHevyTools", () => {
 		expect(updateWorkout).toBeDefined();
 		expect(updateWorkout?.inputSchema).toEqual(
 			expect.objectContaining({
+				required: expect.arrayContaining(["workout"]),
 				properties: expect.objectContaining({
 					workout: expect.objectContaining({
 						type: "object",
@@ -138,6 +139,8 @@ describe("registerHevyTools", () => {
 			if (record.items) visit(record.items);
 		};
 		for (const tool of tools) visit(tool.inputSchema);
-		expect(propertyNames.filter((name) => /[A-Z]/u.test(name))).toEqual([]);
+		expect(
+			propertyNames.filter((name) => !/^[a-z][a-z0-9_]*$/u.test(name)),
+		).toEqual([]);
 	});
 });

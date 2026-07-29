@@ -114,7 +114,9 @@ describe("routine tools", () => {
 			([name]) => name === "create-routine",
 		)?.[1] as { inputSchema: { parse(value: unknown): unknown } };
 		expect(() =>
-			definition.inputSchema.parse({ title: "Push", folderId: 3 }),
+			definition.inputSchema.parse({
+				routine: { title: "Push", folderId: 3, exercises: [] },
+			}),
 		).toThrow();
 	});
 });

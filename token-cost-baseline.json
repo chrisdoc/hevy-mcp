@@ -3,13 +3,13 @@
 	"encoding": "o200k_base",
 	"measurementScope": "Complete JSON-serialized MCP tools/list result payload: { tools }",
 	"toolCount": 26,
-	"totalTokens": 7938,
-	"averageTokensPerTool": 305.31,
+	"totalTokens": 7946,
+	"averageTokensPerTool": 305.62,
 	"componentTokens": {
 		"name": 153,
 		"description": 560,
 		"inputSchema": 3400,
-		"outputSchema": 3025,
+		"outputSchema": 3033,
 		"annotations": 606
 	},
 	"targets": {
@@ -40,7 +40,7 @@
 				"outputSchema": 531,
 				"annotations": 19
 			},
-			"percentageOfTotal": 7.86
+			"percentageOfTotal": 7.85
 		},
 		{
 			"name": "create-workout",
@@ -64,7 +64,7 @@
 				"outputSchema": 360,
 				"annotations": 19
 			},
-			"percentageOfTotal": 6.29
+			"percentageOfTotal": 6.28
 		},
 		{
 			"name": "update-routine",
@@ -76,7 +76,7 @@
 				"outputSchema": 0,
 				"annotations": 31
 			},
-			"percentageOfTotal": 5.33
+			"percentageOfTotal": 5.32
 		},
 		{
 			"name": "create-routine",
@@ -104,15 +104,15 @@
 		},
 		{
 			"name": "get-body-measurements",
-			"tokens": 368,
+			"tokens": 372,
 			"componentTokens": {
 				"name": 7,
 				"description": 24,
 				"inputSchema": 62,
-				"outputSchema": 248,
+				"outputSchema": 252,
 				"annotations": 19
 			},
-			"percentageOfTotal": 4.64
+			"percentageOfTotal": 4.68
 		},
 		{
 			"name": "create-exercise-template",
@@ -160,7 +160,7 @@
 				"outputSchema": 235,
 				"annotations": 18
 			},
-			"percentageOfTotal": 4.06
+			"percentageOfTotal": 4.05
 		},
 		{
 			"name": "get-routine",
@@ -172,19 +172,19 @@
 				"outputSchema": 229,
 				"annotations": 18
 			},
-			"percentageOfTotal": 3.96
+			"percentageOfTotal": 3.95
 		},
 		{
 			"name": "get-body-measurement",
-			"tokens": 296,
+			"tokens": 300,
 			"componentTokens": {
 				"name": 7,
 				"description": 25,
 				"inputSchema": 43,
-				"outputSchema": 194,
+				"outputSchema": 198,
 				"annotations": 19
 			},
-			"percentageOfTotal": 3.73
+			"percentageOfTotal": 3.78
 		},
 		{
 			"name": "search-routines",
@@ -196,7 +196,7 @@
 				"outputSchema": 182,
 				"annotations": 19
 			},
-			"percentageOfTotal": 3.53
+			"percentageOfTotal": 3.52
 		},
 		{
 			"name": "get-routines",
@@ -292,7 +292,7 @@
 				"outputSchema": 83,
 				"annotations": 19
 			},
-			"percentageOfTotal": 2.17
+			"percentageOfTotal": 2.16
 		},
 		{
 			"name": "get-routine-folder",
@@ -316,7 +316,7 @@
 				"outputSchema": 67,
 				"annotations": 19
 			},
-			"percentageOfTotal": 1.68
+			"percentageOfTotal": 1.67
 		},
 		{
 			"name": "create-routine-folder",

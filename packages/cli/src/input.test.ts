@@ -81,8 +81,18 @@ describe("mutation input sources", () => {
 	});
 
 	it.each([
-		["top-level", { ...workout, extra: true }],
-		["wrapperless", workout.workout],
+		[
+			"top-level",
+			{ ...workout, extra: true },
+			workoutInputSchema,
+			/--data.*"extra"/,
+		],
+		[
+			"wrapperless",
+			{ ...workout.workout, extra: true },
+			workoutInputSchema.shape.workout,
+			/--data.*"extra"/,
+		],
 		[
 			"exercise",
 			{
@@ -91,6 +101,8 @@ describe("mutation input sources", () => {
 					exercises: [{ ...workout.workout.exercises[0], extra: true }],
 				},
 			},
+			workoutInputSchema,
+			/--data\.workout\.exercises\.0.*"extra"/,
 		],
 		[
 			"legacy weight alias",
@@ -105,6 +117,8 @@ describe("mutation input sources", () => {
 					],
 				},
 			},
+			workoutInputSchema,
+			/--data\.workout\.exercises\.0\.sets\.0.*"weightKg"/,
 		],
 		[
 			"legacy routine field",
@@ -119,18 +133,20 @@ describe("mutation input sources", () => {
 					],
 				},
 			},
+			createRoutineInputSchema,
+			/--data\.routine\.exercises\.0\.sets\.0\.rep_range.*"extra"/,
 		],
-	] as const)("rejects unknown %s keys", async (name, value) => {
-		if (name === "legacy routine field") {
+	] as const)(
+		"rejects unknown %s keys",
+		async (_name, value, schema, expectedPattern) => {
 			await expect(
-				loadMutationInput(JSON.stringify(value), createRoutineInputSchema),
-			).rejects.toThrow(/--data.*extra/);
-			return;
-		}
-		await expect(
-			loadMutationInput(JSON.stringify(value), workoutInputSchema),
-		).rejects.toThrow(/--data(?:\.workout)?(?:.*(?:extra|weight))?/);
-	});
+				loadMutationInput<unknown>(
+					JSON.stringify(value),
+					schema as z.ZodType<unknown>,
+				),
+			).rejects.toThrow(expectedPattern);
+		},
+	);
 
 	it("uses strict API-shaped folder schemas", async () => {
 		await expect(

@@ -131,7 +131,15 @@ describe("workout prompts", () => {
 				content: expect.objectContaining({
 					type: "text",
 					text: expect.stringMatching(
-						/get-routine[\s\S]*rest_seconds[\s\S]*rep_range[\s\S]*end_time[\s\S]*Never invent/,
+						new RegExp(
+							[
+								"get-routine",
+								"rest_seconds",
+								"rep_range",
+								"end_time",
+								"Never invent",
+							].join("[\\s\\S]*"),
+						),
 					),
 				}),
 			}),

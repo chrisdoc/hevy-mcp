@@ -381,14 +381,26 @@ export function formatMarkdown(
 	const lines = [
 		"## MCP tool token cost",
 		"",
-		`Measured with \`${current.encoding}\` over the ${current.measurementScope.toLowerCase()}.`,
+		[
+			`Measured with \`${current.encoding}\` over the`,
+			`${current.measurementScope.toLowerCase()}.`,
+		].join(" "),
 		"Targets are advisory except the enforced total-token budget.",
 		"",
 		"| Metric | Current | Target | Status |",
 		"| --- | ---: | ---: | --- |",
-		`| Tools | ${current.toolCount} | ≤ ${current.targets.toolCount.maximumInclusive} | ${formatStatus(current.targets.toolCount.status)} |`,
-		`| Total tokens | ${current.totalTokens} | ≤ ${current.targets.totalTokens.maximumInclusive} | ${formatStatus(current.targets.totalTokens.status)} |`,
-		`| Average tokens/tool | ${current.averageTokensPerTool} | < ${current.targets.averageTokensPerTool.maximumExclusive} | ${formatStatus(current.targets.averageTokensPerTool.status)} |`,
+		[
+			`| Tools | ${current.toolCount} | `,
+			`≤ ${current.targets.toolCount.maximumInclusive} | ${formatStatus(current.targets.toolCount.status)} |`,
+		].join(""),
+		[
+			`| Total tokens | ${current.totalTokens} | `,
+			`≤ ${current.targets.totalTokens.maximumInclusive} | ${formatStatus(current.targets.totalTokens.status)} |`,
+		].join(""),
+		[
+			`| Average tokens/tool | ${current.averageTokensPerTool} | `,
+			`< ${current.targets.averageTokensPerTool.maximumExclusive} | ${formatStatus(current.targets.averageTokensPerTool.status)} |`,
+		].join(""),
 		"",
 	];
 	lines.push(
@@ -408,9 +420,18 @@ export function formatMarkdown(
 			"",
 			"| Metric | Baseline | Current | Delta |",
 			"| --- | ---: | ---: | ---: |",
-			`| Tools | ${comparison.baseline.toolCount} | ${current.toolCount} | ${formatDelta(comparison.toolCountDelta)} |`,
-			`| Total tokens | ${comparison.baseline.totalTokens} | ${current.totalTokens} | ${formatDelta(comparison.totalTokensDelta)} |`,
-			`| Average tokens/tool | ${comparison.baseline.averageTokensPerTool} | ${current.averageTokensPerTool} | ${formatDelta(comparison.averageTokensPerToolDelta)} |`,
+			[
+				`| Tools | ${comparison.baseline.toolCount} | ${current.toolCount} | `,
+				`${formatDelta(comparison.toolCountDelta)} |`,
+			].join(""),
+			[
+				`| Total tokens | ${comparison.baseline.totalTokens} | ${current.totalTokens} | `,
+				`${formatDelta(comparison.totalTokensDelta)} |`,
+			].join(""),
+			[
+				`| Average tokens/tool | ${comparison.baseline.averageTokensPerTool} | ${current.averageTokensPerTool} | `,
+				`${formatDelta(comparison.averageTokensPerToolDelta)} |`,
+			].join(""),
 			"",
 			"### Per-tool changes",
 			"",
@@ -419,7 +440,10 @@ export function formatMarkdown(
 		);
 		for (const tool of comparison.toolDeltas) {
 			lines.push(
-				`| \`${tool.name}\` | ${tool.baselineTokens ?? "—"} | ${tool.currentTokens ?? "—"} | ${formatDelta(tool.delta)} |`,
+				[
+					`| \`${tool.name}\` | ${tool.baselineTokens ?? "—"} | `,
+					`${tool.currentTokens ?? "—"} | ${formatDelta(tool.delta)} |`,
+				].join(""),
 			);
 		}
 		lines.push("");
@@ -432,7 +456,10 @@ export function formatMarkdown(
 		);
 		for (const component of TOOL_COMPONENTS) {
 			lines.push(
-				`| \`${component}\` | ${formatDelta(comparison.componentTokenDeltas[component])} |`,
+				[
+					`| \`${component}\` | `,
+					`${formatDelta(comparison.componentTokenDeltas[component])} |`,
+				].join(""),
 			);
 		}
 		lines.push("");
@@ -449,17 +476,35 @@ export function formatMarkdown(
 	lines.push(
 		"### Per-tool breakdown",
 		"",
-		`| Tool | ${TOOL_COMPONENTS.map((component) => `\`${component}\``).join(" | ")} | Total | Share of total |`,
-		`| --- | ${TOOL_COMPONENTS.map(() => "---:").join(" | ")} | ---: | ---: |`,
+		[
+			"| Tool | ",
+			TOOL_COMPONENTS.map((component) => `\`${component}\``).join(" | "),
+			" | Total | Share of total |",
+		].join(""),
+		[
+			"| --- | ",
+			TOOL_COMPONENTS.map(() => "---:").join(" | "),
+			" | ---: | ---: |",
+		].join(""),
 	);
 	for (const tool of current.tools) {
 		lines.push(
-			`| \`${tool.name}\` | ${TOOL_COMPONENTS.map((component) => tool.componentTokens[component]).join(" | ")} | ${tool.tokens} | ${tool.percentageOfTotal}% |`,
+			[
+				`| \`${tool.name}\` | `,
+				TOOL_COMPONENTS.map(
+					(component) => tool.componentTokens[component],
+				).join(" | "),
+				` | ${tool.tokens} | ${tool.percentageOfTotal}% |`,
+			].join(""),
 		);
 	}
 	lines.push(
 		"",
-		"Per-component counts are diagnostic and non-additive because keys and separators live in complete tool objects. Per-tool counts encode each complete tool object independently. The total encodes the complete `{ tools }` envelope, so punctuation and separators mean the per-tool values need not sum exactly to the total.",
+		[
+			"Per-component counts are diagnostic and non-additive because keys and separators live in complete tool objects.",
+			"Per-tool counts encode each complete tool object independently.",
+			"The total encodes the complete `{ tools }` envelope, so punctuation and separators mean the per-tool values need not sum exactly to the total.",
+		].join(" "),
 		"",
 	);
 
@@ -491,12 +536,20 @@ export function formatTable(report: TokenCostReport): string {
 	return [
 		`MCP tool token cost (${report.encoding})`,
 		`Tools: ${report.toolCount} | Total: ${report.totalTokens} | Average: ${report.averageTokensPerTool}`,
-		`Component totals: ${TOOL_COMPONENTS.map((component) => `${component}=${report.componentTokens[component]}`).join(" | ")}`,
+		[
+			"Component totals: ",
+			TOOL_COMPONENTS.map(
+				(component) => `${component}=${report.componentTokens[component]}`,
+			).join(" | "),
+		].join(""),
 		formatRow(headers),
 		divider,
 		...rows.map(formatRow),
 		"",
-		`Targets: tools ≤ ${report.targets.toolCount.maximumInclusive}; average < ${report.targets.averageTokensPerTool.maximumExclusive} tokens/tool; total ≤ ${report.targets.totalTokens.maximumInclusive} tokens (enforced).`,
+		[
+			`Targets: tools ≤ ${report.targets.toolCount.maximumInclusive}; average < `,
+			`${report.targets.averageTokensPerTool.maximumExclusive} tokens/tool; total ≤ ${report.targets.totalTokens.maximumInclusive} tokens (enforced).`,
+		].join(""),
 		"Per-tool counts exclude the shared { tools } envelope punctuation.",
 	].join("\n");
 }

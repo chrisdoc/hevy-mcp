@@ -38,13 +38,19 @@ const workoutInput = {
 };
 
 describe("workout tools", () => {
-	it("exposes only generated-aligned snake_case input keys", async () => {
+	it("exposes only generated-aligned snake_case input keys", () => {
 		const tool = register(null);
-		const response = await toolHandler(
-			tool,
-			"get-workouts",
-		)({ page: 2, page_size: 5 });
-		expect(response).toMatchObject({ isError: true });
+		const definition = tool.mock.calls.find(
+			([name]) => name === "get-workouts",
+		)?.[1] as { inputSchema: { parse(value: unknown): unknown } };
+
+		expect(definition.inputSchema.parse({ page: 2, page_size: 5 })).toEqual({
+			page: 2,
+			page_size: 5,
+		});
+		expect(() =>
+			definition.inputSchema.parse({ page: 2, pageSize: 5 }),
+		).toThrow();
 	});
 
 	it("maps snake_case pagination and identifiers to generated client arguments", async () => {
@@ -216,7 +222,7 @@ describe("workout tools", () => {
 		});
 	});
 
-	it("does not put when GET or fetched-tree mapping fails", async () => {
+	it("does not put when GET fails", async () => {
 		const getFailureClient = {
 			getWorkout: vi.fn().mockRejectedValue(new Error("GET failed")),
 			updateWorkout: vi.fn(),
@@ -231,25 +237,6 @@ describe("workout tools", () => {
 		});
 		expect(getFailure).toMatchObject({ isError: true });
 		expect(getFailureClient.updateWorkout).not.toHaveBeenCalled();
-
-		const mappingFailureClient = {
-			getWorkout: vi.fn().mockResolvedValue({
-				title: "Original",
-				start_time: "2025-01-01T10:00:00Z",
-				end_time: "2025-01-01T11:00:00Z",
-			}),
-			updateWorkout: vi.fn(),
-		} as unknown as HevyClient;
-		const mappingFailureTool = register(mappingFailureClient);
-		const mappingFailure = await toolHandler(
-			mappingFailureTool,
-			"update-workout",
-		)({
-			workout_id: "w1",
-			workout: { title: "Renamed" },
-		});
-		expect(mappingFailure).toMatchObject({ isError: true });
-		expect(mappingFailureClient.updateWorkout).not.toHaveBeenCalled();
 	});
 
 	it("reports PUT failures after exactly one GET", async () => {

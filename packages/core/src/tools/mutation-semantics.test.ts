@@ -211,7 +211,6 @@ describe("mutation semantics", () => {
 							custom_metric: 1,
 						},
 						{
-							type: "normal",
 							weight_kg: null,
 							reps: null,
 							distance_meters: null,
@@ -285,7 +284,7 @@ describe("mutation semantics", () => {
 		).toEqual([]);
 	});
 
-	it("rejects malformed fetched workout trees before constructing a payload", () => {
+	it("preserves malformed fetched exercise data without revalidating it", () => {
 		const valid = {
 			title: "Original",
 			start_time: "2026-07-29T08:00:00Z",
@@ -339,8 +338,22 @@ describe("mutation semantics", () => {
 		for (const current of malformed) {
 			expect(() =>
 				buildWorkoutUpdatePayload(current, { title: "New" }),
-			).toThrow();
+			).not.toThrow();
 		}
+		expect(
+			buildWorkoutUpdatePayload(
+				{
+					...valid,
+					exercises: [
+						{
+							exercise_template_id: "bench",
+							sets: [{ type: "invalid", rpe: 5, reps: 1.5 }],
+						},
+					],
+				},
+				{ title: "New" },
+			).exercises,
+		).toMatchObject([{ sets: [{ type: "invalid", rpe: 5, reps: 1.5 }] }]);
 		expect(
 			buildWorkoutUpdatePayload({ ...valid, exercises: [] }, { title: "New" })
 				.exercises,
@@ -363,7 +376,7 @@ describe("mutation semantics", () => {
 		).toEqual({ weight_kg: 80 });
 	});
 
-	it("merges measurement changes while omitting API-rejected nulls", () => {
+	it("merges measurement changes while preserving API-rejected nulls", () => {
 		expect(
 			mergeMeasurementPayload(
 				{
@@ -379,7 +392,7 @@ describe("mutation semantics", () => {
 			measurement: {
 				date: "2024-01-02",
 				weight_kg: 81,
-				fat_percent: null,
+				fat_percent: 20,
 				neck_cm: 40,
 			},
 		});

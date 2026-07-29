@@ -101,11 +101,12 @@ export const workoutSetShape = {
 	[K in keyof PostWorkoutsRequestSet]: z.ZodTypeAny;
 };
 
+const workoutSetSchema = z.strictObject(workoutSetShape);
 export const workoutExerciseShape = {
 	exercise_template_id: nonEmptyId,
 	superset_id: z.coerce.number().nullable().optional(),
 	notes: z.string().optional().nullable(),
-	sets: z.array(z.strictObject(workoutSetShape)),
+	sets: z.array(workoutSetSchema),
 } as const satisfies {
 	[K in keyof NonNullable<
 		NonNullable<PostWorkoutsRequestBody["workout"]>["exercises"]
@@ -182,21 +183,24 @@ export const routineSetShape = {
 	[K in keyof PostRoutinesRequestSet]: z.ZodTypeAny;
 };
 
+const routineSetSchema = z.strictObject(routineSetShape);
 export const routineExerciseShape = {
 	exercise_template_id: nonEmptyId,
 	superset_id: z.coerce.number().nullable().optional(),
 	rest_seconds: z.coerce.number().int().min(0).optional(),
 	notes: z.string().optional(),
-	sets: z.array(z.strictObject(routineSetShape)),
+	sets: z.array(routineSetSchema),
 } as const satisfies {
 	[K in keyof NonNullable<
 		NonNullable<PostRoutinesRequestBody["routine"]>["exercises"]
 	>[number]]: z.ZodTypeAny;
 };
 
+const routineExerciseSchema = z.strictObject(routineExerciseShape);
+
 const routineExercisesSchema = z.preprocess(
 	parseJsonArray,
-	z.array(z.strictObject(routineExerciseShape)),
+	z.array(routineExerciseSchema),
 );
 
 export const routinePayloadShape = {
@@ -267,14 +271,14 @@ export const createBodyMeasurementInputShape =
 export const updateBodyMeasurementInputShape =
 	updateBodyMeasurementInputSchema.shape;
 
-export type WorkoutSetInput = z.infer<typeof workoutSetShape>;
+export type WorkoutSetInput = z.infer<typeof workoutSetSchema>;
 export type WorkoutExerciseInput = z.infer<typeof workoutExerciseSchema>;
 export type WorkoutPayloadInput = z.infer<typeof replaceWorkoutPayloadSchema>;
 export type WorkoutMetadataPatchInput = z.infer<
 	typeof workoutMetadataPatchSchema
 >;
-export type RoutineSetInput = z.infer<typeof routineSetShape>;
-export type RoutineExerciseInput = z.infer<typeof routineExerciseShape>;
+export type RoutineSetInput = z.infer<typeof routineSetSchema>;
+export type RoutineExerciseInput = z.infer<typeof routineExerciseSchema>;
 export type RoutinePayloadInput = z.infer<typeof routinePayloadSchema>;
 export type RoutineUpdatePayloadInput = z.infer<
 	typeof routineUpdatePayloadSchema

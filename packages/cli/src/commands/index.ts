@@ -138,10 +138,12 @@ export async function execute(
 			});
 			return { workout_id: workoutId, workout: response };
 		}
-		if (sub === "count")
-			return {
-				workout_count: body(await client.getWorkoutCount()).workout_count ?? 0,
-			};
+		if (sub === "count") {
+			const count = body(await client.getWorkoutCount()).workout_count;
+			if (typeof count !== "number" || !Number.isInteger(count) || count < 0)
+				throw new ApiResponseError("The API returned an invalid workout count");
+			return { workout_count: count };
+		}
 		if (sub === "events") {
 			const options = parseWorkoutEventsOptions(args);
 			return {
