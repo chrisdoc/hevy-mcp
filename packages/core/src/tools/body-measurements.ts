@@ -79,7 +79,7 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 const getBodyMeasurementDefinition: ToolDefinition<
 	typeof getBodyMeasurementSchema,
 	{
-		bodyMeasurement: GetV1BodyMeasurementsDate200 | null | undefined;
+		body_measurement: GetV1BodyMeasurementsDate200 | null | undefined;
 		date: string;
 	}
 > = {
@@ -99,11 +99,11 @@ const getBodyMeasurementDefinition: ToolDefinition<
 			const data: GetV1BodyMeasurementsDate200 = await runtime
 				.getClient()
 				.getBodyMeasurement(date);
-			return { bodyMeasurement: data, date };
+			return { body_measurement: data, date };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
 				return {
-					bodyMeasurement: null,
+					body_measurement: null,
 					date,
 					expected404Outcome: "not_found",
 				};

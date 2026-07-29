@@ -243,10 +243,10 @@ export const formattedBodyMeasurementSchema = z.object({
 	abdomen: optionalNumber,
 	waist: optionalNumber,
 	hips: optionalNumber,
-	left_thigh: optionalNumber,
-	right_thigh: optionalNumber,
-	left_calf: optionalNumber,
-	right_calf: optionalNumber,
+	left_thigh_cm: optionalNumber,
+	right_thigh_cm: optionalNumber,
+	left_calf_cm: optionalNumber,
+	right_calf_cm: optionalNumber,
 });
 export interface WorkflowTelemetry {
 	name: "training-summary" | "routine-discovery";
@@ -718,16 +718,16 @@ export function normalizeBodyMeasurement(
 		...(measurement.hips == null ? {} : { hips: measurement.hips }),
 		...(measurement.left_thigh == null
 			? {}
-			: { left_thigh: measurement.left_thigh }),
+			: { left_thigh_cm: measurement.left_thigh }),
 		...(measurement.right_thigh == null
 			? {}
-			: { right_thigh: measurement.right_thigh }),
+			: { right_thigh_cm: measurement.right_thigh }),
 		...(measurement.left_calf == null
 			? {}
-			: { left_calf: measurement.left_calf }),
+			: { left_calf_cm: measurement.left_calf }),
 		...(measurement.right_calf == null
 			? {}
-			: { right_calf: measurement.right_calf }),
+			: { right_calf_cm: measurement.right_calf }),
 	};
 }
 
@@ -1072,12 +1072,12 @@ export const bodyMeasurementsResponse = defineStructuredResponseContract({
 export const bodyMeasurementResponse = defineStructuredResponseContract({
 	outputSchema: bodyMeasurementOutputSchema,
 	normalize: (data: {
-		bodyMeasurement: BodyMeasurement | null | undefined;
+		body_measurement: BodyMeasurement | null | undefined;
 		date: string;
 		expected404Outcome?: "not_found";
 	}) => ({
-		body_measurement: data.bodyMeasurement
-			? normalizeBodyMeasurement(data.bodyMeasurement)
+		body_measurement: data.body_measurement
+			? normalizeBodyMeasurement(data.body_measurement)
 			: null,
 	}),
 	legacyJson: ({ body_measurement }) => body_measurement,
@@ -1085,8 +1085,8 @@ export const bodyMeasurementResponse = defineStructuredResponseContract({
 		body_measurement === null
 			? `No body measurement found for date ${date}`
 			: undefined,
-	telemetry: ({ bodyMeasurement, expected404Outcome }) => ({
-		itemCountBucket: bucketCount(bodyMeasurement ? 1 : 0),
+	telemetry: ({ body_measurement, expected404Outcome }) => ({
+		itemCountBucket: bucketCount(body_measurement ? 1 : 0),
 		expected404Outcome,
 	}),
 });
