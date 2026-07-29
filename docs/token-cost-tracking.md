@@ -42,11 +42,11 @@ Choose fresh paths or remove obsolete output files before rerunning the command.
 ## Baseline and targets
 
 `token-cost-baseline.json` is the committed schema-version-2 baseline for the
-current 25-tool catalog. It is also the fallback for pull-request bases that
+current 26-tool catalog. It is also the fallback for pull-request bases that
 predate the measurement script. Once the base revision has the script and
 package wiring, CI measures that exact base SHA instead.
 
-The compact baseline is **8,738 total tokens**, averaging **349.52 tokens per
+The compact baseline is **7,933 total tokens**, averaging **305.12 tokens per
 tool** with `o200k_base`.
 
 The project tracks these targets:

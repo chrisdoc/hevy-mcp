@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createRoutineInputSchema, workoutInputSchema } from "../mutations.js";
+import {
+	createRoutineInputSchema,
+	replaceWorkoutExercisesInputSchema,
+	updateWorkoutInputSchema,
+	workoutInputSchema,
+} from "../mutations.js";
 
 describe("snake_case mutation schemas", () => {
 	it("parses an API-shaped workout envelope and materializes defaults", () => {
@@ -40,6 +45,119 @@ describe("snake_case mutation schemas", () => {
 				},
 			}).success,
 		).toBe(false);
+	});
+
+	it("parses independent workout metadata patch fields", () => {
+		expect(
+			updateWorkoutInputSchema.parse({
+				workout_id: "w1",
+				workout: { title: "Renamed" },
+			}).workout,
+		).toEqual({ title: "Renamed" });
+		expect(
+			updateWorkoutInputSchema.parse({
+				workout_id: "w1",
+				workout: { description: "Notes" },
+			}).workout,
+		).toEqual({ description: "Notes" });
+		expect(
+			updateWorkoutInputSchema.parse({
+				workout_id: "w1",
+				workout: { start_time: "2026-07-29T08:00:00Z" },
+			}).workout,
+		).toEqual({ start_time: "2026-07-29T08:00:00Z" });
+		expect(
+			updateWorkoutInputSchema.parse({
+				workout_id: "w1",
+				workout: { end_time: "2026-07-29T09:00:00Z" },
+			}).workout,
+		).toEqual({ end_time: "2026-07-29T09:00:00Z" });
+		expect(
+			updateWorkoutInputSchema.parse({
+				workout_id: "w1",
+				workout: { is_private: false },
+			}).workout,
+		).toEqual({ is_private: false });
+	});
+
+	it("retains explicit null and false patch values", () => {
+		expect(
+			updateWorkoutInputSchema.parse({
+				workout_id: "w1",
+				workout: { description: null, is_private: false },
+			}).workout,
+		).toEqual({ description: null, is_private: false });
+	});
+
+	it("requires strict UTC-second timestamps in metadata patches", () => {
+		expect(
+			updateWorkoutInputSchema.safeParse({
+				workout_id: "w1",
+				workout: { start_time: "2026-07-29T08:00Z" },
+			}).success,
+		).toBe(false);
+		expect(
+			updateWorkoutInputSchema.safeParse({
+				workout_id: "w1",
+				workout: { end_time: "2026-07-29T09:00:00+00:00" },
+			}).success,
+		).toBe(false);
+		expect(
+			updateWorkoutInputSchema.safeParse({
+				workout_id: "w1",
+				workout: { start_time: "2026-07-29T08:00:00Z" },
+			}).success,
+		).toBe(true);
+	});
+
+	it("rejects empty and non-metadata workout patches", () => {
+		const empty = updateWorkoutInputSchema.safeParse({
+			workout_id: "w1",
+			workout: {},
+		});
+		expect(empty.success).toBe(false);
+		if (!empty.success) {
+			expect(empty.error.issues).toContainEqual(
+				expect.objectContaining({
+					message: "Include at least one workout metadata field",
+				}),
+			);
+		}
+
+		for (const workout of [
+			{ exercises: [] },
+			{ startTime: "2026-07-29T08:00:00Z" },
+			{ unknown_field: "nope" },
+		]) {
+			expect(
+				updateWorkoutInputSchema.safeParse({
+					workout_id: "w1",
+					workout,
+				}).success,
+			).toBe(false);
+		}
+	});
+
+	it("accepts populated and empty exercise replacement arrays", () => {
+		expect(
+			replaceWorkoutExercisesInputSchema.parse({
+				workout_id: "w1",
+				workout: {
+					exercises: [
+						{
+							exercise_template_id: "bench",
+							sets: [{ type: "normal", reps: 8 }],
+						},
+					],
+				},
+			}).workout.exercises,
+		).toHaveLength(1);
+		expect(
+			replaceWorkoutExercisesInputSchema.parse({
+				workout_id: "w1",
+				workout: { exercises: [] },
+			}).workout.exercises,
+		).toEqual([]);
 	});
 
 	it("reports useful nested paths for unknown keys", () => {

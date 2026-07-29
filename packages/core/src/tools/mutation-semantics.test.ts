@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
 	buildMeasurementPayload,
 	buildRoutinePayload,
+	buildWorkoutUpdatePayload,
 	mergeMeasurementPayload,
 } from "./mutation-semantics.js";
-import type { RoutinePayloadInput } from "./input-schemas.js";
+import type {
+	RoutinePayloadInput,
+	WorkoutExerciseInput,
+} from "./input-schemas.js";
 
 describe("mutation semantics", () => {
 	it("normalizes routine rep ranges without changing API casing", () => {
@@ -115,6 +119,238 @@ describe("mutation semantics", () => {
 			duration_seconds: 6,
 			custom_metric: 7,
 		});
+	});
+
+	it("builds a validated metadata patch while preserving fetched workout data", () => {
+		const current = {
+			id: "w1",
+			title: "Original",
+			description: "Keep this",
+			routine_id: "routine-1",
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+			created_at: "2026-07-29T08:00:00Z",
+			updated_at: "2026-07-29T09:05:00Z",
+			exercises: [
+				{
+					index: 7,
+					title: "Bench Press",
+					exercise_template_id: "bench",
+					supersets_id: 12,
+					notes: undefined,
+					sets: [
+						{
+							index: 2,
+							type: "normal",
+							weight_kg: 50,
+							reps: 8,
+							distance_meters: null,
+							duration_seconds: null,
+							rpe: null,
+							custom_metric: 1,
+						},
+						{
+							index: 3,
+							weight_kg: null,
+							reps: null,
+							distance_meters: null,
+							duration_seconds: null,
+							rpe: null,
+							custom_metric: null,
+						},
+					],
+				},
+				{
+					index: 8,
+					title: "Row",
+					exercise_template_id: "row",
+					supersets_id: null,
+					notes: "Brace hard",
+					sets: [
+						{
+							index: 4,
+							type: "failure",
+							weight_kg: 40,
+							reps: 10,
+							distance_meters: null,
+							duration_seconds: null,
+							rpe: 9,
+							custom_metric: null,
+						},
+					],
+				},
+			],
+		};
+		const snapshot = structuredClone(current);
+
+		const payload = buildWorkoutUpdatePayload(current, {
+			title: "Renamed",
+			description: null,
+			is_private: false,
+		});
+
+		expect(payload).toEqual({
+			title: "Renamed",
+			description: null,
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+			is_private: false,
+			exercises: [
+				{
+					exercise_template_id: "bench",
+					superset_id: 12,
+					notes: null,
+					sets: [
+						{
+							type: "normal",
+							weight_kg: 50,
+							reps: 8,
+							distance_meters: null,
+							duration_seconds: null,
+							rpe: null,
+							custom_metric: 1,
+						},
+						{
+							type: "normal",
+							weight_kg: null,
+							reps: null,
+							distance_meters: null,
+							duration_seconds: null,
+							rpe: null,
+							custom_metric: null,
+						},
+					],
+				},
+				{
+					exercise_template_id: "row",
+					superset_id: null,
+					notes: "Brace hard",
+					sets: [
+						{
+							type: "failure",
+							weight_kg: 40,
+							reps: 10,
+							distance_meters: null,
+							duration_seconds: null,
+							rpe: 9,
+							custom_metric: null,
+						},
+					],
+				},
+			],
+		});
+		expect(current).toEqual(snapshot);
+	});
+
+	it("uses fetched metadata for omitted patch fields and omits privacy", () => {
+		const current = {
+			title: "Original",
+			description: "Keep this",
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+			exercises: [],
+		};
+
+		const payload = buildWorkoutUpdatePayload(current, { title: "Renamed" });
+
+		expect(payload).toMatchObject({
+			title: "Renamed",
+			description: "Keep this",
+			start_time: current.start_time,
+			end_time: current.end_time,
+			exercises: [],
+		});
+		expect(payload).not.toHaveProperty("is_private");
+	});
+
+	it("replaces or removes exercises without requiring fetched exercises", () => {
+		const current = {
+			title: "Original",
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+		};
+		const replacement: WorkoutExerciseInput[] = [
+			{
+				exercise_template_id: "new",
+				sets: [{ type: "normal", reps: 5 }],
+			},
+		];
+
+		expect(
+			buildWorkoutUpdatePayload(current, { title: "Renamed" }, replacement)
+				.exercises,
+		).toEqual(replacement);
+		expect(
+			buildWorkoutUpdatePayload(current, { title: "Renamed" }, []).exercises,
+		).toEqual([]);
+	});
+
+	it("rejects malformed fetched workout trees before constructing a payload", () => {
+		const valid = {
+			title: "Original",
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+			exercises: [
+				{
+					exercise_template_id: "bench",
+					sets: [{ type: "normal", reps: 8 }],
+				},
+			],
+		};
+		const malformed = [
+			{ ...valid, exercises: undefined },
+			{
+				...valid,
+				exercises: [{ sets: [{ type: "normal" }] }],
+			},
+			{
+				...valid,
+				exercises: [{ exercise_template_id: "bench", sets: undefined }],
+			},
+			{
+				...valid,
+				exercises: [
+					{
+						exercise_template_id: "bench",
+						sets: [{ type: "invalid" }],
+					},
+				],
+			},
+			{
+				...valid,
+				exercises: [
+					{
+						exercise_template_id: "bench",
+						sets: [{ type: "normal", rpe: 5 }],
+					},
+				],
+			},
+			{
+				...valid,
+				exercises: [
+					{
+						exercise_template_id: "bench",
+						sets: [{ type: "normal", reps: 1.5 }],
+					},
+				],
+			},
+		];
+
+		for (const current of malformed) {
+			expect(() =>
+				buildWorkoutUpdatePayload(current, { title: "New" }),
+			).toThrow();
+		}
+		expect(
+			buildWorkoutUpdatePayload({ ...valid, exercises: [] }, { title: "New" })
+				.exercises,
+		).toEqual([]);
+		expect(() =>
+			buildWorkoutUpdatePayload(
+				{ ...valid, start_time: undefined },
+				{ title: "New" },
+			),
+		).toThrow();
 	});
 
 	it("omits null and undefined measurement fields", () => {

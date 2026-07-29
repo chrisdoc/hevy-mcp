@@ -12,6 +12,7 @@ const EXPECTED_TOOL_NAMES = [
 	"get-workout-events",
 	"create-workout",
 	"update-workout",
+	"replace-workout-exercises",
 	"get-routines",
 	"get-routine",
 	"create-routine",

@@ -10,6 +10,7 @@ import type {
 import {
 	paginationShape,
 	nonEmptyId,
+	replaceWorkoutExercisesInputShape,
 	updateWorkoutInputShape,
 	workoutInputShape,
 } from "./input-schemas.js";
@@ -30,6 +31,7 @@ import {
 } from "../utils/tool-annotations.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
+import { buildWorkoutUpdatePayload } from "./mutation-semantics.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
@@ -56,6 +58,11 @@ type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
 
 const updateWorkoutSchema = updateWorkoutInputShape;
 type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
+
+const replaceWorkoutExercisesSchema = replaceWorkoutExercisesInputShape;
+type ReplaceWorkoutExercisesParams = InferToolParams<
+	typeof replaceWorkoutExercisesSchema
+>;
 
 export const workoutToolDefinitions = [
 	{
@@ -200,17 +207,47 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "update" as const,
 		description:
-			"Mutates a workout by replacing its complete payload. Omitted optional values may be cleared or defaulted.",
+			"Mutates workout metadata by ID. Omitted fields and all exercises remain unchanged.",
 		inputSchema: updateWorkoutSchema,
 		annotations: updateAnnotations("Update Workout"),
 		kind: "write" as const,
 		responseContract: updateWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: UpdateWorkoutParams) => {
-			const data: PutV1WorkoutsWorkoutid200 = await runtime
-				.getClient()
-				.updateWorkout(args.workout_id, {
-					workout: args.workout,
-				});
+			const client = runtime.getClient();
+			const current = await client.getWorkout(args.workout_id);
+			const payload = buildWorkoutUpdatePayload(current, args.workout);
+			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
+				args.workout_id,
+				{ workout: payload },
+			);
+			return { workout: data, workout_id: args.workout_id };
+		},
+	},
+	{
+		name: "replace-workout-exercises",
+		feature: "workouts" as const,
+		operation: "update" as const,
+		description:
+			"Mutates a workout by replacing all exercises and sets. Workout metadata remains unchanged.",
+		inputSchema: replaceWorkoutExercisesSchema,
+		annotations: updateAnnotations("Replace Workout Exercises"),
+		kind: "write" as const,
+		responseContract: updateWorkoutResponse,
+		execute: async (
+			runtime: ToolRuntime,
+			args: ReplaceWorkoutExercisesParams,
+		) => {
+			const client = runtime.getClient();
+			const current = await client.getWorkout(args.workout_id);
+			const payload = buildWorkoutUpdatePayload(
+				current,
+				{},
+				args.workout.exercises,
+			);
+			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
+				args.workout_id,
+				{ workout: payload },
+			);
 			return { workout: data, workout_id: args.workout_id };
 		},
 	},

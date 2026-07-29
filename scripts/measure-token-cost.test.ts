@@ -339,7 +339,7 @@ describe("registered tool measurement", () => {
 	it("keeps every registered description within 32 o200k tokens", async () => {
 		const report = await measureRegisteredTools();
 
-		expect(report.tools).toHaveLength(25);
+		expect(report.tools).toHaveLength(26);
 		expect(
 			report.tools.every((tool) => tool.componentTokens.description <= 32),
 		).toBe(true);
@@ -368,6 +368,16 @@ describe("registered tool measurement", () => {
 			toolCount: 1,
 		});
 		expect(report.totalTokens).toBeGreaterThan(0);
+	});
+
+	it("keeps update-workout input schema below 200 real tokens", async () => {
+		const report = await measureRegisteredTools();
+		const updateWorkout = report.tools.find(
+			(tool) => tool.name === "update-workout",
+		);
+
+		expect(updateWorkout).toBeDefined();
+		expect(updateWorkout?.componentTokens.inputSchema).toBeLessThan(200);
 	});
 
 	it("frees the encoder when tool collection fails", async () => {

@@ -244,6 +244,114 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		);
 	});
 
+	it("patches workout metadata after fetching the existing workout", async () => {
+		if (!client) throw new Error("Client not initialized");
+
+		getApiScope()
+			.get("/v1/workouts/w1")
+			.reply(200, {
+				id: "w1",
+				title: "Original",
+				description: "Keep this",
+				start_time: "2025-03-27T07:00:00Z",
+				end_time: "2025-03-27T08:00:00Z",
+				exercises: [
+					{
+						index: 0,
+						title: "Bench Press",
+						exercise_template_id: "bench",
+						supersets_id: 9,
+						notes: null,
+						sets: [
+							{
+								index: 0,
+								type: "normal",
+								weight_kg: 50,
+								reps: 8,
+								distance_meters: null,
+								duration_seconds: null,
+								rpe: null,
+								custom_metric: null,
+							},
+						],
+					},
+				],
+			});
+		getApiScope()
+			.put("/v1/workouts/w1", {
+				workout: {
+					title: "Renamed",
+					description: null,
+					start_time: "2025-03-27T07:00:00Z",
+					end_time: "2025-03-27T08:00:00Z",
+					exercises: [
+						{
+							exercise_template_id: "bench",
+							superset_id: 9,
+							notes: null,
+							sets: [
+								{
+									type: "normal",
+									weight_kg: 50,
+									reps: 8,
+									distance_meters: null,
+									duration_seconds: null,
+									rpe: null,
+									custom_metric: null,
+								},
+							],
+						},
+					],
+				},
+			})
+			.reply(200, {
+				id: "w1",
+				title: "Renamed",
+				description: null,
+				start_time: "2025-03-27T07:00:00Z",
+				end_time: "2025-03-27T08:00:00Z",
+				exercises: [
+					{
+						index: 0,
+						title: "Bench Press",
+						exercise_template_id: "bench",
+						supersets_id: 9,
+						notes: null,
+						sets: [
+							{
+								index: 0,
+								type: "normal",
+								weight_kg: 50,
+								reps: 8,
+								distance_meters: null,
+								duration_seconds: null,
+								rpe: null,
+								custom_metric: null,
+							},
+						],
+					},
+				],
+			});
+
+		const result = await callTool(client, "update-workout", {
+			workout_id: "w1",
+			workout: { title: "Renamed", description: null },
+		});
+		const payload = JSON.parse(result.text) as {
+			title: string;
+			start_time: string;
+			end_time: string;
+		};
+
+		expect(result.isError).toBeFalsy();
+		expect(result.structuredContent).toBeUndefined();
+		expect(payload).toMatchObject({
+			title: "Renamed",
+			start_time: "2025-03-27T07:00:00Z",
+			end_time: "2025-03-27T08:00:00Z",
+		});
+	});
+
 	it("mocks get-routines through MCP client/server transport", async () => {
 		if (!client) throw new Error("Client not initialized");
 

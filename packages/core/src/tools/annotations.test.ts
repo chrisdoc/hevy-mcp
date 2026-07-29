@@ -34,6 +34,7 @@ const CREATE_TOOLS = [
 
 const UPDATE_TOOLS = [
 	"update-workout",
+	"replace-workout-exercises",
 	"update-routine",
 	"update-body-measurement",
 ] as const;
@@ -51,7 +52,9 @@ const EXPECTED_DESCRIPTIONS = {
 	"create-workout":
 		"Writes a completed workout. Requires exercise-template IDs and UTC times. Retries can create duplicates.",
 	"update-workout":
-		"Mutates a workout by replacing its complete payload. Omitted optional values may be cleared or defaulted.",
+		"Mutates workout metadata by ID. Omitted fields and all exercises remain unchanged.",
+	"replace-workout-exercises":
+		"Mutates a workout by replacing all exercises and sets. Workout metadata remains unchanged.",
 	"get-routines":
 		"Read-only. Lists compact routine summaries. Use get-routine for exercises and sets; results are paginated.",
 	"get-routine":

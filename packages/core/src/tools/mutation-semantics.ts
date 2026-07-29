@@ -1,14 +1,21 @@
-import type { BodyMeasurement } from "@hevy-mcp/hevy-client/types";
+import { z } from "zod";
 import type {
+	BodyMeasurement,
 	PostRoutinesRequestBody,
 	PostRoutinesRequestSet,
+	PostWorkoutsRequestBody,
+	Workout,
 	PutRoutinesRequestBody,
 	PutRoutinesRequestSet,
 } from "@hevy-mcp/hevy-client/types";
+import { workoutExercisesSchema } from "./input-schemas.js";
 import type {
 	MeasurementFields,
 	RoutinePayloadInput,
+	WorkoutExerciseInput,
+	WorkoutMetadataPatchInput,
 } from "./input-schemas.js";
+import { utcSecondTimestamp } from "../utils/schemas.js";
 
 type RoutineRepRange = { start?: number; end?: number } | null;
 
@@ -143,6 +150,61 @@ export function buildRoutinePayload(
 			exercises: exercises as RoutineUpdatePayload["exercises"],
 		},
 		usesRepRanges,
+	};
+}
+
+export type WorkoutUpdatePayload = NonNullable<
+	PostWorkoutsRequestBody["workout"]
+>;
+
+const workoutUpdateMetadataSchema = z.object({
+	title: z.string().min(1),
+	start_time: utcSecondTimestamp,
+	end_time: utcSecondTimestamp,
+});
+
+function preserveWorkoutExercises(current: Workout): WorkoutExerciseInput[] {
+	const mappedExercises = current.exercises?.map((exercise) => ({
+		exercise_template_id: exercise.exercise_template_id,
+		superset_id: exercise.supersets_id ?? null,
+		notes: exercise.notes ?? null,
+		sets: exercise.sets?.map((set) => ({
+			type: set.type,
+			weight_kg: set.weight_kg ?? null,
+			reps: set.reps ?? null,
+			distance_meters: set.distance_meters ?? null,
+			duration_seconds: set.duration_seconds ?? null,
+			rpe: set.rpe ?? null,
+			custom_metric: set.custom_metric ?? null,
+		})),
+	}));
+
+	return workoutExercisesSchema.parse(mappedExercises);
+}
+
+export function buildWorkoutUpdatePayload(
+	current: Workout,
+	patch: WorkoutMetadataPatchInput,
+	replacementExercises?: WorkoutExerciseInput[],
+): WorkoutUpdatePayload {
+	const metadata = workoutUpdateMetadataSchema.parse({
+		title: patch.title !== undefined ? patch.title : current.title,
+		start_time:
+			patch.start_time !== undefined ? patch.start_time : current.start_time,
+		end_time: patch.end_time !== undefined ? patch.end_time : current.end_time,
+	});
+
+	return {
+		...metadata,
+		description:
+			patch.description !== undefined
+				? patch.description
+				: (current.description ?? null),
+		exercises:
+			replacementExercises === undefined
+				? preserveWorkoutExercises(current)
+				: replacementExercises,
+		...(patch.is_private !== undefined ? { is_private: patch.is_private } : {}),
 	};
 }
 

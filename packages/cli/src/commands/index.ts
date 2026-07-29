@@ -14,7 +14,7 @@ import {
 	routineFolderInputSchema,
 	updateBodyMeasurementInputSchema,
 	updateRoutineInputSchema,
-	updateWorkoutInputSchema,
+	replaceWorkoutInputSchema,
 	workoutInputSchema,
 } from "@hevy-mcp/core/mutations";
 import {
@@ -127,7 +127,7 @@ export async function execute(
 			requireMutationConfirmation(args);
 			const input = await loadMutationInput(
 				mutationData(args),
-				updateWorkoutInputSchema,
+				replaceWorkoutInputSchema,
 				readDataSource,
 			);
 			const workoutId = parseWorkoutId(args.positionals[0]);

@@ -112,30 +112,62 @@ export const workoutExerciseShape = {
 	>[number]]: z.ZodTypeAny;
 };
 
-export const workoutPayloadShape = {
+const workoutExerciseSchema = z.strictObject(workoutExerciseShape);
+export const workoutExercisesSchema = z.preprocess(
+	parseJsonArray,
+	z.array(workoutExerciseSchema),
+);
+
+export const replaceWorkoutPayloadShape = {
 	title: z.string().min(1),
 	description: z.string().optional().nullable(),
 	start_time: utcSecondTimestamp,
 	end_time: utcSecondTimestamp,
 	is_private: z.boolean().default(false),
-	exercises: z.preprocess(
-		parseJsonArray,
-		z.array(z.strictObject(workoutExerciseShape)),
-	),
+	exercises: workoutExercisesSchema,
 } as const satisfies {
 	[K in keyof NonNullable<PostWorkoutsRequestBody["workout"]>]: z.ZodTypeAny;
 };
 
-const workoutPayloadSchema = z.strictObject(workoutPayloadShape);
+const replaceWorkoutPayloadSchema = z.strictObject(replaceWorkoutPayloadShape);
 export const workoutInputSchema = z.strictObject({
-	workout: workoutPayloadSchema,
+	workout: replaceWorkoutPayloadSchema,
 });
 export const workoutInputShape = workoutInputSchema.shape;
+
+export const replaceWorkoutInputSchema = z.strictObject({
+	workout_id: nonEmptyId,
+	workout: replaceWorkoutPayloadSchema,
+});
+export const replaceWorkoutInputShape = replaceWorkoutInputSchema.shape;
+
+export const workoutMetadataPatchSchema = z
+	.strictObject({
+		title: z.string().min(1).optional(),
+		description: z.string().nullable().optional(),
+		start_time: utcSecondTimestamp.optional(),
+		end_time: utcSecondTimestamp.optional(),
+		is_private: z.boolean().optional(),
+	})
+	.refine(
+		(patch) => Object.values(patch).some((value) => value !== undefined),
+		"Include at least one workout metadata field",
+	);
+
 export const updateWorkoutInputSchema = z.strictObject({
 	workout_id: nonEmptyId,
-	workout: workoutPayloadSchema,
+	workout: workoutMetadataPatchSchema,
 });
 export const updateWorkoutInputShape = updateWorkoutInputSchema.shape;
+
+export const replaceWorkoutExercisesInputSchema = z.strictObject({
+	workout_id: nonEmptyId,
+	workout: z.strictObject({
+		exercises: workoutExercisesSchema,
+	}),
+});
+export const replaceWorkoutExercisesInputShape =
+	replaceWorkoutExercisesInputSchema.shape;
 
 export const routineSetShape = {
 	type: setTypeEnum,
@@ -235,8 +267,11 @@ export const updateBodyMeasurementInputShape =
 	updateBodyMeasurementInputSchema.shape;
 
 export type WorkoutSetInput = z.infer<typeof workoutSetShape>;
-export type WorkoutExerciseInput = z.infer<typeof workoutExerciseShape>;
-export type WorkoutPayloadInput = z.infer<typeof workoutPayloadSchema>;
+export type WorkoutExerciseInput = z.infer<typeof workoutExerciseSchema>;
+export type WorkoutPayloadInput = z.infer<typeof replaceWorkoutPayloadSchema>;
+export type WorkoutMetadataPatchInput = z.infer<
+	typeof workoutMetadataPatchSchema
+>;
 export type RoutineSetInput = z.infer<typeof routineSetShape>;
 export type RoutineExerciseInput = z.infer<typeof routineExerciseShape>;
 export type RoutinePayloadInput = z.infer<typeof routinePayloadSchema>;
