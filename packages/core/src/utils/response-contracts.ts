@@ -966,7 +966,8 @@ export const exerciseHistoryResponse = defineStructuredResponseContract({
 		exercise_history: readonly ExerciseHistoryEntry[] | undefined;
 		exercise_template_id: string;
 	}) => ({
-		exercise_history: data.exercise_history ?? [],
+		exercise_history:
+			data.exercise_history?.map(normalizeExerciseHistoryEntry) ?? [],
 	}),
 	legacyJson: ({ exercise_history }) => exercise_history,
 	text: ({ exercise_template_id }, { exercise_history }) =>

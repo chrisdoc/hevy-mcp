@@ -46,7 +46,7 @@ current 26-tool catalog. It is also the fallback for pull-request bases that
 predate the measurement script. Once the base revision has the script and
 package wiring, CI measures that exact base SHA instead.
 
-The compact baseline is **7,933 total tokens**, averaging **305.12 tokens per
+The compact baseline is **7,938 total tokens**, averaging **305.31 tokens per
 tool** with `o200k_base`.
 
 The project tracks these targets:

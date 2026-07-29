@@ -417,6 +417,13 @@ export function formatMarkdown(
 			"| Tool | Baseline | Current | Delta |",
 			"| --- | ---: | ---: | ---: |",
 		);
+		for (const tool of comparison.toolDeltas) {
+			lines.push(
+				`| \`${tool.name}\` | ${tool.baselineTokens ?? "—"} | ${tool.currentTokens ?? "—"} | ${formatDelta(tool.delta)} |`,
+			);
+		}
+		lines.push("");
+
 		lines.push(
 			"### Component changes",
 			"",
@@ -426,13 +433,6 @@ export function formatMarkdown(
 		for (const component of TOOL_COMPONENTS) {
 			lines.push(
 				`| \`${component}\` | ${formatDelta(comparison.componentTokenDeltas[component])} |`,
-			);
-		}
-		lines.push("");
-
-		for (const tool of comparison.toolDeltas) {
-			lines.push(
-				`| \`${tool.name}\` | ${tool.baselineTokens ?? "—"} | ${tool.currentTokens ?? "—"} | ${formatDelta(tool.delta)} |`,
 			);
 		}
 		lines.push("");
@@ -628,7 +628,7 @@ export async function run(
 	if (options.outputPath) {
 		await writeNewOutput(
 			options.outputPath,
-			`${JSON.stringify(report, null, 2)}\n`,
+			`${JSON.stringify(report, null, "\t")}\n`,
 		);
 	}
 	if (options.markdownPath) {

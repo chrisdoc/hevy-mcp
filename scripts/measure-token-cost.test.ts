@@ -292,6 +292,17 @@ describe("formatMarkdown", () => {
 		expect(markdown).toContain("### Change from baseline");
 		expect(markdown).toContain("| `added` | — |");
 		expect(markdown).toMatch(/\| `removed` \| \d+ \| — \|/);
+		const perToolChanges = markdown.indexOf("### Per-tool changes");
+		const addedTool = markdown.indexOf("| `added` | — |");
+		const removedTool = markdown.indexOf("| `removed` |");
+		const componentChanges = markdown.indexOf("### Component changes");
+		const perToolBreakdown = markdown.indexOf("### Per-tool breakdown");
+
+		expect(addedTool).toBeGreaterThan(perToolChanges);
+		expect(removedTool).toBeGreaterThan(perToolChanges);
+		expect(addedTool).toBeLessThan(componentChanges);
+		expect(removedTool).toBeLessThan(componentChanges);
+		expect(componentChanges).toBeLessThan(perToolBreakdown);
 	});
 
 	it("renders an unavailable baseline explanation", () => {

@@ -201,12 +201,14 @@ describe("registerHevyResources", () => {
 			title: "First",
 			created_at: "2025-01-01T00:00:00Z",
 			updated_at: "2025-01-01T00:00:00Z",
+			index: 0,
 		};
 		const secondFolder: RoutineFolder = {
 			id: 2,
 			title: "Second",
 			created_at: "2025-01-02T00:00:00Z",
 			updated_at: "2025-01-02T00:00:00Z",
+			index: 1,
 		};
 		const { registerResource, server } = createMockServer();
 		const hevyClient = {
@@ -242,10 +244,12 @@ describe("registerHevyResources", () => {
 			page: 2,
 			pageSize: 10,
 		});
-		expect(parseJsonContent(result).data).toEqual([
+		const serializedFolders = parseJsonContent(result).data;
+		expect(serializedFolders).toEqual([
 			projectRoutineFolder(firstFolder),
 			projectRoutineFolder(secondFolder),
 		]);
+		expect(JSON.stringify(serializedFolders)).not.toContain('"index"');
 	});
 
 	it("stops safely when routine folder pagination metadata is malformed", async () => {

@@ -39,6 +39,30 @@ describe("compactJsonSchema", () => {
 		});
 		expect(schema.safeParse({ count: "1", name: "set" }).success).toBe(false);
 	});
+
+	it("preserves refined non-empty object metadata in compact schemas", () => {
+		const schema = z
+			.strictObject({
+				title: z.string().optional(),
+				description: z.string().nullable().optional(),
+			})
+			.refine(
+				(patch) => Object.values(patch).some((value) => value !== undefined),
+				"Include at least one workout metadata field",
+			)
+			.meta({ minProperties: 1 });
+		compactJsonSchema(schema);
+
+		expect(
+			schema["~standard"].jsonSchema.input({ target: "draft-2020-12" }),
+		).toMatchObject({
+			type: "object",
+			additionalProperties: false,
+			minProperties: 1,
+		});
+		expect(schema.safeParse({}).success).toBe(false);
+		expect(schema.safeParse({ title: "Renamed" }).success).toBe(true);
+	});
 	it("omits redundant output object closure metadata", () => {
 		const schema = z.object({
 			nested: z.object({ value: z.string() }),

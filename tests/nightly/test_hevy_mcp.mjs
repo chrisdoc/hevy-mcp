@@ -4,6 +4,8 @@
  */
 
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { Client } from "@modelcontextprotocol/client";
 import {
@@ -17,10 +19,15 @@ import {
 	renderSummaryLine,
 	setVersions,
 	writeDiagnostics,
+	WORKOUT_COUNT_SCHEMA_PATH,
 } from "./diagnostics.mjs";
 
 const SEARCH_QUERY = "bench";
 const UNKNOWN_WORKOUT_ID = "00000000-0000-0000-0000-000000000000";
+
+export function buildWorkoutPageArgs(pageSize) {
+	return { page: 1, page_size: pageSize };
+}
 
 function assertCondition(condition, schemaPath, kind = "schema") {
 	if (!condition) throw createDiagnosticError(kind, schemaPath);
@@ -327,13 +334,17 @@ async function main() {
 				const { empty, parsed } = await callOrIgnoreEmpty(
 					client,
 					"get-workouts",
-					{ page, page_size: 10 },
+					buildWorkoutPageArgs(10),
 				);
 				if (empty || !Array.isArray(parsed) || parsed.length === 0) break;
 				fetchedCount += parsed.length;
 				if (parsed.length < 10) break;
 			}
-			assertCondition(fetchedCount === total, "$.count", "assertion");
+			assertCondition(
+				fetchedCount === total,
+				WORKOUT_COUNT_SCHEMA_PATH,
+				"assertion",
+			);
 		});
 		await runTest("get-workout-handles-unknown-id", async () => {
 			const result = await client.callTool({
@@ -357,4 +368,8 @@ async function main() {
 	await finishDiagnostics(summary, diagnosticsPath);
 }
 
-await main();
+if (
+	process.argv[1] &&
+	import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+)
+	await main();

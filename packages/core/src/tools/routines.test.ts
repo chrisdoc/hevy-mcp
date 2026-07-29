@@ -1,7 +1,9 @@
 /* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import { describe, expect, it, vi } from "vitest";
+import { getResultTelemetry } from "../utils/result-telemetry.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { routineToolDefinitions } from "./routines.js";
@@ -40,6 +42,30 @@ const routineInput = {
 };
 
 describe("routine tools", () => {
+	it("records expected telemetry for a missing routine", async () => {
+		const client = {
+			getRoutineById: vi.fn().mockRejectedValue(
+				new HevyHttpError("routine not found", {
+					status: 404,
+					method: "GET",
+					endpoint: "/v1/routines/:routineId",
+				}),
+			),
+		} as unknown as HevyClient;
+		const tool = register(client);
+		const response = await handler(
+			tool,
+			"get-routine",
+		)({
+			routine_id: "missing",
+		});
+
+		expect(getResultTelemetry(response)).toMatchObject({
+			itemCountBucket: "0",
+			expected404Outcome: "not_found",
+		});
+	});
+
 	it("maps pagination and identifiers to generated client calls", async () => {
 		const client = {
 			getRoutines: vi.fn().mockResolvedValue({ routines: [], page_count: 1 }),

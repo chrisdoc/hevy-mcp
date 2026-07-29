@@ -152,7 +152,8 @@ export const workoutMetadataPatchSchema = z
 	.refine(
 		(patch) => Object.values(patch).some((value) => value !== undefined),
 		"Include at least one workout metadata field",
-	);
+	)
+	.meta({ minProperties: 1 });
 
 export const updateWorkoutInputSchema = z.strictObject({
 	workout_id: nonEmptyId,

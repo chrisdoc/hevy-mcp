@@ -1,15 +1,23 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ToolObserver } from "../observation.js";
 import { registerWorkoutPrompts } from "./workouts.js";
 
 describe("workout prompts", () => {
 	let client: Client;
+	let promptStart: ToolObserver["start"];
 	let server: McpServer;
 
 	beforeEach(async () => {
 		server = new McpServer({ name: "prompt-test-server", version: "1.0.0" });
-		registerWorkoutPrompts(server);
+		const start = vi.fn(() => ({
+			run: <T>(operation: () => Promise<T>) => operation(),
+			finish: vi.fn(),
+		}));
+		const observer: ToolObserver = { start };
+		promptStart = start;
+		registerWorkoutPrompts(server, observer);
 
 		client = new Client({ name: "prompt-test-client", version: "1.0.0" });
 		const [clientTransport, serverTransport] =
@@ -128,6 +136,13 @@ describe("workout prompts", () => {
 				}),
 			}),
 		);
+		expect(promptStart).toHaveBeenCalledWith({
+			name: "create-workout-from-routine",
+			kind: "prompt",
+			argumentKeys: ["routine_id"],
+			argumentPresence: { routine_id: true },
+			argumentKeyCountBucket: "2-10",
+		});
 	});
 
 	it("rejects an invalid workout start timestamp", async () => {

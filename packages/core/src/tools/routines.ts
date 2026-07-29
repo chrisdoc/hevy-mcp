@@ -73,6 +73,7 @@ const getRoutineSchema = { routine_id: nonEmptyId } as const;
 type GetRoutineResult = {
 	routine: GetV1RoutinesRoutineid200["routine"] | null;
 	routine_id: string;
+	expected404Outcome?: "not_found";
 };
 const getRoutineDefinition: ToolDefinition<
 	typeof getRoutineSchema,
@@ -99,6 +100,7 @@ const getRoutineDefinition: ToolDefinition<
 				return {
 					routine: null,
 					routine_id,
+					expected404Outcome: "not_found",
 				};
 			}
 			throw error;

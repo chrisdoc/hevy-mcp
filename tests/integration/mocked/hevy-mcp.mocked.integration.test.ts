@@ -247,37 +247,40 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 	it("patches workout metadata after fetching the existing workout", async () => {
 		if (!client) throw new Error("Client not initialized");
 
-		getApiScope()
-			.get("/v1/workouts/w1")
-			.reply(200, {
-				id: "w1",
-				title: "Original",
-				description: "Keep this",
-				start_time: "2025-03-27T07:00:00Z",
-				end_time: "2025-03-27T08:00:00Z",
-				exercises: [
-					{
-						index: 0,
-						title: "Bench Press",
-						exercise_template_id: "bench",
-						supersets_id: 9,
-						notes: null,
-						sets: [
-							{
-								index: 0,
-								type: "normal",
-								weight_kg: 50,
-								reps: 8,
-								distance_meters: null,
-								duration_seconds: null,
-								rpe: null,
-								custom_metric: null,
-							},
-						],
-					},
-				],
-			});
-		getApiScope()
+		const requestMethods: string[] = [];
+		const scope = getApiScope();
+		scope.on("request", (request) => {
+			requestMethods.push(request.method);
+		});
+		scope.get("/v1/workouts/w1").reply(200, {
+			id: "w1",
+			title: "Original",
+			description: "Keep this",
+			start_time: "2025-03-27T07:00:00Z",
+			end_time: "2025-03-27T08:00:00Z",
+			exercises: [
+				{
+					index: 0,
+					title: "Bench Press",
+					exercise_template_id: "bench",
+					supersets_id: 9,
+					notes: null,
+					sets: [
+						{
+							index: 0,
+							type: "normal",
+							weight_kg: 50,
+							reps: 8,
+							distance_meters: null,
+							duration_seconds: null,
+							rpe: null,
+							custom_metric: null,
+						},
+					],
+				},
+			],
+		});
+		scope
 			.put("/v1/workouts/w1", {
 				workout: {
 					title: "Renamed",
@@ -337,18 +340,33 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			workout_id: "w1",
 			workout: { title: "Renamed", description: null },
 		});
-		const payload = JSON.parse(result.text) as {
-			title: string;
-			start_time: string;
-			end_time: string;
-		};
+		expect(requestMethods).toEqual(["GET", "PUT"]);
+		const payload: unknown = JSON.parse(result.text);
 
 		expect(result.isError).toBeFalsy();
 		expect(result.structuredContent).toBeUndefined();
-		expect(payload).toMatchObject({
+		expect(payload).toEqual({
+			id: "w1",
 			title: "Renamed",
 			start_time: "2025-03-27T07:00:00Z",
 			end_time: "2025-03-27T08:00:00Z",
+			duration: "1h 0m 0s",
+			exercises: [
+				{
+					index: 0,
+					title: "Bench Press",
+					exercise_template_id: "bench",
+					supersets_id: 9,
+					sets: [
+						{
+							index: 0,
+							type: "normal",
+							weight_kg: 50,
+							reps: 8,
+						},
+					],
+				},
+			],
 		});
 	});
 

@@ -29,6 +29,7 @@ function withPromptObservation<TArgs extends Record<string, unknown>>(
 						(key) => key === "routine_id",
 					) as "routine_id"[],
 					argumentPresence: args.routine_id ? { routine_id: true } : {},
+					argumentKeyCountBucket: bucketCount(Object.keys(args).length),
 				}),
 			);
 		} catch {

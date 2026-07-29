@@ -3,12 +3,12 @@
 	"encoding": "o200k_base",
 	"measurementScope": "Complete JSON-serialized MCP tools/list result payload: { tools }",
 	"toolCount": 26,
-	"totalTokens": 7933,
-	"averageTokensPerTool": 305.12,
+	"totalTokens": 7938,
+	"averageTokensPerTool": 305.31,
 	"componentTokens": {
 		"name": 153,
 		"description": 560,
-		"inputSchema": 3395,
+		"inputSchema": 3400,
 		"outputSchema": 3025,
 		"annotations": 606
 	},
@@ -40,7 +40,7 @@
 				"outputSchema": 531,
 				"annotations": 19
 			},
-			"percentageOfTotal": 7.87
+			"percentageOfTotal": 7.86
 		},
 		{
 			"name": "create-workout",
@@ -52,7 +52,7 @@
 				"outputSchema": 0,
 				"annotations": 31
 			},
-			"percentageOfTotal": 6.71
+			"percentageOfTotal": 6.7
 		},
 		{
 			"name": "get-workout-events",
@@ -260,15 +260,15 @@
 		},
 		{
 			"name": "update-workout",
-			"tokens": 227,
+			"tokens": 232,
 			"componentTokens": {
 				"name": 5,
 				"description": 17,
-				"inputSchema": 168,
+				"inputSchema": 173,
 				"outputSchema": 0,
 				"annotations": 31
 			},
-			"percentageOfTotal": 2.86
+			"percentageOfTotal": 2.92
 		},
 		{
 			"name": "get-routine-folders",

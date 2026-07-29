@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
-import type { Routine, Workout } from "@hevy-mcp/hevy-client/types";
+import type {
+	ExerciseHistoryEntry,
+	Routine,
+	Workout,
+} from "@hevy-mcp/hevy-client/types";
+
 import {
 	compactRoutinesResponse,
 	createRoutineResponse,
@@ -78,6 +83,44 @@ describe("response contracts", () => {
 			content: [{ text: "No exercise history found for template template-1" }],
 			structuredContent: { exercise_history: [] },
 		});
+	});
+
+	it("normalizes nullable exercise history metrics into sparse output", () => {
+		const historyEntry: ExerciseHistoryEntry = {
+			workout_id: "workout-1",
+			workout_title: "Morning workout",
+			exercise_template_id: "bench",
+			weight_kg: null,
+			reps: 8,
+			distance_meters: null,
+			duration_seconds: null,
+			rpe: null,
+			custom_metric: null,
+			set_type: "normal",
+		};
+		const response = respond(exerciseHistoryResponse, {
+			exercise_history: [historyEntry],
+			exercise_template_id: "bench",
+		});
+		const expected = [
+			{
+				workout_id: "workout-1",
+				workout_title: "Morning workout",
+				exercise_template_id: "bench",
+				reps: 8,
+				set_type: "normal",
+			},
+		];
+
+		expect(response.structuredContent).toEqual({
+			exercise_history: expected,
+		});
+		expect(JSON.parse(response.content[0].text)).toEqual(expected);
+		expect(response.content[0].text).not.toContain("weight_kg");
+		expect(response.content[0].text).not.toContain("distance_meters");
+		expect(response.content[0].text).not.toContain("duration_seconds");
+		expect(response.content[0].text).not.toContain("custom_metric");
+		expect(response.content[0].text).not.toContain("rpe");
 	});
 
 	it("supports JSON-only and text-only contracts", () => {

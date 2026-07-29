@@ -72,6 +72,24 @@ describe("registerHevyTools", () => {
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
 	});
 
+	it("advertises the non-empty update-workout patch invariant", async () => {
+		const { tools } = await client.listTools();
+		const updateWorkout = tools.find(({ name }) => name === "update-workout");
+
+		expect(updateWorkout).toBeDefined();
+		expect(updateWorkout?.inputSchema).toEqual(
+			expect.objectContaining({
+				properties: expect.objectContaining({
+					workout: expect.objectContaining({
+						type: "object",
+						additionalProperties: false,
+						minProperties: 1,
+					}),
+				}),
+			}),
+		);
+	});
+
 	it("declares bounded feature, kind, and operation metadata for every tool", () => {
 		expect(hevyToolDefinitions).toHaveLength(EXPECTED_TOOL_NAMES.length);
 		for (const definition of hevyToolDefinitions) {
