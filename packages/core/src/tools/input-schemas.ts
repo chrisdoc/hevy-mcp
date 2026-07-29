@@ -62,12 +62,9 @@ export const calendarDate = z
 
 export const workoutSetShape = {
 	type: setTypeEnum,
-	weight: z.coerce.number().optional().nullable(),
 	weightKg: z.coerce.number().optional().nullable(),
 	reps: z.coerce.number().int().optional().nullable(),
-	distance: z.coerce.number().int().optional().nullable(),
 	distanceMeters: z.coerce.number().int().optional().nullable(),
-	duration: z.coerce.number().int().optional().nullable(),
 	durationSeconds: z.coerce.number().int().optional().nullable(),
 	rpe: z.coerce.number().optional().nullable(),
 	customMetric: z.coerce.number().optional().nullable(),
@@ -77,7 +74,7 @@ export const workoutExerciseShape = {
 	exerciseTemplateId: nonEmptyId,
 	supersetId: z.coerce.number().nullable().optional(),
 	notes: z.string().optional().nullable(),
-	sets: z.array(z.object(workoutSetShape)),
+	sets: z.array(z.object(workoutSetShape).strict()),
 } as const;
 
 export const workoutPayloadShape = {
@@ -94,12 +91,9 @@ export const workoutPayloadShape = {
 
 export const routineSetShape = {
 	type: setTypeEnum,
-	weight: z.coerce.number().optional(),
 	weightKg: z.coerce.number().optional(),
 	reps: zNullableInt,
-	distance: z.coerce.number().int().optional(),
 	distanceMeters: z.coerce.number().int().optional(),
-	duration: z.coerce.number().int().optional(),
 	durationSeconds: z.coerce.number().int().optional(),
 	customMetric: z.coerce.number().optional(),
 	repRange: zOptionalRepRange,
@@ -110,7 +104,7 @@ export const routineExerciseShape = {
 	supersetId: z.coerce.number().nullable().optional(),
 	restSeconds: z.coerce.number().int().min(0).optional(),
 	notes: z.string().optional(),
-	sets: z.array(z.object(routineSetShape)),
+	sets: z.array(z.object(routineSetShape).strict()),
 } as const;
 
 export const routinePayloadShape = {
@@ -124,37 +118,23 @@ export const routinePayloadShape = {
 } as const;
 
 export const bodyMeasurementFieldsSchema = {
-	weightKg: zNullableNumber.describe("Body weight in kilograms"),
-	leanMassKg: zNullableNumber.describe("Lean body mass in kilograms"),
-	fatPercent: zNullableNumber.describe("Body fat percentage"),
-	neckCm: zNullableNumber.describe("Neck circumference in centimeters"),
-	shoulderCm: zNullableNumber.describe("Shoulder circumference in centimeters"),
-	chestCm: zNullableNumber.describe("Chest circumference in centimeters"),
-	leftBicepCm: zNullableNumber.describe(
-		"Left bicep circumference in centimeters",
-	),
-	rightBicepCm: zNullableNumber.describe(
-		"Right bicep circumference in centimeters",
-	),
-	leftForearmCm: zNullableNumber.describe(
-		"Left forearm circumference in centimeters",
-	),
-	rightForearmCm: zNullableNumber.describe(
-		"Right forearm circumference in centimeters",
-	),
-	abdomen: zNullableNumber.describe("Abdomen circumference in centimeters"),
-	waist: zNullableNumber.describe("Waist circumference in centimeters"),
-	hips: zNullableNumber.describe("Hips circumference in centimeters"),
-	leftThigh: zNullableNumber.describe(
-		"Left thigh circumference in centimeters",
-	),
-	rightThigh: zNullableNumber.describe(
-		"Right thigh circumference in centimeters",
-	),
-	leftCalf: zNullableNumber.describe("Left calf circumference in centimeters"),
-	rightCalf: zNullableNumber.describe(
-		"Right calf circumference in centimeters",
-	),
+	weightKg: zNullableNumber,
+	leanMassKg: zNullableNumber,
+	fatPercent: zNullableNumber,
+	neckCm: zNullableNumber,
+	shoulderCm: zNullableNumber,
+	chestCm: zNullableNumber,
+	leftBicepCm: zNullableNumber,
+	rightBicepCm: zNullableNumber,
+	leftForearmCm: zNullableNumber,
+	rightForearmCm: zNullableNumber,
+	abdomen: zNullableNumber.describe("Circumference in centimeters."),
+	waist: zNullableNumber.describe("Circumference in centimeters."),
+	hips: zNullableNumber.describe("Circumference in centimeters."),
+	leftThigh: zNullableNumber,
+	rightThigh: zNullableNumber,
+	leftCalf: zNullableNumber,
+	rightCalf: zNullableNumber,
 } as const;
 
 export const measurementFieldToApiKey = {

@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Workout } from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import { formatWorkout } from "../utils/response-formatter.js";
+import {
+	formatWorkout,
+	formatWorkoutSummary,
+} from "../utils/response-formatter.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
@@ -37,9 +40,38 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 		isError?: boolean;
 		structuredContent?: Record<string, unknown>;
 	}>;
-	const config = match[1] as { outputSchema?: z.ZodTypeAny } | undefined;
-	return { outputSchema: config?.outputSchema, handler };
+	const config = match[1] as
+		| { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny }
+		| undefined;
+	return {
+		schema: config?.inputSchema,
+		outputSchema: config?.outputSchema,
+		handler,
+	};
 }
+
+it.each(["weight", "distance", "duration"])(
+	"rejects legacy %s set aliases before invoking a client",
+	(alias) => {
+		const { server, tool } = createMockServer();
+		registerWorkoutTools(server, null);
+		const { schema } = getToolRegistration(tool, "create-workout");
+		expect(schema).toBeDefined();
+		expect(() =>
+			schema?.parse({
+				title: "Workout",
+				startTime: "2025-01-01T00:00:00Z",
+				endTime: "2025-01-01T01:00:00Z",
+				exercises: [
+					{
+						exerciseTemplateId: "exercise-1",
+						sets: [{ type: "normal", [alias]: 1 }],
+					},
+				],
+			}),
+		).toThrow();
+	},
+);
 
 describe("registerWorkoutTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
@@ -128,7 +160,7 @@ describe("registerWorkoutTools", () => {
 		});
 	});
 
-	it("get-workouts returns formatted workouts from the client", async () => {
+	it("get-workouts returns compact summaries from the client", async () => {
 		const { server, tool } = createMockServer();
 		const workout: Workout = {
 			id: "w1",
@@ -138,7 +170,14 @@ describe("registerWorkoutTools", () => {
 			end_time: "2025-03-27T08:00:00Z",
 			created_at: "2025-03-27T07:00:00Z",
 			updated_at: "2025-03-27T07:10:00Z",
-			exercises: [],
+			exercises: [
+				{
+					index: 0,
+					title: "Bench Press",
+					exercise_template_id: "bench",
+					sets: [{ index: 0 }, { index: 1 }],
+				},
+			] as unknown as Workout["exercises"],
 		};
 		const hevyClient = {
 			getWorkouts: vi.fn().mockResolvedValue({ workouts: [workout] }),
@@ -155,12 +194,44 @@ describe("registerWorkoutTools", () => {
 		});
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
-		expect(parsed).toEqual([formatWorkout(workout)]);
+		expect(parsed).toEqual([formatWorkoutSummary(workout)]);
+		expect(parsed[0]).not.toHaveProperty("exercises");
+		expect(parsed[0]).toMatchObject({ exerciseCount: 1, setCount: 2 });
 		expect(response.structuredContent).toEqual({
 			workouts: parsed,
 			page: 1,
 			pageCount: undefined,
 		});
+	});
+	it("get-workout retains full exercises and sets", async () => {
+		const { server, tool } = createMockServer();
+		const workout = {
+			id: "w1",
+			title: "Morning Workout",
+			start_time: "2025-03-27T07:00:00Z",
+			end_time: "2025-03-27T08:00:00Z",
+			exercises: [
+				{
+					title: "Bench Press",
+					exercise_template_id: "bench",
+					sets: [{ index: 0 }, { index: 1 }],
+				},
+			],
+		} as unknown as Workout;
+		const hevyClient = {
+			getWorkout: vi.fn().mockResolvedValue(workout),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "get-workout");
+		const response = await handler({ workoutId: "w1" });
+
+		const parsed = JSON.parse(response.content[0].text) as {
+			exercises?: Array<{ sets?: unknown[] }>;
+		};
+		expect(parsed.exercises).toHaveLength(1);
+		expect(parsed.exercises?.[0]?.sets).toHaveLength(2);
+		expect(response.structuredContent).toEqual({ workout: parsed });
 	});
 
 	it("formats updated and deleted workout events from the client", async () => {
@@ -410,10 +481,10 @@ describe("registerWorkoutTools", () => {
 					sets: [
 						{
 							type: "normal" as const,
-							weight: 80,
+							weightKg: 80,
 							reps: 8,
-							distance: null,
-							duration: null,
+							distanceMeters: null,
+							durationSeconds: null,
 							rpe: 7,
 							customMetric: null,
 						},

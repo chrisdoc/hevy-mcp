@@ -138,7 +138,7 @@ export function registerWorkoutPrompts(
 											`Create a workout from routine ${routineId}, starting at ${startTime}.`,
 											"First call get-routine with the routineId and map supported plan fields: routine title to workout title, plus each exerciseTemplateId, supersetId, exercise notes, and set type.",
 											"Do not copy routine-only restSeconds or repRange fields into create-workout.",
-											"Before calling create-workout, confirm or collect the user's actual completed set data for every set, including applicable weight, reps, distance, duration, RPE, or custom metric values.",
+											"Before calling create-workout, confirm or collect the user's actual completed set data for every set, including applicable weightKg, reps, distanceMeters, durationSeconds, RPE, or custom metric values.",
 											"Also collect the required endTime in strict UTC YYYY-MM-DDTHH:mm:ssZ format and confirm any other missing required workout fields.",
 											"Never invent completion data. If the actual results or endTime are unavailable, ask the user for them instead of creating the workout.",
 											"Once confirmed, call create-workout with only fields supported by that tool.",

@@ -10,19 +10,13 @@ import {
 	type TrainingSummaryResult,
 } from "../utils/response-formatter.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 
 const trainingSummarySchema = {
-	weeks: z.coerce
-		.number()
-		.int()
-		.min(1)
-		.max(12)
-		.default(4)
-		.describe("Number of recent weeks to summarize (1-12)."),
+	weeks: z.coerce.number().int().min(1).max(12).default(4),
 } as const;
 
 type TrainingSummaryParams = InferToolParams<typeof trainingSummarySchema>;
@@ -113,26 +107,29 @@ function getPeriod(weeks: number): {
 	return { startDate: utcDateString(start), endDate: utcDateString(end) };
 }
 
-function durationSeconds(workout: Workout): number | null {
-	if (!workout.start_time || !workout.end_time) return null;
+function durationSeconds(workout: Workout): number | undefined {
+	if (!workout.start_time || !workout.end_time) return undefined;
 	const duration =
 		new Date(workout.end_time).getTime() -
 		new Date(workout.start_time).getTime();
 	return Number.isFinite(duration) && duration >= 0
 		? Math.floor(duration / 1000)
-		: null;
+		: undefined;
 }
 
 function compactSession(
 	workout: Workout,
 ): TrainingSummaryResult["workouts"]["sessions"][number] {
 	const exercises = workout.exercises ?? [];
+	const elapsedSeconds = durationSeconds(workout);
 	return {
 		...(workout.id ? { id: workout.id } : {}),
 		...(workout.title ? { title: workout.title } : {}),
 		...(workout.start_time ? { startTime: workout.start_time } : {}),
 		...(workout.end_time ? { endTime: workout.end_time } : {}),
-		durationSeconds: durationSeconds(workout),
+		...(elapsedSeconds === undefined
+			? {}
+			: { durationSeconds: elapsedSeconds }),
 		exerciseCount: exercises.length,
 		setCount: exercises.reduce(
 			(total, exercise) => total + (exercise.sets?.length ?? 0),
@@ -146,9 +143,15 @@ function compactMeasurement(
 ): NonNullable<TrainingSummaryResult["bodyMeasurements"]["latest"]> {
 	return {
 		date: measurement.date,
-		weightKg: measurement.weight_kg ?? null,
-		leanMassKg: measurement.lean_mass_kg ?? null,
-		fatPercent: measurement.fat_percent ?? null,
+		...(measurement.weight_kg == null
+			? {}
+			: { weightKg: measurement.weight_kg }),
+		...(measurement.lean_mass_kg == null
+			? {}
+			: { leanMassKg: measurement.lean_mass_kg }),
+		...(measurement.fat_percent == null
+			? {}
+			: { fatPercent: measurement.fat_percent }),
 	};
 }
 
@@ -211,17 +214,14 @@ export async function getTrainingSummary(
 	const latestMeasurement = measurements.at(-1);
 	const earliest = earliestMeasurement
 		? compactMeasurement(earliestMeasurement)
-		: null;
+		: undefined;
 	const latest = latestMeasurement
 		? compactMeasurement(latestMeasurement)
-		: null;
+		: undefined;
 	const weightChangeKg =
-		latest?.weightKg !== null &&
-		latest?.weightKg !== undefined &&
-		earliest?.weightKg !== null &&
-		earliest?.weightKg !== undefined
+		latest?.weightKg !== undefined && earliest?.weightKg !== undefined
 			? latest.weightKg - earliest.weightKg
-			: null;
+			: undefined;
 
 	return {
 		period: { ...period, weeks },
@@ -244,9 +244,9 @@ export async function getTrainingSummary(
 		},
 		bodyMeasurements: {
 			count: measurements.length,
-			latest,
-			earliest,
-			weightChangeKg,
+			...(latest ? { latest } : {}),
+			...(earliest ? { earliest } : {}),
+			...(weightChangeKg === undefined ? {} : { weightChangeKg }),
 		},
 		workflow: {
 			name: "training-summary",
@@ -265,19 +265,8 @@ export const workflowToolDefinitions = [
 		name: "get-training-summary",
 		feature: "workflows" as const,
 		operation: "get" as const,
-		description: describeTool({
-			summary:
-				"Read-only. Summarizes recent workout activity and body-measurement trends in one call.",
-			aliases: [
-				"training progress",
-				"progress summary",
-				"recent training overview",
-			],
-			useCase:
-				"Use for a bounded progress review instead of separately counting and paging through workouts and body measurements.",
-			importantNotes:
-				"The summary covers the most recent 1-12 weeks, returns compact session evidence, and reports the pages and items scanned.",
-		}),
+		description:
+			"Read-only. Summarizes workouts and body-measurement trends for the last 1–12 weeks, including compact session and scan evidence.",
 		inputSchema: trainingSummarySchema,
 		outputSchema: trainingSummaryResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Training Summary"),

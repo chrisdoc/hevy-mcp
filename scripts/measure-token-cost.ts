@@ -8,15 +8,34 @@ import { registerHevyTools } from "../packages/core/src/tools/register.js";
 import { createToolRuntime } from "../packages/core/src/tools/tool-runtime.js";
 import type { ExerciseTemplateCatalog } from "../packages/core/src/utils/exercise-template-catalog.js";
 
-export const TOKEN_COST_SCHEMA_VERSION = 1;
+export const TOKEN_COST_SCHEMA_VERSION = 2;
 export const TOKEN_ENCODING = "o200k_base";
 export const MEASUREMENT_SCOPE =
 	"Complete JSON-serialized MCP tools/list result payload: { tools }";
 export const TOOL_COUNT_TARGET = 20;
 export const AVERAGE_TOKEN_TARGET = 600;
+export const TOTAL_TOKEN_BUDGET = 8_900;
+
+export type ToolComponent =
+	| "name"
+	| "description"
+	| "inputSchema"
+	| "outputSchema"
+	| "annotations";
+
+export const TOOL_COMPONENTS: readonly ToolComponent[] = [
+	"name",
+	"description",
+	"inputSchema",
+	"outputSchema",
+	"annotations",
+];
+
+export type ComponentTokenTotals = Record<ToolComponent, number>;
 
 export interface CliOptions {
 	help: boolean;
+	enforceBudget: boolean;
 	outputPath?: string;
 	baselinePath?: string;
 	markdownPath?: string;
@@ -28,6 +47,7 @@ export interface ToolTokenCost {
 	name: string;
 	tokens: number;
 	percentageOfTotal: number;
+	componentTokens: ComponentTokenTotals;
 }
 
 export interface TokenCostReport {
@@ -37,12 +57,23 @@ export interface TokenCostReport {
 	toolCount: number;
 	totalTokens: number;
 	averageTokensPerTool: number;
+	componentTokens: ComponentTokenTotals;
 	targets: {
-		advisoryOnly: true;
-		toolCountMax: number;
-		toolCountStatus: TargetStatus;
-		averageTokensPerToolMaxExclusive: number;
-		averageTokensPerToolStatus: TargetStatus;
+		toolCount: {
+			maximumInclusive: number;
+			status: TargetStatus;
+			enforced: false;
+		};
+		averageTokensPerTool: {
+			maximumExclusive: number;
+			status: TargetStatus;
+			enforced: false;
+		};
+		totalTokens: {
+			maximumInclusive: number;
+			status: TargetStatus;
+			enforced: true;
+		};
 	};
 	tools: ToolTokenCost[];
 }
@@ -52,6 +83,7 @@ export interface BaselineComparison {
 	totalTokensDelta: number;
 	toolCountDelta: number;
 	averageTokensPerToolDelta: number;
+	componentTokenDeltas: ComponentTokenTotals;
 	toolDeltas: Array<{
 		name: string;
 		currentTokens?: number;
@@ -86,15 +118,20 @@ const OPTION_TOKENS = new Set([
 	"-o",
 	"--baseline",
 	"--markdown",
+	"--enforce-budget",
 ]);
 
 export function parseArgs(args: string[]): CliOptions {
-	const options: CliOptions = { help: false };
+	const options: CliOptions = { help: false, enforceBudget: false };
 
 	for (let index = 0; index < args.length; index += 1) {
 		const argument = args[index];
 		if (argument === "--help" || argument === "-h") {
 			options.help = true;
+			continue;
+		}
+		if (argument === "--enforce-budget") {
+			options.enforceBudget = true;
 			continue;
 		}
 
@@ -142,16 +179,65 @@ export function getTargetStatus(
 			: "aboveTarget";
 }
 
+function countEncodedTokens(value: unknown, encoder: EncoderLike): number {
+	const serialized = JSON.stringify(value);
+	return serialized === undefined ? 0 : encoder.encode(serialized).length;
+}
+
+function emptyComponentTokenTotals(): ComponentTokenTotals {
+	return {
+		name: 0,
+		description: 0,
+		inputSchema: 0,
+		outputSchema: 0,
+		annotations: 0,
+	};
+}
+
+function measureToolComponentTokens(
+	tool: Tool,
+	encoder: EncoderLike,
+): ComponentTokenTotals {
+	const values = {
+		name: tool.name,
+		description: tool.description,
+		inputSchema: tool.inputSchema,
+		outputSchema: tool.outputSchema,
+		annotations: tool.annotations,
+	};
+	const componentTokens = emptyComponentTokenTotals();
+	for (const component of TOOL_COMPONENTS) {
+		componentTokens[component] = countEncodedTokens(values[component], encoder);
+	}
+	return componentTokens;
+}
+
+function sumComponentTokenTotals(
+	tools: Array<Pick<ToolTokenCost, "componentTokens">>,
+): ComponentTokenTotals {
+	const totals = emptyComponentTokenTotals();
+	for (const tool of tools) {
+		for (const component of TOOL_COMPONENTS) {
+			totals[component] += tool.componentTokens[component];
+		}
+	}
+	return totals;
+}
+
 export function measureTokenPayload(
 	tools: Tool[],
 	encoder: EncoderLike,
 ): TokenCostReport {
-	const totalTokens = encoder.encode(JSON.stringify({ tools })).length;
+	const totalTokens = countEncodedTokens({ tools }, encoder);
 	const toolCosts = tools
-		.map((tool) => ({
-			name: tool.name,
-			tokens: encoder.encode(JSON.stringify(tool)).length,
-		}))
+		.map((tool) => {
+			const componentTokens = measureToolComponentTokens(tool, encoder);
+			return {
+				name: tool.name,
+				tokens: countEncodedTokens(tool, encoder),
+				componentTokens,
+			};
+		})
 		.sort((left, right) => {
 			if (right.tokens !== left.tokens) return right.tokens - left.tokens;
 			return left.name < right.name ? -1 : left.name > right.name ? 1 : 0;
@@ -168,16 +254,27 @@ export function measureTokenPayload(
 		toolCount,
 		totalTokens,
 		averageTokensPerTool,
+		componentTokens: sumComponentTokenTotals(toolCosts),
 		targets: {
-			advisoryOnly: true,
-			toolCountMax: TOOL_COUNT_TARGET,
-			toolCountStatus: getTargetStatus(toolCount, TOOL_COUNT_TARGET, true),
-			averageTokensPerToolMaxExclusive: AVERAGE_TOKEN_TARGET,
-			averageTokensPerToolStatus: getTargetStatus(
-				averageTokensPerTool,
-				AVERAGE_TOKEN_TARGET,
-				false,
-			),
+			toolCount: {
+				maximumInclusive: TOOL_COUNT_TARGET,
+				status: getTargetStatus(toolCount, TOOL_COUNT_TARGET, true),
+				enforced: false,
+			},
+			averageTokensPerTool: {
+				maximumExclusive: AVERAGE_TOKEN_TARGET,
+				status: getTargetStatus(
+					averageTokensPerTool,
+					AVERAGE_TOKEN_TARGET,
+					false,
+				),
+				enforced: false,
+			},
+			totalTokens: {
+				maximumInclusive: TOTAL_TOKEN_BUDGET,
+				status: getTargetStatus(totalTokens, TOTAL_TOKEN_BUDGET, true),
+				enforced: true,
+			},
 		},
 		tools: toolCosts.map((tool) => ({
 			...tool,
@@ -219,6 +316,11 @@ export function compareReports(
 			return left.name < right.name ? -1 : left.name > right.name ? 1 : 0;
 		});
 
+	const componentTokenDeltas = emptyComponentTokenTotals();
+	for (const component of TOOL_COMPONENTS) {
+		componentTokenDeltas[component] =
+			current.componentTokens[component] - baseline.componentTokens[component];
+	}
 	return {
 		baseline,
 		totalTokensDelta: current.totalTokens - baseline.totalTokens,
@@ -226,8 +328,19 @@ export function compareReports(
 		averageTokensPerToolDelta: round(
 			current.averageTokensPerTool - baseline.averageTokensPerTool,
 		),
+		componentTokenDeltas,
 		toolDeltas,
 	};
+}
+
+function hasComponentTokenTotals(
+	value: unknown,
+): value is ComponentTokenTotals {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Record<string, unknown>;
+	return TOOL_COMPONENTS.every(
+		(component) => typeof candidate[component] === "number",
+	);
 }
 
 export function isCompatibleBaseline(value: unknown): value is TokenCostReport {
@@ -240,10 +353,13 @@ export function isCompatibleBaseline(value: unknown): value is TokenCostReport {
 		typeof candidate.toolCount === "number" &&
 		typeof candidate.totalTokens === "number" &&
 		typeof candidate.averageTokensPerTool === "number" &&
+		hasComponentTokenTotals(candidate.componentTokens) &&
 		Array.isArray(candidate.tools) &&
 		candidate.tools.every(
 			(tool) =>
-				typeof tool?.name === "string" && typeof tool.tokens === "number",
+				typeof tool?.name === "string" &&
+				typeof tool.tokens === "number" &&
+				hasComponentTokenTotals(tool.componentTokens),
 		)
 	);
 }
@@ -266,15 +382,25 @@ export function formatMarkdown(
 		"## MCP tool token cost",
 		"",
 		`Measured with \`${current.encoding}\` over the ${current.measurementScope.toLowerCase()}.`,
-		"Targets are advisory and never fail CI.",
+		"Targets are advisory except the enforced total-token budget.",
 		"",
 		"| Metric | Current | Target | Status |",
 		"| --- | ---: | ---: | --- |",
-		`| Tools | ${current.toolCount} | ≤ ${current.targets.toolCountMax} | ${formatStatus(current.targets.toolCountStatus)} |`,
-		`| Total tokens | ${current.totalTokens} | — | — |`,
-		`| Average tokens/tool | ${current.averageTokensPerTool} | < ${current.targets.averageTokensPerToolMaxExclusive} | ${formatStatus(current.targets.averageTokensPerToolStatus)} |`,
+		`| Tools | ${current.toolCount} | ≤ ${current.targets.toolCount.maximumInclusive} | ${formatStatus(current.targets.toolCount.status)} |`,
+		`| Total tokens | ${current.totalTokens} | ≤ ${current.targets.totalTokens.maximumInclusive} | ${formatStatus(current.targets.totalTokens.status)} |`,
+		`| Average tokens/tool | ${current.averageTokensPerTool} | < ${current.targets.averageTokensPerTool.maximumExclusive} | ${formatStatus(current.targets.averageTokensPerTool.status)} |`,
 		"",
 	];
+	lines.push(
+		"### Component totals",
+		"",
+		"| Component | Tokens |",
+		"| --- | ---: |",
+	);
+	for (const component of TOOL_COMPONENTS) {
+		lines.push(`| \`${component}\` | ${current.componentTokens[component]} |`);
+	}
+	lines.push("");
 
 	if (comparison) {
 		lines.push(
@@ -291,6 +417,19 @@ export function formatMarkdown(
 			"| Tool | Baseline | Current | Delta |",
 			"| --- | ---: | ---: | ---: |",
 		);
+		lines.push(
+			"### Component changes",
+			"",
+			"| Component | Delta |",
+			"| --- | ---: |",
+		);
+		for (const component of TOOL_COMPONENTS) {
+			lines.push(
+				`| \`${component}\` | ${formatDelta(comparison.componentTokenDeltas[component])} |`,
+			);
+		}
+		lines.push("");
+
 		for (const tool of comparison.toolDeltas) {
 			lines.push(
 				`| \`${tool.name}\` | ${tool.baselineTokens ?? "—"} | ${tool.currentTokens ?? "—"} | ${formatDelta(tool.delta)} |`,
@@ -320,7 +459,7 @@ export function formatMarkdown(
 	}
 	lines.push(
 		"",
-		"Per-tool counts encode each complete tool object independently. The total encodes the complete `{ tools }` envelope, so punctuation and separators mean the per-tool values need not sum exactly to the total.",
+		"Per-component counts are diagnostic and non-additive because keys and separators live in complete tool objects. Per-tool counts encode each complete tool object independently. The total encodes the complete `{ tools }` envelope, so punctuation and separators mean the per-tool values need not sum exactly to the total.",
 		"",
 	);
 
@@ -341,6 +480,7 @@ export function formatTable(report: TokenCostReport): string {
 	return [
 		`MCP tool token cost (${report.encoding})`,
 		`Tools: ${report.toolCount} | Total: ${report.totalTokens} | Average: ${report.averageTokensPerTool}`,
+		`Component totals: ${TOOL_COMPONENTS.map((component) => `${component}=${report.componentTokens[component]}`).join(" | ")}`,
 		header,
 		`${"-".repeat(nameWidth)}  ------  -----`,
 		...rows.map(
@@ -348,7 +488,7 @@ export function formatTable(report: TokenCostReport): string {
 				`${name.padEnd(nameWidth)}  ${tokens.padStart(6)}  ${share.padStart(5)}`,
 		),
 		"",
-		"Targets (advisory): tools ≤ 20; average < 600 tokens/tool.",
+		`Targets: tools ≤ ${report.targets.toolCount.maximumInclusive}; average < ${report.targets.averageTokensPerTool.maximumExclusive} tokens/tool; total ≤ ${report.targets.totalTokens.maximumInclusive} tokens (enforced).`,
 		"Per-tool counts exclude the shared { tools } envelope punctuation.",
 	].join("\n");
 }
@@ -442,6 +582,7 @@ function helpText(): string {
 		"  -o, --output <path>   Write schema-versioned JSON results",
 		"      --baseline <path> Compare with a compatible JSON result",
 		"      --markdown <path> Write a Markdown report",
+		"      --enforce-budget     Fail when total tokens exceed 8,900",
 		"  -h, --help            Show this help",
 	].join("\n");
 }
@@ -486,6 +627,11 @@ export async function run(
 		await writeNewOutput(
 			options.markdownPath,
 			formatMarkdown(report, comparison, baselineUnavailableReason),
+		);
+	}
+	if (options.enforceBudget && report.totalTokens > TOTAL_TOKEN_BUDGET) {
+		throw new Error(
+			`MCP tool catalog exceeds the 8900-token budget: ${report.totalTokens}`,
 		);
 	}
 }

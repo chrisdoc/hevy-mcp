@@ -38,10 +38,10 @@ export function buildWorkoutPayload(
 			notes: exercise.notes ?? null,
 			sets: exercise.sets.map((set) => ({
 				type: set.type as PostWorkoutsRequestSetTypeEnumKey,
-				weight_kg: set.weight ?? set.weightKg ?? null,
+				weight_kg: set.weightKg ?? null,
 				reps: set.reps ?? null,
-				distance_meters: set.distance ?? set.distanceMeters ?? null,
-				duration_seconds: set.duration ?? set.durationSeconds ?? null,
+				distance_meters: set.distanceMeters ?? null,
+				duration_seconds: set.durationSeconds ?? null,
 				rpe: (set.rpe as PostWorkoutsRequestSetRpeEnumKey | null) ?? null,
 				custom_metric: set.customMetric ?? null,
 			})),
@@ -103,10 +103,10 @@ function buildRoutineSets(
 				? set.reps
 				: getFixedRepsFromRepRange(repRange);
 		const common = {
-			weight_kg: set.weight ?? set.weightKg ?? null,
+			weight_kg: set.weightKg ?? null,
 			reps: reps ?? null,
-			distance_meters: set.distance ?? set.distanceMeters ?? null,
-			duration_seconds: set.duration ?? set.durationSeconds ?? null,
+			distance_meters: set.distanceMeters ?? null,
+			duration_seconds: set.durationSeconds ?? null,
 			custom_metric: set.customMetric ?? null,
 		};
 

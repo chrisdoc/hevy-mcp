@@ -15,75 +15,29 @@ const hevyApiKey = process.env.HEVY_API_KEY || "";
 const describeLive = describe.runIf(Boolean(hevyApiKey));
 
 // --- WORKOUTS SCHEMAS ---
-const FormattedWorkoutSetSchema = z.object({
-	type: z.string().optional(),
-	weight: z.number().nullable().optional(),
-	reps: z.number().nullable().optional(),
-	distance: z.number().nullable().optional(),
-	duration: z.number().nullable().optional(),
-	rpe: z.number().nullable().optional(),
-	customMetric: z.number().nullable().optional(),
-});
-
-const FormattedWorkoutExerciseSchema = z.object({
-	name: z.string().optional(),
-	notes: z.string().nullable().optional(),
-	sets: z.array(FormattedWorkoutSetSchema).optional(),
-});
-
-const FormattedWorkoutSchema = z.object({
+const WorkoutSummarySchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
-	description: z.string().nullable().optional(),
-	startTime: z.union([z.string(), z.number()]).optional(),
-	endTime: z.union([z.string(), z.number()]).optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
+	startTime: z.string().optional(),
+	endTime: z.string().optional(),
 	duration: z.string(),
-	exercises: z.array(FormattedWorkoutExerciseSchema).optional(),
+	exerciseCount: z.number().int().nonnegative(),
+	setCount: z.number().int().nonnegative(),
 });
 
-const GetWorkoutsResponseSchema = z.array(FormattedWorkoutSchema);
+const GetWorkoutsResponseSchema = z.array(WorkoutSummarySchema);
 
 // --- ROUTINES SCHEMAS ---
-const FormattedRoutineSetSchema = z.object({
-	index: z.number().optional(),
-	type: z.string().optional(),
-	weight: z.number().nullable().optional(),
-	reps: z.number().nullable().optional(),
-	distance: z.number().nullable().optional(),
-	duration: z.number().nullable().optional(),
-	customMetric: z.number().nullable().optional(),
-	repRange: z
-		.object({
-			start: z.number().nullable().optional(),
-			end: z.number().nullable().optional(),
-		})
-		.nullable()
-		.optional(),
-	rpe: z.number().nullable().optional(),
-});
-
-const FormattedRoutineExerciseSchema = z.object({
-	name: z.string().optional(),
-	index: z.number().optional(),
-	exerciseTemplateId: z.string().optional(),
-	notes: z.string().nullable().optional(),
-	supersetId: z.number().nullable().optional(),
-	restSeconds: z.union([z.string(), z.number()]).nullable().optional(),
-	sets: z.array(FormattedRoutineSetSchema).optional(),
-});
-
-const FormattedRoutineSchema = z.object({
+const RoutineSummarySchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
-	folderId: z.number().nullable().optional(),
-	createdAt: z.string().optional(),
+	folderId: z.number().optional(),
 	updatedAt: z.string().optional(),
-	exercises: z.array(FormattedRoutineExerciseSchema).optional(),
+	exerciseCount: z.number().int().nonnegative(),
+	setCount: z.number().int().nonnegative(),
 });
 
-const GetRoutinesResponseSchema = z.array(FormattedRoutineSchema);
+const GetRoutinesResponseSchema = z.array(RoutineSummarySchema);
 
 // --- EXERCISE TEMPLATES SCHEMAS ---
 const FormattedExerciseTemplateSchema = z.object({
@@ -119,23 +73,23 @@ const UserInfoResponseSchema = z.object({
 // --- BODY MEASUREMENTS SCHEMAS ---
 const FormattedBodyMeasurementSchema = z.object({
 	date: z.string(),
-	weightKg: z.number().nullable(),
-	leanMassKg: z.number().nullable(),
-	fatPercent: z.number().nullable(),
-	neckCm: z.number().nullable(),
-	shoulderCm: z.number().nullable(),
-	chestCm: z.number().nullable(),
-	leftBicepCm: z.number().nullable(),
-	rightBicepCm: z.number().nullable(),
-	leftForearmCm: z.number().nullable(),
-	rightForearmCm: z.number().nullable(),
-	abdomen: z.number().nullable(),
-	waist: z.number().nullable(),
-	hips: z.number().nullable(),
-	leftThigh: z.number().nullable(),
-	rightThigh: z.number().nullable(),
-	leftCalf: z.number().nullable(),
-	rightCalf: z.number().nullable(),
+	weightKg: z.number().optional(),
+	leanMassKg: z.number().optional(),
+	fatPercent: z.number().optional(),
+	neckCm: z.number().optional(),
+	shoulderCm: z.number().optional(),
+	chestCm: z.number().optional(),
+	leftBicepCm: z.number().optional(),
+	rightBicepCm: z.number().optional(),
+	leftForearmCm: z.number().optional(),
+	rightForearmCm: z.number().optional(),
+	abdomen: z.number().optional(),
+	waist: z.number().optional(),
+	hips: z.number().optional(),
+	leftThigh: z.number().optional(),
+	rightThigh: z.number().optional(),
+	leftCalf: z.number().optional(),
+	rightCalf: z.number().optional(),
 });
 
 const GetBodyMeasurementsResponseSchema = z.array(
@@ -223,7 +177,8 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 			expect(responseData[0].id).toBeDefined();
 			expect(responseData[0].title).toBeDefined();
 			expect(responseData[0].title.length).toBeGreaterThanOrEqual(3);
-			expect(responseData[0].createdAt).toBeDefined();
+			expect(responseData[0].exerciseCount).toBeDefined();
+			expect(responseData[0].setCount).toBeDefined();
 		});
 	});
 
@@ -256,6 +211,8 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 			expect(Array.isArray(responseData)).toBe(true);
 			if (responseData.length > 0) {
 				expect(responseData[0].id).toBeDefined();
+				expect(responseData[0].exerciseCount).toBeDefined();
+				expect(responseData[0].setCount).toBeDefined();
 				expect(responseData[0].title).toBeDefined();
 			}
 		});

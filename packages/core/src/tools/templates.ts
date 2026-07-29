@@ -18,7 +18,7 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+
 import { type InferToolParams } from "../utils/tool-helpers.js";
 import {
 	exerciseTemplateInputShape,
@@ -41,56 +41,35 @@ const getExerciseTemplateSchema = {
 	exerciseTemplateId: nonEmptyId,
 } as const;
 
+const isoDateTimeBase = z.iso.datetime({ offset: true });
+const isoDateTimeWithOffset = z
+	.string()
+	.refine(
+		(value) => isoDateTimeBase.safeParse(value).success,
+		"Must be an ISO 8601 timestamp with an offset",
+	)
+	.meta({ format: "date-time" });
+
 const getExerciseHistorySchema = {
 	exerciseTemplateId: nonEmptyId,
-	startDate: z
-		.string()
-		.datetime({ offset: true })
-		.describe("ISO 8601 start date for filtering history")
-		.optional(),
-	endDate: z
-		.string()
-		.datetime({ offset: true })
-		.describe("ISO 8601 end date for filtering history")
-		.optional(),
+	startDate: isoDateTimeWithOffset.optional(),
+	endDate: isoDateTimeWithOffset.optional(),
 } as const;
 
 const createExerciseTemplateSchema = exerciseTemplateInputShape;
 
 const searchExerciseTemplatesSchema = {
-	query: z
-		.string()
-		.min(1)
-		.describe(
-			"Case-insensitive substring to match against exercise template titles",
-		),
-	primaryMuscleGroup: muscleGroupEnum
-		.optional()
-		.describe(
-			"Optional filter to restrict results to a specific primary muscle group",
-		),
-	refresh: z
-		.boolean()
-		.optional()
-		.default(false)
-		.describe(
-			"Set to true to invalidate the catalog cache and re-fetch all templates from the API",
-		),
+	query: z.string().min(1),
+	primaryMuscleGroup: muscleGroupEnum.optional(),
+	refresh: z.boolean().optional().default(false),
 } as const;
 
 const getExerciseTemplatesDefinition = {
 	name: "get-exercise-templates",
 	feature: "templates" as const,
 	operation: "list" as const,
-	description: describeTool({
-		summary:
-			"Read-only. Lists default and custom exercise templates with equipment and muscle metadata.",
-		aliases: ["browse exercises", "list exercise catalog", "show movements"],
-		useCase:
-			"Use for page-by-page catalog browsing; use search-exercise-templates for a name lookup across the full catalog.",
-		importantNotes:
-			"Results are paginated; page starts at 1 and pageSize is limited to 100.",
-	}),
+	description:
+		"Read-only. Pages through exercise templates. Use search-exercise-templates when a title is known.",
 	inputSchema: getExerciseTemplatesSchema,
 	outputSchema: exerciseTemplatesResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Exercise Templates"),
@@ -123,19 +102,8 @@ const getExerciseTemplateDefinition = {
 	name: "get-exercise-template",
 	feature: "templates" as const,
 	operation: "get" as const,
-	description: describeTool({
-		summary:
-			"Read-only. Retrieves complete metadata for one exercise template by ID.",
-		aliases: [
-			"show exercise details",
-			"fetch movement",
-			"exercise template info",
-		],
-		useCase:
-			"Use after locating an exact template; use search-exercise-templates when only a name is known.",
-		importantNotes:
-			"Requires an exerciseTemplateId from a template list, search, routine, or workout.",
-	}),
+	description:
+		"Read-only. Gets one exercise template by exerciseTemplateId. Use search-exercise-templates to discover IDs.",
 	inputSchema: getExerciseTemplateSchema,
 	outputSchema: exerciseTemplateResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Exercise Template"),
@@ -168,15 +136,8 @@ const getExerciseHistoryDefinition = {
 	name: "get-exercise-history",
 	feature: "templates" as const,
 	operation: "get" as const,
-	description: describeTool({
-		summary:
-			"Read-only. Retrieves past performed sets for one exercise template.",
-		aliases: ["exercise progress", "past sets", "movement history"],
-		useCase:
-			"Use to analyze performance for one movement; use get-workouts for complete sessions.",
-		importantNotes:
-			"Requires an exerciseTemplateId. Optional startDate and endDate must be ISO 8601 datetimes with an offset.",
-	}),
+	description:
+		"Read-only. Returns performed sets for one exercise-template ID, optionally bounded by ISO 8601 timestamps.",
 	inputSchema: getExerciseHistorySchema,
 	outputSchema: exerciseHistoryResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Exercise History"),
@@ -204,15 +165,8 @@ const createExerciseTemplateDefinition = {
 	name: "create-exercise-template",
 	feature: "templates" as const,
 	operation: "create" as const,
-	description: describeTool({
-		summary:
-			"Writes to the Hevy account by creating a custom exercise template.",
-		aliases: ["add custom exercise", "create movement", "define exercise"],
-		useCase:
-			"Use only when the needed movement is absent; search-exercise-templates should check existing templates first.",
-		importantNotes:
-			"Requires title, exercise type, equipment category, and primary muscle group. Retrying or reusing a title can create duplicates.",
-	}),
+	description:
+		"Writes a custom exercise template. Search first; retries or reused titles can create duplicates.",
 	inputSchema: createExerciseTemplateSchema,
 	annotations: createAnnotations("Create Exercise Template"),
 	kind: "write" as const,
@@ -231,15 +185,8 @@ const searchExerciseTemplatesDefinition = {
 	name: "search-exercise-templates",
 	feature: "templates" as const,
 	operation: "search" as const,
-	description: describeTool({
-		summary:
-			"Read-only for the Hevy account. Searches the full exercise template catalog by title substring.",
-		aliases: ["find exercise", "look up movement", "search exercise IDs"],
-		useCase:
-			"Use when a name or partial name is known, especially to discover IDs for workouts and routines; use get-exercise-templates for page browsing.",
-		importantNotes:
-			"Matching is case-insensitive. The catalog is cached locally for 5 minutes; refresh:true re-fetches all pages and changes only local cache state.",
-	}),
+	description:
+		"Read-only. Searches template titles case-insensitively and returns IDs. refresh reloads the five-minute catalog cache.",
 	inputSchema: searchExerciseTemplatesSchema,
 	outputSchema: searchExerciseTemplatesResponse.outputSchema,
 	annotations: readOnlyAnnotations("Search Exercise Templates"),

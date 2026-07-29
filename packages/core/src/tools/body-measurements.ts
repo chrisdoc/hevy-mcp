@@ -13,7 +13,7 @@ import {
 	createAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
@@ -36,20 +36,16 @@ type GetBodyMeasurementsResult = PaginatedToolResult<
 >;
 
 const getBodyMeasurementSchema = {
-	date: calendarDate.describe("The date of the body measurement (YYYY-MM-DD)"),
+	date: calendarDate,
 } as const;
 
 const createBodyMeasurementSchema = {
-	date: calendarDate.describe(
-		"The date of the body measurement (YYYY-MM-DD). Must be unique — returns 409 if an entry already exists for this date.",
-	),
+	date: calendarDate,
 	...bodyMeasurementFieldsSchema,
 } as const;
 
 const updateBodyMeasurementSchema = {
-	date: calendarDate.describe(
-		"The date of the body measurement to update (YYYY-MM-DD). Must already exist — returns 404 otherwise.",
-	),
+	date: calendarDate,
 	...bodyMeasurementFieldsSchema,
 } as const;
 
@@ -60,14 +56,8 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 	name: "get-body-measurements",
 	feature: "measurements",
 	operation: "list",
-	description: describeTool({
-		summary: "Read-only. Lists dated body measurements for the account.",
-		aliases: ["body stats history", "list weigh-ins", "measurement log"],
-		useCase:
-			"Use to browse measurement history; use get-body-measurement for one exact date.",
-		importantNotes:
-			"Results are paginated; page starts at 1 and pageSize is limited to 10.",
-	}),
+	description:
+		"Read-only. Lists dated body measurements; results are paginated. Use get-body-measurement for one date.",
 	inputSchema: getBodyMeasurementsSchema,
 	outputSchema: bodyMeasurementsResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Body Measurements"),
@@ -103,14 +93,8 @@ const getBodyMeasurementDefinition: ToolDefinition<
 	name: "get-body-measurement",
 	feature: "measurements",
 	operation: "get",
-	description: describeTool({
-		summary: "Read-only. Retrieves the body measurement entry for one date.",
-		aliases: ["get weigh-in", "show body stats", "measurement by date"],
-		useCase:
-			"Use when the exact measurement date is known; use get-body-measurements to browse dates.",
-		importantNotes:
-			"date must use YYYY-MM-DD; at most one entry exists per date.",
-	}),
+	description:
+		"Read-only. Gets the body measurement for one YYYY-MM-DD date. Use get-body-measurements to browse dates.",
 	inputSchema: getBodyMeasurementSchema,
 	outputSchema: bodyMeasurementResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Body Measurement"),
@@ -143,14 +127,8 @@ const createBodyMeasurementDefinition: ToolDefinition<
 	name: "create-body-measurement",
 	feature: "measurements",
 	operation: "create",
-	description: describeTool({
-		summary: "Writes to the Hevy account by creating a dated body measurement.",
-		aliases: ["log weigh-in", "add body stats", "record measurements"],
-		useCase:
-			"Use for a date without an entry; use update-body-measurement when that date already exists.",
-		importantNotes:
-			"date must use YYYY-MM-DD and be unique. Null fields are omitted and cannot clear values; an existing date returns 409.",
-	}),
+	description:
+		"Writes a body measurement for a new YYYY-MM-DD date. Existing dates conflict; retries are not idempotent.",
 	inputSchema: createBodyMeasurementSchema,
 	annotations: createAnnotations("Create Body Measurement"),
 	kind: "write",
@@ -172,15 +150,8 @@ const updateBodyMeasurementDefinition: ToolDefinition<
 	name: "update-body-measurement",
 	feature: "measurements",
 	operation: "update",
-	description: describeTool({
-		summary:
-			"Mutates the Hevy account by updating a body measurement for a date.",
-		aliases: ["edit weigh-in", "correct body stats", "change measurements"],
-		useCase:
-			"Use to change fields on an existing date; use create-body-measurement for a new date.",
-		importantNotes:
-			"date must use YYYY-MM-DD and already exist. Provide at least one numeric field; nulls are omitted and cannot clear stored values.",
-	}),
+	description:
+		"Mutates numeric fields on an existing YYYY-MM-DD measurement. Omitted fields remain unchanged; values cannot be cleared.",
 	inputSchema: updateBodyMeasurementSchema,
 	annotations: updateAnnotations("Update Body Measurement"),
 	kind: "write",

@@ -628,6 +628,11 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 				const payload = requireToolListPayload(result, call.field);
 				expect(payload.firstItem.id).toBe(call.expectedId);
 				expect(typeof payload.firstItem.id).toBe("string");
+				if (call.name === "get-workouts" || call.name === "get-routines") {
+					expect(payload.firstItem.exerciseCount).toBe(0);
+					expect(payload.firstItem.setCount).toBe(0);
+					expect(payload.firstItem).not.toHaveProperty("exercises");
+				}
 				expect(JSON.parse(payload.text)).toEqual(payload.items);
 			}
 

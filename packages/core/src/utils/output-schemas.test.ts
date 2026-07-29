@@ -81,38 +81,34 @@ describe("formatted output schemas", () => {
 		).not.toThrow();
 	});
 
-	it("preserves nullable workout and routine formatter fields", () => {
+	it("omits nullable workout and routine formatter fields", () => {
 		const workout: FormattedWorkout = {
-			description: null,
 			duration: "1h 0m 0s",
-			exercises: [{ notes: null }],
+			exercises: [{}],
 		};
 		const routine: FormattedRoutine = {
-			exercises: [{ notes: null }],
+			exercises: [{}],
 		};
 
 		expect(formattedWorkoutSchema.parse(workout)).toEqual(workout);
 		expect(formattedRoutineSchema.parse(routine)).toEqual(routine);
 	});
 
-	it("accepts numeric workout timestamps", () => {
+	it("accepts string workout timestamps", () => {
 		const workout = {
-			startTime: 1_735_729_200,
-			endTime: 1_735_732_800,
+			startTime: "2025-01-01T10:00:00Z",
+			endTime: "2025-01-01T11:00:00Z",
 			duration: "1h 0m 0s",
 		};
 
 		expect(formattedWorkoutSchema.parse(workout)).toEqual(workout);
 	});
 
-	it.each(["60", 60, null])(
-		"accepts routine restSeconds value %s",
-		(restSeconds) => {
-			const exercise = { restSeconds };
+	it("accepts routine restSeconds", () => {
+		const exercise = { restSeconds: "60" };
 
-			expect(formattedRoutineExerciseSchema.parse(exercise)).toEqual(exercise);
-		},
-	);
+		expect(formattedRoutineExerciseSchema.parse(exercise)).toEqual(exercise);
+	});
 
 	it("uses formatted schemas for events and generated contract for user info", () => {
 		expect(() =>

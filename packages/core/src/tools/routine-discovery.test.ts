@@ -83,19 +83,16 @@ describe("search-routines", () => {
 			routines: [
 				{
 					title: "Push Day",
-					folderId: null,
 					exerciseCount: 1,
 					setCount: 1,
 				},
 				{
-					folderId: null,
 					exerciseCount: 0,
 					setCount: 0,
 				},
 				{
 					id: "routine-2",
 					title: "Pull Day",
-					folderId: null,
 					updatedAt: "2026-07-16T08:00:00Z",
 					exerciseCount: 2,
 					setCount: 2,

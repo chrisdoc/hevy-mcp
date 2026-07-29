@@ -135,6 +135,8 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			"get-body-measurements",
 			"get-body-measurement",
 			"get-user-info",
+			"get-training-summary",
+			"search-routines",
 		]);
 		const readOnlyTools = result.tools.filter(({ name }) =>
 			readOnlyNames.has(name),
@@ -178,11 +180,15 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 				id: string;
 				title: string;
 				duration: string;
+				exerciseCount: number;
+				setCount: number;
 			}>;
 		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
+			exerciseCount: number;
+			setCount: number;
 			duration: string;
 		}>;
 
@@ -191,8 +197,11 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			id: "workout-1",
 			title: "Mock Workout",
 			duration: "1h 0m 0s",
+			exerciseCount: 0,
+			setCount: 0,
 		});
 		expect(typeof structuredContent.workouts[0]?.id).toBe("string");
+		expect(structuredContent.workouts[0]).not.toHaveProperty("exercises");
 		expect(payload).toEqual(structuredContent.workouts);
 	});
 
@@ -223,18 +232,13 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 		const structuredContent = result.structuredContent as {
 			workout: {
-				description: null;
-				exercises: Array<{ notes: null }>;
+				exercises: Array<Record<string, unknown>>;
 			};
 		};
 
 		expect(result.isError).toBeFalsy();
-		expect(structuredContent).toMatchObject({
-			workout: {
-				description: null,
-				exercises: [{ notes: null }],
-			},
-		});
+		expect(structuredContent.workout).not.toHaveProperty("description");
+		expect(structuredContent.workout.exercises[0]).not.toHaveProperty("notes");
 		expect(result.text).toBe(
 			JSON.stringify(structuredContent.workout, null, 2),
 		);
@@ -278,14 +282,16 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 				id: string;
 				title: string;
 				folderId: number;
-				exercises: Array<{ restSeconds: number }>;
+				exerciseCount: number;
+				setCount: number;
 			}>;
 		};
 		const payload = JSON.parse(result.text) as Array<{
 			id: string;
 			title: string;
 			folderId: number;
-			exercises: Array<{ restSeconds: number }>;
+			exerciseCount: number;
+			setCount: number;
 		}>;
 
 		expect(result.isError).toBeFalsy();
@@ -293,10 +299,11 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			id: "routine-1",
 			title: "Mock Push Day",
 			folderId: 10,
-			exercises: [{ restSeconds: 60 }],
+			exerciseCount: 1,
+			setCount: 0,
 		});
 		expect(typeof structuredContent.routines[0]?.id).toBe("string");
-		expect(structuredContent.routines[0]?.exercises[0]?.restSeconds).toBe(60);
+		expect(structuredContent.routines[0]).not.toHaveProperty("exercises");
 		expect(payload).toEqual(structuredContent.routines);
 	});
 
@@ -327,16 +334,14 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 		const structuredContent = result.structuredContent as {
 			routine: {
-				exercises: Array<{ notes: null }>;
+				folderId?: number;
+				exercises: Array<Record<string, unknown>>;
 			};
 		};
 
 		expect(result.isError).toBeFalsy();
-		expect(structuredContent).toMatchObject({
-			routine: {
-				exercises: [{ notes: null }],
-			},
-		});
+		expect(structuredContent.routine).not.toHaveProperty("folderId");
+		expect(structuredContent.routine.exercises[0]).not.toHaveProperty("notes");
 		expect(result.text).toBe(
 			JSON.stringify(structuredContent.routine, null, 2),
 		);

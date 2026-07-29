@@ -17,7 +17,7 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+
 import {
 	nonEmptyId,
 	paginationShape,
@@ -47,14 +47,8 @@ const getRoutinesDefinition: ToolDefinition<
 	name: "get-routines",
 	feature: "routines",
 	operation: "list",
-	description: describeTool({
-		summary: "Read-only. Lists custom and default workout routines.",
-		aliases: ["list routines", "show workout plans", "browse saved routines"],
-		useCase:
-			"Use to browse routines or discover a routine ID; use get-routine for one known routine.",
-		importantNotes:
-			"Results are paginated; page starts at 1 and pageSize is limited to 10.",
-	}),
+	description:
+		"Read-only. Lists compact routine summaries. Use get-routine for exercises and sets; results are paginated.",
 	inputSchema: getRoutinesSchema,
 	kind: "read",
 	outputSchema: routinesResponse.outputSchema,
@@ -89,15 +83,8 @@ const getRoutineDefinition: ToolDefinition<
 	name: "get-routine",
 	feature: "routines",
 	operation: "get",
-	description: describeTool({
-		summary:
-			"Read-only. Retrieves one routine and its exercise configuration by ID.",
-		aliases: ["show routine", "fetch workout plan", "routine details"],
-		useCase:
-			"Use when the routineId is known; use get-routines to browse or discover IDs.",
-		importantNotes:
-			"Requires a routineId from get-routines or a prior create response.",
-	}),
+	description:
+		"Read-only. Gets one routine with exercises and sets by routineId. Use search-routines to discover IDs.",
 	inputSchema: getRoutineSchema,
 	kind: "read",
 	outputSchema: routineResponse.outputSchema,
@@ -140,14 +127,8 @@ const createRoutineDefinition: ToolDefinition<
 	name: "create-routine",
 	feature: "routines",
 	operation: "create",
-	description: describeTool({
-		summary: "Writes to the Hevy account by creating a new workout routine.",
-		aliases: ["add routine", "build workout plan", "save training template"],
-		useCase:
-			"Use to create a reusable plan; use create-workout to log a completed session.",
-		importantNotes:
-			"Requires exercise template IDs; folderId is optional. Retrying can create duplicates, and non-fixed rep ranges may not display in Hevy apps.",
-	}),
+	description:
+		"Writes a reusable routine; use create-workout for completed sessions. Retries can create duplicates.",
 	inputSchema: createRoutineSchema,
 	kind: "write",
 	annotations: createAnnotations("Create Routine"),
@@ -180,19 +161,8 @@ const updateRoutineDefinition: ToolDefinition<
 	name: "update-routine",
 	feature: "routines",
 	operation: "update",
-	description: describeTool({
-		summary:
-			"Mutates the Hevy account by replacing an existing routine's content.",
-		aliases: [
-			"edit routine",
-			"revise workout plan",
-			"replace routine exercises",
-		],
-		useCase:
-			"Use to change a known routine; use create-routine for a separate new plan.",
-		importantNotes:
-			"Requires routineId and the complete title and exercises payload; omitted exercises are removed. Non-fixed rep ranges may not display in Hevy apps.",
-	}),
+	description:
+		"Mutates a routine by replacing its title and exercises. Omitted exercises are removed.",
 	inputSchema: updateRoutineSchema,
 	kind: "write",
 	annotations: updateAnnotations("Update Routine"),

@@ -1,8 +1,8 @@
 # MCP tool token cost tracking
 
 The repository measures the static token cost of the tool definitions returned
-by MCP `tools/list`. This makes additions and schema growth visible without
-turning an advisory metric into a release gate.
+by MCP `tools/list`. Advisory tool-count and average-size targets remain
+visible, while the total catalog budget is an enforced release-safety gate.
 
 ## Local usage
 
@@ -39,23 +39,22 @@ Choose fresh paths or remove obsolete output files before rerunning the command.
 - JSON is deterministic, camelCase, and schema-versioned. It deliberately has
   no timestamp so an unchanged tool set produces an unchanged result.
 
-## Baseline and advisory targets
+## Baseline and targets
 
-`token-cost-baseline.json` is the committed launch baseline for the 23 tools
-advertised when tracking was introduced. It is a first-run fallback for pull
-request bases that predate the measurement script. Once the base revision has
-the script and package wiring, CI measures that exact base SHA instead.
+`token-cost-baseline.json` is the committed schema-version-2 baseline for the
+current 25-tool catalog. It is also the fallback for pull-request bases that
+predate the measurement script. Once the base revision has the script and
+package wiring, CI measures that exact base SHA instead.
 
-The current launch baseline is **11,249 total tokens**, averaging **489.09
-tokens per tool** with `o200k_base`.
+The compact baseline is **8,738 total tokens**, averaging **349.52 tokens per
+tool** with `o200k_base`.
 
-The project tracks these advisory goals:
+The project tracks these targets:
 
-- no more than 20 tools;
-- fewer than 600 average tokens per tool.
-
-The launch tool count is already above the first goal. These targets are
-guidance only and never fail CI.
+- no more than 20 tools (advisory);
+- fewer than 600 average tokens per tool (advisory);
+- no more than 8,900 total catalog tokens (enforced when `--enforce-budget` is
+  passed).
 
 ## GitHub Actions behavior
 

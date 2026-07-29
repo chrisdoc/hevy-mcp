@@ -88,35 +88,23 @@ describe("Formatters", () => {
 				startTime: "2024-03-27T07:00:00Z",
 				endTime: "2024-03-27T08:00:00Z",
 				createdAt: "2025-03-27T07:00:00Z",
-				updatedAt: undefined,
 				duration: "1h 0m 0s",
 				exercises: [
 					{
-						index: undefined,
 						name: "Bench Press",
-						exerciseTemplateId: undefined,
 						notes: "Felt strong today",
-						supersetsId: null,
 						sets: [
 							{
-								index: undefined,
 								type: "warmup",
 								weight: 60,
 								reps: 10,
-								distance: null,
-								duration: null,
 								rpe: 6,
-								customMetric: null,
 							},
 							{
-								index: undefined,
 								type: "normal",
 								weight: 80,
 								reps: 8,
-								distance: null,
-								duration: null,
 								rpe: 8,
-								customMetric: null,
 							},
 						],
 					},
@@ -150,13 +138,10 @@ describe("Formatters", () => {
 			} as Workout;
 
 			const result = formatWorkout(workout);
-			expect(result).toMatchObject({
-				id: undefined,
-				title: undefined,
+			expect(result).toEqual({
 				startTime: "not-a-date",
 				endTime: "still-not-a-date",
 				duration: "Unknown duration",
-				exercises: undefined,
 			});
 		});
 	});
@@ -240,25 +225,18 @@ describe("Formatters", () => {
 						exerciseTemplateId: templateId,
 						notes: "Focus on form",
 						supersetId: 1,
-						restSeconds: undefined,
 						sets: [
 							{
 								index: 1,
 								type: "normal",
 								weight: 100,
 								reps: 5,
-								distance: null,
-								duration: null,
-								customMetric: null,
 							},
 							{
 								index: 2,
 								type: "normal",
 								weight: 110,
 								reps: 3,
-								distance: null,
-								duration: null,
-								customMetric: null,
 							},
 						],
 					},
@@ -360,20 +338,12 @@ describe("Formatters", () => {
 			} as Routine;
 
 			const result = formatRoutine(routine);
-			expect(result).toMatchObject({
-				id: undefined,
-				title: undefined,
-				folderId: undefined,
-			});
-			expect(result.exercises?.[0]).toMatchObject({
-				name: undefined,
-				exerciseTemplateId: undefined,
-				supersetId: null,
-			});
-			expect(result.exercises?.[0]?.sets?.[0]).toMatchObject({
-				type: undefined,
-				weight: undefined,
-				reps: undefined,
+			expect(result).toEqual({
+				exercises: [
+					{
+						sets: [{}],
+					},
+				],
 			});
 		});
 	});
@@ -551,10 +521,7 @@ describe("Formatters", () => {
 				exerciseTemplateId: "t1",
 				weight: 80,
 				reps: 8,
-				distance: null,
-				duration: null,
 				rpe: 8,
-				customMetric: null,
 				setType: "normal",
 			});
 		});

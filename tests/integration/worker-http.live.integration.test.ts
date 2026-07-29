@@ -26,7 +26,9 @@ const INVOKED_READ_TOOLS = [
 	"get-workout",
 	"get-workout-events",
 	"get-routines",
+	"get-training-summary",
 	"get-routine",
+	"search-routines",
 	"get-exercise-templates",
 	"get-exercise-template",
 	"get-exercise-history",
@@ -366,6 +368,29 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 					pageSize: 1,
 				});
 				assertBoundedList(workouts.workouts, "tools/get-workouts/workouts");
+				const firstWorkout = workouts.workouts[0];
+				if (firstWorkout) {
+					assertCondition(
+						typeof firstWorkout.exerciseCount === "number" &&
+							typeof firstWorkout.setCount === "number" &&
+							!("exercises" in firstWorkout),
+						"tools/get-workouts/workouts/0/compact",
+					);
+				}
+				const trainingSummary = await callReadTool(
+					client,
+					"get-training-summary",
+					{ weeks: 1 },
+				);
+				assertRecord(
+					trainingSummary.workouts,
+					"tools/get-training-summary/workouts",
+				);
+				assertRecord(
+					trainingSummary.bodyMeasurements,
+					"tools/get-training-summary/bodyMeasurements",
+				);
+				assertRecord(trainingSummary.scan, "tools/get-training-summary/scan");
 				const workoutId = optionalStringId(
 					workouts.workouts,
 					"tools/get-workouts/workouts",
@@ -393,6 +418,24 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 					pageSize: 1,
 				});
 				assertBoundedList(routines.routines, "tools/get-routines/routines");
+				const firstRoutine = routines.routines[0];
+				if (firstRoutine) {
+					assertCondition(
+						typeof firstRoutine.exerciseCount === "number" &&
+							typeof firstRoutine.setCount === "number" &&
+							!("exercises" in firstRoutine),
+						"tools/get-routines/routines/0/compact",
+					);
+				}
+				const discoveredRoutines = await callReadTool(
+					client,
+					"search-routines",
+					{ query: "a", limit: 1 },
+				);
+				assertBoundedList(
+					discoveredRoutines.routines,
+					"tools/search-routines/routines",
+				);
 				const routineId = optionalStringId(
 					routines.routines,
 					"tools/get-routines/routines",

@@ -97,6 +97,33 @@ describe("mutation input sources", () => {
 			},
 		],
 		[
+			"legacy weight alias",
+			{
+				...workout,
+				exercises: [
+					{ ...workout.exercises[0], sets: [{ type: "normal", weight: 50 }] },
+				],
+			},
+		],
+		[
+			"legacy distance alias",
+			{
+				...workout,
+				exercises: [
+					{ ...workout.exercises[0], sets: [{ type: "normal", distance: 50 }] },
+				],
+			},
+		],
+		[
+			"legacy duration alias",
+			{
+				...workout,
+				exercises: [
+					{ ...workout.exercises[0], sets: [{ type: "normal", duration: 50 }] },
+				],
+			},
+		],
+		[
 			"repRange",
 			{
 				title: "Routine",
@@ -117,7 +144,7 @@ describe("mutation input sources", () => {
 		}
 		await expect(
 			loadMutationInput(JSON.stringify(value), workoutInputSchema),
-		).rejects.toThrow(/--data.*extra/);
+		).rejects.toThrow(/--data.*(?:extra|weight|distance|duration)/);
 	});
 
 	it("uses strict simple-resource schemas", async () => {

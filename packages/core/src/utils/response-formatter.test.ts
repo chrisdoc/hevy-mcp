@@ -211,9 +211,6 @@ describe("response contracts", () => {
 			},
 			bodyMeasurements: {
 				count: 0,
-				latest: null,
-				earliest: null,
-				weightChangeKg: null,
 			},
 			workflow: {
 				name: "training-summary",
@@ -226,7 +223,12 @@ describe("response contracts", () => {
 		expect(emptyResponse.content[0]?.text).toBe(
 			"No workouts or body measurements found for the specified period",
 		);
-		expect(emptyResponse.structuredContent).toEqual(emptySummary);
+		expect(emptyResponse.structuredContent).toMatchObject({
+			period: emptySummary.period,
+			workouts: emptySummary.workouts,
+			bodyMeasurements: { count: 0 },
+			scan: { pages: { workouts: 0, bodyMeasurements: 0 }, items: 0 },
+		});
 
 		const populatedResponse = respond(trainingSummaryResponse, {
 			...emptySummary,
@@ -261,7 +263,6 @@ describe("response contracts", () => {
 				{
 					id: "routine-1",
 					title: "Push",
-					folderId: null,
 					exerciseCount: 1,
 					setCount: 2,
 				},
@@ -271,7 +272,6 @@ describe("response contracts", () => {
 			{
 				id: "routine-1",
 				title: "Push",
-				folderId: null,
 				exerciseCount: 1,
 				setCount: 2,
 			},

@@ -1,5 +1,6 @@
 /* oxlint-disable typescript/unbound-method */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
 import { formatExerciseTemplate } from "../utils/response-formatter.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
@@ -26,8 +27,14 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 		isError?: boolean;
 		structuredContent?: Record<string, unknown>;
 	}>;
-	const config = match[1] as { outputSchema?: unknown } | undefined;
-	return { outputSchema: config?.outputSchema, handler };
+	const config = match[1] as
+		| { inputSchema?: z.ZodTypeAny; outputSchema?: unknown }
+		| undefined;
+	return {
+		schema: config?.inputSchema,
+		outputSchema: config?.outputSchema,
+		handler,
+	};
 }
 function registerTestTools(
 	server: McpServer,
@@ -56,6 +63,36 @@ function registerTestTools(
 }
 
 describe("templateToolDefinitions", () => {
+	it("validates offset history timestamps without a schema regex", () => {
+		const { server, tool } = createMockServer();
+		registerTestTools(server, null);
+		const { schema } = getToolRegistration(tool, "get-exercise-history");
+		if (!schema) throw new Error("get-exercise-history has no input schema");
+
+		expect(
+			schema.safeParse({
+				exerciseTemplateId: "template-id",
+				startDate: "2026-07-01T10:00:00+02:00",
+				endDate: "2026-07-01T08:00:00Z",
+			}).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({
+				exerciseTemplateId: "template-id",
+				startDate: "2026-07-01T10:00:00",
+			}).success,
+		).toBe(false);
+
+		const jsonSchema = z.toJSONSchema(schema) as {
+			properties?: Record<string, unknown>;
+		};
+		expect(jsonSchema.properties?.startDate).toMatchObject({
+			type: "string",
+			format: "date-time",
+		});
+		expect(jsonSchema.properties?.startDate).not.toHaveProperty("pattern");
+	});
+
 	it("returns error responses when Hevy client is not initialized", async () => {
 		const { server, tool } = createMockServer();
 		registerTestTools(server, null);
@@ -227,10 +264,7 @@ describe("templateToolDefinitions", () => {
 				exerciseTemplateId: "t1",
 				weight: 80,
 				reps: 8,
-				distance: null,
-				duration: null,
 				rpe: 8,
-				customMetric: null,
 				setType: "normal",
 			},
 		]);

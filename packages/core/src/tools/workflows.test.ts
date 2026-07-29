@@ -165,7 +165,6 @@ describe("get-training-summary", () => {
 			expect(summary.workouts.sessions).toEqual([
 				{
 					startTime: "2026-07-15T08:00:00Z",
-					durationSeconds: null,
 					exerciseCount: 2,
 					setCount: 1,
 				},
@@ -173,7 +172,6 @@ describe("get-training-summary", () => {
 					id: "invalid-duration",
 					startTime: "2026-07-14T08:00:00Z",
 					endTime: "also-not-a-date",
-					durationSeconds: null,
 					exerciseCount: 0,
 					setCount: 0,
 				},
@@ -183,17 +181,12 @@ describe("get-training-summary", () => {
 				count: 1,
 				latest: {
 					date: "2026-07-10",
-					weightKg: null,
 					leanMassKg: 50,
-					fatPercent: null,
 				},
 				earliest: {
 					date: "2026-07-10",
-					weightKg: null,
 					leanMassKg: 50,
-					fatPercent: null,
 				},
-				weightChangeKg: null,
 			});
 		} finally {
 			vi.useRealTimers();
@@ -223,9 +216,6 @@ describe("get-training-summary", () => {
 				},
 				bodyMeasurements: {
 					count: 0,
-					latest: null,
-					earliest: null,
-					weightChangeKg: null,
 				},
 			});
 		} finally {

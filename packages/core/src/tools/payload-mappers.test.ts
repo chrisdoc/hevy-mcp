@@ -13,7 +13,7 @@ import type {
 } from "./input-schemas.js";
 
 describe("payload mappers", () => {
-	it("maps identical workout exercises for create and update inputs", () => {
+	it("maps canonical workout exercises for create and update inputs", () => {
 		const input: WorkoutPayloadInput = {
 			title: "Strength",
 			description: null,
@@ -28,12 +28,9 @@ describe("payload mappers", () => {
 					sets: [
 						{
 							type: "normal",
-							weight: null,
 							weightKg: 50,
 							reps: 8,
-							distance: null,
 							distanceMeters: 2,
-							duration: null,
 							durationSeconds: 30,
 							rpe: 8,
 							customMetric: null,
@@ -62,7 +59,7 @@ describe("payload mappers", () => {
 		});
 	});
 
-	it("prefers explicit workout set values and preserves optional metadata", () => {
+	it("maps canonical workout values and preserves optional metadata", () => {
 		const input: WorkoutPayloadInput = {
 			title: "Conditioning",
 			description: undefined,
@@ -77,12 +74,9 @@ describe("payload mappers", () => {
 					sets: [
 						{
 							type: "normal",
-							weight: 20,
 							weightKg: 80,
 							reps: 10,
-							distance: 3,
 							distanceMeters: 4,
-							duration: 5,
 							durationSeconds: 6,
 							rpe: null,
 							customMetric: 7,
@@ -106,10 +100,10 @@ describe("payload mappers", () => {
 					sets: [
 						{
 							type: "normal",
-							weight_kg: 20,
+							weight_kg: 80,
 							reps: 10,
-							distance_meters: 3,
-							duration_seconds: 5,
+							distance_meters: 4,
+							duration_seconds: 6,
 							rpe: null,
 							custom_metric: 7,
 						},
@@ -119,7 +113,7 @@ describe("payload mappers", () => {
 		});
 	});
 
-	it("uses null fallbacks when workout set fields are all omitted", () => {
+	it("uses null fallbacks when canonical workout fields are omitted", () => {
 		const input: WorkoutPayloadInput = {
 			title: "Minimal",
 			description: null,
@@ -134,12 +128,9 @@ describe("payload mappers", () => {
 					sets: [
 						{
 							type: "normal",
-							weight: null,
 							weightKg: null,
 							reps: null,
-							distance: null,
 							distanceMeters: null,
-							duration: null,
 							durationSeconds: null,
 							rpe: null,
 							customMetric: null,
@@ -174,12 +165,9 @@ describe("payload mappers", () => {
 					sets: [
 						{
 							type: "normal",
-							weight: undefined,
 							weightKg: 80,
 							reps: null,
-							distance: undefined,
 							distanceMeters: undefined,
-							duration: undefined,
 							durationSeconds: undefined,
 							customMetric: undefined,
 							repRange: { start: 8, end: 12 },
@@ -212,7 +200,7 @@ describe("payload mappers", () => {
 		).not.toHaveProperty("rep_range");
 	});
 
-	it("maps fixed ranges and direct routine set values", () => {
+	it("maps fixed ranges and canonical routine set values", () => {
 		const input: RoutinePayloadInput = {
 			title: "Simple routine",
 			folderId: 4,
@@ -226,12 +214,9 @@ describe("payload mappers", () => {
 					sets: [
 						{
 							type: "normal",
-							weight: 20,
 							weightKg: 80,
 							reps: null,
-							distance: 3,
 							distanceMeters: 4,
-							duration: 5,
 							durationSeconds: 6,
 							customMetric: 7,
 							repRange: { start: 8, end: 8 },
@@ -260,10 +245,10 @@ describe("payload mappers", () => {
 			],
 		});
 		expect(result.payload.exercises?.[0]?.sets?.[0]).toMatchObject({
-			weight_kg: 20,
+			weight_kg: 80,
 			reps: 8,
-			distance_meters: 3,
-			duration_seconds: 5,
+			distance_meters: 4,
+			duration_seconds: 6,
 			custom_metric: 7,
 			rep_range: { start: 8, end: 8 },
 		});

@@ -4,7 +4,10 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Routine } from "@hevy-mcp/hevy-client/types";
-import { formatRoutine } from "../utils/response-formatter.js";
+import {
+	formatRoutine,
+	formatRoutineSummary,
+} from "../utils/response-formatter.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
@@ -46,6 +49,26 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	}>;
 	return { schema, outputSchema: config?.outputSchema, handler };
 }
+it.each(["weight", "distance", "duration"])(
+	"rejects legacy %s set aliases before invoking a client",
+	(alias) => {
+		const { server, tool } = createMockServer();
+		registerRoutineTools(server, null);
+		const { schema } = getToolRegistration(tool, "create-routine");
+		expect(() =>
+			schema.parse({
+				title: "Routine",
+				exercises: [
+					{
+						exerciseTemplateId: "exercise-1",
+						sets: [{ type: "normal", [alias]: 1 }],
+					},
+				],
+			}),
+		).toThrow();
+	},
+);
+
 describe("registerRoutineTools", () => {
 	it("returns error responses when Hevy client is not initialized", async () => {
 		const { server, tool } = createMockServer();
@@ -111,7 +134,7 @@ describe("registerRoutineTools", () => {
 		});
 	});
 
-	it("get-routines returns formatted routines from the client", async () => {
+	it("get-routines returns compact summaries from the client", async () => {
 		const { server, tool } = createMockServer();
 		const routine: Routine = {
 			id: "r1",
@@ -136,7 +159,7 @@ describe("registerRoutineTools", () => {
 		});
 
 		const parsed = JSON.parse(response.content[0].text) as unknown[];
-		expect(parsed).toEqual([formatRoutine(routine)]);
+		expect(parsed).toEqual([formatRoutineSummary(routine)]);
 		expect(response.structuredContent).toMatchObject({
 			routines: parsed,
 			page: 1,
@@ -172,23 +195,17 @@ describe("registerRoutineTools", () => {
 		);
 	});
 
-	it("get-routines maps exercise superset_id to supersetId", async () => {
+	it("get-routines returns counts instead of exercise details", async () => {
 		const { server, tool } = createMockServer();
 		const routine = {
 			id: "r1",
 			title: "Push Day",
 			folder_id: 123,
-			created_at: "2025-03-26T19:00:00Z",
 			updated_at: "2025-03-26T19:30:00Z",
 			exercises: [
 				{
-					title: "Leg Press",
-					index: 0,
-					exercise_template_id: "C7973E0E",
-					notes: "Leg day",
-					supersets_id: null,
 					superset_id: 1,
-					sets: [],
+					sets: [{}],
 				},
 			],
 		} as unknown as Routine;
@@ -198,13 +215,19 @@ describe("registerRoutineTools", () => {
 
 		registerRoutineTools(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-routines");
-
 		const response = await handler({ page: 1, pageSize: 5 });
-		const parsed = JSON.parse(response.content[0].text) as Array<{
-			exercises?: Array<{ supersetId?: number | null }>;
-		}>;
+		const parsed = JSON.parse(response.content[0].text) as Array<
+			Record<string, unknown>
+		>;
 
-		expect(parsed[0]?.exercises?.[0]).toMatchObject({ supersetId: 1 });
+		expect(parsed[0]).toMatchObject({
+			id: "r1",
+			title: "Push Day",
+			folderId: 123,
+			exerciseCount: 1,
+			setCount: 1,
+		});
+		expect(parsed[0]).not.toHaveProperty("exercises");
 	});
 
 	it("get-routine maps exercise superset_id to supersetId", async () => {
@@ -276,7 +299,7 @@ describe("registerRoutineTools", () => {
 					sets: [
 						{
 							type: "normal" as const,
-							weight: 80,
+							weightKg: 80,
 							reps: 8,
 						},
 					],

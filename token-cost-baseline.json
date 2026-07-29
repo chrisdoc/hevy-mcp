@@ -1,132 +1,334 @@
 {
-	"schemaVersion": 1,
+	"schemaVersion": 2,
 	"encoding": "o200k_base",
 	"measurementScope": "Complete JSON-serialized MCP tools/list result payload: { tools }",
-	"toolCount": 23,
-	"totalTokens": 11249,
-	"averageTokensPerTool": 489.09,
+	"toolCount": 25,
+	"totalTokens": 8738,
+	"averageTokensPerTool": 349.52,
+	"componentTokens": {
+		"name": 146,
+		"description": 548,
+		"inputSchema": 3742,
+		"outputSchema": 3515,
+		"annotations": 574
+	},
 	"targets": {
-		"advisoryOnly": true,
-		"toolCountMax": 20,
-		"toolCountStatus": "aboveTarget",
-		"averageTokensPerToolMaxExclusive": 600,
-		"averageTokensPerToolStatus": "withinTarget"
+		"toolCount": {
+			"maximumInclusive": 20,
+			"status": "aboveTarget",
+			"enforced": false
+		},
+		"averageTokensPerTool": {
+			"maximumExclusive": 600,
+			"status": "withinTarget",
+			"enforced": false
+		},
+		"totalTokens": {
+			"maximumInclusive": 8900,
+			"status": "withinTarget",
+			"enforced": true
+		}
 	},
 	"tools": [
 		{
-			"name": "get-exercise-history",
-			"tokens": 808,
-			"percentageOfTotal": 7.18
-		},
-		{
-			"name": "update-workout",
-			"tokens": 672,
-			"percentageOfTotal": 5.97
-		},
-		{
-			"name": "create-body-measurement",
-			"tokens": 669,
-			"percentageOfTotal": 5.95
-		},
-		{
-			"name": "update-body-measurement",
-			"tokens": 667,
-			"percentageOfTotal": 5.93
+			"name": "get-training-summary",
+			"tokens": 684,
+			"componentTokens": {
+				"name": 5,
+				"description": 30,
+				"inputSchema": 43,
+				"outputSchema": 578,
+				"annotations": 19
+			},
+			"percentageOfTotal": 7.83
 		},
 		{
 			"name": "get-workout-events",
-			"tokens": 664,
-			"percentageOfTotal": 5.9
+			"tokens": 543,
+			"componentTokens": {
+				"name": 6,
+				"description": 22,
+				"inputSchema": 95,
+				"outputSchema": 392,
+				"annotations": 19
+			},
+			"percentageOfTotal": 6.21
+		},
+		{
+			"name": "update-workout",
+			"tokens": 520,
+			"componentTokens": {
+				"name": 5,
+				"description": 22,
+				"inputSchema": 455,
+				"outputSchema": 0,
+				"annotations": 31
+			},
+			"percentageOfTotal": 5.95
 		},
 		{
 			"name": "create-workout",
-			"tokens": 655,
-			"percentageOfTotal": 5.82
+			"tokens": 501,
+			"componentTokens": {
+				"name": 5,
+				"description": 20,
+				"inputSchema": 438,
+				"outputSchema": 0,
+				"annotations": 31
+			},
+			"percentageOfTotal": 5.73
 		},
 		{
-			"name": "get-body-measurement",
-			"tokens": 628,
-			"percentageOfTotal": 5.58
+			"name": "create-body-measurement",
+			"tokens": 454,
+			"componentTokens": {
+				"name": 7,
+				"description": 24,
+				"inputSchema": 384,
+				"outputSchema": 0,
+				"annotations": 32
+			},
+			"percentageOfTotal": 5.2
 		},
 		{
-			"name": "get-body-measurements",
-			"tokens": 623,
-			"percentageOfTotal": 5.54
-		},
-		{
-			"name": "get-routines",
-			"tokens": 580,
-			"percentageOfTotal": 5.16
+			"name": "update-body-measurement",
+			"tokens": 454,
+			"componentTokens": {
+				"name": 7,
+				"description": 24,
+				"inputSchema": 384,
+				"outputSchema": 0,
+				"annotations": 32
+			},
+			"percentageOfTotal": 5.2
 		},
 		{
 			"name": "create-routine",
-			"tokens": 564,
-			"percentageOfTotal": 5.01
-		},
-		{
-			"name": "update-routine",
-			"tokens": 562,
+			"tokens": 437,
+			"componentTokens": {
+				"name": 5,
+				"description": 20,
+				"inputSchema": 374,
+				"outputSchema": 0,
+				"annotations": 31
+			},
 			"percentageOfTotal": 5
 		},
 		{
-			"name": "get-routine",
-			"tokens": 552,
-			"percentageOfTotal": 4.91
+			"name": "update-routine",
+			"tokens": 433,
+			"componentTokens": {
+				"name": 5,
+				"description": 18,
+				"inputSchema": 372,
+				"outputSchema": 0,
+				"annotations": 31
+			},
+			"percentageOfTotal": 4.96
 		},
 		{
-			"name": "get-workouts",
-			"tokens": 540,
-			"percentageOfTotal": 4.8
+			"name": "get-body-measurements",
+			"tokens": 402,
+			"componentTokens": {
+				"name": 7,
+				"description": 24,
+				"inputSchema": 73,
+				"outputSchema": 270,
+				"annotations": 19
+			},
+			"percentageOfTotal": 4.6
+		},
+		{
+			"name": "get-routine",
+			"tokens": 367,
+			"componentTokens": {
+				"name": 5,
+				"description": 23,
+				"inputSchema": 42,
+				"outputSchema": 270,
+				"annotations": 18
+			},
+			"percentageOfTotal": 4.2
 		},
 		{
 			"name": "get-workout",
-			"tokens": 522,
-			"percentageOfTotal": 4.64
-		},
-		{
-			"name": "search-exercise-templates",
-			"tokens": 426,
-			"percentageOfTotal": 3.79
+			"tokens": 363,
+			"componentTokens": {
+				"name": 5,
+				"description": 23,
+				"inputSchema": 44,
+				"outputSchema": 264,
+				"annotations": 18
+			},
+			"percentageOfTotal": 4.15
 		},
 		{
 			"name": "create-exercise-template",
-			"tokens": 421,
-			"percentageOfTotal": 3.74
+			"tokens": 346,
+			"componentTokens": {
+				"name": 6,
+				"description": 18,
+				"inputSchema": 283,
+				"outputSchema": 0,
+				"annotations": 32
+			},
+			"percentageOfTotal": 3.96
+		},
+		{
+			"name": "get-body-measurement",
+			"tokens": 337,
+			"componentTokens": {
+				"name": 7,
+				"description": 25,
+				"inputSchema": 54,
+				"outputSchema": 223,
+				"annotations": 19
+			},
+			"percentageOfTotal": 3.86
+		},
+		{
+			"name": "search-routines",
+			"tokens": 324,
+			"componentTokens": {
+				"name": 5,
+				"description": 24,
+				"inputSchema": 54,
+				"outputSchema": 213,
+				"annotations": 19
+			},
+			"percentageOfTotal": 3.71
+		},
+		{
+			"name": "get-routines",
+			"tokens": 315,
+			"componentTokens": {
+				"name": 5,
+				"description": 23,
+				"inputSchema": 73,
+				"outputSchema": 186,
+				"annotations": 19
+			},
+			"percentageOfTotal": 3.6
+		},
+		{
+			"name": "get-workouts",
+			"tokens": 311,
+			"componentTokens": {
+				"name": 5,
+				"description": 25,
+				"inputSchema": 58,
+				"outputSchema": 195,
+				"annotations": 19
+			},
+			"percentageOfTotal": 3.56
+		},
+		{
+			"name": "search-exercise-templates",
+			"tokens": 293,
+			"componentTokens": {
+				"name": 7,
+				"description": 25,
+				"inputSchema": 123,
+				"outputSchema": 110,
+				"annotations": 19
+			},
+			"percentageOfTotal": 3.35
 		},
 		{
 			"name": "get-exercise-templates",
-			"tokens": 302,
-			"percentageOfTotal": 2.68
+			"tokens": 290,
+			"componentTokens": {
+				"name": 7,
+				"description": 21,
+				"inputSchema": 73,
+				"outputSchema": 161,
+				"annotations": 19
+			},
+			"percentageOfTotal": 3.32
 		},
 		{
-			"name": "get-exercise-template",
-			"tokens": 276,
-			"percentageOfTotal": 2.45
+			"name": "get-exercise-history",
+			"tokens": 280,
+			"componentTokens": {
+				"name": 6,
+				"description": 22,
+				"inputSchema": 69,
+				"outputSchema": 155,
+				"annotations": 19
+			},
+			"percentageOfTotal": 3.2
 		},
 		{
 			"name": "get-routine-folders",
-			"tokens": 264,
-			"percentageOfTotal": 2.35
+			"tokens": 260,
+			"componentTokens": {
+				"name": 7,
+				"description": 15,
+				"inputSchema": 73,
+				"outputSchema": 136,
+				"annotations": 20
+			},
+			"percentageOfTotal": 2.98
+		},
+		{
+			"name": "get-exercise-template",
+			"tokens": 215,
+			"componentTokens": {
+				"name": 6,
+				"description": 23,
+				"inputSchema": 44,
+				"outputSchema": 114,
+				"annotations": 19
+			},
+			"percentageOfTotal": 2.46
 		},
 		{
 			"name": "get-routine-folder",
-			"tokens": 245,
-			"percentageOfTotal": 2.18
+			"tokens": 187,
+			"componentTokens": {
+				"name": 6,
+				"description": 22,
+				"inputSchema": 42,
+				"outputSchema": 89,
+				"annotations": 19
+			},
+			"percentageOfTotal": 2.14
 		},
 		{
 			"name": "get-user-info",
-			"tokens": 244,
-			"percentageOfTotal": 2.17
+			"tokens": 179,
+			"componentTokens": {
+				"name": 5,
+				"description": 20,
+				"inputSchema": 26,
+				"outputSchema": 100,
+				"annotations": 19
+			},
+			"percentageOfTotal": 2.05
 		},
 		{
 			"name": "get-workout-count",
-			"tokens": 195,
-			"percentageOfTotal": 1.73
+			"tokens": 139,
+			"componentTokens": {
+				"name": 6,
+				"description": 20,
+				"inputSchema": 26,
+				"outputSchema": 59,
+				"annotations": 19
+			},
+			"percentageOfTotal": 1.59
 		},
 		{
 			"name": "create-routine-folder",
-			"tokens": 166,
-			"percentageOfTotal": 1.48
+			"tokens": 100,
+			"componentTokens": {
+				"name": 6,
+				"description": 15,
+				"inputSchema": 40,
+				"outputSchema": 0,
+				"annotations": 32
+			},
+			"percentageOfTotal": 1.14
 		}
 	]
 }

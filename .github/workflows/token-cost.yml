@@ -70,6 +70,7 @@ jobs:
           --output token-cost-current.json
           --baseline token-cost-base.json
           --markdown token-cost-report.md
+          --enforce-budget
 
       - name: Add report to job summary
         run: cat token-cost-report.md >> "$GITHUB_STEP_SUMMARY"
