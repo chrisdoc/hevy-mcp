@@ -464,6 +464,10 @@ complete the authorization flow in the browser. Direct
 OAuth layer is purely additive — and rotating your Hevy API key invalidates
 every OAuth grant created with it.
 
+OAuth access tokens last seven days and refresh tokens last 30 days. This
+reduces KV writes from frequent hourly refreshes while preserving automatic
+refresh for supported clients.
+
 The endpoint does not expose legacy SSE or a `GET` event stream. Without the
 opt-in OAuth layer, clients that require OAuth discovery, dynamic
 registration, or token refresh are not compatible unless they can send the
