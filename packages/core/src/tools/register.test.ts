@@ -12,6 +12,7 @@ const EXPECTED_TOOL_NAMES = [
 	"get-workout-events",
 	"create-workout",
 	"update-workout",
+	"replace-workout-exercises",
 	"get-routines",
 	"get-routine",
 	"create-routine",
@@ -71,6 +72,25 @@ describe("registerHevyTools", () => {
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
 	});
 
+	it("advertises the non-empty update-workout patch invariant", async () => {
+		const { tools } = await client.listTools();
+		const updateWorkout = tools.find(({ name }) => name === "update-workout");
+
+		expect(updateWorkout).toBeDefined();
+		expect(updateWorkout?.inputSchema).toEqual(
+			expect.objectContaining({
+				required: expect.arrayContaining(["workout"]),
+				properties: expect.objectContaining({
+					workout: expect.objectContaining({
+						type: "object",
+						additionalProperties: false,
+						minProperties: 1,
+					}),
+				}),
+			}),
+		);
+	});
+
 	it("declares bounded feature, kind, and operation metadata for every tool", () => {
 		expect(hevyToolDefinitions).toHaveLength(EXPECTED_TOOL_NAMES.length);
 		for (const definition of hevyToolDefinitions) {
@@ -101,5 +121,26 @@ describe("registerHevyTools", () => {
 		const summary = tools.find(({ name }) => name === "get-training-summary");
 
 		expect(summary?.outputSchema).toBeDefined();
+	});
+	it("exposes only snake_case public input property names", async () => {
+		const { tools } = await client.listTools();
+		const propertyNames: string[] = [];
+		const visit = (schema: unknown): void => {
+			if (!schema || typeof schema !== "object") return;
+			const record = schema as Record<string, unknown>;
+			if (record.properties && typeof record.properties === "object") {
+				for (const [name, child] of Object.entries(
+					record.properties as Record<string, unknown>,
+				)) {
+					propertyNames.push(name);
+					visit(child);
+				}
+			}
+			if (record.items) visit(record.items);
+		};
+		for (const tool of tools) visit(tool.inputSchema);
+		expect(
+			propertyNames.filter((name) => !/^[a-z][a-z0-9_]*$/u.test(name)),
+		).toEqual([]);
 	});
 });

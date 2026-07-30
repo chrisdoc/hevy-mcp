@@ -1,17 +1,25 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ToolObserver } from "../observation.js";
 import { registerRoutinePrompts } from "./routines.js";
 import { registerWorkoutPrompts } from "./workouts.js";
 
 describe("workout prompts", () => {
 	let client: Client;
+	let promptStart: ToolObserver["start"];
 	let server: McpServer;
 
 	beforeEach(async () => {
 		server = new McpServer({ name: "prompt-test-server", version: "1.0.0" });
-		registerWorkoutPrompts(server);
-		registerRoutinePrompts(server);
+		const start = vi.fn(() => ({
+			run: <T>(operation: () => Promise<T>) => operation(),
+			finish: vi.fn(),
+		}));
+		const observer: ToolObserver = { start };
+		promptStart = start;
+		registerWorkoutPrompts(server, observer);
+		registerRoutinePrompts(server, observer);
 
 		client = new Client({ name: "prompt-test-client", version: "1.0.0" });
 		const [clientTransport, serverTransport] =
@@ -48,8 +56,8 @@ describe("workout prompts", () => {
 					title: "Create Workout From Routine",
 					description: expect.stringContaining("routine"),
 					arguments: expect.arrayContaining([
-						expect.objectContaining({ name: "routineId", required: false }),
-						expect.objectContaining({ name: "startTime", required: false }),
+						expect.objectContaining({ name: "routine_id", required: false }),
+						expect.objectContaining({ name: "start_time", required: false }),
 					]),
 				}),
 				expect.objectContaining({
@@ -121,8 +129,8 @@ describe("workout prompts", () => {
 		const result = await client.getPrompt({
 			name: "create-workout-from-routine",
 			arguments: {
-				routineId: "routine-123",
-				startTime: "2026-07-10T08:00:00Z",
+				routine_id: "routine-123",
+				start_time: "2026-07-10T08:00:00Z",
 			},
 		});
 
@@ -133,11 +141,28 @@ describe("workout prompts", () => {
 				content: expect.objectContaining({
 					type: "text",
 					text: expect.stringMatching(
-						/get-routine[\s\S]*restSeconds[\s\S]*repRange[\s\S]*endTime[\s\S]*Never treat[\s\S]*explicit approval[\s\S]*call create-workout once/,
+						new RegExp(
+							[
+								"get-routine",
+								"rest_seconds",
+								"rep_range",
+								"end_time",
+								"Never invent",
+								"explicit approval",
+								"call create-workout once",
+							].join("[\\s\\S]*"),
+						),
 					),
 				}),
 			}),
 		);
+		expect(promptStart).toHaveBeenCalledWith({
+			name: "create-workout-from-routine",
+			kind: "prompt",
+			argumentKeys: ["routine_id"],
+			argumentPresence: { routine_id: true },
+			argumentKeyCountBucket: "2-10",
+		});
 	});
 
 	it("rejects an invalid workout start timestamp", async () => {
@@ -145,14 +170,14 @@ describe("workout prompts", () => {
 			client.getPrompt({
 				name: "create-workout-from-routine",
 				arguments: {
-					routineId: "routine-123",
-					startTime: "2026-07-10T08:00:00+00:00",
+					routine_id: "routine-123",
+					start_time: "2026-07-10T08:00:00+00:00",
 				},
 			}),
 		).rejects.toThrow();
 	});
 
-	it("returns a conversational discovery workflow when workout arguments are omitted", async () => {
+	it("returns a conversational discovery workflow when routine arguments are omitted", async () => {
 		const result = await client.getPrompt({
 			name: "create-workout-from-routine",
 			arguments: {},
@@ -167,10 +192,10 @@ describe("workout prompts", () => {
 		);
 	});
 
-	it("uses provided workout arguments while collecting only the missing value", async () => {
+	it("uses supplied routine arguments while collecting only the missing value", async () => {
 		const result = await client.getPrompt({
 			name: "create-workout-from-routine",
-			arguments: { routineId: "routine-123" },
+			arguments: { routine_id: "routine-123" },
 		});
 
 		expect(result.messages[0]?.content).toEqual(

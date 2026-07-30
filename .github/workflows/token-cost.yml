@@ -70,11 +70,14 @@ jobs:
           --output token-cost-current.json
           --baseline token-cost-base.json
           --markdown token-cost-report.md
+          --enforce-budget
 
       - name: Add report to job summary
+        if: always()
         run: cat token-cost-report.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload token cost artifacts
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: token-cost-${{ env.HEAD_SHA }}
@@ -86,10 +89,11 @@ jobs:
 
   comment:
     name: Update pull request comment
+    needs: measure
     if: >-
+      needs.measure.result == 'success' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    needs: measure
     runs-on: ubuntu-latest
     permissions:
       contents: read

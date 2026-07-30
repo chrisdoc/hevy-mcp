@@ -113,11 +113,11 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 		});
 
 		const result = await callTool(client, "get-workout-count", {});
-		const payload = JSON.parse(result.text) as { count: number };
+		const payload = JSON.parse(result.text) as { workout_count: number };
 
 		expect(result.isError).toBeFalsy();
-		expect(payload.count).toBe(42);
-		expect(result.structuredContent).toEqual({ count: 42 });
+		expect(payload.workout_count).toBe(42);
+		expect(result.structuredContent).toEqual({ workout_count: 42 });
 	});
 
 	it("mocks get-workout-events through MCP transport", async () => {
@@ -150,7 +150,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 
 			const result = await callTool(client, "get-workout-events", {
 				page: 1,
-				pageSize: 5,
+				page_size: 5,
 				since: "1970-01-01T00:00:00Z",
 			});
 			const payload = JSON.parse(result.text) as Array<{
@@ -168,8 +168,8 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 			expect(result.structuredContent).toEqual({
 				events: payload,
 				page: 1,
-				pageCount: 1,
-				hasNextPage: false,
+				page_count: 1,
+				has_next_page: false,
 			});
 		} finally {
 			consoleErrorSpy.mockRestore();
@@ -191,7 +191,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 		});
 
 		const result = await callTool(client, "get-workout", {
-			workoutId: "workout-1",
+			workout_id: "workout-1",
 		});
 		const payload = JSON.parse(result.text) as {
 			id?: string;

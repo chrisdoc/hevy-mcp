@@ -7,46 +7,46 @@ import type { ToolTelemetryMetadata } from "./utils/tool-taxonomy.js";
 
 export type SafeToolArgumentKey =
 	| "date"
-	| "endDate"
-	| "exerciseTemplateId"
-	| "folderId"
-	| "includeCustom"
+	| "end_date"
+	| "exercise_template_id"
+	| "folder_id"
+	| "include_custom"
 	| "limit"
 	| "offset"
 	| "page"
-	| "pageSize"
-	| "primaryMuscleGroup"
+	| "page_size"
+	| "primary_muscle_group"
 	| "query"
 	| "refresh"
-	| "routineId"
+	| "routine_id"
 	| "since"
-	| "startDate"
-	| "updatedSince"
-	| "workoutId";
+	| "start_date"
+	| "updated_since"
+	| "workout_id";
 
 export type SafeToolPresenceArgumentKey = Extract<
 	SafeToolArgumentKey,
 	| "date"
-	| "endDate"
-	| "exerciseTemplateId"
-	| "folderId"
-	| "primaryMuscleGroup"
+	| "end_date"
+	| "exercise_template_id"
+	| "folder_id"
+	| "primary_muscle_group"
 	| "query"
-	| "routineId"
+	| "routine_id"
 	| "since"
-	| "startDate"
-	| "updatedSince"
-	| "workoutId"
+	| "start_date"
+	| "updated_since"
+	| "workout_id"
 >;
 
 export type SafeToolNumericArgumentKey = Extract<
 	SafeToolArgumentKey,
-	"limit" | "offset" | "page" | "pageSize"
+	"limit" | "offset" | "page" | "page_size"
 >;
 
 export type SafeToolBooleanArgumentKey = Extract<
 	SafeToolArgumentKey,
-	"includeCustom" | "refresh"
+	"include_custom" | "refresh"
 >;
 
 export interface ToolInvocationObservation {

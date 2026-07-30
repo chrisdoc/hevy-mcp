@@ -12,8 +12,8 @@ export type PromptResult = {
 async function observePrompt(
 	name: string,
 	observer: ToolObserver | undefined,
-	argumentKeys: readonly "routineId"[],
-	argumentPresence: { routineId?: true },
+	argumentKeys: readonly "routine_id"[],
+	argumentPresence: { routine_id?: true },
 	argumentKeyCount: number,
 	handler: () => Promise<PromptResult> | PromptResult,
 ): Promise<PromptResult> {
@@ -67,13 +67,13 @@ export function withPromptObservation<TArgs extends Record<string, unknown>>(
 	return async (args: TArgs): Promise<PromptResult> => {
 		const allArgumentKeys = Object.keys(args);
 		const argumentKeys = allArgumentKeys.filter(
-			(key) => key === "routineId",
-		) as "routineId"[];
+			(key) => key === "routine_id",
+		) as "routine_id"[];
 		return observePrompt(
 			name,
 			observer,
 			argumentKeys,
-			args.routineId ? { routineId: true } : {},
+			args.routine_id ? { routine_id: true } : {},
 			allArgumentKeys.length,
 			() => handler(args),
 		);

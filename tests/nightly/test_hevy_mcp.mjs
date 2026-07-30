@@ -4,6 +4,8 @@
  */
 
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { Client } from "@modelcontextprotocol/client";
 import {
@@ -17,10 +19,15 @@ import {
 	renderSummaryLine,
 	setVersions,
 	writeDiagnostics,
+	WORKOUT_COUNT_SCHEMA_PATH,
 } from "./diagnostics.mjs";
 
 const SEARCH_QUERY = "bench";
 const UNKNOWN_WORKOUT_ID = "00000000-0000-0000-0000-000000000000";
+
+export function buildWorkoutPageArgs(page, pageSize) {
+	return { page, page_size: pageSize };
+}
 
 function assertCondition(condition, schemaPath, kind = "schema") {
 	if (!condition) throw createDiagnosticError(kind, schemaPath);
@@ -180,7 +187,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-workouts",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (empty) return;
 			assertCondition(Array.isArray(parsed), "$");
@@ -199,10 +206,13 @@ async function main() {
 			);
 			if (empty) return;
 			assertCondition(parsed !== null && typeof parsed === "object", "$");
-			assertCondition(typeof parsed.count === "number", "$.count");
 			assertCondition(
-				Number.isInteger(parsed.count) && parsed.count >= 0,
-				"$.count",
+				typeof parsed.workout_count === "number",
+				"$.workout_count",
+			);
+			assertCondition(
+				Number.isInteger(parsed.workout_count) && parsed.workout_count >= 0,
+				"$.workout_count",
 				"assertion",
 			);
 		});
@@ -210,7 +220,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-workout-events",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (empty) return;
 			assertCondition(Array.isArray(parsed), "$");
@@ -220,7 +230,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-routines",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
 		});
@@ -228,7 +238,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-exercise-templates",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			assertCondition(!empty, "$", "assertion");
 			assertCondition(Array.isArray(parsed), "$");
@@ -264,7 +274,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-routine-folders",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
 		});
@@ -272,7 +282,7 @@ async function main() {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
 				"get-body-measurements",
-				{ page: 1, pageSize: 5 },
+				{ page: 1, page_size: 5 },
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
 		});
@@ -292,7 +302,7 @@ async function main() {
 				const { empty, parsed } = await callOrIgnoreEmpty(
 					client,
 					"get-workouts",
-					{ page: 1, pageSize },
+					buildWorkoutPageArgs(1, pageSize),
 				);
 				if (empty) return;
 				assertCondition(Array.isArray(parsed), "$");
@@ -303,7 +313,7 @@ async function main() {
 			try {
 				const result = await client.callTool({
 					name: "get-workouts",
-					arguments: { page: 1, pageSize: 999 },
+					arguments: { page: 1, page_size: 999 },
 				});
 				assertCondition(result.isError, "$.isError", "assertion");
 			} catch (error) {
@@ -317,25 +327,29 @@ async function main() {
 				{},
 			);
 			if (countResponse.empty) return;
-			const total = countResponse.parsed.count;
-			assertCondition(Number.isInteger(total), "$.count");
+			const total = countResponse.parsed.workout_count;
+			assertCondition(Number.isInteger(total), "$.workout_count");
 			let fetchedCount = 0;
 			for (let page = 1; page <= 50; page++) {
 				const { empty, parsed } = await callOrIgnoreEmpty(
 					client,
 					"get-workouts",
-					{ page, pageSize: 10 },
+					buildWorkoutPageArgs(page, 10),
 				);
 				if (empty || !Array.isArray(parsed) || parsed.length === 0) break;
 				fetchedCount += parsed.length;
 				if (parsed.length < 10) break;
 			}
-			assertCondition(fetchedCount === total, "$.count", "assertion");
+			assertCondition(
+				fetchedCount === total,
+				WORKOUT_COUNT_SCHEMA_PATH,
+				"assertion",
+			);
 		});
 		await runTest("get-workout-handles-unknown-id", async () => {
 			const result = await client.callTool({
 				name: "get-workout",
-				arguments: { workoutId: UNKNOWN_WORKOUT_ID },
+				arguments: { workout_id: UNKNOWN_WORKOUT_ID },
 			});
 			if (!result.isError) readFirstText(result);
 		});
@@ -354,4 +368,8 @@ async function main() {
 	await finishDiagnostics(summary, diagnosticsPath);
 }
 
-await main();
+if (
+	process.argv[1] &&
+	import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+)
+	await main();

@@ -15,6 +15,7 @@ import {
 	AVERAGE_TOKEN_TARGET,
 	TOKEN_COST_SCHEMA_VERSION,
 	TOKEN_ENCODING,
+	TOTAL_TOKEN_BUDGET,
 	TOOL_COUNT_TARGET,
 	compareReports,
 	formatMarkdown,
@@ -50,7 +51,7 @@ function reportWith(tools: Tool[] = [tool("alpha", "current")]) {
 }
 
 describe("parseArgs", () => {
-	it("parses output, baseline, markdown, and help options", () => {
+	it("parses output, baseline, markdown, budget, and help options", () => {
 		expect(
 			parseArgs([
 				"-o",
@@ -59,10 +60,12 @@ describe("parseArgs", () => {
 				"base.json",
 				"--markdown",
 				"report.md",
+				"--enforce-budget",
 				"--help",
 			]),
 		).toEqual({
 			help: true,
+			enforceBudget: true,
 			outputPath: "result.json",
 			baselinePath: "base.json",
 			markdownPath: "report.md",
@@ -92,6 +95,7 @@ describe("parseArgs", () => {
 			]),
 		).toEqual({
 			help: false,
+			enforceBudget: false,
 			outputPath: "-result.json",
 			baselinePath: "-base.json",
 			markdownPath: "-report.md",
@@ -108,6 +112,24 @@ describe("measureTokenPayload", () => {
 			totalTokens: 0,
 			averageTokensPerTool: 0,
 			tools: [],
+		});
+
+		expect(report.targets).toEqual({
+			toolCount: {
+				maximumInclusive: TOOL_COUNT_TARGET,
+				status: "withinTarget",
+				enforced: false,
+			},
+			averageTokensPerTool: {
+				maximumExclusive: AVERAGE_TOKEN_TARGET,
+				status: "withinTarget",
+				enforced: false,
+			},
+			totalTokens: {
+				maximumInclusive: TOTAL_TOKEN_BUDGET,
+				status: "withinTarget",
+				enforced: true,
+			},
 		});
 	});
 
@@ -250,12 +272,18 @@ describe("isCompatibleBaseline", () => {
 });
 
 describe("formatMarkdown", () => {
-	it("renders current totals and explains envelope overhead", () => {
+	it("renders current totals and component columns", () => {
 		const report = reportWith();
 		const markdown = formatMarkdown(report);
 
 		expect(markdown).toContain("## MCP tool token cost");
 		expect(markdown).toContain(`| Total tokens | ${report.totalTokens}`);
+		expect(markdown).toContain(
+			[
+				"| Tool | `name` | `description` | `inputSchema` | ",
+				"`outputSchema` | `annotations` | Total | Share of total |",
+			].join(""),
+		);
 		expect(markdown).toContain("need not sum exactly");
 	});
 
@@ -267,6 +295,17 @@ describe("formatMarkdown", () => {
 		expect(markdown).toContain("### Change from baseline");
 		expect(markdown).toContain("| `added` | — |");
 		expect(markdown).toMatch(/\| `removed` \| \d+ \| — \|/);
+		const perToolChanges = markdown.indexOf("### Per-tool changes");
+		const addedTool = markdown.indexOf("| `added` | — |");
+		const removedTool = markdown.indexOf("| `removed` |");
+		const componentChanges = markdown.indexOf("### Component changes");
+		const perToolBreakdown = markdown.indexOf("### Per-tool breakdown");
+
+		expect(addedTool).toBeGreaterThan(perToolChanges);
+		expect(removedTool).toBeGreaterThan(perToolChanges);
+		expect(addedTool).toBeLessThan(componentChanges);
+		expect(removedTool).toBeLessThan(componentChanges);
+		expect(componentChanges).toBeLessThan(perToolBreakdown);
 	});
 
 	it("renders an unavailable baseline explanation", () => {
@@ -277,28 +316,33 @@ describe("formatMarkdown", () => {
 
 	it("renders above-target statuses", () => {
 		const report = reportWith();
-		report.targets.toolCountStatus = "aboveTarget";
-		report.targets.averageTokensPerToolStatus = "aboveTarget";
+		report.targets.toolCount.status = "aboveTarget";
+		report.targets.averageTokensPerTool.status = "aboveTarget";
+		report.targets.totalTokens.status = "aboveTarget";
 
-		expect(formatMarkdown(report).match(/Above target/g)).toHaveLength(2);
+		expect(formatMarkdown(report).match(/Above target/g)).toHaveLength(3);
 	});
 });
 
 describe("formatTable", () => {
-	it("aligns headings, values, shares, and advisory guidance", () => {
+	it("aligns component columns, totals, shares, and advisory guidance", () => {
 		const table = formatTable(
 			reportWith([tool("a", "small"), tool("much-longer-name", "large")]),
 		);
 
 		expect(table).toContain(`MCP tool token cost (${TOKEN_ENCODING})`);
-		expect(table).toContain("Tool              Tokens  Share");
-		expect(table).toMatch(/much-longer-name\s+\d+\s+\d+(?:\.\d+)?%/);
+		expect(table).toMatch(
+			/Tool\s+name\s+description\s+inputSchema\s+outputSchema\s+annotations\s+Total\s+Share/,
+		);
+		expect(table).toMatch(/much-longer-name\s+\d+\s+\d+/);
 		expect(table).toContain(
-			`Targets (advisory): tools ≤ ${TOOL_COUNT_TARGET}; average < ${AVERAGE_TOKEN_TARGET} tokens/tool.`,
+			[
+				`Targets: tools ≤ ${TOOL_COUNT_TARGET}; average < ${AVERAGE_TOKEN_TARGET} tokens/tool; `,
+				`total ≤ ${TOTAL_TOKEN_BUDGET} tokens (enforced).`,
+			].join(""),
 		);
 	});
 });
-
 describe("registered tool measurement", () => {
 	it("lists tools through the public in-memory MCP APIs", async () => {
 		const tools = await listRegisteredTools();
@@ -307,6 +351,15 @@ describe("registered tool measurement", () => {
 		expect(names.length).toBeGreaterThan(0);
 		expect(new Set(names).size).toBe(names.length);
 		expect(names.every((name) => name.length > 0)).toBe(true);
+	});
+
+	it("keeps every registered description within 32 o200k tokens", async () => {
+		const report = await measureRegisteredTools();
+
+		expect(report.tools).toHaveLength(26);
+		expect(
+			report.tools.every((tool) => tool.componentTokens.description <= 32),
+		).toBe(true);
 	});
 
 	it("selects the configured encoder and always frees it", async () => {
@@ -332,6 +385,16 @@ describe("registered tool measurement", () => {
 			toolCount: 1,
 		});
 		expect(report.totalTokens).toBeGreaterThan(0);
+	});
+
+	it("keeps update-workout input schema below 200 real tokens", async () => {
+		const report = await measureRegisteredTools();
+		const updateWorkout = report.tools.find(
+			(tool) => tool.name === "update-workout",
+		);
+
+		expect(updateWorkout).toBeDefined();
+		expect(updateWorkout?.componentTokens.inputSchema).toBeLessThan(200);
 	});
 
 	it("frees the encoder when tool collection fails", async () => {
@@ -368,6 +431,41 @@ describe("run", () => {
 		await run([], { log, measureTools: async () => current });
 
 		expect(log).toHaveBeenCalledWith(formatTable(current));
+	});
+
+	it("enforces the total-token budget after writing requested outputs", async () => {
+		const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
+		try {
+			const outputPath = join(directory, "result.json");
+			const markdownPath = join(directory, "report.md");
+			const overBudget = {
+				...reportWith(),
+				totalTokens: TOTAL_TOKEN_BUDGET + 1,
+			};
+
+			await expect(
+				run(
+					[
+						"--output",
+						outputPath,
+						"--markdown",
+						markdownPath,
+						"--enforce-budget",
+					],
+					{ log: vi.fn(), measureTools: async () => overBudget },
+				),
+			).rejects.toThrow(
+				`MCP tool catalog exceeds the 8900-token budget: ${TOTAL_TOKEN_BUDGET + 1}`,
+			);
+			expect(JSON.parse(await readFile(outputPath, "utf8"))).toEqual(
+				overBudget,
+			);
+			expect(await readFile(markdownPath, "utf8")).toContain(
+				"### Per-tool breakdown",
+			);
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 
 	it("writes JSON and Markdown with a compatible baseline", async () => {

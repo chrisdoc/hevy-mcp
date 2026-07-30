@@ -58,8 +58,7 @@ describe("createToolRuntime observation scope", () => {
 			catalog,
 			observer: { start: () => ({ run, finish: vi.fn() }) },
 		});
-
-		await runtime.createHandler(handler, "get-workout")({ workoutId: "id" });
+		await runtime.createHandler(handler, "get-workout")({ workout_id: "id" });
 
 		expect(runCalls).toBe(1);
 		expect(handler).toHaveBeenCalledOnce();
@@ -108,20 +107,26 @@ describe("createToolRuntime observation scope", () => {
 
 		await handler({
 			page: 12,
-			pageSize: 5,
+			page_size: 5,
 			query: secret,
-			workoutId: "private-workout-id",
-			includeCustom: true,
-			privateNote: secret,
+			workout_id: "private-workout-id",
+			include_custom: true,
+			private_note: secret,
 		});
 
 		expect(start).toHaveBeenCalledWith({
 			name: "list-routines",
 			taxonomy: { feature: "routines", kind: "read", operation: "list" },
-			argumentKeys: ["page", "pageSize", "workoutId", "includeCustom", "query"],
-			argumentPresence: { workoutId: true, query: true },
-			numericArgumentBuckets: { page: "11-50", pageSize: "2-10" },
-			booleanArguments: { includeCustom: true },
+			argumentKeys: [
+				"page",
+				"page_size",
+				"workout_id",
+				"include_custom",
+				"query",
+			],
+			argumentPresence: { workout_id: true, query: true },
+			numericArgumentBuckets: { page: "11-50", page_size: "2-10" },
+			booleanArguments: { include_custom: true },
 			argumentKeyCountBucket: "2-10",
 		});
 		expect(JSON.stringify(start.mock.calls)).not.toContain(secret);

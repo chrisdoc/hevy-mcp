@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![MCP Toplist](https://mcptoplist.com/badge/io.github.chrisdoc%2Fhevy-mcp.svg)](https://mcptoplist.com/server/io.github.chrisdoc%2Fhevy-mcp)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the Hevy CLI](#hevy-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 25 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the Hevy CLI](#hevy-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 26 tools](#tools)
 
 </div>
 
@@ -63,9 +63,8 @@ training question with evidence from the user's workout history.
 
 ## What can you do with it?
 
-- **Analyze training progress:** summarize 1-12 weeks of weekly consistency,
-  working sets, exercise-specific performance, and optional body-measurement
-  context in one tool call.
+- **Analyze training progress:** summarize 1-12 weeks of workouts and body
+  measurements in one tool call.
 - **Ask questions in plain language:** find recent sessions, frequently trained
   exercises, consistency gaps, routine details, or exercise history.
 - **Plan and log training:** create or update workouts, routines, routine folders,
@@ -91,9 +90,6 @@ Try asking:
 
 > Create a completed workout from my saved routine. Ask me for any missing set
 > results before writing it to Hevy.
-
-> Build one new routine around my goals, schedule, equipment, and recent
-> training. Show me the complete plan before saving it.
 
 ## Quick start
 
@@ -361,11 +357,11 @@ only when your assistant calls them.
 
 These server-provided MCP prompts coordinate common multi-step workflows:
 
-| Prompt                        | Arguments                                | Workflow                                                                                                                                               |
-| ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`  | Uses weekly and exercise-level evidence to produce cited findings, prioritized next steps, and clear data limitations.                                 |
-| `create-workout-from-routine` | Optional `routineId` and UTC `startTime` | Discovers missing inputs, loads the routine as a plan, collects actual results, and previews the completed workout before one approved create call.    |
-| `create-routine-from-goals`   | None                                     | Interviews the user, reviews recent training and routines, resolves existing exercise templates, and previews one routine before an approved creation. |
+| Prompt                        | Arguments                                  | Workflow                                                                                                                                               |
+| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`    | Uses weekly and exercise-level evidence to produce cited findings, prioritized next steps, and clear data limitations.                                 |
+| `create-workout-from-routine` | Optional `routine_id` and UTC `start_time` | Discovers missing inputs, loads the routine as a plan, collects actual results, and previews the completed workout before one approved create call.    |
+| `create-routine-from-goals`   | None                                       | Interviews the user, reviews recent training and routines, resolves existing exercise templates, and previews one routine before an approved creation. |
 
 > [!NOTE]
 > With MCP SDK v1.29.0, clients invoking a prompt that advertises optional
@@ -375,7 +371,7 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 
 ## Tools
 
-`hevy-mcp` registers 25 tools. Read-only tools are safe for exploration; create
+`hevy-mcp` registers 26 tools. Read-only tools are safe for exploration; create
 and update tools are exposed with MCP mutation annotations so compatible clients
 can request confirmation.
 
@@ -387,7 +383,8 @@ can request confirmation.
 | Workouts           | `get-workout-count`         | Return the account's total workout count.                                         |
 | Workouts           | `get-workout-events`        | List workout update and delete events since a timestamp.                          |
 | Workouts           | `create-workout`            | Create a completed workout in Hevy.                                               |
-| Workouts           | `update-workout`            | Replace an existing workout by ID.                                                |
+| Workouts           | `update-workout`            | Patch workout metadata by ID; omitted fields and all exercises remain unchanged.  |
+| Workouts           | `replace-workout-exercises` | Replace all exercises and sets while preserving workout metadata.                 |
 | Routines           | `search-routines`           | Search routine titles and return compact metadata for discovery.                  |
 | Routines           | `get-routines`              | List custom and default workout routines.                                         |
 | Routines           | `get-routine`               | Get one routine and its exercise configuration by ID.                             |
@@ -429,7 +426,7 @@ https://mcp.hevy-mcp.dev/mcp
 ```
 
 It is the quickest way to use `hevy-mcp`: there is nothing to install or keep
-running locally, and it exposes the same 25 tools as the npm package and Docker
+running locally, and it exposes the same 26 tools as the npm package and Docker
 image.
 
 The Cloudflare Worker uses stateless **Streamable HTTP** at `POST /mcp`.

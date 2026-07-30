@@ -39,8 +39,8 @@ hevy routines list --json | jq
 Mutation commands require both `--data` and an explicit `--yes`:
 
 ```sh
-# Create a folder from inline camelCase JSON
-hevy folders create --data '{"name":"Strength"}' --yes
+# Create a folder from an API-shaped snake_case envelope
+hevy folders create --data '{"routine_folder":{"title":"Strength"}}' --yes
 
 # Create a workout from a UTF-8 JSON file
 hevy workouts create --data @workout.json --yes --json
@@ -50,16 +50,17 @@ cat routine.json | hevy routines update routine-123 --data @- --yes --json
 
 # Patch one measurement field
 hevy measurements update 2026-07-27 \
-  --data '{"weightKg":80.5}' --yes --json
+  --data '{"date":"2026-07-27","weight_kg":80.5}' --yes --json
 
-# Clear a measurement field explicitly
+# Explicit nulls are validated but omitted from the API PUT body
 hevy measurements update 2026-07-27 \
-  --data '{"fatPercent":null}' --yes --json
+  --data '{"date":"2026-07-27","fat_percent":null}' --yes --json
 ```
 
 `--data` accepts inline JSON, `@path` for a UTF-8 file, or `@-` for stdin.
-Payload keys are camelCase and are supplied without a resource wrapper. The
-CLI validates the complete payload before making an API request.
+Mutation JSON uses strict snake_case API envelopes: `workout`, `routine`,
+`exercise`, and `routine_folder`. Measurement JSON includes its `date`.
+The CLI validates the complete payload before making an API request.
 
 ## Commands
 
@@ -83,16 +84,16 @@ CLI validates the complete payload before making an API request.
 
 ### Create and update
 
-| Command                                                      | Payload                                      |
-| ------------------------------------------------------------ | -------------------------------------------- |
-| `hevy workouts create --data <value> --yes`                  | Complete workout                             |
-| `hevy workouts update <workout-id> --data <value> --yes`     | Complete replacement workout                 |
-| `hevy routines create --data <value> --yes`                  | Complete routine, optionally with `folderId` |
-| `hevy routines update <routine-id> --data <value> --yes`     | Complete replacement routine                 |
-| `hevy exercises create --data <value> --yes`                 | Custom exercise template                     |
-| `hevy folders create --data <value> --yes`                   | Routine folder                               |
-| `hevy measurements create <YYYY-MM-DD> --data <value> --yes` | New body measurement                         |
-| `hevy measurements update <YYYY-MM-DD> --data <value> --yes` | Measurement patch                            |
+| Command                                                      | Payload                                       |
+| ------------------------------------------------------------ | --------------------------------------------- |
+| `hevy workouts create --data <value> --yes`                  | Complete workout                              |
+| `hevy workouts update <workout-id> --data <value> --yes`     | Complete replacement workout                  |
+| `hevy routines create --data <value> --yes`                  | Complete routine, optionally with `folder_id` |
+| `hevy routines update <routine-id> --data <value> --yes`     | Complete replacement routine                  |
+| `hevy exercises create --data <value> --yes`                 | Custom exercise template                      |
+| `hevy folders create --data <value> --yes`                   | Routine folder                                |
+| `hevy measurements create <YYYY-MM-DD> --data <value> --yes` | New body measurement                          |
+| `hevy measurements update <YYYY-MM-DD> --data <value> --yes` | Measurement patch                             |
 
 There is no delete command, update-template command, or update-folder command.
 
@@ -102,14 +103,14 @@ Workout and routine updates are full replacements. Include every exercise and
 set that should remain; omitted content is not preserved. A workout update
 requires the same complete workout payload as creation. A routine update cannot
 move a routine between folders because Hevy's update endpoint does not accept
-`folderId`.
+`folder_id`.
 
 Measurement updates are patches over Hevy's replacement PUT endpoint. The CLI
 reads the existing date first, preserves omitted fields, replaces supplied
-numbers, and treats explicit `null` as a clear operation. The date is always
-the positional `YYYY-MM-DD` argument and cannot appear in `--data`. Measurement
-creation needs at least one numeric field; update needs at least one supplied
-field.
+numbers, and omits explicit `null` values because the API rejects them. The
+date must appear in `--data` and match the positional `YYYY-MM-DD` argument.
+Measurement creation needs at least one numeric field; update needs at least
+one supplied field.
 
 Writes are never retried automatically. Creates are not idempotent, and an
 uncertain network result can still have committed. Verify an uncertain write

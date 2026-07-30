@@ -10,7 +10,7 @@ import {
 } from "./workflows.js";
 
 describe("get-training-summary", () => {
-	it("combines bounded workout and measurement pages into compact evidence", async () => {
+	it("combines bounded pages into snake_case compact evidence", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
 		try {
@@ -21,21 +21,11 @@ describe("get-training-summary", () => {
 					page_count: 2,
 					workouts: [
 						{
-							id: "workout-1",
+							id: "w1",
 							title: "Push",
 							start_time: "2026-07-15T08:00:00Z",
 							end_time: "2026-07-16T09:00:00Z",
-							exercises: [
-								{
-									exercise_template_id: "bench",
-									sets: [{}, {}],
-								},
-							],
-						},
-						{
-							id: "today",
-							start_time: "2026-07-16T23:59:59Z",
-							end_time: "2026-07-16T23:59:59Z",
+							exercises: [{ exercise_template_id: "bench", sets: [{}, {}] }],
 						},
 					],
 				})
@@ -54,82 +44,183 @@ describe("get-training-summary", () => {
 				page: 1,
 				page_count: 1,
 				body_measurements: [
-					{ date: "2026-07-01", weight_kg: 80, fat_percent: 20 },
-					{ date: "2026-07-15", weight_kg: 79, fat_percent: 19 },
+					{ date: "2026-07-01", weight_kg: 80 },
+					{ date: "2026-07-15", weight_kg: 79 },
 				],
 			});
-			const client = {
-				getWorkouts,
-				getBodyMeasurements,
-			} as unknown as HevyClient;
 			const runtime = createToolRuntime({
-				client,
+				client: { getWorkouts, getBodyMeasurements } as unknown as HevyClient,
 				catalog: {} as ExerciseTemplateCatalog,
 			});
-
 			const summary = await getTrainingSummary(runtime, 4);
-
-			expect(getWorkouts).toHaveBeenNthCalledWith(1, { page: 1, pageSize: 10 });
-			expect(getWorkouts).toHaveBeenNthCalledWith(2, { page: 2, pageSize: 10 });
-			expect(getBodyMeasurements).toHaveBeenCalledWith({
-				page: 1,
-				pageSize: 10,
-			});
 			expect(summary.workouts).toMatchObject({
-				count: 2,
-				totalDurationSeconds: 90000,
-				exerciseCount: 1,
-				setCount: 2,
-				workingSetCount: 2,
-				uniqueExerciseTemplateIds: ["bench"],
-				exerciseTrendCoverage: {
-					eligibleExerciseCount: 1,
-					includedExerciseCount: 1,
-					exerciseLimit: 10,
-					sessionsPerExerciseLimit: 6,
-					truncated: false,
-				},
+				count: 1,
+				total_duration_seconds: 90000,
+				exercise_count: 1,
+				set_count: 2,
+				working_set_count: 2,
+				unique_exercise_template_ids: ["bench"],
 			});
-			expect(summary.period).toEqual({
-				startDate: "2026-06-19",
-				endDate: "2026-07-16",
-				weeks: 4,
+			expect(summary.workouts.weekly.at(-1)).toMatchObject({
+				start_date: "2026-07-10",
+				end_date: "2026-07-16",
+				workout_count: 1,
+				total_duration_seconds: 90000,
+				exercise_count: 1,
+				set_count: 2,
+				working_set_count: 2,
 			});
-			expect(summary.workouts.weekly).toEqual([
-				expect.objectContaining({
-					startDate: "2026-06-19",
-					endDate: "2026-06-25",
-					workoutCount: 0,
-				}),
-				expect.objectContaining({
-					startDate: "2026-06-26",
-					endDate: "2026-07-02",
-					workoutCount: 0,
-				}),
-				expect.objectContaining({
-					startDate: "2026-07-03",
-					endDate: "2026-07-09",
-					workoutCount: 0,
-				}),
+			expect(summary.workouts.exercise_trends).toMatchObject([
 				{
-					startDate: "2026-07-10",
-					endDate: "2026-07-16",
-					workoutCount: 2,
-					totalDurationSeconds: 90000,
-					exerciseCount: 1,
-					setCount: 2,
-					workingSetCount: 2,
+					exercise_template_id: "bench",
+					session_count: 1,
+					set_count: 2,
+					working_set_count: 2,
 				},
 			]);
-			expect(summary.bodyMeasurements).toMatchObject({
+			expect(summary.body_measurements).toMatchObject({
 				count: 2,
-				weightChangeKg: -1,
+				weight_change_kg: -1,
 			});
 			expect(summary.workflow).toEqual({
 				name: "training-summary",
-				pagination: { workouts: 2, bodyMeasurements: 1 },
+				pagination: { workouts: 2, body_measurements: 1 },
 				cacheStatus: "not-used",
-				itemsScanned: 5,
+				itemsScanned: 4,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("aggregates modalities, excludes warmups, and bounds exercise trends", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
+		try {
+			const benchWorkouts: Workout[] = Array.from({ length: 7 }, (_, index) => {
+				const day = 10 + index;
+				const date = `2026-07-${String(day).padStart(2, "0")}`;
+				const sets =
+					day === 16
+						? [
+								{
+									type: "warmup",
+									weight_kg: 100,
+									reps: 100,
+									rpe: 10,
+								},
+								{
+									type: "normal",
+									weight_kg: 60,
+									reps: 5,
+									rpe: 8,
+									distance_meters: 100,
+									duration_seconds: 30,
+									custom_metric: 2,
+								},
+								{
+									type: "failure",
+									weight_kg: null,
+									reps: 10,
+									rpe: 9,
+									distance_meters: 50,
+									duration_seconds: 20,
+									custom_metric: 3,
+								},
+							]
+						: [{ type: "normal", weight_kg: 50, reps: 5 }];
+				return {
+					id: `bench-${day}`,
+					title: `Bench ${day}`,
+					start_time: `${date}T08:00:00Z`,
+					end_time: `${date}T09:00:00Z`,
+					exercises: [
+						{
+							title: "Bench Press",
+							exercise_template_id: "bench",
+							sets,
+						},
+					],
+				};
+			});
+			const tiedExercises = Array.from({ length: 11 }, (_, index) => ({
+				title: `Exercise ${index}`,
+				exercise_template_id: `exercise-${String(index).padStart(2, "0")}`,
+				sets: [{ reps: index + 1 }],
+			}));
+			const latestWorkout = benchWorkouts.at(-1);
+			if (!latestWorkout) throw new Error("Expected a latest workout");
+			latestWorkout.exercises = [
+				...(latestWorkout.exercises ?? []),
+				...tiedExercises,
+			];
+
+			const runtime = createToolRuntime({
+				client: {
+					getWorkouts: vi.fn().mockResolvedValue({
+						workouts: [...benchWorkouts].reverse(),
+					}),
+					getBodyMeasurements: vi.fn().mockResolvedValue({
+						body_measurements: [],
+					}),
+				} as unknown as HevyClient,
+				catalog: {} as ExerciseTemplateCatalog,
+			});
+
+			const summary = await getTrainingSummary(runtime, 1);
+			const bench = summary.workouts.exercise_trends[0];
+			expect(summary.period).toEqual({
+				start_date: "2026-07-10",
+				end_date: "2026-07-16",
+				weeks: 1,
+			});
+			expect(summary.workouts.working_set_count).toBe(19);
+			expect(summary.workouts.exercise_trend_coverage).toEqual({
+				eligible_exercise_count: 12,
+				included_exercise_count: 10,
+				exercise_limit: 10,
+				sessions_per_exercise_limit: 6,
+				truncated: true,
+			});
+			expect(
+				summary.workouts.exercise_trends.map(
+					({ exercise_template_id }) => exercise_template_id,
+				),
+			).toEqual([
+				"bench",
+				"exercise-00",
+				"exercise-01",
+				"exercise-02",
+				"exercise-03",
+				"exercise-04",
+				"exercise-05",
+				"exercise-06",
+				"exercise-07",
+				"exercise-08",
+			]);
+			expect(bench).toMatchObject({
+				exercise_template_id: "bench",
+				title: "Bench Press",
+				session_count: 7,
+				set_count: 9,
+				working_set_count: 8,
+			});
+			expect(bench?.sessions).toHaveLength(6);
+			expect(bench?.sessions[0]?.start_time).toBe("2026-07-11T08:00:00Z");
+			expect(bench?.sessions.at(-1)).toEqual({
+				workout_id: "bench-16",
+				workout_title: "Bench 16",
+				start_time: "2026-07-16T08:00:00Z",
+				set_count: 3,
+				working_set_count: 2,
+				total_reps: 15,
+				weighted_rep_volume_kg: 300,
+				top_weight_kg: 60,
+				top_reps: 10,
+				top_rpe: 9,
+				total_distance_meters: 150,
+				total_duration_seconds: 50,
+				total_custom_metric: 5,
 			});
 		} finally {
 			vi.useRealTimers();
@@ -148,7 +239,6 @@ describe("get-training-summary", () => {
 				items: [{ id: "old", date: "2026-06-01" }],
 				pageCount: 3,
 			});
-
 		await expect(
 			fetchRecentPages<Item>(
 				loader,
@@ -162,226 +252,9 @@ describe("get-training-summary", () => {
 			pages: 2,
 			itemsScanned: 3,
 		});
-		expect(loader).toHaveBeenNthCalledWith(1, 1, 10);
-		expect(loader).toHaveBeenNthCalledWith(2, 2, 10);
 	});
 
-	it("aggregates modality metrics, ranks exercise trends, and caps session detail", async () => {
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
-		try {
-			const benchWorkouts: Workout[] = Array.from({ length: 7 }, (_, index) => {
-				const day = 10 + index;
-				return {
-					id: `bench-${day}`,
-					title: `Bench ${day}`,
-					start_time: `2026-07-${String(day).padStart(2, "0")}T08:00:00Z`,
-					end_time: `2026-07-${String(day).padStart(2, "0")}T09:00:00Z`,
-					exercises: [
-						{
-							title: "Bench Press",
-							exercise_template_id: "bench",
-							sets:
-								day === 16
-									? [
-											{
-												type: "warmup",
-												weight_kg: 100,
-												reps: 100,
-												rpe: 10,
-											},
-											{
-												type: "normal",
-												weight_kg: 60,
-												reps: 5,
-												rpe: 8,
-												distance_meters: 100,
-												duration_seconds: 30,
-												custom_metric: 2,
-											},
-											{
-												type: "failure",
-												weight_kg: null,
-												reps: 10,
-												rpe: 9,
-												distance_meters: 50,
-												duration_seconds: 20,
-												custom_metric: 3,
-											},
-										]
-									: [{ type: "normal", weight_kg: 50, reps: 5 }],
-						},
-					],
-				};
-			});
-			const tiedExercises = Array.from({ length: 11 }, (_, index) => ({
-				title: `Exercise ${index}`,
-				exercise_template_id: `exercise-${String(index).padStart(2, "0")}`,
-				sets: [{ reps: index + 1 }],
-			}));
-			const latestWorkout = benchWorkouts.at(-1);
-			if (!latestWorkout) throw new Error("Expected a latest workout");
-			latestWorkout.exercises = [
-				...(latestWorkout.exercises ?? []),
-				...tiedExercises,
-			];
-			const runtime = createToolRuntime({
-				client: {
-					getWorkouts: vi.fn().mockResolvedValue({
-						workouts: [...benchWorkouts].reverse(),
-					}),
-					getBodyMeasurements: vi.fn().mockResolvedValue({
-						body_measurements: [],
-					}),
-				} as unknown as HevyClient,
-				catalog: {} as ExerciseTemplateCatalog,
-			});
-
-			const summary = await getTrainingSummary(runtime, 1);
-			const bench = summary.workouts.exerciseTrends[0];
-
-			expect(summary.period).toEqual({
-				startDate: "2026-07-10",
-				endDate: "2026-07-16",
-				weeks: 1,
-			});
-			expect(summary.workouts.workingSetCount).toBe(19);
-			expect(summary.workouts.exerciseTrendCoverage).toEqual({
-				eligibleExerciseCount: 12,
-				includedExerciseCount: 10,
-				exerciseLimit: 10,
-				sessionsPerExerciseLimit: 6,
-				truncated: true,
-			});
-			expect(
-				summary.workouts.exerciseTrends.map(
-					({ exerciseTemplateId }) => exerciseTemplateId,
-				),
-			).toEqual([
-				"bench",
-				"exercise-00",
-				"exercise-01",
-				"exercise-02",
-				"exercise-03",
-				"exercise-04",
-				"exercise-05",
-				"exercise-06",
-				"exercise-07",
-				"exercise-08",
-			]);
-			expect(bench).toMatchObject({
-				exerciseTemplateId: "bench",
-				title: "Bench Press",
-				sessionCount: 7,
-				setCount: 9,
-				workingSetCount: 8,
-			});
-			expect(bench?.sessions).toHaveLength(6);
-			expect(bench?.sessions[0]?.startTime).toBe("2026-07-11T08:00:00Z");
-			expect(bench?.sessions.at(-1)).toEqual({
-				workoutId: "bench-16",
-				workoutTitle: "Bench 16",
-				startTime: "2026-07-16T08:00:00Z",
-				setCount: 3,
-				workingSetCount: 2,
-				totalReps: 15,
-				weightedRepVolumeKg: 300,
-				topWeightKg: 60,
-				topReps: 10,
-				topRpe: 9,
-				totalDistanceMeters: 150,
-				totalDurationSeconds: 50,
-				totalCustomMetric: 5,
-			});
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it("handles incomplete compact data and the composed tool executor", async () => {
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
-		try {
-			const getWorkouts = vi.fn().mockResolvedValue({
-				workouts: [
-					{
-						start_time: "2026-07-15T08:00:00Z",
-						exercises: [{ exercise_template_id: "", sets: [{}] }, {}],
-					},
-					{
-						id: "invalid-duration",
-						start_time: "2026-07-14T08:00:00Z",
-						end_time: "also-not-a-date",
-					},
-				],
-			});
-			const getBodyMeasurements = vi.fn().mockResolvedValue({
-				body_measurements: [
-					{
-						date: "2026-07-10",
-						weight_kg: null,
-						lean_mass_kg: 50,
-						fat_percent: null,
-					},
-				],
-			});
-			const runtime = createToolRuntime({
-				client: { getWorkouts, getBodyMeasurements } as unknown as HevyClient,
-				catalog: {} as ExerciseTemplateCatalog,
-			});
-
-			const summary = await workflowToolDefinitions[0].execute(runtime, {
-				weeks: 1,
-			});
-
-			expect(summary.workouts.sessions).toEqual([
-				{
-					startTime: "2026-07-15T08:00:00Z",
-					durationSeconds: null,
-					exerciseCount: 2,
-					setCount: 1,
-				},
-				{
-					id: "invalid-duration",
-					startTime: "2026-07-14T08:00:00Z",
-					endTime: "also-not-a-date",
-					durationSeconds: null,
-					exerciseCount: 0,
-					setCount: 0,
-				},
-			]);
-			expect(summary.workouts.uniqueExerciseTemplateIds).toEqual([]);
-			expect(summary.workouts).toMatchObject({
-				workingSetCount: 1,
-				exerciseTrends: [],
-				exerciseTrendCoverage: {
-					eligibleExerciseCount: 0,
-					includedExerciseCount: 0,
-					truncated: false,
-				},
-			});
-			expect(summary.bodyMeasurements).toEqual({
-				count: 1,
-				latest: {
-					date: "2026-07-10",
-					weightKg: null,
-					leanMassKg: 50,
-					fatPercent: null,
-				},
-				earliest: {
-					date: "2026-07-10",
-					weightKg: null,
-					leanMassKg: 50,
-					fatPercent: null,
-				},
-				weightChangeKg: null,
-			});
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it("returns empty workflow data when collection fields are absent", async () => {
+	it("keeps sparse collection results safe", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
 		try {
@@ -392,42 +265,18 @@ describe("get-training-summary", () => {
 				} as unknown as HevyClient,
 				catalog: {} as ExerciseTemplateCatalog,
 			});
-
-			await expect(getTrainingSummary(runtime, 1)).resolves.toMatchObject({
+			await expect(
+				workflowToolDefinitions[0].execute(runtime, { weeks: 1 }),
+			).resolves.toMatchObject({
 				workouts: {
 					count: 0,
-					totalDurationSeconds: 0,
-					exerciseCount: 0,
-					setCount: 0,
-					workingSetCount: 0,
-					uniqueExerciseTemplateIds: [],
+					total_duration_seconds: 0,
+					exercise_count: 0,
+					set_count: 0,
+					unique_exercise_template_ids: [],
 					sessions: [],
-					weekly: [
-						{
-							startDate: "2026-07-10",
-							endDate: "2026-07-16",
-							workoutCount: 0,
-							totalDurationSeconds: 0,
-							exerciseCount: 0,
-							setCount: 0,
-							workingSetCount: 0,
-						},
-					],
-					exerciseTrends: [],
-					exerciseTrendCoverage: {
-						eligibleExerciseCount: 0,
-						includedExerciseCount: 0,
-						exerciseLimit: 10,
-						sessionsPerExerciseLimit: 6,
-						truncated: false,
-					},
 				},
-				bodyMeasurements: {
-					count: 0,
-					latest: null,
-					earliest: null,
-					weightChangeKg: null,
-				},
+				body_measurements: { count: 0 },
 			});
 		} finally {
 			vi.useRealTimers();

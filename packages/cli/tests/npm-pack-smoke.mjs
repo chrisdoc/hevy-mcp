@@ -141,23 +141,33 @@ globalThis.fetch = async (input, init = {}) => {
 
 	const folder = await exec(
 		binary,
-		["folders", "create", "--data", '{"name":"Strength"}', "--yes", "--json"],
+		[
+			"folders",
+			"create",
+			"--data",
+			'{"routine_folder":{"title":"Strength"}}',
+			"--yes",
+			"--json",
+		],
 		{ env },
 	);
 	if (folder.stderr !== "") throw new Error("Packed folder create failed");
-	if (JSON.parse(folder.stdout).folder.id !== 3)
+	if (JSON.parse(folder.stdout).routine_folder.id !== 3)
 		throw new Error("Packed folder response was not normalized");
 
 	const workout = {
-		title: "Push",
-		startTime: "2024-01-01T10:00:00Z",
-		endTime: "2024-01-01T11:00:00Z",
-		exercises: [
-			{
-				exerciseTemplateId: "exercise-1",
-				sets: [{ type: "normal", weightKg: 50, reps: 5 }],
-			},
-		],
+		workout_id: "workout-1",
+		workout: {
+			title: "Push",
+			start_time: "2024-01-01T10:00:00Z",
+			end_time: "2024-01-01T11:00:00Z",
+			exercises: [
+				{
+					exercise_template_id: "exercise-1",
+					sets: [{ type: "normal", weight_kg: 50, reps: 5 }],
+				},
+			],
+		},
 	};
 	const update = await runWithInput(
 		binary,
@@ -167,7 +177,7 @@ globalThis.fetch = async (input, init = {}) => {
 	);
 	if (update.code !== 0 || update.stderr !== "")
 		throw new Error("Packed workout update failed");
-	if (JSON.parse(update.stdout).workoutId !== "workout-1")
+	if (JSON.parse(update.stdout).workout_id !== "workout-1")
 		throw new Error("Packed workout response was not normalized");
 
 	const requests = (await readFile(requestLog, "utf8"))
@@ -192,24 +202,17 @@ globalThis.fetch = async (input, init = {}) => {
 			JSON.stringify({
 				workout: {
 					title: "Push",
-					description: null,
 					start_time: "2024-01-01T10:00:00Z",
 					end_time: "2024-01-01T11:00:00Z",
 					is_private: false,
 					exercises: [
 						{
 							exercise_template_id: "exercise-1",
-							superset_id: null,
-							notes: null,
 							sets: [
 								{
 									type: "normal",
 									weight_kg: 50,
 									reps: 5,
-									distance_meters: null,
-									duration_seconds: null,
-									rpe: null,
-									custom_metric: null,
 								},
 							],
 						},

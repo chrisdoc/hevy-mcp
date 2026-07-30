@@ -17,6 +17,7 @@ import {
 	renderSummaryLine,
 	setVersions,
 	writeDiagnostics,
+	WORKOUT_COUNT_SCHEMA_PATH,
 } from "./diagnostics.mjs";
 
 const FORBIDDEN = Object.freeze({
@@ -309,4 +310,21 @@ void test("default-deny model drops unsafe metadata and schema paths", async () 
 	const artifact = await readFile(artifactPath, "utf8");
 	assertForbiddenAbsent(artifact);
 	assert.equal("forbidden" in JSON.parse(artifact), false);
+});
+
+void test("retains the allowlisted workout count schema path", () => {
+	const summary = createDiagnostics({ launcher: "source" });
+	const result = recordResult(summary, {
+		name: "get-workout-count-shape",
+		passed: false,
+		error: createDiagnosticError("schema", WORKOUT_COUNT_SCHEMA_PATH),
+	});
+	const unsafe = recordResult(summary, {
+		name: "get-workout-count-shape",
+		passed: false,
+		error: createDiagnosticError("schema", "$.count"),
+	});
+
+	assert.equal(result.schemaPath, WORKOUT_COUNT_SCHEMA_PATH);
+	assert.equal(unsafe.schemaPath, undefined);
 });
