@@ -1,9 +1,8 @@
 import type { UserInfoResponse } from "@hevy-mcp/hevy-client/types";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import { userResponse } from "../utils/response-formatter.js";
+import { userResponse } from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
 
 const getUserInfoSchema = {} as const;
 
@@ -14,15 +13,8 @@ const getUserInfoDefinition: ToolDefinition<
 	name: "get-user-info",
 	feature: "profile",
 	operation: "get",
-	description: describeTool({
-		summary:
-			"Read-only. Returns the authenticated account's user ID, display name, and public profile URL.",
-		aliases: ["who am I", "account info", "verify Hevy user"],
-		useCase:
-			"Use to confirm which Hevy account is connected before reading or writing account data.",
-		importantNotes:
-			"Accepts no inputs and reports only the account associated with the configured credentials.",
-	}),
+	description:
+		"Read-only. Returns the authenticated Hevy user ID, display name, and public profile URL.",
 	inputSchema: getUserInfoSchema,
 	kind: "read",
 	outputSchema: userResponse.outputSchema,

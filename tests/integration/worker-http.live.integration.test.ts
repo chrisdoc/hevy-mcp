@@ -26,7 +26,9 @@ const INVOKED_READ_TOOLS = [
 	"get-workout",
 	"get-workout-events",
 	"get-routines",
+	"get-training-summary",
 	"get-routine",
+	"search-routines",
 	"get-exercise-templates",
 	"get-exercise-template",
 	"get-exercise-history",
@@ -356,24 +358,47 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 					{},
 				);
 				assertCondition(
-					typeof workoutCount.count === "number" &&
-						Number.isInteger(workoutCount.count) &&
-						workoutCount.count >= 0,
-					"tools/get-workout-count/count",
+					typeof workoutCount.workout_count === "number" &&
+						Number.isInteger(workoutCount.workout_count) &&
+						workoutCount.workout_count >= 0,
+					"tools/get-workout-count/workout_count",
 				);
 
 				const workouts = await callReadTool(client, "get-workouts", {
 					page: 1,
-					pageSize: 1,
+					page_size: 1,
 				});
 				assertBoundedList(workouts.workouts, "tools/get-workouts/workouts");
+				const firstWorkout = workouts.workouts[0];
+				if (firstWorkout) {
+					assertCondition(
+						typeof firstWorkout.exercise_count === "number" &&
+							typeof firstWorkout.set_count === "number" &&
+							!("exercises" in firstWorkout),
+						"tools/get-workouts/workouts/0/compact",
+					);
+				}
+				const trainingSummary = await callReadTool(
+					client,
+					"get-training-summary",
+					{ weeks: 1 },
+				);
+				assertRecord(
+					trainingSummary.workouts,
+					"tools/get-training-summary/workouts",
+				);
+				assertRecord(
+					trainingSummary.body_measurements,
+					"tools/get-training-summary/body_measurements",
+				);
+				assertRecord(trainingSummary.scan, "tools/get-training-summary/scan");
 				const workoutId = optionalStringId(
 					workouts.workouts,
 					"tools/get-workouts/workouts",
 				);
 				if (workoutId) {
 					const workout = await callReadTool(client, "get-workout", {
-						workoutId,
+						workout_id: workoutId,
 					});
 					assertRecord(workout.workout, "tools/get-workout/workout");
 					assertCondition(
@@ -383,24 +408,41 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				}
 
 				const events = await callReadTool(client, "get-workout-events", {
-					page: 1,
-					pageSize: 1,
+					page_size: 1,
 					since: "1970-01-01T00:00:00Z",
 				});
 				assertBoundedList(events.events, "tools/get-workout-events/events");
 
 				const routines = await callReadTool(client, "get-routines", {
 					page: 1,
-					pageSize: 1,
+					page_size: 1,
 				});
 				assertBoundedList(routines.routines, "tools/get-routines/routines");
+				const firstRoutine = routines.routines[0];
+				if (firstRoutine) {
+					assertCondition(
+						typeof firstRoutine.exercise_count === "number" &&
+							typeof firstRoutine.set_count === "number" &&
+							!("exercises" in firstRoutine),
+						"tools/get-routines/routines/0/compact",
+					);
+				}
+				const discoveredRoutines = await callReadTool(
+					client,
+					"search-routines",
+					{ query: "a", limit: 1 },
+				);
+				assertBoundedList(
+					discoveredRoutines.routines,
+					"tools/search-routines/routines",
+				);
 				const routineId = optionalStringId(
 					routines.routines,
 					"tools/get-routines/routines",
 				);
 				if (routineId) {
 					const routine = await callReadTool(client, "get-routine", {
-						routineId,
+						routine_id: routineId,
 					});
 					assertRecord(routine.routine, "tools/get-routine/routine");
 					assertCondition(
@@ -411,27 +453,27 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 
 				const templates = await callReadTool(client, "get-exercise-templates", {
 					page: 1,
-					pageSize: 1,
+					page_size: 1,
 				});
 				assertBoundedList(
-					templates.exerciseTemplates,
-					"tools/get-exercise-templates/exerciseTemplates",
+					templates.exercise_templates,
+					"tools/get-exercise-templates/exercise_templates",
 				);
 				const exerciseTemplateId = optionalStringId(
-					templates.exerciseTemplates,
-					"tools/get-exercise-templates/exerciseTemplates",
+					templates.exercise_templates,
+					"tools/get-exercise-templates/exercise_templates",
 				);
 				if (exerciseTemplateId) {
 					const template = await callReadTool(client, "get-exercise-template", {
-						exerciseTemplateId,
+						exercise_template_id: exerciseTemplateId,
 					});
 					assertRecord(
-						template.exerciseTemplate,
-						"tools/get-exercise-template/exerciseTemplate",
+						template.exercise_template,
+						"tools/get-exercise-template/exercise_template",
 					);
 					assertCondition(
-						template.exerciseTemplate.id === exerciseTemplateId,
-						"tools/get-exercise-template/exerciseTemplate/id",
+						template.exercise_template.id === exerciseTemplateId,
+						"tools/get-exercise-template/exercise_template/id",
 					);
 
 					const endDate = new Date();
@@ -439,56 +481,56 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 						endDate.getTime() - 7 * 24 * 60 * 60 * 1000,
 					);
 					const history = await callReadTool(client, "get-exercise-history", {
-						exerciseTemplateId,
-						startDate: startDate.toISOString(),
-						endDate: endDate.toISOString(),
+						exercise_template_id: exerciseTemplateId,
+						start_date: startDate.toISOString(),
+						end_date: endDate.toISOString(),
 					});
 					assertCondition(
-						Array.isArray(history.exerciseHistory),
-						"tools/get-exercise-history/exerciseHistory",
+						Array.isArray(history.exercise_history),
+						"tools/get-exercise-history/exercise_history",
 					);
 				}
 
 				const folders = await callReadTool(client, "get-routine-folders", {
 					page: 1,
-					pageSize: 1,
+					page_size: 1,
 				});
 				assertBoundedList(
-					folders.routineFolders,
-					"tools/get-routine-folders/routineFolders",
+					folders.routine_folders,
+					"tools/get-routine-folders/routine_folders",
 				);
 				const folderId = optionalStringId(
-					folders.routineFolders,
-					"tools/get-routine-folders/routineFolders",
+					folders.routine_folders,
+					"tools/get-routine-folders/routine_folders",
 				);
 				if (folderId) {
 					const folder = await callReadTool(client, "get-routine-folder", {
-						folderId,
+						folder_id: folderId,
 					});
 					assertRecord(
-						folder.routineFolder,
-						"tools/get-routine-folder/routineFolder",
+						folder.routine_folder,
+						"tools/get-routine-folder/routine_folder",
 					);
 					assertCondition(
-						String(folder.routineFolder.id) === folderId,
-						"tools/get-routine-folder/routineFolder/id",
+						String(folder.routine_folder.id) === folderId,
+						"tools/get-routine-folder/routine_folder/id",
 					);
 				}
 
 				const measurements = await callReadTool(
 					client,
 					"get-body-measurements",
-					{ page: 1, pageSize: 1 },
+					{ page: 1, page_size: 1 },
 				);
 				assertBoundedList(
-					measurements.bodyMeasurements,
-					"tools/get-body-measurements/bodyMeasurements",
+					measurements.body_measurements,
+					"tools/get-body-measurements/body_measurements",
 				);
-				const firstMeasurement = measurements.bodyMeasurements[0];
+				const firstMeasurement = measurements.body_measurements[0];
 				if (firstMeasurement) {
 					assertCondition(
 						typeof firstMeasurement.date === "string",
-						"tools/get-body-measurements/bodyMeasurements/0/date",
+						"tools/get-body-measurements/body_measurements/0/date",
 					);
 					const measurement = await callReadTool(
 						client,
@@ -496,12 +538,12 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 						{ date: firstMeasurement.date },
 					);
 					assertRecord(
-						measurement.bodyMeasurement,
-						"tools/get-body-measurement/bodyMeasurement",
+						measurement.body_measurement,
+						"tools/get-body-measurement/body_measurement",
 					);
 					assertCondition(
-						measurement.bodyMeasurement.date === firstMeasurement.date,
-						"tools/get-body-measurement/bodyMeasurement/date",
+						measurement.body_measurement.date === firstMeasurement.date,
+						"tools/get-body-measurement/body_measurement/date",
 					);
 				}
 			},

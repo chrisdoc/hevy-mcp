@@ -9,10 +9,7 @@ import type {
 } from "@hevy-mcp/hevy-client/types";
 import type { ToolRuntime } from "../tools/tool-runtime.js";
 import { fetchAllPages } from "../utils/pagination.js";
-import {
-	formatExerciseTemplate,
-	formatRoutineFolder,
-} from "../utils/response-formatter.js";
+import { projectRoutineFolder } from "../utils/response-contracts.js";
 
 const JSON_MIME_TYPE = "application/json";
 
@@ -70,7 +67,7 @@ export function registerHevyResources(
 				.getClient()
 				.getWorkoutCount();
 			return createJsonResourceResult(uri, {
-				count: data?.workout_count ?? 0,
+				workout_count: data?.workout_count ?? 0,
 			});
 		},
 	);
@@ -84,10 +81,7 @@ export function registerHevyResources(
 		},
 		async (uri) => {
 			const templates = await runtime.catalog.get();
-			return createJsonResourceResult(
-				uri,
-				templates.map(formatExerciseTemplate),
-			);
+			return createJsonResourceResult(uri, templates);
 		},
 	);
 
@@ -100,7 +94,7 @@ export function registerHevyResources(
 		},
 		async (uri) => {
 			const folders = await fetchAllRoutineFolders(runtime);
-			return createJsonResourceResult(uri, folders.map(formatRoutineFolder));
+			return createJsonResourceResult(uri, folders.map(projectRoutineFolder));
 		},
 	);
 }

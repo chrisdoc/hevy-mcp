@@ -16,15 +16,17 @@ import {
 } from "@hevy-mcp/core/mutations";
 
 const workout = {
-	title: "Push",
-	startTime: "2024-01-01T10:00:00Z",
-	endTime: "2024-01-01T11:00:00Z",
-	exercises: [
-		{
-			exerciseTemplateId: "exercise-1",
-			sets: [{ type: "normal", weightKg: 50, reps: 5 }],
-		},
-	],
+	workout: {
+		title: "Push",
+		start_time: "2024-01-01T10:00:00Z",
+		end_time: "2024-01-01T11:00:00Z",
+		exercises: [
+			{
+				exercise_template_id: "exercise-1",
+				sets: [{ type: "normal", weight_kg: 50, reps: 5 }],
+			},
+		],
+	},
 };
 
 describe("mutation input sources", () => {
@@ -73,59 +75,91 @@ describe("mutation input sources", () => {
 		await expect(
 			loadMutationInput(
 				JSON.stringify({ outer: { inner: 1 } }),
-				z.object({ outer: z.object({ inner: z.string() }).strict() }).strict(),
+				z.strictObject({ outer: z.strictObject({ inner: z.string() }) }),
 			),
 		).rejects.toThrow(/--data\.outer\.inner/);
 	});
 
 	it.each([
-		["top-level", { ...workout, extra: true }],
+		[
+			"top-level",
+			{ ...workout, extra: true },
+			workoutInputSchema,
+			/--data.*"extra"/,
+		],
+		[
+			"wrapperless",
+			{ ...workout.workout, extra: true },
+			workoutInputSchema.shape.workout,
+			/--data.*"extra"/,
+		],
 		[
 			"exercise",
 			{
-				...workout,
-				exercises: [{ ...workout.exercises[0], extra: true }],
+				workout: {
+					...workout.workout,
+					exercises: [{ ...workout.workout.exercises[0], extra: true }],
+				},
 			},
+			workoutInputSchema,
+			/--data\.workout\.exercises\.0.*"extra"/,
 		],
 		[
-			"set",
+			"legacy weight alias",
 			{
-				...workout,
-				exercises: [
-					{ ...workout.exercises[0], sets: [{ type: "normal", extra: true }] },
-				],
+				workout: {
+					...workout.workout,
+					exercises: [
+						{
+							...workout.workout.exercises[0],
+							sets: [{ type: "normal", weightKg: 50 }],
+						},
+					],
+				},
 			},
+			workoutInputSchema,
+			/--data\.workout\.exercises\.0\.sets\.0.*"weightKg"/,
 		],
 		[
-			"repRange",
+			"legacy routine field",
 			{
-				title: "Routine",
-				exercises: [
-					{
-						exerciseTemplateId: "exercise-1",
-						sets: [{ type: "normal", repRange: { start: 5, extra: true } }],
-					},
-				],
+				routine: {
+					title: "Routine",
+					exercises: [
+						{
+							exercise_template_id: "exercise-1",
+							sets: [{ type: "normal", rep_range: { start: 5, extra: true } }],
+						},
+					],
+				},
 			},
+			createRoutineInputSchema,
+			/--data\.routine\.exercises\.0\.sets\.0\.rep_range.*"extra"/,
 		],
-	] as const)("rejects unknown %s keys", async (name, value) => {
-		if (name === "repRange") {
+	] as const)(
+		"rejects unknown %s keys",
+		async (_name, value, schema, expectedPattern) => {
 			await expect(
-				loadMutationInput(JSON.stringify(value), createRoutineInputSchema),
-			).rejects.toThrow(/--data.*extra/);
-			return;
-		}
-		await expect(
-			loadMutationInput(JSON.stringify(value), workoutInputSchema),
-		).rejects.toThrow(/--data.*extra/);
-	});
+				loadMutationInput<unknown>(
+					JSON.stringify(value),
+					schema as z.ZodType<unknown>,
+				),
+			).rejects.toThrow(expectedPattern);
+		},
+	);
 
-	it("uses strict simple-resource schemas", async () => {
+	it("uses strict API-shaped folder schemas", async () => {
 		await expect(
 			loadMutationInput(
-				JSON.stringify({ name: "Strength", extra: true }),
+				JSON.stringify({ routine_folder: { title: "Strength", extra: true } }),
 				routineFolderInputSchema,
 			),
 		).rejects.toThrow(/--data.*extra/);
+		await expect(
+			loadMutationInput(
+				JSON.stringify({ name: "Strength" }),
+				routineFolderInputSchema,
+			),
+		).rejects.toThrow(/--data/);
 	});
 });

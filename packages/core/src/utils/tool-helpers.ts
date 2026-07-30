@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import type { McpToolResponse } from "./response-formatter.js";
+import type { McpToolResponse } from "./response-contracts.js";
 
 export const HEVY_CLIENT_NOT_INITIALIZED_ERROR =
 	"API client not initialized. Please provide HEVY_API_KEY.";
@@ -64,7 +64,7 @@ export function createTypedToolHandler<T extends Record<string, z.ZodTypeAny>>(
 	schema: T,
 	handler: (args: InferToolParams<T>) => Promise<McpToolResponse>,
 ): (args: Record<string, unknown>) => Promise<McpToolResponse> {
-	const zodSchema = z.object(schema);
+	const zodSchema = z.strictObject(schema);
 	return async (args: Record<string, unknown>) => {
 		const validated = zodSchema.parse(args);
 		return handler(validated);

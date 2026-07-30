@@ -6,64 +6,72 @@ import {
 } from "../utils/tool-helpers.js";
 import { withErrorHandling } from "../utils/error-handler.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
-import type { McpToolResponse } from "../utils/response-formatter.js";
+import type { McpToolResponse } from "../utils/response-contracts.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
-import { memoizeObservationScope, type ToolObserver } from "../observation.js";
+import {
+	memoizeObservationScope,
+	type SafeToolArgumentKey,
+	type ToolObserver,
+} from "../observation.js";
 import { bucketCount, getResultTelemetry } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
 
-const STRUCTURAL_ARGUMENT_KEYS = [
-	"page",
-	"pageSize",
-	"since",
-	"workoutId",
-	"routineId",
-	"folderId",
-	"exerciseTemplateId",
-	"date",
-	"startDate",
-	"endDate",
-	"updatedSince",
-	"includeCustom",
-	"limit",
-	"offset",
-	"refresh",
-	"query",
-	"primaryMuscleGroup",
-] as const;
+const STRUCTURAL_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+	page: true,
+	page_size: true,
+	since: true,
+	workout_id: true,
+	routine_id: true,
+	folder_id: true,
+	exercise_template_id: true,
+	date: true,
+	start_date: true,
+	end_date: true,
+	updated_since: true,
+	include_custom: true,
+	limit: true,
+	offset: true,
+	refresh: true,
+	query: true,
+	primary_muscle_group: true,
+};
 
-const PRESENCE_ARGUMENT_KEYS: ReadonlySet<string> = new Set([
-	"since",
-	"workoutId",
-	"routineId",
-	"folderId",
-	"exerciseTemplateId",
-	"date",
-	"startDate",
-	"endDate",
-	"updatedSince",
-	"query",
-	"primaryMuscleGroup",
-] as const);
+const PRESENCE_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+	since: true,
+	workout_id: true,
+	routine_id: true,
+	folder_id: true,
+	exercise_template_id: true,
+	date: true,
+	start_date: true,
+	end_date: true,
+	updated_since: true,
+	query: true,
+	primary_muscle_group: true,
+};
 
-const NUMERIC_ARGUMENT_KEYS: ReadonlySet<string> = new Set([
-	"page",
-	"pageSize",
-	"limit",
-	"offset",
-] as const);
+const NUMERIC_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+	page: true,
+	page_size: true,
+	limit: true,
+	offset: true,
+};
 
-const BOOLEAN_ARGUMENT_KEYS: ReadonlySet<string> = new Set([
-	"includeCustom",
-	"refresh",
-]);
+const BOOLEAN_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+	include_custom: true,
+	refresh: true,
+};
+
+const structuralArgumentKeys = Object.keys(
+	STRUCTURAL_ARGUMENT_KEYS,
+) as SafeToolArgumentKey[];
 
 function createSafeInvocation(
 	name: string,
 	args: Record<string, unknown>,
 	taxonomy: ToolTelemetryMetadata | undefined,
 ) {
-	const argumentKeys = STRUCTURAL_ARGUMENT_KEYS.filter((key) => key in args);
+	const argumentKeys = structuralArgumentKeys.filter((key) => key in args);
 	const argumentPresence: Record<string, true> = {};
 	const numericArgumentBuckets: Record<
 		string,
@@ -74,16 +82,16 @@ function createSafeInvocation(
 	for (const key of argumentKeys) {
 		const value = args[key];
 		if (
-			PRESENCE_ARGUMENT_KEYS.has(key) &&
+			key in PRESENCE_ARGUMENT_KEYS &&
 			value !== null &&
 			value !== undefined
 		) {
 			argumentPresence[key] = true;
 		}
-		if (NUMERIC_ARGUMENT_KEYS.has(key) && typeof value === "number") {
+		if (key in NUMERIC_ARGUMENT_KEYS && typeof value === "number") {
 			numericArgumentBuckets[key] = bucketCount(value);
 		}
-		if (BOOLEAN_ARGUMENT_KEYS.has(key) && typeof value === "boolean") {
+		if (key in BOOLEAN_ARGUMENT_KEYS && typeof value === "boolean") {
 			booleanArguments[key] = value;
 		}
 	}

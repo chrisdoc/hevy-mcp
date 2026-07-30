@@ -7,11 +7,12 @@ import type {
 	PostV1Workouts201,
 	PutV1WorkoutsWorkoutid200,
 } from "@hevy-mcp/hevy-client/types";
-import { buildWorkoutPayload } from "./payload-mappers.js";
 import {
 	paginationShape,
 	nonEmptyId,
-	workoutPayloadShape,
+	replaceWorkoutExercisesInputShape,
+	updateWorkoutInputShape,
+	workoutInputShape,
 } from "./input-schemas.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
@@ -22,14 +23,15 @@ import {
 	workoutEventsResponse,
 	workoutResponse,
 	workoutsResponse,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+
 import type { InferToolParams } from "../utils/tool-helpers.js";
+import { buildWorkoutUpdatePayload } from "./mutation-semantics.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
@@ -42,7 +44,7 @@ const getWorkoutsSchema = paginationShape({
 });
 type GetWorkoutsParams = InferToolParams<typeof getWorkoutsSchema>;
 
-const getWorkoutSchema = { workoutId: nonEmptyId } as const;
+const getWorkoutSchema = { workout_id: nonEmptyId } as const;
 type GetWorkoutParams = InferToolParams<typeof getWorkoutSchema>;
 
 const getWorkoutEventsSchema = {
@@ -51,29 +53,24 @@ const getWorkoutEventsSchema = {
 } as const;
 type GetWorkoutEventsParams = InferToolParams<typeof getWorkoutEventsSchema>;
 
-const createWorkoutSchema = workoutPayloadShape;
+const createWorkoutSchema = workoutInputShape;
 type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
 
-const updateWorkoutSchema = {
-	workoutId: nonEmptyId,
-	...workoutPayloadShape,
-} as const;
+const updateWorkoutSchema = updateWorkoutInputShape;
 type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
+
+const replaceWorkoutExercisesSchema = replaceWorkoutExercisesInputShape;
+type ReplaceWorkoutExercisesParams = InferToolParams<
+	typeof replaceWorkoutExercisesSchema
+>;
 
 export const workoutToolDefinitions = [
 	{
 		name: "get-workouts",
 		feature: "workouts" as const,
 		operation: "list" as const,
-		description: describeTool({
-			summary:
-				"Read-only. Lists workouts from newest to oldest with exercise and timing details.",
-			aliases: ["list workout history", "show recent workouts", "browse logs"],
-			useCase:
-				"Use to browse or page through workout history; use get-workout when a workout ID is already known.",
-			importantNotes:
-				"Results are paginated; page starts at 1 and pageSize is limited to 10.",
-		}),
+		description:
+			"Read-only. Lists compact workout summaries newest first. Use get-workout for exercises and sets; results are paginated.",
 		inputSchema: getWorkoutsSchema,
 		outputSchema: workoutsResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workouts"),
@@ -83,7 +80,7 @@ export const workoutToolDefinitions = [
 			try {
 				const data: GetV1Workouts200 = await runtime.getClient().getWorkouts({
 					page: args.page,
-					pageSize: args.pageSize,
+					pageSize: args.page_size,
 				});
 				return {
 					items: data?.workouts ?? [],
@@ -106,15 +103,8 @@ export const workoutToolDefinitions = [
 		name: "get-workout",
 		feature: "workouts" as const,
 		operation: "get" as const,
-		description: describeTool({
-			summary:
-				"Read-only. Retrieves complete details for one workout by its ID.",
-			aliases: ["show workout", "fetch workout details", "open workout log"],
-			useCase:
-				"Use after get-workouts identifies the exact workout; do not use for browsing multiple workouts.",
-			importantNotes:
-				"Requires a workoutId discovered from a workout list, event, or prior create response.",
-		}),
+		description:
+			"Read-only. Gets one workout with exercises and sets by workout_id. Use get-workouts to discover IDs.",
 		inputSchema: getWorkoutSchema,
 		outputSchema: workoutResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workout"),
@@ -124,13 +114,13 @@ export const workoutToolDefinitions = [
 			try {
 				const data: GetV1WorkoutsWorkoutid200 = await runtime
 					.getClient()
-					.getWorkout(args.workoutId);
-				return { workout: data, workoutId: args.workoutId };
+					.getWorkout(args.workout_id);
+				return { workout: data, workout_id: args.workout_id };
 			} catch (error) {
 				if (isExpectedReadNotFound(error)) {
 					return {
 						workout: null,
-						workoutId: args.workoutId,
+						workout_id: args.workout_id,
 						expected404Outcome: "not_found",
 					};
 				}
@@ -142,14 +132,8 @@ export const workoutToolDefinitions = [
 		name: "get-workout-count",
 		feature: "workouts" as const,
 		operation: "count" as const,
-		description: describeTool({
-			summary: "Read-only. Returns the total workout count for the account.",
-			aliases: ["count workouts", "how many workouts", "workout total"],
-			useCase:
-				"Use for totals, statistics, or estimating pages; use get-workouts for actual workout records.",
-			importantNotes:
-				"Returns only a count and accepts no paging or date filters.",
-		}),
+		description:
+			"Read-only. Returns the total workout count; it does not return records or accept date filters.",
 		inputSchema: {},
 		outputSchema: workoutCountResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workout Count"),
@@ -166,19 +150,8 @@ export const workoutToolDefinitions = [
 		name: "get-workout-events",
 		feature: "workouts" as const,
 		operation: "sync" as const,
-		description: describeTool({
-			summary:
-				"Read-only. Lists workout update and delete events since a timestamp, newest first.",
-			aliases: [
-				"sync workout changes",
-				"workout change feed",
-				"deleted workouts",
-			],
-			useCase:
-				"Use to incrementally synchronize a local workout cache; use get-workouts for the current workout list.",
-			importantNotes:
-				"since must be a timestamp string; events are paginated with pageSize at most 10, and the default since value reads from 1970.",
-		}),
+		description:
+			"Read-only. Lists workout update and deletion events since a timestamp for incremental sync; results are paginated.",
 		inputSchema: getWorkoutEventsSchema,
 		outputSchema: workoutEventsResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workout Events"),
@@ -190,7 +163,7 @@ export const workoutToolDefinitions = [
 					.getClient()
 					.getWorkoutEvents({
 						page: args.page,
-						pageSize: args.pageSize,
+						pageSize: args.page_size,
 						since: args.since,
 					});
 				return {
@@ -216,21 +189,15 @@ export const workoutToolDefinitions = [
 		name: "create-workout",
 		feature: "workouts" as const,
 		operation: "create" as const,
-		description: describeTool({
-			summary: "Writes to the Hevy account by creating a new workout.",
-			aliases: ["log workout", "add workout", "record training session"],
-			useCase:
-				"Use to add a completed workout; use update-workout only when modifying an existing workout ID.",
-			importantNotes:
-				"Requires UTC startTime/endTime in YYYY-MM-DDTHH:mm:ssZ form and exercise template IDs. Retrying can create duplicates.",
-		}),
+		description:
+			"Writes a completed workout. Requires exercise-template IDs and UTC times. Retries can create duplicates.",
 		inputSchema: createWorkoutSchema,
 		annotations: createAnnotations("Create Workout"),
 		kind: "write" as const,
 		responseContract: createWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: CreateWorkoutParams) => {
 			const data: PostV1Workouts201 = await runtime.getClient().createWorkout({
-				workout: buildWorkoutPayload(args),
+				workout: args.workout,
 			});
 			return data;
 		},
@@ -239,29 +206,49 @@ export const workoutToolDefinitions = [
 		name: "update-workout",
 		feature: "workouts" as const,
 		operation: "update" as const,
-		description: describeTool({
-			summary: "Mutates the Hevy account by replacing an existing workout.",
-			aliases: [
-				"edit workout",
-				"correct workout log",
-				"replace workout details",
-			],
-			useCase:
-				"Use to revise a known workout; use create-workout for a new training session.",
-			importantNotes:
-				"Requires workoutId plus the complete title, times, privacy, exercises, and sets payload; omitted optional values may be cleared or defaulted.",
-		}),
+		description:
+			"Mutates workout metadata by ID. Omitted fields and all exercises remain unchanged.",
 		inputSchema: updateWorkoutSchema,
 		annotations: updateAnnotations("Update Workout"),
 		kind: "write" as const,
 		responseContract: updateWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: UpdateWorkoutParams) => {
-			const data: PutV1WorkoutsWorkoutid200 = await runtime
-				.getClient()
-				.updateWorkout(args.workoutId, {
-					workout: buildWorkoutPayload(args),
-				});
-			return { workout: data, workoutId: args.workoutId };
+			const client = runtime.getClient();
+			const current = await client.getWorkout(args.workout_id);
+			const payload = buildWorkoutUpdatePayload(current, args.workout);
+			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
+				args.workout_id,
+				{ workout: payload },
+			);
+			return { workout: data, workout_id: args.workout_id };
+		},
+	},
+	{
+		name: "replace-workout-exercises",
+		feature: "workouts" as const,
+		operation: "update" as const,
+		description:
+			"Mutates a workout by replacing all exercises and sets. Workout metadata remains unchanged.",
+		inputSchema: replaceWorkoutExercisesSchema,
+		annotations: updateAnnotations("Replace Workout Exercises"),
+		kind: "write" as const,
+		responseContract: updateWorkoutResponse,
+		execute: async (
+			runtime: ToolRuntime,
+			args: ReplaceWorkoutExercisesParams,
+		) => {
+			const client = runtime.getClient();
+			const current = await client.getWorkout(args.workout_id);
+			const payload = buildWorkoutUpdatePayload(
+				current,
+				{},
+				args.workout.exercises,
+			);
+			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
+				args.workout_id,
+				{ workout: payload },
+			);
+			return { workout: data, workout_id: args.workout_id };
 		},
 	},
 ] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];
