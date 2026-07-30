@@ -90,7 +90,9 @@ jobs:
             github.event.pull_request.user.login == 'mergify[bot]' &&
             startsWith(github.head_ref, 'mergify/merge-queue/')
           )
-        run: npx changeset status --since=origin/${{ github.base_ref }}
+        run: |
+          npx changeset status --since=origin/${{ github.base_ref }}
+          npm run check:package-changesets -- --since origin/${{ github.base_ref }}
 
       - name: Run nightly diagnostics redaction regression tests
         if: matrix.node-version == '24.x'

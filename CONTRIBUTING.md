@@ -396,6 +396,11 @@ Validate the branch against `origin/main`:
 npm run check:changeset
 ```
 
+CI also checks that every changed workspace directory has a changeset naming
+that same package. For example, changes under `packages/cli` require a
+changeset for `@chrisdoc/hevy-cli`; a changeset for a different package does
+not satisfy that check.
+
 The automated `changeset-release/main` "Version Packages" pull request should
 be merged on the routine release cadence (weekly by default), not for every
 individual change. Security fixes and high-impact user-facing bugs may use an
