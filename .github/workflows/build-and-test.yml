@@ -238,23 +238,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Configure Wrangler production environment
-        env:
-          WRANGLER_ENVIRONMENT: production
-          WRANGLER_CONFIG_OUTPUT: .wrangler.production.json
-          CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
-          CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
-          CLOUDFLARE_OAUTH_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID }}
-        run: node scripts/configure-wrangler-environment.mjs
-
       - name: Deploy tested version
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          WRANGLER_CONFIG_PATH: .wrangler.production.json
+          WRANGLER_MODE: production
+          CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
+          CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
+          CLOUDFLARE_OAUTH_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID }}
         run: >-
           npx wrangler deploy
-          --config "$WRANGLER_CONFIG_PATH"
+          --x-new-config
           --env production
           --message "GitHub main at ${{ github.sha }}"
 

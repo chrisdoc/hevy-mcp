@@ -117,8 +117,6 @@ dist
 # Serverless directories
 .serverless/
 .wrangler/
-.wrangler.production.json
-.wrangler.preview.json
 
 # FuseBox cache
 .fusebox/

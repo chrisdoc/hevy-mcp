@@ -471,10 +471,10 @@ fixed custom header above.
 
 ### Self-host the Worker
 
-A clean clone can deploy the portable top-level Wrangler configuration with
-`npx wrangler deploy` and receive a `workers.dev` URL. OAuth requires your own
-`OAUTH_KV` namespace; custom domains, routes, and observability destinations
-are optional account-owned settings. See
+A clean clone can deploy the portable TypeScript Wrangler configuration with
+`npx wrangler deploy --x-new-config` and receive a `workers.dev` URL. OAuth
+requires your own `OAUTH_KV` namespace; custom domains, routes, and
+observability destinations are optional account-owned settings. See
 [CONTRIBUTING.md](./CONTRIBUTING.md#cloudflare-worker-development) for setup and
 for the distinction between self-hosting and the maintainer-only named
 environments.
