@@ -1,5 +1,11 @@
 # @chrisdoc/hevy-cli
 
+## 1.0.0
+
+### Major Changes
+
+- [#775](https://github.com/chrisdoc/hevy-mcp/pull/775) [`9518fcc`](https://github.com/chrisdoc/hevy-mcp/commit/9518fccc98f3843303d51436469db57a1898beb6) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Compact the MCP tool catalog and structured responses while preserving direct tool workflows.
+
 ## 0.2.0
 
 ### Minor Changes
