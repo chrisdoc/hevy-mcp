@@ -5,8 +5,7 @@ export default defineConfig({
 	plugins: [
 		cloudflareTest({
 			wrangler: {
-				configPath: "./wrangler.jsonc",
-				environment: "production",
+				configPath: "./wrangler.test.jsonc",
 			},
 		}),
 	],
