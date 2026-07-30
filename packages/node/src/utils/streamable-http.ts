@@ -5,7 +5,7 @@ import {
 	type Server,
 	type ServerResponse,
 } from "node:http";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import type { NodeCliOptions } from "./arguments.js";
 import {
@@ -21,7 +21,7 @@ const MCP_PATH = "/mcp";
 const MAX_BODY_BYTES = 1_048_576;
 const HTTP_BEARER_TOKEN = "HEVY_MCP_HTTP_BEARER_TOKEN";
 
-type HttpTransport = StreamableHTTPServerTransport;
+type HttpTransport = NodeStreamableHTTPServerTransport;
 export interface OwnedMcpServer {
 	connect(transport: HttpTransport): Promise<void>;
 	close(): Promise<void>;
@@ -331,7 +331,7 @@ export async function startStreamableHttpServer(
 			let session: HttpSession | undefined;
 			let mcpServer: OwnedMcpServer | undefined;
 			let connected = false;
-			const transport = new StreamableHTTPServerTransport({
+			const transport = new NodeStreamableHTTPServerTransport({
 				sessionIdGenerator: randomUUID,
 				onsessioninitialized: (id) => {
 					if (session) sessions.set(id, session);

@@ -1,7 +1,4 @@
-import type {
-	CallToolResult,
-	TextContent,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, TextContent } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import { userInfoSchema } from "@hevy-mcp/hevy-client/schemas";

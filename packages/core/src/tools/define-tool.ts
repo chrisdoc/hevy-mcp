@@ -1,5 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import type { McpServer, ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { respond, type ResponseContract } from "../utils/response-formatter.js";
 import {
@@ -59,25 +58,14 @@ export function registerToolDefinition(
 	});
 	const callback = handler;
 
-	if (definition.kind === "read") {
-		server.registerTool(
-			definition.name,
-			{
-				description: definition.description,
-				inputSchema: definition.inputSchema,
-				outputSchema: definition.outputSchema,
-				annotations: definition.annotations,
-			},
-			callback,
-		);
-		return;
-	}
+	const config = {
+		description: definition.description,
+		inputSchema: z.object(definition.inputSchema),
+		annotations: definition.annotations,
+		...(definition.kind === "read"
+			? { outputSchema: z.object(definition.outputSchema) }
+			: {}),
+	};
 
-	server.tool(
-		definition.name,
-		definition.description,
-		definition.inputSchema,
-		definition.annotations,
-		callback,
-	);
+	server.registerTool(definition.name, config, callback);
 }

@@ -1,7 +1,5 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
+import { Client } from "@modelcontextprotocol/client";
 import nock from "nock";
 import {
 	afterAll,
@@ -35,16 +33,13 @@ async function callTool(
 	name: string,
 	arguments_: Record<string, unknown>,
 ) {
-	const result = await client.request(
-		{
-			method: "tools/call",
-			params: {
-				name,
-				arguments: arguments_,
-			},
+	const result = await client.request({
+		method: "tools/call",
+		params: {
+			name,
+			arguments: arguments_,
 		},
-		CallToolResultSchema,
-	);
+	});
 
 	const firstContent = result.content[0];
 	if (!firstContent || firstContent.type !== "text") {
