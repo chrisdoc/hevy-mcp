@@ -62,10 +62,35 @@ if (changedPackages.size === 0) {
 	process.exit(0);
 }
 
+const { stdout: changesetDiff } = await execFileAsync(
+	"git",
+	[
+		"diff",
+		"--name-status",
+		"--find-renames",
+		`${since}...HEAD`,
+		"--",
+		".changeset",
+	],
+	{ cwd: root },
+);
+const changedChangesetFiles = changesetDiff
+	.trim()
+	.split("\n")
+	.filter(Boolean)
+	.flatMap((line) => {
+		const [status, sourcePath, destinationPath] = line.split("\t");
+		if (status === "A" || status === "M") return [sourcePath];
+		if (status.startsWith("R") && status !== "R100") {
+			return [destinationPath];
+		}
+		return [];
+	})
+	.filter((file) => /^\.changeset\/[^/]+\.md$/.test(file));
+
 const changesetPackages = new Set();
 let changedChangesetCount = 0;
-for (const file of changedFiles) {
-	if (!/^\.changeset\/[^/]+\.md$/.test(file)) continue;
+for (const file of changedChangesetFiles) {
 	let contents;
 	try {
 		contents = await readFile(resolve(root, file), "utf8");

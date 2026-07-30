@@ -118,6 +118,24 @@ describe("package changeset coverage", () => {
 		);
 	});
 
+	it("does not let a rename-only changeset cover a PR package change", async () => {
+		const { base, root } = await createFixture({ existingChangeset: true });
+		await writeFixtureFile(
+			root,
+			"packages/example/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await git(root, "mv", ".changeset/existing.md", ".changeset/renamed.md");
+		await commitFixture(root);
+
+		const result = await runCheck(root, base);
+
+		expect(result.exitCode).not.toBe(0);
+		expect(result.stderr).toContain(
+			"Changed workspace packages need a changeset added or modified by this branch",
+		);
+	});
+
 	it("requires a changeset for deletion-only package changes", async () => {
 		const { base, root } = await createFixture();
 		await rm(join(root, "packages/example/src/index.js"));
