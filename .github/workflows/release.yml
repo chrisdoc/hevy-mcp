@@ -24,6 +24,7 @@ jobs:
     outputs:
       version: ${{ steps.release.outputs.version }}
       released: ${{ steps.release.outputs.released }}
+      worker_released: ${{ steps.release.outputs.worker_released }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -87,14 +88,23 @@ jobs:
         id: release
         run: |
           set -euo pipefail
+          worker_released=false
+          if ! git diff --quiet \
+            "${{ github.event.workflow_run.head_sha || github.sha }}^1" \
+            "${{ github.event.workflow_run.head_sha || github.sha }}" \
+            -- packages/worker/package.json; then
+            worker_released=true
+          fi
+
           if [ "${{ steps.changesets.outputs.published }}" = "true" ]; then
             VERSION=$(node -p 'const pkgs = JSON.parse(process.env.PKGS); pkgs.find((pkg) => pkg.name === "hevy-mcp")?.version || ""')
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "released=true" >> "$GITHUB_OUTPUT"
           else
             echo "version=" >> "$GITHUB_OUTPUT"
-            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "released=$worker_released" >> "$GITHUB_OUTPUT"
           fi
+          echo "worker_released=$worker_released" >> "$GITHUB_OUTPUT"
         env:
           PKGS: ${{ steps.changesets.outputs.publishedPackages }}
 
@@ -149,7 +159,9 @@ jobs:
   deploy-production:
     name: Deploy production Worker
     needs: release
-    if: needs.release.outputs.released == 'true'
+    if: >-
+      needs.release.outputs.released == 'true' ||
+      needs.release.outputs.worker_released == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: cloudflare-worker-production
