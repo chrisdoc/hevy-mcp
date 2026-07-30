@@ -25,8 +25,8 @@ import {
 const SEARCH_QUERY = "bench";
 const UNKNOWN_WORKOUT_ID = "00000000-0000-0000-0000-000000000000";
 
-export function buildWorkoutPageArgs(pageSize) {
-	return { page: 1, page_size: pageSize };
+export function buildWorkoutPageArgs(page, pageSize) {
+	return { page, page_size: pageSize };
 }
 
 function assertCondition(condition, schemaPath, kind = "schema") {
@@ -302,7 +302,7 @@ async function main() {
 				const { empty, parsed } = await callOrIgnoreEmpty(
 					client,
 					"get-workouts",
-					{ page: 1, page_size },
+					buildWorkoutPageArgs(1, pageSize),
 				);
 				if (empty) return;
 				assertCondition(Array.isArray(parsed), "$");
@@ -334,7 +334,7 @@ async function main() {
 				const { empty, parsed } = await callOrIgnoreEmpty(
 					client,
 					"get-workouts",
-					buildWorkoutPageArgs(10),
+					buildWorkoutPageArgs(page, 10),
 				);
 				if (empty || !Array.isArray(parsed) || parsed.length === 0) break;
 				fetchedCount += parsed.length;
