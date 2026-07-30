@@ -1,5 +1,7 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+import type {
+	McpServer,
+	ReadResourceResult,
+} from "@modelcontextprotocol/server";
 import type {
 	GetV1WorkoutsCount200,
 	RoutineFolder,

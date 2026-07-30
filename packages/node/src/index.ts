@@ -6,17 +6,18 @@ import {
 	tracer,
 	serviceName,
 	serviceVersion,
-	setCurrentUserHash,
+	setTelemetryUser,
 } from "./utils/telemetry.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { serverStartups } from "./utils/metrics.js";
 
 import { SpanStatusCode } from "@opentelemetry/api";
-import { createHmac } from "node:crypto";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { createHevyMcpServer } from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { assertApiKey, parseConfig } from "./utils/config.js";
+import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
+import { startStreamableHttpServer } from "./utils/streamable-http.js";
 import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import { createNodeHevyClientOptions } from "./utils/hevy-client-observability.js";
 import { createNodeToolObserver } from "./utils/tool-observer.js";
@@ -37,13 +38,19 @@ const HELP_TEXT = [
 	"Options:",
 	"  -h, --help                 Show this help message and exit",
 	"  -v, --version              Show version and exit",
+	"  --transport stdio|http     Select the transport (default: stdio)",
+	"  --host <host>              HTTP bind host (default: 127.0.0.1)",
+	"  --port <port>              HTTP bind port (default: 3000)",
 	"",
 	"Environment:",
 	"  HEVY_API_KEY=<api-key>     Hevy API key from Hevy app settings",
 	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
+	"  HEVY_MCP_HTTP_BEARER_TOKEN Protect non-loopback HTTP deployments",
+	"  HEVY_MCP_TELEMETRY=0     Disable all project telemetry",
 	"",
 	"Examples:",
 	"  HEVY_API_KEY=your-key npx hevy-mcp",
+	"  HEVY_API_KEY=your-key npx hevy-mcp --transport http --port 3000",
 ].join("\n");
 
 function getCliAction(args: string[]): "start" | "version" | "help" {
@@ -80,17 +87,6 @@ const SAFE_NETWORK_ERROR_CODES = new Set([
 	"HEVY_RETRY_EXHAUSTED",
 ]);
 
-const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
-
-function fingerprintApiKey(apiKey: string) {
-	// HMAC-SHA-256 gives Sentry and OTel a deterministic pseudonymous user
-	// hash without sending, logging, or storing the raw Hevy API key.
-	// Trimmed to 10 characters to keep it compact and readable in traces.
-	return createHmac("sha256", apiKey)
-		.update(SENTRY_USER_ID_CONTEXT)
-		.digest("hex")
-		.slice(0, 10);
-}
 const serverConfigSchema = z.object({
 	apiKey: z
 		.string()
@@ -163,14 +159,14 @@ async function validateApiKey(apiKey: string) {
 	}
 }
 
-function buildServer(apiKey: string) {
+function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
 	return tracer.startActiveSpan(
 		"mcp.server.build",
 		{
 			attributes: {
 				"mcp.server.name": name,
 				"mcp.server.version": version,
-				"mcp.transport": "stdio",
+				"mcp.transport": transport,
 			},
 		},
 		(span) => {
@@ -205,13 +201,14 @@ function buildServer(apiKey: string) {
 	);
 }
 
-export async function createNodeMcpServer({ apiKey }: { apiKey: string }) {
+export async function createNodeMcpServer(
+	{ apiKey }: { apiKey: string },
+	transport: NodeTransport = "stdio",
+) {
 	const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
-	const userHash = fingerprintApiKey(validatedApiKey);
-	setCurrentUserHash(userHash);
-	Sentry.setUser({ id: userHash });
+	setTelemetryUser(validatedApiKey);
 	await validateApiKey(validatedApiKey);
-	return buildServer(validatedApiKey);
+	return buildServer(validatedApiKey, transport);
 }
 
 export async function runStdioServer() {
@@ -233,12 +230,8 @@ export async function runStdioServer() {
 	// Seed the user context before config validation so startup failures for a
 	// supplied key retain the same trace correlation as normal tool calls.
 	const configuredApiKey = process.env.HEVY_API_KEY;
-	const initialUserHash = configuredApiKey
-		? fingerprintApiKey(configuredApiKey)
-		: undefined;
-	if (initialUserHash) {
-		setCurrentUserHash(initialUserHash);
-		Sentry.setUser({ id: initialUserHash });
+	if (configuredApiKey) {
+		setTelemetryUser(configuredApiKey);
 	}
 	let connectAttempted = false;
 
@@ -302,6 +295,66 @@ export async function runStdioServer() {
 				);
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
+			} finally {
+				span.end();
+			}
+		},
+	);
+}
+
+export async function runServer(): Promise<void> {
+	const args = process.argv.slice(2);
+	const cliAction = getCliAction(args);
+	if (cliAction === "version") {
+		console.error(`${name} v${version}`);
+		return;
+	}
+	if (cliAction === "help") {
+		console.log(HELP_TEXT);
+		return;
+	}
+
+	const options = parseNodeCliOptions(args);
+	if (options.transport === "stdio") {
+		await runStdioServer();
+		return;
+	}
+
+	await tracer.startActiveSpan(
+		"mcp.server.run",
+		{ attributes: { "mcp.transport": "http" } },
+		async (span) => {
+			let listening = false;
+			serverStartups.add(1, { version });
+			try {
+				const cfg = parseConfig(process.env);
+				assertApiKey(cfg.apiKey);
+				setTelemetryUser(cfg.apiKey);
+				await validateApiKey(cfg.apiKey);
+				const handle = await startStreamableHttpServer(
+					options,
+					cfg.apiKey,
+					(params) => Promise.resolve(buildServer(params.apiKey, "http")),
+				);
+				listening = true;
+				console.error(
+					`Starting MCP server in HTTP mode at ${options.host}:${options.port}/mcp`,
+				);
+				scheduleUpdateCheck({
+					packageName: serviceName,
+					currentVersion: serviceVersion,
+				});
+				installGracefulShutdown({
+					target: handle,
+					onComplete: async () => {
+						await flushTelemetry();
+					},
+				});
+				span.setStatus({ code: SpanStatusCode.OK });
+			} catch (error) {
+				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
+				span.setStatus({ code: SpanStatusCode.ERROR });
+				throw error;
 			} finally {
 				span.end();
 			}

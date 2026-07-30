@@ -1,9 +1,9 @@
-import { runStdioServer } from "./index.js";
+import { runServer } from "./index.js";
 import { MissingHevyApiKeyError } from "./utils/config.js";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { flushTelemetry } from "./utils/telemetry.js";
 
-void runStdioServer().catch(async (error) => {
+void runServer().catch(async (error) => {
 	if (error instanceof MissingHevyApiKeyError) {
 		console.error(error.message);
 	} else {

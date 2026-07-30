@@ -1,5 +1,35 @@
 # hevy-mcp
 
+## 4.1.3
+
+### Patch Changes
+
+- [#774](https://github.com/chrisdoc/hevy-mcp/pull/774) [`12ca7d5`](https://github.com/chrisdoc/hevy-mcp/commit/12ca7d5362024f06d8c2b0a42e84a92e2087a077) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Migrate the server runtimes and tests to MCP TypeScript SDK v2.
+
+## 4.1.2
+
+### Patch Changes
+
+- [#764](https://github.com/chrisdoc/hevy-mcp/pull/764) [`c2b7352`](https://github.com/chrisdoc/hevy-mcp/commit/c2b73527966454ccc8cd9fd475f132225fbf2af1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Update runtime dependency versions
+
+## 4.1.1
+
+### Patch Changes
+
+- [#762](https://github.com/chrisdoc/hevy-mcp/pull/762) [`187b93f`](https://github.com/chrisdoc/hevy-mcp/commit/187b93fb40c57e0827c89326ca9d01e660c608e9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add `HEVY_MCP_TELEMETRY=0` to disable all Node project telemetry while preserving telemetry by default.
+
+## 4.1.0
+
+### Minor Changes
+
+- [#758](https://github.com/chrisdoc/hevy-mcp/pull/758) [`f2b9bff`](https://github.com/chrisdoc/hevy-mcp/commit/f2b9bffbfe1c2fcc2a2f4fcf2a7b087849d49f67) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add opt-in Streamable HTTP transport to the Node package while preserving stdio as the default.
+
+## 4.0.1
+
+### Patch Changes
+
+- [#756](https://github.com/chrisdoc/hevy-mcp/pull/756) [`90756f6`](https://github.com/chrisdoc/hevy-mcp/commit/90756f69d850619baa0ef391e8e4f9fca579dca9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Include repository metadata in published package manifests for npm provenance validation.
+
 ## 4.0.0
 
 ### Major Changes

@@ -210,6 +210,16 @@ try {
 		throw new Error("npm pack did not produce a real Node workspace tarball");
 	}
 	const tarball = join(tempDir, tarballName);
+	const packedManifest = JSON.parse(
+		spawnSync("tar", ["-xOf", tarball, "package/package.json"], {
+			encoding: "utf8",
+		}).stdout,
+	);
+	if (
+		packedManifest.repository?.url !== "https://github.com/chrisdoc/hevy-mcp"
+	) {
+		throw new Error("Package repository metadata missing");
+	}
 	const installDir = join(tempDir, "consumer");
 	mkdirSync(installDir, { recursive: true });
 	runNpm(["init", "--yes"], { cwd: installDir, stdio: "pipe" });

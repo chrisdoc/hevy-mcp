@@ -7,6 +7,10 @@
 		".": {
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
+		},
+		"./mutations": {
+			"types": "./src/mutations.ts",
+			"import": "./src/mutations.ts"
 		}
 	},
 	"scripts": {
@@ -15,7 +19,10 @@
 	},
 	"dependencies": {
 		"@hevy-mcp/hevy-client": "*",
-		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@modelcontextprotocol/server": "^2.0.0",
 		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@modelcontextprotocol/client": "^2.0.0"
 	}
 }

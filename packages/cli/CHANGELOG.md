@@ -1,5 +1,23 @@
 # @chrisdoc/hevy-cli
 
+## 0.2.0
+
+### Minor Changes
+
+- [#772](https://github.com/chrisdoc/hevy-mcp/pull/772) [`76981a1`](https://github.com/chrisdoc/hevy-mcp/commit/76981a12b2ec125d748e22b00ec975a9d49bd951) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add create and update commands for Hevy resources.
+
+## 0.1.2
+
+### Patch Changes
+
+- [#761](https://github.com/chrisdoc/hevy-mcp/pull/761) [`205cbff`](https://github.com/chrisdoc/hevy-mcp/commit/205cbffe060fa4d74dac349ac1cc9d2c7f6505cc) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Build the CLI bundle during npm packaging so published installs include the `hevy` executable.
+
+## 0.1.1
+
+### Patch Changes
+
+- [#756](https://github.com/chrisdoc/hevy-mcp/pull/756) [`90756f6`](https://github.com/chrisdoc/hevy-mcp/commit/90756f69d850619baa0ef391e8e4f9fca579dca9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Include repository metadata in published package manifests for npm provenance validation.
+
 ## 0.1.0
 
 ### Minor Changes
