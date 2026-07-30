@@ -372,20 +372,23 @@ tests, refactors, and other no-release changes, create an empty changeset:
 npx changeset --empty
 ```
 
-Worker-only runtime changes should use a patch changeset for the private
-`@hevy-mcp/worker` package. The package is versioned to make the deployment
-explicit, but remains private and is never published to npm:
+Runtime changes in the private workspaces should use a patch changeset for the
+affected package: `@hevy-mcp/hevy-client`, `@hevy-mcp/core`, or
+`@hevy-mcp/worker`. These packages are versioned for internal release and
+deployment tracking, but remain private and are never published to npm:
 
 ```md
 ---
-"@hevy-mcp/worker": patch
+"@hevy-mcp/core": patch
 ---
 
-Describe the Worker change here.
+Describe the internal runtime change here.
 ```
 
-The release workflow deploys production when either a public package is
-published or the Worker package version changes in a Changesets release.
+The release workflow publishes public packages as usual and versions private
+runtime workspaces without publishing them. Production Worker deployment is
+triggered when either a public package is published or the Worker package
+version changes in a Changesets release.
 
 Validate the branch against `origin/main`:
 
