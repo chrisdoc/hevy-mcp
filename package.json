@@ -80,9 +80,9 @@
 		"version:major": "npm version major",
 		"release": "changeset publish",
 		"commit": "commit",
-		"worker:dev": "wrangler dev",
-		"worker:deploy": "wrangler deploy",
-		"worker:dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run && node scripts/check-worker-bundle.mjs"
+		"worker:dev": "wrangler dev --x-new-config",
+		"worker:deploy": "cross-env WRANGLER_MODE=production wrangler deploy --x-new-config --env production",
+		"worker:dry-run": "wrangler deploy --x-new-config --dry-run --outdir .wrangler/dry-run && node scripts/check-worker-bundle.mjs"
 	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^0.7.0",
