@@ -4,10 +4,9 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const workspaceRoot = resolve(root, "packages");
 const changesetRoot = resolve(root, ".changeset");
-const privatePackages = new Set([
+const unsupportedPrivatePackages = new Set([
 	"@hevy-mcp/hevy-client",
 	"@hevy-mcp/core",
-	"@hevy-mcp/worker",
 ]);
 
 const workspaceEntries = await readdir(workspaceRoot, { withFileTypes: true });
@@ -34,7 +33,7 @@ const changesetEntries = await readdir(changesetRoot, { withFileTypes: true });
 for (const entry of changesetEntries) {
 	if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
 	const contents = await readFile(resolve(changesetRoot, entry.name), "utf8");
-	for (const packageName of privatePackages) {
+	for (const packageName of unsupportedPrivatePackages) {
 		if (contents.includes(`"${packageName}"`)) {
 			throw new Error(
 				`Private workspace ${packageName} is a release candidate in ${entry.name}`,
@@ -44,5 +43,5 @@ for (const entry of changesetEntries) {
 }
 
 console.log(
-	"Release candidates are limited to @chrisdoc/hevy-cli and hevy-mcp.",
+	"Publishable release candidates are limited to @chrisdoc/hevy-cli and hevy-mcp; @hevy-mcp/worker is deployment-only.",
 );
