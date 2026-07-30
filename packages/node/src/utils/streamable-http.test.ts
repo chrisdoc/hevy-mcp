@@ -1,5 +1,5 @@
 import { request, type Server } from "node:http";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { startStreamableHttpServer } from "./streamable-http.js";
 

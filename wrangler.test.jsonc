@@ -1,0 +1,14 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "hevy-mcp-test",
+	"main": "packages/worker/src/worker.ts",
+	"compatibility_date": "2026-07-11",
+	"compatibility_flags": ["global_fetch_strictly_public"],
+	"workers_dev": true,
+	"kv_namespaces": [
+		{
+			"binding": "OAUTH_KV",
+			"id": "00000000000000000000000000000000",
+		},
+	],
+}

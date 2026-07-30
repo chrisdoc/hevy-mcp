@@ -1,7 +1,6 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
+import type { Tool } from "@modelcontextprotocol/server";
+import { Client } from "@modelcontextprotocol/client";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { get_encoding } from "tiktoken";

@@ -1,9 +1,9 @@
-/* oxlint-disable typescript/unbound-method */
 import type {
 	McpServer,
-	ReadResourceCallback,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+	ReadResourceResult,
+} from "@modelcontextprotocol/server";
+
+/* oxlint-disable typescript/unbound-method */
 import { describe, expect, it, vi } from "vitest";
 import type {
 	ExerciseTemplate,
@@ -54,6 +54,17 @@ function createMockServer() {
 	return { registerResource, server, tool };
 }
 
+function createTestContext(id: number) {
+	return {
+		mcpReq: {
+			signal: AbortSignal.timeout(1000),
+			id,
+			notify: vi.fn(),
+			send: vi.fn(),
+		},
+	};
+}
+
 function getResourceRegistration(
 	registerResource: ReturnType<typeof vi.fn>,
 	name: string,
@@ -68,7 +79,10 @@ function getResourceRegistration(
 	return {
 		uri: match[1] as string,
 		metadata: match[2] as { description?: string; mimeType?: string },
-		handler: match[3] as ReadResourceCallback,
+		handler: match[3] as (
+			uri: URL,
+			ctx: unknown,
+		) => Promise<ReadResourceResult>,
 	};
 }
 
@@ -160,12 +174,7 @@ describe("registerHevyResources", () => {
 		);
 		const userResult = await userRegistration.handler(
 			new URL(userRegistration.uri),
-			{
-				signal: AbortSignal.timeout(1000),
-				requestId: 1,
-				sendNotification: vi.fn(),
-				sendRequest: vi.fn(),
-			},
+			createTestContext(1),
 		);
 		const userContent = parseJsonContent(userResult);
 		expect(userContent.content).toMatchObject({
@@ -184,12 +193,7 @@ describe("registerHevyResources", () => {
 		);
 		const countResult = await countRegistration.handler(
 			new URL(countRegistration.uri),
-			{
-				signal: AbortSignal.timeout(1000),
-				requestId: 2,
-				sendNotification: vi.fn(),
-				sendRequest: vi.fn(),
-			},
+			createTestContext(2),
 		);
 		expect(parseJsonContent(countResult).data).toEqual({ count: 42 });
 	});
@@ -228,12 +232,10 @@ describe("registerHevyResources", () => {
 			registerResource,
 			"routine-folders",
 		);
-		const result = await registration.handler(new URL(registration.uri), {
-			signal: AbortSignal.timeout(1000),
-			requestId: 3,
-			sendNotification: vi.fn(),
-			sendRequest: vi.fn(),
-		});
+		const result = await registration.handler(
+			new URL(registration.uri),
+			createTestContext(3),
+		);
 
 		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(1, {
 			page: 1,
@@ -271,12 +273,10 @@ describe("registerHevyResources", () => {
 			"routine-folders",
 		);
 
-		const result = await registration.handler(new URL(registration.uri), {
-			signal: AbortSignal.timeout(1000),
-			requestId: 7,
-			sendNotification: vi.fn(),
-			sendRequest: vi.fn(),
-		});
+		const result = await registration.handler(
+			new URL(registration.uri),
+			createTestContext(7),
+		);
 
 		expect(getRoutineFolders).toHaveBeenCalledOnce();
 		expect(parseJsonContent(result).data).toEqual([
@@ -296,12 +296,10 @@ describe("registerHevyResources", () => {
 			"routine-folders",
 		);
 
-		const result = await registration.handler(new URL(registration.uri), {
-			signal: AbortSignal.timeout(1000),
-			requestId: 8,
-			sendNotification: vi.fn(),
-			sendRequest: vi.fn(),
-		});
+		const result = await registration.handler(
+			new URL(registration.uri),
+			createTestContext(8),
+		);
 
 		expect(getRoutineFolders).toHaveBeenCalledOnce();
 		expect(parseJsonContent(result).data).toEqual([]);
@@ -333,12 +331,10 @@ describe("registerHevyResources", () => {
 			registerResource,
 			"exercise-templates",
 		);
-		const resourcePromise = registration.handler(new URL(registration.uri), {
-			signal: AbortSignal.timeout(1000),
-			requestId: 4,
-			sendNotification: vi.fn(),
-			sendRequest: vi.fn(),
-		});
+		const resourcePromise = registration.handler(
+			new URL(registration.uri),
+			createTestContext(4),
+		);
 		const searchPromise = getToolHandler(
 			tool,
 			"search-exercise-templates",
@@ -374,12 +370,10 @@ describe("registerHevyResources", () => {
 			"user-profile",
 		);
 		await expect(
-			userRegistration.handler(new URL(userRegistration.uri), {
-				signal: AbortSignal.timeout(1000),
-				requestId: 5,
-				sendNotification: vi.fn(),
-				sendRequest: vi.fn(),
-			}),
+			userRegistration.handler(
+				new URL(userRegistration.uri),
+				createTestContext(5),
+			),
 		).rejects.toThrow("API client not initialized");
 
 		const apiFailure = new Error("Hevy API unavailable");
@@ -395,12 +389,10 @@ describe("registerHevyResources", () => {
 			"workout-count",
 		);
 		await expect(
-			countRegistration.handler(new URL(countRegistration.uri), {
-				signal: AbortSignal.timeout(1000),
-				requestId: 6,
-				sendNotification: vi.fn(),
-				sendRequest: vi.fn(),
-			}),
+			countRegistration.handler(
+				new URL(countRegistration.uri),
+				createTestContext(6),
+			),
 		).rejects.toBe(apiFailure);
 	});
 });

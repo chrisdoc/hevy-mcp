@@ -1,5 +1,6 @@
+import type { McpServer } from "@modelcontextprotocol/server";
+
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { BodyMeasurement } from "@hevy-mcp/hevy-client/types";
@@ -36,10 +37,12 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
 	const config = match[1] as
-		| { inputSchema?: Record<string, z.ZodTypeAny>; outputSchema?: unknown }
+		| { inputSchema?: z.ZodTypeAny; outputSchema?: unknown }
 		| undefined;
-	const schema =
-		config?.inputSchema ?? (match[2] as Record<string, z.ZodTypeAny>);
+	const schema = config?.inputSchema;
+	if (!schema) {
+		throw new Error(`Tool ${name} has no input schema`);
+	}
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
@@ -330,11 +333,11 @@ describe("bodyMeasurementToolDefinitions", () => {
 		registerBodyMeasurementDefinitions(server, {} as unknown as HevyClient);
 		const { schema } = getToolRegistration(tool, "create-body-measurement");
 
-		const parsed = z.object(schema).parse({
+		const parsed = schema.parse({
 			date: "2025-04-01",
 			weightKg: "81.5",
 			waist: "82",
-		});
+		}) as { weightKg?: number; waist?: number };
 
 		expect(parsed.weightKg).toBe(81.5);
 		expect(parsed.waist).toBe(82);
@@ -345,10 +348,10 @@ describe("bodyMeasurementToolDefinitions", () => {
 		registerBodyMeasurementDefinitions(server, {} as unknown as HevyClient);
 		const { schema } = getToolRegistration(tool, "create-body-measurement");
 
-		const parsed = z.object(schema).parse({
+		const parsed = schema.parse({
 			date: "2025-04-01",
 			weightKg: "",
-		});
+		}) as { weightKg?: number };
 
 		expect(parsed.weightKg).toBeUndefined();
 	});
@@ -385,13 +388,13 @@ describe("bodyMeasurementToolDefinitions", () => {
 		registerBodyMeasurementDefinitions(server, {} as unknown as HevyClient);
 		const { schema } = getToolRegistration(tool, "update-body-measurement");
 
-		const dateOnly = z.object(schema).parse({ date: "2025-04-01" });
+		const dateOnly = schema.parse({ date: "2025-04-01" }) as { date: string };
 		expect(dateOnly).toEqual({ date: "2025-04-01" });
 
-		const withNull = z.object(schema).parse({
+		const withNull = schema.parse({
 			date: "2025-04-01",
 			weightKg: null,
-		});
+		}) as { weightKg?: number | null };
 		expect(withNull.weightKg).toBeNull();
 	});
 });

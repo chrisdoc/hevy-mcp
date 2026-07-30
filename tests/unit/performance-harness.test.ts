@@ -37,11 +37,11 @@ const harnessMocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
+vi.mock("@modelcontextprotocol/client", () => ({
 	Client: harnessMocks.Client,
 }));
 
-vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+vi.mock("@modelcontextprotocol/client/stdio", () => ({
 	StdioClientTransport: harnessMocks.StdioClientTransport,
 }));
 

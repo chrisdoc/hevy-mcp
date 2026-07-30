@@ -470,12 +470,24 @@ complete the authorization flow in the browser. Direct
 OAuth layer is purely additive — and rotating your Hevy API key invalidates
 every OAuth grant created with it.
 
+OAuth access tokens last seven days and refresh tokens last 30 days. This
+reduces KV writes from frequent hourly refreshes while preserving automatic
+refresh for supported clients.
+
 The endpoint does not expose legacy SSE or a `GET` event stream. Without the
 opt-in OAuth layer, clients that require OAuth discovery, dynamic
 registration, or token refresh are not compatible unless they can send the
 fixed custom header above.
 
 ### Self-host the Worker
+
+A clean clone can deploy the portable TypeScript Wrangler configuration with
+`npx wrangler deploy --x-new-config` and receive a `workers.dev` URL. OAuth
+requires your own `OAUTH_KV` namespace; custom domains, routes, and
+observability destinations are optional account-owned settings. See
+[CONTRIBUTING.md](./CONTRIBUTING.md#cloudflare-worker-development) for setup and
+for the distinction between self-hosting and the maintainer-only named
+environments.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) to deploy the Cloudflare Worker for
 self-hosted Streamable HTTP.

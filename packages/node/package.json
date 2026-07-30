@@ -1,6 +1,6 @@
 {
 	"name": "hevy-mcp",
-	"version": "4.1.2",
+	"version": "4.1.4",
 	"private": false,
 	"description": "A Model Context Protocol (MCP) server implementation that interfaces with the Hevy fitness tracking app and its API.",
 	"repository": {
@@ -34,7 +34,8 @@
 		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown -c tsdown.config.ts"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@modelcontextprotocol/node": "^2.0.0",
+		"@modelcontextprotocol/server": "^2.0.0",
 		"@opentelemetry/api": "^1.9.1",
 		"@opentelemetry/exporter-metrics-otlp-http": "^0.221.0",
 		"@opentelemetry/exporter-trace-otlp-http": "^0.221.0",

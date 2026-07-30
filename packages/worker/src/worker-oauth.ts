@@ -11,6 +11,14 @@ const AUTHORIZE_PATH = "/authorize";
 const TOKEN_PATH = "/token";
 const REGISTER_PATH = "/register";
 
+// OAuth token issuance is persisted in KV. A one-hour access token can cause
+// clients to refresh several times per day, and every refresh writes both the
+// grant and a new access token. Keep refresh tokens enabled for client UX, but
+// make normal sessions long-lived enough to stay well below KV's free-plan
+// write quota.
+export const OAUTH_ACCESS_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+export const OAUTH_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+
 /** Outcome of checking a Hevy API key against the upstream Hevy API. */
 export type HevyApiKeyValidation =
 	| "valid"
@@ -446,6 +454,8 @@ export function createHevyOAuthProvider<Env extends object>(
 		tokenEndpoint: TOKEN_PATH,
 		clientRegistrationEndpoint: REGISTER_PATH,
 		scopesSupported: ["mcp"],
+		accessTokenTTL: OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+		refreshTokenTTL: OAUTH_REFRESH_TOKEN_TTL_SECONDS,
 		clientIdMetadataDocumentEnabled: true,
 		allowPlainPKCE: false,
 		resourceMetadata: { resource_name: "Hevy MCP Server" },

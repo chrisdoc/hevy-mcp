@@ -1,10 +1,8 @@
+import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
+import { Client } from "@modelcontextprotocol/client";
+
 // Environment variables are loaded via Node.js native --env-file flag (Node.js 20.6+)
 // or set directly in the environment before running tests.
-
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createHevyClient } from "../../packages/hevy-client/src/hevy-client.js";
@@ -198,19 +196,16 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		it("should be able to get workouts", async () => {
 			if (!client) throw new Error("Client not initialized");
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-workouts",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
+			const result = await client.request({
+				method: "tools/call",
+				params: {
+					name: "get-workouts",
+					arguments: {
+						page: 1,
+						pageSize: 5,
 					},
 				},
-				CallToolResultSchema,
-			);
+			});
 
 			expect(result).toBeDefined();
 			const firstContent = result.content[0];
@@ -236,19 +231,16 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		it("should be able to get routines", async () => {
 			if (!client) throw new Error("Client not initialized");
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-routines",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
+			const result = await client.request({
+				method: "tools/call",
+				params: {
+					name: "get-routines",
+					arguments: {
+						page: 1,
+						pageSize: 5,
 					},
 				},
-				CallToolResultSchema,
-			);
+			});
 
 			expect(result).toBeDefined();
 			const firstContent = result.content[0];
@@ -273,19 +265,16 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		it("should be able to get exercise templates", async () => {
 			if (!client) throw new Error("Client not initialized");
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-exercise-templates",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
+			const result = await client.request({
+				method: "tools/call",
+				params: {
+					name: "get-exercise-templates",
+					arguments: {
+						page: 1,
+						pageSize: 5,
 					},
 				},
-				CallToolResultSchema,
-			);
+			});
 
 			expect(result).toBeDefined();
 			const firstContent = result.content[0];
@@ -309,19 +298,16 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		it("should be able to get routine folders", async () => {
 			if (!client) throw new Error("Client not initialized");
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-routine-folders",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
+			const result = await client.request({
+				method: "tools/call",
+				params: {
+					name: "get-routine-folders",
+					arguments: {
+						page: 1,
+						pageSize: 5,
 					},
 				},
-				CallToolResultSchema,
-			);
+			});
 
 			expect(result).toBeDefined();
 			const firstContent = result.content[0];
@@ -346,16 +332,13 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		it("should be able to get user info", async () => {
 			if (!client) throw new Error("Client not initialized");
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-user-info",
-						arguments: {},
-					},
+			const result = await client.request({
+				method: "tools/call",
+				params: {
+					name: "get-user-info",
+					arguments: {},
 				},
-				CallToolResultSchema,
-			);
+			});
 
 			expect(result).toBeDefined();
 			const firstContent = result.content[0];
@@ -376,19 +359,16 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		it("should be able to get body measurements", async () => {
 			if (!client) throw new Error("Client not initialized");
 
-			const result = await client.request(
-				{
-					method: "tools/call",
-					params: {
-						name: "get-body-measurements",
-						arguments: {
-							page: 1,
-							pageSize: 5,
-						},
+			const result = await client.request({
+				method: "tools/call",
+				params: {
+					name: "get-body-measurements",
+					arguments: {
+						page: 1,
+						pageSize: 5,
 					},
 				},
-				CallToolResultSchema,
-			);
+			});
 
 			expect(result).toBeDefined();
 			const firstContent = result.content[0];

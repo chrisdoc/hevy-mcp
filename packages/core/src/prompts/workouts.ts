@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { utcSecondTimestamp } from "../utils/schemas.js";
 import type { ToolObserver } from "../observation.js";
@@ -14,7 +14,7 @@ export function registerWorkoutPrompts(
 		{
 			title: "Analyze Workout Progress",
 			description: "Analyze recent workout and body-measurement trends.",
-			argsSchema: {
+			argsSchema: z.object({
 				weeks: z.coerce
 					.number()
 					.int()
@@ -23,7 +23,7 @@ export function registerWorkoutPrompts(
 					.default(4)
 					.optional()
 					.describe("Number of recent weeks to analyze (1-12)."),
-			},
+			}),
 		},
 		withPromptObservation(
 			"analyze-workout-progress",
@@ -56,7 +56,7 @@ export function registerWorkoutPrompts(
 		{
 			title: "Create Workout From Routine",
 			description: "Create a completed workout from an existing routine.",
-			argsSchema: {
+			argsSchema: z.object({
 				routineId: z
 					.string()
 					.min(1)
@@ -65,7 +65,7 @@ export function registerWorkoutPrompts(
 				startTime: utcSecondTimestamp
 					.optional()
 					.describe("Workout start time in UTC as YYYY-MM-DDTHH:mm:ssZ."),
-			},
+			}),
 		},
 		withPromptObservation(
 			"create-workout-from-routine",

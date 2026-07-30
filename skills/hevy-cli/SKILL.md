@@ -132,9 +132,10 @@ with a read before deciding whether to retry. A duplicate measurement date is
 an API conflict (HTTP 409). HTTP 403 is a generic API failure because Hevy also
 uses it for routine and custom-exercise quotas.
 
-When HTTP 403 occurs, tell the user it may indicate either an invalid API key
-or an exceeded routine/custom-exercise quota. Advise them to check both before
-deciding what to do next.
+When HTTP 403 occurs, report it as a generic API failure rather than an invalid
+API key. Check the operation's permissions and routine/custom-exercise quota.
+HTTP 401 is the authentication failure that should prompt checking
+`HEVY_API_KEY`.
 
 Successful `--json` commands write one JSON value plus newline to stdout.
 Errors write one sanitized line to stderr. Exit codes:

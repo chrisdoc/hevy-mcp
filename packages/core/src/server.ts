@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
 import { registerRoutinePrompts } from "./prompts/routines.js";
 import { registerWorkoutPrompts } from "./prompts/workouts.js";
@@ -29,24 +29,13 @@ function createCountingServer(server: McpServer) {
 	let count = 0;
 	const countingServer = new Proxy(server, {
 		get(target, property, receiver) {
-			if (property === "tool") {
-				return (...args: Parameters<McpServer["tool"]>) => {
-					const result = target.tool(...args);
-					count += 1;
-					return result;
-				};
-			}
 			if (property === "registerTool") {
-				const registerTool: McpServer["registerTool"] = (
-					name,
-					config,
-					callback,
-				) => {
-					const result = target.registerTool(name, config, callback);
+				const registerTool = target.registerTool.bind(target);
+				return (...args: unknown[]) => {
+					const result = Reflect.apply(registerTool, target, args);
 					count += 1;
 					return result;
 				};
-				return registerTool;
 			}
 			return Reflect.get(target, property, receiver);
 		},

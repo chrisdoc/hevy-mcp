@@ -7,8 +7,9 @@ import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import { createExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { templateToolDefinitions } from "./templates.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
 function createMockServer() {
 	const tool = vi.fn();
 	const server = { tool, registerTool: tool } as unknown as McpServer;

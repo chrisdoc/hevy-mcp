@@ -231,7 +231,7 @@ of every tool, resource, and prompt. For each applicable item it must validate:
   warnings, debug data, and traces go to stderr.
 - Stateful multi-call scenarios cover cache warm-up, repeated reads, invalidation
   where supported, cross-test/client isolation, concurrency, and cleanup.
-- Every `@modelcontextprotocol/sdk` upgrade is gated by MCP contract, built stdio,
+- Every MCP TypeScript SDK upgrade is gated by MCP contract, built stdio,
   and `packages/node/src/utils/stdio-observability.test.ts` because that module intentionally
   isolates private SDK stdio internals.
 
