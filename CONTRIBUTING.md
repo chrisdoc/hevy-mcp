@@ -339,7 +339,9 @@ unchanged.
 Internal pull requests receive preview Worker deployments through
 `.github/workflows/deploy-worker.yml`. Fork pull requests do not receive
 deployment credentials. Production deployment remains gated by the repository's
-trusted CI/release workflows.
+trusted release workflow: the Changesets workflow deploys only after it has
+published a release. A successful `main` build or a Version Packages PR
+creation does not deploy the production Worker.
 
 PR previews use a dedicated non-production OAuth KV namespace, so preview
 grants never share production OAuth state.
@@ -369,6 +371,21 @@ tests, refactors, and other no-release changes, create an empty changeset:
 ```bash
 npx changeset --empty
 ```
+
+Worker-only runtime changes should use a patch changeset for the private
+`@hevy-mcp/worker` package. The package is versioned to make the deployment
+explicit, but remains private and is never published to npm:
+
+```md
+---
+"@hevy-mcp/worker": patch
+---
+
+Describe the Worker change here.
+```
+
+The release workflow deploys production when either a public package is
+published or the Worker package version changes in a Changesets release.
 
 Validate the branch against `origin/main`:
 
