@@ -1,5 +1,13 @@
 # hevy-mcp
 
+## 5.0.0
+
+### Major Changes
+
+- [#775](https://github.com/chrisdoc/hevy-mcp/pull/775) [`9518fcc`](https://github.com/chrisdoc/hevy-mcp/commit/9518fccc98f3843303d51436469db57a1898beb6) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Compact the MCP tool catalog and structured responses while preserving direct tool workflows.
+
+- [#778](https://github.com/chrisdoc/hevy-mcp/pull/778) [`dcfc058`](https://github.com/chrisdoc/hevy-mcp/commit/dcfc058723327e7ca02f2e0d84ace5247ecfd6ac) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Change `update-workout` to patch workout metadata without replacing exercises, and add `replace-workout-exercises` for explicit exercise replacement.
+
 ## 4.1.4
 
 ### Patch Changes

@@ -117,6 +117,7 @@ dist
 # Serverless directories
 .serverless/
 .wrangler/
+worker-configuration.d.ts
 
 # FuseBox cache
 .fusebox/
