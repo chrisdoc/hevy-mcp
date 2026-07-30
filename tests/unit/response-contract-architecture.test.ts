@@ -20,8 +20,8 @@ const toolSources = definitionFiles
 	.join("\n");
 describe("tool response architecture", () => {
 	it("requires every definition to provide a response contract", () => {
-		expect(toolSources.match(/responseContract:/g)).toHaveLength(25);
-		expect(toolSources.match(/execute:/g)).toHaveLength(25);
+		expect(toolSources.match(/responseContract:/g)).toHaveLength(26);
+		expect(toolSources.match(/execute:/g)).toHaveLength(26);
 		expect(toolSources).not.toMatch(/return respond\(/);
 		expect(toolSources).not.toMatch(
 			/create(?:Json|StructuredJson|Empty|StructuredEmpty|Text)Response/,

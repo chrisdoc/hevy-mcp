@@ -3,7 +3,7 @@
  */
 
 import { ErrorType, resolveErrorPolicy } from "./error-policy.js";
-import type { McpToolResponse } from "./response-formatter.js";
+import type { McpToolResponse } from "./response-contracts.js";
 import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "./tool-helpers.js";
 
 export { ErrorType } from "./error-policy.js";

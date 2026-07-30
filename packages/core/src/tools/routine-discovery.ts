@@ -2,27 +2,18 @@ import { z } from "zod";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
 import {
 	compactRoutinesResponse,
+	summarizeRoutine,
 	type CompactRoutinesResult,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 
 const routineDiscoverySchema = {
-	query: z
-		.string()
-		.min(1)
-		.optional()
-		.describe("Optional case-insensitive substring to match routine titles."),
-	limit: z.coerce
-		.number()
-		.int()
-		.min(1)
-		.max(100)
-		.default(20)
-		.describe("Maximum compact routines to return (1-100)."),
+	query: z.string().min(1).optional(),
+	limit: z.coerce.number().int().min(1).max(100).default(20),
 } as const;
 
 type RoutineDiscoveryParams = InferToolParams<typeof routineDiscoverySchema>;
@@ -69,18 +60,7 @@ async function discoverRoutines(
 	}
 
 	return {
-		routines: routines.slice(0, limit).map((routine) => ({
-			...(routine.id ? { id: routine.id } : {}),
-			...(routine.title ? { title: routine.title } : {}),
-			folderId: routine.folder_id ?? null,
-			...(routine.updated_at ? { updatedAt: routine.updated_at } : {}),
-			exerciseCount: routine.exercises?.length ?? 0,
-			setCount:
-				routine.exercises?.reduce(
-					(total, exercise) => total + (exercise.sets?.length ?? 0),
-					0,
-				) ?? 0,
-		})),
+		routines: routines.slice(0, limit).map(summarizeRoutine),
 		workflow: {
 			name: "routine-discovery",
 			pagination: { routines: pages },
@@ -95,15 +75,8 @@ export const routineDiscoveryToolDefinitions = [
 		name: "search-routines",
 		feature: "workflows" as const,
 		operation: "search" as const,
-		description: describeTool({
-			summary:
-				"Read-only. Discovers routines by title and returns compact metadata without full set payloads.",
-			aliases: ["find routine", "browse routine names", "compact routine list"],
-			useCase:
-				"Use to find a routine ID or shortlist plans before calling get-routine for full exercise details.",
-			importantNotes:
-				"Search scans routine pages at pageSize 10 and returns only IDs, titles, folder metadata, and exercise/set counts.",
-		}),
+		description:
+			"Read-only. Searches routine titles and returns compact IDs and counts. Use get-routine for full exercises and sets.",
 		inputSchema: routineDiscoverySchema,
 		outputSchema: compactRoutinesResponse.outputSchema,
 		annotations: readOnlyAnnotations("Search Routines"),

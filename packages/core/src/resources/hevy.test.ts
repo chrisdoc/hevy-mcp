@@ -10,10 +10,7 @@ import type {
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import {
-	formatExerciseTemplate,
-	formatRoutineFolder,
-} from "../utils/response-formatter.js";
+import { projectRoutineFolder } from "../utils/response-contracts.js";
 import {
 	createExerciseTemplateCatalog,
 	type ExerciseTemplateCatalog,
@@ -195,7 +192,7 @@ describe("registerHevyResources", () => {
 			new URL(countRegistration.uri),
 			createTestContext(2),
 		);
-		expect(parseJsonContent(countResult).data).toEqual({ count: 42 });
+		expect(parseJsonContent(countResult).data).toEqual({ workout_count: 42 });
 	});
 
 	it("fetches and formats all routine folder pages", async () => {
@@ -204,12 +201,14 @@ describe("registerHevyResources", () => {
 			title: "First",
 			created_at: "2025-01-01T00:00:00Z",
 			updated_at: "2025-01-01T00:00:00Z",
+			index: 0,
 		};
 		const secondFolder: RoutineFolder = {
 			id: 2,
 			title: "Second",
 			created_at: "2025-01-02T00:00:00Z",
 			updated_at: "2025-01-02T00:00:00Z",
+			index: 1,
 		};
 		const { registerResource, server } = createMockServer();
 		const hevyClient = {
@@ -245,10 +244,12 @@ describe("registerHevyResources", () => {
 			page: 2,
 			pageSize: 10,
 		});
-		expect(parseJsonContent(result).data).toEqual([
-			formatRoutineFolder(firstFolder),
-			formatRoutineFolder(secondFolder),
+		const serializedFolders = parseJsonContent(result).data;
+		expect(serializedFolders).toEqual([
+			projectRoutineFolder(firstFolder),
+			projectRoutineFolder(secondFolder),
 		]);
+		expect(JSON.stringify(serializedFolders)).not.toContain('"index"');
 	});
 
 	it("stops safely when routine folder pagination metadata is malformed", async () => {
@@ -280,7 +281,7 @@ describe("registerHevyResources", () => {
 
 		expect(getRoutineFolders).toHaveBeenCalledOnce();
 		expect(parseJsonContent(result).data).toEqual([
-			formatRoutineFolder(folder),
+			projectRoutineFolder(folder),
 		]);
 	});
 
@@ -354,11 +355,9 @@ describe("registerHevyResources", () => {
 			resourcePromise,
 			searchPromise,
 		]);
-		expect(parseJsonContent(resourceResult).data).toEqual([
-			formatExerciseTemplate(benchTemplate),
-		]);
+		expect(parseJsonContent(resourceResult).data).toEqual([benchTemplate]);
 		expect(JSON.parse(searchResult.content[0]?.text ?? "null")).toEqual([
-			formatExerciseTemplate(benchTemplate),
+			benchTemplate,
 		]);
 	});
 

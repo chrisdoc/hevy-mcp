@@ -157,12 +157,14 @@ describe("CLI mutation process contract", () => {
 
 	it("routes all eight mutations through runCli", async () => {
 		const workout = {
-			title: "Push",
-			startTime: "2024-01-01T10:00:00Z",
-			endTime: "2024-01-01T11:00:00Z",
-			exercises: [],
+			workout: {
+				title: "Push",
+				start_time: "2024-01-01T10:00:00Z",
+				end_time: "2024-01-01T11:00:00Z",
+				exercises: [],
+			},
 		};
-		const routine = { title: "Strength", exercises: [] };
+		const routine = { routine: { title: "Strength", exercises: [] } };
 		const json = (value: unknown) => JSON.stringify(value);
 		const commands = [
 			["workouts", "create", "--data", json(workout), "--yes", "--json"],
@@ -171,7 +173,7 @@ describe("CLI mutation process contract", () => {
 				"update",
 				"workout-1",
 				"--data",
-				json(workout),
+				json({ workout_id: "workout-1", ...workout }),
 				"--yes",
 				"--json",
 			],
@@ -181,7 +183,7 @@ describe("CLI mutation process contract", () => {
 				"update",
 				"routine-1",
 				"--data",
-				json(routine),
+				json({ routine_id: "routine-1", ...routine }),
 				"--yes",
 				"--json",
 			],
@@ -190,10 +192,12 @@ describe("CLI mutation process contract", () => {
 				"create",
 				"--data",
 				json({
-					title: "Cable Row",
-					exerciseType: "weight_reps",
-					equipmentCategory: "machine",
-					muscleGroup: "upper_back",
+					exercise: {
+						title: "Cable Row",
+						exercise_type: "weight_reps",
+						equipment_category: "machine",
+						muscle_group: "upper_back",
+					},
 				}),
 				"--yes",
 				"--json",
@@ -202,7 +206,7 @@ describe("CLI mutation process contract", () => {
 				"folders",
 				"create",
 				"--data",
-				json({ name: "Strength" }),
+				json({ routine_folder: { title: "Strength" } }),
 				"--yes",
 				"--json",
 			],
@@ -211,7 +215,7 @@ describe("CLI mutation process contract", () => {
 				"create",
 				"2024-01-02",
 				"--data",
-				json({ weightKg: 80 }),
+				json({ date: "2024-01-02", weight_kg: 80 }),
 				"--yes",
 				"--json",
 			],
@@ -220,7 +224,7 @@ describe("CLI mutation process contract", () => {
 				"update",
 				"2024-01-02",
 				"--data",
-				json({ weightKg: 81 }),
+				json({ date: "2024-01-02", weight_kg: 81 }),
 				"--yes",
 				"--json",
 			],

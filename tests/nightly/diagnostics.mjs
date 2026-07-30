@@ -53,6 +53,7 @@ const TRANSPORT_CODES = new Set([
 ]);
 const MAX_STDERR_BYTES = 65_536;
 const SAFE_VERSION = /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$/;
+export const WORKOUT_COUNT_SCHEMA_PATH = "$.workout_count";
 const SAFE_SCHEMA_PATHS = new Set([
 	"$",
 	"$[0]",
@@ -61,7 +62,7 @@ const SAFE_SCHEMA_PATHS = new Set([
 	"$.content[0]",
 	"$.content[0].text",
 	"$.content[0].type",
-	"$.count",
+	WORKOUT_COUNT_SCHEMA_PATH,
 	"$.id",
 	"$.isError",
 	"$.response",

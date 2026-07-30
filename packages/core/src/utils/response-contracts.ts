@@ -126,36 +126,37 @@ export function respond<TData>(
 	return contract.render(data);
 }
 
-const optionalNullableNumber = z.number().nullable().optional();
+const optionalNumber = z.number().optional();
 
 export const formattedWorkoutSetSchema = z.object({
 	index: z.number().optional(),
 	type: z.string().optional(),
-	weight: optionalNullableNumber,
-	reps: optionalNullableNumber,
-	distance: optionalNullableNumber,
-	duration: optionalNullableNumber,
-	rpe: optionalNullableNumber,
-	customMetric: optionalNullableNumber,
+	weight_kg: optionalNumber,
+	reps: optionalNumber,
+	distance_meters: optionalNumber,
+	duration_seconds: optionalNumber,
+	rpe: optionalNumber,
+	custom_metric: optionalNumber,
 });
 
 export const formattedWorkoutExerciseSchema = z.object({
 	index: z.number().optional(),
-	name: z.string().optional(),
-	exerciseTemplateId: z.string().optional(),
-	notes: z.string().nullable().optional(),
-	supersetsId: optionalNullableNumber,
+	title: z.string().optional(),
+	exercise_template_id: z.string().optional(),
+	notes: z.string().optional(),
+	supersets_id: optionalNumber,
 	sets: z.array(formattedWorkoutSetSchema).optional(),
 });
 
 export const formattedWorkoutSchema = z.object({
 	id: z.string().optional(),
+	routine_id: z.string().optional(),
 	title: z.string().optional(),
-	description: z.string().nullable().optional(),
-	startTime: z.union([z.string(), z.number()]).optional(),
-	endTime: z.union([z.string(), z.number()]).optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
+	description: z.string().optional(),
+	start_time: z.string().optional(),
+	end_time: z.string().optional(),
+	created_at: z.string().optional(),
+	updated_at: z.string().optional(),
 	duration: z.string(),
 	exercises: z.array(formattedWorkoutExerciseSchema).optional(),
 });
@@ -163,118 +164,120 @@ export const formattedWorkoutSchema = z.object({
 export const formattedRoutineSetSchema = z.object({
 	index: z.number().optional(),
 	type: z.string().optional(),
-	weight: optionalNullableNumber,
-	reps: optionalNullableNumber,
-	distance: optionalNullableNumber,
-	duration: optionalNullableNumber,
-	customMetric: optionalNullableNumber,
-	repRange: z
+	weight_kg: optionalNumber,
+	reps: optionalNumber,
+	distance_meters: optionalNumber,
+	duration_seconds: optionalNumber,
+	custom_metric: optionalNumber,
+	rep_range: z
 		.object({
-			start: z.number().nullable().optional(),
-			end: z.number().nullable().optional(),
+			start: z.number().optional(),
+			end: z.number().optional(),
 		})
-		.nullable()
 		.optional(),
-	rpe: optionalNullableNumber,
+	rpe: optionalNumber,
 });
 
 export const formattedRoutineExerciseSchema = z.object({
-	name: z.string().optional(),
+	title: z.string().optional(),
 	index: z.number().optional(),
-	exerciseTemplateId: z.string().optional(),
-	notes: z.string().nullable().optional(),
-	supersetId: optionalNullableNumber,
-	restSeconds: z.union([z.string(), z.number()]).nullable().optional(),
+	exercise_template_id: z.string().optional(),
+	notes: z.string().optional(),
+	supersets_id: optionalNumber,
+	rest_seconds: z.string().optional(),
 	sets: z.array(formattedRoutineSetSchema).optional(),
 });
 
 export const formattedRoutineSchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
-	folderId: z.number().nullable().optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
+	folder_id: z.number().optional(),
+	created_at: z.string().optional(),
+	updated_at: z.string().optional(),
 	exercises: z.array(formattedRoutineExerciseSchema).optional(),
 });
 
 export const formattedRoutineFolderSchema = z.object({
 	id: z.number().optional(),
 	title: z.string().optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
+	created_at: z.string().optional(),
+	updated_at: z.string().optional(),
 });
 
 export const formattedExerciseTemplateSchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
 	type: z.string().optional(),
-	primaryMuscleGroup: z.string().optional(),
-	secondaryMuscleGroups: z.array(z.string()).optional(),
-	isCustom: z.boolean().optional(),
+	primary_muscle_group: z.string().optional(),
+	secondary_muscle_groups: z.array(z.string()).optional(),
+	is_custom: z.boolean().optional(),
 });
 
 export const formattedExerciseHistoryEntrySchema = z.object({
-	workoutId: z.string().optional(),
-	workoutTitle: z.string().optional(),
-	workoutStartTime: z.string().optional(),
-	workoutEndTime: z.string().optional(),
-	exerciseTemplateId: z.string().optional(),
-	weight: optionalNullableNumber,
-	reps: optionalNullableNumber,
-	distance: optionalNullableNumber,
-	duration: optionalNullableNumber,
-	rpe: optionalNullableNumber,
-	customMetric: optionalNullableNumber,
-	setType: z.string().optional(),
+	workout_id: z.string().optional(),
+	workout_title: z.string().optional(),
+	workout_start_time: z.string().optional(),
+	workout_end_time: z.string().optional(),
+	exercise_template_id: z.string().optional(),
+	weight_kg: optionalNumber,
+	reps: optionalNumber,
+	distance_meters: optionalNumber,
+	duration_seconds: optionalNumber,
+	rpe: optionalNumber,
+	custom_metric: optionalNumber,
+	set_type: z.string().optional(),
 });
 
 export const formattedBodyMeasurementSchema = z.object({
 	date: z.string(),
-	weightKg: z.number().nullable(),
-	leanMassKg: z.number().nullable(),
-	fatPercent: z.number().nullable(),
-	neckCm: z.number().nullable(),
-	shoulderCm: z.number().nullable(),
-	chestCm: z.number().nullable(),
-	leftBicepCm: z.number().nullable(),
-	rightBicepCm: z.number().nullable(),
-	leftForearmCm: z.number().nullable(),
-	rightForearmCm: z.number().nullable(),
-	abdomen: z.number().nullable(),
-	waist: z.number().nullable(),
-	hips: z.number().nullable(),
-	leftThigh: z.number().nullable(),
-	rightThigh: z.number().nullable(),
-	leftCalf: z.number().nullable(),
-	rightCalf: z.number().nullable(),
+	weight_kg: optionalNumber,
+	lean_mass_kg: optionalNumber,
+	fat_percent: optionalNumber,
+	neck_cm: optionalNumber,
+	shoulder_cm: optionalNumber,
+	chest_cm: optionalNumber,
+	left_bicep_cm: optionalNumber,
+	right_bicep_cm: optionalNumber,
+	left_forearm_cm: optionalNumber,
+	right_forearm_cm: optionalNumber,
+	abdomen: optionalNumber,
+	waist: optionalNumber,
+	hips: optionalNumber,
+	left_thigh_cm: optionalNumber,
+	right_thigh_cm: optionalNumber,
+	left_calf_cm: optionalNumber,
+	right_calf_cm: optionalNumber,
 });
-const workflowTelemetrySchema = z.object({
-	name: z.string(),
-	pagination: z.record(z.string(), z.number().int().nonnegative()),
-	cacheStatus: z.enum(["hit", "miss", "not-used"]),
-	itemsScanned: z.number().int().nonnegative(),
+export interface WorkflowTelemetry {
+	name: "training-summary" | "routine-discovery";
+	pagination: Readonly<Record<string, number>>;
+	cacheStatus: "hit" | "miss" | "not-used";
+	itemsScanned: number;
+}
+
+export const scanSchema = z.object({
+	pages: z.record(z.string(), z.number().int().nonnegative()),
+	items: z.number().int().nonnegative(),
 });
 
 export const trainingSummarySessionSchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
-	startTime: z.string().optional(),
-	endTime: z.string().optional(),
-	durationSeconds: z.number().int().nonnegative().nullable(),
-	exerciseCount: z.number().int().nonnegative(),
-	setCount: z.number().int().nonnegative(),
+	start_time: z.string().optional(),
+	end_time: z.string().optional(),
+	duration_seconds: z.number().int().nonnegative().optional(),
+	exercise_count: z.number().int().nonnegative(),
+	set_count: z.number().int().nonnegative(),
 });
 
 export const compactRoutineSchema = z.object({
 	id: z.string().optional(),
 	title: z.string().optional(),
-	folderId: z.number().nullable(),
-	updatedAt: z.string().optional(),
-	exerciseCount: z.number().int().nonnegative(),
-	setCount: z.number().int().nonnegative(),
+	folder_id: z.number().optional(),
+	updated_at: z.string().optional(),
+	exercise_count: z.number().int().nonnegative(),
+	set_count: z.number().int().nonnegative(),
 });
-
-export type WorkflowTelemetry = z.infer<typeof workflowTelemetrySchema>;
 
 export type FormattedWorkoutSet = z.infer<typeof formattedWorkoutSetSchema>;
 export type FormattedWorkoutExercise = z.infer<
@@ -299,10 +302,22 @@ export type FormattedBodyMeasurement = z.infer<
 	typeof formattedBodyMeasurementSchema
 >;
 
+export const formattedWorkoutSummarySchema = z.object({
+	id: z.string().optional(),
+	title: z.string().optional(),
+	start_time: z.string().optional(),
+	end_time: z.string().optional(),
+	duration: z.string(),
+	exercise_count: z.number().int().nonnegative(),
+	set_count: z.number().int().nonnegative(),
+});
+export type FormattedWorkoutSummary = z.infer<
+	typeof formattedWorkoutSummarySchema
+>;
 const paginationOutputSchema = {
 	page: z.number().int().positive(),
-	pageCount: z.number().int().nonnegative().optional(),
-	hasNextPage: z.boolean().optional(),
+	page_count: z.number().int().nonnegative().optional(),
+	has_next_page: z.boolean().optional(),
 } as const;
 export type PaginatedToolResult<T> = {
 	items: readonly T[];
@@ -320,24 +335,22 @@ function normalizePaginatedInput<T>(
 }
 
 const workoutsOutputSchema = {
-	workouts: z.array(formattedWorkoutSchema),
+	workouts: z.array(formattedWorkoutSummarySchema),
 	...paginationOutputSchema,
 } as const;
 const workoutOutputSchema = {
 	workout: formattedWorkoutSchema.nullable(),
 } as const;
-const workoutCountOutputSchema = { count: z.number().int() } as const;
+const workoutCountOutputSchema = { workout_count: z.number().int() } as const;
 export const formattedUpdatedWorkoutSchema = z.object({
 	type: z.literal("updated"),
 	workout: formattedWorkoutSchema,
 });
-
 export const formattedDeletedWorkoutSchema = z.object({
 	type: z.literal("deleted"),
 	id: z.string(),
-	deletedAt: z.string().optional(),
+	deleted_at: z.string().optional(),
 });
-
 const workoutEventsOutputSchema = {
 	events: z.array(
 		z.union([formattedUpdatedWorkoutSchema, formattedDeletedWorkoutSchema]),
@@ -345,79 +358,79 @@ const workoutEventsOutputSchema = {
 	...paginationOutputSchema,
 } as const;
 const routinesOutputSchema = {
-	routines: z.array(formattedRoutineSchema),
+	routines: z.array(compactRoutineSchema),
 	...paginationOutputSchema,
 } as const;
 const routineOutputSchema = {
 	routine: formattedRoutineSchema.nullable(),
 } as const;
 const exerciseTemplatesOutputSchema = {
-	exerciseTemplates: z.array(formattedExerciseTemplateSchema),
+	exercise_templates: z.array(formattedExerciseTemplateSchema),
 	...paginationOutputSchema,
 } as const;
 const exerciseTemplateSearchOutputSchema = {
-	exerciseTemplates: z.array(formattedExerciseTemplateSchema),
+	exercise_templates: z.array(formattedExerciseTemplateSchema),
 } as const;
 const exerciseTemplateOutputSchema = {
-	exerciseTemplate: formattedExerciseTemplateSchema.nullable(),
+	exercise_template: formattedExerciseTemplateSchema.nullable(),
 } as const;
 const exerciseHistoryOutputSchema = {
-	exerciseHistory: z.array(formattedExerciseHistoryEntrySchema),
+	exercise_history: z.array(formattedExerciseHistoryEntrySchema),
 } as const;
 const routineFoldersOutputSchema = {
-	routineFolders: z.array(formattedRoutineFolderSchema),
+	routine_folders: z.array(formattedRoutineFolderSchema),
 	...paginationOutputSchema,
 } as const;
 const routineFolderOutputSchema = {
-	routineFolder: formattedRoutineFolderSchema.nullable(),
+	routine_folder: formattedRoutineFolderSchema.nullable(),
 } as const;
 const bodyMeasurementsOutputSchema = {
-	bodyMeasurements: z.array(formattedBodyMeasurementSchema),
+	body_measurements: z.array(formattedBodyMeasurementSchema),
 	...paginationOutputSchema,
 } as const;
 const bodyMeasurementOutputSchema = {
-	bodyMeasurement: formattedBodyMeasurementSchema.nullable(),
+	body_measurement: formattedBodyMeasurementSchema.nullable(),
 } as const;
 const userOutputSchema = { user: userInfoSchema.nullable() } as const;
 const trainingSummaryOutputSchema = {
 	period: z.object({
-		startDate: z.string(),
-		endDate: z.string(),
+		start_date: z.string(),
+		end_date: z.string(),
 		weeks: z.number().int().positive(),
 	}),
 	workouts: z.object({
 		count: z.number().int().nonnegative(),
-		totalDurationSeconds: z.number().int().nonnegative(),
-		exerciseCount: z.number().int().nonnegative(),
-		setCount: z.number().int().nonnegative(),
-		uniqueExerciseTemplateIds: z.array(z.string()),
+		total_duration_seconds: z.number().int().nonnegative(),
+		exercise_count: z.number().int().nonnegative(),
+		set_count: z.number().int().nonnegative(),
+		unique_exercise_template_ids: z.array(z.string()),
 		sessions: z.array(trainingSummarySessionSchema),
 	}),
-	bodyMeasurements: z.object({
+	body_measurements: z.object({
 		count: z.number().int().nonnegative(),
 		latest: z
 			.object({
 				date: z.string(),
-				weightKg: z.number().nullable(),
-				leanMassKg: z.number().nullable(),
-				fatPercent: z.number().nullable(),
+				weight_kg: optionalNumber,
+				lean_mass_kg: optionalNumber,
+				fat_percent: optionalNumber,
 			})
-			.nullable(),
+			.optional(),
 		earliest: z
 			.object({
 				date: z.string(),
-				weightKg: z.number().nullable(),
-				leanMassKg: z.number().nullable(),
-				fatPercent: z.number().nullable(),
+				weight_kg: optionalNumber,
+				lean_mass_kg: optionalNumber,
+				fat_percent: optionalNumber,
 			})
-			.nullable(),
-		weightChangeKg: z.number().nullable(),
+			.optional(),
+		weight_change_kg: optionalNumber,
 	}),
-	workflow: workflowTelemetrySchema,
+	scan: scanSchema,
 } as const;
 const compactRoutinesOutputSchema = {
 	routines: z.array(compactRoutineSchema),
-	workflow: workflowTelemetrySchema,
+	scan: scanSchema,
 } as const;
 
 type ExerciseWithSupersetVariants = {
@@ -438,104 +451,175 @@ function getSupersetId(exercise: ExerciseWithSupersetVariants): number | null {
 }
 
 /**
- * Format a workout object for consistent presentation
- *
- * @param workout - The workout object from the API
- * @returns A formatted workout object with standardized properties
+ * Project a workout into the sparse snake_case MCP contract.
  */
-export function formatWorkout(workout: Workout): FormattedWorkout {
+export function projectWorkout(workout: Workout): FormattedWorkout {
 	return {
-		id: workout.id,
-		title: workout.title,
-		description: workout.description,
-		startTime: workout.start_time,
-		endTime: workout.end_time,
-		createdAt: workout.created_at,
-		updatedAt: workout.updated_at,
+		...(workout.id == null ? {} : { id: workout.id }),
+		...(workout.routine_id == null ? {} : { routine_id: workout.routine_id }),
+		...(workout.title == null ? {} : { title: workout.title }),
+		...(workout.description == null
+			? {}
+			: { description: workout.description }),
+		...(workout.start_time == null ? {} : { start_time: workout.start_time }),
+		...(workout.end_time == null ? {} : { end_time: workout.end_time }),
+		...(workout.created_at == null ? {} : { created_at: workout.created_at }),
+		...(workout.updated_at == null ? {} : { updated_at: workout.updated_at }),
 		duration: calculateDuration(workout.start_time, workout.end_time),
-		exercises: workout.exercises?.map((exercise) => {
-			return {
-				index: exercise.index,
-				name: exercise.title,
-				exerciseTemplateId: exercise.exercise_template_id,
-				notes: exercise.notes,
-				supersetsId: getSupersetId(exercise),
-				sets: exercise.sets?.map((set) => ({
-					index: set.index,
-					type: set.type,
-					weight: set.weight_kg,
-					reps: set.reps,
-					distance: set.distance_meters,
-					duration: set.duration_seconds,
-					rpe: set.rpe,
-					customMetric: set.custom_metric,
-				})),
-			};
-		}),
+		...(workout.exercises
+			? {
+					exercises: workout.exercises.map((exercise) => ({
+						...(exercise.index === undefined ? {} : { index: exercise.index }),
+						...(exercise.title == null ? {} : { title: exercise.title }),
+						...(exercise.exercise_template_id == null
+							? {}
+							: { exercise_template_id: exercise.exercise_template_id }),
+						...(exercise.notes == null ? {} : { notes: exercise.notes }),
+						...(getSupersetId(exercise) == null
+							? {}
+							: { supersets_id: getSupersetId(exercise) ?? undefined }),
+						...(exercise.sets
+							? {
+									sets: exercise.sets.map((set) => ({
+										...(set.index === undefined ? {} : { index: set.index }),
+										...(set.type == null ? {} : { type: set.type }),
+										...(set.weight_kg == null
+											? {}
+											: { weight_kg: set.weight_kg }),
+										...(set.reps == null ? {} : { reps: set.reps }),
+										...(set.distance_meters == null
+											? {}
+											: { distance_meters: set.distance_meters }),
+										...(set.duration_seconds == null
+											? {}
+											: { duration_seconds: set.duration_seconds }),
+										...(set.rpe == null ? {} : { rpe: set.rpe }),
+										...(set.custom_metric == null
+											? {}
+											: { custom_metric: set.custom_metric }),
+									})),
+								}
+							: {}),
+					})),
+				}
+			: {}),
 	};
 }
 
-/**
- * Format a routine object for consistent presentation
- *
- * @param routine - The routine object from the API
- * @returns A formatted routine object with standardized properties
- */
-export function formatRoutine(routine: Routine): FormattedRoutine {
+export function summarizeWorkout(workout: Workout): FormattedWorkoutSummary {
+	const exercises = workout.exercises ?? [];
 	return {
-		id: routine.id,
-		title: routine.title,
-		folderId: routine.folder_id,
-		createdAt: routine.created_at,
-		updatedAt: routine.updated_at,
-		exercises: routine.exercises?.map((exercise) => {
-			return {
-				name: exercise.title,
-				index: exercise.index,
-				exerciseTemplateId: exercise.exercise_template_id,
-				notes: exercise.notes,
-				supersetId: getSupersetId(exercise),
-				restSeconds: exercise.rest_seconds,
-				sets: exercise.sets?.map((set) => ({
-					index: set.index,
-					type: set.type,
-					weight: set.weight_kg,
-					reps: set.reps,
-					...(set.rep_range !== undefined && { repRange: set.rep_range }),
-					distance: set.distance_meters,
-					duration: set.duration_seconds,
-					...(set.rpe !== undefined && { rpe: set.rpe }),
-					customMetric: set.custom_metric,
-				})),
-			};
-		}),
+		...(workout.id == null ? {} : { id: workout.id }),
+		...(workout.title == null ? {} : { title: workout.title }),
+		...(workout.start_time == null ? {} : { start_time: workout.start_time }),
+		...(workout.end_time == null ? {} : { end_time: workout.end_time }),
+		duration: calculateDuration(workout.start_time, workout.end_time),
+		exercise_count: exercises.length,
+		set_count: exercises.reduce(
+			(total, exercise) => total + (exercise.sets?.length ?? 0),
+			0,
+		),
 	};
 }
 
-/**
- * Format a routine folder object for consistent presentation
- *
- * @param folder - The routine folder object from the API
- * @returns A formatted routine folder object with standardized properties
- */
-export function formatRoutineFolder(
+export function projectRoutine(routine: Routine): FormattedRoutine {
+	return {
+		...(routine.id == null ? {} : { id: routine.id }),
+		...(routine.title == null ? {} : { title: routine.title }),
+		...(routine.folder_id == null ? {} : { folder_id: routine.folder_id }),
+		...(routine.created_at == null ? {} : { created_at: routine.created_at }),
+		...(routine.updated_at == null ? {} : { updated_at: routine.updated_at }),
+		...(routine.exercises
+			? {
+					exercises: routine.exercises.map((exercise) => ({
+						...(exercise.title == null ? {} : { title: exercise.title }),
+						...(exercise.index === undefined ? {} : { index: exercise.index }),
+						...(exercise.exercise_template_id == null
+							? {}
+							: { exercise_template_id: exercise.exercise_template_id }),
+						...(exercise.notes == null ? {} : { notes: exercise.notes }),
+						...(getSupersetId(exercise) == null
+							? {}
+							: { supersets_id: getSupersetId(exercise) ?? undefined }),
+						...(exercise.rest_seconds == null
+							? {}
+							: { rest_seconds: exercise.rest_seconds }),
+						...(exercise.sets
+							? {
+									sets: exercise.sets.map((set) => {
+										const repRange = set.rep_range;
+										const normalizedRepRange =
+											repRange &&
+											(repRange.start != null || repRange.end != null)
+												? {
+														...(repRange.start == null
+															? {}
+															: { start: repRange.start }),
+														...(repRange.end == null
+															? {}
+															: { end: repRange.end }),
+													}
+												: undefined;
+										return {
+											...(set.index === undefined ? {} : { index: set.index }),
+											...(set.type == null ? {} : { type: set.type }),
+											...(set.weight_kg == null
+												? {}
+												: { weight_kg: set.weight_kg }),
+											...(set.reps == null ? {} : { reps: set.reps }),
+											...(normalizedRepRange
+												? { rep_range: normalizedRepRange }
+												: {}),
+											...(set.distance_meters == null
+												? {}
+												: { distance_meters: set.distance_meters }),
+											...(set.duration_seconds == null
+												? {}
+												: { duration_seconds: set.duration_seconds }),
+											...(set.rpe == null ? {} : { rpe: set.rpe }),
+											...(set.custom_metric == null
+												? {}
+												: { custom_metric: set.custom_metric }),
+										};
+									}),
+								}
+							: {}),
+					})),
+				}
+			: {}),
+	};
+}
+
+export function summarizeRoutine(
+	routine: Routine,
+): z.output<typeof compactRoutineSchema> {
+	const exercises = routine.exercises ?? [];
+	return {
+		...(routine.id == null ? {} : { id: routine.id }),
+		...(routine.title == null ? {} : { title: routine.title }),
+		...(routine.folder_id == null ? {} : { folder_id: routine.folder_id }),
+		...(routine.updated_at == null
+			? { updated_at: undefined }
+			: { updated_at: routine.updated_at }),
+		exercise_count: exercises.length,
+		set_count: exercises.reduce(
+			(total, exercise) => total + (exercise.sets?.length ?? 0),
+			0,
+		),
+	};
+}
+
+export function projectRoutineFolder(
 	folder: RoutineFolder,
 ): FormattedRoutineFolder {
 	return {
 		id: folder.id,
 		title: folder.title,
-		createdAt: folder.created_at,
-		updatedAt: folder.updated_at,
+		created_at: folder.created_at,
+		updated_at: folder.updated_at,
 	};
 }
 
-/**
- * Calculate duration between two ISO timestamp strings
- *
- * @param startTime - The start time as ISO string or timestamp
- * @param endTime - The end time as ISO string or timestamp
- * @returns A formatted duration string (e.g. "1h 30m 45s") or "Unknown duration" if inputs are invalid
- */
 export function calculateDuration(
 	startTime: string | number | null | undefined,
 	endTime: string | number | null | undefined,
@@ -545,23 +629,16 @@ export function calculateDuration(
 	try {
 		const start = new Date(startTime);
 		const end = new Date(endTime);
-
-		// Validate dates
 		if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
 			return "Unknown duration";
 		}
-
 		const durationMs = end.getTime() - start.getTime();
-
-		// Handle negative durations
 		if (durationMs < 0) {
 			return "Invalid duration (end time before start time)";
 		}
-
 		const hours = Math.floor(durationMs / (1000 * 60 * 60));
 		const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
 		const seconds = Math.floor((durationMs % (1000 * 60)) / 1000);
-
 		return `${hours}h ${minutes}m ${seconds}s`;
 	} catch (error) {
 		console.error(
@@ -572,80 +649,99 @@ export function calculateDuration(
 	}
 }
 
-/**
- * Format an exercise template object for consistent presentation
- *
- * @param template - The exercise template object from the API
- * @returns A formatted exercise template object with standardized properties
- */
-export function formatExerciseTemplate(
-	template: ExerciseTemplate,
-): FormattedExerciseTemplate {
-	return {
-		id: template.id,
-		title: template.title,
-		type: template.type,
-		primaryMuscleGroup: template.primary_muscle_group,
-		secondaryMuscleGroups: template.secondary_muscle_groups,
-		isCustom: template.is_custom,
-	};
-}
-
-export function formatExerciseHistoryEntry(
+export function normalizeExerciseHistoryEntry(
 	entry: ExerciseHistoryEntry,
 ): FormattedExerciseHistoryEntry {
 	return {
-		workoutId: entry.workout_id,
-		workoutTitle: entry.workout_title,
-		workoutStartTime: entry.workout_start_time,
-		workoutEndTime: entry.workout_end_time,
-		exerciseTemplateId: entry.exercise_template_id,
-		weight: entry.weight_kg,
-		reps: entry.reps,
-		distance: entry.distance_meters,
-		duration: entry.duration_seconds,
-		rpe: entry.rpe,
-		customMetric: entry.custom_metric,
-		setType: entry.set_type,
+		...(entry.workout_id == null ? {} : { workout_id: entry.workout_id }),
+		...(entry.workout_title == null
+			? {}
+			: { workout_title: entry.workout_title }),
+		...(entry.workout_start_time == null
+			? {}
+			: { workout_start_time: entry.workout_start_time }),
+		...(entry.workout_end_time == null
+			? {}
+			: { workout_end_time: entry.workout_end_time }),
+		...(entry.exercise_template_id == null
+			? {}
+			: { exercise_template_id: entry.exercise_template_id }),
+		...(entry.weight_kg == null ? {} : { weight_kg: entry.weight_kg }),
+		...(entry.reps == null ? {} : { reps: entry.reps }),
+		...(entry.distance_meters == null
+			? {}
+			: { distance_meters: entry.distance_meters }),
+		...(entry.duration_seconds == null
+			? {}
+			: { duration_seconds: entry.duration_seconds }),
+		...(entry.rpe == null ? {} : { rpe: entry.rpe }),
+		...(entry.custom_metric == null
+			? {}
+			: { custom_metric: entry.custom_metric }),
+		...(entry.set_type == null ? {} : { set_type: entry.set_type }),
 	};
 }
 
-export function formatBodyMeasurement(
+export function normalizeBodyMeasurement(
 	measurement: BodyMeasurement,
 ): FormattedBodyMeasurement {
 	return {
 		date: measurement.date,
-		weightKg: measurement.weight_kg ?? null,
-		leanMassKg: measurement.lean_mass_kg ?? null,
-		fatPercent: measurement.fat_percent ?? null,
-		neckCm: measurement.neck_cm ?? null,
-		shoulderCm: measurement.shoulder_cm ?? null,
-		chestCm: measurement.chest_cm ?? null,
-		leftBicepCm: measurement.left_bicep_cm ?? null,
-		rightBicepCm: measurement.right_bicep_cm ?? null,
-		leftForearmCm: measurement.left_forearm_cm ?? null,
-		rightForearmCm: measurement.right_forearm_cm ?? null,
-		abdomen: measurement.abdomen ?? null,
-		waist: measurement.waist ?? null,
-		hips: measurement.hips ?? null,
-		leftThigh: measurement.left_thigh ?? null,
-		rightThigh: measurement.right_thigh ?? null,
-		leftCalf: measurement.left_calf ?? null,
-		rightCalf: measurement.right_calf ?? null,
+		...(measurement.weight_kg == null
+			? {}
+			: { weight_kg: measurement.weight_kg }),
+		...(measurement.lean_mass_kg == null
+			? {}
+			: { lean_mass_kg: measurement.lean_mass_kg }),
+		...(measurement.fat_percent == null
+			? {}
+			: { fat_percent: measurement.fat_percent }),
+		...(measurement.neck_cm == null ? {} : { neck_cm: measurement.neck_cm }),
+		...(measurement.shoulder_cm == null
+			? {}
+			: { shoulder_cm: measurement.shoulder_cm }),
+		...(measurement.chest_cm == null ? {} : { chest_cm: measurement.chest_cm }),
+		...(measurement.left_bicep_cm == null
+			? {}
+			: { left_bicep_cm: measurement.left_bicep_cm }),
+		...(measurement.right_bicep_cm == null
+			? {}
+			: { right_bicep_cm: measurement.right_bicep_cm }),
+		...(measurement.left_forearm_cm == null
+			? {}
+			: { left_forearm_cm: measurement.left_forearm_cm }),
+		...(measurement.right_forearm_cm == null
+			? {}
+			: { right_forearm_cm: measurement.right_forearm_cm }),
+		...(measurement.abdomen == null ? {} : { abdomen: measurement.abdomen }),
+		...(measurement.waist == null ? {} : { waist: measurement.waist }),
+		...(measurement.hips == null ? {} : { hips: measurement.hips }),
+		...(measurement.left_thigh == null
+			? {}
+			: { left_thigh_cm: measurement.left_thigh }),
+		...(measurement.right_thigh == null
+			? {}
+			: { right_thigh_cm: measurement.right_thigh }),
+		...(measurement.left_calf == null
+			? {}
+			: { left_calf_cm: measurement.left_calf }),
+		...(measurement.right_calf == null
+			? {}
+			: { right_calf_cm: measurement.right_calf }),
 	};
 }
 
 type WorkoutEvent = GetV1WorkoutsEvents200["events"][number];
 
-function formatWorkoutEvent(event: WorkoutEvent) {
+function projectWorkoutEvent(event: WorkoutEvent) {
 	if (event.type === "updated" && "workout" in event) {
-		return { type: "updated" as const, workout: formatWorkout(event.workout) };
+		return { type: "updated" as const, workout: projectWorkout(event.workout) };
 	}
 	if (event.type === "deleted" && "id" in event) {
 		return {
 			type: "deleted" as const,
 			id: event.id,
-			deletedAt: event.deleted_at,
+			deleted_at: event.deleted_at,
 		};
 	}
 	throw new Error(`Unsupported workout event type: ${event.type}`);
@@ -692,12 +788,9 @@ const SAFE_WORKFLOW_NAMES: Record<
 	"routine-discovery": "routine-discovery",
 };
 
-function workflowResultTelemetry(workflow: {
-	name: string;
-	pagination: Readonly<Record<string, number>>;
-	cacheStatus: "hit" | "miss" | "not-used";
-	itemsScanned: number;
-}): ToolResultTelemetry["workflow"] {
+function workflowResultTelemetry(
+	workflow: WorkflowTelemetry,
+): ToolResultTelemetry["workflow"] {
 	const name = SAFE_WORKFLOW_NAMES[workflow.name];
 	if (!name) return undefined;
 	return {
@@ -712,10 +805,10 @@ export const workoutsResponse = defineStructuredResponseContract({
 	normalize: (input: PaginatedInput<Workout>) => {
 		const data = normalizePaginatedInput(input);
 		return {
-			workouts: data.items.map(formatWorkout),
+			workouts: data.items.map(summarizeWorkout),
 			page: data.page,
-			pageCount: data.pageCount,
-			hasNextPage:
+			page_count: data.pageCount,
+			has_next_page:
 				data.pageCount === undefined ? undefined : data.page < data.pageCount,
 		};
 	},
@@ -736,12 +829,12 @@ export const workoutResponse = defineStructuredResponseContract({
 	outputSchema: workoutOutputSchema,
 	normalize: (data: {
 		workout: Workout | null | undefined;
-		workoutId: string;
+		workout_id: string;
 		expected404Outcome?: "not_found";
-	}) => ({ workout: data.workout ? formatWorkout(data.workout) : null }),
+	}) => ({ workout: data.workout ? projectWorkout(data.workout) : null }),
 	legacyJson: ({ workout }) => workout,
-	text: ({ workoutId }, { workout }) =>
-		workout === null ? `Workout with ID ${workoutId} not found` : undefined,
+	text: ({ workout_id }, { workout }) =>
+		workout === null ? `Workout with ID ${workout_id} not found` : undefined,
 	telemetry: ({ workout, expected404Outcome }) => ({
 		...workoutResultTelemetry(workout),
 		expected404Outcome,
@@ -750,7 +843,7 @@ export const workoutResponse = defineStructuredResponseContract({
 
 export const workoutCountResponse = defineStructuredResponseContract({
 	outputSchema: workoutCountOutputSchema,
-	normalize: (count: number) => ({ count }),
+	normalize: (count: number) => ({ workout_count: count }),
 	legacyJson: (output) => output,
 	telemetry: (count) => ({ itemCountBucket: bucketCount(count) }),
 });
@@ -764,10 +857,10 @@ export const workoutEventsResponse = defineStructuredResponseContract({
 		pageCount?: number;
 		expected404Outcome?: "end_of_list";
 	}) => ({
-		events: data.events?.map(formatWorkoutEvent) ?? [],
+		events: data.events?.map(projectWorkoutEvent) ?? [],
 		page: data.page,
-		pageCount: data.pageCount,
-		hasNextPage:
+		page_count: data.pageCount,
+		has_next_page:
 			data.pageCount === undefined ? undefined : data.page < data.pageCount,
 	}),
 	legacyJson: ({ events }) => events,
@@ -786,10 +879,10 @@ export const routinesResponse = defineStructuredResponseContract({
 	normalize: (input: PaginatedInput<Routine>) => {
 		const data = normalizePaginatedInput(input);
 		return {
-			routines: data.items.map(formatRoutine),
+			routines: data.items.map(summarizeRoutine),
 			page: data.page,
-			pageCount: data.pageCount,
-			hasNextPage:
+			page_count: data.pageCount,
+			has_next_page:
 				data.pageCount === undefined ? undefined : data.page < data.pageCount,
 		};
 	},
@@ -810,12 +903,12 @@ export const routineResponse = defineStructuredResponseContract({
 	outputSchema: routineOutputSchema,
 	normalize: (data: {
 		routine: Routine | null | undefined;
-		routineId: string;
+		routine_id: string;
 		expected404Outcome?: "not_found";
-	}) => ({ routine: data.routine ? formatRoutine(data.routine) : null }),
+	}) => ({ routine: data.routine ? projectRoutine(data.routine) : null }),
 	legacyJson: ({ routine }) => routine,
-	text: ({ routineId }, { routine }) =>
-		routine === null ? `Routine with ID ${routineId} not found` : undefined,
+	text: ({ routine_id }, { routine }) =>
+		routine === null ? `Routine with ID ${routine_id} not found` : undefined,
 	telemetry: ({ routine, expected404Outcome }) => ({
 		...routineResultTelemetry(routine),
 		expected404Outcome,
@@ -827,16 +920,16 @@ export const exerciseTemplatesResponse = defineStructuredResponseContract({
 	normalize: (input: PaginatedInput<ExerciseTemplate>) => {
 		const data = normalizePaginatedInput(input);
 		return {
-			exerciseTemplates: data.items.map(formatExerciseTemplate),
+			exercise_templates: data.items,
 			page: data.page,
-			pageCount: data.pageCount,
-			hasNextPage:
+			page_count: data.pageCount,
+			has_next_page:
 				data.pageCount === undefined ? undefined : data.page < data.pageCount,
 		};
 	},
-	legacyJson: ({ exerciseTemplates }) => exerciseTemplates,
-	text: (_data, { exerciseTemplates }) =>
-		exerciseTemplates.length === 0
+	legacyJson: ({ exercise_templates }) => exercise_templates,
+	text: (_data, { exercise_templates }) =>
+		exercise_templates.length === 0
 			? "No exercise templates found for the specified parameters"
 			: undefined,
 	telemetry: (templates) => ({
@@ -850,21 +943,19 @@ export const exerciseTemplatesResponse = defineStructuredResponseContract({
 export const exerciseTemplateResponse = defineStructuredResponseContract({
 	outputSchema: exerciseTemplateOutputSchema,
 	normalize: (data: {
-		exerciseTemplate: ExerciseTemplate | null | undefined;
-		exerciseTemplateId: string;
+		exercise_template: ExerciseTemplate | null | undefined;
+		exercise_template_id: string;
 		expected404Outcome?: "not_found";
 	}) => ({
-		exerciseTemplate: data.exerciseTemplate
-			? formatExerciseTemplate(data.exerciseTemplate)
-			: null,
+		exercise_template: data.exercise_template ?? null,
 	}),
-	legacyJson: ({ exerciseTemplate }) => exerciseTemplate,
-	text: ({ exerciseTemplateId }, { exerciseTemplate }) =>
-		exerciseTemplate === null
-			? `Exercise template with ID ${exerciseTemplateId} not found`
+	legacyJson: ({ exercise_template }) => exercise_template,
+	text: ({ exercise_template_id }, { exercise_template }) =>
+		exercise_template === null
+			? `Exercise template with ID ${exercise_template_id} not found`
 			: undefined,
-	telemetry: ({ exerciseTemplate, expected404Outcome }) => ({
-		itemCountBucket: bucketCount(exerciseTemplate ? 1 : 0),
+	telemetry: ({ exercise_template, expected404Outcome }) => ({
+		itemCountBucket: bucketCount(exercise_template ? 1 : 0),
 		expected404Outcome,
 	}),
 });
@@ -872,18 +963,19 @@ export const exerciseTemplateResponse = defineStructuredResponseContract({
 export const exerciseHistoryResponse = defineStructuredResponseContract({
 	outputSchema: exerciseHistoryOutputSchema,
 	normalize: (data: {
-		history: readonly ExerciseHistoryEntry[] | undefined;
-		exerciseTemplateId: string;
+		exercise_history: readonly ExerciseHistoryEntry[] | undefined;
+		exercise_template_id: string;
 	}) => ({
-		exerciseHistory: data.history?.map(formatExerciseHistoryEntry) ?? [],
+		exercise_history:
+			data.exercise_history?.map(normalizeExerciseHistoryEntry) ?? [],
 	}),
-	legacyJson: ({ exerciseHistory }) => exerciseHistory,
-	text: ({ exerciseTemplateId }, { exerciseHistory }) =>
-		exerciseHistory.length === 0
-			? `No exercise history found for template ${exerciseTemplateId}`
+	legacyJson: ({ exercise_history }) => exercise_history,
+	text: ({ exercise_template_id }, { exercise_history }) =>
+		exercise_history.length === 0
+			? `No exercise history found for template ${exercise_template_id}`
 			: undefined,
 	telemetry: (data) => ({
-		itemCountBucket: bucketCount(data.history?.length ?? 0),
+		itemCountBucket: bucketCount(data.exercise_history?.length ?? 0),
 	}),
 });
 
@@ -893,12 +985,12 @@ export const searchExerciseTemplatesResponse = defineStructuredResponseContract(
 		normalize: (data: {
 			results: readonly ExerciseTemplate[];
 			query: string;
-			primaryMuscleGroup?: string;
-		}) => ({ exerciseTemplates: data.results.map(formatExerciseTemplate) }),
-		legacyJson: ({ exerciseTemplates }) => exerciseTemplates,
-		text: ({ query, primaryMuscleGroup }, { exerciseTemplates }) =>
-			exerciseTemplates.length === 0
-				? `No exercise templates found matching "${query}"${primaryMuscleGroup ? ` with primary muscle group "${primaryMuscleGroup}"` : ""}`
+			primary_muscle_group?: string;
+		}) => ({ exercise_templates: data.results }),
+		legacyJson: ({ exercise_templates }) => exercise_templates,
+		text: ({ query, primary_muscle_group }, { exercise_templates }) =>
+			exercise_templates.length === 0
+				? `No exercise templates found matching "${query}"${primary_muscle_group ? ` with primary muscle group "${primary_muscle_group}"` : ""}`
 				: undefined,
 		telemetry: (data) => ({
 			itemCountBucket: bucketCount(data.results.length),
@@ -911,16 +1003,16 @@ export const routineFoldersResponse = defineStructuredResponseContract({
 	normalize: (input: PaginatedInput<RoutineFolder>) => {
 		const data = normalizePaginatedInput(input);
 		return {
-			routineFolders: data.items.map(formatRoutineFolder),
+			routine_folders: data.items.map(projectRoutineFolder),
 			page: data.page,
-			pageCount: data.pageCount,
-			hasNextPage:
+			page_count: data.pageCount,
+			has_next_page:
 				data.pageCount === undefined ? undefined : data.page < data.pageCount,
 		};
 	},
-	legacyJson: ({ routineFolders }) => routineFolders,
-	text: (_data, { routineFolders }) =>
-		routineFolders.length === 0
+	legacyJson: ({ routine_folders }) => routine_folders,
+	text: (_data, { routine_folders }) =>
+		routine_folders.length === 0
 			? "No routine folders found for the specified parameters"
 			: undefined,
 	telemetry: (folders) => ({
@@ -932,21 +1024,21 @@ export const routineFoldersResponse = defineStructuredResponseContract({
 export const routineFolderResponse = defineStructuredResponseContract({
 	outputSchema: routineFolderOutputSchema,
 	normalize: (data: {
-		routineFolder: RoutineFolder | null | undefined;
-		folderId: string;
+		routine_folder: RoutineFolder | null | undefined;
+		folder_id: string;
 		expected404Outcome?: "not_found";
 	}) => ({
-		routineFolder: data.routineFolder
-			? formatRoutineFolder(data.routineFolder)
+		routine_folder: data.routine_folder
+			? projectRoutineFolder(data.routine_folder)
 			: null,
 	}),
-	legacyJson: ({ routineFolder }) => routineFolder,
-	text: ({ folderId }, { routineFolder }) =>
-		routineFolder === null
-			? `Routine folder with ID ${folderId} not found`
+	legacyJson: ({ routine_folder }) => routine_folder,
+	text: ({ folder_id }, { routine_folder }) =>
+		routine_folder === null
+			? `Routine folder with ID ${folder_id} not found`
 			: undefined,
-	telemetry: ({ routineFolder, expected404Outcome }) => ({
-		itemCountBucket: bucketCount(routineFolder ? 1 : 0),
+	telemetry: ({ routine_folder, expected404Outcome }) => ({
+		itemCountBucket: bucketCount(routine_folder ? 1 : 0),
 		expected404Outcome,
 	}),
 });
@@ -956,16 +1048,16 @@ export const bodyMeasurementsResponse = defineStructuredResponseContract({
 	normalize: (input: PaginatedInput<BodyMeasurement>) => {
 		const data = normalizePaginatedInput(input);
 		return {
-			bodyMeasurements: data.items.map(formatBodyMeasurement),
+			body_measurements: data.items.map(normalizeBodyMeasurement),
 			page: data.page,
-			pageCount: data.pageCount,
-			hasNextPage:
+			page_count: data.pageCount,
+			has_next_page:
 				data.pageCount === undefined ? undefined : data.page < data.pageCount,
 		};
 	},
-	legacyJson: ({ bodyMeasurements }) => bodyMeasurements,
-	text: (_data, { bodyMeasurements }) =>
-		bodyMeasurements.length === 0
+	legacyJson: ({ body_measurements }) => body_measurements,
+	text: (_data, { body_measurements }) =>
+		body_measurements.length === 0
 			? "No body measurements found for the specified parameters"
 			: undefined,
 	telemetry: (measurements) => ({
@@ -980,21 +1072,21 @@ export const bodyMeasurementsResponse = defineStructuredResponseContract({
 export const bodyMeasurementResponse = defineStructuredResponseContract({
 	outputSchema: bodyMeasurementOutputSchema,
 	normalize: (data: {
-		bodyMeasurement: BodyMeasurement | null | undefined;
+		body_measurement: BodyMeasurement | null | undefined;
 		date: string;
 		expected404Outcome?: "not_found";
 	}) => ({
-		bodyMeasurement: data.bodyMeasurement
-			? formatBodyMeasurement(data.bodyMeasurement)
+		body_measurement: data.body_measurement
+			? normalizeBodyMeasurement(data.body_measurement)
 			: null,
 	}),
-	legacyJson: ({ bodyMeasurement }) => bodyMeasurement,
-	text: ({ date }, { bodyMeasurement }) =>
-		bodyMeasurement === null
+	legacyJson: ({ body_measurement }) => body_measurement,
+	text: ({ date }, { body_measurement }) =>
+		body_measurement === null
 			? `No body measurement found for date ${date}`
 			: undefined,
-	telemetry: ({ bodyMeasurement, expected404Outcome }) => ({
-		itemCountBucket: bucketCount(bodyMeasurement ? 1 : 0),
+	telemetry: ({ body_measurement, expected404Outcome }) => ({
+		itemCountBucket: bucketCount(body_measurement ? 1 : 0),
 		expected404Outcome,
 	}),
 });
@@ -1007,24 +1099,44 @@ export const userResponse = defineStructuredResponseContract({
 		user === null ? "No user info found for the authenticated user" : undefined,
 	telemetry: (user) => ({ itemCountBucket: bucketCount(user ? 1 : 0) }),
 });
-export type TrainingSummaryResult = z.output<
+type TrainingSummaryOutput = z.output<
 	z.ZodObject<typeof trainingSummaryOutputSchema>
 >;
-export type CompactRoutinesResult = z.output<
+type CompactRoutinesOutput = z.output<
 	z.ZodObject<typeof compactRoutinesOutputSchema>
 >;
+export type TrainingSummaryResult = Omit<TrainingSummaryOutput, "scan"> & {
+	workflow: WorkflowTelemetry;
+};
+export type CompactRoutinesResult = Omit<CompactRoutinesOutput, "scan"> & {
+	workflow: WorkflowTelemetry;
+};
 
 export const trainingSummaryResponse = defineStructuredResponseContract({
 	outputSchema: trainingSummaryOutputSchema,
-	normalize: (data: TrainingSummaryResult) => data,
+	normalize: (data: TrainingSummaryResult) => {
+		const { workflow, ...result } = data;
+		const { latest, earliest, weight_change_kg, ...body_measurements } =
+			result.body_measurements;
+		return {
+			...result,
+			body_measurements: {
+				...body_measurements,
+				...(latest ? { latest } : {}),
+				...(earliest ? { earliest } : {}),
+				...(weight_change_kg == null ? {} : { weight_change_kg }),
+			},
+			scan: { pages: workflow.pagination, items: workflow.itemsScanned },
+		};
+	},
 	legacyJson: (output) => output,
 	text: (data) =>
-		data.workouts.count === 0 && data.bodyMeasurements.count === 0
+		data.workouts.count === 0 && data.body_measurements.count === 0
 			? "No workouts or body measurements found for the specified period"
 			: undefined,
 	telemetry: (data) => ({
 		itemCountBucket: bucketCount(
-			data.workouts.count + data.bodyMeasurements.count,
+			data.workouts.count + data.body_measurements.count,
 		),
 		workflow: workflowResultTelemetry(data.workflow),
 	}),
@@ -1032,7 +1144,17 @@ export const trainingSummaryResponse = defineStructuredResponseContract({
 
 export const compactRoutinesResponse = defineStructuredResponseContract({
 	outputSchema: compactRoutinesOutputSchema,
-	normalize: (data: CompactRoutinesResult) => data,
+	normalize: (data: CompactRoutinesResult) => {
+		const { workflow, ...result } = data;
+		return {
+			...result,
+			routines: result.routines.map((routine) => ({
+				...routine,
+				...(routine.folder_id == null ? { folder_id: undefined } : {}),
+			})),
+			scan: { pages: workflow.pagination, items: workflow.itemsScanned },
+		};
+	},
 	legacyJson: ({ routines }) => routines,
 	text: (_data, { routines }) =>
 		routines.length === 0 ? "No routines found matching the query" : undefined,
@@ -1045,16 +1167,16 @@ export const compactRoutinesResponse = defineStructuredResponseContract({
 export const createWorkoutResponse = defineJsonResponseContract(
 	(workout: Workout | null | undefined) =>
 		workout
-			? { json: formatWorkout(workout) }
+			? { json: projectWorkout(workout) }
 			: { text: "Failed to create workout: Server returned no data" },
 	(workout) => workoutResultTelemetry(workout),
 );
 
 export const updateWorkoutResponse = defineJsonResponseContract(
-	(data: { workout: Workout | null | undefined; workoutId: string }) =>
+	(data: { workout: Workout | null | undefined; workout_id: string }) =>
 		data.workout
-			? { json: formatWorkout(data.workout) }
-			: { text: `Failed to update workout with ID ${data.workoutId}` },
+			? { json: projectWorkout(data.workout) }
+			: { text: `Failed to update workout with ID ${data.workout_id}` },
 	(data) => workoutResultTelemetry(data.workout),
 );
 
@@ -1068,7 +1190,7 @@ export const createRoutineResponse = defineJsonResponseContract(
 	(data: { routine: Routine | null | undefined; usesRepRanges: boolean }) =>
 		data.routine
 			? {
-					json: formatRoutine(data.routine),
+					json: projectRoutine(data.routine),
 					additionalText: data.usesRepRanges
 						? [repRangeDisplayWarningText]
 						: [],
@@ -1080,17 +1202,17 @@ export const createRoutineResponse = defineJsonResponseContract(
 export const updateRoutineResponse = defineJsonResponseContract(
 	(data: {
 		routine: Routine | null | undefined;
-		routineId: string;
+		routine_id: string;
 		usesRepRanges: boolean;
 	}) =>
 		data.routine
 			? {
-					json: formatRoutine(data.routine),
+					json: projectRoutine(data.routine),
 					additionalText: data.usesRepRanges
 						? [repRangeDisplayWarningText]
 						: [],
 				}
-			: { text: `Failed to update routine with ID ${data.routineId}` },
+			: { text: `Failed to update routine with ID ${data.routine_id}` },
 	(data) => routineResultTelemetry(data.routine),
 );
 
@@ -1106,7 +1228,7 @@ export const createExerciseTemplateResponse = defineJsonResponseContract(
 export const createRoutineFolderResponse = defineJsonResponseContract(
 	(folder: RoutineFolder | null | undefined) =>
 		folder
-			? { json: formatRoutineFolder(folder) }
+			? { json: projectRoutineFolder(folder) }
 			: {
 					text: "Failed to create routine folder: Server returned no data",
 				},

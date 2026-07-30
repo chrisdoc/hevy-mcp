@@ -34,11 +34,66 @@ const CREATE_TOOLS = [
 
 const UPDATE_TOOLS = [
 	"update-workout",
+	"replace-workout-exercises",
 	"update-routine",
 	"update-body-measurement",
 ] as const;
 
 const DESTRUCTIVE_TOOLS = [] as const;
+const EXPECTED_DESCRIPTIONS = {
+	"get-workouts":
+		"Read-only. Lists compact workout summaries newest first. Use get-workout for exercises and sets; results are paginated.",
+	"get-workout":
+		"Read-only. Gets one workout with exercises and sets by workout_id. Use get-workouts to discover IDs.",
+	"get-workout-count":
+		"Read-only. Returns the total workout count; it does not return records or accept date filters.",
+	"get-workout-events":
+		"Read-only. Lists workout update and deletion events since a timestamp for incremental sync; results are paginated.",
+	"create-workout":
+		"Writes a completed workout. Requires exercise-template IDs and UTC times. Retries can create duplicates.",
+	"update-workout":
+		"Mutates workout metadata by ID. Omitted fields and all exercises remain unchanged.",
+	"replace-workout-exercises":
+		"Mutates a workout by replacing all exercises and sets. Workout metadata remains unchanged.",
+	"get-routines":
+		"Read-only. Lists compact routine summaries. Use get-routine for exercises and sets; results are paginated.",
+	"get-routine":
+		"Read-only. Gets one routine with exercises and sets by routine_id. Use search-routines to discover IDs.",
+	"create-routine":
+		"Writes a reusable routine; use create-workout for completed sessions. Retries can create duplicates.",
+	"update-routine":
+		"Mutates a routine by replacing its title and exercises. Omitted exercises are removed.",
+	"get-exercise-templates":
+		"Read-only. Pages through exercise templates. Use search-exercise-templates when a title is known.",
+	"get-exercise-template":
+		"Read-only. Gets one exercise template by exercise_template_id. Use search-exercise-templates to discover IDs.",
+	"get-exercise-history":
+		"Read-only. Returns performed sets for one exercise-template ID, optionally bounded by ISO 8601 timestamps.",
+	"create-exercise-template":
+		"Writes a custom exercise template. Search first; retries or reused titles can create duplicates.",
+	"search-exercise-templates":
+		"Read-only. Searches template titles case-insensitively and returns IDs. refresh reloads the five-minute catalog cache.",
+	"get-routine-folders":
+		"Read-only. Lists routine folders and IDs; results are paginated.",
+	"get-routine-folder":
+		"Read-only. Gets one routine folder by folder_id. Use get-routine-folders to discover IDs.",
+	"create-routine-folder":
+		"Writes a routine folder. Retries or reused titles can create duplicates.",
+	"get-body-measurements":
+		"Read-only. Lists dated body measurements; results are paginated. Use get-body-measurement for one date.",
+	"get-body-measurement":
+		"Read-only. Gets the body measurement for one YYYY-MM-DD date. Use get-body-measurements to browse dates.",
+	"create-body-measurement":
+		"Writes a body measurement for a new YYYY-MM-DD date. Existing dates conflict; retries are not idempotent.",
+	"update-body-measurement":
+		"Mutates numeric fields on an existing YYYY-MM-DD measurement. Omitted fields remain unchanged; values cannot be cleared.",
+	"get-user-info":
+		"Read-only. Returns the authenticated Hevy user ID, display name, and public profile URL.",
+	"get-training-summary":
+		"Read-only. Summarizes workouts and body-measurement trends for the last 1–12 weeks, including compact session and scan evidence.",
+	"search-routines":
+		"Read-only. Searches routine titles and returns compact IDs and counts. Use get-routine for full exercises and sets.",
+} as const;
 
 function registerAllTools() {
 	const tool = vi.fn();
@@ -114,19 +169,22 @@ describe("tool annotations", () => {
 		}
 	});
 
-	it("every tool has concise selection guidance", () => {
-		for (const name of [...READ_ONLY_TOOLS, ...CREATE_TOOLS, ...UPDATE_TOOLS]) {
-			const description = getDescription(spies, name);
-			const words = description.trim().split(/\s+/);
+	it("uses the exact compact descriptions", () => {
+		const names = [...READ_ONLY_TOOLS, ...CREATE_TOOLS, ...UPDATE_TOOLS];
+		const actual = Object.fromEntries(
+			names.map((name) => [name, getDescription(spies, name)]),
+		);
 
-			expect(description, `${name} aliases`).toMatch(/Aliases: [^<]+, [^<]+\./);
-			expect(description, `${name} use case`).toMatch(
-				/<use_case>.+<\/use_case>/,
+		expect(actual).toEqual(EXPECTED_DESCRIPTIONS);
+		for (const name of names) {
+			const description = getDescription(spies, name);
+			expect(description, `${name} description`).not.toBe("");
+			expect(description, `${name} safety prefix`).toMatch(
+				/^(?:Read-only(?:\.| for)|Writes |Mutates )/,
 			);
-			expect(description, `${name} important notes`).toMatch(
-				/<important_notes>.+<\/important_notes>/,
+			expect(description, `${name} no verbose tags`).not.toMatch(
+				/<(?:use_case|important_notes)>|Aliases:/,
 			);
-			expect(words.length, `${name} word budget`).toBeLessThanOrEqual(120);
 		}
 	});
 
@@ -135,11 +193,11 @@ describe("tool annotations", () => {
 	});
 
 	it.each(CREATE_TOOLS)("%s description says it writes", (name) => {
-		expect(getDescription(spies, name)).toMatch(/^Writes to the Hevy account/);
+		expect(getDescription(spies, name)).toMatch(/^Writes /);
 	});
 
 	it.each(UPDATE_TOOLS)("%s description says it mutates", (name) => {
-		expect(getDescription(spies, name)).toMatch(/^Mutates the Hevy account/);
+		expect(getDescription(spies, name)).toMatch(/^Mutates /);
 	});
 
 	it.each(READ_ONLY_TOOLS)("%s is read-only", (name) => {

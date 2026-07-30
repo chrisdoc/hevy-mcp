@@ -1,32 +1,30 @@
-import { z } from "zod";
 import type {
 	GetV1Routines200,
 	GetV1RoutinesRoutineid200,
 	PostV1Routines201,
 	PutV1RoutinesRoutineid200,
 } from "@hevy-mcp/hevy-client/types";
-import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createRoutineResponse,
 	routineResponse,
 	routinesResponse,
 	updateRoutineResponse,
-} from "../utils/response-formatter.js";
+} from "../utils/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import { describeTool } from "../utils/tool-descriptions.js";
+
 import {
 	nonEmptyId,
 	paginationShape,
-	routineExerciseShape,
-	routinePayloadShape,
+	createRoutineInputShape,
+	updateRoutineInputShape,
 } from "./input-schemas.js";
-import { buildRoutinePayload } from "./payload-mappers.js";
+import { buildRoutinePayload } from "./mutation-semantics.js";
 import type { ToolDefinition } from "./define-tool.js";
-import type { PaginatedToolResult } from "../utils/response-formatter.js";
+import type { PaginatedToolResult } from "../utils/response-contracts.js";
 import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
@@ -47,24 +45,18 @@ const getRoutinesDefinition: ToolDefinition<
 	name: "get-routines",
 	feature: "routines",
 	operation: "list",
-	description: describeTool({
-		summary: "Read-only. Lists custom and default workout routines.",
-		aliases: ["list routines", "show workout plans", "browse saved routines"],
-		useCase:
-			"Use to browse routines or discover a routine ID; use get-routine for one known routine.",
-		importantNotes:
-			"Results are paginated; page starts at 1 and pageSize is limited to 10.",
-	}),
+	description:
+		"Read-only. Lists compact routine summaries. Use get-routine for exercises and sets; results are paginated.",
 	inputSchema: getRoutinesSchema,
 	kind: "read",
 	outputSchema: routinesResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Routines"),
 	responseContract: routinesResponse,
-	execute: async (runtime, { page, pageSize }) => {
+	execute: async (runtime, { page, page_size }) => {
 		try {
 			const data: GetV1Routines200 = await runtime.getClient().getRoutines({
 				page,
-				pageSize,
+				pageSize: page_size,
 			});
 			return { items: data?.routines ?? [], page, pageCount: data?.page_count };
 		} catch (error) {
@@ -76,11 +68,12 @@ const getRoutinesDefinition: ToolDefinition<
 	},
 };
 
-const getRoutineSchema = { routineId: nonEmptyId } as const;
+const getRoutineSchema = { routine_id: nonEmptyId } as const;
 
 type GetRoutineResult = {
 	routine: GetV1RoutinesRoutineid200["routine"] | null;
-	routineId: string;
+	routine_id: string;
+	expected404Outcome?: "not_found";
 };
 const getRoutineDefinition: ToolDefinition<
 	typeof getRoutineSchema,
@@ -89,31 +82,24 @@ const getRoutineDefinition: ToolDefinition<
 	name: "get-routine",
 	feature: "routines",
 	operation: "get",
-	description: describeTool({
-		summary:
-			"Read-only. Retrieves one routine and its exercise configuration by ID.",
-		aliases: ["show routine", "fetch workout plan", "routine details"],
-		useCase:
-			"Use when the routineId is known; use get-routines to browse or discover IDs.",
-		importantNotes:
-			"Requires a routineId from get-routines or a prior create response.",
-	}),
+	description:
+		"Read-only. Gets one routine with exercises and sets by routine_id. Use search-routines to discover IDs.",
 	inputSchema: getRoutineSchema,
 	kind: "read",
 	outputSchema: routineResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Routine"),
 	responseContract: routineResponse,
-	execute: async (runtime, { routineId }) => {
+	execute: async (runtime, { routine_id }) => {
 		try {
 			const data: GetV1RoutinesRoutineid200 = await runtime
 				.getClient()
-				.getRoutineById(String(routineId));
-			return { routine: data?.routine, routineId };
+				.getRoutineById(String(routine_id));
+			return { routine: data?.routine, routine_id };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
 				return {
 					routine: null,
-					routineId,
+					routine_id,
 					expected404Outcome: "not_found",
 				};
 			}
@@ -122,12 +108,7 @@ const getRoutineDefinition: ToolDefinition<
 	},
 };
 
-const routineExercisesSchema = z.preprocess(
-	parseJsonArray,
-	z.array(z.object(routineExerciseShape)),
-);
-
-const createRoutineSchema = routinePayloadShape;
+const createRoutineSchema = createRoutineInputShape;
 
 type CreateRoutineResult = {
 	routine: PostV1Routines201 | null | undefined;
@@ -140,20 +121,17 @@ const createRoutineDefinition: ToolDefinition<
 	name: "create-routine",
 	feature: "routines",
 	operation: "create",
-	description: describeTool({
-		summary: "Writes to the Hevy account by creating a new workout routine.",
-		aliases: ["add routine", "build workout plan", "save training template"],
-		useCase:
-			"Use to create a reusable plan; use create-workout to log a completed session.",
-		importantNotes:
-			"Requires exercise template IDs; folderId is optional. Retrying can create duplicates, and non-fixed rep ranges may not display in Hevy apps.",
-	}),
+	description:
+		"Writes a reusable routine; use create-workout for completed sessions. Retries can create duplicates.",
 	inputSchema: createRoutineSchema,
 	kind: "write",
 	annotations: createAnnotations("Create Routine"),
 	responseContract: createRoutineResponse,
 	execute: async (runtime, args) => {
-		const { payload, usesRepRanges } = buildRoutinePayload(args, "create");
+		const { payload, usesRepRanges } = buildRoutinePayload(
+			args.routine,
+			"create",
+		);
 		const data: PostV1Routines201 = await runtime
 			.getClient()
 			.createRoutine({ routine: payload });
@@ -161,16 +139,11 @@ const createRoutineDefinition: ToolDefinition<
 	},
 };
 
-const updateRoutineSchema = {
-	routineId: nonEmptyId,
-	title: z.string().min(1),
-	notes: z.string().optional(),
-	exercises: routineExercisesSchema,
-} as const;
+const updateRoutineSchema = updateRoutineInputShape;
 
 type UpdateRoutineResult = {
 	routine: PutV1RoutinesRoutineid200 | null | undefined;
-	routineId: string;
+	routine_id: string;
 	usesRepRanges: boolean;
 };
 const updateRoutineDefinition: ToolDefinition<
@@ -180,30 +153,22 @@ const updateRoutineDefinition: ToolDefinition<
 	name: "update-routine",
 	feature: "routines",
 	operation: "update",
-	description: describeTool({
-		summary:
-			"Mutates the Hevy account by replacing an existing routine's content.",
-		aliases: [
-			"edit routine",
-			"revise workout plan",
-			"replace routine exercises",
-		],
-		useCase:
-			"Use to change a known routine; use create-routine for a separate new plan.",
-		importantNotes:
-			"Requires routineId and the complete title and exercises payload; omitted exercises are removed. Non-fixed rep ranges may not display in Hevy apps.",
-	}),
+	description:
+		"Mutates a routine by replacing its title and exercises. Omitted exercises are removed.",
 	inputSchema: updateRoutineSchema,
 	kind: "write",
 	annotations: updateAnnotations("Update Routine"),
 	responseContract: updateRoutineResponse,
 	execute: async (runtime, args) => {
-		const { routineId } = args;
-		const { payload, usesRepRanges } = buildRoutinePayload(args, "update");
+		const { routine_id } = args;
+		const { payload, usesRepRanges } = buildRoutinePayload(
+			args.routine,
+			"update",
+		);
 		const data: PutV1RoutinesRoutineid200 = await runtime
 			.getClient()
-			.updateRoutine(routineId, { routine: payload });
-		return { routine: data, routineId, usesRepRanges };
+			.updateRoutine(routine_id, { routine: payload });
+		return { routine: data, routine_id, usesRepRanges };
 	},
 };
 
