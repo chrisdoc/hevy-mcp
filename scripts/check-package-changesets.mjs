@@ -1,44 +1,60 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFile);
-const root = resolve(import.meta.dirname, "..");
-const packagesRoot = resolve(root, "packages");
-const changesetRoot = resolve(root, ".changeset");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sinceIndex = process.argv.indexOf("--since");
 const since = sinceIndex >= 0 ? process.argv[sinceIndex + 1] : "origin/main";
 
 if (!since) throw new Error("Missing value for --since");
 
-const { stdout } = await execFileAsync("git", [
-	"diff",
-	"--name-only",
-	"--diff-filter=ACMR",
-	`${since}...HEAD`,
-]);
+const { stdout } = await execFileAsync(
+	"git",
+	["diff", "--name-only", "--diff-filter=ACMRD", `${since}...HEAD`],
+	{ cwd: root },
+);
 const changedFiles = stdout.trim().split("\n").filter(Boolean);
 
-const packageNames = new Map();
-for (const entry of await readdir(packagesRoot, { withFileTypes: true })) {
-	if (!entry.isDirectory()) continue;
-	const packagePath = resolve(packagesRoot, entry.name, "package.json");
+async function readPackageName(packagePath) {
+	const manifestPath = `${packagePath}/package.json`;
+	let contents;
+
 	try {
-		const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
-		packageNames.set(`packages/${entry.name}`, packageJson.name);
+		contents = await readFile(resolve(root, manifestPath), "utf8");
 	} catch {
-		// Ignore workspace directories without a package manifest.
+		try {
+			const result = await execFileAsync(
+				"git",
+				["show", `${since}:${manifestPath}`],
+				{ cwd: root },
+			);
+			contents = result.stdout;
+		} catch {
+			return undefined;
+		}
+	}
+
+	try {
+		const packageJson = JSON.parse(contents);
+		return typeof packageJson.name === "string" ? packageJson.name : undefined;
+	} catch {
+		return undefined;
 	}
 }
 
-const changedPackages = new Map();
+const changedPackagePaths = new Set();
 for (const file of changedFiles) {
-	for (const [path, packageName] of packageNames) {
-		if (file === path || file.startsWith(`${path}/`)) {
-			changedPackages.set(path, packageName);
-		}
-	}
+	const match = file.match(/^packages\/([^/]+)(?:\/|$)/);
+	if (match) changedPackagePaths.add(`packages/${match[1]}`);
+}
+
+const changedPackages = new Map();
+for (const path of changedPackagePaths) {
+	const packageName = await readPackageName(path);
+	if (packageName) changedPackages.set(path, packageName);
 }
 
 if (changedPackages.size === 0) {
@@ -47,9 +63,16 @@ if (changedPackages.size === 0) {
 }
 
 const changesetPackages = new Set();
-for (const entry of await readdir(changesetRoot, { withFileTypes: true })) {
-	if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-	const contents = await readFile(resolve(changesetRoot, entry.name), "utf8");
+let changedChangesetCount = 0;
+for (const file of changedFiles) {
+	if (!/^\.changeset\/[^/]+\.md$/.test(file)) continue;
+	let contents;
+	try {
+		contents = await readFile(resolve(root, file), "utf8");
+	} catch {
+		continue;
+	}
+	changedChangesetCount += 1;
 	const frontmatter = contents.match(/^---\s*\n([\s\S]*?)\n---/);
 	if (!frontmatter) continue;
 	for (const line of frontmatter[1].split("\n")) {
@@ -58,6 +81,12 @@ for (const entry of await readdir(changesetRoot, { withFileTypes: true })) {
 		);
 		if (match) changesetPackages.add(match[1] ?? match[2] ?? match[3]);
 	}
+}
+
+if (changedChangesetCount === 0) {
+	throw new Error(
+		`Changed workspace packages need a changeset added or modified by this branch:\n${[...changedPackages.entries()].map(([path, packageName]) => `- ${path} -> ${packageName}`).join("\n")}`,
+	);
 }
 
 const missing = [...changedPackages.entries()]
