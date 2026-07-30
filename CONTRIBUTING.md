@@ -230,6 +230,48 @@ npm run worker:deploy
 is a production-affecting operation. Prefer `worker:dry-run` for local bundle
 verification unless deployment is explicitly intended.
 
+`cloudflare.config.ts` is the Worker configuration used by Wrangler's
+experimental TypeScript config mode. Commands must include `--x-new-config`;
+the mode is selected inside the config using `WRANGLER_MODE` and the GitHub
+Environment values. A clean clone without those values defaults to a
+`workers.dev` development Worker.
+
+This Wrangler configuration format is experimental. The repository pins a
+Wrangler version that includes the feature, but the `--x-new-config` flag and
+`wrangler/experimental-config` API may change in future releases.
+
+The GitHub `production` and `preview` Environments provide the account-owned
+deployment settings; they are not committed to this repository. Configure
+these values in each GitHub Environment:
+
+- Variable `CLOUDFLARE_WORKER_NAME`: the Worker name. Use a preview Worker name
+  that matches the preview URL prefix expected by the workflow.
+- Secret `CLOUDFLARE_OAUTH_KV_NAMESPACE_ID`: the KV namespace ID bound as
+  `OAUTH_KV`.
+- Production-only variable `CLOUDFLARE_WORKER_ROUTE`: the custom-domain
+  hostname or route pattern. Preview deployments intentionally leave routes
+  unset because they use PR version aliases.
+
+The workflows pass these values to `cloudflare.config.ts`. Namespace IDs and
+routes therefore do not need to be hardcoded in a committed Wrangler config.
+
+`worker:deploy` runs `wrangler deploy --x-new-config --env production`, so it
+intentionally targets a production environment named `production`. In CI, the
+TypeScript config supplies that environment's Worker name, route, and KV binding.
+`worker:dev` and `worker:dry-run` use the same portable TypeScript
+configuration with development defaults.
+
+Self-hosters can add account-owned settings to their own environment block or
+fork configuration:
+
+- To enable OAuth, create a KV namespace and bind its ID with the binding name
+  `OAUTH_KV`.
+- Add `routes` or a custom domain only if the hostname belongs to your account;
+  the portable default uses `workers.dev` instead.
+- Add observability destinations only if they exist in your account. The
+  maintainer workflows may configure `otel` and `otel-logs`, but self-hosters
+  can omit or replace those destinations.
+
 Browser clients must send an exact origin from the Worker's default allowlist:
 
 ```text
@@ -265,15 +307,15 @@ and bearer-auth behavior when changing Worker request handling.
 Clients that cannot send a fixed `Authorization` header (for example Claude.ai
 custom connectors) can use OAuth 2.1 instead. The layer is opt-in per
 deployment: create a KV namespace and bind it as `OAUTH_KV` in the relevant
-Wrangler config (`wrangler.jsonc` for production or `wrangler.preview.jsonc`
-for PR previews):
+Wrangler environment. For example, a fork can provide the namespace ID through
+`CLOUDFLARE_OAUTH_KV_NAMESPACE_ID`:
 
 ```bash
 npx wrangler kv namespace create OAUTH_KV
 ```
 
 ```jsonc
-"kv_namespaces": [{ "binding": "OAUTH_KV", "id": "<namespace-id>" }]
+CLOUDFLARE_OAUTH_KV_NAMESPACE_ID=<namespace-id>
 ```
 
 With the binding present, `packages/worker/src/worker-oauth.ts` (backed by

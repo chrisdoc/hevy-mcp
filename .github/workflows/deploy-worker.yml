@@ -33,6 +33,11 @@ jobs:
     environment:
       name: preview
       url: ${{ steps.preview_url.outputs.url }}
+    env:
+      WRANGLER_MODE: preview
+      CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
+      CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
+      CLOUDFLARE_OAUTH_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID }}
 
     steps:
       - name: Checkout pull request commit
@@ -72,7 +77,7 @@ jobs:
               --request GET \
               --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
               --header "Content-Type: application/json" \
-              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/hevy-mcp-preview/settings"
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${CLOUDFLARE_WORKER_NAME}/settings"
           )"
           curl_exit=$?
           set -e
@@ -102,9 +107,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: >-
           npx wrangler deploy .github/workers/preview-bootstrap.ts
-          --config wrangler.preview.jsonc
+          --x-new-config
+          --env preview
           --keep-vars
-          --message "Bootstrap inert hevy-mcp-preview Worker for GitHub PR versions"
+          --message "Bootstrap inert ${CLOUDFLARE_WORKER_NAME} Worker for GitHub PR versions"
 
       - name: Upload preview version
         env:
@@ -115,7 +121,8 @@ jobs:
           # Truncate to prevent stale entries from a prior run polluting version ID extraction
           > "${WRANGLER_OUTPUT_FILE_PATH}"
           npx wrangler versions upload \
-            --config wrangler.preview.jsonc \
+            --x-new-config \
+            --env preview \
             --keep-vars \
             --preview-alias pr-${{ github.event.pull_request.number }} \
             --message "GitHub PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request.head.sha }}"
@@ -151,7 +158,8 @@ jobs:
           )"
           for attempt in 1 2 3; do
             if npx wrangler versions deploy "$version_id" \
-              --config wrangler.preview.jsonc \
+              --x-new-config \
+              --env preview \
               --yes \
               --message "Activate GitHub PR #${{ github.event.pull_request.number }} preview"; then
               break
@@ -168,7 +176,7 @@ jobs:
       - name: Publish preview URL
         id: preview_url
         env:
-          EXPECTED_PREFIX: pr-${{ github.event.pull_request.number }}-hevy-mcp-preview.
+          EXPECTED_PREFIX: pr-${{ github.event.pull_request.number }}-${{ vars.CLOUDFLARE_WORKER_NAME }}.
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
         run: |
           node <<'NODE'
@@ -277,6 +285,12 @@ jobs:
     concurrency:
       group: cloudflare-worker-preview-pr-${{ github.event.pull_request.number }}
       cancel-in-progress: false
+    environment: preview
+    env:
+      WRANGLER_MODE: preview
+      CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
+      CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
+      CLOUDFLARE_OAUTH_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID }}
 
     steps:
       - name: Checkout pull request commit
@@ -302,7 +316,8 @@ jobs:
           # Truncate to prevent stale entries from a prior run polluting version ID extraction
           > "${WRANGLER_OUTPUT_FILE_PATH}"
           npx wrangler versions upload .github/workers/preview-bootstrap.ts \
-            --config wrangler.preview.jsonc \
+            --x-new-config \
+            --env preview \
             --keep-vars \
             --preview-alias pr-${{ github.event.pull_request.number }} \
             --message "Cleanup GitHub PR #${{ github.event.pull_request.number }} after merge"
@@ -338,7 +353,8 @@ jobs:
           )"
           for attempt in 1 2 3; do
             if npx wrangler versions deploy "$version_id" \
-              --config wrangler.preview.jsonc \
+              --x-new-config \
+              --env preview \
               --yes \
               --message "Activate inert cleanup for GitHub PR #${{ github.event.pull_request.number }}"; then
               break
