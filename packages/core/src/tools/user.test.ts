@@ -1,5 +1,6 @@
+import type { McpServer } from "@modelcontextprotocol/server";
+
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";

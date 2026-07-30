@@ -273,10 +273,12 @@ const getRoutinesSchema = {
 type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
 
 // 3. Use inferred type in handler
-server.tool(
+server.registerTool(
 	"get-routines",
-	"Description...",
-	getRoutinesSchema, // Use the schema constant
+	{
+		description: "Description...",
+		inputSchema: z.object(getRoutinesSchema),
+	},
 	withErrorHandling(async (args: GetRoutinesParams) => {
 		// args is fully typed - no manual assertions needed!
 		const { page, pageSize } = args;

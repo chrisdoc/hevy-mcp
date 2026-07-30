@@ -15,7 +15,7 @@
 - **MCP SDK internals sensitivity:** `packages/node/src/utils/stdio-observability.ts`
   depends on MCP SDK stdio internals (private fields such as `_ondata`/
   `_readBuffer`) for raw chunk instrumentation. Re-run the stdio observability
-  test suite after any `@modelcontextprotocol/sdk` upgrade.
+  test suite after any MCP TypeScript SDK package upgrade.
 
 ## Git & Workflow Standards
 
@@ -331,10 +331,12 @@ const getRoutinesSchema = {
 type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
 
 // 3. Use inferred type in handler
-server.tool(
+server.registerTool(
 	"get-routines",
-	"Description...",
-	getRoutinesSchema, // Use the schema constant
+	{
+		description: "Description...",
+		inputSchema: z.object(getRoutinesSchema),
+	},
 	withErrorHandling(async (args: GetRoutinesParams) => {
 		// args is fully typed - no manual assertions needed!
 		const { page, pageSize } = args;

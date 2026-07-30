@@ -1,5 +1,6 @@
+import type { McpServer } from "@modelcontextprotocol/server";
+
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Routine } from "@hevy-mcp/hevy-client/types";
@@ -32,10 +33,12 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
 	const config = match[1] as
-		| { inputSchema?: Record<string, z.ZodTypeAny>; outputSchema?: unknown }
+		| { inputSchema?: z.ZodTypeAny; outputSchema?: unknown }
 		| undefined;
-	const schema =
-		config?.inputSchema ?? (match[2] as Record<string, z.ZodTypeAny>);
+	const schema = config?.inputSchema;
+	if (!schema) {
+		throw new Error(`Tool ${name} has no input schema`);
+	}
 	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
@@ -600,8 +603,7 @@ describe("registerRoutineTools", () => {
 		registerRoutineTools(server, null);
 		const { schema } = getToolRegistration(tool, "create-routine");
 
-		const zodSchema = z.object(schema);
-		const parsed = zodSchema.parse({
+		const parsed = schema.parse({
 			title: "Leg Day",
 			folderId: null,
 			exercises: [

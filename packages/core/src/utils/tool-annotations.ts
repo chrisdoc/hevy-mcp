@@ -5,8 +5,7 @@
  * limited to the authenticated user's own data, so openWorldHint is false
  * across the board.
  */
-
-import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/server";
 
 /** Read-only tools (get-*, search-*): no side effects. */
 export function readOnlyAnnotations(title: string): ToolAnnotations {

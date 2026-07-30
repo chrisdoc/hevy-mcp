@@ -18,5 +18,5 @@ lines; do not speculate about unrelated code.
   changeset only for user-facing, runtime-visible changes; use
   `npx changeset --empty` for docs, CI, tests, refactors, and other
   internal-only changes.
-- After upgrading `@modelcontextprotocol/sdk`, rerun the stdio observability
+- After upgrading the MCP TypeScript SDK packages, rerun the stdio observability
   test suite because it depends on SDK stdio internals.

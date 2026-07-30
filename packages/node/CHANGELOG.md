@@ -1,5 +1,17 @@
 # hevy-mcp
 
+## 4.1.4
+
+### Patch Changes
+
+- [#780](https://github.com/chrisdoc/hevy-mcp/pull/780) [`14b4b01`](https://github.com/chrisdoc/hevy-mcp/commit/14b4b01d8cfcafe6489de5dbbee5f15474d9d82e) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Reduce OAuth refresh frequency to keep Cloudflare KV writes below the free-plan quota while preserving refresh-token support.
+
+## 4.1.3
+
+### Patch Changes
+
+- [#774](https://github.com/chrisdoc/hevy-mcp/pull/774) [`12ca7d5`](https://github.com/chrisdoc/hevy-mcp/commit/12ca7d5362024f06d8c2b0a42e84a92e2087a077) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Migrate the server runtimes and tests to MCP TypeScript SDK v2.
+
 ## 4.1.2
 
 ### Patch Changes
