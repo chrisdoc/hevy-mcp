@@ -105,7 +105,7 @@ jobs:
             echo "released=true" >> "$GITHUB_OUTPUT"
           else
             echo "version=" >> "$GITHUB_OUTPUT"
-            echo "released=$worker_released" >> "$GITHUB_OUTPUT"
+            echo "released=false" >> "$GITHUB_OUTPUT"
           fi
           echo "worker_released=$worker_released" >> "$GITHUB_OUTPUT"
         env:
