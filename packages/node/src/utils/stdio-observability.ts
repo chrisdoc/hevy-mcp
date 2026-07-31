@@ -81,22 +81,27 @@ function createSdkPrivateStdioAdapter(
 			}
 
 			readBuffer.readMessage = () => {
-				const buffer = readBuffer._buffer;
-				if (!buffer) {
-					return null;
-				}
+				while (true) {
+					const buffer = readBuffer._buffer;
+					if (!buffer) {
+						return null;
+					}
 
-				const index = buffer.indexOf("\n");
-				if (index === -1) {
-					return null;
-				}
+					const index = buffer.indexOf("\n");
+					if (index === -1) {
+						return null;
+					}
 
-				const lineBuffer = buffer.subarray(0, index);
-				readBuffer._buffer = buffer.subarray(index + 1);
-				const line = lineBuffer.toString("utf8").replace(/\r$/, "");
-				return onReadLine(line);
+					const lineBuffer = buffer.subarray(0, index);
+					readBuffer._buffer = buffer.subarray(index + 1);
+					const line = lineBuffer.toString("utf8").replace(/\r$/, "");
+					try {
+						return onReadLine(line);
+					} catch {
+						// Malformed stdin lines are consumed and ignored.
+					}
+				}
 			};
-
 			return true;
 		},
 	};

@@ -270,7 +270,7 @@ describe("package-local stdio observability", () => {
 			);
 			await processed;
 
-			expect(onError).toHaveBeenCalledOnce();
+			expect(onError).not.toHaveBeenCalled();
 			expect(onMessage).toHaveBeenCalledWith({
 				jsonrpc: "2.0",
 				method: "notifications/initialized",
