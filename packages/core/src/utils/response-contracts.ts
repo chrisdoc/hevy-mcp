@@ -184,7 +184,7 @@ export const formattedRoutineExerciseSchema = z.object({
 	exercise_template_id: z.string().optional(),
 	notes: z.string().optional(),
 	supersets_id: optionalNumber,
-	rest_seconds: optionalNumber,
+	rest_seconds: z.number().int().optional(),
 	sets: z.array(formattedRoutineSetSchema).optional(),
 });
 
