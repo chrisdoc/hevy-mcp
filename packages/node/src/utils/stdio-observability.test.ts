@@ -285,6 +285,21 @@ describe("package-local stdio observability", () => {
 		}
 	});
 
+	it("ignores PowerShell environment text before a valid MCP message", () => {
+		const { readBuffer, transport } = createTransportDouble();
+		createInstrumentedStdioTransport(
+			transport as unknown as StdioServerTransport,
+		);
+		transport._ondata?.(
+			Buffer.from(
+				'& "$env:LOCALAPPDATA\\npm\\hevy-mcp.ps1"\n{"jsonrpc":"2.0","id":1,"method":"ping"}\n',
+				"utf8",
+			),
+		);
+
+		expect(readBuffer.readMessage()).toMatchObject({ id: 1, method: "ping" });
+	});
+
 	it("rethrows unexpected parser failures from the transport adapter", () => {
 		const { readBuffer, transport } = createTransportDouble();
 		const unexpected = new Error("instrumentation failure");
