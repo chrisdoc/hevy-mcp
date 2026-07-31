@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 5.0.1
+
+### Patch Changes
+
+- [#796](https://github.com/chrisdoc/hevy-mcp/pull/796) [`8ca3b7c`](https://github.com/chrisdoc/hevy-mcp/commit/8ca3b7c1b980ebcf0d7e2868d57d91b9a9baf7fc) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Ignore malformed MCP stdin lines after recording bounded diagnostics so valid subsequent messages continue processing.
+
 ## 5.0.0
 
 ### Major Changes
