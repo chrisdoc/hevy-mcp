@@ -91,7 +91,10 @@ describe("routine tools", () => {
 			),
 		} as unknown as HevyClient;
 		const tool = register(client);
-		const response = await handler(tool, "get-routine")({
+		const response = await handler(
+			tool,
+			"get-routine",
+		)({
 			routine_id: "routine-1",
 		});
 
