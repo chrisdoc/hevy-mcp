@@ -111,6 +111,40 @@ function defaultSleep(milliseconds: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function withTimeout<T>(
+	operation: Promise<T>,
+	timeoutMs: number,
+	onTimeout: () => void,
+): Promise<T> {
+	const promise = new Promise<T>((resolve, reject) => {
+		let settled = false;
+		const timer = setTimeout(
+			() => {
+				if (settled) return;
+				settled = true;
+				onTimeout();
+				reject(new DOMException("Operation timed out", "AbortError"));
+			},
+			Math.max(0, timeoutMs),
+		);
+		operation.then(
+			(value) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+	return promise;
+}
+
 function getRequestContext(config: { method?: string; url?: string }) {
 	const method = (config.method ?? "GET").toUpperCase();
 	const rawEndpoint = (config.url ?? "").split("?")[0] ?? "";
@@ -264,19 +298,28 @@ function createNativeClient(
 				) {
 					headers.set("content-type", "application/json");
 				}
-				const response = await fetchImplementation(url, {
-					method,
-					headers,
-					redirect: "manual",
-					body:
-						normalized.data instanceof FormData
-							? normalized.data
-							: normalized.data === undefined
-								? undefined
-								: JSON.stringify(normalized.data),
-					signal: controller.signal,
-				});
-				const data = await parseResponseData(response);
+				const attemptDeadline = Date.now() + timeoutMs;
+				const response = await withTimeout(
+					fetchImplementation(url, {
+						method,
+						headers,
+						redirect: "manual",
+						body:
+							normalized.data instanceof FormData
+								? normalized.data
+								: normalized.data === undefined
+									? undefined
+									: JSON.stringify(normalized.data),
+						signal: controller.signal,
+					}),
+					Math.max(0, attemptDeadline - Date.now()),
+					() => controller.abort(),
+				);
+				const data = await withTimeout(
+					parseResponseData(response),
+					Math.max(0, attemptDeadline - Date.now()),
+					() => controller.abort(),
+				);
 				if (!response.ok) {
 					throw new HevyHttpError(
 						`Hevy API request failed (HTTP ${response.status})`,
