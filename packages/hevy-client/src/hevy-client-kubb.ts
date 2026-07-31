@@ -116,31 +116,32 @@ function withTimeout<T>(
 	timeoutMs: number,
 	onTimeout: () => void,
 ): Promise<T> {
-	const { promise, resolve, reject } = Promise.withResolvers<T>();
-	let settled = false;
-	const timer = setTimeout(
-		() => {
-			if (settled) return;
-			settled = true;
-			onTimeout();
-			reject(new DOMException("Operation timed out", "AbortError"));
-		},
-		Math.max(0, timeoutMs),
-	);
-	operation.then(
-		(value) => {
-			if (settled) return;
-			settled = true;
-			clearTimeout(timer);
-			resolve(value);
-		},
-		(error: unknown) => {
-			if (settled) return;
-			settled = true;
-			clearTimeout(timer);
-			reject(error);
-		},
-	);
+	const promise = new Promise<T>((resolve, reject) => {
+		let settled = false;
+		const timer = setTimeout(
+			() => {
+				if (settled) return;
+				settled = true;
+				onTimeout();
+				reject(new DOMException("Operation timed out", "AbortError"));
+			},
+			Math.max(0, timeoutMs),
+		);
+		operation.then(
+			(value) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
 	return promise;
 }
 
