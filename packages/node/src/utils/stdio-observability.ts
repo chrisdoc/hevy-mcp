@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { deserializeMessage } from "@modelcontextprotocol/server";
 import type { JSONRPCMessage } from "@modelcontextprotocol/server";
@@ -23,6 +24,12 @@ const SAFE_MCP_METHODS: Record<string, true> = {
 	"prompts/list": true,
 };
 const REDACTED_CONTENT_MARKER = "[REDACTED]";
+
+const MAX_MALFORMED_LINES_PER_READ = 100;
+
+function isMalformedMessageError(error: unknown): boolean {
+	return error instanceof SyntaxError || error instanceof ZodError;
+}
 
 export interface StdioChunkSnapshot {
 	lastChunkByteLength: number;
@@ -79,24 +86,46 @@ function createSdkPrivateStdioAdapter(
 			if (!readBuffer || typeof readBuffer.readMessage !== "function") {
 				return false;
 			}
+			let deferredMessage: JSONRPCMessage | null = null;
 
 			readBuffer.readMessage = () => {
-				const buffer = readBuffer._buffer;
-				if (!buffer) {
-					return null;
+				if (deferredMessage) {
+					const message = deferredMessage;
+					deferredMessage = null;
+					return message;
 				}
+				let skippedMalformedLines = 0;
+				while (true) {
+					const buffer = readBuffer._buffer;
+					if (!buffer) {
+						return null;
+					}
 
-				const index = buffer.indexOf("\n");
-				if (index === -1) {
-					return null;
+					const index = buffer.indexOf("\n");
+					if (index === -1) {
+						return null;
+					}
+
+					const lineBuffer = buffer.subarray(0, index);
+					readBuffer._buffer = buffer.subarray(index + 1);
+					const line = lineBuffer.toString("utf8").replace(/\r$/, "");
+					try {
+						return onReadLine(line);
+					} catch (error) {
+						if (!isMalformedMessageError(error)) {
+							throw error;
+						}
+						skippedMalformedLines += 1;
+						if (skippedMalformedLines >= MAX_MALFORMED_LINES_PER_READ) {
+							setImmediate(() => {
+								const message = readBuffer.readMessage();
+								if (message) deferredMessage = message;
+							});
+							return null;
+						}
+					}
 				}
-
-				const lineBuffer = buffer.subarray(0, index);
-				readBuffer._buffer = buffer.subarray(index + 1);
-				const line = lineBuffer.toString("utf8").replace(/\r$/, "");
-				return onReadLine(line);
 			};
-
 			return true;
 		},
 	};
