@@ -285,6 +285,20 @@ describe("package-local stdio observability", () => {
 		}
 	});
 
+	it("rethrows unexpected parser failures from the transport adapter", () => {
+		const { readBuffer, transport } = createTransportDouble();
+		const unexpected = new Error("instrumentation failure");
+		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
+			throw unexpected;
+		});
+		createInstrumentedStdioTransport(
+			transport as unknown as StdioServerTransport,
+		);
+		transport._ondata?.(Buffer.from('{"jsonrpc":"2.0"}\n', "utf8"));
+
+		expect(() => readBuffer.readMessage()).toThrow(unexpected);
+	});
+
 	it("rethrows the original parser error when diagnostics fail", () => {
 		const parserError = new Error("private parser failure at position 3");
 		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {

@@ -24,6 +24,15 @@ const SAFE_MCP_METHODS: Record<string, true> = {
 };
 const REDACTED_CONTENT_MARKER = "[REDACTED]";
 
+const MAX_MALFORMED_LINES_PER_READ = 100;
+
+function isMalformedMessageError(error: unknown): boolean {
+	return (
+		error instanceof SyntaxError ||
+		(error instanceof Error && error.name === "ZodError")
+	);
+}
+
 export interface StdioChunkSnapshot {
 	lastChunkByteLength: number;
 	lastChunkStartsWithUtf8Bom: boolean;
@@ -81,6 +90,7 @@ function createSdkPrivateStdioAdapter(
 			}
 
 			readBuffer.readMessage = () => {
+				let skippedMalformedLines = 0;
 				while (true) {
 					const buffer = readBuffer._buffer;
 					if (!buffer) {
@@ -97,8 +107,14 @@ function createSdkPrivateStdioAdapter(
 					const line = lineBuffer.toString("utf8").replace(/\r$/, "");
 					try {
 						return onReadLine(line);
-					} catch {
-						// Malformed stdin lines are consumed and ignored.
+					} catch (error) {
+						if (!isMalformedMessageError(error)) {
+							throw error;
+						}
+						skippedMalformedLines += 1;
+						if (skippedMalformedLines >= MAX_MALFORMED_LINES_PER_READ) {
+							return null;
+						}
 					}
 				}
 			};
