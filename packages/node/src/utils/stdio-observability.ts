@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { deserializeMessage } from "@modelcontextprotocol/server";
 import type { JSONRPCMessage } from "@modelcontextprotocol/server";
@@ -27,10 +28,7 @@ const REDACTED_CONTENT_MARKER = "[REDACTED]";
 const MAX_MALFORMED_LINES_PER_READ = 100;
 
 function isMalformedMessageError(error: unknown): boolean {
-	return (
-		error instanceof SyntaxError ||
-		(error instanceof Error && error.name === "ZodError")
-	);
+	return error instanceof SyntaxError || error instanceof ZodError;
 }
 
 export interface StdioChunkSnapshot {
@@ -88,8 +86,14 @@ function createSdkPrivateStdioAdapter(
 			if (!readBuffer || typeof readBuffer.readMessage !== "function") {
 				return false;
 			}
+			let deferredMessage: JSONRPCMessage | null = null;
 
 			readBuffer.readMessage = () => {
+				if (deferredMessage) {
+					const message = deferredMessage;
+					deferredMessage = null;
+					return message;
+				}
 				let skippedMalformedLines = 0;
 				while (true) {
 					const buffer = readBuffer._buffer;
@@ -113,6 +117,10 @@ function createSdkPrivateStdioAdapter(
 						}
 						skippedMalformedLines += 1;
 						if (skippedMalformedLines >= MAX_MALFORMED_LINES_PER_READ) {
+							setImmediate(() => {
+								const message = readBuffer.readMessage();
+								if (message) deferredMessage = message;
+							});
 							return null;
 						}
 					}

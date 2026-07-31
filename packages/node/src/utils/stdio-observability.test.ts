@@ -288,6 +288,7 @@ describe("package-local stdio observability", () => {
 	it("rethrows unexpected parser failures from the transport adapter", () => {
 		const { readBuffer, transport } = createTransportDouble();
 		const unexpected = new Error("instrumentation failure");
+		unexpected.name = "ZodError";
 		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
 			throw unexpected;
 		});
@@ -297,6 +298,25 @@ describe("package-local stdio observability", () => {
 		transport._ondata?.(Buffer.from('{"jsonrpc":"2.0"}\n', "utf8"));
 
 		expect(() => readBuffer.readMessage()).toThrow(unexpected);
+	});
+	it("defers the message after the malformed-line drain cap", async () => {
+		const { readBuffer, transport } = createTransportDouble();
+		createInstrumentedStdioTransport(
+			transport as unknown as StdioServerTransport,
+		);
+		const malformedLines = Array.from({ length: 100 }, () => "{bad}").join(
+			"\n",
+		);
+		transport._ondata?.(
+			Buffer.from(
+				`${malformedLines}\n{"jsonrpc":"2.0","id":1,"method":"ping"}\n`,
+				"utf8",
+			),
+		);
+
+		expect(readBuffer.readMessage()).toBeNull();
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(readBuffer.readMessage()).toMatchObject({ id: 1, method: "ping" });
 	});
 
 	it("rethrows the original parser error when diagnostics fail", () => {
