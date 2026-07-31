@@ -80,6 +80,27 @@ describe("routine tools", () => {
 		expect(client.getRoutineById).toHaveBeenCalledWith("r1");
 	});
 
+	it("returns a standard error response for a bounded timeout", async () => {
+		const client = {
+			getRoutineById: vi.fn().mockRejectedValue(
+				new HevyHttpError("request timed out", {
+					method: "GET",
+					endpoint: "/v1/routines/:routineId",
+					code: "ETIMEDOUT",
+				}),
+			),
+		} as unknown as HevyClient;
+		const tool = register(client);
+		const response = await handler(
+			tool,
+			"get-routine",
+		)({
+			routine_id: "routine-1",
+		});
+
+		expect(response).toMatchObject({ isError: true });
+	});
+
 	it("passes nested snake_case routine payloads to create and update", async () => {
 		const client = {
 			createRoutine: vi.fn().mockResolvedValue(routineInput.routine),

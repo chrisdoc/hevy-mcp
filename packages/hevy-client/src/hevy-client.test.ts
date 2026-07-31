@@ -1,12 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { createHevyClient } from "./hevy-client.js";
-import { HevyHttpError } from "./hevy-http-error.js";
-
+import {
+	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+	HevyHttpError,
+} from "./hevy-http-error.js";
 function response(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {
 		status,
 		headers: { "content-type": "application/json" },
 	});
+}
+
+function hangingResponse(): Response {
+	return new Response(
+		new ReadableStream({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode('{"routine":'));
+			},
+		}),
+		{ status: 200, headers: { "content-type": "application/json" } },
+	);
 }
 
 describe("@hevy-mcp/hevy-client", () => {
@@ -65,5 +78,48 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(eventText).not.toContain("body");
 		expect(eventText).not.toContain("observer-secret");
 		expect(onLog).toHaveBeenCalled();
+	});
+	it("times out while consuming a response body", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 20,
+			maxGetRetries: 0,
+		});
+
+		await expect(client.getRoutineById("routine-1")).rejects.toMatchObject({
+			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+		});
+	});
+
+	it("times out when fetch never settles", async () => {
+		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 20,
+			maxGetRetries: 0,
+		});
+
+		await expect(client.getRoutineById("routine-1")).rejects.toMatchObject({
+			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+		});
+	});
+
+	it("bounds retries for hanging response bodies", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 20,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+
+		await expect(client.getRoutineById("routine-1")).rejects.toMatchObject({
+			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 });
