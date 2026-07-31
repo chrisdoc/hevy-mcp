@@ -15,7 +15,7 @@ function hangingResponse(): Response {
 	return new Response(
 		new ReadableStream({
 			start(controller) {
-				controller.enqueue(new TextEncoder().encode('{"routine":'));
+				controller.enqueue(new TextEncoder().encode("{\"routine\":"));
 			},
 		}),
 		{ status: 200, headers: { "content-type": "application/json" } },
