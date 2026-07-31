@@ -50,7 +50,7 @@ describe("snake_case response projections", () => {
 			exercises: [
 				{
 					exercise_template_id: "bench",
-					rest_seconds: "60",
+					rest_seconds: 60,
 					sets: [{ rep_range: { start: 8, end: 12 } }],
 				},
 			],
@@ -62,7 +62,7 @@ describe("snake_case response projections", () => {
 			exercises: [
 				{
 					exercise_template_id: "bench",
-					rest_seconds: "60",
+					rest_seconds: 60,
 					sets: [{ rep_range: { start: 8, end: 12 } }],
 				},
 			],

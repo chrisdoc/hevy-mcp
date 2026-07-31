@@ -2270,9 +2270,9 @@
 									"example": "Bench Press (Barbell)"
 								},
 								"rest_seconds": {
-									"type": "string",
+									"type": "integer",
 									"description": "The rest time in seconds between sets of the exercise",
-									"example": "60"
+									"example": 60
 								},
 								"notes": {
 									"type": "string",

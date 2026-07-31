@@ -23,9 +23,9 @@ describe("snake_case formatted output schemas", () => {
 			formattedRoutineSchema.parse({
 				id: "routine-1",
 				folder_id: 2,
-				exercises: [{ rest_seconds: "60" }],
+				exercises: [{ rest_seconds: 60 }],
 			}),
-		).toMatchObject({ folder_id: 2, exercises: [{ rest_seconds: "60" }] });
+		).toMatchObject({ folder_id: 2, exercises: [{ rest_seconds: 60 }] });
 	});
 
 	it("accepts snake_case template, history, measurement, and folder DTOs", () => {
