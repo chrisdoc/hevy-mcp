@@ -30,7 +30,6 @@ import {
 import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
-const cleanupProcessExceptionTracking = installProcessExceptionTracking();
 const version = serviceVersion;
 
 const HELP_TEXT = [
@@ -226,6 +225,7 @@ export async function runStdioServer() {
 		console.log(HELP_TEXT);
 		return;
 	}
+	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
 
 	serverStartups.add(1, { version });
 
@@ -286,8 +286,8 @@ export async function runStdioServer() {
 						recordMcpSessionTermination(
 							resolveSessionTerminationCategory(succeeded),
 						);
-						await flushTelemetry();
 						cleanupProcessExceptionTracking();
+						await flushTelemetry();
 					},
 				});
 
@@ -297,6 +297,7 @@ export async function runStdioServer() {
 					connectAttempted ? "connect_failure" : "startup_failure",
 				);
 				span.setStatus({ code: SpanStatusCode.ERROR });
+				cleanupProcessExceptionTracking();
 				throw e;
 			} finally {
 				span.end();
@@ -322,6 +323,7 @@ export async function runServer(): Promise<void> {
 		await runStdioServer();
 		return;
 	}
+	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
 
 	await tracer.startActiveSpan(
 		"mcp.server.run",
@@ -358,6 +360,7 @@ export async function runServer(): Promise<void> {
 			} catch (error) {
 				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
+				cleanupProcessExceptionTracking();
 				throw error;
 			} finally {
 				span.end();

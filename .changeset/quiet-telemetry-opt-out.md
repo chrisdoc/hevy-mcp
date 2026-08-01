@@ -2,4 +2,4 @@
 "hevy-mcp": patch
 ---
 
-Add a master `HEVY_MCP_TELEMETRY=0` opt-out for local telemetry.
+Record tool thrown-error and returned-error exceptions as OpenTelemetry span exception events; add process-level uncaughtExceptionMonitor and unhandledRejection telemetry tracking.

@@ -199,7 +199,6 @@ export function createToolRuntime({
 						durationMs: Date.now() - startedAt,
 						errorType: policy.type,
 						error: policy.diagnostic,
-						exception: error,
 					});
 					throw error;
 				}

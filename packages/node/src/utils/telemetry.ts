@@ -35,33 +35,32 @@ import {
 } from "@opentelemetry/sdk-metrics";
 export type ProcessExceptionSource = {
 	on(
-		event: "uncaughtException" | "unhandledRejection",
+		event: "uncaughtExceptionMonitor" | "unhandledRejection",
 		listener: (error: unknown) => void,
 	): void;
 	removeListener(
-		event: "uncaughtException" | "unhandledRejection",
+		event: "uncaughtExceptionMonitor" | "unhandledRejection",
 		listener: (error: unknown) => void,
 	): void;
 };
 
 function normalizeTelemetryError(error: unknown): Error {
-	if (error instanceof Error) return error;
-	return new Error(
-		typeof error === "string" ? error : "Non-Error exception thrown",
-	);
+	const name = error instanceof Error && error.name ? error.name : "Exception";
+	return new Error(name);
 }
 
 export function recordTelemetryException(
 	error: unknown,
 	attributes?: Record<string, string | number | boolean>,
+	span?: Span,
 ): void {
 	if (!telemetryEnabled) return;
 	try {
-		const span = trace.getActiveSpan();
-		if (!span) return;
-		span.recordException(normalizeTelemetryError(error));
-		if (attributes) span.setAttributes(attributes);
-		span.setStatus({ code: SpanStatusCode.ERROR });
+		const target = span ?? trace.getActiveSpan();
+		if (!target) return;
+		target.recordException(normalizeTelemetryError(error));
+		if (attributes) target.setAttributes(attributes);
+		target.setStatus({ code: SpanStatusCode.ERROR });
 	} catch {
 		// Telemetry failures must never affect MCP behavior.
 	}
@@ -71,19 +70,27 @@ export function installProcessExceptionTracking(
 	processLike: ProcessExceptionSource = process,
 ): () => void {
 	if (!telemetryEnabled) return () => {};
+	const recordProcessException = (source: string, error: unknown) => {
+		try {
+			tracer.startActiveSpan(`mcp.process.${source}`, (span) => {
+				recordTelemetryException(error, { "exception.source": source }, span);
+				span.end();
+			});
+		} catch {
+			// Process telemetry must never affect Node's lifecycle.
+		}
+	};
 	const uncaughtException = (error: unknown) =>
-		recordTelemetryException(error, { "exception.source": "uncaughtException" });
+		recordProcessException("uncaughtException", error);
 	const unhandledRejection = (error: unknown) =>
-		recordTelemetryException(error, {
-			"exception.source": "unhandledRejection",
-		});
-	processLike.on("uncaughtException", uncaughtException);
+		recordProcessException("unhandledRejection", error);
+	processLike.on("uncaughtExceptionMonitor", uncaughtException);
 	processLike.on("unhandledRejection", unhandledRejection);
 	let cleaned = false;
 	return () => {
 		if (cleaned) return;
 		cleaned = true;
-		processLike.removeListener("uncaughtException", uncaughtException);
+		processLike.removeListener("uncaughtExceptionMonitor", uncaughtException);
 		processLike.removeListener("unhandledRejection", unhandledRejection);
 	};
 }

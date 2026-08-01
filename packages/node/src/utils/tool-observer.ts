@@ -291,8 +291,7 @@ export function createNodeToolObserver(): ToolObserver {
 								errorType = setSafeErrorAttributes(activeSpan, nextCompletion);
 								bestEffort(() =>
 									recordTelemetryException(
-										nextCompletion.exception ??
-											new Error(nextCompletion.error?.category ?? errorType),
+										new Error(nextCompletion.error?.category ?? errorType),
 										{
 											"error.type": errorType,
 											"error.category":
@@ -310,6 +309,7 @@ export function createNodeToolObserver(): ToolObserver {
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
 												: {}),
 										},
+										activeSpan,
 									),
 								);
 							}
@@ -333,6 +333,7 @@ export function createNodeToolObserver(): ToolObserver {
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
 												: {}),
 										},
+										activeSpan,
 									),
 								);
 							}
