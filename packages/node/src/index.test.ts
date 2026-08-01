@@ -29,6 +29,7 @@ const testDoubles = vi.hoisted(() => {
 		startStreamableHttpServer: vi.fn(),
 		wrapMcpServerWithSentry: vi.fn((value: unknown) => value),
 		setTelemetryUser: vi.fn(),
+		installProcessExceptionTracking: vi.fn(() => vi.fn()),
 		flushTelemetry: vi.fn().mockResolvedValue(undefined),
 		serverStartups: { add: vi.fn() },
 		installGracefulShutdown: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock("./utils/telemetry.js", () => ({
 	serviceName: "hevy-mcp",
 	serviceVersion: "3.4.1",
 	setTelemetryUser: testDoubles.setTelemetryUser,
+	installProcessExceptionTracking: testDoubles.installProcessExceptionTracking,
 }));
 
 vi.mock("./utils/metrics.js", () => ({

@@ -80,6 +80,7 @@ export interface ToolCompletionObservation {
 	readonly result?: ToolResultObservation;
 	readonly errorType?: ErrorType;
 	readonly error?: SafeErrorDiagnostic;
+	readonly exception?: unknown;
 }
 
 export interface ToolObservationScope {

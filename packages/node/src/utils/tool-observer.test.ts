@@ -55,6 +55,7 @@ const testDoubles = vi.hoisted(() => ({
 }));
 
 vi.mock("./telemetry.js", () => ({
+	recordTelemetryException: vi.fn(),
 	tracer: { startActiveSpan: testDoubles.startActiveSpan },
 	Sentry: {
 		withScope: testDoubles.sentryWithScope,

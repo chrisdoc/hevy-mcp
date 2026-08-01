@@ -18,7 +18,7 @@ import {
 	recordMcpToolInvocation,
 } from "./mcp-session-observability.js";
 import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
-import { Sentry, tracer } from "./telemetry.js";
+import { Sentry, recordTelemetryException, tracer } from "./telemetry.js";
 
 type AttributeValue = string | number | boolean;
 
@@ -289,6 +289,52 @@ export function createNodeToolObserver(): ToolObserver {
 							setResultAttributes(activeSpan, nextCompletion);
 							if (nextCompletion.outcome === "thrown_error") {
 								errorType = setSafeErrorAttributes(activeSpan, nextCompletion);
+								bestEffort(() =>
+									recordTelemetryException(
+										nextCompletion.exception ??
+											new Error(nextCompletion.error?.category ?? errorType),
+										{
+											"error.type": errorType,
+											"error.category":
+												nextCompletion.error?.category ?? "UnknownError",
+											...(nextCompletion.error?.code
+												? { "error.code": nextCompletion.error.code }
+												: {}),
+											...(nextCompletion.error?.status !== undefined
+												? { "http.status_code": nextCompletion.error.status }
+												: {}),
+											...(nextCompletion.error?.method
+												? { "http.method": nextCompletion.error.method }
+												: {}),
+											...(nextCompletion.error?.endpoint
+												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
+												: {}),
+										},
+									),
+								);
+							}
+							if (nextCompletion.outcome === "returned_error") {
+								bestEffort(() =>
+									recordTelemetryException(
+										new Error(nextCompletion.error?.category ?? "UnknownError"),
+										{
+											"error.category":
+												nextCompletion.error?.category ?? "UnknownError",
+											...(nextCompletion.error?.code
+												? { "error.code": nextCompletion.error.code }
+												: {}),
+											...(nextCompletion.error?.status !== undefined
+												? { "http.status_code": nextCompletion.error.status }
+												: {}),
+											...(nextCompletion.error?.method
+												? { "http.method": nextCompletion.error.method }
+												: {}),
+											...(nextCompletion.error?.endpoint
+												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
+												: {}),
+										},
+									),
+								);
 							}
 						}
 					} catch {

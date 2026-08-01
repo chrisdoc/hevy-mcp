@@ -3,6 +3,7 @@
 import {
 	Sentry,
 	flushTelemetry,
+	installProcessExceptionTracking,
 	tracer,
 	serviceName,
 	serviceVersion,
@@ -29,6 +30,7 @@ import {
 import { scheduleUpdateCheck } from "./utils/version-check.js";
 
 const name = serviceName;
+const cleanupProcessExceptionTracking = installProcessExceptionTracking();
 const version = serviceVersion;
 
 const HELP_TEXT = [
@@ -285,6 +287,7 @@ export async function runStdioServer() {
 							resolveSessionTerminationCategory(succeeded),
 						);
 						await flushTelemetry();
+						cleanupProcessExceptionTracking();
 					},
 				});
 
@@ -347,6 +350,7 @@ export async function runServer(): Promise<void> {
 				installGracefulShutdown({
 					target: handle,
 					onComplete: async () => {
+						cleanupProcessExceptionTracking();
 						await flushTelemetry();
 					},
 				});
