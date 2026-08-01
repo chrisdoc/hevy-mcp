@@ -260,6 +260,10 @@ these values in each GitHub Environment:
 - Production-only variable `CLOUDFLARE_WORKER_ROUTE`: the custom-domain
   hostname or route pattern. Preview deployments intentionally leave routes
   unset because they use PR version aliases.
+- Optional variable `CLOUDFLARE_OTEL_LOGS_DESTINATIONS`: comma-separated
+  Cloudflare Workers Observability log destination names.
+- Optional variable `CLOUDFLARE_OTEL_TRACES_DESTINATIONS`: comma-separated
+  Cloudflare Workers Observability trace destination names.
 
 The workflows pass these values to `cloudflare.config.ts`. Namespace IDs and
 routes therefore do not need to be hardcoded in a committed Wrangler config.
@@ -277,9 +281,11 @@ fork configuration:
   `OAUTH_KV`.
 - Add `routes` or a custom domain only if the hostname belongs to your account;
   the portable default uses `workers.dev` instead.
-- Add observability destinations only if they exist in your account. The
-  maintainer workflows may configure `otel` and `otel-logs`, but self-hosters
-  can omit or replace those destinations.
+- Add observability destination names through the optional
+  `CLOUDFLARE_OTEL_LOGS_DESTINATIONS` and
+  `CLOUDFLARE_OTEL_TRACES_DESTINATIONS` variables only if they exist in your
+  account. For the maintainer environment, set these to `otel-logs` and
+  `otel`; self-hosters can omit or replace them.
 
 Browser clients must send an exact origin from the Worker's default allowlist:
 

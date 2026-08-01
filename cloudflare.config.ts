@@ -12,6 +12,36 @@ export default defineWorker((ctx) => {
 		process.env.CLOUDFLARE_WORKER_NAME?.trim() ??
 		(environment === "preview" ? "hevy-mcp-preview" : "hevy-mcp");
 	const kvNamespaceId = process.env.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID?.trim();
+	const parseDestinations = (value: string | undefined) =>
+		value
+			?.split(",")
+			.map((destination) => destination.trim())
+			.filter(Boolean) ?? [];
+	const traceDestinations = parseDestinations(
+		process.env.CLOUDFLARE_OTEL_TRACES_DESTINATIONS,
+	);
+	const logDestinations = parseDestinations(
+		process.env.CLOUDFLARE_OTEL_LOGS_DESTINATIONS,
+	);
+	const observability = {
+		enabled: true,
+		...(traceDestinations.length > 0
+			? {
+					traces: {
+						enabled: true,
+						destinations: traceDestinations,
+					},
+				}
+			: {}),
+		...(logDestinations.length > 0
+			? {
+					logs: {
+						enabled: true,
+						destinations: logDestinations,
+					},
+				}
+			: {}),
+	};
 
 	return {
 		name: workerName,
@@ -20,7 +50,7 @@ export default defineWorker((ctx) => {
 		compatibilityFlags: ["global_fetch_strictly_public"],
 		workersDev: environment === "development",
 		previewUrls: true,
-		observability: { enabled: true },
+		observability,
 		domains: route ? [route] : undefined,
 		env: {
 			OAUTH_KV: bindings.kv(kvNamespaceId ? { id: kvNamespaceId } : undefined),
