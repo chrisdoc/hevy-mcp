@@ -14,6 +14,10 @@ export {
 	type ToolResultObservation,
 } from "./observation.js";
 export { createSafeErrorDiagnostic } from "./utils/safe-error-diagnostic.js";
+export {
+	createMcpToolFailureEvent,
+	type McpToolFailureEvent,
+} from "./utils/error-handler.js";
 export { ErrorType } from "./utils/error-policy.js";
 export {
 	bucketCount,

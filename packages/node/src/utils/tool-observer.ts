@@ -192,11 +192,8 @@ function captureSafeToolFailure(
 	try {
 		Sentry.withScope((scope) => {
 			const isPrompt = invocation.kind === "prompt";
-			if (isPrompt) {
-				scope.setTag("mcp.prompt.name", invocation.name);
-			} else {
-				scope.setTag("mcp.tool.context", invocation.name);
-			}
+			scope.setTag("mcp.tool.name", invocation.name);
+			scope.setTag("error.type", completion.errorType ?? "UNKNOWN_ERROR");
 			scope.setTag("error.category", category);
 			if (diagnostic?.code) scope.setTag("error.code", diagnostic.code);
 			if (diagnostic?.status !== undefined) {

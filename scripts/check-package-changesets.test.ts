@@ -73,6 +73,8 @@ async function createFixture(
 	}
 
 	await git(root, "init", "--quiet");
+	await mkdir(join(root, ".git-hooks"), { recursive: true });
+	await git(root, "config", "core.hooksPath", ".git-hooks");
 	await git(root, "config", "user.name", "Test User");
 	await git(root, "config", "user.email", "test@example.com");
 	await git(root, "add", ".");
