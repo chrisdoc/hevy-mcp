@@ -1,5 +1,11 @@
 # @hevy-mcp/core
 
+## 0.0.3
+
+### Patch Changes
+
+- [#842](https://github.com/chrisdoc/hevy-mcp/pull/842) [`de9aad0`](https://github.com/chrisdoc/hevy-mcp/commit/de9aad0268495ac3583e4198cb9d1f29991865b4) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Unify privacy-safe MCP tool failure events across runtimes.
+
 ## 0.0.2
 
 ### Patch Changes
