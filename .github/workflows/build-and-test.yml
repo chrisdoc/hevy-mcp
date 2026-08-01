@@ -131,11 +131,12 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./test-results/unit-tests.xml
           disable_search: true
+          report_type: test_results
 
       - name: Run unit tests with coverage
         if: ${{ !cancelled() && matrix.node-version == '26.x' }}
