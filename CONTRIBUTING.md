@@ -185,6 +185,15 @@ npm run build:client
 `openapi-spec.json` changes, regenerate the client and review the complete
 generated diff. Do not patch generated TypeScript errors by hand.
 
+Known upstream schema corrections belong in `scripts/openapi-spec.js`, so a
+future refresh reapplies them before the spec is written. Run
+`npm run check:openapi` to verify the repository-owned compatibility invariants
+before committing a refreshed spec.
+
+Because the public `hevy-mcp` package bundles the private `@hevy-mcp/core` and
+`@hevy-mcp/hevy-client` workspaces, a changeset for either bundled package must
+also include `hevy-mcp`. The package-changeset check enforces this relationship.
+
 ## Runtime architecture boundaries
 
 `packages/core` constructs the tools, prompts, resources, and MCP runtime used by

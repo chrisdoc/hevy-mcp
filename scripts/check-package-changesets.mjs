@@ -124,6 +124,21 @@ if (missing.length > 0) {
 	);
 }
 
+const bundledRuntimePackages = new Set([
+	"@hevy-mcp/core",
+	"@hevy-mcp/hevy-client",
+]);
+if (
+	[...bundledRuntimePackages].some((packageName) =>
+		changesetPackages.has(packageName),
+	) &&
+	!changesetPackages.has("hevy-mcp")
+) {
+	throw new Error(
+		"Changesets releasing @hevy-mcp/core or @hevy-mcp/hevy-client must also release hevy-mcp because those packages are bundled into the public package.",
+	);
+}
+
 console.log(
 	`Package changeset coverage passed for ${changedPackages.size} workspace package(s).`,
 );

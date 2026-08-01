@@ -6,6 +6,8 @@
  * Run with: pnpm run openapi
  */
 import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import pkg from "abstract-syntax-tree";
 
 const SPEC_FILE = "openapi-spec.json";
@@ -14,7 +16,7 @@ const HEVY_SWAGGER_URL = "https://api.hevyapp.com/docs/swagger-ui-init.js";
 /**
  * Fix known OpenAPI spec issues from the upstream Hevy API.
  */
-function fixOpenAPISpec(spec) {
+export function fixOpenAPISpec(spec) {
 	const fixed = JSON.parse(JSON.stringify(spec));
 
 	console.log("Applying fixes...\n");
@@ -24,6 +26,7 @@ function fixOpenAPISpec(spec) {
 	fixRefSiblings(fixed.components?.schemas || {});
 	fixMissingParameterSchemas(fixed.paths || {});
 	fixInvalidExamples(fixed.components?.schemas || {});
+	fixRoutineRestSecondsType(fixed.components?.schemas || {});
 
 	if (!fixed.servers || fixed.servers.length === 0) {
 		fixed.servers = [
@@ -36,6 +39,68 @@ function fixOpenAPISpec(spec) {
 	generateOperationIds(fixed.paths || {});
 
 	return fixed;
+}
+
+/**
+ * Keep the repository-owned Routine read contract aligned with the API.
+ * Upstream currently describes this field inconsistently as a string even
+ * though responses contain an integer and the write schemas already use one.
+ */
+function fixRoutineRestSecondsType(schemas) {
+	const restSeconds =
+		schemas.Routine?.properties?.exercises?.items?.properties?.rest_seconds;
+	if (!restSeconds) return;
+
+	const previousType = restSeconds.type;
+	const previousExample = restSeconds.example;
+	restSeconds.type = "integer";
+
+	if (
+		typeof restSeconds.example === "string" &&
+		/^-?\d+$/.test(restSeconds.example)
+	) {
+		restSeconds.example = Number(restSeconds.example);
+	} else if (
+		restSeconds.example !== undefined &&
+		(!Number.isInteger(restSeconds.example) ||
+			typeof restSeconds.example !== "number")
+	) {
+		delete restSeconds.example;
+	}
+
+	if (
+		previousType !== restSeconds.type ||
+		previousExample !== restSeconds.example
+	) {
+		console.log(
+			"  Fixed: schemas.Routine...rest_seconds - enforced integer type and numeric example",
+		);
+	}
+}
+
+export function validateOpenAPISpec(spec) {
+	const restSeconds =
+		spec.components?.schemas?.Routine?.properties?.exercises?.items?.properties
+			?.rest_seconds;
+	if (!restSeconds) {
+		throw new Error(
+			"Routine.exercises[].rest_seconds field is missing from the OpenAPI spec",
+		);
+	}
+	if (restSeconds.type !== "integer") {
+		throw new Error(
+			"Routine.exercises[].rest_seconds must remain an OpenAPI integer",
+		);
+	}
+	if (
+		restSeconds.example !== undefined &&
+		(typeof restSeconds.example !== "number" ||
+			!Number.isInteger(restSeconds.example))
+	) {
+		throw new Error(
+			"Routine.exercises[].rest_seconds.example must be an integer when present",
+		);
+	}
 }
 
 /**
@@ -191,18 +256,6 @@ function fixInvalidExamples(schemas) {
 			"  Fixed: schemas.PostWorkoutsRequestSet.properties.rpe - removed invalid null example",
 		);
 	}
-
-	const routine = schemas.Routine;
-	if (routine?.properties?.exercises?.items?.properties?.rest_seconds) {
-		const restSeconds =
-			routine.properties.exercises.items.properties.rest_seconds;
-		if (typeof restSeconds.example === "number") {
-			restSeconds.example = String(restSeconds.example);
-			console.log(
-				"  Fixed: schemas.Routine...rest_seconds - converted example to string",
-			);
-		}
-	}
 }
 
 /**
@@ -304,6 +357,7 @@ async function main() {
 	try {
 		const spec = await fetchSpecFromHevy();
 		const fixedSpec = fixOpenAPISpec(spec);
+		validateOpenAPISpec(fixedSpec);
 
 		writeFileSync(SPEC_FILE, JSON.stringify(fixedSpec, null, "\t"));
 		console.log(`\n✓ OpenAPI spec saved to ${SPEC_FILE}`);
@@ -313,4 +367,9 @@ async function main() {
 	}
 }
 
-void main();
+if (
+	process.argv[1] &&
+	fileURLToPath(import.meta.url) === resolve(process.argv[1])
+) {
+	void main();
+}

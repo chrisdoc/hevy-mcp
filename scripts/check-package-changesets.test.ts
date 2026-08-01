@@ -36,9 +36,17 @@ async function commitFixture(root: string) {
 	await git(root, "commit", "--quiet", "-m", "test: change fixture");
 }
 
-async function createFixture(options: { existingChangeset?: boolean } = {}) {
+async function createFixture(
+	options: {
+		existingChangeset?: boolean;
+		packageName?: string;
+		packagePath?: string;
+	} = {},
+) {
 	const root = await mkdtemp(join(tmpdir(), "hevy-package-changesets-"));
 	fixtureDirectories.add(root);
+	const packageName = options.packageName ?? "@example/pkg";
+	const packagePath = options.packagePath ?? "packages/example";
 
 	await writeFixtureFile(
 		root,
@@ -47,12 +55,12 @@ async function createFixture(options: { existingChangeset?: boolean } = {}) {
 	);
 	await writeFixtureFile(
 		root,
-		"packages/example/package.json",
-		'{"name":"@example/pkg"}\n',
+		`${packagePath}/package.json`,
+		JSON.stringify({ name: packageName }) + "\n",
 	);
 	await writeFixtureFile(
 		root,
-		"packages/example/src/index.js",
+		`${packagePath}/src/index.js`,
 		'export const value = "base";\n',
 	);
 	await writeFixtureFile(root, ".changeset/README.md", "# Changesets\n");
@@ -176,4 +184,35 @@ describe("package changeset coverage", () => {
 
 		expect(result.exitCode).toBe(0);
 	});
+
+	it.each([
+		["@hevy-mcp/core", "packages/core"],
+		["@hevy-mcp/hevy-client", "packages/hevy-client"],
+	])(
+		"requires hevy-mcp when %s is released",
+		async (packageName, packagePath) => {
+			const { base, root } = await createFixture({
+				packageName,
+				packagePath,
+			});
+			await writeFixtureFile(
+				root,
+				`${packagePath}/src/index.js`,
+				'export const value = "changed";\n',
+			);
+			await writeFixtureFile(
+				root,
+				".changeset/new.md",
+				`---\n"${packageName}": patch\n---\n\nRuntime package release.\n`,
+			);
+			await commitFixture(root);
+
+			const result = await runCheck(root, base);
+
+			expect(result.exitCode).not.toBe(0);
+			expect(result.stderr).toContain(
+				"must also release hevy-mcp because those packages are bundled",
+			);
+		},
+	);
 });
