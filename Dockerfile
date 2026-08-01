@@ -9,6 +9,7 @@ COPY packages/hevy-client/package.json packages/hevy-client/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/node/package.json packages/node/package.json
 COPY packages/worker/package.json packages/worker/package.json
+COPY scripts/install-git-hooks.mjs scripts/install-git-hooks.mjs
 RUN npm ci
 
 COPY packages/hevy-client/ ./packages/hevy-client/
