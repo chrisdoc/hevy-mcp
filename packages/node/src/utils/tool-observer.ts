@@ -193,12 +193,14 @@ function captureSafeToolFailure(
 		Sentry.withScope((scope) => {
 			const isPrompt = invocation.kind === "prompt";
 			scope.setTag("mcp.tool.name", invocation.name);
+			if (isPrompt) scope.setTag("mcp.prompt.name", invocation.name);
 			scope.setTag("error.type", completion.errorType ?? "UNKNOWN_ERROR");
 			scope.setTag("error.category", category);
 			if (diagnostic?.code) scope.setTag("error.code", diagnostic.code);
 			if (diagnostic?.status !== undefined) {
 				scope.setTag("http.status_code", String(diagnostic.status));
 			}
+			if (diagnostic?.method) scope.setTag("http.method", diagnostic.method);
 			if (diagnostic?.endpoint) {
 				scope.setTag("hevy.api.endpoint", diagnostic.endpoint);
 			}
@@ -290,7 +292,9 @@ export function createNodeToolObserver(): ToolObserver {
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? errorType),
 										{
-											"mcp.tool.name": invocation.name,
+											[invocation.kind === "prompt"
+												? "mcp.prompt.name"
+												: "mcp.tool.name"]: invocation.name,
 											"error.type": errorType ?? "UNKNOWN_ERROR",
 											"error.category":
 												nextCompletion.error?.category ?? "UnknownError",
@@ -316,7 +320,9 @@ export function createNodeToolObserver(): ToolObserver {
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? "UnknownError"),
 										{
-											"mcp.tool.name": invocation.name,
+											[invocation.kind === "prompt"
+												? "mcp.prompt.name"
+												: "mcp.tool.name"]: invocation.name,
 											"error.type": nextCompletion.errorType ?? "UNKNOWN_ERROR",
 											"error.category":
 												nextCompletion.error?.category ?? "UnknownError",
