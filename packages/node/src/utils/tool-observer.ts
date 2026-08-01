@@ -293,7 +293,7 @@ export function createNodeToolObserver(): ToolObserver {
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? errorType),
 										{
-											"error.type": errorType,
+											"error.type": errorType ?? "UNKNOWN_ERROR",
 											"error.category":
 												nextCompletion.error?.category ?? "UnknownError",
 											...(nextCompletion.error?.code

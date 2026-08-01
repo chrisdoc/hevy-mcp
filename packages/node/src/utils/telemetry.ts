@@ -17,7 +17,12 @@ import {
 	SentrySampler,
 	SentrySpanProcessor,
 } from "@sentry/opentelemetry";
-import { trace, metrics, SpanStatusCode } from "@opentelemetry/api";
+import {
+	SpanStatusCode,
+	trace,
+	metrics,
+	type Span as ApiSpan,
+} from "@opentelemetry/api";
 
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
@@ -52,7 +57,7 @@ function normalizeTelemetryError(error: unknown): Error {
 export function recordTelemetryException(
 	error: unknown,
 	attributes?: Record<string, string | number | boolean>,
-	span?: Span,
+	span?: ApiSpan,
 ): void {
 	if (!telemetryEnabled) return;
 	try {
