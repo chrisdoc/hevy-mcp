@@ -17,7 +17,13 @@ import {
 	SentrySampler,
 	SentrySpanProcessor,
 } from "@sentry/opentelemetry";
-import { trace, metrics } from "@opentelemetry/api";
+import {
+	SpanStatusCode,
+	trace,
+	metrics,
+	type Span as ApiSpan,
+} from "@opentelemetry/api";
+
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
@@ -32,6 +38,67 @@ import {
 	MeterProvider,
 	PeriodicExportingMetricReader,
 } from "@opentelemetry/sdk-metrics";
+export type ProcessExceptionSource = {
+	on(
+		event: "uncaughtExceptionMonitor" | "unhandledRejection",
+		listener: (error: unknown) => void,
+	): void;
+	removeListener(
+		event: "uncaughtExceptionMonitor" | "unhandledRejection",
+		listener: (error: unknown) => void,
+	): void;
+};
+
+function normalizeTelemetryError(error: unknown): Error {
+	const name = error instanceof Error && error.name ? error.name : "Exception";
+	return new Error(name);
+}
+
+export function recordTelemetryException(
+	error: unknown,
+	attributes?: Record<string, string | number | boolean>,
+	span?: ApiSpan,
+): void {
+	if (!telemetryEnabled) return;
+	try {
+		const target = span ?? trace.getActiveSpan();
+		if (!target) return;
+		target.recordException(normalizeTelemetryError(error));
+		if (attributes) target.setAttributes(attributes);
+		target.setStatus({ code: SpanStatusCode.ERROR });
+	} catch {
+		// Telemetry failures must never affect MCP behavior.
+	}
+}
+
+export function installProcessExceptionTracking(
+	processLike: ProcessExceptionSource = process,
+): () => void {
+	if (!telemetryEnabled) return () => {};
+	const recordProcessException = (source: string, error: unknown) => {
+		try {
+			tracer.startActiveSpan(`mcp.process.${source}`, (span) => {
+				recordTelemetryException(error, { "exception.source": source }, span);
+				span.end();
+			});
+		} catch {
+			// Process telemetry must never affect Node's lifecycle.
+		}
+	};
+	const uncaughtException = (error: unknown) =>
+		recordProcessException("uncaughtException", error);
+	const unhandledRejection = (error: unknown) =>
+		recordProcessException("unhandledRejection", error);
+	processLike.on("uncaughtExceptionMonitor", uncaughtException);
+	processLike.on("unhandledRejection", unhandledRejection);
+	let cleaned = false;
+	return () => {
+		if (cleaned) return;
+		cleaned = true;
+		processLike.removeListener("uncaughtExceptionMonitor", uncaughtException);
+		processLike.removeListener("unhandledRejection", unhandledRejection);
+	};
+}
 
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;

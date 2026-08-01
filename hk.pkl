@@ -58,7 +58,11 @@ hooks {
             ["changeset"] {
                 check = "npm run check:changeset"
             }
+            ["typecheck"] {
+                check = "npm run check:types"
+            }
             ["pr-tests"] {
+                depends = "typecheck"
                 check = "npm run test:pr"
             }
         }

@@ -1,10 +1,10 @@
 import {
 	access,
+	cp,
 	mkdtemp,
 	mkdir,
 	readdir,
 	readFile,
-	rename,
 	rm,
 	writeFile,
 } from "node:fs/promises";
@@ -22,6 +22,11 @@ const dir = await mkdtemp(join(tmpdir(), "hevy-cli-pack-"));
 const backupDir = await mkdtemp(join(tmpdir(), "hevy-cli-dist-"));
 const backupDist = join(backupDir, "dist");
 let hadDist = false;
+
+async function moveDirectory(source, destination) {
+	await cp(source, destination, { recursive: true });
+	await rm(source, { recursive: true, force: true });
+}
 
 function runWithInput(command, args, options, input) {
 	return new Promise((resolve, reject) => {
@@ -45,7 +50,7 @@ try {
 	try {
 		await access(packageDist);
 		hadDist = true;
-		await rename(packageDist, backupDist);
+		await moveDirectory(packageDist, backupDist);
 	} catch {}
 
 	await exec(
@@ -223,7 +228,7 @@ globalThis.fetch = async (input, init = {}) => {
 		throw new Error("Packed workout request contract is incorrect");
 } finally {
 	await rm(packageDist, { recursive: true, force: true });
-	if (hadDist) await rename(backupDist, packageDist);
+	if (hadDist) await moveDirectory(backupDist, packageDist);
 	await rm(backupDir, { recursive: true, force: true });
 	await rm(dir, { recursive: true, force: true });
 }

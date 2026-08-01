@@ -35,6 +35,7 @@
 	],
 	"type": "module",
 	"scripts": {
+		"prepare": "node scripts/install-git-hooks.mjs",
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env packages/node/dist/cli.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
 		"measure:tokens": "tsx scripts/measure-token-cost.ts",

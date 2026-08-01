@@ -22,6 +22,7 @@
 - **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
 - **No Direct Pushes to `main` (CRITICAL)**: Pushing directly to the `main` branch is strictly prohibited and blocked by branch protection. All development must be done on feature branches (e.g., `feat/some-feature` or `fix/some-bug`) and submitted via a Pull Request.
 - **Fresh Worktrees (CRITICAL)**: Always begin work from a new Git worktree based on and tracking the latest `origin/main`. Fetch `origin/main` first, then create a dedicated feature worktree/branch from `origin/main`; never start implementation in an existing worktree or from a stale local `main`.
+- **Never bypass Git hooks**: Never use `--no-verify` for commits or pushes. Fix the underlying hook or validation failure, then rerun the hook normally.
 - **Changesets (CRITICAL)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
   - **RELEASE CADENCE**: Merge the automated `changeset-release/main` (**"Version Packages"**) Pull Request on a regular cadence (weekly is the default), not via ad-hoc frequent merges.
   - **URGENT EXCEPTION**: Security fixes and high-impact user-facing bug fixes may be released immediately outside the routine cadence.

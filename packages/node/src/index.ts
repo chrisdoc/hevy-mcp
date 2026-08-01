@@ -3,6 +3,7 @@
 import {
 	Sentry,
 	flushTelemetry,
+	installProcessExceptionTracking,
 	tracer,
 	serviceName,
 	serviceVersion,
@@ -224,6 +225,7 @@ export async function runStdioServer() {
 		console.log(HELP_TEXT);
 		return;
 	}
+	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
 
 	serverStartups.add(1, { version });
 
@@ -284,6 +286,7 @@ export async function runStdioServer() {
 						recordMcpSessionTermination(
 							resolveSessionTerminationCategory(succeeded),
 						);
+						cleanupProcessExceptionTracking();
 						await flushTelemetry();
 					},
 				});
@@ -294,6 +297,7 @@ export async function runStdioServer() {
 					connectAttempted ? "connect_failure" : "startup_failure",
 				);
 				span.setStatus({ code: SpanStatusCode.ERROR });
+				cleanupProcessExceptionTracking();
 				throw e;
 			} finally {
 				span.end();
@@ -319,6 +323,7 @@ export async function runServer(): Promise<void> {
 		await runStdioServer();
 		return;
 	}
+	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
 
 	await tracer.startActiveSpan(
 		"mcp.server.run",
@@ -347,6 +352,7 @@ export async function runServer(): Promise<void> {
 				installGracefulShutdown({
 					target: handle,
 					onComplete: async () => {
+						cleanupProcessExceptionTracking();
 						await flushTelemetry();
 					},
 				});
@@ -354,6 +360,7 @@ export async function runServer(): Promise<void> {
 			} catch (error) {
 				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
+				cleanupProcessExceptionTracking();
 				throw error;
 			} finally {
 				span.end();

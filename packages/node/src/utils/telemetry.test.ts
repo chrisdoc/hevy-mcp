@@ -59,7 +59,9 @@ vi.mock("@sentry/opentelemetry", () => ({
 }));
 
 vi.mock("@opentelemetry/api", () => ({
+	SpanStatusCode: { ERROR: 2 },
 	trace: {
+		getActiveSpan: vi.fn(),
 		getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })),
 		setGlobalTracerProvider: testDoubles.setGlobalTracerProvider,
 	},
