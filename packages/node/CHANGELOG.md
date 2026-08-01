@@ -1,5 +1,13 @@
 # hevy-mcp
 
+## 5.0.3
+
+### Patch Changes
+
+- [#839](https://github.com/chrisdoc/hevy-mcp/pull/839) [`aa57348`](https://github.com/chrisdoc/hevy-mcp/commit/aa57348cf0cd7a41d5109c676319ef4377a83994) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Record tool thrown-error and returned-error exceptions as OpenTelemetry span exception events; add process-level uncaughtExceptionMonitor and unhandledRejection telemetry tracking.
+
+- [#842](https://github.com/chrisdoc/hevy-mcp/pull/842) [`de9aad0`](https://github.com/chrisdoc/hevy-mcp/commit/de9aad0268495ac3583e4198cb9d1f29991865b4) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Unify privacy-safe MCP tool failure events across runtimes.
+
 ## 5.0.2
 
 ### Patch Changes

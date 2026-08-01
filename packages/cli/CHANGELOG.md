@@ -1,5 +1,11 @@
 # @chrisdoc/hevy-cli
 
+## 1.0.1
+
+### Patch Changes
+
+- [#839](https://github.com/chrisdoc/hevy-mcp/pull/839) [`e4087e5`](https://github.com/chrisdoc/hevy-mcp/commit/e4087e55b47590d9492ba0742fa14edd6d7d440e) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Make the CLI package smoke test safe across filesystem devices.
+
 ## 1.0.0
 
 ### Major Changes
