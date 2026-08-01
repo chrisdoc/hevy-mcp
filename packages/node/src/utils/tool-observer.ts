@@ -290,6 +290,7 @@ export function createNodeToolObserver(): ToolObserver {
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? errorType),
 										{
+											"mcp.tool.name": invocation.name,
 											"error.type": errorType ?? "UNKNOWN_ERROR",
 											"error.category":
 												nextCompletion.error?.category ?? "UnknownError",
@@ -315,6 +316,8 @@ export function createNodeToolObserver(): ToolObserver {
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? "UnknownError"),
 										{
+											"mcp.tool.name": invocation.name,
+											"error.type": nextCompletion.errorType ?? "UNKNOWN_ERROR",
 											"error.category":
 												nextCompletion.error?.category ?? "UnknownError",
 											...(nextCompletion.error?.code

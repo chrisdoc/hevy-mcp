@@ -55,7 +55,9 @@ export function createMcpToolFailureEvent(
 			? { "http.status_code": diagnostic.status }
 			: {}),
 		...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
-		...(diagnostic.endpoint ? { "hevy.api.endpoint": diagnostic.endpoint } : {}),
+		...(diagnostic.endpoint
+			? { "hevy.api.endpoint": diagnostic.endpoint }
+			: {}),
 	};
 }
 
