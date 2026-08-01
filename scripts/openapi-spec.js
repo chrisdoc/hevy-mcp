@@ -82,7 +82,12 @@ export function validateOpenAPISpec(spec) {
 	const restSeconds =
 		spec.components?.schemas?.Routine?.properties?.exercises?.items?.properties
 			?.rest_seconds;
-	if (restSeconds?.type !== "integer") {
+	if (!restSeconds) {
+		throw new Error(
+			"Routine.exercises[].rest_seconds field is missing from the OpenAPI spec",
+		);
+	}
+	if (restSeconds.type !== "integer") {
 		throw new Error(
 			"Routine.exercises[].rest_seconds must remain an OpenAPI integer",
 		);

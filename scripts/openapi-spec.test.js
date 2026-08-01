@@ -38,4 +38,14 @@ describe("OpenAPI compatibility fixes", () => {
 			validateOpenAPISpec(upstreamSpec({ type: "number", example: 60.5 })),
 		).toThrow(/must remain an OpenAPI integer/);
 	});
+
+	it("reports a missing Routine rest_seconds field distinctly", () => {
+		const spec = upstreamSpec({ type: "integer", example: 60 });
+		delete spec.components.schemas.Routine.properties.exercises.items.properties
+			.rest_seconds;
+
+		expect(() => validateOpenAPISpec(spec)).toThrow(
+			/field is missing from the OpenAPI spec/,
+		);
+	});
 });
