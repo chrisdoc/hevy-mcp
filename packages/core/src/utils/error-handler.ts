@@ -23,6 +23,43 @@ export interface ErrorResponse {
 export interface EnhancedErrorResponse extends ErrorResponse {
 	type: ErrorType;
 }
+export interface McpToolFailureEvent {
+	readonly event: "mcp.tool.failure";
+	readonly "mcp.tool.name": string;
+	readonly "error.type": ErrorType;
+	readonly "error.category": string;
+	readonly "error.code"?: string;
+	readonly "http.status_code"?: number;
+	readonly "http.method"?: string;
+	readonly "hevy.api.endpoint"?: string;
+}
+
+export function createMcpToolFailureEvent(
+	toolName: string,
+	errorType: ErrorType,
+	diagnostic: {
+		category: string;
+		code?: string;
+		status?: number;
+		method?: string;
+		endpoint?: string;
+	},
+): McpToolFailureEvent {
+	return {
+		event: "mcp.tool.failure",
+		"mcp.tool.name": toolName,
+		"error.type": errorType,
+		"error.category": diagnostic.category,
+		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+		...(diagnostic.status !== undefined
+			? { "http.status_code": diagnostic.status }
+			: {}),
+		...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
+		...(diagnostic.endpoint
+			? { "hevy.api.endpoint": diagnostic.endpoint }
+			: {}),
+	};
+}
 
 /** Structured debug context containing only bounded, safe metadata. */
 export interface ErrorDebugContext {
@@ -74,8 +111,9 @@ export function createErrorResponse(
 	};
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${policy.message}`;
-
-	console.error("MCP tool failure", diagnostic);
+	console.error(
+		createMcpToolFailureEvent(context || "unknown", policy.type, diagnostic),
+	);
 
 	return {
 		content: [{ type: "text" as const, text: formattedMessage }],
