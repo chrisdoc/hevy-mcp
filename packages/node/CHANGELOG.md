@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 5.0.2
+
+### Patch Changes
+
+- [#835](https://github.com/chrisdoc/hevy-mcp/pull/835) [`64800ce`](https://github.com/chrisdoc/hevy-mcp/commit/64800cec91613ed9c95550581b9c8872545f746a) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Preserve the corrected routine OpenAPI contract across future spec refreshes.
+
 ## 5.0.1
 
 ### Patch Changes
