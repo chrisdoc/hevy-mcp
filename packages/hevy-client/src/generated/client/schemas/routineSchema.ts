@@ -30,7 +30,7 @@ export const routineSchema = z.object({
         title: z.optional(z.string().describe("Title of the exercise")),
         rest_seconds: z.optional(
           z
-            .string()
+            .int()
             .describe("The rest time in seconds between sets of the exercise")
         ),
         notes: z.optional(z.string().describe("Routine notes on the exercise")),

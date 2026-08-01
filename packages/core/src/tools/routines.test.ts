@@ -80,6 +80,39 @@ describe("routine tools", () => {
 		expect(client.getRoutineById).toHaveBeenCalledWith("r1");
 	});
 
+	it("parses a routine whose exercise rest_seconds is an integer", async () => {
+		// Regression: the Hevy API returns rest_seconds as an integer, but the
+		// Routine read schema (and the get-routine output contract) previously
+		// typed it as a string, so output validation rejected every routine.
+		const client = {
+			getRoutineById: vi.fn().mockResolvedValue({
+				routine: {
+					id: "r1",
+					title: "Legs A",
+					exercises: [
+						{
+							index: 0,
+							title: "Hip Thrust (Barbell)",
+							exercise_template_id: "D57C2EC7",
+							rest_seconds: 120,
+							sets: [{ type: "normal", weight_kg: 22.68, reps: 12 }],
+						},
+					],
+				},
+			}),
+		} as unknown as HevyClient;
+		const tool = register(client);
+
+		const response = await handler(tool, "get-routine")({ routine_id: "r1" });
+
+		expect(response).not.toMatchObject({ isError: true });
+		expect(response).toMatchObject({
+			structuredContent: {
+				routine: { exercises: [{ rest_seconds: 120 }] },
+			},
+		});
+	});
+
 	it("returns a standard error response for a bounded timeout", async () => {
 		const client = {
 			getRoutineById: vi.fn().mockRejectedValue(
