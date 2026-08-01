@@ -12,20 +12,36 @@ export default defineWorker((ctx) => {
 		process.env.CLOUDFLARE_WORKER_NAME?.trim() ??
 		(environment === "preview" ? "hevy-mcp-preview" : "hevy-mcp");
 	const kvNamespaceId = process.env.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID?.trim();
-	const observability =
-		environment === "production" || environment === "preview"
+	const parseDestinations = (value: string | undefined) =>
+		value
+			?.split(",")
+			.map((destination) => destination.trim())
+			.filter(Boolean) ?? [];
+	const traceDestinations = parseDestinations(
+		process.env.CLOUDFLARE_OTEL_TRACES_DESTINATIONS,
+	);
+	const logDestinations = parseDestinations(
+		process.env.CLOUDFLARE_OTEL_LOGS_DESTINATIONS,
+	);
+	const observability = {
+		enabled: true,
+		...(traceDestinations.length > 0
 			? {
-					enabled: true,
 					traces: {
 						enabled: true,
-						destinations: ["otel"],
-					},
-					logs: {
-						enabled: true,
-						destinations: ["otel-logs"],
+						destinations: traceDestinations,
 					},
 				}
-			: { enabled: true };
+			: {}),
+		...(logDestinations.length > 0
+			? {
+					logs: {
+						enabled: true,
+						destinations: logDestinations,
+					},
+				}
+			: {}),
+	};
 
 	return {
 		name: workerName,
