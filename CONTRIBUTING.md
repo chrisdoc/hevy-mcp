@@ -185,6 +185,11 @@ npm run build:client
 `openapi-spec.json` changes, regenerate the client and review the complete
 generated diff. Do not patch generated TypeScript errors by hand.
 
+Known upstream schema corrections belong in `scripts/openapi-spec.js`, so a
+future refresh reapplies them before the spec is written. Run
+`npm run check:openapi` to verify the repository-owned compatibility invariants
+before committing a refreshed spec.
+
 ## Runtime architecture boundaries
 
 `packages/core` constructs the tools, prompts, resources, and MCP runtime used by
