@@ -16,7 +16,11 @@ import { serverStartups } from "./utils/metrics.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import { z } from "zod";
-import { createHevyMcpServer, createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import {
+	createHevyMcpServer,
+	createSafeErrorDiagnostic,
+	ErrorType,
+} from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
@@ -144,10 +148,32 @@ function recordLifecycleFailure(
 	phase: "config" | "api_key_validation" | "build" | "connect" | "run",
 ): void {
 	const diagnostic = createSafeErrorDiagnostic(error);
+	const taxonomy = {
+		config: {
+			errorType: "MCP_SERVER_CONFIG_ERROR",
+			errorCategory: "McpServerConfigFailure",
+		},
+		api_key_validation: {
+			errorType: "MCP_API_KEY_VALIDATION_ERROR",
+			errorCategory: "McpApiKeyValidationFailure",
+		},
+		build: {
+			errorType: "MCP_SERVER_BUILD_ERROR",
+			errorCategory: "McpServerBuildFailure",
+		},
+		connect: {
+			errorType: "MCP_TRANSPORT_CONNECT_ERROR",
+			errorCategory: "McpTransportConnectFailure",
+		},
+		run: {
+			errorType: "MCP_SERVER_RUN_ERROR",
+			errorCategory: "McpServerRunFailure",
+		},
+	}[phase];
 	const attributes = {
 		"mcp.failure.phase": phase,
-		"error.type": diagnostic.category,
-		"error.category": diagnostic.category,
+		"error.type": taxonomy.errorType,
+		"error.category": taxonomy.errorCategory,
 		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 		...(diagnostic.status !== undefined
 			? { "http.response.status_code": diagnostic.status }
@@ -158,8 +184,9 @@ function recordLifecycleFailure(
 			: {}),
 	};
 	span.addEvent("mcp.lifecycle.failure", {
-		"error.type": diagnostic.category,
-		"error.category": diagnostic.category,
+		"mcp.failure.phase": phase,
+		"error.type": taxonomy.errorType,
+		"error.category": taxonomy.errorCategory,
 		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 	});
 	recordTelemetryException(error, attributes, span);
@@ -183,6 +210,36 @@ interface ToolResultLike {
 const sdkToolNameStorage = new AsyncLocalStorage<string>();
 const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
 
+type SdkFailureKind = "protocol" | "tool_call" | "validation";
+
+const SDK_FAILURE_TAXONOMY: Record<
+	SdkFailureKind,
+	{ errorType: ErrorType; errorCategory: string }
+> = {
+	protocol: {
+		errorType: ErrorType.UNKNOWN_ERROR,
+		errorCategory: "McpSdkProtocolFailure",
+	},
+	tool_call: {
+		errorType: ErrorType.UNKNOWN_ERROR,
+		errorCategory: "McpSdkToolCallFailure",
+	},
+	validation: {
+		errorType: ErrorType.VALIDATION_ERROR,
+		errorCategory: "McpSdkValidationFailure",
+	},
+};
+
+function enrichActiveSdkSpan(
+	attributes: Record<string, string | number | boolean>,
+): void {
+	try {
+		trace.getActiveSpan()?.setAttributes(attributes);
+	} catch {
+		// SDK span enrichment is best-effort and cannot affect protocol handling.
+	}
+}
+
 function getSdkToolName(request: unknown): string {
 	if (!request || typeof request !== "object") return "unknown";
 	const candidate = (request as ToolRequestLike).params?.name;
@@ -195,14 +252,15 @@ function markSdkToolFailure(
 	span: Span,
 	error: unknown,
 	toolName = sdkToolNameStorage.getStore() ?? "unknown",
-	errorTypeOverride?: string,
+	kind: SdkFailureKind = "tool_call",
 ): void {
 	const diagnostic = createSafeErrorDiagnostic(error);
-	const errorType = errorTypeOverride ?? diagnostic.category;
+	const taxonomy = SDK_FAILURE_TAXONOMY[kind];
 	span.addEvent("mcp.tool.failure", {
 		"mcp.tool.name": toolName,
-		"error.type": errorType,
-		"error.category": diagnostic.category,
+		"mcp.failure.phase": "sdk",
+		"error.type": taxonomy.errorType,
+		"error.category": taxonomy.errorCategory,
 		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 		...(diagnostic.status !== undefined
 			? { "http.response.status_code": diagnostic.status }
@@ -212,13 +270,13 @@ function markSdkToolFailure(
 			? { "hevy.api.endpoint": diagnostic.endpoint }
 			: {}),
 	});
-	span.setAttribute("error.type", errorType);
+	span.setAttribute("error.type", taxonomy.errorType);
 	recordTelemetryException(
 		error,
 		{
 			"mcp.failure.phase": "sdk",
-			"error.type": errorType,
-			"error.category": diagnostic.category,
+			"error.type": taxonomy.errorType,
+			"error.category": taxonomy.errorCategory,
 			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			...(diagnostic.status !== undefined
 				? { "http.response.status_code": diagnostic.status }
@@ -229,17 +287,22 @@ function markSdkToolFailure(
 	span.setStatus({ code: SpanStatusCode.ERROR });
 }
 
-function installSdkErrorTracking(server: {
-	server?: { onerror?: (error: Error) => void };
-}): void {
+function installSdkErrorTracking(
+	server: {
+		server?: { onerror?: (error: Error) => void };
+	},
+	transport: NodeTransport,
+): void {
 	const protocol = server.server;
 	if (!protocol) return;
 	const previous = protocol.onerror;
 	protocol.onerror = (error) => {
 		const diagnostic = createSafeErrorDiagnostic(error);
+		const taxonomy = SDK_FAILURE_TAXONOMY.protocol;
 		const attributes = {
 			"mcp.failure.phase": "sdk",
-			"error.category": diagnostic.category,
+			"error.type": taxonomy.errorType,
+			"error.category": taxonomy.errorCategory,
 			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			...(diagnostic.status !== undefined
 				? { "http.response.status_code": diagnostic.status }
@@ -250,8 +313,9 @@ function installSdkErrorTracking(server: {
 		if (activeSpan) {
 			activeSpan.addEvent("mcp.tool.failure", {
 				"mcp.tool.name": sdkToolNameStorage.getStore() ?? "unknown",
-				"error.type": "UNKNOWN_ERROR",
-				"error.category": diagnostic.category,
+				"mcp.failure.phase": "sdk",
+				"error.type": taxonomy.errorType,
+				"error.category": taxonomy.errorCategory,
 				...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			});
 			recordTelemetryException(error, attributes, activeSpan);
@@ -260,14 +324,17 @@ function installSdkErrorTracking(server: {
 				"mcp.sdk.failure",
 				{
 					attributes: {
+						"mcp.span.category": "protocol",
+						"mcp.transport": transport,
 						...(sessionId ? { "mcp.session.id": sessionId } : {}),
 					},
 				},
 				(span) => {
 					span.addEvent("mcp.tool.failure", {
 						"mcp.tool.name": "unknown",
-						"error.type": "UNKNOWN_ERROR",
-						"error.category": diagnostic.category,
+						"mcp.failure.phase": "sdk",
+						"error.type": taxonomy.errorType,
+						"error.category": taxonomy.errorCategory,
 						...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 					});
 					recordTelemetryException(error, attributes, span);
@@ -293,7 +360,7 @@ function installSdkErrorTracking(server: {
 					activeSpan,
 					new Error("MCP tool validation failed"),
 					undefined,
-					"VALIDATION_ERROR",
+					"validation",
 				);
 			}
 			return result;
@@ -304,21 +371,35 @@ function installSdkErrorTracking(server: {
 		._requestHandlers;
 	if (!(handlers instanceof Map)) return;
 
+	const initializeHandler = handlers.get("initialize");
+	if (initializeHandler) {
+		handlers.set("initialize", (request, extra) => {
+			enrichActiveSdkSpan({
+				"mcp.span.category": "protocol",
+				"mcp.transport": transport,
+			});
+			return initializeHandler(request, extra);
+		});
+	}
+
 	const toolHandler = handlers.get("tools/call");
 	if (toolHandler) {
 		handlers.set("tools/call", (request, extra) => {
 			const sessionId = getCurrentMcpSessionId();
 			const toolName = getSdkToolName(request);
+			const attributes = {
+				"mcp.span.category": "protocol",
+				"mcp.transport": transport,
+				"mcp.operation.kind": "tool",
+				"mcp.tool.name": toolName,
+				...(sessionId ? { "mcp.session.id": sessionId } : {}),
+			};
+			enrichActiveSdkSpan(attributes);
 			return sdkToolNameStorage.run(toolName, () =>
 				tracer.startActiveSpan(
 					"mcp.sdk.tools.call",
 					{
-						attributes: {
-							"mcp.span.category": "protocol",
-							"mcp.operation.kind": "tool",
-							"mcp.tool.name": toolName,
-							...(sessionId ? { "mcp.session.id": sessionId } : {}),
-						},
+						attributes,
 					},
 					async (span) => {
 						try {
@@ -366,6 +447,7 @@ function installSdkErrorTracking(server: {
 					} catch (error) {
 						const diagnostic = createSafeErrorDiagnostic(error);
 						span.addEvent("mcp.discovery.failure", {
+							"mcp.failure.phase": "discovery",
 							"error.type": diagnostic.category,
 							"error.category": diagnostic.category,
 							...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
@@ -448,7 +530,7 @@ function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
 					observer: createNodeToolObserver(),
 					cacheObserver: createNodeCacheObserver(),
 				});
-				installSdkErrorTracking(server);
+				installSdkErrorTracking(server, transport);
 				console.error("Hevy client initialized with API key");
 
 				span.setStatus({ code: SpanStatusCode.OK });

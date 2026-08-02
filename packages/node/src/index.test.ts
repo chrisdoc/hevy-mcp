@@ -5,6 +5,7 @@ const testDoubles = vi.hoisted(() => {
 	const span = {
 		addEvent: vi.fn(),
 		setAttribute: vi.fn(),
+		setAttributes: vi.fn(),
 		setStatus: vi.fn(),
 		end: vi.fn(),
 	};
@@ -94,6 +95,10 @@ vi.mock("@hevy-mcp/hevy-client", () => ({
 vi.mock("@hevy-mcp/core", () => ({
 	createHevyMcpServer: testDoubles.createHevyMcpServer,
 	createSafeErrorDiagnostic: vi.fn(() => ({ category: "Error" })),
+	ErrorType: {
+		UNKNOWN_ERROR: "UNKNOWN_ERROR",
+		VALIDATION_ERROR: "VALIDATION_ERROR",
+	},
 }));
 
 vi.mock("@modelcontextprotocol/server/stdio", () => ({
@@ -224,6 +229,9 @@ describe("Node package entrypoint", () => {
 		expect(testDoubles.server.connect).not.toHaveBeenCalled();
 	});
 	it("tracks SDK tool, discovery, validation, and protocol failures", async () => {
+		const initializeHandler = vi
+			.fn()
+			.mockResolvedValue({ protocolVersion: "1" });
 		const toolHandler = vi
 			.fn()
 			.mockResolvedValueOnce({ isError: true })
@@ -238,6 +246,10 @@ describe("Node package entrypoint", () => {
 		});
 		const createToolError = vi.fn((message: string) => ({ message }));
 		testDoubles.sdkProtocol.onerror = previousOnError;
+		testDoubles.sdkProtocol._requestHandlers.set(
+			"initialize",
+			initializeHandler,
+		);
 		testDoubles.sdkProtocol._requestHandlers.set("tools/call", toolHandler);
 		testDoubles.sdkProtocol._requestHandlers.set(
 			"server/discover",
@@ -251,15 +263,45 @@ describe("Node package entrypoint", () => {
 
 		const wrappedToolHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
+		const wrappedInitializeHandler =
+			testDoubles.sdkProtocol._requestHandlers.get("initialize");
 		const wrappedDiscoveryHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("server/discover");
 		expect(wrappedToolHandler).toBeDefined();
+		expect(wrappedInitializeHandler).toBeDefined();
 		expect(wrappedDiscoveryHandler).toBeDefined();
-		if (!wrappedToolHandler || !wrappedDiscoveryHandler) return;
+		if (
+			!wrappedToolHandler ||
+			!wrappedInitializeHandler ||
+			!wrappedDiscoveryHandler
+		)
+			return;
+
+		const activeSpanSpy = vi
+			.spyOn(trace, "getActiveSpan")
+			.mockReturnValue(testDoubles.span as never);
+		await expect(wrappedInitializeHandler({}, {})).resolves.toEqual({
+			protocolVersion: "1",
+		});
+		expect(testDoubles.span.setAttributes).toHaveBeenCalledWith({
+			"mcp.span.category": "protocol",
+			"mcp.transport": "stdio",
+		});
+		expect(testDoubles.span.setAttributes).not.toHaveBeenCalledWith(
+			expect.objectContaining({ "mcp.session.id": expect.anything() }),
+		);
+		testDoubles.span.setAttributes.mockClear();
 
 		await expect(
 			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
 		).resolves.toEqual({ isError: true });
+		expect(testDoubles.span.setAttributes).toHaveBeenCalledWith({
+			"mcp.span.category": "protocol",
+			"mcp.transport": "stdio",
+			"mcp.operation.kind": "tool",
+			"mcp.tool.name": "get-workouts",
+			"mcp.session.id": "test-session",
+		});
 		await expect(
 			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
 		).resolves.toEqual({});
@@ -274,18 +316,60 @@ describe("Node package entrypoint", () => {
 		);
 
 		testDoubles.sdkProtocol.onerror?.(new Error("protocol failure"));
-		const activeSpanSpy = vi
-			.spyOn(trace, "getActiveSpan")
-			.mockReturnValue(testDoubles.span as never);
 		testDoubles.server.createToolError?.("invalid tool");
 		testDoubles.sdkProtocol.onerror?.(new Error("active protocol failure"));
 
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
 			"mcp.tool.failure",
-			expect.objectContaining({ "mcp.tool.name": "unknown" }),
+			expect.objectContaining({
+				"mcp.tool.name": "unknown",
+				"mcp.failure.phase": "sdk",
+				"error.type": "VALIDATION_ERROR",
+				"error.category": "McpSdkValidationFailure",
+			}),
 		);
 		expect(testDoubles.recordTelemetryException).toHaveBeenCalled();
 		expect(createToolError).toHaveBeenCalledWith("invalid tool");
+		activeSpanSpy.mockRestore();
+	});
+
+	it("keeps SDK span enrichment best-effort and transport-aware", async () => {
+		const initializeHandler = vi.fn().mockResolvedValue({});
+		const toolHandler = vi.fn().mockResolvedValue({});
+		testDoubles.sdkProtocol._requestHandlers.set(
+			"initialize",
+			initializeHandler,
+		);
+		testDoubles.sdkProtocol._requestHandlers.set("tools/call", toolHandler);
+		const activeSpanSpy = vi
+			.spyOn(trace, "getActiveSpan")
+			.mockReturnValue(testDoubles.span as never);
+		testDoubles.span.setAttributes.mockImplementationOnce(() => {
+			throw new Error("telemetry unavailable");
+		});
+
+		await expect(
+			createNodeMcpServer({ apiKey: "valid-key" }, "http"),
+		).resolves.toBe(testDoubles.server);
+		const wrappedInitialize =
+			testDoubles.sdkProtocol._requestHandlers.get("initialize");
+		const wrappedTool =
+			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
+		if (!wrappedInitialize || !wrappedTool) return;
+
+		await expect(wrappedInitialize({}, {})).resolves.toEqual({});
+		await expect(
+			wrappedTool({ params: { name: "get-workouts" } }, {}),
+		).resolves.toEqual({});
+		expect(initializeHandler).toHaveBeenCalledOnce();
+		expect(toolHandler).toHaveBeenCalledOnce();
+		expect(testDoubles.span.setAttributes).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				"mcp.span.category": "protocol",
+				"mcp.transport": "http",
+				"mcp.session.id": "test-session",
+			}),
+		);
 		activeSpanSpy.mockRestore();
 	});
 
@@ -380,8 +464,19 @@ describe("Node package entrypoint", () => {
 		);
 		expect(testDoubles.recordTelemetryException).toHaveBeenCalledWith(
 			expect.any(Error),
-			expect.objectContaining({ "error.category": "Error" }),
+			expect.objectContaining({
+				"error.type": "MCP_SERVER_BUILD_ERROR",
+				"error.category": "McpServerBuildFailure",
+			}),
 			testDoubles.span,
+		);
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
+			"mcp.lifecycle.failure",
+			expect.objectContaining({
+				"mcp.failure.phase": "build",
+				"error.type": "MCP_SERVER_BUILD_ERROR",
+				"error.category": "McpServerBuildFailure",
+			}),
 		);
 	});
 
