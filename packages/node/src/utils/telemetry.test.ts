@@ -27,6 +27,7 @@ const testDoubles = vi.hoisted(() => {
 		otlpMetricExporter: vi.fn(),
 		batchSpanProcessor: vi.fn(),
 		meterProvider: vi.fn(),
+		meterProviderOptions: undefined as unknown,
 		meterProviderForceFlush: vi.fn().mockResolvedValue(undefined),
 		periodicExportingMetricReader: vi.fn(),
 		nodeTracerProvider: vi.fn(),
@@ -80,10 +81,11 @@ vi.mock("@opentelemetry/exporter-trace-otlp-http", () => ({
 
 vi.mock("@opentelemetry/exporter-metrics-otlp-http", () => ({
 	OTLPMetricExporter: testDoubles.otlpMetricExporter,
+	AggregationTemporalityPreference: { DELTA: 0 },
 }));
 
 vi.mock("@opentelemetry/resources", () => ({
-	resourceFromAttributes: vi.fn(() => ({})),
+	resourceFromAttributes: vi.fn((attributes) => ({ attributes })),
 }));
 
 vi.mock("@opentelemetry/sdk-trace-base", () => ({
@@ -108,6 +110,7 @@ vi.mock("@opentelemetry/sdk-metrics", () => {
 	class MockMeterProvider {
 		constructor(options: unknown) {
 			testDoubles.meterProvider(options);
+			testDoubles.meterProviderOptions = options;
 		}
 		forceFlush() {
 			return testDoubles.meterProviderForceFlush();
@@ -138,10 +141,12 @@ describe("telemetry initialization", () => {
 	beforeEach(() => {
 		setTelemetryEnvironment();
 		testDoubles.nodeTracerProviderOptions = undefined;
+		testDoubles.meterProviderOptions = undefined;
 	});
 	afterEach(() => {
 		process.env = { ...originalEnv };
 		testDoubles.nodeTracerProviderOptions = undefined;
+		testDoubles.meterProviderOptions = undefined;
 		vi.clearAllMocks();
 	});
 
@@ -249,6 +254,7 @@ describe("telemetry initialization", () => {
 			headers: {
 				Authorization: "Bearer test-collector-token",
 			},
+			temporalityPreference: 0,
 		});
 		expect(testDoubles.periodicExportingMetricReader).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -276,6 +282,18 @@ describe("telemetry initialization", () => {
 				spanProcessors: expect.any(Array),
 			}),
 		);
+		const tracerOptions = testDoubles.nodeTracerProviderOptions as {
+			resource: { attributes: Record<string, unknown> };
+		};
+		const meterOptions = testDoubles.meterProviderOptions as {
+			resource: { attributes: Record<string, unknown> };
+		};
+		expect(meterOptions.resource).toBe(tracerOptions.resource);
+		expect(meterOptions.resource.attributes).toMatchObject({
+			"service.name": "hevy-mcp",
+			"service.version": "dev",
+			"service.instance.id": "instance-id",
+		});
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalledOnce();
 		expect(testDoubles.validateOpenTelemetrySetup).toHaveBeenCalledOnce();
 
@@ -351,13 +369,17 @@ describe("telemetry initialization", () => {
 		expect(mod.serviceVersion).toBe("dev");
 	});
 
-	it("supports deterministic service-instance IDs for tests", async () => {
+	it("keeps service-instance IDs stable per provider and isolated between providers", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
+		const first = mod.createServiceInstanceId(() => "process-one");
+		const second = mod.createServiceInstanceId(() => "process-two");
 
-		expect(mod.createServiceInstanceId(() => "instance-test-id")).toBe(
-			"instance-test-id",
-		);
+		expect(first).toBe("process-one");
+		expect(mod.createServiceInstanceId(() => first)).toBe(first);
+		expect(second).toBe("process-two");
+		expect(second).not.toBe(first);
+		expect(mod.serviceInstanceId).toBe("instance-id");
 	});
 	it("derives and attaches a truncated HMAC user pseudonym", async () => {
 		vi.resetModules();

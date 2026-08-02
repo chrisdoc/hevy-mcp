@@ -112,6 +112,7 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 				status_code: observation.status,
 				retry_count_bucket: retryCountBucket,
 				outcome: observation.outcome,
+				transport: getCurrentMcpTransport(),
 				...(observation.expectedReason
 					? { expected_reason: observation.expectedReason }
 					: {}),
@@ -122,6 +123,7 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 				endpoint: observation.endpoint,
 				retry_count_bucket: retryCountBucket,
 				outcome: observation.outcome,
+				transport: getCurrentMcpTransport(),
 				...(observation.expectedReason
 					? { expected_reason: observation.expectedReason }
 					: {}),

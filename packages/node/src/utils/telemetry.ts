@@ -25,7 +25,10 @@ import {
 } from "@opentelemetry/api";
 
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
+import {
+	AggregationTemporalityPreference,
+	OTLPMetricExporter,
+} from "@opentelemetry/exporter-metrics-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import type {
@@ -291,6 +294,7 @@ if (telemetryEnabled) {
 						headers: {
 							Authorization: `Bearer ${collectorToken}`,
 						},
+						temporalityPreference: AggregationTemporalityPreference.DELTA,
 					}),
 					exportIntervalMillis: 10_000,
 				}),

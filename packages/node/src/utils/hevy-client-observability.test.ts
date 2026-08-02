@@ -84,6 +84,7 @@ describe("createNodeHevyClientOptions", () => {
 				status_code: 200,
 				retry_count_bucket: "0",
 				outcome: "success",
+				transport: "stdio",
 			}),
 		);
 		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(
@@ -93,6 +94,7 @@ describe("createNodeHevyClientOptions", () => {
 				endpoint: "/v1/user/info",
 				retry_count_bucket: "0",
 				outcome: "success",
+				transport: "stdio",
 			}),
 		);
 	});

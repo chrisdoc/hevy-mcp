@@ -67,6 +67,31 @@ describe("MCP session tool observations", () => {
 			"session-one",
 		);
 	});
+	it("keeps telemetry session IDs out of metric attributes", () => {
+		const context = createMcpSessionContext(
+			{
+				method: "initialize",
+				params: {
+					protocolVersion: "2025-11-25",
+					clientInfo: { name: "Private Client", version: "1.2.3" },
+				},
+			},
+			"http",
+			{ telemetrySessionId: "session-secret" },
+		);
+
+		runWithMcpSessionContext(context, () => {
+			recordMcpSessionStart({}, "http", context);
+			recordMcpSessionTermination("clean", context);
+		});
+
+		expect(
+			JSON.stringify([
+				testDoubles.sessionStartedAdd.mock.calls,
+				testDoubles.sessionEndedAdd.mock.calls,
+			]),
+		).not.toContain("session-secret");
+	});
 	it("generates one injectable opaque ID per session", () => {
 		const generate = vi.fn(() => "generated-session");
 		const context = createMcpSessionContext({ method: "initialize" }, "stdio", {

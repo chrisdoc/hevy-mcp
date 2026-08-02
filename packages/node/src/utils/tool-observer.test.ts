@@ -140,6 +140,13 @@ describe("createNodeToolObserver", () => {
 				client_name: "Claude-Desktop",
 			}),
 		);
+		expect(
+			JSON.stringify([
+				testDoubles.toolInvocationsAdd.mock.calls,
+				testDoubles.toolOutcomesAdd.mock.calls,
+				testDoubles.toolDurationRecord.mock.calls,
+			]),
+		).not.toContain("session-1");
 		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 			"mcp.tool.get-workouts",
 			{
