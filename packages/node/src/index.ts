@@ -4,6 +4,7 @@ import {
 	Sentry,
 	flushTelemetry,
 	installProcessExceptionTracking,
+	recordTelemetryException,
 	tracer,
 	serviceName,
 	serviceVersion,
@@ -12,18 +13,24 @@ import {
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { serverStartups } from "./utils/metrics.js";
 
-import { SpanStatusCode } from "@opentelemetry/api";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import { z } from "zod";
-import { createHevyMcpServer } from "@hevy-mcp/core";
+import { createHevyMcpServer, createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
 import { startStreamableHttpServer } from "./utils/streamable-http.js";
 import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
-import { createNodeHevyClientOptions } from "./utils/hevy-client-observability.js";
+import {
+	createNodeCacheObserver,
+	createNodeHevyClientOptions,
+} from "./utils/hevy-client-observability.js";
 import { createNodeToolObserver } from "./utils/tool-observer.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
 import {
+	getCurrentMcpSessionId,
+	getCurrentMcpTransport,
 	recordMcpSessionTermination,
 	resolveSessionTerminationCategory,
 } from "./utils/mcp-session-observability.js";
@@ -131,6 +138,257 @@ function getSafeValidationDiagnostic(error: unknown): string | undefined {
 		? code
 		: undefined;
 }
+function recordLifecycleFailure(
+	span: Span,
+	error: unknown,
+	phase: "config" | "api_key_validation" | "build" | "connect" | "run",
+): void {
+	const diagnostic = createSafeErrorDiagnostic(error);
+	const attributes = {
+		"mcp.failure.phase": phase,
+		"error.type": diagnostic.category,
+		"error.category": diagnostic.category,
+		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+		...(diagnostic.status !== undefined
+			? { "http.response.status_code": diagnostic.status }
+			: {}),
+		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
+		...(diagnostic.endpoint
+			? { "hevy.api.endpoint": diagnostic.endpoint }
+			: {}),
+	};
+	span.addEvent("mcp.lifecycle.failure", {
+		"error.type": diagnostic.category,
+		"error.category": diagnostic.category,
+		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+	});
+	recordTelemetryException(error, attributes, span);
+}
+type SdkRequestHandler = (request: unknown, extra: unknown) => Promise<unknown>;
+
+interface SdkProtocolInternals {
+	_requestHandlers?: Map<string, SdkRequestHandler>;
+}
+interface ToolRequestLike {
+	params?: { name?: unknown };
+}
+interface SdkToolErrorHost {
+	createToolError?: (message: string) => unknown;
+}
+
+interface ToolResultLike {
+	isError?: unknown;
+}
+
+const sdkToolNameStorage = new AsyncLocalStorage<string>();
+const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
+
+function getSdkToolName(request: unknown): string {
+	if (!request || typeof request !== "object") return "unknown";
+	const candidate = (request as ToolRequestLike).params?.name;
+	return typeof candidate === "string" && SAFE_TOOL_NAME_PATTERN.test(candidate)
+		? candidate
+		: "unknown";
+}
+
+function markSdkToolFailure(
+	span: Span,
+	error: unknown,
+	toolName = sdkToolNameStorage.getStore() ?? "unknown",
+	errorTypeOverride?: string,
+): void {
+	const diagnostic = createSafeErrorDiagnostic(error);
+	const errorType = errorTypeOverride ?? diagnostic.category;
+	span.addEvent("mcp.tool.failure", {
+		"mcp.tool.name": toolName,
+		"error.type": errorType,
+		"error.category": diagnostic.category,
+		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+		...(diagnostic.status !== undefined
+			? { "http.response.status_code": diagnostic.status }
+			: {}),
+		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
+		...(diagnostic.endpoint
+			? { "hevy.api.endpoint": diagnostic.endpoint }
+			: {}),
+	});
+	span.setAttribute("error.type", errorType);
+	recordTelemetryException(
+		error,
+		{
+			"mcp.failure.phase": "sdk",
+			"error.type": errorType,
+			"error.category": diagnostic.category,
+			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+			...(diagnostic.status !== undefined
+				? { "http.response.status_code": diagnostic.status }
+				: {}),
+		},
+		span,
+	);
+	span.setStatus({ code: SpanStatusCode.ERROR });
+}
+
+function installSdkErrorTracking(server: {
+	server?: { onerror?: (error: Error) => void };
+}): void {
+	const protocol = server.server;
+	if (!protocol) return;
+	const previous = protocol.onerror;
+	protocol.onerror = (error) => {
+		const diagnostic = createSafeErrorDiagnostic(error);
+		const attributes = {
+			"mcp.failure.phase": "sdk",
+			"error.category": diagnostic.category,
+			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+			...(diagnostic.status !== undefined
+				? { "http.response.status_code": diagnostic.status }
+				: {}),
+		};
+		const activeSpan = trace.getActiveSpan();
+		const sessionId = getCurrentMcpSessionId();
+		if (activeSpan) {
+			activeSpan.addEvent("mcp.tool.failure", {
+				"mcp.tool.name": sdkToolNameStorage.getStore() ?? "unknown",
+				"error.type": "UNKNOWN_ERROR",
+				"error.category": diagnostic.category,
+				...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+			});
+			recordTelemetryException(error, attributes, activeSpan);
+		} else {
+			tracer.startActiveSpan(
+				"mcp.sdk.failure",
+				{
+					attributes: {
+						...(sessionId ? { "mcp.session.id": sessionId } : {}),
+					},
+				},
+				(span) => {
+					span.addEvent("mcp.tool.failure", {
+						"mcp.tool.name": "unknown",
+						"error.type": "UNKNOWN_ERROR",
+						"error.category": diagnostic.category,
+						...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+					});
+					recordTelemetryException(error, attributes, span);
+					span.end();
+				},
+			);
+		}
+		try {
+			previous?.(error);
+		} catch {
+			// Existing SDK/Sentry handlers must not affect protocol behavior.
+		}
+	};
+	const toolErrorHost = server as unknown as SdkToolErrorHost;
+	const previousCreateToolError = toolErrorHost.createToolError;
+	if (previousCreateToolError) {
+		const createToolError = previousCreateToolError.bind(server);
+		toolErrorHost.createToolError = (message) => {
+			const result = createToolError(message);
+			const activeSpan = trace.getActiveSpan();
+			if (activeSpan) {
+				markSdkToolFailure(
+					activeSpan,
+					new Error("MCP tool validation failed"),
+					undefined,
+					"VALIDATION_ERROR",
+				);
+			}
+			return result;
+		};
+	}
+
+	const handlers = (protocol as unknown as SdkProtocolInternals)
+		._requestHandlers;
+	if (!(handlers instanceof Map)) return;
+
+	const toolHandler = handlers.get("tools/call");
+	if (toolHandler) {
+		handlers.set("tools/call", (request, extra) => {
+			const sessionId = getCurrentMcpSessionId();
+			const toolName = getSdkToolName(request);
+			return sdkToolNameStorage.run(toolName, () =>
+				tracer.startActiveSpan(
+					"mcp.sdk.tools.call",
+					{
+						attributes: {
+							"mcp.span.category": "protocol",
+							"mcp.operation.kind": "tool",
+							"mcp.tool.name": toolName,
+							...(sessionId ? { "mcp.session.id": sessionId } : {}),
+						},
+					},
+					async (span) => {
+						try {
+							const result = (await toolHandler(
+								request,
+								extra,
+							)) as ToolResultLike;
+							if (result?.isError === true) {
+								span.setAttribute("mcp.tool.outcome", "returned_error");
+								span.setStatus({ code: SpanStatusCode.ERROR });
+							} else {
+								span.setStatus({ code: SpanStatusCode.OK });
+							}
+							return result;
+						} catch (error) {
+							markSdkToolFailure(span, error, toolName);
+							throw error;
+						} finally {
+							span.end();
+						}
+					},
+				),
+			);
+		});
+	}
+
+	const discoveryHandler = handlers.get("server/discover");
+	if (discoveryHandler) {
+		handlers.set("server/discover", (request, extra) => {
+			const sessionId = getCurrentMcpSessionId();
+			return tracer.startActiveSpan(
+				"mcp.server.discover",
+				{
+					attributes: {
+						"mcp.span.category": "discovery",
+						"mcp.transport": getCurrentMcpTransport(),
+						...(sessionId ? { "mcp.session.id": sessionId } : {}),
+					},
+				},
+				async (span) => {
+					try {
+						const result = await discoveryHandler(request, extra);
+						span.setStatus({ code: SpanStatusCode.OK });
+						return result;
+					} catch (error) {
+						const diagnostic = createSafeErrorDiagnostic(error);
+						span.addEvent("mcp.discovery.failure", {
+							"error.type": diagnostic.category,
+							"error.category": diagnostic.category,
+							...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+						});
+						recordTelemetryException(
+							error,
+							{
+								"mcp.failure.phase": "discovery",
+								"error.type": diagnostic.category,
+								"error.category": diagnostic.category,
+								...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+							},
+							span,
+						);
+						throw error;
+					} finally {
+						span.end();
+					}
+				},
+			);
+		});
+	}
+}
 
 async function validateApiKey(apiKey: string) {
 	// Keep the startup probe separate from the normal MCP-aware client. The
@@ -165,6 +423,7 @@ function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
 		"mcp.server.build",
 		{
 			attributes: {
+				"mcp.span.category": "startup",
 				"mcp.server.name": name,
 				"mcp.server.version": version,
 				"mcp.transport": transport,
@@ -187,12 +446,15 @@ function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
 					onToolsRegistered: (count) =>
 						span.setAttribute("mcp.tools.count", count),
 					observer: createNodeToolObserver(),
+					cacheObserver: createNodeCacheObserver(),
 				});
+				installSdkErrorTracking(server);
 				console.error("Hevy client initialized with API key");
 
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;
 			} catch (e) {
+				recordLifecycleFailure(span, e, "build");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
 			} finally {
@@ -236,11 +498,12 @@ export async function runStdioServer() {
 		setTelemetryUser(configuredApiKey);
 	}
 	let connectAttempted = false;
-
+	let connectSucceeded = false;
 	await tracer.startActiveSpan(
 		"mcp.server.run",
 		{
 			attributes: {
+				"mcp.span.category": "startup",
 				"mcp.transport": "stdio",
 			},
 		},
@@ -261,14 +524,17 @@ export async function runStdioServer() {
 					"mcp.server.connect",
 					{
 						attributes: {
+							"mcp.span.category": "session",
 							"mcp.transport": "stdio",
 						},
 					},
 					async (connectSpan) => {
 						try {
 							await server.connect(transport);
+							connectSucceeded = true;
 							connectSpan.setStatus({ code: SpanStatusCode.OK });
 						} catch (e) {
+							recordLifecycleFailure(connectSpan, e, "connect");
 							connectSpan.setStatus({ code: SpanStatusCode.ERROR });
 							throw e;
 						} finally {
@@ -293,6 +559,9 @@ export async function runStdioServer() {
 
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (e) {
+				if (!connectAttempted || connectSucceeded) {
+					recordLifecycleFailure(span, e, "run");
+				}
 				recordMcpSessionTermination(
 					connectAttempted ? "connect_failure" : "startup_failure",
 				);
@@ -327,7 +596,12 @@ export async function runServer(): Promise<void> {
 
 	await tracer.startActiveSpan(
 		"mcp.server.run",
-		{ attributes: { "mcp.transport": "http" } },
+		{
+			attributes: {
+				"mcp.span.category": "startup",
+				"mcp.transport": "http",
+			},
+		},
 		async (span) => {
 			let listening = false;
 			serverStartups.add(1, { version });
@@ -358,6 +632,7 @@ export async function runServer(): Promise<void> {
 				});
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (error) {
+				recordLifecycleFailure(span, error, "run");
 				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				cleanupProcessExceptionTracking();

@@ -9,7 +9,11 @@
  * OTel Collector → Honeycomb: performance traces, metrics
  */
 
-import { createHmac } from "node:crypto";
+import {
+	createHmac,
+	randomBytes,
+	randomUUID as nodeRandomUUID,
+} from "node:crypto";
 import * as Sentry from "@sentry/node";
 import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
 import {
@@ -25,7 +29,10 @@ import {
 } from "@opentelemetry/api";
 
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
+import {
+	AggregationTemporalityPreference,
+	OTLPMetricExporter,
+} from "@opentelemetry/exporter-metrics-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import type {
@@ -49,9 +56,60 @@ export type ProcessExceptionSource = {
 	): void;
 };
 
-function normalizeTelemetryError(error: unknown): Error {
-	const name = error instanceof Error && error.name ? error.name : "Exception";
-	return new Error(name);
+const SAFE_EXCEPTION_TYPES = new Set([
+	"AggregateError",
+	"DOMException",
+	"Error",
+	"EvalError",
+	"HevyHttpError",
+	"RangeError",
+	"ReferenceError",
+	"SyntaxError",
+	"TypeError",
+	"URIError",
+	"ProtocolError",
+	"ZodError",
+]);
+const SAFE_EXCEPTION_CODES = new Set([
+	"EAI_AGAIN",
+	"ECONNABORTED",
+	"ECONNREFUSED",
+	"ECONNRESET",
+	"ENETUNREACH",
+	"ENOTFOUND",
+	"ERR_NETWORK",
+	"ERR_SOCKET_TIMEOUT",
+	"ETIMEDOUT",
+	"HEVY_INVALID_ENDPOINT",
+	"HEVY_REQUEST_ABORTED",
+	"HEVY_RETRY_EXHAUSTED",
+]);
+
+function normalizeTelemetryError(error: unknown): {
+	name: string;
+	stack?: string;
+} {
+	const candidate =
+		error instanceof Error && typeof error.name === "string"
+			? error.name
+			: undefined;
+	const name =
+		candidate && SAFE_EXCEPTION_TYPES.has(candidate)
+			? candidate
+			: "UnknownError";
+	return {
+		name,
+		...(error instanceof Error && error.stack ? { stack: error.stack } : {}),
+	};
+}
+
+function getSafeExceptionCode(error: unknown): string | undefined {
+	if (!error || typeof error !== "object" || !("code" in error))
+		return undefined;
+	const code = error.code;
+	return typeof code === "string" && SAFE_EXCEPTION_CODES.has(code)
+		? code
+		: undefined;
 }
 
 export function recordTelemetryException(
@@ -63,7 +121,10 @@ export function recordTelemetryException(
 	try {
 		const target = span ?? trace.getActiveSpan();
 		if (!target) return;
-		target.recordException(normalizeTelemetryError(error));
+		const normalized = normalizeTelemetryError(error);
+		target.recordException(normalized);
+		target.setAttribute("exception.type", normalized.name);
+		target.setAttribute("error.category", normalized.name);
 		if (attributes) target.setAttributes(attributes);
 		target.setStatus({ code: SpanStatusCode.ERROR });
 	} catch {
@@ -77,10 +138,27 @@ export function installProcessExceptionTracking(
 	if (!telemetryEnabled) return () => {};
 	const recordProcessException = (source: string, error: unknown) => {
 		try {
-			tracer.startActiveSpan(`mcp.process.${source}`, (span) => {
-				recordTelemetryException(error, { "exception.source": source }, span);
-				span.end();
-			});
+			tracer.startActiveSpan(
+				`mcp.process.${source}`,
+				{ attributes: { "mcp.span.category": "process" } },
+				(span) => {
+					try {
+						const normalized = normalizeTelemetryError(error);
+						const code = getSafeExceptionCode(error);
+						recordTelemetryException(
+							error,
+							{
+								"exception.source": source,
+								"error.category": normalized.name,
+								...(code ? { "error.code": code } : {}),
+							},
+							span,
+						);
+					} finally {
+						span.end();
+					}
+				},
+			);
 		} catch {
 			// Process telemetry must never affect Node's lifecycle.
 		}
@@ -122,12 +200,28 @@ const collectorToken =
 		: (process.env.OTEL_COLLECTOR_TOKEN ?? "");
 
 const COLLECTOR_ENDPOINT = "https://otel.chrisdoc.dev/v1";
-
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
+
+export function createServiceInstanceId(
+	generate: () => string = nodeRandomUUID,
+): string {
+	try {
+		const generated = generate();
+		if (generated.length > 0 && generated.length <= 128) return generated;
+	} catch {
+		// Fall back to a process-local opaque identifier.
+	}
+	return randomBytes(16).toString("hex");
+}
+
+const serviceInstanceId = createServiceInstanceId();
 
 const resource = resourceFromAttributes({
 	"service.name": name,
 	"service.version": version,
+	"service.instance.id": serviceInstanceId,
+	"process.runtime.name": process.release.name,
+	"process.runtime.version": process.version,
 });
 
 // --- OpenTelemetry tracer provider (dual export) ---
@@ -210,6 +304,7 @@ if (telemetryEnabled) {
 						headers: {
 							Authorization: `Bearer ${collectorToken}`,
 						},
+						temporalityPreference: AggregationTemporalityPreference.DELTA,
 					}),
 					exportIntervalMillis: 10_000,
 				}),
@@ -260,9 +355,9 @@ export interface ServiceInfo {
 }
 
 export const serviceInfo: ServiceInfo = { name, version } as const;
-
-// Keep individual exports for backward compatibility
-export { name as serviceName, version as serviceVersion };
+export const serviceName = name;
+export const serviceVersion = version;
+export { serviceInstanceId };
 
 // --- User context for span attributes ---
 const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";

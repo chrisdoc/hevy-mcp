@@ -12,6 +12,13 @@ const testDoubles = vi.hoisted(() => {
 	const hmacDigest = vi.fn(() => "abcdef0123456789");
 
 	return {
+		activeSpan: {
+			recordException: vi.fn(),
+			setAttribute: vi.fn(),
+			setAttributes: vi.fn(),
+			setStatus: vi.fn(),
+			end: vi.fn(),
+		},
 		sentryInit: vi.fn(() => ({ _isSentryClient: true })),
 		sentryFlush: vi.fn().mockResolvedValue(true),
 		sentrySetUser: vi.fn(),
@@ -27,6 +34,7 @@ const testDoubles = vi.hoisted(() => {
 		otlpMetricExporter: vi.fn(),
 		batchSpanProcessor: vi.fn(),
 		meterProvider: vi.fn(),
+		meterProviderOptions: undefined as unknown,
 		meterProviderForceFlush: vi.fn().mockResolvedValue(undefined),
 		periodicExportingMetricReader: vi.fn(),
 		nodeTracerProvider: vi.fn(),
@@ -50,8 +58,9 @@ vi.mock("@sentry/node", () => ({
 
 vi.mock("node:crypto", () => ({
 	createHmac: testDoubles.createHmac,
+	randomBytes: vi.fn(() => Buffer.alloc(16, 0xab)),
+	randomUUID: vi.fn(() => "instance-id"),
 }));
-
 vi.mock("@sentry/opentelemetry", () => ({
 	SentrySpanProcessor: testDoubles.sentrySpanProcessor,
 	SentryPropagator: testDoubles.sentryPropagator,
@@ -61,8 +70,16 @@ vi.mock("@sentry/opentelemetry", () => ({
 vi.mock("@opentelemetry/api", () => ({
 	SpanStatusCode: { ERROR: 2 },
 	trace: {
-		getActiveSpan: vi.fn(),
-		getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })),
+		getActiveSpan: vi.fn(() => testDoubles.activeSpan),
+		getTracer: vi.fn(() => ({
+			startActiveSpan: vi.fn(
+				(
+					_name: string,
+					_options: unknown,
+					callback: (span: typeof testDoubles.activeSpan) => unknown,
+				) => callback(testDoubles.activeSpan),
+			),
+		})),
 		setGlobalTracerProvider: testDoubles.setGlobalTracerProvider,
 	},
 	metrics: {
@@ -80,10 +97,11 @@ vi.mock("@opentelemetry/exporter-trace-otlp-http", () => ({
 
 vi.mock("@opentelemetry/exporter-metrics-otlp-http", () => ({
 	OTLPMetricExporter: testDoubles.otlpMetricExporter,
+	AggregationTemporalityPreference: { DELTA: 0 },
 }));
 
 vi.mock("@opentelemetry/resources", () => ({
-	resourceFromAttributes: vi.fn(() => ({})),
+	resourceFromAttributes: vi.fn((attributes) => ({ attributes })),
 }));
 
 vi.mock("@opentelemetry/sdk-trace-base", () => ({
@@ -108,6 +126,7 @@ vi.mock("@opentelemetry/sdk-metrics", () => {
 	class MockMeterProvider {
 		constructor(options: unknown) {
 			testDoubles.meterProvider(options);
+			testDoubles.meterProviderOptions = options;
 		}
 		forceFlush() {
 			return testDoubles.meterProviderForceFlush();
@@ -138,10 +157,12 @@ describe("telemetry initialization", () => {
 	beforeEach(() => {
 		setTelemetryEnvironment();
 		testDoubles.nodeTracerProviderOptions = undefined;
+		testDoubles.meterProviderOptions = undefined;
 	});
 	afterEach(() => {
 		process.env = { ...originalEnv };
 		testDoubles.nodeTracerProviderOptions = undefined;
+		testDoubles.meterProviderOptions = undefined;
 		vi.clearAllMocks();
 	});
 
@@ -185,6 +206,7 @@ describe("telemetry initialization", () => {
 		const span = {
 			data: {
 				"mcp.request.id": "request-secret",
+				"mcp.session.id": "session-secret",
 				"mcp.progress.token": "progress-secret",
 				"mcp.prompt.name": "private-prompt",
 				"mcp.protocol.version": "private-protocol",
@@ -200,6 +222,7 @@ describe("telemetry initialization", () => {
 		});
 		expect(span.data).toEqual({
 			"mcp.request.id": "request-secret",
+			"mcp.session.id": "session-secret",
 			"mcp.progress.token": "progress-secret",
 			"mcp.prompt.name": "private-prompt",
 			"mcp.protocol.version": "private-protocol",
@@ -218,6 +241,39 @@ describe("telemetry initialization", () => {
 		await import("./telemetry.js");
 
 		expect(testDoubles.validateOpenTelemetrySetup).toHaveBeenCalled();
+	});
+	it("records uncaught exceptions and unhandled rejections safely", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const listeners = new Map<string, (error: unknown) => void>();
+		const processLike = {
+			on: vi.fn((event: string, listener: (error: unknown) => void) => {
+				listeners.set(event, listener);
+			}),
+			removeListener: vi.fn(
+				(event: string, listener: (error: unknown) => void) => {
+					expect(listeners.get(event)).toBe(listener);
+				},
+			),
+		};
+
+		const cleanup = mod.installProcessExceptionTracking(processLike);
+		listeners.get("uncaughtExceptionMonitor")?.(
+			Object.assign(new Error("uncaught"), { code: "ECONNREFUSED" }),
+		);
+		listeners.get("unhandledRejection")?.("rejection-secret");
+		cleanup();
+		cleanup();
+
+		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledTimes(2);
+		expect(testDoubles.activeSpan.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({
+				"exception.source": "uncaughtException",
+				"error.code": "ECONNREFUSED",
+			}),
+		);
+		expect(testDoubles.activeSpan.end).toHaveBeenCalledTimes(2);
+		expect(processLike.removeListener).toHaveBeenCalledTimes(2);
 	});
 
 	it("registers the global tracer provider", async () => {
@@ -247,6 +303,7 @@ describe("telemetry initialization", () => {
 			headers: {
 				Authorization: "Bearer test-collector-token",
 			},
+			temporalityPreference: 0,
 		});
 		expect(testDoubles.periodicExportingMetricReader).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -274,6 +331,18 @@ describe("telemetry initialization", () => {
 				spanProcessors: expect.any(Array),
 			}),
 		);
+		const tracerOptions = testDoubles.nodeTracerProviderOptions as {
+			resource: { attributes: Record<string, unknown> };
+		};
+		const meterOptions = testDoubles.meterProviderOptions as {
+			resource: { attributes: Record<string, unknown> };
+		};
+		expect(meterOptions.resource).toBe(tracerOptions.resource);
+		expect(meterOptions.resource.attributes).toMatchObject({
+			"service.name": "hevy-mcp",
+			"service.version": "dev",
+			"service.instance.id": "instance-id",
+		});
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalledOnce();
 		expect(testDoubles.validateOpenTelemetrySetup).toHaveBeenCalledOnce();
 
@@ -348,6 +417,32 @@ describe("telemetry initialization", () => {
 		expect(mod.serviceName).toBe("hevy-mcp");
 		expect(mod.serviceVersion).toBe("dev");
 	});
+
+	it("keeps service-instance IDs stable per provider and isolated between providers", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const first = mod.createServiceInstanceId(() => "process-one");
+		const second = mod.createServiceInstanceId(() => "process-two");
+
+		expect(first).toBe("process-one");
+		expect(mod.createServiceInstanceId(() => first)).toBe(first);
+		expect(second).toBe("process-two");
+		expect(second).not.toBe(first);
+		expect(mod.serviceInstanceId).toBe("instance-id");
+	});
+	it("falls back to a random opaque ID for invalid generators", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const fallback = "ab".repeat(16);
+
+		expect(mod.createServiceInstanceId(() => "")).toBe(fallback);
+		expect(mod.createServiceInstanceId(() => "x".repeat(129))).toBe(fallback);
+		expect(
+			mod.createServiceInstanceId(() => {
+				throw new Error("entropy unavailable");
+			}),
+		).toBe(fallback);
+	});
 	it("derives and attaches a truncated HMAC user pseudonym", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
@@ -380,5 +475,18 @@ describe("telemetry initialization", () => {
 		processor.onStart({ setAttribute }, {});
 
 		expect(setAttribute).toHaveBeenCalledWith("user.hash", "abcdef0123");
+	});
+
+	it("preserves safe exception stacks", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const error = new Error("secret-exception-message");
+
+		mod.recordTelemetryException(error);
+
+		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledWith({
+			name: "Error",
+			stack: error.stack,
+		});
 	});
 });

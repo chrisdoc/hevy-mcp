@@ -13,6 +13,7 @@ import {
 } from "./metrics.js";
 import {
 	getCurrentMcpClientMetadata,
+	getCurrentMcpSessionId,
 	getCurrentMcpTransport,
 	recordMcpToolFailure,
 	recordMcpToolInvocation,
@@ -21,6 +22,7 @@ import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
 import { Sentry, recordTelemetryException, tracer } from "./telemetry.js";
 
 type AttributeValue = string | number | boolean;
+const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
 
 const WORKFLOW_PAGINATION_RESOURCES = new Set([
 	"workouts",
@@ -57,7 +59,11 @@ function createAttributes(
 ): Record<string, AttributeValue> {
 	const clientMetadata = getCurrentMcpClientMetadata();
 	const isPrompt = invocation.kind === "prompt";
+	const sessionId = getCurrentMcpSessionId();
 	const attributes: Record<string, AttributeValue> = {
+		"mcp.span.category": DISCOVERY_TOOL_NAMES.has(invocation.name)
+			? "discovery"
+			: "tool",
 		[isPrompt ? "mcp.prompt.name" : "mcp.tool.name"]: invocation.name,
 		"mcp.operation.kind": invocation.kind ?? "tool",
 		...taxonomyAttributes(invocation),
@@ -68,6 +74,7 @@ function createAttributes(
 		"mcp.tool.args.key_count_bucket":
 			invocation.argumentKeyCountBucket ?? "unknown",
 		"mcp.tool.args.keys": invocation.argumentKeys?.join(",") ?? "",
+		...(sessionId ? { "mcp.session.id": sessionId } : {}),
 	};
 	for (const key of Object.keys(invocation.argumentPresence ?? {})) {
 		attributes[`mcp.tool.args.${key}.present`] = true;
@@ -162,18 +169,23 @@ function resultMetricAttributes(
 
 function setSafeErrorAttributes(
 	span: Span,
+	invocation: SafeToolInvocation,
 	completion: SafeToolCompletion,
 ): string {
 	const diagnostic = completion.error;
 	const errorType = completion.errorType ?? "UNKNOWN_ERROR";
 	if (diagnostic) {
 		span.addEvent("mcp.tool.failure", {
+			"mcp.tool.name": invocation.name,
+			"error.type": errorType,
 			"error.category": diagnostic.category,
 			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			...(diagnostic.status !== undefined
-				? { "http.status_code": diagnostic.status }
+				? { "http.response.status_code": diagnostic.status }
 				: {}),
-			...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
+			...(diagnostic.method
+				? { "http.request.method": diagnostic.method }
+				: {}),
 			...(diagnostic.endpoint
 				? { "hevy.api.endpoint": diagnostic.endpoint }
 				: {}),
@@ -198,9 +210,10 @@ function captureSafeToolFailure(
 			scope.setTag("error.category", category);
 			if (diagnostic?.code) scope.setTag("error.code", diagnostic.code);
 			if (diagnostic?.status !== undefined) {
-				scope.setTag("http.status_code", String(diagnostic.status));
+				scope.setTag("http.response.status_code", String(diagnostic.status));
 			}
-			if (diagnostic?.method) scope.setTag("http.method", diagnostic.method);
+			if (diagnostic?.method)
+				scope.setTag("http.request.method", diagnostic.method);
 			if (diagnostic?.endpoint) {
 				scope.setTag("hevy.api.endpoint", diagnostic.endpoint);
 			}
@@ -287,7 +300,11 @@ export function createNodeToolObserver(): ToolObserver {
 							);
 							setResultAttributes(activeSpan, nextCompletion);
 							if (nextCompletion.outcome === "thrown_error") {
-								errorType = setSafeErrorAttributes(activeSpan, nextCompletion);
+								errorType = setSafeErrorAttributes(
+									activeSpan,
+									invocation,
+									nextCompletion,
+								);
 								bestEffort(() =>
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? errorType),
@@ -302,10 +319,15 @@ export function createNodeToolObserver(): ToolObserver {
 												? { "error.code": nextCompletion.error.code }
 												: {}),
 											...(nextCompletion.error?.status !== undefined
-												? { "http.status_code": nextCompletion.error.status }
+												? {
+														"http.response.status_code":
+															nextCompletion.error.status,
+													}
 												: {}),
 											...(nextCompletion.error?.method
-												? { "http.method": nextCompletion.error.method }
+												? {
+														"http.request.method": nextCompletion.error.method,
+													}
 												: {}),
 											...(nextCompletion.error?.endpoint
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
@@ -316,6 +338,13 @@ export function createNodeToolObserver(): ToolObserver {
 								);
 							}
 							if (nextCompletion.outcome === "returned_error") {
+								activeSpan.addEvent("mcp.tool.failure", {
+									"mcp.tool.name": invocation.name,
+									"error.type": "UNKNOWN_ERROR",
+									"error.category": "McpToolReturnedError",
+									"error.code": "MCP_TOOL_RETURNED_ERROR",
+								});
+								activeSpan.setAttribute("error.type", "UNKNOWN_ERROR");
 								bestEffort(() =>
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? "UnknownError"),
@@ -330,10 +359,15 @@ export function createNodeToolObserver(): ToolObserver {
 												? { "error.code": nextCompletion.error.code }
 												: {}),
 											...(nextCompletion.error?.status !== undefined
-												? { "http.status_code": nextCompletion.error.status }
+												? {
+														"http.response.status_code":
+															nextCompletion.error.status,
+													}
 												: {}),
 											...(nextCompletion.error?.method
-												? { "http.method": nextCompletion.error.method }
+												? {
+														"http.request.method": nextCompletion.error.method,
+													}
 												: {}),
 											...(nextCompletion.error?.endpoint
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }

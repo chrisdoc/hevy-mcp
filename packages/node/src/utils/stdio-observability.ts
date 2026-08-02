@@ -6,8 +6,10 @@ import type { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { stdioParseErrors } from "./metrics.js";
 import { tracer } from "./telemetry.js";
-import { recordMcpSessionStart } from "./mcp-session-observability.js";
-
+import {
+	getCurrentMcpSessionId,
+	recordMcpSessionStart,
+} from "./mcp-session-observability.js";
 const UTF8_BOM = "\uFEFF";
 /** Maximum escaped characters included in a malformed stdin shape preview. */
 const STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH = 200;
@@ -265,11 +267,12 @@ export function deserializeMessageWithObservability(
 	const lineHadLeadingBom = line.startsWith(UTF8_BOM);
 	const normalizedLine = lineHadLeadingBom ? line.slice(1) : line;
 	const lineByteLength = Buffer.byteLength(line);
-
+	const sessionId = getCurrentMcpSessionId();
 	return tracer.startActiveSpan(
 		"mcp.stdio.deserialize",
 		{
 			attributes: {
+				"mcp.span.category": "protocol",
 				"mcp.transport": "stdio",
 				"mcp.stdio.parse.line.char_length": line.length,
 				"mcp.stdio.parse.line.byte_length": lineByteLength,
@@ -279,6 +282,7 @@ export function deserializeMessageWithObservability(
 					chunkSnapshot.lastChunkByteLength,
 				"mcp.stdio.parse.chunk.last_had_utf8_bom":
 					chunkSnapshot.lastChunkStartsWithUtf8Bom,
+				...(sessionId ? { "mcp.session.id": sessionId } : {}),
 			},
 		},
 		(span) => {
@@ -292,6 +296,10 @@ export function deserializeMessageWithObservability(
 					}
 					if (method === "initialize") {
 						const client = recordMcpSessionStart(message);
+						const sessionId = getCurrentMcpSessionId();
+						if (sessionId) {
+							span.setAttribute("mcp.session.id", sessionId);
+						}
 						span.setAttribute("mcp.client.name", client.name);
 						span.setAttribute("mcp.client.version", client.version);
 						span.setAttribute("mcp.protocol.version", client.protocolVersion);

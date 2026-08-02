@@ -32,6 +32,26 @@ describe("createErrorResponse", () => {
 		expect(JSON.stringify(result)).not.toContain("secret-ordinary-error");
 	});
 
+	it("emits the canonical bounded failure event", () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			createErrorResponse(httpError(500), "get-workouts");
+			expect(stderrSpy).toHaveBeenCalledWith(
+				JSON.stringify({
+					event: "mcp.tool.failure",
+					"mcp.tool.name": "get-workouts",
+					"error.type": ErrorType.API_ERROR,
+					"error.category": "HevyHttpError",
+					"http.status_code": 500,
+					"http.method": "GET",
+					"hevy.api.endpoint": "/v1/user/info",
+				}),
+			);
+		} finally {
+			stderrSpy.mockRestore();
+		}
+	});
+
 	it("classifies the original error message when the safe message is generic", () => {
 		const result = createErrorResponse(
 			new Error("request validation failed"),

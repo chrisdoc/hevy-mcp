@@ -47,23 +47,58 @@ type KubbClient = {
 	setConfig: (config: RequestConfig) => Partial<RequestConfig<unknown>>;
 };
 
+export type HevyApiOutcome =
+	| "success"
+	| "retryable_failure"
+	| "terminal_failure"
+	| "expected";
+
+export interface HevyRequestStart {
+	readonly method: string;
+	readonly endpoint: string;
+	readonly retryCount: number;
+}
+
 export interface HevyRequestObservation {
-	method: string;
-	endpoint: string;
-	status: number;
-	durationMs: number;
-	retryCount: number;
-	error?: {
+	readonly method: string;
+	readonly endpoint: string;
+	readonly status: number;
+	readonly durationMs: number;
+	readonly retryCount: number;
+	readonly outcome: HevyApiOutcome;
+	readonly expectedReason?: "not_found" | "end_of_list";
+	readonly error?: {
 		readonly status?: number;
 		readonly code?: string;
+		readonly category?: "HevyHttpError" | "NetworkError";
 	};
+}
+
+export interface HevyRequestObservationScope {
+	finish(observation: HevyRequestObservation): void;
+	run?<T>(operation: () => Promise<T>): Promise<T>;
+}
+
+export interface HevyRetryWait {
+	readonly method: string;
+	readonly endpoint: string;
+	readonly retryCount: number;
+	readonly delayMs: number;
+}
+
+export interface HevyRetryWaitScope {
+	finish(): void;
 }
 
 export interface HevyClientOptions {
 	fetch?: typeof globalThis.fetch;
 	onLog?: HevyClientLogger;
 	maxGetRetries?: number;
+	onRequestStart?: (
+		observation: HevyRequestStart,
+	) => HevyRequestObservationScope | void;
 	onRequestComplete?: (observation: HevyRequestObservation) => void;
+	onRetryWait?: (observation: HevyRetryWait) => HevyRetryWaitScope | void;
 	sleep?: (milliseconds: number) => Promise<void>;
 	timeoutMs?: number;
 }
@@ -85,6 +120,35 @@ const SAFE_STATIC_ENDPOINTS = new Set([
 	"/v1/workouts",
 	"/v1/workouts/count",
 	"/v1/workouts/events",
+]);
+const EXPECTED_READ_404_ENDPOINTS = new Set([
+	"/v1/body_measurements/:date",
+	"/v1/exercise_history/:exerciseTemplateId",
+	"/v1/exercise_templates/:exerciseTemplateId",
+	"/v1/routine_folders/:folderId",
+	"/v1/routines/:routineId",
+	"/v1/workouts/:workoutId",
+]);
+const EXPECTED_LIST_404_ENDPOINTS = new Set([
+	"/v1/body_measurements",
+	"/v1/exercise_templates",
+	"/v1/routine_folders",
+	"/v1/routines",
+	"/v1/workouts",
+	"/v1/workouts/events",
+]);
+export const SAFE_OBSERVATION_CODES = new Set([
+	"EAI_AGAIN",
+	"ECONNABORTED",
+	"ECONNREFUSED",
+	"ECONNRESET",
+	"ENETUNREACH",
+	"ENOTFOUND",
+	"ERR_NETWORK",
+	"ERR_SOCKET_TIMEOUT",
+	"ETIMEDOUT",
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 ]);
 const SAFE_DYNAMIC_ENDPOINTS = [
 	["/v1/body_measurements/", "/v1/body_measurements/:date"],
@@ -145,7 +209,11 @@ function withTimeout<T>(
 	return promise;
 }
 
-function getRequestContext(config: { method?: string; url?: string }) {
+function getRequestContext(config: {
+	method?: string;
+	url?: string;
+	params?: unknown;
+}) {
 	const method = (config.method ?? "GET").toUpperCase();
 	const rawEndpoint = (config.url ?? "").split("?")[0] ?? "";
 	let endpoint = "unknown";
@@ -157,7 +225,14 @@ function getRequestContext(config: { method?: string; url?: string }) {
 				rawEndpoint.startsWith(prefix),
 			)?.[1] ?? "unknown";
 	}
-	return { method, endpoint };
+	const page =
+		config.params !== null &&
+		typeof config.params === "object" &&
+		"page" in config.params &&
+		typeof config.params.page === "number"
+			? config.params.page
+			: undefined;
+	return { method, endpoint, page };
 }
 
 function emitClientLog(
@@ -171,12 +246,71 @@ function emitClientLog(
 	}
 }
 
+function emitRequestStart(
+	observer: HevyClientOptions["onRequestStart"],
+	observation: HevyRequestStart,
+): HevyRequestObservationScope | undefined {
+	try {
+		return observer?.(observation) ?? undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function finishRequestObservation(
+	scope: HevyRequestObservationScope | undefined,
+	observation: HevyRequestObservation,
+): void {
+	try {
+		scope?.finish(observation);
+	} catch {
+		// Client observation is best-effort and cannot affect request behavior.
+	}
+}
+
 function emitRequestObservation(
 	observer: HevyClientOptions["onRequestComplete"],
 	observation: HevyRequestObservation,
 ): void {
 	try {
 		observer?.(observation);
+	} catch {
+		// Client observation is best-effort and cannot affect request behavior.
+	}
+}
+
+function runRequestObservation<T>(
+	scope: HevyRequestObservationScope | undefined,
+	operation: () => Promise<T>,
+): Promise<T> {
+	if (!scope?.run) return operation();
+	let started = false;
+	const trackedOperation = () => {
+		started = true;
+		return operation();
+	};
+	try {
+		return scope.run(trackedOperation);
+	} catch (error) {
+		if (started) throw error;
+		return operation();
+	}
+}
+
+function emitRetryWait(
+	observer: HevyClientOptions["onRetryWait"],
+	observation: HevyRetryWait,
+): HevyRetryWaitScope | undefined {
+	try {
+		return observer?.(observation) ?? undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function finishRetryWait(scope: HevyRetryWaitScope | undefined): void {
+	try {
+		scope?.finish();
 	} catch {
 		// Client observation is best-effort and cannot affect request behavior.
 	}
@@ -271,7 +405,7 @@ function createNativeClient(
 		config: RequestConfig<TVariables>,
 	): Promise<ResponseConfig<TData>> => {
 		const normalized = { ...clientConfig, ...config } as RequestConfig<unknown>;
-		const { method, endpoint } = getRequestContext(normalized);
+		const { method, endpoint, page } = getRequestContext(normalized);
 		const url = buildUrl(baseUrl, normalized);
 		let retryCount = 0;
 
@@ -284,6 +418,11 @@ function createNativeClient(
 				});
 			}
 			const startedAt = Date.now();
+			const observationScope = emitRequestStart(options.onRequestStart, {
+				method,
+				endpoint,
+				retryCount,
+			});
 			const controller = new AbortController();
 			const abortFromCaller = () => controller.abort();
 			normalized.signal?.addEventListener("abort", abortFromCaller, {
@@ -291,61 +430,66 @@ function createNativeClient(
 			});
 			const timeout = setTimeout(() => controller.abort(), timeoutMs);
 			try {
-				const headers = new Headers({ "api-key": apiKey });
-				if (
-					normalized.data !== undefined &&
-					!(normalized.data instanceof FormData)
-				) {
-					headers.set("content-type", "application/json");
-				}
-				const attemptDeadline = Date.now() + timeoutMs;
-				const response = await withTimeout(
-					fetchImplementation(url, {
-						method,
-						headers,
-						redirect: "manual",
-						body:
-							normalized.data instanceof FormData
-								? normalized.data
-								: normalized.data === undefined
-									? undefined
-									: JSON.stringify(normalized.data),
-						signal: controller.signal,
-					}),
-					Math.max(0, attemptDeadline - Date.now()),
-					() => controller.abort(),
-				);
-				const data = await withTimeout(
-					parseResponseData(response),
-					Math.max(0, attemptDeadline - Date.now()),
-					() => controller.abort(),
-				);
-				if (!response.ok) {
-					throw new HevyHttpError(
-						`Hevy API request failed (HTTP ${response.status})`,
-						{
-							status: response.status,
-							statusText: response.statusText,
-							data,
-							headers: response.headers,
+				return await runRequestObservation(observationScope, async () => {
+					const headers = new Headers({ "api-key": apiKey });
+					if (
+						normalized.data !== undefined &&
+						!(normalized.data instanceof FormData)
+					) {
+						headers.set("content-type", "application/json");
+					}
+					const attemptDeadline = Date.now() + timeoutMs;
+					const response = await withTimeout(
+						fetchImplementation(url, {
 							method,
-							endpoint,
-						},
+							headers,
+							redirect: "manual",
+							body:
+								normalized.data instanceof FormData
+									? normalized.data
+									: normalized.data === undefined
+										? undefined
+										: JSON.stringify(normalized.data),
+							signal: controller.signal,
+						}),
+						Math.max(0, attemptDeadline - Date.now()),
+						() => controller.abort(),
 					);
-				}
-				emitRequestObservation(options.onRequestComplete, {
-					method,
-					endpoint,
-					status: response.status,
-					durationMs: Date.now() - startedAt,
-					retryCount,
+					const data = await withTimeout(
+						parseResponseData(response),
+						Math.max(0, attemptDeadline - Date.now()),
+						() => controller.abort(),
+					);
+					if (!response.ok) {
+						throw new HevyHttpError(
+							`Hevy API request failed (HTTP ${response.status})`,
+							{
+								status: response.status,
+								statusText: response.statusText,
+								data,
+								headers: response.headers,
+								method,
+								endpoint,
+							},
+						);
+					}
+					const observation: HevyRequestObservation = {
+						method,
+						endpoint,
+						status: response.status,
+						durationMs: Date.now() - startedAt,
+						retryCount,
+						outcome: "success",
+					};
+					finishRequestObservation(observationScope, observation);
+					emitRequestObservation(options.onRequestComplete, observation);
+					return {
+						data: data as TData,
+						status: response.status,
+						statusText: response.statusText,
+						headers: response.headers,
+					};
 				});
-				return {
-					data: data as TData,
-					status: response.status,
-					statusText: response.statusText,
-					headers: response.headers,
-				};
 			} catch (cause) {
 				const error = isHevyHttpError(cause)
 					? cause
@@ -362,24 +506,51 @@ function createNativeClient(
 								cause,
 							},
 						);
+				const expectedReason =
+					error.status === 404 &&
+					method === "GET" &&
+					EXPECTED_READ_404_ENDPOINTS.has(endpoint)
+						? "not_found"
+						: error.status === 404 &&
+							  method === "GET" &&
+							  page !== undefined &&
+							  page > 1 &&
+							  EXPECTED_LIST_404_ENDPOINTS.has(endpoint)
+							? "end_of_list"
+							: undefined;
 				const canRetry = method === "GET" && isRetryable(error);
-				if (canRetry && retryCount >= maxGetRetries) {
+				const retryExhausted = canRetry && retryCount >= maxGetRetries;
+				if (retryExhausted) {
 					error.hevyRetryExhausted = true;
 					error.hevyRetryCount = retryCount;
 					error.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
 				}
-				emitRequestObservation(options.onRequestComplete, {
+				const observation: HevyRequestObservation = {
 					method,
 					endpoint,
 					status: error.status ?? 0,
 					durationMs: Date.now() - startedAt,
 					retryCount,
+					outcome: expectedReason
+						? "expected"
+						: canRetry && !retryExhausted
+							? "retryable_failure"
+							: "terminal_failure",
+					...(expectedReason ? { expectedReason } : {}),
 					error: {
 						status: error.status,
-						code: error.code,
+						code:
+							typeof error.code === "string" &&
+							SAFE_OBSERVATION_CODES.has(error.code)
+								? error.code
+								: undefined,
+						category:
+							error.status === undefined ? "NetworkError" : "HevyHttpError",
 					},
-				});
-				if (!canRetry) {
+				};
+				finishRequestObservation(observationScope, observation);
+				emitRequestObservation(options.onRequestComplete, observation);
+				if (!expectedReason && !canRetry) {
 					emitClientLog(options.onLog, {
 						level: "error",
 						logger: "hevy-api",
@@ -392,7 +563,7 @@ function createNativeClient(
 					});
 					throw error;
 				}
-				if (error.hevyRetryExhausted) {
+				if (expectedReason || error.hevyRetryExhausted) {
 					throw error;
 				}
 				retryCount += 1;
@@ -410,7 +581,19 @@ function createNativeClient(
 						endpoint,
 					},
 				});
-				await sleep(delayMs);
+				await runRequestObservation(observationScope, async () => {
+					const retryWaitScope = emitRetryWait(options.onRetryWait, {
+						method,
+						endpoint,
+						retryCount,
+						delayMs,
+					});
+					try {
+						await sleep(delayMs);
+					} finally {
+						finishRetryWait(retryWaitScope);
+					}
+				});
 			} finally {
 				clearTimeout(timeout);
 				normalized.signal?.removeEventListener("abort", abortFromCaller);

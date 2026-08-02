@@ -43,6 +43,7 @@ const testDoubles = vi.hoisted(() => ({
 		version: "1.2.3",
 		protocolVersion: "2025-11-25",
 	})),
+	getCurrentMcpSessionId: vi.fn(() => "session-1"),
 	sentryWithScope: vi.fn((callback: (scope: unknown) => void) =>
 		callback({
 			setTag: vi.fn(),
@@ -74,6 +75,7 @@ vi.mock("./mcp-session-observability.js", () => ({
 	recordMcpToolInvocation: testDoubles.recordMcpToolInvocation,
 	recordMcpToolFailure: testDoubles.recordMcpToolFailure,
 	getCurrentMcpClientMetadata: testDoubles.getCurrentMcpClientMetadata,
+	getCurrentMcpSessionId: testDoubles.getCurrentMcpSessionId,
 	getCurrentMcpTransport: vi.fn(() => "stdio"),
 }));
 
@@ -138,6 +140,13 @@ describe("createNodeToolObserver", () => {
 				client_name: "Claude-Desktop",
 			}),
 		);
+		expect(
+			JSON.stringify([
+				testDoubles.toolInvocationsAdd.mock.calls,
+				testDoubles.toolOutcomesAdd.mock.calls,
+				testDoubles.toolDurationRecord.mock.calls,
+			]),
+		).not.toContain("session-1");
 		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
 			"mcp.tool.get-workouts",
 			{
@@ -209,10 +218,12 @@ describe("createNodeToolObserver", () => {
 			"503",
 		]);
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
+			"mcp.tool.name": "get-workouts",
+			"error.type": "NETWORK_ERROR",
 			"error.category": "HevyHttpError",
 			"error.code": "ETIMEDOUT",
-			"http.status_code": 503,
-			"http.method": "GET",
+			"http.response.status_code": 503,
+			"http.request.method": "GET",
 			"hevy.api.endpoint": "/v1/workouts",
 		});
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
@@ -236,6 +247,35 @@ describe("createNodeToolObserver", () => {
 			]),
 		).not.toContain(secret);
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
+	});
+	it("marks returned MCP errors on the tool span", async () => {
+		const scope = startScope();
+
+		await expect(
+			scope.run(() => Promise.resolve("returned-error")),
+		).resolves.toBe("returned-error");
+		await scope.finish({
+			outcome: "returned_error",
+			durationMs: 4,
+			result: {
+				isError: true,
+				hasStructuredContent: false,
+				contentCountBucket: "0",
+			},
+		});
+
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
+			"mcp.tool.name": "get-workouts",
+			"error.type": "UNKNOWN_ERROR",
+			"error.category": "McpToolReturnedError",
+			"error.code": "MCP_TOOL_RETURNED_ERROR",
+		});
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"error.type",
+			"UNKNOWN_ERROR",
+		);
+		expect(testDoubles.recordMcpToolFailure).toHaveBeenCalledOnce();
+		expect(testDoubles.toolErrorsAdd).not.toHaveBeenCalled();
 	});
 
 	it("uses prompt-specific telemetry for prompt failures", async () => {
