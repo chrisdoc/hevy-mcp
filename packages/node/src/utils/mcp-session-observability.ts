@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { sessionEnded, sessionStarted } from "./metrics.js";
 import { bucketCount } from "./result-telemetry.js";
@@ -28,12 +29,20 @@ export interface McpClientMetricAttributes {
 	readonly transport: McpTransport;
 }
 
+export interface McpSessionContextOptions {
+	readonly telemetrySessionId?: string;
+	readonly generateTelemetrySessionId?: () => string;
+	readonly now?: () => number;
+}
+
 export interface McpSessionContext {
 	metadata: McpClientMetadata;
 	startedAt: number;
 	toolCalls: number;
 	hadToolFailure: boolean;
 	transport: McpTransport;
+	/** Opaque process-local correlation ID; never derived from protocol headers. */
+	telemetrySessionId: string;
 }
 
 const UNKNOWN_METADATA = "unknown";
@@ -80,13 +89,21 @@ export function extractMcpClientMetadata(message: unknown): McpClientMetadata {
 export function createMcpSessionContext(
 	message: unknown,
 	transport: McpTransport = "stdio",
+	options: McpSessionContextOptions | (() => string) = {},
 ): McpSessionContext {
+	const normalizedOptions =
+		typeof options === "function"
+			? { generateTelemetrySessionId: options }
+			: options;
 	return {
 		metadata: extractMcpClientMetadata(message),
-		startedAt: Date.now(),
+		startedAt: (normalizedOptions.now ?? Date.now)(),
 		toolCalls: 0,
 		hadToolFailure: false,
 		transport,
+		telemetrySessionId:
+			normalizedOptions.telemetrySessionId ??
+			(normalizedOptions.generateTelemetrySessionId ?? randomUUID)(),
 	};
 }
 
@@ -100,6 +117,10 @@ export function runWithMcpSessionContext<T>(
 function getSession(): McpSessionContext | undefined {
 	const scopedSession = contextStorage.getStore();
 	return scopedSession ?? activeStdioSession;
+}
+
+export function getCurrentMcpSessionId(): string | undefined {
+	return getSession()?.telemetrySessionId;
 }
 
 function metadataAttributes(

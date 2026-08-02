@@ -122,4 +122,100 @@ describe("@hevy-mcp/hevy-client", () => {
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
+	it("times API observations across response parsing", async () => {
+		let releaseBody!: () => void;
+		const bodyReady = new Promise<void>((resolve) => {
+			releaseBody = resolve;
+		});
+		const events: string[] = [];
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					new ReadableStream({
+						async start(controller) {
+							await bodyReady;
+							controller.enqueue(new TextEncoder().encode("{}"));
+							controller.close();
+						},
+					}),
+					{ status: 200 },
+				),
+		);
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			onRequestStart: () => {
+				events.push("start");
+				return {
+					finish: (observation) => events.push(`finish:${observation.outcome}`),
+				};
+			},
+			maxGetRetries: 0,
+		});
+
+		const request = client.getUserInfo();
+		await Promise.resolve();
+		expect(events).toEqual(["start"]);
+		releaseBody();
+		await request;
+
+		expect(events).toEqual(["start", "finish:success"]);
+	});
+
+	it("observes every retry attempt and backoff without exposing request data", async () => {
+		const attempts: string[] = [];
+		const waits: number[] = [];
+		const outcomes: string[] = [];
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 503))
+			.mockResolvedValueOnce(response({}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep: async (milliseconds) => {
+				waits.push(milliseconds);
+			},
+			onRequestStart: ({ retryCount }) => {
+				attempts.push(`start:${retryCount}`);
+				return {
+					finish: ({ outcome }) => outcomes.push(outcome),
+				};
+			},
+			onRetryWait: ({ retryCount }) => ({
+				finish: () => attempts.push(`wait:${retryCount}`),
+			}),
+		});
+
+		await client.getUserInfo();
+
+		expect(attempts).toEqual(["start:0", "wait:1", "start:1"]);
+		expect(outcomes).toEqual(["retryable_failure", "success"]);
+		expect(waits).toEqual([300]);
+	});
+
+	it("marks supported read and later-page 404s as expected outcomes", async () => {
+		const observations: Array<{
+			outcome: string;
+			expectedReason?: string;
+		}> = [];
+		const fetchMock = vi.fn().mockResolvedValue(response({}, 404));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			onRequestComplete: ({ outcome, expectedReason }) => {
+				observations.push({ outcome, expectedReason });
+			},
+		});
+
+		await expect(client.getWorkouts({ page: 2 })).rejects.toBeInstanceOf(
+			HevyHttpError,
+		);
+
+		expect(observations).toEqual([
+			{ outcome: "expected", expectedReason: "end_of_list" },
+		]);
+	});
 });

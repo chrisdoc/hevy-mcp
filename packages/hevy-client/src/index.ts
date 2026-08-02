@@ -11,9 +11,14 @@ export {
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	MAX_GET_RETRIES,
 	RETRY_BACKOFF_BASE_MS,
+	type HevyApiOutcome,
 	type HevyClientLogEvent,
 	type HevyClientLogger,
 	type HevyRequestObservation,
+	type HevyRequestObservationScope,
+	type HevyRequestStart,
+	type HevyRetryWait,
+	type HevyRetryWaitScope,
 } from "./hevy-client-kubb.js";
 export {
 	HevyHttpError,

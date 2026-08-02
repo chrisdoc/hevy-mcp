@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const testDoubles = vi.hoisted(() => {
 	const span = {
+		addEvent: vi.fn(),
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
 		end: vi.fn(),
@@ -31,6 +32,7 @@ const testDoubles = vi.hoisted(() => {
 		setTelemetryUser: vi.fn(),
 		installProcessExceptionTracking: vi.fn(() => vi.fn()),
 		flushTelemetry: vi.fn().mockResolvedValue(undefined),
+		recordTelemetryException: vi.fn(),
 		serverStartups: { add: vi.fn() },
 		installGracefulShutdown: vi.fn(),
 		instrumentTransport: vi.fn(() => ({ kind: "stdio-transport" })),
@@ -40,6 +42,7 @@ const testDoubles = vi.hoisted(() => {
 		createNodeHevyClientOptions: vi.fn(() => ({
 			onRequestComplete: vi.fn(),
 		})),
+		createNodeCacheObserver: vi.fn(() => ({ start: vi.fn() })),
 		createNodeToolObserver: vi.fn(() => ({ kind: "observer" })),
 	};
 });
@@ -60,6 +63,7 @@ vi.mock("./utils/telemetry.js", () => ({
 	serviceName: "hevy-mcp",
 	serviceVersion: "3.4.1",
 	setTelemetryUser: testDoubles.setTelemetryUser,
+	recordTelemetryException: testDoubles.recordTelemetryException,
 	installProcessExceptionTracking: testDoubles.installProcessExceptionTracking,
 }));
 
@@ -77,9 +81,9 @@ vi.mock("@hevy-mcp/hevy-client", () => ({
 			error.isHevyHttpError === true,
 		),
 }));
-
 vi.mock("@hevy-mcp/core", () => ({
 	createHevyMcpServer: testDoubles.createHevyMcpServer,
+	createSafeErrorDiagnostic: vi.fn(() => ({ category: "Error" })),
 }));
 
 vi.mock("@modelcontextprotocol/server/stdio", () => ({
@@ -96,6 +100,7 @@ vi.mock("./utils/graceful-shutdown.js", () => ({
 
 vi.mock("./utils/hevy-client-observability.js", () => ({
 	createNodeHevyClientOptions: testDoubles.createNodeHevyClientOptions,
+	createNodeCacheObserver: testDoubles.createNodeCacheObserver,
 }));
 
 vi.mock("./utils/tool-observer.js", () => ({

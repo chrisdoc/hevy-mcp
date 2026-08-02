@@ -135,4 +135,48 @@ describe("AsyncTtlCache", () => {
 
 		expect(fetcher).toHaveBeenCalledTimes(2);
 	});
+	it("observes cache states without exposing keys", async () => {
+		const events: string[] = [];
+		const cache = new AsyncTtlCache<string, string>({
+			ttlMs: 60_000,
+			maxSize: 2,
+			observer: {
+				start: ({ state }) => {
+					events.push(`start:${state}`);
+					return { finish: () => events.push(`finish:${state}`) };
+				},
+			},
+		});
+		let resolveFetch!: (value: string) => void;
+		const fetcher = vi
+			.fn()
+			.mockImplementationOnce(
+				() =>
+					new Promise<string>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			)
+			.mockResolvedValueOnce("fresh");
+
+		const first = cache.getOrFetch("private-key", fetcher);
+		const second = cache.getOrFetch("private-key", fetcher);
+		expect(events).toEqual(["start:miss", "start:inflight_wait"]);
+
+		resolveFetch("catalog");
+		await Promise.all([first, second]);
+		await cache.getOrFetch("private-key", fetcher);
+		await cache.getOrFetch("private-key", fetcher, { refresh: true });
+
+		expect(events).toEqual([
+			"start:miss",
+			"start:inflight_wait",
+			"finish:miss",
+			"finish:inflight_wait",
+			"start:hit",
+			"finish:hit",
+			"start:refresh",
+			"finish:refresh",
+		]);
+		expect(JSON.stringify(events)).not.toContain("private-key");
+	});
 });
