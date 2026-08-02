@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	createMcpSessionContext,
+	getCurrentMcpSessionId,
 	recordMcpSessionStart,
 	recordMcpSessionTermination,
 	recordMcpToolFailure,
 	recordMcpToolInvocation,
 	resolveSessionTerminationCategory,
+	runWithMcpSessionContext,
 } from "./mcp-session-observability.js";
 
 const testDoubles = vi.hoisted(() => ({
@@ -44,5 +47,33 @@ describe("MCP session tool observations", () => {
 				tool_calls_bucket: "1",
 			}),
 		);
+	});
+	it("isolates opaque IDs across sessions and propagates the active ID", () => {
+		const first = createMcpSessionContext({ method: "initialize" }, "http", {
+			telemetrySessionId: "session-one",
+		});
+		const second = createMcpSessionContext({ method: "initialize" }, "http", {
+			telemetrySessionId: "session-two",
+		});
+
+		expect(first.telemetrySessionId).not.toBe(second.telemetrySessionId);
+		expect(
+			runWithMcpSessionContext(first, () => getCurrentMcpSessionId()),
+		).toBe("session-one");
+		expect(
+			runWithMcpSessionContext(second, () => getCurrentMcpSessionId()),
+		).toBe("session-two");
+		expect(testDoubles.sessionStartedAdd.mock.calls.flat()).not.toContain(
+			"session-one",
+		);
+	});
+	it("generates one injectable opaque ID per session", () => {
+		const generate = vi.fn(() => "generated-session");
+		const context = createMcpSessionContext({ method: "initialize" }, "stdio", {
+			generateTelemetrySessionId: generate,
+		});
+
+		expect(context.telemetrySessionId).toBe("generated-session");
+		expect(generate).toHaveBeenCalledOnce();
 	});
 });

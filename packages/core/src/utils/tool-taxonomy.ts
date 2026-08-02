@@ -24,6 +24,18 @@ export const MCP_TOOL_OPERATIONS = [
 ] as const;
 
 export type McpToolOperation = (typeof MCP_TOOL_OPERATIONS)[number];
+export const MCP_SPAN_CATEGORIES = [
+	"startup",
+	"session",
+	"protocol",
+	"discovery",
+	"tool",
+	"api",
+	"cache",
+	"process",
+] as const;
+
+export type McpSpanCategory = (typeof MCP_SPAN_CATEGORIES)[number];
 
 export type ToolTelemetryMetadata = {
 	readonly feature: HevyToolFeature;

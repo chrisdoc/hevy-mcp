@@ -50,8 +50,8 @@ vi.mock("@sentry/node", () => ({
 
 vi.mock("node:crypto", () => ({
 	createHmac: testDoubles.createHmac,
+	randomUUID: vi.fn(() => "instance-id"),
 }));
-
 vi.mock("@sentry/opentelemetry", () => ({
 	SentrySpanProcessor: testDoubles.sentrySpanProcessor,
 	SentryPropagator: testDoubles.sentryPropagator,
@@ -185,6 +185,7 @@ describe("telemetry initialization", () => {
 		const span = {
 			data: {
 				"mcp.request.id": "request-secret",
+				"mcp.session.id": "session-secret",
 				"mcp.progress.token": "progress-secret",
 				"mcp.prompt.name": "private-prompt",
 				"mcp.protocol.version": "private-protocol",
@@ -200,6 +201,7 @@ describe("telemetry initialization", () => {
 		});
 		expect(span.data).toEqual({
 			"mcp.request.id": "request-secret",
+			"mcp.session.id": "session-secret",
 			"mcp.progress.token": "progress-secret",
 			"mcp.prompt.name": "private-prompt",
 			"mcp.protocol.version": "private-protocol",
@@ -347,6 +349,15 @@ describe("telemetry initialization", () => {
 		expect(mod.Sentry).toBeDefined();
 		expect(mod.serviceName).toBe("hevy-mcp");
 		expect(mod.serviceVersion).toBe("dev");
+	});
+
+	it("supports deterministic service-instance IDs for tests", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+
+		expect(mod.createServiceInstanceId(() => "instance-test-id")).toBe(
+			"instance-test-id",
+		);
 	});
 	it("derives and attaches a truncated HMAC user pseudonym", async () => {
 		vi.resetModules();

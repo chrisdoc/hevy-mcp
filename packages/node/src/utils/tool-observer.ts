@@ -13,6 +13,7 @@ import {
 } from "./metrics.js";
 import {
 	getCurrentMcpClientMetadata,
+	getCurrentMcpSessionId,
 	getCurrentMcpTransport,
 	recordMcpToolFailure,
 	recordMcpToolInvocation,
@@ -21,6 +22,7 @@ import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
 import { Sentry, recordTelemetryException, tracer } from "./telemetry.js";
 
 type AttributeValue = string | number | boolean;
+const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
 
 const WORKFLOW_PAGINATION_RESOURCES = new Set([
 	"workouts",
@@ -57,7 +59,11 @@ function createAttributes(
 ): Record<string, AttributeValue> {
 	const clientMetadata = getCurrentMcpClientMetadata();
 	const isPrompt = invocation.kind === "prompt";
+	const sessionId = getCurrentMcpSessionId();
 	const attributes: Record<string, AttributeValue> = {
+		"mcp.span.category": DISCOVERY_TOOL_NAMES.has(invocation.name)
+			? "discovery"
+			: "tool",
 		[isPrompt ? "mcp.prompt.name" : "mcp.tool.name"]: invocation.name,
 		"mcp.operation.kind": invocation.kind ?? "tool",
 		...taxonomyAttributes(invocation),
@@ -68,6 +74,7 @@ function createAttributes(
 		"mcp.tool.args.key_count_bucket":
 			invocation.argumentKeyCountBucket ?? "unknown",
 		"mcp.tool.args.keys": invocation.argumentKeys?.join(",") ?? "",
+		...(sessionId ? { "mcp.session.id": sessionId } : {}),
 	};
 	for (const key of Object.keys(invocation.argumentPresence ?? {})) {
 		attributes[`mcp.tool.args.${key}.present`] = true;
@@ -162,12 +169,15 @@ function resultMetricAttributes(
 
 function setSafeErrorAttributes(
 	span: Span,
+	invocation: SafeToolInvocation,
 	completion: SafeToolCompletion,
 ): string {
 	const diagnostic = completion.error;
 	const errorType = completion.errorType ?? "UNKNOWN_ERROR";
 	if (diagnostic) {
 		span.addEvent("mcp.tool.failure", {
+			"mcp.tool.name": invocation.name,
+			"error.type": errorType,
 			"error.category": diagnostic.category,
 			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			...(diagnostic.status !== undefined
@@ -189,9 +199,9 @@ function captureSafeToolFailure(
 ): void {
 	const diagnostic = completion.error;
 	const category = diagnostic?.category ?? "UnknownError";
+	const isPrompt = invocation.kind === "prompt";
 	try {
 		Sentry.withScope((scope) => {
-			const isPrompt = invocation.kind === "prompt";
 			scope.setTag("mcp.tool.name", invocation.name);
 			if (isPrompt) scope.setTag("mcp.prompt.name", invocation.name);
 			scope.setTag("error.type", completion.errorType ?? "UNKNOWN_ERROR");
@@ -287,7 +297,11 @@ export function createNodeToolObserver(): ToolObserver {
 							);
 							setResultAttributes(activeSpan, nextCompletion);
 							if (nextCompletion.outcome === "thrown_error") {
-								errorType = setSafeErrorAttributes(activeSpan, nextCompletion);
+								errorType = setSafeErrorAttributes(
+									activeSpan,
+									invocation,
+									nextCompletion,
+								);
 								bestEffort(() =>
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? errorType),
@@ -316,6 +330,13 @@ export function createNodeToolObserver(): ToolObserver {
 								);
 							}
 							if (nextCompletion.outcome === "returned_error") {
+								activeSpan.addEvent("mcp.tool.failure", {
+									"mcp.tool.name": invocation.name,
+									"error.type": "UNKNOWN_ERROR",
+									"error.category": "McpToolReturnedError",
+									"error.code": "MCP_TOOL_RETURNED_ERROR",
+								});
+								activeSpan.setAttribute("error.type", "UNKNOWN_ERROR");
 								bestEffort(() =>
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? "UnknownError"),

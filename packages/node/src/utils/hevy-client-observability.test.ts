@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { HevyRequestObservation } from "@hevy-mcp/hevy-client";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import { createNodeHevyClientOptions } from "./hevy-client-observability.js";
 
@@ -6,17 +7,18 @@ const testDoubles = vi.hoisted(() => ({
 	span: {
 		addEvent: vi.fn(),
 		end: vi.fn(),
+		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
 	},
-	startSpan: vi.fn(),
+	startActiveSpan: vi.fn((...args: unknown[]) => {
+		const callback = args.at(-1) as (span: unknown) => unknown;
+		return callback(testDoubles.span);
+	}),
 	apiCallsAdd: vi.fn(),
 	apiDurationRecord: vi.fn(),
 }));
-
-testDoubles.startSpan.mockReturnValue(testDoubles.span);
-
 vi.mock("./telemetry.js", () => ({
-	tracer: { startSpan: testDoubles.startSpan },
+	tracer: { startActiveSpan: testDoubles.startActiveSpan },
 }));
 
 vi.mock("./metrics.js", () => ({
@@ -28,6 +30,18 @@ vi.mock("@opentelemetry/api", () => ({
 	SpanStatusCode: { OK: 1, ERROR: 2 },
 }));
 
+function observe(
+	options: ReturnType<typeof createNodeHevyClientOptions>,
+	observation: HevyRequestObservation,
+): void {
+	const scope = options.onRequestStart?.({
+		method: observation.method,
+		endpoint: observation.endpoint,
+		retryCount: observation.retryCount,
+	});
+	if (scope) scope.finish(observation);
+	options.onRequestComplete?.(observation);
+}
 describe("createNodeHevyClientOptions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -37,36 +51,50 @@ describe("createNodeHevyClientOptions", () => {
 	it("records successful requests with bounded operational metadata", () => {
 		const options = createNodeHevyClientOptions();
 
-		options.onRequestComplete?.({
+		observe(options, {
 			method: "GET",
 			endpoint: "/v1/user/info",
 			status: 200,
 			durationMs: 12,
 			retryCount: 0,
+			outcome: "success",
 		});
 
-		expect(testDoubles.startSpan).toHaveBeenCalledWith("hevy.api.GET", {
-			attributes: {
-				"http.method": "GET",
-				"http.status_code": 200,
-				"hevy.api.retry_count_bucket": "0",
-				"hevy.api.endpoint": "/v1/user/info",
+		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
+			"hevy.api.GET",
+			{
+				attributes: {
+					"mcp.span.category": "api",
+					"http.method": "GET",
+					"hevy.api.retry_count_bucket": "0",
+					"hevy.api.endpoint": "/v1/user/info",
+					"mcp.transport": "stdio",
+				},
 			},
-		});
+			expect.any(Function),
+		);
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
 		expect(testDoubles.span.addEvent).not.toHaveBeenCalled();
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
-		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(1, {
-			method: "GET",
-			endpoint: "/v1/user/info",
-			status_code: 200,
-			retry_count_bucket: "0",
-		});
-		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(12, {
-			method: "GET",
-			endpoint: "/v1/user/info",
-			retry_count_bucket: "0",
-		});
+		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({
+				method: "GET",
+				endpoint: "/v1/user/info",
+				status_code: 200,
+				retry_count_bucket: "0",
+				outcome: "success",
+			}),
+		);
+		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(
+			12,
+			expect.objectContaining({
+				method: "GET",
+				endpoint: "/v1/user/info",
+				retry_count_bucket: "0",
+				outcome: "success",
+			}),
+		);
 	});
 
 	it("never records raw request errors", () => {
@@ -81,12 +109,13 @@ describe("createNodeHevyClientOptions", () => {
 		});
 		const options = createNodeHevyClientOptions();
 
-		options.onRequestComplete?.({
+		observe(options, {
 			method: "GET",
 			endpoint: "/v1/user/info",
 			status: 503,
 			durationMs: 25,
 			retryCount: 1,
+			outcome: "terminal_failure",
 			error,
 		});
 
@@ -113,12 +142,13 @@ describe("createNodeHevyClientOptions", () => {
 		});
 		const options = createNodeHevyClientOptions();
 
-		options.onRequestComplete?.({
+		observe(options, {
 			method: "GET",
 			endpoint: "/v1/user/info",
 			status: 0,
 			durationMs: 25,
 			retryCount: 0,
+			outcome: "terminal_failure",
 			error,
 		});
 

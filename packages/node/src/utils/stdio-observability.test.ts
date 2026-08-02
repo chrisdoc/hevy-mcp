@@ -54,6 +54,7 @@ vi.mock("./metrics.js", () => ({
 }));
 
 vi.mock("./mcp-session-observability.js", () => ({
+	getCurrentMcpSessionId: vi.fn(() => undefined),
 	recordMcpSessionStart: testDoubles.recordSessionStart,
 }));
 

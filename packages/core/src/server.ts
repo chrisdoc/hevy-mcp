@@ -11,8 +11,8 @@ import { registerHevyTools } from "./tools/register.js";
 import { createToolRuntime } from "./tools/tool-runtime.js";
 import { createExerciseTemplateCatalog } from "./utils/exercise-template-catalog.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
+import type { CacheObserver } from "./utils/cache.js";
 import type { ToolObserver } from "./observation.js";
-
 export interface HevyClientFactoryContext {
 	readonly onLog: (event: HevyClientLogEvent) => void;
 }
@@ -20,6 +20,7 @@ export interface HevyClientFactoryContext {
 export interface CreateHevyMcpServerOptions {
 	readonly createClient: (context: HevyClientFactoryContext) => HevyClient;
 	readonly observer?: ToolObserver;
+	readonly cacheObserver?: CacheObserver;
 	readonly decorateServer?: (server: McpServer) => McpServer;
 	readonly onToolsRegistered?: (count: number) => void;
 }
@@ -54,7 +55,7 @@ export function createHevyMcpServer(
 	const client = options.createClient({ onLog: (event) => mcpLogger(event) });
 	const runtime = createToolRuntime({
 		client,
-		catalog: createExerciseTemplateCatalog(client),
+		catalog: createExerciseTemplateCatalog(client, options.cacheObserver),
 		logger: mcpLogger,
 		observer: options.observer,
 	});

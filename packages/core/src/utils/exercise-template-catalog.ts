@@ -4,7 +4,9 @@ import type {
 } from "@hevy-mcp/hevy-client/types";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { AsyncTtlCache } from "./cache.js";
+import type { CacheObservationMetadata, CacheObserver } from "./cache.js";
 import { fetchAllPages } from "./pagination.js";
+import { bucketCount } from "./result-telemetry.js";
 
 const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
 const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -28,13 +30,14 @@ export interface ExerciseTemplateCatalog {
 	reset(): void;
 }
 
-/** Create a cache owned by one MCP server/request lifecycle. */
 export function createExerciseTemplateCatalog(
 	hevyClient: HevyClient,
+	cacheObserver?: CacheObserver,
 ): ExerciseTemplateCatalog {
 	const cache = new AsyncTtlCache<string, ExerciseTemplate[]>({
 		ttlMs: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
 		maxSize: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+		observer: cacheObserver,
 	});
 
 	return {
@@ -44,11 +47,14 @@ export function createExerciseTemplateCatalog(
 				: cache.size === 0
 					? "initial-load"
 					: "ttl-expired";
+			let observationMetadata: CacheObservationMetadata | undefined;
+			let pagesLoaded = 0;
 			return cache.getOrFetch(
 				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
 				async () => {
 					const catalog = await fetchAllPages<ExerciseTemplate>(
 						async (page, pageSize) => {
+							pagesLoaded = page;
 							const data: GetV1ExerciseTemplates200 =
 								await hevyClient.getExerciseTemplates({
 									page,
@@ -61,10 +67,18 @@ export function createExerciseTemplateCatalog(
 						},
 						100,
 					);
+					observationMetadata = {
+						refreshReason: reason,
+						pageCountBucket: bucketCount(pagesLoaded),
+						itemCountBucket: bucketCount(catalog.length),
+					};
 					options.onRefreshed?.(catalog, reason);
 					return catalog;
 				},
-				options,
+				{
+					refresh: options.refresh,
+					getObservationMetadata: () => observationMetadata,
+				},
 			);
 		},
 		reset() {
