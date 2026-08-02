@@ -222,8 +222,8 @@ describe("createNodeToolObserver", () => {
 			"error.type": "NETWORK_ERROR",
 			"error.category": "HevyHttpError",
 			"error.code": "ETIMEDOUT",
-			"http.status_code": 503,
-			"http.method": "GET",
+			"http.response.status_code": 503,
+			"http.request.method": "GET",
 			"hevy.api.endpoint": "/v1/workouts",
 		});
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(

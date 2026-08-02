@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { HevyRequestObservation } from "@hevy-mcp/hevy-client";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
-import { createNodeHevyClientOptions } from "./hevy-client-observability.js";
+import {
+	createNodeCacheObserver,
+	createNodeHevyClientOptions,
+} from "./hevy-client-observability.js";
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -10,15 +13,12 @@ const testDoubles = vi.hoisted(() => ({
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
 	},
-	startActiveSpan: vi.fn((...args: unknown[]) => {
-		const callback = args.at(-1) as (span: unknown) => unknown;
-		return callback(testDoubles.span);
-	}),
+	startSpan: vi.fn(() => testDoubles.span),
 	apiCallsAdd: vi.fn(),
 	apiDurationRecord: vi.fn(),
 }));
 vi.mock("./telemetry.js", () => ({
-	tracer: { startActiveSpan: testDoubles.startActiveSpan },
+	tracer: { startSpan: testDoubles.startSpan },
 }));
 
 vi.mock("./metrics.js", () => ({
@@ -60,21 +60,22 @@ describe("createNodeHevyClientOptions", () => {
 			outcome: "success",
 		});
 
-		expect(testDoubles.startActiveSpan).toHaveBeenCalledWith(
-			"hevy.api.GET",
-			{
-				attributes: {
-					"mcp.span.category": "api",
-					"http.method": "GET",
-					"hevy.api.retry_count_bucket": "0",
-					"hevy.api.endpoint": "/v1/user/info",
-					"mcp.transport": "stdio",
-				},
+		expect(testDoubles.startSpan).toHaveBeenCalledWith("hevy.api.GET", {
+			attributes: {
+				"mcp.span.category": "api",
+				"http.request.method": "GET",
+				"hevy.api.retry_count_bucket": "0",
+				"hevy.api.endpoint": "/v1/user/info",
+				"mcp.transport": "stdio",
 			},
-			expect.any(Function),
+		});
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"http.response.status_code",
+			200,
 		);
-		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 1 });
-		expect(testDoubles.span.addEvent).not.toHaveBeenCalled();
+		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatusCode.OK,
+		});
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
 			1,
@@ -121,7 +122,9 @@ describe("createNodeHevyClientOptions", () => {
 			error,
 		});
 
-		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({ code: 2 });
+		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
+			code: SpanStatusCode.ERROR,
+		});
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("hevy.api.failure", {
 			"error.category": "HevyHttpError",
 		});
@@ -153,11 +156,68 @@ describe("createNodeHevyClientOptions", () => {
 			outcome: "terminal_failure",
 			error,
 		});
+		expect(testDoubles.span.setAttribute).not.toHaveBeenCalledWith(
+			"http.response.status_code",
+			0,
+		);
 
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("hevy.api.failure", {
 			"error.category": "HevyHttpError",
 			"error.code": "HEVY_RETRY_EXHAUSTED",
 		});
+	});
+	it("records retry waits and cache lifecycle metadata on dedicated spans", () => {
+		const options = createNodeHevyClientOptions();
+		const retryScope = options.onRetryWait?.({
+			method: "GET",
+			endpoint: "/v1/user/info",
+			retryCount: 1,
+			delayMs: 300,
+		});
+		if (!retryScope) throw new Error("Expected retry wait scope");
+		retryScope.finish();
+
+		const cacheScope = createNodeCacheObserver().start({ state: "miss" });
+		if (!cacheScope) throw new Error("Expected cache observation scope");
+		cacheScope.finish({
+			refreshReason: "initial-load",
+			pageCountBucket: "1",
+			itemCountBucket: "2-10",
+		});
+
+		expect(testDoubles.startSpan).toHaveBeenNthCalledWith(
+			1,
+			"hevy.api.retry_wait",
+			expect.objectContaining({
+				attributes: expect.objectContaining({
+					"http.request.method": "GET",
+					"hevy.api.retry_count_bucket": "1",
+					"hevy.api.retry_wait_ms": 300,
+				}),
+			}),
+		);
+		expect(testDoubles.startSpan).toHaveBeenNthCalledWith(
+			2,
+			"hevy.cache.miss",
+			expect.objectContaining({
+				attributes: expect.objectContaining({
+					"hevy.cache.state": "miss",
+				}),
+			}),
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"hevy.cache.refresh_reason",
+			"initial-load",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"hevy.cache.page_count_bucket",
+			"1",
+		);
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"hevy.cache.item_count_bucket",
+			"2-10",
+		);
+		expect(testDoubles.span.end).toHaveBeenCalledTimes(2);
 	});
 
 	it("accepts only a positive finite timeout override", () => {

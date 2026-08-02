@@ -122,6 +122,7 @@ const SAFE_STATIC_ENDPOINTS = new Set([
 ]);
 const EXPECTED_READ_404_ENDPOINTS = new Set([
 	"/v1/body_measurements/:date",
+	"/v1/exercise_history/:exerciseTemplateId",
 	"/v1/exercise_templates/:exerciseTemplateId",
 	"/v1/routine_folders/:folderId",
 	"/v1/routines/:routineId",
@@ -497,7 +498,8 @@ function createNativeClient(
 							? "end_of_list"
 							: undefined;
 				const canRetry = method === "GET" && isRetryable(error);
-				if (canRetry && retryCount >= maxGetRetries) {
+				const retryExhausted = canRetry && retryCount >= maxGetRetries;
+				if (retryExhausted) {
 					error.hevyRetryExhausted = true;
 					error.hevyRetryCount = retryCount;
 					error.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
@@ -510,7 +512,7 @@ function createNativeClient(
 					retryCount,
 					outcome: expectedReason
 						? "expected"
-						: canRetry
+						: canRetry && !retryExhausted
 							? "retryable_failure"
 							: "terminal_failure",
 					...(expectedReason ? { expectedReason } : {}),
@@ -521,7 +523,8 @@ function createNativeClient(
 							SAFE_OBSERVATION_CODES.has(error.code)
 								? error.code
 								: undefined,
-						category: "HevyHttpError",
+						category:
+							error.status === undefined ? "NetworkError" : "HevyHttpError",
 					},
 				};
 				finishRequestObservation(observationScope, observation);

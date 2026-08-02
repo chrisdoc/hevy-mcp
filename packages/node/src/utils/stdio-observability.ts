@@ -296,6 +296,10 @@ export function deserializeMessageWithObservability(
 					}
 					if (method === "initialize") {
 						const client = recordMcpSessionStart(message);
+						const sessionId = getCurrentMcpSessionId();
+						if (sessionId) {
+							span.setAttribute("mcp.session.id", sessionId);
+						}
 						span.setAttribute("mcp.client.name", client.name);
 						span.setAttribute("mcp.client.version", client.version);
 						span.setAttribute("mcp.protocol.version", client.protocolVersion);

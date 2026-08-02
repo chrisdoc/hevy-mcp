@@ -19,11 +19,15 @@ const testDoubles = vi.hoisted(() => ({
 		return callback(testDoubles.span);
 	}),
 	parseErrors: { add: vi.fn() },
-	recordSessionStart: vi.fn(() => ({
-		name: "test-client",
-		version: "1.0.0",
-		protocolVersion: "2025-11-25",
-	})),
+	currentSessionId: undefined as string | undefined,
+	recordSessionStart: vi.fn(() => {
+		testDoubles.currentSessionId = "session-from-initialize";
+		return {
+			name: "test-client",
+			version: "1.0.0",
+			protocolVersion: "2025-11-25",
+		};
+	}),
 }));
 
 const sdkSharedTestDoubles = vi.hoisted(() => ({
@@ -52,9 +56,8 @@ vi.mock("./telemetry.js", () => ({
 vi.mock("./metrics.js", () => ({
 	stdioParseErrors: testDoubles.parseErrors,
 }));
-
 vi.mock("./mcp-session-observability.js", () => ({
-	getCurrentMcpSessionId: vi.fn(() => undefined),
+	getCurrentMcpSessionId: vi.fn(() => testDoubles.currentSessionId),
 	recordMcpSessionStart: testDoubles.recordSessionStart,
 }));
 
@@ -99,8 +102,8 @@ function extractShapePreview(diagnostic: string): string {
 describe("package-local stdio observability", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		testDoubles.currentSessionId = undefined;
 	});
-
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
@@ -124,6 +127,21 @@ describe("package-local stdio observability", () => {
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.method",
 			"ping",
+		);
+	});
+	it("records the generated session ID on the initialize span", () => {
+		deserializeMessageWithObservability(
+			JSON.stringify({
+				jsonrpc: "2.0",
+				id: 1,
+				method: "initialize",
+			}),
+			{ lastChunkByteLength: 64, lastChunkStartsWithUtf8Bom: false },
+		);
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"mcp.session.id",
+			"session-from-initialize",
 		);
 	});
 

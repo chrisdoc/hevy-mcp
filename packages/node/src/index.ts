@@ -150,9 +150,9 @@ function recordLifecycleFailure(
 		"error.category": diagnostic.category,
 		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 		...(diagnostic.status !== undefined
-			? { "http.status_code": diagnostic.status }
+			? { "http.response.status_code": diagnostic.status }
 			: {}),
-		...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
+		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
 		...(diagnostic.endpoint
 			? { "hevy.api.endpoint": diagnostic.endpoint }
 			: {}),
@@ -195,18 +195,19 @@ function markSdkToolFailure(
 	span: Span,
 	error: unknown,
 	toolName = sdkToolNameStorage.getStore() ?? "unknown",
+	errorTypeOverride?: string,
 ): void {
 	const diagnostic = createSafeErrorDiagnostic(error);
-	const errorType = "VALIDATION_ERROR";
+	const errorType = errorTypeOverride ?? diagnostic.category;
 	span.addEvent("mcp.tool.failure", {
 		"mcp.tool.name": toolName,
 		"error.type": errorType,
 		"error.category": diagnostic.category,
 		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 		...(diagnostic.status !== undefined
-			? { "http.status_code": diagnostic.status }
+			? { "http.response.status_code": diagnostic.status }
 			: {}),
-		...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
+		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
 		...(diagnostic.endpoint
 			? { "hevy.api.endpoint": diagnostic.endpoint }
 			: {}),
@@ -220,7 +221,7 @@ function markSdkToolFailure(
 			"error.category": diagnostic.category,
 			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			...(diagnostic.status !== undefined
-				? { "http.status_code": diagnostic.status }
+				? { "http.response.status_code": diagnostic.status }
 				: {}),
 		},
 		span,
@@ -241,10 +242,11 @@ function installSdkErrorTracking(server: {
 			"error.category": diagnostic.category,
 			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			...(diagnostic.status !== undefined
-				? { "http.status_code": diagnostic.status }
+				? { "http.response.status_code": diagnostic.status }
 				: {}),
 		};
 		const activeSpan = trace.getActiveSpan();
+		const sessionId = getCurrentMcpSessionId();
 		if (activeSpan) {
 			activeSpan.addEvent("mcp.tool.failure", {
 				"mcp.tool.name": sdkToolNameStorage.getStore() ?? "unknown",
@@ -258,10 +260,7 @@ function installSdkErrorTracking(server: {
 				"mcp.sdk.failure",
 				{
 					attributes: {
-						"mcp.span.category": "protocol",
-						...(getCurrentMcpSessionId()
-							? { "mcp.session.id": getCurrentMcpSessionId() }
-							: {}),
+						...(sessionId ? { "mcp.session.id": sessionId } : {}),
 					},
 				},
 				(span) => {
@@ -290,7 +289,12 @@ function installSdkErrorTracking(server: {
 			const result = createToolError(message);
 			const activeSpan = trace.getActiveSpan();
 			if (activeSpan) {
-				markSdkToolFailure(activeSpan, new Error("MCP tool validation failed"));
+				markSdkToolFailure(
+					activeSpan,
+					new Error("MCP tool validation failed"),
+					undefined,
+					"VALIDATION_ERROR",
+				);
 			}
 			return result;
 		};

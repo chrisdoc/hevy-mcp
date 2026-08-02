@@ -51,6 +51,7 @@ vi.mock("@sentry/node", () => ({
 
 vi.mock("node:crypto", () => ({
 	createHmac: testDoubles.createHmac,
+	randomBytes: vi.fn(() => Buffer.alloc(16, 0xab)),
 	randomUUID: vi.fn(() => "instance-id"),
 }));
 vi.mock("@sentry/opentelemetry", () => ({
@@ -380,6 +381,19 @@ describe("telemetry initialization", () => {
 		expect(second).toBe("process-two");
 		expect(second).not.toBe(first);
 		expect(mod.serviceInstanceId).toBe("instance-id");
+	});
+	it("falls back to a random opaque ID for invalid generators", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const fallback = "ab".repeat(16);
+
+		expect(mod.createServiceInstanceId(() => "")).toBe(fallback);
+		expect(mod.createServiceInstanceId(() => "x".repeat(129))).toBe(fallback);
+		expect(
+			mod.createServiceInstanceId(() => {
+				throw new Error("entropy unavailable");
+			}),
+		).toBe(fallback);
 	});
 	it("derives and attaches a truncated HMAC user pseudonym", async () => {
 		vi.resetModules();

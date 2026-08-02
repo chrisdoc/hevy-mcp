@@ -63,6 +63,9 @@ describe("MCP session tool observations", () => {
 		expect(
 			runWithMcpSessionContext(second, () => getCurrentMcpSessionId()),
 		).toBe("session-two");
+		runWithMcpSessionContext(first, () =>
+			recordMcpSessionStart({}, "http", first),
+		);
 		expect(testDoubles.sessionStartedAdd.mock.calls.flat()).not.toContain(
 			"session-one",
 		);
