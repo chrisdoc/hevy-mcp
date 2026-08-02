@@ -284,9 +284,15 @@ function runRequestObservation<T>(
 	operation: () => Promise<T>,
 ): Promise<T> {
 	if (!scope?.run) return operation();
+	let started = false;
+	const trackedOperation = () => {
+		started = true;
+		return operation();
+	};
 	try {
-		return scope.run(operation);
-	} catch {
+		return scope.run(trackedOperation);
+	} catch (error) {
+		if (started) throw error;
 		return operation();
 	}
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createHevyClient } from "./hevy-client.js";
 import {
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	HevyHttpError,
 } from "./hevy-http-error.js";
@@ -106,6 +107,36 @@ describe("@hevy-mcp/hevy-client", () => {
 			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 		});
 	});
+	it("finishes request observations when callers cancel", async () => {
+		const controller = new AbortController();
+		const outcomes: string[] = [];
+		const fetchMock = vi.fn(
+			(_input: RequestInfo | URL, init?: RequestInit) =>
+				new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener(
+						"abort",
+						() => reject(new DOMException("Aborted", "AbortError")),
+						{ once: true },
+					);
+				}),
+		);
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			onRequestStart: () => ({
+				finish: ({ outcome }) => outcomes.push(outcome),
+			}),
+		});
+
+		const request = client.getUserInfo({ signal: controller.signal });
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		controller.abort();
+		await expect(request).rejects.toMatchObject({
+			code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+		});
+		expect(outcomes).toEqual(["terminal_failure"]);
+	});
 
 	it("bounds retries for hanging response bodies", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
@@ -200,6 +231,46 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(scopedRuns).toEqual([0, 0, 1]);
 	});
 
+	it("does not rerun a request when an observation scope throws after starting", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(response({}));
+		const scopeRun = vi.fn((operation: () => Promise<unknown>) => {
+			void operation();
+			throw new Error("observation scope failed");
+		});
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			onRequestStart: () => ({
+				run: scopeRun,
+				finish: vi.fn(),
+			}),
+		});
+
+		await expect(client.getUserInfo()).rejects.toBeInstanceOf(HevyHttpError);
+		expect(scopeRun).toHaveBeenCalledOnce();
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+	it("falls back to the request when an observation scope fails before starting", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(response({}));
+		const scopeRun = vi.fn(() => {
+			throw new Error("observation scope unavailable");
+		});
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			onRequestStart: () => ({
+				run: scopeRun,
+				finish: vi.fn(),
+			}),
+		});
+
+		await expect(client.getUserInfo()).resolves.toEqual({});
+		expect(scopeRun).toHaveBeenCalledOnce();
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
 	it("marks supported read and later-page 404s as expected outcomes", async () => {
 		const observations: Array<{
 			outcome: string;
@@ -222,6 +293,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(observations).toEqual([
 			{ outcome: "expected", expectedReason: "end_of_list" },
 		]);
+		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 	it("reports exhausted retries as terminal failures", async () => {
 		const observations: Array<{

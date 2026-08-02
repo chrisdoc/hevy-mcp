@@ -300,14 +300,15 @@ describe("Node package entrypoint", () => {
 			expect.stringContaining("Diagnostic: HTTP 503"),
 		);
 
+		vi.mocked(console.error).mockClear();
 		testDoubles.startupClient.getUserInfo.mockRejectedValueOnce({
 			response: {},
 		});
 		await expect(createNodeMcpServer({ apiKey: "valid-key" })).resolves.toBe(
 			testDoubles.server,
 		);
-		expect(console.error).toHaveBeenCalledWith(
-			expect.not.stringContaining("not-a-status"),
+		expect(console.error).not.toHaveBeenCalledWith(
+			expect.stringContaining("Diagnostic: HTTP"),
 		);
 	});
 	it("validates the HTTP key once and builds sessions without re-probing", async () => {
