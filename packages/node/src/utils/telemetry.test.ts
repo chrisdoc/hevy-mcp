@@ -17,6 +17,7 @@ const testDoubles = vi.hoisted(() => {
 			setAttribute: vi.fn(),
 			setAttributes: vi.fn(),
 			setStatus: vi.fn(),
+			end: vi.fn(),
 		},
 		sentryInit: vi.fn(() => ({ _isSentryClient: true })),
 		sentryFlush: vi.fn().mockResolvedValue(true),
@@ -70,7 +71,15 @@ vi.mock("@opentelemetry/api", () => ({
 	SpanStatusCode: { ERROR: 2 },
 	trace: {
 		getActiveSpan: vi.fn(() => testDoubles.activeSpan),
-		getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })),
+		getTracer: vi.fn(() => ({
+			startActiveSpan: vi.fn(
+				(
+					_name: string,
+					_options: unknown,
+					callback: (span: typeof testDoubles.activeSpan) => unknown,
+				) => callback(testDoubles.activeSpan),
+			),
+		})),
 		setGlobalTracerProvider: testDoubles.setGlobalTracerProvider,
 	},
 	metrics: {
@@ -232,6 +241,39 @@ describe("telemetry initialization", () => {
 		await import("./telemetry.js");
 
 		expect(testDoubles.validateOpenTelemetrySetup).toHaveBeenCalled();
+	});
+	it("records uncaught exceptions and unhandled rejections safely", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const listeners = new Map<string, (error: unknown) => void>();
+		const processLike = {
+			on: vi.fn((event: string, listener: (error: unknown) => void) => {
+				listeners.set(event, listener);
+			}),
+			removeListener: vi.fn(
+				(event: string, listener: (error: unknown) => void) => {
+					expect(listeners.get(event)).toBe(listener);
+				},
+			),
+		};
+
+		const cleanup = mod.installProcessExceptionTracking(processLike);
+		listeners.get("uncaughtExceptionMonitor")?.(
+			Object.assign(new Error("uncaught"), { code: "ECONNREFUSED" }),
+		);
+		listeners.get("unhandledRejection")?.("rejection-secret");
+		cleanup();
+		cleanup();
+
+		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledTimes(2);
+		expect(testDoubles.activeSpan.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({
+				"exception.source": "uncaughtException",
+				"error.code": "ECONNREFUSED",
+			}),
+		);
+		expect(testDoubles.activeSpan.end).toHaveBeenCalledTimes(2);
+		expect(processLike.removeListener).toHaveBeenCalledTimes(2);
 	});
 
 	it("registers the global tracer provider", async () => {
