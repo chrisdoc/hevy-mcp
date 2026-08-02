@@ -56,6 +56,11 @@ export type ProcessExceptionSource = {
 	): void;
 };
 
+const PROCESS_FAILURE_TAXONOMY = {
+	uncaughtException: "uncaught_exception",
+	unhandledRejection: "unhandled_rejection",
+} as const;
+
 const SAFE_EXCEPTION_TYPES = new Set([
 	"AggregateError",
 	"DOMException",
@@ -133,20 +138,24 @@ export function installProcessExceptionTracking(
 	processLike: ProcessExceptionSource = process,
 ): () => void {
 	if (!telemetryEnabled) return () => {};
-	const recordProcessException = (source: string, error: unknown) => {
+	const recordProcessException = (
+		source: keyof typeof PROCESS_FAILURE_TAXONOMY,
+		error: unknown,
+	) => {
 		try {
 			tracer.startActiveSpan(
 				`mcp.process.${source}`,
 				{ attributes: { "mcp.span.category": "process" } },
 				(span) => {
 					try {
-						const normalized = normalizeTelemetryError(error);
 						const code = getSafeExceptionCode(error);
 						recordTelemetryException(
 							error,
 							{
 								"exception.source": source,
-								"error.category": normalized.name,
+								"mcp.failure.phase": PROCESS_FAILURE_TAXONOMY[source],
+								"error.type": "MCP_PROCESS_EXCEPTION",
+								"error.category": "McpProcessFailure",
 								...(code ? { "error.code": code } : {}),
 							},
 							span,

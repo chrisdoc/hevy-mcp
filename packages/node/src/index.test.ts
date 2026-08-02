@@ -228,34 +228,16 @@ describe("Node package entrypoint", () => {
 		);
 		expect(testDoubles.server.connect).not.toHaveBeenCalled();
 	});
-	it("tracks SDK tool, discovery, validation, and protocol failures", async () => {
+	it("enriches initialize and tool SDK spans", async () => {
 		const initializeHandler = vi
 			.fn()
 			.mockResolvedValue({ protocolVersion: "1" });
-		const toolHandler = vi
-			.fn()
-			.mockResolvedValueOnce({ isError: true })
-			.mockResolvedValueOnce({})
-			.mockRejectedValueOnce(new Error("tool failure"));
-		const discoveryHandler = vi
-			.fn()
-			.mockResolvedValueOnce({ capabilities: [] })
-			.mockRejectedValueOnce(new Error("discovery failure"));
-		const previousOnError = vi.fn(() => {
-			throw new Error("previous SDK handler failure");
-		});
-		const createToolError = vi.fn((message: string) => ({ message }));
-		testDoubles.sdkProtocol.onerror = previousOnError;
+		const toolHandler = vi.fn().mockResolvedValue({});
 		testDoubles.sdkProtocol._requestHandlers.set(
 			"initialize",
 			initializeHandler,
 		);
 		testDoubles.sdkProtocol._requestHandlers.set("tools/call", toolHandler);
-		testDoubles.sdkProtocol._requestHandlers.set(
-			"server/discover",
-			discoveryHandler,
-		);
-		testDoubles.server.createToolError = createToolError;
 
 		await expect(createNodeMcpServer({ apiKey: "valid-key" })).resolves.toBe(
 			testDoubles.server,
@@ -265,17 +247,9 @@ describe("Node package entrypoint", () => {
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
 		const wrappedInitializeHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("initialize");
-		const wrappedDiscoveryHandler =
-			testDoubles.sdkProtocol._requestHandlers.get("server/discover");
 		expect(wrappedToolHandler).toBeDefined();
 		expect(wrappedInitializeHandler).toBeDefined();
-		expect(wrappedDiscoveryHandler).toBeDefined();
-		if (
-			!wrappedToolHandler ||
-			!wrappedInitializeHandler ||
-			!wrappedDiscoveryHandler
-		)
-			return;
+		if (!wrappedToolHandler || !wrappedInitializeHandler) return;
 
 		const activeSpanSpy = vi
 			.spyOn(trace, "getActiveSpan")
@@ -294,7 +268,7 @@ describe("Node package entrypoint", () => {
 
 		await expect(
 			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
-		).resolves.toEqual({ isError: true });
+		).resolves.toEqual({});
 		expect(testDoubles.span.setAttributes).toHaveBeenCalledWith({
 			"mcp.span.category": "protocol",
 			"mcp.transport": "stdio",
@@ -302,9 +276,33 @@ describe("Node package entrypoint", () => {
 			"mcp.tool.name": "get-workouts",
 			"mcp.session.id": "test-session",
 		});
+		activeSpanSpy.mockRestore();
+	});
+
+	it("tracks SDK tool and discovery outcomes", async () => {
+		const toolHandler = vi
+			.fn()
+			.mockResolvedValueOnce({ isError: true })
+			.mockRejectedValueOnce(new Error("tool failure"));
+		const discoveryHandler = vi
+			.fn()
+			.mockResolvedValueOnce({ capabilities: [] })
+			.mockRejectedValueOnce(new Error("discovery failure"));
+		testDoubles.sdkProtocol._requestHandlers.set("tools/call", toolHandler);
+		testDoubles.sdkProtocol._requestHandlers.set(
+			"server/discover",
+			discoveryHandler,
+		);
+		await createNodeMcpServer({ apiKey: "valid-key" });
+		const wrappedToolHandler =
+			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
+		const wrappedDiscoveryHandler =
+			testDoubles.sdkProtocol._requestHandlers.get("server/discover");
+		if (!wrappedToolHandler || !wrappedDiscoveryHandler) return;
+
 		await expect(
 			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
-		).resolves.toEqual({});
+		).resolves.toEqual({ isError: true });
 		await expect(
 			wrappedToolHandler({ params: { name: "bad name" } }, {}),
 		).rejects.toThrow("tool failure");
@@ -315,7 +313,22 @@ describe("Node package entrypoint", () => {
 			"discovery failure",
 		);
 
+		expect(testDoubles.recordTelemetryException).toHaveBeenCalled();
+	});
+
+	it("tracks SDK validation and protocol failures", async () => {
+		const previousOnError = vi.fn(() => {
+			throw new Error("previous SDK handler failure");
+		});
+		const createToolError = vi.fn((message: string) => ({ message }));
+		testDoubles.sdkProtocol.onerror = previousOnError;
+		testDoubles.server.createToolError = createToolError;
+		await createNodeMcpServer({ apiKey: "valid-key" });
+
 		testDoubles.sdkProtocol.onerror?.(new Error("protocol failure"));
+		const activeSpanSpy = vi
+			.spyOn(trace, "getActiveSpan")
+			.mockReturnValue(testDoubles.span as never);
 		testDoubles.server.createToolError?.("invalid tool");
 		testDoubles.sdkProtocol.onerror?.(new Error("active protocol failure"));
 
@@ -330,6 +343,7 @@ describe("Node package entrypoint", () => {
 		);
 		expect(testDoubles.recordTelemetryException).toHaveBeenCalled();
 		expect(createToolError).toHaveBeenCalledWith("invalid tool");
+		expect(previousOnError).toHaveBeenCalledTimes(2);
 		activeSpanSpy.mockRestore();
 	});
 

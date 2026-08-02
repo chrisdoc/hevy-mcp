@@ -273,12 +273,18 @@ describe("telemetry initialization", () => {
 			expect.objectContaining({
 				"exception.type": "Error",
 				"exception.source": "uncaughtException",
+				"mcp.failure.phase": "uncaught_exception",
+				"error.type": "MCP_PROCESS_EXCEPTION",
+				"error.category": "McpProcessFailure",
 				"error.code": "ECONNREFUSED",
 			}),
 		);
 		expect(testDoubles.activeSpan.setAttributes).toHaveBeenCalledWith(
 			expect.objectContaining({
 				"exception.source": "uncaughtException",
+				"mcp.failure.phase": "uncaught_exception",
+				"error.type": "MCP_PROCESS_EXCEPTION",
+				"error.category": "McpProcessFailure",
 				"error.code": "ECONNREFUSED",
 			}),
 		);
