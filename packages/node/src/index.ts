@@ -302,7 +302,7 @@ function installSdkErrorTracking(server: {
 
 	const handlers = (protocol as unknown as SdkProtocolInternals)
 		._requestHandlers;
-	if (!handlers) return;
+	if (!(handlers instanceof Map)) return;
 
 	const toolHandler = handlers.get("tools/call");
 	if (toolHandler) {
@@ -498,7 +498,7 @@ export async function runStdioServer() {
 		setTelemetryUser(configuredApiKey);
 	}
 	let connectAttempted = false;
-
+	let connectSucceeded = false;
 	await tracer.startActiveSpan(
 		"mcp.server.run",
 		{
@@ -531,6 +531,7 @@ export async function runStdioServer() {
 					async (connectSpan) => {
 						try {
 							await server.connect(transport);
+							connectSucceeded = true;
 							connectSpan.setStatus({ code: SpanStatusCode.OK });
 						} catch (e) {
 							recordLifecycleFailure(connectSpan, e, "connect");
@@ -558,7 +559,9 @@ export async function runStdioServer() {
 
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (e) {
-				recordLifecycleFailure(span, e, connectAttempted ? "connect" : "run");
+				if (!connectAttempted || connectSucceeded) {
+					recordLifecycleFailure(span, e, "run");
+				}
 				recordMcpSessionTermination(
 					connectAttempted ? "connect_failure" : "startup_failure",
 				);

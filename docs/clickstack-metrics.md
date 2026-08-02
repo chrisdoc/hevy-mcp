@@ -101,10 +101,12 @@ ORDER BY minute, calls DESC;
 
 ## Histogram latency and quantile view
 
-The histogram table stores bucket counts. This query expands each bucket and
-uses its upper bound as a weighted estimate for p50/p95/p99. The final overflow
-bucket is represented by the largest configured bound, so the result is an
-upper-bound approximation rather than a fabricated raw latency sample.
+The histogram table stores bucket counts. With N explicit bounds, the N+1th
+bucket is the `+Inf` overflow bucket, not another explicit bound. This query
+uses each explicit upper bound as a weighted estimate and caps overflow at the
+largest configured bound. Treat the p50/p95/p99 values as capped estimates:
+overflow can make p95/p99 appear lower than the true latency, so configure
+bounds that cover the expected latency range.
 
 ```sql
 WITH histogram_points AS (
@@ -135,7 +137,7 @@ WITH histogram_points AS (
             bucket_index <= length(ExplicitBounds),
             arrayElement(ExplicitBounds, bucket_index),
             arrayElement(ExplicitBounds, -1)
-        ) AS upper_bound_ms,
+        ) AS upper_bound_ms_capped,
         arrayElement(BucketCounts, bucket_index) AS bucket_count
     FROM histogram_points
     ARRAY JOIN arrayEnumerate(BucketCounts) AS bucket_index
@@ -148,7 +150,7 @@ SELECT
     feature,
     transport,
     client_name,
-    quantilesWeighted(0.50, 0.95, 0.99)(upper_bound_ms, bucket_count) AS latency_ms
+    quantilesWeighted(0.50, 0.95, 0.99)(upper_bound_ms_capped, bucket_count) AS latency_ms_capped_at_bound
 FROM expanded
 GROUP BY window, MetricName, endpoint, tool_name, feature, transport, client_name
 ORDER BY window, MetricName, endpoint, tool_name;

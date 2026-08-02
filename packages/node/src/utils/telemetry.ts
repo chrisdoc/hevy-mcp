@@ -85,7 +85,10 @@ const SAFE_EXCEPTION_CODES = new Set([
 	"HEVY_RETRY_EXHAUSTED",
 ]);
 
-function normalizeTelemetryError(error: unknown): { name: string } {
+function normalizeTelemetryError(error: unknown): {
+	name: string;
+	stack?: string;
+} {
 	const candidate =
 		error instanceof Error && typeof error.name === "string"
 			? error.name
@@ -94,7 +97,10 @@ function normalizeTelemetryError(error: unknown): { name: string } {
 		candidate && SAFE_EXCEPTION_TYPES.has(candidate)
 			? candidate
 			: "UnknownError";
-	return { name };
+	return {
+		name,
+		...(error instanceof Error && error.stack ? { stack: error.stack } : {}),
+	};
 }
 
 function getSafeExceptionCode(error: unknown): string | undefined {

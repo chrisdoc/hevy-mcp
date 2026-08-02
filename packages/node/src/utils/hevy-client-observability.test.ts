@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SpanStatusCode } from "@opentelemetry/api";
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import {
+	HevyHttpError,
+	type HevyRequestObservation,
+} from "@hevy-mcp/hevy-client";
 import {
 	createNodeCacheObserver,
 	createNodeHevyClientOptions,
@@ -16,6 +19,13 @@ const testDoubles = vi.hoisted(() => ({
 	startSpan: vi.fn(() => testDoubles.span),
 	apiCallsAdd: vi.fn(),
 	apiDurationRecord: vi.fn(),
+	contextActive: vi.fn(() => "active-context"),
+	contextWith: vi.fn((_context: unknown, operation: () => Promise<unknown>) =>
+		operation(),
+	),
+	traceSetSpan: vi.fn(
+		(_context: unknown, _span: unknown) => "api-span-context",
+	),
 }));
 vi.mock("./telemetry.js", () => ({
 	tracer: { startSpan: testDoubles.startSpan },
@@ -28,6 +38,13 @@ vi.mock("./metrics.js", () => ({
 
 vi.mock("@opentelemetry/api", () => ({
 	SpanStatusCode: { OK: 1, ERROR: 2 },
+	context: {
+		active: testDoubles.contextActive,
+		with: testDoubles.contextWith,
+	},
+	trace: {
+		setSpan: testDoubles.traceSetSpan,
+	},
 }));
 
 function observe(
@@ -97,6 +114,28 @@ describe("createNodeHevyClientOptions", () => {
 				outcome: "success",
 				transport: "stdio",
 			}),
+		);
+	});
+
+	it("runs request work and retry waits under the API span context", async () => {
+		const options = createNodeHevyClientOptions();
+		const scope = options.onRequestStart?.({
+			method: "GET",
+			endpoint: "/v1/user/info",
+			retryCount: 0,
+		});
+		if (!scope?.run) throw new Error("Expected scoped API request");
+
+		await scope.run(async () => {});
+
+		expect(testDoubles.contextActive).toHaveBeenCalled();
+		expect(testDoubles.traceSetSpan).toHaveBeenCalledWith(
+			"active-context",
+			testDoubles.span,
+		);
+		expect(testDoubles.contextWith).toHaveBeenCalledWith(
+			"api-span-context",
+			expect.any(Function),
 		);
 	});
 

@@ -36,15 +36,17 @@ describe("createErrorResponse", () => {
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		try {
 			createErrorResponse(httpError(500), "get-workouts");
-			expect(stderrSpy).toHaveBeenCalledWith({
-				event: "mcp.tool.failure",
-				"mcp.tool.name": "get-workouts",
-				"error.type": ErrorType.API_ERROR,
-				"error.category": "HevyHttpError",
-				"http.status_code": 500,
-				"http.method": "GET",
-				"hevy.api.endpoint": "/v1/user/info",
-			});
+			expect(stderrSpy).toHaveBeenCalledWith(
+				JSON.stringify({
+					event: "mcp.tool.failure",
+					"mcp.tool.name": "get-workouts",
+					"error.type": ErrorType.API_ERROR,
+					"error.category": "HevyHttpError",
+					"http.status_code": 500,
+					"http.method": "GET",
+					"hevy.api.endpoint": "/v1/user/info",
+				}),
+			);
 		} finally {
 			stderrSpy.mockRestore();
 		}

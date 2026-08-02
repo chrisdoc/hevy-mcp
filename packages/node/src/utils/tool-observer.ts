@@ -201,7 +201,6 @@ function captureSafeToolFailure(
 ): void {
 	const diagnostic = completion.error;
 	const category = diagnostic?.category ?? "UnknownError";
-	const isPrompt = invocation.kind === "prompt";
 	try {
 		Sentry.withScope((scope) => {
 			const isPrompt = invocation.kind === "prompt";

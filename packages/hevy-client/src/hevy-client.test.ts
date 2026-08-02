@@ -165,6 +165,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		const attempts: string[] = [];
 		const waits: number[] = [];
 		const outcomes: string[] = [];
+		const scopedRuns: number[] = [];
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(response({}, 503))
@@ -179,6 +180,10 @@ describe("@hevy-mcp/hevy-client", () => {
 			onRequestStart: ({ retryCount }) => {
 				attempts.push(`start:${retryCount}`);
 				return {
+					run: async (operation) => {
+						scopedRuns.push(retryCount);
+						return operation();
+					},
 					finish: ({ outcome }) => outcomes.push(outcome),
 				};
 			},
@@ -192,6 +197,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(attempts).toEqual(["start:0", "wait:1", "start:1"]);
 		expect(outcomes).toEqual(["retryable_failure", "success"]);
 		expect(waits).toEqual([300]);
+		expect(scopedRuns).toEqual([0, 0, 1]);
 	});
 
 	it("marks supported read and later-page 404s as expected outcomes", async () => {

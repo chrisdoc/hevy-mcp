@@ -12,6 +12,12 @@ const testDoubles = vi.hoisted(() => {
 	const hmacDigest = vi.fn(() => "abcdef0123456789");
 
 	return {
+		activeSpan: {
+			recordException: vi.fn(),
+			setAttribute: vi.fn(),
+			setAttributes: vi.fn(),
+			setStatus: vi.fn(),
+		},
 		sentryInit: vi.fn(() => ({ _isSentryClient: true })),
 		sentryFlush: vi.fn().mockResolvedValue(true),
 		sentrySetUser: vi.fn(),
@@ -63,7 +69,7 @@ vi.mock("@sentry/opentelemetry", () => ({
 vi.mock("@opentelemetry/api", () => ({
 	SpanStatusCode: { ERROR: 2 },
 	trace: {
-		getActiveSpan: vi.fn(),
+		getActiveSpan: vi.fn(() => testDoubles.activeSpan),
 		getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })),
 		setGlobalTracerProvider: testDoubles.setGlobalTracerProvider,
 	},
@@ -427,5 +433,18 @@ describe("telemetry initialization", () => {
 		processor.onStart({ setAttribute }, {});
 
 		expect(setAttribute).toHaveBeenCalledWith("user.hash", "abcdef0123");
+	});
+
+	it("preserves safe exception stacks", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const error = new Error("secret-exception-message");
+
+		mod.recordTelemetryException(error);
+
+		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledWith({
+			name: "Error",
+			stack: error.stack,
+		});
 	});
 });

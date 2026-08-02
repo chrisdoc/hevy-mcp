@@ -112,7 +112,9 @@ export function createErrorResponse(
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${policy.message}`;
 	console.error(
-		createMcpToolFailureEvent(context || "unknown", policy.type, diagnostic),
+		JSON.stringify(
+			createMcpToolFailureEvent(context || "unknown", policy.type, diagnostic),
+		),
 	);
 
 	return {

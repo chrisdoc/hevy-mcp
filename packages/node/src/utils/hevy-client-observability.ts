@@ -1,14 +1,11 @@
 import type { CacheObservationMetadata, CacheObserver } from "@hevy-mcp/core";
-import {
-	HEVY_REQUEST_ABORTED_ERROR_CODE,
-	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
-} from "@hevy-mcp/hevy-client";
+import { SAFE_OBSERVATION_CODES } from "@hevy-mcp/hevy-client";
 import type {
 	HevyClientOptions,
 	HevyRequestObservation,
 	HevyRequestStart,
 } from "@hevy-mcp/hevy-client";
-import { SpanStatusCode, type Span } from "@opentelemetry/api";
+import { context, SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import { debugLog } from "./debug.js";
 import { apiCalls, apiDuration } from "./metrics.js";
 import { bucketCount } from "./result-telemetry.js";
@@ -17,20 +14,6 @@ import {
 	getCurrentMcpTransport,
 } from "./mcp-session-observability.js";
 import { tracer } from "./telemetry.js";
-
-const SAFE_OBSERVATION_CODES = new Set([
-	"EAI_AGAIN",
-	"ECONNABORTED",
-	"ECONNREFUSED",
-	"ECONNRESET",
-	"ENETUNREACH",
-	"ENOTFOUND",
-	"ERR_NETWORK",
-	"ERR_SOCKET_TIMEOUT",
-	"ETIMEDOUT",
-	HEVY_REQUEST_ABORTED_ERROR_CODE,
-	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
-]);
 
 function safeErrorAttributes(observation: HevyRequestObservation): {
 	error_category?: string;
@@ -99,6 +82,9 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 		onRequestStart(start) {
 			const span = startApiSpan(start);
 			return {
+				run<T>(operation: () => Promise<T>) {
+					return context.with(trace.setSpan(context.active(), span), operation);
+				},
 				finish(observation) {
 					finishApiSpan(span, observation);
 				},
