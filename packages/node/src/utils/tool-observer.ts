@@ -181,9 +181,11 @@ function setSafeErrorAttributes(
 			"error.category": diagnostic.category,
 			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 			...(diagnostic.status !== undefined
-				? { "http.status_code": diagnostic.status }
+				? { "http.response.status_code": diagnostic.status }
 				: {}),
-			...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
+			...(diagnostic.method
+				? { "http.request.method": diagnostic.method }
+				: {}),
 			...(diagnostic.endpoint
 				? { "hevy.api.endpoint": diagnostic.endpoint }
 				: {}),
@@ -208,9 +210,10 @@ function captureSafeToolFailure(
 			scope.setTag("error.category", category);
 			if (diagnostic?.code) scope.setTag("error.code", diagnostic.code);
 			if (diagnostic?.status !== undefined) {
-				scope.setTag("http.status_code", String(diagnostic.status));
+				scope.setTag("http.response.status_code", String(diagnostic.status));
 			}
-			if (diagnostic?.method) scope.setTag("http.method", diagnostic.method);
+			if (diagnostic?.method)
+				scope.setTag("http.request.method", diagnostic.method);
 			if (diagnostic?.endpoint) {
 				scope.setTag("hevy.api.endpoint", diagnostic.endpoint);
 			}
@@ -316,10 +319,15 @@ export function createNodeToolObserver(): ToolObserver {
 												? { "error.code": nextCompletion.error.code }
 												: {}),
 											...(nextCompletion.error?.status !== undefined
-												? { "http.status_code": nextCompletion.error.status }
+												? {
+														"http.response.status_code":
+															nextCompletion.error.status,
+													}
 												: {}),
 											...(nextCompletion.error?.method
-												? { "http.method": nextCompletion.error.method }
+												? {
+														"http.request.method": nextCompletion.error.method,
+													}
 												: {}),
 											...(nextCompletion.error?.endpoint
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
@@ -351,10 +359,15 @@ export function createNodeToolObserver(): ToolObserver {
 												? { "error.code": nextCompletion.error.code }
 												: {}),
 											...(nextCompletion.error?.status !== undefined
-												? { "http.status_code": nextCompletion.error.status }
+												? {
+														"http.response.status_code":
+															nextCompletion.error.status,
+													}
 												: {}),
 											...(nextCompletion.error?.method
-												? { "http.method": nextCompletion.error.method }
+												? {
+														"http.request.method": nextCompletion.error.method,
+													}
 												: {}),
 											...(nextCompletion.error?.endpoint
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }

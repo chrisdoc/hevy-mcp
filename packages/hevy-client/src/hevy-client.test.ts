@@ -154,8 +154,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		});
 
 		const request = client.getUserInfo();
-		await Promise.resolve();
-		expect(events).toEqual(["start"]);
+		await vi.waitFor(() => expect(events).toEqual(["start"]));
 		releaseBody();
 		await request;
 
@@ -216,6 +215,68 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		expect(observations).toEqual([
 			{ outcome: "expected", expectedReason: "end_of_list" },
+		]);
+	});
+	it("reports exhausted retries as terminal failures", async () => {
+		const observations: Array<{
+			outcome: string;
+			code?: string;
+		}> = [];
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 503))
+			.mockResolvedValueOnce(response({}, 503));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep: async () => {},
+			onRequestComplete: ({ outcome, error }) => {
+				observations.push({ outcome, code: error?.code });
+			},
+		});
+
+		await expect(client.getUserInfo()).rejects.toMatchObject({
+			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+		});
+		expect(observations).toEqual([
+			{ outcome: "retryable_failure", code: undefined },
+			{
+				outcome: "terminal_failure",
+				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+			},
+		]);
+	});
+
+	it("classifies network failures separately from HTTP failures", async () => {
+		const observations: Array<{
+			outcome: string;
+			category?: string;
+			code?: string;
+		}> = [];
+		const networkError = Object.assign(new TypeError("network"), {
+			code: "ETIMEDOUT",
+		});
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: vi.fn().mockRejectedValue(networkError),
+			maxGetRetries: 0,
+			onRequestComplete: ({ outcome, error }) => {
+				observations.push({
+					outcome,
+					category: error?.category,
+					code: error?.code,
+				});
+			},
+		});
+
+		await expect(client.getUserInfo()).rejects.toBeInstanceOf(HevyHttpError);
+		expect(observations).toEqual([
+			{
+				outcome: "terminal_failure",
+				category: "NetworkError",
+				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+			},
 		]);
 	});
 });

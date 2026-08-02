@@ -1,4 +1,8 @@
 import type { CacheObservationMetadata, CacheObserver } from "@hevy-mcp/core";
+import {
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+} from "@hevy-mcp/hevy-client";
 import type {
 	HevyClientOptions,
 	HevyRequestObservation,
@@ -24,8 +28,8 @@ const SAFE_OBSERVATION_CODES = new Set([
 	"ERR_NETWORK",
 	"ERR_SOCKET_TIMEOUT",
 	"ETIMEDOUT",
-	"HEVY_REQUEST_ABORTED",
-	"HEVY_RETRY_EXHAUSTED",
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 ]);
 
 function safeErrorAttributes(observation: HevyRequestObservation): {
@@ -42,25 +46,22 @@ function safeErrorAttributes(observation: HevyRequestObservation): {
 
 function startApiSpan(start: HevyRequestStart) {
 	const sessionId = getCurrentMcpSessionId();
-	return tracer.startActiveSpan(
-		`hevy.api.${start.method}`,
-		{
-			attributes: {
-				"mcp.span.category": "api",
-				"http.method": start.method,
-				"hevy.api.endpoint": start.endpoint,
-				"hevy.api.retry_count_bucket": bucketCount(start.retryCount),
-				"mcp.transport": getCurrentMcpTransport(),
-				...(sessionId ? { "mcp.session.id": sessionId } : {}),
-			},
+	return tracer.startSpan(`hevy.api.${start.method}`, {
+		attributes: {
+			"mcp.span.category": "api",
+			"http.request.method": start.method,
+			"hevy.api.endpoint": start.endpoint,
+			"hevy.api.retry_count_bucket": bucketCount(start.retryCount),
+			"mcp.transport": getCurrentMcpTransport(),
+			...(sessionId ? { "mcp.session.id": sessionId } : {}),
 		},
-		(span) => span,
-	);
+	});
 }
-
 function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
 	const errorAttributes = safeErrorAttributes(observation);
-	span.setAttribute("http.status_code", observation.status);
+	if (observation.status > 0) {
+		span.setAttribute("http.response.status_code", observation.status);
+	}
 	span.setAttribute("hevy.api.outcome", observation.outcome);
 	if (observation.expectedReason) {
 		span.setAttribute("hevy.api.expected_reason", observation.expectedReason);
@@ -142,14 +143,12 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 			const span = tracer.startSpan("hevy.api.retry_wait", {
 				attributes: {
 					"mcp.span.category": "api",
-					"http.method": observation.method,
-					"hevy.api.endpoint": observation.endpoint,
+					"http.request.method": observation.method,
 					"hevy.api.retry_count_bucket": bucketCount(observation.retryCount),
 					"hevy.api.retry_wait_ms": Math.max(
 						0,
 						Math.min(5_000, observation.delayMs),
 					),
-					"mcp.transport": getCurrentMcpTransport(),
 					...(sessionId ? { "mcp.session.id": sessionId } : {}),
 				},
 			});

@@ -9,7 +9,11 @@
  * OTel Collector → Honeycomb: performance traces, metrics
  */
 
-import { createHmac, randomUUID as nodeRandomUUID } from "node:crypto";
+import {
+	createHmac,
+	randomBytes,
+	randomUUID as nodeRandomUUID,
+} from "node:crypto";
 import * as Sentry from "@sentry/node";
 import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
 import {
@@ -129,18 +133,21 @@ export function installProcessExceptionTracking(
 				`mcp.process.${source}`,
 				{ attributes: { "mcp.span.category": "process" } },
 				(span) => {
-					const normalized = normalizeTelemetryError(error);
-					const code = getSafeExceptionCode(error);
-					recordTelemetryException(
-						error,
-						{
-							"exception.source": source,
-							"error.category": normalized.name,
-							...(code ? { "error.code": code } : {}),
-						},
-						span,
-					);
-					span.end();
+					try {
+						const normalized = normalizeTelemetryError(error);
+						const code = getSafeExceptionCode(error);
+						recordTelemetryException(
+							error,
+							{
+								"exception.source": source,
+								"error.category": normalized.name,
+								...(code ? { "error.code": code } : {}),
+							},
+							span,
+						);
+					} finally {
+						span.end();
+					}
 				},
 			);
 		} catch {
@@ -195,10 +202,7 @@ export function createServiceInstanceId(
 	} catch {
 		// Fall back to a process-local opaque identifier.
 	}
-	return createHmac("sha256", `${process.pid}:${Math.random()}`)
-		.update(`${name}:${version}`)
-		.digest("hex")
-		.slice(0, 32);
+	return randomBytes(16).toString("hex");
 }
 
 const serviceInstanceId = createServiceInstanceId();
