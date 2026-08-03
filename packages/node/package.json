@@ -51,7 +51,7 @@
 	"devDependencies": {
 		"@hevy-mcp/core": "*",
 		"@hevy-mcp/hevy-client": "*",
-		"@types/node": "^26.1.1",
+		"@types/node": "^26.1.2",
 		"cross-env": "^10.1.0",
 		"tsdown": "^0.22.14",
 		"typescript": "^7.0.2"
