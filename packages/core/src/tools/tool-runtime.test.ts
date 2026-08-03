@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createToolRuntime } from "./tool-runtime.js";
 
 const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>
@@ -194,5 +195,29 @@ describe("createToolRuntime observation scope", () => {
 		);
 		expect(JSON.stringify(finish.mock.calls)).not.toContain(secret);
 		stderr.mockRestore();
+	});
+
+	it("lets the newest nested execution scope control the client", async () => {
+		const getUserInfo = vi.fn().mockResolvedValue({ data: { id: "user" } });
+		const client = { getUserInfo } as unknown as HevyClient;
+		const runtime = createToolRuntime({ client, catalog });
+		const firstSignal = new AbortController().signal;
+		const secondSignal = new AbortController().signal;
+		const first = runtime.forExecution({
+			signal: firstSignal,
+			deadline: 111,
+		});
+		const second = first.forExecution({
+			signal: secondSignal,
+			deadline: 222,
+		});
+
+		expect(second.executionDeadline).toBe(222);
+		await second.getClient().getUserInfo();
+
+		expect(getUserInfo).toHaveBeenCalledWith({
+			signal: secondSignal,
+			deadline: 222,
+		});
 	});
 });

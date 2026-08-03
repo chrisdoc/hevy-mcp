@@ -15,6 +15,12 @@ import {
 } from "../observation.js";
 import { bucketCount, getResultTelemetry } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
+import {
+	bindClientExecution,
+	mergeAbortSignals,
+	type ToolExecutionContext,
+} from "../execution.js";
+import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
 
 const STRUCTURAL_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
 	page: true,
@@ -109,7 +115,7 @@ function createSafeInvocation(
 
 export type ToolHandler<
 	TParams extends Record<string, unknown> = Record<string, unknown>,
-> = (args: TParams) => Promise<McpToolResponse>;
+> = (args: TParams, context?: ToolExecutionContext) => Promise<McpToolResponse>;
 
 export type ToolHandlerFactory = <TParams extends Record<string, unknown>>(
 	fn: ToolHandler<TParams>,
@@ -120,16 +126,27 @@ export interface ToolRuntime {
 	readonly client: HevyClient | null;
 	readonly catalog: ExerciseTemplateCatalog;
 	readonly logger?: McpClientLogger;
+	readonly execution?: ToolExecutionContext;
+	readonly executionTimeoutMs: number;
+	readonly executionDeadline?: number;
+	readonly lifecycleSignal?: AbortSignal;
 	readonly createHandler: ToolHandlerFactory;
 	getClient(): HevyClient;
+	forExecution(context?: ToolExecutionContext): ToolRuntime;
 }
 
 export interface CreateToolRuntimeOptions {
 	client: HevyClient | null;
+	/** Unbound client retained across nested execution scopes. */
+	baseClient?: HevyClient | null;
 	catalog: ExerciseTemplateCatalog;
 	logger?: McpClientLogger;
 	createHandler?: ToolHandlerFactory;
 	observer?: ToolObserver;
+	execution?: ToolExecutionContext;
+	executionTimeoutMs?: number;
+	executionDeadline?: number;
+	lifecycleSignal?: AbortSignal;
 }
 
 export const defaultHandlerFactory: ToolHandlerFactory = <
@@ -141,11 +158,18 @@ export const defaultHandlerFactory: ToolHandlerFactory = <
 
 export function createToolRuntime({
 	client,
+	baseClient,
 	catalog,
 	logger,
 	createHandler = defaultHandlerFactory,
 	observer,
+	execution,
+	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
+	executionDeadline,
+	lifecycleSignal,
 }: CreateToolRuntimeOptions): ToolRuntime {
+	const rawClient = baseClient ?? client;
+	const effectiveExecutionDeadline = executionDeadline ?? execution?.deadline;
 	const createObservedHandler: ToolHandlerFactory = <
 		TParams extends Record<string, unknown>,
 	>(
@@ -154,7 +178,7 @@ export function createToolRuntime({
 		metadata?: ToolTelemetryMetadata,
 	) =>
 		createHandler<TParams>(
-			async (args: TParams) => {
+			async (args: TParams, requestContext?: ToolExecutionContext) => {
 				let scope;
 				try {
 					scope = memoizeObservationScope(
@@ -166,7 +190,9 @@ export function createToolRuntime({
 				const startedAt = Date.now();
 				let handlerPromise: Promise<McpToolResponse> | undefined;
 				const invokeHandler = () => {
-					handlerPromise ??= Promise.resolve().then(() => fn(args));
+					handlerPromise ??= Promise.resolve().then(() =>
+						fn(args, requestContext),
+					);
 					return handlerPromise;
 				};
 				try {
@@ -184,6 +210,9 @@ export function createToolRuntime({
 					void scope?.finish({
 						outcome: result.isError ? "returned_error" : "success",
 						durationMs: Date.now() - startedAt,
+						...(result.errorOutcome
+							? { errorOutcome: result.errorOutcome }
+							: {}),
 						result: {
 							isError: Boolean(result.isError),
 							hasStructuredContent: result.structuredContent !== undefined,
@@ -209,13 +238,50 @@ export function createToolRuntime({
 	const observedHandlerFactory = observer
 		? createObservedHandler
 		: createHandler;
-	return {
+	const runtime: ToolRuntime = {
 		client,
-		catalog,
+		catalog: execution
+			? {
+					get: (options) => catalog.get({ ...options, execution }),
+					reset: () => catalog.reset(),
+				}
+			: catalog,
 		logger,
+		execution,
+		executionTimeoutMs,
+		executionDeadline: effectiveExecutionDeadline,
+		lifecycleSignal,
 		createHandler: observedHandlerFactory,
 		getClient: () => requireClient(client),
+		forExecution: (nextExecution) =>
+			createToolRuntime({
+				client: rawClient,
+				baseClient: rawClient,
+				catalog,
+				logger,
+				createHandler,
+				observer,
+				execution: {
+					...(nextExecution ?? {}),
+					signal: mergeAbortSignals(lifecycleSignal, nextExecution?.signal),
+					deadline:
+						nextExecution?.deadline ??
+						effectiveExecutionDeadline ??
+						Date.now() + executionTimeoutMs,
+				},
+				executionTimeoutMs,
+				executionDeadline:
+					nextExecution?.deadline ?? effectiveExecutionDeadline,
+				lifecycleSignal,
+			}),
 	};
+	if (execution && client) {
+		Object.assign(runtime, {
+			client: bindClientExecution(requireClient(rawClient), execution),
+			getClient: () => bindClientExecution(requireClient(rawClient), execution),
+		});
+	}
+	return runtime;
 }
 
 export { HEVY_CLIENT_NOT_INITIALIZED_ERROR };

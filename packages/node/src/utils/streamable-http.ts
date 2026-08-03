@@ -6,7 +6,10 @@ import {
 	type ServerResponse,
 } from "node:http";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
-import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import {
+	createExecutionProjection,
+	createSafeErrorDiagnostic,
+} from "@hevy-mcp/core";
 import type { NodeCliOptions } from "./arguments.js";
 import {
 	runWithMcpSessionContext,
@@ -29,12 +32,14 @@ export interface OwnedMcpServer {
 
 export type McpServerFactory = (params: {
 	apiKey: string;
+	lifecycleSignal?: AbortSignal;
 }) => Promise<OwnedMcpServer>;
 
 interface HttpSession {
 	transport: HttpTransport;
 	server: OwnedMcpServer;
 	context: McpSessionContext;
+	lifecycleController: AbortController;
 	responses: Set<ServerResponse>;
 	closed: boolean;
 }
@@ -122,6 +127,24 @@ function writeJson(res: ServerResponse, status: number, message: string): void {
 	res.statusCode = status;
 	res.setHeader("Content-Type", "application/json");
 	res.end(JSON.stringify({ error: message }));
+}
+
+function writeExecutionJson(
+	res: ServerResponse,
+	status: number,
+	message: string,
+	error: unknown,
+): void {
+	if (res.headersSent) return;
+	const diagnostic = createSafeErrorDiagnostic(error);
+	const execution = createExecutionProjection(diagnostic);
+	res.statusCode = status;
+	res.setHeader("Content-Type", "application/json");
+	res.end(
+		JSON.stringify({
+			error: { message, ...execution },
+		}),
+	);
 }
 
 function readBody(request: IncomingMessage): Promise<unknown> {
@@ -235,7 +258,7 @@ export async function startStreamableHttpServer(
 				return;
 			}
 			console.error(`HTTP request failed: ${safeDiagnostic(error)}`);
-			writeJson(response, 500, "Internal server error.");
+			writeExecutionJson(response, 500, "Internal server error.", error);
 		});
 	});
 
@@ -251,6 +274,12 @@ export async function startStreamableHttpServer(
 		for (const response of session.responses) {
 			if (!response.writableEnded) response.destroy();
 		}
+		// The SDK transport closes response streams, but its stateful close path
+		// does not abort the request signal already handed to MCP handlers. Abort
+		// the session-owned lifecycle signal first so active Hevy calls stop too.
+		session.lifecycleController.abort(
+			new DOMException("MCP session closed", "AbortError"),
+		);
 
 		const results = await Promise.allSettled([
 			Promise.resolve().then(() => session.transport.close()),
@@ -284,6 +313,25 @@ export async function startStreamableHttpServer(
 		);
 		if (errors.length > 0) throw aggregateErrors(errors, "MCP cleanup failed.");
 		return;
+	}
+
+	function trackSessionResponse(
+		session: HttpSession,
+		response: ServerResponse,
+	): void {
+		session.responses.add(response);
+		response.once("close", () => {
+			session.responses.delete(response);
+			// A destroyed response means the client disconnected before the
+			// exchange completed. The SDK does not expose a request-scoped signal
+			// for this transport, so evict and close the whole session rather than
+			// leaving an aborted session reusable or poisoning future requests.
+			if (!response.writableEnded && !session.closed) {
+				void closeSession(session).catch((error: unknown) => {
+					cleanupErrors.push(error);
+				});
+			}
+		});
 	}
 
 	async function handleRequest(
@@ -331,6 +379,7 @@ export async function startStreamableHttpServer(
 			let session: HttpSession | undefined;
 			let mcpServer: OwnedMcpServer | undefined;
 			let connected = false;
+			const lifecycleController = new AbortController();
 			const transport = new NodeStreamableHTTPServerTransport({
 				sessionIdGenerator: randomUUID,
 				onsessioninitialized: (id) => {
@@ -345,22 +394,28 @@ export async function startStreamableHttpServer(
 				}
 			};
 			try {
-				mcpServer = await createMcpServer({ apiKey });
+				mcpServer = await createMcpServer({
+					apiKey,
+					lifecycleSignal: lifecycleController.signal,
+				});
 				session = {
 					transport,
 					server: mcpServer,
 					context,
+					lifecycleController,
 					responses: new Set(),
 					closed: false,
 				};
 				await mcpServer.connect(transport);
 				connected = true;
-				session.responses.add(response);
-				response.once("close", () => session?.responses.delete(response));
+				trackSessionResponse(session, response);
 				await runWithMcpSessionContext(context, () =>
 					transport.handleRequest(request, response, body),
 				);
 			} catch (error) {
+				lifecycleController.abort(
+					new DOMException("MCP session startup failed", "AbortError"),
+				);
 				console.error(`HTTP session request failed: ${safeDiagnostic(error)}`);
 				let cleanupError: unknown;
 				try {
@@ -381,7 +436,7 @@ export async function startStreamableHttpServer(
 					console.error(`HTTP cleanup failed: ${safeDiagnostic(cleanupError)}`);
 				}
 				if (!response.writableEnded)
-					writeJson(response, 500, "Internal server error.");
+					writeExecutionJson(response, 500, "Internal server error.", error);
 			}
 			return;
 		}
@@ -396,8 +451,7 @@ export async function startStreamableHttpServer(
 			return;
 		}
 		if (request.method !== "DELETE") {
-			session.responses.add(response);
-			response.once("close", () => session.responses.delete(response));
+			trackSessionResponse(session, response);
 		}
 		await runWithMcpSessionContext(session.context, () =>
 			session.transport.handleRequest(request, response, body),

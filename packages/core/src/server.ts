@@ -23,6 +23,11 @@ export interface CreateHevyMcpServerOptions {
 	readonly cacheObserver?: CacheObserver;
 	readonly decorateServer?: (server: McpServer) => McpServer;
 	readonly onToolsRegistered?: (count: number) => void;
+	/** One absolute budget for each incoming MCP invocation. */
+	readonly executionTimeoutMs?: number;
+	/** Absolute deadline shared by validation and every tool call in one invocation. */
+	readonly executionDeadline?: number;
+	readonly lifecycleSignal?: AbortSignal;
 }
 
 function createCountingServer(server: McpServer) {
@@ -58,6 +63,9 @@ export function createHevyMcpServer(
 		catalog: createExerciseTemplateCatalog(client, options.cacheObserver),
 		logger: mcpLogger,
 		observer: options.observer,
+		executionTimeoutMs: options.executionTimeoutMs,
+		executionDeadline: options.executionDeadline,
+		lifecycleSignal: options.lifecycleSignal,
 	});
 	const counting = createCountingServer(server);
 	registerHevyTools(counting.server, runtime);

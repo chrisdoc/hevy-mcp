@@ -10,6 +10,7 @@ import {
 	createHevyClient,
 	isHevyHttpError,
 	type HevyClient,
+	type HevyRequestOptions,
 } from "@hevy-mcp/hevy-client";
 import {
 	createHevyOAuthProvider,
@@ -17,12 +18,13 @@ import {
 	type HevyApiKeyValidation,
 	type HevyOAuthWorker,
 	isOAuthEnabled,
+	WORKER_INVOCATION_TIMEOUT_MS,
 } from "./worker-oauth.js";
+import { executionResponse, executionStatus } from "./execution-response.js";
 
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
 const HEVY_API_BASE_URL = "https://api.hevyapp.com";
-const AUTH_VALIDATION_TIMEOUT_MS = 5_000;
 const CORS_ALLOWED_HEADERS =
 	"Authorization, Content-Type, Accept, MCP-Protocol-Version";
 const CORS_ALLOWED_METHODS = "POST, OPTIONS";
@@ -61,6 +63,8 @@ interface WorkerDependencies {
 	) => HevyClient;
 	createServer?: (
 		createClient: CreateHevyMcpServerOptions["createClient"],
+		lifecycleSignal?: AbortSignal,
+		executionDeadline?: number,
 	) => McpServer;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
 }
@@ -206,7 +210,7 @@ function createDefaultValidationClient(
 		apiKey,
 		baseUrl,
 		maxGetRetries: 0,
-		timeoutMs: AUTH_VALIDATION_TIMEOUT_MS,
+		timeoutMs: WORKER_INVOCATION_TIMEOUT_MS,
 	});
 }
 
@@ -220,8 +224,14 @@ function createDefaultRequestClient(
 
 function createDefaultServer(
 	createClient: CreateHevyMcpServerOptions["createClient"],
+	lifecycleSignal?: AbortSignal,
+	executionDeadline?: number,
 ): McpServer {
-	return createHevyMcpServer({ createClient });
+	return createHevyMcpServer({
+		createClient,
+		lifecycleSignal,
+		executionDeadline,
+	});
 }
 
 function createDefaultTransport(): WebStandardStreamableHTTPServerTransport {
@@ -254,6 +264,15 @@ function logOAuthResponse(
 	});
 }
 
+function executionHttpResponse(
+	error: unknown,
+	message: string,
+	status: number,
+	origin: string | null,
+): Response {
+	return withCors(executionResponse(error, message, status), origin);
+}
+
 function resolveWorkerDependencies(
 	dependencies: WorkerDependencies,
 ): ResolvedWorkerDependencies {
@@ -271,18 +290,23 @@ async function validateHevyApiKey(
 	apiKey: string,
 	hevyApiBaseUrl: string,
 	createValidationClient: ResolvedWorkerDependencies["createValidationClient"],
+	options?: HevyRequestOptions,
 ): Promise<HevyApiKeyValidation> {
 	try {
-		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo();
+		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo(options);
 		return "valid";
 	} catch (error) {
+		if (options?.signal?.aborted) throw error;
+		if (isHevyHttpError(error) && error.outcome === "deadline_exceeded") {
+			throw error;
+		}
 		if (
 			isHevyHttpError(error) &&
 			(error.status === 401 || error.status === 403)
 		) {
 			return "invalid";
 		}
-		return "unavailable";
+		throw error;
 	}
 }
 
@@ -291,10 +315,14 @@ async function serveMcpRequest(
 	apiKey: string,
 	hevyApiBaseUrl: string,
 	dependencies: ResolvedWorkerDependencies,
+	deadline: number,
 ): Promise<Response> {
 	try {
-		const server = dependencies.createServer(({ onLog }) =>
-			dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),
+		const server = dependencies.createServer(
+			({ onLog }) =>
+				dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),
+			request.signal,
+			deadline,
 		);
 		const transport = dependencies.createTransport();
 		transport.onerror = (error) => {
@@ -304,7 +332,12 @@ async function serveMcpRequest(
 		return await transport.handleRequest(request);
 	} catch (error) {
 		logWorkerFailure("mcp-request-processing", error);
-		return new Response("Unable to process MCP request", { status: 500 });
+		return executionHttpResponse(
+			error,
+			"Unable to process MCP request",
+			executionStatus(error, 500),
+			null,
+		);
 	}
 }
 
@@ -350,22 +383,48 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 			});
 		}
 
-		const validation = await validateHevyApiKey(
-			apiKey,
-			hevyApiBaseUrl,
-			resolved.createValidationClient,
-		);
+		const deadline = Date.now() + WORKER_INVOCATION_TIMEOUT_MS;
+		let validation: HevyApiKeyValidation;
+		try {
+			validation = await validateHevyApiKey(
+				apiKey,
+				hevyApiBaseUrl,
+				resolved.createValidationClient,
+				{
+					signal: request.signal,
+					deadline,
+				},
+			);
+		} catch (error) {
+			return executionHttpResponse(
+				error,
+				"Unable to validate the Hevy API key",
+				executionStatus(error, 502),
+				origin,
+			);
+		}
 		if (validation === "invalid") {
 			return response("Unauthorized", 401, origin, {
 				"WWW-Authenticate": "Bearer",
 			});
 		}
 		if (validation !== "valid") {
-			return response("Hevy API is temporarily unavailable", 502, origin);
+			return executionHttpResponse(
+				new Error("Hevy API is temporarily unavailable"),
+				"Hevy API is temporarily unavailable",
+				502,
+				origin,
+			);
 		}
 
 		return withCors(
-			await serveMcpRequest(request, apiKey, hevyApiBaseUrl, resolved),
+			await serveMcpRequest(
+				request,
+				apiKey,
+				hevyApiBaseUrl,
+				resolved,
+				deadline,
+			),
 			origin,
 		);
 	};
@@ -375,7 +434,7 @@ function createWorkerOAuthProvider(
 	resolved: ResolvedWorkerDependencies,
 ): HevyOAuthWorker<WorkerEnv> {
 	return createHevyOAuthProvider<WorkerEnv>({
-		validateApiKey: async (apiKey, env) => {
+		validateApiKey: async (apiKey, env, signal, deadline) => {
 			let hevyApiBaseUrl: string;
 			try {
 				hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
@@ -386,16 +445,26 @@ function createWorkerOAuthProvider(
 				apiKey,
 				hevyApiBaseUrl,
 				resolved.createValidationClient,
+				{
+					signal,
+					deadline: deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+				},
 			);
 		},
-		serveMcp: async (request, env, apiKey) => {
+		serveMcp: async (request, env, apiKey, deadline) => {
 			let hevyApiBaseUrl: string;
 			try {
 				hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
 			} catch {
 				return new Response("Worker configuration error", { status: 500 });
 			}
-			return serveMcpRequest(request, apiKey, hevyApiBaseUrl, resolved);
+			return serveMcpRequest(
+				request,
+				apiKey,
+				hevyApiBaseUrl,
+				resolved,
+				deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+			);
 		},
 	});
 }

@@ -5,6 +5,11 @@
 import { ErrorType, resolveErrorPolicy } from "./error-policy.js";
 import type { McpToolResponse } from "./response-contracts.js";
 import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "./tool-helpers.js";
+import {
+	createExecutionProjection,
+	type StructuredExecutionProjection,
+	type ToolExecutionContext,
+} from "../execution.js";
 
 export { ErrorType } from "./error-policy.js";
 
@@ -23,6 +28,8 @@ export interface ErrorResponse {
 export interface EnhancedErrorResponse extends ErrorResponse {
 	type: ErrorType;
 }
+
+export type StructuredExecutionError = StructuredExecutionProjection;
 export interface McpToolFailureEvent {
 	readonly event: "mcp.tool.failure";
 	readonly "mcp.tool.name": string;
@@ -32,6 +39,11 @@ export interface McpToolFailureEvent {
 	readonly "http.status_code"?: number;
 	readonly "http.method"?: string;
 	readonly "hevy.api.endpoint"?: string;
+	readonly "hevy.api.outcome"?: StructuredExecutionProjection["outcome"];
+	readonly "hevy.api.phase"?: StructuredExecutionProjection["phase"];
+	readonly "hevy.api.operation_safety"?: StructuredExecutionProjection["operation_safety"];
+	readonly "hevy.api.commit_state"?: StructuredExecutionProjection["commit_state"];
+	readonly "hevy.api.safe_to_retry"?: boolean;
 }
 
 export function createMcpToolFailureEvent(
@@ -43,8 +55,10 @@ export function createMcpToolFailureEvent(
 		status?: number;
 		method?: string;
 		endpoint?: string;
+		execution?: StructuredExecutionProjection;
 	},
 ): McpToolFailureEvent {
+	const execution = diagnostic.execution;
 	return {
 		event: "mcp.tool.failure",
 		"mcp.tool.name": toolName,
@@ -58,6 +72,15 @@ export function createMcpToolFailureEvent(
 		...(diagnostic.endpoint
 			? { "hevy.api.endpoint": diagnostic.endpoint }
 			: {}),
+		...(execution
+			? {
+					"hevy.api.outcome": execution.outcome,
+					"hevy.api.phase": execution.phase,
+					"hevy.api.operation_safety": execution.operation_safety,
+					"hevy.api.commit_state": execution.commit_state,
+					"hevy.api.safe_to_retry": execution.safe_to_retry,
+				}
+			: {}),
 	};
 }
 
@@ -67,6 +90,7 @@ export interface ErrorDebugContext {
 	originalErrorMessage: string;
 	errorCode?: string;
 	errorType: ErrorType;
+	execution?: StructuredExecutionError;
 	axios?: {
 		status?: number;
 		statusText?: string;
@@ -92,6 +116,7 @@ export function createErrorResponse(
 		HEVY_CLIENT_NOT_INITIALIZED_ERROR,
 	);
 	const { diagnostic } = policy;
+	const execution = createExecutionProjection(diagnostic);
 	const axiosErrorContext: ErrorDebugContext["axios"] | null =
 		diagnostic.status !== undefined ||
 		diagnostic.method !== undefined ||
@@ -107,13 +132,17 @@ export function createErrorResponse(
 		originalErrorMessage: `${diagnostic.category} occurred`,
 		errorCode: diagnostic.code,
 		errorType: policy.type,
+		execution,
 		axios: axiosErrorContext ?? undefined,
 	};
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${policy.message}`;
 	console.error(
 		JSON.stringify(
-			createMcpToolFailureEvent(context || "unknown", policy.type, diagnostic),
+			createMcpToolFailureEvent(context || "unknown", policy.type, {
+				...diagnostic,
+				execution,
+			}),
 		),
 	);
 
@@ -121,6 +150,8 @@ export function createErrorResponse(
 		content: [{ type: "text" as const, text: formattedMessage }],
 		isError: true,
 		errorContext,
+		structuredContent: { error: execution },
+		errorOutcome: execution,
 	};
 }
 
@@ -132,14 +163,23 @@ export function createErrorResponse(
  * @returns A function that catches errors and returns standardized error responses
  */
 export function withErrorHandling<TParams extends Record<string, unknown>>(
-	fn: (args: TParams) => Promise<McpToolResponse>,
+	fn: (
+		args: TParams,
+		context?: ToolExecutionContext,
+	) => Promise<McpToolResponse>,
 	context: string,
 	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
-): (args: Record<string, unknown>) => Promise<McpToolResponse> {
-	return async (rawArgs: Record<string, unknown>) => {
+): (
+	args: Record<string, unknown>,
+	context?: ToolExecutionContext,
+) => Promise<McpToolResponse> {
+	return async (
+		rawArgs: Record<string, unknown>,
+		requestContext?: ToolExecutionContext,
+	) => {
 		const normalizedArgs = rawArgs ?? {};
 		try {
-			return await fn(normalizedArgs as TParams);
+			return await fn(normalizedArgs as TParams, requestContext);
 		} catch (error) {
 			try {
 				onError?.(error, context, Object.keys(normalizedArgs).length);

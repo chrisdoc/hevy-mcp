@@ -1,7 +1,14 @@
 import {
+	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	isHevyHttpError,
+} from "@hevy-mcp/hevy-client";
+import type {
+	HevyCommitState,
+	HevyExecutionOutcome,
+	HevyOperationSafety,
+	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
 
 /** Specific error types for categorization and metrics. */
@@ -40,6 +47,11 @@ export interface SafeErrorDiagnostic {
 	method?: string;
 	endpoint?: string;
 	frames?: SafeStackFrame[];
+	phase?: HevyRequestPhase;
+	operation_safety?: HevyOperationSafety;
+	commit_state?: HevyCommitState;
+	safe_to_retry?: boolean;
+	outcome?: HevyExecutionOutcome;
 }
 
 type SafeSourceId =
@@ -67,6 +79,7 @@ const SAFE_ERROR_CODES = new Set([
 	"HEVY_INVALID_ENDPOINT",
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 ]);
 
 const SAFE_HTTP_METHODS = new Set([
@@ -321,6 +334,10 @@ function classifyError(error: unknown): SafeErrorCategory {
 }
 
 function getSafeCode(error: unknown): string | undefined {
+	if (error instanceof Error) {
+		if (error.name === "TimeoutError") return HEVY_DEADLINE_EXCEEDED_ERROR_CODE;
+		if (error.name === "AbortError") return HEVY_REQUEST_ABORTED_ERROR_CODE;
+	}
 	if (!error || typeof error !== "object" || !("code" in error)) {
 		return undefined;
 	}
@@ -339,6 +356,47 @@ function getSafeMethod(error: unknown): string | undefined {
 function getSafeEndpoint(error: unknown): string | undefined {
 	if (!isHevyHttpError(error)) return undefined;
 	return SAFE_ENDPOINTS.has(error.endpoint) ? error.endpoint : undefined;
+}
+
+function getExecutionFields(
+	error: unknown,
+): Pick<
+	SafeErrorDiagnostic,
+	"phase" | "operation_safety" | "commit_state" | "safe_to_retry" | "outcome"
+> {
+	if (!isHevyHttpError(error)) {
+		const name = error instanceof Error ? error.name : undefined;
+		if (name === "TimeoutError") {
+			return {
+				phase: "before-dispatch",
+				operation_safety: "read",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+				outcome: "deadline_exceeded",
+			};
+		}
+		if (name === "AbortError") {
+			return {
+				phase: "before-dispatch",
+				operation_safety: "read",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+				outcome: "cancelled",
+			};
+		}
+		return {};
+	}
+	return {
+		...(error.phase ? { phase: error.phase } : {}),
+		...(error.operation_safety
+			? { operation_safety: error.operation_safety }
+			: {}),
+		...(error.commit_state ? { commit_state: error.commit_state } : {}),
+		...(typeof error.safe_to_retry === "boolean"
+			? { safe_to_retry: error.safe_to_retry }
+			: {}),
+		...(error.outcome ? { outcome: error.outcome } : {}),
+	};
 }
 
 function parseSafeStackFrames(error: unknown): SafeStackFrame[] | undefined {
@@ -399,6 +457,7 @@ export function createSafeErrorDiagnostic(error: unknown): SafeErrorDiagnostic {
 		if (method) diagnostic.method = method;
 		if (endpoint) diagnostic.endpoint = endpoint;
 		if (frames) diagnostic.frames = frames;
+		Object.assign(diagnostic, getExecutionFields(error));
 		return diagnostic;
 	} catch {
 		return { category: "UnknownError" };

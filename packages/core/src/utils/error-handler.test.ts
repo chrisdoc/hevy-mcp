@@ -45,6 +45,11 @@ describe("createErrorResponse", () => {
 					"http.status_code": 500,
 					"http.method": "GET",
 					"hevy.api.endpoint": "/v1/user/info",
+					"hevy.api.outcome": "terminal_failure",
+					"hevy.api.phase": "before-dispatch",
+					"hevy.api.operation_safety": "read",
+					"hevy.api.commit_state": "not_sent",
+					"hevy.api.safe_to_retry": false,
 				}),
 			);
 		} finally {

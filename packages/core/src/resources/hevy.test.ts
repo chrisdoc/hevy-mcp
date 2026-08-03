@@ -9,7 +9,7 @@ import type {
 	ExerciseTemplate,
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
 import { projectRoutineFolder } from "../utils/response-contracts.js";
 import {
 	createExerciseTemplateCatalog,
@@ -236,14 +236,22 @@ describe("registerHevyResources", () => {
 			createTestContext(3),
 		);
 
-		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(1, {
-			page: 1,
-			pageSize: 10,
-		});
-		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(2, {
-			page: 2,
-			pageSize: 10,
-		});
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(
+			1,
+			{ page: 1, pageSize: 10 },
+			expect.objectContaining({
+				signal: expect.any(AbortSignal),
+				deadline: expect.any(Number),
+			}),
+		);
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(
+			2,
+			{ page: 2, pageSize: 10 },
+			expect.objectContaining({
+				signal: expect.any(AbortSignal),
+				deadline: expect.any(Number),
+			}),
+		);
 		const serializedFolders = parseJsonContent(result).data;
 		expect(serializedFolders).toEqual([
 			projectRoutineFolder(firstFolder),
@@ -306,7 +314,7 @@ describe("registerHevyResources", () => {
 		expect(parseJsonContent(result).data).toEqual([]);
 	});
 
-	it("shares the template catalog cache and in-flight fetch with search", async () => {
+	it("shares completed catalog values while isolating controlled in-flight calls", async () => {
 		const { registerResource, server, tool } = createMockServer();
 		let resolveCatalog!: (value: {
 			page: number;
@@ -344,7 +352,7 @@ describe("registerHevyResources", () => {
 			refresh: false,
 		});
 
-		expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(2);
 		resolveCatalog({
 			page: 1,
 			page_count: 1,
@@ -361,21 +369,37 @@ describe("registerHevyResources", () => {
 		]);
 	});
 
-	it("propagates initialization and API failures", async () => {
+	it("returns structured outcomes for initialization and API failures", async () => {
 		const { registerResource, server } = createMockServer();
 		registerHevyResources(server, createTestRuntime(null));
 		const userRegistration = getResourceRegistration(
 			registerResource,
 			"user-profile",
 		);
-		await expect(
-			userRegistration.handler(
-				new URL(userRegistration.uri),
-				createTestContext(5),
-			),
-		).rejects.toThrow("API client not initialized");
+		const uninitializedResult = await userRegistration.handler(
+			new URL(userRegistration.uri),
+			createTestContext(5),
+		);
+		expect(parseJsonContent(uninitializedResult).data).toEqual({
+			error: {
+				outcome: "terminal_failure",
+				phase: "before-dispatch",
+				operation_safety: "read",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+			},
+		});
 
-		const apiFailure = new Error("Hevy API unavailable");
+		const apiFailure = new HevyHttpError("Hevy API unavailable", {
+			status: 503,
+			method: "GET",
+			endpoint: "/v1/workouts/count",
+			phase: "response-content",
+			operationSafety: "read",
+			commitState: "not_sent",
+			safeToRetry: false,
+			outcome: "terminal_failure",
+		});
 		const failedServer = createMockServer();
 		registerHevyResources(
 			failedServer.server,
@@ -387,11 +411,22 @@ describe("registerHevyResources", () => {
 			failedServer.registerResource,
 			"workout-count",
 		);
-		await expect(
-			countRegistration.handler(
-				new URL(countRegistration.uri),
-				createTestContext(6),
-			),
-		).rejects.toBe(apiFailure);
+		const apiFailureResult = await countRegistration.handler(
+			new URL(countRegistration.uri),
+			createTestContext(6),
+		);
+		expect(parseJsonContent(apiFailureResult).data).toEqual({
+			error: {
+				status: 503,
+				outcome: "terminal_failure",
+				phase: "response-content",
+				operation_safety: "read",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+			},
+		});
+		expect(JSON.stringify(apiFailureResult)).not.toContain(
+			"Hevy API unavailable",
+		);
 	});
 });

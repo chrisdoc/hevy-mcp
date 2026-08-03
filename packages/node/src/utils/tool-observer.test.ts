@@ -231,6 +231,11 @@ describe("createNodeToolObserver", () => {
 			"http.response.status_code": 503,
 			"http.request.method": "GET",
 			"hevy.api.endpoint": "/v1/workouts",
+			"hevy.api.outcome": "terminal_failure",
+			"hevy.api.phase": "before-dispatch",
+			"hevy.api.operation_safety": "read",
+			"hevy.api.commit_state": "not_sent",
+			"hevy.api.safe_to_retry": false,
 		});
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"error.type",

@@ -32,6 +32,7 @@ interface GracefulShutdownOptions {
 	forcedExitTimeoutMs?: number;
 	onComplete?: (succeeded: boolean) => void | Promise<void>;
 	scheduleForcedExit?: ScheduleForcedExit;
+	cancel?: AbortController;
 }
 
 export interface GracefulShutdownController {
@@ -71,6 +72,7 @@ export function installGracefulShutdown({
 	flush = flushStdout,
 	forcedExitTimeoutMs = FORCED_EXIT_TIMEOUT_MS,
 	scheduleForcedExit = setTimeout,
+	cancel,
 	onComplete,
 }: GracefulShutdownOptions): GracefulShutdownController {
 	let listenersInstalled = true;
@@ -116,6 +118,9 @@ export function installGracefulShutdown({
 		if (processLike.exitCode == null) {
 			processLike.exitCode = 0;
 		}
+		cancel?.abort(
+			new DOMException(`Shutdown requested by ${signal}`, "AbortError"),
+		);
 
 		const forcedExitTimer = scheduleForcedExit(() => {
 			void reportCompletion(false);

@@ -5,6 +5,7 @@ import type {
 	ToolObservationScope,
 	ToolObserver,
 } from "@hevy-mcp/core";
+import { createExecutionProjection } from "@hevy-mcp/core";
 import {
 	toolDuration,
 	toolErrors,
@@ -19,6 +20,7 @@ import {
 	recordMcpToolInvocation,
 } from "./mcp-session-observability.js";
 import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
+import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { Sentry, recordTelemetryException, tracer } from "./telemetry.js";
 
 type AttributeValue = string | number | boolean;
@@ -151,6 +153,9 @@ function setSafeErrorAttributes(
 ): string {
 	const diagnostic = completion.error;
 	const errorType = completion.errorType ?? "UNKNOWN_ERROR";
+	const execution = projectExecutionAttributes(
+		createExecutionProjection(diagnostic),
+	);
 	if (diagnostic) {
 		span.addEvent("mcp.tool.failure", {
 			"mcp.tool.name": invocation.name,
@@ -166,7 +171,11 @@ function setSafeErrorAttributes(
 			...(diagnostic.endpoint
 				? { "hevy.api.endpoint": diagnostic.endpoint }
 				: {}),
+			...execution,
 		});
+	}
+	for (const [key, value] of Object.entries(execution)) {
+		span.setAttribute(key, value);
 	}
 	span.setAttribute("error.type", errorType);
 	return errorType;
@@ -309,19 +318,29 @@ export function createNodeToolObserver(): ToolObserver {
 											...(nextCompletion.error?.endpoint
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
 												: {}),
+											...projectExecutionAttributes(
+												createExecutionProjection(nextCompletion.error),
+											),
 										},
 										activeSpan,
 									),
 								);
 							}
 							if (nextCompletion.outcome === "returned_error") {
+								const execution = projectExecutionAttributes(
+									nextCompletion.errorOutcome,
+								);
 								activeSpan.addEvent("mcp.tool.failure", {
 									"mcp.tool.name": invocation.name,
 									"error.type": "UNKNOWN_ERROR",
 									"error.category": "McpToolReturnedError",
 									"error.code": "MCP_TOOL_RETURNED_ERROR",
+									...execution,
 								});
 								activeSpan.setAttribute("error.type", "UNKNOWN_ERROR");
+								for (const [key, value] of Object.entries(execution)) {
+									activeSpan.setAttribute(key, value);
+								}
 								bestEffort(() =>
 									recordTelemetryException(
 										new Error(nextCompletion.error?.category ?? "UnknownError"),
@@ -349,6 +368,7 @@ export function createNodeToolObserver(): ToolObserver {
 											...(nextCompletion.error?.endpoint
 												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
 												: {}),
+											...execution,
 										},
 										activeSpan,
 									),

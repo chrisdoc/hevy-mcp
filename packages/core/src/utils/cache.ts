@@ -33,6 +33,10 @@ export interface AsyncCacheOptions {
 
 export interface CacheGetOptions {
 	refresh?: boolean;
+	/** Controlled callers must not share an in-flight request they can cancel. */
+	shareInFlight?: boolean;
+	signal?: AbortSignal;
+	deadline?: number;
 	getObservationMetadata?: () => CacheObservationMetadata | undefined;
 }
 
@@ -95,16 +99,76 @@ export class AsyncTtlCache<TKey, TValue> {
 		}
 	}
 
+	private async waitForCaller<T>(
+		promise: Promise<T>,
+		signal?: AbortSignal,
+		deadline?: number,
+	): Promise<T> {
+		if (signal === undefined && deadline === undefined) return promise;
+		if (signal?.aborted) {
+			throw (
+				signal.reason ?? new DOMException("Operation canceled", "AbortError")
+			);
+		}
+		if (deadline !== undefined && Date.now() >= deadline) {
+			throw new DOMException("Operation deadline exceeded", "TimeoutError");
+		}
+		return new Promise<T>((resolve, reject) => {
+			let settled = false;
+			let timer: ReturnType<typeof setTimeout> | undefined;
+			const cleanup = () => {
+				if (timer !== undefined) clearTimeout(timer);
+				signal?.removeEventListener("abort", onAbort);
+			};
+			const finish = (callback: () => void) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				callback();
+			};
+			const onAbort = () =>
+				finish(() =>
+					reject(
+						signal?.reason ??
+							new DOMException("Operation canceled", "AbortError"),
+					),
+				);
+			if (signal !== undefined)
+				signal.addEventListener("abort", onAbort, { once: true });
+			if (deadline !== undefined) {
+				timer = setTimeout(
+					() =>
+						finish(() =>
+							reject(
+								new DOMException("Operation deadline exceeded", "TimeoutError"),
+							),
+						),
+					Math.max(0, deadline - Date.now()),
+				);
+			}
+			void promise.then(
+				(value) => finish(() => resolve(value)),
+				(error: unknown) => finish(() => reject(error)),
+			);
+		});
+	}
+
 	async getOrFetch(
 		key: TKey,
 		fetcher: () => Promise<TValue>,
 		options: CacheGetOptions = {},
 	): Promise<TValue> {
-		const { refresh = false, getObservationMetadata } = options;
+		const {
+			refresh = false,
+			shareInFlight = true,
+			signal,
+			deadline,
+			getObservationMetadata,
+		} = options;
 		let observationState: CacheObservationState = refresh ? "refresh" : "miss";
 
 		if (refresh) {
-			this.invalidate(key);
+			if (shareInFlight) this.invalidate(key);
 		} else {
 			const cachedEntry = this.entries.get(key);
 			if (cachedEntry !== undefined) {
@@ -112,21 +176,25 @@ export class AsyncTtlCache<TKey, TValue> {
 					this.markAsRecentlyUsed(key, cachedEntry);
 					const observationScope = this.startObservation("hit");
 					this.finishObservation(observationScope);
-					return cachedEntry.value;
+					return this.waitForCaller(
+						Promise.resolve(cachedEntry.value),
+						signal,
+						deadline,
+					);
 				}
 
 				this.entries.delete(key);
 				observationState = "expired";
 			}
 
-			const inFlightEntry = this.inFlight.get(key);
+			const inFlightEntry = shareInFlight ? this.inFlight.get(key) : undefined;
 			if (inFlightEntry !== undefined) {
 				const observationScope = this.startObservation("inflight_wait");
 				void inFlightEntry.promise.then(
 					() => this.finishObservation(observationScope),
 					() => this.finishObservation(observationScope),
 				);
-				return inFlightEntry.promise;
+				return this.waitForCaller(inFlightEntry.promise, signal, deadline);
 			}
 		}
 
@@ -136,7 +204,7 @@ export class AsyncTtlCache<TKey, TValue> {
 			try {
 				const value = await fetcher();
 
-				if (this.isCurrentRequest(key, requestId)) {
+				if (!shareInFlight || this.isCurrentRequest(key, requestId)) {
 					this.setValue(key, value);
 				}
 
@@ -149,15 +217,17 @@ export class AsyncTtlCache<TKey, TValue> {
 					metadata = undefined;
 				}
 				this.finishObservation(observationScope, metadata);
-				const inFlightEntry = this.inFlight.get(key);
+				const inFlightEntry = shareInFlight
+					? this.inFlight.get(key)
+					: undefined;
 				if (inFlightEntry?.requestId === requestId) {
 					this.inFlight.delete(key);
 				}
 			}
 		})();
 
-		this.inFlight.set(key, { promise: request, requestId });
-		return request;
+		if (shareInFlight) this.inFlight.set(key, { promise: request, requestId });
+		return this.waitForCaller(request, signal, deadline);
 	}
 
 	invalidate(key: TKey): void {

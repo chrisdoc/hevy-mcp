@@ -76,10 +76,14 @@ function createDependencies(
 	};
 }
 
-function authorizePostRequest(fields: Record<string, string>): Request {
+function authorizePostRequest(
+	fields: Record<string, string>,
+	signal?: AbortSignal,
+): Request {
 	return new Request("https://worker.example/authorize", {
 		method: "POST",
 		body: new URLSearchParams(fields),
+		signal,
 	});
 }
 
@@ -242,7 +246,12 @@ describe("authorize endpoint", () => {
 
 		expect(result.status).toBe(302);
 		expect(result.headers.get("location")).toContain("code=abc");
-		expect(validateApiKey).toHaveBeenCalledWith("secret-key", {});
+		expect(validateApiKey).toHaveBeenCalledWith(
+			"secret-key",
+			{},
+			expect.any(AbortSignal),
+			expect.any(Number),
+		);
 		expect(completeAuthorization).toHaveBeenCalledTimes(1);
 		const options = completeAuthorization.mock.calls[0]?.[0];
 		expect(options?.request).toEqual(sampleAuthRequest);
@@ -270,7 +279,7 @@ describe("authorize endpoint", () => {
 		expect(completeAuthorization).not.toHaveBeenCalled();
 	});
 
-	it("re-renders with 502 when Hevy is unavailable", async () => {
+	it("returns a structured 502 when Hevy is unavailable", async () => {
 		const result = await handleAuthorizePost(
 			authorizePostRequest({
 				oauth_request: encodeAuthRequest(sampleAuthRequest),
@@ -283,7 +292,36 @@ describe("authorize endpoint", () => {
 			}),
 		);
 		expect(result.status).toBe(502);
-		expect(await result.text()).toContain("temporarily unavailable");
+		expect(await result.json()).toMatchObject({
+			error: {
+				outcome: "terminal_failure",
+				phase: "before-dispatch",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+			},
+		});
+	});
+
+	it("returns a structured 500 when OAuth validation has a configuration error", async () => {
+		const result = await handleAuthorizePost(
+			authorizePostRequest({
+				oauth_request: encodeAuthRequest(sampleAuthRequest),
+				hevy_api_key: "some-key",
+			}),
+			{},
+			createFakeHelpers(),
+			createDependencies({
+				validateApiKey: vi.fn().mockResolvedValue("config-error"),
+			}),
+		);
+
+		expect(result.status).toBe(500);
+		expect(await result.json()).toMatchObject({
+			error: {
+				message: "Worker configuration error",
+				outcome: "terminal_failure",
+			},
+		});
 	});
 
 	it("rejects submissions without a usable auth request", async () => {
@@ -314,6 +352,74 @@ describe("authorize endpoint", () => {
 		);
 		expect(result.status).toBe(400);
 		expect(validateApiKey).not.toHaveBeenCalled();
+	});
+
+	it("projects an aborted OAuth validation as cancellation", async () => {
+		const controller = new AbortController();
+		const validateApiKey = vi.fn(
+			(_apiKey: string, _env: object, signal?: AbortSignal) =>
+				new Promise<"valid">((_resolve, reject) => {
+					signal?.addEventListener(
+						"abort",
+						() => reject(new DOMException("request cancelled", "AbortError")),
+						{ once: true },
+					);
+				}),
+		);
+		const pending = handleAuthorizePost(
+			authorizePostRequest(
+				{
+					oauth_request: encodeAuthRequest(sampleAuthRequest),
+					hevy_api_key: "some-key",
+				},
+				controller.signal,
+			),
+			{},
+			createFakeHelpers(),
+			createDependencies({ validateApiKey }),
+		);
+		await vi.waitFor(() => expect(validateApiKey).toHaveBeenCalledOnce());
+		controller.abort(new DOMException("request cancelled", "AbortError"));
+		const result = await pending;
+		expect(result.status).toBe(499);
+		expect(await result.json()).toMatchObject({
+			error: {
+				outcome: "cancelled",
+				phase: "before-dispatch",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+			},
+		});
+	});
+
+	it("preserves an OAuth validation deadline outcome", async () => {
+		const pending = handleAuthorizePost(
+			authorizePostRequest({
+				oauth_request: encodeAuthRequest(sampleAuthRequest),
+				hevy_api_key: "some-key",
+			}),
+			{},
+			createFakeHelpers(),
+			createDependencies({
+				validateApiKey: vi.fn().mockRejectedValue(
+					new HevyHttpError("deadline", {
+						method: "GET",
+						endpoint: "/v1/user/info",
+						code: "HEVY_DEADLINE_EXCEEDED",
+						phase: "dispatch",
+						operationSafety: "read",
+						commitState: "not_sent",
+						safeToRetry: false,
+						outcome: "deadline_exceeded",
+					}),
+				),
+			}),
+		);
+		const result = await pending;
+		expect(result.status).toBe(504);
+		expect(await result.json()).toMatchObject({
+			error: { outcome: "deadline_exceeded", safe_to_retry: false },
+		});
 	});
 });
 

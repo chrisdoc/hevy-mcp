@@ -13,6 +13,7 @@ import {
 	getCurrentMcpSessionId,
 	getCurrentMcpTransport,
 } from "./mcp-session-observability.js";
+import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { tracer } from "./telemetry.js";
 
 const SAFE_STATIC_ENDPOINTS = new Set([
@@ -73,7 +74,11 @@ function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
 	if (observation.status > 0) {
 		span.setAttribute("http.response.status_code", observation.status);
 	}
-	span.setAttribute("hevy.api.outcome", observation.outcome);
+	for (const [key, value] of Object.entries(
+		projectExecutionAttributes(observation),
+	)) {
+		span.setAttribute(key, value);
+	}
 	if (observation.expectedReason) {
 		span.setAttribute("hevy.api.expected_reason", observation.expectedReason);
 	}
@@ -122,12 +127,16 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 			const retryCountBucket = bucketCount(observation.retryCount);
 			const errorAttributes = safeErrorAttributes(observation);
 			const metricEndpoint = normalizeHevyMetricEndpoint(observation.endpoint);
+			const metricExecutionAttributes = projectExecutionAttributes(
+				observation,
+				"metric",
+			);
 			apiCalls.add(1, {
 				method: observation.method,
 				endpoint: metricEndpoint,
 				status_code: observation.status,
 				retry_count_bucket: retryCountBucket,
-				outcome: observation.outcome,
+				...metricExecutionAttributes,
 				transport: getCurrentMcpTransport(),
 				...(observation.expectedReason
 					? { expected_reason: observation.expectedReason }
@@ -138,7 +147,7 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 				method: observation.method,
 				endpoint: metricEndpoint,
 				retry_count_bucket: retryCountBucket,
-				outcome: observation.outcome,
+				...metricExecutionAttributes,
 				transport: getCurrentMcpTransport(),
 				...(observation.expectedReason
 					? { expected_reason: observation.expectedReason }

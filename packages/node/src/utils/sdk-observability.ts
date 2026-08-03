@@ -6,6 +6,7 @@ import {
 	getCurrentMcpSessionId,
 	getCurrentMcpTransport,
 } from "./mcp-session-observability.js";
+import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { recordTelemetryException, tracer } from "./telemetry.js";
 
 type SdkRequestHandler = (request: unknown, extra: unknown) => Promise<unknown>;
@@ -68,6 +69,7 @@ function createFailureAttributes(
 		...(diagnostic.endpoint
 			? { "hevy.api.endpoint": diagnostic.endpoint }
 			: {}),
+		...projectExecutionAttributes(diagnostic),
 	};
 }
 

@@ -533,7 +533,17 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		);
 
 		expect(response.status).toBe(502);
-		expect(await response.text()).toBe("Hevy API is temporarily unavailable");
+		const body = await response.json();
+		expect(body).toMatchObject({
+			error: {
+				outcome: "terminal_failure",
+				phase: "response-content",
+				operation_safety: "read",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+			},
+		});
+		expect(JSON.stringify(body)).not.toContain(REDIRECT_API_KEY);
 		expect(hevyRequests).toEqual([
 			expect.objectContaining({
 				apiKey: REDIRECT_API_KEY,

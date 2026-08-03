@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 import { AsyncTtlCache } from "./cache.js";
 
 describe("AsyncTtlCache", () => {
@@ -135,6 +136,95 @@ describe("AsyncTtlCache", () => {
 
 		expect(fetcher).toHaveBeenCalledTimes(2);
 	});
+
+	it("keeps caller cancellation classifiable while waiting on shared work", async () => {
+		const cache = new AsyncTtlCache<string, string>({
+			ttlMs: 60_000,
+			maxSize: 2,
+		});
+		let resolveFetch!: (value: string) => void;
+		const first = cache.getOrFetch(
+			"catalog",
+			() =>
+				new Promise<string>((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+		const controller = new AbortController();
+		const second = cache.getOrFetch(
+			"catalog",
+			() => Promise.resolve("shared"),
+			{
+				signal: controller.signal,
+			},
+		);
+		controller.abort(new DOMException("caller cancelled", "AbortError"));
+		const error = await second.catch((reason: unknown) => reason);
+		expect(createSafeErrorDiagnostic(error)).toMatchObject({
+			outcome: "cancelled",
+			phase: "before-dispatch",
+			commit_state: "not_sent",
+			safe_to_retry: false,
+		});
+		resolveFetch("shared");
+		await first;
+	});
+
+	it("rejects an already-canceled caller before returning a cached value", async () => {
+		const cache = new AsyncTtlCache<string, string>({
+			ttlMs: 60_000,
+			maxSize: 2,
+		});
+		await cache.getOrFetch("catalog", () => Promise.resolve("cached"));
+		const controller = new AbortController();
+		const reason = new DOMException("caller canceled", "AbortError");
+		controller.abort(reason);
+
+		await expect(
+			cache.getOrFetch("catalog", () => Promise.resolve("unused"), {
+				signal: controller.signal,
+			}),
+		).rejects.toBe(reason);
+	});
+
+	it("rejects a caller whose cache deadline has already elapsed", async () => {
+		const cache = new AsyncTtlCache<string, string>({
+			ttlMs: 60_000,
+			maxSize: 2,
+		});
+		await cache.getOrFetch("catalog", () => Promise.resolve("cached"));
+
+		await expect(
+			cache.getOrFetch("catalog", () => Promise.resolve("unused"), {
+				deadline: Date.now() - 1,
+			}),
+		).rejects.toMatchObject({ name: "TimeoutError" });
+	});
+
+	it("enforces a caller deadline while shared work is still pending", async () => {
+		vi.useFakeTimers();
+		const cache = new AsyncTtlCache<string, string>({
+			ttlMs: 60_000,
+			maxSize: 2,
+		});
+		const pending = cache.getOrFetch(
+			"catalog",
+			() => new Promise<string>(() => {}),
+		);
+		const request = cache.getOrFetch(
+			"catalog",
+			() => Promise.resolve("unused"),
+			{ deadline: Date.now() + 1_000 },
+		);
+		const rejected = expect(request).rejects.toMatchObject({
+			name: "TimeoutError",
+		});
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		await rejected;
+		void pending;
+	});
+
 	it("observes cache states without exposing keys", async () => {
 		const events: string[] = [];
 		const cache = new AsyncTtlCache<string, string>({

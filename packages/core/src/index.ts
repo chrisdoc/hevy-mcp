@@ -1,4 +1,14 @@
 export {
+	HEVY_CLIENT_OPTION_INDEXES,
+	bindClientExecution,
+	createExecutionProjection,
+	mergeAbortSignals,
+	type ExecutionProjectionSource,
+	type StructuredExecutionProjection,
+	type ToolExecutionContext,
+} from "./execution.js";
+
+export {
 	createHevyMcpServer,
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,

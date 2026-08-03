@@ -1,6 +1,6 @@
 import { request, type Server } from "node:http";
 import { McpServer } from "@modelcontextprotocol/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { startStreamableHttpServer } from "./streamable-http.js";
 
 const createMcpServer = async () => {
@@ -117,6 +117,37 @@ async function startTestServer(host = "127.0.0.1") {
 	return { handle, port: serverPort(handle) };
 }
 
+async function startDisconnectTestServer() {
+	let releaseTool!: () => void;
+	let markStarted!: () => void;
+	const toolStarted = new Promise<void>((resolve) => {
+		markStarted = resolve;
+	});
+	const toolRelease = new Promise<void>((resolve) => {
+		releaseTool = resolve;
+	});
+	const createHangingServer = async () => {
+		const server = new McpServer({ name: "test-server", version: "1.0.0" });
+		server.registerTool(
+			"mock-tool",
+			{ description: "A mocked tool" },
+			async () => {
+				markStarted();
+				await toolRelease;
+				return { content: [{ type: "text", text: "mock result" }] };
+			},
+		);
+		return server;
+	};
+	const started = await startStreamableHttpServer(
+		{ transport: "http", host: "127.0.0.1", port: 0 },
+		"test-key",
+		createHangingServer,
+	);
+	handles.push(started);
+	return { ...started, port: serverPort(started), toolStarted, releaseTool };
+}
+
 async function initialize(port: number, headers: Record<string, string> = {}) {
 	return call(
 		port,
@@ -229,6 +260,97 @@ describe("Streamable HTTP server", () => {
 		).toBe(404);
 	});
 
+	it("evicts a session after a disconnected request", async () => {
+		const { port, toolStarted, releaseTool } =
+			await startDisconnectTestServer();
+		const initialized = await initialize(port);
+		const sessionId = String(initialized.headers["mcp-session-id"]);
+		const payload = JSON.stringify({
+			jsonrpc: "2.0",
+			id: 2,
+			method: "tools/call",
+			params: { name: "mock-tool", arguments: {} },
+		});
+		const disconnected = request({
+			host: "127.0.0.1",
+			port,
+			path: "/mcp",
+			method: "POST",
+			headers: {
+				Accept: "application/json, text/event-stream",
+				"Content-Type": "application/json",
+				"mcp-session-id": sessionId,
+			},
+		});
+		disconnected.once("error", () => {});
+		disconnected.end(payload);
+		await toolStarted;
+		disconnected.destroy();
+
+		await vi.waitFor(async () => {
+			const aftermath = await call(
+				port,
+				"POST",
+				{ jsonrpc: "2.0", id: 3, method: "tools/list", params: {} },
+				{ "mcp-session-id": sessionId },
+			);
+			expect(aftermath.statusCode).toBe(404);
+		});
+		releaseTool();
+	});
+
+	it("aborts active session execution when DELETE closes the transport", async () => {
+		let sessionSignal: AbortSignal | undefined;
+		const createAbortAwareServer = async ({
+			lifecycleSignal,
+		}: {
+			apiKey: string;
+			lifecycleSignal?: AbortSignal;
+		}) => {
+			sessionSignal = lifecycleSignal;
+			const server = new McpServer({ name: "abort-aware", version: "1.0.0" });
+			server.registerTool(
+				"mock-tool",
+				{ description: "A mocked tool" },
+				async () => {
+					await new Promise<void>((resolve) =>
+						lifecycleSignal?.addEventListener("abort", () => resolve(), {
+							once: true,
+						}),
+					);
+					return { content: [{ type: "text", text: "aborted" }] };
+				},
+			);
+			return server;
+		};
+		const handle = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"test-key",
+			createAbortAwareServer,
+		);
+		handles.push(handle);
+		const port = serverPort(handle);
+		const initialized = await initialize(port);
+		const sessionId = String(initialized.headers["mcp-session-id"]);
+		const pendingCall = call(
+			port,
+			"POST",
+			{
+				jsonrpc: "2.0",
+				id: 2,
+				method: "tools/call",
+				params: { name: "mock-tool", arguments: {} },
+			},
+			{ "mcp-session-id": sessionId },
+		).catch(() => undefined);
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+		await expect(
+			call(port, "DELETE", undefined, { "mcp-session-id": sessionId }),
+		).resolves.toMatchObject({ statusCode: 200 });
+		expect(sessionSignal?.aborted).toBe(true);
+		void pendingCall;
+	});
+
 	it("requires bearer authentication for wildcard binds", async () => {
 		process.env.HEVY_MCP_HTTP_BEARER_TOKEN = "http-test-token";
 		try {
@@ -269,6 +391,22 @@ describe("Streamable HTTP server", () => {
 
 		const oversized = await call(port, "POST", "x".repeat(1_048_577));
 		expect(oversized.statusCode).toBe(413);
+	});
+
+	it("returns structured errors when an MCP session fails during startup", async () => {
+		const handle = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"test-key",
+			async () => {
+				throw new Error("private startup detail");
+			},
+		);
+		handles.push(handle);
+
+		const result = await initialize(serverPort(handle));
+		expect(result.statusCode).toBe(500);
+		expect(result.body).toContain('"outcome":"terminal_failure"');
+		expect(result.body).not.toContain("private startup detail");
 	});
 
 	it("rejects a DNS-rebinding Host header and closes active sessions", async () => {

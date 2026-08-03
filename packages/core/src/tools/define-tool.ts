@@ -46,10 +46,13 @@ export function registerToolDefinition(
 ): void {
 	const directHandler = createTypedToolHandler(
 		definition.inputSchema,
-		async (args) =>
+		async (args, requestContext) =>
 			respond(
 				definition.responseContract,
-				await definition.execute(runtime, args),
+				await definition.execute(
+					requestContext ? runtime.forExecution(requestContext) : runtime,
+					args,
+				),
 			),
 	);
 	const handler = runtime.createHandler(directHandler, definition.name, {
@@ -71,5 +74,15 @@ export function registerToolDefinition(
 			: {}),
 	};
 
-	server.registerTool(definition.name, config, callback);
+	server.registerTool(definition.name, config, (args, context) =>
+		callback(
+			args,
+			context
+				? {
+						signal: context.mcpReq.signal,
+						requestId: String(context.mcpReq.id),
+					}
+				: undefined,
+		),
+	);
 }
