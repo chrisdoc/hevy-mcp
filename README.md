@@ -497,7 +497,7 @@ self-hosted Streamable HTTP.
 | `HEVY_MCP_HTTP_BEARER_TOKEN` | None                           | Non-loopback HTTP             | Required when `--host` is not loopback; use a separate token, never the Hevy API key.                                                                                                                                                                          |
 | `HEVY_MCP_TELEMETRY`         | Enabled                        | Local Node                    | Set to exactly `0` before startup/import to disable Sentry and OTLP traces/metrics. When enabled and `SENTRY_DSN` is non-empty, Sentry remains enabled for error monitoring; OTLP traces include privacy-safe tool failure and process-level exception events. |
 | `XDG_CACHE_HOME`             | `~/.cache`                     | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                                                                                                                                                               |
-| `SENTRY_DSN`                 | Packaged project DSN           | Optional local Node telemetry | Sentry-only override for the destination. An empty value disables Sentry export. The Worker does not import Node telemetry.                                                                                                                                    |
+| `SENTRY_DSN`                 | Packaged GlitchTip project DSN | Optional local Node telemetry | Sentry-compatible override for the destination. An empty value disables Sentry export. The Worker does not import Node telemetry.                                                                                                                              |
 | `SENTRY_RELEASE`             | `hevy-mcp@<installed-version>` | Optional local Node telemetry | Overrides the release label attached to local Sentry events and traces.                                                                                                                                                                                        |
 | `-h`, `--help`               | N/A                            | Local stdio CLI               | Print supported options and exit.                                                                                                                                                                                                                              |
 | `-v`, `--version`            | N/A                            | Local stdio CLI               | Print the installed version and exit.                                                                                                                                                                                                                          |
@@ -546,9 +546,9 @@ metric readers and makes no telemetry network requests. `SENTRY_DSN` remains a
 Sentry-only setting; when telemetry is enabled, an empty value disables only
 Sentry export.
 
-When enabled, errors and traces are sent to the packaged Sentry project at
-<https://o4508975499575296.ingest.de.sentry.io/4509049671647312>. Traces and
-metrics are sent to the collector at
+When enabled, errors are sent to the self-hosted GlitchTip project at
+<https://glitchtip.chrisdoc.dev>; Sentry performance tracing is disabled.
+Traces and metrics continue to be sent to the collector at
 <https://otel.chrisdoc.dev/v1/traces> and
 <https://otel.chrisdoc.dev/v1/metrics>, which forward to Honeycomb. Metrics
 export every 10 seconds.
