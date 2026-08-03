@@ -194,3 +194,95 @@ jobs:
           --x-new-config
           --env production
           --message "Changesets release at ${{ github.event.workflow_run.head_sha || github.sha }}"
+
+  publish-preview:
+    name: Publish hevy-mcp preview
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: npm-preview-main
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Verify tested commit is current main
+        env:
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          checked_out_sha="$(git rev-parse HEAD)"
+          current_main_sha="$(git ls-remote origin refs/heads/main | awk 'NR == 1 { print $1 }')"
+          if [ -z "$current_main_sha" ]; then
+            echo "Unable to determine the current origin/main SHA"
+            exit 1
+          fi
+          if [ "$checked_out_sha" != "$TESTED_SHA" ] || [ "$current_main_sha" != "$TESTED_SHA" ]; then
+            echo "Refusing to publish stale tested commit"
+            echo "tested: $TESTED_SHA"
+            echo "checked out: $checked_out_sha"
+            echo "current main: $current_main_sha"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set transient preview version
+        env:
+          PREVIEW_ID: ${{ github.run_id }}
+          PREVIEW_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+
+          const path = "packages/node/package.json";
+          const packageJson = JSON.parse(readFileSync(path, "utf8"));
+          const baseVersion = packageJson.version.split("-")[0];
+          packageJson.version = `${baseVersion}-main.${process.env.PREVIEW_ID}.${process.env.PREVIEW_ATTEMPT}`;
+          writeFileSync(path, `${JSON.stringify(packageJson, null, "\t")}\n`);
+          NODE
+          npm run sync:server-manifest
+
+      - name: Verify package
+        run: npm run test:pack
+
+      - name: Publish preview
+        env:
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          current_main_sha="$(git ls-remote origin refs/heads/main | awk 'NR == 1 { print $1 }')"
+          if [ "$current_main_sha" != "$TESTED_SHA" ]; then
+            echo "Refusing to publish stale tested commit"
+            echo "tested: $TESTED_SHA"
+            echo "current main: $current_main_sha"
+            exit 1
+          fi
+          VERSION=$(node -p 'JSON.parse(require("node:fs").readFileSync("packages/node/package.json", "utf8")).version')
+          case "$VERSION" in
+            *-main.*) ;;
+            *)
+              echo "Refusing to publish non-preview version: $VERSION"
+              exit 1
+              ;;
+          esac
+          echo "Publishing hevy-mcp@$VERSION with the preview dist-tag"
+          npm publish --workspace=hevy-mcp --tag preview
