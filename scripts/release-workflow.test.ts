@@ -91,6 +91,14 @@ describe("release workflow", () => {
 		expect(() => resolveWorkerVersion(workerManifest("release-1"))).toThrow(
 			"valid semantic version",
 		);
+		expect(() =>
+			calculateReleaseOutputs({
+				beforeWorkerManifest: workerManifest("release-1"),
+				afterWorkerManifest: workerManifest("1.0.0"),
+				published: false,
+				publishedPackages: [],
+			}),
+		).toThrow("valid semantic version");
 	});
 
 	it("builds deterministic bounded preview prerelease tags", () => {

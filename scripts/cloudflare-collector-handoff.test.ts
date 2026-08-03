@@ -112,6 +112,9 @@ describe("Cloudflare collector handoff", () => {
 		expect(handoff).toContain("ServiceName = 'hevy-worker'");
 		expect(handoff).toContain("ServiceName IN ('hevy-mcp', 'hevy-worker')");
 		expect(clickstackMetrics).toContain(
+			"Cloudflare Worker version attribution",
+		);
+		expect(clickstackMetrics).not.toContain(
 			"ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')",
 		);
 	});

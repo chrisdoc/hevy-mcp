@@ -14,16 +14,17 @@ The queries intentionally use ClickHouse map expressions such as
 `Attributes['tool_name']` and `ResourceAttributes['service.version']`. Do not
 replace them with bare column references.
 
-Combined application views include both the Node service (`hevy-mcp`) and the
-telemetry-only Cloudflare Worker service (`hevy-worker`). Filter to
-`hevy-worker` when a panel is specifically about Cloudflare-native spans.
+These metric queries remain scoped to the Node service because Cloudflare's
+native telemetry is span-based and the Node and Worker packages have independent
+versions. For combined trace views and Worker-specific filters, see
+[Cloudflare Worker version attribution](./cloudflare-worker-version-attribution.md).
 
 ## Common release filter
 
 Use this predicate in each panel to scope a release:
 
 ```sql
-ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')
+ResourceAttributes['service.name'] = 'hevy-mcp'
 AND ResourceAttributes['service.version'] = {release:String}
 ```
 
@@ -39,7 +40,7 @@ SELECT
     sum(Value) AS starts
 FROM otel.otel_metrics_sum
 WHERE MetricName = 'mcp.server.startups'
-  AND ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')
+  AND ResourceAttributes['service.name'] = 'hevy-mcp'
   AND ResourceAttributes['service.version'] = {release:String}
 GROUP BY minute
 ORDER BY minute;
@@ -63,7 +64,7 @@ SELECT
     sum(Value) AS events
 FROM otel.otel_metrics_sum
 WHERE MetricName IN ('mcp.tool.invocations', 'mcp.tool.outcomes')
-  AND ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')
+  AND ResourceAttributes['service.name'] = 'hevy-mcp'
   AND ResourceAttributes['service.version'] = {release:String}
 GROUP BY minute, tool_name, feature, transport, client_name, client_version,
     protocol_version, outcome
@@ -78,7 +79,7 @@ SELECT
         AND Attributes['outcome'] != 'success')
         / nullIf(sumIf(Value, MetricName = 'mcp.tool.outcomes'), 0) AS error_ratio
 FROM otel.otel_metrics_sum
-WHERE ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')
+WHERE ResourceAttributes['service.name'] = 'hevy-mcp'
   AND ResourceAttributes['service.version'] = {release:String};
 ```
 
@@ -96,7 +97,7 @@ SELECT
     sum(Value) AS calls
 FROM otel.otel_metrics_sum
 WHERE MetricName = 'hevy.api.calls'
-  AND ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')
+  AND ResourceAttributes['service.name'] = 'hevy-mcp'
   AND ResourceAttributes['service.version'] = {release:String}
 GROUP BY minute, endpoint, method, status_code, retry_count_bucket, transport,
     outcome
@@ -126,7 +127,7 @@ WITH histogram_points AS (
         BucketCounts
     FROM otel.otel_metrics_histogram
     WHERE MetricName IN ('mcp.tool.duration_ms', 'hevy.api.duration_ms')
-      AND ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')
+      AND ResourceAttributes['service.name'] = 'hevy-mcp'
       AND ResourceAttributes['service.version'] = {release:String}
 ), expanded AS (
     SELECT
@@ -167,7 +168,7 @@ SELECT
     max(TimeUnix) AS newest_metric_time,
     dateDiff('minute', max(TimeUnix), now()) AS age_minutes
 FROM otel.otel_metrics_sum
-WHERE ResourceAttributes['service.name'] IN ('hevy-mcp', 'hevy-worker')
+WHERE ResourceAttributes['service.name'] = 'hevy-mcp'
   AND ResourceAttributes['service.version'] = {release:String};
 ```
 
