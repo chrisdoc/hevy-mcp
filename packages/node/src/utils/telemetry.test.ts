@@ -34,6 +34,7 @@ const testDoubles = vi.hoisted(() => {
 		otlpTraceExporter: vi.fn(),
 		otlpMetricExporter: vi.fn(),
 		batchSpanProcessor: vi.fn(),
+		alwaysOnSampler: vi.fn(),
 		meterProvider: vi.fn(),
 		meterProviderOptions: undefined as unknown,
 		meterProviderForceFlush: vi.fn().mockResolvedValue(undefined),
@@ -107,6 +108,7 @@ vi.mock("@opentelemetry/resources", () => ({
 
 vi.mock("@opentelemetry/sdk-trace-base", () => ({
 	BatchSpanProcessor: testDoubles.batchSpanProcessor,
+	AlwaysOnSampler: testDoubles.alwaysOnSampler,
 }));
 
 vi.mock("@opentelemetry/sdk-trace-node", () => {
@@ -195,12 +197,13 @@ describe("telemetry initialization", () => {
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledOnce();
 		expect(testDoubles.nodeTracerProvider).toHaveBeenCalledOnce();
-		expect(testDoubles.sentrySpanProcessor).toHaveBeenCalledOnce();
-		expect(testDoubles.sentrySampler).toHaveBeenCalledOnce();
-		expect(testDoubles.sentryPropagator).toHaveBeenCalledOnce();
-		expect(testDoubles.sentryContextManager).toHaveBeenCalledOnce();
+		expect(testDoubles.alwaysOnSampler).toHaveBeenCalledOnce();
+		expect(testDoubles.sentrySpanProcessor).not.toHaveBeenCalled();
+		expect(testDoubles.sentrySampler).not.toHaveBeenCalled();
+		expect(testDoubles.sentryPropagator).not.toHaveBeenCalled();
+		expect(testDoubles.sentryContextManager).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalledOnce();
-		expect(testDoubles.validateOpenTelemetrySetup).toHaveBeenCalledOnce();
+		expect(testDoubles.validateOpenTelemetrySetup).not.toHaveBeenCalled();
 	});
 
 	it("sanitizes Sentry MCP correlation and client metadata", async () => {
@@ -239,11 +242,24 @@ describe("telemetry initialization", () => {
 		);
 	});
 
-	it("validates OpenTelemetry setup", async () => {
+	it("uses an independent OTel sampler without Sentry tracing setup", async () => {
 		vi.resetModules();
 		await import("./telemetry.js");
 
-		expect(testDoubles.validateOpenTelemetrySetup).toHaveBeenCalled();
+		expect(testDoubles.alwaysOnSampler).toHaveBeenCalledOnce();
+		expect(testDoubles.sentrySampler).not.toHaveBeenCalled();
+		expect(testDoubles.sentrySpanProcessor).not.toHaveBeenCalled();
+		expect(testDoubles.sentryPropagator).not.toHaveBeenCalled();
+		expect(testDoubles.sentryContextManager).not.toHaveBeenCalled();
+		expect(testDoubles.validateOpenTelemetrySetup).not.toHaveBeenCalled();
+		expect(testDoubles.register).toHaveBeenCalledWith();
+
+		const tracerOptions = testDoubles.nodeTracerProviderOptions as {
+			sampler: unknown;
+			spanProcessors: Array<unknown>;
+		};
+		expect(tracerOptions.sampler).toBeDefined();
+		expect(tracerOptions.spanProcessors).toHaveLength(1);
 	});
 	it("records uncaught exceptions and unhandled rejections safely", async () => {
 		vi.resetModules();
@@ -349,9 +365,19 @@ describe("telemetry initialization", () => {
 				spanProcessors: expect.any(Array),
 			}),
 		);
+		expect(testDoubles.alwaysOnSampler).toHaveBeenCalledOnce();
+		expect(testDoubles.sentrySampler).not.toHaveBeenCalled();
+		expect(testDoubles.sentrySpanProcessor).not.toHaveBeenCalled();
+		expect(testDoubles.sentryPropagator).not.toHaveBeenCalled();
+		expect(testDoubles.sentryContextManager).not.toHaveBeenCalled();
+		expect(testDoubles.validateOpenTelemetrySetup).not.toHaveBeenCalled();
 		const tracerOptions = testDoubles.nodeTracerProviderOptions as {
 			resource: { attributes: Record<string, unknown> };
+			sampler: unknown;
+			spanProcessors: Array<unknown>;
 		};
+		expect(tracerOptions.sampler).toBeDefined();
+		expect(tracerOptions.spanProcessors).toHaveLength(2);
 		const meterOptions = testDoubles.meterProviderOptions as {
 			resource: { attributes: Record<string, unknown> };
 		};
@@ -362,7 +388,6 @@ describe("telemetry initialization", () => {
 			"service.instance.id": "instance-id",
 		});
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalledOnce();
-		expect(testDoubles.validateOpenTelemetrySetup).toHaveBeenCalledOnce();
 
 		await mod.flushTelemetry();
 		expect(testDoubles.tracerProviderForceFlush).toHaveBeenCalledOnce();
@@ -410,6 +435,7 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.setGlobalTracerProvider).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalMeterProvider).not.toHaveBeenCalled();
 		expect(testDoubles.validateOpenTelemetrySetup).not.toHaveBeenCalled();
+		expect(testDoubles.alwaysOnSampler).not.toHaveBeenCalled();
 		expect(testDoubles.nodeTracerProviderOptions).toBeUndefined();
 		expect(typeof mod.tracer).toBe("object");
 		expect(typeof mod.meter).toBe("object");
