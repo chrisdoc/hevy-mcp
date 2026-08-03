@@ -166,8 +166,7 @@ jobs:
     if: >-
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
-      (needs.release.outputs.released == 'true' ||
-      needs.release.outputs.worker_released == 'true')
+      needs.release.outputs.worker_released == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: cloudflare-worker-production

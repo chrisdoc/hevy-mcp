@@ -6,8 +6,9 @@
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
 - The codebase is TypeScript (Node.js v24+) organized into runtime-neutral
-  `@hevy-mcp/hevy-client` and `@hevy-mcp/core` workspaces plus the Node and
-  Worker adapters under `packages/node` and `packages/worker`.
+  `@hevy-mcp/hevy-client` and `@hevy-mcp/core` workspaces, Node and Worker
+  adapters under `packages/node` and `packages/worker`, and the public CLI under
+  `packages/cli`.
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
@@ -19,6 +20,14 @@
   - **WHEN TO USE**: Every single PR/change that modifies any source code or package dependencies **MUST** have a changeset file.
   - **HOW TO CREATE**: Before submitting a PR or committing your changes, run `npx changeset` and follow the prompts to select the bump type (major/minor/patch) and write a summary.
   - **NO-OP / NO-RELEASE CHANGES**: If your change does _not_ require a release (e.g., docs, CI config, internal tests, refactoring, or chore), you **MUST** run `npx changeset --empty` to create an empty changeset file.
+  - **BUNDLED RELEASE CASCADE**: Every listed consumer receives at least a patch bump; do not couple unrelated package versions:
+    - `@hevy-mcp/hevy-client` changes → client, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
+    - `@hevy-mcp/core` changes → core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
+    - Node adapter-only changes → `hevy-mcp` only.
+    - Worker-only changes → `@hevy-mcp/worker` only.
+    - CLI-only changes → `@chrisdoc/hevy-cli` only.
+  - **PRIVATE RELEASE IDENTITY**: Core, client, and Worker remain private and untagged; their versions are internal release/deployment identity.
+  - **WORKER CONFIG TRIGGER**: A `cloudflare.config.ts` change counts as a Worker change.
   - **CI ENFORCEMENT**: Pull Requests are guarded by a CI check that runs `npm run check:changeset` (which runs `npx changeset status --since=origin/<base_branch>`). CI will fail if no changeset file is staged/committed.
   - **VALIDATION**: You can validate your changeset status locally by running `npm run check:changeset`. Make sure the changeset file is staged/committed.
 

@@ -190,9 +190,10 @@ future refresh reapplies them before the spec is written. Run
 `npm run check:openapi` to verify the repository-owned compatibility invariants
 before committing a refreshed spec.
 
-Because the public `hevy-mcp` package bundles the private `@hevy-mcp/core` and
-`@hevy-mcp/hevy-client` workspaces, a changeset for either bundled package must
-also include `hevy-mcp`. The package-changeset check enforces this relationship.
+The Node package, Worker, and CLI ship bundled compositions of the shared core
+and Hevy client. Changesets for shared runtime packages must therefore include
+every affected shipped consumer. The package-changeset check enforces the
+release matrix documented below.
 
 ## Runtime architecture boundaries
 
@@ -400,10 +401,27 @@ deployment tracking, but remain private and are never published to npm:
 Describe the internal runtime change here.
 ```
 
-The release workflow publishes public packages as usual and versions private
-runtime workspaces without publishing them. Production Worker deployment is
-triggered when either a public package is published or the Worker package
-version changes in a Changesets release.
+Every package listed below must receive at least a patch bump. Larger bumps are
+allowed when warranted by that package's own impact:
+
+| Changed composition     | Required Changeset packages                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| `@hevy-mcp/hevy-client` | `@hevy-mcp/hevy-client`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli` |
+| `@hevy-mcp/core`        | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`                          |
+| Node adapter only       | `hevy-mcp` only                                                                                     |
+| Worker only             | `@hevy-mcp/worker` only                                                                             |
+| CLI only                | `@chrisdoc/hevy-cli` only                                                                           |
+
+Do not couple unrelated package versions. Core, the Hevy client, and Worker
+remain private. Changesets version them for internal release/deployment
+identity but do not create npm tags for them because
+`privatePackages.tag=false`. The public Node and CLI packages publish normally.
+
+`cloudflare.config.ts` is production Worker configuration, so changing it also
+requires a Worker changeset even though it is outside `packages/worker`.
+Production Worker deployment occurs only when a Changesets version commit
+changes `packages/worker/package.json`. Public Node- or CLI-only releases do not
+deploy the Worker; Worker-only private releases still do.
 
 Validate the branch against `origin/main`:
 
@@ -412,9 +430,9 @@ npm run check:changeset
 ```
 
 CI also checks that every changed workspace directory has a changeset naming
-that same package. For example, changes under `packages/cli` require a
-changeset for `@chrisdoc/hevy-cli`; a changeset for a different package does
-not satisfy that check.
+that same package, then applies the transitive composition matrix. For example,
+changes under `packages/cli` require only `@chrisdoc/hevy-cli`, while changes
+under `packages/core` additionally require every shipped core consumer.
 
 The automated `changeset-release/main` "Version Packages" pull request should
 be merged on the routine release cadence (weekly by default), not for every

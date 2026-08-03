@@ -7,6 +7,7 @@ const expected = new Map([
 	["packages/core", { name: "@hevy-mcp/core", private: true }],
 	["packages/node", { name: "hevy-mcp", private: false }],
 	["packages/worker", { name: "@hevy-mcp/worker", private: true }],
+	["packages/cli", { name: "@chrisdoc/hevy-cli", private: false }],
 ]);
 
 const rootPackage = JSON.parse(
@@ -20,15 +21,13 @@ for (const [relative, metadata] of expected) {
 	const packageJson = JSON.parse(
 		await readFile(resolve(root, relative, "package.json"), "utf8"),
 	);
-	if (
-		packageJson.name !== metadata.name ||
-		packageJson.private !== metadata.private
-	) {
+	const isPrivate = packageJson.private === true;
+	if (packageJson.name !== metadata.name || isPrivate !== metadata.private) {
 		throw new Error(
 			`${relative}/package.json has unexpected workspace metadata`,
 		);
 	}
-	if (packageJson.private !== true) publishableCount += 1;
+	if (!isPrivate) publishableCount += 1;
 }
 if (rootPackage.private !== true)
 	throw new Error("Root orchestration package must be private");
@@ -45,8 +44,8 @@ for (const field of [
 		throw new Error(`Root orchestration package must not declare ${field}`);
 	}
 }
-if (publishableCount !== 1)
+if (publishableCount !== 2)
 	throw new Error(
-		`Expected exactly one publishable workspace, found ${publishableCount}`,
+		`Expected exactly two publishable workspaces, found ${publishableCount}`,
 	);
 console.log("Workspace identities and publication ownership are valid.");
