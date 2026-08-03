@@ -379,14 +379,22 @@ grants never share production OAuth state.
 5. Run the required validation and describe noteworthy limitations in the pull
    request.
 
-Use a version bump changeset only for user-facing runtime behavior:
+The root is a private repository orchestrator; runtime/package code and manifests
+are under `packages/*`. Changeset eligibility is determined by the changed content,
+not its Conventional Commit type. Files under `packages/*`, runtime-visible behavior
+changes, workspace package dependency changes, and explicit release triggers such as
+`cloudflare.config.ts` **must** use a non-empty bump Changeset naming every affected
+package:
 
 ```bash
 npx changeset
 ```
 
-Choose `patch`, `minor`, or `major` based on the public impact. For docs, CI,
-tests, refactors, and other no-release changes, create an empty changeset:
+Choose `patch`, `minor`, or `major` based on the release impact. An empty
+Changeset is allowed only when the entire PR is no-release/internal-only and
+changes no workspace package or explicit release trigger; it cannot accompany a
+release-triggering change. Docs, CI, repository-only tests/tooling, and chores may
+qualify only when they meet those conditions:
 
 ```bash
 npx changeset --empty

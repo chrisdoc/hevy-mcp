@@ -27,9 +27,8 @@
 - **Changesets (CRITICAL)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
   - **RELEASE CADENCE**: Merge the automated `changeset-release/main` (**"Version Packages"**) Pull Request on a regular cadence (weekly is the default), not via ad-hoc frequent merges.
   - **URGENT EXCEPTION**: Security fixes and high-impact user-facing bug fixes may be released immediately outside the routine cadence.
-  - **WHEN TO USE**: Every single PR/change that modifies source code or package dependencies **MUST** include a changeset file.
-  - **HOW TO CREATE BUMP CHANGESETS**: Use `npx changeset` with `patch`/`minor`/`major` **only** for user-facing, runtime-visible changes.
-  - **NO-OP / NO-RELEASE CHANGES**: For docs, CI config, internal tests, refactoring, and other internal-only changes, you **MUST** run `npx changeset --empty`.
+  - **BUMP CHANGESETS**: The root is a private repository orchestrator; runtime/package code and manifests are under `packages/*`. Files under `packages/*`, runtime-visible behavior changes, workspace package dependency changes, and explicit release triggers such as `cloudflare.config.ts` **MUST** use a non-empty bump Changeset naming every affected package. Use `npx changeset` and select `patch`, `minor`, or `major` for the release impact.
+  - **EMPTY CHANGESETS**: An empty Changeset is allowed only when the entire PR is no-release/internal-only and changes no workspace package or explicit release trigger; it cannot accompany a release-triggering change. Docs, CI, repository-only tests/tooling, and chores may qualify only when they meet those conditions; a Conventional Commit type alone does not determine eligibility. Create an eligible empty Changeset with `npx changeset --empty`.
   - **BUNDLED RELEASE CASCADE**: Every listed consumer receives at least a patch bump; do not couple unrelated package versions:
     - `@hevy-mcp/hevy-client` changes → client, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
     - `@hevy-mcp/core` changes → core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.

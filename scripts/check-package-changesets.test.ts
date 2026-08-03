@@ -171,6 +171,75 @@ describe("package changeset coverage", () => {
 		);
 	});
 
+	it("rejects an empty changeset for a workspace package change", async () => {
+		const { base, root } = await createFixture();
+		await writeFixtureFile(
+			root,
+			"packages/example/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeFixtureFile(
+			root,
+			".changeset/empty.md",
+			"---\n---\n\nNo release.\n",
+		);
+		await commitFixture(root);
+
+		const result = await runCheck(root, base);
+
+		expect(result.exitCode).not.toBe(0);
+		expect(result.stderr).toContain(
+			"Empty Changesets cannot accompany release-triggering changes",
+		);
+		expect(result.stderr).toContain(".changeset/empty.md");
+	});
+
+	it("rejects an empty changeset alongside a matching bump", async () => {
+		const { base, root } = await createFixture();
+		await writeFixtureFile(
+			root,
+			"packages/example/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeFixtureFile(
+			root,
+			".changeset/bump.md",
+			'---\n"@example/pkg": patch\n---\n\nRelease change.\n',
+		);
+		await writeFixtureFile(
+			root,
+			".changeset/empty.md",
+			"---\n---\n\nNo release.\n",
+		);
+		await commitFixture(root);
+
+		const result = await runCheck(root, base);
+
+		expect(result.exitCode).not.toBe(0);
+		expect(result.stderr).toContain(
+			"Empty Changesets cannot accompany release-triggering changes",
+		);
+		expect(result.stderr).toContain(".changeset/empty.md");
+	});
+
+	it("accepts an empty changeset for a root-level no-release change", async () => {
+		const { base, root } = await createFixture();
+		await writeFixtureFile(root, "CONTRIBUTING.md", "No release.\n");
+		await writeFixtureFile(
+			root,
+			".changeset/empty.md",
+			"---\n---\n\nNo release.\n",
+		);
+		await commitFixture(root);
+
+		const result = await runCheck(root, base);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain(
+			"No workspace package changes require a package changeset",
+		);
+	});
+
 	it("requires a changeset for deletion-only package changes", async () => {
 		const { base, root } = await createFixture();
 		await rm(join(root, "packages/example/src/index.js"));
