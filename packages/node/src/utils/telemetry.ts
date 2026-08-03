@@ -2,10 +2,10 @@
  * Centralized telemetry initialization.
  *
  * This module MUST be imported before any other application code.
- * It sets up OpenTelemetry with dual export: Sentry (error events +
- * traces) and an OTel Collector (traces + metrics to Honeycomb).
+ * It sets up independent telemetry paths: Sentry error events and an OTel
+ * Collector (traces + metrics to Honeycomb).
  *
- * Sentry SDK: error events, performance traces, release tracking
+ * Sentry SDK: error monitoring, release tracking
  * OTel Collector → Honeycomb: performance traces, metrics
  */
 
@@ -15,12 +15,6 @@ import {
 	randomUUID as nodeRandomUUID,
 } from "node:crypto";
 import * as Sentry from "@sentry/node";
-import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
-import {
-	SentryPropagator,
-	SentrySampler,
-	SentrySpanProcessor,
-} from "@sentry/opentelemetry";
 import {
 	SpanStatusCode,
 	trace,
@@ -34,7 +28,10 @@ import {
 	OTLPMetricExporter,
 } from "@opentelemetry/exporter-metrics-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import {
+	AlwaysOnSampler,
+	BatchSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
 import type {
 	ReadableSpan,
 	Span,
@@ -207,6 +204,8 @@ const collectorToken =
 
 const COLLECTOR_ENDPOINT = "https://otel.chrisdoc.dev/v1";
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
+const DEFAULT_SENTRY_DSN =
+	"https://7c08d2c880ff4560a333dff4833594cd@glitchtip.chrisdoc.dev/1";
 
 export function createServiceInstanceId(
 	generate: () => string = nodeRandomUUID,
@@ -251,28 +250,22 @@ let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
 
 if (telemetryEnabled) {
-	const bakedDsn =
-		"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
-	const rawDsn = process.env.SENTRY_DSN ?? bakedDsn;
+	const rawDsn = process.env.SENTRY_DSN ?? DEFAULT_SENTRY_DSN;
 	const isValidDsn =
 		typeof rawDsn === "string" && rawDsn.length > 0 && !rawDsn.startsWith("*");
 
-	// --- Sentry (error monitoring + traces) ---
-	const sentryClient = Sentry.init({
+	// --- Sentry error monitoring ---
+	Sentry.init({
 		dsn: isValidDsn ? rawDsn : undefined,
-		beforeSendSpan: sanitizeSentryMcpSpan,
 		release: sentryRelease,
-		tracesSampleRate: 1.0,
+		tracesSampleRate: 0.0,
 		sendDefaultPii: false,
 		skipOpenTelemetrySetup: true,
 		registerEsmLoaderHooks: false,
 		ignoreErrors: ["EPIPE", "broken pipe"],
 	});
 
-	const spanProcessors: SpanProcessor[] = [
-		new UserHashSpanProcessor(),
-		new SentrySpanProcessor(),
-	];
+	const spanProcessors: SpanProcessor[] = [new UserHashSpanProcessor()];
 
 	// OTel Collector → Honeycomb traces — only if token is available
 	if (collectorToken) {
@@ -290,14 +283,11 @@ if (telemetryEnabled) {
 
 	tracerProvider = new NodeTracerProvider({
 		resource,
-		sampler: sentryClient ? new SentrySampler(sentryClient) : undefined,
+		sampler: new AlwaysOnSampler(),
 		spanProcessors,
 	});
 
-	tracerProvider.register({
-		propagator: new SentryPropagator(),
-		contextManager: new Sentry.SentryContextManager(),
-	});
+	tracerProvider.register();
 
 	// --- OpenTelemetry meter provider (→ Collector → Honeycomb metrics) ---
 	if (collectorToken) {
@@ -320,9 +310,6 @@ if (telemetryEnabled) {
 	}
 
 	trace.setGlobalTracerProvider(tracerProvider);
-
-	// Validate that Sentry + OpenTelemetry are wired correctly
-	Sentry.validateOpenTelemetrySetup();
 }
 
 export async function flushTelemetry(timeoutMs = 1_000): Promise<void> {
