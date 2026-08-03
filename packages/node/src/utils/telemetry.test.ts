@@ -13,6 +13,7 @@ const testDoubles = vi.hoisted(() => {
 
 	return {
 		activeSpan: {
+			addEvent: vi.fn(),
 			recordException: vi.fn(),
 			setAttribute: vi.fn(),
 			setAttributes: vi.fn(),
@@ -265,10 +266,25 @@ describe("telemetry initialization", () => {
 		cleanup();
 		cleanup();
 
-		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledTimes(2);
+		expect(testDoubles.activeSpan.recordException).not.toHaveBeenCalled();
+		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledTimes(2);
+		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledWith(
+			"exception",
+			expect.objectContaining({
+				"exception.type": "Error",
+				"exception.source": "uncaughtException",
+				"mcp.failure.phase": "uncaught_exception",
+				"error.type": "MCP_PROCESS_EXCEPTION",
+				"error.category": "McpProcessFailure",
+				"error.code": "ECONNREFUSED",
+			}),
+		);
 		expect(testDoubles.activeSpan.setAttributes).toHaveBeenCalledWith(
 			expect.objectContaining({
 				"exception.source": "uncaughtException",
+				"mcp.failure.phase": "uncaught_exception",
+				"error.type": "MCP_PROCESS_EXCEPTION",
+				"error.category": "McpProcessFailure",
 				"error.code": "ECONNREFUSED",
 			}),
 		);
@@ -477,16 +493,34 @@ describe("telemetry initialization", () => {
 		expect(setAttribute).toHaveBeenCalledWith("user.hash", "abcdef0123");
 	});
 
-	it("preserves safe exception stacks", async () => {
+	it("exports only bounded exception attributes", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
-		const error = new Error("secret-exception-message");
+		const secret = "secret-exception-message";
+		const path = "/home/private/hevy-mcp/packages/node/src/index.ts";
+		const error = new Error(secret);
+		error.stack = `Error: ${secret}\n    at main (${path}:10:2)`;
 
-		mod.recordTelemetryException(error);
-
-		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledWith({
-			name: "Error",
-			stack: error.stack,
+		mod.recordTelemetryException(error, {
+			"mcp.failure.phase": "run",
+			"error.type": "MCP_SERVER_RUN_ERROR",
+			"error.category": "McpServerRunFailure",
 		});
+
+		expect(testDoubles.activeSpan.recordException).not.toHaveBeenCalled();
+		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledWith("exception", {
+			"exception.type": "Error",
+			"mcp.failure.phase": "run",
+			"error.type": "MCP_SERVER_RUN_ERROR",
+			"error.category": "McpServerRunFailure",
+		});
+		const exported = JSON.stringify({
+			events: testDoubles.activeSpan.addEvent.mock.calls,
+			attributes: testDoubles.activeSpan.setAttributes.mock.calls,
+		});
+		expect(exported).not.toContain(secret);
+		expect(exported).not.toContain(path);
+		expect(exported).not.toContain("exception.message");
+		expect(exported).not.toContain("exception.stacktrace");
 	});
 });
