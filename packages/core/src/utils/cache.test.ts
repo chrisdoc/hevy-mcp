@@ -137,6 +137,39 @@ describe("AsyncTtlCache", () => {
 		expect(fetcher).toHaveBeenCalledTimes(2);
 	});
 
+	it("does not let an older unshared fetch commit after the newer generation settles", async () => {
+		const cache = new AsyncTtlCache<string, string>({
+			ttlMs: 60_000,
+			maxSize: 2,
+		});
+		let resolveFirst!: (value: string) => void;
+		const fetcher = vi
+			.fn()
+			.mockImplementationOnce(
+				() =>
+					new Promise<string>((resolve) => {
+						resolveFirst = resolve;
+					}),
+			)
+			.mockResolvedValueOnce("newer");
+
+		const first = cache.getOrFetch("catalog", fetcher, {
+			shareInFlight: false,
+		});
+		const second = cache.getOrFetch("catalog", fetcher, {
+			shareInFlight: false,
+		});
+
+		await expect(second).resolves.toBe("newer");
+		resolveFirst("older");
+		await expect(first).resolves.toBe("older");
+		// The newer request cleaned up its generation before the older one
+		// settled; the older result must still be rejected for cache commit.
+		await expect(
+			cache.getOrFetch("catalog", () => Promise.resolve("unused")),
+		).resolves.toBe("newer");
+	});
+
 	it("keeps caller cancellation classifiable while waiting on shared work", async () => {
 		const cache = new AsyncTtlCache<string, string>({
 			ttlMs: 60_000,
@@ -162,8 +195,7 @@ describe("AsyncTtlCache", () => {
 		const error = await second.catch((reason: unknown) => reason);
 		expect(createSafeErrorDiagnostic(error)).toMatchObject({
 			outcome: "cancelled",
-			phase: "before-dispatch",
-			commit_state: "not_sent",
+			commit_state: "unknown",
 			safe_to_retry: false,
 		});
 		resolveFetch("shared");

@@ -20,7 +20,7 @@ import {
 	isOAuthEnabled,
 	WORKER_INVOCATION_TIMEOUT_MS,
 } from "./worker-oauth.js";
-import { executionResponse, executionStatus } from "./execution-response.js";
+import { executionResponse } from "./execution-response.js";
 
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
@@ -38,6 +38,9 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 	"https://vscode.dev", // VS Code for the Web
 	"https://github.dev", // github.dev web editor
 ] as const;
+
+/** Reserve most of the invocation budget for MCP execution after validation. */
+const WORKER_VALIDATION_TIMEOUT_MS = 5_000;
 
 export interface WorkerEnv {
 	// Trusted deployment/test binding; invalid values fail closed before auth.
@@ -210,7 +213,7 @@ function createDefaultValidationClient(
 		apiKey,
 		baseUrl,
 		maxGetRetries: 0,
-		timeoutMs: WORKER_INVOCATION_TIMEOUT_MS,
+		timeoutMs: WORKER_VALIDATION_TIMEOUT_MS,
 	});
 }
 
@@ -293,7 +296,14 @@ async function validateHevyApiKey(
 	options?: HevyRequestOptions,
 ): Promise<HevyApiKeyValidation> {
 	try {
-		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo(options);
+		const validationDeadline = Math.min(
+			options?.deadline ?? Number.POSITIVE_INFINITY,
+			Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
+		);
+		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo({
+			...options,
+			deadline: validationDeadline,
+		});
 		return "valid";
 	} catch (error) {
 		if (options?.signal?.aborted) throw error;
@@ -335,7 +345,7 @@ async function serveMcpRequest(
 		return executionHttpResponse(
 			error,
 			"Unable to process MCP request",
-			executionStatus(error, 500),
+			500,
 			null,
 		);
 	}
@@ -399,7 +409,7 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 			return executionHttpResponse(
 				error,
 				"Unable to validate the Hevy API key",
-				executionStatus(error, 502),
+				502,
 				origin,
 			);
 		}
@@ -407,14 +417,6 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 			return response("Unauthorized", 401, origin, {
 				"WWW-Authenticate": "Bearer",
 			});
-		}
-		if (validation !== "valid") {
-			return executionHttpResponse(
-				new Error("Hevy API is temporarily unavailable"),
-				"Hevy API is temporarily unavailable",
-				502,
-				origin,
-			);
 		}
 
 		return withCors(

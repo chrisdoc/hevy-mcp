@@ -6,7 +6,7 @@ import {
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	HevyHttpError,
 } from "./hevy-http-error.js";
-import { createExecutionSignal } from "./execution.js";
+import { createExecutionSignal, isAbortLike } from "./execution.js";
 function response(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {
 		status,
@@ -63,6 +63,46 @@ describe("@hevy-mcp/hevy-client", () => {
 		execution.abort(new DOMException("ignored", "AbortError"));
 		execution.cleanup();
 		expect(execution.signal.reason).toMatchObject({ message: "done" });
+	});
+
+	it.each(["AbortError", "TimeoutError"])(
+		"recognizes plain Error %s values as abort-like",
+		(name) => {
+			const error = new Error(name);
+			error.name = name;
+			expect(isAbortLike(error)).toBe(true);
+		},
+	);
+
+	it("does not classify unrelated errors as abort-like", () => {
+		expect(isAbortLike(new Error("network failure"))).toBe(false);
+		expect(isAbortLike({ name: "AbortError" })).toBe(false);
+	});
+
+	it("synchronizes HevyHttpError execution aliases", () => {
+		const error = new HevyHttpError("request failed", {
+			method: "PUT",
+			endpoint: "/v1/workouts/:workoutId",
+		});
+		error.setExecutionMetadata({
+			phase: "dispatch",
+			operationSafety: "idempotent-write",
+			commitState: "unknown",
+			safeToRetry: true,
+			outcome: "retryable_failure",
+		});
+
+		expect(error).toMatchObject({
+			phase: "dispatch",
+			phase_name: "dispatch",
+			operationSafety: "idempotent-write",
+			operation_safety: "idempotent-write",
+			commitState: "unknown",
+			commit_state: "unknown",
+			safeToRetry: true,
+			safe_to_retry: true,
+			outcome: "retryable_failure",
+		});
 	});
 
 	it("emits bounded events without raw response or exception data", async () => {
@@ -544,7 +584,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
-	it("does not let public safety metadata make a POST retryable", async () => {
+	it("derives POST safety from the HTTP method", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
 		const client = createHevyClient({
 			apiKey: "secret-key",
@@ -554,7 +594,7 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		await expect(
 			client.createWorkout({ workout: {} } as never, {
-				operation_safety: "read",
+				deadline: Date.now() + 1_000,
 			}),
 		).rejects.toMatchObject({
 			commit_state: "unknown",

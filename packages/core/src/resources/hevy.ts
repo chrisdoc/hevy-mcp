@@ -11,8 +11,7 @@ import type {
 import type { ToolRuntime } from "../tools/tool-runtime.js";
 import { fetchAllPages } from "../utils/pagination.js";
 import { projectRoutineFolder } from "../utils/response-contracts.js";
-import { createExecutionProjection } from "../execution.js";
-import { createSafeErrorDiagnostic } from "../utils/safe-error-diagnostic.js";
+import { createExecutionErrorProjection } from "../utils/error-handler.js";
 
 const JSON_MIME_TYPE = "application/json";
 
@@ -33,7 +32,7 @@ function createResourceErrorResult(
 	error: unknown,
 ): ReadResourceResult {
 	return createJsonResourceResult(uri, {
-		error: createExecutionProjection(createSafeErrorDiagnostic(error)),
+		error: createExecutionErrorProjection(error),
 	});
 }
 

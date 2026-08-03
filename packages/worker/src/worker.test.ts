@@ -474,7 +474,12 @@ describe("real stateless SDK transport", () => {
 		expect(result.status).toBe(200);
 		expect(validationOptions?.signal).toBeInstanceOf(AbortSignal);
 		expect(requestOptions?.signal).toBeInstanceOf(AbortSignal);
-		expect(validationOptions?.deadline).toEqual(requestOptions?.deadline);
+		expect(validationOptions?.deadline).toBeLessThan(
+			requestOptions?.deadline ?? Number.POSITIVE_INFINITY,
+		);
+		expect(requestOptions?.deadline).toBeGreaterThan(
+			(validationOptions?.deadline ?? 0) + 5_000 - 100,
+		);
 		expect(validationOptions?.deadline).toBeGreaterThan(Date.now());
 	});
 
@@ -520,7 +525,7 @@ describe("real stateless SDK transport", () => {
 			error: {
 				outcome: "cancelled",
 				phase: "before-dispatch",
-				commit_state: "not_sent",
+				commit_state: "unknown",
 				safe_to_retry: false,
 			},
 		});

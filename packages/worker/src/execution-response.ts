@@ -1,7 +1,24 @@
-import {
-	createExecutionProjection,
-	createSafeErrorDiagnostic,
-} from "@hevy-mcp/core";
+import { createExecutionErrorProjection } from "@hevy-mcp/core";
+
+export interface ExecutionOutcome {
+	readonly execution: ReturnType<typeof createExecutionErrorProjection>;
+	readonly status: number;
+}
+
+/** Compute one bounded projection and transport status for a failure. */
+export function executionOutcome(
+	error: unknown,
+	fallback: number,
+): ExecutionOutcome {
+	const execution = createExecutionErrorProjection(error);
+	const status =
+		execution.outcome === "deadline_exceeded"
+			? 504
+			: execution.outcome === "cancelled"
+				? 499
+				: fallback;
+	return { execution, status };
+}
 
 /**
  * Render one privacy-safe execution projection for Worker HTTP adapters.
@@ -11,18 +28,21 @@ import {
 export function executionResponse(
 	error: unknown,
 	message: string,
-	status: number,
+	statusOrOutcome: number | ExecutionOutcome,
 ): Response {
-	const execution = createExecutionProjection(createSafeErrorDiagnostic(error));
-	return new Response(JSON.stringify({ error: { message, ...execution } }), {
-		status,
-		headers: { "Content-Type": "application/json" },
-	});
+	const outcome =
+		typeof statusOrOutcome === "number"
+			? executionOutcome(error, statusOrOutcome)
+			: statusOrOutcome;
+	return new Response(
+		JSON.stringify({ error: { message, ...outcome.execution } }),
+		{
+			status: outcome.status,
+			headers: { "Content-Type": "application/json" },
+		},
+	);
 }
 
 export function executionStatus(error: unknown, fallback: number): number {
-	const outcome = createSafeErrorDiagnostic(error).outcome;
-	if (outcome === "deadline_exceeded") return 504;
-	if (outcome === "cancelled") return 499;
-	return fallback;
+	return executionOutcome(error, fallback).status;
 }

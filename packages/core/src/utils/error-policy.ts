@@ -66,6 +66,36 @@ type RetryAwareError = {
 	hevyRetryExhausted?: boolean;
 };
 
+const ABORT_TIMEOUT_METADATA = {
+	AbortError: {
+		code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+		outcome: "cancelled" as const,
+	},
+	TimeoutError: {
+		code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+		outcome: "deadline_exceeded" as const,
+	},
+} as const;
+
+type AbortTimeoutErrorMetadata =
+	(typeof ABORT_TIMEOUT_METADATA)[keyof typeof ABORT_TIMEOUT_METADATA] & {
+		name: keyof typeof ABORT_TIMEOUT_METADATA;
+	};
+
+/** Map raw cancellation errors to their bounded execution metadata. */
+function getAbortTimeoutErrorMetadata(
+	error: unknown,
+): AbortTimeoutErrorMetadata | undefined {
+	try {
+		if (!(error instanceof Error)) return undefined;
+		const name = error.name as keyof typeof ABORT_TIMEOUT_METADATA;
+		const metadata = ABORT_TIMEOUT_METADATA[name];
+		return metadata ? { name, ...metadata } : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 const SAFE_ERROR_CODES = new Set([
 	"EAI_AGAIN",
 	"ECONNABORTED",
@@ -334,10 +364,8 @@ function classifyError(error: unknown): SafeErrorCategory {
 }
 
 function getSafeCode(error: unknown): string | undefined {
-	if (error instanceof Error) {
-		if (error.name === "TimeoutError") return HEVY_DEADLINE_EXCEEDED_ERROR_CODE;
-		if (error.name === "AbortError") return HEVY_REQUEST_ABORTED_ERROR_CODE;
-	}
+	const abortTimeout = getAbortTimeoutErrorMetadata(error);
+	if (abortTimeout) return abortTimeout.code;
 	if (!error || typeof error !== "object" || !("code" in error)) {
 		return undefined;
 	}
@@ -365,23 +393,12 @@ function getExecutionFields(
 	"phase" | "operation_safety" | "commit_state" | "safe_to_retry" | "outcome"
 > {
 	if (!isHevyHttpError(error)) {
-		const name = error instanceof Error ? error.name : undefined;
-		if (name === "TimeoutError") {
+		const abortTimeout = getAbortTimeoutErrorMetadata(error);
+		if (abortTimeout) {
 			return {
-				phase: "before-dispatch",
-				operation_safety: "read",
-				commit_state: "not_sent",
+				commit_state: "unknown",
 				safe_to_retry: false,
-				outcome: "deadline_exceeded",
-			};
-		}
-		if (name === "AbortError") {
-			return {
-				phase: "before-dispatch",
-				operation_safety: "read",
-				commit_state: "not_sent",
-				safe_to_retry: false,
-				outcome: "cancelled",
+				outcome: abortTimeout.outcome,
 			};
 		}
 		return {};

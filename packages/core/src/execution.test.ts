@@ -59,7 +59,6 @@ describe("bindClientExecution", () => {
 		const control = {
 			signal,
 			deadline: 123,
-			operation_safety: "read" as const,
 		};
 		const bound = bindClientExecution(methods, control) as unknown as Record<
 			string,
@@ -77,7 +76,7 @@ describe("bindClientExecution", () => {
 			const firstCall = spy.mock.calls.at(-1) ?? [];
 			expect(firstCall[index]).toMatchObject(control);
 
-			const existingOptions = { deadline: 456, operation_safety: "read" };
+			const existingOptions = { deadline: 456 };
 			const withOptions = [...baseArgs[method]];
 			withOptions[index] = existingOptions;
 			invoke(...withOptions);

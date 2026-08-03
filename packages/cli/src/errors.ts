@@ -1,7 +1,4 @@
-import {
-	createExecutionProjection,
-	createSafeErrorDiagnostic,
-} from "@hevy-mcp/core";
+import { createExecutionErrorProjection } from "@hevy-mcp/core";
 import { HevyHttpError, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { ConfigurationError, UsageError } from "./arguments.js";
 
@@ -27,7 +24,7 @@ function executionFields(
 		code: _code,
 		status: _status,
 		...execution
-	} = createExecutionProjection(createSafeErrorDiagnostic(error));
+	} = createExecutionErrorProjection(error);
 	return execution;
 }
 

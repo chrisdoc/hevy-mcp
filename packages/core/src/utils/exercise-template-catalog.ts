@@ -32,7 +32,7 @@ export interface ExerciseTemplateCatalog {
 }
 
 export function createExerciseTemplateCatalog(
-	hevyClient: HevyClient,
+	hevyClient: Pick<HevyClient, "getExerciseTemplates">,
 	cacheObserver?: CacheObserver,
 ): ExerciseTemplateCatalog {
 	const cache = new AsyncTtlCache<string, ExerciseTemplate[]>({

@@ -67,8 +67,11 @@ describe("exercise template catalog", () => {
 	it("does not share a controlled refresh between independently cancellable callers", async () => {
 		const firstController = new AbortController();
 		const secondController = new AbortController();
-		const responses = [
-			new Promise<unknown>((resolve, reject) => {
+		type ExerciseTemplatesResponse = Awaited<
+			ReturnType<HevyClient["getExerciseTemplates"]>
+		>;
+		const responses: Array<Promise<ExerciseTemplatesResponse>> = [
+			new Promise<ExerciseTemplatesResponse>((resolve, reject) => {
 				firstController.signal.addEventListener(
 					"abort",
 					() => reject(firstController.signal.reason),
@@ -84,7 +87,7 @@ describe("exercise template catalog", () => {
 					100,
 				);
 			}),
-			new Promise<unknown>((resolve) =>
+			new Promise<ExerciseTemplatesResponse>((resolve) =>
 				setTimeout(
 					() =>
 						resolve({
@@ -96,8 +99,8 @@ describe("exercise template catalog", () => {
 				),
 			),
 		];
-		const getExerciseTemplates = vi.fn(
-			(_params: unknown, _options?: { signal?: AbortSignal }) => {
+		const getExerciseTemplates = vi.fn<HevyClient["getExerciseTemplates"]>(
+			(_params, _options) => {
 				const response = responses.shift();
 				if (!response) throw new Error("Unexpected extra page");
 				return response;
@@ -105,7 +108,7 @@ describe("exercise template catalog", () => {
 		);
 		const client = {
 			getExerciseTemplates,
-		} as unknown as HevyClient;
+		} satisfies Pick<HevyClient, "getExerciseTemplates">;
 		const catalog = createExerciseTemplateCatalog(client);
 
 		const first = catalog.get({

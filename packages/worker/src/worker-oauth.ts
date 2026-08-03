@@ -6,7 +6,7 @@ import {
 import { z } from "zod";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
-import { executionResponse, executionStatus } from "./execution-response.js";
+import { executionOutcome, executionResponse } from "./execution-response.js";
 
 const MCP_PATH = "/mcp";
 const AUTHORIZE_PATH = "/authorize";
@@ -25,11 +25,10 @@ export const OAUTH_ACCESS_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 export const OAUTH_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 /** Outcome of checking a Hevy API key against the upstream Hevy API. */
-export type HevyApiKeyValidation =
-	| "valid"
-	| "invalid"
-	| "unavailable"
-	| "config-error";
+export type HevyApiKeyValidation = "valid" | "invalid";
+type HevyOAuthValidation = HevyApiKeyValidation | "config-error";
+
+const WORKER_CONFIGURATION_ERROR = "Worker configuration error";
 
 /**
  * Hevy-specific behavior injected by the Worker entrypoint so this module
@@ -41,7 +40,7 @@ export interface HevyOAuthDependencies<Env> {
 		env: Env,
 		signal?: AbortSignal,
 		deadline?: number,
-	): Promise<HevyApiKeyValidation>;
+	): Promise<HevyOAuthValidation>;
 	serveMcp(
 		request: Request,
 		env: Env,
@@ -274,6 +273,58 @@ function authorizeErrorResponse(message: string, status: number): Response {
 	);
 }
 
+interface ValidationFailure {
+	message: string;
+	status: number;
+	readonly outcome: ReturnType<typeof executionOutcome>;
+}
+
+function validationFailure(
+	error: unknown,
+	request: Request,
+): ValidationFailure {
+	const outcome = executionOutcome(error, request.signal.aborted ? 499 : 502);
+	const executionOutcomeName = outcome.execution.outcome;
+	return {
+		message:
+			executionOutcomeName === "deadline_exceeded"
+				? "Request deadline exceeded"
+				: executionOutcomeName === "cancelled" || request.signal.aborted
+					? "Request cancelled"
+					: "Unable to validate the Hevy API key",
+		status: outcome.status,
+		outcome,
+	};
+}
+
+function renderValidationFailure(
+	error: unknown,
+	request: Request,
+	rerender: (message: string, status: number) => Response,
+): Response {
+	const failure = validationFailure(error, request);
+	return rerender(failure.message, failure.status);
+}
+
+function jsonValidationFailure(error: unknown, request: Request): Response {
+	const failure = validationFailure(error, request);
+	return executionResponse(error, failure.message, failure.outcome);
+}
+
+function authorizeConfigErrorResponse(
+	rerender: (message: string, status: number) => Response,
+): Response {
+	return rerender(WORKER_CONFIGURATION_ERROR, 500);
+}
+
+function jsonConfigErrorResponse(): Response {
+	return executionResponse(
+		new TypeError(WORKER_CONFIGURATION_ERROR),
+		WORKER_CONFIGURATION_ERROR,
+		500,
+	);
+}
+
 export async function handleAuthorizeGet(
 	request: Request,
 	helpers: OAuthHelpers,
@@ -344,7 +395,7 @@ export async function handleAuthorizePost<Env>(
 	const apiKey = typeof apiKeyEntry === "string" ? apiKeyEntry.trim() : "";
 	if (!apiKey) return rerender("Enter your Hevy API key.", 400);
 
-	let validation: HevyApiKeyValidation;
+	let validation: HevyOAuthValidation;
 	try {
 		validation = await dependencies.validateApiKey(
 			apiKey,
@@ -353,32 +404,10 @@ export async function handleAuthorizePost<Env>(
 			deadline,
 		);
 	} catch (error) {
-		const outcome = createSafeErrorDiagnostic(error).outcome;
-		return executionResponse(
-			error,
-			outcome === "deadline_exceeded"
-				? "Request deadline exceeded"
-				: outcome === "cancelled" || request.signal.aborted
-					? "Request cancelled"
-					: "Unable to validate the Hevy API key",
-			request.signal.aborted
-				? 499
-				: executionStatus(error, outcome === "deadline_exceeded" ? 504 : 502),
-		);
+		return renderValidationFailure(error, request, rerender);
 	}
 	if (validation === "config-error") {
-		return executionResponse(
-			new TypeError("Worker configuration error"),
-			"Worker configuration error",
-			500,
-		);
-	}
-	if (validation === "unavailable") {
-		return executionResponse(
-			new Error("Hevy API is temporarily unavailable"),
-			"Hevy is temporarily unavailable. Please try again in a moment.",
-			502,
-		);
+		return authorizeConfigErrorResponse(rerender);
 	}
 	if (validation === "invalid") {
 		return rerender(
@@ -442,7 +471,7 @@ async function handleAuthorizedMcpRequest<Env>(
 		typeof props?.hevyApiKey === "string" ? props.hevyApiKey : null;
 	if (!apiKey) return oauthUnauthorizedResponse(request);
 
-	let validation: HevyApiKeyValidation;
+	let validation: HevyOAuthValidation;
 	try {
 		validation = await dependencies.validateApiKey(
 			apiKey,
@@ -451,34 +480,12 @@ async function handleAuthorizedMcpRequest<Env>(
 			deadline,
 		);
 	} catch (error) {
-		const outcome = createSafeErrorDiagnostic(error).outcome;
-		return executionResponse(
-			error,
-			outcome === "deadline_exceeded"
-				? "Request deadline exceeded"
-				: outcome === "cancelled" || request.signal.aborted
-					? "Request cancelled"
-					: "Unable to validate the Hevy API key",
-			request.signal.aborted
-				? 499
-				: executionStatus(error, outcome === "deadline_exceeded" ? 504 : 502),
-		);
+		return jsonValidationFailure(error, request);
 	}
 	if (validation === "config-error") {
-		return executionResponse(
-			new TypeError("Worker configuration error"),
-			"Worker configuration error",
-			500,
-		);
+		return jsonConfigErrorResponse();
 	}
 	if (validation === "invalid") return oauthUnauthorizedResponse(request);
-	if (validation === "unavailable") {
-		return executionResponse(
-			new Error("Hevy API is temporarily unavailable"),
-			"Hevy API is temporarily unavailable",
-			502,
-		);
-	}
 	return dependencies.serveMcp(request, env, apiKey, deadline);
 }
 

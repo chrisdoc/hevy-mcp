@@ -279,7 +279,7 @@ describe("authorize endpoint", () => {
 		expect(completeAuthorization).not.toHaveBeenCalled();
 	});
 
-	it("returns a structured 502 when Hevy is unavailable", async () => {
+	it("re-renders the form when Hevy validation is unavailable", async () => {
 		const result = await handleAuthorizePost(
 			authorizePostRequest({
 				oauth_request: encodeAuthRequest(sampleAuthRequest),
@@ -288,21 +288,18 @@ describe("authorize endpoint", () => {
 			{},
 			createFakeHelpers(),
 			createDependencies({
-				validateApiKey: vi.fn().mockResolvedValue("unavailable"),
+				validateApiKey: vi.fn().mockRejectedValue(new Error("upstream outage")),
 			}),
 		);
+
 		expect(result.status).toBe(502);
-		expect(await result.json()).toMatchObject({
-			error: {
-				outcome: "terminal_failure",
-				phase: "before-dispatch",
-				commit_state: "not_sent",
-				safe_to_retry: false,
-			},
-		});
+		expect(result.headers.get("content-type")).toContain("text/html");
+		expect(await result.text()).toContain(
+			"Unable to validate the Hevy API key",
+		);
 	});
 
-	it("returns a structured 500 when OAuth validation has a configuration error", async () => {
+	it("re-renders the form when OAuth validation has a configuration error", async () => {
 		const result = await handleAuthorizePost(
 			authorizePostRequest({
 				oauth_request: encodeAuthRequest(sampleAuthRequest),
@@ -316,12 +313,8 @@ describe("authorize endpoint", () => {
 		);
 
 		expect(result.status).toBe(500);
-		expect(await result.json()).toMatchObject({
-			error: {
-				message: "Worker configuration error",
-				outcome: "terminal_failure",
-			},
-		});
+		expect(result.headers.get("content-type")).toContain("text/html");
+		expect(await result.text()).toContain("Worker configuration error");
 	});
 
 	it("rejects submissions without a usable auth request", async () => {
@@ -382,14 +375,8 @@ describe("authorize endpoint", () => {
 		controller.abort(new DOMException("request cancelled", "AbortError"));
 		const result = await pending;
 		expect(result.status).toBe(499);
-		expect(await result.json()).toMatchObject({
-			error: {
-				outcome: "cancelled",
-				phase: "before-dispatch",
-				commit_state: "not_sent",
-				safe_to_retry: false,
-			},
-		});
+		expect(result.headers.get("content-type")).toContain("text/html");
+		expect(await result.text()).toContain("Request cancelled");
 	});
 
 	it("preserves an OAuth validation deadline outcome", async () => {
@@ -417,9 +404,8 @@ describe("authorize endpoint", () => {
 		);
 		const result = await pending;
 		expect(result.status).toBe(504);
-		expect(await result.json()).toMatchObject({
-			error: { outcome: "deadline_exceeded", safe_to_retry: false },
-		});
+		expect(result.headers.get("content-type")).toContain("text/html");
+		expect(await result.text()).toContain("Request deadline exceeded");
 	});
 });
 

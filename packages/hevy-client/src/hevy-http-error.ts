@@ -25,6 +25,14 @@ export interface HevyHttpErrorOptions {
 	outcome?: HevyExecutionOutcome;
 }
 
+export interface HevyExecutionMetadata {
+	phase?: HevyRequestPhase;
+	operationSafety?: HevyOperationSafety;
+	commitState?: HevyCommitState;
+	safeToRetry?: boolean;
+	outcome?: HevyExecutionOutcome;
+}
+
 /** Sanitized HTTP error that never contains credentials or full request URLs. */
 export class HevyHttpError extends Error {
 	readonly status?: number;
@@ -33,16 +41,16 @@ export class HevyHttpError extends Error {
 	readonly headers?: Headers;
 	readonly method: string;
 	readonly endpoint: string;
-	readonly phase?: HevyRequestPhase;
-	readonly operationSafety?: HevyOperationSafety;
-	readonly commitState?: HevyCommitState;
-	readonly safeToRetry?: boolean;
-	readonly outcome?: HevyExecutionOutcome;
+	phase?: HevyRequestPhase;
+	operationSafety?: HevyOperationSafety;
+	commitState?: HevyCommitState;
+	safeToRetry?: boolean;
+	outcome?: HevyExecutionOutcome;
 	/** Stable snake-case aliases for adapter/protocol projections. */
-	readonly phase_name?: HevyRequestPhase;
-	readonly operation_safety?: HevyOperationSafety;
-	readonly commit_state?: HevyCommitState;
-	readonly safe_to_retry?: boolean;
+	phase_name?: HevyRequestPhase;
+	operation_safety?: HevyOperationSafety;
+	commit_state?: HevyCommitState;
+	safe_to_retry?: boolean;
 	code?: string;
 	hevyRetryCount?: number;
 	hevyRetryExhausted?: boolean;
@@ -57,15 +65,20 @@ export class HevyHttpError extends Error {
 		this.method = options.method;
 		this.endpoint = options.endpoint;
 		this.code = options.code;
-		this.phase = options.phase;
-		this.operationSafety = options.operationSafety;
-		this.commitState = options.commitState;
-		this.safeToRetry = options.safeToRetry;
-		this.outcome = options.outcome;
-		this.phase_name = options.phase;
-		this.operation_safety = options.operationSafety;
-		this.commit_state = options.commitState;
-		this.safe_to_retry = options.safeToRetry;
+		this.setExecutionMetadata(options);
+	}
+
+	/** Update execution fields and their protocol aliases as one lifecycle step. */
+	setExecutionMetadata(metadata: HevyExecutionMetadata): void {
+		this.phase = metadata.phase;
+		this.phase_name = metadata.phase;
+		this.operationSafety = metadata.operationSafety;
+		this.operation_safety = metadata.operationSafety;
+		this.commitState = metadata.commitState;
+		this.commit_state = metadata.commitState;
+		this.safeToRetry = metadata.safeToRetry;
+		this.safe_to_retry = metadata.safeToRetry;
+		this.outcome = metadata.outcome;
 	}
 }
 

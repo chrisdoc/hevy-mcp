@@ -61,6 +61,8 @@ export class AsyncTtlCache<TKey, TValue> {
 	private readonly observer?: CacheObserver;
 	private readonly entries = new Map<TKey, CacheEntry<TValue>>();
 	private readonly inFlight = new Map<TKey, InFlightEntry<TValue>>();
+	/** Latest request generation per key, including unshared requests. */
+	private readonly latestRequestIds = new Map<TKey, number>();
 	private requestCounter = 0;
 
 	constructor(options: AsyncCacheOptions, now: () => number = Date.now) {
@@ -199,12 +201,13 @@ export class AsyncTtlCache<TKey, TValue> {
 		}
 
 		const requestId = ++this.requestCounter;
+		this.latestRequestIds.set(key, requestId);
 		const observationScope = this.startObservation(observationState);
 		const request = (async () => {
 			try {
 				const value = await fetcher();
 
-				if (!shareInFlight || this.isCurrentRequest(key, requestId)) {
+				if (this.isCurrentRequest(key, requestId)) {
 					this.setValue(key, value);
 				}
 
@@ -223,6 +226,9 @@ export class AsyncTtlCache<TKey, TValue> {
 				if (inFlightEntry?.requestId === requestId) {
 					this.inFlight.delete(key);
 				}
+				if (this.latestRequestIds.get(key) === requestId) {
+					this.latestRequestIds.delete(key);
+				}
 			}
 		})();
 
@@ -233,11 +239,13 @@ export class AsyncTtlCache<TKey, TValue> {
 	invalidate(key: TKey): void {
 		this.entries.delete(key);
 		this.inFlight.delete(key);
+		this.latestRequestIds.delete(key);
 	}
 
 	clear(): void {
 		this.entries.clear();
 		this.inFlight.clear();
+		this.latestRequestIds.clear();
 	}
 
 	get size(): number {
@@ -245,7 +253,7 @@ export class AsyncTtlCache<TKey, TValue> {
 	}
 
 	private isCurrentRequest(key: TKey, requestId: number): boolean {
-		return this.inFlight.get(key)?.requestId === requestId;
+		return this.latestRequestIds.get(key) === requestId;
 	}
 
 	private markAsRecentlyUsed(key: TKey, entry: CacheEntry<TValue>): void {

@@ -35,6 +35,7 @@ export {
 export { createSafeErrorDiagnostic } from "./utils/safe-error-diagnostic.js";
 export {
 	createMcpToolFailureEvent,
+	createExecutionErrorProjection,
 	type McpToolFailureEvent,
 } from "./utils/error-handler.js";
 export { ErrorType } from "./utils/error-policy.js";

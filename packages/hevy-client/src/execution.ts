@@ -43,7 +43,6 @@ export interface HevyExecutionControl {
 	readonly signal?: AbortSignal;
 	/** Absolute epoch milliseconds. It is never reset for a retry or page. */
 	readonly deadline?: number;
-	readonly operation_safety?: HevyOperationSafety;
 }
 
 export interface HevyExecutionOptions extends HevyExecutionControl {}
@@ -138,9 +137,6 @@ export function createExecutionSignal(control: HevyExecutionControl): {
 }
 
 export function isAbortLike(error: unknown): boolean {
-	return (
-		(error instanceof DOMException && error.name === "AbortError") ||
-		(error instanceof DOMException && error.name === "TimeoutError") ||
-		(error instanceof Error && error.name === "AbortError")
-	);
+	if (!(error instanceof Error)) return false;
+	return error.name === "AbortError" || error.name === "TimeoutError";
 }

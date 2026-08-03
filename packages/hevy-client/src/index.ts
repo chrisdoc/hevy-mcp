@@ -40,5 +40,6 @@ export {
 export {
 	HevyHttpError,
 	isHevyHttpError,
+	type HevyExecutionMetadata,
 	type HevyHttpErrorOptions,
 } from "./hevy-http-error.js";

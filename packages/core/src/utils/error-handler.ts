@@ -10,6 +10,7 @@ import {
 	type StructuredExecutionProjection,
 	type ToolExecutionContext,
 } from "../execution.js";
+import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 
 export { ErrorType } from "./error-policy.js";
 
@@ -30,6 +31,14 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 }
 
 export type StructuredExecutionError = StructuredExecutionProjection;
+
+/** Build the canonical execution projection for an arbitrary thrown value. */
+export function createExecutionErrorProjection(
+	error: unknown,
+): StructuredExecutionError {
+	return createExecutionProjection(createSafeErrorDiagnostic(error));
+}
+
 export interface McpToolFailureEvent {
 	readonly event: "mcp.tool.failure";
 	readonly "mcp.tool.name": string;

@@ -63,7 +63,6 @@ type KubbClient = {
 
 type InternalRequestControl = {
 	readonly hevyDeadline?: number;
-	readonly hevyOperationSafety?: HevyOperationSafety;
 };
 
 export type HevyApiOutcome =
@@ -260,7 +259,7 @@ function withTimeout<T>(
 						settled = true;
 						signal?.removeEventListener("abort", onAbort);
 						onTimeout();
-						reject(new DOMException("Operation timed out", "AbortError"));
+						reject(new DOMException("Operation timed out", "TimeoutError"));
 					},
 					Math.max(0, timeoutMs),
 				)
@@ -533,11 +532,17 @@ function classifyExecutionFailure(
 	deadline: number,
 	deadlineTriggered = false,
 ): ExecutionFailureState {
-	const deadlineExceeded = deadlineTriggered || isDeadlineExceeded(deadline);
+	const attemptTimedOut = isAbortLike(cause) && !executionSignal.aborted;
+	const deadlineExceeded =
+		deadlineTriggered ||
+		isDeadlineExceeded(deadline) ||
+		(attemptTimedOut &&
+			cause instanceof Error &&
+			cause.name === "TimeoutError");
 	return {
 		deadlineExceeded,
 		canceled: executionSignal.aborted && !deadlineExceeded,
-		attemptTimedOut: isAbortLike(cause) && !executionSignal.aborted,
+		attemptTimedOut,
 	};
 }
 
@@ -583,15 +588,11 @@ function applyExecutionMetadata(
 	safeToRetry: boolean,
 	outcome: HevyApiOutcome,
 ): void {
-	Object.assign(error, {
+	error.setExecutionMetadata({
 		phase,
-		phase_name: phase,
 		operationSafety: safety,
-		operation_safety: safety,
 		commitState,
-		commit_state: commitState,
 		safeToRetry,
-		safe_to_retry: safeToRetry,
 		outcome,
 	});
 }
@@ -605,9 +606,6 @@ function requestOptions(
 		...(options?.signal ? { signal: options.signal } : {}),
 		...(options?.deadline !== undefined
 			? { hevyDeadline: options.deadline }
-			: {}),
-		...(options?.operation_safety
-			? { hevyOperationSafety: options.operation_safety }
 			: {}),
 	};
 }
@@ -843,10 +841,12 @@ function transitionAfterAttemptFailure(
 		error.hevyRetryExhausted = true;
 		error.hevyRetryCount = options.retryCount;
 		error.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
-		Object.assign(error, {
+		error.setExecutionMetadata({
+			phase: error.phase,
+			operationSafety: error.operationSafety,
+			commitState: error.commitState,
 			safeToRetry: false,
-			safe_to_retry: false,
-			outcome: "terminal_failure" as const,
+			outcome: "terminal_failure",
 		});
 	}
 	const observationOutcome: HevyApiOutcome = expectedReason
@@ -950,8 +950,7 @@ function createNativeClient(
 		} as RequestConfig<unknown> & InternalRequestControl;
 		const { method, endpoint, page } = getRequestContext(normalized);
 		const url = buildUrl(baseUrl, normalized);
-		// The HTTP method is authoritative. Caller-controlled metadata may only
-		// describe an operation; it must never reclassify a POST as retryable.
+		// The HTTP method is authoritative for operation safety and retry policy.
 		const safety = operationSafetyForMethod(method);
 		// `timeoutMs` is the default logical-operation budget. Establish its
 		// absolute deadline once so retries and response-body consumption cannot
@@ -965,8 +964,7 @@ function createNativeClient(
 
 		try {
 			while (true) {
-				const remaining =
-					deadline === undefined ? timeoutMs : remainingDeadlineMs(deadline);
+				const remaining = remainingDeadlineMs(deadline);
 				if (executionSignal.signal.aborted || remaining <= 0) {
 					const deadlineExceeded = remaining <= 0;
 					const error = createExecutionError({
@@ -1185,9 +1183,11 @@ export function createClient(
 			templateId: string,
 			options?: HevyRequestOptions,
 		): ReturnType<typeof api.getV1ExerciseTemplatesExercisetemplateid> =>
-			api.getV1ExerciseTemplatesExercisetemplateid(templateId, headers, {
-				...requestOptions(options, client),
-			}),
+			api.getV1ExerciseTemplatesExercisetemplateid(
+				templateId,
+				headers,
+				requestOptions(options, client),
+			),
 		getExerciseHistory: (
 			exerciseTemplateId: string,
 			params?: GetV1ExerciseHistoryExercisetemplateidQueryParams,
@@ -1266,10 +1266,8 @@ export function createClient(
 				requestOptions(options, client),
 			),
 		getUserInfo: (
-			options: HevyRequestOptions = {},
+			options?: HevyRequestOptions,
 		): ReturnType<typeof api.getV1UserInfo> =>
-			api.getV1UserInfo(headers, {
-				...requestOptions(options, client),
-			}),
+			api.getV1UserInfo(headers, requestOptions(options, client)),
 	};
 }

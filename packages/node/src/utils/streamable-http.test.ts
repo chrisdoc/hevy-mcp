@@ -301,6 +301,10 @@ describe("Streamable HTTP server", () => {
 
 	it("aborts active session execution when DELETE closes the transport", async () => {
 		let sessionSignal: AbortSignal | undefined;
+		let markStarted!: () => void;
+		const toolStarted = new Promise<void>((resolve) => {
+			markStarted = resolve;
+		});
 		const createAbortAwareServer = async ({
 			lifecycleSignal,
 		}: {
@@ -313,6 +317,7 @@ describe("Streamable HTTP server", () => {
 				"mock-tool",
 				{ description: "A mocked tool" },
 				async () => {
+					markStarted();
 					await new Promise<void>((resolve) =>
 						lifecycleSignal?.addEventListener("abort", () => resolve(), {
 							once: true,
@@ -343,7 +348,7 @@ describe("Streamable HTTP server", () => {
 			},
 			{ "mcp-session-id": sessionId },
 		).catch(() => undefined);
-		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+		await toolStarted;
 		await expect(
 			call(port, "DELETE", undefined, { "mcp-session-id": sessionId }),
 		).resolves.toMatchObject({ statusCode: 200 });
