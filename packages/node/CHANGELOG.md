@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 5.0.5
+
+### Patch Changes
+
+- [#850](https://github.com/chrisdoc/hevy-mcp/pull/850) [`fe6ef1d`](https://github.com/chrisdoc/hevy-mcp/commit/fe6ef1d0351af7e8128cb5a33a8eb01b32084540) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Enrich SDK protocol spans and export privacy-safe failure events.
+
 ## 5.0.4
 
 ### Patch Changes
