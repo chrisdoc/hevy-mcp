@@ -1,0 +1,107 @@
+{
+	"$schema": "./node_modules/nx/schemas/project-schema.json",
+	"name": "repository",
+	"root": ".",
+	"projectType": "library",
+	"tags": ["runtime:neutral", "publishability:private", "role:control-plane"],
+	"targets": {
+		"check:workspaces": {
+			"inputs": ["controlPlaneInputs"]
+		},
+		"check:boundaries": {
+			"inputs": ["sourceInputs", "controlPlaneInputs"]
+		},
+		"check:exports": {
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"check:release-candidates": {
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"check:package-changesets": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
+		},
+		"check:types": {
+			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+		},
+		"check": {
+			"inputs": ["sourceInputs", "controlPlaneInputs"]
+		},
+		"check:changeset": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
+		},
+		"test:pr": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "npm run test:pr",
+				"env": { "FORCE_COLOR": "0" }
+			},
+			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+		},
+		"build": {
+			"outputs": ["{workspaceRoot}/packages/node/dist"],
+			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+		},
+		"build:client": {
+			"outputs": ["{workspaceRoot}/packages/hevy-client/src/generated"],
+			"inputs": [
+				"{workspaceRoot}/openapi-spec.json",
+				"{workspaceRoot}/packages/hevy-client/kubb.config.ts",
+				"{workspaceRoot}/packages/hevy-client/package.json",
+				"controlPlaneInputs"
+			]
+		},
+		"sync:server-manifest": {
+			"outputs": [
+				"{workspaceRoot}/server.json",
+				"{workspaceRoot}/plugin.json",
+				"{workspaceRoot}/packages/node/server.json"
+			],
+			"inputs": [
+				"{workspaceRoot}/server.json",
+				"{workspaceRoot}/plugin.json",
+				"{workspaceRoot}/packages/node/package.json",
+				"{workspaceRoot}/scripts/server-manifest.mjs"
+			]
+		},
+		"test:coverage": {
+			"outputs": [
+				"{workspaceRoot}/coverage/unit",
+				"{workspaceRoot}/coverage/mocked"
+			],
+			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+		},
+		"test:performance": {
+			"outputs": ["{workspaceRoot}/test-results/performance/summary.json"],
+			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+		},
+		"pack:artifacts": {
+			"executor": "nx:run-commands",
+			"cache": false,
+			"dependsOn": ["hevy-mcp:build", "@chrisdoc/hevy-cli:build"],
+			"options": {
+				"command": "mkdir -p .nx/pack && npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent"
+			},
+			"outputs": ["{workspaceRoot}/.nx/pack/*.tgz"],
+			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+		},
+		"dependency-cruiser": {
+			"executor": "nx:run-commands",
+			"options": { "command": "npm run check:dependency-cruiser" },
+			"inputs": ["sourceInputs", "controlPlaneInputs"]
+		},
+		"control-plane": {
+			"dependsOn": [
+				"check:workspaces",
+				"check:boundaries",
+				"check:exports",
+				"test:pr",
+				"check",
+				"check:types",
+				"check:changeset"
+			],
+			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+		}
+	}
+}
