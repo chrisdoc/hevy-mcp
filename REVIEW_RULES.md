@@ -14,9 +14,17 @@ lines; do not speculate about unrelated code.
 - Never commit `.env` files, API keys, credentials, tokens, or other secrets.
 - Follow the configured formatter: use tabs for indentation and double quotes
   where the project configuration requires them.
-- Every source-code or dependency change requires a changeset. Use a versioned
-  changeset only for user-facing, runtime-visible changes; use
-  `npx changeset --empty` for docs, CI, tests, refactors, and other
-  internal-only changes.
+- The root is a private repository orchestrator; runtime/package code and
+  manifests are under `packages/*`.
+- Files under `packages/*`, runtime-visible behavior changes, workspace package
+  dependency changes, and explicit release triggers such as
+  `cloudflare.config.ts` require a non-empty bump Changeset naming every affected
+  package.
+- An empty Changeset is allowed only when the entire PR is no-release/internal-
+  only and changes no workspace package or explicit release trigger; it cannot
+  accompany a release-triggering change. Docs, CI, repository-only
+  tests/tooling, and chores may qualify only when they meet those conditions.
+- A Conventional Commit type alone does not determine empty-Changeset
+  eligibility.
 - After upgrading the MCP TypeScript SDK packages, rerun the stdio observability
   test suite because it depends on SDK stdio internals.

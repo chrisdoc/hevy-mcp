@@ -102,6 +102,7 @@ const changedChangesetFiles = changesetDiff
 	.filter((file) => /^\.changeset\/[^/]+\.md$/.test(file));
 
 const changesetReleases = new Set();
+const emptyChangesetFiles = [];
 let changedChangesetCount = 0;
 for (const file of changedChangesetFiles) {
 	let contents;
@@ -111,22 +112,33 @@ for (const file of changedChangesetFiles) {
 		continue;
 	}
 	changedChangesetCount += 1;
+	const fileReleases = new Set();
 	const frontmatter = contents.match(/^---\s*\n([\s\S]*?)\n---/);
-	if (!frontmatter) continue;
-	for (const line of frontmatter[1].split("\n")) {
-		const match = line.match(
-			/^\s*(?:"([^"]+)"|'([^']+)'|([@A-Za-z0-9._/-]+))\s*:\s*([A-Za-z]+)\s*$/,
-		);
-		if (!match) continue;
-		const packageName = match[1] ?? match[2] ?? match[3];
-		const bump = match[4];
-		if (releaseBumps.has(bump)) changesetReleases.add(packageName);
+	if (frontmatter) {
+		for (const line of frontmatter[1].split("\n")) {
+			const match = line.match(
+				/^\s*(?:"([^"]+)"|'([^']+)'|([@A-Za-z0-9._/-]+))\s*:\s*([A-Za-z]+)\s*$/,
+			);
+			if (!match) continue;
+			const packageName = match[1] ?? match[2] ?? match[3];
+			const bump = match[4];
+			if (!releaseBumps.has(bump)) continue;
+			fileReleases.add(packageName);
+			changesetReleases.add(packageName);
+		}
 	}
+	if (fileReleases.size === 0) emptyChangesetFiles.push(file);
 }
 
 if (changedChangesetCount === 0) {
 	throw new Error(
 		`Changed workspace packages need a changeset added or modified by this branch:\n${[...changedPackages.entries()].map(([path, packageName]) => `- ${path} -> ${packageName}`).join("\n")}`,
+	);
+}
+
+if (emptyChangesetFiles.length > 0) {
+	throw new Error(
+		`Empty Changesets cannot accompany release-triggering changes:\n${emptyChangesetFiles.map((file) => `- ${file}`).join("\n")}\nRelease-triggering changes require non-empty bumps:\n${[...changedPackages.entries()].map(([path, packageName]) => `- ${path} -> ${packageName}`).join("\n")}`,
 	);
 }
 
