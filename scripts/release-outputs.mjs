@@ -6,14 +6,6 @@ import { resolveWorkerVersion } from "./resolve-worker-version.mjs";
 
 const execFileAsync = promisify(execFile);
 
-function readVersion(manifest, packageName) {
-	const packageJson = JSON.parse(manifest);
-	if (typeof packageJson.version !== "string") {
-		throw new Error(`${packageName} manifest has no version`);
-	}
-	return packageJson.version;
-}
-
 export function calculateReleaseOutputs({
 	afterWorkerManifest,
 	beforeWorkerManifest,
@@ -28,15 +20,15 @@ export function calculateReleaseOutputs({
 		(candidate) => candidate?.name === "hevy-mcp",
 	);
 	const nodeReleased = didPublish && typeof nodeRelease?.version === "string";
+	const beforeWorkerVersion = resolveWorkerVersion(beforeWorkerManifest);
+	const workerVersion = resolveWorkerVersion(afterWorkerManifest);
 
 	return {
 		version: nodeReleased ? nodeRelease.version : "",
 		released: didPublish,
 		node_released: nodeReleased,
-		worker_version: resolveWorkerVersion(afterWorkerManifest),
-		worker_released:
-			readVersion(beforeWorkerManifest, "Previous Worker") !==
-			readVersion(afterWorkerManifest, "Current Worker"),
+		worker_version: workerVersion,
+		worker_released: beforeWorkerVersion !== workerVersion,
 	};
 }
 
