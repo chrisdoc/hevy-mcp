@@ -28,6 +28,7 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       released: ${{ steps.release.outputs.released }}
       node_released: ${{ steps.release.outputs.node_released }}
+      worker_version: ${{ steps.release.outputs.worker_version }}
       worker_released: ${{ steps.release.outputs.worker_released }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -189,10 +190,12 @@ jobs:
           CLOUDFLARE_OTEL_LOGS_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_LOGS_DESTINATIONS }}
           CLOUDFLARE_OTEL_TRACES_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_TRACES_DESTINATIONS }}
           CLOUDFLARE_OAUTH_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID }}
+          WORKER_VERSION: ${{ needs.release.outputs.worker_version }}
         run: >-
           npx wrangler deploy
           --x-new-config
           --env production
+          --tag "$WORKER_VERSION"
           --message "Changesets release at ${{ github.event.workflow_run.head_sha || github.sha }}"
 
   publish-preview:

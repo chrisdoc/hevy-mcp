@@ -114,6 +114,14 @@ jobs:
           --keep-vars
           --message "Bootstrap inert ${CLOUDFLARE_WORKER_NAME} Worker for GitHub PR versions"
 
+      - name: Resolve preview Worker version tag
+        id: worker_version
+        run: |
+          tag="$(node scripts/resolve-worker-version.mjs preview \
+            "${{ github.event.pull_request.number }}" \
+            "${{ github.event.pull_request.head.sha }}")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Upload preview version
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -127,6 +135,7 @@ jobs:
             --env preview \
             --keep-vars \
             --preview-alias pr-${{ github.event.pull_request.number }} \
+            --tag "${{ steps.worker_version.outputs.tag }}" \
             --message "GitHub PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request.head.sha }}"
 
       - name: Activate preview version
