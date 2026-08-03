@@ -5,11 +5,12 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v24+) organized as four workspaces: the
+- The codebase is TypeScript (Node.js v24+) organized as five workspaces: the
   runtime-neutral `@hevy-mcp/hevy-client` and `@hevy-mcp/core` packages, the
   Node package in `packages/node`, and the Cloudflare package in
-  `packages/worker`. All implementation lives under `packages/*`; the root is
-  a private workspace orchestrator and must not gain a runtime `src/` tree.
+  `packages/worker`, plus the public CLI in `packages/cli`. All implementation
+  lives under `packages/*`; the root is a private workspace orchestrator and
+  must not gain a runtime `src/` tree.
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 - **MCP SDK internals sensitivity:** `packages/node/src/utils/stdio-observability.ts`
@@ -29,6 +30,14 @@
   - **WHEN TO USE**: Every single PR/change that modifies source code or package dependencies **MUST** include a changeset file.
   - **HOW TO CREATE BUMP CHANGESETS**: Use `npx changeset` with `patch`/`minor`/`major` **only** for user-facing, runtime-visible changes.
   - **NO-OP / NO-RELEASE CHANGES**: For docs, CI config, internal tests, refactoring, and other internal-only changes, you **MUST** run `npx changeset --empty`.
+  - **BUNDLED RELEASE CASCADE**: Every listed consumer receives at least a patch bump; do not couple unrelated package versions:
+    - `@hevy-mcp/hevy-client` changes → client, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
+    - `@hevy-mcp/core` changes → core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
+    - Node adapter-only changes → `hevy-mcp` only.
+    - Worker-only changes → `@hevy-mcp/worker` only.
+    - CLI-only changes → `@chrisdoc/hevy-cli` only.
+  - **PRIVATE RELEASE IDENTITY**: Core, client, and Worker remain private. They are versioned for internal release/deployment identity with no npm tags.
+  - **WORKER CONFIG TRIGGER**: A `cloudflare.config.ts` change counts as a Worker change.
   - **CI ENFORCEMENT**: Pull Requests are guarded by a CI check that runs `npm run check:changeset` (which runs `npx changeset status --since=origin/<base_branch>`). CI will fail if no changeset file is staged/committed.
   - **VALIDATION**: You can validate your changeset status locally by running `npm run check:changeset`. Make sure the changeset file is staged/committed.
 
@@ -249,9 +258,8 @@ packages/
 ├── hevy-client/       # Runtime-neutral native-fetch client and Kubb output
 ├── core/              # Runtime-neutral MCP construction and tool implementations
 ├── node/              # Public Node.js stdio package and telemetry
-└── worker/            # Cloudflare Worker HTTP and OAuth entrypoints
-
-src/                  # Transitional root compatibility facades and legacy tests
+├── worker/            # Private Cloudflare Worker HTTP and OAuth entrypoint
+└── cli/               # Public Hevy command-line client
 ```
 
 The runtime-neutral implementation lives under `packages/core/src/`:
@@ -278,9 +286,9 @@ packages/core/src/
 `packages/core` and `packages/hevy-client` must remain safe for both Node.js and
 Cloudflare Workers. Keep Node built-ins, stdio transports, process lifecycle
 handling, and telemetry/observability in `packages/node`. Keep Cloudflare
-bindings and OAuth code in `packages/worker`. The dependency graph is
-`hevy-client → core → node/worker`; runtime packages must never import one
-another.
+bindings and OAuth code in `packages/worker`. The shipped composition graph is
+`hevy-client → core → node/worker/CLI`; adapters may depend directly on either
+runtime-neutral package but must never import one another.
 
 ### Testing Structure
 

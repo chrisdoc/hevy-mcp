@@ -11,6 +11,15 @@ const since = sinceIndex >= 0 ? process.argv[sinceIndex + 1] : "origin/main";
 
 if (!since) throw new Error("Missing value for --since");
 
+const releaseTriggerFiles = new Map([
+	["cloudflare.config.ts", "@hevy-mcp/worker"],
+]);
+const bundledReleaseGraph = new Map([
+	["@hevy-mcp/hevy-client", ["@hevy-mcp/core"]],
+	["@hevy-mcp/core", ["hevy-mcp", "@hevy-mcp/worker", "@chrisdoc/hevy-cli"]],
+]);
+const releaseBumps = new Set(["patch", "minor", "major"]);
+
 const { stdout } = await execFileAsync(
 	"git",
 	["diff", "--name-only", "--diff-filter=ACMRD", `${since}...HEAD`],
@@ -56,6 +65,10 @@ for (const path of changedPackagePaths) {
 	const packageName = await readPackageName(path);
 	if (packageName) changedPackages.set(path, packageName);
 }
+for (const file of changedFiles) {
+	const packageName = releaseTriggerFiles.get(file);
+	if (packageName) changedPackages.set(file, packageName);
+}
 
 if (changedPackages.size === 0) {
 	console.log("No workspace package changes require a package changeset.");
@@ -88,7 +101,7 @@ const changedChangesetFiles = changesetDiff
 	})
 	.filter((file) => /^\.changeset\/[^/]+\.md$/.test(file));
 
-const changesetPackages = new Set();
+const changesetReleases = new Set();
 let changedChangesetCount = 0;
 for (const file of changedChangesetFiles) {
 	let contents;
@@ -102,9 +115,12 @@ for (const file of changedChangesetFiles) {
 	if (!frontmatter) continue;
 	for (const line of frontmatter[1].split("\n")) {
 		const match = line.match(
-			/^\s*(?:"([^"]+)"|'([^']+)'|([@A-Za-z0-9._/-]+))\s*:/,
+			/^\s*(?:"([^"]+)"|'([^']+)'|([@A-Za-z0-9._/-]+))\s*:\s*([A-Za-z]+)\s*$/,
 		);
-		if (match) changesetPackages.add(match[1] ?? match[2] ?? match[3]);
+		if (!match) continue;
+		const packageName = match[1] ?? match[2] ?? match[3];
+		const bump = match[4];
+		if (releaseBumps.has(bump)) changesetReleases.add(packageName);
 	}
 }
 
@@ -115,7 +131,7 @@ if (changedChangesetCount === 0) {
 }
 
 const missing = [...changedPackages.entries()]
-	.filter(([, packageName]) => !changesetPackages.has(packageName))
+	.filter(([, packageName]) => !changesetReleases.has(packageName))
 	.map(([path, packageName]) => `${path} -> ${packageName}`);
 
 if (missing.length > 0) {
@@ -124,18 +140,54 @@ if (missing.length > 0) {
 	);
 }
 
-const bundledRuntimePackages = new Set([
-	"@hevy-mcp/core",
-	"@hevy-mcp/hevy-client",
-]);
-if (
-	[...bundledRuntimePackages].some((packageName) =>
-		changesetPackages.has(packageName),
-	) &&
-	!changesetPackages.has("hevy-mcp")
-) {
+function getTransitiveConsumers(packageName) {
+	const consumers = new Set();
+	const pending = [...(bundledReleaseGraph.get(packageName) ?? [])];
+	while (pending.length > 0) {
+		const consumer = pending.shift();
+		if (!consumer || consumers.has(consumer)) continue;
+		consumers.add(consumer);
+		pending.push(...(bundledReleaseGraph.get(consumer) ?? []));
+	}
+	return [...consumers];
+}
+
+const incompleteCascades = [...bundledReleaseGraph.keys()]
+	.filter((packageName) => changesetReleases.has(packageName))
+	.map((packageName) => ({
+		packageName,
+		missing: getTransitiveConsumers(packageName).filter(
+			(consumer) => !changesetReleases.has(consumer),
+		),
+	}))
+	.filter(({ missing }) => missing.length > 0);
+
+if (incompleteCascades.length > 0) {
 	throw new Error(
-		"Changesets releasing @hevy-mcp/core or @hevy-mcp/hevy-client must also release hevy-mcp because those packages are bundled into the public package.",
+		`Bundled release cascades must include every transitive shipped consumer with at least a patch bump:\n${incompleteCascades
+			.map(
+				({ packageName, missing }) =>
+					`- ${packageName} -> missing ${missing.join(", ")}`,
+			)
+			.join("\n")}`,
+	);
+}
+
+const allowedReleases = new Set();
+for (const packageName of changedPackages.values()) {
+	allowedReleases.add(packageName);
+	for (const consumer of getTransitiveConsumers(packageName)) {
+		allowedReleases.add(consumer);
+	}
+}
+const unrelatedReleases = [...changesetReleases].filter(
+	(packageName) => !allowedReleases.has(packageName),
+);
+if (unrelatedReleases.length > 0) {
+	throw new Error(
+		`Changesets must not couple unrelated package releases:\n${unrelatedReleases
+			.map((packageName) => `- ${packageName}`)
+			.join("\n")}`,
 	);
 }
 

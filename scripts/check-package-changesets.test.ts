@@ -36,6 +36,26 @@ async function commitFixture(root: string) {
 	await git(root, "commit", "--quiet", "-m", "test: change fixture");
 }
 
+async function writeChangeset(root: string, packages: string[]) {
+	await writeChangesetWithBumps(
+		root,
+		Object.fromEntries(packages.map((packageName) => [packageName, "patch"])),
+	);
+}
+
+async function writeChangesetWithBumps(
+	root: string,
+	releases: Record<string, "major" | "minor" | "patch">,
+) {
+	await writeFixtureFile(
+		root,
+		".changeset/new.md",
+		`---\n${Object.entries(releases)
+			.map(([packageName, bump]) => `"${packageName}": ${bump}`)
+			.join("\n")}\n---\n\nRuntime package release.\n`,
+	);
+}
+
 async function createFixture(
 	options: {
 		existingChangeset?: boolean;
@@ -64,6 +84,11 @@ async function createFixture(
 		'export const value = "base";\n',
 	);
 	await writeFixtureFile(root, ".changeset/README.md", "# Changesets\n");
+	await writeFixtureFile(
+		root,
+		"cloudflare.config.ts",
+		'export const workerName = "base";\n',
+	);
 	if (options.existingChangeset) {
 		await writeFixtureFile(
 			root,
@@ -187,12 +212,140 @@ describe("package changeset coverage", () => {
 		expect(result.exitCode).toBe(0);
 	});
 
+	it("lists every missing transitive consumer for a client release", async () => {
+		const { base, root } = await createFixture({
+			packageName: "@hevy-mcp/hevy-client",
+			packagePath: "packages/hevy-client",
+		});
+		await writeFixtureFile(
+			root,
+			"packages/hevy-client/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeChangeset(root, [
+			"@hevy-mcp/hevy-client",
+			"@hevy-mcp/core",
+			"hevy-mcp",
+		]);
+		await commitFixture(root);
+
+		const result = await runCheck(root, base);
+
+		expect(result.exitCode).not.toBe(0);
+		expect(result.stderr).toContain("@hevy-mcp/hevy-client");
+		expect(result.stderr).toContain("@hevy-mcp/worker");
+		expect(result.stderr).toContain("@chrisdoc/hevy-cli");
+	});
+
+	it("accepts the complete client release cascade", async () => {
+		const { base, root } = await createFixture({
+			packageName: "@hevy-mcp/hevy-client",
+			packagePath: "packages/hevy-client",
+		});
+		await writeFixtureFile(
+			root,
+			"packages/hevy-client/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeChangeset(root, [
+			"@hevy-mcp/hevy-client",
+			"@hevy-mcp/core",
+			"hevy-mcp",
+			"@hevy-mcp/worker",
+			"@chrisdoc/hevy-cli",
+		]);
+		await commitFixture(root);
+
+		expect((await runCheck(root, base)).exitCode).toBe(0);
+	});
+
+	it("allows patch consumer bumps for a major client release", async () => {
+		const { base, root } = await createFixture({
+			packageName: "@hevy-mcp/hevy-client",
+			packagePath: "packages/hevy-client",
+		});
+		await writeFixtureFile(
+			root,
+			"packages/hevy-client/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeChangesetWithBumps(root, {
+			"@hevy-mcp/hevy-client": "major",
+			"@hevy-mcp/core": "patch",
+			"hevy-mcp": "patch",
+			"@hevy-mcp/worker": "patch",
+			"@chrisdoc/hevy-cli": "patch",
+		});
+		await commitFixture(root);
+
+		expect((await runCheck(root, base)).exitCode).toBe(0);
+	});
+
+	it("lists missing shipped consumers for a core release", async () => {
+		const { base, root } = await createFixture({
+			packageName: "@hevy-mcp/core",
+			packagePath: "packages/core",
+		});
+		await writeFixtureFile(
+			root,
+			"packages/core/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeChangeset(root, ["@hevy-mcp/core", "hevy-mcp"]);
+		await commitFixture(root);
+
+		const result = await runCheck(root, base);
+
+		expect(result.exitCode).not.toBe(0);
+		expect(result.stderr).toContain("@hevy-mcp/worker");
+		expect(result.stderr).toContain("@chrisdoc/hevy-cli");
+	});
+
+	it("accepts the complete core release cascade", async () => {
+		const { base, root } = await createFixture({
+			packageName: "@hevy-mcp/core",
+			packagePath: "packages/core",
+		});
+		await writeFixtureFile(
+			root,
+			"packages/core/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeChangeset(root, [
+			"@hevy-mcp/core",
+			"hevy-mcp",
+			"@hevy-mcp/worker",
+			"@chrisdoc/hevy-cli",
+		]);
+		await commitFixture(root);
+
+		expect((await runCheck(root, base)).exitCode).toBe(0);
+	});
+
 	it.each([
-		["@hevy-mcp/core", "packages/core"],
-		["@hevy-mcp/hevy-client", "packages/hevy-client"],
+		["hevy-mcp", "packages/node"],
+		["@hevy-mcp/worker", "packages/worker"],
+		["@chrisdoc/hevy-cli", "packages/cli"],
+	])("accepts an isolated %s release", async (packageName, packagePath) => {
+		const { base, root } = await createFixture({ packageName, packagePath });
+		await writeFixtureFile(
+			root,
+			`${packagePath}/src/index.js`,
+			'export const value = "changed";\n',
+		);
+		await writeChangeset(root, [packageName]);
+		await commitFixture(root);
+
+		expect((await runCheck(root, base)).exitCode).toBe(0);
+	});
+
+	it.each([
+		["hevy-mcp", "packages/node", "@hevy-mcp/worker"],
+		["@hevy-mcp/worker", "packages/worker", "hevy-mcp"],
+		["@chrisdoc/hevy-cli", "packages/cli", "hevy-mcp"],
 	])(
-		"requires hevy-mcp when %s is released",
-		async (packageName, packagePath) => {
+		"rejects %s changes coupled to an unrelated release",
+		async (packageName, packagePath, unrelatedPackage) => {
 			const { base, root } = await createFixture({
 				packageName,
 				packagePath,
@@ -202,19 +355,45 @@ describe("package changeset coverage", () => {
 				`${packagePath}/src/index.js`,
 				'export const value = "changed";\n',
 			);
-			await writeFixtureFile(
-				root,
-				".changeset/new.md",
-				`---\n"${packageName}": patch\n---\n\nRuntime package release.\n`,
-			);
+			await writeChangeset(root, [packageName, unrelatedPackage]);
 			await commitFixture(root);
 
 			const result = await runCheck(root, base);
 
 			expect(result.exitCode).not.toBe(0);
 			expect(result.stderr).toContain(
-				"must also release hevy-mcp because those packages are bundled",
+				"Changesets must not couple unrelated package releases",
 			);
+			expect(result.stderr).toContain(unrelatedPackage);
 		},
 	);
+
+	it("requires a Worker release for production Worker config changes", async () => {
+		const { base, root } = await createFixture();
+		await writeFixtureFile(
+			root,
+			"cloudflare.config.ts",
+			'export const workerName = "changed";\n',
+		);
+		await writeChangeset(root, []);
+		await commitFixture(root);
+
+		const result = await runCheck(root, base);
+
+		expect(result.exitCode).not.toBe(0);
+		expect(result.stderr).toContain("cloudflare.config.ts -> @hevy-mcp/worker");
+	});
+
+	it("accepts a Worker release for production Worker config changes", async () => {
+		const { base, root } = await createFixture();
+		await writeFixtureFile(
+			root,
+			"cloudflare.config.ts",
+			'export const workerName = "changed";\n',
+		);
+		await writeChangeset(root, ["@hevy-mcp/worker"]);
+		await commitFixture(root);
+
+		expect((await runCheck(root, base)).exitCode).toBe(0);
+	});
 });
