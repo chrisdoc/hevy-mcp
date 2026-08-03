@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveWorkerVersion } from "./resolve-worker-version.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -32,6 +33,7 @@ export function calculateReleaseOutputs({
 		version: nodeReleased ? nodeRelease.version : "",
 		released: didPublish,
 		node_released: nodeReleased,
+		worker_version: resolveWorkerVersion(afterWorkerManifest),
 		worker_released:
 			readVersion(beforeWorkerManifest, "Previous Worker") !==
 			readVersion(afterWorkerManifest, "Current Worker"),
