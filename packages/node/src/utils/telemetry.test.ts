@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
 
 const originalEnv = { ...process.env };
 
@@ -204,42 +203,6 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.sentryContextManager).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalledOnce();
 		expect(testDoubles.validateOpenTelemetrySetup).not.toHaveBeenCalled();
-	});
-
-	it("sanitizes Sentry MCP correlation and client metadata", async () => {
-		vi.resetModules();
-		await import("./telemetry.js");
-		const span = {
-			data: {
-				"mcp.request.id": "request-secret",
-				"mcp.session.id": "session-secret",
-				"mcp.progress.token": "progress-secret",
-				"mcp.prompt.name": "private-prompt",
-				"mcp.protocol.version": "private-protocol",
-				"mcp.client.name": "Private Client",
-				"mcp.tool.name": "get-workouts",
-			},
-		};
-
-		const sanitized = sanitizeSentryMcpSpan(span);
-
-		expect(sanitized.data).toEqual({
-			"mcp.tool.name": "get-workouts",
-		});
-		expect(span.data).toEqual({
-			"mcp.request.id": "request-secret",
-			"mcp.session.id": "session-secret",
-			"mcp.progress.token": "progress-secret",
-			"mcp.prompt.name": "private-prompt",
-			"mcp.protocol.version": "private-protocol",
-			"mcp.client.name": "Private Client",
-			"mcp.tool.name": "get-workouts",
-		});
-		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
-			expect.objectContaining({
-				beforeSendSpan: expect.any(Function),
-			}),
-		);
 	});
 
 	it("uses an independent OTel sampler without Sentry tracing setup", async () => {

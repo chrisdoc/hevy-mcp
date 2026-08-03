@@ -15,7 +15,6 @@ import {
 	randomUUID as nodeRandomUUID,
 } from "node:crypto";
 import * as Sentry from "@sentry/node";
-import { sanitizeSentryMcpSpan } from "./sentry-privacy.js";
 import {
 	SpanStatusCode,
 	trace,
@@ -258,7 +257,6 @@ if (telemetryEnabled) {
 	// --- Sentry error monitoring ---
 	Sentry.init({
 		dsn: isValidDsn ? rawDsn : undefined,
-		beforeSendSpan: sanitizeSentryMcpSpan,
 		release: sentryRelease,
 		tracesSampleRate: 0.0,
 		sendDefaultPii: false,
