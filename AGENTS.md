@@ -258,9 +258,8 @@ packages/
 ├── hevy-client/       # Runtime-neutral native-fetch client and Kubb output
 ├── core/              # Runtime-neutral MCP construction and tool implementations
 ├── node/              # Public Node.js stdio package and telemetry
-└── worker/            # Cloudflare Worker HTTP and OAuth entrypoints
-
-src/                  # Transitional root compatibility facades and legacy tests
+├── worker/            # Private Cloudflare Worker HTTP and OAuth entrypoint
+└── cli/               # Public Hevy command-line client
 ```
 
 The runtime-neutral implementation lives under `packages/core/src/`:
@@ -287,9 +286,9 @@ packages/core/src/
 `packages/core` and `packages/hevy-client` must remain safe for both Node.js and
 Cloudflare Workers. Keep Node built-ins, stdio transports, process lifecycle
 handling, and telemetry/observability in `packages/node`. Keep Cloudflare
-bindings and OAuth code in `packages/worker`. The dependency graph is
-`hevy-client → core → node/worker`; runtime packages must never import one
-another.
+bindings and OAuth code in `packages/worker`. The shipped composition graph is
+`hevy-client → core → node/worker/CLI`; adapters may depend directly on either
+runtime-neutral package but must never import one another.
 
 ### Testing Structure
 

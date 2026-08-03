@@ -204,9 +204,13 @@ both runtimes. `packages/hevy-client` owns the native-fetch Hevy client:
   transport, telemetry, and stdio observability there.
 - `packages/worker` is the Cloudflare Worker Streamable HTTP and OAuth entry
   point. It must not import Node-only code.
+- `packages/cli` is the public Node.js command-line client. It bundles the
+  runtime-neutral client and core but does not depend on either runtime adapter.
 - `packages/core` and `packages/hevy-client` must remain safe in both Node.js
   and Cloudflare Workers.
-- The allowed dependency graph is `hevy-client → core → node/worker`.
+- The shipped composition graph is `hevy-client → core → node/worker/CLI`;
+  adapters may depend directly on either runtime-neutral package but must not
+  import one another.
 
 `packages/node/src/utils/stdio-observability.ts` instruments private MCP SDK
 stdio fields such as `_ondata` and `_readBuffer`. After every

@@ -339,6 +339,35 @@ describe("package changeset coverage", () => {
 		expect((await runCheck(root, base)).exitCode).toBe(0);
 	});
 
+	it.each([
+		["hevy-mcp", "packages/node", "@hevy-mcp/worker"],
+		["@hevy-mcp/worker", "packages/worker", "hevy-mcp"],
+		["@chrisdoc/hevy-cli", "packages/cli", "hevy-mcp"],
+	])(
+		"rejects %s changes coupled to an unrelated release",
+		async (packageName, packagePath, unrelatedPackage) => {
+			const { base, root } = await createFixture({
+				packageName,
+				packagePath,
+			});
+			await writeFixtureFile(
+				root,
+				`${packagePath}/src/index.js`,
+				'export const value = "changed";\n',
+			);
+			await writeChangeset(root, [packageName, unrelatedPackage]);
+			await commitFixture(root);
+
+			const result = await runCheck(root, base);
+
+			expect(result.exitCode).not.toBe(0);
+			expect(result.stderr).toContain(
+				"Changesets must not couple unrelated package releases",
+			);
+			expect(result.stderr).toContain(unrelatedPackage);
+		},
+	);
+
 	it("requires a Worker release for production Worker config changes", async () => {
 		const { base, root } = await createFixture();
 		await writeFixtureFile(

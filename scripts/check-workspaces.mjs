@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
@@ -15,6 +15,18 @@ const rootPackage = JSON.parse(
 );
 if (JSON.stringify(rootPackage.workspaces) !== JSON.stringify(["packages/*"])) {
 	throw new Error("Root package.json must declare packages/* workspaces");
+}
+const actualWorkspaces = (
+	await readdir(resolve(root, "packages"), { withFileTypes: true })
+)
+	.filter((entry) => entry.isDirectory())
+	.map((entry) => `packages/${entry.name}`)
+	.sort();
+const expectedWorkspaces = [...expected.keys()].sort();
+if (JSON.stringify(actualWorkspaces) !== JSON.stringify(expectedWorkspaces)) {
+	throw new Error(
+		`Workspace registry mismatch: expected ${expectedWorkspaces.join(", ")}; found ${actualWorkspaces.join(", ")}`,
+	);
 }
 let publishableCount = 0;
 for (const [relative, metadata] of expected) {
@@ -44,8 +56,11 @@ for (const field of [
 		throw new Error(`Root orchestration package must not declare ${field}`);
 	}
 }
-if (publishableCount !== 2)
+const expectedPublishableCount = [...expected.values()].filter(
+	({ private: isPrivate }) => !isPrivate,
+).length;
+if (publishableCount !== expectedPublishableCount)
 	throw new Error(
-		`Expected exactly two publishable workspaces, found ${publishableCount}`,
+		`Expected exactly ${expectedPublishableCount} publishable workspaces, found ${publishableCount}`,
 	);
 console.log("Workspace identities and publication ownership are valid.");

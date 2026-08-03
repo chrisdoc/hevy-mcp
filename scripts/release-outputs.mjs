@@ -1,0 +1,71 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const execFileAsync = promisify(execFile);
+
+function readVersion(manifest, packageName) {
+	const packageJson = JSON.parse(manifest);
+	if (typeof packageJson.version !== "string") {
+		throw new Error(`${packageName} manifest has no version`);
+	}
+	return packageJson.version;
+}
+
+export function calculateReleaseOutputs({
+	afterWorkerManifest,
+	beforeWorkerManifest,
+	published,
+	publishedPackages,
+}) {
+	if (!Array.isArray(publishedPackages)) {
+		throw new Error("publishedPackages must be an array");
+	}
+	const didPublish = published === true || published === "true";
+	const nodeRelease = publishedPackages.find(
+		(candidate) => candidate?.name === "hevy-mcp",
+	);
+	const nodeReleased = didPublish && typeof nodeRelease?.version === "string";
+
+	return {
+		version: nodeReleased ? nodeRelease.version : "",
+		released: didPublish,
+		node_released: nodeReleased,
+		worker_released:
+			readVersion(beforeWorkerManifest, "Previous Worker") !==
+			readVersion(afterWorkerManifest, "Current Worker"),
+	};
+}
+
+async function readWorkerManifest(revision) {
+	const { stdout } = await execFileAsync(
+		"git",
+		["show", `${revision}:packages/worker/package.json`],
+		{ cwd: resolve(fileURLToPath(new URL("..", import.meta.url))) },
+	);
+	return stdout;
+}
+
+async function main() {
+	const [beforeRevision, afterRevision] = process.argv.slice(2);
+	if (!beforeRevision || !afterRevision) {
+		throw new Error("Usage: release-outputs.mjs <before> <after>");
+	}
+	const outputs = calculateReleaseOutputs({
+		beforeWorkerManifest: await readWorkerManifest(beforeRevision),
+		afterWorkerManifest: await readWorkerManifest(afterRevision),
+		published: process.env.PUBLISHED,
+		publishedPackages: JSON.parse(process.env.PKGS || "[]"),
+	});
+	for (const [name, value] of Object.entries(outputs)) {
+		console.log(`${name}=${value}`);
+	}
+}
+
+if (
+	process.argv[1] &&
+	resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+	await main();
+}

@@ -173,6 +173,24 @@ if (incompleteCascades.length > 0) {
 	);
 }
 
+const allowedReleases = new Set();
+for (const packageName of changedPackages.values()) {
+	allowedReleases.add(packageName);
+	for (const consumer of getTransitiveConsumers(packageName)) {
+		allowedReleases.add(consumer);
+	}
+}
+const unrelatedReleases = [...changesetReleases].filter(
+	(packageName) => !allowedReleases.has(packageName),
+);
+if (unrelatedReleases.length > 0) {
+	throw new Error(
+		`Changesets must not couple unrelated package releases:\n${unrelatedReleases
+			.map((packageName) => `- ${packageName}`)
+			.join("\n")}`,
+	);
+}
+
 console.log(
 	`Package changeset coverage passed for ${changedPackages.size} workspace package(s).`,
 );

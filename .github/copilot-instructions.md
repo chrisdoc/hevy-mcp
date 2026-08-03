@@ -230,25 +230,17 @@ Always perform these validation steps after making changes:
 ### Source Code Organization
 
 ```
-src/
-├── index.ts           # Main entry point - register tools here
-├── tools/             # MCP tool implementations
-│   ├── workouts.ts    # Workout management tools
-│   ├── routines.ts    # Routine management tools
-│   ├── templates.ts   # Exercise template tools
-│   ├── folders.ts     # Routine folder tools
-│   └── webhooks.ts    # Webhook subscription tools
-├── generated/         # Auto-generated API client (DO NOT EDIT)
-│   ├── client/        # Kubb-generated client code
-│   └── schemas/       # Zod validation schemas
-└── utils/             # Shared helper functions
-    ├── tool-helpers.ts    # Type inference utilities (InferToolParams)
-    ├── error-handler.ts   # Centralized error handling (withErrorHandling)
-    ├── response-formatter.ts # Output schemas, formatting, and MCP responses
-    ├── hevyClient.ts      # API client factory
-    ├── hevyClientKubb.ts  # Kubb client wrapper
-    └── config.ts          # Configuration parsing
+packages/
+├── hevy-client/       # Runtime-neutral native-fetch client and Kubb output
+├── core/              # Runtime-neutral MCP construction and tools
+├── node/              # Public Node.js stdio package and telemetry
+├── worker/            # Private Cloudflare Worker HTTP and OAuth entrypoint
+└── cli/               # Public Hevy command-line client
 ```
+
+The shipped composition graph is `hevy-client → core → node/worker/CLI`.
+Adapters may depend directly on either runtime-neutral package, but must never
+import one another.
 
 ### Testing Structure
 

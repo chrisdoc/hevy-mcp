@@ -27,6 +27,7 @@ jobs:
     outputs:
       version: ${{ steps.release.outputs.version }}
       released: ${{ steps.release.outputs.released }}
+      node_released: ${{ steps.release.outputs.node_released }}
       worker_released: ${{ steps.release.outputs.worker_released }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -91,30 +92,18 @@ jobs:
         id: release
         run: |
           set -euo pipefail
-          worker_released=false
-          if ! git diff --quiet \
-            "${{ github.event.workflow_run.head_sha || github.sha }}^1" \
-            "${{ github.event.workflow_run.head_sha || github.sha }}" \
-            -- packages/worker/package.json; then
-            worker_released=true
-          fi
-
-          if [ "${{ steps.changesets.outputs.published }}" = "true" ]; then
-            VERSION=$(node -p 'const pkgs = JSON.parse(process.env.PKGS); pkgs.find((pkg) => pkg.name === "hevy-mcp")?.version || ""')
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "released=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=" >> "$GITHUB_OUTPUT"
-            echo "released=false" >> "$GITHUB_OUTPUT"
-          fi
-          echo "worker_released=$worker_released" >> "$GITHUB_OUTPUT"
+          release_commit="${{ github.event.workflow_run.head_sha || github.sha }}"
+          node scripts/release-outputs.mjs \
+            "$release_commit^1" \
+            "$release_commit" >> "$GITHUB_OUTPUT"
         env:
+          PUBLISHED: ${{ steps.changesets.outputs.published }}
           PKGS: ${{ steps.changesets.outputs.publishedPackages }}
 
   publish-container:
     name: Publish Docker image
     needs: release
-    if: needs.release.outputs.released == 'true'
+    if: needs.release.outputs.node_released == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
