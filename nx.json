@@ -1,0 +1,46 @@
+{
+	"$schema": "./node_modules/nx/schemas/nx-schema.json",
+	"namedInputs": {
+		"default": [
+			"{projectRoot}/**/*",
+			"!{projectRoot}/.nx/**/*",
+			"!{projectRoot}/coverage/**/*",
+			"!{projectRoot}/dist/**/*",
+			"!{projectRoot}/test-results/**/*"
+		],
+		"controlPlaneInputs": [
+			"{workspaceRoot}/nx.json",
+			"{workspaceRoot}/project.json",
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/packages/*/package.json",
+			"{workspaceRoot}/scripts/**/*.mjs",
+			"{workspaceRoot}/scripts/**/*.cjs",
+			"{workspaceRoot}/.dependency-cruiser.cjs",
+			"{workspaceRoot}/.changeset/**/*.md"
+		],
+		"packageManifestInputs": [
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/packages/*/package.json"
+		],
+		"sourceInputs": [
+			"default",
+			"{workspaceRoot}/tsconfig*.json",
+			"{workspaceRoot}/vitest*.config.ts",
+			"{workspaceRoot}/tests/**/*",
+			"{workspaceRoot}/packages/*/src/**/*"
+		]
+	},
+	"plugins": ["./scripts/nx-project-metadata.cjs"],
+	"targetDefaults": {
+		"build": {
+			"cache": true,
+			"dependsOn": ["^build"]
+		},
+		"check:types": {
+			"cache": true,
+			"dependsOn": ["^check:types"]
+		}
+	}
+}
