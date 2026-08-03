@@ -20,7 +20,8 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tested commit
@@ -39,12 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build package
-        run: npm run build
-
       - name: Set transient preview version
         env:
-          PREVIEW_ID: ${{ github.event.workflow_run.id }}
+          PREVIEW_ID: ${{ github.run_id }}
           PREVIEW_ATTEMPT: ${{ github.run_attempt }}
         run: |
           node --input-type=module <<'NODE'
@@ -62,9 +60,6 @@ jobs:
         run: npm run test:pack
 
       - name: Publish preview
-        env:
-          PREVIEW_ID: ${{ github.event.workflow_run.id }}
-          PREVIEW_ATTEMPT: ${{ github.run_attempt }}
         run: |
           VERSION=$(node -p 'JSON.parse(require("node:fs").readFileSync("packages/node/package.json", "utf8")).version')
           case "$VERSION" in
