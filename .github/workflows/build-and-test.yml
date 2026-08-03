@@ -55,25 +55,26 @@ jobs:
 
       - parallel:
           - name: Validate workspace topology
-            run: npm run check:workspaces
+            run: npm run validate:lane -- workspace-topology
 
           - name: Check package boundaries
-            run: npm run check:boundaries
+            run: npm run validate:lane -- package-boundaries
 
           - name: Check package export maps
-            run: npm run check:exports
+            run: npm run validate:lane -- package-exports
 
           - name: Check release candidates
-            run: npm run check:release-candidates
+            run: npm run validate:lane -- release-candidates
 
           - name: Run type check
-            run: npm run check:types
+            run: npm run validate:lane -- types
 
           - name: Check server manifest
-            run: npm run check:server-manifest
+            run: npm run validate:lane -- server-manifest
 
           - name: Run Check
-            run: npm run check
+            # Canonical lane: check. Keep the root alias for one release.
+            run: npm run validate:lane -- check
 
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
@@ -92,7 +93,7 @@ jobs:
           )
         run: |
           npx changeset status --since=origin/${{ github.base_ref }}
-          npm run check:package-changesets -- --since origin/${{ github.base_ref }}
+          npm run validate:lane -- package-changesets --since origin/${{ github.base_ref }}
 
       - name: Run nightly diagnostics redaction regression tests
         if: matrix.node-version == '24.x'
@@ -101,7 +102,7 @@ jobs:
           HEVY_API_KEY: ""
 
       - name: Run build
-        run: npm run build
+        run: npm run validate:lane -- build
         env:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
@@ -111,23 +112,23 @@ jobs:
 
       - name: Verify Worker bundle
         if: matrix.node-version == '24.x'
-        run: npm run worker:dry-run
+        run: npm run validate:lane -- worker-bundle
 
       - name: Run Worker HTTP integration tests
         if: matrix.node-version == '24.x'
-        run: npm run test:worker-http
+        run: npm run validate:lane -- worker-http
 
       - name: Run mocked integration tests with coverage
         if: matrix.node-version == '24.x'
-        run: npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
+        run: npm run validate:lane -- mocked-mcp --coverage --coverage.reportsDirectory=coverage/mocked
 
       - name: Run mocked integration tests
         if: matrix.node-version == '26.x'
-        run: npm run test:mcp
+        run: npm run validate:lane -- mocked-mcp
 
       - name: Run unit tests with coverage and JUnit output
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
+        run: npm run validate:lane -- unit --coverage --coverage.reportsDirectory=coverage/unit --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
@@ -140,27 +141,23 @@ jobs:
 
       - name: Run unit tests with coverage
         if: ${{ !cancelled() && matrix.node-version == '26.x' }}
-        run: npm run test:unit -- --coverage
+        run: npm run validate:lane -- unit --coverage
 
       - name: Run contract baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npm run test:contract
+        run: npm run validate:lane -- contract
 
       - name: Run stdio baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npm run test:stdio
+        run: npm run validate:lane -- stdio
 
       - name: Run package baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npm run test:pack
-
-      - name: Build and scan Worker dry run
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npm run worker:dry-run
+        run: npm run validate:lane -- pack
 
       - name: Run performance baseline
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npm run test:performance
+        run: npm run validate:lane -- performance
 
       - name: Upload performance summary
         if: ${{ always() && matrix.node-version == '24.x' }}

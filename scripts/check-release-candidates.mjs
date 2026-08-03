@@ -1,18 +1,23 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { loadTopology, repositoryRoot } from "./repository-control-plane.mjs";
 
-const root = resolve(import.meta.dirname, "..");
-const workspaceRoot = resolve(root, "packages");
-const workspaceEntries = await readdir(workspaceRoot, { withFileTypes: true });
+const topology = loadTopology(repositoryRoot);
+const expectedPublishable = new Set(
+	topology.workspaces
+		.filter((workspace) => workspace.publishable)
+		.map((workspace) => workspace.name),
+);
 const publishable = [];
-for (const entry of workspaceEntries) {
-	if (!entry.isDirectory()) continue;
-	const packagePath = resolve(workspaceRoot, entry.name, "package.json");
-	const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+for (const workspace of topology.workspaces) {
+	const packageJson = JSON.parse(
+		await readFile(
+			resolve(repositoryRoot, workspace.path, "package.json"),
+			"utf8",
+		),
+	);
 	if (packageJson.private !== true) publishable.push(packageJson.name);
 }
-
-const expectedPublishable = new Set(["@chrisdoc/hevy-cli", "hevy-mcp"]);
 const unexpected = publishable.filter((name) => !expectedPublishable.has(name));
 const missing = [...expectedPublishable].filter(
 	(name) => !publishable.includes(name),

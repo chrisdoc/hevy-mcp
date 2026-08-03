@@ -97,6 +97,20 @@ describe("release workflow", () => {
 		);
 	});
 
+	it("uses the canonical release lane identities", () => {
+		for (const lane of [
+			"build",
+			"release-unit",
+			"pack",
+			"release-integration",
+			"nightly",
+			"worker-http-live",
+		]) {
+			expect(workflow).toContain(`npm run validate:lane -- ${lane}`);
+		}
+		expect(workflow).not.toContain("npx vitest run tests/integration");
+	});
+
 	it("versions private packages without publishing tags", () => {
 		expect(changesetConfig.privatePackages).toEqual({
 			version: true,

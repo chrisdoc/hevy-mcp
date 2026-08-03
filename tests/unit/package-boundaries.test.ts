@@ -8,6 +8,8 @@ import {
 
 const coreRule = packageRules.get("packages/core");
 if (!coreRule) throw new Error("core boundary rule is missing");
+const workerRule = packageRules.get("packages/worker");
+if (!workerRule) throw new Error("worker boundary rule is missing");
 
 describe("package boundary AST checker", () => {
 	it("uses the TypeScript compiler AST for workspace files", () => {
@@ -73,6 +75,37 @@ describe("package boundary AST checker", () => {
 		expect(failures).toEqual([
 			"packages/core: forbidden internal import: hevy-mcp",
 		]);
+	});
+
+	it("keeps compiler-backed Worker parity with the retired boundary checker", () => {
+		const failures = findImportViolations({
+			source: `import "node:fs"; import "@sentry/node"; import "../../node/src/index.ts";`,
+			file: "/repo/packages/worker/src/worker.ts",
+			fileName: "worker.ts",
+			relativePackage: "packages/worker",
+			packageRoot: "/repo/packages/worker",
+			rule: workerRule,
+		});
+		expect(failures).toEqual([
+			"packages/worker: forbidden Node builtin import: node:fs",
+			"packages/worker: forbidden runtime import: @sentry/node",
+			"packages/worker: relative import escapes package: ../../node/src/index.ts",
+		]);
+	});
+
+	it("enforces the CLI boundary from the same topology graph", () => {
+		const cliRule = packageRules.get("packages/cli");
+		if (!cliRule) throw new Error("cli boundary rule is missing");
+		expect(
+			findImportViolations({
+				source: `import "@hevy-mcp/core"; import "cloudflare:workers";`,
+				file: "/repo/packages/cli/src/cli.ts",
+				fileName: "cli.ts",
+				relativePackage: "packages/cli",
+				packageRoot: "/repo/packages/cli",
+				rule: cliRule,
+			}),
+		).toEqual(["packages/cli: forbidden runtime import: cloudflare:workers"]);
 	});
 
 	it("rejects implementation files reintroduced under the root source tree", () => {

@@ -3,6 +3,12 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	loadTopology,
+	releaseConsumers,
+	workspaceById,
+	repositoryRoot,
+} from "./repository-control-plane.mjs";
 
 const execFileAsync = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -10,14 +16,21 @@ const sinceIndex = process.argv.indexOf("--since");
 const since = sinceIndex >= 0 ? process.argv[sinceIndex + 1] : "origin/main";
 
 if (!since) throw new Error("Missing value for --since");
-
-const releaseTriggerFiles = new Map([
-	["cloudflare.config.ts", "@hevy-mcp/worker"],
-]);
-const bundledReleaseGraph = new Map([
-	["@hevy-mcp/hevy-client", ["@hevy-mcp/core"]],
-	["@hevy-mcp/core", ["hevy-mcp", "@hevy-mcp/worker", "@chrisdoc/hevy-cli"]],
-]);
+let topology;
+try {
+	topology = loadTopology(root);
+} catch {
+	// Small temporary fixture repositories used by the focused tests only copy
+	// this script. Reuse the canonical graph for their known package names;
+	// unknown fixture workspaces remain isolated and therefore have no cascade.
+	topology = loadTopology(repositoryRoot);
+}
+const releaseTriggerFiles = new Map(
+	topology.release.triggers.map((trigger) => [
+		trigger.path,
+		workspaceById(topology, trigger.workspace).name,
+	]),
+);
 const releaseBumps = new Set(["patch", "minor", "major"]);
 
 const { stdout } = await execFileAsync(
@@ -153,18 +166,18 @@ if (missing.length > 0) {
 }
 
 function getTransitiveConsumers(packageName) {
-	const consumers = new Set();
-	const pending = [...(bundledReleaseGraph.get(packageName) ?? [])];
-	while (pending.length > 0) {
-		const consumer = pending.shift();
-		if (!consumer || consumers.has(consumer)) continue;
-		consumers.add(consumer);
-		pending.push(...(bundledReleaseGraph.get(consumer) ?? []));
-	}
-	return [...consumers];
+	const workspace = topology.workspaces.find(
+		(candidate) => candidate.name === packageName,
+	);
+	return workspace
+		? releaseConsumers(topology, workspace.id).map(
+				(id) => workspaceById(topology, id).name,
+			)
+		: [];
 }
 
-const incompleteCascades = [...bundledReleaseGraph.keys()]
+const incompleteCascades = topology.release.bundles
+	.map((bundle) => workspaceById(topology, bundle.workspace).name)
 	.filter((packageName) => changesetReleases.has(packageName))
 	.map((packageName) => ({
 		packageName,

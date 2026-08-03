@@ -1,0 +1,471 @@
+{
+	"version": 1,
+	"measurement": "2026-08-03",
+	"before": {
+		"registryFragments": [
+			{
+				"id": "workspace-identities",
+				"path": "scripts/check-workspaces.mjs",
+				"symbol": "expected",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 5
+			},
+			{
+				"id": "boundary-package-rules",
+				"path": "scripts/check-package-boundaries.mjs",
+				"symbol": "packageRules",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 10
+			},
+			{
+				"id": "boundary-internal-packages",
+				"path": "scripts/check-package-boundaries.mjs",
+				"symbol": "internalPackages",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 60
+			},
+			{
+				"id": "worker-entry-registry",
+				"path": "scripts/check-worker-import-boundary.mjs",
+				"symbol": "workerEntries",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 5
+			},
+			{
+				"id": "worker-builtins-registry",
+				"path": "scripts/check-worker-import-boundary.mjs",
+				"symbol": "nodeBuiltins",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 6
+			},
+			{
+				"id": "worker-forbidden-source-files",
+				"path": "scripts/check-worker-import-boundary.mjs",
+				"symbol": "forbiddenSourceFiles",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 48
+			},
+			{
+				"id": "worker-forbidden-packages",
+				"path": "scripts/check-worker-import-boundary.mjs",
+				"symbol": "forbiddenPackages",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 59
+			},
+			{
+				"id": "package-export-map",
+				"path": "scripts/check-package-exports.mjs",
+				"symbol": "expected",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 5
+			},
+			{
+				"id": "publishable-workspaces",
+				"path": "scripts/check-release-candidates.mjs",
+				"symbol": "expectedPublishable",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 15
+			},
+			{
+				"id": "release-triggers",
+				"path": "scripts/check-package-changesets.mjs",
+				"symbol": "releaseTriggerFiles",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 14
+			},
+			{
+				"id": "bundled-release-graph",
+				"path": "scripts/check-package-changesets.mjs",
+				"symbol": "bundledReleaseGraph",
+				"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+				"line": 17
+			}
+		],
+		"validationExecutionLines": {
+			"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+			"testPr": [
+				{
+					"lane": "unit",
+					"command": "npm run test:unit",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "mocked-mcp",
+					"command": "npm run test:mcp",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "contract",
+					"command": "npm run test:contract",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "stdio",
+					"command": "npm run test:stdio",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "worker",
+					"command": "npm run test:worker",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "worker-http",
+					"command": "npm run test:worker-http",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "pack",
+					"command": "npm run test:pack",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "cli",
+					"command": "npm run test:cli",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				},
+				{
+					"lane": "pack-cli",
+					"command": "npm run test:pack:cli",
+					"source": {
+						"path": "package.json",
+						"line": 58
+					}
+				}
+			],
+			"pullRequestWorkflow": [
+				{
+					"lane": "workspace-topology",
+					"command": "npm run check:workspaces",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 58
+					}
+				},
+				{
+					"lane": "package-boundaries",
+					"command": "npm run check:boundaries",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 61
+					}
+				},
+				{
+					"lane": "package-exports",
+					"command": "npm run check:exports",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 64
+					}
+				},
+				{
+					"lane": "release-candidates",
+					"command": "npm run check:release-candidates",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 67
+					}
+				},
+				{
+					"lane": "types",
+					"command": "npm run check:types",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 70
+					}
+				},
+				{
+					"lane": "server-manifest",
+					"command": "npm run check:server-manifest",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 73
+					}
+				},
+				{
+					"lane": "check",
+					"command": "npm run check",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 76
+					}
+				},
+				{
+					"lane": "package-changesets",
+					"command": "npm run check:package-changesets",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 95
+					}
+				},
+				{
+					"lane": "build",
+					"command": "npm run build",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 104
+					}
+				},
+				{
+					"lane": "worker-bundle",
+					"command": "npm run worker:dry-run",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 114
+					}
+				},
+				{
+					"lane": "worker-http",
+					"command": "npm run test:worker-http",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 118
+					}
+				},
+				{
+					"lane": "mocked-mcp",
+					"command": "npm run test:mcp",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 122
+					}
+				},
+				{
+					"lane": "mocked-mcp",
+					"command": "npm run test:mcp",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 126
+					}
+				},
+				{
+					"lane": "unit",
+					"command": "npm run test:unit",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 130
+					}
+				},
+				{
+					"lane": "unit",
+					"command": "npm run test:unit",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 143
+					}
+				},
+				{
+					"lane": "contract",
+					"command": "npm run test:contract",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 147
+					}
+				},
+				{
+					"lane": "stdio",
+					"command": "npm run test:stdio",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 151
+					}
+				},
+				{
+					"lane": "pack",
+					"command": "npm run test:pack",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 155
+					}
+				},
+				{
+					"lane": "worker-bundle",
+					"command": "npm run worker:dry-run",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 159
+					}
+				},
+				{
+					"lane": "performance",
+					"command": "npm run test:performance",
+					"source": {
+						"path": ".github/workflows/build-and-test.yml",
+						"line": 163
+					}
+				}
+			],
+			"releaseWorkflow": [
+				{
+					"lane": "build",
+					"command": "npm run build",
+					"source": {
+						"path": ".github/workflows/release.yml",
+						"line": 43
+					}
+				},
+				{
+					"lane": "release-unit",
+					"command": "npx vitest run --exclude 'tests/integration/**'",
+					"source": {
+						"path": ".github/workflows/release.yml",
+						"line": 51
+					}
+				},
+				{
+					"lane": "pack",
+					"command": "npm run test:pack",
+					"source": {
+						"path": ".github/workflows/release.yml",
+						"line": 53
+					}
+				},
+				{
+					"lane": "release-integration",
+					"command": "npx vitest run tests/integration",
+					"source": {
+						"path": ".github/workflows/release.yml",
+						"line": 55
+					}
+				},
+				{
+					"lane": "nightly",
+					"command": "node tests/nightly/test_hevy_mcp.mjs",
+					"source": {
+						"path": ".github/workflows/release.yml",
+						"line": 60
+					}
+				},
+				{
+					"lane": "worker-http-live",
+					"command": "npm run test:worker-http:live",
+					"source": {
+						"path": ".github/workflows/release.yml",
+						"line": 71
+					}
+				}
+			]
+		}
+	},
+	"after": {
+		"canonicalModels": [
+			{
+				"id": "topology",
+				"path": "repository/topology.json"
+			},
+			{
+				"id": "artifact-provenance",
+				"path": "repository/artifact-provenance.json"
+			},
+			{
+				"id": "validation-lanes",
+				"path": "repository/validation-lanes.json"
+			}
+		],
+		"legacyRegistryFragments": [],
+		"validationLaneDefinitions": 28,
+		"validationExecutionLines": {
+			"testPrMembers": 9,
+			"pullRequestWorkflow": 19,
+			"releaseWorkflow": 6,
+			"total": 34,
+			"identities": {
+				"testPr": [
+					"unit",
+					"mocked-mcp",
+					"contract",
+					"stdio",
+					"worker",
+					"worker-http",
+					"pack",
+					"cli",
+					"pack-cli"
+				],
+				"pullRequestWorkflow": [
+					"workspace-topology",
+					"package-boundaries",
+					"package-exports",
+					"release-candidates",
+					"types",
+					"server-manifest",
+					"check",
+					"package-changesets",
+					"build",
+					"worker-bundle",
+					"worker-http",
+					"mocked-mcp",
+					"mocked-mcp",
+					"unit",
+					"unit",
+					"contract",
+					"stdio",
+					"pack",
+					"performance"
+				],
+				"releaseWorkflow": [
+					"build",
+					"release-unit",
+					"pack",
+					"release-integration",
+					"nightly",
+					"worker-http-live"
+				]
+			}
+		},
+		"validationLaneIdentities": [
+			"unit",
+			"release-unit",
+			"mocked-mcp",
+			"contract",
+			"stdio",
+			"worker",
+			"worker-http",
+			"pack",
+			"cli",
+			"pack-cli",
+			"performance",
+			"workspace-topology",
+			"package-boundaries",
+			"package-exports",
+			"release-candidates",
+			"package-changesets",
+			"changeset-status",
+			"types",
+			"check",
+			"build",
+			"worker-bundle",
+			"server-manifest",
+			"docker",
+			"generation",
+			"integration-live",
+			"worker-http-live",
+			"release-integration",
+			"nightly"
+		]
+	},
+	"method": "Historical execution evidence records the immutable pre-migration source revision, lane identity, command, and source line. Current execution identities and workflow runtime/condition projections are derived from the canonical models and live workflow files; all totals are computed from those evidence arrays."
+}

@@ -1,0 +1,148 @@
+{
+	"version": 1,
+	"sources": [
+		{
+			"id": "openapi-spec",
+			"paths": ["openapi-spec.json"],
+			"kind": "tracked-source"
+		},
+		{
+			"id": "node-package-manifest",
+			"paths": ["packages/node/package.json"],
+			"kind": "package-metadata"
+		}
+	],
+	"generators": [
+		{
+			"id": "kubb-client",
+			"command": "build:client",
+			"inputs": ["openapi-spec"],
+			"outputs": ["generated-client"],
+			"validation": ["generation"]
+		},
+		{
+			"id": "server-manifest-generator",
+			"command": "sync:server-manifest",
+			"inputs": ["node-package-manifest"],
+			"outputs": ["server-manifest", "plugin-manifest"],
+			"validation": ["server-manifest"]
+		}
+	],
+	"outputs": [
+		{
+			"id": "generated-client",
+			"paths": ["packages/hevy-client/src/generated/**"],
+			"kind": "generated",
+			"curatedExports": [
+				"packages/hevy-client/src/index.ts",
+				"packages/hevy-client/src/types.ts",
+				"packages/hevy-client/src/schemas.ts"
+			],
+			"owners": ["generation", "package-boundaries"]
+		},
+		{
+			"id": "server-manifest",
+			"paths": ["server.json", "packages/node/server.json"],
+			"kind": "curated-manifest",
+			"owners": ["server-manifest"]
+		},
+		{
+			"id": "plugin-manifest",
+			"paths": ["plugin.json"],
+			"kind": "curated-manifest",
+			"owners": ["server-manifest"]
+		},
+		{
+			"id": "unit-coverage",
+			"paths": ["coverage/unit/**"],
+			"kind": "test-evidence",
+			"owners": ["unit"]
+		},
+		{
+			"id": "unit-junit",
+			"paths": ["test-results/unit-tests.xml"],
+			"kind": "test-evidence",
+			"owners": ["unit"]
+		},
+		{
+			"id": "mocked-coverage",
+			"paths": ["coverage/mocked/**"],
+			"kind": "test-evidence",
+			"owners": ["mocked-mcp"]
+		},
+		{
+			"id": "stdio-diagnostics",
+			"paths": ["test-results/stdio/**"],
+			"kind": "test-evidence",
+			"owners": ["stdio"]
+		},
+		{
+			"id": "performance-summary",
+			"paths": ["test-results/performance/summary.json"],
+			"kind": "test-evidence",
+			"owners": ["performance"]
+		},
+		{
+			"id": "live-diagnostics",
+			"paths": ["test-results/release-source.json"],
+			"kind": "test-evidence",
+			"owners": ["integration-live", "release-integration"]
+		},
+		{
+			"id": "live-worker-diagnostics",
+			"paths": ["test-results/worker-http-live/**"],
+			"kind": "test-evidence",
+			"owners": ["worker-http-live"]
+		},
+		{
+			"id": "nightly-diagnostics",
+			"paths": ["test-results/nightly-*.json"],
+			"kind": "test-evidence",
+			"owners": ["nightly"]
+		}
+	],
+	"candidates": [
+		{
+			"id": "node-package",
+			"kind": "npm-package",
+			"workspace": "node",
+			"sourcePaths": ["packages/node/**"],
+			"validation": ["pack"]
+		},
+		{
+			"id": "cli-package",
+			"kind": "npm-package",
+			"workspace": "cli",
+			"sourcePaths": ["packages/cli/**"],
+			"validation": ["pack-cli", "cli"]
+		},
+		{
+			"id": "core-package",
+			"kind": "workspace-package",
+			"workspace": "core",
+			"sourcePaths": ["packages/core/**"],
+			"validation": ["types", "package-boundaries"]
+		},
+		{
+			"id": "hevy-client-package",
+			"kind": "workspace-package",
+			"workspace": "hevy-client",
+			"sourcePaths": ["packages/hevy-client/**"],
+			"validation": ["types", "package-boundaries", "generation"]
+		},
+		{
+			"id": "worker-bundle",
+			"kind": "cloudflare-worker",
+			"workspace": "worker",
+			"sourcePaths": ["packages/worker/**", "cloudflare.config.ts"],
+			"validation": ["worker-bundle", "worker-http", "package-boundaries"]
+		},
+		{
+			"id": "docker-image",
+			"kind": "container",
+			"workspace": "node",
+			"sourcePaths": ["Dockerfile", "packages/node/**"],
+			"validation": ["docker"]
+		}
+	]
+}
