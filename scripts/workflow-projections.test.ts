@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	mappedLaneTargets,
 	parseWorkflowLaneExecutions,
 	validateWorkflowAggregate,
+	validateWorkflowProjections,
 } from "./workflow-projections.mjs";
 import type { ValidationLanes } from "./workflow-projections.mjs";
 
@@ -263,5 +268,32 @@ describe("workflow projection adapter", () => {
 				}),
 			/is not mapped to Nx/,
 		);
+	});
+});
+
+describe("validateWorkflowProjections with string jobs parameter", () => {
+	let root: string;
+
+	afterEach(async () => {
+		if (root) await rm(root, { recursive: true, force: true });
+	});
+
+	it("validates a named job without forwarding it as jobIds", async () => {
+		root = await mkdtemp(join(tmpdir(), "hevy-workflow-projections-"));
+		await writeFile(join(root, "build-and-test.yml"), workflow, "utf8");
+		const results = validateWorkflowProjections(lanes, {
+			rootDir: root,
+			workflows: {
+				"pull-request-ci": {
+					path: "build-and-test.yml",
+					jobs: "build",
+				},
+			},
+		});
+		expect(results["pull-request-ci"].executions).toHaveLength(3);
+		expect(results["pull-request-ci"].aggregate.lanes).toEqual([
+			"unit",
+			"stdio",
+		]);
 	});
 });

@@ -80,6 +80,8 @@ async function createFixture(
 		"scripts/control-plane-baseline.mjs",
 		"scripts/control-plane-routing.mjs",
 		"repository/topology.json",
+		"repository/artifact-provenance.json",
+		"repository/validation-lanes.json",
 	]) {
 		await writeFixtureFile(
 			root,

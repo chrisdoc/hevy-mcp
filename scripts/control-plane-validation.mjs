@@ -83,8 +83,11 @@ function internalDependencyIds(packageJson, names) {
 
 function validateReleaseGraph(topology) {
 	const bundles = topology.release.bundles;
+	assertUnique(
+		bundles.map((bundle) => bundle.workspace),
+		"release bundle workspaces",
+	);
 	const bundleIds = new Set(bundles.map((bundle) => bundle.workspace));
-	assertUnique([...bundleIds], "release bundle workspaces");
 	const graph = new Map(
 		bundles.map((bundle) => [bundle.workspace, bundle.consumers]),
 	);
@@ -666,6 +669,21 @@ export function validateAggregateAcyclicity(aggregates) {
 	for (const id of Object.keys(aggregates || {})) visit(id, []);
 }
 
+export function flattenAggregateLanes(aggregates, laneIds, aggregateId) {
+	const flatten = (id, stack = []) => {
+		assert(
+			!stack.includes(id),
+			"validation aggregate cycle: " + [...stack, id].join(" -> "),
+		);
+		const aggregate = aggregates[id];
+		assert(aggregate, "validation aggregate " + id + " is required");
+		return aggregate.lanes.flatMap((member) =>
+			laneIds.has(member) ? [member] : flatten(member, [...stack, id]),
+		);
+	};
+	return flatten(aggregateId);
+}
+
 export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 	assert(
 		lanes && lanes.version === 1,
@@ -715,7 +733,24 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			config.metadata?.scriptContent,
 			config.metadata?.runCommand,
 		].filter((command) => typeof command === "string");
-		return commands.some((command) => command.includes("changeset publish"));
+		const hasPublicationCommand = commands.some((command) =>
+			/(?:npm\s+publish|nx\s+release\s+publish|changeset\s+publish)/.test(
+				command,
+			),
+		);
+		if (hasPublicationCommand) return true;
+		for (const command of commands) {
+			const runMatch = /npm\s+run\s+(\S+)/.exec(command);
+			if (runMatch && packageJson.scripts?.[runMatch[1]]) {
+				if (
+					/(?:npm\s+publish|nx\s+release\s+publish|changeset\s+publish)/.test(
+						packageJson.scripts[runMatch[1]],
+					)
+				)
+					return true;
+			}
+		}
+		return false;
 	};
 	const aliases = new Set();
 	for (const lane of lanes.lanes) {

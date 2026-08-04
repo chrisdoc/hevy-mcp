@@ -159,7 +159,7 @@
 			},
 			"runtimes": ["node-24"],
 			"credentials": [],
-			"artifacts": ["node-package"],
+			"artifacts": ["node-package-tarball"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
 			"changeImpact": [
@@ -180,7 +180,7 @@
 			},
 			"runtimes": ["node-24"],
 			"credentials": [],
-			"artifacts": [],
+			"artifacts": ["cli-dist"],
 			"gate": "blocking",
 			"comparison": "cli-contract",
 			"changeImpact": [
@@ -200,7 +200,7 @@
 			},
 			"runtimes": ["node-24"],
 			"credentials": [],
-			"artifacts": ["cli-package"],
+			"artifacts": ["cli-package-tarball"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
 			"changeImpact": ["packages/cli/**"],
@@ -392,7 +392,7 @@
 			},
 			"runtimes": ["node-24", "node-26"],
 			"credentials": [],
-			"artifacts": ["node-package"],
+			"artifacts": ["node-dist", "node-package-tarball"],
 			"gate": "blocking",
 			"comparison": "build-output",
 			"changeImpact": [

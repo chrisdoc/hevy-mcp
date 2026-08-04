@@ -157,7 +157,7 @@ function validateManifest(manifest) {
 				typeof aggregate.nxTarget === "string" && aggregate.nxTarget.length > 0,
 				`${id} mapped aggregates need an Nx target`,
 			);
-		else if (aggregate.mappingStatus !== undefined)
+		else
 			assert(
 				aggregate.nxTarget === null,
 				`${id} non-mapped aggregates must not advertise an Nx target`,
@@ -279,7 +279,7 @@ export function renderValidationAggregateTable(
 			renderAggregateCommand(aggregate, id),
 			aggregate.lanes.map((member) => `\`${member}\``).join(", ") || "—",
 			String(aggregate.lanes.length),
-			aggregate.mappingStatus ?? "unspecified",
+			aggregate.mappingStatus,
 		]);
 	}
 	return [

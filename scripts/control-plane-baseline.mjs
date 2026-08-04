@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { flattenAggregateLanes } from "./control-plane-validation.mjs";
 
 export const HISTORICAL_REGISTRY_REVISION =
 	"f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c";
@@ -385,11 +386,17 @@ export function validateBaseline(rootDir, controlPlane, baselineOverride) {
 		[...aggregateIds].sort((left, right) => left.localeCompare(right)),
 		"baseline current aggregate counts",
 	);
+	const laneIdSet = new Set(laneIds);
 	for (const [id, count] of Object.entries(
 		comparable.currentModeledAggregateLaneCounts,
 	)) {
+		const flattenedLanes = flattenAggregateLanes(
+			controlPlane.lanes.aggregates,
+			laneIdSet,
+			id,
+		);
 		assert(
-			count === controlPlane.lanes.aggregates?.[id]?.lanes?.length,
+			count === flattenedLanes.length,
 			"baseline current aggregate metric drifted for " + id,
 		);
 	}

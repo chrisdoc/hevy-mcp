@@ -12,7 +12,8 @@
 		"**/.gemini",
 		"**/.omp",
 		"**/.opencode",
-		"**/.pi"
+		"**/.pi",
+		"tests/fixtures/generated-client/stale/**"
 	],
 	"categories": {
 		"correctness": "error"

@@ -23,8 +23,10 @@ export interface ValidationLaneForDocs {
 export interface ValidationAggregateForDocs {
 	lanes: string[];
 	alias?: string;
+	external?: boolean;
+	integration?: string;
 	nxTarget?: string | null;
-	mappingStatus?: string;
+	mappingStatus: string;
 }
 
 export interface ValidationLanesForDocs {

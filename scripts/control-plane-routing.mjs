@@ -7,7 +7,6 @@ function globToRegExp(pattern) {
 	const regexCharacters = new Set([
 		".",
 		"+",
-		"?",
 		"^",
 		"$",
 		"(",
@@ -24,6 +23,7 @@ function globToRegExp(pattern) {
 		)
 		.join("");
 	expression = expression
+		.replaceAll("?", "[^/]")
 		.replaceAll("*", "[^/]*")
 		.replaceAll("\u0001", "(?:.*/)?")
 		.replaceAll("\u0002", "(?:/.*)?")

@@ -78,8 +78,13 @@ describe("package boundary AST checker", () => {
 	});
 
 	it("derives Worker runtime restrictions from topology", () => {
+		const source = [
+			'import "node:fs";',
+			'import "@sentry/node";',
+			'import "@opentelemetry/sdk-trace-node";',
+		].join(" ");
 		const failures = findImportViolations({
-			source: `import "node:fs"; import "@sentry/node"; import "@opentelemetry/sdk-trace-node";`,
+			source,
 			file: "/repo/packages/worker/src/file.ts",
 			fileName: "file.ts",
 			relativePackage: "packages/worker",

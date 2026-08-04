@@ -212,7 +212,7 @@
 		"currentModeledAggregateLaneCounts": {
 			"pull-request": 9,
 			"release": 6,
-			"pre-push": 3,
+			"pre-push": 11,
 			"pull-request-ci": 19
 		}
 	}

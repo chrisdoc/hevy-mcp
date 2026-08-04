@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -96,6 +97,12 @@ export async function checkWorkerBundle({ rootDir = repositoryRoot } = {}) {
 		return workspace.name;
 	});
 	const outputDir = resolveOutputDirectory(provenance, rootDir);
+	if (!existsSync(outputDir)) {
+		throw new Error(
+			`Worker bundle output directory does not exist: ${outputDir}. ` +
+				"Run the worker bundle build step first (e.g., npm run worker:dry-run).",
+		);
+	}
 	const failures = [];
 	await scan(outputDir, unresolvedPrivateImports, failures);
 	return { failures, outputDir, unresolvedPrivateImports };

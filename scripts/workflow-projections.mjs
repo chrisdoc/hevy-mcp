@@ -541,7 +541,7 @@ export function validateWorkflowProjections(
 				config.expectedJobs ??
 				(Array.isArray(config.jobs) ? undefined : config.jobs),
 			job: config.job,
-			jobIds: config.jobs,
+			jobIds: Array.isArray(config.jobs) ? config.jobs : undefined,
 		});
 	}
 	return results;

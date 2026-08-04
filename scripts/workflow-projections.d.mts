@@ -53,6 +53,22 @@ export interface WorkflowAggregateResult {
 	executions: WorkflowExecution[];
 }
 
+export interface WorkflowProjectionConfig {
+	path?: string;
+	file?: string;
+	workflow?: string;
+	aggregate?: string;
+	jobs?: string | string[];
+	job?: string | Record<string, string>;
+	expectedJobs?: string | Record<string, string>;
+}
+
+export interface ValidateWorkflowProjectionsOptions {
+	rootDir?: string;
+	workflows?: Record<string, string | WorkflowProjectionConfig>;
+	aggregates?: Record<string, string>;
+}
+
 export function mappedLaneTargets(lanes: ValidationLanes): Map<string, string>;
 export function parseWorkflowLaneExecutions(
 	source: string,
@@ -62,3 +78,7 @@ export function validateWorkflowAggregate(
 	source: string,
 	options: WorkflowAggregateOptions,
 ): WorkflowAggregateResult;
+export function validateWorkflowProjections(
+	lanes: ValidationLanes,
+	options?: ValidateWorkflowProjectionsOptions,
+): Record<string, WorkflowAggregateResult>;

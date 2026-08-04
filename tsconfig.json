@@ -16,5 +16,10 @@
 	},
 	// Include the necessary files for your project
 	"include": ["**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules", "dist", "packages"]
+	"exclude": [
+		"node_modules",
+		"dist",
+		"packages",
+		"tests/fixtures/generated-client/stale"
+	]
 }

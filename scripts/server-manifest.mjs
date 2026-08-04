@@ -23,7 +23,12 @@ async function readJson(path, label) {
 	try {
 		contents = await readFile(path, "utf8");
 	} catch (error) {
-		throw new Error(`Unable to read ${label}: ${error.message}`);
+		if (error.code === "ENOENT") {
+			throw new Error(`Unable to read ${label}: ${error.message}`);
+		}
+		const readError = new Error(`Unable to read ${label}: ${error.message}`);
+		readError.cause = error;
+		throw readError;
 	}
 
 	try {
@@ -291,10 +296,14 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 	for (const mirror of mirrorManifests) {
 		try {
 			await access(dirname(mirror.path));
-			await writeFile(mirror.path, updatedContents, "utf8");
-		} catch {
-			// Fixture repositories may only include the primary manifest output.
+		} catch (error) {
+			if (error.code === "ENOENT") {
+				// Fixture repositories may only include the primary manifest output.
+				continue;
+			}
+			throw error;
 		}
+		await writeFile(mirror.path, updatedContents, "utf8");
 	}
 
 	for (const plugin of pluginManifests) {
