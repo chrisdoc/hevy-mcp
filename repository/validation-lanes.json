@@ -595,14 +595,19 @@
 				"diagnostics",
 				"build",
 				"worker-http",
+				"worker",
 				"mocked-mcp",
 				"unit",
 				"contract",
 				"stdio",
-				"pack",
+				"cli",
+				"pack-cli",
 				"worker-bundle",
 				"performance"
 			],
+			"workflowRuntimes": {
+				"worker": ["node-24"]
+			},
 			"integration": "github-actions",
 			"nxTarget": null,
 			"mappingStatus": "external"
@@ -611,14 +616,17 @@
 			"lanes": [
 				"build",
 				"release-unit",
-				"pack",
+				"worker",
+				"cli",
+				"pack-cli",
 				"release-integration",
 				"nightly",
 				"worker-http-live"
 			],
 			"workflowRuntimes": {
 				"build": ["node-24"],
-				"release-unit": ["node-24"]
+				"release-unit": ["node-24"],
+				"worker": ["node-24"]
 			},
 			"nxTarget": "release:validate",
 			"mappingStatus": "mapped"

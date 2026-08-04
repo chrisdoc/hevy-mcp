@@ -142,7 +142,9 @@
 				"release": [
 					"build",
 					"release-unit",
-					"pack",
+					"worker",
+					"cli",
+					"pack-cli",
 					"release-integration",
 					"nightly",
 					"worker-http-live"
@@ -161,11 +163,13 @@
 					"diagnostics",
 					"build",
 					"worker-http",
+					"worker",
 					"mocked-mcp",
 					"unit",
 					"contract",
 					"stdio",
-					"pack",
+					"cli",
+					"pack-cli",
 					"worker-bundle",
 					"performance"
 				]
@@ -211,9 +215,9 @@
 		},
 		"currentModeledAggregateLaneCounts": {
 			"pull-request": 9,
-			"release": 6,
+			"release": 8,
 			"pre-push": 11,
-			"pull-request-ci": 19
+			"pull-request-ci": 21
 		}
 	}
 }
