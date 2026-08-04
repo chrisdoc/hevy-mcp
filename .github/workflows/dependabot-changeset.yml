@@ -1,7 +1,11 @@
 name: Dependabot Changesets
 
 on:
-  pull_request_target:
+  # This privileged trigger is restricted to Dependabot-authored branches in
+  # this repository, and no pull-request code is checked out or executed.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    branches:
+      - main
     types: [opened, synchronize]
 
 permissions:
@@ -11,18 +15,10 @@ permissions:
 jobs:
   generate-changeset:
     if: >-
-      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Dependabot PR branch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create changeset
         uses: mscharley/dependency-changesets-action@874dac2372a085cb94f750e8bdf5b1173a838a75 # v1.2.5
         with:

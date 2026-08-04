@@ -1,12 +1,13 @@
 name: Release
 
 on:
-  workflow_run:
+  # This privileged follow-up is gated to a successful push to main from this
+  # repository, so it only checks out a trusted commit already tested by CI.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
     workflows: ["Build and Test"]
     types: [completed]
     branches: [main]
-permissions:
-  contents: write # needed to create releases/tags
+permissions: {}
 
 env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
@@ -17,7 +18,8 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write # to be able to publish a GitHub release
@@ -91,15 +93,15 @@ jobs:
           HEVY_MCP_RELEASE: "true"
       - name: Set Release Outputs
         id: release
+        env:
+          PKGS: ${{ steps.changesets.outputs.publishedPackages }}
+          PUBLISHED: ${{ steps.changesets.outputs.published }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
-          release_commit="${{ github.event.workflow_run.head_sha || github.sha }}"
           node scripts/release-outputs.mjs \
-            "$release_commit^1" \
-            "$release_commit" >> "$GITHUB_OUTPUT"
-        env:
-          PUBLISHED: ${{ steps.changesets.outputs.published }}
-          PKGS: ${{ steps.changesets.outputs.publishedPackages }}
+            "$RELEASE_COMMIT^1" \
+            "$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
 
   publish-container:
     name: Publish Docker image
@@ -161,6 +163,8 @@ jobs:
     concurrency:
       group: cloudflare-worker-production
       cancel-in-progress: false
+    permissions:
+      contents: read
     environment:
       name: production
       url: https://hevy.chrisdoc.dev/mcp
@@ -190,13 +194,14 @@ jobs:
           CLOUDFLARE_OTEL_LOGS_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_LOGS_DESTINATIONS }}
           CLOUDFLARE_OTEL_TRACES_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_TRACES_DESTINATIONS }}
           CLOUDFLARE_OAUTH_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
           WORKER_VERSION: ${{ needs.release.outputs.worker_version }}
         run: >-
           npx wrangler deploy
           --x-new-config
           --env production
           --tag "$WORKER_VERSION"
-          --message "Changesets release at ${{ github.event.workflow_run.head_sha || github.sha }}"
+          --message "Changesets release at $RELEASE_COMMIT"
 
   publish-preview:
     name: Publish hevy-mcp preview

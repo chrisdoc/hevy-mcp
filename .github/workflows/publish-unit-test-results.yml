@@ -1,7 +1,9 @@
 name: Publish Unit Test Results
 
 on:
-  workflow_run:
+  # This privileged follow-up never checks out or executes pull-request code;
+  # it only publishes artifacts produced by the unprivileged test workflow.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
     workflows:
       - Build and Test
     types:
