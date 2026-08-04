@@ -102,7 +102,7 @@ raw Vitest selectors into automation.
 | `npm run test:nightly`          | Published/source launcher canary used by nightly and release workflows.                                 | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.                         |
 | `npm run test:performance`      | Build and spawn `dist/cli.mjs` for mocked correctness and latency/memory trend scenarios.               | Deterministic; fake key, child-local Nock, and blocked child network.                                |
 | `npm run test:coverage`         | Produce separate unit and mocked MCP coverage reports.                                                  | Deterministic.                                                                                       |
-| `npm run test:pr`               | Run the deterministic unit, mocked MCP, contract, stdio, and package lanes expected on pull requests.   | Deterministic; does not include the separate performance lane.                                       |
+| `npm run test:pr`               | Run the deterministic unit, mocked MCP, contract, stdio, worker, worker-http, and package lanes expected on pull requests.   | Deterministic; does not include the separate performance lane.                                       |
 | `npm test`                      | Build, then run full Vitest discovery with optional `.env` loading.                                     | Broad local command; use the named lanes when you need explicit deterministic or live test behavior. |
 
 The lane and aggregate registry below is generated from
