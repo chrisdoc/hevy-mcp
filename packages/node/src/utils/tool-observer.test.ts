@@ -179,9 +179,15 @@ describe("createNodeToolObserver", () => {
 				tool_name: "get-workouts",
 				outcome: "success",
 				is_error: "false",
-				"mcp.tool.result.content_count_bucket": "2-10",
-				"mcp.tool.result.item_count_bucket": "11-50",
 			}),
+		);
+		const durationAttributes = testDoubles.toolDurationRecord.mock
+			.calls[0]?.[1] as Record<string, unknown>;
+		expect(durationAttributes).not.toHaveProperty(
+			"mcp.tool.result.content_count_bucket",
+		);
+		expect(durationAttributes).not.toHaveProperty(
+			"mcp.tool.result.item_count_bucket",
 		);
 		expect(testDoubles.recordMcpToolFailure).not.toHaveBeenCalled();
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
