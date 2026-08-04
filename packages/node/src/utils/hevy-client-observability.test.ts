@@ -117,6 +117,59 @@ describe("createNodeHevyClientOptions", () => {
 		);
 	});
 
+	it("normalizes dynamic endpoint labels without hiding trace diagnostics", () => {
+		const options = createNodeHevyClientOptions();
+
+		observe(options, {
+			method: "GET",
+			endpoint: "/v1/workouts/workout-secret",
+			status: 200,
+			durationMs: 12,
+			retryCount: 0,
+			outcome: "success",
+		});
+
+		expect(testDoubles.startSpan).toHaveBeenCalledWith("hevy.api.GET", {
+			attributes: expect.objectContaining({
+				"hevy.api.endpoint": "/v1/workouts/workout-secret",
+			}),
+		});
+		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({
+				endpoint: "/v1/workouts/:workoutId",
+			}),
+		);
+		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(
+			12,
+			expect.objectContaining({
+				endpoint: "/v1/workouts/:workoutId",
+			}),
+		);
+	});
+
+	it("uses an unknown metric endpoint for unrecognized paths", () => {
+		const options = createNodeHevyClientOptions();
+
+		observe(options, {
+			method: "GET",
+			endpoint: "/v1/private-resource/secret-id",
+			status: 200,
+			durationMs: 12,
+			retryCount: 0,
+			outcome: "success",
+		});
+
+		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({ endpoint: "unknown" }),
+		);
+		expect(testDoubles.apiDurationRecord).toHaveBeenCalledWith(
+			12,
+			expect.objectContaining({ endpoint: "unknown" }),
+		);
+	});
+
 	it("runs request work and retry waits under the API span context", async () => {
 		const options = createNodeHevyClientOptions();
 		const scope = options.onRequestStart?.({
