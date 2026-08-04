@@ -2,9 +2,18 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { calculateReleaseOutputs } from "./release-outputs.mjs";
+import {
+	MAX_WORKER_PREVIEW_TAG_LENGTH,
+	resolveWorkerPreviewTag,
+	resolveWorkerVersion,
+} from "./resolve-worker-version.mjs";
 
 const workflow = await readFile(
 	resolve(import.meta.dirname, "../.github/workflows/release.yml"),
+	"utf8",
+);
+const previewWorkflow = await readFile(
+	resolve(import.meta.dirname, "../.github/workflows/deploy-worker.yml"),
 	"utf8",
 );
 const changesetConfig = JSON.parse(
@@ -21,6 +30,20 @@ const deployProduction = workflow.slice(
 const publishContainer = workflow.slice(
 	workflow.indexOf("  publish-container:"),
 	workflow.indexOf("  deploy-production:"),
+);
+const bootstrapPreview = previewWorkflow.slice(
+	previewWorkflow.indexOf("      - name: Bootstrap dedicated preview Worker"),
+	previewWorkflow.indexOf("      - name: Upload preview version"),
+);
+const uploadPreview = previewWorkflow.slice(
+	previewWorkflow.indexOf("      - name: Upload preview version"),
+	previewWorkflow.indexOf("      - name: Activate preview version"),
+);
+const cleanupPreview = previewWorkflow.slice(
+	previewWorkflow.indexOf(
+		"      - name: Replace preview alias with inert Worker",
+	),
+	previewWorkflow.indexOf("      - name: Activate inert cleanup version"),
 );
 
 function workerManifest(version: string, dependency = "1.0.0") {
@@ -51,14 +74,70 @@ describe("release workflow", () => {
 				publishedPackages: [],
 			}).worker_released,
 		).toBe(false);
-		expect(
+		const releaseOutputs = calculateReleaseOutputs({
+			beforeWorkerManifest: workerManifest("1.0.0"),
+			afterWorkerManifest: workerManifest("1.0.1"),
+			published: false,
+			publishedPackages: [],
+		});
+		expect(releaseOutputs.worker_released).toBe(true);
+		expect(releaseOutputs.worker_version).toBe("1.0.1");
+	});
+
+	it("rejects empty and non-semantic Worker versions", () => {
+		expect(() => resolveWorkerVersion(workerManifest(""))).toThrow(
+			"valid semantic version",
+		);
+		expect(() => resolveWorkerVersion(workerManifest("release-1"))).toThrow(
+			"valid semantic version",
+		);
+		expect(() =>
 			calculateReleaseOutputs({
-				beforeWorkerManifest: workerManifest("1.0.0"),
-				afterWorkerManifest: workerManifest("1.0.1"),
+				beforeWorkerManifest: workerManifest("release-1"),
+				afterWorkerManifest: workerManifest("1.0.0"),
 				published: false,
 				publishedPackages: [],
-			}).worker_released,
-		).toBe(true);
+			}),
+		).toThrow("valid semantic version");
+	});
+
+	it("builds deterministic bounded preview prerelease tags", () => {
+		const options = {
+			manifest: workerManifest("1.2.3"),
+			pullRequestNumber: "845",
+			headSha: "abcdef1234567890abcdef1234567890abcdef12",
+		};
+
+		const first = resolveWorkerPreviewTag(options);
+		const second = resolveWorkerPreviewTag(options);
+
+		expect(first).toBe("1.2.3-pr.845.abcdef123456");
+		expect(second).toBe(first);
+		expect(first.length).toBeLessThanOrEqual(MAX_WORKER_PREVIEW_TAG_LENGTH);
+	});
+
+	it("rejects unsafe preview tag inputs and overlong tags", () => {
+		expect(() =>
+			resolveWorkerPreviewTag({
+				manifest: workerManifest("1.2.3"),
+				pullRequestNumber: "0",
+				headSha: "abcdef1234567890abcdef1234567890abcdef12",
+			}),
+		).toThrow("pull request number");
+		expect(() =>
+			resolveWorkerPreviewTag({
+				manifest: workerManifest("1.2.3"),
+				pullRequestNumber: "845",
+				headSha: "not-a-commit",
+			}),
+		).toThrow("commit SHA");
+		expect(() =>
+			resolveWorkerPreviewTag({
+				manifest: workerManifest(`1.2.3-${"a".repeat(60)}`),
+				pullRequestNumber: "845",
+				headSha: "abcdef1234567890abcdef1234567890abcdef12",
+			}),
+		).toThrow("exceeds");
 	});
 
 	it.each([
@@ -102,5 +181,23 @@ describe("release workflow", () => {
 			version: true,
 			tag: false,
 		});
+	});
+
+	it("tags production and actual preview uploads only", () => {
+		expect(workflow).toContain(
+			"worker_version: ${{ steps.release.outputs.worker_version }}",
+		);
+		expect(deployProduction).toContain("WORKER_VERSION:");
+		expect(deployProduction).toContain('--tag "$WORKER_VERSION"');
+		expect(previewWorkflow).toContain(
+			"node scripts/resolve-worker-version.mjs preview",
+		);
+		expect(uploadPreview).toContain(
+			"WORKER_VERSION_TAG: ${{ steps.worker_version.outputs.tag }}",
+		);
+		expect(uploadPreview).toContain('--tag "${WORKER_VERSION_TAG}"');
+		expect(uploadPreview).not.toContain('--tag "${{');
+		expect(bootstrapPreview).not.toContain("--tag");
+		expect(cleanupPreview).not.toContain("--tag");
 	});
 });
