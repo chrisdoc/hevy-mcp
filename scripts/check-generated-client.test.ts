@@ -197,6 +197,44 @@ describe("generated client closure checks", () => {
 		}
 	});
 
+	it("uses SIGKILL directly when configured as the timeout signal", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-direct-sigkill-"),
+		);
+		const script = resolve(root, "sleep.mjs");
+		try {
+			await writeFile(script, "setInterval(() => {}, 1000);\n");
+
+			await expect(
+				runCommand(process.execPath, [script], root, {
+					timeout: 1_000,
+					killSignal: "SIGKILL",
+				}),
+			).rejects.toThrow(/failed: timed out after 1000ms; sent SIGKILL/);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("reports a child terminated by a signal before the timeout", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-signal-"),
+		);
+		const script = resolve(root, "terminate.mjs");
+		try {
+			await writeFile(
+				script,
+				'setTimeout(() => process.kill(process.pid, "SIGTERM"), 50);\n',
+			);
+
+			await expect(
+				runCommand(process.execPath, [script], root, { timeout: 1_000 }),
+			).rejects.toThrow(/failed: terminated by signal SIGTERM/);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	it("returns no differences when both comparison trees are absent", async () => {
 		const root = await mkdtemp(
 			resolve(tmpdir(), "hevy-generated-client-empty-trees-"),
