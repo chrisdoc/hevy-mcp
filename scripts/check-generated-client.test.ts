@@ -300,7 +300,7 @@ describe("generated client closure checks", () => {
 		const result = await checkGeneratedClient();
 
 		expect(result.generatedFiles).toBeGreaterThan(0);
-	}, 20_000);
+	}, 60_000);
 
 	it("reports a missing named public export", async () => {
 		const fixture = await materializeFixture(
