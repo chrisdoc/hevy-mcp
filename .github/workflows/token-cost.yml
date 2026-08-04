@@ -68,7 +68,7 @@ jobs:
 
       - name: Measure current revision
         run: >-
-          npm run measure:tokens --
+          npx nx run repository:measure:tokens --
           --output token-cost-current.json
           --baseline token-cost-base.json
           --markdown token-cost-report.md

@@ -33,11 +33,18 @@ function projectTags(packageJson) {
 	];
 }
 
+function buildOutputs(packageJson) {
+	return Array.isArray(packageJson.files) && packageJson.files.includes("dist")
+		? ["{projectRoot}/dist"]
+		: [];
+}
+
 module.exports = {
 	name: "hevy-mcp-project-metadata",
 	runtimeTag,
 	roleTag,
 	projectTags,
+	buildOutputs,
 	createNodes: [
 		"packages/*/package.json",
 		(configFiles, _options, context) =>
@@ -51,6 +58,9 @@ module.exports = {
 						projects: {
 							[path.posix.dirname(configFile)]: {
 								tags: projectTags(packageJson),
+								targets: {
+									build: { outputs: buildOutputs(packageJson) },
+								},
 							},
 						},
 					},

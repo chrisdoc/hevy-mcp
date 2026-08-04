@@ -22,26 +22,112 @@
 			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
 		},
 		"check:types": {
-			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		},
 		"check": {
 			"inputs": ["sourceInputs", "controlPlaneInputs"]
+		},
+		"check:server-manifest": {
+			"inputs": ["validationInputs"]
 		},
 		"check:changeset": {
 			"cache": false,
 			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
 		},
 		"test:pr": {
-			"executor": "nx:run-commands",
-			"options": {
-				"command": "npm run test:pr",
-				"env": { "FORCE_COLOR": "0" }
-			},
-			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+			"executor": "nx:noop",
+			"dependsOn": [
+				"test:unit",
+				"test:mcp",
+				"test:contract",
+				"test:stdio",
+				"test:worker",
+				"test:worker-http",
+				"test:pack",
+				"test:cli",
+				"test:pack:cli"
+			],
+			"inputs": ["validationInputs"]
+		},
+		"test:unit": {
+			"cache": true,
+			"inputs": ["validationInputs"],
+			"outputs": [
+				"{workspaceRoot}/coverage/unit",
+				"{workspaceRoot}/test-results/unit-tests.xml"
+			]
+		},
+		"test:mcp": {
+			"cache": true,
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/coverage/mocked"]
+		},
+		"test:integration": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:diagnostics": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:contract": {
+			"cache": true,
+			"inputs": ["validationInputs"]
+		},
+		"test:stdio": {
+			"cache": true,
+			"inputs": ["validationInputs"]
+		},
+		"test:worker": {
+			"cache": false,
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:worker-http": {
+			"cache": false,
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:pack": {
+			"cache": false,
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:cli": {
+			"cache": true,
+			"inputs": ["validationInputs"]
+		},
+		"test:pack:cli": {
+			"cache": false,
+			"dependsOn": ["test:pack"],
+			"options": { "env": { "FORCE_COLOR": "0" } },
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:nightly": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:live": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:worker-http:live": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"measure:tokens": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"worker:dry-run": {
+			"cache": false,
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/.wrangler/dry-run"]
 		},
 		"build": {
 			"outputs": ["{workspaceRoot}/packages/node/dist"],
-			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		},
 		"build:client": {
 			"outputs": ["{workspaceRoot}/packages/hevy-client/src/generated"],
@@ -53,6 +139,7 @@
 			]
 		},
 		"sync:server-manifest": {
+			"cache": false,
 			"outputs": [
 				"{workspaceRoot}/server.json",
 				"{workspaceRoot}/plugin.json",
@@ -66,15 +153,17 @@
 			]
 		},
 		"test:coverage": {
+			"cache": false,
 			"outputs": [
 				"{workspaceRoot}/coverage/unit",
 				"{workspaceRoot}/coverage/mocked"
 			],
-			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		},
 		"test:performance": {
+			"cache": false,
 			"outputs": ["{workspaceRoot}/test-results/performance/summary.json"],
-			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		},
 		"pack:artifacts": {
 			"executor": "nx:run-commands",
@@ -84,24 +173,41 @@
 				"command": "mkdir -p .nx/pack && npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent"
 			},
 			"outputs": ["{workspaceRoot}/.nx/pack/*.tgz"],
-			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		},
 		"dependency-cruiser": {
 			"executor": "nx:run-commands",
 			"options": { "command": "npm run check:dependency-cruiser" },
-			"inputs": ["sourceInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		},
+		"version:changesets": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
+		},
+		"version": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"version:major": { "cache": false },
+		"version:minor": { "cache": false },
+		"version:patch": { "cache": false },
+		"release": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"worker:deploy": { "cache": false },
 		"control-plane": {
 			"dependsOn": [
 				"check:workspaces",
 				"check:boundaries",
 				"check:exports",
 				"test:pr",
+				"check:server-manifest",
 				"check",
 				"check:types",
 				"check:changeset"
 			],
-			"inputs": ["sourceInputs", "packageManifestInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		}
 	}
 }
