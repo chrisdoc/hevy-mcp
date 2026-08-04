@@ -73,6 +73,25 @@ async function createFixture(
 		"scripts/check-package-changesets.mjs",
 		await readFile(scriptPath, "utf8"),
 	);
+	for (const relativePath of [
+		"scripts/repository-control-plane.mjs",
+		"scripts/control-plane-models.mjs",
+		"scripts/control-plane-validation.mjs",
+		"scripts/control-plane-baseline.mjs",
+		"scripts/control-plane-routing.mjs",
+		"repository/topology.json",
+		"repository/artifact-provenance.json",
+		"repository/validation-lanes.json",
+	]) {
+		await writeFixtureFile(
+			root,
+			relativePath,
+			await readFile(
+				join(fileURLToPath(new URL("..", import.meta.url)), relativePath),
+				"utf8",
+			),
+		);
+	}
 	await writeFixtureFile(
 		root,
 		`${packagePath}/package.json`,

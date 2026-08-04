@@ -1,0 +1,214 @@
+{
+	"$schema": "./node_modules/nx/schemas/nx-schema.json",
+	"namedInputs": {
+		"repositoryConfig": [
+			"{workspaceRoot}/nx.json",
+			"{workspaceRoot}/project.json",
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/tsconfig*.json",
+			"{workspaceRoot}/vitest*.config.*",
+			"{workspaceRoot}/.oxlintrc.json",
+			"{workspaceRoot}/.oxfmtrc.json"
+		],
+		"controlPlaneInputs": [
+			"{workspaceRoot}/.nvmrc",
+			"{workspaceRoot}/nx.json",
+			"{workspaceRoot}/project.json",
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/packages/*/package.json",
+			"{workspaceRoot}/.github/workflows/build-and-test.yml",
+			"{workspaceRoot}/.github/workflows/release.yml",
+			"{workspaceRoot}/CONTRIBUTING.md",
+			"{workspaceRoot}/docs/test-lanes.md",
+			"{workspaceRoot}/scripts/**/*.mjs",
+			"{workspaceRoot}/scripts/**/*.cjs",
+			"{workspaceRoot}/.dependency-cruiser.cjs",
+			"controlPlaneModels",
+			"{workspaceRoot}/.changeset/**/*.md"
+		],
+		"packageManifestInputs": [
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/packages/*/package.json"
+		],
+		"packageConfigs": [
+			"packageManifestInputs",
+			"{workspaceRoot}/packages/*/tsconfig*.json",
+			"{workspaceRoot}/packages/*/tsdown.config.*",
+			"{workspaceRoot}/packages/hevy-client/kubb.config.ts"
+		],
+		"compilerConfigs": [
+			"{workspaceRoot}/tsconfig*.json",
+			"{workspaceRoot}/packages/*/tsconfig*.json"
+		],
+		"rootSources": [
+			"{workspaceRoot}/*.ts",
+			"{workspaceRoot}/scripts/**/*.ts",
+			"{workspaceRoot}/scripts/**/*.mts",
+			"{workspaceRoot}/scripts/**/*.cts",
+			"{workspaceRoot}/tests/**/*.ts",
+			"{workspaceRoot}/tests/**/*.tsx"
+		],
+		"runtimeSources": ["{workspaceRoot}/packages/*/src/**/*"],
+		"testFixtures": ["{workspaceRoot}/tests/fixtures/**/*"],
+		"testShims": ["{workspaceRoot}/tests/shims/**/*"],
+		"testScripts": ["{workspaceRoot}/scripts/**/*"],
+		"controlPlaneModels": ["{workspaceRoot}/repository/**/*"],
+		"unitSpecialInputs": [
+			"{workspaceRoot}/.github/workflows/release.yml",
+			"{workspaceRoot}/.github/workflows/deploy-worker.yml",
+			"{workspaceRoot}/.changeset/config.json",
+			"{workspaceRoot}/docs/cloudflare-worker-version-attribution.md",
+			"{workspaceRoot}/docs/clickstack-metrics.md",
+			"{workspaceRoot}/.dependency-cruiser.cjs",
+			"{workspaceRoot}/.cm/gitstream.cm",
+			"{workspaceRoot}/.cm/plugins/filters/findDiffLocation/index.js",
+			"{workspaceRoot}/packages/node/README.md"
+		],
+		"unitTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"testScripts",
+			"controlPlaneModels",
+			"{workspaceRoot}/tests/unit/**/*",
+			"unitSpecialInputs"
+		],
+		"releaseUnitTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"testScripts",
+			"controlPlaneModels",
+			"{workspaceRoot}/tests/**/*",
+			"unitSpecialInputs"
+		],
+		"generatedClientInputs": [
+			"repositoryConfig",
+			"packageConfigs",
+			"controlPlaneModels",
+			"openapiInputs",
+			"{workspaceRoot}/scripts/check-generated-client.mjs",
+			"{workspaceRoot}/scripts/check-generated-client.d.mts",
+			"{workspaceRoot}/scripts/check-generated-client.test.ts",
+			"{workspaceRoot}/scripts/openapi-spec.js",
+			"{workspaceRoot}/tests/fixtures/generated-client/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/generated/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/types.ts",
+			"{workspaceRoot}/packages/hevy-client/src/schemas.ts"
+		],
+		"mockedTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testShims",
+			"{workspaceRoot}/tests/integration/mocked/**/*"
+		],
+		"contractTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"manifestInputs",
+			"{workspaceRoot}/packages/node/src/index.test.ts",
+			"{workspaceRoot}/packages/node/src/utils/config.test.ts",
+			"{workspaceRoot}/packages/core/src/tools/register.test.ts",
+			"{workspaceRoot}/packages/core/src/utils/output-schemas.test.ts",
+			"{workspaceRoot}/tests/unit/server-manifest.test.ts"
+		],
+		"stdioTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"compilerConfigs",
+			"runtimeSources",
+			"{workspaceRoot}/packages/node/src/**/*",
+			"{workspaceRoot}/tests/fixtures/graceful-shutdown-child.ts"
+		],
+		"cliTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"{workspaceRoot}/packages/cli/src/**/*"
+		],
+		"typeCheckInputs": [
+			"compilerConfigs",
+			"packageManifestInputs",
+			"runtimeSources"
+		],
+		"repositoryTypeCheckInputs": ["typeCheckInputs", "rootSources"],
+		"packageBuildInputs": [
+			"packageConfigs",
+			"compilerConfigs",
+			"runtimeSources"
+		],
+		"nodeBuildInputs": [
+			"packageBuildInputs",
+			"{workspaceRoot}/packages/node/tsdown.config.ts"
+		],
+		"cliBuildInputs": [
+			"packageBuildInputs",
+			"{workspaceRoot}/packages/cli/tsdown.config.ts"
+		],
+		"manifestInputs": [
+			"controlPlaneModels",
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/server.json",
+			"{workspaceRoot}/plugin.json",
+			"{workspaceRoot}/packages/node/server.json",
+			"{workspaceRoot}/packages/node/package.json",
+			"{workspaceRoot}/scripts/server-manifest.mjs",
+			"{workspaceRoot}/scripts/repository-control-plane.mjs",
+			"{workspaceRoot}/scripts/control-plane-models.mjs"
+		],
+		"openapiInputs": [
+			"{workspaceRoot}/openapi-spec.json",
+			"{workspaceRoot}/packages/hevy-client/kubb.config.ts",
+			"{workspaceRoot}/packages/hevy-client/package.json",
+			"{workspaceRoot}/package-lock.json"
+		],
+		"boundaryInputs": [
+			"runtimeSources",
+			"compilerConfigs",
+			"{workspaceRoot}/.dependency-cruiser.cjs",
+			"{workspaceRoot}/scripts/check-package-boundaries.mjs"
+		],
+		"validationInputs": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"testScripts",
+			"packageManifestInputs",
+			"controlPlaneInputs"
+		]
+	},
+	"plugins": ["./scripts/nx-project-metadata.cjs"],
+	"targetDefaults": {
+		"build": [
+			{
+				"cache": false,
+				"inputs": ["packageBuildInputs"],
+				"dependsOn": ["^build"]
+			},
+			{
+				"cache": true,
+				"inputs": ["cliBuildInputs"],
+				"filter": { "projects": ["@chrisdoc/hevy-cli"] }
+			},
+			{
+				"cache": false,
+				"inputs": ["nodeBuildInputs"],
+				"filter": { "projects": ["hevy-mcp"] }
+			}
+		],
+		"check:types": {
+			"cache": true,
+			"inputs": ["typeCheckInputs"],
+			"dependsOn": ["^check:types"]
+		}
+	}
+}

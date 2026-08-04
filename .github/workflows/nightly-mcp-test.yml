@@ -55,7 +55,7 @@ jobs:
 
       - name: Build local source
         if: matrix.launcher.name == 'source'
-        run: npm run build
+        run: npx nx run repository:build
 
       - name: Set up Bun
         if: matrix.launcher.command == 'bunx'
@@ -63,7 +63,7 @@ jobs:
 
       - name: Run MCP integration test
         id: run_mcp_integration_test
-        run: node tests/nightly/test_hevy_mcp.mjs
+        run: npx nx run repository:test:nightly
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_MCP_COMMAND: ${{ matrix.launcher.command }}

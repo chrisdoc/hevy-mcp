@@ -1,0 +1,139 @@
+{
+	"version": 1,
+	"workspaceGlob": "packages/*",
+	"root": {
+		"private": true,
+		"orchestrator": true
+	},
+	"workspaces": [
+		{
+			"id": "hevy-client",
+			"path": "packages/hevy-client",
+			"name": "@hevy-mcp/hevy-client",
+			"private": true,
+			"publishable": false,
+			"runtime": "neutral",
+			"exports": [".", "./types", "./schemas"],
+			"dependencies": [],
+			"boundary": {
+				"allowed": {},
+				"forbidden": [
+					"@cloudflare/",
+					"cloudflare:",
+					"@sentry/",
+					"@opentelemetry/"
+				],
+				"rejectBuiltins": true,
+				"rejectDynamicImports": true
+			},
+			"artifacts": ["generated-client", "hevy-client-package"],
+			"role": "client"
+		},
+		{
+			"id": "core",
+			"path": "packages/core",
+			"name": "@hevy-mcp/core",
+			"private": true,
+			"publishable": false,
+			"runtime": "neutral",
+			"exports": [".", "./mutations"],
+			"dependencies": ["hevy-client"],
+			"boundary": {
+				"allowed": {
+					"@hevy-mcp/hevy-client": ["", "types", "schemas"]
+				},
+				"forbidden": [
+					"@cloudflare/",
+					"cloudflare:",
+					"@sentry/",
+					"@opentelemetry/"
+				],
+				"rejectBuiltins": true,
+				"rejectDynamicImports": true
+			},
+			"artifacts": ["core-package"],
+			"role": "runtime"
+		},
+		{
+			"id": "node",
+			"path": "packages/node",
+			"name": "hevy-mcp",
+			"private": false,
+			"publishable": true,
+			"runtime": "node",
+			"exports": ["."],
+			"dependencies": ["hevy-client", "core"],
+			"boundary": {
+				"allowed": {
+					"@hevy-mcp/core": [""],
+					"@hevy-mcp/hevy-client": [""]
+				},
+				"forbidden": ["@cloudflare/", "cloudflare:"],
+				"rejectBuiltins": false,
+				"rejectDynamicImports": false
+			},
+			"artifacts": ["node-package", "docker-image"],
+			"role": "server"
+		},
+		{
+			"id": "worker",
+			"path": "packages/worker",
+			"name": "@hevy-mcp/worker",
+			"private": true,
+			"publishable": false,
+			"runtime": "workerd",
+			"exports": ["."],
+			"dependencies": ["hevy-client", "core"],
+			"boundary": {
+				"allowed": {
+					"@hevy-mcp/core": [""],
+					"@hevy-mcp/hevy-client": [""]
+				},
+				"forbidden": ["@sentry/", "@opentelemetry/"],
+				"rejectBuiltins": true,
+				"rejectDynamicImports": false
+			},
+			"artifacts": ["worker-bundle"],
+			"role": "adapter"
+		},
+		{
+			"id": "cli",
+			"path": "packages/cli",
+			"name": "@chrisdoc/hevy-cli",
+			"private": false,
+			"publishable": true,
+			"runtime": "node",
+			"exports": [],
+			"dependencies": ["hevy-client", "core"],
+			"boundary": {
+				"allowed": {
+					"@hevy-mcp/core": ["", "mutations"],
+					"@hevy-mcp/hevy-client": ["", "schemas"]
+				},
+				"forbidden": ["@cloudflare/", "cloudflare:"],
+				"rejectBuiltins": false,
+				"rejectDynamicImports": false
+			},
+			"artifacts": ["cli-package"],
+			"role": "cli"
+		}
+	],
+	"release": {
+		"triggers": [
+			{
+				"path": "cloudflare.config.ts",
+				"workspace": "worker"
+			}
+		],
+		"bundles": [
+			{
+				"workspace": "hevy-client",
+				"consumers": ["core"]
+			},
+			{
+				"workspace": "core",
+				"consumers": ["node", "worker", "cli"]
+			}
+		]
+	}
+}

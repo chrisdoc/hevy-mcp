@@ -5,11 +5,11 @@ import { pluginTs } from "@kubb/plugin-ts";
 import { pluginZod } from "@kubb/plugin-zod";
 import { fileURLToPath } from "node:url";
 
-const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+const clientRoot = fileURLToPath(new URL("./", import.meta.url));
 
 /** Kubb owns the generated API contract for the hevy-client workspace. */
 export default defineConfig({
-	root: repositoryRoot,
+	root: clientRoot,
 	input: {
 		path: fileURLToPath(new URL("../../openapi-spec.json", import.meta.url)),
 	},

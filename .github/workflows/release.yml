@@ -43,7 +43,7 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
       - run: npm ci
-      - run: npm run build
+      - run: npx nx run repository:build
         env:
           HEVY_MCP_RELEASE: "true"
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -51,16 +51,16 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
       - name: Run unit tests
-        run: npx vitest run --exclude 'tests/integration/**'
+        run: npx nx run repository:test:release-unit
       - name: Verify published package
-        run: npm run test:pack
+        run: npx nx run repository:test:pack
       - name: Run integration tests
-        run: npx vitest run tests/integration
+        run: npx nx run repository:test:integration
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
       - name: Test source MCP build
-        run: node tests/nightly/test_hevy_mcp.mjs
+        run: npx nx run repository:test:nightly
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_MCP_COMMAND: node
@@ -71,7 +71,7 @@ jobs:
 
       - name: Smoke test live local Worker HTTP path
         continue-on-error: true
-        run: npm run test:worker-http:live
+        run: npx nx run repository:test:worker-http:live
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_RUN_LIVE_WORKER_TESTS: "1"
@@ -80,8 +80,8 @@ jobs:
         id: changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
-          version: npm run version:changesets
-          publish: npm run release
+          version: npx nx run repository:version:changesets
+          publish: npx nx run repository:release
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
@@ -267,10 +267,10 @@ jobs:
           packageJson.version = `${baseVersion}-main.${process.env.PREVIEW_ID}.${process.env.PREVIEW_ATTEMPT}`;
           writeFileSync(path, `${JSON.stringify(packageJson, null, "\t")}\n`);
           NODE
-          npm run sync:server-manifest
+          npx nx run repository:sync:server-manifest
 
       - name: Verify package
-        run: npm run test:pack
+        run: npx nx run repository:test:pack
 
       - name: Publish preview
         env:

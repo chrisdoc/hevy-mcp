@@ -8,6 +8,8 @@ import {
 
 const coreRule = packageRules.get("packages/core");
 if (!coreRule) throw new Error("core boundary rule is missing");
+const workerRule = packageRules.get("packages/worker");
+if (!workerRule) throw new Error("worker boundary rule is missing");
 
 describe("package boundary AST checker", () => {
 	it("uses the TypeScript compiler AST for workspace files", () => {
@@ -72,6 +74,27 @@ describe("package boundary AST checker", () => {
 		});
 		expect(failures).toEqual([
 			"packages/core: forbidden internal import: hevy-mcp",
+		]);
+	});
+
+	it("derives Worker runtime restrictions from topology", () => {
+		const source = [
+			'import "node:fs";',
+			'import "@sentry/node";',
+			'import "@opentelemetry/sdk-trace-node";',
+		].join(" ");
+		const failures = findImportViolations({
+			source,
+			file: "/repo/packages/worker/src/file.ts",
+			fileName: "file.ts",
+			relativePackage: "packages/worker",
+			packageRoot: "/repo/packages/worker",
+			rule: workerRule,
+		});
+		expect(failures).toEqual([
+			"packages/worker: forbidden Node builtin import: node:fs",
+			"packages/worker: forbidden runtime import: @sentry/node",
+			"packages/worker: forbidden runtime import: @opentelemetry/sdk-trace-node",
 		]);
 	});
 

@@ -39,4 +39,7 @@ export function findRetiredRootSourceFiles(
 	files: string[],
 	projectRoot: string,
 ): string[];
-export function checkBoundaries(projectRoot?: string): Promise<string[]>;
+export function checkBoundaries(
+	projectRoot?: string,
+	selectedPackages?: string[],
+): Promise<string[]>;

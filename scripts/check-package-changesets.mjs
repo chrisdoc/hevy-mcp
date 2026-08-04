@@ -3,6 +3,12 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	loadTopology,
+	releaseConsumers,
+	workspaceById,
+	workspaceByName,
+} from "./repository-control-plane.mjs";
 
 const execFileAsync = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -11,13 +17,13 @@ const since = sinceIndex >= 0 ? process.argv[sinceIndex + 1] : "origin/main";
 
 if (!since) throw new Error("Missing value for --since");
 
-const releaseTriggerFiles = new Map([
-	["cloudflare.config.ts", "@hevy-mcp/worker"],
-]);
-const bundledReleaseGraph = new Map([
-	["@hevy-mcp/hevy-client", ["@hevy-mcp/core"]],
-	["@hevy-mcp/core", ["hevy-mcp", "@hevy-mcp/worker", "@chrisdoc/hevy-cli"]],
-]);
+const topology = loadTopology(root);
+const releaseTriggerFiles = new Map(
+	topology.release.triggers.map((trigger) => [
+		trigger.path,
+		workspaceById(topology, trigger.workspace).name,
+	]),
+);
 const releaseBumps = new Set(["patch", "minor", "major"]);
 
 const { stdout } = await execFileAsync(
@@ -153,18 +159,21 @@ if (missing.length > 0) {
 }
 
 function getTransitiveConsumers(packageName) {
-	const consumers = new Set();
-	const pending = [...(bundledReleaseGraph.get(packageName) ?? [])];
-	while (pending.length > 0) {
-		const consumer = pending.shift();
-		if (!consumer || consumers.has(consumer)) continue;
-		consumers.add(consumer);
-		pending.push(...(bundledReleaseGraph.get(consumer) ?? []));
+	let workspace;
+	try {
+		workspace = workspaceByName(topology, packageName);
+	} catch {
+		return [];
 	}
-	return [...consumers];
+	return releaseConsumers(topology, workspace.id).map(
+		(consumer) => workspaceById(topology, consumer).name,
+	);
 }
 
-const incompleteCascades = [...bundledReleaseGraph.keys()]
+const cascadeRoots = topology.release.bundles.map(
+	(bundle) => workspaceById(topology, bundle.workspace).name,
+);
+const incompleteCascades = cascadeRoots
 	.filter((packageName) => changesetReleases.has(packageName))
 	.map((packageName) => ({
 		packageName,

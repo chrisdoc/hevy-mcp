@@ -1,6 +1,12 @@
+import { existsSync } from "node:fs";
 import { access, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+	loadArtifactProvenance,
+	repositoryRoot,
+} from "./repository-control-plane.mjs";
 
 const manifestSchema =
 	"https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json";
@@ -17,7 +23,9 @@ async function readJson(path, label) {
 	try {
 		contents = await readFile(path, "utf8");
 	} catch (error) {
-		throw new Error(`Unable to read ${label}: ${error.message}`);
+		const readError = new Error(`Unable to read ${label}: ${error.message}`);
+		readError.cause = error;
+		throw readError;
 	}
 
 	try {
@@ -27,13 +35,77 @@ async function readJson(path, label) {
 	}
 }
 
-async function resolvePackageMetadata(rootDir) {
-	const nodePackagePath = resolve(rootDir, "packages/node/package.json");
+function loadManifestProvenance(rootDir) {
+	const fixtureProvenance = resolve(
+		rootDir,
+		"repository",
+		"artifact-provenance.json",
+	);
+	return existsSync(fixtureProvenance)
+		? loadArtifactProvenance(rootDir)
+		: loadArtifactProvenance(repositoryRoot);
+}
+
+function provenanceEntry(provenance, collection, id, pathCount) {
+	const entries = provenance?.[collection];
+	assert(
+		Array.isArray(entries),
+		`Artifact provenance ${collection} entries are required`,
+	);
+	const matches = entries.filter((candidate) => candidate?.id === id);
+	assert(
+		matches.length === 1,
+		`Artifact provenance ${collection} entry ${id} must be unique`,
+	);
+	const [entry] = matches;
+	assert(
+		Array.isArray(entry.paths) && entry.paths.length > 0,
+		`Artifact provenance ${collection} entry ${id} paths are required`,
+	);
+	if (pathCount !== undefined)
+		assert(
+			entry.paths.length === pathCount,
+			`Artifact provenance ${collection} entry ${id} must own exactly ${pathCount} path${pathCount === 1 ? "" : "s"}`,
+		);
+	assert(
+		entry.paths.every((path) => typeof path === "string" && path.length > 0),
+		`Artifact provenance ${collection} entry ${id} paths must be non-empty`,
+	);
+	assert(
+		new Set(entry.paths).size === entry.paths.length,
+		`Artifact provenance ${collection} entry ${id} paths must be unique`,
+	);
+	return entry;
+}
+
+function resolveProvenancePaths(
+	rootDir,
+	provenance,
+	collection,
+	id,
+	pathCount,
+) {
+	return provenanceEntry(provenance, collection, id, pathCount).paths.map(
+		(path) => ({
+			path: resolve(rootDir, path),
+			relativePath: path,
+		}),
+	);
+}
+
+async function resolvePackageMetadata(rootDir, provenance) {
+	const [nodePackageSource] = resolveProvenancePaths(
+		rootDir,
+		provenance,
+		"sources",
+		"node-package-manifest",
+		1,
+	);
 	try {
-		await access(nodePackagePath);
+		await access(nodePackageSource.path);
 		return {
-			packagePath: nodePackagePath,
-			packageLabel: "packages/node/package.json",
+			packagePath: nodePackageSource.path,
+			packageLabel: nodePackageSource.relativePath,
 		};
 	} catch {
 		return {
@@ -142,34 +214,49 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 		`Invalid mode ${JSON.stringify(mode)}; expected "check" or "sync"`,
 	);
 
-	const { packagePath, packageLabel } = await resolvePackageMetadata(rootDir);
-	const manifestPath = resolve(rootDir, "server.json");
-	const packageManifestPath = resolve(rootDir, "packages/node/server.json");
-	const pluginPath = resolve(rootDir, "plugin.json");
+	const provenance = loadManifestProvenance(rootDir);
+	const { packagePath, packageLabel } = await resolvePackageMetadata(
+		rootDir,
+		provenance,
+	);
+	const serverManifestPaths = resolveProvenancePaths(
+		rootDir,
+		provenance,
+		"outputs",
+		"server-manifest",
+	);
+	const pluginManifestPaths = resolveProvenancePaths(
+		rootDir,
+		provenance,
+		"outputs",
+		"plugin-manifest",
+	);
+	const [primaryManifest, ...mirrorManifests] = serverManifestPaths;
+	const manifestPath = primaryManifest.path;
 	const [{ value: packageJson }, { value: manifest }] = await Promise.all([
 		readJson(packagePath, packageLabel),
-		readJson(manifestPath, "server.json"),
+		readJson(manifestPath, primaryManifest.relativePath),
 	]);
-	let packageManifest;
-	try {
-		packageManifest = (
-			await readJson(packageManifestPath, "packages/node/server.json")
-		).value;
-	} catch (error) {
-		if (error.message.startsWith("Unable to read")) {
-			packageManifest = undefined;
-		} else {
-			throw error;
+	const packageManifests = [];
+	for (const mirror of mirrorManifests) {
+		try {
+			packageManifests.push({
+				...mirror,
+				value: (await readJson(mirror.path, mirror.relativePath)).value,
+			});
+		} catch (error) {
+			if (error.cause?.code !== "ENOENT") throw error;
 		}
 	}
-	let pluginJson;
-	try {
-		pluginJson = (await readJson(pluginPath, "plugin.json")).value;
-	} catch (error) {
-		if (error.message.startsWith("Unable to read")) {
-			pluginJson = undefined;
-		} else {
-			throw error;
+	const pluginManifests = [];
+	for (const plugin of pluginManifestPaths) {
+		try {
+			pluginManifests.push({
+				...plugin,
+				value: (await readJson(plugin.path, plugin.relativePath)).value,
+			});
+		} catch (error) {
+			if (error.cause?.code !== "ENOENT") throw error;
 		}
 	}
 
@@ -177,14 +264,13 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 	validateManifestShape(manifest);
 
 	const drift = findDrift(packageJson, manifest);
-	if (
-		packageManifest &&
-		JSON.stringify(packageManifest) !== JSON.stringify(manifest)
-	)
-		drift.push("packages/node/server.json");
-	if (pluginJson && pluginJson.version !== packageJson.version) {
-		drift.push("plugin.json");
+	for (const packageManifest of packageManifests) {
+		if (JSON.stringify(packageManifest.value) !== JSON.stringify(manifest))
+			drift.push(packageManifest.relativePath);
 	}
+	for (const plugin of pluginManifests)
+		if (plugin.value.version !== packageJson.version)
+			drift.push(plugin.relativePath);
 	if (mode === "check") {
 		assert(
 			drift.length === 0,
@@ -204,17 +290,24 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 
 	const updatedContents = `${JSON.stringify(manifest, null, "\t")}\n`;
 	await writeFile(manifestPath, updatedContents, "utf8");
-	try {
-		await access(resolve(rootDir, "packages/node"));
-		await writeFile(packageManifestPath, updatedContents, "utf8");
-	} catch {
-		// Fixture repositories and pre-cutover checkouts only have root server.json.
+	for (const mirror of mirrorManifests) {
+		try {
+			await access(dirname(mirror.path));
+		} catch (error) {
+			if (error.code === "ENOENT") {
+				// Fixture repositories may only include the primary manifest output.
+				continue;
+			}
+			throw error;
+		}
+		await writeFile(mirror.path, updatedContents, "utf8");
 	}
 
-	if (pluginJson && pluginJson.version !== packageJson.version) {
-		pluginJson.version = packageJson.version;
-		const updatedPluginContents = `${JSON.stringify(pluginJson, null, "\t")}\n`;
-		await writeFile(pluginPath, updatedPluginContents, "utf8");
+	for (const plugin of pluginManifests) {
+		if (plugin.value.version === packageJson.version) continue;
+		plugin.value.version = packageJson.version;
+		const updatedPluginContents = `${JSON.stringify(plugin.value, null, "\t")}\n`;
+		await writeFile(plugin.path, updatedPluginContents, "utf8");
 	}
 
 	return { changed: true, drift };

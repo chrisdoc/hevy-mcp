@@ -1,0 +1,240 @@
+{
+	"$schema": "./node_modules/nx/schemas/project-schema.json",
+	"name": "repository",
+	"root": ".",
+	"projectType": "library",
+	"tags": ["runtime:neutral", "publishability:private", "role:control-plane"],
+	"targets": {
+		"check:control-plane": {
+			"inputs": ["controlPlaneInputs"]
+		},
+		"check:generated": {
+			"inputs": ["generatedClientInputs"]
+		},
+		"check:workspaces": {
+			"inputs": ["controlPlaneInputs"]
+		},
+		"check:boundaries": {
+			"inputs": ["boundaryInputs", "controlPlaneInputs"]
+		},
+		"check:exports": {
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"check:release-candidates": {
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"check:package-changesets": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
+		},
+		"check:types": {
+			"inputs": ["repositoryTypeCheckInputs"]
+		},
+		"check": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"check:server-manifest": {
+			"inputs": ["manifestInputs"]
+		},
+		"check:changeset": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
+		},
+		"test:pr": {
+			"executor": "nx:noop",
+			"dependsOn": [
+				"test:unit",
+				"test:mcp",
+				"test:contract",
+				"test:stdio",
+				"test:worker",
+				"test:worker-http",
+				"test:pack",
+				"test:cli",
+				"test:pack:cli"
+			],
+			"inputs": ["validationInputs"]
+		},
+		"test:unit": {
+			"cache": true,
+			"inputs": ["unitTests"],
+			"outputs": [
+				"{workspaceRoot}/coverage/unit",
+				"{workspaceRoot}/test-results/unit-tests.xml"
+			]
+		},
+		"test:release-unit": {
+			"cache": true,
+			"inputs": ["releaseUnitTests"]
+		},
+		"test:mcp": {
+			"cache": true,
+			"inputs": ["mockedTests"],
+			"outputs": ["{workspaceRoot}/coverage/mocked"]
+		},
+		"test:integration": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:diagnostics": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:contract": {
+			"cache": true,
+			"inputs": ["contractTests"]
+		},
+		"test:stdio": {
+			"cache": true,
+			"inputs": ["stdioTests"],
+			"outputs": ["{workspaceRoot}/test-results/stdio"]
+		},
+		"test:worker": {
+			"cache": false,
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:worker-http": {
+			"cache": false,
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:pack": {
+			"cache": false,
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:cli": {
+			"cache": true,
+			"inputs": ["cliTests"]
+		},
+		"test:pack:cli": {
+			"cache": false,
+			"dependsOn": ["test:pack"],
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
+		"test:nightly": {
+			"cache": false,
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/test-results/nightly-*.json"]
+		},
+		"test:live": {
+			"cache": false,
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/test-results/release-source.json"]
+		},
+		"test:worker-http:live": {
+			"cache": false,
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/test-results/worker-http-live"]
+		},
+		"measure:tokens": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
+		"worker:dry-run": {
+			"cache": false,
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/.wrangler/dry-run"]
+		},
+		"build": {
+			"cache": false,
+			"outputs": ["{workspaceRoot}/packages/node/dist"],
+			"inputs": ["nodeBuildInputs"]
+		},
+		"build:client": {
+			"outputs": ["{workspaceRoot}/packages/hevy-client/src/generated"],
+			"inputs": ["openapiInputs"]
+		},
+		"release:validate": {
+			"executor": "nx:noop",
+			"dependsOn": [
+				"build",
+				"test:release-unit",
+				"test:pack",
+				"test:integration",
+				"test:nightly",
+				"test:worker-http:live"
+			],
+			"inputs": ["validationInputs"]
+		},
+		"pre-push": {
+			"executor": "nx:noop",
+			"dependsOn": ["check:types", "check:changeset", "test:pr"],
+			"inputs": ["validationInputs"]
+		},
+		"sync:server-manifest": {
+			"cache": false,
+			"outputs": [
+				"{workspaceRoot}/server.json",
+				"{workspaceRoot}/plugin.json",
+				"{workspaceRoot}/packages/node/server.json"
+			],
+			"inputs": ["manifestInputs"]
+		},
+		"test:coverage": {
+			"cache": false,
+			"outputs": [
+				"{workspaceRoot}/coverage/unit",
+				"{workspaceRoot}/coverage/mocked"
+			],
+			"inputs": ["validationInputs"]
+		},
+		"test:performance": {
+			"cache": false,
+			"outputs": ["{workspaceRoot}/test-results/performance/summary.json"],
+			"inputs": ["validationInputs"]
+		},
+		"pack:artifacts": {
+			"executor": "nx:run-commands",
+			"cache": false,
+			"dependsOn": ["hevy-mcp:build", "@chrisdoc/hevy-cli:build"],
+			"options": {
+				"commands": [
+					"node -e \"require('node:fs').mkdirSync('.nx/pack', { recursive: true })\"",
+					"npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent"
+				],
+				"parallel": false
+			},
+			"outputs": [
+				"{workspaceRoot}/packages/node/dist",
+				"{workspaceRoot}/packages/cli/dist",
+				"{workspaceRoot}/.nx/pack/*.tgz"
+			],
+			"inputs": ["validationInputs"]
+		},
+		"version:changesets": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
+		},
+		"version": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"version:major": { "cache": false },
+		"version:minor": { "cache": false },
+		"version:patch": { "cache": false },
+		"release": {
+			"cache": false,
+			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
+		},
+		"worker:deploy": { "cache": false },
+		"control-plane": {
+			"executor": "nx:noop",
+			"dependsOn": [
+				"check:control-plane",
+				"check:workspaces",
+				"check:boundaries",
+				"check:exports",
+				"test:pr",
+				"check:server-manifest",
+				"check",
+				"check:types",
+				"check:changeset"
+			],
+			"inputs": ["validationInputs"]
+		}
+	}
+}
