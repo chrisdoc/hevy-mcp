@@ -1,0 +1,5 @@
+paths:
+  # actionlint 1.7.12 predates GitHub's parallel-step syntax.
+  .github/workflows/build-and-test.yml:
+    ignore:
+      - 'step must run script with "run" section or run action with "uses" section'
