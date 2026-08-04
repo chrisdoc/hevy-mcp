@@ -1,7 +1,13 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { loadTopology, workspaceById } from "./repository-control-plane.mjs";
 
 const outputDir = resolve(".wrangler/dry-run");
+const topology = loadTopology();
+const worker = workspaceById(topology, "worker");
+const unresolvedPrivateImports = worker.dependencies.map(
+	(dependency) => workspaceById(topology, dependency).name,
+);
 const failures = [];
 async function scan(path) {
 	const entries = await readdir(path, { withFileTypes: true });
@@ -10,10 +16,7 @@ async function scan(path) {
 		if (entry.isDirectory()) await scan(target);
 		else if (/\.(?:js|mjs|cjs)$/.test(entry.name)) {
 			const source = await readFile(target, "utf8");
-			if (
-				source.includes("@hevy-mcp/core") ||
-				source.includes("@hevy-mcp/hevy-client")
-			) {
+			if (unresolvedPrivateImports.some((name) => source.includes(name))) {
 				failures.push(target);
 			}
 		}

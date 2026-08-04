@@ -41,7 +41,7 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
       - run: npm ci
-      - run: npm run build
+      - run: npm run validate:lane -- build
         env:
           HEVY_MCP_RELEASE: "true"
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -49,16 +49,16 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
       - name: Run unit tests
-        run: npx vitest run --exclude 'tests/integration/**'
+        run: npm run validate:lane -- release-unit
       - name: Verify published package
-        run: npm run test:pack
+        run: npm run validate:lane -- pack
       - name: Run integration tests
-        run: npx vitest run tests/integration
+        run: npm run validate:lane -- release-integration
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
 
       - name: Test source MCP build
-        run: node tests/nightly/test_hevy_mcp.mjs
+        run: npm run validate:lane -- nightly
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_MCP_COMMAND: node
@@ -69,7 +69,7 @@ jobs:
 
       - name: Smoke test live local Worker HTTP path
         continue-on-error: true
-        run: npm run test:worker-http:live
+        run: npm run validate:lane -- worker-http-live
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_RUN_LIVE_WORKER_TESTS: "1"

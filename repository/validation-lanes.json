@@ -1,0 +1,1028 @@
+{
+	"version": 1,
+	"runtimeMatrix": {
+		"node-24": {
+			"kind": "node",
+			"version": "24.x"
+		},
+		"node-26": {
+			"kind": "node",
+			"version": "26.x"
+		},
+		"workerd": {
+			"kind": "workerd",
+			"version": "wrangler-local"
+		}
+	},
+	"lanes": [
+		{
+			"id": "unit",
+			"alias": "test:unit",
+			"selector": {
+				"kind": "vitest",
+				"exclude": ["tests/integration/**", "tests/performance/**"]
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": ["unit-coverage", "unit-junit"],
+			"gate": "blocking",
+			"comparison": "coverage-report",
+			"changeImpact": ["packages/**/src/**", "tests/unit/**", "scripts/**"],
+			"command": {
+				"kind": "argv",
+				"executable": "vitest",
+				"args": [
+					"run",
+					"--exclude",
+					"tests/integration/**",
+					"--exclude",
+					"tests/performance/**"
+				]
+			}
+		},
+		{
+			"id": "release-unit",
+			"alias": "test:release-unit",
+			"selector": {
+				"kind": "vitest",
+				"exclude": ["tests/integration/**"]
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": ["unit-coverage", "unit-junit"],
+			"gate": "blocking",
+			"comparison": "release-suite",
+			"changeImpact": ["packages/**/src/**", "tests/unit/**", "scripts/**"],
+			"command": {
+				"kind": "argv",
+				"executable": "vitest",
+				"args": ["run", "--exclude", "tests/integration/**"]
+			}
+		},
+		{
+			"id": "mocked-mcp",
+			"alias": "test:mcp",
+			"selector": {
+				"kind": "vitest",
+				"include": ["tests/integration/mocked/**"]
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": ["mocked-coverage"],
+			"gate": "blocking",
+			"comparison": "coverage-report",
+			"changeImpact": ["packages/**/src/**", "tests/integration/mocked/**"],
+			"command": {
+				"kind": "argv",
+				"executable": "vitest",
+				"args": ["run", "tests/integration/mocked"]
+			}
+		},
+		{
+			"id": "contract",
+			"alias": "test:contract",
+			"selector": {
+				"kind": "vitest",
+				"include": [
+					"packages/node/src/index.test.ts",
+					"packages/node/src/utils/config.test.ts",
+					"packages/core/src/tools/register.test.ts",
+					"packages/core/src/utils/output-schemas.test.ts",
+					"tests/unit/server-manifest.test.ts"
+				]
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "contract",
+			"changeImpact": [
+				"packages/core/**",
+				"packages/node/**",
+				"tests/unit/server-manifest.test.ts"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "vitest",
+				"args": [
+					"run",
+					"packages/node/src/index.test.ts",
+					"packages/node/src/utils/config.test.ts",
+					"packages/core/src/tools/register.test.ts",
+					"packages/core/src/utils/output-schemas.test.ts",
+					"tests/unit/server-manifest.test.ts"
+				]
+			}
+		},
+		{
+			"id": "stdio",
+			"alias": "test:stdio",
+			"selector": {
+				"kind": "vitest",
+				"include": [
+					"packages/node/src/index.test.ts",
+					"packages/node/src/utils/stdio-observability.test.ts",
+					"packages/node/src/utils/graceful-shutdown.test.ts",
+					"packages/node/src/utils/graceful-shutdown.child-process.test.ts"
+				]
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": ["stdio-diagnostics"],
+			"gate": "blocking",
+			"comparison": "protocol",
+			"changeImpact": ["packages/node/src/**", "packages/core/src/**"],
+			"command": {
+				"kind": "argv",
+				"executable": "vitest",
+				"args": [
+					"run",
+					"packages/node/src/index.test.ts",
+					"packages/node/src/utils/stdio-observability.test.ts",
+					"packages/node/src/utils/graceful-shutdown.test.ts",
+					"packages/node/src/utils/graceful-shutdown.child-process.test.ts"
+				]
+			}
+		},
+		{
+			"id": "worker",
+			"alias": "test:worker",
+			"selector": {
+				"kind": "vitest-worker-config",
+				"config": "vitest.workers.config.ts"
+			},
+			"runtimes": ["workerd"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "worker-contract",
+			"changeImpact": [
+				"packages/worker/**",
+				"packages/core/**",
+				"cloudflare.config.ts"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "vitest",
+				"args": ["run", "--config", "vitest.workers.config.ts"]
+			}
+		},
+		{
+			"id": "worker-http",
+			"alias": "test:worker-http",
+			"selector": {
+				"kind": "vitest",
+				"include": ["tests/integration/worker-http.integration.test.ts"]
+			},
+			"runtimes": ["workerd"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "worker-http-contract",
+			"changeImpact": [
+				"packages/worker/**",
+				"packages/core/**",
+				"tests/integration/worker-http.integration.test.ts"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "vitest",
+				"args": ["run", "tests/integration/worker-http.integration.test.ts"]
+			}
+		},
+		{
+			"id": "pack",
+			"alias": "test:pack",
+			"selector": {
+				"kind": "npm-pack-smoke"
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": ["node-package"],
+			"gate": "blocking",
+			"comparison": "candidate-artifact",
+			"changeImpact": [
+				"packages/node/**",
+				"server.json",
+				"plugin.json",
+				"Dockerfile"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["tests/package/npm-pack-smoke.mjs"]
+			}
+		},
+		{
+			"id": "cli",
+			"alias": "test:cli",
+			"selector": {
+				"kind": "workspace-test",
+				"workspace": "@chrisdoc/hevy-cli"
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "cli-contract",
+			"changeImpact": [
+				"packages/cli/**",
+				"packages/core/**",
+				"packages/hevy-client/**"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "npm",
+				"args": ["run", "test", "--workspace=@chrisdoc/hevy-cli"]
+			}
+		},
+		{
+			"id": "pack-cli",
+			"alias": "test:pack:cli",
+			"selector": {
+				"kind": "npm-pack-smoke",
+				"workspace": "@chrisdoc/hevy-cli"
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": ["cli-package"],
+			"gate": "blocking",
+			"comparison": "candidate-artifact",
+			"changeImpact": ["packages/cli/**"],
+			"command": {
+				"kind": "sequence",
+				"commands": [
+					{
+						"executable": "npm",
+						"args": ["run", "build", "--workspace=@chrisdoc/hevy-cli"]
+					},
+					{
+						"executable": "node",
+						"args": ["packages/cli/tests/npm-pack-smoke.mjs"]
+					}
+				]
+			}
+		},
+		{
+			"id": "performance",
+			"alias": "test:performance",
+			"selector": {
+				"kind": "vitest",
+				"include": ["tests/performance/performance.test.ts"]
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": ["performance-summary"],
+			"gate": "informational",
+			"comparison": "performance-baseline",
+			"changeImpact": ["packages/**/src/**", "tests/performance/**"],
+			"command": {
+				"kind": "sequence",
+				"commands": [
+					{
+						"executable": "npm",
+						"args": ["run", "build", "--workspace", "hevy-mcp"]
+					},
+					{
+						"executable": "vitest",
+						"args": ["run", "tests/performance/performance.test.ts"]
+					}
+				]
+			}
+		},
+		{
+			"id": "workspace-topology",
+			"alias": "check:workspaces",
+			"selector": {
+				"kind": "control-plane",
+				"check": "topology"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "topology",
+			"changeImpact": [
+				"package.json",
+				"packages/*/package.json",
+				"repository/topology.json"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["scripts/check-workspaces.mjs"]
+			}
+		},
+		{
+			"id": "package-boundaries",
+			"alias": "check:boundaries",
+			"selector": {
+				"kind": "control-plane",
+				"check": "boundaries"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "dependency-graph",
+			"changeImpact": ["packages/**/src/**", "repository/topology.json"],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["scripts/check-package-boundaries.mjs"]
+			}
+		},
+		{
+			"id": "package-exports",
+			"alias": "check:exports",
+			"selector": {
+				"kind": "control-plane",
+				"check": "exports"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "exports",
+			"changeImpact": ["packages/*/package.json", "repository/topology.json"],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["scripts/check-package-exports.mjs"]
+			}
+		},
+		{
+			"id": "release-candidates",
+			"alias": "check:release-candidates",
+			"selector": {
+				"kind": "control-plane",
+				"check": "release-candidates"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "publishability",
+			"changeImpact": ["packages/*/package.json", "repository/topology.json"],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["scripts/check-release-candidates.mjs"]
+			}
+		},
+		{
+			"id": "package-changesets",
+			"alias": "check:package-changesets",
+			"selector": {
+				"kind": "control-plane",
+				"check": "changesets"
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "release-cascade",
+			"changeImpact": [
+				"packages/**",
+				"cloudflare.config.ts",
+				".changeset/**",
+				"repository/topology.json"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["scripts/check-package-changesets.mjs"]
+			}
+		},
+		{
+			"id": "changeset-status",
+			"alias": "check:changeset",
+			"selector": {
+				"kind": "changeset-status"
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "release-cascade",
+			"changeImpact": [
+				".changeset/**",
+				"packages/**",
+				"cloudflare.config.ts",
+				"repository/topology.json"
+			],
+			"command": {
+				"kind": "sequence",
+				"commands": [
+					{
+						"executable": "changeset",
+						"args": ["status", "--since=origin/main"]
+					},
+					{
+						"executable": "node",
+						"args": ["scripts/check-release-candidates.mjs"]
+					},
+					{
+						"executable": "node",
+						"args": [
+							"scripts/check-package-changesets.mjs",
+							"--since",
+							"origin/main"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "types",
+			"alias": "check:types",
+			"selector": {
+				"kind": "typescript",
+				"project": "tsconfig.json"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "type-safety",
+			"changeImpact": ["packages/**", "scripts/**", "tests/**"],
+			"command": {
+				"kind": "sequence",
+				"commands": [
+					{
+						"executable": "tsc",
+						"args": ["--noEmit"]
+					},
+					{
+						"executable": "npm",
+						"args": ["run", "check:types", "--workspaces", "--if-present"]
+					}
+				]
+			}
+		},
+		{
+			"id": "check",
+			"alias": "check:repository",
+			"selector": {
+				"kind": "repository-check"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "style-and-static",
+			"changeImpact": ["**/*"],
+			"command": {
+				"kind": "sequence",
+				"commands": [
+					{
+						"executable": "node",
+						"args": ["scripts/check-openapi-spec.js"]
+					},
+					{
+						"executable": "node",
+						"args": ["scripts/check-control-plane.mjs"]
+					},
+					{
+						"executable": "oxlint",
+						"args": [".", "--type-aware", "--type-check"]
+					},
+					{
+						"executable": "node",
+						"args": ["scripts/check-package-boundaries.mjs"]
+					},
+					{
+						"executable": "oxfmt",
+						"args": [".", "--check"]
+					}
+				]
+			}
+		},
+		{
+			"id": "build",
+			"alias": "build",
+			"selector": {
+				"kind": "package-build",
+				"workspace": "hevy-mcp"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": ["node-package"],
+			"gate": "blocking",
+			"comparison": "build-output",
+			"changeImpact": [
+				"packages/**",
+				"openapi-spec.json",
+				"repository/artifact-provenance.json"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "npm",
+				"args": ["run", "build", "--workspace", "hevy-mcp"]
+			}
+		},
+		{
+			"id": "worker-bundle",
+			"alias": "worker:dry-run",
+			"selector": {
+				"kind": "wrangler-dry-run"
+			},
+			"runtimes": ["workerd"],
+			"credentials": [],
+			"artifacts": ["worker-bundle"],
+			"gate": "blocking",
+			"comparison": "bundle-closure",
+			"changeImpact": [
+				"packages/worker/**",
+				"packages/core/**",
+				"packages/hevy-client/**",
+				"cloudflare.config.ts"
+			],
+			"command": {
+				"kind": "sequence",
+				"commands": [
+					{
+						"executable": "wrangler",
+						"args": [
+							"deploy",
+							"--x-new-config",
+							"--dry-run",
+							"--outdir",
+							".wrangler/dry-run"
+						]
+					},
+					{
+						"executable": "node",
+						"args": ["scripts/check-worker-bundle.mjs"]
+					}
+				]
+			}
+		},
+		{
+			"id": "server-manifest",
+			"alias": "check:server-manifest",
+			"selector": {
+				"kind": "manifest-drift"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": ["server-manifest"],
+			"gate": "blocking",
+			"comparison": "provenance",
+			"changeImpact": [
+				"packages/node/package.json",
+				"server.json",
+				"packages/node/server.json",
+				"plugin.json"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["scripts/server-manifest.mjs", "check"]
+			}
+		},
+		{
+			"id": "docker",
+			"external": true,
+			"selector": {
+				"kind": "docker-smoke"
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": ["docker-image"],
+			"gate": "blocking",
+			"comparison": "candidate-artifact",
+			"changeImpact": ["Dockerfile", "packages/node/**"],
+			"integration": "docker workflow"
+		},
+		{
+			"id": "generation",
+			"external": true,
+			"integration": "issue-870",
+			"selector": {
+				"kind": "generated-output-closure"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": ["generated-client"],
+			"gate": "blocking",
+			"comparison": "clean-diff",
+			"changeImpact": [
+				"openapi-spec.json",
+				"packages/hevy-client/src/**",
+				"packages/hevy-client/kubb.config.ts"
+			]
+		},
+		{
+			"id": "integration-live",
+			"alias": "test:live",
+			"selector": {
+				"kind": "vitest-live"
+			},
+			"runtimes": ["node-24"],
+			"credentials": ["HEVY_API_KEY"],
+			"artifacts": ["live-diagnostics"],
+			"gate": "release",
+			"comparison": "provider-contract",
+			"changeImpact": ["packages/**", "tests/integration/**"],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["--env-file-if-exists=.env", "scripts/run-live-tests.mjs"]
+			}
+		},
+		{
+			"id": "worker-http-live",
+			"alias": "test:worker-http:live",
+			"selector": {
+				"kind": "worker-live"
+			},
+			"runtimes": ["workerd"],
+			"credentials": ["HEVY_API_KEY", "HEVY_RUN_LIVE_WORKER_TESTS"],
+			"artifacts": ["live-worker-diagnostics"],
+			"gate": "release",
+			"comparison": "provider-contract",
+			"changeImpact": [
+				"packages/worker/**",
+				"tests/integration/worker-http.integration.test.ts"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": [
+					"--env-file-if-exists=.env",
+					"scripts/run-live-worker-http-tests.mjs"
+				]
+			}
+		},
+		{
+			"id": "release-integration",
+			"alias": "test:integration",
+			"selector": {
+				"kind": "vitest-integration",
+				"include": ["tests/integration/**"]
+			},
+			"runtimes": ["node-24"],
+			"credentials": ["HEVY_API_KEY"],
+			"artifacts": ["live-diagnostics"],
+			"gate": "release",
+			"comparison": "provider-contract",
+			"changeImpact": ["packages/**", "tests/integration/**"],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": [
+					"--env-file-if-exists=.env",
+					"node_modules/vitest/vitest.mjs",
+					"--run",
+					"tests/integration"
+				]
+			}
+		},
+		{
+			"id": "nightly",
+			"alias": "test:nightly",
+			"selector": {
+				"kind": "launcher-canary"
+			},
+			"runtimes": ["node-24"],
+			"credentials": ["HEVY_API_KEY", "HEVY_MCP_COMMAND", "HEVY_MCP_ARGS_JSON"],
+			"artifacts": ["nightly-diagnostics"],
+			"gate": "nightly",
+			"comparison": "published-launchers",
+			"changeImpact": [
+				"packages/node/**",
+				"tests/nightly/**",
+				".github/workflows/nightly-mcp-test.yml"
+			],
+			"command": {
+				"kind": "argv",
+				"executable": "node",
+				"args": ["--env-file-if-exists=.env", "tests/nightly/test_hevy_mcp.mjs"]
+			}
+		}
+	],
+	"aggregates": {
+		"pull-request": {
+			"alias": "test:pr",
+			"lanes": [
+				"unit",
+				"mocked-mcp",
+				"contract",
+				"stdio",
+				"worker",
+				"worker-http",
+				"pack",
+				"cli",
+				"pack-cli"
+			]
+		},
+		"release": {
+			"lanes": [
+				"build",
+				"release-unit",
+				"pack",
+				"release-integration",
+				"nightly",
+				"worker-http-live"
+			]
+		},
+		"pre-push": {
+			"lanes": ["types", "changeset-status", "pull-request"]
+		}
+	},
+	"changeImpactRouting": [
+		{
+			"pattern": "packages/hevy-client/**",
+			"lanes": [
+				"generation",
+				"types",
+				"unit",
+				"mocked-mcp",
+				"package-boundaries",
+				"package-exports",
+				"release-candidates",
+				"package-changesets"
+			]
+		},
+		{
+			"pattern": "packages/core/**",
+			"lanes": [
+				"types",
+				"unit",
+				"mocked-mcp",
+				"contract",
+				"stdio",
+				"worker",
+				"worker-http",
+				"cli",
+				"package-boundaries",
+				"package-changesets"
+			]
+		},
+		{
+			"pattern": "packages/node/**",
+			"lanes": [
+				"types",
+				"unit",
+				"mocked-mcp",
+				"contract",
+				"stdio",
+				"pack",
+				"package-boundaries",
+				"package-changesets"
+			]
+		},
+		{
+			"pattern": "packages/worker/**",
+			"lanes": [
+				"types",
+				"worker",
+				"worker-http",
+				"worker-bundle",
+				"package-boundaries",
+				"package-changesets"
+			]
+		},
+		{
+			"pattern": "packages/cli/**",
+			"lanes": [
+				"types",
+				"unit",
+				"cli",
+				"pack-cli",
+				"package-boundaries",
+				"package-changesets"
+			]
+		},
+		{
+			"pattern": "openapi-spec.json",
+			"lanes": ["generation", "types", "build", "package-changesets"]
+		},
+		{
+			"pattern": ".github/workflows/**",
+			"lanes": ["check", "types"]
+		},
+		{
+			"pattern": "repository/**",
+			"lanes": [
+				"workspace-topology",
+				"package-boundaries",
+				"package-exports",
+				"release-candidates",
+				"package-changesets",
+				"check"
+			]
+		},
+		{
+			"pattern": "**/*",
+			"lanes": ["check"]
+		}
+	],
+	"workflowProjections": {
+		"pull-request": [
+			{
+				"lane": "workspace-topology",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "package-boundaries",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "package-exports",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "release-candidates",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "types",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "server-manifest",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "check",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "package-changesets",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "github.event_name == 'pull_request' && matrix.node-version == '24.x' && github.actor != 'dependabot[bot]' && github.head_ref != 'changeset-release/main' && !( github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'mergify[bot]' && startsWith(github.head_ref, 'mergify/merge-queue/') )",
+				"jobCondition": null,
+				"stepCondition": "github.event_name == 'pull_request' && matrix.node-version == '24.x' && github.actor != 'dependabot[bot]' && github.head_ref != 'changeset-release/main' && !( github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'mergify[bot]' && startsWith(github.head_ref, 'mergify/merge-queue/') )"
+			},
+			{
+				"lane": "build",
+				"job": "build",
+				"runtimes": ["node-24", "node-26"],
+				"condition": null,
+				"jobCondition": null,
+				"stepCondition": null
+			},
+			{
+				"lane": "worker-bundle",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "matrix.node-version == '24.x'",
+				"jobCondition": null,
+				"stepCondition": "matrix.node-version == '24.x'"
+			},
+			{
+				"lane": "worker-http",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "matrix.node-version == '24.x'",
+				"jobCondition": null,
+				"stepCondition": "matrix.node-version == '24.x'"
+			},
+			{
+				"lane": "mocked-mcp",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "matrix.node-version == '24.x'",
+				"jobCondition": null,
+				"stepCondition": "matrix.node-version == '24.x'"
+			},
+			{
+				"lane": "mocked-mcp",
+				"job": "build",
+				"runtimes": ["node-26"],
+				"condition": "matrix.node-version == '26.x'",
+				"jobCondition": null,
+				"stepCondition": "matrix.node-version == '26.x'"
+			},
+			{
+				"lane": "unit",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "${{ !cancelled() && matrix.node-version == '24.x' }}",
+				"jobCondition": null,
+				"stepCondition": "${{ !cancelled() && matrix.node-version == '24.x' }}"
+			},
+			{
+				"lane": "unit",
+				"job": "build",
+				"runtimes": ["node-26"],
+				"condition": "${{ !cancelled() && matrix.node-version == '26.x' }}",
+				"jobCondition": null,
+				"stepCondition": "${{ !cancelled() && matrix.node-version == '26.x' }}"
+			},
+			{
+				"lane": "contract",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "${{ !cancelled() && matrix.node-version == '24.x' }}",
+				"jobCondition": null,
+				"stepCondition": "${{ !cancelled() && matrix.node-version == '24.x' }}"
+			},
+			{
+				"lane": "stdio",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "${{ !cancelled() && matrix.node-version == '24.x' }}",
+				"jobCondition": null,
+				"stepCondition": "${{ !cancelled() && matrix.node-version == '24.x' }}"
+			},
+			{
+				"lane": "pack",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "${{ !cancelled() && matrix.node-version == '24.x' }}",
+				"jobCondition": null,
+				"stepCondition": "${{ !cancelled() && matrix.node-version == '24.x' }}"
+			},
+			{
+				"lane": "performance",
+				"job": "build",
+				"runtimes": ["node-24"],
+				"condition": "${{ !cancelled() && matrix.node-version == '24.x' }}",
+				"jobCondition": null,
+				"stepCondition": "${{ !cancelled() && matrix.node-version == '24.x' }}"
+			}
+		],
+		"release": [
+			{
+				"lane": "build",
+				"job": "release",
+				"runtimes": ["node-24"],
+				"condition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"jobCondition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"stepCondition": null
+			},
+			{
+				"lane": "release-unit",
+				"job": "release",
+				"runtimes": ["node-24"],
+				"condition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"jobCondition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"stepCondition": null
+			},
+			{
+				"lane": "pack",
+				"job": "release",
+				"runtimes": ["node-24"],
+				"condition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"jobCondition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"stepCondition": null
+			},
+			{
+				"lane": "release-integration",
+				"job": "release",
+				"runtimes": ["node-24"],
+				"condition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"jobCondition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"stepCondition": null
+			},
+			{
+				"lane": "nightly",
+				"job": "release",
+				"runtimes": ["node-24"],
+				"condition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"jobCondition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"stepCondition": null
+			},
+			{
+				"lane": "worker-http-live",
+				"job": "release",
+				"runtimes": ["node-24"],
+				"condition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"jobCondition": "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'",
+				"stepCondition": null
+			}
+		]
+	}
+}

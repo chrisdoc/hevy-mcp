@@ -42,7 +42,7 @@ hooks {
         steps {
             ...linters
             ["tests"] {
-                check = "npm run test:unit"
+                check = "npm run validate:lane -- unit"
             }
         }
     }
@@ -56,14 +56,14 @@ hooks {
     ["pre-push"] {
         steps {
             ["changeset"] {
-                check = "npm run check:changeset"
+                check = "npm run validate:lane -- changeset-status"
             }
             ["typecheck"] {
-                check = "npm run check:types"
+                check = "npm run validate:lane -- types"
             }
             ["pr-tests"] {
                 depends = "typecheck"
-                check = "npm run test:pr"
+                check = "npm run validate:lane -- pull-request"
             }
         }
     }
