@@ -17,6 +17,11 @@ const dependencyCruiserConfig = require(
 const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
 	projectTags(packageJson: Record<string, unknown>): string[];
 	buildOutputs(packageJson: Record<string, unknown>): string[];
+	buildTarget(packageJson: Record<string, unknown>): {
+		cache?: boolean;
+		inputs?: string[];
+		outputs: string[];
+	};
 };
 
 const inferredTargets = [
@@ -275,6 +280,162 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		];
 		for (const [entry, outputs] of syntheticCases) {
 			expect(metadata.buildOutputs({ files: [entry] })).toEqual(outputs);
+		}
+	});
+
+	it("keeps cached targets on explicit narrow named inputs", async () => {
+		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
+			namedInputs: Record<string, unknown>;
+			targetDefaults: Record<
+				string,
+				| { cache?: boolean; inputs?: string[] }
+				| Array<{
+						cache?: boolean;
+						inputs?: string[];
+				  }>
+			>;
+		};
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as {
+			targets: Record<string, { cache?: boolean; inputs?: string[] }>;
+		};
+
+		expect(nx.namedInputs.default).toBeUndefined();
+		expect(
+			Object.values(nx.namedInputs).flatMap((value) =>
+				Array.isArray(value)
+					? value.filter((entry): entry is string => typeof entry === "string")
+					: [],
+			),
+		).not.toContain("default");
+
+		const requiredInputs = [
+			"repositoryConfig",
+			"packageConfigs",
+			"compilerConfigs",
+			"rootSources",
+			"runtimeSources",
+			"testFixtures",
+			"testShims",
+			"testScripts",
+			"controlPlaneModels",
+			"unitSpecialInputs",
+			"unitTests",
+			"mockedTests",
+			"contractTests",
+			"stdioTests",
+			"cliTests",
+			"typeCheckInputs",
+			"repositoryTypeCheckInputs",
+			"packageBuildInputs",
+			"nodeBuildInputs",
+			"cliBuildInputs",
+			"manifestInputs",
+			"openapiInputs",
+			"boundaryInputs",
+		] as const;
+		for (const input of requiredInputs)
+			expect(nx.namedInputs[input]).toEqual(expect.any(Array));
+
+		const namedInputNames = new Set(Object.keys(nx.namedInputs));
+		const assertNamedInputsResolve = (inputs: string[] | undefined) => {
+			for (const input of inputs ?? []) {
+				if (input.startsWith("{")) continue;
+				expect(namedInputNames.has(input)).toBe(true);
+			}
+		};
+		for (const target of Object.values(project.targets))
+			assertNamedInputsResolve(target.inputs);
+		for (const target of Object.values(nx.targetDefaults)) {
+			const entries = Array.isArray(target) ? target : [target];
+			for (const entry of entries) assertNamedInputsResolve(entry.inputs);
+		}
+
+		for (const target of [
+			"test:unit",
+			"test:mcp",
+			"test:contract",
+			"test:stdio",
+			"test:cli",
+		]) {
+			const inputs = project.targets[target]?.inputs;
+			expect(inputs?.length).toBeGreaterThan(0);
+			expect(inputs).not.toContain("default");
+		}
+		expect(project.targets.build?.cache).toBe(false);
+		expect(project.targets.build?.inputs).toEqual(["nodeBuildInputs"]);
+		expect(project.targets["check:types"]?.inputs).toEqual([
+			"repositoryTypeCheckInputs",
+		]);
+		expect(nx.targetDefaults.build).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					cache: false,
+					inputs: ["packageBuildInputs"],
+				}),
+				expect.objectContaining({
+					cache: true,
+					inputs: ["cliBuildInputs"],
+					filter: { projects: ["@chrisdoc/hevy-cli"] },
+				}),
+				expect.objectContaining({
+					cache: false,
+					inputs: ["nodeBuildInputs"],
+					filter: { projects: ["hevy-mcp"] },
+				}),
+			]),
+		);
+
+		const unitInputs = nx.namedInputs.unitSpecialInputs as string[];
+		expect(unitInputs).toEqual(
+			expect.arrayContaining([
+				"{workspaceRoot}/.github/workflows/release.yml",
+				"{workspaceRoot}/.github/workflows/deploy-worker.yml",
+				"{workspaceRoot}/docs/cloudflare-worker-version-attribution.md",
+				"{workspaceRoot}/docs/clickstack-metrics.md",
+				"{workspaceRoot}/.dependency-cruiser.cjs",
+				"{workspaceRoot}/.cm/gitstream.cm",
+				"{workspaceRoot}/.cm/plugins/filters/findDiffLocation/index.js",
+				"{workspaceRoot}/packages/node/README.md",
+			]),
+		);
+	});
+
+	it("makes package build cache semantics explicit", async () => {
+		const packages = await Promise.all(
+			["node", "cli", "core", "hevy-client", "worker"].map(
+				async (directory) =>
+					JSON.parse(
+						await readFile(
+							resolve(root, "packages", directory, "package.json"),
+							"utf8",
+						),
+					) as Record<string, unknown>,
+			),
+		);
+		const byName = new Map(
+			packages.map((packageJson) => [packageJson.name, packageJson]),
+		);
+
+		expect(metadata.buildTarget(byName.get("hevy-mcp") ?? {})).toMatchObject({
+			cache: false,
+			inputs: ["nodeBuildInputs"],
+		});
+		expect(
+			metadata.buildTarget(byName.get("@chrisdoc/hevy-cli") ?? {}),
+		).toMatchObject({
+			cache: true,
+			inputs: ["cliBuildInputs"],
+		});
+		for (const name of [
+			"@hevy-mcp/core",
+			"@hevy-mcp/hevy-client",
+			"@hevy-mcp/worker",
+		]) {
+			expect(metadata.buildTarget(byName.get(name) ?? {}).inputs).toEqual([
+				"packageBuildInputs",
+			]);
 		}
 	});
 

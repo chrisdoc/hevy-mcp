@@ -9,7 +9,7 @@
 			"inputs": ["controlPlaneInputs"]
 		},
 		"check:boundaries": {
-			"inputs": ["sourceInputs", "controlPlaneInputs"]
+			"inputs": ["boundaryInputs", "controlPlaneInputs"]
 		},
 		"check:exports": {
 			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
@@ -22,13 +22,13 @@
 			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
 		},
 		"check:types": {
-			"inputs": ["validationInputs"]
+			"inputs": ["repositoryTypeCheckInputs"]
 		},
 		"check": {
-			"inputs": ["sourceInputs", "controlPlaneInputs"]
+			"inputs": ["validationInputs"]
 		},
 		"check:server-manifest": {
-			"inputs": ["validationInputs"]
+			"inputs": ["manifestInputs"]
 		},
 		"check:changeset": {
 			"cache": false,
@@ -51,7 +51,7 @@
 		},
 		"test:unit": {
 			"cache": true,
-			"inputs": ["validationInputs"],
+			"inputs": ["unitTests"],
 			"outputs": [
 				"{workspaceRoot}/coverage/unit",
 				"{workspaceRoot}/test-results/unit-tests.xml"
@@ -59,7 +59,7 @@
 		},
 		"test:mcp": {
 			"cache": true,
-			"inputs": ["validationInputs"],
+			"inputs": ["mockedTests"],
 			"outputs": ["{workspaceRoot}/coverage/mocked"]
 		},
 		"test:integration": {
@@ -72,11 +72,11 @@
 		},
 		"test:contract": {
 			"cache": true,
-			"inputs": ["validationInputs"]
+			"inputs": ["contractTests"]
 		},
 		"test:stdio": {
 			"cache": true,
-			"inputs": ["validationInputs"]
+			"inputs": ["stdioTests"]
 		},
 		"test:worker": {
 			"cache": false,
@@ -95,7 +95,7 @@
 		},
 		"test:cli": {
 			"cache": true,
-			"inputs": ["validationInputs"]
+			"inputs": ["cliTests"]
 		},
 		"test:pack:cli": {
 			"cache": false,
@@ -125,17 +125,13 @@
 			"outputs": ["{workspaceRoot}/.wrangler/dry-run"]
 		},
 		"build": {
+			"cache": false,
 			"outputs": ["{workspaceRoot}/packages/node/dist"],
-			"inputs": ["validationInputs"]
+			"inputs": ["nodeBuildInputs"]
 		},
 		"build:client": {
 			"outputs": ["{workspaceRoot}/packages/hevy-client/src/generated"],
-			"inputs": [
-				"{workspaceRoot}/openapi-spec.json",
-				"{workspaceRoot}/packages/hevy-client/kubb.config.ts",
-				"{workspaceRoot}/packages/hevy-client/package.json",
-				"controlPlaneInputs"
-			]
+			"inputs": ["openapiInputs"]
 		},
 		"sync:server-manifest": {
 			"cache": false,
@@ -144,12 +140,7 @@
 				"{workspaceRoot}/plugin.json",
 				"{workspaceRoot}/packages/node/server.json"
 			],
-			"inputs": [
-				"{workspaceRoot}/server.json",
-				"{workspaceRoot}/plugin.json",
-				"{workspaceRoot}/packages/node/package.json",
-				"{workspaceRoot}/scripts/server-manifest.mjs"
-			]
+			"inputs": ["manifestInputs"]
 		},
 		"test:coverage": {
 			"cache": false,

@@ -1,12 +1,15 @@
 {
 	"$schema": "./node_modules/nx/schemas/nx-schema.json",
 	"namedInputs": {
-		"default": [
-			"{projectRoot}/**/*",
-			"!{projectRoot}/.nx/**/*",
-			"!{projectRoot}/coverage/**/*",
-			"!{projectRoot}/dist/**/*",
-			"!{projectRoot}/test-results/**/*"
+		"repositoryConfig": [
+			"{workspaceRoot}/nx.json",
+			"{workspaceRoot}/project.json",
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/tsconfig*.json",
+			"{workspaceRoot}/vitest*.config.*",
+			"{workspaceRoot}/.oxlintrc.json",
+			"{workspaceRoot}/.oxfmtrc.json"
 		],
 		"controlPlaneInputs": [
 			"{workspaceRoot}/nx.json",
@@ -17,6 +20,7 @@
 			"{workspaceRoot}/scripts/**/*.mjs",
 			"{workspaceRoot}/scripts/**/*.cjs",
 			"{workspaceRoot}/.dependency-cruiser.cjs",
+			"controlPlaneModels",
 			"{workspaceRoot}/.changeset/**/*.md"
 		],
 		"packageManifestInputs": [
@@ -24,27 +28,153 @@
 			"{workspaceRoot}/package-lock.json",
 			"{workspaceRoot}/packages/*/package.json"
 		],
-		"sourceInputs": [
-			"default",
+		"packageConfigs": [
+			"packageManifestInputs",
+			"{workspaceRoot}/packages/*/tsconfig*.json",
+			"{workspaceRoot}/packages/*/tsdown.config.*",
+			"{workspaceRoot}/packages/hevy-client/kubb.config.ts"
+		],
+		"compilerConfigs": [
 			"{workspaceRoot}/tsconfig*.json",
-			"{workspaceRoot}/vitest*.config.ts",
-			"{workspaceRoot}/tests/**/*",
-			"{workspaceRoot}/packages/*/src/**/*"
+			"{workspaceRoot}/packages/*/tsconfig*.json"
+		],
+		"rootSources": [
+			"{workspaceRoot}/*.ts",
+			"{workspaceRoot}/scripts/**/*.ts",
+			"{workspaceRoot}/tests/**/*.ts",
+			"{workspaceRoot}/tests/**/*.tsx"
+		],
+		"runtimeSources": ["{workspaceRoot}/packages/*/src/**/*"],
+		"testFixtures": ["{workspaceRoot}/tests/fixtures/**/*"],
+		"testShims": ["{workspaceRoot}/tests/shims/**/*"],
+		"testScripts": ["{workspaceRoot}/scripts/**/*"],
+		"controlPlaneModels": ["{workspaceRoot}/repository/**/*"],
+		"unitSpecialInputs": [
+			"{workspaceRoot}/.github/workflows/release.yml",
+			"{workspaceRoot}/.github/workflows/deploy-worker.yml",
+			"{workspaceRoot}/.changeset/config.json",
+			"{workspaceRoot}/docs/cloudflare-worker-version-attribution.md",
+			"{workspaceRoot}/docs/clickstack-metrics.md",
+			"{workspaceRoot}/.dependency-cruiser.cjs",
+			"{workspaceRoot}/.cm/gitstream.cm",
+			"{workspaceRoot}/.cm/plugins/filters/findDiffLocation/index.js",
+			"{workspaceRoot}/packages/node/README.md"
+		],
+		"unitTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"testScripts",
+			"controlPlaneModels",
+			"{workspaceRoot}/tests/unit/**/*",
+			"unitSpecialInputs"
+		],
+		"mockedTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testShims",
+			"{workspaceRoot}/tests/integration/mocked/**/*"
+		],
+		"contractTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"manifestInputs",
+			"{workspaceRoot}/packages/node/src/index.test.ts",
+			"{workspaceRoot}/packages/node/src/utils/config.test.ts",
+			"{workspaceRoot}/packages/core/src/tools/register.test.ts",
+			"{workspaceRoot}/packages/core/src/utils/output-schemas.test.ts",
+			"{workspaceRoot}/tests/unit/server-manifest.test.ts"
+		],
+		"stdioTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"compilerConfigs",
+			"runtimeSources",
+			"{workspaceRoot}/packages/node/src/**/*",
+			"{workspaceRoot}/tests/fixtures/graceful-shutdown-child.ts"
+		],
+		"cliTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"{workspaceRoot}/packages/cli/src/**/*"
+		],
+		"typeCheckInputs": [
+			"compilerConfigs",
+			"packageManifestInputs",
+			"runtimeSources"
+		],
+		"repositoryTypeCheckInputs": ["typeCheckInputs", "rootSources"],
+		"packageBuildInputs": [
+			"packageConfigs",
+			"compilerConfigs",
+			"runtimeSources"
+		],
+		"nodeBuildInputs": [
+			"packageBuildInputs",
+			"{workspaceRoot}/packages/node/tsdown.config.ts"
+		],
+		"cliBuildInputs": [
+			"packageBuildInputs",
+			"{workspaceRoot}/packages/cli/tsdown.config.ts"
+		],
+		"manifestInputs": [
+			"{workspaceRoot}/package.json",
+			"{workspaceRoot}/server.json",
+			"{workspaceRoot}/plugin.json",
+			"{workspaceRoot}/packages/node/server.json",
+			"{workspaceRoot}/packages/node/package.json",
+			"{workspaceRoot}/scripts/server-manifest.mjs"
+		],
+		"openapiInputs": [
+			"{workspaceRoot}/openapi-spec.json",
+			"{workspaceRoot}/packages/hevy-client/kubb.config.ts",
+			"{workspaceRoot}/packages/hevy-client/package.json",
+			"{workspaceRoot}/package-lock.json"
+		],
+		"boundaryInputs": [
+			"runtimeSources",
+			"compilerConfigs",
+			"{workspaceRoot}/.dependency-cruiser.cjs",
+			"{workspaceRoot}/scripts/check-package-boundaries.mjs",
+			"{workspaceRoot}/scripts/check-worker-import-boundary.mjs"
 		],
 		"validationInputs": [
-			"sourceInputs",
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"testScripts",
 			"packageManifestInputs",
 			"controlPlaneInputs"
 		]
 	},
 	"plugins": ["./scripts/nx-project-metadata.cjs"],
 	"targetDefaults": {
-		"build": {
-			"cache": true,
-			"dependsOn": ["^build"]
-		},
+		"build": [
+			{
+				"cache": false,
+				"inputs": ["packageBuildInputs"],
+				"dependsOn": ["^build"]
+			},
+			{
+				"cache": true,
+				"inputs": ["cliBuildInputs"],
+				"filter": { "projects": ["@chrisdoc/hevy-cli"] }
+			},
+			{
+				"cache": false,
+				"inputs": ["nodeBuildInputs"],
+				"filter": { "projects": ["hevy-mcp"] }
+			}
+		],
 		"check:types": {
 			"cache": true,
+			"inputs": ["typeCheckInputs"],
 			"dependsOn": ["^check:types"]
 		}
 	}

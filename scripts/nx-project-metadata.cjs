@@ -47,12 +47,40 @@ function buildOutputs(packageJson) {
 	return publishesDist ? ["{projectRoot}/dist"] : [];
 }
 
+/**
+ * Keep package build targets explicit so Nx never falls back to its broad
+ * implicit project-root glob. The Node bundle embeds environment-
+ * dependent telemetry configuration and therefore must not be cached.
+ */
+function buildTarget(packageJson) {
+	const name = packageJson.name;
+	if (name === "hevy-mcp") {
+		return {
+			cache: false,
+			inputs: ["nodeBuildInputs"],
+			outputs: buildOutputs(packageJson),
+		};
+	}
+	if (name === "@chrisdoc/hevy-cli") {
+		return {
+			cache: true,
+			inputs: ["cliBuildInputs"],
+			outputs: buildOutputs(packageJson),
+		};
+	}
+	return {
+		inputs: ["packageBuildInputs"],
+		outputs: buildOutputs(packageJson),
+	};
+}
+
 module.exports = {
 	name: "hevy-mcp-project-metadata",
 	runtimeTag,
 	roleTag,
 	projectTags,
 	buildOutputs,
+	buildTarget,
 	createNodes: [
 		"packages/*/package.json",
 		(configFiles, _options, context) =>
@@ -67,7 +95,7 @@ module.exports = {
 							[path.posix.dirname(configFile)]: {
 								tags: projectTags(packageJson),
 								targets: {
-									build: { outputs: buildOutputs(packageJson) },
+									build: buildTarget(packageJson),
 								},
 							},
 						},
