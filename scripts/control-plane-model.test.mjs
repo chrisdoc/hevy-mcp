@@ -30,6 +30,7 @@ describe("repository control-plane models", () => {
 
 		expect(Object.keys(workspaces)).toEqual([
 			"hevy-client",
+			"operations",
 			"core",
 			"node",
 			"worker",
@@ -37,13 +38,22 @@ describe("repository control-plane models", () => {
 		]);
 		expect(workspaces["hevy-client"]?.role).toBe("client");
 		expect(workspaces.core?.role).toBe("runtime");
+		expect(workspaces.operations?.role).toBe("runtime");
 		expect(workspaces.node?.role).toBe("server");
 		expect(workspaces.worker?.role).toBe("adapter");
 		expect(workspaces.cli?.role).toBe("cli");
-		expect(workspaces.core?.dependencies).toEqual(["hevy-client"]);
+		expect(workspaces.operations?.dependencies).toEqual(["hevy-client"]);
+		expect(workspaces.core?.dependencies).toEqual([
+			"hevy-client",
+			"operations",
+		]);
 		expect(workspaces.node?.dependencies).toEqual(["hevy-client", "core"]);
 		expect(workspaces.worker?.dependencies).toEqual(["hevy-client", "core"]);
-		expect(workspaces.cli?.dependencies).toEqual(["hevy-client", "core"]);
+		expect(workspaces.cli?.dependencies).toEqual([
+			"hevy-client",
+			"core",
+			"operations",
+		]);
 	});
 
 	it("keeps artifact provenance declarative and complete", () => {

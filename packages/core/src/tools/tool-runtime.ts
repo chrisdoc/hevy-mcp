@@ -1,5 +1,6 @@
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import {
 	HEVY_CLIENT_NOT_INITIALIZED_ERROR,
 	requireClient,
@@ -130,8 +131,10 @@ export interface ToolRuntime {
 	readonly executionTimeoutMs: number;
 	readonly executionDeadline?: number;
 	readonly lifecycleSignal?: AbortSignal;
+	readonly operations: HevyOperations | null;
 	readonly createHandler: ToolHandlerFactory;
 	getClient(): HevyClient;
+	getOperations(): HevyOperations;
 	forExecution(context?: ToolExecutionContext): ToolRuntime;
 }
 
@@ -139,6 +142,7 @@ export interface CreateToolRuntimeOptions {
 	client: HevyClient | null;
 	/** Unbound client retained across nested execution scopes. */
 	baseClient?: HevyClient | null;
+	operations?: HevyOperations;
 	catalog: ExerciseTemplateCatalog;
 	logger?: McpClientLogger;
 	createHandler?: ToolHandlerFactory;
@@ -159,6 +163,7 @@ export const defaultHandlerFactory: ToolHandlerFactory = <
 export function createToolRuntime({
 	client,
 	baseClient,
+	operations,
 	catalog,
 	logger,
 	createHandler = defaultHandlerFactory,
@@ -169,6 +174,8 @@ export function createToolRuntime({
 	lifecycleSignal,
 }: CreateToolRuntimeOptions): ToolRuntime {
 	const rawClient = baseClient ?? client;
+	const resolvedOperations =
+		operations ?? (rawClient ? createOperations(rawClient) : null);
 	const effectiveExecutionDeadline = executionDeadline ?? execution?.deadline;
 	const createObservedHandler: ToolHandlerFactory = <
 		TParams extends Record<string, unknown>,
@@ -251,12 +258,16 @@ export function createToolRuntime({
 		executionTimeoutMs,
 		executionDeadline: effectiveExecutionDeadline,
 		lifecycleSignal,
+		operations: resolvedOperations,
 		createHandler: observedHandlerFactory,
 		getClient: () => requireClient(client),
+		getOperations: () =>
+			resolvedOperations ?? createOperations(requireClient(client)),
 		forExecution: (nextExecution) =>
 			createToolRuntime({
 				client: rawClient,
 				baseClient: rawClient,
+				operations: resolvedOperations ?? undefined,
 				catalog,
 				logger,
 				createHandler,

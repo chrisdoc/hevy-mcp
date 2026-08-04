@@ -11,6 +11,7 @@ import {
 	run,
 } from "@stricli/core";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyOperations } from "@hevy-mcp/operations";
 import { execute } from "./commands/index.js";
 import type { CliArgs } from "./arguments.js";
 import type { DataSourceReader } from "./input.js";
@@ -22,6 +23,7 @@ const cliVersion =
 export interface CliRuntimeContext extends CommandContext {
 	readonly process: StricliProcess;
 	client?: HevyClient;
+	operations?: HevyOperations;
 	now: () => Date;
 	readDataSource: DataSourceReader;
 	state: {
@@ -117,6 +119,7 @@ async function invoke(
 			context.client,
 			context.now,
 			context.readDataSource,
+			context.operations,
 		);
 	} catch (error) {
 		context.state.error = error;

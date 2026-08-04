@@ -19,6 +19,7 @@
 	},
 	"dependencies": {
 		"@hevy-mcp/hevy-client": "*",
+		"@hevy-mcp/operations": "*",
 		"@modelcontextprotocol/server": "^2.0.0",
 		"zod": "^4.4.3"
 	},

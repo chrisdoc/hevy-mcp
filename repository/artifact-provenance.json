@@ -27,7 +27,8 @@
 				"cloudflare.config.ts",
 				"packages/worker/package.json",
 				"packages/core/package.json",
-				"packages/hevy-client/package.json"
+				"packages/hevy-client/package.json",
+				"packages/operations/package.json"
 			],
 			"kind": "worker-input"
 		},
@@ -163,6 +164,19 @@
 		{
 			"id": "core-source",
 			"paths": ["packages/core/**"],
+			"kind": "workspace-source",
+			"owners": ["types", "package-boundaries"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "build:packages"
+				}
+			],
+			"validationTargets": ["check:types", "check:boundaries"]
+		},
+		{
+			"id": "operations-source",
+			"paths": ["packages/operations/**"],
 			"kind": "workspace-source",
 			"owners": ["types", "package-boundaries"],
 			"producers": [
@@ -364,6 +378,21 @@
 			"validationTargets": ["check:types", "check:boundaries"]
 		},
 		{
+			"id": "operations-package",
+			"kind": "workspace-package",
+			"workspace": "operations",
+			"sourcePaths": ["packages/operations/**"],
+			"outputs": ["operations-source"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "build:packages"
+				}
+			],
+			"validation": ["types", "package-boundaries"],
+			"validationTargets": ["check:types", "check:boundaries"]
+		},
+		{
 			"id": "hevy-client-package",
 			"kind": "workspace-package",
 			"workspace": "hevy-client",
@@ -393,12 +422,14 @@
 			"sourcePaths": [
 				"packages/worker/**",
 				"packages/core/**",
+				"packages/operations/**",
 				"packages/hevy-client/**",
 				"cloudflare.config.ts",
 				"package.json",
 				"package-lock.json",
 				"packages/worker/package.json",
 				"packages/core/package.json",
+				"packages/operations/package.json",
 				"packages/hevy-client/package.json"
 			],
 			"outputs": ["worker-dry-run"],
@@ -424,11 +455,13 @@
 				"tsconfig.json",
 				"packages/hevy-client/package.json",
 				"packages/core/package.json",
+				"packages/operations/package.json",
 				"packages/node/package.json",
 				"packages/worker/package.json",
 				"scripts/install-git-hooks.mjs",
 				"packages/hevy-client/**",
 				"packages/core/**",
+				"packages/operations/**",
 				"packages/node/**"
 			],
 			"outputs": ["docker-image-output"],

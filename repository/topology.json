@@ -30,6 +30,31 @@
 			"role": "client"
 		},
 		{
+			"id": "operations",
+			"path": "packages/operations",
+			"name": "@hevy-mcp/operations",
+			"private": true,
+			"publishable": false,
+			"runtime": "neutral",
+			"exports": ["."],
+			"dependencies": ["hevy-client"],
+			"boundary": {
+				"allowed": {
+					"@hevy-mcp/hevy-client": ["", "types"]
+				},
+				"forbidden": [
+					"@cloudflare/",
+					"cloudflare:",
+					"@sentry/",
+					"@opentelemetry/"
+				],
+				"rejectBuiltins": true,
+				"rejectDynamicImports": true
+			},
+			"artifacts": ["operations-source"],
+			"role": "runtime"
+		},
+		{
 			"id": "core",
 			"path": "packages/core",
 			"name": "@hevy-mcp/core",
@@ -37,10 +62,11 @@
 			"publishable": false,
 			"runtime": "neutral",
 			"exports": [".", "./mutations"],
-			"dependencies": ["hevy-client"],
+			"dependencies": ["hevy-client", "operations"],
 			"boundary": {
 				"allowed": {
-					"@hevy-mcp/hevy-client": ["", "types", "schemas"]
+					"@hevy-mcp/hevy-client": ["", "types", "schemas"],
+					"@hevy-mcp/operations": [""]
 				},
 				"forbidden": [
 					"@cloudflare/",
@@ -104,11 +130,12 @@
 			"publishable": true,
 			"runtime": "node",
 			"exports": [],
-			"dependencies": ["hevy-client", "core"],
+			"dependencies": ["hevy-client", "core", "operations"],
 			"boundary": {
 				"allowed": {
 					"@hevy-mcp/core": ["", "mutations"],
-					"@hevy-mcp/hevy-client": ["", "schemas"]
+					"@hevy-mcp/hevy-client": ["", "schemas"],
+					"@hevy-mcp/operations": [""]
 				},
 				"forbidden": ["@cloudflare/", "cloudflare:"],
 				"rejectBuiltins": false,
@@ -128,7 +155,11 @@
 		"bundles": [
 			{
 				"workspace": "hevy-client",
-				"consumers": ["core"]
+				"consumers": ["operations", "core"]
+			},
+			{
+				"workspace": "operations",
+				"consumers": ["core", "cli"]
 			},
 			{
 				"workspace": "core",

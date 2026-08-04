@@ -124,8 +124,8 @@
 		],
 		"metrics": {
 			"canonicalModelCount": 3,
-			"workspaceCount": 5,
-			"artifactCandidateCount": 6,
+			"workspaceCount": 6,
+			"artifactCandidateCount": 7,
 			"validationLaneCount": 30,
 			"aggregateLaneIdentities": {
 				"pull-request": [

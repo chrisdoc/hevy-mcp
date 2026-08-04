@@ -1,5 +1,6 @@
 import { createHevyClient, type HevyClient } from "@hevy-mcp/hevy-client";
 import { bindClientExecution, type ToolExecutionContext } from "@hevy-mcp/core";
+import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import { getApiKey } from "./auth.js";
 import { diagnostic, EXIT } from "./errors.js";
 import { readDataSource, type DataSourceReader } from "./input.js";
@@ -32,6 +33,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		now: options.now ?? (() => new Date()),
 		readDataSource: options.readDataSource ?? readDataSource,
 		client: undefined as HevyClient | undefined,
+		operations: undefined as HevyOperations | undefined,
 	};
 	const metaCommand = options.argv.some((value) =>
 		["--help", "-h", "--version", "-v"].includes(value),
@@ -42,9 +44,11 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 			const createdClient = (
 				options.clientFactory ?? ((apiKey) => createHevyClient({ apiKey }))
 			)(key);
-			context.client = options.execution
+			const client = options.execution
 				? bindClientExecution(createdClient, options.execution)
 				: createdClient;
+			context.client = client;
+			context.operations = createOperations(client);
 		}
 		const exitCode = await runRoutes(options.argv, context);
 		if (state.error !== undefined) throw state.error;
