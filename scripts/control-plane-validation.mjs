@@ -859,10 +859,37 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			lane.id + ".changeImpact must contain patterns",
 		);
 		for (const artifact of lane.artifacts) {
-			const known =
-				provenance.outputs.some((entry) => entry.id === artifact) ||
-				provenance.candidates.some((entry) => entry.id === artifact);
-			assert(known, lane.id + " references unknown artifact " + artifact);
+			const output = provenance.outputs.find((entry) => entry.id === artifact);
+			const candidate = provenance.candidates.find(
+				(entry) => entry.id === artifact,
+			);
+			assert(
+				output || candidate,
+				lane.id + " references unknown artifact " + artifact,
+			);
+			if (output)
+				assert(
+					output.owners.includes(lane.id),
+					lane.id + " references output it does not own: " + artifact,
+				);
+			else
+				assert(
+					candidate.validation.includes(lane.id),
+					lane.id + " references candidate it does not validate: " + artifact,
+				);
+		}
+	}
+	const laneById = new Map(lanes.lanes.map((lane) => [lane.id, lane]));
+	for (const candidate of provenance.candidates) {
+		const linkedArtifacts = new Set([candidate.id, ...candidate.outputs]);
+		for (const laneId of candidate.validation) {
+			const lane = laneById.get(laneId);
+			assert(
+				lane.artifacts.some((artifact) => linkedArtifacts.has(artifact)),
+				candidate.id +
+					" validation lane does not reference the candidate or an output: " +
+					laneId,
+			);
 		}
 	}
 	assert(
@@ -922,19 +949,6 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				id + " references unknown lane or aggregate " + member,
 			);
 	}
-	const aggregateMemberLaneIds = (id, stack = []) => {
-		assert(
-			!stack.includes(id),
-			"validation aggregate cycle: " + [...stack, id].join(" -> "),
-		);
-		const aggregate = aggregates[id];
-		assert(aggregate, "validation aggregate " + id + " is required");
-		return aggregate.lanes.flatMap((member) =>
-			laneIds.has(member)
-				? [member]
-				: aggregateMemberLaneIds(member, [...stack, id]),
-		);
-	};
 	for (const [id, aggregate] of Object.entries(aggregates)) {
 		if (aggregate.workflowRuntimes === undefined) continue;
 		assert(
@@ -943,7 +957,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				!Array.isArray(aggregate.workflowRuntimes),
 			id + ".workflowRuntimes must be an object",
 		);
-		const members = new Set(aggregateMemberLaneIds(id));
+		const members = new Set(flattenAggregateLanes(aggregates, laneIds, id));
 		for (const [laneId, runtimes] of Object.entries(
 			aggregate.workflowRuntimes,
 		)) {

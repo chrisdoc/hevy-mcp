@@ -449,4 +449,28 @@ describe("server manifest metadata", () => {
 			).rejects.toThrow(message);
 		},
 	);
+
+	it("does not classify a non-ENOENT mirror failure as absent", async () => {
+		const { fixtureDir } = await createFixture();
+		await mkdir(join(fixtureDir, "repository"));
+		const provenance = JSON.parse(
+			await readFile(
+				join(rootDir, "repository/artifact-provenance.json"),
+				"utf8",
+			),
+		) as ProvenanceFixture;
+		provenanceEntry(provenance, "outputs", "server-manifest").paths = [
+			"server.json",
+			"unreadable-mirror",
+		];
+		await writeJson(
+			join(fixtureDir, "repository/artifact-provenance.json"),
+			provenance,
+		);
+		await mkdir(join(fixtureDir, "unreadable-mirror"));
+
+		await expect(
+			runServerManifest({ mode: "check", rootDir: fixtureDir }),
+		).rejects.toThrow("Unable to read unreadable-mirror");
+	});
 });

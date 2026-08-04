@@ -327,6 +327,34 @@ describe("repository control-plane models", () => {
 			),
 		).toThrow(/unknown artifact missing-artifact/);
 
+		const outputOwnedByAnotherLane = structuredClone(controlPlane.lanes);
+		outputOwnedByAnotherLane.lanes
+			.find((lane) => lane.id === "unit")
+			.artifacts.push("cli-dist");
+		expect(() =>
+			validateValidationLanes(
+				repositoryRoot,
+				outputOwnedByAnotherLane,
+				controlPlane.topology,
+				controlPlane.provenance,
+			),
+		).toThrow(/unit references output it does not own: cli-dist/);
+
+		const missingCandidateLaneLink = structuredClone(controlPlane.lanes);
+		missingCandidateLaneLink.lanes.find(
+			(lane) => lane.id === "generation",
+		).artifacts = [];
+		expect(() =>
+			validateValidationLanes(
+				repositoryRoot,
+				missingCandidateLaneLink,
+				controlPlane.topology,
+				controlPlane.provenance,
+			),
+		).toThrow(
+			/hevy-client-package validation lane does not reference the candidate or an output: generation/,
+		);
+
 		const missingNxMapping = structuredClone(controlPlane.lanes);
 		missingNxMapping.lanes[0].nxTarget = "missing-target";
 		expect(() =>

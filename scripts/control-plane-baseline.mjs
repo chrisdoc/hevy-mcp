@@ -396,7 +396,7 @@ export function validateBaseline(rootDir, controlPlane, baselineOverride) {
 			id,
 		);
 		assert(
-			count === flattenedLanes.length,
+			count === new Set(flattenedLanes).size,
 			"baseline current aggregate metric drifted for " + id,
 		);
 	}

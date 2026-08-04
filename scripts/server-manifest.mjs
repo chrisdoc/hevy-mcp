@@ -23,9 +23,6 @@ async function readJson(path, label) {
 	try {
 		contents = await readFile(path, "utf8");
 	} catch (error) {
-		if (error.code === "ENOENT") {
-			throw new Error(`Unable to read ${label}: ${error.message}`);
-		}
 		const readError = new Error(`Unable to read ${label}: ${error.message}`);
 		readError.cause = error;
 		throw readError;
@@ -248,7 +245,7 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 				value: (await readJson(mirror.path, mirror.relativePath)).value,
 			});
 		} catch (error) {
-			if (!error.message.startsWith("Unable to read")) throw error;
+			if (error.cause?.code !== "ENOENT") throw error;
 		}
 	}
 	const pluginManifests = [];
@@ -259,7 +256,7 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 				value: (await readJson(plugin.path, plugin.relativePath)).value,
 			});
 		} catch (error) {
-			if (!error.message.startsWith("Unable to read")) throw error;
+			if (error.cause?.code !== "ENOENT") throw error;
 		}
 	}
 
