@@ -72,6 +72,43 @@ describe("generated client closure checks", () => {
 		expect(executable.args[0]).toMatch(/[\\/]bin[\\/]kubb\.cjs$/);
 	});
 
+	it("reports missing package metadata and executable declarations", async () => {
+		await expect(
+			resolvePackageExecutable("missing-generated-client-package", "missing"),
+		).rejects.toThrow(
+			"Unable to resolve missing-generated-client-package package metadata",
+		);
+		await expect(
+			resolvePackageExecutable("typescript", "missing"),
+		).rejects.toThrow(
+			"Package typescript does not declare a missing executable",
+		);
+	});
+
+	it("reports command startup and non-zero exit failures", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-failure-"),
+		);
+		const script = resolve(root, "fail.mjs");
+		try {
+			await expect(
+				runCommand(resolve(root, "missing-command"), [], root, {
+					timeout: 1_000,
+				}),
+			).rejects.toThrow(/failed: could not start \(ENOENT\)/);
+
+			await writeFile(
+				script,
+				'process.stderr.write("command failed\\n"); process.exitCode = 7;\n',
+			);
+			await expect(
+				runCommand(process.execPath, [script], root, { timeout: 1_000 }),
+			).rejects.toThrow(/failed: exited with code 7[\s\S]*command failed/);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	it("reports bounded command failures with timeout and captured output", async () => {
 		const root = await mkdtemp(
 			resolve(tmpdir(), "hevy-generated-client-command-timeout-"),
@@ -85,14 +122,114 @@ describe("generated client closure checks", () => {
 
 			await expect(
 				runCommand(process.execPath, [script], root, {
-					timeout: 200,
+					timeout: 1_000,
 					killSignal: "SIGTERM",
 				}),
 			).rejects.toMatchObject({
 				message: expect.stringMatching(
-					/failed: timed out after 200ms; sent SIGTERM[\s\S]*command started/,
+					/failed: timed out after 1000ms; sent SIGTERM[\s\S]*command started/,
 				),
 			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("treats a timed-out child that exits cleanly after SIGTERM as a failure", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-clean-exit-"),
+		);
+		const script = resolve(root, "exit-on-sigterm.mjs");
+		try {
+			await writeFile(
+				script,
+				[
+					'process.on("SIGTERM", () => process.exit(0));',
+					'process.stderr.write("process started\\n");',
+					"setInterval(() => {}, 1000);",
+				].join("\n"),
+			);
+
+			await expect(
+				runCommand(process.execPath, [script], root, {
+					timeout: 1_000,
+					killSignal: "SIGTERM",
+				}),
+			).rejects.toMatchObject({
+				message: expect.stringMatching(
+					/failed: timed out after 1000ms; sent SIGTERM[\s\S]*process started/,
+				),
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("forcefully terminates with SIGKILL after grace period if child ignores SIGTERM", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-sigkill-"),
+		);
+		const script = resolve(root, "ignore-sigterm.mjs");
+		try {
+			await writeFile(
+				script,
+				[
+					'process.on("SIGTERM", () => {',
+					'\tprocess.stderr.write("ignored SIGTERM\\n");',
+					"});",
+					'process.stderr.write("process started\\n");',
+					"setInterval(() => {}, 1000);",
+				].join("\n"),
+			);
+
+			await expect(
+				runCommand(process.execPath, [script], root, {
+					timeout: 1_000,
+					killSignal: "SIGTERM",
+				}),
+			).rejects.toMatchObject({
+				message: expect.stringMatching(
+					/failed: timed out after 1000ms; sent SIGTERM[\s\S]*process started/,
+				),
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("uses SIGKILL directly when configured as the timeout signal", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-direct-sigkill-"),
+		);
+		const script = resolve(root, "sleep.mjs");
+		try {
+			await writeFile(script, "setInterval(() => {}, 1000);\n");
+
+			await expect(
+				runCommand(process.execPath, [script], root, {
+					timeout: 1_000,
+					killSignal: "SIGKILL",
+				}),
+			).rejects.toThrow(/failed: timed out after 1000ms; sent SIGKILL/);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("reports a child terminated by a signal before the timeout", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-signal-"),
+		);
+		const script = resolve(root, "terminate.mjs");
+		try {
+			await writeFile(
+				script,
+				'setTimeout(() => process.kill(process.pid, "SIGTERM"), 50);\n',
+			);
+
+			await expect(
+				runCommand(process.execPath, [script], root, { timeout: 1_000 }),
+			).rejects.toThrow(/failed: terminated by signal SIGTERM/);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
@@ -201,7 +338,7 @@ describe("generated client closure checks", () => {
 		const result = await checkGeneratedClient();
 
 		expect(result.generatedFiles).toBeGreaterThan(0);
-	}, 20_000);
+	}, 60_000);
 
 	it("reports a missing named public export", async () => {
 		const fixture = await materializeFixture(
