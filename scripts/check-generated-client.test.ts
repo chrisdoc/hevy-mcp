@@ -7,6 +7,9 @@ import {
 	checkGeneratedClient,
 	findCuratedBarrelDrift,
 	findForbiddenRootSourceFiles,
+	isNodeModulesPath,
+	resolvePackageExecutable,
+	runCommand,
 } from "./check-generated-client.mjs";
 
 const fixtureRoot = resolve(
@@ -49,6 +52,52 @@ async function materializeFixture(sourceRoot: string) {
 }
 
 describe("generated client closure checks", () => {
+	it("filters node_modules regardless of path separator", () => {
+		expect(
+			isNodeModulesPath("/tmp/project/node_modules/package/index.js"),
+		).toBe(true);
+		expect(
+			isNodeModulesPath(String.raw`C:\project\node_modules\package\index.js`),
+		).toBe(true);
+		expect(isNodeModulesPath("/tmp/project/node_modules-copy/index.js")).toBe(
+			false,
+		);
+	});
+
+	it("resolves package bins through Node instead of platform shell shims", async () => {
+		const executable = await resolvePackageExecutable("@kubb/cli", "kubb");
+
+		expect(executable.command).toBe(process.execPath);
+		expect(executable.args).toHaveLength(1);
+		expect(executable.args[0]).toMatch(/[\\/]bin[\\/]kubb\.cjs$/);
+	});
+
+	it("reports bounded command failures with timeout and captured output", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-timeout-"),
+		);
+		const script = resolve(root, "sleep.mjs");
+		try {
+			await writeFile(
+				script,
+				'process.stderr.write("command started\\n"); setTimeout(() => {}, 5000);\n',
+			);
+
+			await expect(
+				runCommand(process.execPath, [script], root, {
+					timeout: 200,
+					killSignal: "SIGTERM",
+				}),
+			).rejects.toMatchObject({
+				message: expect.stringMatching(
+					/failed: timed out after 200ms; sent SIGTERM[\s\S]*command started/,
+				),
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	it("returns no differences when both comparison trees are absent", async () => {
 		const root = await mkdtemp(
 			resolve(tmpdir(), "hevy-generated-client-empty-trees-"),

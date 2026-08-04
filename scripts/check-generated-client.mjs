@@ -11,13 +11,17 @@ import {
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { fixOpenAPISpec, validateOpenAPISpec } from "./openapi-spec.js";
 
+const require = createRequire(import.meta.url);
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const clientRoot = resolve(repositoryRoot, "packages/hevy-client");
 const generatedRelative = "src/generated";
 const generatedRoot = resolve(clientRoot, generatedRelative);
 const curatedBarrels = ["src/types.ts", "src/schemas.ts"];
+const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
+const DEFAULT_COMMAND_KILL_SIGNAL = "SIGTERM";
 
 async function collectFiles(directory) {
 	try {
@@ -37,6 +41,10 @@ async function collectFiles(directory) {
 
 function relativePath(root, path) {
 	return relative(root, path).replaceAll("\\", "/");
+}
+
+export function isNodeModulesPath(path) {
+	return path.split(/[\\/]+/).includes("node_modules");
 }
 
 /**
@@ -161,11 +169,11 @@ export async function findCuratedBarrelDrift(packageRoot) {
 		}
 	}
 
-	const tsc = resolve(repositoryRoot, "node_modules/.bin/tsc");
 	try {
+		const tsc = await resolvePackageExecutable("typescript", "tsc");
 		await runCommand(
-			tsc,
-			["--noEmit", "--pretty", "false", "-p", "./tsconfig.json"],
+			tsc.command,
+			[...tsc.args, "--noEmit", "--pretty", "false", "-p", "./tsconfig.json"],
 			packageRoot,
 		);
 	} catch (error) {
@@ -179,36 +187,148 @@ export async function findCuratedBarrelDrift(packageRoot) {
 	return failures;
 }
 
-function runCommand(command, args, cwd) {
+/**
+ * Resolve a package's JavaScript bin entry and invoke it through Node. Calling
+ * the bin entry directly avoids npm's platform-specific `.cmd`/shell shims
+ * without ever interpolating arguments into a shell command.
+ */
+export async function resolvePackageExecutable(packageName, binName) {
+	let packageJsonPath;
+	try {
+		packageJsonPath = require.resolve(`${packageName}/package.json`);
+	} catch (error) {
+		throw new Error(
+			`Unable to resolve ${packageName} package metadata: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+			{ cause: error },
+		);
+	}
+
+	let packageJson;
+	try {
+		packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
+	} catch (error) {
+		throw new Error(
+			`Unable to read ${packageName} package metadata: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+			{ cause: error },
+		);
+	}
+	const packageBin = packageJson.bin;
+	const binary =
+		typeof packageBin === "string"
+			? packageBin
+			: (packageBin?.[binName] ?? packageBin?.[packageName]);
+
+	if (typeof binary !== "string" || binary.length === 0) {
+		throw new Error(
+			`Package ${packageName} does not declare a ${binName} executable`,
+		);
+	}
+
+	return {
+		command: process.execPath,
+		args: [resolve(dirname(packageJsonPath), binary)],
+	};
+}
+
+function formatCommand(command, args) {
+	return [command, ...args]
+		.map((part) => JSON.stringify(String(part)))
+		.join(" ");
+}
+
+export function runCommand(
+	command,
+	args,
+	cwd,
+	{
+		timeout = DEFAULT_COMMAND_TIMEOUT_MS,
+		killSignal = DEFAULT_COMMAND_KILL_SIGNAL,
+	} = {},
+) {
+	const commandTimeout =
+		Number.isFinite(timeout) && timeout > 0
+			? Math.floor(timeout)
+			: DEFAULT_COMMAND_TIMEOUT_MS;
+	const displayCommand = formatCommand(command, args);
+
 	return new Promise((resolvePromise, reject) => {
-		const child = spawn(command, args, {
-			cwd,
-			stdio: ["ignore", "pipe", "pipe"],
-		});
 		let output = "";
+		let timedOut = false;
+		let settled = false;
+		let timeoutHandle;
+
+		const finish = (callback) => {
+			if (settled) return;
+			settled = true;
+			if (timeoutHandle) clearTimeout(timeoutHandle);
+			callback();
+		};
+		const rejectWithMessage = (status, cause) => {
+			finish(() =>
+				reject(
+					new Error(
+						[`${displayCommand} failed: ${status}`, output.trim()]
+							.filter(Boolean)
+							.join("\n"),
+						{ cause },
+					),
+				),
+			);
+		};
+
+		let child;
+		try {
+			child = spawn(command, args, {
+				cwd,
+				stdio: ["ignore", "pipe", "pipe"],
+				shell: false,
+				timeout: commandTimeout,
+				killSignal,
+			});
+		} catch (error) {
+			rejectWithMessage(
+				`could not start: ${error instanceof Error ? error.message : String(error)}`,
+				error,
+			);
+			return;
+		}
+
+		timeoutHandle = setTimeout(
+			() => {
+				if (child.exitCode === null && child.signalCode === null) {
+					timedOut = true;
+					child.kill(killSignal);
+				}
+			},
+			Math.max(1, commandTimeout - 1),
+		);
 		child.stdout.on("data", (chunk) => {
 			output += chunk;
 		});
 		child.stderr.on("data", (chunk) => {
 			output += chunk;
 		});
-		child.once("error", reject);
+		child.once("error", (error) => {
+			const code = error?.code ? ` (${error.code})` : "";
+			rejectWithMessage(`could not start${code}: ${error.message}`, error);
+		});
 		child.once("exit", (code, signal) => {
 			if (code === 0) {
-				resolvePromise();
+				finish(resolvePromise);
 				return;
 			}
-			reject(
-				new Error(
-					[
-						`${command} ${args.join(" ")} failed with ${
-							signal ? `signal ${signal}` : `exit code ${code}`
-						}`,
-						output.trim(),
-					]
-						.filter(Boolean)
-						.join("\n"),
-				),
+			if (timedOut) {
+				rejectWithMessage(
+					`timed out after ${commandTimeout}ms; sent ${String(killSignal)}`,
+				);
+				return;
+			}
+			rejectWithMessage(
+				signal ? `terminated by signal ${signal}` : `exited with code ${code}`,
 			);
 		});
 	});
@@ -231,8 +351,7 @@ async function createFixtureRepository(normalizedSpec) {
 		const fixtureClient = resolve(root, "packages/hevy-client");
 		await cp(clientRoot, fixtureClient, {
 			recursive: true,
-			filter: (path) =>
-				!path.includes("/node_modules/") && !path.endsWith("/node_modules"),
+			filter: (path) => !isNodeModulesPath(path),
 		});
 		await cp(
 			resolve(repositoryRoot, "tsconfig.base.json"),
@@ -259,16 +378,16 @@ export async function checkGeneratedClient() {
 	let fixture;
 	try {
 		fixture = await createFixtureRepository(normalized);
-		const kubb = resolve(repositoryRoot, "node_modules/.bin/kubb");
-		const prettier = resolve(repositoryRoot, "node_modules/.bin/prettier");
+		const kubb = await resolvePackageExecutable("@kubb/cli", "kubb");
+		const prettier = await resolvePackageExecutable("prettier", "prettier");
 		await runCommand(
-			kubb,
-			["generate", "--config", "./kubb.config.ts"],
+			kubb.command,
+			[...kubb.args, "generate", "--config", "./kubb.config.ts"],
 			fixture.client,
 		);
 		await runCommand(
-			prettier,
-			["--ignore-unknown", "--write", generatedRelative],
+			prettier.command,
+			[...prettier.args, "--ignore-unknown", "--write", generatedRelative],
 			fixture.client,
 		);
 
