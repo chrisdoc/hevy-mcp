@@ -14,6 +14,11 @@ The queries intentionally use ClickHouse map expressions such as
 `Attributes['tool_name']` and `ResourceAttributes['service.version']`. Do not
 replace them with bare column references.
 
+These metric queries remain scoped to the Node service because Cloudflare's
+native telemetry is span-based and the Node and Worker packages have independent
+versions. For combined trace views and Worker-specific filters, see
+[Cloudflare Worker version attribution](./cloudflare-worker-version-attribution.md).
+
 ## Common release filter
 
 Use this predicate in each panel to scope a release:

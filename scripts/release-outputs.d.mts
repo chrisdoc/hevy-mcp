@@ -7,6 +7,7 @@ export interface ReleaseOutputs {
 	version: string;
 	released: boolean;
 	node_released: boolean;
+	worker_version: string;
 	worker_released: boolean;
 }
 

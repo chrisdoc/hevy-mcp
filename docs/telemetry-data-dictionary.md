@@ -57,7 +57,11 @@ missing values become `unknown`. The transport is always `stdio` for this
 path. Metrics never contain a session ID, request ID, progress token, prompt,
 argument, result, or user hash.
 The server version is supplied by the service resource (`service.version`)
-and server lifecycle spans.
+and server lifecycle spans. Cloudflare-native telemetry is normalized at the
+collector from the deployment tag in `faas.version` only when
+`service.version` is absent. The same guarded transform gives Worker spans the
+telemetry-only service name `hevy-worker`; Node remains `hevy-mcp`. See
+[Cloudflare Worker version attribution](./cloudflare-worker-version-attribution.md).
 
 The Sentry MCP wrapper is configured with input/output capture disabled.
 `beforeSendSpan` removes MCP request/session identifiers, progress tokens,
