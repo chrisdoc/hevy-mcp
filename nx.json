@@ -36,6 +36,7 @@
 	"targetDefaults": {
 		"build": {
 			"cache": true,
+			"outputs": ["{projectRoot}/dist"],
 			"dependsOn": ["^build"]
 		},
 		"check:types": {
