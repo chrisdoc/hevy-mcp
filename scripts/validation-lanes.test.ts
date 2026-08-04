@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
 	loadControlPlane,
@@ -18,12 +19,14 @@ import {
 import { validateHistoricalRegistryFragments } from "./control-plane-baseline.mjs";
 import {
 	laneCommand,
+	isDirectInvocation as isRunValidationLaneDirectInvocation,
 	main,
 	requiredCredentials,
 	runMember,
 } from "./run-validation-lane.mjs";
 import {
 	checkRenderedValidationLaneTables,
+	isDirectInvocation as isRenderValidationLaneDirectInvocation,
 	renderValidationLaneTable,
 	renderValidationLaneTables,
 	replaceValidationLaneTable,
@@ -137,9 +140,30 @@ describe("validation lane control plane", () => {
 			"HEVY_MCP_ARGS_JSON",
 		]);
 
-		await expect(main(["nightly"])).rejects.toThrow(
+		await expect(main(["nightly"], {})).rejects.toThrow(
 			"HEVY_API_KEY, HEVY_MCP_COMMAND, HEVY_MCP_ARGS_JSON",
 		);
+	});
+
+	it("only treats the exact run and render modules as direct entrypoints", () => {
+		const runModulePath = fileURLToPath(
+			new URL("./run-validation-lane.mjs", import.meta.url),
+		);
+		const renderModulePath = fileURLToPath(
+			new URL("./render-validation-lanes.mjs", import.meta.url),
+		);
+		expect(isRunValidationLaneDirectInvocation()).toBe(false);
+		expect(isRenderValidationLaneDirectInvocation()).toBe(false);
+		expect(isRunValidationLaneDirectInvocation(runModulePath)).toBe(true);
+		expect(isRenderValidationLaneDirectInvocation(renderModulePath)).toBe(true);
+		expect(
+			isRunValidationLaneDirectInvocation("/tmp/run-validation-lane.mjs"),
+		).toBe(false);
+		expect(
+			isRenderValidationLaneDirectInvocation(
+				"/tmp/render-validation-lanes.mjs",
+			),
+		).toBe(false);
 	});
 
 	it("rejects aggregate cycles during model validation", () => {
@@ -250,6 +274,7 @@ describe("validation lane control plane", () => {
 
 	it("replaces and verifies rendered lane tables", async () => {
 		const manifest = {
+			version: 1,
 			lanes: [
 				{
 					id: "custom",
@@ -268,6 +293,9 @@ describe("validation lane control plane", () => {
 					},
 				},
 			],
+			aggregates: {},
+			changeImpactRouting: [],
+			workflowProjections: {},
 		};
 		const table = renderValidationLaneTable(manifest);
 		expect(table).toContain("include: src/**");
@@ -310,7 +338,13 @@ describe("validation lane control plane", () => {
 			checkRenderedValidationLaneTables(root),
 		).resolves.toBeUndefined();
 		expect(await readFile(join(root, "docs/test-lanes.md"), "utf8")).toContain(
-			renderValidationLaneTable({ lanes: [] }),
+			renderValidationLaneTable({
+				version: 1,
+				lanes: [],
+				aggregates: {},
+				changeImpactRouting: [],
+				workflowProjections: {},
+			}),
 		);
 	});
 });

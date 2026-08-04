@@ -32,12 +32,16 @@ export interface ValidationLane {
 	};
 	[section: string]: unknown;
 }
-export interface ValidationLaneCommand {
-	kind: "argv" | "sequence";
-	executable?: string;
-	args?: string[];
-	commands?: Array<{ executable: string; args: string[] }>;
-}
+export type ValidationLaneCommand =
+	| {
+			kind: "argv";
+			executable: string;
+			args: string[];
+	  }
+	| {
+			kind: "sequence";
+			commands: Array<{ executable: string; args: string[] }>;
+	  };
 export interface ValidationLanes {
 	version: number;
 	lanes: ValidationLane[];

@@ -1,9 +1,13 @@
-export interface ValidationLaneCommand {
-	kind: "argv" | "sequence";
-	executable?: string;
-	args?: string[];
-	commands?: Array<{ executable: string; args: string[] }>;
-}
+export type ValidationLaneCommand =
+	| {
+			kind: "argv";
+			executable: string;
+			args: string[];
+	  }
+	| {
+			kind: "sequence";
+			commands: Array<{ executable: string; args: string[] }>;
+	  };
 
 export function requiredCredentials(
 	lane: { credentials: string[] },
@@ -22,5 +26,10 @@ export function runMember(
 	id: string,
 	args: string[],
 	stack?: string[],
+	environment?: NodeJS.ProcessEnv,
 ): Promise<void>;
-export function main(argv?: string[]): Promise<void>;
+export function main(
+	argv?: string[],
+	environment?: NodeJS.ProcessEnv,
+): Promise<void>;
+export function isDirectInvocation(argvPath?: string): boolean;

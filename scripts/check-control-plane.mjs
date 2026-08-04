@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
 	resolveImpactedLanes,
 	validateControlPlane,
@@ -31,7 +32,62 @@ function readText(path) {
 	return readFileSync(resolve(path), "utf8");
 }
 
-function validateHistoricalEvidence(baseline) {
+function countSubstring(source, substring) {
+	let count = 0;
+	let offset = 0;
+	while (true) {
+		const index = source.indexOf(substring, offset);
+		if (index === -1) return count;
+		const end = index + substring.length;
+		if (end === source.length || /\s/.test(source[end])) count += 1;
+		offset = index + substring.length;
+	}
+}
+
+function lineContainsCommand(line, command) {
+	const index = line.indexOf(command);
+	if (index === -1) return false;
+	const end = index + command.length;
+	return end === line.length || /\s/.test(line[end]);
+}
+
+const historicalExecutionBuckets = {
+	testPr: {
+		path: "package.json",
+		count(source) {
+			const packageJson = JSON.parse(source);
+			const script = packageJson.scripts?.["test:pr"];
+			assert(
+				typeof script === "string",
+				"Historical test:pr script is required for execution evidence",
+			);
+			return [...script.matchAll(/npm run [a-z0-9:-]+/g)].length;
+		},
+	},
+	pullRequestWorkflow: {
+		path: ".github/workflows/build-and-test.yml",
+		count(source) {
+			return source
+				.split("\n")
+				.filter((line) => /^\s*(?:-?\s*run:\s*)?npm run [a-z0-9:-]+/.test(line))
+				.length;
+		},
+	},
+	releaseWorkflow: {
+		path: ".github/workflows/release.yml",
+		count(source) {
+			return source
+				.split("\n")
+				.filter((line) =>
+					/^\s*-?\s*run:\s*(?:npm run [a-z0-9:-]+|npx vitest run|node tests\/nightly\/)/.test(
+						line,
+					),
+				).length;
+		},
+	},
+};
+
+export function validateHistoricalEvidence(baseline) {
 	const evidence = baseline.before.validationExecutionLines;
 	assert(
 		/^[0-9a-f]{40}$/.test(evidence.sourceRevision),
@@ -46,6 +102,23 @@ function validateHistoricalEvidence(baseline) {
 			);
 		return sourceCache.get(path);
 	};
+	const historicalPackage = JSON.parse(
+		historicalSource(evidence.sourceRevision, "package.json"),
+	);
+	const historicalTestPr = historicalPackage.scripts?.["test:pr"];
+	assert(
+		typeof historicalTestPr === "string",
+		"Historical test:pr script is required for execution evidence",
+	);
+	for (const [bucket, source] of Object.entries(historicalExecutionBuckets)) {
+		const sourceCount = source.count(
+			historicalSource(evidence.sourceRevision, source.path),
+		);
+		assert(
+			sourceCount === evidence[bucket]?.length,
+			`Historical ${bucket} execution count drifted from its immutable source`,
+		);
+	}
 	for (const bucket of ["testPr", "pullRequestWorkflow", "releaseWorkflow"]) {
 		assert(
 			Array.isArray(evidence[bucket]),
@@ -77,25 +150,25 @@ function validateHistoricalEvidence(baseline) {
 		}
 		for (const [key, entries] of bySourceAndCommand) {
 			const [path, command] = key.split("\0");
-			const occurrences = new Set(
-				entries
-					.filter((entry) =>
-						sourceLines(path)[entry.source.line - 1].includes(command),
-					)
-					.map((entry) => entry.source.line),
-			).size;
+			const declaredLines = entries.map((entry) => entry.source.line);
+			assert(
+				new Set(declaredLines).size === declaredLines.length,
+				`Historical ${bucket} evidence declares ${command} more than once at ${path}`,
+			);
+			const occurrences =
+				path === "package.json"
+					? countSubstring(historicalTestPr, command)
+					: sourceLines(path).filter((line) =>
+							lineContainsCommand(line, command),
+						).length;
 			assert(
 				occurrences === entries.length,
 				`Historical ${bucket} evidence count for ${command} drifted from ${path}`,
 			);
 		}
 	}
-	const historicalPackage = JSON.parse(
-		historicalSource(evidence.sourceRevision, "package.json"),
-	);
 	const testPrCommands = [
-		...(historicalPackage.scripts["test:pr"].matchAll(/npm run [a-z0-9:-]+/g) ??
-			[]),
+		...(historicalTestPr.matchAll(/npm run [a-z0-9:-]+/g) ?? []),
 	].map((match) => match[0]);
 	assertEqual(
 		evidence.testPr.map((entry) => entry.command),
@@ -113,7 +186,26 @@ function validateHistoricalEvidence(baseline) {
 	};
 }
 
-async function checkControlPlane() {
+export function validateHistoricalExecutionTotals(actual, expected) {
+	for (const field of [
+		"testPrMembers",
+		"pullRequestWorkflow",
+		"releaseWorkflow",
+		"total",
+	]) {
+		assert(
+			Number.isInteger(expected?.[field]) && expected[field] >= 0,
+			`Before validation execution baseline ${field} must be a non-negative integer`,
+		);
+		assertEqual(
+			actual?.[field],
+			expected[field],
+			`Before validation execution ${field} drifted from the recorded baseline`,
+		);
+	}
+}
+
+export async function checkControlPlane() {
 	const controlPlane = validateControlPlane();
 	const baseline = JSON.parse(
 		readFileSync(resolve("repository", "control-plane-baseline.json"), "utf8"),
@@ -229,12 +321,9 @@ async function checkControlPlane() {
 		"After validation execution total is not reproducible from live identities",
 	);
 	const beforeExecution = validateHistoricalEvidence(baseline);
-	assert(
-		beforeExecution.total ===
-			beforeExecution.testPrMembers +
-				beforeExecution.pullRequestWorkflow +
-				beforeExecution.releaseWorkflow,
-		"Before validation execution total is not reproducible from its evidence",
+	validateHistoricalExecutionTotals(
+		beforeExecution,
+		baseline.before.validationExecutionLines.counts,
 	);
 
 	assertEqual(
@@ -274,9 +363,15 @@ async function checkControlPlane() {
 	);
 }
 
-try {
-	await checkControlPlane();
-} catch (error) {
-	console.error(`check-control-plane: ${error.message}`);
-	process.exitCode = 1;
+const isCli =
+	process.argv[1] !== undefined &&
+	pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+
+if (isCli) {
+	try {
+		await checkControlPlane();
+	} catch (error) {
+		console.error(`check-control-plane: ${error.message}`);
+		process.exitCode = 1;
+	}
 }

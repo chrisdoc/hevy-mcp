@@ -219,7 +219,6 @@ function checkProvenance(
 	assertUnique(allIds, "artifact provenance ids");
 	const sourceIds = new Set(provenance.sources.map((entry) => entry.id));
 	const outputIds = new Set(provenance.outputs.map((entry) => entry.id));
-	const candidateIds = new Set(provenance.candidates.map((entry) => entry.id));
 	const workspaceIds = new Set(
 		topology.workspaces.map((workspace) => workspace.id),
 	);
@@ -264,6 +263,10 @@ function checkProvenance(
 	}
 	for (const candidate of provenance.candidates) {
 		assert(
+			typeof candidate.id === "string" && candidate.id.length > 0,
+			"artifact candidate ids must be non-empty strings",
+		);
+		assert(
 			typeof candidate.workspace === "string" &&
 				workspaceIds.has(candidate.workspace),
 			`${candidate.id} references unknown workspace`,
@@ -276,7 +279,6 @@ function checkProvenance(
 				`${candidate.id} references unknown lane ${lane}`,
 			);
 	}
-	assert(!candidateIds.has(""), "artifact candidate ids must be non-empty");
 }
 
 const selectorKinds = new Set([

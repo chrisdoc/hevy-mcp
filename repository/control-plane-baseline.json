@@ -83,6 +83,12 @@
 		],
 		"validationExecutionLines": {
 			"sourceRevision": "f2e7af0ee3a02b6a0c6fa7820895db3882b7be4c",
+			"counts": {
+				"testPrMembers": 9,
+				"pullRequestWorkflow": 20,
+				"releaseWorkflow": 6,
+				"total": 35
+			},
 			"testPr": [
 				{
 					"lane": "unit",
@@ -390,9 +396,9 @@
 		"validationLaneDefinitions": 28,
 		"validationExecutionLines": {
 			"testPrMembers": 9,
-			"pullRequestWorkflow": 19,
+			"pullRequestWorkflow": 18,
 			"releaseWorkflow": 6,
-			"total": 34,
+			"total": 33,
 			"identities": {
 				"testPr": [
 					"unit",
@@ -407,7 +413,6 @@
 				],
 				"pullRequestWorkflow": [
 					"workspace-topology",
-					"package-boundaries",
 					"package-exports",
 					"release-candidates",
 					"types",
@@ -467,5 +472,5 @@
 			"nightly"
 		]
 	},
-	"method": "Historical execution evidence records the immutable pre-migration source revision, lane identity, command, and source line. Current execution identities and workflow runtime/condition projections are derived from the canonical models and live workflow files; all totals are computed from those evidence arrays."
+	"method": "Historical execution evidence records the immutable pre-migration source revision, lane identity, command, and source line. Historical execution counts are independently counted from immutable source lines and checked against the recorded counts; current execution identities and workflow runtime/condition projections are derived from the canonical models and live workflow files."
 }

@@ -8,13 +8,14 @@ import {
 } from "./repository-control-plane.mjs";
 
 const spec = loadArtifactProvenance(repositoryRoot);
-const openApiSource = spec.sources.find(
+const openApiSources = spec.sources.filter(
 	(source) => source.id === "openapi-spec",
 );
-if (!openApiSource || openApiSource.paths.length !== 1)
+if (openApiSources.length !== 1 || openApiSources[0].paths.length !== 1)
 	throw new Error(
 		"Artifact provenance must own exactly one OpenAPI source path",
 	);
+const [openApiSource] = openApiSources;
 const specPath = resolve(repositoryRoot, openApiSource.paths[0]);
 const document = JSON.parse(await readFile(specPath, "utf8"));
 validateOpenAPISpec(document);

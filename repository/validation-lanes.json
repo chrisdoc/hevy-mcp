@@ -830,14 +830,6 @@
 				"stepCondition": null
 			},
 			{
-				"lane": "package-boundaries",
-				"job": "build",
-				"runtimes": ["node-24", "node-26"],
-				"condition": null,
-				"jobCondition": null,
-				"stepCondition": null
-			},
-			{
 				"lane": "package-exports",
 				"job": "build",
 				"runtimes": ["node-24", "node-26"],

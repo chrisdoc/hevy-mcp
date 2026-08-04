@@ -8,7 +8,7 @@ export interface WorkflowProjection {
 }
 
 export function parseWorkflowLaneExecutions(
-	source: string | Promise<string>,
+	source: string,
 	options?: {
 		rootDir?: string;
 	},

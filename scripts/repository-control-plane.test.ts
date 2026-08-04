@@ -4,7 +4,7 @@ import {
 	normalizeChangedFiles,
 	resolveImpactedLanes,
 	validateControlPlane,
-} from "../../scripts/repository-control-plane.mjs";
+} from "./repository-control-plane.mjs";
 
 describe("repository control plane", () => {
 	it("validates all three linked models and their package projections", () => {

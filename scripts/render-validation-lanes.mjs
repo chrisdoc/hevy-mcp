@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	loadValidationLanes,
 	repositoryRoot,
@@ -107,7 +108,13 @@ export async function renderValidationLaneTables(rootDir = repositoryRoot) {
 	}
 }
 
-if (process.argv[1]?.endsWith("/render-validation-lanes.mjs")) {
+export function isDirectInvocation(argvPath = process.argv[1]) {
+	return Boolean(
+		argvPath && resolve(argvPath) === fileURLToPath(import.meta.url),
+	);
+}
+
+if (isDirectInvocation()) {
 	try {
 		if (process.argv.includes("--write")) await renderValidationLaneTables();
 		else await checkRenderedValidationLaneTables();

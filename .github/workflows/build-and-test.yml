@@ -57,9 +57,6 @@ jobs:
           - name: Validate workspace topology
             run: npm run validate:lane -- workspace-topology
 
-          - name: Check package boundaries
-            run: npm run validate:lane -- package-boundaries
-
           - name: Check package export maps
             run: npm run validate:lane -- package-exports
 

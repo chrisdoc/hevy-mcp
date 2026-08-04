@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadValidationLanes } from "./repository-control-plane.mjs";
 
 const lanes = loadValidationLanes();
@@ -67,28 +69,42 @@ function runCommand(lane, args, environment = process.env) {
 	})();
 }
 
-export async function runMember(id, args, stack = []) {
+export async function runMember(
+	id,
+	args,
+	stack = [],
+	environment = process.env,
+) {
 	if (stack.includes(id))
 		throw new Error(
 			`Validation aggregate cycle: ${[...stack, id].join(" -> ")}`,
 		);
 	const lane = laneById.get(id);
-	if (lane) return runCommand(lane, args);
+	if (lane) return runCommand(lane, args, environment);
 	const aggregate = aggregateById.get(id);
 	if (!aggregate) throw new Error(`Unknown validation lane or aggregate ${id}`);
 	for (const member of aggregate.lanes)
-		await runMember(member, args, [...stack, id]);
+		await runMember(member, args, [...stack, id], environment);
 }
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(
+	argv = process.argv.slice(2),
+	environment = process.env,
+) {
 	const [requested, ...requestedArgs] = argv;
 	const execute = requested === "--execute";
 	const [id, ...args] = execute ? requestedArgs : argv;
 	if (!id) usage();
-	await runMember(id, args);
+	await runMember(id, args, [], environment);
 }
 
-if (process.argv[1]?.endsWith("/run-validation-lane.mjs")) {
+export function isDirectInvocation(argvPath = process.argv[1]) {
+	return Boolean(
+		argvPath && resolve(argvPath) === fileURLToPath(import.meta.url),
+	);
+}
+
+if (isDirectInvocation()) {
 	try {
 		await main();
 	} catch (error) {
