@@ -47,6 +47,9 @@ export interface HevyExecutionControl {
 
 export interface HevyExecutionOptions extends HevyExecutionControl {}
 
+/** Request options shared by the curated client and generated adapters. */
+export interface HevyRequestOptions extends HevyExecutionOptions {}
+
 export function isDeadlineExceeded(deadline: number | undefined): boolean {
 	return deadline !== undefined && Date.now() >= deadline;
 }

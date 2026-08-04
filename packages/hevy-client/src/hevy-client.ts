@@ -39,11 +39,10 @@ import type {
 } from "./generated/client/types";
 import { createClient as createKubbClient } from "./hevy-client-kubb.js";
 import type { HevyClientOptions } from "./hevy-client-kubb.js";
-import type { HevyExecutionOptions } from "./execution.js";
+import type { HevyRequestOptions } from "./execution.js";
 
 export type { HevyClientOptions };
-
-export interface HevyRequestOptions extends HevyExecutionOptions {}
+export type { HevyRequestOptions } from "./execution.js";
 
 export type { HevyOperationSafety } from "./execution.js";
 

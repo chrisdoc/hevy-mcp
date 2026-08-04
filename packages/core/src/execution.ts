@@ -23,6 +23,9 @@ export interface StructuredExecutionProjection {
 	readonly status?: number;
 }
 
+/** Backward-compatible name for the structured error projection. */
+export type StructuredExecutionError = StructuredExecutionProjection;
+
 export type ExecutionProjectionSource = Partial<
 	Pick<
 		StructuredExecutionProjection,

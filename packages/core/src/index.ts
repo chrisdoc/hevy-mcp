@@ -4,6 +4,7 @@ export {
 	createExecutionProjection,
 	mergeAbortSignals,
 	type ExecutionProjectionSource,
+	type StructuredExecutionError,
 	type StructuredExecutionProjection,
 	type ToolExecutionContext,
 } from "./execution.js";

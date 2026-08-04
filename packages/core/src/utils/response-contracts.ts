@@ -14,8 +14,8 @@ import type {
 	UserInfo,
 	Workout,
 } from "@hevy-mcp/hevy-client/types";
+import type { StructuredExecutionError } from "../execution.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
-import type { StructuredExecutionError } from "./error-handler.js";
 import {
 	attachResultTelemetry,
 	bucketCount,

@@ -13,6 +13,7 @@ import {
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 
 export { ErrorType } from "./error-policy.js";
+export type { StructuredExecutionError } from "../execution.js";
 
 /**
  * Standard error response interface
@@ -30,12 +31,10 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 	type: ErrorType;
 }
 
-export type StructuredExecutionError = StructuredExecutionProjection;
-
 /** Build the canonical execution projection for an arbitrary thrown value. */
 export function createExecutionErrorProjection(
 	error: unknown,
-): StructuredExecutionError {
+): StructuredExecutionProjection {
 	return createExecutionProjection(createSafeErrorDiagnostic(error));
 }
 
@@ -99,7 +98,7 @@ export interface ErrorDebugContext {
 	originalErrorMessage: string;
 	errorCode?: string;
 	errorType: ErrorType;
-	execution?: StructuredExecutionError;
+	execution?: StructuredExecutionProjection;
 	axios?: {
 		status?: number;
 		statusText?: string;

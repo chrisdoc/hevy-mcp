@@ -34,9 +34,9 @@ import {
 	remainingDeadlineMs,
 	type HevyCommitState,
 	type HevyOperationSafety,
+	type HevyRequestOptions,
 	type HevyRequestPhase,
 } from "./execution.js";
-import type { HevyRequestOptions } from "./hevy-client.js";
 export interface HevyClientLogEvent {
 	readonly level: "debug" | "warning" | "error";
 	readonly logger: "hevy-api";
