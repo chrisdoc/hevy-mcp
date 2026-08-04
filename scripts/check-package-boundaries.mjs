@@ -1,68 +1,35 @@
 import { readFile, readdir } from "node:fs/promises";
 import { builtinModules } from "node:module";
-import { dirname, relative, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import * as ast from "typescript/unstable/ast";
 import { API } from "typescript/unstable/sync";
+import { loadTopology, repositoryRoot } from "./repository-control-plane.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = repositoryRoot;
+const topology = loadTopology(root);
 
-export const packageRules = new Map([
-	[
-		"packages/hevy-client",
-		{
-			allowed: new Map(),
-			forbidden: ["@cloudflare/", "cloudflare:", "@sentry/", "@opentelemetry/"],
-			rejectBuiltins: true,
-			rejectDynamicImports: true,
-		},
-	],
-	[
-		"packages/core",
-		{
-			allowed: new Map([
-				["@hevy-mcp/hevy-client", new Set(["", "types", "schemas"])],
-			]),
-			forbidden: ["@cloudflare/", "cloudflare:", "@sentry/", "@opentelemetry/"],
-			rejectBuiltins: true,
-			rejectDynamicImports: true,
-		},
-	],
-	[
-		"packages/node",
-		{
-			allowed: new Map([
-				["@hevy-mcp/core", new Set([""])],
-				["@hevy-mcp/hevy-client", new Set([""])],
-			]),
-			forbidden: ["@cloudflare/", "cloudflare:"],
-			rejectBuiltins: false,
-			rejectDynamicImports: false,
-		},
-	],
-	[
-		"packages/worker",
-		{
-			allowed: new Map([
-				["@hevy-mcp/core", new Set([""])],
-				["@hevy-mcp/hevy-client", new Set([""])],
-			]),
-			forbidden: ["@sentry/", "@opentelemetry/"],
-			rejectBuiltins: true,
-			rejectDynamicImports: false,
-		},
-	],
-]);
+export function packageRulesFor(controlPlaneTopology) {
+	return new Map(
+		controlPlaneTopology.workspaces.map((workspace) => [
+			workspace.path,
+			{
+				allowed: new Map(
+					Object.entries(workspace.boundary.allowed).map(([name, subpaths]) => [
+						name,
+						new Set(subpaths),
+					]),
+				),
+				forbidden: workspace.boundary.forbidden,
+				rejectBuiltins: workspace.boundary.rejectBuiltins,
+				rejectDynamicImports: workspace.boundary.rejectDynamicImports,
+			},
+		]),
+	);
+}
 
-// Keep this list aligned with the actual workspace package names. The Node
-// workspace is public and is therefore intentionally named `hevy-mcp`, not
-// `@hevy-mcp/node`.
-const internalPackages = [
-	"@hevy-mcp/hevy-client",
-	"@hevy-mcp/core",
-	"hevy-mcp",
-	"@hevy-mcp/worker",
-];
+export const packageRules = packageRulesFor(topology);
+const internalPackages = topology.workspaces.map((workspace) => workspace.name);
 
 export function findRetiredRootSourceFiles(files, projectRoot) {
 	return files.map((file) => relative(projectRoot, file).replaceAll("\\", "/"));
@@ -200,7 +167,13 @@ export function inspectFileWithCompiler(file) {
 }
 
 function isInside(path, directory) {
-	return path === directory || path.startsWith(`${directory}/`);
+	const candidate = relative(directory, path);
+	return (
+		candidate === "" ||
+		(candidate !== ".." &&
+			!candidate.startsWith(`..${sep}`) &&
+			!isAbsolute(candidate))
+	);
 }
 
 export function findImportViolations({
@@ -264,9 +237,14 @@ export function findImportViolations({
 	return failures;
 }
 
-export async function checkBoundaries(projectRoot = root) {
+export async function checkBoundaries(
+	projectRoot = root,
+	selectedPackages = [...packageRules.keys()],
+) {
 	const failures = [];
+	const selected = new Set(selectedPackages);
 	for (const [relativePackage, rule] of packageRules) {
+		if (!selected.has(relativePackage)) continue;
 		const packageRoot = resolve(projectRoot, relativePackage);
 		const files = await collect(resolve(packageRoot, "src"));
 		const inspections = inspectFilesWithCompiler(files);

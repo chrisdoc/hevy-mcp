@@ -1,0 +1,1 @@
+export type { ExistingType } from "./ExistingType.ts";

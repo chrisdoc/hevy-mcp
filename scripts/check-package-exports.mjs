@@ -1,16 +1,16 @@
 import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { loadTopology, repositoryRoot } from "./repository-control-plane.mjs";
 
-const root = resolve(import.meta.dirname, "..");
-const expected = new Map([
-	["packages/hevy-client", [".", "./types", "./schemas"]],
-	["packages/core", [".", "./mutations"]],
-	["packages/node", ["."]],
-	["packages/worker", ["."]],
-]);
+const root = repositoryRoot;
+const topology = loadTopology(root);
 
 const errors = [];
-for (const [relative, allowed] of expected) {
+for (const workspace of topology.workspaces) {
+	const { path: relative } = workspace;
+	const allowed = workspace.exports.map((key) =>
+		key === "." ? "." : `./${key.replace(/^\.\//, "")}`,
+	);
 	const path = resolve(root, relative, "package.json");
 	let pkg;
 	try {
@@ -19,8 +19,13 @@ for (const [relative, allowed] of expected) {
 		errors.push(`${relative}: unable to read package.json (${error.message})`);
 		continue;
 	}
-	if (!pkg.private && relative !== "packages/node") {
-		errors.push(`${relative}: package must be private during migration`);
+	if ((pkg.private !== true) !== workspace.publishable) {
+		errors.push(`${relative}: package private/publishable metadata disagrees`);
+	}
+	if (allowed.length === 0) {
+		if (pkg.exports !== undefined)
+			errors.push(`${relative}: topology declares no public exports`);
+		continue;
 	}
 	if (!pkg.exports || typeof pkg.exports !== "object") {
 		errors.push(`${relative}: exports map is required`);
@@ -53,12 +58,12 @@ for (const [relative, allowed] of expected) {
 					`${relative}: export ${key}.${condition} uses an unstable target`,
 				);
 			}
-			if (relative === "packages/node" && !value.startsWith("./dist/")) {
+			if (workspace.publishable && !value.startsWith("./dist/")) {
 				errors.push(
 					`${relative}: public export ${key}.${condition} must target built dist files`,
 				);
 			}
-			if (value.startsWith("./dist/") && relative !== "packages/node") {
+			if (value.startsWith("./dist/") && !workspace.publishable) {
 				try {
 					await access(resolve(root, relative, value));
 				} catch {

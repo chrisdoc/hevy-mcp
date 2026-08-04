@@ -5,6 +5,12 @@
 	"projectType": "library",
 	"tags": ["runtime:neutral", "publishability:private", "role:control-plane"],
 	"targets": {
+		"check:control-plane": {
+			"inputs": ["controlPlaneInputs"]
+		},
+		"check:generated": {
+			"inputs": ["generatedClientInputs"]
+		},
 		"check:workspaces": {
 			"inputs": ["controlPlaneInputs"]
 		},
@@ -25,6 +31,7 @@
 			"inputs": ["repositoryTypeCheckInputs"]
 		},
 		"check": {
+			"cache": false,
 			"inputs": ["validationInputs"]
 		},
 		"check:server-manifest": {
@@ -57,6 +64,10 @@
 				"{workspaceRoot}/test-results/unit-tests.xml"
 			]
 		},
+		"test:release-unit": {
+			"cache": true,
+			"inputs": ["releaseUnitTests"]
+		},
 		"test:mcp": {
 			"cache": true,
 			"inputs": ["mockedTests"],
@@ -76,7 +87,8 @@
 		},
 		"test:stdio": {
 			"cache": true,
-			"inputs": ["stdioTests"]
+			"inputs": ["stdioTests"],
+			"outputs": ["{workspaceRoot}/test-results/stdio"]
 		},
 		"test:worker": {
 			"cache": false,
@@ -105,15 +117,18 @@
 		},
 		"test:nightly": {
 			"cache": false,
-			"inputs": ["validationInputs"]
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/test-results/nightly-*.json"]
 		},
 		"test:live": {
 			"cache": false,
-			"inputs": ["validationInputs"]
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/test-results/release-source.json"]
 		},
 		"test:worker-http:live": {
 			"cache": false,
-			"inputs": ["validationInputs"]
+			"inputs": ["validationInputs"],
+			"outputs": ["{workspaceRoot}/test-results/worker-http-live"]
 		},
 		"measure:tokens": {
 			"cache": false,
@@ -132,6 +147,23 @@
 		"build:client": {
 			"outputs": ["{workspaceRoot}/packages/hevy-client/src/generated"],
 			"inputs": ["openapiInputs"]
+		},
+		"release:validate": {
+			"executor": "nx:noop",
+			"dependsOn": [
+				"build",
+				"test:release-unit",
+				"test:pack",
+				"test:integration",
+				"test:nightly",
+				"test:worker-http:live"
+			],
+			"inputs": ["validationInputs"]
+		},
+		"pre-push": {
+			"executor": "nx:noop",
+			"dependsOn": ["check:types", "check:changeset", "test:pr"],
+			"inputs": ["validationInputs"]
 		},
 		"sync:server-manifest": {
 			"cache": false,
@@ -166,7 +198,11 @@
 				],
 				"parallel": false
 			},
-			"outputs": ["{workspaceRoot}/.nx/pack/*.tgz"],
+			"outputs": [
+				"{workspaceRoot}/packages/node/dist",
+				"{workspaceRoot}/packages/cli/dist",
+				"{workspaceRoot}/.nx/pack/*.tgz"
+			],
 			"inputs": ["validationInputs"]
 		},
 		"version:changesets": {
@@ -188,6 +224,7 @@
 		"control-plane": {
 			"executor": "nx:noop",
 			"dependsOn": [
+				"check:control-plane",
 				"check:workspaces",
 				"check:boundaries",
 				"check:exports",

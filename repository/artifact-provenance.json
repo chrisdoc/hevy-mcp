@@ -1,0 +1,445 @@
+{
+	"version": 1,
+	"sources": [
+		{
+			"id": "openapi-spec",
+			"paths": ["openapi-spec.json"],
+			"kind": "tracked-source"
+		},
+		{
+			"id": "node-package-manifest",
+			"paths": ["packages/node/package.json"],
+			"kind": "package-metadata"
+		},
+		{
+			"id": "repository-manifests",
+			"paths": [
+				"package.json",
+				"package-lock.json",
+				"tsconfig.base.json",
+				"tsconfig.json"
+			],
+			"kind": "build-manifest"
+		},
+		{
+			"id": "worker-bundle-inputs",
+			"paths": [
+				"cloudflare.config.ts",
+				"packages/worker/package.json",
+				"packages/core/package.json",
+				"packages/hevy-client/package.json"
+			],
+			"kind": "worker-input"
+		},
+		{
+			"id": "dockerfile-source",
+			"paths": ["Dockerfile"],
+			"kind": "container-source"
+		}
+	],
+	"generators": [
+		{
+			"id": "kubb-client",
+			"inputs": ["openapi-spec"],
+			"outputs": ["generated-client"],
+			"validation": ["generation"],
+			"kind": "openapi-client",
+			"producer": {
+				"kind": "nx-target",
+				"target": "build:client"
+			},
+			"validationTargets": ["check:generated"]
+		},
+		{
+			"id": "server-manifest-generator",
+			"inputs": ["node-package-manifest"],
+			"outputs": ["server-manifest", "plugin-manifest"],
+			"validation": ["server-manifest"],
+			"kind": "manifest-sync",
+			"producer": {
+				"kind": "nx-target",
+				"target": "sync:server-manifest"
+			},
+			"validationTargets": ["check:server-manifest"]
+		}
+	],
+	"outputs": [
+		{
+			"id": "generated-client",
+			"paths": ["packages/hevy-client/src/generated/**"],
+			"kind": "generated",
+			"curatedExports": [
+				"packages/hevy-client/src/index.ts",
+				"packages/hevy-client/src/types.ts",
+				"packages/hevy-client/src/schemas.ts"
+			],
+			"owners": ["generation", "package-boundaries"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "build:client"
+				}
+			],
+			"validationTargets": ["check:generated"]
+		},
+		{
+			"id": "server-manifest",
+			"paths": ["server.json", "packages/node/server.json"],
+			"kind": "curated-manifest",
+			"owners": ["server-manifest"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "sync:server-manifest"
+				}
+			],
+			"validationTargets": ["check:server-manifest"]
+		},
+		{
+			"id": "plugin-manifest",
+			"paths": ["plugin.json"],
+			"kind": "curated-manifest",
+			"owners": ["server-manifest"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "sync:server-manifest"
+				}
+			],
+			"validationTargets": ["check:server-manifest"]
+		},
+		{
+			"id": "node-dist",
+			"paths": ["packages/node/dist/**"],
+			"kind": "package-build",
+			"owners": ["build", "pack"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "pack:artifacts"
+				}
+			],
+			"validationTargets": ["test:pack"]
+		},
+		{
+			"id": "node-package-tarball",
+			"paths": [".nx/pack/hevy-mcp-*.tgz"],
+			"kind": "package-tarball",
+			"owners": ["pack"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "pack:artifacts"
+				}
+			],
+			"validationTargets": ["test:pack"]
+		},
+		{
+			"id": "cli-dist",
+			"paths": ["packages/cli/dist/**"],
+			"kind": "package-build",
+			"owners": ["cli", "pack-cli"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "pack:artifacts"
+				}
+			],
+			"validationTargets": ["test:pack:cli"]
+		},
+		{
+			"id": "cli-package-tarball",
+			"paths": [".nx/pack/chrisdoc-hevy-cli-*.tgz"],
+			"kind": "package-tarball",
+			"owners": ["pack-cli"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "pack:artifacts"
+				}
+			],
+			"validationTargets": ["test:pack:cli"]
+		},
+		{
+			"id": "core-source",
+			"paths": ["packages/core/**"],
+			"kind": "workspace-source",
+			"owners": ["types", "package-boundaries"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "build:packages"
+				}
+			],
+			"validationTargets": ["check:types", "check:boundaries"]
+		},
+		{
+			"id": "hevy-client-source",
+			"paths": ["packages/hevy-client/**"],
+			"kind": "workspace-source",
+			"owners": ["types", "package-boundaries"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "build:packages"
+				}
+			],
+			"validationTargets": ["check:types", "check:boundaries"]
+		},
+		{
+			"id": "worker-dry-run",
+			"paths": [".wrangler/dry-run/**"],
+			"kind": "worker-bundle",
+			"owners": ["worker-bundle"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "worker:dry-run"
+				}
+			],
+			"validationTargets": ["worker:dry-run"]
+		},
+		{
+			"id": "docker-image-output",
+			"paths": [],
+			"kind": "external",
+			"owners": ["docker"],
+			"producers": [
+				{
+					"kind": "external",
+					"id": "docker-build-workflow"
+				}
+			],
+			"validationTargets": ["docker"]
+		},
+		{
+			"id": "unit-coverage",
+			"paths": ["coverage/unit/**"],
+			"kind": "test-evidence",
+			"owners": ["unit"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:unit"
+				}
+			],
+			"validationTargets": ["test:unit"]
+		},
+		{
+			"id": "unit-junit",
+			"paths": ["test-results/unit-tests.xml"],
+			"kind": "test-evidence",
+			"owners": ["unit"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:unit"
+				}
+			],
+			"validationTargets": ["test:unit"]
+		},
+		{
+			"id": "mocked-coverage",
+			"paths": ["coverage/mocked/**"],
+			"kind": "test-evidence",
+			"owners": ["mocked-mcp"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:mcp"
+				}
+			],
+			"validationTargets": ["test:mcp"]
+		},
+		{
+			"id": "stdio-diagnostics",
+			"paths": ["test-results/stdio/**"],
+			"kind": "test-evidence",
+			"owners": ["stdio"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:stdio"
+				}
+			],
+			"validationTargets": ["test:stdio"]
+		},
+		{
+			"id": "performance-summary",
+			"paths": ["test-results/performance/summary.json"],
+			"kind": "test-evidence",
+			"owners": ["performance"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:performance"
+				}
+			],
+			"validationTargets": ["test:performance"]
+		},
+		{
+			"id": "live-diagnostics",
+			"paths": ["test-results/release-source.json"],
+			"kind": "test-evidence",
+			"owners": ["integration-live", "release-integration"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:live"
+				}
+			],
+			"validationTargets": ["test:live", "test:integration"]
+		},
+		{
+			"id": "live-worker-diagnostics",
+			"paths": ["test-results/worker-http-live/**"],
+			"kind": "test-evidence",
+			"owners": ["worker-http-live"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:worker-http:live"
+				}
+			],
+			"validationTargets": ["test:worker-http:live"]
+		},
+		{
+			"id": "nightly-diagnostics",
+			"paths": ["test-results/nightly-*.json"],
+			"kind": "test-evidence",
+			"owners": ["nightly"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "test:nightly"
+				}
+			],
+			"validationTargets": ["test:nightly"]
+		}
+	],
+	"candidates": [
+		{
+			"id": "node-package",
+			"kind": "npm-package",
+			"workspace": "node",
+			"sourcePaths": ["packages/node/**"],
+			"outputs": ["node-dist", "node-package-tarball"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "pack:artifacts"
+				}
+			],
+			"validation": ["pack"],
+			"validationTargets": ["test:pack"]
+		},
+		{
+			"id": "cli-package",
+			"kind": "npm-package",
+			"workspace": "cli",
+			"sourcePaths": ["packages/cli/**"],
+			"outputs": ["cli-dist", "cli-package-tarball"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "pack:artifacts"
+				}
+			],
+			"validation": ["pack-cli", "cli"],
+			"validationTargets": ["test:pack:cli"]
+		},
+		{
+			"id": "core-package",
+			"kind": "workspace-package",
+			"workspace": "core",
+			"sourcePaths": ["packages/core/**"],
+			"outputs": ["core-source"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "build:packages"
+				}
+			],
+			"validation": ["types", "package-boundaries"],
+			"validationTargets": ["check:types", "check:boundaries"]
+		},
+		{
+			"id": "hevy-client-package",
+			"kind": "workspace-package",
+			"workspace": "hevy-client",
+			"sourcePaths": ["packages/hevy-client/**"],
+			"outputs": ["hevy-client-source", "generated-client"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "build:packages"
+				},
+				{
+					"kind": "nx-target",
+					"target": "build:client"
+				}
+			],
+			"validation": ["types", "package-boundaries", "generation"],
+			"validationTargets": [
+				"check:types",
+				"check:boundaries",
+				"check:generated"
+			]
+		},
+		{
+			"id": "worker-bundle",
+			"kind": "cloudflare-worker",
+			"workspace": "worker",
+			"sourcePaths": [
+				"packages/worker/**",
+				"packages/core/**",
+				"packages/hevy-client/**",
+				"cloudflare.config.ts",
+				"package.json",
+				"package-lock.json",
+				"packages/worker/package.json",
+				"packages/core/package.json",
+				"packages/hevy-client/package.json"
+			],
+			"outputs": ["worker-dry-run"],
+			"producers": [
+				{
+					"kind": "nx-target",
+					"target": "worker:dry-run"
+				}
+			],
+			"validation": ["worker-bundle", "worker-http", "package-boundaries"],
+			"validationTargets": ["worker:dry-run", "test:worker-http"]
+		},
+		{
+			"id": "docker-image",
+			"kind": "container",
+			"workspace": "node",
+			"external": true,
+			"sourcePaths": [
+				"Dockerfile",
+				"package.json",
+				"package-lock.json",
+				"tsconfig.base.json",
+				"tsconfig.json",
+				"packages/hevy-client/package.json",
+				"packages/core/package.json",
+				"packages/node/package.json",
+				"packages/worker/package.json",
+				"scripts/install-git-hooks.mjs",
+				"packages/hevy-client/**",
+				"packages/core/**",
+				"packages/node/**"
+			],
+			"outputs": ["docker-image-output"],
+			"producers": [
+				{
+					"kind": "external",
+					"id": "docker-build-workflow"
+				}
+			],
+			"validation": ["docker"],
+			"validationTargets": ["docker"]
+		}
+	]
+}

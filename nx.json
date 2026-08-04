@@ -12,11 +12,16 @@
 			"{workspaceRoot}/.oxfmtrc.json"
 		],
 		"controlPlaneInputs": [
+			"{workspaceRoot}/.nvmrc",
 			"{workspaceRoot}/nx.json",
 			"{workspaceRoot}/project.json",
 			"{workspaceRoot}/package.json",
 			"{workspaceRoot}/package-lock.json",
 			"{workspaceRoot}/packages/*/package.json",
+			"{workspaceRoot}/.github/workflows/build-and-test.yml",
+			"{workspaceRoot}/.github/workflows/release.yml",
+			"{workspaceRoot}/CONTRIBUTING.md",
+			"{workspaceRoot}/docs/test-lanes.md",
 			"{workspaceRoot}/scripts/**/*.mjs",
 			"{workspaceRoot}/scripts/**/*.cjs",
 			"{workspaceRoot}/.dependency-cruiser.cjs",
@@ -41,6 +46,8 @@
 		"rootSources": [
 			"{workspaceRoot}/*.ts",
 			"{workspaceRoot}/scripts/**/*.ts",
+			"{workspaceRoot}/scripts/**/*.mts",
+			"{workspaceRoot}/scripts/**/*.cts",
 			"{workspaceRoot}/tests/**/*.ts",
 			"{workspaceRoot}/tests/**/*.tsx"
 		],
@@ -69,6 +76,30 @@
 			"controlPlaneModels",
 			"{workspaceRoot}/tests/unit/**/*",
 			"unitSpecialInputs"
+		],
+		"releaseUnitTests": [
+			"repositoryConfig",
+			"packageConfigs",
+			"runtimeSources",
+			"testFixtures",
+			"testScripts",
+			"controlPlaneModels",
+			"{workspaceRoot}/tests/**/*",
+			"unitSpecialInputs"
+		],
+		"generatedClientInputs": [
+			"repositoryConfig",
+			"packageConfigs",
+			"controlPlaneModels",
+			"openapiInputs",
+			"{workspaceRoot}/scripts/check-generated-client.mjs",
+			"{workspaceRoot}/scripts/check-generated-client.d.mts",
+			"{workspaceRoot}/scripts/check-generated-client.test.ts",
+			"{workspaceRoot}/scripts/openapi-spec.js",
+			"{workspaceRoot}/tests/fixtures/generated-client/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/generated/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/types.ts",
+			"{workspaceRoot}/packages/hevy-client/src/schemas.ts"
 		],
 		"mockedTests": [
 			"repositoryConfig",
@@ -123,12 +154,15 @@
 			"{workspaceRoot}/packages/cli/tsdown.config.ts"
 		],
 		"manifestInputs": [
+			"controlPlaneModels",
 			"{workspaceRoot}/package.json",
 			"{workspaceRoot}/server.json",
 			"{workspaceRoot}/plugin.json",
 			"{workspaceRoot}/packages/node/server.json",
 			"{workspaceRoot}/packages/node/package.json",
-			"{workspaceRoot}/scripts/server-manifest.mjs"
+			"{workspaceRoot}/scripts/server-manifest.mjs",
+			"{workspaceRoot}/scripts/repository-control-plane.mjs",
+			"{workspaceRoot}/scripts/control-plane-models.mjs"
 		],
 		"openapiInputs": [
 			"{workspaceRoot}/openapi-spec.json",
@@ -140,8 +174,7 @@
 			"runtimeSources",
 			"compilerConfigs",
 			"{workspaceRoot}/.dependency-cruiser.cjs",
-			"{workspaceRoot}/scripts/check-package-boundaries.mjs",
-			"{workspaceRoot}/scripts/check-worker-import-boundary.mjs"
+			"{workspaceRoot}/scripts/check-package-boundaries.mjs"
 		],
 		"validationInputs": [
 			"repositoryConfig",

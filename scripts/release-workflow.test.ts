@@ -84,6 +84,21 @@ describe("release workflow", () => {
 		expect(releaseOutputs.worker_version).toBe("1.0.1");
 	});
 
+	it("uses the canonical Node workspace identity for publication gating", () => {
+		const outputs = calculateReleaseOutputs({
+			beforeWorkerManifest: workerManifest("1.0.0"),
+			afterWorkerManifest: workerManifest("1.0.0"),
+			published: true,
+			publishedPackages: [{ name: "custom-node", version: "5.0.5" }],
+			nodePackageName: "custom-node",
+		});
+
+		expect(outputs).toMatchObject({
+			node_released: true,
+			version: "5.0.5",
+		});
+	});
+
 	it("rejects empty and non-semantic Worker versions", () => {
 		expect(() => resolveWorkerVersion(workerManifest(""))).toThrow(
 			"valid semantic version",

@@ -1,11 +1,13 @@
 # Nx and dependency-cruiser control-plane migration
 
 This stacked follow-up targets PR #890 and moves local repository orchestration
-onto Nx plus dependency-cruiser. Nx owns project discovery, target invocation,
-dependency ordering, affected selection, and cache policy; npm aliases remain
-compatibility entrypoints for contributors and external automation. GitHub
-permissions, environments, deployment mechanics, and Changesets remain
-explicit owners where they carry credentials or release policy.
+onto Nx plus dependency-cruiser. The canonical repository models own policy
+facts; Nx owns project discovery, target invocation, dependency ordering,
+affected selection, and cache policy. Root npm aliases remain compatibility
+entrypoints for contributors and external automation, not a second owner of
+aggregate membership or workflow orchestration. GitHub permissions,
+environments, deployment mechanics, and Changesets remain explicit owners where
+they carry credentials or release policy.
 
 ## Run the proof of concept
 
@@ -34,14 +36,14 @@ npx nx run repository:control-plane
 npx nx affected --target=control-plane --base=origin/main --head=HEAD
 ```
 
-The aggregate covers the issue #873 validation entrypoints and the server
-manifest check. It has eight direct Nx dependency nodes after deduplication:
-`check:changeset` invokes both the release-candidate and package Changeset
-checks transitively, so neither is listed twice. Existing validation aliases
-remain CLI-facing compatibility entrypoints; workflows invoke the corresponding
-Nx targets instead of embedding duplicate command bodies. The `test:pr` target
-also expands its nine deterministic test lanes as Nx dependencies; its npm
-script remains a compatibility alias.
+The aggregate target and member identities come from the canonical validation
+lane model. The generated contributor tables in
+[`docs/test-lanes.md`](./test-lanes.md) show the current lane and aggregate
+membership, while `project.json` is the source for target dependencies. Do not
+copy a target or member count into prose: derive the current graph with
+`npx nx show project repository --json` (or `npx nx graph`). Root aliases remain
+supported compatibility entrypoints; workflow steps invoke the corresponding
+Nx targets, so command text is not duplicated in the policy model.
 
 Run the dependency rules independently, through the combined boundary lane,
 and exercise the representative pack target:
@@ -68,8 +70,10 @@ npx vitest run scripts/control-plane-config.test.ts
 
 ## Migration contract
 
-- Root npm scripts remain the command bodies, while Nx target metadata owns
-  inputs, outputs, cacheability, dependency ordering, and workflow invocation.
+- Nx target metadata and executors own local task orchestration, including
+  inputs, outputs, cacheability, dependency ordering, and aggregate invocation.
+  Root npm scripts remain compatibility aliases where they are retained; they
+  are not an independent aggregate registry.
 - Deterministic checks and test lanes may be cached; live integration, nightly,
   release/version, package, Worker deployment/dry-run, performance, and
   token-cost targets are explicitly non-cacheable.
@@ -84,10 +88,10 @@ npx vitest run scripts/control-plane-config.test.ts
 
 ## What this demonstrates alongside PR #889
 
-- Nx infers package identities, dependency edges, and manifest-derived runtime,
-  publishability, and role tags as an alternative owner for those facts. The
-  existing workspace and publishability registries remain in place; this migration
-  deletes zero registry fragments.
+- The canonical `repository/` models own workspace identities, publishability,
+  release policy, artifact provenance, and validation lanes. Nx projects and
+  targets consume those facts for local graph execution; the generated lane
+  documentation is a projection, not another policy registry.
 - Nx target metadata and its task graph now own local task orchestration. The
   build/test, nightly, release-local, and token-cost workflows invoke Nx
   targets; no workflow trigger, matrix, permission, secret, or deployment
@@ -102,24 +106,22 @@ npx vitest run scripts/control-plane-config.test.ts
   workspace builds declare no output because they are side-effect free.
 
 This is a local orchestration migration, not a universal runtime/product
-manifest. PR #889's separate `repository/` control-plane implementation is not
-deleted by this stacked branch; a later adoption decision must prove parity
-before removing duplicate owners.
+manifest. PR #889's `repository/` control-plane implementation is the canonical
+policy source for this branch; consumer checks and documentation must read it
+through the shared facade rather than maintaining duplicate registries.
 
 ## Evidence from this migration
 
-| Evidence                               | Current migration result                                                                                         |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Existing registry fragments deleted    | 0                                                                                                                |
-| GitHub workflows migrated              | 4 local command surfaces; triggers, matrices, permissions, and deployment conditions unchanged                   |
-| CI workflow command count              | 56 `run:` steps, unchanged                                                                                       |
-| Local Nx aggregate after deduplication | 8 direct control-plane task nodes; `check:changeset` transitively invokes both omitted checks                    |
-| Handwritten control-plane surface      | 865 lines: `project.json` 212, `nx.json` 51, `.dependency-cruiser.cjs` 109, focused test 415, metadata plugin 78 |
-| `package-lock.json` impact             | +2,295/-440 lines versus `origin/main`; no new lockfile edit in this amendment                                   |
+| Evidence                            | Current migration result                                                                                         |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Canonical validation policy         | `repository/validation-lanes.json`, projected by `scripts/render-validation-lanes.mjs`                           |
+| Current aggregate and target counts | Derived at check time from the lane model and `project.json`; see `npx nx show project repository --json`        |
+| Current workflow command ownership  | Workflows invoke Nx targets; credentials, matrices, permissions, and deployment conditions remain workflow-owned |
+| Historical migration measurements   | Not repeated here; preserve only as immutable before-adoption evidence when a comparison is required             |
 
-The line count is a measurement of the current files, not a historical
-execution comparison. This migration does not fabricate a comparable
-before/after aggregate execution count.
+The current target graph and aggregate membership are intentionally derived
+instead of copied into this document. This avoids presenting a stale execution
+count as if it were a live measurement.
 
 ## What remains custom
 
@@ -133,8 +135,9 @@ before/after aggregate execution count.
   invocation moved to Nx.
 - The token-cost job intentionally keeps its base-revision fallback on the npm
   alias because that checkout may predate Nx; the current revision uses Nx.
-- Historical before/after registry and aggregate execution evidence is not
-  inferable from Nx and remains an explicit reporting concern.
+- Historical before/after execution evidence is not inferable from Nx. Any
+  retained number must be labeled immutable before-adoption evidence; current
+  counts are derived from the canonical model and project graph.
 - The compiler-backed `check-package-boundaries.mjs` remains authoritative in
   the combined Nx `check:boundaries` target. dependency-cruiser v18 does not
   support this repository's TypeScript 7 compiler, so the migration uses its SWC

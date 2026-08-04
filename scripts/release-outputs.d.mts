@@ -16,4 +16,5 @@ export function calculateReleaseOutputs(options: {
 	beforeWorkerManifest: string;
 	published: boolean | string | undefined;
 	publishedPackages: PublishedPackage[];
+	nodePackageName?: string;
 }): ReleaseOutputs;

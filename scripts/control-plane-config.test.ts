@@ -25,6 +25,7 @@ const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
 };
 
 const inferredTargets = [
+	"check:control-plane",
 	"check:workspaces",
 	"check:boundaries",
 	"check:exports",
@@ -58,6 +59,7 @@ const inferredTargets = [
 ] as const;
 
 const aggregateTargets = [
+	"check:control-plane",
 	"check:workspaces",
 	"check:boundaries",
 	"check:exports",
@@ -120,6 +122,16 @@ async function createFixture(
 }
 
 describe("Nx and dependency-cruiser control-plane migration", () => {
+	it("declares the canonical model check as an explicit target", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as { targets: Record<string, { inputs?: string[] }> };
+
+		expect(project.targets["check:control-plane"]?.inputs).toEqual([
+			"controlPlaneInputs",
+		]);
+	});
+
 	it("infers root npm targets without duplicating command bodies", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
@@ -193,6 +205,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		) as { scripts: Record<string, string> };
 		const aggregate = project.targets["control-plane"]?.dependsOn ?? [];
 		expect(aggregate).toEqual(aggregateTargets);
+		expect(aggregate).toHaveLength(9);
 		expect(aggregate).not.toContain("check:release-candidates");
 		expect(aggregate).not.toContain("check:package-changesets");
 		expect(packageJson.scripts["check:changeset"]).toContain(
@@ -368,6 +381,15 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		expect(project.targets["check:types"]?.inputs).toEqual([
 			"repositoryTypeCheckInputs",
 		]);
+		expect(nx.namedInputs.controlPlaneInputs).toEqual(
+			expect.arrayContaining([
+				"{workspaceRoot}/.nvmrc",
+				"{workspaceRoot}/.github/workflows/build-and-test.yml",
+				"{workspaceRoot}/.github/workflows/release.yml",
+				"{workspaceRoot}/CONTRIBUTING.md",
+				"{workspaceRoot}/docs/test-lanes.md",
+			]),
+		);
 		expect(nx.targetDefaults.build).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -455,6 +477,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		};
 
 		for (const target of [
+			"check",
 			"test:integration",
 			"test:diagnostics",
 			"test:nightly",
