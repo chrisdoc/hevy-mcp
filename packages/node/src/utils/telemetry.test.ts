@@ -305,7 +305,7 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.periodicExportingMetricReader).toHaveBeenCalledWith(
 			expect.objectContaining({
 				exporter: expect.anything(),
-				exportIntervalMillis: 10_000,
+				exportIntervalMillis: 30_000,
 			}),
 		);
 		expect(testDoubles.meterProvider).toHaveBeenCalledWith(

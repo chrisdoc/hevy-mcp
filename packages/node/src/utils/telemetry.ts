@@ -302,7 +302,7 @@ if (telemetryEnabled) {
 						},
 						temporalityPreference: AggregationTemporalityPreference.DELTA,
 					}),
-					exportIntervalMillis: 10_000,
+					exportIntervalMillis: 30_000,
 				}),
 			],
 		});

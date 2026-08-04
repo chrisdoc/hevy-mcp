@@ -33,6 +33,24 @@ local linters = new Mapping<String, Step> {
         check = "npx oxfmt --check {{files}}"
         fix = "npx oxfmt --write {{files}}"
     }
+    ["actionlint"] {
+        glob = List(
+            ".github/workflows/**/*.yml",
+            ".github/workflows/**/*.yaml",
+        )
+        check = "actionlint"
+    }
+    ["zizmor"] {
+        glob = List(
+            ".github/dependabot.yml",
+            ".github/workflows/**/*.yml",
+            ".github/workflows/**/*.yaml",
+            "**/action.yml",
+            "**/action.yaml",
+        )
+        depends = "actionlint"
+        check = "zizmor --offline --strict-collection --collect=default --format=plain ."
+    }
 }
 
 hooks {

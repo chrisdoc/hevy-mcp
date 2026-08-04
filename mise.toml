@@ -2,3 +2,5 @@
 hk = "1.51.0"
 kiota = "latest"
 pinact = "latest"
+actionlint = "1.7.12"
+zizmor = "1.29.0"

@@ -193,8 +193,10 @@ describe("release workflow", () => {
 			"node scripts/resolve-worker-version.mjs preview",
 		);
 		expect(uploadPreview).toContain(
-			'--tag "${{ steps.worker_version.outputs.tag }}"',
+			"WORKER_VERSION_TAG: ${{ steps.worker_version.outputs.tag }}",
 		);
+		expect(uploadPreview).toContain('--tag "${WORKER_VERSION_TAG}"');
+		expect(uploadPreview).not.toContain('--tag "${{');
 		expect(bootstrapPreview).not.toContain("--tag");
 		expect(cleanupPreview).not.toContain("--tag");
 	});
