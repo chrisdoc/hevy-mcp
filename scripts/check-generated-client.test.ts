@@ -72,6 +72,43 @@ describe("generated client closure checks", () => {
 		expect(executable.args[0]).toMatch(/[\\/]bin[\\/]kubb\.cjs$/);
 	});
 
+	it("reports missing package metadata and executable declarations", async () => {
+		await expect(
+			resolvePackageExecutable("missing-generated-client-package", "missing"),
+		).rejects.toThrow(
+			"Unable to resolve missing-generated-client-package package metadata",
+		);
+		await expect(
+			resolvePackageExecutable("typescript", "missing"),
+		).rejects.toThrow(
+			"Package typescript does not declare a missing executable",
+		);
+	});
+
+	it("reports command startup and non-zero exit failures", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-failure-"),
+		);
+		const script = resolve(root, "fail.mjs");
+		try {
+			await expect(
+				runCommand(resolve(root, "missing-command"), [], root, {
+					timeout: 1_000,
+				}),
+			).rejects.toThrow(/failed: could not start \(ENOENT\)/);
+
+			await writeFile(
+				script,
+				'process.stderr.write("command failed\\n"); process.exitCode = 7;\n',
+			);
+			await expect(
+				runCommand(process.execPath, [script], root, { timeout: 1_000 }),
+			).rejects.toThrow(/failed: exited with code 7[\s\S]*command failed/);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	it("reports bounded command failures with timeout and captured output", async () => {
 		const root = await mkdtemp(
 			resolve(tmpdir(), "hevy-generated-client-command-timeout-"),
