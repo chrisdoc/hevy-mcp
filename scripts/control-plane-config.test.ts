@@ -161,6 +161,16 @@ describe("Nx and dependency-cruiser control-plane spike", () => {
 		expect(pack?.cache).toBe(false);
 	});
 
+	it("declares outputs for cached package builds", async () => {
+		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
+			targetDefaults: {
+				build: { outputs?: string[] };
+			};
+		};
+
+		expect(nx.targetDefaults.build.outputs).toEqual(["{projectRoot}/dist"]);
+	});
+
 	it("derives exact tags for every current package manifest", async () => {
 		const expected = {
 			cli: ["runtime:node", "publishability:public", "role:cli"],
@@ -192,6 +202,18 @@ describe("Nx and dependency-cruiser control-plane spike", () => {
 
 		expect(report.exitCode).not.toBe(0);
 		expect(report.output).toContain("neutral-no-node-builtins");
+	});
+
+	it("fails closed for circular workspace source", async () => {
+		const { report } = await createFixture("core", {
+			"packages/core/src/a.ts":
+				'import { b } from "./b.js";\nexport const a = b;\n',
+			"packages/core/src/b.ts":
+				'import { a } from "./a.js";\nexport const b = a;\n',
+		});
+
+		expect(report.exitCode).not.toBe(0);
+		expect(report.output).toContain("no-circular");
 	});
 
 	it("fails closed for a neutral-to-Node edge and Worker observability import", async () => {

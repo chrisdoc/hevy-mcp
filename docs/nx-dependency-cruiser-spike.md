@@ -78,8 +78,11 @@ npx vitest run scripts/control-plane-config.test.ts
   package/runtime restrictions instead of another custom graph walker. The
   compiler-backed boundary checker remains authoritative.
 - Target metadata records representative inputs and outputs: Kubb generated
-  client sources, Node build output, server/plugin manifests, coverage and
-  performance evidence, and the explicit npm-pack target described above.
+  client sources, each package `dist` directory for cached package builds, Node
+  build output, server/plugin manifests, coverage and performance evidence, and
+  the explicit npm-pack target described above. Type-check-only workspace builds
+  inherit the same output declaration but produce no files; their cache entries
+  remain valid because those checks are side-effect free.
 
 This is deliberately a reshape, not a drop-in replacement for PR #889's
 `repository/` control-plane manifest, lane dispatcher, generated workflow
@@ -93,7 +96,7 @@ projection, or historical evidence registry.
 | GitHub workflows migrated              | 0 (0 workflow files touched)                                                                                     |
 | CI workflow command count              | 56 `run:` steps, unchanged                                                                                       |
 | Local Nx aggregate after deduplication | 7 direct control-plane task nodes; `check:changeset` transitively invokes both omitted checks                    |
-| Handwritten control-plane surface      | 547 lines: `project.json` 107, `nx.json` 46, `.dependency-cruiser.cjs` 109, focused test 225, metadata plugin 60 |
+| Handwritten control-plane surface      | 570 lines: `project.json` 107, `nx.json` 47, `.dependency-cruiser.cjs` 109, focused test 247, metadata plugin 60 |
 | `package-lock.json` impact             | +2,295/-440 lines versus `origin/main`; no new lockfile edit in this amendment                                   |
 
 The line count is a measurement of the current files, not a historical
@@ -117,6 +120,8 @@ aggregate execution count.
   support this repository's TypeScript 7 compiler, so the spike uses its SWC
   parser; local literal test imports are allowed while the compiler checker
   still rejects non-literal dynamic loading and all runtime-forbidden imports.
+  The dependency-cruiser fixture also verifies that the module graph rejects a
+  circular workspace edge.
 
 ## Install-script review
 
