@@ -15,6 +15,34 @@ import {
 } from "./mcp-session-observability.js";
 import { tracer } from "./telemetry.js";
 
+const SAFE_STATIC_ENDPOINTS = new Set([
+	"/v1/body_measurements",
+	"/v1/exercise_templates",
+	"/v1/routine_folders",
+	"/v1/routines",
+	"/v1/user/info",
+	"/v1/workouts",
+	"/v1/workouts/count",
+	"/v1/workouts/events",
+]);
+const SAFE_DYNAMIC_ENDPOINTS = [
+	["/v1/body_measurements/", "/v1/body_measurements/:date"],
+	["/v1/exercise_history/", "/v1/exercise_history/:exerciseTemplateId"],
+	["/v1/exercise_templates/", "/v1/exercise_templates/:exerciseTemplateId"],
+	["/v1/routine_folders/", "/v1/routine_folders/:folderId"],
+	["/v1/routines/", "/v1/routines/:routineId"],
+	["/v1/workouts/", "/v1/workouts/:workoutId"],
+] as const;
+
+function normalizeHevyMetricEndpoint(endpoint: string): string {
+	const path = endpoint.split("?")[0] ?? "";
+	if (SAFE_STATIC_ENDPOINTS.has(path)) return path;
+	return (
+		SAFE_DYNAMIC_ENDPOINTS.find(([prefix]) => path.startsWith(prefix))?.[1] ??
+		"unknown"
+	);
+}
+
 function safeErrorAttributes(observation: HevyRequestObservation): {
 	error_category?: string;
 	error_code?: string;
@@ -93,9 +121,10 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 		onRequestComplete(observation) {
 			const retryCountBucket = bucketCount(observation.retryCount);
 			const errorAttributes = safeErrorAttributes(observation);
+			const metricEndpoint = normalizeHevyMetricEndpoint(observation.endpoint);
 			apiCalls.add(1, {
 				method: observation.method,
-				endpoint: observation.endpoint,
+				endpoint: metricEndpoint,
 				status_code: observation.status,
 				retry_count_bucket: retryCountBucket,
 				outcome: observation.outcome,
@@ -107,7 +136,7 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 			});
 			apiDuration.record(observation.durationMs, {
 				method: observation.method,
-				endpoint: observation.endpoint,
+				endpoint: metricEndpoint,
 				retry_count_bucket: retryCountBucket,
 				outcome: observation.outcome,
 				transport: getCurrentMcpTransport(),

@@ -144,29 +144,6 @@ function setResultAttributes(span: Span, completion: SafeToolCompletion): void {
 	}
 }
 
-function resultMetricAttributes(
-	completion: SafeToolCompletion,
-): Record<string, string | boolean> {
-	const result = completion.result;
-	if (!result) return {};
-	const attributes: Record<string, string | boolean> = {
-		"mcp.tool.result.has_structured_content": result.hasStructuredContent,
-		"mcp.tool.result.content_count_bucket": result.contentCountBucket,
-	};
-	const summary = result.summary;
-	if (summary?.itemCountBucket) {
-		attributes["mcp.tool.result.item_count_bucket"] = summary.itemCountBucket;
-	}
-	if (summary?.exerciseCountBucket) {
-		attributes["mcp.tool.result.exercise_count_bucket"] =
-			summary.exerciseCountBucket;
-	}
-	if (summary?.setCountBucket) {
-		attributes["mcp.tool.result.set_count_bucket"] = summary.setCountBucket;
-	}
-	return attributes;
-}
-
 function setSafeErrorAttributes(
 	span: Span,
 	invocation: SafeToolInvocation,
@@ -396,7 +373,6 @@ export function createNodeToolObserver(): ToolObserver {
 						bestEffort(() =>
 							toolDuration.record(durationMs, {
 								...metrics,
-								...resultMetricAttributes(nextCompletion),
 								is_error: String(isError),
 								outcome: nextCompletion.outcome,
 							}),
