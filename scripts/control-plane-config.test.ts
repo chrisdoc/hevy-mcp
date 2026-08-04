@@ -15,6 +15,7 @@ const dependencyCruiserConfig = require(
 
 const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
 	projectTags(packageJson: Record<string, unknown>): string[];
+	buildOutputs(packageJson: Record<string, unknown>): string[];
 };
 
 const inferredTargets = [
@@ -26,9 +27,26 @@ const inferredTargets = [
 	"check",
 	"check:types",
 	"check:changeset",
+	"check:server-manifest",
 	"build",
 	"build:client",
 	"sync:server-manifest",
+	"test:unit",
+	"test:mcp",
+	"test:integration",
+	"test:diagnostics",
+	"test:contract",
+	"test:stdio",
+	"test:worker",
+	"test:worker-http",
+	"test:pack",
+	"test:cli",
+	"test:pack:cli",
+	"test:nightly",
+	"test:live",
+	"test:worker-http:live",
+	"measure:tokens",
+	"worker:dry-run",
 	"test:coverage",
 	"test:performance",
 ] as const;
@@ -38,6 +56,7 @@ const aggregateTargets = [
 	"check:boundaries",
 	"check:exports",
 	"test:pr",
+	"check:server-manifest",
 	"check",
 	"check:types",
 	"check:changeset",
@@ -94,7 +113,7 @@ async function createFixture(
 	return { packageName, report };
 }
 
-describe("Nx and dependency-cruiser control-plane spike", () => {
+describe("Nx and dependency-cruiser control-plane migration", () => {
 	it("infers root npm targets without duplicating command bodies", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
@@ -116,19 +135,33 @@ describe("Nx and dependency-cruiser control-plane spike", () => {
 		}
 	});
 
-	it("keeps test:pr as a single environment-setting npm wrapper", async () => {
+	it("models test:pr as the complete deterministic test lane", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
 		) as {
 			targets: Record<
 				string,
-				{ options?: { command?: string; env?: Record<string, string> } }
+				{
+					dependsOn?: string[];
+					executor?: string;
+					options?: { command?: string };
+				}
 			>;
 		};
 		const testPr = project.targets["test:pr"];
-		expect(testPr?.options?.command).toBe("npm run test:pr");
-		expect(testPr?.options?.command).not.toContain("test:unit &&");
-		expect(testPr?.options?.env).toEqual({ FORCE_COLOR: "0" });
+		expect(testPr?.executor).toBe("nx:noop");
+		expect(testPr?.options?.command).toBeUndefined();
+		expect(testPr?.dependsOn).toEqual([
+			"test:unit",
+			"test:mcp",
+			"test:contract",
+			"test:stdio",
+			"test:worker",
+			"test:worker-http",
+			"test:pack",
+			"test:cli",
+			"test:pack:cli",
+		]);
 	});
 
 	it("deduplicates transitive checks through check:changeset", async () => {
@@ -161,14 +194,75 @@ describe("Nx and dependency-cruiser control-plane spike", () => {
 		expect(pack?.cache).toBe(false);
 	});
 
-	it("declares outputs for cached package builds", async () => {
+	it("declares outputs only for package builds that emit dist", async () => {
 		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
 			targetDefaults: {
 				build: { outputs?: string[] };
 			};
 		};
 
-		expect(nx.targetDefaults.build.outputs).toEqual(["{projectRoot}/dist"]);
+		expect(nx.targetDefaults.build.outputs).toBeUndefined();
+		const expected = {
+			cli: ["{projectRoot}/dist"],
+			core: [],
+			"hevy-client": [],
+			node: ["{projectRoot}/dist"],
+			worker: [],
+		} as const;
+		for (const [directory, outputs] of Object.entries(expected)) {
+			const packageJson = JSON.parse(
+				await readFile(
+					resolve(root, "packages", directory, "package.json"),
+					"utf8",
+				),
+			);
+			expect(metadata.buildOutputs(packageJson)).toEqual(outputs);
+		}
+	});
+
+	it("keeps live and artifact targets out of the cache", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as {
+			targets: Record<
+				string,
+				{ cache?: boolean; outputs?: string[]; parallelism?: boolean }
+			>;
+		};
+
+		for (const target of [
+			"test:integration",
+			"test:diagnostics",
+			"test:nightly",
+			"test:live",
+			"test:worker-http:live",
+			"test:worker-http",
+			"test:pack",
+			"test:pack:cli",
+			"worker:dry-run",
+			"measure:tokens",
+			"sync:server-manifest",
+			"version:changesets",
+			"version",
+			"version:major",
+			"version:minor",
+			"version:patch",
+			"release",
+			"worker:deploy",
+		]) {
+			expect(project.targets[target]?.cache).toBe(false);
+		}
+		for (const target of [
+			"test:worker",
+			"test:worker-http",
+			"test:pack",
+			"test:pack:cli",
+		]) {
+			expect(project.targets[target]?.parallelism).toBe(false);
+		}
+		expect(project.targets["worker:dry-run"]?.outputs).toEqual([
+			"{workspaceRoot}/.wrangler/dry-run",
+		]);
 	});
 
 	it("derives exact tags for every current package manifest", async () => {

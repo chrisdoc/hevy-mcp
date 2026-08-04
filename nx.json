@@ -30,13 +30,17 @@
 			"{workspaceRoot}/vitest*.config.ts",
 			"{workspaceRoot}/tests/**/*",
 			"{workspaceRoot}/packages/*/src/**/*"
+		],
+		"validationInputs": [
+			"sourceInputs",
+			"packageManifestInputs",
+			"controlPlaneInputs"
 		]
 	},
 	"plugins": ["./scripts/nx-project-metadata.cjs"],
 	"targetDefaults": {
 		"build": {
 			"cache": true,
-			"outputs": ["{projectRoot}/dist"],
 			"dependsOn": ["^build"]
 		},
 		"check:types": {
