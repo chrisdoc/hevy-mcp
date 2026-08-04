@@ -2,7 +2,7 @@ import type {
 	ExerciseTemplate,
 	GetV1ExerciseTemplates200,
 } from "@hevy-mcp/hevy-client/types";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyClient, HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import { AsyncTtlCache } from "./cache.js";
 import type { CacheObservationMetadata, CacheObserver } from "./cache.js";
 import { fetchAllPages } from "./pagination.js";
@@ -19,6 +19,7 @@ export type ExerciseTemplateCatalogRefreshReason =
 
 export interface ExerciseTemplateCatalogOptions {
 	refresh?: boolean;
+	execution?: HevyRequestOptions;
 	onRefreshed?: (
 		catalog: ExerciseTemplate[],
 		reason: ExerciseTemplateCatalogRefreshReason,
@@ -31,7 +32,7 @@ export interface ExerciseTemplateCatalog {
 }
 
 export function createExerciseTemplateCatalog(
-	hevyClient: HevyClient,
+	hevyClient: Pick<HevyClient, "getExerciseTemplates">,
 	cacheObserver?: CacheObserver,
 ): ExerciseTemplateCatalog {
 	const cache = new AsyncTtlCache<string, ExerciseTemplate[]>({
@@ -56,10 +57,13 @@ export function createExerciseTemplateCatalog(
 						async (page, pageSize) => {
 							pagesLoaded = page;
 							const data: GetV1ExerciseTemplates200 =
-								await hevyClient.getExerciseTemplates({
-									page,
-									pageSize,
-								});
+								await hevyClient.getExerciseTemplates(
+									{
+										page,
+										pageSize,
+									},
+									options.execution,
+								);
 							return {
 								items: data?.exercise_templates ?? [],
 								pageCount: data?.page_count,
@@ -77,6 +81,9 @@ export function createExerciseTemplateCatalog(
 				},
 				{
 					refresh: options.refresh,
+					shareInFlight: options.execution === undefined,
+					signal: options.execution?.signal,
+					deadline: options.execution?.deadline,
 					getObservationMetadata: () => observationMetadata,
 				},
 			);

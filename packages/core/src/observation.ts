@@ -1,4 +1,5 @@
 import type { ErrorType, SafeErrorDiagnostic } from "./utils/error-policy.js";
+import type { StructuredExecutionProjection } from "./execution.js";
 import type {
 	ResultCountBucket,
 	ToolResultTelemetry,
@@ -80,6 +81,7 @@ export interface ToolCompletionObservation {
 	readonly result?: ToolResultObservation;
 	readonly errorType?: ErrorType;
 	readonly error?: SafeErrorDiagnostic;
+	readonly errorOutcome?: StructuredExecutionProjection;
 }
 
 export interface ToolObservationScope {

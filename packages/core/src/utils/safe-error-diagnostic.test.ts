@@ -92,4 +92,29 @@ describe("createSafeErrorDiagnostic", () => {
 			createSafeErrorDiagnostic(new DOMException(SECRET, "AbortError")),
 		).toMatchObject({ category: "DOMException" });
 	});
+
+	it("normalizes cache and transport cancellation taxonomy", () => {
+		expect(
+			createSafeErrorDiagnostic(new DOMException("cancel", "AbortError")),
+		).toMatchObject({
+			code: "HEVY_REQUEST_ABORTED",
+			outcome: "cancelled",
+			commit_state: "unknown",
+			safe_to_retry: false,
+		});
+		expect(
+			createSafeErrorDiagnostic(new DOMException("cancel", "AbortError")),
+		).not.toHaveProperty("phase");
+		expect(
+			createSafeErrorDiagnostic(new DOMException("cancel", "AbortError")),
+		).not.toHaveProperty("operation_safety");
+		expect(
+			createSafeErrorDiagnostic(new DOMException("deadline", "TimeoutError")),
+		).toMatchObject({
+			code: "HEVY_DEADLINE_EXCEEDED",
+			outcome: "deadline_exceeded",
+			commit_state: "unknown",
+			safe_to_retry: false,
+		});
+	});
 });

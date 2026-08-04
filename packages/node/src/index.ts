@@ -15,7 +15,11 @@ import { serverStartups } from "./utils/metrics.js";
 
 import { SpanStatusCode, type Span } from "@opentelemetry/api";
 import { z } from "zod";
-import { createHevyMcpServer, createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import {
+	createHevyMcpServer,
+	createSafeErrorDiagnostic,
+	mergeAbortSignals,
+} from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
@@ -199,7 +203,7 @@ function recordLifecycleFailure(
 	span.addEvent("mcp.lifecycle.failure", attributes);
 	recordTelemetryException(error, attributes, span);
 }
-async function validateApiKey(apiKey: string) {
+async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 	// Keep the startup probe separate from the normal MCP-aware client. The
 	// server is not connected yet, so structured client logging is intentionally
 	// omitted until the normal client is built below.
@@ -211,8 +215,12 @@ async function validateApiKey(apiKey: string) {
 	});
 
 	try {
-		await startupProbeClient.getUserInfo();
+		await startupProbeClient.getUserInfo({
+			signal,
+			deadline: Date.now() + STARTUP_PROBE_TIMEOUT_MS,
+		});
 	} catch (error) {
+		if (signal?.aborted) throw error;
 		const status = getHttpStatus(error);
 		if (status === 401 || status === 403) {
 			throw new Error(INVALID_API_KEY_MESSAGE);
@@ -227,7 +235,11 @@ async function validateApiKey(apiKey: string) {
 	}
 }
 
-function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
+function buildServer(
+	apiKey: string,
+	transport: NodeTransport = "stdio",
+	lifecycleSignal?: AbortSignal,
+) {
 	return tracer.startActiveSpan(
 		"mcp.server.build",
 		{
@@ -247,6 +259,7 @@ function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
 							...createNodeHevyClientOptions(),
 							onLog,
 						}),
+					lifecycleSignal,
 					decorateServer: (baseServer) =>
 						Sentry.wrapMcpServerWithSentry(baseServer, {
 							recordInputs: false,
@@ -276,11 +289,12 @@ function buildServer(apiKey: string, transport: NodeTransport = "stdio") {
 export async function createNodeMcpServer(
 	{ apiKey }: { apiKey: string },
 	transport: NodeTransport = "stdio",
+	lifecycleSignal?: AbortSignal,
 ) {
 	const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
 	setTelemetryUser(validatedApiKey);
-	await validateApiKey(validatedApiKey);
-	return buildServer(validatedApiKey, transport);
+	await validateApiKey(validatedApiKey, lifecycleSignal);
+	return buildServer(validatedApiKey, transport, lifecycleSignal);
 }
 
 export async function runStdioServer() {
@@ -297,6 +311,7 @@ export async function runStdioServer() {
 		return;
 	}
 	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
+	const lifecycleController = new AbortController();
 
 	serverStartups.add(1, { version });
 
@@ -322,7 +337,11 @@ export async function runStdioServer() {
 				const apiKey = cfg.apiKey;
 				assertApiKey(apiKey);
 
-				const server = await createNodeMcpServer({ apiKey });
+				const server = await createNodeMcpServer(
+					{ apiKey },
+					"stdio",
+					lifecycleController.signal,
+				);
 				console.error("Starting MCP server in stdio mode");
 				const transport = createInstrumentedStdioTransport(
 					new StdioServerTransport(),
@@ -357,6 +376,7 @@ export async function runStdioServer() {
 				});
 				installGracefulShutdown({
 					target: server,
+					cancel: lifecycleController,
 					onComplete: async (succeeded) => {
 						recordMcpSessionTermination(
 							resolveSessionTerminationCategory(succeeded),
@@ -402,6 +422,7 @@ export async function runServer(): Promise<void> {
 		return;
 	}
 	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
+	const lifecycleController = new AbortController();
 
 	await tracer.startActiveSpan(
 		"mcp.server.run",
@@ -418,11 +439,21 @@ export async function runServer(): Promise<void> {
 				const cfg = parseConfig(process.env);
 				assertApiKey(cfg.apiKey);
 				setTelemetryUser(cfg.apiKey);
-				await validateApiKey(cfg.apiKey);
+				await validateApiKey(cfg.apiKey, lifecycleController.signal);
 				const handle = await startStreamableHttpServer(
 					options,
 					cfg.apiKey,
-					(params) => Promise.resolve(buildServer(params.apiKey, "http")),
+					(params) =>
+						Promise.resolve(
+							buildServer(
+								params.apiKey,
+								"http",
+								mergeAbortSignals(
+									lifecycleController.signal,
+									params.lifecycleSignal,
+								),
+							),
+						),
 				);
 				listening = true;
 				console.error(
@@ -434,6 +465,7 @@ export async function runServer(): Promise<void> {
 				});
 				installGracefulShutdown({
 					target: handle,
+					cancel: lifecycleController,
 					onComplete: async () => {
 						cleanupProcessExceptionTracking();
 						await flushTelemetry();

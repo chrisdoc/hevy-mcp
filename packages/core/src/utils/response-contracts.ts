@@ -14,6 +14,7 @@ import type {
 	UserInfo,
 	Workout,
 } from "@hevy-mcp/hevy-client/types";
+import type { StructuredExecutionError } from "../execution.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 import {
 	attachResultTelemetry,
@@ -27,6 +28,7 @@ import {
  */
 export type McpToolResponse = Omit<CallToolResult, "content"> & {
 	content: TextContent[];
+	errorOutcome?: StructuredExecutionError;
 };
 
 type OutputShape = z.ZodRawShape;

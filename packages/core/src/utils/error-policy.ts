@@ -1,7 +1,14 @@
 import {
+	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	isHevyHttpError,
+} from "@hevy-mcp/hevy-client";
+import type {
+	HevyCommitState,
+	HevyExecutionOutcome,
+	HevyOperationSafety,
+	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
 
 /** Specific error types for categorization and metrics. */
@@ -40,6 +47,11 @@ export interface SafeErrorDiagnostic {
 	method?: string;
 	endpoint?: string;
 	frames?: SafeStackFrame[];
+	phase?: HevyRequestPhase;
+	operation_safety?: HevyOperationSafety;
+	commit_state?: HevyCommitState;
+	safe_to_retry?: boolean;
+	outcome?: HevyExecutionOutcome;
 }
 
 type SafeSourceId =
@@ -54,6 +66,36 @@ type RetryAwareError = {
 	hevyRetryExhausted?: boolean;
 };
 
+const ABORT_TIMEOUT_METADATA = {
+	AbortError: {
+		code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+		outcome: "cancelled" as const,
+	},
+	TimeoutError: {
+		code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+		outcome: "deadline_exceeded" as const,
+	},
+} as const;
+
+type AbortTimeoutErrorMetadata =
+	(typeof ABORT_TIMEOUT_METADATA)[keyof typeof ABORT_TIMEOUT_METADATA] & {
+		name: keyof typeof ABORT_TIMEOUT_METADATA;
+	};
+
+/** Map raw cancellation errors to their bounded execution metadata. */
+function getAbortTimeoutErrorMetadata(
+	error: unknown,
+): AbortTimeoutErrorMetadata | undefined {
+	try {
+		if (!(error instanceof Error)) return undefined;
+		const name = error.name as keyof typeof ABORT_TIMEOUT_METADATA;
+		const metadata = ABORT_TIMEOUT_METADATA[name];
+		return metadata ? { name, ...metadata } : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 const SAFE_ERROR_CODES = new Set([
 	"EAI_AGAIN",
 	"ECONNABORTED",
@@ -67,6 +109,7 @@ const SAFE_ERROR_CODES = new Set([
 	"HEVY_INVALID_ENDPOINT",
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 ]);
 
 const SAFE_HTTP_METHODS = new Set([
@@ -321,6 +364,8 @@ function classifyError(error: unknown): SafeErrorCategory {
 }
 
 function getSafeCode(error: unknown): string | undefined {
+	const abortTimeout = getAbortTimeoutErrorMetadata(error);
+	if (abortTimeout) return abortTimeout.code;
 	if (!error || typeof error !== "object" || !("code" in error)) {
 		return undefined;
 	}
@@ -339,6 +384,36 @@ function getSafeMethod(error: unknown): string | undefined {
 function getSafeEndpoint(error: unknown): string | undefined {
 	if (!isHevyHttpError(error)) return undefined;
 	return SAFE_ENDPOINTS.has(error.endpoint) ? error.endpoint : undefined;
+}
+
+function getExecutionFields(
+	error: unknown,
+): Pick<
+	SafeErrorDiagnostic,
+	"phase" | "operation_safety" | "commit_state" | "safe_to_retry" | "outcome"
+> {
+	if (!isHevyHttpError(error)) {
+		const abortTimeout = getAbortTimeoutErrorMetadata(error);
+		if (abortTimeout) {
+			return {
+				commit_state: "unknown",
+				safe_to_retry: false,
+				outcome: abortTimeout.outcome,
+			};
+		}
+		return {};
+	}
+	return {
+		...(error.phase ? { phase: error.phase } : {}),
+		...(error.operation_safety
+			? { operation_safety: error.operation_safety }
+			: {}),
+		...(error.commit_state ? { commit_state: error.commit_state } : {}),
+		...(typeof error.safe_to_retry === "boolean"
+			? { safe_to_retry: error.safe_to_retry }
+			: {}),
+		...(error.outcome ? { outcome: error.outcome } : {}),
+	};
 }
 
 function parseSafeStackFrames(error: unknown): SafeStackFrame[] | undefined {
@@ -399,6 +474,7 @@ export function createSafeErrorDiagnostic(error: unknown): SafeErrorDiagnostic {
 		if (method) diagnostic.method = method;
 		if (endpoint) diagnostic.endpoint = endpoint;
 		if (frames) diagnostic.frames = frames;
+		Object.assign(diagnostic, getExecutionFields(error));
 		return diagnostic;
 	} catch {
 		return { category: "UnknownError" };

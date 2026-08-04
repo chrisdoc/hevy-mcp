@@ -95,6 +95,13 @@ vi.mock("@hevy-mcp/hevy-client", () => ({
 vi.mock("@hevy-mcp/core", () => ({
 	createHevyMcpServer: testDoubles.createHevyMcpServer,
 	createSafeErrorDiagnostic: vi.fn(() => ({ category: "Error" })),
+	mergeAbortSignals: (...signals: Array<AbortSignal | undefined>) => {
+		const active = signals.filter(
+			(signal): signal is AbortSignal => signal !== undefined,
+		);
+		if (active.length <= 1) return active[0];
+		return AbortSignal.any(active);
+	},
 	ErrorType: {
 		UNKNOWN_ERROR: "UNKNOWN_ERROR",
 		VALIDATION_ERROR: "VALIDATION_ERROR",

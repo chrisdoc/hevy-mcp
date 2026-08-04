@@ -103,6 +103,43 @@ describe("CLI process contract", () => {
 		expect(getWorkouts).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
 		expect(io.err).toBe("");
 	});
+
+	it("binds invocation control and projects execution fields in JSON errors", async () => {
+		const io = streams();
+		const signal = new AbortController().signal;
+		const deadline = Date.now() + 1_000;
+		const getWorkouts = vi.fn().mockRejectedValue(
+			new HevyHttpError("request failed", {
+				status: 503,
+				method: "GET",
+				endpoint: "/v1/workouts",
+				phase: "response-content",
+				operationSafety: "read",
+				commitState: "unknown",
+				safeToRetry: false,
+				outcome: "deadline_exceeded",
+			}),
+		);
+		const code = await runCli({
+			argv: ["workouts", "list", "--json"],
+			env: { HEVY_API_KEY: "key" },
+			clientFactory: () => mockClient(getWorkouts),
+			execution: { signal, deadline },
+			streams: io.streams,
+		});
+		expect(code).toBe(3);
+		expect(getWorkouts).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 5 },
+			expect.objectContaining({ signal, deadline }),
+		);
+		expect(JSON.parse(io.err)).toMatchObject({
+			outcome: "deadline_exceeded",
+			phase: "response-content",
+			operation_safety: "read",
+			commit_state: "unknown",
+			safe_to_retry: false,
+		});
+	});
 });
 
 function mutationClient(): HevyClient {

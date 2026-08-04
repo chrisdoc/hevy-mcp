@@ -295,11 +295,32 @@ describe("Cloudflare Worker routes and CORS", () => {
 			const unavailable = createWorkerHandler({
 				createValidationClient: () =>
 					createMockClient({
-						getUserInfo: vi.fn().mockRejectedValue(new TypeError("network")),
+						getUserInfo: vi.fn().mockRejectedValue(
+							new HevyHttpError("HTTP 503", {
+								status: 503,
+								method: "GET",
+								endpoint: "/v1/user/info",
+								phase: "response-headers",
+								operationSafety: "read",
+								commitState: "not_sent",
+								safeToRetry: false,
+								outcome: "terminal_failure",
+							}),
+						),
 					}),
 			});
 			expect((await invalid(mcpRequest({}), {})).status).toBe(401);
-			expect((await unavailable(mcpRequest({}), {})).status).toBe(502);
+			const unavailableResponse = await unavailable(mcpRequest({}), {});
+			expect(unavailableResponse.status).toBe(502);
+			expect(await unavailableResponse.json()).toMatchObject({
+				error: {
+					status: 503,
+					outcome: "terminal_failure",
+					phase: "response-headers",
+					commit_state: "not_sent",
+					safe_to_retry: false,
+				},
+			});
 		},
 	);
 	it("logs safe structured request outcomes", async () => {
@@ -416,6 +437,123 @@ describe("real stateless SDK transport", () => {
 		expect(createTransport.mock.results[0]?.value).not.toBe(
 			createTransport.mock.results[1]?.value,
 		);
+	});
+
+	it("shares one absolute deadline across validation and MCP execution", async () => {
+		let validationOptions:
+			| { signal?: AbortSignal; deadline?: number }
+			| undefined;
+		let requestOptions: { signal?: AbortSignal; deadline?: number } | undefined;
+		const validationClient = createMockClient({
+			getUserInfo: vi.fn().mockImplementation((options) => {
+				validationOptions = options;
+				return Promise.resolve({ data: { id: "validated" } });
+			}),
+		});
+		const requestClient = createMockClient({
+			getUserInfo: vi.fn().mockImplementation((options) => {
+				requestOptions = options;
+				return Promise.resolve({ data: { id: "requested" } });
+			}),
+		});
+		const handler = createWorkerHandler({
+			createValidationClient: () => validationClient,
+			createRequestClient: () => requestClient,
+		});
+
+		const result = await handler(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 1,
+				method: "tools/call",
+				params: { name: "get-user-info", arguments: {} },
+			}),
+			{},
+		);
+
+		expect(result.status).toBe(200);
+		expect(validationOptions?.signal).toBeInstanceOf(AbortSignal);
+		expect(requestOptions?.signal).toBeInstanceOf(AbortSignal);
+		expect(validationOptions?.deadline).toBeLessThan(
+			requestOptions?.deadline ?? Number.POSITIVE_INFINITY,
+		);
+		expect(requestOptions?.deadline).toBeGreaterThan(
+			(validationOptions?.deadline ?? 0) + 5_000 - 100,
+		);
+		expect(validationOptions?.deadline).toBeGreaterThan(Date.now());
+	});
+
+	it("projects a cancelled Worker request as cancellation, not a terminal failure", async () => {
+		const controller = new AbortController();
+		let validationSignal: AbortSignal | undefined;
+		type UserInfoResult = Awaited<ReturnType<HevyClient["getUserInfo"]>>;
+		const validationGetUserInfo = vi.fn(
+			(
+				options?: Parameters<HevyClient["getUserInfo"]>[0],
+			): Promise<UserInfoResult> => {
+				validationSignal = options?.signal;
+				return new Promise((_resolve, reject) => {
+					options?.signal?.addEventListener(
+						"abort",
+						() => reject(new DOMException("request cancelled", "AbortError")),
+						{ once: true },
+					);
+				});
+			},
+		);
+		const validationClient = createMockClient({
+			getUserInfo: validationGetUserInfo,
+		});
+		const handler = createWorkerHandler({
+			createValidationClient: () => validationClient,
+		});
+		const request = new Request("https://worker.example/mcp", {
+			method: "POST",
+			headers: validHeaders,
+			body: JSON.stringify({}),
+			signal: controller.signal,
+		});
+		const pending = handler(request, {});
+		await vi.waitFor(() =>
+			expect(validationGetUserInfo).toHaveBeenCalledOnce(),
+		);
+		expect(validationSignal).toBe(request.signal);
+		controller.abort(new DOMException("request cancelled", "AbortError"));
+		const result = await pending;
+		expect(result.status).toBe(499);
+		expect(await result.json()).toMatchObject({
+			error: {
+				outcome: "cancelled",
+				phase: "before-dispatch",
+				commit_state: "unknown",
+				safe_to_retry: false,
+			},
+		});
+	});
+
+	it("preserves a validation deadline outcome", async () => {
+		const handler = createWorkerHandler({
+			createValidationClient: () =>
+				createMockClient({
+					getUserInfo: vi.fn().mockRejectedValue(
+						new HevyHttpError("deadline", {
+							method: "GET",
+							endpoint: "/v1/user/info",
+							code: "HEVY_DEADLINE_EXCEEDED",
+							phase: "dispatch",
+							operationSafety: "read",
+							commitState: "not_sent",
+							safeToRetry: false,
+							outcome: "deadline_exceeded",
+						}),
+					),
+				}),
+		});
+		const result = await handler(mcpRequest({}), {});
+		expect(result.status).toBe(504);
+		expect(await result.json()).toMatchObject({
+			error: { outcome: "deadline_exceeded", safe_to_retry: false },
+		});
 	});
 
 	it("forwards request-client logs through the connected MCP server", async () => {
