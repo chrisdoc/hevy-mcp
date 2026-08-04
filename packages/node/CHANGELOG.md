@@ -1,5 +1,17 @@
 # hevy-mcp
 
+## 5.0.6
+
+### Patch Changes
+
+- [#867](https://github.com/chrisdoc/hevy-mcp/pull/867) [`01bc861`](https://github.com/chrisdoc/hevy-mcp/commit/01bc8617d9a5130d55fdd3e661ec8af0290d5ca7) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Send the Node package's default error telemetry to the self-hosted GlitchTip
+  project while retaining trace and metric export through the existing OTel
+  collector.
+
+- [#895](https://github.com/chrisdoc/hevy-mcp/pull/895) [`d51bf30`](https://github.com/chrisdoc/hevy-mcp/commit/d51bf30a1c81ddf3780e4626b4ee65f2abd79eae) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Reduce Node telemetry volume by exporting metrics every 30 seconds, removing
+  result-shape dimensions from tool-duration metrics, and normalizing dynamic API
+  endpoint labels while retaining the detailed trace attributes.
+
 ## 5.0.5
 
 ### Patch Changes
