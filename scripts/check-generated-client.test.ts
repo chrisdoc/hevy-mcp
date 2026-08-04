@@ -135,6 +135,38 @@ describe("generated client closure checks", () => {
 		}
 	});
 
+	it("forcefully terminates with SIGKILL after grace period if child ignores SIGTERM", async () => {
+		const root = await mkdtemp(
+			resolve(tmpdir(), "hevy-generated-client-command-sigkill-"),
+		);
+		const script = resolve(root, "ignore-sigterm.mjs");
+		try {
+			await writeFile(
+				script,
+				[
+					'process.on("SIGTERM", () => {',
+					'	process.stderr.write("ignored SIGTERM\\n");',
+					"});",
+					'process.stderr.write("process started\\n");',
+					"setInterval(() => {}, 1000);",
+				].join("\n"),
+			);
+
+			await expect(
+				runCommand(process.execPath, [script], root, {
+					timeout: 200,
+					killSignal: "SIGTERM",
+				}),
+			).rejects.toMatchObject({
+				message: expect.stringMatching(
+					/failed: timed out after 200ms; sent SIGTERM[\s\S]*process started/,
+				),
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	it("returns no differences when both comparison trees are absent", async () => {
 		const root = await mkdtemp(
 			resolve(tmpdir(), "hevy-generated-client-empty-trees-"),

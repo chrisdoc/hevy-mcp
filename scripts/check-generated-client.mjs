@@ -22,6 +22,7 @@ const generatedRoot = resolve(clientRoot, generatedRelative);
 const curatedBarrels = ["src/types.ts", "src/schemas.ts"];
 const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
 const DEFAULT_COMMAND_KILL_SIGNAL = "SIGTERM";
+const SIGKILL_GRACE_PERIOD_MS = 2_000;
 
 async function collectFiles(directory) {
 	try {
@@ -260,11 +261,13 @@ export function runCommand(
 		let timedOut = false;
 		let settled = false;
 		let timeoutHandle;
+		let gracePeriodHandle;
 
 		const finish = (callback) => {
 			if (settled) return;
 			settled = true;
 			if (timeoutHandle) clearTimeout(timeoutHandle);
+			if (gracePeriodHandle) clearTimeout(gracePeriodHandle);
 			callback();
 		};
 		const rejectWithMessage = (status, cause) => {
@@ -302,6 +305,14 @@ export function runCommand(
 				if (child.exitCode === null && child.signalCode === null) {
 					timedOut = true;
 					child.kill(killSignal);
+
+					if (killSignal !== "SIGKILL") {
+						gracePeriodHandle = setTimeout(() => {
+							if (child.exitCode === null && child.signalCode === null) {
+								child.kill("SIGKILL");
+							}
+						}, SIGKILL_GRACE_PERIOD_MS);
+					}
 				}
 			},
 			Math.max(1, commandTimeout - 1),
@@ -317,14 +328,14 @@ export function runCommand(
 			rejectWithMessage(`could not start${code}: ${error.message}`, error);
 		});
 		child.once("exit", (code, signal) => {
-			if (code === 0) {
-				finish(resolvePromise);
-				return;
-			}
 			if (timedOut) {
 				rejectWithMessage(
 					`timed out after ${commandTimeout}ms; sent ${String(killSignal)}`,
 				);
+				return;
+			}
+			if (code === 0) {
+				finish(resolvePromise);
 				return;
 			}
 			rejectWithMessage(
@@ -352,6 +363,10 @@ async function createFixtureRepository(normalizedSpec) {
 		await cp(clientRoot, fixtureClient, {
 			recursive: true,
 			filter: (path) => !isNodeModulesPath(path),
+		});
+		await rm(resolve(fixtureClient, generatedRelative), {
+			recursive: true,
+			force: true,
 		});
 		await cp(
 			resolve(repositoryRoot, "tsconfig.base.json"),
