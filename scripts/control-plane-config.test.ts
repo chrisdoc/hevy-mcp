@@ -1,10 +1,11 @@
 import { createRequire } from "node:module";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { cruise, format, type IFlattenedRuleSet } from "dependency-cruiser";
 import { afterEach, describe, expect, it } from "vitest";
 
-const root = resolve(dirname(new URL(import.meta.url).pathname), "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 type ControlPlaneRuleSet = IFlattenedRuleSet & {
 	forbidden: NonNullable<IFlattenedRuleSet["forbidden"]>;
@@ -164,6 +165,20 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		]);
 	});
 
+	it("leaves dependency-cruiser as an inferred npm target", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as { targets: Record<string, unknown> };
+		const packageJson = JSON.parse(
+			await readFile(resolve(root, "package.json"), "utf8"),
+		) as { scripts: Record<string, string> };
+
+		expect(project.targets["dependency-cruiser"]).toBeUndefined();
+		expect(packageJson.scripts["check:dependency-cruiser"]).toEqual(
+			expect.any(String),
+		);
+	});
+
 	it("deduplicates transitive checks through check:changeset", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
@@ -183,15 +198,44 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		);
 	});
 
+	it("declares the control-plane aggregate as a no-op target", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as { targets: Record<string, { executor?: string }> };
+
+		expect(project.targets["control-plane"]?.executor).toBe("nx:noop");
+	});
+
 	it("builds both publishable packages before packing artifacts", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
-		) as { targets: Record<string, { dependsOn?: string[]; cache?: boolean }> };
+		) as {
+			targets: Record<
+				string,
+				{
+					cache?: boolean;
+					dependsOn?: string[];
+					executor?: string;
+					options?: {
+						command?: string;
+						commands?: string[];
+						parallel?: boolean;
+					};
+				}
+			>;
+		};
 		const pack = project.targets["pack:artifacts"];
+		expect(pack?.executor).toBe("nx:run-commands");
 		expect(pack?.dependsOn).toEqual(
 			expect.arrayContaining(["hevy-mcp:build", "@chrisdoc/hevy-cli:build"]),
 		);
 		expect(pack?.cache).toBe(false);
+		expect(pack?.options?.command).toBeUndefined();
+		expect(pack?.options?.commands).toEqual([
+			"node -e \"require('node:fs').mkdirSync('.nx/pack', { recursive: true })\"",
+			"npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent",
+		]);
+		expect(pack?.options?.parallel).toBe(false);
 	});
 
 	it("declares outputs only for package builds that emit dist", async () => {
@@ -218,6 +262,20 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			);
 			expect(metadata.buildOutputs(packageJson)).toEqual(outputs);
 		}
+
+		const syntheticCases: Array<[string, string[]]> = [
+			["dist", ["{projectRoot}/dist"]],
+			["dist/", ["{projectRoot}/dist"]],
+			["dist/**", ["{projectRoot}/dist"]],
+			["./dist", ["{projectRoot}/dist"]],
+			["./dist/", ["{projectRoot}/dist"]],
+			["./dist/**", ["{projectRoot}/dist"]],
+			["distribution", []],
+			["./distribution/**", []],
+		];
+		for (const [entry, outputs] of syntheticCases) {
+			expect(metadata.buildOutputs({ files: [entry] })).toEqual(outputs);
+		}
 	});
 
 	it("keeps live and artifact targets out of the cache", async () => {
@@ -226,7 +284,12 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		) as {
 			targets: Record<
 				string,
-				{ cache?: boolean; outputs?: string[]; parallelism?: boolean }
+				{
+					cache?: boolean;
+					options?: Record<string, unknown>;
+					outputs?: string[];
+					parallelism?: boolean;
+				}
 			>;
 		};
 
@@ -260,6 +323,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		]) {
 			expect(project.targets[target]?.parallelism).toBe(false);
 		}
+		expect(project.targets["test:pack:cli"]?.options).toBeUndefined();
 		expect(project.targets["worker:dry-run"]?.outputs).toEqual([
 			"{workspaceRoot}/.wrangler/dry-run",
 		]);
@@ -308,6 +372,16 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 
 		expect(report.exitCode).not.toBe(0);
 		expect(report.output).toContain("no-circular");
+	});
+
+	it("fails closed for an unresolved workspace source import", async () => {
+		const { report } = await createFixture("core", {
+			"packages/core/src/index.ts":
+				'import "missing-workspace-package";\nexport const fixture = true;\n',
+		});
+
+		expect(report.exitCode).not.toBe(0);
+		expect(report.output).toContain("workspace-source-only");
 	});
 
 	it("fails closed for a neutral-to-Node edge and Worker observability import", async () => {

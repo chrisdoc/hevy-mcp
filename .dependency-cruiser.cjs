@@ -60,7 +60,7 @@ module.exports = {
 			from: { path: neutralPackages },
 			to: {
 				dynamic: true,
-				pathNot: "^packages/(?:hevy-client|core)/src/",
+				pathNot: neutralPackages,
 			},
 		},
 		{
@@ -84,7 +84,7 @@ module.exports = {
 				"Workspace source should not resolve an internal package through an undeclared path.",
 			severity: "error",
 			from: { path: packageSources },
-			to: { couldNotResolve: true, dependencyTypes: ["local", "npm"] },
+			to: { couldNotResolve: true },
 		},
 	],
 	options: {

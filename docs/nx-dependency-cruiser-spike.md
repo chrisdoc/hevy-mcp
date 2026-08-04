@@ -49,7 +49,7 @@ and exercise the representative pack target:
 ```sh
 npm run check:dependency-cruiser
 npm run check:boundaries
-npx nx run repository:dependency-cruiser
+npx nx run repository:check:dependency-cruiser
 npx nx run repository:check:boundaries
 npx nx run repository:pack:artifacts --skip-nx-cache
 ```
@@ -114,7 +114,7 @@ before removing duplicate owners.
 | GitHub workflows migrated              | 4 local command surfaces; triggers, matrices, permissions, and deployment conditions unchanged                   |
 | CI workflow command count              | 56 `run:` steps, unchanged                                                                                       |
 | Local Nx aggregate after deduplication | 8 direct control-plane task nodes; `check:changeset` transitively invokes both omitted checks                    |
-| Handwritten control-plane surface      | 784 lines: `project.json` 213, `nx.json` 51, `.dependency-cruiser.cjs` 109, focused test 341, metadata plugin 70 |
+| Handwritten control-plane surface      | 865 lines: `project.json` 212, `nx.json` 51, `.dependency-cruiser.cjs` 109, focused test 415, metadata plugin 78 |
 | `package-lock.json` impact             | +2,295/-440 lines versus `origin/main`; no new lockfile edit in this amendment                                   |
 
 The line count is a measurement of the current files, not a historical

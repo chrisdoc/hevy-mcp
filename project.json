@@ -100,7 +100,6 @@
 		"test:pack:cli": {
 			"cache": false,
 			"dependsOn": ["test:pack"],
-			"options": { "env": { "FORCE_COLOR": "0" } },
 			"parallelism": false,
 			"inputs": ["validationInputs"]
 		},
@@ -170,14 +169,13 @@
 			"cache": false,
 			"dependsOn": ["hevy-mcp:build", "@chrisdoc/hevy-cli:build"],
 			"options": {
-				"command": "mkdir -p .nx/pack && npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent"
+				"commands": [
+					"node -e \"require('node:fs').mkdirSync('.nx/pack', { recursive: true })\"",
+					"npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent"
+				],
+				"parallel": false
 			},
 			"outputs": ["{workspaceRoot}/.nx/pack/*.tgz"],
-			"inputs": ["validationInputs"]
-		},
-		"dependency-cruiser": {
-			"executor": "nx:run-commands",
-			"options": { "command": "npm run check:dependency-cruiser" },
 			"inputs": ["validationInputs"]
 		},
 		"version:changesets": {
@@ -197,6 +195,7 @@
 		},
 		"worker:deploy": { "cache": false },
 		"control-plane": {
+			"executor": "nx:noop",
 			"dependsOn": [
 				"check:workspaces",
 				"check:boundaries",
