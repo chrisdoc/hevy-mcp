@@ -27,7 +27,6 @@
 			"artifacts": ["unit-coverage", "unit-junit"],
 			"gate": "blocking",
 			"comparison": "coverage-report",
-			"changeImpact": ["packages/**/src/**", "tests/unit/**", "scripts/**"],
 			"nxTarget": "test:unit",
 			"mappingStatus": "mapped"
 		},
@@ -43,7 +42,6 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "release-suite",
-			"changeImpact": ["packages/**/src/**", "tests/unit/**", "scripts/**"],
 			"nxTarget": "test:release-unit",
 			"mappingStatus": "mapped"
 		},
@@ -59,7 +57,6 @@
 			"artifacts": ["mocked-coverage"],
 			"gate": "blocking",
 			"comparison": "coverage-report",
-			"changeImpact": ["packages/**/src/**", "tests/integration/mocked/**"],
 			"nxTarget": "test:mcp",
 			"mappingStatus": "mapped"
 		},
@@ -81,11 +78,6 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "contract",
-			"changeImpact": [
-				"packages/core/**",
-				"packages/node/**",
-				"tests/unit/server-manifest.test.ts"
-			],
 			"nxTarget": "test:contract",
 			"mappingStatus": "mapped"
 		},
@@ -106,7 +98,6 @@
 			"artifacts": ["stdio-diagnostics"],
 			"gate": "blocking",
 			"comparison": "protocol",
-			"changeImpact": ["packages/node/src/**", "packages/core/src/**"],
 			"nxTarget": "test:stdio",
 			"mappingStatus": "mapped"
 		},
@@ -122,12 +113,6 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "worker-contract",
-			"changeImpact": [
-				"packages/worker/**",
-				"packages/core/**",
-				"packages/operations/**",
-				"cloudflare.config.ts"
-			],
 			"nxTarget": "test:worker",
 			"mappingStatus": "mapped"
 		},
@@ -144,12 +129,6 @@
 			"artifacts": ["worker-bundle"],
 			"gate": "blocking",
 			"comparison": "worker-http-contract",
-			"changeImpact": [
-				"packages/worker/**",
-				"packages/core/**",
-				"packages/operations/**",
-				"tests/integration/worker-http.integration.test.ts"
-			],
 			"nxTarget": "test:worker-http",
 			"mappingStatus": "mapped"
 		},
@@ -164,12 +143,6 @@
 			"artifacts": ["node-package-tarball"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": [
-				"packages/node/**",
-				"server.json",
-				"plugin.json",
-				"Dockerfile"
-			],
 			"nxTarget": "test:pack",
 			"mappingStatus": "mapped"
 		},
@@ -185,12 +158,6 @@
 			"artifacts": ["cli-dist"],
 			"gate": "blocking",
 			"comparison": "cli-contract",
-			"changeImpact": [
-				"packages/cli/**",
-				"packages/core/**",
-				"packages/hevy-client/**",
-				"packages/operations/**"
-			],
 			"nxTarget": "test:cli",
 			"mappingStatus": "mapped"
 		},
@@ -206,7 +173,6 @@
 			"artifacts": ["cli-package-tarball"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": ["packages/cli/**", "packages/operations/**"],
 			"nxTarget": "test:pack:cli",
 			"mappingStatus": "mapped"
 		},
@@ -222,7 +188,6 @@
 			"artifacts": ["performance-summary"],
 			"gate": "informational",
 			"comparison": "performance-baseline",
-			"changeImpact": ["packages/**/src/**", "tests/performance/**"],
 			"nxTarget": "test:performance",
 			"mappingStatus": "mapped"
 		},
@@ -238,33 +203,7 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "control-plane",
-			"changeImpact": [
-				"repository/**",
-				"scripts/control-plane-*.mjs",
-				"project.json",
-				"nx.json"
-			],
 			"nxTarget": "check:control-plane",
-			"mappingStatus": "mapped"
-		},
-		{
-			"id": "workspace-topology",
-			"alias": "check:workspaces",
-			"selector": {
-				"kind": "control-plane",
-				"check": "topology"
-			},
-			"runtimes": ["node-24", "node-26"],
-			"credentials": [],
-			"artifacts": [],
-			"gate": "blocking",
-			"comparison": "topology",
-			"changeImpact": [
-				"package.json",
-				"packages/*/package.json",
-				"repository/topology.json"
-			],
-			"nxTarget": "check:workspaces",
 			"mappingStatus": "mapped"
 		},
 		{
@@ -284,7 +223,6 @@
 			],
 			"gate": "blocking",
 			"comparison": "dependency-graph",
-			"changeImpact": ["packages/**/src/**", "repository/topology.json"],
 			"nxTarget": "check:boundaries",
 			"mappingStatus": "mapped"
 		},
@@ -300,24 +238,7 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "exports",
-			"changeImpact": ["packages/*/package.json", "repository/topology.json"],
 			"nxTarget": "check:exports",
-			"mappingStatus": "mapped"
-		},
-		{
-			"id": "release-candidates",
-			"alias": "check:release-candidates",
-			"selector": {
-				"kind": "control-plane",
-				"check": "release-candidates"
-			},
-			"runtimes": ["node-24", "node-26"],
-			"credentials": [],
-			"artifacts": [],
-			"gate": "blocking",
-			"comparison": "publishability",
-			"changeImpact": ["packages/*/package.json", "repository/topology.json"],
-			"nxTarget": "check:release-candidates",
 			"mappingStatus": "mapped"
 		},
 		{
@@ -332,12 +253,6 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "release-cascade",
-			"changeImpact": [
-				"packages/**",
-				"cloudflare.config.ts",
-				".changeset/**",
-				"repository/topology.json"
-			],
 			"nxTarget": "check:package-changesets",
 			"mappingStatus": "mapped"
 		},
@@ -352,12 +267,6 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "release-cascade",
-			"changeImpact": [
-				".changeset/**",
-				"packages/**",
-				"cloudflare.config.ts",
-				"repository/topology.json"
-			],
 			"nxTarget": "check:changeset",
 			"mappingStatus": "mapped"
 		},
@@ -373,7 +282,6 @@
 			"artifacts": ["core-source", "hevy-client-source", "operations-source"],
 			"gate": "blocking",
 			"comparison": "type-safety",
-			"changeImpact": ["packages/**", "scripts/**", "tests/**"],
 			"nxTarget": "check:types",
 			"mappingStatus": "mapped"
 		},
@@ -387,7 +295,6 @@
 			"artifacts": [],
 			"gate": "blocking",
 			"comparison": "style-and-static",
-			"changeImpact": ["**/*"],
 			"nxTarget": "check",
 			"mappingStatus": "mapped"
 		},
@@ -403,11 +310,6 @@
 			"artifacts": ["node-dist"],
 			"gate": "blocking",
 			"comparison": "build-output",
-			"changeImpact": [
-				"packages/**",
-				"openapi-spec.json",
-				"repository/artifact-provenance.json"
-			],
 			"nxTarget": "build",
 			"mappingStatus": "mapped"
 		},
@@ -423,13 +325,6 @@
 			"artifacts": ["worker-bundle"],
 			"gate": "blocking",
 			"comparison": "bundle-closure",
-			"changeImpact": [
-				"packages/worker/**",
-				"packages/core/**",
-				"packages/operations/**",
-				"packages/hevy-client/**",
-				"cloudflare.config.ts"
-			],
 			"nxTarget": "worker:dry-run",
 			"mappingStatus": "mapped"
 		},
@@ -444,12 +339,6 @@
 			"artifacts": ["server-manifest"],
 			"gate": "blocking",
 			"comparison": "provenance",
-			"changeImpact": [
-				"packages/node/package.json",
-				"server.json",
-				"packages/node/server.json",
-				"plugin.json"
-			],
 			"nxTarget": "check:server-manifest",
 			"mappingStatus": "mapped"
 		},
@@ -464,11 +353,6 @@
 			"artifacts": ["docker-image"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": [
-				"Dockerfile",
-				"packages/node/**",
-				"packages/operations/**"
-			],
 			"integration": "docker workflow",
 			"nxTarget": null,
 			"mappingStatus": "external"
@@ -484,11 +368,6 @@
 			"artifacts": ["generated-client"],
 			"gate": "blocking",
 			"comparison": "clean-diff",
-			"changeImpact": [
-				"openapi-spec.json",
-				"packages/hevy-client/src/**",
-				"packages/hevy-client/kubb.config.ts"
-			],
 			"nxTarget": "check:generated",
 			"mappingStatus": "mapped"
 		},
@@ -503,7 +382,6 @@
 			"artifacts": ["live-diagnostics"],
 			"gate": "release",
 			"comparison": "provider-contract",
-			"changeImpact": ["packages/**", "tests/integration/**"],
 			"nxTarget": "test:live",
 			"mappingStatus": "mapped"
 		},
@@ -519,11 +397,6 @@
 			"artifacts": ["live-worker-diagnostics"],
 			"gate": "release",
 			"comparison": "provider-contract",
-			"changeImpact": [
-				"packages/worker/**",
-				"packages/operations/**",
-				"tests/integration/worker-http.integration.test.ts"
-			],
 			"nxTarget": "test:worker-http:live",
 			"mappingStatus": "mapped"
 		},
@@ -539,7 +412,6 @@
 			"artifacts": ["live-diagnostics"],
 			"gate": "release",
 			"comparison": "provider-contract",
-			"changeImpact": ["packages/**", "tests/integration/**"],
 			"nxTarget": "test:integration",
 			"mappingStatus": "mapped"
 		},
@@ -554,11 +426,6 @@
 			"artifacts": ["nightly-diagnostics"],
 			"gate": "nightly",
 			"comparison": "published-launchers",
-			"changeImpact": [
-				"packages/node/**",
-				"tests/nightly/**",
-				".github/workflows/nightly-mcp-test.yml"
-			],
 			"nxTarget": "test:nightly",
 			"mappingStatus": "mapped"
 		},
@@ -574,8 +441,7 @@
 			"credentials": [],
 			"artifacts": [],
 			"gate": "blocking",
-			"comparison": "diagnostics",
-			"changeImpact": ["tests/nightly/diagnostics.test.mjs", "scripts/**"]
+			"comparison": "diagnostics"
 		}
 	],
 	"aggregates": {
@@ -598,10 +464,8 @@
 			"external": true,
 			"lanes": [
 				"repository-control-plane",
-				"workspace-topology",
 				"package-boundaries",
 				"package-exports",
-				"release-candidates",
 				"types",
 				"server-manifest",
 				"check",

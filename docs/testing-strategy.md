@@ -294,7 +294,7 @@ these names rather than duplicating selectors:
 	"test:contract": "vitest run <current contract baseline>",
 	"test:stdio": "vitest run <current stdio/process baseline>",
 	"test:pack": "node tests/package/npm-pack-smoke.mjs",
-	"test:live": "node --env-file-if-exists=.env scripts/run-live-tests.mjs",
+	"test:live": "node --env-file-if-exists=.env scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
 	"test:performance": "npm run build && vitest run tests/performance/performance.test.ts",
 	"test:coverage": "unit and mocked MCP coverage via their named lanes",

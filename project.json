@@ -11,16 +11,10 @@
 		"check:generated": {
 			"inputs": ["generatedClientInputs"]
 		},
-		"check:workspaces": {
-			"inputs": ["controlPlaneInputs"]
-		},
 		"check:boundaries": {
 			"inputs": ["boundaryInputs", "controlPlaneInputs"]
 		},
 		"check:exports": {
-			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
-		},
-		"check:release-candidates": {
 			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
 		},
 		"check:package-changesets": {
@@ -153,7 +147,9 @@
 			"dependsOn": [
 				"build",
 				"test:release-unit",
-				"test:pack",
+				"test:worker",
+				"test:cli",
+				"test:pack:cli",
 				"test:integration",
 				"test:nightly",
 				"test:worker-http:live"
@@ -225,7 +221,6 @@
 			"executor": "nx:noop",
 			"dependsOn": [
 				"check:control-plane",
-				"check:workspaces",
 				"check:boundaries",
 				"check:exports",
 				"test:pr",

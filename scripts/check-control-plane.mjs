@@ -1,12 +1,8 @@
-import {
-	validateBaseline,
-	validateControlPlane,
-} from "./repository-control-plane.mjs";
+import { validateControlPlane } from "./repository-control-plane.mjs";
 import { validateWorkflowProjections } from "./workflow-projections.mjs";
 import { checkRenderedValidationLaneTables } from "./render-validation-lanes.mjs";
 
 const controlPlane = validateControlPlane();
-validateBaseline(controlPlane.rootDir, controlPlane);
 validateWorkflowProjections(controlPlane.lanes, {
 	rootDir: controlPlane.rootDir,
 	workflows: {

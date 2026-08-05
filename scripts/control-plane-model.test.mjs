@@ -1,22 +1,12 @@
 import { describe, expect, it } from "vitest";
-import {
-	loadControlPlane,
-	loadControlPlaneBaseline,
-	repositoryRoot,
-} from "./control-plane-models.mjs";
+import { loadControlPlane, repositoryRoot } from "./control-plane-models.mjs";
 import {
 	validateAggregateAcyclicity,
 	validateArtifactProvenance,
-	validateBaseline,
 	validateControlPlane,
-	validateHistoricalRegistryFragments,
 	validateTopology,
 	validateValidationLanes,
 } from "./repository-control-plane.mjs";
-import {
-	normalizeChangedFiles,
-	resolveImpactedLanes,
-} from "./control-plane-routing.mjs";
 
 describe("repository control-plane models", () => {
 	it("models every workspace identity, role, and dependency direction", () => {
@@ -212,7 +202,7 @@ describe("repository control-plane models", () => {
 		).publishable = false;
 		expect(() =>
 			validateTopology(repositoryRoot, nonPublishablePublic, artifactIds),
-		).not.toThrow();
+		).toThrow(/publishability does not match topology/);
 
 		const privatePublishable = structuredClone(controlPlane.topology);
 		privatePublishable.workspaces.find(
@@ -528,95 +518,5 @@ describe("repository control-plane models", () => {
 				second: { lanes: ["first"] },
 			}),
 		).toThrow(/Validation aggregate cycle/);
-	});
-
-	it("detects baseline identity drift and routes changed files", () => {
-		const controlPlane = loadControlPlane(repositoryRoot);
-		validateBaseline(repositoryRoot, controlPlane);
-		const baseline = loadControlPlaneBaseline(repositoryRoot);
-		expect(() => validateHistoricalRegistryFragments([])).toThrow(
-			/drifted from canonical evidence/,
-		);
-		const tamperedFragments = structuredClone(
-			baseline.before.registryFragments,
-		);
-		tamperedFragments[0].id = "tampered-id";
-		expect(() =>
-			validateHistoricalRegistryFragments(tamperedFragments),
-		).toThrow(/drifted from canonical evidence/);
-		const alteredCoordinateFragments = structuredClone(
-			baseline.before.registryFragments,
-		);
-		alteredCoordinateFragments[0].line += 1;
-		expect(() =>
-			validateHistoricalRegistryFragments(alteredCoordinateFragments),
-		).toThrow(/drifted from canonical evidence/);
-		const alteredHistoricalAggregate = structuredClone(baseline);
-		alteredHistoricalAggregate.before.metrics.aggregateLaneIdentities[
-			"pull-request"
-		][0] = "unit-drift";
-		expect(() =>
-			validateBaseline(
-				repositoryRoot,
-				controlPlane,
-				alteredHistoricalAggregate,
-			),
-		).toThrow(/baseline historical aggregate pull-request drifted/);
-		const extraCurrentAggregate = structuredClone(baseline);
-		extraCurrentAggregate.after.metrics.aggregateLaneIdentities.extra = [];
-		expect(() =>
-			validateBaseline(repositoryRoot, controlPlane, extraCurrentAggregate),
-		).toThrow(/baseline current aggregate identities drifted/);
-		const missingCurrentAggregateCount = structuredClone(baseline);
-		delete missingCurrentAggregateCount.comparableMetrics
-			.currentModeledAggregateLaneCounts["pull-request-ci"];
-		expect(() =>
-			validateBaseline(
-				repositoryRoot,
-				controlPlane,
-				missingCurrentAggregateCount,
-			),
-		).toThrow(/baseline current aggregate counts drifted/);
-
-		const drifted = structuredClone(controlPlane);
-		drifted.lanes.lanes[0].id = "unit-drift";
-		expect(() => validateBaseline(repositoryRoot, drifted)).toThrow(
-			/baseline validation lane identities drifted/,
-		);
-
-		expect(
-			normalizeChangedFiles([
-				{ oldPath: "old.txt", newPath: "new.txt" },
-				"old\\nested.txt",
-				"old.txt",
-			]),
-		).toEqual(["old.txt", "new.txt", "old/nested.txt"]);
-		const impacted = resolveImpactedLanes(controlPlane.lanes, [
-			"packages/hevy-client/src/generated/client.ts",
-			"packages/node/src/index.ts",
-			"packages/core/src/index.ts",
-			"Dockerfile",
-			"server.json",
-			"plugin.json",
-			"tests/integration/live.test.ts",
-			"tests/nightly/diagnostics.test.mjs",
-			{
-				oldPath: "packages/node/src/old.ts",
-				newPath: "packages/node/src/new.ts",
-			},
-		]);
-		expect(impacted).toEqual(
-			expect.arrayContaining([
-				"generation",
-				"diagnostics",
-				"docker",
-				"pack",
-				"server-manifest",
-				"integration-live",
-				"release-integration",
-				"nightly",
-				"check",
-			]),
-		);
 	});
 });

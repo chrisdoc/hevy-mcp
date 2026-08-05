@@ -99,8 +99,6 @@ async function createFixture(
 		"scripts/repository-control-plane.mjs",
 		"scripts/control-plane-models.mjs",
 		"scripts/control-plane-validation.mjs",
-		"scripts/control-plane-baseline.mjs",
-		"scripts/control-plane-routing.mjs",
 		"repository/topology.json",
 		"repository/artifact-provenance.json",
 		"repository/validation-lanes.json",

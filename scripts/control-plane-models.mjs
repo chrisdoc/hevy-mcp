@@ -31,13 +31,6 @@ export function loadValidationLanes(rootDir = repositoryRoot) {
 	return lanes;
 }
 
-export function loadControlPlaneBaseline(rootDir = repositoryRoot) {
-	const baseline = readJson(rootDir, "control-plane-baseline.json");
-	if (!baseline)
-		throw new Error("repository/control-plane-baseline.json is required");
-	return baseline;
-}
-
 export function loadProject(rootDir = repositoryRoot) {
 	const projectPath = resolve(rootDir, "project.json");
 	if (!existsSync(projectPath)) throw new Error("project.json is required");

@@ -125,6 +125,23 @@ export function validateTopology(rootDir, topology, artifactIds) {
 		rootPackage.private === topology.root.private,
 		"root package private flag does not match topology",
 	);
+	assert(
+		rootPackage.private === true,
+		"Root orchestration package must be private",
+	);
+	for (const field of [
+		"version",
+		"main",
+		"module",
+		"types",
+		"bin",
+		"files",
+		"publishConfig",
+	])
+		assert(
+			!(field in rootPackage),
+			"Root orchestration package must not declare " + field,
+		);
 	assertArray(topology.workspaces, "topology.workspaces");
 	assertUnique(
 		topology.workspaces.map((workspace) => workspace.id),
@@ -236,6 +253,10 @@ export function validateTopology(rootDir, topology, artifactIds) {
 			workspace.path + "/package.json private flag does not match topology",
 		);
 		assert(
+			workspace.publishable === (packageJson.private !== true),
+			workspace.path + "/package.json publishability does not match topology",
+		);
+		assert(
 			JSON.stringify(packageExports(packageJson)) ===
 				JSON.stringify(workspace.exports),
 			workspace.path + "/package.json exports do not match topology",
@@ -263,6 +284,18 @@ export function validateTopology(rootDir, topology, artifactIds) {
 	assert(
 		JSON.stringify(actualPaths) === JSON.stringify(expectedPaths),
 		"workspace directories do not match topology",
+	);
+	const publishablePackages = topology.workspaces
+		.filter((workspace) => workspace.publishable)
+		.map((workspace) => workspace.name)
+		.sort((left, right) => left.localeCompare(right));
+	const nonPrivatePackages = topology.workspaces
+		.filter((workspace) => workspace.private !== true)
+		.map((workspace) => workspace.name)
+		.sort((left, right) => left.localeCompare(right));
+	assert(
+		JSON.stringify(publishablePackages) === JSON.stringify(nonPrivatePackages),
+		"every non-private workspace must be declared publishable",
 	);
 	const release = topology.release;
 	assert(
@@ -764,7 +797,6 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			"artifacts",
 			"gate",
 			"comparison",
-			"changeImpact",
 		])
 			assert(
 				lane[field] !== undefined,
@@ -850,14 +882,6 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			lane.id + " has unknown gate " + lane.gate,
 		);
 		assertString(lane.comparison, lane.id + ".comparison");
-		assertArray(lane.changeImpact, lane.id + ".changeImpact");
-		assert(
-			lane.changeImpact.length > 0 &&
-				lane.changeImpact.every(
-					(pattern) => typeof pattern === "string" && pattern.length > 0,
-				),
-			lane.id + ".changeImpact must contain patterns",
-		);
 		for (const artifact of lane.artifacts) {
 			const output = provenance.outputs.find((entry) => entry.id === artifact);
 			const candidate = provenance.candidates.find(
@@ -892,10 +916,6 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			);
 		}
 	}
-	assert(
-		lanes.lanes.some((lane) => lane.changeImpact.includes("**/*")),
-		"validation changeImpact needs a non-empty **/* fallback",
-	);
 	const aggregates = lanes.aggregates;
 	validateAggregateAcyclicity(aggregates);
 	const unresolved = new Set(lanes.unresolvedMappings.map((entry) => entry.id));
@@ -1017,6 +1037,34 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				!containsUnresolvedMember(id),
 				id + " mapped aggregate includes an unresolved member",
 			);
+	const aggregateTargetMembers = (id) =>
+		(aggregates[id]?.lanes ?? []).map((member) => {
+			const lane = laneById.get(member);
+			return lane?.nxTarget ?? aggregates[member]?.nxTarget;
+		});
+	const sortTargets = (values) =>
+		[...new Set(values)].sort((left, right) => left.localeCompare(right));
+	for (const [id, aggregate] of Object.entries(aggregates)) {
+		if (aggregate.mappingStatus !== "mapped") continue;
+		const target = project.targets[aggregate.nxTarget];
+		const expected = aggregateTargetMembers(id);
+		const actual = (target.dependsOn ?? []).map((dependency) =>
+			typeof dependency === "string" ? dependency : dependency.target,
+		);
+		assert(
+			actual.every((dependency) => typeof dependency === "string"),
+			id + " mapped target dependencies must be target names",
+		);
+		assert(
+			JSON.stringify(sortTargets(actual)) ===
+				JSON.stringify(sortTargets(expected)),
+			id +
+				" Nx target dependsOn must match aggregate members; expected " +
+				expected.join(", ") +
+				" but found " +
+				actual.join(", "),
+		);
+	}
 	return lanes;
 }
 
