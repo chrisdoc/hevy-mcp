@@ -39,6 +39,22 @@
 			"{workspaceRoot}/packages/*/tsdown.config.*",
 			"{workspaceRoot}/packages/hevy-client/kubb.config.ts"
 		],
+		"projectSources": ["{projectRoot}/src/**/*"],
+		"projectConfigs": [
+			"{projectRoot}/package.json",
+			"{projectRoot}/tsconfig*.json",
+			"{projectRoot}/tsdown.config.*",
+			"{projectRoot}/kubb.config.ts"
+		],
+		"projectSharedConfigs": [
+			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/tsconfig*.json"
+		],
+		"projectTypeCheckInputs": [
+			"projectConfigs",
+			"projectSharedConfigs",
+			"projectSources"
+		],
 		"compilerConfigs": [
 			"{workspaceRoot}/tsconfig*.json",
 			"{workspaceRoot}/packages/*/tsconfig*.json"
@@ -134,25 +150,24 @@
 			"runtimeSources",
 			"{workspaceRoot}/packages/cli/src/**/*"
 		],
-		"typeCheckInputs": [
+		"repositoryTypeCheckInputs": [
 			"compilerConfigs",
 			"packageManifestInputs",
-			"runtimeSources"
+			"runtimeSources",
+			"rootSources"
 		],
-		"repositoryTypeCheckInputs": ["typeCheckInputs", "rootSources"],
-		"packageBuildInputs": [
+		"packageBuildInputs": ["projectTypeCheckInputs"],
+		"repositoryBuildInputs": [
 			"packageConfigs",
 			"compilerConfigs",
 			"runtimeSources"
 		],
-		"nodeBuildInputs": [
-			"packageBuildInputs",
+		"nodeBuildInputs": ["packageBuildInputs", "{projectRoot}/tsdown.config.ts"],
+		"repositoryNodeBuildInputs": [
+			"repositoryBuildInputs",
 			"{workspaceRoot}/packages/node/tsdown.config.ts"
 		],
-		"cliBuildInputs": [
-			"packageBuildInputs",
-			"{workspaceRoot}/packages/cli/tsdown.config.ts"
-		],
+		"cliBuildInputs": ["packageBuildInputs", "{projectRoot}/tsdown.config.ts"],
 		"manifestInputs": [
 			"controlPlaneModels",
 			"{workspaceRoot}/package.json",
@@ -190,9 +205,9 @@
 	"targetDefaults": {
 		"build": [
 			{
-				"cache": false,
+				"cache": true,
 				"inputs": ["packageBuildInputs"],
-				"dependsOn": ["^build"]
+				"dependsOn": ["^check:types"]
 			},
 			{
 				"cache": true,
@@ -207,7 +222,7 @@
 		],
 		"check:types": {
 			"cache": true,
-			"inputs": ["typeCheckInputs"],
+			"inputs": ["projectTypeCheckInputs"],
 			"dependsOn": ["^check:types"]
 		}
 	}
