@@ -24,13 +24,15 @@
 - **No Direct Pushes to `main` (CRITICAL)**: Pushing directly to the `main` branch is strictly prohibited and blocked by branch protection. All development must be done on feature branches (e.g., `feat/some-feature` or `fix/some-bug`) and submitted via a Pull Request.
 - **Fresh Worktrees (CRITICAL)**: Always begin work from a new Git worktree based on and tracking the latest `origin/main`. Fetch `origin/main` first, then create a dedicated feature worktree/branch from `origin/main`; never start implementation in an existing worktree or from a stale local `main`.
 - **Never bypass Git hooks**: Never use `--no-verify` for commits or pushes. Fix the underlying hook or validation failure, then rerun the hook normally.
-- **Changesets (CRITICAL)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
+- **Changesets (CRITICAL — CHECK THIS BEFORE EVERY COMMIT)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
+  - **STOP BEFORE COMMITTING**: If a change touches `packages/*`, changes runtime-visible behavior, changes a workspace package dependency, or changes an explicit release trigger such as `cloudflare.config.ts`, create and stage a **non-empty Changeset first**. Do not rely on the Conventional Commit type (`chore:`, `docs:`, etc.) to decide this.
+  - **REQUIRED FINAL CHECK**: Run `npm run check:changeset` before committing. A passing unit test or commit hook does not replace this check.
   - **RELEASE CADENCE**: Merge the automated `changeset-release/main` (**"Version Packages"**) Pull Request on a regular cadence (weekly is the default), not via ad-hoc frequent merges.
   - **URGENT EXCEPTION**: Security fixes and high-impact user-facing bug fixes may be released immediately outside the routine cadence.
   - **BUMP CHANGESETS**: The root is a private repository orchestrator; runtime/package code and manifests are under `packages/*`. Files under `packages/*`, runtime-visible behavior changes, workspace package dependency changes, and explicit release triggers such as `cloudflare.config.ts` **MUST** use a non-empty bump Changeset naming every affected package. Use `npx changeset` and select `patch`, `minor`, or `major` for the release impact.
   - **EMPTY CHANGESETS**: An empty Changeset is allowed only when the entire PR is no-release/internal-only and changes no workspace package or explicit release trigger; it cannot accompany a release-triggering change. Docs, CI, repository-only tests/tooling, and chores may qualify only when they meet those conditions; a Conventional Commit type alone does not determine eligibility. Create an eligible empty Changeset with `npx changeset --empty`.
-  - **BUNDLED RELEASE CASCADE**: Every listed consumer receives at least a patch bump; do not couple unrelated package versions:
-    - `@hevy-mcp/hevy-client` changes → client, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
+  - **BUNDLED RELEASE CASCADE**: Every listed consumer receives at least a patch bump; do not couple unrelated package versions. The `@hevy-mcp/operations` package is also a transitive shipped consumer and must be included when the client changes:
+    - `@hevy-mcp/hevy-client` changes → client, `@hevy-mcp/operations`, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
     - `@hevy-mcp/core` changes → core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
     - Node adapter-only changes → `hevy-mcp` only.
     - Worker-only changes → `@hevy-mcp/worker` only.

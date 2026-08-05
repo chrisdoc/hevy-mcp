@@ -11,7 +11,7 @@ import { z } from "zod/v4";
 export const createCustomExerciseRequestBodySchema = z.object({
   exercise: z.object({
     title: z.optional(
-      z.string().describe("The title of the exercise template.")
+      z.string().describe("The title of the exercise template."),
     ),
     get exercise_type() {
       return customExerciseTypeSchema.optional();
