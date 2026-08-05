@@ -53,6 +53,11 @@ function normalizeWorkoutsPage(
 	response: GetV1Workouts200,
 	input: WorkoutsListInput,
 ): WorkoutsListOutput {
+	if (response.page !== undefined && response.page !== input.page) {
+		throw new Error(
+			`Workouts page mismatch: requested page ${input.page} but received page ${response.page}`,
+		);
+	}
 	return {
 		items: response.workouts ?? [],
 		page: response.page ?? input.page,

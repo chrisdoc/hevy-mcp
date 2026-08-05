@@ -206,7 +206,7 @@
 			"artifacts": ["cli-package-tarball"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": ["packages/cli/**"],
+			"changeImpact": ["packages/cli/**", "packages/operations/**"],
 			"nxTarget": "test:pack:cli",
 			"mappingStatus": "mapped"
 		},
@@ -464,7 +464,7 @@
 			"artifacts": ["docker-image"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": ["Dockerfile", "packages/node/**"],
+			"changeImpact": ["Dockerfile", "packages/node/**", "packages/operations/**"],
 			"integration": "docker workflow",
 			"nxTarget": null,
 			"mappingStatus": "external"
@@ -517,6 +517,7 @@
 			"comparison": "provider-contract",
 			"changeImpact": [
 				"packages/worker/**",
+				"packages/operations/**",
 				"tests/integration/worker-http.integration.test.ts"
 			],
 			"nxTarget": "test:worker-http:live",

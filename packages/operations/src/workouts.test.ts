@@ -99,4 +99,19 @@ describe("workouts.list operation", () => {
 			unrelatedOperation.execute({ page: 2, pageSize: 5 }),
 		).rejects.toBeInstanceOf(HevyHttpError);
 	});
+
+	it("rejects when response page differs from requested page", async () => {
+		const adapter = createInMemoryAdapter([
+			{
+				page: 3,
+				page_count: 5,
+				workouts: [{ id: "w1" }],
+			},
+		]);
+		const operation = createWorkoutsListOperation(adapter);
+
+		await expect(operation.execute({ page: 2, pageSize: 10 })).rejects.toThrow(
+			"Workouts page mismatch: requested page 2 but received page 3",
+		);
+	});
 });
