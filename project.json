@@ -17,6 +17,12 @@
 		"check:exports": {
 			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
 		},
+		"check:publint": {
+			"cache": false,
+			"dependsOn": ["build", "@chrisdoc/hevy-cli:build"],
+			"parallelism": false,
+			"inputs": ["validationInputs"]
+		},
 		"check:package-changesets": {
 			"cache": false,
 			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
@@ -46,7 +52,8 @@
 				"test:worker-http",
 				"test:pack",
 				"test:cli",
-				"test:pack:cli"
+				"test:pack:cli",
+				"check:publint"
 			],
 			"inputs": ["validationInputs"]
 		},
@@ -150,6 +157,7 @@
 				"test:worker",
 				"test:cli",
 				"test:pack:cli",
+				"check:publint",
 				"test:integration",
 				"test:nightly",
 				"test:worker-http:live"
