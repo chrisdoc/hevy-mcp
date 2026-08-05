@@ -27,6 +27,7 @@ const inferredTargets = [
 	"check:control-plane",
 	"check:boundaries",
 	"check:exports",
+	"check:publint",
 	"check:package-changesets",
 	"check",
 	"check:types",
@@ -176,7 +177,35 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			"test:pack",
 			"test:cli",
 			"test:pack:cli",
+			"check:publint",
 		]);
+	});
+
+	it("runs strict Publint against both public package workspaces", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as {
+			targets: Record<
+				string,
+				{
+					cache?: boolean;
+					dependsOn?: string[];
+					parallelism?: boolean;
+				}
+			>;
+		};
+		const packageJson = JSON.parse(
+			await readFile(resolve(root, "package.json"), "utf8"),
+		) as { scripts: Record<string, string> };
+
+		expect(packageJson.scripts["check:publint"]).toBe(
+			"publint run --strict --pack npm packages/node && publint run --strict --pack npm packages/cli",
+		);
+		expect(project.targets["check:publint"]).toMatchObject({
+			cache: false,
+			dependsOn: ["build", "@chrisdoc/hevy-cli:build"],
+			parallelism: false,
+		});
 	});
 
 	it("leaves dependency-cruiser as an inferred npm target", async () => {

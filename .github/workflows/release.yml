@@ -58,6 +58,8 @@ jobs:
         run: npx nx run repository:test:cli
       - name: Verify published packages
         run: npx nx run repository:test:pack:cli
+      - name: Check published package metadata
+        run: npx nx run repository:check:publint
       - name: Run integration tests
         run: npx nx run repository:test:integration
         env:

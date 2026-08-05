@@ -148,6 +148,10 @@ jobs:
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         run: npx nx run repository:test:pack:cli
 
+      - name: Check published package metadata
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npx nx run repository:check:publint
+
       - name: Run CLI tests
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         run: npx nx run repository:test:cli

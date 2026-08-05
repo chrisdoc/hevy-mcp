@@ -242,6 +242,21 @@
 			"mappingStatus": "mapped"
 		},
 		{
+			"id": "package-publint",
+			"alias": "check:publint",
+			"selector": {
+				"kind": "control-plane",
+				"check": "publint"
+			},
+			"runtimes": ["node-24"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "published-package",
+			"nxTarget": "check:publint",
+			"mappingStatus": "mapped"
+		},
+		{
 			"id": "package-changesets",
 			"alias": "check:package-changesets",
 			"selector": {
@@ -455,7 +470,8 @@
 				"worker-http",
 				"pack",
 				"cli",
-				"pack-cli"
+				"pack-cli",
+				"package-publint"
 			],
 			"nxTarget": "test:pr",
 			"mappingStatus": "mapped"
@@ -466,6 +482,7 @@
 				"repository-control-plane",
 				"package-boundaries",
 				"package-exports",
+				"package-publint",
 				"types",
 				"server-manifest",
 				"check",
@@ -497,6 +514,7 @@
 				"worker",
 				"cli",
 				"pack-cli",
+				"package-publint",
 				"release-integration",
 				"nightly",
 				"worker-http-live"
