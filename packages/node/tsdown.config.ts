@@ -80,7 +80,11 @@ export default defineConfig({
 		: {
 				// Keep the private workspace graph inside the public artifact. Only
 				// Node's declared runtime dependencies remain external.
-				alwaysBundle: ["@hevy-mcp/core", "@hevy-mcp/hevy-client"],
+				alwaysBundle: [
+					"@hevy-mcp/core",
+					"@hevy-mcp/hevy-client",
+					"@hevy-mcp/operations",
+				],
 			},
 	banner: {
 		js: "#!/usr/bin/env node\n// Generated with tsdown\n// https://tsdown.dev",

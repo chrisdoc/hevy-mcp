@@ -464,7 +464,11 @@
 			"artifacts": ["docker-image"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": ["Dockerfile", "packages/node/**", "packages/operations/**"],
+			"changeImpact": [
+				"Dockerfile",
+				"packages/node/**",
+				"packages/operations/**"
+			],
 			"integration": "docker workflow",
 			"nxTarget": null,
 			"mappingStatus": "external"
