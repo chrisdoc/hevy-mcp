@@ -1,5 +1,24 @@
 # hevy-mcp
 
+## 5.1.0
+
+### Minor Changes
+
+- [#887](https://github.com/chrisdoc/hevy-mcp/pull/887) [`976f570`](https://github.com/chrisdoc/hevy-mcp/commit/976f570fe1a0258ee5442002c830385dc888ad72) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add invocation-scoped cancellation, absolute deadlines, commit-state outcomes, and safe retry diagnostics across the Hevy client, MCP adapters, Worker, Node server, and CLI.
+
+### Patch Changes
+
+- [#904](https://github.com/chrisdoc/hevy-mcp/pull/904) [`8ecf3f5`](https://github.com/chrisdoc/hevy-mcp/commit/8ecf3f5ceee778cca0df942fda702d1c2195c03d) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Document the 30-second OpenTelemetry metric export interval.
+
+- [#890](https://github.com/chrisdoc/hevy-mcp/pull/890) [`5f78f33`](https://github.com/chrisdoc/hevy-mcp/commit/5f78f334c01016580fcff8af895d50997ef9ae87) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Keep generated client output complete and reproducible while centralizing
+  repository topology, artifact provenance, and validation lanes.
+
+- [#905](https://github.com/chrisdoc/hevy-mcp/pull/905) [`3050d11`](https://github.com/chrisdoc/hevy-mcp/commit/3050d113bc808025d567b71c3004c7604aba8a3f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Keep the packaged GlitchTip DSN while suppressing Sentry client reports for dropped spans.
+
+- [#902](https://github.com/chrisdoc/hevy-mcp/pull/902) [`cafe0c6`](https://github.com/chrisdoc/hevy-mcp/commit/cafe0c624de9804c11a93b20f2364c4e742c6cc3) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Share the typed workouts.list operation between the MCP server and CLI.
+
+- [#896](https://github.com/chrisdoc/hevy-mcp/pull/896) [`dea8542`](https://github.com/chrisdoc/hevy-mcp/commit/dea8542d7fdf06971519607a13713b970b560f86) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Clarify that `SENTRY_RELEASE` labels local Sentry error events.
+
 ## 5.0.6
 
 ### Patch Changes
