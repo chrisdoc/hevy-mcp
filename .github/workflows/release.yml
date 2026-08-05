@@ -52,8 +52,12 @@ jobs:
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
       - name: Run unit tests
         run: npx nx run repository:test:release-unit
-      - name: Verify published package
-        run: npx nx run repository:test:pack
+      - name: Run Worker tests
+        run: npx nx run repository:test:worker
+      - name: Run CLI tests
+        run: npx nx run repository:test:cli
+      - name: Verify published packages
+        run: npx nx run repository:test:pack:cli
       - name: Run integration tests
         run: npx nx run repository:test:integration
         env:

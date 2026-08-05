@@ -113,6 +113,10 @@ jobs:
         if: matrix.node-version == '24.x'
         run: npx nx run repository:test:worker-http
 
+      - name: Run Worker tests
+        if: matrix.node-version == '24.x'
+        run: npx nx run repository:test:worker
+
       - name: Run mocked integration tests with coverage
         if: matrix.node-version == '24.x'
         run: npx nx run repository:test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
@@ -146,9 +150,13 @@ jobs:
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         run: npx nx run repository:test:stdio
 
-      - name: Run package baseline
+      - name: Run package and CLI package baselines
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:pack
+        run: npx nx run repository:test:pack:cli
+
+      - name: Run CLI tests
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npx nx run repository:test:cli
 
       - name: Build and scan Worker dry run
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}

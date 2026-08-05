@@ -39,6 +39,7 @@ const inferredTargets = [
 	"build:client",
 	"sync:server-manifest",
 	"test:unit",
+	"test:release-unit",
 	"test:mcp",
 	"test:integration",
 	"test:diagnostics",
