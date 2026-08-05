@@ -177,6 +177,7 @@ describe("telemetry initialization", () => {
 				sendDefaultPii: false,
 				dsn: undefined,
 				tracesSampleRate: 0.0,
+				sendClientReports: false,
 				skipOpenTelemetrySetup: true,
 				registerEsmLoaderHooks: false,
 				ignoreErrors: ["EPIPE", "broken pipe"],

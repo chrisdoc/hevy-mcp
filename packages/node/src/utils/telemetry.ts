@@ -257,6 +257,7 @@ if (telemetryEnabled) {
 		dsn: isValidDsn ? rawDsn : undefined,
 		release: sentryRelease,
 		tracesSampleRate: 0.0,
+		sendClientReports: false,
 		sendDefaultPii: false,
 		skipOpenTelemetrySetup: true,
 		registerEsmLoaderHooks: false,
