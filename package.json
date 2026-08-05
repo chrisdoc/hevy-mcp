@@ -39,6 +39,7 @@
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env packages/node/dist/cli.mjs",
 		"inspect:npm": "npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest",
 		"measure:tokens": "tsx scripts/measure-token-cost.ts",
+		"update-dependencies": "npx --yes npm-check-updates --deep -u && npm install",
 		"test": "npm run build && node --env-file-if-exists=.env node_modules/vitest/vitest.mjs --run",
 		"test:unit": "vitest run --exclude 'tests/integration/**' --exclude 'tests/performance/**'",
 		"test:release-unit": "vitest run --exclude 'tests/integration/**'",
