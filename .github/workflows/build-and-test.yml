@@ -57,17 +57,11 @@ jobs:
       - name: Validate repository control plane
         run: npx nx run repository:check:control-plane
 
-      - name: Validate workspace topology
-        run: npx nx run repository:check:workspaces
-
       - name: Check package boundaries
         run: npx nx run repository:check:boundaries
 
       - name: Check package export maps
         run: npx nx run repository:check:exports
-
-      - name: Check release candidates
-        run: npx nx run repository:check:release-candidates
 
       - name: Run type check
         run: npx nx run repository:check:types

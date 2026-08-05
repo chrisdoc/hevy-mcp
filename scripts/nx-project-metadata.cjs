@@ -1,41 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-/** Derive the runtime family from manifest dependencies and runtime metadata. */
-function runtimeTag(packageJson) {
-	if (packageJson.dependencies?.["@cloudflare/workers-oauth-provider"])
-		return "runtime:workerd";
-	if (
-		packageJson.dependencies?.["@modelcontextprotocol/node"] ||
-		packageJson.dependencies?.["@sentry/node"] ||
-		packageJson.dependencies?.["@opentelemetry/sdk-trace-node"] ||
-		packageJson.engines?.node ||
-		packageJson.bin
-	)
-		return "runtime:node";
-	return "runtime:neutral";
-}
-
-/** Derive the package role after the runtime family has been classified. */
-function roleTag(packageJson, runtime) {
-	if (packageJson.mcpName) return "role:server";
-	if (packageJson.bin) return "role:cli";
-	if (runtime === "runtime:workerd") return "role:adapter";
-	if (packageJson.dependencies?.["@hevy-mcp/hevy-client"])
-		return "role:runtime";
-	return "role:client";
-}
-
-/** Return the stable Nx tags projected from one workspace manifest. */
-function projectTags(packageJson) {
-	const runtime = runtimeTag(packageJson);
-	return [
-		runtime,
-		`publishability:${packageJson.private === true ? "private" : "public"}`,
-		roleTag(packageJson, runtime),
-	];
-}
-
 /** Return the emitted dist output for manifests that publish a dist subtree. */
 function buildOutputs(packageJson) {
 	const files = Array.isArray(packageJson.files) ? packageJson.files : [];
@@ -47,11 +12,7 @@ function buildOutputs(packageJson) {
 	return publishesDist ? ["{projectRoot}/dist"] : [];
 }
 
-/**
- * Keep package build targets explicit so Nx never falls back to its broad
- * implicit project-root glob. The Node bundle embeds environment-
- * dependent telemetry configuration and therefore must not be cached.
- */
+/** Keep package build inputs and cache policy explicit in the Nx graph. */
 function buildTarget(packageJson) {
 	const name = packageJson.name;
 	if (name === "hevy-mcp") {
@@ -77,9 +38,6 @@ function buildTarget(packageJson) {
 
 module.exports = {
 	name: "hevy-mcp-project-metadata",
-	runtimeTag,
-	roleTag,
-	projectTags,
 	buildOutputs,
 	buildTarget,
 	createNodes: [
@@ -94,10 +52,7 @@ module.exports = {
 					{
 						projects: {
 							[path.posix.dirname(configFile)]: {
-								tags: projectTags(packageJson),
-								targets: {
-									build: buildTarget(packageJson),
-								},
+								targets: { build: buildTarget(packageJson) },
 							},
 						},
 					},

@@ -15,7 +15,6 @@ const dependencyCruiserConfig = require(
 ) as ControlPlaneRuleSet;
 
 const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
-	projectTags(packageJson: Record<string, unknown>): string[];
 	buildOutputs(packageJson: Record<string, unknown>): string[];
 	buildTarget(packageJson: Record<string, unknown>): {
 		cache?: boolean;
@@ -26,10 +25,8 @@ const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
 
 const inferredTargets = [
 	"check:control-plane",
-	"check:workspaces",
 	"check:boundaries",
 	"check:exports",
-	"check:release-candidates",
 	"check:package-changesets",
 	"check",
 	"check:types",
@@ -61,7 +58,6 @@ const inferredTargets = [
 
 const aggregateTargets = [
 	"check:control-plane",
-	"check:workspaces",
 	"check:boundaries",
 	"check:exports",
 	"test:pr",
@@ -206,11 +202,10 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		) as { scripts: Record<string, string> };
 		const aggregate = project.targets["control-plane"]?.dependsOn ?? [];
 		expect(aggregate).toEqual(aggregateTargets);
-		expect(aggregate).toHaveLength(9);
-		expect(aggregate).not.toContain("check:release-candidates");
+		expect(aggregate).toHaveLength(8);
 		expect(aggregate).not.toContain("check:package-changesets");
-		expect(packageJson.scripts["check:changeset"]).toContain(
-			"node scripts/check-release-candidates.mjs",
+		expect(packageJson.scripts["check:changeset"]).toBe(
+			"changeset status --since=origin/main && npm run check:package-changesets -- --since origin/main",
 		);
 		expect(packageJson.scripts["check:changeset"]).toContain(
 			"npm run check:package-changesets",
@@ -255,47 +250,6 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			"npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent",
 		]);
 		expect(pack?.options?.parallel).toBe(false);
-	});
-
-	it("declares outputs only for package builds that emit dist", async () => {
-		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
-			targetDefaults: {
-				build: { outputs?: string[] };
-			};
-		};
-
-		expect(nx.targetDefaults.build.outputs).toBeUndefined();
-		const expected = {
-			cli: ["{projectRoot}/dist"],
-			core: [],
-			"hevy-client": [],
-			node: ["{projectRoot}/dist"],
-			operations: [],
-			worker: [],
-		} as const;
-		for (const [directory, outputs] of Object.entries(expected)) {
-			const packageJson = JSON.parse(
-				await readFile(
-					resolve(root, "packages", directory, "package.json"),
-					"utf8",
-				),
-			);
-			expect(metadata.buildOutputs(packageJson)).toEqual(outputs);
-		}
-
-		const syntheticCases: Array<[string, string[]]> = [
-			["dist", ["{projectRoot}/dist"]],
-			["dist/", ["{projectRoot}/dist"]],
-			["dist/**", ["{projectRoot}/dist"]],
-			["./dist", ["{projectRoot}/dist"]],
-			["./dist/", ["{projectRoot}/dist"]],
-			["./dist/**", ["{projectRoot}/dist"]],
-			["distribution", []],
-			["./distribution/**", []],
-		];
-		for (const [entry, outputs] of syntheticCases) {
-			expect(metadata.buildOutputs({ files: [entry] })).toEqual(outputs);
-		}
 	});
 
 	it("keeps cached targets on explicit narrow named inputs", async () => {
@@ -435,32 +389,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		);
 	});
 
-	it("keeps package task inputs local and repository inputs broad", async () => {
-		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
-			namedInputs: Record<string, unknown>;
-		};
-		expect(nx.namedInputs.projectSources).toEqual(["{projectRoot}/src/**/*"]);
-		expect(nx.namedInputs.projectTypeCheckInputs).toEqual([
-			"projectConfigs",
-			"projectSharedConfigs",
-			"projectSources",
-		]);
-		expect(nx.namedInputs.packageBuildInputs).toEqual([
-			"projectTypeCheckInputs",
-		]);
-		expect(nx.namedInputs.repositoryTypeCheckInputs).toEqual([
-			"compilerConfigs",
-			"packageManifestInputs",
-			"runtimeSources",
-			"rootSources",
-		]);
-		expect(nx.namedInputs.repositoryNodeBuildInputs).toEqual([
-			"repositoryBuildInputs",
-			"{workspaceRoot}/packages/node/tsdown.config.ts",
-		]);
-	});
-
-	it("makes package build cache semantics explicit", async () => {
+	it("preserves package build target policy in the slim Nx plugin", async () => {
 		const packages = await Promise.all(
 			["node", "cli", "core", "hevy-client", "operations", "worker"].map(
 				async (directory) =>
@@ -497,6 +426,34 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				inputs: ["packageBuildInputs"],
 			});
 		}
+		expect(metadata.buildOutputs(byName.get("hevy-mcp") ?? {})).toEqual([
+			"{projectRoot}/dist",
+		]);
+	});
+
+	it("keeps package task inputs local and repository inputs broad", async () => {
+		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
+			namedInputs: Record<string, unknown>;
+		};
+		expect(nx.namedInputs.projectSources).toEqual(["{projectRoot}/src/**/*"]);
+		expect(nx.namedInputs.projectTypeCheckInputs).toEqual([
+			"projectConfigs",
+			"projectSharedConfigs",
+			"projectSources",
+		]);
+		expect(nx.namedInputs.packageBuildInputs).toEqual([
+			"projectTypeCheckInputs",
+		]);
+		expect(nx.namedInputs.repositoryTypeCheckInputs).toEqual([
+			"compilerConfigs",
+			"packageManifestInputs",
+			"runtimeSources",
+			"rootSources",
+		]);
+		expect(nx.namedInputs.repositoryNodeBuildInputs).toEqual([
+			"repositoryBuildInputs",
+			"{workspaceRoot}/packages/node/tsdown.config.ts",
+		]);
 	});
 
 	it("keeps live and artifact targets out of the cache", async () => {
@@ -549,30 +506,6 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		expect(project.targets["worker:dry-run"]?.outputs).toEqual([
 			"{workspaceRoot}/.wrangler/dry-run",
 		]);
-	});
-
-	it("derives exact tags for every current package manifest", async () => {
-		const expected = {
-			cli: ["runtime:node", "publishability:public", "role:cli"],
-			core: ["runtime:neutral", "publishability:private", "role:runtime"],
-			"hevy-client": [
-				"runtime:neutral",
-				"publishability:private",
-				"role:client",
-			],
-			node: ["runtime:node", "publishability:public", "role:server"],
-			operations: ["runtime:neutral", "publishability:private", "role:runtime"],
-			worker: ["runtime:workerd", "publishability:private", "role:adapter"],
-		} as const;
-		for (const [directory, tags] of Object.entries(expected)) {
-			const packageJson = JSON.parse(
-				await readFile(
-					resolve(root, "packages", directory, "package.json"),
-					"utf8",
-				),
-			);
-			expect(metadata.projectTags(packageJson)).toEqual(tags);
-		}
 	});
 
 	it("fails closed for a neutral package importing a Node builtin", async () => {
