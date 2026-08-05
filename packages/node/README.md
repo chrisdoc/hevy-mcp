@@ -479,7 +479,7 @@ When enabled, errors are sent to the self-hosted GlitchTip project at
 Traces and metrics continue to be sent to the collector at
 <https://otel.chrisdoc.dev/v1/traces> and
 <https://otel.chrisdoc.dev/v1/metrics>, which forward to Honeycomb. Metrics
-export every 10 seconds.
+export every 30 seconds.
 
 The API key is never exported. Enabled telemetry derives a deterministic
 ten-character HMAC-SHA-256 pseudonym from it solely for cross-span
