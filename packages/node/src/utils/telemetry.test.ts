@@ -177,9 +177,25 @@ describe("telemetry initialization", () => {
 				sendDefaultPii: false,
 				dsn: "https://7c08d2c880ff4560a333dff4833594cd@glitchtip.chrisdoc.dev/1",
 				tracesSampleRate: 0.0,
+				sendClientReports: false,
 				skipOpenTelemetrySetup: true,
 				registerEsmLoaderHooks: false,
 				ignoreErrors: ["EPIPE", "broken pipe"],
+			}),
+		);
+	});
+
+	it("uses an explicitly configured Sentry DSN", async () => {
+		setTelemetryEnvironment(undefined, {
+			SENTRY_DSN: "https://public-key@example.test/1",
+		});
+		vi.resetModules();
+
+		await import("./telemetry.js");
+
+		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				dsn: "https://public-key@example.test/1",
 			}),
 		);
 	});
