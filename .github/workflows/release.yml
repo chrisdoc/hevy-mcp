@@ -60,6 +60,12 @@ jobs:
         run: npx nx run repository:test:pack:cli
       - name: Check published package metadata
         run: npx nx run repository:check:publint
+        env:
+          HEVY_MCP_RELEASE: "true"
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
       - name: Run integration tests
         run: npx nx run repository:test:integration
         env:

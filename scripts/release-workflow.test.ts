@@ -45,6 +45,10 @@ const cleanupPreview = previewWorkflow.slice(
 	),
 	previewWorkflow.indexOf("      - name: Activate inert cleanup version"),
 );
+const checkPublishedPackageMetadata = workflow.slice(
+	workflow.indexOf("      - name: Check published package metadata"),
+	workflow.indexOf("      - name: Run integration tests"),
+);
 
 function workerManifest(version: string, dependency = "1.0.0") {
 	return JSON.stringify({
@@ -188,6 +192,22 @@ describe("release workflow", () => {
 		);
 		expect(publishContainer).not.toContain(
 			"needs.release.outputs.released == 'true'",
+		);
+	});
+
+	it("keeps release build environment for the Publint dependency build", () => {
+		expect(checkPublishedPackageMetadata).toContain('HEVY_MCP_RELEASE: "true"');
+		expect(checkPublishedPackageMetadata).toContain(
+			"SENTRY_ORG: ${{ secrets.SENTRY_ORG }}",
+		);
+		expect(checkPublishedPackageMetadata).toContain(
+			"SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}",
+		);
+		expect(checkPublishedPackageMetadata).toContain(
+			"SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}",
+		);
+		expect(checkPublishedPackageMetadata).toContain(
+			"OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
 		);
 	});
 
