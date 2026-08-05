@@ -11,6 +11,32 @@ const scriptPath = fileURLToPath(
 	new URL("./check-package-changesets.mjs", import.meta.url),
 );
 const fixtureDirectories = new Set<string>();
+const fixtureGitIdentity = {
+	GIT_AUTHOR_NAME: "Test User",
+	GIT_AUTHOR_EMAIL: "test@example.com",
+	GIT_COMMITTER_NAME: "Test User",
+	GIT_COMMITTER_EMAIL: "test@example.com",
+} as const;
+
+function fixtureGitEnvironment(root: string): NodeJS.ProcessEnv {
+	const environment = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+	);
+
+	return {
+		...environment,
+		GIT_CONFIG_GLOBAL: join(root, ".gitconfig"),
+		GIT_CONFIG_NOSYSTEM: "1",
+		...fixtureGitIdentity,
+	};
+}
+
+async function git(root: string, ...args: string[]) {
+	return execFileAsync("git", args, {
+		cwd: root,
+		env: fixtureGitEnvironment(root),
+	});
+}
 
 afterEach(async () => {
 	await Promise.all(
@@ -25,10 +51,6 @@ async function writeFixtureFile(root: string, path: string, contents: string) {
 	const target = join(root, path);
 	await mkdir(dirname(target), { recursive: true });
 	await writeFile(target, contents);
-}
-
-async function git(root: string, ...args: string[]) {
-	return execFileAsync("git", args, { cwd: root });
 }
 
 async function commitFixture(root: string) {
@@ -117,10 +139,6 @@ async function createFixture(
 	}
 
 	await git(root, "init", "--quiet");
-	await mkdir(join(root, ".git-hooks"), { recursive: true });
-	await git(root, "config", "core.hooksPath", ".git-hooks");
-	await git(root, "config", "user.name", "Test User");
-	await git(root, "config", "user.email", "test@example.com");
 	await git(root, "add", ".");
 	await git(root, "commit", "--quiet", "-m", "test: create fixture");
 	const { stdout } = await git(root, "rev-parse", "HEAD");
@@ -133,7 +151,7 @@ async function runCheck(root: string, base: string) {
 		const result = await execFileAsync(
 			process.execPath,
 			[join(root, "scripts/check-package-changesets.mjs"), "--since", base],
-			{ cwd: root },
+			{ cwd: root, env: fixtureGitEnvironment(root) },
 		);
 		return {
 			exitCode: 0,
@@ -155,6 +173,17 @@ async function runCheck(root: string, base: string) {
 }
 
 describe("package changeset coverage", () => {
+	it("does not persist fixture commit identity in Git config", async () => {
+		const { root } = await createFixture();
+
+		await expect(
+			git(root, "config", "--local", "--get", "user.name"),
+		).rejects.toMatchObject({ code: 1 });
+
+		await expect(
+			git(root, "config", "--global", "--get", "user.name"),
+		).rejects.toMatchObject({ code: 1 });
+	});
 	it("does not let a base-branch changeset cover a PR package change", async () => {
 		const { base, root } = await createFixture({ existingChangeset: true });
 		await writeFixtureFile(
