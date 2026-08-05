@@ -69,6 +69,7 @@ function buildTarget(packageJson) {
 		};
 	}
 	return {
+		cache: true,
 		inputs: ["packageBuildInputs"],
 		outputs: buildOutputs(packageJson),
 	};

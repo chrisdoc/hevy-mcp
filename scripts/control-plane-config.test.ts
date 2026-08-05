@@ -270,6 +270,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			core: [],
 			"hevy-client": [],
 			node: ["{projectRoot}/dist"],
+			operations: [],
 			worker: [],
 		} as const;
 		for (const [directory, outputs] of Object.entries(expected)) {
@@ -306,6 +307,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				| Array<{
 						cache?: boolean;
 						inputs?: string[];
+						dependsOn?: string[];
 				  }>
 			>;
 		};
@@ -327,6 +329,10 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		const requiredInputs = [
 			"repositoryConfig",
 			"packageConfigs",
+			"projectSources",
+			"projectConfigs",
+			"projectSharedConfigs",
+			"projectTypeCheckInputs",
 			"compilerConfigs",
 			"rootSources",
 			"runtimeSources",
@@ -340,10 +346,11 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			"contractTests",
 			"stdioTests",
 			"cliTests",
-			"typeCheckInputs",
 			"repositoryTypeCheckInputs",
 			"packageBuildInputs",
+			"repositoryBuildInputs",
 			"nodeBuildInputs",
+			"repositoryNodeBuildInputs",
 			"cliBuildInputs",
 			"manifestInputs",
 			"openapiInputs",
@@ -378,7 +385,9 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			expect(inputs).not.toContain("default");
 		}
 		expect(project.targets.build?.cache).toBe(false);
-		expect(project.targets.build?.inputs).toEqual(["nodeBuildInputs"]);
+		expect(project.targets.build?.inputs).toEqual([
+			"repositoryNodeBuildInputs",
+		]);
 		expect(project.targets["check:types"]?.inputs).toEqual([
 			"repositoryTypeCheckInputs",
 		]);
@@ -394,8 +403,9 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		expect(nx.targetDefaults.build).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					cache: false,
+					cache: true,
 					inputs: ["packageBuildInputs"],
+					dependsOn: ["^check:types"],
 				}),
 				expect.objectContaining({
 					cache: true,
@@ -425,9 +435,34 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		);
 	});
 
+	it("keeps package task inputs local and repository inputs broad", async () => {
+		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
+			namedInputs: Record<string, unknown>;
+		};
+		expect(nx.namedInputs.projectSources).toEqual(["{projectRoot}/src/**/*"]);
+		expect(nx.namedInputs.projectTypeCheckInputs).toEqual([
+			"projectConfigs",
+			"projectSharedConfigs",
+			"projectSources",
+		]);
+		expect(nx.namedInputs.packageBuildInputs).toEqual([
+			"projectTypeCheckInputs",
+		]);
+		expect(nx.namedInputs.repositoryTypeCheckInputs).toEqual([
+			"compilerConfigs",
+			"packageManifestInputs",
+			"runtimeSources",
+			"rootSources",
+		]);
+		expect(nx.namedInputs.repositoryNodeBuildInputs).toEqual([
+			"repositoryBuildInputs",
+			"{workspaceRoot}/packages/node/tsdown.config.ts",
+		]);
+	});
+
 	it("makes package build cache semantics explicit", async () => {
 		const packages = await Promise.all(
-			["node", "cli", "core", "hevy-client", "worker"].map(
+			["node", "cli", "core", "hevy-client", "operations", "worker"].map(
 				async (directory) =>
 					JSON.parse(
 						await readFile(
@@ -454,11 +489,13 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		for (const name of [
 			"@hevy-mcp/core",
 			"@hevy-mcp/hevy-client",
+			"@hevy-mcp/operations",
 			"@hevy-mcp/worker",
 		]) {
-			expect(metadata.buildTarget(byName.get(name) ?? {}).inputs).toEqual([
-				"packageBuildInputs",
-			]);
+			expect(metadata.buildTarget(byName.get(name) ?? {})).toMatchObject({
+				cache: true,
+				inputs: ["packageBuildInputs"],
+			});
 		}
 	});
 
@@ -524,6 +561,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				"role:client",
 			],
 			node: ["runtime:node", "publishability:public", "role:server"],
+			operations: ["runtime:neutral", "publishability:private", "role:runtime"],
 			worker: ["runtime:workerd", "publishability:private", "role:adapter"],
 		} as const;
 		for (const [directory, tags] of Object.entries(expected)) {

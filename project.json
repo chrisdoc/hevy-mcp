@@ -142,7 +142,7 @@
 		"build": {
 			"cache": false,
 			"outputs": ["{workspaceRoot}/packages/node/dist"],
-			"inputs": ["nodeBuildInputs"]
+			"inputs": ["repositoryNodeBuildInputs"]
 		},
 		"build:client": {
 			"outputs": ["{workspaceRoot}/packages/hevy-client/src/generated"],
