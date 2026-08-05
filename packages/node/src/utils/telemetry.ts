@@ -204,8 +204,6 @@ const collectorToken =
 
 const COLLECTOR_ENDPOINT = "https://otel.chrisdoc.dev/v1";
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
-const DEFAULT_SENTRY_DSN =
-	"https://7c08d2c880ff4560a333dff4833594cd@glitchtip.chrisdoc.dev/1";
 
 export function createServiceInstanceId(
 	generate: () => string = nodeRandomUUID,
@@ -250,7 +248,7 @@ let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
 
 if (telemetryEnabled) {
-	const rawDsn = process.env.SENTRY_DSN ?? DEFAULT_SENTRY_DSN;
+	const rawDsn = process.env.SENTRY_DSN;
 	const isValidDsn =
 		typeof rawDsn === "string" && rawDsn.length > 0 && !rawDsn.startsWith("*");
 
