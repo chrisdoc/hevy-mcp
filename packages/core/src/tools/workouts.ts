@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type {
-	GetV1Workouts200,
 	GetV1WorkoutsCount200,
 	GetV1WorkoutsEvents200,
 	GetV1WorkoutsWorkoutid200,
@@ -77,26 +76,14 @@ export const workoutToolDefinitions = [
 		kind: "read" as const,
 		responseContract: workoutsResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutsParams) => {
-			try {
-				const data: GetV1Workouts200 = await runtime.getClient().getWorkouts({
+			const data = await runtime.getOperations().workouts.list.execute(
+				{
 					page: args.page,
 					pageSize: args.page_size,
-				});
-				return {
-					items: data?.workouts ?? [],
-					page: args.page,
-					pageCount: data?.page_count,
-				};
-			} catch (error) {
-				if (isExpectedListPageNotFound(error, args.page)) {
-					return {
-						items: [],
-						page: args.page,
-						expected404Outcome: "end_of_list",
-					};
-				}
-				throw error;
-			}
+				},
+				runtime.execution,
+			);
+			return data;
 		},
 	},
 	{

@@ -125,6 +125,7 @@
 			"changeImpact": [
 				"packages/worker/**",
 				"packages/core/**",
+				"packages/operations/**",
 				"cloudflare.config.ts"
 			],
 			"nxTarget": "test:worker",
@@ -146,6 +147,7 @@
 			"changeImpact": [
 				"packages/worker/**",
 				"packages/core/**",
+				"packages/operations/**",
 				"tests/integration/worker-http.integration.test.ts"
 			],
 			"nxTarget": "test:worker-http",
@@ -186,7 +188,8 @@
 			"changeImpact": [
 				"packages/cli/**",
 				"packages/core/**",
-				"packages/hevy-client/**"
+				"packages/hevy-client/**",
+				"packages/operations/**"
 			],
 			"nxTarget": "test:cli",
 			"mappingStatus": "mapped"
@@ -203,7 +206,7 @@
 			"artifacts": ["cli-package-tarball"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": ["packages/cli/**"],
+			"changeImpact": ["packages/cli/**", "packages/operations/**"],
 			"nxTarget": "test:pack:cli",
 			"mappingStatus": "mapped"
 		},
@@ -273,7 +276,12 @@
 			},
 			"runtimes": ["node-24", "node-26"],
 			"credentials": [],
-			"artifacts": ["core-source", "hevy-client-source", "worker-bundle"],
+			"artifacts": [
+				"core-source",
+				"hevy-client-source",
+				"operations-source",
+				"worker-bundle"
+			],
 			"gate": "blocking",
 			"comparison": "dependency-graph",
 			"changeImpact": ["packages/**/src/**", "repository/topology.json"],
@@ -362,7 +370,7 @@
 			},
 			"runtimes": ["node-24", "node-26"],
 			"credentials": [],
-			"artifacts": ["core-source", "hevy-client-source"],
+			"artifacts": ["core-source", "hevy-client-source", "operations-source"],
 			"gate": "blocking",
 			"comparison": "type-safety",
 			"changeImpact": ["packages/**", "scripts/**", "tests/**"],
@@ -418,6 +426,7 @@
 			"changeImpact": [
 				"packages/worker/**",
 				"packages/core/**",
+				"packages/operations/**",
 				"packages/hevy-client/**",
 				"cloudflare.config.ts"
 			],
@@ -455,7 +464,11 @@
 			"artifacts": ["docker-image"],
 			"gate": "blocking",
 			"comparison": "candidate-artifact",
-			"changeImpact": ["Dockerfile", "packages/node/**"],
+			"changeImpact": [
+				"Dockerfile",
+				"packages/node/**",
+				"packages/operations/**"
+			],
 			"integration": "docker workflow",
 			"nxTarget": null,
 			"mappingStatus": "external"
@@ -508,6 +521,7 @@
 			"comparison": "provider-contract",
 			"changeImpact": [
 				"packages/worker/**",
+				"packages/operations/**",
 				"tests/integration/worker-http.integration.test.ts"
 			],
 			"nxTarget": "test:worker-http:live",

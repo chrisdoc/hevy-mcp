@@ -17,6 +17,7 @@ export default defineConfig({
 		alwaysBundle: [
 			"@hevy-mcp/hevy-client",
 			"@hevy-mcp/core",
+			"@hevy-mcp/operations",
 			"@stricli/core",
 			"zod",
 		],

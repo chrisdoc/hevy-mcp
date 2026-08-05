@@ -1,4 +1,5 @@
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import {
 	getV1BodyMeasurementsQueryParamsSchema,
 	getV1RoutinesQueryParamsSchema,
@@ -93,6 +94,7 @@ export async function execute(
 	client: HevyClient,
 	now = () => new Date(),
 	readDataSource: DataSourceReader = defaultDataSourceReader,
+	operations: HevyOperations = createOperations(client),
 ): Promise<unknown> {
 	const command = args.command;
 	const sub = args.subcommand;
@@ -100,8 +102,23 @@ export async function execute(
 	if (command === "workouts") {
 		if (sub === "list") {
 			const { page, pageSize } = parsePagination(args);
+			const result = await operations.workouts.list.execute({
+				page,
+				pageSize,
+			});
+			if (result.expected404Outcome === "end_of_list") {
+				return pageEnvelope(
+					{ page: result.page, page_count: result.pageCount ?? 0 },
+					"workouts",
+					result.items,
+				);
+			}
 			return list(
-				body(await client.getWorkouts({ page, pageSize })),
+				{
+					page: result.page,
+					page_count: result.pageCount,
+					workouts: result.items,
+				},
 				"workouts",
 				"workouts",
 				page,

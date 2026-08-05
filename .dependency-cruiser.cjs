@@ -1,6 +1,7 @@
-const neutralPackages = "^packages/(?:hevy-client|core)/src/";
+const neutralPackages = "^packages/(?:hevy-client|operations|core)/src/";
 const workerPackage = "^packages/worker/src/";
-const packageSources = "^packages/(?:hevy-client|core|node|worker|cli)/src/";
+const packageSources =
+	"^packages/(?:hevy-client|operations|core|node|worker|cli)/src/";
 const runtimeOnlyPackages =
 	"(?:@cloudflare/|cloudflare:|@sentry/|@opentelemetry/)";
 

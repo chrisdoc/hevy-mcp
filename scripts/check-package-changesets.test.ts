@@ -341,6 +341,7 @@ describe("package changeset coverage", () => {
 		);
 		await writeChangeset(root, [
 			"@hevy-mcp/hevy-client",
+			"@hevy-mcp/operations",
 			"@hevy-mcp/core",
 			"hevy-mcp",
 		]);
@@ -366,6 +367,7 @@ describe("package changeset coverage", () => {
 		);
 		await writeChangeset(root, [
 			"@hevy-mcp/hevy-client",
+			"@hevy-mcp/operations",
 			"@hevy-mcp/core",
 			"hevy-mcp",
 			"@hevy-mcp/worker",
@@ -388,6 +390,7 @@ describe("package changeset coverage", () => {
 		);
 		await writeChangesetWithBumps(root, {
 			"@hevy-mcp/hevy-client": "major",
+			"@hevy-mcp/operations": "patch",
 			"@hevy-mcp/core": "patch",
 			"hevy-mcp": "patch",
 			"@hevy-mcp/worker": "patch",
