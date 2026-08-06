@@ -101,7 +101,7 @@ record a new merged-main baseline after fixing the denominator.
 | Release checks         | `.github/workflows/release.yml`                      | Unit, live integration, and source stdio checks run before publishing.                                  |
 | CI runtime matrix      | `.github/workflows/build-and-test.yml`               | Node 24 and 26 build, type, style, unit, and mocked integration checks.                                 |
 | Docker smoke           | `.github/workflows/build-and-test.yml`, `Dockerfile` | Image build plus unauthenticated `--version` and `--help` smoke checks.                                 |
-| Coverage               | `vitest.config.ts`, `codecov.yml`                    | V8/LCOV reports, Codecov project comparison, patch status, generated-code exclusion.                    |
+| Coverage               | `vitest.config.ts`, `codecov.yml`                    | V8/LCOV reports, Codecov uploads, disabled project and patch status contexts, generated-code exclusion. |
 | Response contracts     | `packages/core/src/utils/response-formatter.ts`      | Co-located Zod output schemas, raw-to-public formatting, legacy text projection, and response assembly. |
 | Prompts/resources      | `packages/core/src/{prompts,resources}/`             | Dedicated registrations and focused tests; resource calls also have mocked MCP coverage.                |
 | SDK-sensitive stdio    | `packages/node/src/utils/stdio-observability.ts`     | Private SDK access is isolated and has focused buffering/protocol regression tests.                     |
