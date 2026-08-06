@@ -29,7 +29,7 @@ reviews:
   profile: chill
   # Add this keyword in the PR/MR title to auto-generate the title.
   # Default: "@coderabbitai"
-  auto_title_placeholder: '@coderabbitai title'
+  auto_title_placeholder: "@coderabbitai title"
   # Auto Title Instructions - Custom instructions for auto-generating the PR/MR title.
   # Default: ""
   auto_title_instructions: 'Format: "<category>: <title>". Category must be one of: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, cp. The category must be followed by a colon. Title should be concise (<= 80 chars). Example: "feat: Add logit_bias support".' # current: ''
