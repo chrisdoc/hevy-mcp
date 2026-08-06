@@ -5,10 +5,10 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v24+) organized into runtime-neutral
-  `@hevy-mcp/hevy-client` and `@hevy-mcp/core` workspaces, Node and Worker
-  adapters under `packages/node` and `packages/worker`, and the public CLI under
-  `packages/cli`.
+- The codebase is TypeScript (Node.js v24+) organized into six workspaces:
+  runtime-neutral `@hevy-mcp/hevy-client`, `@hevy-mcp/operations`, and
+  `@hevy-mcp/core`, Node and Worker adapters under `packages/node` and
+  `packages/worker`, and the public CLI under `packages/cli`.
 - API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
 - **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
 
@@ -20,12 +20,13 @@
   - **BUMP CHANGESETS**: The root is a private repository orchestrator; runtime/package code and manifests are under `packages/*`. Files under `packages/*`, runtime-visible behavior changes, workspace package dependency changes, and explicit release triggers such as `cloudflare.config.ts` **MUST** use a non-empty bump Changeset naming every affected package. Use `npx changeset` and select `patch`, `minor`, or `major` for the release impact.
   - **EMPTY CHANGESETS**: An empty Changeset is allowed only when the entire PR is no-release/internal-only and changes no workspace package or explicit release trigger; it cannot accompany a release-triggering change. Docs, CI, repository-only tests/tooling, and chores may qualify only when they meet those conditions; a Conventional Commit type alone does not determine eligibility. Create an eligible empty Changeset with `npx changeset --empty`.
   - **BUNDLED RELEASE CASCADE**: Every listed consumer receives at least a patch bump; do not couple unrelated package versions:
-    - `@hevy-mcp/hevy-client` changes → client, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
+    - `@hevy-mcp/hevy-client` changes → client, `@hevy-mcp/operations`, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
+      - `@hevy-mcp/operations` changes → `@hevy-mcp/operations`, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
     - `@hevy-mcp/core` changes → core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
     - Node adapter-only changes → `hevy-mcp` only.
     - Worker-only changes → `@hevy-mcp/worker` only.
     - CLI-only changes → `@chrisdoc/hevy-cli` only.
-  - **PRIVATE RELEASE IDENTITY**: Core, client, and Worker remain private and untagged; their versions are internal release/deployment identity.
+  - **PRIVATE RELEASE IDENTITY**: Core, client, operations, and Worker remain private. They are versioned for internal release/deployment identity with no npm tags.
   - **WORKER CONFIG TRIGGER**: A `cloudflare.config.ts` change counts as a Worker change.
   - **CI ENFORCEMENT**: Pull Requests are guarded by a CI check that runs `npm run check:changeset` (which runs `npx changeset status --since=origin/<base_branch>`). CI will fail if no changeset file is staged/committed.
   - **VALIDATION**: You can validate your changeset status locally by running `npm run check:changeset`. Make sure the changeset file is staged/committed.
@@ -67,11 +68,12 @@ Run these commands in order to set up a working development environment (npm is 
 4. **Run unit tests only:**
 
    ```bash
-   npx vitest run --exclude tests/integration/**
+   npm run test:unit
    ```
 
    - Takes approximately 1-2 seconds. NEVER CANCEL.
    - This is the primary testing command for development.
+   - Preferred over raw Vitest commands.
 
 5. **Run integration tests (requires API key):**
 
@@ -181,10 +183,11 @@ Always perform these validation steps after making changes:
 2. **Unit test validation:**
 
    ```bash
-   npx vitest run --exclude tests/integration/**
+   npm run test:unit
    ```
 
    - All unit tests must pass.
+   - Preferred over raw Vitest commands.
 
 3. **Code style validation:**
 
@@ -193,7 +196,6 @@ Always perform these validation steps after making changes:
    ```
 
    - Must complete without errors (warnings about oxlint and oxfmt schema are acceptable).
-   - **EXPECTED:** Warnings about `any` usage in `webhooks.ts` are acceptable (API methods not yet available).
 
 4. **Type checking validation:**
 
@@ -206,7 +208,7 @@ Always perform these validation steps after making changes:
      configured in the `check:types` script in `package.json`.
    - Note: `npm run build` (tsup) may still succeed when this fails.
    - Treat failures here as issues to fix (even if the build passes).
-   - Run this locally before opening a PR (CI does not currently run this check).
+   - Run this locally before opening a PR; CI also runs this check on pull requests and pushes to main.
    - Verifies all type inference is working correctly.
 
 5. **MCP tool functionality validation (if API key available):**
@@ -231,15 +233,16 @@ Always perform these validation steps after making changes:
 ```
 packages/
 ├── hevy-client/       # Runtime-neutral native-fetch client and Kubb output
+├── operations/        # Runtime-neutral reusable Hevy domain operations
 ├── core/              # Runtime-neutral MCP construction and tools
 ├── node/              # Public Node.js stdio package and telemetry
 ├── worker/            # Private Cloudflare Worker HTTP and OAuth entrypoint
 └── cli/               # Public Hevy command-line client
 ```
 
-The shipped composition graph is `hevy-client → core → node/worker/CLI`.
-Adapters may depend directly on either runtime-neutral package, but must never
-import one another.
+The dependency direction is `hevy-client -> operations -> core`, with `core`
+also depending directly on `hevy-client`; Node, Worker, and CLI are adapters
+that consume the runtime-neutral packages. Adapters do not import one another.
 
 ### Testing Structure
 
@@ -338,7 +341,6 @@ server.registerTool(
 4. **Build failures:** Run `npm run check` to identify formatting/linting issues
 5. **Network errors in `npm run openapi`:** Expected in sandboxed environments
 6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
-7. **Linter warnings about `any`:** Expected in `webhooks.ts` where API methods don't exist yet (see TODOs)
 
 ### Performance Expectations
 
