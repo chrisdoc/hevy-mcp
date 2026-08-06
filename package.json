@@ -78,7 +78,7 @@
 		"check:package-changesets": "node scripts/check-package-changesets.mjs",
 		"build:packages": "npm run build --workspaces --if-present",
 		"check:dependency-cruiser": "depcruise --config .dependency-cruiser.cjs packages",
-		"check:changeset": "env -u GIT_DIR -u GIT_WORK_TREE changeset status --since=origin/main && env -u GIT_DIR -u GIT_WORK_TREE npm run check:package-changesets -- --since origin/main",
+		"check:changeset": "node scripts/run-changeset-check.mjs --since origin/main",
 		"nx:affected": "nx affected --target=control-plane --base=origin/main --head=HEAD",
 		"nx:control-plane": "nx run repository:control-plane",
 		"check:server-manifest": "node scripts/server-manifest.mjs check",

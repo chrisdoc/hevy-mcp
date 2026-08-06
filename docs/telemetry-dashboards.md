@@ -97,12 +97,12 @@ Automated guards that must remain green:
 
 ## Sentry issue views
 
-| View                           | Grouping/filter                            | Question answered                                      |
-| ------------------------------ | ------------------------------------------ | ------------------------------------------------------ |
-| New issues by release          | release, first-seen time                   | Which failures were introduced by a release?           |
-| Tool failure fingerprints      | tool, error type/category/code/status      | Which user-visible tool failures are actionable?       |
-| Process and lifecycle failures | failure phase, termination reason, runtime | Why did a local MCP process stop?                      |
-| Error-to-trace correlation     | OTel trace ID                              | What API, retry, or transport work preceded the error? |
+| View                           | Grouping/filter                                           | Question answered                                      |
+| ------------------------------ | --------------------------------------------------------- | ------------------------------------------------------ |
+| New issues by release          | release, first-seen time                                  | Which failures were introduced by a release?           |
+| Tool failure fingerprints      | hevy.feature, error type/category/code/status             | Which user-visible tool failures are actionable?       |
+| Process and lifecycle failures | failure phase, termination reason, runtime                | Why did a local MCP process stop?                      |
+| Error-to-trace correlation     | OTel trace ID                                             | What API, retry, or transport work preceded the error? |
 
 Sentry issue fingerprints must use stable taxonomy and operational fields rather
 than free-form messages. Use the OTel trace ID to move from an issue into the

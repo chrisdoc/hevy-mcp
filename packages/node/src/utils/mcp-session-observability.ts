@@ -7,6 +7,7 @@ export const MCP_SESSION_TERMINATION_CATEGORIES = [
 	"clean",
 	"startup_failure",
 	"connect_failure",
+	"runtime_failure",
 	"tool_failure",
 	"unknown",
 ] as const;

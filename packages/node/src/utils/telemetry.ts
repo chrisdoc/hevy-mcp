@@ -22,8 +22,8 @@ import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
 	AlwaysOnSampler,
 	BatchSpanProcessor,
+	type SpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import type { SpanProcessor } from "@opentelemetry/sdk-trace";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import {
 	MeterProvider,

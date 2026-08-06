@@ -387,7 +387,7 @@ describe("telemetry initialization", () => {
 		expect(mod.serviceVersion).toBe("dev");
 	});
 
-	it("keeps service-instance IDs stable per provider", async () => {
+	it("passes through valid service-instance IDs from provider", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
 		expect(mod.createServiceInstanceId(() => "process-one")).toBe(
