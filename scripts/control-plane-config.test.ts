@@ -234,7 +234,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		expect(aggregate).toHaveLength(8);
 		expect(aggregate).not.toContain("check:package-changesets");
 		expect(packageJson.scripts["check:changeset"]).toBe(
-			"changeset status --since=origin/main && npm run check:package-changesets -- --since origin/main",
+			"env -u GIT_DIR -u GIT_WORK_TREE changeset status --since=origin/main && env -u GIT_DIR -u GIT_WORK_TREE npm run check:package-changesets -- --since origin/main",
 		);
 		expect(packageJson.scripts["check:changeset"]).toContain(
 			"npm run check:package-changesets",
