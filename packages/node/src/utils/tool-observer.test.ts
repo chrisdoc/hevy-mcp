@@ -28,6 +28,7 @@ const testDoubles = vi.hoisted(() => ({
 		},
 	),
 	toolInvocationsAdd: vi.fn(),
+	activityInvocationsAdd: vi.fn(),
 	toolOutcomesAdd: vi.fn(),
 	toolErrorsAdd: vi.fn(),
 	toolDurationRecord: vi.fn(),
@@ -62,9 +63,11 @@ vi.mock("./telemetry.js", () => ({
 		withScope: testDoubles.sentryWithScope,
 		captureMessage: testDoubles.sentryCaptureMessage,
 	},
+	getTelemetryUserHash: vi.fn(() => "user-hash-1"),
 }));
 
 vi.mock("./metrics.js", () => ({
+	activityInvocations: { add: testDoubles.activityInvocationsAdd },
 	toolInvocations: { add: testDoubles.toolInvocationsAdd },
 	toolOutcomes: { add: testDoubles.toolOutcomesAdd },
 	toolErrors: { add: testDoubles.toolErrorsAdd },
@@ -130,6 +133,10 @@ describe("createNodeToolObserver", () => {
 
 		expect(operation).toHaveBeenCalledOnce();
 		expect(testDoubles.recordMcpToolInvocation).toHaveBeenCalledOnce();
+		expect(testDoubles.activityInvocationsAdd).toHaveBeenCalledWith(1, {
+			activity_kind: "tool",
+			user_hash: "user-hash-1",
+		});
 		expect(testDoubles.toolInvocationsAdd).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({

@@ -19,6 +19,7 @@ import { createToolRuntime, type ToolRuntime } from "../tools/tool-runtime.js";
 import { registerToolDefinition } from "../tools/define-tool.js";
 import { templateToolDefinitions } from "../tools/templates.js";
 import { registerHevyResources } from "./hevy.js";
+import type { ToolObserver } from "../observation.js";
 
 function createTestRuntime(
 	client: HevyClient | null,
@@ -116,6 +117,32 @@ const benchTemplate: ExerciseTemplate = {
 };
 
 describe("registerHevyResources", () => {
+	it("observes resource calls as user activity", async () => {
+		const { server, registerResource } = createMockServer();
+		const finish = vi.fn();
+		const observer: ToolObserver = {
+			start: vi.fn(() => ({
+				run: <T>(operation: () => Promise<T>) => operation(),
+				finish,
+			})),
+		};
+
+		registerHevyResources(server, createTestRuntime(null), observer);
+		const registration = getResourceRegistration(
+			registerResource,
+			"user-profile",
+		);
+		await registration.handler(new URL("hevy://user"), createTestContext(1));
+
+		expect(observer.start).toHaveBeenCalledWith({
+			name: "user-profile",
+			kind: "resource",
+		});
+		expect(finish).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: "success" }),
+		);
+	});
+
 	it("registers all four static JSON resources", () => {
 		const { registerResource, server } = createMockServer();
 		registerHevyResources(server, createTestRuntime(null));

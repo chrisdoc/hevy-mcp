@@ -7,6 +7,37 @@ the equivalent span attribute filters.
 
 ## Product usage
 
+### Active users
+
+These are product-activity metrics, not process/session metrics. They count a
+unique `user_hash` only when an MCP tool, resource, or prompt is called.
+Lifecycle spans, discovery/list calls, API child spans, cache spans, and
+error-only spans do not count.
+
+| Panel                      | Source              | Query window | Question answered                                               |
+| -------------------------- | ------------------- | ------------ | --------------------------------------------------------------- |
+| Daily active users (DAU)   | `mcp.user.activity` | `1d`         | How many unique users called a tool, resource, or prompt today? |
+| Weekly active users (WAU)  | `mcp.user.activity` | `7d`         | How many unique users were active in the last week?             |
+| Monthly active users (MAU) | `mcp.user.activity` | `30d`        | How many unique users were active in the last month?            |
+
+Prometheus/VictoriaMetrics query template:
+
+```promql
+count(
+  sum by (user_hash) (
+    increase(mcp_user_activity_total{
+      service="hevy-mcp",
+      user_hash!="",
+      activity_kind=~"tool|resource|prompt"
+    }[WINDOW])
+  ) > 0
+)
+```
+
+Replace `WINDOW` with `1d`, `7d`, or `30d`. Keep the existing all-span panel,
+but rename it to `Active traced hashes (any span)` so it remains a diagnostic
+signal rather than a product-usage metric.
+
 | Panel                  | Source                 | Grouping/filter                                               | Question answered                                            |
 | ---------------------- | ---------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
 | Feature adoption       | `mcp.tool.invocations` | `hevy.feature`, `mcp.tool.operation`                          | Which Hevy areas and operations are used?                    |

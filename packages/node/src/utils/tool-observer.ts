@@ -7,6 +7,7 @@ import type {
 } from "@hevy-mcp/core";
 import { createExecutionProjection } from "@hevy-mcp/core";
 import {
+	activityInvocations,
 	toolDuration,
 	toolErrors,
 	toolInvocations,
@@ -21,7 +22,12 @@ import {
 } from "./mcp-session-observability.js";
 import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
-import { Sentry, recordTelemetryException, tracer } from "./telemetry.js";
+import {
+	getTelemetryUserHash,
+	Sentry,
+	recordTelemetryException,
+	tracer,
+} from "./telemetry.js";
 
 type AttributeValue = string | number | boolean;
 const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
@@ -60,14 +66,20 @@ function createAttributes(
 	invocation: SafeToolInvocation,
 ): Record<string, AttributeValue> {
 	const clientMetadata = getCurrentMcpClientMetadata();
-	const isPrompt = invocation.kind === "prompt";
+	const kind = invocation.kind ?? "tool";
+	const isPrompt = kind === "prompt";
 	const sessionId = getCurrentMcpSessionId();
 	const attributes: Record<string, AttributeValue> = {
-		"mcp.span.category": DISCOVERY_TOOL_NAMES.has(invocation.name)
-			? "discovery"
-			: "tool",
-		[isPrompt ? "mcp.prompt.name" : "mcp.tool.name"]: invocation.name,
-		"mcp.operation.kind": invocation.kind ?? "tool",
+		"mcp.span.category":
+			kind === "tool" && DISCOVERY_TOOL_NAMES.has(invocation.name)
+				? "discovery"
+				: kind,
+		[kind === "prompt"
+			? "mcp.prompt.name"
+			: kind === "resource"
+				? "mcp.resource.name"
+				: "mcp.tool.name"]: invocation.name,
+		"mcp.operation.kind": kind,
 		...taxonomyAttributes(invocation),
 		"mcp.client.name": clientMetadata.name,
 		"mcp.client.version": clientMetadata.version,
@@ -241,13 +253,21 @@ export function createNodeToolObserver(): ToolObserver {
 			const startedAt = Date.now();
 			const clientAttributes = recordMcpToolInvocation();
 			const metrics = metricAttributes(invocation, clientAttributes);
+			const userHash = getTelemetryUserHash();
+			const activityKind = invocation.kind ?? "tool";
+			const activityMetrics = userHash
+				? { activity_kind: activityKind, user_hash: userHash }
+				: undefined;
 			bestEffort(() => toolInvocations.add(1, metrics));
+			if (activityMetrics) {
+				bestEffort(() => activityInvocations.add(1, activityMetrics));
+			}
 			let completion: SafeToolCompletion | undefined;
 			let activeSpan: Span | undefined;
 			return {
 				run<T>(operation: () => Promise<T>): Promise<T> {
 					return tracer.startActiveSpan(
-						`mcp.tool.${invocation.name}`,
+						`mcp.${activityKind}.${invocation.name}`,
 						{ attributes: createAttributes(invocation) },
 						async (span) => {
 							activeSpan = span;
