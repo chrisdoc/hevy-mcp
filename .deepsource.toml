@@ -1,0 +1,20 @@
+version = 1
+
+exclude_patterns = [
+	"node_modules/**",
+	"dist/**",
+	"coverage/**",
+	"packages/hevy-client/src/generated/**",
+	"**/*.snap",
+]
+
+test_patterns = ["**/*.test.ts", "tests/**"]
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+[analyzers.meta]
+dialect = "typescript"
+environment = ["nodejs", "vitest"]
+module_system = "es-modules"
