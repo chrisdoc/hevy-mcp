@@ -356,7 +356,7 @@ describe("registered tool measurement", () => {
 	it("keeps every registered description within 32 o200k tokens", async () => {
 		const report = await measureRegisteredTools();
 
-		expect(report.tools).toHaveLength(26);
+		expect(report.tools).toHaveLength(22);
 		expect(
 			report.tools.every((tool) => tool.componentTokens.description <= 32),
 		).toBe(true);

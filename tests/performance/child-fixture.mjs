@@ -87,9 +87,10 @@ try {
 
 	if (mode === "representative-read") {
 		for (let iteration = 1; iteration <= 20; iteration += 1) {
+			const id = `representative-${iteration}`;
 			scope()
-				.get("/v1/workouts/count")
-				.reply(200, observed("scenario", { workout_count: iteration }));
+				.get(`/v1/workouts/${id}`)
+				.reply(200, observed("scenario", { id, exercises: [] }));
 		}
 		result.expectedRequestCount += 20;
 	}
@@ -118,9 +119,10 @@ try {
 
 	if (mode === "sequential-reads") {
 		for (let iteration = 1; iteration <= 100; iteration += 1) {
+			const id = `sequential-${iteration}`;
 			scope()
-				.get("/v1/workouts/count")
-				.reply(200, observed("scenario", { workout_count: iteration }));
+				.get(`/v1/workouts/${id}`)
+				.reply(200, observed("scenario", { id, exercises: [] }));
 		}
 		result.expectedRequestCount += 100;
 	}

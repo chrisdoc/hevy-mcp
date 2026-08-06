@@ -105,21 +105,6 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 		nock.enableNetConnect();
 	});
 
-	it("mocks get-workout-count through MCP transport", async () => {
-		if (!client) throw new Error("Client not initialized");
-
-		getApiScope().get("/v1/workouts/count").reply(200, {
-			workout_count: 42,
-		});
-
-		const result = await callTool(client, "get-workout-count", {});
-		const payload = JSON.parse(result.text) as { workout_count: number };
-
-		expect(result.isError).toBeFalsy();
-		expect(payload.workout_count).toBe(42);
-		expect(result.structuredContent).toEqual({ workout_count: 42 });
-	});
-
 	it("mocks get-workout-events through MCP transport", async () => {
 		if (!client) throw new Error("Client not initialized");
 

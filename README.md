@@ -373,34 +373,33 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 and update tools are exposed with MCP mutation annotations so compatible clients
 can request confirmation.
 
-| Category           | Tool                        | Description                                                                       |
-| ------------------ | --------------------------- | --------------------------------------------------------------------------------- |
-| Training analysis  | `get-training-summary`      | Summarize 1-12 weeks of workout activity and body-measurement trends in one call. |
-| Workouts           | `get-workouts`              | List workouts from newest to oldest with exercise and timing details.             |
-| Workouts           | `get-workout`               | Get complete details for one workout by ID.                                       |
-| Workouts           | `get-workout-count`         | Return the account's total workout count.                                         |
-| Workouts           | `get-workout-events`        | List workout update and delete events since a timestamp.                          |
-| Workouts           | `create-workout`            | Create a completed workout in Hevy.                                               |
-| Workouts           | `update-workout`            | Patch workout metadata by ID; omitted fields and all exercises remain unchanged.  |
-| Workouts           | `replace-workout-exercises` | Replace all exercises and sets while preserving workout metadata.                 |
-| Routines           | `search-routines`           | Search routine titles and return compact metadata for discovery.                  |
-| Routines           | `get-routines`              | List custom and default workout routines.                                         |
-| Routines           | `get-routine`               | Get one routine and its exercise configuration by ID.                             |
-| Routines           | `create-routine`            | Create a reusable workout routine.                                                |
-| Routines           | `update-routine`            | Replace an existing routine's content.                                            |
-| Routine folders    | `get-routine-folders`       | List default and custom routine folders.                                          |
-| Routine folders    | `get-routine-folder`        | Get one routine folder's metadata by ID.                                          |
-| Routine folders    | `create-routine-folder`     | Create a routine folder.                                                          |
-| Exercise templates | `get-exercise-templates`    | List exercise templates with equipment and muscle metadata.                       |
-| Exercise templates | `get-exercise-template`     | Get complete metadata for one exercise template by ID.                            |
-| Exercise templates | `search-exercise-templates` | Search the full exercise catalog by title substring.                              |
-| Exercise templates | `create-exercise-template`  | Create a custom exercise template.                                                |
-| Exercise history   | `get-exercise-history`      | Get past performed sets for one exercise template.                                |
-| Body measurements  | `get-body-measurements`     | List dated body measurements.                                                     |
-| Body measurements  | `get-body-measurement`      | Get the body measurement entry for one date.                                      |
-| Body measurements  | `create-body-measurement`   | Create a dated body measurement.                                                  |
-| Body measurements  | `update-body-measurement`   | Update the body measurement for an existing date.                                 |
-| Account            | `get-user-info`             | Return the user's ID, display name, and public profile URL.                       |
+| Category          | Tool                   | Description                                                                       |
+| ----------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| Training analysis | `get-training-summary` | Summarize 1-12 weeks of workout activity and body-measurement trends in one call. |
+| Workouts          | `get-workouts`         | List workouts from newest to oldest with exercise and timing details.             |
+| Workouts          | `get-workout`          | Get complete details for one workout by ID.                                       |
+
+| Workouts | `get-workout-events` | List workout update and delete events since a timestamp. |
+| Workouts | `create-workout` | Create a completed workout in Hevy. |
+| Workouts | `update-workout` | Patch workout metadata by ID; omitted fields and all exercises remain unchanged. |
+| Workouts | `replace-workout-exercises` | Replace all exercises and sets while preserving workout metadata. |
+| Routines | `search-routines` | Search routine titles and return compact metadata for discovery. |
+| Routines | `get-routines` | List custom and default workout routines. |
+| Routines | `get-routine` | Get one routine and its exercise configuration by ID. |
+| Routines | `create-routine` | Create a reusable workout routine. |
+| Routines | `update-routine` | Replace an existing routine's content. |
+
+| Routine folders | `get-routine-folder` | Get one routine folder's metadata by ID. |
+| Routine folders | `create-routine-folder` | Create a routine folder. |
+
+| Exercise templates | `get-exercise-template` | Get complete metadata for one exercise template by ID. |
+| Exercise templates | `search-exercise-templates` | Search the full exercise catalog by title substring. |
+| Exercise templates | `create-exercise-template` | Create a custom exercise template. |
+| Exercise history | `get-exercise-history` | Get past performed sets for one exercise template. |
+| Body measurements | `get-body-measurements` | List dated body measurements. |
+| Body measurements | `get-body-measurement` | Get the body measurement entry for one date. |
+| Body measurements | `create-body-measurement` | Create a dated body measurement. |
+| Body measurements | `update-body-measurement` | Update the body measurement for an existing date. |
 
 The Hevy API currently exposes no delete endpoints for workouts, routines,
 routine folders, exercise templates, or body measurements, so there are no
@@ -530,7 +529,7 @@ server-scoped in-memory catalog cache:
 - Entries live for five minutes, and the cache holds at most one catalog.
 - Concurrent catalog requests share an in-flight fetch when possible.
 - `search-exercise-templates` accepts `refresh: true` to invalidate the cache.
-- Paginated `get-exercise-templates` calls always fetch their requested page.
+
 - Each hosted Worker request gets a fresh cache, preventing cross-key sharing.
 
 ### Local Node telemetry and privacy

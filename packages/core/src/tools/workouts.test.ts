@@ -64,7 +64,6 @@ describe("workout tools", () => {
 			getWorkoutEvents: vi
 				.fn()
 				.mockResolvedValue({ events: [], page_count: 1 }),
-			getWorkoutCount: vi.fn().mockResolvedValue({ workout_count: 4 }),
 		} as unknown as HevyClient;
 		const tool = register(client);
 
@@ -74,9 +73,7 @@ describe("workout tools", () => {
 			tool,
 			"get-workout-events",
 		)({ page: 1, page_size: 5, since: "2025-01-01T00:00:00Z" });
-		expect(await toolHandler(tool, "get-workout-count")({})).toMatchObject({
-			structuredContent: { workout_count: 4 },
-		});
+
 		expect(client.getWorkouts).toHaveBeenCalledWith({ page: 2, pageSize: 5 });
 		expect(client.getWorkout).toHaveBeenCalledWith("w1");
 		expect(client.getWorkoutEvents).toHaveBeenCalledWith({

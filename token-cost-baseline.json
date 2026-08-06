@@ -235,18 +235,6 @@
 			"percentageOfTotal": 3.25
 		},
 		{
-			"name": "get-exercise-templates",
-			"tokens": 254,
-			"componentTokens": {
-				"name": 7,
-				"description": 21,
-				"inputSchema": 62,
-				"outputSchema": 137,
-				"annotations": 19
-			},
-			"percentageOfTotal": 3.2
-		},
-		{
 			"name": "get-exercise-history",
 			"tokens": 247,
 			"componentTokens": {
@@ -269,18 +257,6 @@
 				"annotations": 31
 			},
 			"percentageOfTotal": 2.92
-		},
-		{
-			"name": "get-routine-folders",
-			"tokens": 224,
-			"componentTokens": {
-				"name": 7,
-				"description": 15,
-				"inputSchema": 62,
-				"outputSchema": 112,
-				"annotations": 20
-			},
-			"percentageOfTotal": 2.82
 		},
 		{
 			"name": "get-exercise-template",
@@ -307,18 +283,6 @@
 			"percentageOfTotal": 1.79
 		},
 		{
-			"name": "get-user-info",
-			"tokens": 133,
-			"componentTokens": {
-				"name": 5,
-				"description": 20,
-				"inputSchema": 14,
-				"outputSchema": 67,
-				"annotations": 19
-			},
-			"percentageOfTotal": 1.67
-		},
-		{
 			"name": "create-routine-folder",
 			"tokens": 109,
 			"componentTokens": {
@@ -327,18 +291,6 @@
 				"inputSchema": 50,
 				"outputSchema": 0,
 				"annotations": 32
-			},
-			"percentageOfTotal": 1.37
-		},
-		{
-			"name": "get-workout-count",
-			"tokens": 109,
-			"componentTokens": {
-				"name": 6,
-				"description": 20,
-				"inputSchema": 14,
-				"outputSchema": 42,
-				"annotations": 19
 			},
 			"percentageOfTotal": 1.37
 		}

@@ -4,7 +4,6 @@ import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
 import { folderToolDefinitions } from "./folders.js";
 import { routineToolDefinitions } from "./routines.js";
 import { templateToolDefinitions } from "./templates.js";
-import { userToolDefinitions } from "./user.js";
 import { routineDiscoveryToolDefinitions } from "./routine-discovery.js";
 import { workflowToolDefinitions } from "./workflows.js";
 import { workoutToolDefinitions } from "./workouts.js";
@@ -16,7 +15,6 @@ export const hevyToolDefinitions = [
 	...templateToolDefinitions,
 	...folderToolDefinitions,
 	...bodyMeasurementToolDefinitions,
-	...userToolDefinitions,
 	...workflowToolDefinitions,
 	...routineDiscoveryToolDefinitions,
 ] as const;

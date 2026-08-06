@@ -122,19 +122,19 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		const readOnlyNames = new Set([
 			"get-workouts",
 			"get-workout",
-			"get-workout-count",
+
 			"get-workout-events",
 			"get-routines",
 			"get-routine",
-			"get-exercise-templates",
+
 			"get-exercise-template",
 			"get-exercise-history",
 			"search-exercise-templates",
-			"get-routine-folders",
+
 			"get-routine-folder",
 			"get-body-measurements",
 			"get-body-measurement",
-			"get-user-info",
+
 			"get-training-summary",
 			"search-routines",
 		]);
@@ -473,97 +473,6 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		);
 	});
 
-	it("mocks get-exercise-templates through MCP transport", async () => {
-		if (!client) throw new Error("Client not initialized");
-
-		getApiScope()
-			.get("/v1/exercise_templates")
-			.query({ page: 1, pageSize: 1 })
-			.reply(200, {
-				page: 1,
-				page_count: 1,
-				exercise_templates: [
-					{
-						id: "template-1",
-						title: "Bench Press",
-						type: "weight_reps",
-						primary_muscle_group: "chest",
-						secondary_muscle_groups: ["triceps"],
-						is_custom: false,
-					},
-				],
-			});
-
-		const result = await callTool(client, "get-exercise-templates", {
-			page: 1,
-			page_size: 1,
-		});
-		const structuredContent = result.structuredContent as {
-			exercise_templates: Array<{
-				id: string;
-				title: string;
-				primary_muscle_group: string;
-			}>;
-		};
-		const payload = JSON.parse(result.text) as Array<{
-			id: string;
-			title: string;
-			primary_muscle_group: string;
-		}>;
-
-		expect(result.isError).toBeFalsy();
-		expect(structuredContent.exercise_templates[0]).toMatchObject({
-			id: "template-1",
-			title: "Bench Press",
-			primary_muscle_group: "chest",
-		});
-		expect(typeof structuredContent.exercise_templates[0]?.id).toBe("string");
-		expect(payload).toEqual(structuredContent.exercise_templates);
-	});
-
-	it("mocks get-routine-folders through MCP transport", async () => {
-		if (!client) throw new Error("Client not initialized");
-
-		getApiScope()
-			.get("/v1/routine_folders")
-			.query({ page: 1, pageSize: 1 })
-			.reply(200, {
-				page: 1,
-				page_count: 1,
-				routine_folders: [
-					{
-						id: 10,
-						title: "Mock Folder",
-						created_at: "2025-03-26T09:00:00Z",
-						updated_at: "2025-03-26T09:00:00Z",
-					},
-				],
-			});
-
-		const result = await callTool(client, "get-routine-folders", {
-			page: 1,
-			page_size: 1,
-		});
-		const structuredContent = result.structuredContent as {
-			routine_folders: Array<{
-				id: number;
-				title: string;
-			}>;
-		};
-		const payload = JSON.parse(result.text) as Array<{
-			id: number;
-			title: string;
-		}>;
-
-		expect(result.isError).toBeFalsy();
-		expect(structuredContent.routine_folders[0]).toMatchObject({
-			id: 10,
-			title: "Mock Folder",
-		});
-		expect(typeof structuredContent.routine_folders[0]?.id).toBe("number");
-		expect(payload).toEqual(structuredContent.routine_folders);
-	});
-
 	it("mocks get-body-measurements through MCP transport", async () => {
 		if (!client) throw new Error("Client not initialized");
 
@@ -595,34 +504,6 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		expect(payload[0]).toMatchObject({
 			weight_kg: 80.5,
 			fat_percent: 19.3,
-		});
-	});
-
-	it("mocks get-user-info through MCP transport", async () => {
-		if (!client) throw new Error("Client not initialized");
-
-		getApiScope()
-			.get("/v1/user/info")
-			.reply(200, {
-				data: {
-					id: "user-1",
-					name: "Mock User",
-					url: "https://hevy.com/user/mock-user",
-				},
-			});
-
-		const result = await callTool(client, "get-user-info", {});
-		const payload = JSON.parse(result.text) as {
-			id: string;
-			name: string;
-			url: string;
-		};
-
-		expect(result.isError).toBeFalsy();
-		expect(payload).toMatchObject({
-			id: "user-1",
-			name: "Mock User",
-			url: "https://hevy.com/user/mock-user",
 		});
 	});
 

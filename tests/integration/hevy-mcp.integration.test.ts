@@ -39,37 +39,6 @@ const RoutineSummarySchema = z.object({
 
 const GetRoutinesResponseSchema = z.array(RoutineSummarySchema);
 
-// --- EXERCISE TEMPLATES SCHEMAS ---
-const FormattedExerciseTemplateSchema = z.object({
-	id: z.string().optional(),
-	title: z.string().optional(),
-	type: z.string().optional(),
-	primary_muscle_group: z.string().optional(),
-	secondary_muscle_groups: z.array(z.string()).optional(),
-	is_custom: z.boolean().optional(),
-});
-
-const GetExerciseTemplatesResponseSchema = z.array(
-	FormattedExerciseTemplateSchema,
-);
-
-// --- ROUTINE FOLDERS SCHEMAS ---
-const FormattedRoutineFolderSchema = z.object({
-	id: z.number().optional(),
-	title: z.string().optional(),
-	created_at: z.string().optional(),
-	updated_at: z.string().optional(),
-});
-
-const GetRoutineFoldersResponseSchema = z.array(FormattedRoutineFolderSchema);
-
-// --- USER SCHEMAS ---
-const UserInfoResponseSchema = z.object({
-	id: z.string().optional(),
-	name: z.string().optional(),
-	url: z.string().nullable().optional(),
-});
-
 // --- BODY MEASUREMENTS SCHEMAS ---
 const FormattedBodyMeasurementSchema = z.object({
 	date: z.string(),
@@ -215,100 +184,6 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 				expect(responseData[0].set_count).toBeDefined();
 				expect(responseData[0].title).toBeDefined();
 			}
-		});
-	});
-
-	describe("Get Exercise Templates", () => {
-		it("should be able to get exercise templates", async () => {
-			if (!client) throw new Error("Client not initialized");
-
-			const result = await client.request({
-				method: "tools/call",
-				params: {
-					name: "get-exercise-templates",
-					arguments: {
-						page: 1,
-						page_size: 5,
-					},
-				},
-			});
-
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
-
-			// Validate the response schema with Zod
-			GetExerciseTemplatesResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(Array.isArray(responseData)).toBe(true);
-			expect(responseData.length).toBeGreaterThan(0);
-			expect(responseData[0].id).toBeDefined();
-			expect(responseData[0].title).toBeDefined();
-		});
-	});
-
-	describe("Get Routine Folders", () => {
-		it("should be able to get routine folders", async () => {
-			if (!client) throw new Error("Client not initialized");
-
-			const result = await client.request({
-				method: "tools/call",
-				params: {
-					name: "get-routine-folders",
-					arguments: {
-						page: 1,
-						page_size: 5,
-					},
-				},
-			});
-
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
-
-			// Validate the response schema with Zod
-			GetRoutineFoldersResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(Array.isArray(responseData)).toBe(true);
-			if (responseData.length > 0) {
-				expect(responseData[0].id).toBeDefined();
-				expect(responseData[0].title).toBeDefined();
-			}
-		});
-	});
-
-	describe("Get User Info", () => {
-		it("should be able to get user info", async () => {
-			if (!client) throw new Error("Client not initialized");
-
-			const result = await client.request({
-				method: "tools/call",
-				params: {
-					name: "get-user-info",
-					arguments: {},
-				},
-			});
-
-			expect(result).toBeDefined();
-			const firstContent = result.content[0];
-			if (firstContent.type !== "text") {
-				throw new Error("Expected text content");
-			}
-			const responseData = JSON.parse(firstContent.text);
-
-			// Validate the response schema with Zod
-			UserInfoResponseSchema.parse(responseData);
-
-			expect(responseData).toBeDefined();
-			expect(responseData.name).toBeDefined();
 		});
 	});
 

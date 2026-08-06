@@ -7,19 +7,19 @@ import { registerHevyTools } from "./register.js";
 const READ_ONLY_TOOLS = [
 	"get-workouts",
 	"get-workout",
-	"get-workout-count",
+
 	"get-workout-events",
 	"get-routines",
 	"get-routine",
-	"get-exercise-templates",
+
 	"get-exercise-template",
 	"get-exercise-history",
 	"search-exercise-templates",
-	"get-routine-folders",
+
 	"get-routine-folder",
 	"get-body-measurements",
 	"get-body-measurement",
-	"get-user-info",
+
 	"get-training-summary",
 	"search-routines",
 ] as const;
@@ -45,8 +45,7 @@ const EXPECTED_DESCRIPTIONS = {
 		"Read-only. Lists compact workout summaries newest first. Use get-workout for exercises and sets; results are paginated.",
 	"get-workout":
 		"Read-only. Gets one workout with exercises and sets by workout_id. Use get-workouts to discover IDs.",
-	"get-workout-count":
-		"Read-only. Returns the total workout count; it does not return records or accept date filters.",
+
 	"get-workout-events":
 		"Read-only. Lists workout update and deletion events since a timestamp for incremental sync; results are paginated.",
 	"create-workout":
@@ -63,8 +62,7 @@ const EXPECTED_DESCRIPTIONS = {
 		"Writes a reusable routine; use create-workout for completed sessions. Retries can create duplicates.",
 	"update-routine":
 		"Mutates a routine by replacing its title and exercises. Omitted exercises are removed.",
-	"get-exercise-templates":
-		"Read-only. Pages through exercise templates. Use search-exercise-templates when a title is known.",
+
 	"get-exercise-template":
 		"Read-only. Gets one exercise template by exercise_template_id. Use search-exercise-templates to discover IDs.",
 	"get-exercise-history":
@@ -73,10 +71,8 @@ const EXPECTED_DESCRIPTIONS = {
 		"Writes a custom exercise template. Search first; retries or reused titles can create duplicates.",
 	"search-exercise-templates":
 		"Read-only. Searches template titles case-insensitively and returns IDs. refresh reloads the five-minute catalog cache.",
-	"get-routine-folders":
-		"Read-only. Lists routine folders and IDs; results are paginated.",
 	"get-routine-folder":
-		"Read-only. Gets one routine folder by folder_id. Use get-routine-folders to discover IDs.",
+		"Read-only. Gets one routine folder by folder_id. Use the hevy://routine-folders resource to discover IDs.",
 	"create-routine-folder":
 		"Writes a routine folder. Retries or reused titles can create duplicates.",
 	"get-body-measurements":
@@ -87,8 +83,7 @@ const EXPECTED_DESCRIPTIONS = {
 		"Writes a body measurement for a new YYYY-MM-DD date. Existing dates conflict; retries are not idempotent.",
 	"update-body-measurement":
 		"Mutates numeric fields on an existing YYYY-MM-DD measurement. Omitted fields remain unchanged; values cannot be cleared.",
-	"get-user-info":
-		"Read-only. Returns the authenticated Hevy user ID, display name, and public profile URL.",
+
 	"get-training-summary":
 		"Read-only. Summarizes workouts and body-measurement trends for the last 1–12 weeks, including compact session and scan evidence.",
 	"search-routines":
