@@ -1,6 +1,6 @@
 ---
 "@hevy-mcp/core": patch
-"hevy-mcp": patch
+"hevy-mcp": major
 "@hevy-mcp/worker": patch
 "@chrisdoc/hevy-cli": patch
 ---

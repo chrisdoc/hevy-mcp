@@ -90,7 +90,19 @@ try {
 			const id = `representative-${iteration}`;
 			scope()
 				.get(`/v1/workouts/${id}`)
-				.reply(200, observed("scenario", { id, exercises: [] }));
+				.reply(
+					200,
+					observed("scenario", {
+						id,
+						title: `Performance Workout ${id}`,
+						description: "Deterministic child-local fixture",
+						start_time: "2026-01-01T08:00:00Z",
+						end_time: "2026-01-01T09:00:00Z",
+						created_at: "2026-01-01T08:00:00Z",
+						updated_at: "2026-01-01T09:00:00Z",
+						exercises: [],
+					}),
+				);
 		}
 		result.expectedRequestCount += 20;
 	}
@@ -122,7 +134,19 @@ try {
 			const id = `sequential-${iteration}`;
 			scope()
 				.get(`/v1/workouts/${id}`)
-				.reply(200, observed("scenario", { id, exercises: [] }));
+				.reply(
+					200,
+					observed("scenario", {
+						id,
+						title: `Performance Workout ${id}`,
+						description: "Deterministic child-local fixture",
+						start_time: "2026-01-01T08:00:00Z",
+						end_time: "2026-01-01T09:00:00Z",
+						created_at: "2026-01-01T08:00:00Z",
+						updated_at: "2026-01-01T09:00:00Z",
+						exercises: [],
+					}),
+				);
 		}
 		result.expectedRequestCount += 100;
 	}

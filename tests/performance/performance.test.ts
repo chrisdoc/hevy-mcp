@@ -167,7 +167,11 @@ async function runRepresentativeReadScenario() {
 						{ workout_id: id },
 					);
 					expect(result.structuredContent).toMatchObject({
-						workout: expect.any(Object),
+						workout: {
+							id,
+							title: `Performance Workout ${id}`,
+							description: "Deterministic child-local fixture",
+						},
 					});
 					state.completedIterations += 1;
 				} catch (error) {
@@ -251,7 +255,11 @@ async function runSequentialScenario() {
 						{ workout_id: id },
 					);
 					expect(result.structuredContent).toMatchObject({
-						workout: expect.any(Object),
+						workout: {
+							id,
+							title: `Performance Workout ${id}`,
+							description: "Deterministic child-local fixture",
+						},
 					});
 					state.completedIterations += 1;
 				} catch (error) {

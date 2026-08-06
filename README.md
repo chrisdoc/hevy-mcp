@@ -369,7 +369,7 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 
 ## Tools
 
-`hevy-mcp` registers 26 tools. Read-only tools are safe for exploration; create
+`hevy-mcp` registers 22 tools. Read-only tools are safe for exploration; create
 and update tools are exposed with MCP mutation annotations so compatible clients
 can request confirmation.
 
