@@ -107,7 +107,7 @@ jobs:
       - name: Set Release Outputs
         id: release
         env:
-          PKGS: ${{ steps.changesets.outputs.publishedPackages }}
+          PKGS: ${{ steps.changesets.outputs['published-packages'] }}
           PUBLISHED: ${{ steps.changesets.outputs.published }}
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
