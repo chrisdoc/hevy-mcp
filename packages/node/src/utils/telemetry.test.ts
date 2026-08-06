@@ -22,6 +22,10 @@ const testDoubles = vi.hoisted(() => {
 		sentryInit: vi.fn(() => ({ _isSentryClient: true })),
 		sentryFlush: vi.fn().mockResolvedValue(true),
 		sentrySetUser: vi.fn(),
+		sentrySetTag: vi.fn(),
+		sentrySetContext: vi.fn(),
+		sentrySetFingerprint: vi.fn(),
+		sentryCaptureMessage: vi.fn(),
 		validateOpenTelemetrySetup: vi.fn(),
 		sentrySpanProcessor: vi.fn(),
 		sentryPropagator: vi.fn(),
@@ -53,6 +57,14 @@ vi.mock("@sentry/node", () => ({
 	init: testDoubles.sentryInit,
 	flush: testDoubles.sentryFlush,
 	setUser: testDoubles.sentrySetUser,
+	withScope: vi.fn((callback: (scope: unknown) => void) =>
+		callback({
+			setTag: testDoubles.sentrySetTag,
+			setContext: testDoubles.sentrySetContext,
+			setFingerprint: testDoubles.sentrySetFingerprint,
+		}),
+	),
+	captureMessage: testDoubles.sentryCaptureMessage,
 	validateOpenTelemetrySetup: testDoubles.validateOpenTelemetrySetup,
 	SentryContextManager: testDoubles.sentryContextManager,
 }));
@@ -269,11 +281,26 @@ describe("telemetry initialization", () => {
 			"exception",
 			expect.objectContaining({
 				"exception.type": "Error",
+				"exception.category": "Error",
+				"exception.code": "ECONNREFUSED",
+				"exception.message": "uncaught",
 				"exception.source": "uncaughtException",
 				"mcp.failure.phase": "uncaught_exception",
 				"error.type": "MCP_PROCESS_EXCEPTION",
 				"error.category": "McpProcessFailure",
 				"error.code": "ECONNREFUSED",
+				"mcp.failure.reason": "transport_failure",
+			}),
+		);
+		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
+			"MCP process uncaughtException failure",
+			"error",
+		);
+		expect(testDoubles.sentrySetContext).toHaveBeenCalledWith(
+			"mcpException",
+			expect.objectContaining({
+				category: "Error",
+				message: "uncaught",
 			}),
 		);
 		expect(testDoubles.activeSpan.setAttributes).toHaveBeenCalledWith(
@@ -500,13 +527,17 @@ describe("telemetry initialization", () => {
 		expect(setAttribute).toHaveBeenCalledWith("user.hash", "abcdef0123");
 	});
 
-	it("exports only bounded exception attributes", async () => {
+	it("exports bounded debug exception attributes", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
 		const secret = "secret-exception-message";
 		const path = "/home/private/hevy-mcp/packages/node/src/index.ts";
 		const error = new Error(secret);
 		error.stack = `Error: ${secret}\n    at main (${path}:10:2)`;
+		Object.assign(error, {
+			authorization: "bearer-secret",
+			body: "response-body-secret",
+		});
 
 		mod.recordTelemetryException(error, {
 			"mcp.failure.phase": "run",
@@ -515,19 +546,63 @@ describe("telemetry initialization", () => {
 		});
 
 		expect(testDoubles.activeSpan.recordException).not.toHaveBeenCalled();
-		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledWith("exception", {
-			"exception.type": "Error",
-			"mcp.failure.phase": "run",
-			"error.type": "MCP_SERVER_RUN_ERROR",
-			"error.category": "McpServerRunFailure",
-		});
+		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledWith(
+			"exception",
+			expect.objectContaining({
+				"exception.type": "Error",
+				"exception.category": "Error",
+				"exception.message": secret,
+				"exception.stacktrace": error.stack,
+				"mcp.failure.phase": "run",
+				"error.type": "MCP_SERVER_RUN_ERROR",
+				"error.category": "McpServerRunFailure",
+			}),
+		);
 		const exported = JSON.stringify({
 			events: testDoubles.activeSpan.addEvent.mock.calls,
 			attributes: testDoubles.activeSpan.setAttributes.mock.calls,
 		});
-		expect(exported).not.toContain(secret);
-		expect(exported).not.toContain(path);
-		expect(exported).not.toContain("exception.message");
-		expect(exported).not.toContain("exception.stacktrace");
+		expect(exported).toContain(secret);
+		expect(exported).toContain(path);
+		expect(exported).toContain("exception.message");
+		expect(exported).toContain("exception.stacktrace");
+		expect(exported).not.toContain("bearer-secret");
+		expect(exported).not.toContain("response-body-secret");
+	});
+
+	it("keeps Sentry diagnostics equivalent to OTel diagnostics", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const error = new TypeError("invalid runtime state");
+		error.stack =
+			"TypeError: invalid runtime state\n    at run (/app/index.ts:4:2)";
+		const attributes = {
+			"mcp.failure.phase": "uncaught_exception",
+			"error.type": "MCP_PROCESS_EXCEPTION",
+			"error.category": "McpProcessFailure",
+		};
+
+		mod.recordSentryTelemetryException(
+			"MCP process uncaughtException failure",
+			error,
+			attributes,
+		);
+
+		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
+			"MCP process uncaughtException failure",
+			"error",
+		);
+		expect(testDoubles.sentrySetTag).toHaveBeenCalledWith(
+			"exception.type",
+			"TypeError",
+		);
+		expect(testDoubles.sentrySetContext).toHaveBeenCalledWith(
+			"mcpException",
+			expect.objectContaining({
+				category: "TypeError",
+				message: "invalid runtime state",
+				stack: error.stack,
+			}),
+		);
 	});
 });
