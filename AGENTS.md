@@ -1,442 +1,210 @@
 # Agent Instructions for hevy-mcp
 
-**ALWAYS follow these instructions first and only fallback to search or additional context if the information here is incomplete or found to be in error.**
+Read this file before changing the repository. Keep this file focused on
+agent-only rules; use the linked documents and repository configuration as the
+source of truth for detailed commands and changing facts.
 
-## Project Overview
+## Start in a fresh worktree
 
-- **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
-- The codebase is TypeScript (Node.js v24+) organized as five workspaces: the
-  runtime-neutral `@hevy-mcp/hevy-client` and `@hevy-mcp/core` packages, the
-  Node package in `packages/node`, and the Cloudflare package in
-  `packages/worker`, plus the public CLI in `packages/cli`. All implementation
-  lives under `packages/*`; the root is a private workspace orchestrator and
-  must not gain a runtime `src/` tree.
-- API client code is generated from the OpenAPI spec using [Kubb](https://kubb.dev/). **Do not manually edit generated files.**
-- **Type Safety:** The project uses Zod schema inference for type-safe tool parameters, eliminating manual type assertions and ensuring compile-time type safety.
-- **MCP SDK internals sensitivity:** `packages/node/src/utils/stdio-observability.ts`
-  depends on MCP SDK stdio internals (private fields such as `_ondata`/
-  `_readBuffer`) for raw chunk instrumentation. Re-run the stdio observability
-  test suite after any MCP TypeScript SDK package upgrade.
-
-## Git & Workflow Standards
-
-- **Conventional Commits**: AI agents (such as Claude Code, Antigravity, etc.) and developers must always use the conventional commit format (e.g., `feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`) for all commits they generate or suggest.
-- **No Direct Pushes to `main` (CRITICAL)**: Pushing directly to the `main` branch is strictly prohibited and blocked by branch protection. All development must be done on feature branches (e.g., `feat/some-feature` or `fix/some-bug`) and submitted via a Pull Request.
-- **Fresh Worktrees (CRITICAL)**: Always begin work from a new Git worktree based on and tracking the latest `origin/main`. Fetch `origin/main` first, then create a dedicated feature worktree/branch from `origin/main`; never start implementation in an existing worktree or from a stale local `main`.
-- **Never bypass Git hooks**: Never use `--no-verify` for commits or pushes. Fix the underlying hook or validation failure, then rerun the hook normally.
-- **Changesets (CRITICAL — CHECK THIS BEFORE EVERY COMMIT)**: The project uses [Changesets](https://github.com/changesets/changesets) for versioning and releases.
-  - **STOP BEFORE COMMITTING**: If a change touches `packages/*`, changes runtime-visible behavior, changes a workspace package dependency, or changes an explicit release trigger such as `cloudflare.config.ts`, create and stage a **non-empty Changeset first**. Do not rely on the Conventional Commit type (`chore:`, `docs:`, etc.) to decide this.
-  - **REQUIRED FINAL CHECK**: Run `npm run check:changeset` before committing. A passing unit test or commit hook does not replace this check.
-  - **RELEASE CADENCE**: Merge the automated `changeset-release/main` (**"Version Packages"**) Pull Request on a regular cadence (weekly is the default), not via ad-hoc frequent merges.
-  - **URGENT EXCEPTION**: Security fixes and high-impact user-facing bug fixes may be released immediately outside the routine cadence.
-  - **BUMP CHANGESETS**: The root is a private repository orchestrator; runtime/package code and manifests are under `packages/*`. Files under `packages/*`, runtime-visible behavior changes, workspace package dependency changes, and explicit release triggers such as `cloudflare.config.ts` **MUST** use a non-empty bump Changeset naming every affected package. Use `npx changeset` and select `patch`, `minor`, or `major` for the release impact.
-  - **EMPTY CHANGESETS**: An empty Changeset is allowed only when the entire PR is no-release/internal-only and changes no workspace package or explicit release trigger; it cannot accompany a release-triggering change. Docs, CI, repository-only tests/tooling, and chores may qualify only when they meet those conditions; a Conventional Commit type alone does not determine eligibility. Create an eligible empty Changeset with `npx changeset --empty`.
-  - **BUNDLED RELEASE CASCADE**: Every listed consumer receives at least a patch bump; do not couple unrelated package versions. The `@hevy-mcp/operations` package is also a transitive shipped consumer and must be included when the client changes:
-    - `@hevy-mcp/hevy-client` changes → client, `@hevy-mcp/operations`, core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
-    - `@hevy-mcp/core` changes → core, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`.
-    - Node adapter-only changes → `hevy-mcp` only.
-    - Worker-only changes → `@hevy-mcp/worker` only.
-    - CLI-only changes → `@chrisdoc/hevy-cli` only.
-  - **PRIVATE RELEASE IDENTITY**: Core, client, and Worker remain private. They are versioned for internal release/deployment identity with no npm tags.
-  - **WORKER CONFIG TRIGGER**: A `cloudflare.config.ts` change counts as a Worker change.
-  - **CI ENFORCEMENT**: Pull Requests are guarded by a CI check that runs `npm run check:changeset` (which runs `npx changeset status --since=origin/<base_branch>`). CI will fail if no changeset file is staged/committed.
-  - **VALIDATION**: You can validate your changeset status locally by running `npm run check:changeset`. Make sure the changeset file is staged/committed.
-
-## Agent Tool Requirements
-
-### Documentation and Research
-
-- **GitHub Integration**: MUST use the GitHub MCP server for all GitHub interactions and only use `gh` if there is a problem with the personal access token
-
-## Working Effectively
-
-### Bootstrap and Build Repository
-
-Run these commands in order to set up a working development environment (npm is the package manager for this project):
-
-1. **Install dependencies:**
+1. Inspect the checkout before touching it:
 
    ```bash
-   npm install
+   git status --short --branch
    ```
 
-   - Takes approximately 30 seconds. NEVER CANCEL - set timeout to 60+ seconds.
-
-2. **Build the project:**
+2. Fetch the current base and create a dedicated feature branch/worktree from
+   it:
 
    ```bash
-   npm run build
+   git fetch origin main
+   git worktree add -b <type>/<topic> ../hevy-mcp-<topic> origin/main
    ```
 
-   - Takes approximately 3-5 seconds. TypeScript compilation via tsdown.
-   - Always build before running the server or testing changes.
+   Use a branch type such as `feat`, `fix`, `docs`, `test`, `refactor`, or
+   `chore`. Preserve existing user changes; ask before proceeding if creating
+   the worktree would risk them.
 
-3. **Run linting/formatting:**
+3. Implement and validate in the new worktree. The work is ready for review
+   only when the branch is based on `origin/main`, is not `main`, and the
+   original checkout remains untouched.
 
-   ```bash
-   npm run check
-   ```
+Never push directly to `main`. Use Conventional Commits (`feat:`, `fix:`,
+`docs:`, `test:`, `refactor:`, `build:`, `ci:`, `chore:`, or `style:`) and keep
+Git hooks enabled. Fix hook failures instead of bypassing them.
 
-   - Takes less than 1 second.
-   - **EXPECTED WARNING:** Warnings from oxlint are expected and can be ignored.
+## Source-of-truth pointers
 
-### Testing Commands
+- `CONTRIBUTING.md` owns development setup, Node policy, Worker operations,
+  release policy, and the required validation baseline. Read the relevant
+  section before that class of change.
+- `docs/test-lanes.md` owns named test lanes. Prefer the `npm run test:*`
+  aliases over copying raw Vitest selectors.
+- `repository/topology.json` owns workspace boundaries and release bundles.
+- `package.json` owns the current command names. Inspect it instead of
+  copying command details into new documentation.
+- Use the GitHub MCP server for GitHub operations. Use `gh` only when the
+  GitHub MCP server cannot complete the operation because of a token problem.
 
-4. **Run unit tests only:**
+## Repository shape and boundaries
 
-   ```bash
-   npx vitest run --exclude tests/integration/**
-   ```
+The root is a private workspace orchestrator and has no runtime `src/` tree.
+The six workspaces are:
 
-   - Takes approximately 1-2 seconds. NEVER CANCEL.
-   - This is the primary testing command for development.
+- `packages/hevy-client` — runtime-neutral native-fetch Hevy client, curated
+  exports, and Kubb-generated API types/schemas.
+- `packages/operations` — runtime-neutral reusable Hevy domain operations.
+- `packages/core` — runtime-neutral MCP server construction, tools, prompts,
+  resources, execution, and safe diagnostics.
+- `packages/node` — public Node package `hevy-mcp`; Node lifecycle, stdio and
+  local Streamable HTTP transports, telemetry, and Node built-ins.
+- `packages/worker` — private Cloudflare Worker Streamable HTTP and optional
+  OAuth adapter.
+- `packages/cli` — public Node package `@chrisdoc/hevy-cli`; the standalone
+  Hevy command-line client.
 
-5. **Run integration tests (requires API key):**
+The dependency direction is `hevy-client -> operations -> core`, with `core`
+also depending directly on `hevy-client`; Node, Worker, and CLI are adapters
+that consume the runtime-neutral packages. Adapters do not import one another.
+Keep Node built-ins and Cloudflare bindings out of `hevy-client`, `operations`,
+and `core`. Keep Node-only lifecycle, transport, telemetry, and observability
+in `packages/node`; keep Worker bindings and OAuth in `packages/worker`.
 
-   ```bash
-   npx vitest run tests/integration
-   ```
+## Generated client
 
-   - **WILL FAIL** without valid `HEVY_API_KEY` in `.env` file (by design).
-   - Integration tests require real API access and cannot run in sandboxed environments.
-
-6. **Run all tests:**
-
-   ```bash
-   npm test
-   ```
-
-   - Takes approximately 1-2 seconds for unit tests only (without API key).
-   - **WILL FAIL** if `HEVY_API_KEY` is missing due to integration test failure (by design).
-
-### API Client Generation
-
-7. **Regenerate API client from OpenAPI spec:**
-
-   ```bash
-   npm run build:client
-   ```
-
-   - Takes approximately 4-5 seconds. NEVER CANCEL.
-   - **EXPECTED WARNINGS:** OpenAPI validation warnings about missing schemas are normal.
-   - If you need to refresh `openapi-spec.json` from Hevy first, run `npm run openapi`.
-   - `npm run openapi` fetches the upstream spec and **WILL FAIL** with `ENOTFOUND api.hevyapp.com` in sandboxed environments.
-   - Always run `npm run build:client` after updating `openapi-spec.json`.
-
-### Server Operations
-
-9. **Development server (with hot reload):**
-
-   ```bash
-   npm run dev
-   ```
-
-   - **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
-   - Server runs indefinitely until stopped.
-
-10. **Production server:**
+Treat every file under `packages/hevy-client/src/generated/` as generated
+output. Change the OpenAPI source or the Kubb configuration, then regenerate:
 
 ```bash
-npm start
+npm run openapi          # refreshes the upstream spec; needs network access
+npm run build:client
+npm run check:openapi
+npm run check:generated
 ```
 
-- **REQUIRES:** Valid `HEVY_API_KEY` in `.env` file or will exit immediately.
-- Must run `npm run build` first.
+Review the complete generated diff. Consumers use the curated
+`@hevy-mcp/hevy-client`, `@hevy-mcp/hevy-client/types`, and
+`@hevy-mcp/hevy-client/schemas` exports; generated API functions and `.kubb`
+internals are private. Upstream schema corrections belong in
+`scripts/openapi-spec.js` so regeneration remains reproducible.
 
-## Commands With Known Environment Limitations
+## MCP and type-safety conventions
 
-### Known Failing Commands
+MCP tools live in `packages/core/src/tools/`. Follow the existing tool-definition
+pattern when adding or changing one:
 
-- **`npm run openapi`**: Fails with network error (`ENOTFOUND api.hevyapp.com`) in sandboxed environments.
-- **`npm run inspect`**: MCP inspector tool - may timeout in environments without proper MCP client setup.
+1. Put the Zod input shape in the relevant tool file or
+   `tools/input-schemas.ts`.
+2. Derive handler arguments with
+   `InferToolParams<typeof schema>`; keep the schema as the single source of
+   truth for validation and types.
+3. Define the response contract and output schema for read tools in
+   `utils/response-contracts.ts`.
+4. Register the definition through `tools/register.ts`, use the existing
+   `ToolRuntime` error/observation path, and add a co-located test.
+5. Measure token cost when tool descriptions or schemas materially change:
+   `npm run measure:tokens`.
 
-Only list commands here that are known to be flaky or unsupported in some
-environments. Other documented commands (including `npm run check:types`) are
-expected to succeed locally; treat failures as issues to fix rather than
-environmental flakiness. See `CONTRIBUTING.md` for the canonical list of
-commands.
+Handlers receive inferred arguments. Keep manual argument casts, `any`, and
+`unknown` out of tool-handler code. Reuse the existing error policy,
+`withErrorHandling` path, response contracts, and safe diagnostics rather than
+creating parallel response or error formats.
 
-`npm run check:types` is expected to pass locally before opening a PR; see the
-"Type checking validation" section below.
+## Secrets and runtime behavior
 
-## Environment Setup
+Use `HEVY_API_KEY` through `.env` or the process environment. Keep `.env` and
+real keys untracked, and keep keys out of command-line arguments, URLs, logs,
+fixtures, screenshots, and error messages. Deterministic unit, mocked MCP,
+contract, stdio, package, and performance lanes use fake credentials and do not
+need a live key. Live Hevy lanes require a valid `HEVY_API_KEY`.
 
-### Required Environment Variables
+The Node executable defaults to stdio and also supports local Streamable HTTP
+with `--transport http`; inspect `packages/node/README.md` or `--help` before
+changing transport behavior. The Worker serves stateless Streamable HTTP at
+`POST /mcp`, authenticates the request bearer value, and keeps OAuth optional
+behind the `OAUTH_KV` binding. Read the Worker section of `CONTRIBUTING.md`
+before changing deployment, origin, authentication, or OAuth behavior.
 
-Create a `.env` file in the project root with:
+## Changesets and release identity
 
-```env
-HEVY_API_KEY=your_hevy_api_key_here
+Before every commit, classify the diff and run:
+
+```bash
+npm run check:changeset
 ```
 
-Always provide the API key through `HEVY_API_KEY`.
+A change under `packages/*`, a runtime-visible behavior change, a workspace
+dependency change, or `cloudflare.config.ts` requires a non-empty bump
+Changeset. Name the changed package and every transitive shipped consumer from
+`repository/topology.json`; do not couple unrelated packages. The current
+cascade is:
 
-Do **not** pass API keys via CLI arguments
-(`--hevy-api-key=...`, `--hevyApiKey=...`, `hevy-api-key=...`). These CLI
-forms are unsupported and insecure.
+- `@hevy-mcp/hevy-client` -> `@hevy-mcp/hevy-client`,
+  `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`,
+  `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`.
+- `@hevy-mcp/operations` -> `@hevy-mcp/operations`,
+  `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`,
+  `@chrisdoc/hevy-cli`.
+- `@hevy-mcp/core` -> `@hevy-mcp/core`, `hevy-mcp`,
+  `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`.
+- Node-only, Worker-only, and CLI-only changes bump only their respective
+  package; `cloudflare.config.ts` is a Worker change.
 
-**CRITICAL:** Without this API key:
+Core, client, operations, and Worker are private but versioned for internal
+release/deployment identity. Node and CLI are public. Merge the automated
+`changeset-release/main` Version Packages pull request on the routine cadence
+(weekly by default); reserve off-cycle releases for security fixes and
+high-impact user-facing bugs. An entirely no-release, repository-only change
+may use an eligible empty Changeset via `npx changeset --empty`; docs, CI,
+repository-only tests/tooling, and chores qualify only when no release trigger
+is present. An empty Changeset never accompanies a release trigger. Stage the
+Changeset before committing.
 
-- Servers will not start
-- Integration tests will fail (by design)
-- API client functionality cannot be tested
+## Validation workflow
 
-### Node.js Version
+For source changes, run the narrow relevant lane and the unit suite. Before a
+pull request, use the repository baseline from `CONTRIBUTING.md`:
 
-- **Supported:** Node.js >= 24
-- **Recommended:** Use the exact version pinned in `.nvmrc` (CI uses this exact version)
-- If you use `nvm`, run `nvm use` in the repo root to match `.nvmrc`
-- Use `node --version` to verify current version
-
-## Validation After Changes
-
-### Manual Testing Scenarios
-
-Always perform these validation steps after making changes:
-
-1. **Build validation:**
-
-   ```bash
-   npm run build
-   ```
-
-   - Must complete successfully without errors.
-
-2. **Unit test validation:**
-
-   ```bash
-   npx vitest run --exclude tests/integration/**
-   ```
-
-   - All unit tests must pass.
-
-3. **Code style validation:**
-
-   ```bash
-   npm run check
-   ```
-
-   - Must complete without errors (warnings about oxlint and oxfmt schema are acceptable).
-   - No tool-specific lint warnings are expected; treat reported code warnings
-     as issues to fix.
-
-4. **Type checking validation:**
-
-   ```bash
-   npm run check:types
-   ```
-
-   - Must complete without errors.
-   - Runs the TypeScript compiler in check-only mode (no emitted files), as
-     configured in the `check:types` script in `package.json`.
-   - Note: `npm run build` (tsup) may still succeed when this fails.
-   - Treat failures here as issues to fix (even if the build passes).
-   - Run this locally before opening a PR; CI also runs this check on pull
-     requests and pushes to `main`.
-   - Verifies all type inference is working correctly.
-
-5. **MCP tool functionality validation (if API key available):**
-   - Start development server: `npm run dev`
-   - Test MCP tool endpoints with a client
-   - Verify tool responses are correctly formatted
-
-### Critical Validation Notes
-
-- **ALWAYS** run unit tests after any source code changes
-- **ALWAYS** run build validation before committing changes
-- **ALWAYS** use type inference (`InferToolParams`) instead of manual type assertions
-- **DO NOT** attempt to fix TypeScript errors in
-  `packages/hevy-client/src/generated/` - these are auto-generated files
-- **DO NOT** commit `.env` files containing real API keys
-- **DO NOT** use `as any` or `as unknown` type assertions in tool handlers
-
-## Project Structure and Key Files
-
-### Source Code Organization
-
-```
-packages/
-├── hevy-client/       # Runtime-neutral native-fetch client and Kubb output
-├── core/              # Runtime-neutral MCP construction and tool implementations
-├── node/              # Public Node.js stdio package and telemetry
-├── worker/            # Private Cloudflare Worker HTTP and OAuth entrypoint
-└── cli/               # Public Hevy command-line client
+```bash
+npm run check
+npm run check:types
+npm run build
+npm run test:pr
+npm run test:performance
+npm run check:changeset
 ```
 
-The runtime-neutral implementation lives under `packages/core/src/`:
+Useful focused checks include:
 
-```
-packages/core/src/
-├── tools/             # MCP tool implementations (+ co-located *.test.ts)
-│   ├── annotations.ts       # Workout annotation tools
-│   ├── body-measurements.ts # Body measurement tools
-│   ├── folders.ts           # Routine folder tools
-│   ├── routines.ts          # Routine management tools
-│   ├── templates.ts         # Exercise template tools
-│   ├── user.ts              # User profile tools
-│   └── workouts.ts          # Workout management tools
-└── utils/             # Shared helper functions
-    ├── tool-helpers.ts    # Type inference utilities (InferToolParams)
-    ├── error-handler.ts   # Centralized error handling (withErrorHandling)
-    ├── response-formatter.ts # Output schemas, formatting, and MCP responses
-    ├── tool-taxonomy.ts   # Safe tool observation taxonomy
-    ├── cache.ts           # Per-server template/cache helpers
-    └── safe-error-diagnostic.ts # Privacy-preserving diagnostics
-```
+- `npm run test:stdio` after MCP SDK, stdio, lifecycle, or Node transport
+  changes. `packages/node/src/utils/stdio-observability.ts` uses private MCP
+  SDK fields, so inspect compatibility after every SDK upgrade.
+- `npm run test:worker`, `npm run test:worker-http`, and
+  `npm run worker:dry-run` after Worker changes.
+- `npm run test:pack` or `npm run test:pack:cli` after package entry point,
+  binary, manifest, or published-file changes.
+- `npm run check:server-manifest` after server metadata changes.
+- `npm run check:boundaries` after workspace dependency or runtime-boundary
+  changes.
 
-`packages/core` and `packages/hevy-client` must remain safe for both Node.js and
-Cloudflare Workers. Keep Node built-ins, stdio transports, process lifecycle
-handling, and telemetry/observability in `packages/node`. Keep Cloudflare
-bindings and OAuth code in `packages/worker`. The shipped composition graph is
-`hevy-client → core → node/worker/CLI`; adapters may depend directly on either
-runtime-neutral package but must never import one another.
+`npm run test:unit` is the deterministic default for local source work.
+`npm test` builds first and runs broad Vitest discovery; it is not a substitute
+for the named PR lanes. Integration, live, nightly, and live Worker commands
+are credential-gated and should be run only when the relevant safe credentials
+and environment are available.
 
-### Testing Structure
+Known environment-dependent operations:
 
-```
-tests/
-├── integration/       # Integration tests (require API key)
-└── unit tests are co-located with source files (*.test.ts)
-```
+- `npm run openapi` needs network access to the upstream Hevy API and may fail
+  with `ENOTFOUND api.hevyapp.com` in a sandbox.
+- `npm run inspect` may time out without a correctly configured MCP client or
+  browser environment.
 
-### Client Architecture
+Treat all other documented checks, including `npm run check:types`, as real
+failures to investigate.
 
-The project uses a generated API client via Kubb that creates:
+## Completion checklist
 
-- TypeScript types in `packages/hevy-client/src/generated/client/types/`
-- API methods in `packages/hevy-client/src/generated/client/api/`
-- Zod schemas in `packages/hevy-client/src/generated/client/schemas/`
-
-Only the curated `@hevy-mcp/hevy-client/types` and
-`@hevy-mcp/hevy-client/schemas` barrels are package API. Generated API
-functions and `.kubb` internals are private.
-
-### Configuration Files
-
-- `packages/hevy-client/kubb.config.ts` - API client generation configuration
-- `oxlint and oxfmt configuration` - Code formatting and linting rules (tabs, 80 char lines, double quotes)
-- `hk.pkl` and `mise.toml` - Git hooks for formatting, tests, commit message
-  linting, and tool installation
-
-## Development Patterns
-
-### Type-Safe Tool Implementation
-
-The project uses **Zod schema inference** for type-safe tool parameters. This eliminates manual type assertions and ensures types match schemas automatically.
-
-#### Pattern: Using Type Inference
-
-**Always** extract Zod schemas and use `InferToolParams` for type safety:
-
-```typescript
-import type { InferToolParams } from "../utils/tool-helpers.js";
-import { withErrorHandling } from "../utils/error-handler.js";
-
-// 1. Define schema as const
-const getRoutinesSchema = {
-	page: z.coerce.number().int().gte(1).default(1),
-	pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
-} as const;
-
-// 2. Infer types from schema
-type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
-
-// 3. Use inferred type in handler
-server.registerTool(
-	"get-routines",
-	{
-		description: "Description...",
-		inputSchema: z.object(getRoutinesSchema),
-	},
-	withErrorHandling(async (args: GetRoutinesParams) => {
-		// args is fully typed - no manual assertions needed!
-		const { page, pageSize } = args;
-		// ...
-	}, "get-routines"),
-);
-```
-
-**Key Benefits:**
-
-- ✅ Single source of truth (Zod schema defines both validation and types)
-- ✅ No manual type assertions (`args as {...}`)
-- ✅ Automatic type updates when schemas change
-- ✅ Full IDE autocomplete and type checking
-
-**DO NOT:**
-
-- ❌ Use `args as { ... }` type assertions
-- ❌ Define parameter types separately from Zod schemas
-- ❌ Use `Record<string, unknown>` in handler signatures (use inferred types)
-
-### Adding New MCP Tools
-
-1. **Create new tool file** in `packages/core/src/tools/`
-2. **Define Zod schema** with `as const` assertion
-3. **Infer parameter types** using `InferToolParams<typeof schema>`
-4. **Implement handler** with typed parameters (no manual assertions)
-5. **Wrap with error handling** using `withErrorHandling` from
-   `packages/core/src/utils/error-handler.ts`
-6. **Define and render responses** in `packages/core/src/utils/response-formatter.ts`,
-   co-locating Zod output schemas, raw-to-public normalization, legacy text
-   projection, and MCP response assembly
-7. **Register tools** in `packages/core/src/tools/register.ts`
-8. **Add unit tests** co-located with implementation
-
-### Working with Generated Code
-
-- **NEVER** edit files in `packages/hevy-client/src/generated/` directly
-- Regenerate API client: `npm run build:client`
-- If OpenAPI spec changes, refresh `openapi-spec.json` with `npm run openapi` first
-- Generated types are available through `@hevy-mcp/hevy-client/types`
-
-### Error Handling
-
-- Use centralized error handling from `packages/core/src/utils/error-handler.ts`
-- Wrap handlers with `withErrorHandling(fn, "context-name")`
-- Follow existing error response patterns in tool implementations
-- Error responses automatically include `isError: true` flag
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Server won't start:** Check for `HEVY_API_KEY` in `.env` file
-2. **Integration tests failing:** Expected without valid API key
-3. **TypeScript errors in generated code:** Expected - ignore these
-4. **Build failures:** Run `npm run check` to identify formatting/linting issues
-5. **Network errors in `npm run openapi`:** Expected in sandboxed environments
-6. **Type errors in tool handlers:** Use `InferToolParams<typeof schema>` instead of manual type assertions
-7. **Stale webhook references in docs:** Webhook endpoints are not currently
-   available in the generated client, so docs should not reference a
-   `packages/core/src/tools/webhooks.ts` tool implementation.
-
-### Performance Expectations
-
-- **Build time:** 3-5 seconds
-- **Unit test time:** 1-2 seconds
-- **Dependency installation:** 30 seconds
-- **API client generation:** 4-5 seconds
-- **Type checking:** < 1 second
-
-## Key Utilities Reference
-
-### Type Inference (`packages/core/src/utils/tool-helpers.ts`)
-
-- **`InferToolParams<T>`**: Infers TypeScript types from Zod schema objects
-- **`createTypedToolHandler`**: Optional wrapper for automatic validation (MCP SDK already validates)
-
-### Error Handling (`packages/core/src/utils/error-handler.ts`)
-
-- **`withErrorHandling<TParams>(fn, context)`**: Wraps handlers with error handling while preserving parameter types
-- **`createErrorResponse(error, context?)`**: Creates standardized error responses
-
-### Response Formatting (`packages/core/src/utils/response-formatter.ts`)
-
-- **`createJsonResponse(data, options?)`**: Creates JSON-formatted MCP responses
-- **`createTextResponse(text)`**: Creates text-formatted MCP responses
-- **`createEmptyResponse(message)`**: Creates empty responses with messages
-
----
-
-**Remember:** Always reference these instructions first before searching for additional information or running exploratory commands.
+Before reporting completion, confirm that the diff is focused, tests and
+checks for the changed paths passed (or their limitations are explicit),
+generated output is synchronized, the release requirement is satisfied, and
+`git status --short --branch` shows only intended files on the feature branch.
