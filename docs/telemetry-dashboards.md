@@ -2,8 +2,8 @@
 
 These panels use only the fields in the
 [telemetry data dictionary](./telemetry-data-dictionary.md). The examples use
-Honeycomb-style metric names and dimensions; Sentry span panels should apply
-the equivalent span attribute filters.
+Honeycomb-style metric names and dimensions; Sentry error views should apply
+the equivalent taxonomy and tag filters.
 
 ## Product usage
 
@@ -65,26 +65,25 @@ with placeholders; raw IDs never reach these panels.
 Approved application policy for these dashboards:
 
 - aggregate metrics: 90 days;
-- Sentry/OTel traces containing sanitized client metadata or the pseudonymous
-  user hash: 30 days;
-- user-hash troubleshooting views: 24 hours of access and no saved per-user
-  dashboard or query;
+- Sentry error events and OTel traces containing sanitized client metadata or
+  bounded diagnostic details: 30 days;
+- correlation-ID troubleshooting views: 24 hours of access and no saved
+  persistent-user dashboard or query;
 - dashboard access owners: repository maintainers and the on-call operator;
-- no export of prompt, argument, result, title, notes, dates, identifiers, or
-  measurements.
+- no export of prompts, arguments, results, titles, notes, dates, raw Hevy or
+  request identifiers, or measurements.
 
 Backend retention settings must be configured to match this policy before a
-panel is published. A review owner must re-check the Sentry MCP options and the
-telemetry dictionary whenever the SDK or dashboard definitions change.
+panel is published. A review owner must re-check the Sentry error options and
+the telemetry dictionary whenever the SDK or dashboard definitions change.
 
 ## Publication checklist
 
 Automated guards that must remain green:
 
-- [x] Sentry MCP input capture is explicitly disabled; `packages/node/src/index.test.ts`
-      asserts `recordInputs: false`.
-- [x] Sentry MCP output capture is explicitly disabled; `packages/node/src/index.test.ts`
-      asserts `recordOutputs: false`.
+- [x] Sentry error capture excludes MCP inputs and outputs;
+      `packages/node/src/utils/failure-reporter.test.ts` asserts that request,
+      breadcrumb, extra, and untrusted context fields are removed.
 - [x] Metric dimensions have fixed taxonomies or bounded sanitization;
       `packages/core/src/tools/register.test.ts` and `packages/node/src/utils/tool-observer.test.ts`
       cover the declared fields.
@@ -95,6 +94,20 @@ Automated guards that must remain green:
 - [x] Session termination and sanitized client/protocol fields are covered by
       `packages/node/src/utils/mcp-session-observability.test.ts`.
 - [x] Backend retention and dashboard access policy are documented above.
+
+## Sentry issue views
+
+| View                           | Grouping/filter                            | Question answered                                      |
+| ------------------------------ | ------------------------------------------ | ------------------------------------------------------ |
+| New issues by release          | release, first-seen time                   | Which failures were introduced by a release?           |
+| Tool failure fingerprints      | tool, error type/category/code/status      | Which user-visible tool failures are actionable?       |
+| Process and lifecycle failures | failure phase, termination reason, runtime | Why did a local MCP process stop?                      |
+| Error-to-trace correlation     | OTel trace ID                              | What API, retry, or transport work preceded the error? |
+
+Sentry issue fingerprints must use stable taxonomy and operational fields rather
+than free-form messages. Use the OTel trace ID to move from an issue into the
+Honeycomb waterfall; do not create saved dashboards grouped by a persistent
+user identity.
 
 Before publishing or changing a panel:
 
