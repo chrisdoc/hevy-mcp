@@ -189,15 +189,14 @@ function getFingerprint(
 	const toolName =
 		attributes["mcp.tool.name"] ?? attributes["mcp.prompt.name"] ?? "none";
 	const exceptionType = String(attributes["error.type"] ?? "UNKNOWN_ERROR");
-	const diagnosticCategory = String(diagnostic.category);
 	const errorCategory = attributes["error.category"]
 		? String(attributes["error.category"])
-		: diagnosticCategory;
+		: String(diagnostic.category);
 	return [
 		"mcp",
 		kind,
 		String(toolName),
-		`${exceptionType}:${diagnosticCategory}`,
+		exceptionType,
 		errorCategory,
 		String(
 			attributes["error.code"] ??
