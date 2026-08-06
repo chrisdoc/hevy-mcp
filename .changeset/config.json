@@ -5,7 +5,7 @@
 		{ "repo": "chrisdoc/hevy-mcp" }
 	],
 	"commit": false,
-	"format": "oxfmt",
+	"format": false,
 	"fixed": [],
 	"linked": [],
 	"access": "public",
