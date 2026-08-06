@@ -77,7 +77,7 @@ reviews:
     drafts: false
     # Base branches (other than the default branch) to review. Accepts regex patterns. Use '.*' to match all branches.
     # Default: []
-    base_branches: ["main", "chtruong/*"] # current: []
+    base_branches: ["main"] # current: []
 # Configuration for knowledge base
 # Default: {}
 knowledge_base:
