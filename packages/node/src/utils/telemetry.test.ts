@@ -27,10 +27,10 @@ const testDoubles = vi.hoisted(() => ({
 	alwaysOnSampler: vi.fn(),
 	meterProvider: vi.fn(),
 	meterProviderOptions: undefined as unknown,
-	meterProviderForceFlush: vi.fn().mockResolvedValue(undefined),
+	meterProviderForceFlush: vi.fn(async () => {}),
 	periodicExportingMetricReader: vi.fn(),
 	nodeTracerProvider: vi.fn(),
-	tracerProviderForceFlush: vi.fn().mockResolvedValue(undefined),
+	tracerProviderForceFlush: vi.fn(async () => {}),
 	nodeTracerProviderOptions: undefined as unknown,
 }));
 
