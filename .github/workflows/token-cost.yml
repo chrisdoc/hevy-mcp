@@ -115,7 +115,7 @@ jobs:
             const fs = require("node:fs");
             const marker = "<!-- hevy-mcp-token-cost -->";
             const report = fs.readFileSync("token-cost-report.md", "utf8");
-            const body = `${marker}\n${report}`;
+            const body = `${marker}\n<details>\n<summary><strong>MCP tool token cost</strong></summary>\n\n${report}\n</details>`;
             const comments = await github.paginate(
               github.rest.issues.listComments,
               {
