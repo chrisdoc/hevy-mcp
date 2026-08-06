@@ -90,12 +90,13 @@ jobs:
 
       - name: Create Release PR or Publish
         id: changesets
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        uses: changesets/action@2d9f7af6402422be60d377f151c7618011bba45a # v2.0.0-next.4
         with:
-          version: npx nx run repository:version:changesets
-          publish: npx nx run repository:release
-          commit: "chore: version packages"
-          title: "chore: version packages"
+          version-script: npx nx run repository:version:changesets
+          publish-script: npx nx run repository:release
+          commit-message: "chore: version packages"
+          pr-title: "chore: version packages"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -106,7 +107,7 @@ jobs:
       - name: Set Release Outputs
         id: release
         env:
-          PKGS: ${{ steps.changesets.outputs.publishedPackages }}
+          PKGS: ${{ steps.changesets.outputs['published-packages'] }}
           PUBLISHED: ${{ steps.changesets.outputs.published }}
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
