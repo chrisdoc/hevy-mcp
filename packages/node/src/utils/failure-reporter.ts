@@ -206,6 +206,46 @@ function getFingerprint(
 	];
 }
 
+function addErrorAttributes(
+	attributes: TelemetryAttributes,
+	diagnostic: SafeErrorDiagnostic,
+	expected: boolean | undefined,
+): void {
+	if (expected) attributes["error.expected"] = true;
+	attributes["error.category"] ??= diagnostic.category;
+	if (diagnostic.code) attributes["error.code"] ??= diagnostic.code;
+}
+
+function addHttpAttributes(
+	attributes: TelemetryAttributes,
+	diagnostic: SafeErrorDiagnostic,
+): void {
+	if (diagnostic.status !== undefined) {
+		attributes["http.response.status_code"] ??= diagnostic.status;
+	}
+	if (diagnostic.method)
+		attributes["http.request.method"] ??= diagnostic.method;
+	if (diagnostic.endpoint)
+		attributes["hevy.api.endpoint"] ??= diagnostic.endpoint;
+}
+
+function addExecutionAttributes(
+	attributes: TelemetryAttributes,
+	diagnostic: SafeErrorDiagnostic,
+): void {
+	if (diagnostic.outcome) attributes["hevy.api.outcome"] ??= diagnostic.outcome;
+	if (diagnostic.phase) attributes["hevy.api.phase"] ??= diagnostic.phase;
+	if (diagnostic.operation_safety) {
+		attributes["hevy.api.operation_safety"] ??= diagnostic.operation_safety;
+	}
+	if (diagnostic.commit_state) {
+		attributes["hevy.api.commit_state"] ??= diagnostic.commit_state;
+	}
+	if (diagnostic.safe_to_retry !== undefined) {
+		attributes["hevy.api.safe_to_retry"] ??= diagnostic.safe_to_retry;
+	}
+}
+
 export function normalizeFailure(
 	error: unknown,
 	context: FailureContext,
@@ -224,27 +264,9 @@ export function normalizeFailure(
 			: undefined;
 
 	attributes["exception.type"] = exceptionType;
-	if (context.expected) attributes["error.expected"] = true;
-	attributes["error.category"] ??= diagnostic.category;
-	if (diagnostic.code) attributes["error.code"] ??= diagnostic.code;
-	if (diagnostic.status !== undefined) {
-		attributes["http.response.status_code"] ??= diagnostic.status;
-	}
-	if (diagnostic.method)
-		attributes["http.request.method"] ??= diagnostic.method;
-	if (diagnostic.endpoint)
-		attributes["hevy.api.endpoint"] ??= diagnostic.endpoint;
-	if (diagnostic.outcome) attributes["hevy.api.outcome"] ??= diagnostic.outcome;
-	if (diagnostic.phase) attributes["hevy.api.phase"] ??= diagnostic.phase;
-	if (diagnostic.operation_safety) {
-		attributes["hevy.api.operation_safety"] ??= diagnostic.operation_safety;
-	}
-	if (diagnostic.commit_state) {
-		attributes["hevy.api.commit_state"] ??= diagnostic.commit_state;
-	}
-	if (diagnostic.safe_to_retry !== undefined) {
-		attributes["hevy.api.safe_to_retry"] ??= diagnostic.safe_to_retry;
-	}
+	addErrorAttributes(attributes, diagnostic, context.expected);
+	addHttpAttributes(attributes, diagnostic);
+	addExecutionAttributes(attributes, diagnostic);
 
 	return {
 		diagnostic,
