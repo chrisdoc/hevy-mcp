@@ -27,6 +27,7 @@ import {
 	AggregationTemporalityPreference,
 	OTLPMetricExporter,
 } from "@opentelemetry/exporter-metrics-otlp-http";
+import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
 	AlwaysOnSampler,
@@ -58,76 +59,163 @@ const PROCESS_FAILURE_TAXONOMY = {
 	unhandledRejection: "unhandled_rejection",
 } as const;
 
-const SAFE_EXCEPTION_TYPES = new Set([
+type TelemetryAttributeValue = string | number | boolean;
+type TelemetryAttributes = Record<string, TelemetryAttributeValue>;
+
+const MAX_EXCEPTION_MESSAGE_LENGTH = 2_048;
+const MAX_EXCEPTION_STACK_LENGTH = 16_384;
+const SAFE_NAMED_EXCEPTION_TYPES = new Set([
 	"AggregateError",
 	"DOMException",
 	"Error",
 	"EvalError",
 	"HevyHttpError",
+	"ProtocolError",
 	"RangeError",
 	"ReferenceError",
 	"SyntaxError",
 	"TypeError",
 	"URIError",
-	"ProtocolError",
 	"ZodError",
 ]);
-const SAFE_EXCEPTION_CODES = new Set([
-	"EAI_AGAIN",
-	"ECONNABORTED",
-	"ECONNREFUSED",
-	"ECONNRESET",
-	"ENETUNREACH",
-	"ENOTFOUND",
-	"ERR_NETWORK",
-	"ERR_SOCKET_TIMEOUT",
-	"ETIMEDOUT",
-	"HEVY_INVALID_ENDPOINT",
-	"HEVY_REQUEST_ABORTED",
-	"HEVY_RETRY_EXHAUSTED",
-]);
 
-function normalizeTelemetryError(error: unknown): { name: string } {
+function getDebugExceptionMessage(error: unknown): string | undefined {
+	if (error instanceof Error && typeof error.message === "string") {
+		return error.message.slice(0, MAX_EXCEPTION_MESSAGE_LENGTH);
+	}
+	if (typeof error === "string") {
+		return error.slice(0, MAX_EXCEPTION_MESSAGE_LENGTH);
+	}
+	return undefined;
+}
+
+function getDebugExceptionStack(error: unknown): string | undefined {
+	return error instanceof Error && typeof error.stack === "string"
+		? error.stack.slice(0, MAX_EXCEPTION_STACK_LENGTH)
+		: undefined;
+}
+
+function getFailureReason(
+	error: unknown,
+	attributes: TelemetryAttributes,
+): string {
+	const category = String(attributes["error.category"] ?? "");
+	if (category.includes("Sdk")) return "sdk_failure";
+	if (category.includes("Transport")) return "transport_failure";
+	if (category.includes("Server")) return "runtime_failure";
+
+	const diagnostic = createSafeErrorDiagnostic(error);
+	if (diagnostic.code?.startsWith("ECONN") || diagnostic.code === "EAI_AGAIN") {
+		return "transport_failure";
+	}
+	if (diagnostic.category === "HevyHttpError") return "transport_failure";
+	if (diagnostic.category === "UnknownError") return "unknown_runtime_error";
+	return "application_failure";
+}
+
+function getNormalizedExceptionType(
+	error: unknown,
+	diagnosticCategory: string,
+): string {
+	if (diagnosticCategory !== "Error" && diagnosticCategory !== "UnknownError") {
+		return diagnosticCategory;
+	}
 	const candidate =
 		error instanceof Error && typeof error.name === "string"
 			? error.name
 			: undefined;
-	const name =
-		candidate && SAFE_EXCEPTION_TYPES.has(candidate)
-			? candidate
-			: "UnknownError";
-	return { name };
+	return candidate && SAFE_NAMED_EXCEPTION_TYPES.has(candidate)
+		? candidate
+		: diagnosticCategory;
 }
 
-function getSafeExceptionCode(error: unknown): string | undefined {
-	if (!error || typeof error !== "object" || !("code" in error))
-		return undefined;
-	const code = error.code;
-	return typeof code === "string" && SAFE_EXCEPTION_CODES.has(code)
-		? code
-		: undefined;
+function getExceptionAttributes(
+	error: unknown,
+	attributes: TelemetryAttributes,
+): TelemetryAttributes {
+	const diagnostic = createSafeErrorDiagnostic(error);
+	const message = getDebugExceptionMessage(error);
+	const stack = getDebugExceptionStack(error);
+	const exceptionType = getNormalizedExceptionType(error, diagnostic.category);
+	return {
+		"exception.type": exceptionType,
+		"exception.category": diagnostic.category,
+		...(diagnostic.code ? { "exception.code": diagnostic.code } : {}),
+		...(message ? { "exception.message": message } : {}),
+		...(stack ? { "exception.stacktrace": stack } : {}),
+		...(attributes["mcp.failure.phase"]
+			? { "mcp.failure.reason": getFailureReason(error, attributes) }
+			: {}),
+	};
 }
 
 export function recordTelemetryException(
 	error: unknown,
-	attributes?: Record<string, string | number | boolean>,
+	attributes?: TelemetryAttributes,
 	span?: ApiSpan,
 ): void {
 	if (!telemetryEnabled) return;
 	try {
 		const target = span ?? trace.getActiveSpan();
 		if (!target) return;
-		const normalized = normalizeTelemetryError(error);
+		const exceptionAttributes = getExceptionAttributes(error, attributes ?? {});
 		target.addEvent("exception", {
 			...attributes,
-			"exception.type": normalized.name,
+			...exceptionAttributes,
 		});
-		target.setAttribute("exception.type", normalized.name);
-		target.setAttribute("error.category", normalized.name);
+		target.setAttributes(exceptionAttributes);
+		target.setAttribute(
+			"error.category",
+			exceptionAttributes["exception.category"],
+		);
 		if (attributes) target.setAttributes(attributes);
 		target.setStatus({ code: SpanStatusCode.ERROR });
 	} catch {
 		// Telemetry failures must never affect MCP behavior.
+	}
+}
+
+/**
+ * Record the same bounded lifecycle/process diagnostic in Sentry.
+ *
+ * The message and stack are intentionally retained for debugging while the
+ * event itself remains generic. Credentials, request arguments, and response
+ * bodies are not added by this adapter.
+ */
+export function recordSentryTelemetryException(
+	event: string,
+	error: unknown,
+	attributes: TelemetryAttributes,
+): void {
+	if (!telemetryEnabled) return;
+	try {
+		const diagnostic = createSafeErrorDiagnostic(error);
+		const exceptionAttributes = getExceptionAttributes(error, attributes);
+		Sentry.withScope((scope) => {
+			for (const [key, value] of Object.entries({
+				...attributes,
+				...exceptionAttributes,
+			})) {
+				if (key === "exception.message" || key === "exception.stacktrace") {
+					continue;
+				}
+				scope.setTag(key, String(value));
+			}
+			scope.setContext("mcpException", {
+				...diagnostic,
+				message: exceptionAttributes["exception.message"],
+				stack: exceptionAttributes["exception.stacktrace"],
+			});
+			scope.setFingerprint([
+				"mcp-telemetry-exception",
+				String(attributes["mcp.failure.phase"] ?? event),
+				diagnostic.category,
+				String(diagnostic.code ?? "none"),
+			]);
+			Sentry.captureMessage(event, "error");
+		});
+	} catch {
+		// Sentry failures must never affect MCP behavior.
 	}
 }
 
@@ -145,17 +233,19 @@ export function installProcessExceptionTracking(
 				{ attributes: { "mcp.span.category": "process" } },
 				(span) => {
 					try {
-						const code = getSafeExceptionCode(error);
-						recordTelemetryException(
+						const diagnostic = createSafeErrorDiagnostic(error);
+						const attributes = {
+							"exception.source": source,
+							"mcp.failure.phase": PROCESS_FAILURE_TAXONOMY[source],
+							"error.type": "MCP_PROCESS_EXCEPTION",
+							"error.category": "McpProcessFailure",
+							...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
+						};
+						recordTelemetryException(error, attributes, span);
+						recordSentryTelemetryException(
+							`MCP process ${source} failure`,
 							error,
-							{
-								"exception.source": source,
-								"mcp.failure.phase": PROCESS_FAILURE_TAXONOMY[source],
-								"error.type": "MCP_PROCESS_EXCEPTION",
-								"error.category": "McpProcessFailure",
-								...(code ? { "error.code": code } : {}),
-							},
-							span,
+							attributes,
 						);
 					} finally {
 						span.end();

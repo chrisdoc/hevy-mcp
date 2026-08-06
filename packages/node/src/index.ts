@@ -5,6 +5,7 @@ import {
 	flushTelemetry,
 	installProcessExceptionTracking,
 	recordTelemetryException,
+	recordSentryTelemetryException,
 	tracer,
 	serviceName,
 	serviceVersion,
@@ -147,6 +148,11 @@ type LifecycleFailurePhase =
 	| "connect"
 	| "run";
 
+type LifecycleTerminationReason =
+	| "startup_failure"
+	| "connect_failure"
+	| "runtime_failure";
+
 const LIFECYCLE_FAILURE_TAXONOMY: Record<
 	LifecycleFailurePhase,
 	{ errorType: string; errorCategory: string }
@@ -176,11 +182,13 @@ const LIFECYCLE_FAILURE_TAXONOMY: Record<
 function createLifecycleFailureAttributes(
 	error: unknown,
 	phase: LifecycleFailurePhase,
+	terminationReason: LifecycleTerminationReason,
 ): Record<string, string | number | boolean> {
 	const diagnostic = createSafeErrorDiagnostic(error);
 	const taxonomy = LIFECYCLE_FAILURE_TAXONOMY[phase];
 	return {
 		"mcp.failure.phase": phase,
+		"mcp.termination.reason": terminationReason,
 		"error.type": taxonomy.errorType,
 		"error.category": taxonomy.errorCategory,
 		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
@@ -198,10 +206,16 @@ function recordLifecycleFailure(
 	span: Span,
 	error: unknown,
 	phase: LifecycleFailurePhase,
+	terminationReason: LifecycleTerminationReason,
 ): void {
-	const attributes = createLifecycleFailureAttributes(error, phase);
+	const attributes = createLifecycleFailureAttributes(
+		error,
+		phase,
+		terminationReason,
+	);
 	span.addEvent("mcp.lifecycle.failure", attributes);
 	recordTelemetryException(error, attributes, span);
+	recordSentryTelemetryException("MCP lifecycle failure", error, attributes);
 }
 async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 	// Keep the startup probe separate from the normal MCP-aware client. The
@@ -276,7 +290,7 @@ function buildServer(
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;
 			} catch (e) {
-				recordLifecycleFailure(span, e, "build");
+				recordLifecycleFailure(span, e, "build", "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
 			} finally {
@@ -362,7 +376,12 @@ export async function runStdioServer() {
 							connectSucceeded = true;
 							connectSpan.setStatus({ code: SpanStatusCode.OK });
 						} catch (e) {
-							recordLifecycleFailure(connectSpan, e, "connect");
+							recordLifecycleFailure(
+								connectSpan,
+								e,
+								"connect",
+								"connect_failure",
+							);
 							connectSpan.setStatus({ code: SpanStatusCode.ERROR });
 							throw e;
 						} finally {
@@ -389,7 +408,12 @@ export async function runStdioServer() {
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (e) {
 				if (!connectAttempted || connectSucceeded) {
-					recordLifecycleFailure(span, e, "run");
+					recordLifecycleFailure(
+						span,
+						e,
+						"run",
+						connectSucceeded ? "runtime_failure" : "startup_failure",
+					);
 				}
 				recordMcpSessionTermination(
 					connectAttempted ? "connect_failure" : "startup_failure",
@@ -473,7 +497,12 @@ export async function runServer(): Promise<void> {
 				});
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (error) {
-				recordLifecycleFailure(span, error, "run");
+				recordLifecycleFailure(
+					span,
+					error,
+					"run",
+					listening ? "runtime_failure" : "startup_failure",
+				);
 				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				cleanupProcessExceptionTracking();
