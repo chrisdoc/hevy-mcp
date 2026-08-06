@@ -67,7 +67,6 @@ function createAttributes(
 ): Record<string, AttributeValue> {
 	const clientMetadata = getCurrentMcpClientMetadata();
 	const kind = invocation.kind ?? "tool";
-	const isPrompt = kind === "prompt";
 	const sessionId = getCurrentMcpSessionId();
 	const attributes: Record<string, AttributeValue> = {
 		"mcp.span.category":
