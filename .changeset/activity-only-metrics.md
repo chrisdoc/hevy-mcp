@@ -1,5 +1,7 @@
 ---
 "@hevy-mcp/core": patch
+"@hevy-mcp/worker": patch
+"@chrisdoc/hevy-cli": patch
 "hevy-mcp": patch
 ---
 
