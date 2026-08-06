@@ -39,7 +39,6 @@ export {
 } from "./execution.js";
 export {
 	HevyHttpError,
-	getHevyResponseErrorMessage,
 	isHevyHttpError,
 	type HevyExecutionMetadata,
 	type HevyHttpErrorOptions,

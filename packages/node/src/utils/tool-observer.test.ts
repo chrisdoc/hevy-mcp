@@ -31,6 +31,7 @@ const testDoubles = vi.hoisted(() => ({
 	toolOutcomesAdd: vi.fn(),
 	toolErrorsAdd: vi.fn(),
 	toolDurationRecord: vi.fn(),
+	recordTelemetryException: vi.fn(),
 	recordMcpToolInvocation: vi.fn(() => ({
 		client_name: "Claude-Desktop",
 		client_version: "1.2.3",
@@ -56,7 +57,7 @@ const testDoubles = vi.hoisted(() => ({
 }));
 
 vi.mock("./telemetry.js", () => ({
-	recordTelemetryException: vi.fn(),
+	recordTelemetryException: testDoubles.recordTelemetryException,
 	tracer: { startActiveSpan: testDoubles.startActiveSpan },
 	Sentry: {
 		withScope: testDoubles.sentryWithScope,
@@ -193,7 +194,7 @@ describe("createNodeToolObserver", () => {
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
 
-	it("records only core-sanitized diagnostics for thrown errors", async () => {
+	it("records the native thrown exception for Collector-side redaction", async () => {
 		const secret = "private-error-message-and-stack";
 		const error = new Error(secret);
 		const scope = startScope();
@@ -210,10 +211,15 @@ describe("createNodeToolObserver", () => {
 				method: "GET",
 				endpoint: "/v1/workouts",
 			},
+			exception: error,
 		};
 		await scope.finish(completion);
 
-		expect(testDoubles.span.recordException).not.toHaveBeenCalled();
+		expect(testDoubles.recordTelemetryException).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({ "error.type": "NETWORK_ERROR" }),
+			testDoubles.span,
+		);
 		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
 			"MCP tool failure",
 			"error",
@@ -287,6 +293,7 @@ describe("createNodeToolObserver", () => {
 		);
 		expect(testDoubles.recordMcpToolFailure).toHaveBeenCalledOnce();
 		expect(testDoubles.toolErrorsAdd).not.toHaveBeenCalled();
+		expect(testDoubles.recordTelemetryException).not.toHaveBeenCalled();
 	});
 
 	it("uses prompt-specific telemetry for prompt failures", async () => {

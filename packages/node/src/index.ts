@@ -9,18 +9,13 @@ import {
 	tracer,
 	serviceName,
 	serviceVersion,
-	setTelemetryUser,
 } from "./utils/telemetry.js";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { serverStartups } from "./utils/metrics.js";
 
 import { SpanStatusCode, type Span } from "@opentelemetry/api";
 import { z } from "zod";
-import {
-	createHevyMcpServer,
-	createSafeErrorDiagnostic,
-	mergeAbortSignals,
-} from "@hevy-mcp/core";
+import { createHevyMcpServer, mergeAbortSignals } from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
@@ -180,25 +175,15 @@ const LIFECYCLE_FAILURE_TAXONOMY: Record<
 };
 
 function createLifecycleFailureAttributes(
-	error: unknown,
 	phase: LifecycleFailurePhase,
 	terminationReason: LifecycleTerminationReason,
 ): Record<string, string | number | boolean> {
-	const diagnostic = createSafeErrorDiagnostic(error);
 	const taxonomy = LIFECYCLE_FAILURE_TAXONOMY[phase];
 	return {
 		"mcp.failure.phase": phase,
 		"mcp.termination.reason": terminationReason,
 		"error.type": taxonomy.errorType,
 		"error.category": taxonomy.errorCategory,
-		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
-		...(diagnostic.status !== undefined
-			? { "http.response.status_code": diagnostic.status }
-			: {}),
-		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
-		...(diagnostic.endpoint
-			? { "hevy.api.endpoint": diagnostic.endpoint }
-			: {}),
 	};
 }
 
@@ -208,11 +193,7 @@ function recordLifecycleFailure(
 	phase: LifecycleFailurePhase,
 	terminationReason: LifecycleTerminationReason,
 ): void {
-	const attributes = createLifecycleFailureAttributes(
-		error,
-		phase,
-		terminationReason,
-	);
+	const attributes = createLifecycleFailureAttributes(phase, terminationReason);
 	span.addEvent("mcp.lifecycle.failure", attributes);
 	recordTelemetryException(error, attributes, span);
 	recordSentryTelemetryException("MCP lifecycle failure", error, attributes);
@@ -306,7 +287,6 @@ export async function createNodeMcpServer(
 	lifecycleSignal?: AbortSignal,
 ) {
 	const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
-	setTelemetryUser(validatedApiKey);
 	await validateApiKey(validatedApiKey, lifecycleSignal);
 	return buildServer(validatedApiKey, transport, lifecycleSignal);
 }
@@ -329,12 +309,6 @@ export async function runStdioServer() {
 
 	serverStartups.add(1, { version });
 
-	// Seed the user context before config validation so startup failures for a
-	// supplied key retain the same trace correlation as normal tool calls.
-	const configuredApiKey = process.env.HEVY_API_KEY;
-	if (configuredApiKey) {
-		setTelemetryUser(configuredApiKey);
-	}
 	let connectAttempted = false;
 	let connectSucceeded = false;
 	await tracer.startActiveSpan(
@@ -462,7 +436,6 @@ export async function runServer(): Promise<void> {
 			try {
 				const cfg = parseConfig(process.env);
 				assertApiKey(cfg.apiKey);
-				setTelemetryUser(cfg.apiKey);
 				await validateApiKey(cfg.apiKey, lifecycleController.signal);
 				const handle = await startStreamableHttpServer(
 					options,

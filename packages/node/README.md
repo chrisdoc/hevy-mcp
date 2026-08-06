@@ -481,23 +481,17 @@ Traces and metrics continue to be sent to the collector at
 <https://otel.chrisdoc.dev/v1/metrics>, which forward to Honeycomb. Metrics
 export every 30 seconds.
 
-The API key is never exported. Enabled telemetry derives a deterministic
-ten-character HMAC-SHA-256 pseudonym from it solely for cross-span
-correlation. The pseudonym is attached to spans only, never used as a metric
-dimension, and is not intended for per-user behavior histories.
-
 Structured tool telemetry remains bounded: it contains service/version/
 transport; fixed tool feature, read/write kind, operation, and short-lived tool
 name; bounded outcome/error/count/retry/duration/session/cache/workflow values;
 normalized API method/endpoint/status; shape-only key names, presence, count,
-and boolean fields; sanitized client/protocol tokens; and the span-only
-pseudonym. Process and server-lifecycle exception events intentionally retain
-the original normalized type, up to 2 KiB of exception message, and up to 16
-KiB of stack for debugging. Hevy API failure spans also retain the bounded
-allowlisted response error message when the API returns one. Disable telemetry
-if that diagnostic detail is not acceptable. The exception/API adapter does
-not add raw prompts, tool argument values, tool result content, full
-request/response bodies, API keys, or authorization headers.
+and boolean fields; and sanitized client/protocol tokens. The Node process does
+not derive an identity or API-key pseudonym for telemetry. When telemetry is
+enabled, standard OTel exception events may contain the native exception
+message and stacktrace for debugging. The MCP process does not maintain a
+second redaction or exception allowlist: the OTel Collector owns the
+export-time credential redaction policy. Disable telemetry if sending exception
+details is not acceptable.
 
 ## Security and mutations
 

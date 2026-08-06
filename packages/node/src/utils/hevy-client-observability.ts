@@ -56,12 +56,6 @@ function safeErrorAttributes(observation: HevyRequestObservation): {
 	};
 }
 
-function getApiErrorMessage(
-	observation: HevyRequestObservation,
-): string | undefined {
-	return observation.error?.responseMessage;
-}
-
 function startApiSpan(start: HevyRequestStart) {
 	const sessionId = getCurrentMcpSessionId();
 	return tracer.startSpan(`hevy.api.${start.method}`, {
@@ -77,7 +71,6 @@ function startApiSpan(start: HevyRequestStart) {
 }
 function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
 	const errorAttributes = safeErrorAttributes(observation);
-	const errorMessage = getApiErrorMessage(observation);
 	if (observation.status > 0) {
 		span.setAttribute("http.response.status_code", observation.status);
 	}
@@ -92,22 +85,17 @@ function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
 	for (const [key, value] of Object.entries(errorAttributes)) {
 		span.setAttribute(key, value);
 	}
-	if (errorMessage) {
-		span.setAttribute("hevy.api.error_message", errorMessage);
-	}
-	span.setStatus({
-		code:
-			observation.outcome === "success" || observation.outcome === "expected"
-				? SpanStatusCode.OK
-				: SpanStatusCode.ERROR,
-	});
 	if (observation.outcome !== "success" && observation.outcome !== "expected") {
+		span.setAttribute(
+			"error.type",
+			errorAttributes.error_category ?? "HevyHttpError",
+		);
+		span.setStatus({ code: SpanStatusCode.ERROR });
 		span.addEvent("hevy.api.failure", {
 			"error.category": errorAttributes.error_category ?? "HevyHttpError",
 			...(errorAttributes.error_code
 				? { "error.code": errorAttributes.error_code }
 				: {}),
-			...(errorMessage ? { "error.message": errorMessage } : {}),
 		});
 	}
 	span.end();
@@ -172,9 +160,6 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 				status: observation.status || null,
 				retryCountBucket,
 				outcome: observation.outcome,
-				...(getApiErrorMessage(observation)
-					? { "hevy.api.error_message": getApiErrorMessage(observation) }
-					: {}),
 				...errorAttributes,
 			});
 		},

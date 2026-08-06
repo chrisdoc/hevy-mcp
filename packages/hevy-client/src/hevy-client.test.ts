@@ -5,7 +5,6 @@ import {
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	HevyHttpError,
-	getHevyResponseErrorMessage,
 } from "./hevy-http-error.js";
 import { createExecutionSignal, isAbortLike } from "./execution.js";
 function response(data: unknown, status = 200): Response {
@@ -106,28 +105,6 @@ describe("@hevy-mcp/hevy-client", () => {
 		});
 	});
 
-	it("extracts only a bounded API response error message", () => {
-		const message = "  Hevy rejected the workout  ";
-		const error = new HevyHttpError("generic request failure", {
-			method: "POST",
-			endpoint: "/v1/workouts",
-			data: { error: message, secret: "response-body-field" },
-		});
-
-		expect(getHevyResponseErrorMessage(error)).toBe(
-			"Hevy rejected the workout",
-		);
-		expect(
-			getHevyResponseErrorMessage(
-				new HevyHttpError("generic", {
-					method: "GET",
-					endpoint: "/v1/user/info",
-					data: { message: "x".repeat(3_000) },
-				}),
-			),
-		).toHaveLength(2_048);
-	});
-
 	it("emits bounded events without raw response or exception data", async () => {
 		const onLog = vi.fn(() => {
 			throw new Error("observer-secret");
@@ -152,31 +129,6 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(eventText).not.toContain("body");
 		expect(eventText).not.toContain("observer-secret");
 		expect(onLog).toHaveBeenCalled();
-	});
-	it("propagates the API response error message without the response body", async () => {
-		const responseMessage = "Hevy rejected this workout";
-		const observations: unknown[] = [];
-		const client = createHevyClient({
-			apiKey: "api-key-secret",
-			fetch: vi
-				.fn()
-				.mockResolvedValue(
-					response(
-						{ error: responseMessage, internal: "response-body-secret" },
-						422,
-					),
-				),
-			maxGetRetries: 0,
-			onRequestComplete: (observation) => observations.push(observation),
-		});
-
-		await expect(client.getUserInfo()).rejects.toBeInstanceOf(HevyHttpError);
-		expect(observations).toEqual([
-			expect.objectContaining({
-				error: expect.objectContaining({ responseMessage }),
-			}),
-		]);
-		expect(JSON.stringify(observations)).not.toContain("response-body-secret");
 	});
 	it("times out while consuming a response body", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());

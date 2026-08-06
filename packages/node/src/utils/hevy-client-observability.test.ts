@@ -90,9 +90,7 @@ describe("createNodeHevyClientOptions", () => {
 			"http.response.status_code",
 			200,
 		);
-		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
-			code: SpanStatusCode.OK,
-		});
+		expect(testDoubles.span.setStatus).not.toHaveBeenCalled();
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
 			1,
@@ -217,6 +215,10 @@ describe("createNodeHevyClientOptions", () => {
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
 			code: SpanStatusCode.ERROR,
 		});
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"error.type",
+			"HevyHttpError",
+		);
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("hevy.api.failure", {
 			"error.category": "HevyHttpError",
 		});
@@ -257,38 +259,6 @@ describe("createNodeHevyClientOptions", () => {
 			"error.category": "HevyHttpError",
 			"error.code": "HEVY_RETRY_EXHAUSTED",
 		});
-	});
-	it("records API response error messages on spans, not metric labels", () => {
-		const responseMessage = "Hevy rejected the workout";
-		const options = createNodeHevyClientOptions();
-
-		observe(options, {
-			method: "POST",
-			endpoint: "/v1/workouts",
-			status: 422,
-			durationMs: 25,
-			retryCount: 0,
-			outcome: "terminal_failure",
-			error: {
-				category: "HevyHttpError",
-				responseMessage,
-			},
-		});
-
-		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
-			"hevy.api.error_message",
-			responseMessage,
-		);
-		expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
-			"hevy.api.failure",
-			expect.objectContaining({ "error.message": responseMessage }),
-		);
-		expect(
-			JSON.stringify([
-				testDoubles.apiCallsAdd.mock.calls,
-				testDoubles.apiDurationRecord.mock.calls,
-			]),
-		).not.toContain(responseMessage);
 	});
 	it("records retry waits and cache lifecycle metadata on dedicated spans", () => {
 		const options = createNodeHevyClientOptions();

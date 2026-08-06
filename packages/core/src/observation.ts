@@ -81,6 +81,11 @@ export interface ToolCompletionObservation {
 	readonly result?: ToolResultObservation;
 	readonly errorType?: ErrorType;
 	readonly error?: SafeErrorDiagnostic;
+	/**
+	 * The native thrown value is available only to the runtime observer. It is
+	 * never included in MCP responses or serialized by the core package.
+	 */
+	readonly exception?: unknown;
 	readonly errorOutcome?: StructuredExecutionProjection;
 }
 

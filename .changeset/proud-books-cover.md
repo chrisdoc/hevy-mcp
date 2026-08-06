@@ -1,10 +1,9 @@
 ---
 "@chrisdoc/hevy-cli": patch
 "@hevy-mcp/core": patch
-"@hevy-mcp/hevy-client": patch
-"@hevy-mcp/operations": patch
 "@hevy-mcp/worker": patch
 "hevy-mcp": patch
 ---
 
-Improve diagnostic details for MCP process, lifecycle, and Hevy API telemetry
+Move telemetry privacy enforcement to the OTel Collector and emit standard
+OpenTelemetry exception events from the Node server

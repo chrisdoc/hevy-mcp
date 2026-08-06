@@ -9,11 +9,7 @@
  * OTel Collector → Honeycomb: performance traces, metrics
  */
 
-import {
-	createHmac,
-	randomBytes,
-	randomUUID as nodeRandomUUID,
-} from "node:crypto";
+import { randomBytes, randomUUID as nodeRandomUUID } from "node:crypto";
 import * as Sentry from "@sentry/node";
 import {
 	SpanStatusCode,
@@ -27,18 +23,12 @@ import {
 	AggregationTemporalityPreference,
 	OTLPMetricExporter,
 } from "@opentelemetry/exporter-metrics-otlp-http";
-import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
-import { getHevyResponseErrorMessage } from "@hevy-mcp/hevy-client";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
 	AlwaysOnSampler,
 	BatchSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import type {
-	ReadableSpan,
-	Span,
-	SpanProcessor,
-} from "@opentelemetry/sdk-trace";
+import type { SpanProcessor } from "@opentelemetry/sdk-trace";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import {
 	MeterProvider,
@@ -63,95 +53,6 @@ const PROCESS_FAILURE_TAXONOMY = {
 type TelemetryAttributeValue = string | number | boolean;
 type TelemetryAttributes = Record<string, TelemetryAttributeValue>;
 
-const MAX_EXCEPTION_MESSAGE_LENGTH = 2_048;
-const MAX_EXCEPTION_STACK_LENGTH = 16_384;
-const SAFE_NAMED_EXCEPTION_TYPES = new Set([
-	"AggregateError",
-	"DOMException",
-	"Error",
-	"EvalError",
-	"HevyHttpError",
-	"ProtocolError",
-	"RangeError",
-	"ReferenceError",
-	"SyntaxError",
-	"TypeError",
-	"URIError",
-	"ZodError",
-]);
-
-function getDebugExceptionMessage(error: unknown): string | undefined {
-	const responseMessage = getHevyResponseErrorMessage(error);
-	if (responseMessage) return responseMessage;
-	if (error instanceof Error && typeof error.message === "string") {
-		return error.message.slice(0, MAX_EXCEPTION_MESSAGE_LENGTH);
-	}
-	if (typeof error === "string") {
-		return error.slice(0, MAX_EXCEPTION_MESSAGE_LENGTH);
-	}
-	return undefined;
-}
-
-function getDebugExceptionStack(error: unknown): string | undefined {
-	return error instanceof Error && typeof error.stack === "string"
-		? error.stack.slice(0, MAX_EXCEPTION_STACK_LENGTH)
-		: undefined;
-}
-
-function getFailureReason(
-	error: unknown,
-	attributes: TelemetryAttributes,
-): string {
-	const category = String(attributes["error.category"] ?? "");
-	if (category.includes("Sdk")) return "sdk_failure";
-	if (category.includes("Transport")) return "transport_failure";
-	if (category.includes("Server")) return "runtime_failure";
-
-	const diagnostic = createSafeErrorDiagnostic(error);
-	if (diagnostic.code?.startsWith("ECONN") || diagnostic.code === "EAI_AGAIN") {
-		return "transport_failure";
-	}
-	if (diagnostic.category === "HevyHttpError") return "transport_failure";
-	if (diagnostic.category === "UnknownError") return "unknown_runtime_error";
-	return "application_failure";
-}
-
-function getNormalizedExceptionType(
-	error: unknown,
-	diagnosticCategory: string,
-): string {
-	if (diagnosticCategory !== "Error" && diagnosticCategory !== "UnknownError") {
-		return diagnosticCategory;
-	}
-	const candidate =
-		error instanceof Error && typeof error.name === "string"
-			? error.name
-			: undefined;
-	return candidate && SAFE_NAMED_EXCEPTION_TYPES.has(candidate)
-		? candidate
-		: diagnosticCategory;
-}
-
-function getExceptionAttributes(
-	error: unknown,
-	attributes: TelemetryAttributes,
-): TelemetryAttributes {
-	const diagnostic = createSafeErrorDiagnostic(error);
-	const message = getDebugExceptionMessage(error);
-	const stack = getDebugExceptionStack(error);
-	const exceptionType = getNormalizedExceptionType(error, diagnostic.category);
-	return {
-		"exception.type": exceptionType,
-		"exception.category": diagnostic.category,
-		...(diagnostic.code ? { "exception.code": diagnostic.code } : {}),
-		...(message ? { "exception.message": message } : {}),
-		...(stack ? { "exception.stacktrace": stack } : {}),
-		...(attributes["mcp.failure.phase"]
-			? { "mcp.failure.reason": getFailureReason(error, attributes) }
-			: {}),
-	};
-}
-
 export function recordTelemetryException(
 	error: unknown,
 	attributes?: TelemetryAttributes,
@@ -161,16 +62,11 @@ export function recordTelemetryException(
 	try {
 		const target = span ?? trace.getActiveSpan();
 		if (!target) return;
-		const exceptionAttributes = getExceptionAttributes(error, attributes ?? {});
-		target.addEvent("exception", {
-			...attributes,
-			...exceptionAttributes,
-		});
-		target.setAttributes(exceptionAttributes);
-		target.setAttribute(
-			"error.category",
-			exceptionAttributes["exception.category"],
-		);
+		const exception =
+			error instanceof Error || typeof error === "string"
+				? error
+				: String(error);
+		target.recordException(exception);
 		if (attributes) target.setAttributes(attributes);
 		target.setStatus({ code: SpanStatusCode.ERROR });
 	} catch {
@@ -179,41 +75,27 @@ export function recordTelemetryException(
 }
 
 /**
- * Record the same bounded lifecycle/process diagnostic in Sentry.
+ * Record a generic lifecycle/process diagnostic in Sentry.
  *
- * The message and stack are intentionally retained for debugging while the
- * event itself remains generic. Credentials, request arguments, and response
- * bodies are not added by this adapter.
+ * Sentry is intentionally kept separate from the OTel exception path. The
+ * native error is not passed to Sentry, so custom error fields cannot be
+ * serialized into a Sentry event.
  */
 export function recordSentryTelemetryException(
 	event: string,
-	error: unknown,
+	_error: unknown,
 	attributes: TelemetryAttributes,
 ): void {
 	if (!telemetryEnabled) return;
 	try {
-		const diagnostic = createSafeErrorDiagnostic(error);
-		const exceptionAttributes = getExceptionAttributes(error, attributes);
 		Sentry.withScope((scope) => {
-			for (const [key, value] of Object.entries({
-				...attributes,
-				...exceptionAttributes,
-			})) {
-				if (key === "exception.message" || key === "exception.stacktrace") {
-					continue;
-				}
+			for (const [key, value] of Object.entries(attributes)) {
 				scope.setTag(key, String(value));
 			}
-			scope.setContext("mcpException", {
-				...diagnostic,
-				message: exceptionAttributes["exception.message"],
-				stack: exceptionAttributes["exception.stacktrace"],
-			});
 			scope.setFingerprint([
 				"mcp-telemetry-exception",
 				String(attributes["mcp.failure.phase"] ?? event),
-				diagnostic.category,
-				String(diagnostic.code ?? "none"),
+				String(attributes["error.category"] ?? "unknown"),
 			]);
 			Sentry.captureMessage(event, "error");
 		});
@@ -236,13 +118,11 @@ export function installProcessExceptionTracking(
 				{ attributes: { "mcp.span.category": "process" } },
 				(span) => {
 					try {
-						const diagnostic = createSafeErrorDiagnostic(error);
 						const attributes = {
 							"exception.source": source,
 							"mcp.failure.phase": PROCESS_FAILURE_TAXONOMY[source],
 							"error.type": "MCP_PROCESS_EXCEPTION",
 							"error.category": "McpProcessFailure",
-							...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
 						};
 						recordTelemetryException(error, attributes, span);
 						recordSentryTelemetryException(
@@ -322,23 +202,6 @@ const resource = resourceFromAttributes({
 	"process.runtime.version": process.version,
 });
 
-// --- OpenTelemetry tracer provider (dual export) ---
-let currentUserHash: string | undefined;
-
-class UserHashSpanProcessor implements SpanProcessor {
-	onStart(span: Span): void {
-		if (currentUserHash) {
-			span.setAttribute("user.hash", currentUserHash);
-		}
-	}
-
-	onEnd(_span: ReadableSpan): void {}
-
-	async forceFlush(): Promise<void> {}
-
-	async shutdown(): Promise<void> {}
-}
-
 let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
 
@@ -359,7 +222,7 @@ if (telemetryEnabled) {
 		ignoreErrors: ["EPIPE", "broken pipe"],
 	});
 
-	const spanProcessors: SpanProcessor[] = [new UserHashSpanProcessor()];
+	const spanProcessors: SpanProcessor[] = [];
 
 	// OTel Collector → Honeycomb traces — only if token is available
 	if (collectorToken) {
@@ -445,19 +308,3 @@ export const serviceInfo: ServiceInfo = { name, version } as const;
 export const serviceName = name;
 export const serviceVersion = version;
 export { serviceInstanceId };
-
-// --- User context for span attributes ---
-const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
-
-export function setTelemetryUser(apiKey: string): void {
-	if (!telemetryEnabled) {
-		return;
-	}
-
-	const userHash = createHmac("sha256", apiKey)
-		.update(SENTRY_USER_ID_CONTEXT)
-		.digest("hex")
-		.slice(0, 10);
-	currentUserHash = userHash;
-	Sentry.setUser({ id: userHash });
-}

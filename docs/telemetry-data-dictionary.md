@@ -1,8 +1,15 @@
-# Privacy-safe telemetry data dictionary
+# Telemetry data dictionary
 
-This dictionary is the contract for Sentry spans and OpenTelemetry metrics. The
-telemetry implementation must fail closed when a value is not in an allowlist
-or bounded bucket.
+This dictionary describes the low-cardinality application telemetry contract.
+It is not an exception-message redaction policy. The Node package emits
+standard OpenTelemetry exception events for enabled telemetry, and the
+versioned OTel Collector applies credential redaction at export time. Set
+`HEVY_MCP_TELEMETRY=0` to opt out of local Sentry and OTLP telemetry entirely.
+
+Metrics and explicit structural attributes remain bounded because that is an
+OpenTelemetry cardinality requirement, not a second privacy sanitizer. Raw
+exception messages and stacktraces belong to trace exception events, not metric
+labels or custom span attributes.
 
 ## Approved bounded dimensions
 
@@ -19,14 +26,15 @@ or bounded bucket.
 | Session duration buckets       | `<1s`, `1-10s`, `10-60s`, `1-5m`, `5m+`                                                      | Session metrics                               |
 | Tool-call buckets              | `0`, `1`, `2-10`, `11-50`, `51+`                                                             | Session metrics                               |
 | Cache status                   | `hit`, `miss`, `not-used`                                                                    | Workflow spans                                |
-| API method                     | HTTP method from the client allowlist                                                        | API spans and metrics                         |
-| API endpoint                   | Normalized static endpoint or a placeholder path containing no identifier                    | API spans and metrics                         |
+| API method                     | HTTP method                                                                                  | API spans and metrics                         |
+| API endpoint                   | Normalized route for metrics; trace routes are retained for operational debugging            | API spans and metrics                         |
 | HTTP status                    | Numeric status code                                                                          | API diagnostics and metrics                   |
 
-API error categories and codes are emitted only after `createSafeErrorDiagnostic`
-normalization. Categories are the finite `SafeErrorCategory` union; codes are
-the finite allowlist in `error-policy.ts`. Neither field contains an upstream
-message or arbitrary error value.
+API error categories, codes, and status values are low-cardinality operational
+attributes. They are never metric dimensions when they can contain an
+unbounded upstream value. Exception messages and stacktraces are emitted only
+on standard OTel exception events; the Collector owns their export-time
+credential redaction.
 The exact tool name remains available as `mcp.tool.name` / `tool_name` only
 for short-lived debugging. Access is limited to repository maintainers and
 the on-call operator for at most 24 hours; it must not appear in saved
@@ -55,7 +63,7 @@ protocol version. Each value is trimmed, restricted to the safe token
 character set `[A-Za-z0-9._+:/@-]`, and limited to 64 characters; malformed or
 missing values become `unknown`. The transport is always `stdio` for this
 path. Metrics never contain a session ID, request ID, progress token, prompt,
-argument, result, or user hash.
+argument, or result.
 The server version is supplied by the service resource (`service.version`)
 and server lifecycle spans. Cloudflare-native telemetry is normalized at the
 collector from the deployment tag in `faas.version` only when
@@ -63,19 +71,14 @@ collector from the deployment tag in `faas.version` only when
 telemetry-only service name `hevy-worker`; Node remains `hevy-mcp`. See
 [Cloudflare Worker version attribution](./cloudflare-worker-version-attribution.md).
 
-The Sentry MCP wrapper is configured with input/output capture disabled.
-`beforeSendSpan` removes MCP request/session identifiers, progress tokens,
-logging/method text and metadata, resource URIs, prompt names, raw protocol
-versions, and unsanitized client identity fields before Sentry export; the
-stdio instrumentation remains the source for the sanitized client dimensions
-above.
-
-The pseudonymous user hash is span-only correlation data. It is not a metric
-dimension and must not be used to construct per-user behavior histories.
+The Sentry MCP wrapper is configured with input/output capture disabled. Sentry
+receives generic error events and is kept independent from the OTLP exception
+path. No API-key-derived user identity is attached to spans.
 
 ## Explicitly prohibited fields
 
-Never send or inspect for telemetry:
+Application code must not put these values in explicit attributes, logs, or MCP
+responses:
 
 - MCP prompts, prompt arguments, tool arguments, or tool result text;
 - raw queries, workout/routine/folder/exercise-template IDs, request IDs, or
@@ -93,6 +96,7 @@ Never send or inspect for telemetry:
 `packages/node/src/utils/tool-observer.test.ts`,
 `packages/node/src/utils/stdio-observability.test.ts`,
 and `packages/node/src/utils/mcp-session-observability.test.ts` assert the capture settings,
-allowlisted attributes, sanitized client metadata, and secret-sentinel absence.
-Any telemetry field change must update this dictionary and its regression tests
-in the same change.
+low-cardinality attributes, native exception recording, opt-out behavior, and
+secret-sentinel absence from explicit application fields. Collector config and
+repository tests cover export-time credential redaction. Any telemetry field
+change must update this dictionary and its regression tests in the same change.
