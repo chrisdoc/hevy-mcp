@@ -5,21 +5,17 @@ import {
 	flushTelemetry,
 	installProcessExceptionTracking,
 	recordTelemetryException,
+	recordSentryTelemetryException,
 	tracer,
 	serviceName,
 	serviceVersion,
-	setTelemetryUser,
 } from "./utils/telemetry.js";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { serverStartups } from "./utils/metrics.js";
 
 import { SpanStatusCode, type Span } from "@opentelemetry/api";
 import { z } from "zod";
-import {
-	createHevyMcpServer,
-	createSafeErrorDiagnostic,
-	mergeAbortSignals,
-} from "@hevy-mcp/core";
+import { createHevyMcpServer, mergeAbortSignals } from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
@@ -147,6 +143,11 @@ type LifecycleFailurePhase =
 	| "connect"
 	| "run";
 
+type LifecycleTerminationReason =
+	| "startup_failure"
+	| "connect_failure"
+	| "runtime_failure";
+
 const LIFECYCLE_FAILURE_TAXONOMY: Record<
 	LifecycleFailurePhase,
 	{ errorType: string; errorCategory: string }
@@ -174,23 +175,15 @@ const LIFECYCLE_FAILURE_TAXONOMY: Record<
 };
 
 function createLifecycleFailureAttributes(
-	error: unknown,
 	phase: LifecycleFailurePhase,
+	terminationReason: LifecycleTerminationReason,
 ): Record<string, string | number | boolean> {
-	const diagnostic = createSafeErrorDiagnostic(error);
 	const taxonomy = LIFECYCLE_FAILURE_TAXONOMY[phase];
 	return {
 		"mcp.failure.phase": phase,
+		"mcp.termination.reason": terminationReason,
 		"error.type": taxonomy.errorType,
 		"error.category": taxonomy.errorCategory,
-		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
-		...(diagnostic.status !== undefined
-			? { "http.response.status_code": diagnostic.status }
-			: {}),
-		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
-		...(diagnostic.endpoint
-			? { "hevy.api.endpoint": diagnostic.endpoint }
-			: {}),
 	};
 }
 
@@ -198,10 +191,12 @@ function recordLifecycleFailure(
 	span: Span,
 	error: unknown,
 	phase: LifecycleFailurePhase,
+	terminationReason: LifecycleTerminationReason,
 ): void {
-	const attributes = createLifecycleFailureAttributes(error, phase);
+	const attributes = createLifecycleFailureAttributes(phase, terminationReason);
 	span.addEvent("mcp.lifecycle.failure", attributes);
 	recordTelemetryException(error, attributes, span);
+	recordSentryTelemetryException("MCP lifecycle failure", error, attributes);
 }
 async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 	// Keep the startup probe separate from the normal MCP-aware client. The
@@ -276,7 +271,7 @@ function buildServer(
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;
 			} catch (e) {
-				recordLifecycleFailure(span, e, "build");
+				recordLifecycleFailure(span, e, "build", "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
 			} finally {
@@ -292,7 +287,6 @@ export async function createNodeMcpServer(
 	lifecycleSignal?: AbortSignal,
 ) {
 	const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
-	setTelemetryUser(validatedApiKey);
 	await validateApiKey(validatedApiKey, lifecycleSignal);
 	return buildServer(validatedApiKey, transport, lifecycleSignal);
 }
@@ -315,12 +309,6 @@ export async function runStdioServer() {
 
 	serverStartups.add(1, { version });
 
-	// Seed the user context before config validation so startup failures for a
-	// supplied key retain the same trace correlation as normal tool calls.
-	const configuredApiKey = process.env.HEVY_API_KEY;
-	if (configuredApiKey) {
-		setTelemetryUser(configuredApiKey);
-	}
 	let connectAttempted = false;
 	let connectSucceeded = false;
 	await tracer.startActiveSpan(
@@ -362,7 +350,12 @@ export async function runStdioServer() {
 							connectSucceeded = true;
 							connectSpan.setStatus({ code: SpanStatusCode.OK });
 						} catch (e) {
-							recordLifecycleFailure(connectSpan, e, "connect");
+							recordLifecycleFailure(
+								connectSpan,
+								e,
+								"connect",
+								"connect_failure",
+							);
 							connectSpan.setStatus({ code: SpanStatusCode.ERROR });
 							throw e;
 						} finally {
@@ -389,7 +382,12 @@ export async function runStdioServer() {
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (e) {
 				if (!connectAttempted || connectSucceeded) {
-					recordLifecycleFailure(span, e, "run");
+					recordLifecycleFailure(
+						span,
+						e,
+						"run",
+						connectSucceeded ? "runtime_failure" : "startup_failure",
+					);
 				}
 				recordMcpSessionTermination(
 					connectAttempted ? "connect_failure" : "startup_failure",
@@ -438,7 +436,6 @@ export async function runServer(): Promise<void> {
 			try {
 				const cfg = parseConfig(process.env);
 				assertApiKey(cfg.apiKey);
-				setTelemetryUser(cfg.apiKey);
 				await validateApiKey(cfg.apiKey, lifecycleController.signal);
 				const handle = await startStreamableHttpServer(
 					options,
@@ -473,7 +470,12 @@ export async function runServer(): Promise<void> {
 				});
 				span.setStatus({ code: SpanStatusCode.OK });
 			} catch (error) {
-				recordLifecycleFailure(span, error, "run");
+				recordLifecycleFailure(
+					span,
+					error,
+					"run",
+					listening ? "runtime_failure" : "startup_failure",
+				);
 				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				cleanupProcessExceptionTracking();

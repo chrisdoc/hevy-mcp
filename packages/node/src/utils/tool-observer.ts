@@ -293,7 +293,8 @@ export function createNodeToolObserver(): ToolObserver {
 								);
 								bestEffort(() =>
 									recordTelemetryException(
-										new Error(nextCompletion.error?.category ?? errorType),
+										nextCompletion.exception ??
+											new Error(nextCompletion.error?.category ?? errorType),
 										{
 											[invocation.kind === "prompt"
 												? "mcp.prompt.name"
@@ -341,38 +342,6 @@ export function createNodeToolObserver(): ToolObserver {
 								for (const [key, value] of Object.entries(execution)) {
 									activeSpan.setAttribute(key, value);
 								}
-								bestEffort(() =>
-									recordTelemetryException(
-										new Error(nextCompletion.error?.category ?? "UnknownError"),
-										{
-											[invocation.kind === "prompt"
-												? "mcp.prompt.name"
-												: "mcp.tool.name"]: invocation.name,
-											"error.type": nextCompletion.errorType ?? "UNKNOWN_ERROR",
-											"error.category":
-												nextCompletion.error?.category ?? "UnknownError",
-											...(nextCompletion.error?.code
-												? { "error.code": nextCompletion.error.code }
-												: {}),
-											...(nextCompletion.error?.status !== undefined
-												? {
-														"http.response.status_code":
-															nextCompletion.error.status,
-													}
-												: {}),
-											...(nextCompletion.error?.method
-												? {
-														"http.request.method": nextCompletion.error.method,
-													}
-												: {}),
-											...(nextCompletion.error?.endpoint
-												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
-												: {}),
-											...execution,
-										},
-										activeSpan,
-									),
-								);
 							}
 						}
 					} catch {

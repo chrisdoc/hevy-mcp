@@ -90,9 +90,7 @@ describe("createNodeHevyClientOptions", () => {
 			"http.response.status_code",
 			200,
 		);
-		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
-			code: SpanStatusCode.OK,
-		});
+		expect(testDoubles.span.setStatus).not.toHaveBeenCalled();
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
 			1,
@@ -217,6 +215,10 @@ describe("createNodeHevyClientOptions", () => {
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
 			code: SpanStatusCode.ERROR,
 		});
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"error.type",
+			"HevyHttpError",
+		);
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("hevy.api.failure", {
 			"error.category": "HevyHttpError",
 		});

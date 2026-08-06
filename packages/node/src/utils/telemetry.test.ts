@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HevyHttpError } from "@hevy-mcp/hevy-client";
 
 const originalEnv = { ...process.env };
 
@@ -7,9 +8,6 @@ const originalEnv = { ...process.env };
 // without making real network calls.
 
 const testDoubles = vi.hoisted(() => {
-	const hmacUpdate = vi.fn().mockReturnThis();
-	const hmacDigest = vi.fn(() => "abcdef0123456789");
-
 	return {
 		activeSpan: {
 			addEvent: vi.fn(),
@@ -21,7 +19,11 @@ const testDoubles = vi.hoisted(() => {
 		},
 		sentryInit: vi.fn(() => ({ _isSentryClient: true })),
 		sentryFlush: vi.fn().mockResolvedValue(true),
-		sentrySetUser: vi.fn(),
+		sentrySetTag: vi.fn(),
+		sentrySetContext: vi.fn(),
+		sentrySetFingerprint: vi.fn(),
+		sentryCaptureMessage: vi.fn(),
+		sentryCaptureException: vi.fn(),
 		validateOpenTelemetrySetup: vi.fn(),
 		sentrySpanProcessor: vi.fn(),
 		sentryPropagator: vi.fn(),
@@ -41,24 +43,27 @@ const testDoubles = vi.hoisted(() => {
 		nodeTracerProvider: vi.fn(),
 		tracerProviderForceFlush: vi.fn().mockResolvedValue(undefined),
 		nodeTracerProviderOptions: undefined as unknown,
-		createHmac: vi.fn(() => ({
-			update: hmacUpdate,
-			digest: hmacDigest,
-		})),
-		hmacUpdate,
-		hmacDigest,
+		metricAdd: vi.fn(),
+		metricRecord: vi.fn(),
 	};
 });
 vi.mock("@sentry/node", () => ({
 	init: testDoubles.sentryInit,
 	flush: testDoubles.sentryFlush,
-	setUser: testDoubles.sentrySetUser,
+	withScope: vi.fn((callback: (scope: unknown) => void) =>
+		callback({
+			setTag: testDoubles.sentrySetTag,
+			setContext: testDoubles.sentrySetContext,
+			setFingerprint: testDoubles.sentrySetFingerprint,
+		}),
+	),
+	captureMessage: testDoubles.sentryCaptureMessage,
+	captureException: testDoubles.sentryCaptureException,
 	validateOpenTelemetrySetup: testDoubles.validateOpenTelemetrySetup,
 	SentryContextManager: testDoubles.sentryContextManager,
 }));
 
 vi.mock("node:crypto", () => ({
-	createHmac: testDoubles.createHmac,
 	randomBytes: vi.fn(() => Buffer.alloc(16, 0xab)),
 	randomUUID: vi.fn(() => "instance-id"),
 }));
@@ -85,8 +90,8 @@ vi.mock("@opentelemetry/api", () => ({
 	},
 	metrics: {
 		getMeter: vi.fn(() => ({
-			createCounter: vi.fn(() => ({ add: vi.fn() })),
-			createHistogram: vi.fn(() => ({ record: vi.fn() })),
+			createCounter: vi.fn(() => ({ add: testDoubles.metricAdd })),
+			createHistogram: vi.fn(() => ({ record: testDoubles.metricRecord })),
 		})),
 		setGlobalMeterProvider: testDoubles.setGlobalMeterProvider,
 	},
@@ -238,7 +243,7 @@ describe("telemetry initialization", () => {
 			spanProcessors: Array<unknown>;
 		};
 		expect(tracerOptions.sampler).toBeDefined();
-		expect(tracerOptions.spanProcessors).toHaveLength(1);
+		expect(tracerOptions.spanProcessors).toHaveLength(0);
 	});
 	it("records uncaught exceptions and unhandled rejections safely", async () => {
 		vi.resetModules();
@@ -256,33 +261,38 @@ describe("telemetry initialization", () => {
 		};
 
 		const cleanup = mod.installProcessExceptionTracking(processLike);
-		listeners.get("uncaughtExceptionMonitor")?.(
-			Object.assign(new Error("uncaught"), { code: "ECONNREFUSED" }),
-		);
-		listeners.get("unhandledRejection")?.("rejection-secret");
+		const uncaughtError = Object.assign(new Error("uncaught"), {
+			code: "ECONNREFUSED",
+		});
+		const rejection = "rejection-secret";
+		listeners.get("uncaughtExceptionMonitor")?.(uncaughtError);
+		listeners.get("unhandledRejection")?.(rejection);
 		cleanup();
 		cleanup();
 
-		expect(testDoubles.activeSpan.recordException).not.toHaveBeenCalled();
-		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledTimes(2);
-		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledWith(
-			"exception",
-			expect.objectContaining({
-				"exception.type": "Error",
-				"exception.source": "uncaughtException",
-				"mcp.failure.phase": "uncaught_exception",
-				"error.type": "MCP_PROCESS_EXCEPTION",
-				"error.category": "McpProcessFailure",
-				"error.code": "ECONNREFUSED",
-			}),
+		expect(testDoubles.activeSpan.recordException).toHaveBeenNthCalledWith(
+			1,
+			uncaughtError,
 		);
+		expect(testDoubles.activeSpan.recordException).toHaveBeenNthCalledWith(
+			2,
+			rejection,
+		);
+		expect(testDoubles.activeSpan.addEvent).not.toHaveBeenCalledWith(
+			"exception",
+			expect.anything(),
+		);
+		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
+			"MCP process uncaughtException failure",
+			"error",
+		);
+		expect(testDoubles.sentrySetContext).not.toHaveBeenCalled();
 		expect(testDoubles.activeSpan.setAttributes).toHaveBeenCalledWith(
 			expect.objectContaining({
 				"exception.source": "uncaughtException",
 				"mcp.failure.phase": "uncaught_exception",
 				"error.type": "MCP_PROCESS_EXCEPTION",
 				"error.category": "McpProcessFailure",
-				"error.code": "ECONNREFUSED",
 			}),
 		);
 		expect(testDoubles.activeSpan.end).toHaveBeenCalledTimes(2);
@@ -356,7 +366,7 @@ describe("telemetry initialization", () => {
 			spanProcessors: Array<unknown>;
 		};
 		expect(tracerOptions.sampler).toBeDefined();
-		expect(tracerOptions.spanProcessors).toHaveLength(2);
+		expect(tracerOptions.spanProcessors).toHaveLength(1);
 		const meterOptions = testDoubles.meterProviderOptions as {
 			resource: { attributes: Record<string, unknown> };
 		};
@@ -419,13 +429,9 @@ describe("telemetry initialization", () => {
 		expect(typeof mod.tracer).toBe("object");
 		expect(typeof mod.meter).toBe("object");
 		expect(typeof mod.flushTelemetry).toBe("function");
-		expect(typeof mod.setTelemetryUser).toBe("function");
 
-		mod.setTelemetryUser("raw-api-key-sentinel");
 		await mod.flushTelemetry();
 
-		expect(testDoubles.createHmac).not.toHaveBeenCalled();
-		expect(testDoubles.sentrySetUser).not.toHaveBeenCalled();
 		expect(testDoubles.tracerProviderForceFlush).not.toHaveBeenCalled();
 		expect(testDoubles.meterProviderForceFlush).not.toHaveBeenCalled();
 		expect(testDoubles.sentryFlush).not.toHaveBeenCalled();
@@ -466,47 +472,32 @@ describe("telemetry initialization", () => {
 			}),
 		).toBe(fallback);
 	});
-	it("derives and attaches a truncated HMAC user pseudonym", async () => {
+	it("does not emit an API-key-derived user hash", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
 
-		mod.setTelemetryUser("raw-api-key-sentinel");
-
-		expect(testDoubles.createHmac).toHaveBeenCalledWith(
-			"sha256",
-			"raw-api-key-sentinel",
-		);
-		expect(testDoubles.hmacUpdate).toHaveBeenCalledWith(
-			"hevy-mcp:sentry-user-id:v1",
-		);
-		expect(testDoubles.hmacDigest).toHaveBeenCalledWith("hex");
-		expect(testDoubles.sentrySetUser).toHaveBeenCalledWith({
-			id: "abcdef0123",
-		});
-
 		const providerOptions = testDoubles.nodeTracerProviderOptions as {
-			spanProcessors: Array<{
-				onStart: (span: unknown, parentContext: unknown) => void;
-			}>;
+			spanProcessors: Array<unknown>;
 		};
-		const processor = providerOptions.spanProcessors[0];
-		if (!processor) {
-			throw new Error("Expected user hash span processor");
-		}
-
-		const setAttribute = vi.fn();
-		processor.onStart({ setAttribute }, {});
-
-		expect(setAttribute).toHaveBeenCalledWith("user.hash", "abcdef0123");
+		expect(providerOptions.spanProcessors).toHaveLength(0);
+		expect(testDoubles.activeSpan.setAttribute).not.toHaveBeenCalledWith(
+			"user.hash",
+			expect.anything(),
+		);
+		expect("setTelemetryUser" in mod).toBe(false);
 	});
 
-	it("exports only bounded exception attributes", async () => {
+	it("records native OTel exception semantics without span detail copies", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
 		const secret = "secret-exception-message";
 		const path = "/home/private/hevy-mcp/packages/node/src/index.ts";
 		const error = new Error(secret);
 		error.stack = `Error: ${secret}\n    at main (${path}:10:2)`;
+		Object.assign(error, {
+			authorization: "bearer-secret",
+			body: "response-body-secret",
+		});
 
 		mod.recordTelemetryException(error, {
 			"mcp.failure.phase": "run",
@@ -514,20 +505,119 @@ describe("telemetry initialization", () => {
 			"error.category": "McpServerRunFailure",
 		});
 
-		expect(testDoubles.activeSpan.recordException).not.toHaveBeenCalled();
-		expect(testDoubles.activeSpan.addEvent).toHaveBeenCalledWith("exception", {
-			"exception.type": "Error",
+		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledWith(error);
+		expect(testDoubles.activeSpan.addEvent).not.toHaveBeenCalledWith(
+			"exception",
+			expect.anything(),
+		);
+		expect(testDoubles.activeSpan.setAttributes).toHaveBeenCalledWith({
 			"mcp.failure.phase": "run",
 			"error.type": "MCP_SERVER_RUN_ERROR",
 			"error.category": "McpServerRunFailure",
 		});
-		const exported = JSON.stringify({
-			events: testDoubles.activeSpan.addEvent.mock.calls,
-			attributes: testDoubles.activeSpan.setAttributes.mock.calls,
+		expect(testDoubles.activeSpan.setAttribute).not.toHaveBeenCalledWith(
+			"exception.message",
+			expect.anything(),
+		);
+		expect(testDoubles.activeSpan.setAttribute).not.toHaveBeenCalledWith(
+			"exception.stacktrace",
+			expect.anything(),
+		);
+		expect(testDoubles.activeSpan.setStatus).toHaveBeenCalledWith({ code: 2 });
+		expect(testDoubles.metricAdd).not.toHaveBeenCalled();
+		expect(testDoubles.metricRecord).not.toHaveBeenCalled();
+	});
+
+	it("reports a generic Sentry event without passing the native error", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const error = new TypeError("invalid runtime state");
+		error.stack =
+			"TypeError: invalid runtime state\n    at run (/app/index.ts:4:2)";
+		const attributes = {
+			"mcp.failure.phase": "uncaught_exception",
+			"error.type": "MCP_PROCESS_EXCEPTION",
+			"error.category": "McpProcessFailure",
+		};
+
+		mod.recordSentryTelemetryException(
+			"MCP process uncaughtException failure",
+			error,
+			attributes,
+		);
+
+		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
+			"MCP process uncaughtException failure",
+			"error",
+		);
+		expect(testDoubles.sentrySetTag).toHaveBeenCalledWith(
+			"error.type",
+			"MCP_PROCESS_EXCEPTION",
+		);
+		expect(testDoubles.sentrySetContext).not.toHaveBeenCalled();
+		expect(testDoubles.sentryCaptureException).not.toHaveBeenCalled();
+	});
+
+	it("swallows OTel recording failures", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		testDoubles.activeSpan.recordException.mockImplementationOnce(() => {
+			throw new Error("telemetry failure");
 		});
-		expect(exported).not.toContain(secret);
-		expect(exported).not.toContain(path);
-		expect(exported).not.toContain("exception.message");
-		expect(exported).not.toContain("exception.stacktrace");
+
+		expect(() =>
+			mod.recordTelemetryException(new Error("application failure")),
+		).not.toThrow();
+	});
+
+	it("passes native Hevy errors to OTel without custom Sentry capture", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const error = new HevyHttpError("Hevy request failed", {
+			status: 422,
+			method: "POST",
+			endpoint: "/v1/workouts",
+			data: { secret: "response-body-secret" },
+			headers: new Headers({ authorization: "Bearer api-key-secret" }),
+			cause: new Error("nested-secret"),
+		});
+
+		mod.recordTelemetryException(error);
+
+		expect(testDoubles.activeSpan.recordException).toHaveBeenCalledWith(error);
+		expect(testDoubles.sentryCaptureException).not.toHaveBeenCalled();
+	});
+
+	it("does not send raw exception details to metric instruments", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const error = new Error("metric-message-secret");
+
+		mod.recordTelemetryException(error, {
+			"error.type": "MCP_SERVER_RUN_ERROR",
+			"error.category": "McpServerRunFailure",
+		});
+
+		expect(testDoubles.metricAdd).not.toHaveBeenCalled();
+		expect(testDoubles.metricRecord).not.toHaveBeenCalled();
+	});
+
+	it("does not call Sentry with native exception data", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const error = new Error("sentry-message-secret");
+		Object.assign(error, { headers: { authorization: "api-key-secret" } });
+
+		mod.recordSentryTelemetryException("MCP failure", error, {
+			"error.type": "MCP_SERVER_RUN_ERROR",
+			"error.category": "McpServerRunFailure",
+		});
+
+		expect(testDoubles.sentryCaptureException).not.toHaveBeenCalled();
+		expect(testDoubles.sentrySetContext).not.toHaveBeenCalled();
+		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
+			"MCP failure",
+			"error",
+		);
 	});
 });

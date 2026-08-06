@@ -85,13 +85,12 @@ function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
 	for (const [key, value] of Object.entries(errorAttributes)) {
 		span.setAttribute(key, value);
 	}
-	span.setStatus({
-		code:
-			observation.outcome === "success" || observation.outcome === "expected"
-				? SpanStatusCode.OK
-				: SpanStatusCode.ERROR,
-	});
 	if (observation.outcome !== "success" && observation.outcome !== "expected") {
+		span.setAttribute(
+			"error.type",
+			errorAttributes.error_category ?? "HevyHttpError",
+		);
+		span.setStatus({ code: SpanStatusCode.ERROR });
 		span.addEvent("hevy.api.failure", {
 			"error.category": errorAttributes.error_category ?? "HevyHttpError",
 			...(errorAttributes.error_code

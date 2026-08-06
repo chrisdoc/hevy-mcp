@@ -9,11 +9,7 @@
  * OTel Collector → Honeycomb: performance traces, metrics
  */
 
-import {
-	createHmac,
-	randomBytes,
-	randomUUID as nodeRandomUUID,
-} from "node:crypto";
+import { randomBytes, randomUUID as nodeRandomUUID } from "node:crypto";
 import * as Sentry from "@sentry/node";
 import {
 	SpanStatusCode,
@@ -32,11 +28,7 @@ import {
 	AlwaysOnSampler,
 	BatchSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import type {
-	ReadableSpan,
-	Span,
-	SpanProcessor,
-} from "@opentelemetry/sdk-trace";
+import type { SpanProcessor } from "@opentelemetry/sdk-trace";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import {
 	MeterProvider,
@@ -58,76 +50,57 @@ const PROCESS_FAILURE_TAXONOMY = {
 	unhandledRejection: "unhandled_rejection",
 } as const;
 
-const SAFE_EXCEPTION_TYPES = new Set([
-	"AggregateError",
-	"DOMException",
-	"Error",
-	"EvalError",
-	"HevyHttpError",
-	"RangeError",
-	"ReferenceError",
-	"SyntaxError",
-	"TypeError",
-	"URIError",
-	"ProtocolError",
-	"ZodError",
-]);
-const SAFE_EXCEPTION_CODES = new Set([
-	"EAI_AGAIN",
-	"ECONNABORTED",
-	"ECONNREFUSED",
-	"ECONNRESET",
-	"ENETUNREACH",
-	"ENOTFOUND",
-	"ERR_NETWORK",
-	"ERR_SOCKET_TIMEOUT",
-	"ETIMEDOUT",
-	"HEVY_INVALID_ENDPOINT",
-	"HEVY_REQUEST_ABORTED",
-	"HEVY_RETRY_EXHAUSTED",
-]);
-
-function normalizeTelemetryError(error: unknown): { name: string } {
-	const candidate =
-		error instanceof Error && typeof error.name === "string"
-			? error.name
-			: undefined;
-	const name =
-		candidate && SAFE_EXCEPTION_TYPES.has(candidate)
-			? candidate
-			: "UnknownError";
-	return { name };
-}
-
-function getSafeExceptionCode(error: unknown): string | undefined {
-	if (!error || typeof error !== "object" || !("code" in error))
-		return undefined;
-	const code = error.code;
-	return typeof code === "string" && SAFE_EXCEPTION_CODES.has(code)
-		? code
-		: undefined;
-}
+type TelemetryAttributeValue = string | number | boolean;
+type TelemetryAttributes = Record<string, TelemetryAttributeValue>;
 
 export function recordTelemetryException(
 	error: unknown,
-	attributes?: Record<string, string | number | boolean>,
+	attributes?: TelemetryAttributes,
 	span?: ApiSpan,
 ): void {
 	if (!telemetryEnabled) return;
 	try {
 		const target = span ?? trace.getActiveSpan();
 		if (!target) return;
-		const normalized = normalizeTelemetryError(error);
-		target.addEvent("exception", {
-			...attributes,
-			"exception.type": normalized.name,
-		});
-		target.setAttribute("exception.type", normalized.name);
-		target.setAttribute("error.category", normalized.name);
+		const exception =
+			error instanceof Error || typeof error === "string"
+				? error
+				: String(error);
+		target.recordException(exception);
 		if (attributes) target.setAttributes(attributes);
 		target.setStatus({ code: SpanStatusCode.ERROR });
 	} catch {
 		// Telemetry failures must never affect MCP behavior.
+	}
+}
+
+/**
+ * Record a generic lifecycle/process diagnostic in Sentry.
+ *
+ * Sentry is intentionally kept separate from the OTel exception path. The
+ * native error is not passed to Sentry, so custom error fields cannot be
+ * serialized into a Sentry event.
+ */
+export function recordSentryTelemetryException(
+	event: string,
+	_error: unknown,
+	attributes: TelemetryAttributes,
+): void {
+	if (!telemetryEnabled) return;
+	try {
+		Sentry.withScope((scope) => {
+			for (const [key, value] of Object.entries(attributes)) {
+				scope.setTag(key, String(value));
+			}
+			scope.setFingerprint([
+				"mcp-telemetry-exception",
+				String(attributes["mcp.failure.phase"] ?? event),
+				String(attributes["error.category"] ?? "unknown"),
+			]);
+			Sentry.captureMessage(event, "error");
+		});
+	} catch {
+		// Sentry failures must never affect MCP behavior.
 	}
 }
 
@@ -145,17 +118,17 @@ export function installProcessExceptionTracking(
 				{ attributes: { "mcp.span.category": "process" } },
 				(span) => {
 					try {
-						const code = getSafeExceptionCode(error);
-						recordTelemetryException(
+						const attributes = {
+							"exception.source": source,
+							"mcp.failure.phase": PROCESS_FAILURE_TAXONOMY[source],
+							"error.type": "MCP_PROCESS_EXCEPTION",
+							"error.category": "McpProcessFailure",
+						};
+						recordTelemetryException(error, attributes, span);
+						recordSentryTelemetryException(
+							`MCP process ${source} failure`,
 							error,
-							{
-								"exception.source": source,
-								"mcp.failure.phase": PROCESS_FAILURE_TAXONOMY[source],
-								"error.type": "MCP_PROCESS_EXCEPTION",
-								"error.category": "McpProcessFailure",
-								...(code ? { "error.code": code } : {}),
-							},
-							span,
+							attributes,
 						);
 					} finally {
 						span.end();
@@ -229,23 +202,6 @@ const resource = resourceFromAttributes({
 	"process.runtime.version": process.version,
 });
 
-// --- OpenTelemetry tracer provider (dual export) ---
-let currentUserHash: string | undefined;
-
-class UserHashSpanProcessor implements SpanProcessor {
-	onStart(span: Span): void {
-		if (currentUserHash) {
-			span.setAttribute("user.hash", currentUserHash);
-		}
-	}
-
-	onEnd(_span: ReadableSpan): void {}
-
-	async forceFlush(): Promise<void> {}
-
-	async shutdown(): Promise<void> {}
-}
-
 let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
 
@@ -266,7 +222,7 @@ if (telemetryEnabled) {
 		ignoreErrors: ["EPIPE", "broken pipe"],
 	});
 
-	const spanProcessors: SpanProcessor[] = [new UserHashSpanProcessor()];
+	const spanProcessors: SpanProcessor[] = [];
 
 	// OTel Collector → Honeycomb traces — only if token is available
 	if (collectorToken) {
@@ -352,19 +308,3 @@ export const serviceInfo: ServiceInfo = { name, version } as const;
 export const serviceName = name;
 export const serviceVersion = version;
 export { serviceInstanceId };
-
-// --- User context for span attributes ---
-const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
-
-export function setTelemetryUser(apiKey: string): void {
-	if (!telemetryEnabled) {
-		return;
-	}
-
-	const userHash = createHmac("sha256", apiKey)
-		.update(SENTRY_USER_ID_CONTEXT)
-		.digest("hex")
-		.slice(0, 10);
-	currentUserHash = userHash;
-	Sentry.setUser({ id: userHash });
-}

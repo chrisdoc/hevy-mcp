@@ -5,6 +5,7 @@
 ## Project Overview
 
 - **hevy-mcp** is a Model Context Protocol (MCP) server for the Hevy Fitness API, enabling AI agents to manage workouts, routines, exercise templates, and folders via the Hevy API.
+- The OpenTelemetry Collector lives in the separate [hevy-otel-collector repository](https://github.com/chrisdoc/hevy-otel-collector); keep Collector-side telemetry export and privacy changes there.
 - The codebase is TypeScript (Node.js v24+) organized as five workspaces: the
   runtime-neutral `@hevy-mcp/hevy-client` and `@hevy-mcp/core` packages, the
   Node package in `packages/node`, and the Cloudflare package in
