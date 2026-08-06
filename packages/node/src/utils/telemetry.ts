@@ -28,6 +28,7 @@ import {
 	OTLPMetricExporter,
 } from "@opentelemetry/exporter-metrics-otlp-http";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import { getHevyResponseErrorMessage } from "@hevy-mcp/hevy-client";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
 	AlwaysOnSampler,
@@ -80,6 +81,8 @@ const SAFE_NAMED_EXCEPTION_TYPES = new Set([
 ]);
 
 function getDebugExceptionMessage(error: unknown): string | undefined {
+	const responseMessage = getHevyResponseErrorMessage(error);
+	if (responseMessage) return responseMessage;
 	if (error instanceof Error && typeof error.message === "string") {
 		return error.message.slice(0, MAX_EXCEPTION_MESSAGE_LENGTH);
 	}

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HevyHttpError } from "@hevy-mcp/hevy-client";
 
 const originalEnv = { ...process.env };
 
@@ -604,5 +605,30 @@ describe("telemetry initialization", () => {
 				stack: error.stack,
 			}),
 		);
+	});
+
+	it("captures the Hevy API response error message", async () => {
+		vi.resetModules();
+		const mod = await import("./telemetry.js");
+		const responseMessage = "Hevy rejected the workout";
+		const error = new HevyHttpError("generic request failure", {
+			status: 422,
+			method: "POST",
+			endpoint: "/v1/workouts",
+			data: { error: responseMessage, internal: "response-body-secret" },
+		});
+
+		mod.recordTelemetryException(error, {
+			"mcp.failure.phase": "run",
+			"error.type": "MCP_SERVER_RUN_ERROR",
+			"error.category": "McpServerRunFailure",
+		});
+
+		const exported = JSON.stringify({
+			events: testDoubles.activeSpan.addEvent.mock.calls,
+			attributes: testDoubles.activeSpan.setAttributes.mock.calls,
+		});
+		expect(exported).toContain(responseMessage);
+		expect(exported).not.toContain("response-body-secret");
 	});
 });

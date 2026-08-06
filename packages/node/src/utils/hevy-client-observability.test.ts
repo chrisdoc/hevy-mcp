@@ -258,6 +258,38 @@ describe("createNodeHevyClientOptions", () => {
 			"error.code": "HEVY_RETRY_EXHAUSTED",
 		});
 	});
+	it("records API response error messages on spans, not metric labels", () => {
+		const responseMessage = "Hevy rejected the workout";
+		const options = createNodeHevyClientOptions();
+
+		observe(options, {
+			method: "POST",
+			endpoint: "/v1/workouts",
+			status: 422,
+			durationMs: 25,
+			retryCount: 0,
+			outcome: "terminal_failure",
+			error: {
+				category: "HevyHttpError",
+				responseMessage,
+			},
+		});
+
+		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
+			"hevy.api.error_message",
+			responseMessage,
+		);
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
+			"hevy.api.failure",
+			expect.objectContaining({ "error.message": responseMessage }),
+		);
+		expect(
+			JSON.stringify([
+				testDoubles.apiCallsAdd.mock.calls,
+				testDoubles.apiDurationRecord.mock.calls,
+			]),
+		).not.toContain(responseMessage);
+	});
 	it("records retry waits and cache lifecycle metadata on dedicated spans", () => {
 		const options = createNodeHevyClientOptions();
 		const retryScope = options.onRetryWait?.({
