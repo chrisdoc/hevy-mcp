@@ -22,6 +22,7 @@ import {
 	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	HevyHttpError,
+	getHevyResponseErrorMessage,
 	isHevyHttpError,
 } from "./hevy-http-error.js";
 import {
@@ -95,6 +96,7 @@ export interface HevyRequestObservation {
 		readonly status?: number;
 		readonly code?: string;
 		readonly category?: "HevyHttpError" | "NetworkError";
+		readonly responseMessage?: string;
 	};
 }
 
@@ -858,6 +860,7 @@ function transitionAfterAttemptFailure(
 				: safeToRetry && !retryExhausted
 					? "retryable_failure"
 					: "terminal_failure";
+	const responseErrorMessage = getHevyResponseErrorMessage(error);
 	const observation: HevyRequestObservation = {
 		method: options.method,
 		endpoint: options.endpoint,
@@ -877,6 +880,9 @@ function transitionAfterAttemptFailure(
 					? error.code
 					: undefined,
 			category: error.status === undefined ? "NetworkError" : "HevyHttpError",
+			...(responseErrorMessage
+				? { responseMessage: responseErrorMessage }
+				: {}),
 		},
 	};
 	finishRequestObservation(options.observationScope, observation);

@@ -493,10 +493,11 @@ normalized API method/endpoint/status; shape-only key names, presence, count,
 and boolean fields; sanitized client/protocol tokens; and the span-only
 pseudonym. Process and server-lifecycle exception events intentionally retain
 the original normalized type, up to 2 KiB of exception message, and up to 16
-KiB of stack for debugging. Disable telemetry if that diagnostic detail is not
-acceptable. The exception adapter does not add raw prompts, tool argument
-values, tool result content, request/response bodies, API keys, or
-authorization headers.
+KiB of stack for debugging. Hevy API failure spans also retain the bounded
+allowlisted response error message when the API returns one. Disable telemetry
+if that diagnostic detail is not acceptable. The exception/API adapter does
+not add raw prompts, tool argument values, tool result content, full
+request/response bodies, API keys, or authorization headers.
 
 ## Security and mutations
 
