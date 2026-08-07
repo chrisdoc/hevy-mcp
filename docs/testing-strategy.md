@@ -297,10 +297,12 @@ these names rather than duplicating selectors:
 	"test:live": "node --env-file-if-exists=.env scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
 	"test:performance": "npm run build && vitest run tests/performance/performance.test.ts",
-	"test:coverage": "unit and mocked MCP coverage via their named lanes",
-	"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:pack"
+	"test:pr": "nx run repository:test:pr"
 }
 ```
+
+Coverage uses the unit and mocked MCP commands with their existing
+`--coverage.reportsDirectory` arguments instead of a separate wrapper alias.
 
 `test:live` and `test:nightly` must fail fast with a clear message when they are
 explicitly invoked without required credentials. They should not silently turn

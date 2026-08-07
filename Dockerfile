@@ -17,7 +17,7 @@ COPY packages/hevy-client/ ./packages/hevy-client/
 COPY packages/operations/ ./packages/operations/
 COPY packages/core/ ./packages/core/
 COPY packages/node/ ./packages/node/
-RUN npm run build:standalone
+RUN npm run build:standalone --workspace hevy-mcp
 
 FROM node:24-alpine AS runtime
 
