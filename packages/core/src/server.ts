@@ -71,6 +71,6 @@ export function createHevyMcpServer(
 	registerHevyTools(counting.server, runtime);
 	options.onToolsRegistered?.(counting.getCount());
 	registerWorkoutPrompts(server, options.observer);
-	registerHevyResources(server, runtime);
+	registerHevyResources(server, runtime, options.observer);
 	return server;
 }

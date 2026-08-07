@@ -12,6 +12,11 @@ import { meter } from "./telemetry.js";
 export const toolInvocations = meter.createCounter("mcp.tool.invocations", {
 	description: "Total MCP tool invocations",
 });
+
+/** User activity across tool, resource, and prompt calls. */
+export const activityInvocations = meter.createCounter("mcp.user.activity", {
+	description: "MCP user activity by primitive kind",
+});
 /** Total MCP tool outcomes, grouped by bounded taxonomy and outcome. */
 export const toolOutcomes = meter.createCounter("mcp.tool.outcomes", {
 	description: "Total MCP tool outcomes",

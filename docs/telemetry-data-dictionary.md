@@ -18,6 +18,7 @@ or bounded bucket.
 | Session termination            | `clean`, `startup_failure`, `connect_failure`, `tool_failure`, `unknown`                     | Session metrics                               |
 | Session duration buckets       | `<1s`, `1-10s`, `10-60s`, `1-5m`, `5m+`                                                      | Session metrics                               |
 | Tool-call buckets              | `0`, `1`, `2-10`, `11-50`, `51+`                                                             | Session metrics                               |
+| Activity kind                  | `tool`, `resource`, `prompt`                                                                 | User-activity metric and activity spans       |
 | Cache status                   | `hit`, `miss`, `not-used`                                                                    | Workflow spans                                |
 | API method                     | HTTP method from the client allowlist                                                        | API spans and metrics                         |
 | API endpoint                   | Normalized static endpoint or a placeholder path containing no identifier                    | API spans and metrics                         |
@@ -70,8 +71,12 @@ versions, and unsanitized client identity fields before Sentry export; the
 stdio instrumentation remains the source for the sanitized client dimensions
 above.
 
-The pseudonymous user hash is span-only correlation data. It is not a metric
-dimension and must not be used to construct per-user behavior histories.
+The pseudonymous user hash is also emitted on the dedicated user-activity
+counter solely to calculate unique DAU, WAU, and MAU. It is not emitted on
+request-volume, outcome, duration, API, or session metrics. Activity panels must
+aggregate by user hash and must not expose per-user behavior histories or saved
+per-user views. The activity counter is subject to the 30-day trace/user-hash
+retention policy below.
 
 ## Explicitly prohibited fields
 

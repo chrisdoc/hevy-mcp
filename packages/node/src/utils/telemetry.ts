@@ -356,6 +356,10 @@ export { serviceInstanceId };
 // --- User context for span attributes ---
 const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 
+export function getTelemetryUserHash(): string | undefined {
+	return currentUserHash;
+}
+
 export function setTelemetryUser(apiKey: string): void {
 	if (!telemetryEnabled) {
 		return;
