@@ -44,24 +44,12 @@ const testDoubles = vi.hoisted(() => ({
 		protocolVersion: "2025-11-25",
 	})),
 	getCurrentMcpSessionId: vi.fn(() => "session-1"),
-	sentryWithScope: vi.fn((callback: (scope: unknown) => void) =>
-		callback({
-			setTag: vi.fn(),
-			setContext: vi.fn(),
-			setFingerprint: testDoubles.sentrySetFingerprint,
-		}),
-	),
-	sentrySetFingerprint: vi.fn(),
-	sentryCaptureMessage: vi.fn(),
+	captureFailure: vi.fn(),
 }));
 
 vi.mock("./telemetry.js", () => ({
-	recordTelemetryException: vi.fn(),
+	captureFailure: testDoubles.captureFailure,
 	tracer: { startActiveSpan: testDoubles.startActiveSpan },
-	Sentry: {
-		withScope: testDoubles.sentryWithScope,
-		captureMessage: testDoubles.sentryCaptureMessage,
-	},
 }));
 
 vi.mock("./metrics.js", () => ({
@@ -214,15 +202,16 @@ describe("createNodeToolObserver", () => {
 		await scope.finish(completion);
 
 		expect(testDoubles.span.recordException).not.toHaveBeenCalled();
-		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
-			"MCP tool failure",
-			"error",
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({
+				kind: "tool",
+				span: testDoubles.span,
+				attributes: expect.objectContaining({
+					"error.type": "NETWORK_ERROR",
+				}),
+			}),
 		);
-		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
-			"mcp-tool-failure",
-			"HevyHttpError",
-			"503",
-		]);
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith("mcp.tool.failure", {
 			"mcp.tool.name": "get-workouts",
 			"error.type": "NETWORK_ERROR",
@@ -308,15 +297,12 @@ describe("createNodeToolObserver", () => {
 			error: { category: "Error", status: 500 },
 		});
 
-		expect(testDoubles.sentryCaptureMessage).toHaveBeenCalledWith(
-			"MCP prompt failure",
-			"error",
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				kind: "prompt",
+			}),
 		);
-		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
-			"mcp-prompt-failure",
-			"Error",
-			"500",
-		]);
 	});
 
 	it("keeps sanitized status-less error codes distinct in Sentry", async () => {
@@ -332,12 +318,13 @@ describe("createNodeToolObserver", () => {
 			},
 		});
 
-		expect(testDoubles.sentrySetFingerprint).toHaveBeenCalledWith([
-			"mcp-tool-failure",
-			"Error",
-			"none",
-			"ENOTFOUND",
-		]);
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				kind: "tool",
+				attributes: expect.objectContaining({ "error.code": "ENOTFOUND" }),
+			}),
+		);
 	});
 
 	it("marks returned MCP errors as session failures without error exceptions", async () => {

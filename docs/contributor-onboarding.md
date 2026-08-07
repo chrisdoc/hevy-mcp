@@ -60,13 +60,13 @@ The repository is a TypeScript monorepo with five workspace packages under `pack
 
 ### The five workspaces
 
-| Workspace | Package name | Role |
-|---|---|---|
+| Workspace               | Package name            | Role                                                                      |
+| ----------------------- | ----------------------- | ------------------------------------------------------------------------- |
 | `packages/hevy-client/` | `@hevy-mcp/hevy-client` | Runtime-neutral Hevy API client, generated from the OpenAPI spec via Kubb |
-| `packages/core/` | `@hevy-mcp/core` | MCP tools, prompts, resources — the shared runtime-neutral implementation |
-| `packages/node/` | `hevy-mcp` | Node.js stdio/HTTP adapter, telemetry, process lifecycle |
-| `packages/worker/` | `@hevy-mcp/worker` | Cloudflare Worker Streamable HTTP and OAuth adapter |
-| `packages/cli/` | `@chrisdoc/hevy-cli` | Public Hevy command-line client |
+| `packages/core/`        | `@hevy-mcp/core`        | MCP tools, prompts, resources — the shared runtime-neutral implementation |
+| `packages/node/`        | `hevy-mcp`              | Node.js stdio/HTTP adapter, telemetry, process lifecycle                  |
+| `packages/worker/`      | `@hevy-mcp/worker`      | Cloudflare Worker Streamable HTTP and OAuth adapter                       |
+| `packages/cli/`         | `@chrisdoc/hevy-cli`    | Public Hevy command-line client                                           |
 
 [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661)
 
@@ -130,13 +130,13 @@ npm run check:changeset   # Verify your changeset file is correct
 
 ### Situational — run when relevant
 
-| Command | When to run |
-|---|---|
-| `npm run test:stdio` | After changes to process lifecycle, stdio transport, diagnostics, or MCP TypeScript SDK upgrades |
-| `npm run test:pack` | After changes to package entry points, binary mapping, or published files |
-| `npm run test:live` | Only with a valid `HEVY_API_KEY` — runs a read-only canary against the real Hevy API |
-| `npm run test:worker` | After changes to the Cloudflare Worker |
-| `npm run test:worker-http` | After changes to the Cloudflare Worker HTTP integration |
+| Command                    | When to run                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------ |
+| `npm run test:stdio`       | After changes to process lifecycle, stdio transport, diagnostics, or MCP TypeScript SDK upgrades |
+| `npm run test:pack`        | After changes to package entry points, binary mapping, or published files                        |
+| `npm run test:live`        | Only with a valid `HEVY_API_KEY` — runs a read-only canary against the real Hevy API             |
+| `npm run test:worker`      | After changes to the Cloudflare Worker                                                           |
+| `npm run test:worker-http` | After changes to the Cloudflare Worker HTTP integration                                          |
 
 [[6]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md#L60-L75) [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
@@ -149,7 +149,7 @@ See [test-lanes.md](./test-lanes.md) for the complete reference including all la
 
 Here are step-by-step guides for the most common types of changes.
 
-***
+---
 
 ### Pattern A: Adding a new MCP tool
 
@@ -161,7 +161,7 @@ New tools live in `packages/core/` and are shared by both the Node.js and Cloudf
 
    ```typescript
    const myToolSchema = {
-     param: z.string(),
+   	param: z.string(),
    } as const;
    ```
 
@@ -177,11 +177,11 @@ New tools live in `packages/core/` and are shared by both the Node.js and Cloudf
    ```typescript
    import { withErrorHandling } from "../utils/error-handler.js";
    server.registerTool(
-     "my-tool",
-     { description: "...", inputSchema: z.object(myToolSchema) },
-     withErrorHandling(async (args: MyToolParams) => {
-       // args is fully typed — no manual assertions needed
-     }, "my-tool"),
+   	"my-tool",
+   	{ description: "...", inputSchema: z.object(myToolSchema) },
+   	withErrorHandling(async (args: MyToolParams) => {
+   		// args is fully typed — no manual assertions needed
+   	}, "my-tool"),
    );
    ```
 
@@ -196,7 +196,7 @@ New tools live in `packages/core/` and are shared by both the Node.js and Cloudf
 > [!TIP]
 > See [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) for the full type safety patterns, including how to annotate `hevyClient` API responses with generated types. Never use `args as { ... }` assertions or `Record<string, unknown>` in handler signatures. [[9]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/TYPE_SAFETY_GUIDE.md#L1-L25)
 
-***
+---
 
 ### Pattern B: Updating the API client
 
@@ -223,7 +223,7 @@ The Hevy API client under `packages/hevy-client/src/generated/` is **fully gener
 > [!NOTE]
 > `npm run openapi` fetches the upstream Hevy spec and will fail with `ENOTFOUND api.hevyapp.com` in sandboxed environments — this is expected. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661) TypeScript errors inside the generated directory are also expected and should not be patched by hand; fixes belong in `scripts/openapi-spec.js`. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
-***
+---
 
 ### Pattern C: Modifying the Cloudflare Worker
 
@@ -255,7 +255,7 @@ Changes to `packages/worker/` affect only the hosted Cloudflare deployment. [[1]
 > [!NOTE]
 > Changes to `cloudflare.config.ts` also count as Worker changes and require a Worker changeset, even though the file sits at the repo root. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
-***
+---
 
 ### Pattern D: Documentation or CI-only changes
 
@@ -285,7 +285,7 @@ Every PR must include a changeset file. This is how the project tracks versions 
 ### The quick decision
 
 > **Did you change any files under `packages/*` or `cloudflare.config.ts`?**
-> 
+>
 > - **Yes** → create a **bump changeset** naming every affected package
 > - **No (pure docs, CI, or tooling)** → an **empty changeset** is likely fine
 
@@ -324,13 +324,13 @@ Run this before committing. CI will also run it and fail the PR if no valid chan
 
 Because `core` and `hevy-client` are bundled into the published adapters, changing a shared package requires bumping every downstream consumer:
 
-| Changed composition | Required changeset packages |
-|---|---|
-| `@hevy-mcp/hevy-client` | `@hevy-mcp/hevy-client`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
-| `@hevy-mcp/core` | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
-| Node adapter only | `hevy-mcp` only |
-| Worker only (or `cloudflare.config.ts`) | `@hevy-mcp/worker` only |
-| CLI only | `@chrisdoc/hevy-cli` only |
+| Changed composition                     | Required changeset packages                                                                     |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `@hevy-mcp/hevy-client`                 | `@hevy-mcp/hevy-client`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
+| `@hevy-mcp/core`                        | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`                          |
+| Node adapter only                       | `hevy-mcp` only                                                                                 |
+| Worker only (or `cloudflare.config.ts`) | `@hevy-mcp/worker` only                                                                         |
+| CLI only                                | `@chrisdoc/hevy-cli` only                                                                       |
 
 [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
@@ -427,13 +427,13 @@ npm run check:fix
 
 Review the diff before staging — `check:fix` modifies files but does not stage them. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
-***
+---
 
 ### "TypeScript errors inside `packages/hevy-client/src/generated/`"
 
 This is **expected**. The generated client directory contains auto-generated TypeScript that may have known type errors from the upstream OpenAPI spec. Do not patch these files by hand. If a fix is needed, add it to `scripts/openapi-spec.js` so it survives future regenerations. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661)
 
-***
+---
 
 ### "Integration tests fail without an API key"
 
@@ -444,13 +444,13 @@ npm run test:unit    # unit tests only
 npm run test:mcp     # mocked MCP integration tests
 ```
 
-***
+---
 
 ### "`npm run openapi` fails with `ENOTFOUND`"
 
 This is **expected in sandboxed environments**. The command fetches the live Hevy OpenAPI spec from `api.hevyapp.com` and cannot reach it without network access. If you're working on a client regeneration locally, make sure you have outbound network access before running this command. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661)
 
-***
+---
 
 ### "Git hook failures on commit or push"
 
@@ -463,7 +463,7 @@ mise exec hk -- hk install --mise
 
 This sets up the hk-managed hooks (formatting, unit tests, commit message linting, and pre-push validation) without requiring mise to be fully activated in your shell. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
-***
+---
 
 ### "TypeScript errors in tool handlers"
 
@@ -480,15 +480,15 @@ See [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) for the complete pattern and 
 
 ## Related Documentation
 
-| Document | What it covers |
-|---|---|
-| [CONTRIBUTING.md](../CONTRIBUTING.md) | Full contributor reference: prerequisites, local development, all test lanes, Cloudflare Worker development, changeset rules, and PR requirements |
-| [test-lanes.md](./test-lanes.md) | Complete test lane reference: all lane IDs, runtime ownership, credential requirements, aggregate definitions, and performance baseline details |
-| [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) | Type safety patterns: `InferToolParams` usage, generated API response types, `hevyClient` annotation rules, and troubleshooting type errors |
-| [token-cost-tracking.md](./token-cost-tracking.md) | Token measurement guide: when and how to run `npm run measure:tokens` after changing tool descriptions or schemas |
+| Document                                           | What it covers                                                                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [CONTRIBUTING.md](../CONTRIBUTING.md)              | Full contributor reference: prerequisites, local development, all test lanes, Cloudflare Worker development, changeset rules, and PR requirements |
+| [test-lanes.md](./test-lanes.md)                   | Complete test lane reference: all lane IDs, runtime ownership, credential requirements, aggregate definitions, and performance baseline details   |
+| [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md)     | Type safety patterns: `InferToolParams` usage, generated API response types, `hevyClient` annotation rules, and troubleshooting type errors       |
+| [token-cost-tracking.md](./token-cost-tracking.md) | Token measurement guide: when and how to run `npm run measure:tokens` after changing tool descriptions or schemas                                 |
 
 [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae) [[5]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md) [[12]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/TYPE_SAFETY_GUIDE.md)
 
-***
+---
 
-*This guide is maintained alongside [CONTRIBUTING.md](../CONTRIBUTING.md). If you find something missing or outdated, please open a PR.*
+_This guide is maintained alongside [CONTRIBUTING.md](../CONTRIBUTING.md). If you find something missing or outdated, please open a PR._

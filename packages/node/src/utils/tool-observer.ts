@@ -21,7 +21,7 @@ import {
 } from "./mcp-session-observability.js";
 import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
-import { Sentry, recordTelemetryException, tracer } from "./telemetry.js";
+import { captureFailure, tracer } from "./telemetry.js";
 
 type AttributeValue = string | number | boolean;
 const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
@@ -146,84 +146,49 @@ function setResultAttributes(span: Span, completion: SafeToolCompletion): void {
 	}
 }
 
+function createFailureAttributes(
+	invocation: SafeToolInvocation,
+	completion: SafeToolCompletion,
+	errorType = completion.errorType ?? "UNKNOWN_ERROR",
+): Record<string, AttributeValue> {
+	const diagnostic = completion.error;
+	const execution = projectExecutionAttributes(
+		createExecutionProjection(diagnostic),
+	);
+	return {
+		[invocation.kind === "prompt" ? "mcp.prompt.name" : "mcp.tool.name"]:
+			invocation.name,
+		"error.type": errorType,
+		"error.category": diagnostic?.category ?? "UnknownError",
+		...(diagnostic?.code ? { "error.code": diagnostic.code } : {}),
+		...(diagnostic?.status !== undefined
+			? { "http.response.status_code": diagnostic.status }
+			: {}),
+		...(diagnostic?.method ? { "http.request.method": diagnostic.method } : {}),
+		...(diagnostic?.endpoint
+			? { "hevy.api.endpoint": diagnostic.endpoint }
+			: {}),
+		...execution,
+	};
+}
+
 function setSafeErrorAttributes(
 	span: Span,
 	invocation: SafeToolInvocation,
 	completion: SafeToolCompletion,
 ): string {
-	const diagnostic = completion.error;
 	const errorType = completion.errorType ?? "UNKNOWN_ERROR";
-	const execution = projectExecutionAttributes(
-		createExecutionProjection(diagnostic),
-	);
-	if (diagnostic) {
-		span.addEvent("mcp.tool.failure", {
-			"mcp.tool.name": invocation.name,
-			"error.type": errorType,
-			"error.category": diagnostic.category,
-			...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
-			...(diagnostic.status !== undefined
-				? { "http.response.status_code": diagnostic.status }
-				: {}),
-			...(diagnostic.method
-				? { "http.request.method": diagnostic.method }
-				: {}),
-			...(diagnostic.endpoint
-				? { "hevy.api.endpoint": diagnostic.endpoint }
-				: {}),
-			...execution,
-		});
+	const attributes = createFailureAttributes(invocation, completion, errorType);
+	if (completion.error) {
+		span.addEvent("mcp.tool.failure", attributes);
 	}
-	for (const [key, value] of Object.entries(execution)) {
+	for (const [key, value] of Object.entries(
+		projectExecutionAttributes(createExecutionProjection(completion.error)),
+	)) {
 		span.setAttribute(key, value);
 	}
 	span.setAttribute("error.type", errorType);
 	return errorType;
-}
-
-function captureSafeToolFailure(
-	invocation: SafeToolInvocation,
-	completion: SafeToolCompletion,
-): void {
-	const diagnostic = completion.error;
-	const category = diagnostic?.category ?? "UnknownError";
-	try {
-		Sentry.withScope((scope) => {
-			const isPrompt = invocation.kind === "prompt";
-			scope.setTag("mcp.tool.name", invocation.name);
-			if (isPrompt) scope.setTag("mcp.prompt.name", invocation.name);
-			scope.setTag("error.type", completion.errorType ?? "UNKNOWN_ERROR");
-			scope.setTag("error.category", category);
-			if (diagnostic?.code) scope.setTag("error.code", diagnostic.code);
-			if (diagnostic?.status !== undefined) {
-				scope.setTag("http.response.status_code", String(diagnostic.status));
-			}
-			if (diagnostic?.method)
-				scope.setTag("http.request.method", diagnostic.method);
-			if (diagnostic?.endpoint) {
-				scope.setTag("hevy.api.endpoint", diagnostic.endpoint);
-			}
-			scope.setContext(invocation.kind === "prompt" ? "mcpPrompt" : "mcpTool", {
-				context: invocation.name,
-				argumentKeyCountBucket: invocation.argumentKeyCountBucket ?? "unknown",
-			});
-			scope.setContext("safeError", diagnostic ? { ...diagnostic } : {});
-			scope.setFingerprint([
-				isPrompt ? "mcp-prompt-failure" : "mcp-tool-failure",
-				category,
-				String(diagnostic?.status ?? "none"),
-				...(diagnostic && diagnostic.status === undefined && diagnostic.code
-					? [diagnostic.code]
-					: []),
-			]);
-			Sentry.captureMessage(
-				isPrompt ? "MCP prompt failure" : "MCP tool failure",
-				"error",
-			);
-		});
-	} catch {
-		// Sentry failures must never affect tool responses.
-	}
 }
 
 function bestEffort(operation: () => void): void {
@@ -244,6 +209,7 @@ export function createNodeToolObserver(): ToolObserver {
 			bestEffort(() => toolInvocations.add(1, metrics));
 			let completion: SafeToolCompletion | undefined;
 			let activeSpan: Span | undefined;
+			let thrownError: unknown;
 			return {
 				run<T>(operation: () => Promise<T>): Promise<T> {
 					return tracer.startActiveSpan(
@@ -251,7 +217,12 @@ export function createNodeToolObserver(): ToolObserver {
 						{ attributes: createAttributes(invocation) },
 						async (span) => {
 							activeSpan = span;
-							return operation();
+							try {
+								return await operation();
+							} catch (error) {
+								thrownError = error;
+								throw error;
+							}
 						},
 					);
 				},
@@ -291,40 +262,6 @@ export function createNodeToolObserver(): ToolObserver {
 									invocation,
 									nextCompletion,
 								);
-								bestEffort(() =>
-									recordTelemetryException(
-										new Error(nextCompletion.error?.category ?? errorType),
-										{
-											[invocation.kind === "prompt"
-												? "mcp.prompt.name"
-												: "mcp.tool.name"]: invocation.name,
-											"error.type": errorType ?? "UNKNOWN_ERROR",
-											"error.category":
-												nextCompletion.error?.category ?? "UnknownError",
-											...(nextCompletion.error?.code
-												? { "error.code": nextCompletion.error.code }
-												: {}),
-											...(nextCompletion.error?.status !== undefined
-												? {
-														"http.response.status_code":
-															nextCompletion.error.status,
-													}
-												: {}),
-											...(nextCompletion.error?.method
-												? {
-														"http.request.method": nextCompletion.error.method,
-													}
-												: {}),
-											...(nextCompletion.error?.endpoint
-												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
-												: {}),
-											...projectExecutionAttributes(
-												createExecutionProjection(nextCompletion.error),
-											),
-										},
-										activeSpan,
-									),
-								);
 							}
 							if (nextCompletion.outcome === "returned_error") {
 								const execution = projectExecutionAttributes(
@@ -341,46 +278,25 @@ export function createNodeToolObserver(): ToolObserver {
 								for (const [key, value] of Object.entries(execution)) {
 									activeSpan.setAttribute(key, value);
 								}
-								bestEffort(() =>
-									recordTelemetryException(
-										new Error(nextCompletion.error?.category ?? "UnknownError"),
-										{
-											[invocation.kind === "prompt"
-												? "mcp.prompt.name"
-												: "mcp.tool.name"]: invocation.name,
-											"error.type": nextCompletion.errorType ?? "UNKNOWN_ERROR",
-											"error.category":
-												nextCompletion.error?.category ?? "UnknownError",
-											...(nextCompletion.error?.code
-												? { "error.code": nextCompletion.error.code }
-												: {}),
-											...(nextCompletion.error?.status !== undefined
-												? {
-														"http.response.status_code":
-															nextCompletion.error.status,
-													}
-												: {}),
-											...(nextCompletion.error?.method
-												? {
-														"http.request.method": nextCompletion.error.method,
-													}
-												: {}),
-											...(nextCompletion.error?.endpoint
-												? { "hevy.api.endpoint": nextCompletion.error.endpoint }
-												: {}),
-											...execution,
-										},
-										activeSpan,
-									),
-								);
 							}
 						}
 					} catch {
 						// Instrumentation metadata must never alter the MCP response.
 					} finally {
 						if (nextCompletion.outcome === "thrown_error") {
+							const error =
+								thrownError ??
+								new Error(nextCompletion.error?.category ?? errorType);
 							bestEffort(() =>
-								captureSafeToolFailure(invocation, nextCompletion),
+								captureFailure(error, {
+									kind: invocation.kind === "prompt" ? "prompt" : "tool",
+									attributes: createFailureAttributes(
+										invocation,
+										nextCompletion,
+										errorType,
+									),
+									span: activeSpan,
+								}),
 							);
 							bestEffort(() =>
 								toolErrors.add(1, {

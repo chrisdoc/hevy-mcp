@@ -39,11 +39,9 @@ const testDoubles = vi.hoisted(() => {
 		createHevyClient: vi.fn(),
 		createHevyMcpServer: vi.fn(),
 		startStreamableHttpServer: vi.fn(),
-		wrapMcpServerWithSentry: vi.fn((value: unknown) => value),
-		setTelemetryUser: vi.fn(),
+		captureFailure: vi.fn(),
 		installProcessExceptionTracking: vi.fn(() => vi.fn()),
 		flushTelemetry: vi.fn().mockResolvedValue(undefined),
-		recordTelemetryException: vi.fn(),
 		serverStartups: { add: vi.fn() },
 		installGracefulShutdown: vi.fn(),
 		instrumentTransport: vi.fn(() => ({ kind: "stdio-transport" })),
@@ -59,9 +57,7 @@ const testDoubles = vi.hoisted(() => {
 });
 
 vi.mock("./utils/telemetry.js", () => ({
-	Sentry: {
-		wrapMcpServerWithSentry: testDoubles.wrapMcpServerWithSentry,
-	},
+	captureFailure: testDoubles.captureFailure,
 	flushTelemetry: testDoubles.flushTelemetry,
 	tracer: {
 		startActiveSpan: vi.fn((...args: unknown[]) => {
@@ -73,8 +69,6 @@ vi.mock("./utils/telemetry.js", () => ({
 	},
 	serviceName: "hevy-mcp",
 	serviceVersion: "3.4.1",
-	setTelemetryUser: testDoubles.setTelemetryUser,
-	recordTelemetryException: testDoubles.recordTelemetryException,
 	installProcessExceptionTracking: testDoubles.installProcessExceptionTracking,
 }));
 
@@ -204,10 +198,6 @@ describe("Node package entrypoint", () => {
 		await expect(
 			createNodeMcpServer({ apiKey: "programmatic-key" }),
 		).resolves.toBe(testDoubles.server);
-		expect(testDoubles.setTelemetryUser).toHaveBeenCalledWith(
-			"programmatic-key",
-		);
-
 		expect(testDoubles.createHevyClient).toHaveBeenNthCalledWith(
 			1,
 			expect.objectContaining({
@@ -224,10 +214,6 @@ describe("Node package entrypoint", () => {
 				onLog: expect.any(Function),
 				onRequestComplete: expect.any(Function),
 			}),
-		);
-		expect(testDoubles.wrapMcpServerWithSentry).toHaveBeenCalledWith(
-			testDoubles.server,
-			{ recordInputs: false, recordOutputs: false },
 		);
 		expect(testDoubles.span.setAttribute).toHaveBeenCalledWith(
 			"mcp.tools.count",
@@ -320,7 +306,7 @@ describe("Node package entrypoint", () => {
 			"discovery failure",
 		);
 
-		expect(testDoubles.recordTelemetryException).toHaveBeenCalled();
+		expect(testDoubles.captureFailure).toHaveBeenCalled();
 	});
 
 	it("tracks SDK validation and protocol failures", async () => {
@@ -348,7 +334,7 @@ describe("Node package entrypoint", () => {
 				"error.category": "McpSdkValidationFailure",
 			}),
 		);
-		expect(testDoubles.recordTelemetryException).toHaveBeenCalled();
+		expect(testDoubles.captureFailure).toHaveBeenCalled();
 		expect(createToolError).toHaveBeenCalledWith("invalid tool");
 		expect(previousOnError).toHaveBeenCalledTimes(2);
 		activeSpanSpy.mockRestore();
@@ -435,8 +421,6 @@ describe("Node package entrypoint", () => {
 			onComplete: (succeeded: boolean) => Promise<void>;
 		};
 		await options.onComplete(true);
-		expect(testDoubles.setTelemetryUser).toHaveBeenCalledOnce();
-		expect(testDoubles.setTelemetryUser).toHaveBeenCalledWith("runtime-key");
 
 		expect(testDoubles.startupClient.getUserInfo).toHaveBeenCalledOnce();
 		expect(testDoubles.createHevyMcpServer).toHaveBeenCalledOnce();
@@ -483,13 +467,16 @@ describe("Node package entrypoint", () => {
 		await expect(createNodeMcpServer({ apiKey: "valid-key" })).rejects.toThrow(
 			"construction failure",
 		);
-		expect(testDoubles.recordTelemetryException).toHaveBeenCalledWith(
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
 			expect.any(Error),
 			expect.objectContaining({
-				"error.type": "MCP_SERVER_BUILD_ERROR",
-				"error.category": "McpServerBuildFailure",
+				kind: "lifecycle",
+				attributes: expect.objectContaining({
+					"error.type": "MCP_SERVER_BUILD_ERROR",
+					"error.category": "McpServerBuildFailure",
+				}),
+				span: testDoubles.span,
 			}),
-			testDoubles.span,
 		);
 		expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
 			"mcp.lifecycle.failure",
@@ -575,8 +562,6 @@ describe("Node package entrypoint", () => {
 		);
 
 		await runServer();
-		expect(testDoubles.setTelemetryUser).toHaveBeenCalledOnce();
-		expect(testDoubles.setTelemetryUser).toHaveBeenCalledWith("runtime-key");
 
 		expect(testDoubles.startupClient.getUserInfo).toHaveBeenCalledOnce();
 		expect(testDoubles.createHevyMcpServer).toHaveBeenCalledOnce();
@@ -596,10 +581,13 @@ describe("Node package entrypoint", () => {
 		await expect(runServer()).rejects.toThrow(
 			"HEVY_API_KEY is invalid or expired",
 		);
-		expect(testDoubles.setTelemetryUser).toHaveBeenCalledWith("invalid-key");
 		expect(testDoubles.startStreamableHttpServer).not.toHaveBeenCalled();
 		expect(testDoubles.recordSessionTermination).toHaveBeenCalledWith(
 			"startup_failure",
+		);
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({ expected: true }),
 		);
 	});
 
@@ -607,10 +595,6 @@ describe("Node package entrypoint", () => {
 		process.env.HEVY_API_KEY = "runtime-key";
 
 		await runStdioServer();
-		expect(testDoubles.setTelemetryUser).toHaveBeenNthCalledWith(
-			1,
-			"runtime-key",
-		);
 
 		expect(testDoubles.serverStartups.add).toHaveBeenCalledWith(1, {
 			version: "3.4.1",

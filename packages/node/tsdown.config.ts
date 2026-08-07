@@ -22,6 +22,7 @@ try {
 
 const { name, version } = parsed;
 const isStandaloneBuild = process.env.HEVY_MCP_BUILD_MODE === "standalone";
+const isReleaseBuild = process.env.HEVY_MCP_RELEASE === "true";
 const codecovToken = process.env.CODECOV_TOKEN?.trim() || undefined;
 const enableCodecovBundleAnalysis =
 	!isStandaloneBuild && codecovToken !== undefined;
@@ -67,9 +68,9 @@ export default defineConfig({
 			process.env.OTEL_COLLECTOR_TOKEN ?? "",
 		),
 	},
-	// The public package intentionally omits source maps: they would expose
-	// the private workspace source topology in the tarball.
-	sourcemap: false,
+	// Release builds upload source maps to Sentry and remove them after upload;
+	// normal and published builds intentionally omit them.
+	sourcemap: isReleaseBuild,
 	clean: true,
 	dts: !isStandaloneBuild,
 	deps: isStandaloneBuild
@@ -117,6 +118,9 @@ export default defineConfig({
 			telemetry: false,
 			sourcemaps: {
 				assets: ["./dist/**/*.mjs", "./dist/**/*.map"],
+				...(isReleaseBuild
+					? { filesToDeleteAfterUpload: ["./dist/**/*.map"] }
+					: {}),
 			},
 			release: {
 				name: `${name}@${version}`,

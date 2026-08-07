@@ -7,7 +7,7 @@ import {
 	getCurrentMcpTransport,
 } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
-import { recordTelemetryException, tracer } from "./telemetry.js";
+import { captureFailure, tracer } from "./telemetry.js";
 
 type SdkRequestHandler = (request: unknown, extra: unknown) => Promise<unknown>;
 
@@ -107,7 +107,7 @@ function markSdkToolFailure(
 		...attributes,
 	});
 	span.setAttribute("error.type", taxonomy.errorType);
-	recordTelemetryException(error, attributes, span);
+	captureFailure(error, { kind: "sdk", attributes, span });
 	span.setStatus({ code: SpanStatusCode.ERROR });
 }
 
@@ -133,7 +133,11 @@ function installProtocolErrorTracking(
 				"mcp.tool.name": sdkToolNameStorage.getStore() ?? "unknown",
 				...attributes,
 			});
-			recordTelemetryException(error, attributes, activeSpan);
+			captureFailure(error, {
+				kind: "protocol",
+				attributes,
+				span: activeSpan,
+			});
 		} else {
 			tracer.startActiveSpan(
 				"mcp.sdk.failure",
@@ -149,7 +153,7 @@ function installProtocolErrorTracking(
 						"mcp.tool.name": "unknown",
 						...attributes,
 					});
-					recordTelemetryException(error, attributes, span);
+					captureFailure(error, { kind: "protocol", attributes, span });
 					span.end();
 				},
 			);
@@ -272,7 +276,7 @@ function installDiscoveryTracking(
 						"McpServerDiscoveryFailure",
 					);
 					span.addEvent("mcp.discovery.failure", attributes);
-					recordTelemetryException(error, attributes, span);
+					captureFailure(error, { kind: "discovery", attributes, span });
 					throw error;
 				} finally {
 					span.end();

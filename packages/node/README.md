@@ -411,18 +411,19 @@ self-hosted Streamable HTTP.
 
 ## Advanced configuration
 
-| Setting                      | Default                        | Scope                         | Notes                                                                                                                                                                            |
-| ---------------------------- | ------------------------------ | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HEVY_API_KEY`               | None; required                 | Local stdio or HTTP           | Hevy API key from the Hevy app. Never pass it in a URL.                                                                                                                          |
-| `HEVY_MCP_API_TIMEOUT`       | `30000` ms                     | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 30 seconds.                                                                                               |
-| `HEVY_MCP_DEBUG`             | Disabled                       | Local Node                    | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.                                                                          |
-| `HEVY_MCP_HTTP_BEARER_TOKEN` | None                           | Non-loopback HTTP             | Required when `--host` is not loopback; use a separate token, never the Hevy API key.                                                                                            |
-| `HEVY_MCP_TELEMETRY`         | Enabled                        | Local Node                    | Set to exactly `0` before startup/import to disable Sentry errors/traces and OTLP traces/metrics. Takes precedence over `SENTRY_DSN` and packaged/runtime collector credentials. |
-| `XDG_CACHE_HOME`             | `~/.cache`                     | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                                                                                 |
-| `SENTRY_DSN`                 | Packaged GlitchTip project DSN | Optional local Node telemetry | Sentry-compatible override for the destination. An empty value disables Sentry export. The Worker does not import Node telemetry.                                                |
-| `SENTRY_RELEASE`             | `hevy-mcp@<installed-version>` | Optional local Node telemetry | Overrides the release label attached to local Sentry error events.                                                                                                               |
-| `-h`, `--help`               | N/A                            | Local stdio CLI               | Print supported options and exit.                                                                                                                                                |
-| `-v`, `--version`            | N/A                            | Local stdio CLI               | Print the installed version and exit.                                                                                                                                            |
+| Setting                          | Default                          | Scope                         | Notes                                                                                                                                        |
+| -------------------------------- | -------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HEVY_API_KEY`                   | None; required                   | Local stdio or HTTP           | Hevy API key from the Hevy app. Never pass it in a URL.                                                                                      |
+| `HEVY_MCP_API_TIMEOUT`           | `30000` ms                       | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 30 seconds.                                                           |
+| `HEVY_MCP_DEBUG`                 | Disabled                         | Local Node                    | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.                                      |
+| `HEVY_MCP_HTTP_BEARER_TOKEN`     | None                             | Non-loopback HTTP             | Required when `--host` is not loopback; use a separate token, never the Hevy API key.                                                        |
+| `HEVY_MCP_TELEMETRY`             | Enabled                          | Local Node                    | Set to exactly `0` before startup/import to disable Sentry and OTLP telemetry. Takes precedence over packaged/runtime collector credentials. |
+| `HEVY_MCP_TELEMETRY_DIAGNOSTICS` | Enabled                          | Local Node                    | Set to exactly `0` to keep structural telemetry while suppressing exception messages and stacks.                                             |
+| `XDG_CACHE_HOME`                 | `~/.cache`                       | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                                             |
+| `SENTRY_DSN`                     | Packaged Sentry SaaS project DSN | Optional local Node telemetry | Sentry project DSN override. An empty value disables Sentry export. The Worker does not import Node telemetry.                               |
+| `SENTRY_RELEASE`                 | `hevy-mcp@<installed-version>`   | Optional local Node telemetry | Overrides the release label attached to local Sentry error events.                                                                           |
+| `-h`, `--help`                   | N/A                              | Local stdio CLI               | Print supported options and exit.                                                                                                            |
+| `-v`, `--version`                | N/A                              | Local stdio CLI               | Print the installed version and exit.                                                                                                        |
 
 The local executable uses stdio by default. To opt into Streamable HTTP, run:
 
@@ -469,28 +470,29 @@ metric readers and makes no telemetry network requests. `SENTRY_DSN` remains a
 Sentry-only setting; when telemetry is enabled, an empty value disables only
 Sentry export.
 
-When enabled, errors are sent to the self-hosted GlitchTip project at
-<https://glitchtip.chrisdoc.dev>; Sentry performance tracing is disabled.
-Traces and metrics continue to be sent to the collector at
+When enabled, actionable errors are sent to the Sentry project configured by
+`SENTRY_DSN`; Sentry performance tracing is disabled. Exception messages and
+stacks are bounded and scrubbed before export. Set
+`HEVY_MCP_TELEMETRY_DIAGNOSTICS=0` to keep structural traces and metrics while
+suppressing those details. Traces and metrics continue to be sent to the
+collector at
 <https://otel.chrisdoc.dev/v1/traces> and
 <https://otel.chrisdoc.dev/v1/metrics>, which forward to Honeycomb. Metrics
 export every 30 seconds.
 
-The API key is never exported. Enabled telemetry derives a deterministic
-ten-character HMAC-SHA-256 pseudonym from it solely for cross-span
-correlation. The pseudonym is attached to spans only, never used as a metric
-dimension, and is not intended for per-user behavior histories.
+The API key is never exported and is not used to derive a user identity. A
+per-failure diagnostic ID and OTel trace ID may be attached to actionable
+errors for support correlation. Structured telemetry contains only bounded
+service, release, transport, tool, outcome, error, count, retry, duration,
+session, cache, workflow, API method, normalized endpoint, and status fields.
 
-The privacy allowlist contains service/version/transport; fixed tool feature,
-read/write kind, operation, and short-lived tool name; bounded
-outcome/error/count/retry/duration/session/cache/workflow values; normalized API
-method/endpoint/status; shape-only key names, presence, count, and boolean
-fields; sanitized client/protocol tokens; and the span-only pseudonym. It
-explicitly prohibits raw prompts, tool argument values, tool result content,
-request bodies, API keys, raw identifiers/queries/exact dates,
-workout/routine/folder/template/body-measurement content, names/titles/
-descriptions/notes, measurement values, arbitrary client metadata, and
-unnormalized endpoint paths.
+Exception messages and stacks are treated as diagnostic details: they are
+length-limited, scrubbed for credentials, URLs, and local home paths, and
+removed entirely when `HEVY_MCP_TELEMETRY_DIAGNOSTICS=0`. Prompts, tool
+arguments, tool results, request bodies, API keys, raw identifiers/queries,
+exact dates, workout/routine/folder/template/body-measurement content,
+names/titles/descriptions/notes, measurement values, arbitrary client
+metadata, and unnormalized endpoint paths remain prohibited.
 
 ## Security and mutations
 

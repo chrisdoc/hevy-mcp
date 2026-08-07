@@ -9,18 +9,9 @@
  * OTel Collector → Honeycomb: performance traces, metrics
  */
 
-import {
-	createHmac,
-	randomBytes,
-	randomUUID as nodeRandomUUID,
-} from "node:crypto";
+import { randomBytes, randomUUID as nodeRandomUUID } from "node:crypto";
 import * as Sentry from "@sentry/node";
-import {
-	SpanStatusCode,
-	trace,
-	metrics,
-	type Span as ApiSpan,
-} from "@opentelemetry/api";
+import { metrics, trace } from "@opentelemetry/api";
 
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import {
@@ -31,17 +22,14 @@ import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
 	AlwaysOnSampler,
 	BatchSpanProcessor,
+	type SpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import type {
-	ReadableSpan,
-	Span,
-	SpanProcessor,
-} from "@opentelemetry/sdk-trace";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import {
 	MeterProvider,
 	PeriodicExportingMetricReader,
 } from "@opentelemetry/sdk-metrics";
+import { captureFailure, sanitizeSentryEvent } from "./failure-reporter.js";
 export type ProcessExceptionSource = {
 	on(
 		event: "uncaughtExceptionMonitor" | "unhandledRejection",
@@ -58,79 +46,6 @@ const PROCESS_FAILURE_TAXONOMY = {
 	unhandledRejection: "unhandled_rejection",
 } as const;
 
-const SAFE_EXCEPTION_TYPES = new Set([
-	"AggregateError",
-	"DOMException",
-	"Error",
-	"EvalError",
-	"HevyHttpError",
-	"RangeError",
-	"ReferenceError",
-	"SyntaxError",
-	"TypeError",
-	"URIError",
-	"ProtocolError",
-	"ZodError",
-]);
-const SAFE_EXCEPTION_CODES = new Set([
-	"EAI_AGAIN",
-	"ECONNABORTED",
-	"ECONNREFUSED",
-	"ECONNRESET",
-	"ENETUNREACH",
-	"ENOTFOUND",
-	"ERR_NETWORK",
-	"ERR_SOCKET_TIMEOUT",
-	"ETIMEDOUT",
-	"HEVY_INVALID_ENDPOINT",
-	"HEVY_REQUEST_ABORTED",
-	"HEVY_RETRY_EXHAUSTED",
-]);
-
-function normalizeTelemetryError(error: unknown): { name: string } {
-	const candidate =
-		error instanceof Error && typeof error.name === "string"
-			? error.name
-			: undefined;
-	const name =
-		candidate && SAFE_EXCEPTION_TYPES.has(candidate)
-			? candidate
-			: "UnknownError";
-	return { name };
-}
-
-function getSafeExceptionCode(error: unknown): string | undefined {
-	if (!error || typeof error !== "object" || !("code" in error))
-		return undefined;
-	const code = error.code;
-	return typeof code === "string" && SAFE_EXCEPTION_CODES.has(code)
-		? code
-		: undefined;
-}
-
-export function recordTelemetryException(
-	error: unknown,
-	attributes?: Record<string, string | number | boolean>,
-	span?: ApiSpan,
-): void {
-	if (!telemetryEnabled) return;
-	try {
-		const target = span ?? trace.getActiveSpan();
-		if (!target) return;
-		const normalized = normalizeTelemetryError(error);
-		target.addEvent("exception", {
-			...attributes,
-			"exception.type": normalized.name,
-		});
-		target.setAttribute("exception.type", normalized.name);
-		target.setAttribute("error.category", normalized.name);
-		if (attributes) target.setAttributes(attributes);
-		target.setStatus({ code: SpanStatusCode.ERROR });
-	} catch {
-		// Telemetry failures must never affect MCP behavior.
-	}
-}
-
 export function installProcessExceptionTracking(
 	processLike: ProcessExceptionSource = process,
 ): () => void {
@@ -145,18 +60,16 @@ export function installProcessExceptionTracking(
 				{ attributes: { "mcp.span.category": "process" } },
 				(span) => {
 					try {
-						const code = getSafeExceptionCode(error);
-						recordTelemetryException(
-							error,
-							{
+						captureFailure(error, {
+							kind: "process",
+							attributes: {
 								"exception.source": source,
 								"mcp.failure.phase": PROCESS_FAILURE_TAXONOMY[source],
 								"error.type": "MCP_PROCESS_EXCEPTION",
 								"error.category": "McpProcessFailure",
-								...(code ? { "error.code": code } : {}),
 							},
 							span,
-						);
+						});
 					} finally {
 						span.end();
 					}
@@ -204,7 +117,7 @@ const collectorToken =
 
 const COLLECTOR_ENDPOINT = "https://otel.chrisdoc.dev/v1";
 const DEFAULT_SENTRY_DSN =
-	"https://7c08d2c880ff4560a333dff4833594cd@glitchtip.chrisdoc.dev/1";
+	"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
 
 export function createServiceInstanceId(
@@ -229,23 +142,6 @@ const resource = resourceFromAttributes({
 	"process.runtime.version": process.version,
 });
 
-// --- OpenTelemetry tracer provider (dual export) ---
-let currentUserHash: string | undefined;
-
-class UserHashSpanProcessor implements SpanProcessor {
-	onStart(span: Span): void {
-		if (currentUserHash) {
-			span.setAttribute("user.hash", currentUserHash);
-		}
-	}
-
-	onEnd(_span: ReadableSpan): void {}
-
-	async forceFlush(): Promise<void> {}
-
-	async shutdown(): Promise<void> {}
-}
-
 let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
 
@@ -261,12 +157,19 @@ if (telemetryEnabled) {
 		tracesSampleRate: 0.0,
 		sendClientReports: false,
 		sendDefaultPii: false,
+		beforeSend: sanitizeSentryEvent,
+		integrations: (integrations) =>
+			integrations.filter(
+				(integration) =>
+					integration.name !== "OnUncaughtException" &&
+					integration.name !== "OnUnhandledRejection",
+			),
 		skipOpenTelemetrySetup: true,
 		registerEsmLoaderHooks: false,
 		ignoreErrors: ["EPIPE", "broken pipe"],
 	});
 
-	const spanProcessors: SpanProcessor[] = [new UserHashSpanProcessor()];
+	const spanProcessors: SpanProcessor[] = [];
 
 	// OTel Collector → Honeycomb traces — only if token is available
 	if (collectorToken) {
@@ -337,7 +240,6 @@ export async function flushTelemetry(timeoutMs = 1_000): Promise<void> {
 // --- Shared instances for the rest of the codebase ---
 export const tracer = trace.getTracer(name);
 export const meter = metrics.getMeter(name);
-export { Sentry };
 
 /**
  * Bundled service identity — avoids passing name and version as
@@ -352,19 +254,17 @@ export const serviceInfo: ServiceInfo = { name, version } as const;
 export const serviceName = name;
 export const serviceVersion = version;
 export { serviceInstanceId };
-
-// --- User context for span attributes ---
-const SENTRY_USER_ID_CONTEXT = "hevy-mcp:sentry-user-id:v1";
-
-export function setTelemetryUser(apiKey: string): void {
-	if (!telemetryEnabled) {
-		return;
-	}
-
-	const userHash = createHmac("sha256", apiKey)
-		.update(SENTRY_USER_ID_CONTEXT)
-		.digest("hex")
-		.slice(0, 10);
-	currentUserHash = userHash;
-	Sentry.setUser({ id: userHash });
-}
+export {
+	captureFailure,
+	normalizeFailure,
+	sanitizeDiagnosticText,
+	sanitizeSentryEvent,
+} from "./failure-reporter.js";
+export type {
+	FailureContext,
+	FailureKind,
+	FailureReceipt,
+	NormalizedFailure,
+	TelemetryAttributeValue,
+	TelemetryAttributes,
+} from "./failure-reporter.js";
