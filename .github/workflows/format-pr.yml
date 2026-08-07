@@ -96,8 +96,47 @@ jobs:
         run: |
           set -euo pipefail
 
-          changeset_path=".changeset/format-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
-          printf '%s\n' '---' '---' > "$changeset_path"
+          has_release_changes="$({
+            node <<'NODE'
+          const fs = require("node:fs");
+          const { execFileSync } = require("node:child_process");
+
+          const topology = JSON.parse(
+            fs.readFileSync("repository/topology.json", "utf8"),
+          );
+          const changedFiles = execFileSync(
+            "git",
+            [
+              "diff",
+              "--name-only",
+              "--diff-filter=ACMRD",
+              "origin/main...HEAD",
+            ],
+            { encoding: "utf8" },
+          )
+            .trim()
+            .split("\n")
+            .filter(Boolean);
+          const releaseTriggerFiles = new Set(
+            topology.release?.triggers?.map(({ path }) => path) ?? [],
+          );
+          const hasReleaseChanges = changedFiles.some(
+            (file) =>
+              file.startsWith("packages/") || releaseTriggerFiles.has(file),
+          );
+
+          process.stdout.write(hasReleaseChanges ? "true" : "false");
+          NODE
+          })"
+
+          if [[ "$has_release_changes" == "false" ]]; then
+            changeset_path=".changeset/format-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
+            printf '%s\n' '---' '---' > "$changeset_path"
+          else
+            echo "Skipping an empty Changeset for release-triggering PR changes."
+          fi
+
+          npm run check:changeset
           git add -A
           git diff --cached --binary --full-index --no-ext-diff > "$PATCH_PATH"
           test -s "$PATCH_PATH"
@@ -124,6 +163,24 @@ jobs:
           ref: ${{ needs.validate.outputs.head_sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Set up repository hook tools
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        with:
+          version: "2026.7.12"
+          install_args: hk actionlint zizmor
+
+      - name: Install repository hooks
+        run: mise exec hk -- hk install --mise
 
       - name: Download formatting patch
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
