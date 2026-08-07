@@ -1,0 +1,239 @@
+name: Format Pull Request
+
+# A maintainer can comment `/format` on a same-repository PR to apply the
+# repository formatter and commit the result back to that PR.
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: format-pr-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate format request
+    if: >-
+      github.event.issue.pull_request != null &&
+      github.event.comment.body == '/format' &&
+      (github.event.comment.author_association == 'OWNER' ||
+      github.event.comment.author_association == 'MEMBER' ||
+      github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      base_sha: ${{ steps.pull-request.outputs.base_sha }}
+      head_ref: ${{ steps.pull-request.outputs.head_ref }}
+      head_sha: ${{ steps.pull-request.outputs.head_sha }}
+    steps:
+      - name: Resolve pull request
+        id: pull-request
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+
+            if (pullRequest.state !== "open") {
+              core.setFailed("The pull request must be open.");
+              return;
+            }
+
+            if (pullRequest.base.ref !== "main") {
+              core.setFailed("The /format workflow only supports PRs targeting main.");
+              return;
+            }
+
+            if (pullRequest.head.repo?.full_name !== repository) {
+              core.setFailed(
+                "The /format workflow only pushes to same-repository PR branches.",
+              );
+              return;
+            }
+
+            core.setOutput("head_ref", pullRequest.head.ref);
+            core.setOutput("head_sha", pullRequest.head.sha);
+            core.setOutput("base_sha", pullRequest.base.sha);
+
+  format:
+    name: Format pull request
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch and verify pull request commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_HEAD_REF: ${{ needs.validate.outputs.head_ref }}
+          PR_HEAD_SHA: ${{ needs.validate.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          git -c "http.extraheader=AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+            fetch --no-tags origin \
+            "refs/heads/${PR_HEAD_REF}:refs/remotes/origin/${PR_HEAD_REF}"
+          test "$(git rev-parse "refs/remotes/origin/${PR_HEAD_REF}")" = "$PR_HEAD_SHA"
+          git reset --hard "$PR_HEAD_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run formatter
+        run: npm run check:fix
+
+      - name: Create empty Changeset and capture patch
+        env:
+          BASE_SHA: ${{ needs.validate.outputs.base_sha }}
+          PATCH_PATH: ${{ runner.temp }}/format.patch
+        run: |
+          set -euo pipefail
+
+          has_release_changes="$({
+            node <<'NODE'
+          const fs = require("node:fs");
+          const { execFileSync } = require("node:child_process");
+
+          const topology = JSON.parse(
+            fs.readFileSync("repository/topology.json", "utf8"),
+          );
+          const changedFiles = execFileSync(
+            "git",
+            [
+              "diff",
+              "--name-only",
+              "--diff-filter=ACMRD",
+              `${process.env.BASE_SHA}...HEAD`,
+            ],
+            { encoding: "utf8" },
+          )
+            .trim()
+            .split("\n")
+            .filter(Boolean);
+          const releaseTriggerFiles = new Set(
+            topology.release?.triggers?.map(({ path }) => path) ?? [],
+          );
+          const hasReleaseChanges = changedFiles.some(
+            (file) =>
+              file.startsWith("packages/") || releaseTriggerFiles.has(file),
+          );
+
+          process.stdout.write(hasReleaseChanges ? "true" : "false");
+          NODE
+          })"
+
+          if [[ "$has_release_changes" == "false" ]]; then
+            changeset_path=".changeset/format-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
+            printf '%s\n' '---' '---' > "$changeset_path"
+          else
+            echo "Skipping an empty Changeset for release-triggering PR changes."
+          fi
+
+          npm run check:changeset
+          git add -A
+          git diff --cached --binary --full-index --no-ext-diff "$BASE_SHA" > "$PATCH_PATH"
+          test -s "$PATCH_PATH"
+          git diff --cached --stat
+
+      - name: Upload formatting patch
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: format-patch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/format.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  commit:
+    name: Commit formatting changes
+    needs: [validate, format]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch and verify pull request commit
+        env:
+          BASE_SHA: ${{ needs.validate.outputs.base_sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_HEAD_REF: ${{ needs.validate.outputs.head_ref }}
+          PR_HEAD_SHA: ${{ needs.validate.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          git -c "http.extraheader=AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+            fetch --no-tags origin \
+            "refs/heads/${PR_HEAD_REF}:refs/remotes/origin/${PR_HEAD_REF}"
+          test "$(git rev-parse "refs/remotes/origin/${PR_HEAD_REF}")" = "$PR_HEAD_SHA"
+          git cat-file -e "${BASE_SHA}^{commit}"
+          git reset --hard "$BASE_SHA"
+
+      - name: Download formatting patch
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: format-patch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/format-patch
+
+      # Keep this job patch-only: it has write permission, so it must not run
+      # PR-controlled npm scripts or Git hooks while the push token is present.
+      - name: Apply and commit formatting changes
+        id: commit
+        env:
+          PATCH_PATH: ${{ runner.temp }}/format-patch/format.patch
+          PR_HEAD_SHA: ${{ needs.validate.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          git apply --binary --whitespace=nowarn "$PATCH_PATH"
+          git add -A
+          git reset --soft "$PR_HEAD_SHA"
+          if git diff --cached --quiet; then
+            echo "No formatting changes required."
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "style: format pull request"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push formatting commit
+        if: steps.commit.outputs.created == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_HEAD_REF: ${{ needs.validate.outputs.head_ref }}
+        run: |
+          set -euo pipefail
+
+          git -c "http.extraheader=AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
+            push origin "HEAD:${PR_HEAD_REF}"
