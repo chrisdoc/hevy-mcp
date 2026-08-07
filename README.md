@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![MCP Toplist](https://mcptoplist.com/badge/io.github.chrisdoc%2Fhevy-mcp.svg)](https://mcptoplist.com/server/io.github.chrisdoc%2Fhevy-mcp)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the Hevy CLI](#hevy-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 26 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the Hevy CLI](#hevy-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 22 tools](#tools)
 
 </div>
 
@@ -423,7 +423,7 @@ https://mcp.hevy-mcp.dev/mcp
 ```
 
 It is the quickest way to use `hevy-mcp`: there is nothing to install or keep
-running locally, and it exposes the same 26 tools as the npm package and Docker
+running locally, and it exposes the same 22 tools as the npm package and Docker
 image.
 
 The Cloudflare Worker uses stateless **Streamable HTTP** at `POST /mcp`.

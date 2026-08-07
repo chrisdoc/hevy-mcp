@@ -12,7 +12,7 @@
 [![Hosted on Cloudflare](https://img.shields.io/badge/Hosted_on-Cloudflare-F38020?logo=cloudflare&logoColor=white)](#hosted-cloudflare-endpoint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 26 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 22 tools](#tools)
 
 </div>
 
@@ -307,7 +307,7 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 
 ## Tools
 
-`hevy-mcp` registers 26 tools. Read-only tools are safe for exploration; create
+`hevy-mcp` registers 22 tools. Read-only tools are safe for exploration; create
 and update tools are exposed with MCP mutation annotations so compatible clients
 can request confirmation.
 
@@ -358,7 +358,7 @@ https://hevy.chrisdoc.dev/mcp
 ```
 
 It is the quickest way to use `hevy-mcp`: there is nothing to install or keep
-running locally, and it exposes the same 26 tools as the npm package and Docker
+running locally, and it exposes the same 22 tools as the npm package and Docker
 image.
 
 The Cloudflare Worker uses stateless **Streamable HTTP** at `POST /mcp`.

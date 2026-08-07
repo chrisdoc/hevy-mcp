@@ -1,6 +1,6 @@
 # Deployment Modes
 
-`hevy-mcp` supports three distinct deployment modes — Hosted Cloudflare Worker, Local Node stdio, and Local Node HTTP — each suited to different infrastructure requirements and client capabilities. All three modes expose the same [26 MCP tools](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L370-L403) and follow the same tool contract; only the adapter layer and transport mechanism differ [[1]](https://app.dosu.dev/documents/26a6ed7f-f9b9-4bce-bc57-e7b1c60b6278). Choose the mode that matches how your MCP client connects and whether you need OAuth support, a persistent session, or zero local dependencies.
+`hevy-mcp` supports three distinct deployment modes — Hosted Cloudflare Worker, Local Node stdio, and Local Node HTTP — each suited to different infrastructure requirements and client capabilities. All three modes expose the same [22 MCP tools](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L370-L403) and follow the same tool contract; only the adapter layer and transport mechanism differ [[1]](https://app.dosu.dev/documents/26a6ed7f-f9b9-4bce-bc57-e7b1c60b6278). Choose the mode that matches how your MCP client connects and whether you need OAuth support, a persistent session, or zero local dependencies.
 
 ## Side-by-Side Comparison Table
 
@@ -19,7 +19,7 @@
 
 ## Hosted Cloudflare Worker Mode
 
-The production Hevy MCP server runs as a stateless Cloudflare Worker at `https://mcp.hevy-mcp.dev/mcp` [[2]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L420-L424). This mode requires no installation—no Node.js, Bun, or Docker—and exposes the same 26 tools as the npm package and Docker image [[3]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L426-L428).
+The production Hevy MCP server runs as a stateless Cloudflare Worker at `https://mcp.hevy-mcp.dev/mcp` [[2]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L420-L424). This mode requires no installation—no Node.js, Bun, or Docker—and exposes the same 22 tools as the npm package and Docker image [[3]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L426-L428).
 
 ### How It Works
 
