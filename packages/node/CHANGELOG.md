@@ -1,5 +1,20 @@
 # hevy-mcp
 
+## 6.0.0
+
+### Major Changes
+
+- [#933](https://github.com/chrisdoc/hevy-mcp/pull/933) [`5fca900`](https://github.com/chrisdoc/hevy-mcp/commit/5fca9009b2c125dcba6694cb506f986dba026206) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Remove MCP tools that duplicate the `hevy://user`, `hevy://workout-count`, `hevy://exercise-templates`, and `hevy://routine-folders` resources. Clients should use those resources for complete datasets and retain `search-exercise-templates` for filtered catalog searches.
+
+### Patch Changes
+
+- [#936](https://github.com/chrisdoc/hevy-mcp/pull/936) [`a142826`](https://github.com/chrisdoc/hevy-mcp/commit/a142826339f473a0ebdca58a9e624046cb15ab0a) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Correct stale MCP tool counts in the published documentation.
+
+- [#907](https://github.com/chrisdoc/hevy-mcp/pull/907) [`4dec481`](https://github.com/chrisdoc/hevy-mcp/commit/4dec481875cb97041ab558177f94c859fe48ee3f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Update Kubb and related development dependencies, and refresh the generated Hevy API client.
+
+- [#931](https://github.com/chrisdoc/hevy-mcp/pull/931) [`47f399f`](https://github.com/chrisdoc/hevy-mcp/commit/47f399f4b63c15fd2fafe9667fd578eae80fd6c6) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Improve Node error reporting with Sentry release diagnostics and centralized
+  sanitized exception telemetry while keeping OpenTelemetry traces independent.
+
 ## 5.1.0
 
 ### Minor Changes
