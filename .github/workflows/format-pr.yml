@@ -164,34 +164,16 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Set up repository hook tools
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
-        with:
-          version: "2026.7.12"
-          install_args: hk actionlint zizmor
-
-      - name: Install repository hooks
-        run: mise exec hk -- hk install --mise
-
       - name: Download formatting patch
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: format-patch-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/format-patch
 
-      - name: Apply, commit, and push formatting changes
+      # Keep this job patch-only: it has write permission, so it must not run
+      # PR-controlled npm scripts or Git hooks while the push token is present.
+      - name: Apply and commit formatting changes
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          PR_HEAD_REF: ${{ needs.validate.outputs.head_ref }}
           PATCH_PATH: ${{ runner.temp }}/format-patch/format.patch
         run: |
           set -euo pipefail
@@ -206,5 +188,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "style: format pull request"
+
+      - name: Push formatting commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_HEAD_REF: ${{ needs.validate.outputs.head_ref }}
+        run: |
+          set -euo pipefail
+
           git -c "http.extraheader=AUTHORIZATION: bearer ${GITHUB_TOKEN}" \
             push origin "HEAD:${PR_HEAD_REF}"
