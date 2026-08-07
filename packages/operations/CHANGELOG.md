@@ -1,5 +1,13 @@
 # @hevy-mcp/operations
 
+## 0.0.3
+
+### Patch Changes
+
+- [#907](https://github.com/chrisdoc/hevy-mcp/pull/907) [`4dec481`](https://github.com/chrisdoc/hevy-mcp/commit/4dec481875cb97041ab558177f94c859fe48ee3f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Update Kubb and related development dependencies, and refresh the generated Hevy API client.
+- Updated dependencies [[`4dec481`](https://github.com/chrisdoc/hevy-mcp/commit/4dec481875cb97041ab558177f94c859fe48ee3f)]:
+  - @hevy-mcp/hevy-client@0.1.1
+
 ## 0.0.2
 
 ### Patch Changes
