@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>hevy-mcp Architecture Improvement Review</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      securityLevel: "loose",
+      flowchart: { curve: "basis", htmlLabels: true },
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#172554",
+        primaryBorderColor: "#818cf8",
+        lineColor: "#64748b",
+        secondaryColor: "#ecfeff",
+        tertiaryColor: "#f8fafc",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+      }
+    });
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #64748b;
+      --paper: #f8fafc;
+      --line: #dbe3ef;
+      --indigo: #4f46e5;
+      --cyan: #0891b2;
+      --emerald: #059669;
+      --amber: #d97706;
+      --slate: #475569;
+      --rose: #e11d48;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 2%, rgba(99, 102, 241, .10), transparent 23rem),
+        radial-gradient(circle at 93% 8%, rgba(6, 182, 212, .09), transparent 27rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .report-card { box-shadow: 0 18px 45px rgba(15, 23, 42, .07); }
+    .diagram {
+      min-height: 18rem;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(rgba(255,255,255,.92), rgba(255,255,255,.92)),
+        repeating-linear-gradient(0deg, transparent, transparent 23px, #e2e8f0 24px),
+        repeating-linear-gradient(90deg, transparent, transparent 23px, #e2e8f0 24px);
+    }
+    .mermaid {
+      display: flex;
+      min-height: 14rem;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      background: transparent;
+    }
+    .file-pill {
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #1e3a8a;
+    }
+    .before-box {
+      border: 1px solid #fecdd3;
+      background: #fff1f2;
+      color: #881337;
+    }
+    .after-box {
+      border: 1px solid #a7f3d0;
+      background: #ecfdf5;
+      color: #065f46;
+    }
+    .arrow {
+      color: #64748b;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .metric {
+      border: 1px solid #c7d2fe;
+      background: #eef2ff;
+    }
+    .flow-node {
+      border: 1px solid #cbd5e1;
+      background: white;
+      border-radius: .8rem;
+      padding: .65rem .75rem;
+      font-weight: 650;
+      text-align: center;
+    }
+    .flow-node.accent {
+      border-color: #818cf8;
+      background: #eef2ff;
+      color: #3730a3;
+    }
+    .flow-node.deep {
+      border-color: #67e8f9;
+      background: #ecfeff;
+      color: #155e75;
+      box-shadow: inset 0 0 0 3px rgba(8, 145, 178, .08);
+    }
+    @media print {
+      body { background: white; }
+      .report-card { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12">
+    <header class="mb-10 overflow-hidden rounded-[2rem] bg-slate-950 px-7 py-9 text-white shadow-2xl sm:px-10">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div class="mb-3 font-mono text-xs uppercase tracking-[.22em] text-cyan-300">Architecture improvement review</div>
+          <h1 class="text-4xl font-black tracking-tight sm:text-5xl">hevy-mcp</h1>
+          <div class="mt-4 flex flex-wrap gap-2 text-sm text-slate-300">
+            <span class="rounded-full border border-slate-700 px-3 py-1">7 August 2026</span>
+            <span class="rounded-full border border-slate-700 px-3 py-1">origin/main @ 2443cad</span>
+            <span class="rounded-full border border-slate-700 px-3 py-1">read-only scan</span>
+            <span class="rounded-full border border-slate-700 px-3 py-1">8 candidates</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+          <div class="rounded-xl bg-emerald-400/15 px-3 py-3 text-emerald-200"><strong class="block text-xl">5</strong>Strong</div>
+          <div class="rounded-xl bg-amber-400/15 px-3 py-3 text-amber-200"><strong class="block text-xl">2</strong>Worth exploring</div>
+          <div class="rounded-xl bg-slate-400/15 px-3 py-3 text-slate-200"><strong class="block text-xl">1</strong>Speculative</div>
+        </div>
+      </div>
+      <div class="mt-8 grid gap-3 border-t border-slate-800 pt-6 sm:grid-cols-3">
+        <div class="rounded-2xl bg-white/5 p-4"><span class="text-xs uppercase tracking-wider text-slate-400">Measured cold PR lane</span><strong class="mt-1 block text-2xl">62.1s</strong></div>
+        <div class="rounded-2xl bg-white/5 p-4"><span class="text-xs uppercase tracking-wider text-slate-400">Measured warm PR lane</span><strong class="mt-1 block text-2xl">33.0s</strong></div>
+        <div class="rounded-2xl bg-white/5 p-4"><span class="text-xs uppercase tracking-wider text-slate-400">Runtime-neutral workspaces</span><strong class="mt-1 block text-2xl">3</strong></div>
+      </div>
+    </header>
+
+    <section aria-label="Recommendation legend" class="mb-10 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm shadow-sm">
+      <strong class="mr-2 text-slate-700">Recommendation strength</strong>
+      <span class="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-800">Strong</span>
+      <span class="text-slate-500">clear evidence, high leverage</span>
+      <span class="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-800">Worth exploring</span>
+      <span class="text-slate-500">sound seam, narrower return</span>
+      <span class="rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-700">Speculative</span>
+      <span class="text-slate-500">measure before design</span>
+    </section>
+
+    <section aria-label="Objective coverage" class="report-card mb-10 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-8">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div class="text-xs font-black uppercase tracking-[.18em] text-indigo-600">Objective coverage</div>
+          <h2 class="mt-1 text-2xl font-black tracking-tight text-slate-900">Every requested improvement axis has concrete candidates</h2>
+        </div>
+        <span class="font-mono text-xs text-slate-500">candidate numbers →</span>
+      </div>
+      <div class="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+          <strong class="text-indigo-950">Reduce duplication</strong>
+          <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold text-indigo-800">
+            <a href="#endpoint-policy" class="rounded-full bg-white px-2.5 py-1 shadow-sm">1</a>
+            <a href="#operations-module" class="rounded-full bg-white px-2.5 py-1 shadow-sm">2</a>
+            <a href="#node-runner" class="rounded-full bg-white px-2.5 py-1 shadow-sm">4</a>
+            <a href="#test-support" class="rounded-full bg-white px-2.5 py-1 shadow-sm">5</a>
+            <a href="#response-contracts" class="rounded-full bg-white px-2.5 py-1 shadow-sm">6</a>
+            <a href="#control-plane" class="rounded-full bg-white px-2.5 py-1 shadow-sm">8</a>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
+          <strong class="text-cyan-950">Increase performance</strong>
+          <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold text-cyan-800">
+            <a href="#artifact-aware-validation" class="rounded-full bg-white px-2.5 py-1 shadow-sm">3</a>
+            <a href="#response-contracts" class="rounded-full bg-white px-2.5 py-1 shadow-sm">6</a>
+            <a href="#worker-admission" class="rounded-full bg-white px-2.5 py-1 shadow-sm">7</a>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <strong class="text-emerald-950">Simplify code</strong>
+          <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold text-emerald-800">
+            <a href="#endpoint-policy" class="rounded-full bg-white px-2.5 py-1 shadow-sm">1</a>
+            <a href="#operations-module" class="rounded-full bg-white px-2.5 py-1 shadow-sm">2</a>
+            <a href="#node-runner" class="rounded-full bg-white px-2.5 py-1 shadow-sm">4</a>
+            <a href="#test-support" class="rounded-full bg-white px-2.5 py-1 shadow-sm">5</a>
+            <a href="#response-contracts" class="rounded-full bg-white px-2.5 py-1 shadow-sm">6</a>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <strong class="text-amber-950">Improve tooling</strong>
+          <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold text-amber-800">
+            <a href="#artifact-aware-validation" class="rounded-full bg-white px-2.5 py-1 shadow-sm">3</a>
+            <a href="#test-support" class="rounded-full bg-white px-2.5 py-1 shadow-sm">5</a>
+            <a href="#control-plane" class="rounded-full bg-white px-2.5 py-1 shadow-sm">8</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="space-y-10">
+      <article id="endpoint-policy" class="report-card scroll-mt-6 rounded-[2rem] border border-indigo-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="mb-3 flex flex-wrap gap-2">
+              <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+              <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-indigo-800">Top recommendation</span>
+            </div>
+            <h2 class="text-3xl font-black tracking-tight text-slate-900">1. One endpoint policy module</h2>
+          </div>
+          <div class="rounded-2xl bg-indigo-50 px-4 py-3 text-right text-sm text-indigo-900">
+            <strong class="block text-xs uppercase tracking-wider text-indigo-600">Primary leverage</strong>
+            Safety + locality
+          </div>
+        </div>
+        <div class="mt-6 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/hevy-client/src/hevy-client-kubb.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/core/src/utils/hevy-error-policy.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/core/src/utils/error-policy.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/node/src/utils/hevy-client-observability.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/operations/src/workouts.ts</span>
+        </div>
+        <div class="mt-6 grid gap-5 lg:grid-cols-[1fr_.9fr]">
+          <div>
+            <p class="text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> Endpoint identity, retry meaning, expected 404s, safe diagnostic exposure, and metric normalization are encoded in separate lists across four shipped modules, so one upstream change can produce inconsistent behavior at several seams.</p>
+            <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Establish one runtime-neutral endpoint policy module that records distinct policy facts without flattening them into one list. Core, Node, and operations consume those facts; unknown endpoints remain fail-closed and diagnostic redaction remains explicit.</p>
+            <div class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"><strong>Important constraint:</strong> preserve the current distinction between expected read misses and safe diagnostic paths; centralization must not broaden disclosure.</div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-600">Benefits</h3>
+            <ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <li class="rounded-xl bg-white p-3 shadow-sm">One edit per endpoint</li>
+              <li class="rounded-xl bg-white p-3 shadow-sm">Fail-closed unknown endpoints</li>
+              <li class="rounded-xl bg-white p-3 shadow-sm">Safer diagnostic redaction</li>
+              <li class="rounded-xl bg-white p-3 shadow-sm">Stable metric dimensions</li>
+              <li class="rounded-xl bg-white p-3 shadow-sm">Policy tests gain leverage</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · policy leaks across seams</h3>
+            <pre class="mermaid">
+flowchart TB
+  G[Generated call] --> C[Client retry list]
+  C --> E[HevyHttpError]
+  E --> K[Core read-miss list]
+  E --> N[Node metric normalization]
+  E --> D[Safe diagnostic list]
+  E --> O[Operations 404 handling]
+            </pre>
+          </section>
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · one deep policy module</h3>
+            <pre class="mermaid">
+flowchart TB
+  I[Endpoint identity] --> P[Endpoint policy module]
+  U[Unknown endpoint] --> P
+  P --> R[Retry semantics]
+  P --> S[Safe diagnostics]
+  P --> F[404 meaning]
+  P --> M[Metric dimensions]
+  P --> X[Fail closed]
+            </pre>
+          </section>
+        </div>
+      </article>
+
+      <article id="operations-module" class="report-card scroll-mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-3xl font-black tracking-tight text-slate-900">2. Complete the shared Hevy operations module</h2>
+          <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/operations/src/workouts.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/operations/src/index.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/core/src/tools/*.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/cli/src/commands/index.ts</span>
+        </div>
+        <div class="mt-6 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+          <div>
+            <p class="text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> The operations workspace currently owns only workout listing while MCP tools and the CLI independently implement pagination, resource reads, mutation preparation, search loops, and summary aggregation.</p>
+            <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Move shared Hevy-domain workflows behind deeper operations modules, leaving Core and CLI as shallow adapters for arguments, presentation, and runtime observation. Grow domain by domain and preserve curated client exports.</p>
+            <ul class="mt-5 grid gap-2 text-sm sm:grid-cols-2">
+              <li class="rounded-xl border border-slate-200 p-3">One pagination implementation</li>
+              <li class="rounded-xl border border-slate-200 p-3">Shared domain semantics</li>
+              <li class="rounded-xl border border-slate-200 p-3">Thinner adapter code</li>
+              <li class="rounded-xl border border-slate-200 p-3">Smaller regression surface</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 text-sm text-cyan-950">
+            <strong class="block text-xs uppercase tracking-wider text-cyan-700">Deletion test</strong>
+            <p class="mt-2">A successful first slice removes duplicated workflow code from both a Core tool and its CLI command while adding no runtime-specific imports to operations.</p>
+          </div>
+        </div>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · adapters own workflows</h3>
+            <pre class="mermaid">
+flowchart TB
+  CLI[CLI commands] --> HC[Hevy client]
+  MCP[MCP tools] --> HC
+  MCP --> OP[Operations: workouts.list]
+  OP --> HC
+  CLI -. duplicate loops .-> MCP
+            </pre>
+          </section>
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · operations become deep</h3>
+            <pre class="mermaid">
+flowchart TB
+  CLI[CLI adapter] --> OP[Domain operations modules]
+  MCP[MCP adapter] --> OP
+  OP --> HC[Curated Hevy client]
+  OP --> P[Shared pagination]
+  OP --> D[Shared domain semantics]
+            </pre>
+          </section>
+        </div>
+      </article>
+
+      <article id="artifact-aware-validation" class="report-card scroll-mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-3xl font-black tracking-tight text-slate-900">3. Make PR validation artifact-aware and disjoint</h2>
+          <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">project.json</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">nx.json</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">package.json</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">repository/validation-lanes.json</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">tests/package/*</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">.github/workflows/build-and-test.yml</span>
+        </div>
+        <div class="mt-6 grid gap-4 sm:grid-cols-3">
+          <div class="metric rounded-2xl p-4"><span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Cold exact run</span><strong class="mt-1 block text-3xl text-indigo-950">62.1s</strong></div>
+          <div class="metric rounded-2xl p-4"><span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Warm exact run</span><strong class="mt-1 block text-3xl text-indigo-950">33.0s</strong></div>
+          <div class="metric rounded-2xl p-4"><span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Cold recoverable</span><strong class="mt-1 block text-3xl text-indigo-950">55%</strong></div>
+        </div>
+        <p class="mt-6 text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> Unit selection already contains every contract, stdio, and CLI test file, while package lanes rebuild artifacts that an earlier build produced; the graph spends time repeating both test ownership and build work.</p>
+        <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Give each specialized test one authoritative lane, keep coverage complete through an explicit aggregate, and make package artifacts flow from one build producer to pack, publint, and performance consumers. Preserve every custom policy check and compatibility npm alias.</p>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-5">
+            <h3 class="text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · repeated ownership</h3>
+            <div class="mt-6 space-y-3">
+              <div class="before-box rounded-xl p-3 font-semibold">Unit · 76 files / 842 tests</div>
+              <div class="grid grid-cols-3 gap-2 text-xs font-semibold">
+                <div class="before-box rounded-xl p-3 text-center">Contract<br>5 repeated</div>
+                <div class="before-box rounded-xl p-3 text-center">Stdio<br>4 repeated</div>
+                <div class="before-box rounded-xl p-3 text-center">CLI<br>4 repeated</div>
+              </div>
+              <div class="arrow text-center">BUILD → PACK REBUILD → CLI REBUILD</div>
+            </div>
+          </section>
+          <section class="diagram rounded-2xl p-5">
+            <h3 class="text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · explicit ownership</h3>
+            <div class="mt-6 space-y-3">
+              <div class="after-box rounded-xl p-3 font-semibold">PR aggregate · complete coverage</div>
+              <div class="grid grid-cols-4 gap-2 text-xs font-semibold">
+                <div class="after-box rounded-xl p-3 text-center">Unit</div>
+                <div class="after-box rounded-xl p-3 text-center">Contract</div>
+                <div class="after-box rounded-xl p-3 text-center">Stdio</div>
+                <div class="after-box rounded-xl p-3 text-center">CLI</div>
+              </div>
+              <div class="arrow text-center">BUILD ONCE → PACK · PUBLINT · PERF</div>
+            </div>
+          </section>
+        </div>
+        <ul class="mt-6 grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-5">
+          <li class="rounded-xl bg-slate-50 p-3">Shorter cold feedback</li>
+          <li class="rounded-xl bg-slate-50 p-3">Warmer local iteration</li>
+          <li class="rounded-xl bg-slate-50 p-3">Clear lane ownership</li>
+          <li class="rounded-xl bg-slate-50 p-3">One artifact path</li>
+          <li class="rounded-xl bg-slate-50 p-3">Policy checks preserved</li>
+        </ul>
+      </article>
+
+      <article id="node-runner" class="report-card scroll-mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-3xl font-black tracking-tight text-slate-900">4. Collapse Node lifecycle into one runner</h2>
+          <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/node/src/index.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/node/src/utils/graceful-shutdown.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/node/src/streamable-http.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/node/src/index.test.ts</span>
+        </div>
+        <div class="mt-6 grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
+          <div>
+            <p class="text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> The stdio and HTTP paths separately construct process tracking, cancellation, run spans, configuration, startup metrics, update scheduling, shutdown, telemetry flush, and failure classification.</p>
+            <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Extract one private Node lifecycle runner and keep stdio and HTTP as two transport adapters that contribute only transport setup and transport-specific observations.</p>
+          </div>
+          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-950">
+            <strong class="block text-xs uppercase tracking-wider text-emerald-700">Why this seam is justified</strong>
+            <p class="mt-2">Two real adapters already repeat one substantial implementation; lifecycle bugs currently require parallel edits and tests.</p>
+          </div>
+        </div>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · parallel lifecycle stacks</h3>
+            <pre class="mermaid">
+flowchart TB
+  S[runStdioServer] --> A[Abort + process errors]
+  S --> B[Run span + config]
+  S --> C[Shutdown + flush]
+  H[runServer HTTP] --> D[Abort + process errors]
+  H --> E[Run span + config]
+  H --> F[Shutdown + flush]
+            </pre>
+          </section>
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · one lifecycle implementation</h3>
+            <pre class="mermaid">
+flowchart TB
+  S[Stdio adapter] --> R[Node lifecycle runner]
+  H[HTTP adapter] --> R
+  R --> P[Process + cancellation]
+  R --> T[Telemetry + failure policy]
+  R --> G[Graceful shutdown]
+            </pre>
+          </section>
+        </div>
+        <ul class="mt-6 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <li class="rounded-xl bg-slate-50 p-3">One failure policy</li>
+          <li class="rounded-xl bg-slate-50 p-3">One shutdown path</li>
+          <li class="rounded-xl bg-slate-50 p-3">Transport differences stay local</li>
+          <li class="rounded-xl bg-slate-50 p-3">Fewer lifecycle tests</li>
+        </ul>
+      </article>
+
+      <article id="test-support" class="report-card scroll-mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-3xl font-black tracking-tight text-slate-900">5. Deepen deterministic MCP test support</h2>
+            <span class="mt-2 inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800">Already aligned with testing strategy TS-02 / issue #606</span>
+          </div>
+          <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">tests/integration/mocked/hevy-mcp.mocked.integration.test.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">tests/integration/mocked/get-workout-count-events-mocked.integration.test.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/core/src/tools/*.test.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">docs/testing-strategy.md</span>
+        </div>
+        <p class="mt-6 text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> Integration suites repeat server/client/runtime registration, in-memory transport setup, network isolation, and teardown, while multiple tool tests repeat definition registration and handler discovery.</p>
+        <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Create one private test-support module for deterministic MCP sessions and one small tool-definition helper, keeping production exports untouched and failure diagnostics visible.</p>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-5">
+            <h3 class="text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · every suite assembles machinery</h3>
+            <div class="mt-6 grid grid-cols-2 gap-3 text-sm">
+              <div class="before-box rounded-xl p-3">Suite A<br><span class="text-xs">server · client · transport · nock</span></div>
+              <div class="before-box rounded-xl p-3">Suite B<br><span class="text-xs">server · client · transport · nock</span></div>
+              <div class="before-box rounded-xl p-3">Tool test A<br><span class="text-xs">register · find handler</span></div>
+              <div class="before-box rounded-xl p-3">Tool test B<br><span class="text-xs">register · find handler</span></div>
+            </div>
+          </section>
+          <section class="diagram rounded-2xl p-5">
+            <h3 class="text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · deep test-support module</h3>
+            <div class="mt-6 space-y-4">
+              <div class="flow-node deep">Deterministic MCP test support</div>
+              <div class="arrow text-center">↓</div>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div class="flow-node">Session</div>
+                <div class="flow-node">Isolation</div>
+                <div class="flow-node">Teardown</div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="after-box rounded-xl p-3 text-center">Integration suites</div>
+                <div class="after-box rounded-xl p-3 text-center">Tool suites</div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <ul class="mt-6 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <li class="rounded-xl bg-slate-50 p-3">Less fixture drift</li>
+          <li class="rounded-xl bg-slate-50 p-3">Stronger isolation defaults</li>
+          <li class="rounded-xl bg-slate-50 p-3">Shorter new-tool tests</li>
+          <li class="rounded-xl bg-slate-50 p-3">Production stays untouched</li>
+        </ul>
+      </article>
+
+      <article id="response-contracts" class="report-card scroll-mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-3xl font-black tracking-tight text-slate-900">6. Compile and partition response contracts</h2>
+          <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800">Worth exploring</span>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/core/src/utils/response-contracts.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/core/src/utils/response-contracts.test.ts</span>
+        </div>
+        <div class="mt-6 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+          <div>
+            <p class="text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> A 1,252-line module owns every domain projection and repeatedly constructs a Zod object during render; paginated contracts also repeat the same shape and rendering mechanics.</p>
+            <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Preserve the existing deep public response interface, compile each validation schema once, and organize private implementations by domain around shared pagination mechanics. Benchmark allocation and render throughput before claiming a material speedup.</p>
+          </div>
+          <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+            <strong class="block text-xs uppercase tracking-wider text-amber-700">Why not stronger</strong>
+            <p class="mt-2">The module is already deep and cohesive from its callers’ perspective. The gain is internal locality and modest allocation reduction, not a new abstraction surface.</p>
+          </div>
+        </div>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-5">
+            <h3 class="text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · one broad implementation</h3>
+            <div class="mt-5 space-y-3">
+              <div class="flow-node accent">response-contracts.ts · 1,252 lines</div>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div class="before-box rounded-xl p-3 text-center">Domain projections</div>
+                <div class="before-box rounded-xl p-3 text-center">Repeated pagination</div>
+                <div class="before-box rounded-xl p-3 text-center">Schema built per render</div>
+              </div>
+            </div>
+          </section>
+          <section class="diagram rounded-2xl p-5">
+            <h3 class="text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · same interface, deeper internals</h3>
+            <div class="mt-5 space-y-3">
+              <div class="flow-node deep">Stable response-contract interface</div>
+              <div class="arrow text-center">↓</div>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div class="after-box rounded-xl p-3 text-center">Compiled schemas</div>
+                <div class="after-box rounded-xl p-3 text-center">Domain modules</div>
+                <div class="after-box rounded-xl p-3 text-center">Shared pagination</div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <ul class="mt-6 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <li class="rounded-xl bg-slate-50 p-3">Better edit locality</li>
+          <li class="rounded-xl bg-slate-50 p-3">Lower render allocation</li>
+          <li class="rounded-xl bg-slate-50 p-3">Exact schemas preserved</li>
+          <li class="rounded-xl bg-slate-50 p-3">Legacy text preserved</li>
+        </ul>
+      </article>
+
+      <article id="worker-admission" class="report-card scroll-mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-3xl font-black tracking-tight text-slate-900">7. Measure Worker request admission before caching</h2>
+          <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-700">Speculative</span>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/worker/src/worker.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">packages/worker/src/worker.test.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">tests/performance/scenario.ts</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">tests/performance/performance.test.ts</span>
+        </div>
+        <p class="mt-6 text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> Every Worker POST validates the bearer value through a fresh upstream user-info call and then creates and connects a new MCP server and transport, but the performance lane has no repeated-request Worker scenario.</p>
+        <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Add a representative Worker benchmark first. Only if upstream validation or construction dominates should the design consider bounded in-flight or short-lived reuse, with explicit revocation, tenant isolation, and stateless-transport constraints.</p>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · cost exists but is unmeasured</h3>
+            <pre class="mermaid">
+sequenceDiagram
+  participant R as Worker POST
+  participant U as Upstream user-info
+  participant M as MCP server
+  R->>U: validate bearer
+  U-->>R: identity
+  R->>M: construct and connect
+  M-->>R: response
+            </pre>
+          </section>
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · evidence gates the seam</h3>
+            <pre class="mermaid">
+flowchart TB
+  B[Repeated-request benchmark] --> Q{Dominant cost?}
+  Q -->|No| K[Keep stateless path]
+  Q -->|Validation| V[Assess bounded validation reuse]
+  Q -->|Construction| C[Assess safe construction reuse]
+  V --> S[Security proof]
+  C --> S
+            </pre>
+          </section>
+        </div>
+        <ul class="mt-6 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <li class="rounded-xl bg-slate-50 p-3">No premature cache</li>
+          <li class="rounded-xl bg-slate-50 p-3">Quantified latency source</li>
+          <li class="rounded-xl bg-slate-50 p-3">Revocation stays explicit</li>
+          <li class="rounded-xl bg-slate-50 p-3">Tenant isolation protected</li>
+        </ul>
+      </article>
+
+      <article id="control-plane" class="report-card scroll-mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-9">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-3xl font-black tracking-tight text-slate-900">8. Deepen the repository control plane</h2>
+          <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800">Worth exploring</span>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 font-mono text-xs">
+          <span class="file-pill rounded-lg px-2.5 py-1.5">scripts/control-plane-validation.mjs</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">scripts/control-plane-models.mjs</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">scripts/repository-control-plane.mjs</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">scripts/render-validation-lanes.mjs</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">repository/validation-lanes.json</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">project.json</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">docs/contributor-onboarding.md</span>
+          <span class="file-pill rounded-lg px-2.5 py-1.5">docs/testing-strategy.md</span>
+        </div>
+        <div class="mt-6 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+          <div>
+            <p class="text-lg leading-relaxed text-slate-700"><strong class="text-slate-950">Problem.</strong> Lane validation, selector metadata, Nx target metadata, renderer checks, and contributor tables repeat repository facts; current docs still describe five workspaces instead of six and reference a deleted response formatter.</p>
+            <p class="mt-4 leading-relaxed text-slate-600"><strong class="text-slate-900">Direction.</strong> Build one validated repository model seam, derive simple lane and manifest projections where facts are one-to-one, and render changing documentation tables from it. Retain custom commands, cache exceptions, runtime seams, release policy, and the compiler-based dependency checker as explicit policy.</p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950"><strong class="block text-2xl">26 / 28</strong>mapped lanes repeat alias and Nx target names</div>
+            <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950"><strong class="block text-2xl">1,091 lines</strong>in control-plane validation implementation</div>
+          </div>
+        </div>
+        <div class="mt-7 grid gap-5 lg:grid-cols-2">
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-rose-700">Before · consumers reload raw facts</h3>
+            <pre class="mermaid">
+flowchart TB
+  J[Validation lanes JSON] --> V[Validator]
+  J --> R[Renderer validation]
+  P[package.json] --> V
+  P --> N[Nx metadata]
+  X[project.json] --> V
+  X --> R
+  D[Handwritten docs] -. drift .-> J
+            </pre>
+          </section>
+          <section class="diagram rounded-2xl p-4">
+            <h3 class="mb-2 text-xs font-black uppercase tracking-[.18em] text-emerald-700">After · one validated model seam</h3>
+            <pre class="mermaid">
+flowchart TB
+  S[Authoritative repository sources] --> M[Validated repository model]
+  M --> V[Policy validators]
+  M --> N[Nx projection]
+  M --> W[Workflow projection]
+  M --> D[Documentation tables]
+  C[Custom policy] --> M
+            </pre>
+          </section>
+        </div>
+        <ul class="mt-6 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <li class="rounded-xl bg-slate-50 p-3">Less metadata drift</li>
+          <li class="rounded-xl bg-slate-50 p-3">Fewer independent parsers</li>
+          <li class="rounded-xl bg-slate-50 p-3">Current contributor docs</li>
+          <li class="rounded-xl bg-slate-50 p-3">Better AI navigability</li>
+          <li class="rounded-xl bg-slate-50 p-3">Custom policy preserved</li>
+        </ul>
+      </article>
+    </div>
+
+    <section class="report-card mt-12 rounded-[2rem] bg-gradient-to-br from-indigo-700 to-cyan-700 p-7 text-white sm:p-10">
+      <span class="text-xs font-black uppercase tracking-[.22em] text-cyan-100">Top recommendation</span>
+      <h2 class="mt-2 text-3xl font-black">One endpoint policy module</h2>
+      <p class="mt-3 max-w-3xl text-lg leading-relaxed text-indigo-50">Start here because it removes duplicated semantic policy from four shipped modules while strengthening safety, observability, and future endpoint changes.</p>
+      <a href="#endpoint-policy" class="mt-6 inline-flex rounded-xl bg-white px-5 py-3 font-bold text-indigo-800 shadow-lg transition hover:-translate-y-0.5">Review candidate 1 ↑</a>
+    </section>
+
+    <footer class="mt-8 pb-8 text-center text-xs text-slate-500">
+      Generated from branch refactor/architecture-improvement-scan-20260807 · original checkout untouched
+    </footer>
+  </main>
+</body>
+</html>
