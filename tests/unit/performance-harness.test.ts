@@ -193,7 +193,7 @@ describe("performance harness helpers", () => {
 		});
 		const harness = await createPerformanceHarness("startup");
 		await expect(
-			callPerformanceTool(harness.client, "get-workout-count", {}),
+			callPerformanceTool(harness.client, "get-workout", { workout_id: "w1" }),
 		).resolves.toEqual({
 			text: "ok",
 			structuredContent: { count: 1 },
@@ -201,14 +201,14 @@ describe("performance harness helpers", () => {
 
 		harnessMocks.client.request.mockResolvedValue({ content: [] });
 		await expect(
-			callPerformanceTool(harness.client, "get-workout-count", {}),
+			callPerformanceTool(harness.client, "get-workout", { workout_id: "w1" }),
 		).rejects.toThrow("did not return text content");
 		harnessMocks.client.request.mockResolvedValue({
 			content: [{ type: "text", text: "nope" }],
 			isError: true,
 		});
 		await expect(
-			callPerformanceTool(harness.client, "get-workout-count", {}),
+			callPerformanceTool(harness.client, "get-workout", { workout_id: "w1" }),
 		).rejects.toThrow("returned an MCP error: nope");
 	});
 

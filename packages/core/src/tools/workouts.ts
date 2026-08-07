@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type {
-	GetV1WorkoutsCount200,
 	GetV1WorkoutsEvents200,
 	GetV1WorkoutsWorkoutid200,
 	PostV1Workouts201,
@@ -18,7 +17,6 @@ import type { ToolRuntime } from "./tool-runtime.js";
 import {
 	createWorkoutResponse,
 	updateWorkoutResponse,
-	workoutCountResponse,
 	workoutEventsResponse,
 	workoutResponse,
 	workoutsResponse,
@@ -113,24 +111,6 @@ export const workoutToolDefinitions = [
 				}
 				throw error;
 			}
-		},
-	},
-	{
-		name: "get-workout-count",
-		feature: "workouts" as const,
-		operation: "count" as const,
-		description:
-			"Read-only. Returns the total workout count; it does not return records or accept date filters.",
-		inputSchema: {},
-		outputSchema: workoutCountResponse.outputSchema,
-		annotations: readOnlyAnnotations("Get Workout Count"),
-		kind: "read" as const,
-		responseContract: workoutCountResponse,
-		execute: async (runtime: ToolRuntime) => {
-			const data: GetV1WorkoutsCount200 = await runtime
-				.getClient()
-				.getWorkoutCount();
-			return data?.workout_count ?? 0;
 		},
 	},
 	{

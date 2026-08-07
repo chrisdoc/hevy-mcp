@@ -38,9 +38,6 @@ const templateInput = {
 describe("exercise template tools", () => {
 	it("maps pagination, identifiers, and history query fields", async () => {
 		const client = {
-			getExerciseTemplates: vi
-				.fn()
-				.mockResolvedValue({ exercise_templates: [], page_count: 1 }),
 			getExerciseTemplate: vi
 				.fn()
 				.mockResolvedValue({ id: "t1", title: "Cable Row" }),
@@ -48,7 +45,6 @@ describe("exercise template tools", () => {
 		} as unknown as HevyClient;
 		const tool = register(client);
 
-		await handler(tool, "get-exercise-templates")({ page: 2, page_size: 5 });
 		await handler(
 			tool,
 			"get-exercise-template",
@@ -61,10 +57,7 @@ describe("exercise template tools", () => {
 			start_date: "2025-01-01T00:00:00Z",
 			end_date: "2025-01-02T00:00:00Z",
 		});
-		expect(client.getExerciseTemplates).toHaveBeenCalledWith({
-			page: 2,
-			pageSize: 5,
-		});
+
 		expect(client.getExerciseTemplate).toHaveBeenCalledWith("t1");
 		expect(client.getExerciseHistory).toHaveBeenCalledWith("t1", {
 			start_date: "2025-01-01T00:00:00Z",

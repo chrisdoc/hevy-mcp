@@ -426,7 +426,7 @@ describe("real stateless SDK transport", () => {
 		);
 		const payload = await parseMcpResponse(list);
 		expect(payload).toMatchObject({ id: 2 });
-		expect(JSON.stringify(payload)).toContain("get-user-info");
+		expect(JSON.stringify(payload)).toContain("get-workouts");
 		expect(createValidationClient).toHaveBeenCalledTimes(2);
 		expect(createRequestClient).toHaveBeenCalledTimes(2);
 		expect(createServer).toHaveBeenCalledTimes(2);
@@ -451,9 +451,9 @@ describe("real stateless SDK transport", () => {
 			}),
 		});
 		const requestClient = createMockClient({
-			getUserInfo: vi.fn().mockImplementation((options) => {
+			getWorkout: vi.fn().mockImplementation((_workoutId, options) => {
 				requestOptions = options;
-				return Promise.resolve({ data: { id: "requested" } });
+				return Promise.resolve({ id: "workout-1", exercises: [] });
 			}),
 		});
 		const handler = createWorkerHandler({
@@ -466,7 +466,7 @@ describe("real stateless SDK transport", () => {
 				jsonrpc: "2.0",
 				id: 1,
 				method: "tools/call",
-				params: { name: "get-user-info", arguments: {} },
+				params: { name: "get-workout", arguments: { workout_id: "workout-1" } },
 			}),
 			{},
 		);
@@ -859,11 +859,9 @@ describe("real stateless SDK transport", () => {
 			async () =>
 				new Response(
 					JSON.stringify({
-						data: {
-							id: "override-user",
-							name: "Override User",
-							url: "https://hevy.com/user/override-user",
-						},
+						page: 1,
+						page_count: 1,
+						workouts: [],
 					}),
 					{
 						status: 200,
@@ -877,14 +875,14 @@ describe("real stateless SDK transport", () => {
 				jsonrpc: "2.0",
 				id: 8,
 				method: "tools/call",
-				params: { name: "get-user-info", arguments: {} },
+				params: { name: "get-workouts", arguments: { page: 1, page_size: 1 } },
 			}),
 			{ HEVY_API_BASE_URL: "https://fake-hevy.example///" },
 		);
 
 		expect(result.status).toBe(200);
 		expect(JSON.stringify(await parseMcpResponse(result))).toContain(
-			"override-user",
+			"workouts",
 		);
 		expect(fetchSpy).toHaveBeenCalledTimes(2);
 		for (const [input, init] of fetchSpy.mock.calls) {
@@ -895,7 +893,9 @@ describe("real stateless SDK transport", () => {
 						? input.href
 						: input;
 			expect(new URL(requestUrl).origin).toBe("https://fake-hevy.example");
-			expect(new URL(requestUrl).pathname).toBe("/v1/user/info");
+			expect(["/v1/user/info", "/v1/workouts"]).toContain(
+				new URL(requestUrl).pathname,
+			);
 			expect(new Headers(init?.headers).get("api-key")).toBe("test-key");
 		}
 		fetchSpy.mockRestore();

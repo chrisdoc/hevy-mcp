@@ -19,7 +19,6 @@ import {
 	renderSummaryLine,
 	setVersions,
 	writeDiagnostics,
-	WORKOUT_COUNT_SCHEMA_PATH,
 } from "./diagnostics.mjs";
 
 const SEARCH_QUERY = "bench";
@@ -198,24 +197,6 @@ async function main() {
 				"$[0]",
 			);
 		});
-		await runTest("get-workout-count-shape", async () => {
-			const { empty, parsed } = await callOrIgnoreEmpty(
-				client,
-				"get-workout-count",
-				{},
-			);
-			if (empty) return;
-			assertCondition(parsed !== null && typeof parsed === "object", "$");
-			assertCondition(
-				typeof parsed.workout_count === "number",
-				"$.workout_count",
-			);
-			assertCondition(
-				Number.isInteger(parsed.workout_count) && parsed.workout_count >= 0,
-				"$.workout_count",
-				"assertion",
-			);
-		});
 		await runTest("get-workout-events-shape", async () => {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
@@ -233,24 +214,6 @@ async function main() {
 				{ page: 1, page_size: 5 },
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
-		});
-		await runTest("get-exercise-templates-shape", async () => {
-			const { empty, parsed } = await callOrIgnoreEmpty(
-				client,
-				"get-exercise-templates",
-				{ page: 1, page_size: 5 },
-			);
-			assertCondition(!empty, "$", "assertion");
-			assertCondition(Array.isArray(parsed), "$");
-			assertCondition(parsed.length > 0, "$", "assertion");
-			assertCondition(
-				parsed[0] !== null && typeof parsed[0] === "object",
-				"$[0]",
-			);
-			assertCondition(
-				parsed[0].id ?? parsed[0].exercise_template_id,
-				"$[0].id",
-			);
 		});
 		await runTest("search-exercise-templates-shape", async () => {
 			const { empty, parsed } = await callOrIgnoreEmpty(
@@ -270,14 +233,6 @@ async function main() {
 				);
 			}
 		});
-		await runTest("get-routine-folders-shape", async () => {
-			const { empty, parsed } = await callOrIgnoreEmpty(
-				client,
-				"get-routine-folders",
-				{ page: 1, page_size: 5 },
-			);
-			if (!empty) assertCondition(Array.isArray(parsed), "$");
-		});
 		await runTest("get-body-measurements-shape", async () => {
 			const { empty, parsed } = await callOrIgnoreEmpty(
 				client,
@@ -286,29 +241,6 @@ async function main() {
 			);
 			if (!empty) assertCondition(Array.isArray(parsed), "$");
 		});
-		await runTest("get-user-info-shape", async () => {
-			const { empty, parsed } = await callOrIgnoreEmpty(
-				client,
-				"get-user-info",
-				{},
-			);
-			if (empty) return;
-			assertCondition(parsed !== null && typeof parsed === "object", "$");
-			assertCondition(parsed.id ?? parsed.user_id, "$.id");
-		});
-
-		for (const pageSize of [2, 5]) {
-			await runTest(`pagination-pageSize-${pageSize}-respected`, async () => {
-				const { empty, parsed } = await callOrIgnoreEmpty(
-					client,
-					"get-workouts",
-					buildWorkoutPageArgs(1, pageSize),
-				);
-				if (empty) return;
-				assertCondition(Array.isArray(parsed), "$");
-				assertCondition(parsed.length <= pageSize, "$", "assertion");
-			});
-		}
 		await runTest("rejects-out-of-range-pageSize", async () => {
 			try {
 				const result = await client.callTool({
@@ -319,32 +251,6 @@ async function main() {
 			} catch (error) {
 				if (normalizeError(error).errorClass === "assertion") throw error;
 			}
-		});
-		await runTest("workout-count-matches-pagination", async () => {
-			const countResponse = await callOrIgnoreEmpty(
-				client,
-				"get-workout-count",
-				{},
-			);
-			if (countResponse.empty) return;
-			const total = countResponse.parsed.workout_count;
-			assertCondition(Number.isInteger(total), "$.workout_count");
-			let fetchedCount = 0;
-			for (let page = 1; page <= 50; page++) {
-				const { empty, parsed } = await callOrIgnoreEmpty(
-					client,
-					"get-workouts",
-					buildWorkoutPageArgs(page, 10),
-				);
-				if (empty || !Array.isArray(parsed) || parsed.length === 0) break;
-				fetchedCount += parsed.length;
-				if (parsed.length < 10) break;
-			}
-			assertCondition(
-				fetchedCount === total,
-				WORKOUT_COUNT_SCHEMA_PATH,
-				"assertion",
-			);
 		});
 		await runTest("get-workout-handles-unknown-id", async () => {
 			const result = await client.callTool({

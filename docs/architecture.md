@@ -19,14 +19,14 @@ This is achieved by keeping the tool implementations and API client runtime-neut
 
 The six workspaces and their roles at a glance:
 
-| Workspace | Package name | Role |
-|---|---|---|
-| `packages/hevy-client` | `@hevy-mcp/hevy-client` | Runtime-neutral API client (Kubb-generated) |
-| `packages/operations` | `@hevy-mcp/operations` | Runtime-neutral shared operations layer |
-| `packages/core` | `@hevy-mcp/core` | Runtime-neutral MCP tools and server construction |
-| `packages/node` | `hevy-mcp` | Node.js stdio/HTTP adapter — the only publishable workspace |
-| `packages/worker` | `@hevy-mcp/worker` | Private Cloudflare Worker HTTP/OAuth adapter |
-| `packages/cli` | `@chrisdoc/hevy-cli` | Public Hevy command-line client |
+| Workspace              | Package name            | Role                                                        |
+| ---------------------- | ----------------------- | ----------------------------------------------------------- |
+| `packages/hevy-client` | `@hevy-mcp/hevy-client` | Runtime-neutral API client (Kubb-generated)                 |
+| `packages/operations`  | `@hevy-mcp/operations`  | Runtime-neutral shared operations layer                     |
+| `packages/core`        | `@hevy-mcp/core`        | Runtime-neutral MCP tools and server construction           |
+| `packages/node`        | `hevy-mcp`              | Node.js stdio/HTTP adapter — the only publishable workspace |
+| `packages/worker`      | `@hevy-mcp/worker`      | Private Cloudflare Worker HTTP/OAuth adapter                |
+| `packages/cli`         | `@chrisdoc/hevy-cli`    | Public Hevy command-line client                             |
 
 [[5]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6)
 
@@ -86,10 +86,10 @@ The two packages that must satisfy this constraint are `packages/hevy-client` an
 
 Platform-specific concerns are isolated to the adapter packages:
 
-| Package | Owns |
-|---|---|
-| `packages/node` | stdio transport, local Streamable HTTP transport, process lifecycle (`SIGTERM`/`SIGINT`), Node telemetry (Sentry, OTLP), stdio observability, update checks |
-| `packages/worker` | Cloudflare Worker HTTP entrypoint, Streamable HTTP handler, OAuth 2.1 layer (KV-backed), Cloudflare bindings and environment types |
+| Package           | Owns                                                                                                                                                        |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/node`   | stdio transport, local Streamable HTTP transport, process lifecycle (`SIGTERM`/`SIGINT`), Node telemetry (Sentry, OTLP), stdio observability, update checks |
+| `packages/worker` | Cloudflare Worker HTTP entrypoint, Streamable HTTP handler, OAuth 2.1 layer (KV-backed), Cloudflare bindings and environment types                          |
 
 [[12]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
@@ -114,14 +114,14 @@ Bundling Node.js code (anything that imports `process`, `fs`, `os`, etc.) into a
 
 Only one workspace is publishable to npm: `hevy-mcp` (the Node adapter). Everything else is either a private internal package or a separate public package:
 
-| Package | Published? | Why |
-|---|---|---|
-| `hevy-mcp` | ✅ npm | The user-facing Node.js MCP server |
-| `@chrisdoc/hevy-cli` | ✅ npm | Public standalone CLI |
-| `@hevy-mcp/core` | ❌ private | Internal; bundled into both adapters |
-| `@hevy-mcp/hevy-client` | ❌ private | Internal; bundled into both adapters |
-| `@hevy-mcp/operations` | ❌ private | Internal; bundled into both adapters |
-| `@hevy-mcp/worker` | ❌ private | Deployed directly to Cloudflare Workers |
+| Package                 | Published? | Why                                     |
+| ----------------------- | ---------- | --------------------------------------- |
+| `hevy-mcp`              | ✅ npm     | The user-facing Node.js MCP server      |
+| `@chrisdoc/hevy-cli`    | ✅ npm     | Public standalone CLI                   |
+| `@hevy-mcp/core`        | ❌ private | Internal; bundled into both adapters    |
+| `@hevy-mcp/hevy-client` | ❌ private | Internal; bundled into both adapters    |
+| `@hevy-mcp/operations`  | ❌ private | Internal; bundled into both adapters    |
+| `@hevy-mcp/worker`      | ❌ private | Deployed directly to Cloudflare Workers |
 
 [[14]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
@@ -166,24 +166,24 @@ flowchart TD
 
 The full matrix [[17]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae) [[18]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6):
 
-| Changed package | Required changeset packages |
-|---|---|
-| `@hevy-mcp/hevy-client` | `@hevy-mcp/hevy-client`, `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
-| `@hevy-mcp/operations` | `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
-| `@hevy-mcp/core` | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
-| Node adapter only | `hevy-mcp` only |
-| Worker only (or `cloudflare.config.ts`) | `@hevy-mcp/worker` only |
-| CLI only | `@chrisdoc/hevy-cli` only |
+| Changed package                         | Required changeset packages                                                                                             |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `@hevy-mcp/hevy-client`                 | `@hevy-mcp/hevy-client`, `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
+| `@hevy-mcp/operations`                  | `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`                          |
+| `@hevy-mcp/core`                        | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`                                                  |
+| Node adapter only                       | `hevy-mcp` only                                                                                                         |
+| Worker only (or `cloudflare.config.ts`) | `@hevy-mcp/worker` only                                                                                                 |
+| CLI only                                | `@chrisdoc/hevy-cli` only                                                                                               |
 
 ### Concrete examples
 
-| Change | Packages touched | Required changeset packages |
-|---|---|---|
-| Adding a new MCP tool | `packages/core` | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
-| Fixing a bug in the Hevy client wrapper | `packages/hevy-client` | All six packages |
-| Updating Worker OAuth logic | `packages/worker` | `@hevy-mcp/worker` only |
-| Adding a CLI subcommand | `packages/cli` | `@chrisdoc/hevy-cli` only |
-| Updating `cloudflare.config.ts` | (root, Worker release trigger) | `@hevy-mcp/worker` only |
+| Change                                  | Packages touched               | Required changeset packages                                            |
+| --------------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| Adding a new MCP tool                   | `packages/core`                | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
+| Fixing a bug in the Hevy client wrapper | `packages/hevy-client`         | All six packages                                                       |
+| Updating Worker OAuth logic             | `packages/worker`              | `@hevy-mcp/worker` only                                                |
+| Adding a CLI subcommand                 | `packages/cli`                 | `@chrisdoc/hevy-cli` only                                              |
+| Updating `cloudflare.config.ts`         | (root, Worker release trigger) | `@hevy-mcp/worker` only                                                |
 
 ### How it is enforced
 
@@ -216,8 +216,8 @@ All MCP tool handlers use **Zod schema inference** via the `InferToolParams` uti
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 const getRoutinesSchema = {
-    page: z.coerce.number().int().gte(1).default(1),
-    pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+	page: z.coerce.number().int().gte(1).default(1),
+	pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
 } as const;
 
 type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
@@ -239,11 +239,11 @@ Every MCP tool handler is wrapped with `withErrorHandling` from `packages/core/s
 
 ```typescript
 server.registerTool(
-    "get-routines",
-    { description: "...", inputSchema: z.object(getRoutinesSchema) },
-    withErrorHandling(async (args: GetRoutinesParams) => {
-        // handler body
-    }, "get-routines"),
+	"get-routines",
+	{ description: "...", inputSchema: z.object(getRoutinesSchema) },
+	withErrorHandling(async (args: GetRoutinesParams) => {
+		// handler body
+	}, "get-routines"),
 );
 ```
 
@@ -266,11 +266,11 @@ The adapter is **fail-closed**: if the private fields are absent (e.g., after an
 
 ## Related Documentation
 
-| Document | What it covers |
-|---|---|
-| [CONTRIBUTING.md](../CONTRIBUTING.md) | Development workflow, environment setup, testing lanes, PR requirements, and changeset rules |
-| [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) | Type safety patterns, `InferToolParams` usage, API client barrel imports, and response-formatter co-location |
-| [test-lanes.md](./test-lanes.md) | Testing strategy, lane ownership, and which lane covers which package or concern |
-| `deployment-modes.md` | *(forthcoming)* Detailed coverage of Node stdio, Node HTTP, Cloudflare Worker HTTP, and OAuth deployment modes |
+| Document                                       | What it covers                                                                                                 |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| [CONTRIBUTING.md](../CONTRIBUTING.md)          | Development workflow, environment setup, testing lanes, PR requirements, and changeset rules                   |
+| [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) | Type safety patterns, `InferToolParams` usage, API client barrel imports, and response-formatter co-location   |
+| [test-lanes.md](./test-lanes.md)               | Testing strategy, lane ownership, and which lane covers which package or concern                               |
+| `deployment-modes.md`                          | _(forthcoming)_ Detailed coverage of Node stdio, Node HTTP, Cloudflare Worker HTTP, and OAuth deployment modes |
 
 For the machine-readable source of truth on CI validation, see [`repository/validation-lanes.json`](../repository/validation-lanes.json) [[32]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L1-L15), which defines all blocking and informational lanes, runtime matrices, and aggregate workflows used by CI and pre-push hooks.
