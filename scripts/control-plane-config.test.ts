@@ -26,16 +26,12 @@ const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
 const inferredTargets = [
 	"check:control-plane",
 	"check:boundaries",
-	"check:exports",
-	"check:publint",
-	"check:package-changesets",
 	"check",
 	"check:types",
 	"check:changeset",
 	"check:server-manifest",
 	"build",
 	"build:client",
-	"sync:server-manifest",
 	"test:unit",
 	"test:release-unit",
 	"test:mcp",
@@ -45,17 +41,52 @@ const inferredTargets = [
 	"test:stdio",
 	"test:worker",
 	"test:worker-http",
+	"test:worker-http:live",
 	"test:pack",
 	"test:cli",
 	"test:pack:cli",
 	"test:nightly",
 	"test:live",
-	"test:worker-http:live",
 	"measure:tokens",
 	"worker:dry-run",
-	"test:coverage",
 	"test:performance",
 ] as const;
+
+const baselineRootScriptCount = 58;
+const maximumRootScriptCount = Math.floor(baselineRootScriptCount * 0.7);
+const removedRootScripts = [
+	"inspect:npm",
+	"update-dependencies",
+	"test:coverage",
+	"build:standalone",
+	"check:exports",
+	"check:package-changesets",
+	"sync:server-manifest",
+	"check:dependency-cruiser",
+	"nx:affected",
+	"nx:control-plane",
+	"version:patch",
+	"version:minor",
+	"version:major",
+	"commit",
+	"check:publint",
+	"version:changesets",
+	"release",
+	"worker:deploy",
+] as const;
+
+const projectOwnedCommands = {
+	"check:exports": "node scripts/check-package-exports.mjs",
+	"check:package-changesets": "node scripts/check-package-changesets.mjs",
+	"sync:server-manifest": "node scripts/server-manifest.mjs sync",
+	"check:publint":
+		"publint run --strict --pack npm packages/node && publint run --strict --pack npm packages/cli",
+	"version:changesets":
+		"changeset version && node scripts/server-manifest.mjs sync",
+	release: "changeset publish",
+	"worker:deploy":
+		"cross-env WRANGLER_MODE=production wrangler deploy --x-new-config --env production",
+} as const;
 
 const aggregateTargets = [
 	"check:control-plane",
@@ -130,7 +161,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		]);
 	});
 
-	it("infers root npm targets without duplicating command bodies", async () => {
+	it("keeps contributor-facing targets as inferred root npm scripts", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
 		) as {
@@ -148,6 +179,47 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			expect(packageJson.scripts[target]).toEqual(expect.any(String));
 			expect(project.targets[target]?.executor).toBeUndefined();
 			expect(project.targets[target]?.options?.command).toBeUndefined();
+		}
+	});
+
+	it("reduces the root script surface by at least thirty percent", async () => {
+		const packageJson = JSON.parse(
+			await readFile(resolve(root, "package.json"), "utf8"),
+		) as { scripts: Record<string, string> };
+
+		expect(Object.keys(packageJson.scripts).length).toBeLessThanOrEqual(
+			maximumRootScriptCount,
+		);
+		expect(maximumRootScriptCount).toBe(40);
+		for (const script of removedRootScripts)
+			expect(packageJson.scripts).not.toHaveProperty(script);
+	});
+
+	it("keeps internal commands on explicit Nx targets", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as {
+			targets: Record<
+				string,
+				{
+					cache?: boolean;
+					executor?: string;
+					inputs?: string[];
+					options?: { command?: string };
+					outputs?: string[];
+				}
+			>;
+		};
+		const packageJson = JSON.parse(
+			await readFile(resolve(root, "package.json"), "utf8"),
+		) as { scripts: Record<string, string> };
+
+		for (const [target, command] of Object.entries(projectOwnedCommands)) {
+			expect(packageJson.scripts).not.toHaveProperty(target);
+			expect(project.targets[target]).toMatchObject({
+				executor: "nx:run-commands",
+				options: { command },
+			});
 		}
 	});
 
@@ -190,6 +262,8 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				{
 					cache?: boolean;
 					dependsOn?: string[];
+					executor?: string;
+					options?: { command?: string };
 					parallelism?: boolean;
 				}
 			>;
@@ -198,27 +272,27 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			await readFile(resolve(root, "package.json"), "utf8"),
 		) as { scripts: Record<string, string> };
 
-		expect(packageJson.scripts["check:publint"]).toBe(
-			"publint run --strict --pack npm packages/node && publint run --strict --pack npm packages/cli",
-		);
+		expect(packageJson.scripts).not.toHaveProperty("check:publint");
 		expect(project.targets["check:publint"]).toMatchObject({
+			executor: "nx:run-commands",
+			options: {
+				command:
+					"publint run --strict --pack npm packages/node && publint run --strict --pack npm packages/cli",
+			},
 			cache: false,
 			dependsOn: ["build", "@chrisdoc/hevy-cli:build"],
 			parallelism: false,
 		});
 	});
 
-	it("leaves dependency-cruiser as an inferred npm target", async () => {
-		const project = JSON.parse(
-			await readFile(resolve(root, "project.json"), "utf8"),
-		) as { targets: Record<string, unknown> };
+	it("keeps dependency-cruiser inside the package-boundary check", async () => {
 		const packageJson = JSON.parse(
 			await readFile(resolve(root, "package.json"), "utf8"),
 		) as { scripts: Record<string, string> };
 
-		expect(project.targets["dependency-cruiser"]).toBeUndefined();
-		expect(packageJson.scripts["check:dependency-cruiser"]).toEqual(
-			expect.any(String),
+		expect(packageJson.scripts).not.toHaveProperty("check:dependency-cruiser");
+		expect(packageJson.scripts["check:boundaries"]).toBe(
+			"node scripts/check-package-boundaries.mjs && depcruise --config .dependency-cruiser.cjs packages",
 		);
 	});
 
@@ -234,11 +308,9 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		expect(aggregate).toHaveLength(8);
 		expect(aggregate).not.toContain("check:package-changesets");
 		expect(packageJson.scripts["check:changeset"]).toBe(
-			"env -u GIT_DIR -u GIT_WORK_TREE changeset status --since=origin/main && env -u GIT_DIR -u GIT_WORK_TREE npm run check:package-changesets -- --since origin/main",
+			"env -u GIT_DIR -u GIT_WORK_TREE changeset status --since=origin/main && env -u GIT_DIR -u GIT_WORK_TREE node scripts/check-package-changesets.mjs --since origin/main",
 		);
-		expect(packageJson.scripts["check:changeset"]).toContain(
-			"npm run check:package-changesets",
-		);
+		expect(packageJson.scripts["check:changeset"]).not.toContain("npm run");
 	});
 
 	it("declares the control-plane aggregate as a no-op target", async () => {
@@ -515,9 +587,6 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			"sync:server-manifest",
 			"version:changesets",
 			"version",
-			"version:major",
-			"version:minor",
-			"version:patch",
 			"release",
 			"worker:deploy",
 		]) {

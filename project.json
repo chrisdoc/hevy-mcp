@@ -15,15 +15,27 @@
 			"inputs": ["boundaryInputs", "controlPlaneInputs"]
 		},
 		"check:exports": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "node scripts/check-package-exports.mjs"
+			},
 			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
 		},
 		"check:publint": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "publint run --strict --pack npm packages/node && publint run --strict --pack npm packages/cli"
+			},
 			"cache": false,
 			"dependsOn": ["build", "@chrisdoc/hevy-cli:build"],
 			"parallelism": false,
 			"inputs": ["validationInputs"]
 		},
 		"check:package-changesets": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "node scripts/check-package-changesets.mjs"
+			},
 			"cache": false,
 			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
 		},
@@ -170,6 +182,10 @@
 			"inputs": ["validationInputs"]
 		},
 		"sync:server-manifest": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "node scripts/server-manifest.mjs sync"
+			},
 			"cache": false,
 			"outputs": [
 				"{workspaceRoot}/server.json",
@@ -177,14 +193,6 @@
 				"{workspaceRoot}/packages/node/server.json"
 			],
 			"inputs": ["manifestInputs"]
-		},
-		"test:coverage": {
-			"cache": false,
-			"outputs": [
-				"{workspaceRoot}/coverage/unit",
-				"{workspaceRoot}/coverage/mocked"
-			],
-			"inputs": ["validationInputs"]
 		},
 		"test:performance": {
 			"cache": false,
@@ -210,6 +218,10 @@
 			"inputs": ["validationInputs"]
 		},
 		"version:changesets": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "changeset version && node scripts/server-manifest.mjs sync"
+			},
 			"cache": false,
 			"inputs": ["packageManifestInputs", "{workspaceRoot}/.changeset/**/*.md"]
 		},
@@ -217,14 +229,22 @@
 			"cache": false,
 			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
 		},
-		"version:major": { "cache": false },
-		"version:minor": { "cache": false },
-		"version:patch": { "cache": false },
 		"release": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "changeset publish"
+			},
 			"cache": false,
 			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
 		},
-		"worker:deploy": { "cache": false },
+		"worker:deploy": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "cross-env WRANGLER_MODE=production wrangler deploy --x-new-config --env production"
+			},
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
 		"control-plane": {
 			"executor": "nx:noop",
 			"dependsOn": [
