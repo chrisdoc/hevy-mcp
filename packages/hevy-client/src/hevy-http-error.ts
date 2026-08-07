@@ -25,6 +25,39 @@ export interface HevyHttpErrorOptions {
 	outcome?: HevyExecutionOutcome;
 }
 
+const MAX_RESPONSE_ERROR_MESSAGE_LENGTH = 2_048;
+
+function normalizeResponseErrorMessage(value: unknown): string | undefined {
+	if (typeof value !== "string") return undefined;
+	const message = value.trim();
+	return message.length > 0
+		? message.slice(0, MAX_RESPONSE_ERROR_MESSAGE_LENGTH)
+		: undefined;
+}
+
+/** Extract only a bounded message field from an API error response. */
+export function getHevyResponseErrorMessage(
+	error: unknown,
+): string | undefined {
+	if (!error || typeof error !== "object") return undefined;
+	const candidate = error as { data?: unknown; name?: unknown };
+	if (candidate.name !== "HevyHttpError") return undefined;
+	const data = candidate.data;
+	const direct = normalizeResponseErrorMessage(data);
+	if (direct) return direct;
+	if (!data || typeof data !== "object" || Array.isArray(data)) {
+		return undefined;
+	}
+
+	for (const key of ["error", "message", "detail"] as const) {
+		const message = normalizeResponseErrorMessage(
+			(data as Record<string, unknown>)[key],
+		);
+		if (message) return message;
+	}
+	return undefined;
+}
+
 export interface HevyExecutionMetadata {
 	phase?: HevyRequestPhase;
 	operationSafety?: HevyOperationSafety;

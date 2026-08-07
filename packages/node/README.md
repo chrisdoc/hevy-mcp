@@ -486,16 +486,18 @@ ten-character HMAC-SHA-256 pseudonym from it solely for cross-span
 correlation. The pseudonym is attached to spans only, never used as a metric
 dimension, and is not intended for per-user behavior histories.
 
-The privacy allowlist contains service/version/transport; fixed tool feature,
-read/write kind, operation, and short-lived tool name; bounded
-outcome/error/count/retry/duration/session/cache/workflow values; normalized API
-method/endpoint/status; shape-only key names, presence, count, and boolean
-fields; sanitized client/protocol tokens; and the span-only pseudonym. It
-explicitly prohibits raw prompts, tool argument values, tool result content,
-request bodies, API keys, raw identifiers/queries/exact dates,
-workout/routine/folder/template/body-measurement content, names/titles/
-descriptions/notes, measurement values, arbitrary client metadata, and
-unnormalized endpoint paths.
+Structured tool telemetry remains bounded: it contains service/version/
+transport; fixed tool feature, read/write kind, operation, and short-lived tool
+name; bounded outcome/error/count/retry/duration/session/cache/workflow values;
+normalized API method/endpoint/status; shape-only key names, presence, count,
+and boolean fields; sanitized client/protocol tokens; and the span-only
+pseudonym. Process and server-lifecycle exception events intentionally retain
+the original normalized type, up to 2 KiB of exception message, and up to 16
+KiB of stack for debugging. Hevy API failure spans also retain the bounded
+allowlisted response error message when the API returns one. Disable telemetry
+if that diagnostic detail is not acceptable. The exception/API adapter does
+not add raw prompts, tool argument values, tool result content, full
+request/response bodies, API keys, or authorization headers.
 
 ## Security and mutations
 

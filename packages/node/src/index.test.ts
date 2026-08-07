@@ -44,6 +44,7 @@ const testDoubles = vi.hoisted(() => {
 		installProcessExceptionTracking: vi.fn(() => vi.fn()),
 		flushTelemetry: vi.fn().mockResolvedValue(undefined),
 		recordTelemetryException: vi.fn(),
+		recordSentryTelemetryException: vi.fn(),
 		serverStartups: { add: vi.fn() },
 		installGracefulShutdown: vi.fn(),
 		instrumentTransport: vi.fn(() => ({ kind: "stdio-transport" })),
@@ -75,6 +76,7 @@ vi.mock("./utils/telemetry.js", () => ({
 	serviceVersion: "3.4.1",
 	setTelemetryUser: testDoubles.setTelemetryUser,
 	recordTelemetryException: testDoubles.recordTelemetryException,
+	recordSentryTelemetryException: testDoubles.recordSentryTelemetryException,
 	installProcessExceptionTracking: testDoubles.installProcessExceptionTracking,
 }));
 
@@ -488,6 +490,7 @@ describe("Node package entrypoint", () => {
 			expect.objectContaining({
 				"error.type": "MCP_SERVER_BUILD_ERROR",
 				"error.category": "McpServerBuildFailure",
+				"mcp.termination.reason": "startup_failure",
 			}),
 			testDoubles.span,
 		);
@@ -641,6 +644,14 @@ describe("Node package entrypoint", () => {
 
 		expect(testDoubles.recordSessionTermination).toHaveBeenCalledWith(
 			"connect_failure",
+		);
+		expect(testDoubles.recordTelemetryException).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				"mcp.failure.phase": "connect",
+				"mcp.termination.reason": "connect_failure",
+			}),
+			testDoubles.span,
 		);
 		expect(testDoubles.span.setStatus).toHaveBeenCalledWith({
 			code: SpanStatusCode.ERROR,
