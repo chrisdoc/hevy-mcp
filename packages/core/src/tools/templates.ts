@@ -2,7 +2,6 @@ import { z } from "zod";
 // Import types from generated client
 import type {
 	GetV1ExerciseHistoryExercisetemplateid200,
-	GetV1ExerciseTemplates200,
 	GetV1ExerciseTemplatesExercisetemplateid200,
 } from "@hevy-mcp/hevy-client/types";
 import type { ToolRuntime } from "./tool-runtime.js";
@@ -10,7 +9,6 @@ import {
 	createExerciseTemplateResponse,
 	exerciseHistoryResponse,
 	exerciseTemplateResponse,
-	exerciseTemplatesResponse,
 	searchExerciseTemplatesResponse,
 } from "../utils/response-contracts.js";
 import { createSafeErrorDiagnostic } from "../utils/safe-error-diagnostic.js";
@@ -20,21 +18,9 @@ import {
 } from "../utils/tool-annotations.js";
 
 import { type InferToolParams } from "../utils/tool-helpers.js";
-import {
-	exerciseTemplateInputShape,
-	nonEmptyId,
-	paginationShape,
-} from "./input-schemas.js";
+import { exerciseTemplateInputShape, nonEmptyId } from "./input-schemas.js";
 import { muscleGroupEnum } from "../utils/schemas.js";
-import {
-	isExpectedListPageNotFound,
-	isExpectedReadNotFound,
-} from "../utils/hevy-error-policy.js";
-
-const getExerciseTemplatesSchema = paginationShape({
-	defaultPageSize: 5,
-	maxPageSize: 100,
-});
+import { isExpectedReadNotFound } from "../utils/hevy-error-policy.js";
 
 const getExerciseTemplateSchema = {
 	exercise_template_id: nonEmptyId,
@@ -59,39 +45,6 @@ const searchExerciseTemplatesSchema = {
 	primary_muscle_group: muscleGroupEnum.optional(),
 	refresh: z.boolean().optional().default(false),
 } as const;
-const getExerciseTemplatesDefinition = {
-	name: "get-exercise-templates",
-	feature: "templates" as const,
-	operation: "list" as const,
-	description:
-		"Read-only. Pages through exercise templates. Use search-exercise-templates when a title is known.",
-	inputSchema: getExerciseTemplatesSchema,
-	outputSchema: exerciseTemplatesResponse.outputSchema,
-	annotations: readOnlyAnnotations("Get Exercise Templates"),
-	kind: "read" as const,
-	responseContract: exerciseTemplatesResponse,
-	execute: async (
-		runtime: ToolRuntime,
-		args: InferToolParams<typeof getExerciseTemplatesSchema>,
-	) => {
-		const { page, page_size } = args;
-		try {
-			const data: GetV1ExerciseTemplates200 = await runtime
-				.getClient()
-				.getExerciseTemplates({ page, pageSize: page_size });
-			return {
-				items: data?.exercise_templates ?? [],
-				page,
-				pageCount: data?.page_count,
-			};
-		} catch (error) {
-			if (isExpectedListPageNotFound(error, page)) {
-				return { items: [], page, expected404Outcome: "end_of_list" };
-			}
-			throw error;
-		}
-	},
-};
 
 const getExerciseTemplateDefinition = {
 	name: "get-exercise-template",
@@ -233,7 +186,6 @@ const searchExerciseTemplatesDefinition = {
 
 /** Ordered exercise-template tools for composition by the shared server. */
 export const templateToolDefinitions = [
-	getExerciseTemplatesDefinition,
 	getExerciseTemplateDefinition,
 	getExerciseHistoryDefinition,
 	createExerciseTemplateDefinition,

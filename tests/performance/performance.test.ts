@@ -128,9 +128,7 @@ async function runToolsListScenario() {
 			try {
 				const result = await harness.client.listTools();
 				expect(result.tools.length).toBeGreaterThan(0);
-				expect(result.tools.map(({ name }) => name)).toContain(
-					"get-workout-count",
-				);
+				expect(result.tools.map(({ name }) => name)).toContain("get-workouts");
 				state.completedIterations += 1;
 			} catch (error) {
 				recordFailure(state, iteration, "iteration", error);
@@ -162,13 +160,18 @@ async function runRepresentativeReadScenario() {
 			) {
 				const startedAt = performance.now();
 				try {
+					const id = `representative-${iteration}`;
 					const result = await callPerformanceTool(
 						harness.client,
-						"get-workout-count",
-						{},
+						"get-workout",
+						{ workout_id: id },
 					);
-					expect(result.structuredContent).toEqual({
-						workout_count: iteration,
+					expect(result.structuredContent).toMatchObject({
+						workout: {
+							id,
+							title: `Performance Workout ${id}`,
+							description: "Deterministic child-local fixture",
+						},
 					});
 					state.completedIterations += 1;
 				} catch (error) {
@@ -245,13 +248,18 @@ async function runSequentialScenario() {
 			for (let iteration = 1; iteration <= SEQUENTIAL_CALLS; iteration += 1) {
 				const startedAt = performance.now();
 				try {
+					const id = `sequential-${iteration}`;
 					const result = await callPerformanceTool(
 						harness.client,
-						"get-workout-count",
-						{},
+						"get-workout",
+						{ workout_id: id },
 					);
-					expect(result.structuredContent).toEqual({
-						workout_count: iteration,
+					expect(result.structuredContent).toMatchObject({
+						workout: {
+							id,
+							title: `Performance Workout ${id}`,
+							description: "Deterministic child-local fixture",
+						},
 					});
 					state.completedIterations += 1;
 				} catch (error) {

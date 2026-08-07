@@ -40,15 +40,11 @@ Targets are advisory except the enforced total-token budget.
 | `get-body-measurements`     |      372 |     372 |     0 |
 | `get-exercise-history`      |      247 |     247 |     0 |
 | `get-exercise-template`     |      172 |     172 |     0 |
-| `get-exercise-templates`    |      254 |     254 |     0 |
 | `get-routine`               |      314 |     314 |     0 |
 | `get-routine-folder`        |      142 |     142 |     0 |
-| `get-routine-folders`       |      224 |     224 |     0 |
 | `get-routines`              |      277 |     277 |     0 |
 | `get-training-summary`      |      624 |     624 |     0 |
-| `get-user-info`             |      133 |     133 |     0 |
 | `get-workout`               |      322 |     322 |     0 |
-| `get-workout-count`         |      109 |     109 |     0 |
 | `get-workout-events`        |      499 |     499 |     0 |
 | `get-workouts`              |      273 |     273 |     0 |
 | `replace-workout-exercises` |      416 |     416 |     0 |
@@ -89,14 +85,10 @@ Targets are advisory except the enforced total-token budget.
 | `get-routines`              |      5 |            23 |            62 |            160 |            19 |   277 |          3.49% |
 | `get-workouts`              |      5 |            25 |            47 |            169 |            19 |   273 |          3.44% |
 | `search-exercise-templates` |      7 |            25 |           113 |             86 |            19 |   258 |          3.25% |
-| `get-exercise-templates`    |      7 |            21 |            62 |            137 |            19 |   254 |           3.2% |
 | `get-exercise-history`      |      6 |            22 |            58 |            134 |            19 |   247 |          3.11% |
 | `update-workout`            |      5 |            17 |           173 |              0 |            31 |   232 |          2.92% |
-| `get-routine-folders`       |      7 |            15 |            62 |            112 |            20 |   224 |          2.82% |
 | `get-exercise-template`     |      6 |            23 |            33 |             83 |            19 |   172 |          2.16% |
 | `get-routine-folder`        |      6 |            22 |            31 |             56 |            19 |   142 |          1.79% |
-| `get-user-info`             |      5 |            20 |            14 |             67 |            19 |   133 |          1.67% |
 | `create-routine-folder`     |      6 |            15 |            50 |              0 |            32 |   109 |          1.37% |
-| `get-workout-count`         |      6 |            20 |            14 |             42 |            19 |   109 |          1.37% |
 
 Per-component counts are diagnostic and non-additive because keys and separators live in complete tool objects. Per-tool counts encode each complete tool object independently. The total encodes the complete `{ tools }` envelope, so punctuation and separators mean the per-tool values need not sum exactly to the total.

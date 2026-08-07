@@ -143,7 +143,7 @@ The lane records exactly five stable scenarios:
 
 1. `startup-initialization` — 10 process launches through MCP initialize.
 2. `mcp-tools-list` — 20 MCP `tools/list` calls on one initialized process.
-3. `representative-mocked-read` — 20 child-mocked `get-workout-count` calls.
+3. `representative-mocked-read` — 20 child-mocked `get-workout` calls.
 4. `concurrent-20-call-burst` — one burst of 20 correlated mocked workout reads.
 5. `sequential-100-mocked-reads` — 100 ordered mocked reads.
 

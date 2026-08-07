@@ -183,7 +183,7 @@ describe("createToolRuntime observation scope", () => {
 
 		const result = await runtime.createHandler(async () => {
 			throw new Error(secret);
-		}, "get-user-info")({});
+		}, "get-workouts")({});
 
 		expect(result).toMatchObject({ isError: true });
 		expect(finish).toHaveBeenCalledWith(

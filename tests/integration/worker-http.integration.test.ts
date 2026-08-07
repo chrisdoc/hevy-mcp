@@ -574,14 +574,14 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		try {
 			await client.connect(transport);
 			const tools = await client.listTools();
-			expect(tools.tools.map((tool) => tool.name)).toContain("get-user-info");
+			expect(tools.tools.map((tool) => tool.name)).toContain("get-workouts");
 
 			const requestsBeforeToolCall = hevyRequests.length;
 			const result = await client.callTool({
-				name: "get-user-info",
-				arguments: {},
+				name: "get-workouts",
+				arguments: { page: 1, page_size: 1 },
 			});
-			expect(JSON.stringify(result)).toContain("fake-user-id");
+			expect(JSON.stringify(result)).toContain("worker-workout-1");
 			expect(hevyRequests.length - requestsBeforeToolCall).toBe(2);
 			expect(transport.sessionId).toBeUndefined();
 			expect(
@@ -625,11 +625,6 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 					field: "routines",
 					name: "get-routines",
 				},
-				{
-					expectedId: "worker-template-1",
-					field: "exercise_templates",
-					name: "get-exercise-templates",
-				},
 			] as const;
 
 			for (const call of calls) {
@@ -648,17 +643,6 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 				expect(JSON.parse(payload.text)).toEqual(payload.items);
 			}
 
-			const folderResult = await client.callTool({
-				name: "get-routine-folders",
-				arguments: { page: 1, page_size: 1 },
-			});
-			const folderPayload = requireToolListPayload(
-				folderResult,
-				"routine_folders",
-			);
-			expect(folderPayload.firstItem.id).toBe(10);
-			expect(typeof folderPayload.firstItem.id).toBe("number");
-			expect(JSON.parse(folderPayload.text)).toEqual(folderPayload.items);
 			expect(transport.sessionId).toBeUndefined();
 		} finally {
 			await client.close();
