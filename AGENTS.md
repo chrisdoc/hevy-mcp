@@ -45,6 +45,19 @@ Git hooks enabled. Fix hook failures instead of bypassing them.
 - Use the GitHub MCP server for GitHub operations. Use `gh` only when the
   GitHub MCP server cannot complete the operation because of a token problem.
 
+## Runtime and package manager
+
+Use mise for Node.js and npm. The repository pins Node.js 24 and npm 12 in
+`mise.toml`; install the pinned tools before running development commands:
+
+```bash
+mise install
+```
+
+Run Node.js and npm commands through mise so they do not fall back to system
+installations. Use `mise exec -- npm ...`, `mise exec -- npx ...`, and
+`mise exec -- node ...` in setup, validation, and troubleshooting commands.
+
 ## Repository shape and boundaries
 
 The root is a private workspace orchestrator and has no runtime `src/` tree.
@@ -75,10 +88,10 @@ Treat every file under `packages/hevy-client/src/generated/` as generated
 output. Change the OpenAPI source or the Kubb configuration, then regenerate:
 
 ```bash
-npm run openapi          # refreshes the upstream spec; needs network access
-npm run build:client
-npm run check:openapi
-npm run check:generated
+mise exec -- npm run openapi          # refreshes the upstream spec; needs network access
+mise exec -- npm run build:client
+mise exec -- npm run check:openapi
+mise exec -- npm run check:generated
 ```
 
 Review the complete generated diff. Consumers use the curated
@@ -165,12 +178,12 @@ For source changes, run the narrow relevant lane and the unit suite. Before a
 pull request, use the repository baseline from `CONTRIBUTING.md`:
 
 ```bash
-npm run check
-npm run check:types
-npm run build
-npm run test:pr
-npm run test:performance
-npm run check:changeset
+mise exec -- npm run check
+mise exec -- npm run check:types
+mise exec -- npm run build
+mise exec -- npm run test:pr
+mise exec -- npm run test:performance
+mise exec -- npm run check:changeset
 ```
 
 Useful focused checks include:
