@@ -27,6 +27,22 @@ export const sessionEnded = meter.createCounter("mcp.session.ended", {
 	description: "Total MCP sessions ended",
 });
 
+/** HTTP session admission rejections grouped by bounded reason. */
+export const httpAdmissionRejections = meter.createCounter(
+	"mcp.http.admission_rejections",
+	{
+		description: "Total Node HTTP admission rejections",
+	},
+);
+
+/** HTTP sessions evicted by bounded runtime policy. */
+export const httpSessionEvictions = meter.createCounter(
+	"mcp.http.session_evictions",
+	{
+		description: "Total Node HTTP session evictions",
+	},
+);
+
 /** Total thrown MCP tool errors grouped by name, taxonomy, and error type. */
 export const toolErrors = meter.createCounter("mcp.tool.errors", {
 	description: "Total MCP tool errors",
