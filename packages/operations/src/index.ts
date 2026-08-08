@@ -1,6 +1,8 @@
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import {
+	createRoutinesGetOperation,
 	createRoutinesListOperation,
+	type RoutinesGetOperation,
 	type RoutinesListOperation,
 } from "./routines.js";
 import {
@@ -9,9 +11,17 @@ import {
 } from "./workouts.js";
 
 export {
+	createRoutinesGetOperation,
 	createRoutinesListOperation,
+	isRoutinesGetNotFound,
 	isRoutinesListEndOfList,
+	routinesGetDescriptor,
 	routinesListDescriptor,
+	type RoutinesGetAdapter,
+	type RoutinesGetDescriptor,
+	type RoutinesGetInput,
+	type RoutinesGetOperation,
+	type RoutinesGetOutput,
 	type RoutinesListAdapter,
 	type RoutinesListDescriptor,
 	type RoutinesListInput,
@@ -31,6 +41,7 @@ export {
 
 export interface HevyOperations {
 	readonly routines: {
+		readonly get: RoutinesGetOperation;
 		readonly list: RoutinesListOperation;
 	};
 	readonly workouts: {
@@ -41,6 +52,7 @@ export interface HevyOperations {
 export function createOperations(client: HevyClient): HevyOperations {
 	return {
 		routines: {
+			get: createRoutinesGetOperation(client),
 			list: createRoutinesListOperation(client),
 		},
 		workouts: {
