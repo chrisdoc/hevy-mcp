@@ -123,28 +123,47 @@ async function createFixture(
 }
 
 describe("Nx and dependency-cruiser control-plane migration", () => {
-	it("scopes pull-request secrets to one build and reuses its artifacts", async () => {
+	it("scopes pull-request secrets to build steps and reuses their artifacts", async () => {
 		const workflow = await readFile(
 			resolve(root, ".github/workflows/build-and-test.yml"),
 			"utf8",
 		);
-		const build = workflow.slice(
-			workflow.indexOf("      - name: Run build"),
-			workflow.indexOf("      - name: Prepare shared package candidates"),
-		);
-		const prepare = workflow.slice(
-			workflow.indexOf("      - name: Prepare shared package candidates"),
+		const node26Build = workflow.slice(
+			workflow.indexOf("      - name: Run Node 26 build"),
 			workflow.indexOf("      - name: Run Node 24 validation graph"),
 		);
 		const node24 = workflow.slice(
 			workflow.indexOf("      - name: Run Node 24 validation graph"),
 			workflow.indexOf("      - name: Run Node 26 validation graph"),
 		);
+		const packageJob = workflow.slice(
+			workflow.indexOf("  package-performance:"),
+			workflow.indexOf("  docker:"),
+		);
+		const packageBuild = packageJob.slice(
+			packageJob.indexOf("      - name: Build package candidate"),
+			packageJob.indexOf("      - name: Prepare shared package candidates"),
+		);
+		const prepare = packageJob.slice(
+			packageJob.indexOf("      - name: Prepare shared package candidates"),
+			packageJob.indexOf("      - name: Run isolated performance validation"),
+		);
+		const packageValidation = packageJob.slice(
+			packageJob.indexOf("      - name: Run isolated performance validation"),
+			packageJob.indexOf("      - name: Upload performance summary"),
+		);
 
-		expect(build).toContain(
+		expect(node26Build).toContain("if: matrix.node-version == '26.x'");
+		expect(node26Build).toContain(
 			"SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}",
 		);
-		expect(build).toContain(
+		expect(node26Build).toContain(
+			"OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
+		);
+		expect(packageBuild).toContain(
+			"SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}",
+		);
+		expect(packageBuild).toContain(
 			"OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
 		);
 		expect(prepare).not.toContain("secrets.");
@@ -154,6 +173,10 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		);
 		expect(node24).not.toContain("secrets.");
 		expect(node24).toContain("--excludeTaskDependencies");
+		expect(packageValidation).not.toContain("secrets.");
+		expect(packageValidation).toContain(
+			"npx nx run repository:test:performance --excludeTaskDependencies",
+		);
 	});
 
 	it("declares the canonical model check as an explicit target", async () => {

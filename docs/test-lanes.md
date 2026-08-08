@@ -147,6 +147,9 @@ rejects `globalThis.fetch` so the background update check cannot contact npm.
 The expected blocked npm-registry URL is recorded; any other fetch target is an
 unexpected request and fails fixture verification. It never contacts live Hevy.
 Issue #609 remains responsible for the broader installed-tarball expansion.
+Hosted pull-request CI runs this lane in its own Node 24 job so concurrent unit,
+type, and bundle work cannot distort the latency samples; package smoke checks
+reuse that job's already-built release candidates after the measurements finish.
 
 The lane records exactly five stable scenarios:
 
