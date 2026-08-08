@@ -15,6 +15,11 @@ describe("Hevy 404 policy", () => {
 		expect(
 			isExpectedReadNotFound(error(404, "GET", "/v1/workouts/:workoutId")),
 		).toBe(true);
+		expect(
+			isExpectedReadNotFound(
+				error(404, "GET", "/v1/exercise_history/:exerciseTemplateId"),
+			),
+		).toBe(true);
 		expect(isExpectedReadNotFound(error(404, "GET", "/v1/routines"))).toBe(
 			false,
 		);

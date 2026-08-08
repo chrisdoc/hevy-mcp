@@ -25,6 +25,11 @@ import {
 	isHevyHttpError,
 } from "./hevy-http-error.js";
 import {
+	canonicalEndpointIdentity,
+	expectedGet404Outcome,
+	isTransientRetryFailure,
+} from "./endpoint-policy.js";
+import {
 	canRetryOperation,
 	commitStateFor,
 	createExecutionSignal,
@@ -135,33 +140,6 @@ export { HEVY_REQUEST_ABORTED_ERROR_CODE };
 export { HEVY_DEADLINE_EXCEEDED_ERROR_CODE };
 
 const RETRY_BACKOFF_MAX_MS = 5_000;
-const RETRYABLE_STATUS_CODES = new Set([408, 429]);
-const SAFE_STATIC_ENDPOINTS = new Set([
-	"/v1/body_measurements",
-	"/v1/exercise_templates",
-	"/v1/routine_folders",
-	"/v1/routines",
-	"/v1/user/info",
-	"/v1/workouts",
-	"/v1/workouts/count",
-	"/v1/workouts/events",
-]);
-const EXPECTED_READ_404_ENDPOINTS = new Set([
-	"/v1/body_measurements/:date",
-	"/v1/exercise_history/:exerciseTemplateId",
-	"/v1/exercise_templates/:exerciseTemplateId",
-	"/v1/routine_folders/:folderId",
-	"/v1/routines/:routineId",
-	"/v1/workouts/:workoutId",
-]);
-const EXPECTED_LIST_404_ENDPOINTS = new Set([
-	"/v1/body_measurements",
-	"/v1/exercise_templates",
-	"/v1/routine_folders",
-	"/v1/routines",
-	"/v1/workouts",
-	"/v1/workouts/events",
-]);
 export const SAFE_OBSERVATION_CODES = new Set([
 	"EAI_AGAIN",
 	"ECONNABORTED",
@@ -176,15 +154,6 @@ export const SAFE_OBSERVATION_CODES = new Set([
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 ]);
-const SAFE_DYNAMIC_ENDPOINTS = [
-	["/v1/body_measurements/", "/v1/body_measurements/:date"],
-	["/v1/exercise_history/", "/v1/exercise_history/:exerciseTemplateId"],
-	["/v1/exercise_templates/", "/v1/exercise_templates/:exerciseTemplateId"],
-	["/v1/routine_folders/", "/v1/routine_folders/:folderId"],
-	["/v1/routines/", "/v1/routines/:routineId"],
-	["/v1/workouts/", "/v1/workouts/:workoutId"],
-] as const;
-
 function normalizePositiveInteger(value: number | undefined, fallback: number) {
 	return value === undefined || !Number.isFinite(value) || value <= 0
 		? fallback
@@ -292,16 +261,7 @@ function getRequestContext(config: {
 	params?: unknown;
 }) {
 	const method = (config.method ?? "GET").toUpperCase();
-	const rawEndpoint = (config.url ?? "").split("?")[0] ?? "";
-	let endpoint = "unknown";
-	if (SAFE_STATIC_ENDPOINTS.has(rawEndpoint)) {
-		endpoint = rawEndpoint;
-	} else {
-		endpoint =
-			SAFE_DYNAMIC_ENDPOINTS.find(([prefix]) =>
-				rawEndpoint.startsWith(prefix),
-			)?.[1] ?? "unknown";
-	}
+	const endpoint = canonicalEndpointIdentity(config.url ?? "");
 	const page =
 		config.params !== null &&
 		typeof config.params === "object" &&
@@ -460,16 +420,7 @@ function getNetworkCode(error: unknown): string {
 }
 
 function isRetryable(error: HevyHttpError): boolean {
-	if (
-		error.code === HEVY_REQUEST_ABORTED_ERROR_CODE ||
-		error.code === HEVY_RETRY_EXHAUSTED_ERROR_CODE
-	)
-		return false;
-	return (
-		error.status === undefined ||
-		RETRYABLE_STATUS_CODES.has(error.status) ||
-		(error.status >= 500 && error.status <= 599)
-	);
+	return isTransientRetryFailure(error.status, error.code);
 }
 
 async function waitForRetry(
@@ -595,6 +546,32 @@ function applyExecutionMetadata(
 		safeToRetry,
 		outcome,
 	});
+}
+
+/** Rebind caller-supplied errors to the sanitized request identity. */
+function normalizeHevyHttpError(
+	error: HevyHttpError,
+	method: string,
+	endpoint: string,
+): HevyHttpError {
+	const normalized = new HevyHttpError(error.message, {
+		status: error.status,
+		statusText: error.statusText,
+		data: error.data,
+		headers: error.headers,
+		method,
+		endpoint,
+		code: error.code,
+		cause: error.cause,
+		phase: error.phase,
+		operationSafety: error.operationSafety,
+		commitState: error.commitState,
+		safeToRetry: error.safeToRetry,
+		outcome: error.outcome,
+	});
+	normalized.hevyRetryCount = error.hevyRetryCount;
+	normalized.hevyRetryExhausted = error.hevyRetryExhausted;
+	return normalized;
 }
 
 function requestOptions(
@@ -789,7 +766,7 @@ function transitionAfterAttemptFailure(
 	);
 	const { deadlineExceeded, canceled, attemptTimedOut } = failure;
 	const error = isHevyHttpError(options.cause)
-		? options.cause
+		? normalizeHevyHttpError(options.cause, options.method, options.endpoint)
 		: createExecutionError({
 				method: options.method,
 				endpoint: options.endpoint,
@@ -823,18 +800,12 @@ function transitionAfterAttemptFailure(
 				? "cancelled"
 				: "terminal_failure",
 	);
-	const expectedReason =
-		error.status === 404 &&
-		options.method === "GET" &&
-		EXPECTED_READ_404_ENDPOINTS.has(options.endpoint)
-			? "not_found"
-			: error.status === 404 &&
-				  options.method === "GET" &&
-				  options.page !== undefined &&
-				  options.page > 1 &&
-				  EXPECTED_LIST_404_ENDPOINTS.has(options.endpoint)
-				? "end_of_list"
-				: undefined;
+	const expectedReason = expectedGet404Outcome(
+		options.endpoint,
+		options.method,
+		error.status,
+		options.page,
+	);
 	const retryExhausted =
 		safeToRetry && options.retryCount >= options.maxGetRetries;
 	if (retryExhausted) {

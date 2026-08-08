@@ -117,7 +117,7 @@ describe("createNodeHevyClientOptions", () => {
 		);
 	});
 
-	it("normalizes dynamic endpoint labels without hiding trace diagnostics", () => {
+	it("normalizes dynamic endpoint labels without exposing IDs", () => {
 		const options = createNodeHevyClientOptions();
 
 		observe(options, {
@@ -131,7 +131,7 @@ describe("createNodeHevyClientOptions", () => {
 
 		expect(testDoubles.startSpan).toHaveBeenCalledWith("hevy.api.GET", {
 			attributes: expect.objectContaining({
-				"hevy.api.endpoint": "/v1/workouts/workout-secret",
+				"hevy.api.endpoint": "/v1/workouts/:workoutId",
 			}),
 		});
 		expect(testDoubles.apiCallsAdd).toHaveBeenCalledWith(
