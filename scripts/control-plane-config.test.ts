@@ -274,13 +274,15 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		) as { scripts: Record<string, string> };
 
 		const expected = {
-			"check:publint": "node scripts/check-candidate-publint.mjs",
-			"test:pack": "node tests/package/npm-pack-smoke.mjs",
+			"check:publint": "mise exec -- node scripts/check-candidate-publint.mjs",
+			"test:pack": "mise exec -- node tests/package/npm-pack-smoke.mjs",
 			"test:pack:cli":
-				"cross-env FORCE_COLOR=0 node packages/cli/tests/npm-pack-smoke.mjs",
+				"cross-env FORCE_COLOR=0 mise exec -- node packages/cli/tests/npm-pack-smoke.mjs",
 		};
 		for (const [target, command] of Object.entries(expected)) {
-			expect(packageJson.scripts[target]).toBe(`nx run repository:${target}`);
+			expect(packageJson.scripts[target]).toBe(
+				`mise exec -- npx nx run repository:${target}`,
+			);
 			expect(project.targets[target]).toMatchObject({
 				cache: false,
 				dependsOn: ["pack:artifacts"],
@@ -306,10 +308,10 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		);
 
 		expect(packageJson.scripts["test:unit"]).toBe(
-			"node scripts/run-vitest-lane.mjs unit",
+			"mise exec -- node scripts/run-vitest-lane.mjs unit",
 		);
 		expect(packageJson.scripts["test:mcp"]).toBe(
-			"node scripts/run-vitest-lane.mjs mocked",
+			"mise exec -- node scripts/run-vitest-lane.mjs mocked",
 		);
 		for (const target of ["test:unit", "test:mcp"]) {
 			expect(project.targets[target]?.inputs).toContainEqual({
@@ -389,7 +391,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		]);
 		expect(pack?.cache).toBe(false);
 		expect(pack?.options?.command).toBe(
-			"node scripts/pack-release-candidates.mjs",
+			"mise exec -- node scripts/pack-release-candidates.mjs",
 		);
 		expect(pack?.options?.commands).toBeUndefined();
 	});
@@ -413,14 +415,14 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		) as { scripts: Record<string, string> };
 
 		expect(packageJson.scripts["test:performance"]).toBe(
-			"nx run repository:test:performance",
+			"mise exec -- npx nx run repository:test:performance",
 		);
 		expect(project.targets["test:performance"]).toMatchObject({
 			cache: false,
 			dependsOn: ["build"],
 			executor: "nx:run-commands",
 			options: {
-				command: "vitest run tests/performance/performance.test.ts",
+				command: "mise exec -- vitest run tests/performance/performance.test.ts",
 			},
 		});
 	});
@@ -436,7 +438,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 						cache?: boolean;
 						inputs?: TaskInput[];
 						dependsOn?: string[];
-				  }>
+					}>
 			>;
 		};
 		const project = JSON.parse(
