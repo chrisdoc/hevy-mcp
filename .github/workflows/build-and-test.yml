@@ -37,6 +37,11 @@ jobs:
         node-version:
           - "24.x"
           - "26.x"
+    # Nx 23 reads these self-hosted names. Require both repository secrets so
+    # fork PRs, or partially configured environments, use only local caching.
+    env:
+      NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_TOKEN || '' }}
+      NX_SELF_HOSTED_REMOTE_CACHE_SERVER: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_SERVER || '' }}
 
     steps:
       - name: Checkout repository
@@ -125,6 +130,11 @@ jobs:
   package-performance:
     name: Package and performance (Node 24.x)
     runs-on: ubuntu-24.04
+    # Nx 23 reads these self-hosted names. Require both repository secrets so
+    # fork PRs, or partially configured environments, use only local caching.
+    env:
+      NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_TOKEN || '' }}
+      NX_SELF_HOSTED_REMOTE_CACHE_SERVER: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_SERVER || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
