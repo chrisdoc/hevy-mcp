@@ -1,5 +1,9 @@
 import type { CacheObservationMetadata, CacheObserver } from "@hevy-mcp/core";
-import { SAFE_OBSERVATION_CODES } from "@hevy-mcp/hevy-client";
+import {
+	diagnosticEndpointIdentity,
+	metricEndpointIdentity,
+	SAFE_OBSERVATION_CODES,
+} from "@hevy-mcp/hevy-client";
 import type {
 	HevyClientOptions,
 	HevyRequestObservation,
@@ -16,34 +20,6 @@ import {
 import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { tracer } from "./telemetry.js";
 
-const SAFE_STATIC_ENDPOINTS = new Set([
-	"/v1/body_measurements",
-	"/v1/exercise_templates",
-	"/v1/routine_folders",
-	"/v1/routines",
-	"/v1/user/info",
-	"/v1/workouts",
-	"/v1/workouts/count",
-	"/v1/workouts/events",
-]);
-const SAFE_DYNAMIC_ENDPOINTS = [
-	["/v1/body_measurements/", "/v1/body_measurements/:date"],
-	["/v1/exercise_history/", "/v1/exercise_history/:exerciseTemplateId"],
-	["/v1/exercise_templates/", "/v1/exercise_templates/:exerciseTemplateId"],
-	["/v1/routine_folders/", "/v1/routine_folders/:folderId"],
-	["/v1/routines/", "/v1/routines/:routineId"],
-	["/v1/workouts/", "/v1/workouts/:workoutId"],
-] as const;
-
-function normalizeHevyMetricEndpoint(endpoint: string): string {
-	const path = endpoint.split("?")[0] ?? "";
-	if (SAFE_STATIC_ENDPOINTS.has(path)) return path;
-	return (
-		SAFE_DYNAMIC_ENDPOINTS.find(([prefix]) => path.startsWith(prefix))?.[1] ??
-		"unknown"
-	);
-}
-
 function safeErrorAttributes(observation: HevyRequestObservation): {
 	error_category?: string;
 	error_code?: string;
@@ -58,11 +34,14 @@ function safeErrorAttributes(observation: HevyRequestObservation): {
 
 function startApiSpan(start: HevyRequestStart) {
 	const sessionId = getCurrentMcpSessionId();
+	const diagnosticEndpoint = diagnosticEndpointIdentity(start.endpoint);
 	return tracer.startSpan(`hevy.api.${start.method}`, {
 		attributes: {
 			"mcp.span.category": "api",
 			"http.request.method": start.method,
-			"hevy.api.endpoint": start.endpoint,
+			...(diagnosticEndpoint
+				? { "hevy.api.endpoint": diagnosticEndpoint }
+				: {}),
 			"hevy.api.retry_count_bucket": bucketCount(start.retryCount),
 			"mcp.transport": getCurrentMcpTransport(),
 			...(sessionId ? { "mcp.session.id": sessionId } : {}),
@@ -126,7 +105,10 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 		onRequestComplete(observation) {
 			const retryCountBucket = bucketCount(observation.retryCount);
 			const errorAttributes = safeErrorAttributes(observation);
-			const metricEndpoint = normalizeHevyMetricEndpoint(observation.endpoint);
+			const metricEndpoint = metricEndpointIdentity(observation.endpoint);
+			const diagnosticEndpoint = diagnosticEndpointIdentity(
+				observation.endpoint,
+			);
 			const metricExecutionAttributes = projectExecutionAttributes(
 				observation,
 				"metric",
@@ -156,7 +138,7 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 			});
 			debugLog("api_response", {
 				method: observation.method,
-				endpoint: observation.endpoint,
+				...(diagnosticEndpoint ? { endpoint: diagnosticEndpoint } : {}),
 				durationMs: observation.durationMs,
 				status: observation.status || null,
 				retryCountBucket,

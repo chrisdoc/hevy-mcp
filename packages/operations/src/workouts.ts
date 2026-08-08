@@ -5,7 +5,11 @@ import type {
 	HevyOperationSafety,
 } from "@hevy-mcp/hevy-client";
 import type { GetV1Workouts200, Workout } from "@hevy-mcp/hevy-client/types";
-import { isHevyHttpError } from "@hevy-mcp/hevy-client";
+import {
+	canonicalEndpointIdentity,
+	expectedGet404Outcome,
+	isHevyHttpError,
+} from "@hevy-mcp/hevy-client";
 
 export interface WorkoutsListInput {
 	readonly page: number;
@@ -43,9 +47,9 @@ function isExpectedEndOfList(error: unknown, page: number): boolean {
 	return (
 		page > 1 &&
 		isHevyHttpError(error) &&
-		error.status === 404 &&
-		error.method.toUpperCase() === "GET" &&
-		error.endpoint === "/v1/workouts"
+		canonicalEndpointIdentity(error.endpoint) === "/v1/workouts" &&
+		expectedGet404Outcome(error.endpoint, error.method, error.status, page) ===
+			"end_of_list"
 	);
 }
 

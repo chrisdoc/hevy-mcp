@@ -57,6 +57,31 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
+	it("sanitizes caller-supplied HevyHttpError endpoint identities", async () => {
+		const observations: string[] = [];
+		const fetchMock = vi.fn().mockRejectedValue(
+			new HevyHttpError("request failed", {
+				status: 400,
+				method: "GET",
+				endpoint: "/v1/workouts/raw-workout-id",
+			}),
+		);
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			onRequestComplete: ({ endpoint }) => observations.push(endpoint),
+		});
+
+		await expect(client.getWorkout("request-workout-id")).rejects.toMatchObject(
+			{
+				method: "GET",
+				endpoint: "/v1/workouts/:workoutId",
+			},
+		);
+		expect(observations).toEqual(["/v1/workouts/:workoutId"]);
+	});
+
 	it("does not abort an execution signal twice", () => {
 		const execution = createExecutionSignal({});
 		execution.abort(new DOMException("done", "AbortError"));

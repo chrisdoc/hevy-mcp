@@ -1,4 +1,5 @@
 import {
+	diagnosticEndpointIdentity,
 	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
@@ -120,24 +121,6 @@ const SAFE_HTTP_METHODS = new Set([
 	"PATCH",
 	"POST",
 	"PUT",
-]);
-
-const SAFE_ENDPOINTS = new Set([
-	"unknown",
-	"/v1/body_measurements",
-	"/v1/body_measurements/:date",
-	"/v1/exercise_history/:exerciseTemplateId",
-	"/v1/exercise_templates",
-	"/v1/exercise_templates/:exerciseTemplateId",
-	"/v1/routine_folders",
-	"/v1/routine_folders/:folderId",
-	"/v1/routines",
-	"/v1/routines/:routineId",
-	"/v1/user/info",
-	"/v1/workouts",
-	"/v1/workouts/:workoutId",
-	"/v1/workouts/count",
-	"/v1/workouts/events",
 ]);
 
 const SAFE_SOURCE_SUFFIXES: ReadonlyArray<readonly [string, SafeSourceId]> = [
@@ -383,7 +366,7 @@ function getSafeMethod(error: unknown): string | undefined {
 
 function getSafeEndpoint(error: unknown): string | undefined {
 	if (!isHevyHttpError(error)) return undefined;
-	return SAFE_ENDPOINTS.has(error.endpoint) ? error.endpoint : undefined;
+	return diagnosticEndpointIdentity(error.endpoint);
 }
 
 function getExecutionFields(
