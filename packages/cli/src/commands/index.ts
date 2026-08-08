@@ -180,8 +180,23 @@ export async function execute(
 				args,
 				getV1RoutinesQueryParamsSchema,
 			);
+			const result = await operations.routines.list.execute({
+				page,
+				pageSize,
+			});
+			if (result.expected404Outcome === "end_of_list") {
+				return pageEnvelope(
+					{ page: result.page, page_count: result.pageCount ?? 0 },
+					"routines",
+					result.items,
+				);
+			}
 			return list(
-				body(await client.getRoutines({ page, pageSize })),
+				{
+					page: result.page,
+					page_count: result.pageCount,
+					routines: result.items,
+				},
 				"routines",
 				"routines",
 				page,
