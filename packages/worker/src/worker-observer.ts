@@ -1,0 +1,505 @@
+import {
+	createExecutionProjection,
+	createSafeErrorDiagnostic,
+	type SafeToolCompletion,
+	type SafeToolInvocation,
+	type StructuredExecutionProjection,
+	type ToolObservationScope,
+	type ToolObserver,
+	type ToolResultObservation,
+	type ToolResultTelemetry,
+} from "@hevy-mcp/core";
+
+const MAX_NAME_LENGTH = 96;
+const MAX_STRING_LENGTH = 160;
+const MAX_ARGUMENT_KEYS = 32;
+const MAX_WORKFLOW_PAGES = 10_000;
+const MAX_WORKFLOW_ITEMS = 1_000_000;
+
+const SAFE_ARGUMENT_KEYS = new Set([
+	"date",
+	"end_date",
+	"exercise_template_id",
+	"folder_id",
+	"include_custom",
+	"limit",
+	"offset",
+	"page",
+	"page_size",
+	"primary_muscle_group",
+	"query",
+	"refresh",
+	"routine_id",
+	"since",
+	"start_date",
+	"updated_since",
+	"workout_id",
+]);
+const SAFE_COUNT_BUCKETS = new Set(["0", "1", "2-10", "11-50", "51+"]);
+const SAFE_WORKFLOW_NAMES = new Set(["training-summary", "routine-discovery"]);
+const SAFE_CACHE_STATUSES = new Set(["hit", "miss", "not-used"]);
+const SAFE_ERROR_TYPES = new Set([
+	"API_ERROR",
+	"RATE_LIMIT",
+	"VALIDATION_ERROR",
+	"NOT_FOUND",
+	"NETWORK_ERROR",
+	"UNKNOWN_ERROR",
+]);
+const SAFE_ERROR_CATEGORIES = new Set([
+	"AggregateError",
+	"DOMException",
+	"Error",
+	"EvalError",
+	"HevyHttpError",
+	"RangeError",
+	"ReferenceError",
+	"SyntaxError",
+	"TypeError",
+	"URIError",
+	"UnknownError",
+]);
+const SAFE_ERROR_CODES = new Set([
+	"EAI_AGAIN",
+	"ECONNABORTED",
+	"ECONNREFUSED",
+	"ECONNRESET",
+	"ENETUNREACH",
+	"ENOTFOUND",
+	"ERR_NETWORK",
+	"ERR_SOCKET_TIMEOUT",
+	"ETIMEDOUT",
+	"HEVY_INVALID_ENDPOINT",
+	"HEVY_REQUEST_ABORTED",
+	"HEVY_RETRY_EXHAUSTED",
+	"HEVY_DEADLINE_EXCEEDED",
+]);
+const SAFE_HTTP_METHODS = new Set([
+	"DELETE",
+	"GET",
+	"HEAD",
+	"OPTIONS",
+	"PATCH",
+	"POST",
+	"PUT",
+]);
+const SAFE_ENDPOINTS = new Set([
+	"/v1/body_measurements",
+	"/v1/body_measurements/:date",
+	"/v1/exercise_history/:exerciseTemplateId",
+	"/v1/exercise_templates",
+	"/v1/exercise_templates/:exerciseTemplateId",
+	"/v1/routine_folders",
+	"/v1/routine_folders/:folderId",
+	"/v1/routines",
+	"/v1/routines/:routineId",
+	"/v1/user/info",
+	"/v1/workouts",
+	"/v1/workouts/:workoutId",
+	"/v1/workouts/count",
+	"/v1/workouts/events",
+]);
+const SAFE_EXECUTION_OUTCOMES = new Set([
+	"success",
+	"expected",
+	"retryable_failure",
+	"terminal_failure",
+	"cancelled",
+	"deadline_exceeded",
+]);
+const SAFE_REQUEST_PHASES = new Set([
+	"before-dispatch",
+	"dispatch",
+	"response-headers",
+	"response-content",
+	"backoff",
+	"completed",
+]);
+const SAFE_OPERATION_SAFETY = new Set([
+	"read",
+	"idempotent-write",
+	"non-idempotent-write",
+]);
+const SAFE_COMMIT_STATES = new Set(["not_sent", "confirmed", "unknown"]);
+const SAFE_STACK_SOURCES = new Set([
+	"error-handler",
+	"hevy-client",
+	"index",
+	"server",
+	"worker",
+]);
+
+/** Structured events emitted by the Worker adapter's private observation sink. */
+export interface WorkerObservationEvent {
+	readonly event: "worker.tool.invocation" | "worker.tool.completion";
+	readonly name: string;
+	readonly kind: "tool" | "prompt";
+	readonly taxonomy?: {
+		readonly feature: string;
+		readonly kind: string;
+		readonly operation: string;
+	};
+	readonly argumentKeys?: readonly string[];
+	readonly argumentPresence?: Readonly<Record<string, true>>;
+	readonly numericArgumentBuckets?: Readonly<Record<string, string>>;
+	readonly booleanArguments?: Readonly<Record<string, boolean>>;
+	readonly argumentKeyCountBucket?: string;
+	readonly outcome?: SafeToolCompletion["outcome"];
+	readonly durationMs?: number;
+	readonly result?: WorkerResultObservation;
+	readonly errorType?: string;
+	readonly error?: ReturnType<typeof createSafeErrorDiagnostic>;
+	readonly execution?: ReturnType<typeof createExecutionProjection>;
+}
+
+interface WorkerResultObservation {
+	readonly isError: boolean;
+	readonly hasStructuredContent: boolean;
+	readonly contentCountBucket: string;
+	readonly summary?: SafeResultSummary;
+}
+
+interface SafeResultSummary {
+	readonly itemCountBucket?: string;
+	readonly exerciseCountBucket?: string;
+	readonly setCountBucket?: string;
+	readonly workflow?: {
+		readonly name: string;
+		readonly pagination: Readonly<Record<string, number>>;
+		readonly cacheStatus: string;
+		readonly itemsScanned: number;
+	};
+}
+
+export type WorkerObservationSink = (
+	event: WorkerObservationEvent,
+) => void | Promise<void>;
+
+export interface WorkerToolObserverOptions {
+	/** Defaults to console.log; test callers can provide an isolated sink. */
+	readonly sink?: WorkerObservationSink;
+}
+
+function boundedString(
+	value: unknown,
+	maxLength = MAX_STRING_LENGTH,
+): string | undefined {
+	if (typeof value !== "string" || value.length === 0) return undefined;
+	return value.slice(0, maxLength);
+}
+
+function safeName(value: unknown): string {
+	return boundedString(value, MAX_NAME_LENGTH) ?? "unknown";
+}
+
+function safeBucket(value: unknown): string | undefined {
+	return typeof value === "string" && SAFE_COUNT_BUCKETS.has(value)
+		? value
+		: undefined;
+}
+
+function safeTaxonomy(
+	invocation: SafeToolInvocation,
+): WorkerObservationEvent["taxonomy"] {
+	const taxonomy = invocation.taxonomy;
+	if (!taxonomy) return undefined;
+	const feature = boundedString(taxonomy.feature, MAX_NAME_LENGTH);
+	const kind = boundedString(taxonomy.kind, MAX_NAME_LENGTH);
+	const operation = boundedString(taxonomy.operation, MAX_NAME_LENGTH);
+	return feature && kind && operation
+		? { feature, kind, operation }
+		: undefined;
+}
+
+function safeInvocation(
+	invocation: SafeToolInvocation,
+): Omit<WorkerObservationEvent, "event"> {
+	const argumentKeys = (invocation.argumentKeys ?? [])
+		.filter((key) => SAFE_ARGUMENT_KEYS.has(key))
+		.slice(0, MAX_ARGUMENT_KEYS);
+	const argumentPresence: Record<string, true> = {};
+	for (const key of Object.keys(invocation.argumentPresence ?? {})) {
+		if (SAFE_ARGUMENT_KEYS.has(key)) argumentPresence[key] = true;
+	}
+	const numericArgumentBuckets: Record<string, string> = {};
+	for (const [key, value] of Object.entries(
+		invocation.numericArgumentBuckets ?? {},
+	)) {
+		const bucket = safeBucket(value);
+		if (SAFE_ARGUMENT_KEYS.has(key) && bucket)
+			numericArgumentBuckets[key] = bucket;
+	}
+	const booleanArguments: Record<string, boolean> = {};
+	for (const [key, value] of Object.entries(
+		invocation.booleanArguments ?? {},
+	)) {
+		if (SAFE_ARGUMENT_KEYS.has(key) && typeof value === "boolean") {
+			booleanArguments[key] = value;
+		}
+	}
+	const keyCountBucket = safeBucket(invocation.argumentKeyCountBucket);
+	return {
+		name: safeName(invocation.name),
+		kind: invocation.kind === "prompt" ? "prompt" : "tool",
+		...(safeTaxonomy(invocation) ? { taxonomy: safeTaxonomy(invocation) } : {}),
+		...(argumentKeys.length ? { argumentKeys } : {}),
+		...(Object.keys(argumentPresence).length ? { argumentPresence } : {}),
+		...(Object.keys(numericArgumentBuckets).length
+			? { numericArgumentBuckets }
+			: {}),
+		...(Object.keys(booleanArguments).length ? { booleanArguments } : {}),
+		...(keyCountBucket ? { argumentKeyCountBucket: keyCountBucket } : {}),
+	};
+}
+
+function boundedCount(value: unknown, maximum: number): number {
+	if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+	return Math.min(maximum, Math.max(0, Math.floor(value)));
+}
+
+function safeSummary(
+	summary: ToolResultTelemetry | undefined,
+): SafeResultSummary | undefined {
+	if (!summary) return undefined;
+	const itemCountBucket = safeBucket(summary.itemCountBucket);
+	const exerciseCountBucket = safeBucket(summary.exerciseCountBucket);
+	const setCountBucket = safeBucket(summary.setCountBucket);
+	const workflow = summary.workflow;
+	const safeWorkflow =
+		workflow && SAFE_WORKFLOW_NAMES.has(workflow.name)
+			? {
+					name: workflow.name,
+					cacheStatus: SAFE_CACHE_STATUSES.has(workflow.cacheStatus)
+						? workflow.cacheStatus
+						: "not-used",
+					itemsScanned: boundedCount(workflow.itemsScanned, MAX_WORKFLOW_ITEMS),
+					pagination: Object.fromEntries(
+						Object.entries(workflow.pagination)
+							.filter(([resource]) =>
+								["workouts", "bodyMeasurements", "routines"].includes(resource),
+							)
+							.slice(0, MAX_ARGUMENT_KEYS)
+							.map(([resource, pages]) => [
+								resource,
+								boundedCount(pages, MAX_WORKFLOW_PAGES),
+							]),
+					),
+				}
+			: undefined;
+	if (
+		!itemCountBucket &&
+		!exerciseCountBucket &&
+		!setCountBucket &&
+		!safeWorkflow
+	) {
+		return undefined;
+	}
+	return {
+		...(itemCountBucket ? { itemCountBucket } : {}),
+		...(exerciseCountBucket ? { exerciseCountBucket } : {}),
+		...(setCountBucket ? { setCountBucket } : {}),
+		...(safeWorkflow ? { workflow: safeWorkflow } : {}),
+	};
+}
+
+function safeResult(
+	result: ToolResultObservation | undefined,
+): WorkerResultObservation | undefined {
+	if (!result) return undefined;
+	return {
+		isError: result.isError === true,
+		hasStructuredContent: result.hasStructuredContent === true,
+		contentCountBucket: safeBucket(result.contentCountBucket) ?? "0",
+		...(safeSummary(result.summary)
+			? { summary: safeSummary(result.summary) }
+			: {}),
+	};
+}
+
+function safeError(
+	error: ReturnType<typeof createSafeErrorDiagnostic> | undefined,
+): ReturnType<typeof createSafeErrorDiagnostic> | undefined {
+	if (!error || typeof error !== "object") return undefined;
+	const category = SAFE_ERROR_CATEGORIES.has(error.category)
+		? error.category
+		: "UnknownError";
+	const code =
+		typeof error.code === "string" && SAFE_ERROR_CODES.has(error.code)
+			? error.code
+			: undefined;
+	const method =
+		typeof error.method === "string" &&
+		SAFE_HTTP_METHODS.has(error.method.toUpperCase())
+			? error.method.toUpperCase()
+			: undefined;
+	const endpoint =
+		typeof error.endpoint === "string" && SAFE_ENDPOINTS.has(error.endpoint)
+			? error.endpoint
+			: undefined;
+	const frames = error.frames
+		?.filter(
+			(frame) =>
+				SAFE_STACK_SOURCES.has(frame.source) &&
+				Number.isSafeInteger(frame.line) &&
+				Number.isSafeInteger(frame.column) &&
+				frame.line > 0 &&
+				frame.column > 0,
+		)
+		.slice(0, 3);
+	const phase =
+		typeof error.phase === "string" && SAFE_REQUEST_PHASES.has(error.phase)
+			? error.phase
+			: undefined;
+	const operationSafety =
+		typeof error.operation_safety === "string" &&
+		SAFE_OPERATION_SAFETY.has(error.operation_safety)
+			? error.operation_safety
+			: undefined;
+	const commitState =
+		typeof error.commit_state === "string" &&
+		SAFE_COMMIT_STATES.has(error.commit_state)
+			? error.commit_state
+			: undefined;
+	const outcome =
+		typeof error.outcome === "string" &&
+		SAFE_EXECUTION_OUTCOMES.has(error.outcome)
+			? error.outcome
+			: undefined;
+	return {
+		category,
+		...(code ? { code } : {}),
+		...(typeof error.status === "number" &&
+		Number.isInteger(error.status) &&
+		error.status >= 100 &&
+		error.status <= 599
+			? { status: error.status }
+			: {}),
+		...(method ? { method } : {}),
+		...(endpoint ? { endpoint } : {}),
+		...(frames?.length ? { frames } : {}),
+		...(phase ? { phase } : {}),
+		...(operationSafety ? { operation_safety: operationSafety } : {}),
+		...(commitState ? { commit_state: commitState } : {}),
+		...(typeof error.safe_to_retry === "boolean"
+			? { safe_to_retry: error.safe_to_retry }
+			: {}),
+		...(outcome ? { outcome } : {}),
+	};
+}
+
+type SafeExecutionSource = Partial<
+	Pick<
+		StructuredExecutionProjection,
+		| "outcome"
+		| "phase"
+		| "operation_safety"
+		| "commit_state"
+		| "safe_to_retry"
+		| "code"
+		| "status"
+	>
+>;
+
+function allowedValue<T extends string>(
+	value: unknown,
+	allowed: ReadonlySet<string>,
+): T | undefined {
+	return typeof value === "string" && allowed.has(value)
+		? (value as T)
+		: undefined;
+}
+
+function safeExecution(
+	source: SafeExecutionSource | undefined,
+): ReturnType<typeof createExecutionProjection> | undefined {
+	if (!source) return undefined;
+	return createExecutionProjection({
+		outcome: allowedValue(source.outcome, SAFE_EXECUTION_OUTCOMES),
+		phase: allowedValue(source.phase, SAFE_REQUEST_PHASES),
+		operation_safety: allowedValue(
+			source.operation_safety,
+			SAFE_OPERATION_SAFETY,
+		),
+		commit_state: allowedValue(source.commit_state, SAFE_COMMIT_STATES),
+		safe_to_retry:
+			typeof source.safe_to_retry === "boolean"
+				? source.safe_to_retry
+				: undefined,
+		code:
+			typeof source.code === "string" && SAFE_ERROR_CODES.has(source.code)
+				? source.code
+				: undefined,
+		status:
+			typeof source.status === "number" &&
+			Number.isInteger(source.status) &&
+			source.status >= 100 &&
+			source.status <= 599
+				? source.status
+				: undefined,
+	});
+}
+
+function emitBestEffort(
+	sink: WorkerObservationSink,
+	event: WorkerObservationEvent,
+): void {
+	try {
+		const pending = sink(event);
+		if (pending) void Promise.resolve(pending).catch(() => undefined);
+	} catch {
+		// Worker observation is strictly best effort and must not affect MCP behavior.
+	}
+}
+
+/** Worker-only adapter for Core's privacy-safe semantic observation contract. */
+export function createWorkerToolObserver(
+	options: WorkerToolObserverOptions = {},
+): ToolObserver {
+	const sink =
+		options.sink ?? ((event: WorkerObservationEvent) => console.log(event));
+	return {
+		start(invocation): ToolObservationScope {
+			let safe: Omit<WorkerObservationEvent, "event">;
+			try {
+				safe = safeInvocation(invocation);
+			} catch {
+				safe = { name: "unknown", kind: "tool" };
+			}
+			const startedAt = Date.now();
+			emitBestEffort(sink, { event: "worker.tool.invocation", ...safe });
+			let finished = false;
+			return {
+				run: <T>(operation: () => Promise<T>) => operation(),
+				finish(completion) {
+					if (finished) return;
+					finished = true;
+					try {
+						const durationMs = boundedCount(
+							completion.durationMs || Date.now() - startedAt,
+							Number.MAX_SAFE_INTEGER,
+						);
+						const error = safeError(completion.error);
+						const execution = completion.errorOutcome
+							? safeExecution(completion.errorOutcome)
+							: safeExecution(error);
+						const result = safeResult(completion.result);
+						emitBestEffort(sink, {
+							event: "worker.tool.completion",
+							...safe,
+							outcome: completion.outcome,
+							durationMs,
+							...(result ? { result } : {}),
+							...(SAFE_ERROR_TYPES.has(completion.errorType ?? "")
+								? { errorType: completion.errorType }
+								: {}),
+							...(error ? { error } : {}),
+							...(execution ? { execution } : {}),
+						});
+					} catch {
+						// Observation projection is best effort and must not affect MCP behavior.
+					}
+				},
+			};
+		},
+	};
+}
