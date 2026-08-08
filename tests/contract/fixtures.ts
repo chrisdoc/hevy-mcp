@@ -41,7 +41,9 @@ export function createDeterministicHevyClient(): HevyClient {
 	const getWorkouts: HevyClient["getWorkouts"] = (params) =>
 		Promise.resolve().then(() => {
 			if (params?.page !== 1 || params.pageSize !== 5) {
-				throw new Error("Contract fixture received unexpected pagination input");
+				throw new Error(
+					"Contract fixture received unexpected pagination input",
+				);
 			}
 			return deterministicGetWorkoutsResult;
 		});
