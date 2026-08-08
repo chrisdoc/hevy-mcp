@@ -12,6 +12,7 @@ export default defineConfig({
 		},
 	},
 	test: {
+		setupFiles: ["./tests/setup/cloudflare-runtime.ts"],
 		server: {
 			deps: {
 				// Inline so the `cloudflare:workers` alias above applies to the
