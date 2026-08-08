@@ -113,11 +113,12 @@ HEVY_TEST_REPORT_MODE=ci npm run test:unit
 HEVY_TEST_REPORT_MODE=ci npm run test:mcp
 ```
 
-The build workflow invokes all mapped targets once per Node runtime with Nx
-`run-many`, and the release workflow does the same for its deterministic
-candidate-validation subset. Nx owns dependency ordering and concurrency, while
-the control-plane projection still checks every individual lane and runtime
-against the canonical aggregate.
+The build workflow invokes mapped targets per Node runtime with Nx `run-many`:
+Node 24 runs worker, contract, stdio, CLI, and dry-run targets, while Node 26
+runs selected repository checks, unit, and mocked MCP targets. The release
+workflow does the same for its deterministic candidate-validation subset. Nx
+owns dependency ordering and concurrency, while the control-plane projection
+still checks every individual lane and runtime against the canonical aggregate.
 
 Explicit live commands are separate and credential-gated:
 

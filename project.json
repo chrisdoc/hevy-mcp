@@ -22,7 +22,7 @@
 			"cache": false,
 			"dependsOn": ["pack:artifacts"],
 			"options": {
-				"command": "node scripts/check-candidate-publint.mjs"
+				"command": "mise exec -- node scripts/check-candidate-publint.mjs"
 			},
 			"inputs": ["validationInputs"]
 		},
@@ -108,7 +108,7 @@
 			"cache": false,
 			"dependsOn": ["pack:artifacts"],
 			"options": {
-				"command": "node tests/package/npm-pack-smoke.mjs"
+				"command": "mise exec -- node tests/package/npm-pack-smoke.mjs"
 			},
 			"inputs": ["validationInputs"]
 		},
@@ -121,7 +121,7 @@
 			"cache": false,
 			"dependsOn": ["pack:artifacts"],
 			"options": {
-				"command": "cross-env FORCE_COLOR=0 node packages/cli/tests/npm-pack-smoke.mjs"
+				"command": "cross-env FORCE_COLOR=0 mise exec -- node packages/cli/tests/npm-pack-smoke.mjs"
 			},
 			"inputs": ["validationInputs"]
 		},
@@ -202,7 +202,7 @@
 			"cache": false,
 			"dependsOn": ["build"],
 			"options": {
-				"command": "vitest run tests/performance/performance.test.ts"
+				"command": "mise exec -- vitest run tests/performance/performance.test.ts"
 			},
 			"outputs": ["{workspaceRoot}/test-results/performance/summary.json"],
 			"inputs": ["validationInputs"]
@@ -216,7 +216,7 @@
 				"check:server-manifest"
 			],
 			"options": {
-				"command": "node scripts/pack-release-candidates.mjs"
+				"command": "mise exec -- node scripts/pack-release-candidates.mjs"
 			},
 			"outputs": [
 				"{workspaceRoot}/packages/node/dist",
