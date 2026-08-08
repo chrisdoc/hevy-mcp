@@ -22,10 +22,9 @@ const args = ["run", ...selectors[lane]];
 if (process.env.HEVY_TEST_REPORT_MODE === "ci") {
 	const nodeMajor = Number.parseInt(process.versions.node, 10);
 	if (lane === "unit") {
-		args.push("--coverage");
+		args.push("--coverage", "--coverage.reportsDirectory=coverage/unit");
 		if (nodeMajor === 24) {
 			args.push(
-				"--coverage.reportsDirectory=coverage/unit",
 				"--reporter=default",
 				"--reporter=junit",
 				"--outputFile.junit=test-results/unit-tests.xml",

@@ -300,6 +300,10 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		const packageJson = JSON.parse(
 			await readFile(resolve(root, "package.json"), "utf8"),
 		) as { scripts: Record<string, string> };
+		const runner = await readFile(
+			resolve(root, "scripts/run-vitest-lane.mjs"),
+			"utf8",
+		);
 
 		expect(packageJson.scripts["test:unit"]).toBe(
 			"node scripts/run-vitest-lane.mjs unit",
@@ -312,6 +316,9 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				env: "HEVY_TEST_REPORT_MODE",
 			});
 		}
+		expect(runner).toContain(
+			'args.push("--coverage", "--coverage.reportsDirectory=coverage/unit");',
+		);
 	});
 
 	it("leaves dependency-cruiser as an inferred npm target", async () => {
