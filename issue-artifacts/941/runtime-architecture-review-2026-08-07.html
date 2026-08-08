@@ -582,12 +582,14 @@ flowchart TB
 										overlapping read/list/mutation sets.
 									</li>
 									<li>
-										<code>packages/core/utils/error-policy.ts:99-149</code> — safe codes,
-										endpoints, and source identities.
+										<code>packages/core/utils/error-policy.ts:99-149</code> —
+										safe codes, endpoints, and source identities.
 									</li>
 									<li>
-										<code>packages/node/utils/hevy-client-observability.ts:19-45</code> —
-										another endpoint normalizer.
+										<code
+											>packages/node/utils/hevy-client-observability.ts:19-45</code
+										>
+										— another endpoint normalizer.
 									</li>
 									<li>
 										Current routing owner:
@@ -686,16 +688,16 @@ flowchart TB
 										stdio/HTTP lifecycle policy.
 									</li>
 									<li>
-										<code>packages/node/utils/streamable-http.ts:231-494</code> —
-										stateful sessions, admission, disconnect, cleanup.
+										<code>packages/node/utils/streamable-http.ts:231-494</code>
+										— stateful sessions, admission, disconnect, cleanup.
 									</li>
 									<li>
-										<code>packages/worker/src/worker.ts:323-566</code> — stateless
-										exchange plus raw-key/OAuth routing.
+										<code>packages/worker/src/worker.ts:323-566</code> —
+										stateless exchange plus raw-key/OAuth routing.
 									</li>
 									<li>
-										<code>packages/worker/src/worker-oauth.ts:328-540</code> — OAuth
-										grant and authorized request path.
+										<code>packages/worker/src/worker-oauth.ts:328-540</code> —
+										OAuth grant and authorized request path.
 									</li>
 									<li>
 										Existing owners:
@@ -790,20 +792,20 @@ flowchart TB
 								<h3 class="font-bold text-white">Files and evidence</h3>
 								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
 									<li>
-										<code>packages/core/src/observation.ts:53-127</code> — privacy-safe
-										tool observation interface.
+										<code>packages/core/src/observation.ts:53-127</code> —
+										privacy-safe tool observation interface.
 									</li>
 									<li>
 										<code>packages/core/src/utils/cache.ts:10-32</code> — cache
 										observation seam.
 									</li>
 									<li>
-										<code>packages/node/src/index.ts:264-277</code> — Node wires tool,
-										cache, and client observers.
+										<code>packages/node/src/index.ts:264-277</code> — Node wires
+										tool, cache, and client observers.
 									</li>
 									<li>
-										<code>packages/worker/src/worker.ts:220-244</code> — Worker passes
-										only client logging.
+										<code>packages/worker/src/worker.ts:220-244</code> — Worker
+										passes only client logging.
 									</li>
 									<li>
 										<code>cloudflare.config.ts:20-53</code> — platform
@@ -901,24 +903,24 @@ flowchart LR
 								<h3 class="font-bold text-white">Files and evidence</h3>
 								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
 									<li>
-										<code>packages/node/src/index.ts:1-37</code> — telemetry import must
-										execute first.
+										<code>packages/node/src/index.ts:1-37</code> — telemetry
+										import must execute first.
 									</li>
 									<li>
-										<code>packages/node/utils/telemetry.ts:107-217</code> — import-time
-										Sentry/OTel global setup.
+										<code>packages/node/utils/telemetry.ts:107-217</code> —
+										import-time Sentry/OTel global setup.
 									</li>
 									<li>
-										<code>packages/node/src/index.ts:293-301</code> — public builder
-										performs a network validation probe.
+										<code>packages/node/src/index.ts:293-301</code> — public
+										builder performs a network validation probe.
 									</li>
 									<li>
-										<code>packages/node/README.md:184-199</code> — published embedding
-										contract.
+										<code>packages/node/README.md:184-199</code> — published
+										embedding contract.
 									</li>
 									<li>
-										<code>packages/node/tsdown.config.ts:58-99</code> — library and CLI
-										share the same source graph.
+										<code>packages/node/tsdown.config.ts:58-99</code> — library
+										and CLI share the same source graph.
 									</li>
 								</ul>
 								<h3 class="mt-6 font-bold text-white">Problem</h3>
@@ -1007,12 +1009,12 @@ flowchart TB
 										— representative Worker coverage.
 									</li>
 									<li>
-										<code>packages/node/utils/streamable-http.test.ts</code> — stateful
-										host behavior.
+										<code>packages/node/utils/streamable-http.test.ts</code> —
+										stateful host behavior.
 									</li>
 									<li>
-										<code>packages/worker/src/worker.test.ts:383-440</code> — fresh
-										server/transport per Worker request.
+										<code>packages/worker/src/worker.test.ts:383-440</code> —
+										fresh server/transport per Worker request.
 									</li>
 									<li>
 										Existing owner:
