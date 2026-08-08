@@ -1,6 +1,8 @@
 /* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyOperations } from "@hevy-mcp/operations";
+import type { ToolExecutionContext } from "../execution.js";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import { describe, expect, it, vi } from "vitest";
 import { getResultTelemetry } from "../utils/result-telemetry.js";
@@ -8,10 +10,19 @@ import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { routineToolDefinitions } from "./routines.js";
 
-function register(client: HevyClient | null) {
+function register(
+	client: HevyClient | null,
+	operations?: HevyOperations,
+	execution?: ToolExecutionContext,
+) {
 	const tool = vi.fn();
 	const server = { tool, registerTool: tool } as unknown as McpServer;
-	const runtime = createToolRuntime({ client, catalog: {} as never });
+	const runtime = createToolRuntime({
+		client,
+		operations,
+		execution,
+		catalog: {} as never,
+	});
 	for (const definition of routineToolDefinitions)
 		registerToolDefinition(server, runtime, definition);
 	return tool;
@@ -78,6 +89,39 @@ describe("routine tools", () => {
 		await handler(tool, "get-routine")({ routine_id: "r1" });
 		expect(client.getRoutines).toHaveBeenCalledWith({ page: 2, pageSize: 5 });
 		expect(client.getRoutineById).toHaveBeenCalledWith("r1");
+	});
+
+	it("uses the injected routines list operation and execution context", async () => {
+		const execute = vi.fn().mockResolvedValue({
+			items: [{ id: "r1", title: "Push", exercises: [] }],
+			page: 2,
+			pageCount: 3,
+		});
+		const operations = {
+			routines: { list: { execute } },
+		} as unknown as HevyOperations;
+		const execution: ToolExecutionContext = {
+			signal: new AbortController().signal,
+			deadline: Date.now() + 5_000,
+		};
+		const tool = register(null, operations, execution);
+
+		const response = await handler(
+			tool,
+			"get-routines",
+		)({
+			page: 2,
+			page_size: 5,
+		});
+
+		expect(execute).toHaveBeenCalledWith({ page: 2, pageSize: 5 }, execution);
+		expect(response).toMatchObject({
+			structuredContent: {
+				routines: [{ id: "r1", title: "Push" }],
+				page: 2,
+				page_count: 3,
+			},
+		});
 	});
 
 	it("parses a routine whose exercise rest_seconds is an integer", async () => {
