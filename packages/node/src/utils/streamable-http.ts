@@ -239,7 +239,10 @@ function readBody(
 		let size = 0;
 		let settled = false;
 		const chunks: Buffer[] = [];
+		let onData: (chunk: Buffer | string) => void;
 		let onError: (error: Error) => void;
+		let onAbort: () => void;
+		let onEnd: () => void;
 		const removeErrorListenerAfterDrain = () => {
 			request.removeListener("error", onError);
 		};
@@ -267,7 +270,7 @@ function readBody(
 			request.resume();
 			reject(error);
 		};
-		const onData = (chunk: Buffer | string) => {
+		onData = (chunk: Buffer | string) => {
 			const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
 			size += buffer.byteLength;
 			if (size > MAX_BODY_BYTES) {
@@ -277,14 +280,14 @@ function readBody(
 			if (!settled) chunks.push(buffer);
 		};
 		onError = (error: Error) => settle(() => reject(error));
-		const onAbort = () =>
+		onAbort = () =>
 			rejectAndDrain(
 				new HttpRequestError(
 					503,
 					"HTTP server is shutting down. Retry shortly.",
 				),
 			);
-		const onEnd = () =>
+		onEnd = () =>
 			settle(() => {
 				try {
 					const raw = Buffer.concat(chunks).toString("utf8");
@@ -372,16 +375,15 @@ function rejectBeforeBody(
 	message: string,
 	timeoutMs: number,
 ): void {
-	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timer = setTimeout(() => request.destroy(), timeoutMs);
 	const cleanup = () => {
-		if (timer) clearTimeout(timer);
+		clearTimeout(timer);
 		request.removeListener("error", onError);
 		request.removeListener("close", cleanup);
 	};
 	const onError = () => cleanup();
 	request.once("error", onError);
 	request.once("close", cleanup);
-	timer = setTimeout(() => request.destroy(), timeoutMs);
 	timer.unref?.();
 	request.resume();
 	writeJson(response, status, message);
