@@ -422,7 +422,8 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			dependsOn: ["build"],
 			executor: "nx:run-commands",
 			options: {
-				command: "mise exec -- vitest run tests/performance/performance.test.ts",
+				command:
+					"mise exec -- vitest run tests/performance/performance.test.ts",
 			},
 		});
 	});
@@ -438,7 +439,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 						cache?: boolean;
 						inputs?: TaskInput[];
 						dependsOn?: string[];
-					}>
+				  }>
 			>;
 		};
 		const project = JSON.parse(
