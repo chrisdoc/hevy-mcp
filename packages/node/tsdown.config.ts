@@ -55,6 +55,50 @@ if (
 		)}, version=${String(version)}`,
 	);
 }
+
+const packageName = name as string;
+const packageVersion = version as string;
+
+function createReleaseSentryPlugin() {
+	const [plugin] = sentryRollupPlugin({
+		org: process.env.SENTRY_ORG,
+		project: process.env.SENTRY_PROJECT,
+		authToken: process.env.SENTRY_AUTH_TOKEN,
+		telemetry: false,
+		sourcemaps: {
+			assets: ["./dist/**/*.mjs", "./dist/**/*.map"],
+			filesToDeleteAfterUpload: ["./dist/**/*.map"],
+		},
+		release: {
+			name: `${packageName}@${packageVersion}`,
+			inject: false,
+		},
+	});
+	if (!plugin) throw new Error("Sentry release plugin was not created");
+
+	return {
+		...plugin,
+		renderChunk(
+			code: string,
+			chunk: { facadeModuleId?: string | null },
+			options: unknown,
+			meta: unknown,
+		) {
+			const facadeModuleId = chunk.facadeModuleId?.replaceAll("\\", "/");
+			// The published package root is an embedding surface. Only inject
+			// Sentry debug IDs into the executable entry; shared chunks may be
+			// imported by the embedding entry and must remain inert too.
+			if (
+				facadeModuleId !== "src/cli.ts" &&
+				!facadeModuleId?.endsWith("/src/cli.ts")
+			) {
+				return null;
+			}
+			return plugin.renderChunk?.(code, chunk, options, meta);
+		},
+	};
+}
+
 export default defineConfig({
 	entry: isStandaloneBuild ? ["src/cli.ts"] : ["src/index.ts", "src/cli.ts"],
 	format: ["esm"],
@@ -111,21 +155,7 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		sentryRollupPlugin({
-			org: process.env.SENTRY_ORG,
-			project: process.env.SENTRY_PROJECT,
-			authToken: process.env.SENTRY_AUTH_TOKEN,
-			telemetry: false,
-			sourcemaps: {
-				assets: ["./dist/**/*.mjs", "./dist/**/*.map"],
-				...(isReleaseBuild
-					? { filesToDeleteAfterUpload: ["./dist/**/*.map"] }
-					: {}),
-			},
-			release: {
-				name: `${name}@${version}`,
-			},
-		}),
+		...(isReleaseBuild ? [createReleaseSentryPlugin()] : []),
 		...(enableCodecovBundleAnalysis
 			? codecovRollupPlugin({
 					enableBundleAnalysis: true,
