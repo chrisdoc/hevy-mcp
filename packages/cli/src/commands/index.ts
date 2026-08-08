@@ -182,7 +182,7 @@ async function executeWorkoutEvents({ args, client }: CommandContext) {
 	};
 }
 
-async function executeWorkouts(context: CommandContext): CommandResult {
+function executeWorkouts(context: CommandContext): CommandResult {
 	switch (context.args.subcommand) {
 		case "list":
 			return executeWorkoutList(context);
@@ -280,7 +280,7 @@ async function executeRoutineUpdate({
 	};
 }
 
-async function executeRoutines(context: CommandContext): CommandResult {
+function executeRoutines(context: CommandContext): CommandResult {
 	switch (context.args.subcommand) {
 		case "list":
 			return executeRoutineList(context);
@@ -362,7 +362,7 @@ async function executeExerciseSearch({ args, client }: CommandContext) {
 	};
 }
 
-async function executeExercises(context: CommandContext): CommandResult {
+function executeExercises(context: CommandContext): CommandResult {
 	switch (context.args.subcommand) {
 		case "create":
 			return executeExerciseCreate(context);
@@ -446,7 +446,7 @@ async function executeMeasurementUpdate({
 	return { body_measurement: measurement };
 }
 
-async function executeMeasurements(context: CommandContext): CommandResult {
+function executeMeasurements(context: CommandContext): CommandResult {
 	switch (context.args.subcommand) {
 		case "list":
 			return executeMeasurementList(context);
