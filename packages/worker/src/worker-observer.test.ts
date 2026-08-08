@@ -30,6 +30,13 @@ function createScope(events: WorkerObservationEvent[]) {
 	return scope;
 }
 
+function finish(
+	scope: ReturnType<typeof createScope>,
+	completion: SafeToolCompletion,
+): void {
+	Promise.resolve(scope.finish(completion)).catch(() => undefined);
+}
+
 describe("createWorkerToolObserver", () => {
 	it("emits safe bounded invocation and successful completion events", async () => {
 		const events: WorkerObservationEvent[] = [];
@@ -38,7 +45,7 @@ describe("createWorkerToolObserver", () => {
 		await expect(
 			scope.run(() => Promise.resolve("raw response body")),
 		).resolves.toBe("raw response body");
-		void scope.finish({
+		finish(scope, {
 			outcome: "success",
 			durationMs: 12,
 			result: {
@@ -115,7 +122,7 @@ describe("createWorkerToolObserver", () => {
 						},
 					}),
 		};
-		void scope.finish(completion);
+		finish(scope, completion);
 
 		const event = events[1];
 		expect(event).toMatchObject({ event: "worker.tool.completion", outcome });
@@ -138,7 +145,7 @@ describe("createWorkerToolObserver", () => {
 	it("drops malformed diagnostic fields at the Worker boundary", () => {
 		const events: WorkerObservationEvent[] = [];
 		const scope = createScope(events);
-		void scope.finish({
+		finish(scope, {
 			outcome: "thrown_error",
 			durationMs: 1,
 			error: {
@@ -190,7 +197,7 @@ describe("createWorkerToolObserver", () => {
 	it("uses the explicit execution projection for returned errors", () => {
 		const events: WorkerObservationEvent[] = [];
 		const scope = createScope(events);
-		void scope.finish({
+		finish(scope, {
 			outcome: "returned_error",
 			durationMs: 1,
 			result: {
@@ -217,8 +224,8 @@ describe("createWorkerToolObserver", () => {
 	it("finishes at most once", () => {
 		const events: WorkerObservationEvent[] = [];
 		const scope = createScope(events);
-		void scope.finish({ outcome: "success", durationMs: 1 });
-		void scope.finish({ outcome: "thrown_error", durationMs: 2 });
+		finish(scope, { outcome: "success", durationMs: 1 });
+		finish(scope, { outcome: "thrown_error", durationMs: 2 });
 		expect(
 			events.filter((event) => event.event === "worker.tool.completion"),
 		).toHaveLength(1);

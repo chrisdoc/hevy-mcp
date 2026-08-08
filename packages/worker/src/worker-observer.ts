@@ -316,27 +316,25 @@ function safeResult(
 	};
 }
 
-function safeError(
-	error: ReturnType<typeof createSafeErrorDiagnostic> | undefined,
-): ReturnType<typeof createSafeErrorDiagnostic> | undefined {
-	if (!error || typeof error !== "object") return undefined;
-	const category = SAFE_ERROR_CATEGORIES.has(error.category)
-		? error.category
-		: "UnknownError";
-	const code =
-		typeof error.code === "string" && SAFE_ERROR_CODES.has(error.code)
-			? error.code
-			: undefined;
-	const method =
-		typeof error.method === "string" &&
-		SAFE_HTTP_METHODS.has(error.method.toUpperCase())
-			? error.method.toUpperCase()
-			: undefined;
-	const endpoint =
-		typeof error.endpoint === "string" && SAFE_ENDPOINTS.has(error.endpoint)
-			? error.endpoint
-			: undefined;
-	const frames = error.frames
+type SafeErrorOutput = ReturnType<typeof createSafeErrorDiagnostic>;
+
+function safeErrorStatus(value: unknown): number | undefined {
+	if (typeof value !== "number") return undefined;
+	return Number.isInteger(value) && value >= 100 && value <= 599
+		? value
+		: undefined;
+}
+
+function safeErrorMethod(value: unknown): string | undefined {
+	if (typeof value !== "string") return undefined;
+	const method = value.toUpperCase();
+	return SAFE_HTTP_METHODS.has(method) ? method : undefined;
+}
+
+function safeErrorFrames(
+	frames: SafeErrorOutput["frames"],
+): SafeErrorOutput["frames"] {
+	return frames
 		?.filter(
 			(frame) =>
 				SAFE_STACK_SOURCES.has(frame.source) &&
@@ -346,45 +344,54 @@ function safeError(
 				frame.column > 0,
 		)
 		.slice(0, 3);
-	const phase =
-		typeof error.phase === "string" && SAFE_REQUEST_PHASES.has(error.phase)
-			? error.phase
-			: undefined;
-	const operationSafety =
-		typeof error.operation_safety === "string" &&
-		SAFE_OPERATION_SAFETY.has(error.operation_safety)
-			? error.operation_safety
-			: undefined;
-	const commitState =
-		typeof error.commit_state === "string" &&
-		SAFE_COMMIT_STATES.has(error.commit_state)
-			? error.commit_state
-			: undefined;
-	const outcome =
-		typeof error.outcome === "string" &&
-		SAFE_EXECUTION_OUTCOMES.has(error.outcome)
-			? error.outcome
-			: undefined;
-	return {
-		category,
-		...(code ? { code } : {}),
-		...(typeof error.status === "number" &&
-		Number.isInteger(error.status) &&
-		error.status >= 100 &&
-		error.status <= 599
-			? { status: error.status }
-			: {}),
-		...(method ? { method } : {}),
-		...(endpoint ? { endpoint } : {}),
-		...(frames?.length ? { frames } : {}),
-		...(phase ? { phase } : {}),
-		...(operationSafety ? { operation_safety: operationSafety } : {}),
-		...(commitState ? { commit_state: commitState } : {}),
-		...(typeof error.safe_to_retry === "boolean"
-			? { safe_to_retry: error.safe_to_retry }
-			: {}),
-		...(outcome ? { outcome } : {}),
-	};
+}
+
+function safeErrorBoolean(value: unknown): boolean | undefined {
+	return typeof value === "boolean" ? value : undefined;
+}
+
+function safeError(
+	error: ReturnType<typeof createSafeErrorDiagnostic> | undefined,
+): ReturnType<typeof createSafeErrorDiagnostic> | undefined {
+	if (!error || typeof error !== "object") return undefined;
+	const category =
+		allowedValue<SafeErrorOutput["category"]>(
+			error.category,
+			SAFE_ERROR_CATEGORIES,
+		) ?? "UnknownError";
+	const code = allowedValue<string>(error.code, SAFE_ERROR_CODES);
+	const method = safeErrorMethod(error.method);
+	const endpoint = allowedValue<string>(error.endpoint, SAFE_ENDPOINTS);
+	const frames = safeErrorFrames(error.frames);
+	const phase = allowedValue<NonNullable<SafeErrorOutput["phase"]>>(
+		error.phase,
+		SAFE_REQUEST_PHASES,
+	);
+	const operationSafety = allowedValue<
+		NonNullable<SafeErrorOutput["operation_safety"]>
+	>(error.operation_safety, SAFE_OPERATION_SAFETY);
+	const commitState = allowedValue<
+		NonNullable<SafeErrorOutput["commit_state"]>
+	>(error.commit_state, SAFE_COMMIT_STATES);
+	const outcome = allowedValue<NonNullable<SafeErrorOutput["outcome"]>>(
+		error.outcome,
+		SAFE_EXECUTION_OUTCOMES,
+	);
+	const status = safeErrorStatus(error.status);
+	const safeToRetry = safeErrorBoolean(error.safe_to_retry);
+	const sanitized: SafeErrorOutput = { category };
+	if (code !== undefined) sanitized.code = code;
+	if (status !== undefined) sanitized.status = status;
+	if (method !== undefined) sanitized.method = method;
+	if (endpoint !== undefined) sanitized.endpoint = endpoint;
+	if (frames?.length) sanitized.frames = frames;
+	if (phase !== undefined) sanitized.phase = phase;
+	if (operationSafety !== undefined)
+		sanitized.operation_safety = operationSafety;
+	if (commitState !== undefined) sanitized.commit_state = commitState;
+	if (safeToRetry !== undefined) sanitized.safe_to_retry = safeToRetry;
+	if (outcome !== undefined) sanitized.outcome = outcome;
+	return sanitized;
 }
 
 type SafeExecutionSource = Partial<
@@ -445,7 +452,7 @@ function emitBestEffort(
 ): void {
 	try {
 		const pending = sink(event);
-		if (pending) void Promise.resolve(pending).catch(() => undefined);
+		if (pending) Promise.resolve(pending).catch(() => undefined);
 	} catch {
 		// Worker observation is strictly best effort and must not affect MCP behavior.
 	}
