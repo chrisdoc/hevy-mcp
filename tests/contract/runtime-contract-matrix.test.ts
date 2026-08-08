@@ -166,11 +166,12 @@ describe("initial runtime contract matrix", () => {
 			expect(initialized.response.status).toBe(200);
 			const sessionId = initialized.response.headers.get("mcp-session-id");
 			expect(sessionId).toEqual(expect.any(String));
+			if (!sessionId) throw new Error("Missing MCP session ID");
 
 			const listed = await postNodeMcp(
 				url,
 				{ jsonrpc: "2.0", id: 2, method: "tools/list" },
-				{ "mcp-session-id": sessionId! },
+				{ "mcp-session-id": sessionId },
 			);
 			expect(listed.response.status).toBe(200);
 			const tools = listed.payload.result as {
@@ -193,7 +194,7 @@ describe("initial runtime contract matrix", () => {
 						arguments: minimalInput,
 					},
 				},
-				{ "mcp-session-id": sessionId! },
+				{ "mcp-session-id": sessionId },
 			);
 			expect(called.response.status).toBe(200);
 			assertGetWorkoutsResult(called.payload.result);

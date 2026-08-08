@@ -44,8 +44,7 @@ export function createDeterministicHevyClient(): HevyClient {
 		}
 		return deterministicGetWorkoutsResult;
 	};
-	const getUserInfo: HevyClient["getUserInfo"] = async () => ({
-		data: { id: "contract-user" },
-	});
+	const getUserInfo: HevyClient["getUserInfo"] = () =>
+		Promise.resolve({ data: { id: "contract-user" } });
 	return { getWorkouts, getUserInfo } as unknown as HevyClient;
 }
