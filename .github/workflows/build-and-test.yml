@@ -54,24 +54,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate repository control plane
-        run: npx nx run repository:check:control-plane
-
-      - name: Check package boundaries
-        run: npx nx run repository:check:boundaries
-
-      - name: Check package export maps
-        run: npx nx run repository:check:exports
-
-      - name: Run type check
-        run: npx nx run repository:check:types
-
-      - name: Check server manifest
-        run: npx nx run repository:check:server-manifest
-
-      - name: Run Check
-        run: npx nx run repository:check
-
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
@@ -88,12 +70,6 @@ jobs:
           npx changeset status --since="origin/${BASE_REF}"
           npx nx run repository:check:package-changesets -- --since "origin/${BASE_REF}"
 
-      - name: Run nightly diagnostics redaction regression tests
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:diagnostics
-        env:
-          HEVY_API_KEY: ""
-
       - name: Run build
         run: npx nx run repository:build
         env:
@@ -103,25 +79,27 @@ jobs:
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
           CODECOV_TOKEN: ${{ matrix.node-version == '24.x' && secrets.CODECOV_TOKEN || '' }}
 
-      - name: Run Worker HTTP integration tests
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:worker-http
-
-      - name: Run Worker tests
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:worker
-
-      - name: Run mocked integration tests with coverage
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
-
-      - name: Run mocked integration tests
-        if: matrix.node-version == '26.x'
-        run: npx nx run repository:test:mcp
-
-      - name: Run unit tests with coverage and JUnit output
+      - name: Prepare shared package candidates
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:unit -- --coverage --coverage.reportsDirectory=coverage/unit --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
+        run: |
+          npx nx run @chrisdoc/hevy-cli:build
+          npx nx run repository:check:server-manifest
+          npx nx run repository:pack:artifacts --excludeTaskDependencies
+
+      - name: Run Node 24 validation graph
+        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        env:
+          HEVY_API_KEY: ""
+          HEVY_TEST_REPORT_MODE: ci
+        run: >-
+          npx nx run-many --projects=repository --targets=check:control-plane,check:boundaries,check:exports,check:types,check,test:diagnostics,test:worker-http,test:worker,test:mcp,test:unit,test:contract,test:stdio,test:pack,test:cli,test:pack:cli,check:publint,worker:dry-run,test:performance --parallel=3 --outputStyle=stream --excludeTaskDependencies
+
+      - name: Run Node 26 validation graph
+        if: ${{ !cancelled() && matrix.node-version == '26.x' }}
+        env:
+          HEVY_TEST_REPORT_MODE: ci
+        run: >-
+          npx nx run-many --projects=repository --targets=check:control-plane,check:boundaries,check:exports,check:types,check:server-manifest,check,test:mcp,test:unit --parallel=3 --outputStyle=stream
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
@@ -131,38 +109,6 @@ jobs:
           files: ./test-results/unit-tests.xml
           disable_search: true
           report_type: test_results
-
-      - name: Run unit tests with coverage
-        if: ${{ !cancelled() && matrix.node-version == '26.x' }}
-        run: npx nx run repository:test:unit -- --coverage
-
-      - name: Run contract baseline
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:contract
-
-      - name: Run stdio baseline
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:stdio
-
-      - name: Run package and CLI package baselines
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:pack:cli
-
-      - name: Check published package metadata
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:check:publint
-
-      - name: Run CLI tests
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:cli
-
-      - name: Build and scan Worker dry run
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:worker:dry-run
-
-      - name: Run performance baseline
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:performance
 
       - name: Upload performance summary
         if: ${{ always() && matrix.node-version == '24.x' }}
@@ -205,6 +151,8 @@ jobs:
           context: .
           load: true
           tags: hevy-mcp:ci
+          cache-from: type=gha,scope=hevy-mcp-ci
+          cache-to: type=gha,mode=max,scope=hevy-mcp-ci,ignore-error=true
 
       - name: Smoke test version output without an API key
         run: docker run --rm hevy-mcp:ci --version

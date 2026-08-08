@@ -150,18 +150,56 @@ function walkJobSteps(value, visit, path = []) {
 		walkJobSteps(child, visit, [...path, key]);
 }
 
-function parseNxRunCommand(line) {
-	const match =
-		/^\s*npx\s+nx\s+run\s+repository:([A-Za-z0-9][A-Za-z0-9:_-]*)(?:\s+(.*?))?\s*$/.exec(
-			line,
+function optionValue(tokens, longName, shortName) {
+	for (let index = 0; index < tokens.length; index += 1) {
+		const token = tokens[index];
+		if (token.startsWith(`${longName}=`))
+			return token.slice(longName.length + 1);
+		if (token === longName || token === shortName)
+			return tokens[index + 1] ?? "";
+	}
+	return null;
+}
+
+function parseNxRunCommands(line) {
+	const normalized = line.trim().replace(/\s+/g, " ");
+	const direct =
+		/^npx nx run repository:([A-Za-z0-9][A-Za-z0-9:_-]*)(?: (.*?))?$/.exec(
+			normalized,
 		);
-	if (!match) return null;
-	const args = match[2]?.trim().replace(/\s+/g, " ") ?? "";
-	return {
-		target: match[1],
+	if (direct) {
+		const args = direct[2] ?? "";
+		return [
+			{
+				target: direct[1],
+				args,
+				command: `npx nx run repository:${direct[1]}${args ? ` ${args}` : ""}`,
+			},
+		];
+	}
+
+	const aggregate = /^npx nx run-many(?: (.*?))?$/.exec(normalized);
+	if (!aggregate) return [];
+	const args = aggregate[1] ?? "";
+	const tokens = args ? args.split(" ") : [];
+	const targetList = optionValue(tokens, "--targets", "-t");
+	if (targetList === null) return [];
+	const projectList = optionValue(tokens, "--projects", "-p");
+	assert(
+		projectList === "repository",
+		"Nx run-many must target only the repository project for workflow projection",
+	);
+	const targets = targetList.split(",").filter(Boolean);
+	assert(targets.length > 0, "Nx run-many must declare at least one target");
+	assert(
+		new Set(targets).size === targets.length,
+		"Nx run-many must not repeat targets",
+	);
+	return targets.map((target) => ({
+		target,
 		args,
-		command: `npx nx run repository:${match[1]}${args ? ` ${args}` : ""}`,
-	};
+		command: `npx nx run-many ${args}`,
+	}));
 }
 
 function normalizeLaneTargets(laneTargets) {
@@ -209,7 +247,8 @@ export function mappedLaneTargets(lanes) {
 }
 
 /**
- * Parse mapped `npx nx run repository:<target>` executions from a workflow.
+ * Parse mapped `nx run` and repository-scoped `nx run-many` executions from a
+ * workflow.
  * The returned entries retain the historical projection shape by default;
  * `includeCommands` adds the exact command identity for strict validation.
  */
@@ -246,9 +285,9 @@ export function parseWorkflowLaneExecutions(
 		walkJobSteps(steps, (step) => {
 			if (typeof step.run !== "string") return;
 			for (const line of step.run.split(/\r?\n/)) {
-				const command = parseNxRunCommand(line);
-				if (command && mappedTargets.has(command.target))
-					hasMappedCommand = true;
+				for (const command of parseNxRunCommands(line)) {
+					if (mappedTargets.has(command.target)) hasMappedCommand = true;
+				}
 			}
 		});
 		if (!hasMappedCommand) continue;
@@ -274,49 +313,54 @@ export function parseWorkflowLaneExecutions(
 			}
 			if (typeof step.run !== "string") return;
 			for (const line of step.run.split(/\r?\n/)) {
-				const command = parseNxRunCommand(line);
-				if (!command || !mappedTargets.has(command.target)) continue;
-				assert(
-					runtimeByMatrixValue,
-					`Workflow lane ${mappedTargets.get(command.target)} must follow an unconditional setup-node step in job ${jobId}`,
-				);
-				const rawStepCondition = step.if ?? null;
-				const stepCondition = normalizeCondition(rawStepCondition);
-				const selectedByJob = matrixValuesForCondition(jobCondition, versions);
-				const selectedByStep = matrixValuesForCondition(
-					stepCondition,
-					versions,
-				);
-				const selectedValues = versions.length
-					? versions.filter(
-							(value) =>
-								selectedByJob.includes(value) && selectedByStep.includes(value),
-						)
-					: [undefined];
-				const runtimes = [
-					...new Set(
-						selectedValues.map((value) => runtimeByMatrixValue.get(value)),
-					),
-				];
-				assert(
-					runtimes.length > 0 && runtimes.every(Boolean),
-					`Workflow lane ${mappedTargets.get(command.target)} has no runtime projection`,
-				);
-				const entry = {
-					lane: mappedTargets.get(command.target),
-					job: jobId,
-					runtimes,
-					condition: effectiveCondition(jobCondition, stepCondition),
-					jobCondition,
-					stepCondition,
-				};
-				if (includeCommands) {
-					entry.target = command.target;
-					entry.args = command.args;
-					entry.command = command.command;
-					entry.step = step.name ?? null;
+				for (const command of parseNxRunCommands(line)) {
+					if (!mappedTargets.has(command.target)) continue;
+					assert(
+						runtimeByMatrixValue,
+						`Workflow lane ${mappedTargets.get(command.target)} must follow an unconditional setup-node step in job ${jobId}`,
+					);
+					const rawStepCondition = step.if ?? null;
+					const stepCondition = normalizeCondition(rawStepCondition);
+					const selectedByJob = matrixValuesForCondition(
+						jobCondition,
+						versions,
+					);
+					const selectedByStep = matrixValuesForCondition(
+						stepCondition,
+						versions,
+					);
+					const selectedValues = versions.length
+						? versions.filter(
+								(value) =>
+									selectedByJob.includes(value) &&
+									selectedByStep.includes(value),
+							)
+						: [undefined];
+					const runtimes = [
+						...new Set(
+							selectedValues.map((value) => runtimeByMatrixValue.get(value)),
+						),
+					];
+					assert(
+						runtimes.length > 0 && runtimes.every(Boolean),
+						`Workflow lane ${mappedTargets.get(command.target)} has no runtime projection`,
+					);
+					const entry = {
+						lane: mappedTargets.get(command.target),
+						job: jobId,
+						runtimes,
+						condition: effectiveCondition(jobCondition, stepCondition),
+						jobCondition,
+						stepCondition,
+					};
+					if (includeCommands) {
+						entry.target = command.target;
+						entry.args = command.args;
+						entry.command = command.command;
+						entry.step = step.name ?? null;
+					}
+					executions.push(entry);
 				}
-				executions.push(entry);
 			}
 		});
 	}
