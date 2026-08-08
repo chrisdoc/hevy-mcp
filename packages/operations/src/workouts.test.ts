@@ -26,11 +26,11 @@ function createInMemoryAdapter(
 	const requests: InMemoryWorkoutsAdapter["requests"] = [];
 	return {
 		requests,
-		async getWorkouts(params, options) {
+		getWorkouts(params, options) {
 			requests.push({ params, options });
 			const response = responses[responseIndex++] ?? { workouts: [] };
-			if (response instanceof Error) throw response;
-			return response;
+			if (response instanceof Error) return Promise.reject(response);
+			return Promise.resolve(response);
 		},
 	};
 }
@@ -52,15 +52,15 @@ interface InMemoryWorkoutsGetAdapter extends WorkoutsGetAdapter {
 }
 
 function createInMemoryGetAdapter(
-	response: GetV1WorkoutsWorkoutid200 | undefined | Error,
+	response?: GetV1WorkoutsWorkoutid200 | Error,
 ): InMemoryWorkoutsGetAdapter {
 	const requests: InMemoryWorkoutsGetAdapter["requests"] = [];
 	return {
 		requests,
-		async getWorkout(workoutId, options) {
+		getWorkout(workoutId, options) {
 			requests.push({ workoutId, options });
-			if (response instanceof Error) throw response;
-			return response as GetV1WorkoutsWorkoutid200;
+			if (response instanceof Error) return Promise.reject(response);
+			return Promise.resolve(response as GetV1WorkoutsWorkoutid200);
 		},
 	};
 }
@@ -87,7 +87,7 @@ describe("workouts.get operation", () => {
 
 	it("normalizes a missing workout response to null", async () => {
 		const operation = createWorkoutsGetOperation(
-			createInMemoryGetAdapter(undefined),
+			createInMemoryGetAdapter(),
 		);
 
 		await expect(operation.execute({ workoutId: "missing" })).resolves.toEqual({
