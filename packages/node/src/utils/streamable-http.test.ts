@@ -1,7 +1,10 @@
 import { request, type Server } from "node:http";
 import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { startStreamableHttpServer } from "./streamable-http.js";
+import {
+	resolveHttpAdmissionConfig,
+	startStreamableHttpServer,
+} from "./streamable-http.js";
 
 const createMcpServer = async () => {
 	const server = new McpServer({ name: "test-server", version: "1.0.0" });
@@ -167,6 +170,173 @@ async function initialize(port: number, headers: Record<string, string> = {}) {
 }
 
 describe("Streamable HTTP server", () => {
+	it("uses safe admission defaults and bounded environment overrides", () => {
+		expect(resolveHttpAdmissionConfig()).toEqual({
+			maxSessions: 100,
+			maxInitializing: 10,
+			idleTimeoutMs: 1_800_000,
+			bodyTimeoutMs: 30_000,
+		});
+		process.env.HEVY_MCP_HTTP_MAX_SESSIONS = "7";
+		process.env.HEVY_MCP_HTTP_MAX_INITIALIZING = "0";
+		process.env.HEVY_MCP_HTTP_IDLE_TIMEOUT_MS = "999999999999";
+		process.env.HEVY_MCP_HTTP_BODY_TIMEOUT_MS = "not-a-number";
+		try {
+			expect(resolveHttpAdmissionConfig()).toEqual({
+				maxSessions: 7,
+				maxInitializing: 10,
+				idleTimeoutMs: 86_400_000,
+				bodyTimeoutMs: 30_000,
+			});
+			expect(
+				resolveHttpAdmissionConfig({
+					maxSessions: 2,
+					maxInitializing: 3,
+					idleTimeoutMs: 4,
+					bodyTimeoutMs: 5,
+				}),
+			).toEqual({
+				maxSessions: 2,
+				maxInitializing: 3,
+				idleTimeoutMs: 4,
+				bodyTimeoutMs: 5,
+			});
+			expect(
+				resolveHttpAdmissionConfig({
+					maxSessions: 0.5,
+					maxInitializing: 0.5,
+					idleTimeoutMs: 0.5,
+					bodyTimeoutMs: 0.5,
+				}),
+			).toEqual({
+				maxSessions: 100,
+				maxInitializing: 10,
+				idleTimeoutMs: 1_800_000,
+				bodyTimeoutMs: 30_000,
+			});
+		} finally {
+			delete process.env.HEVY_MCP_HTTP_MAX_SESSIONS;
+			delete process.env.HEVY_MCP_HTTP_MAX_INITIALIZING;
+			delete process.env.HEVY_MCP_HTTP_IDLE_TIMEOUT_MS;
+			delete process.env.HEVY_MCP_HTTP_BODY_TIMEOUT_MS;
+		}
+	});
+
+	it("returns 429 at established-session capacity", async () => {
+		const first = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"test-key",
+			createMcpServer,
+			{ maxSessions: 1 },
+		);
+		handles.push(first);
+		const firstInitialized = await initialize(serverPort(first));
+		expect(firstInitialized.statusCode).toBe(200);
+		expect((await initialize(serverPort(first))).statusCode).toBe(429);
+	});
+
+	it("returns 503 while initialization capacity is occupied and aborts it on shutdown", async () => {
+		let started!: () => void;
+		let signal: AbortSignal | undefined;
+		const startedPromise = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const createHangingServer = ({
+			lifecycleSignal,
+		}: {
+			lifecycleSignal?: AbortSignal;
+		}) => {
+			signal = lifecycleSignal;
+			started();
+			return new Promise<Awaited<ReturnType<typeof createMcpServer>>>(
+				(resolve) => {
+					lifecycleSignal?.addEventListener(
+						"abort",
+						async () => resolve(await createMcpServer()),
+						{ once: true },
+					);
+				},
+			);
+		};
+		const handle = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"test-key",
+			createHangingServer,
+			{ maxInitializing: 1 },
+		);
+		handles.push(handle);
+		const first = initialize(serverPort(handle));
+		await startedPromise;
+		expect((await initialize(serverPort(handle))).statusCode).toBe(503);
+		await handle.close();
+		expect(signal?.aborted).toBe(true);
+		await first.catch(() => undefined);
+	});
+
+	it("recovers capacity after DELETE and idle eviction", async () => {
+		const handle = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"test-key",
+			createMcpServer,
+			{ maxSessions: 1, idleTimeoutMs: 100 },
+		);
+		handles.push(handle);
+		const port = serverPort(handle);
+		const first = await initialize(port);
+		const firstSession = String(first.headers["mcp-session-id"]);
+		expect(
+			(
+				await call(port, "DELETE", undefined, {
+					"mcp-session-id": firstSession,
+				})
+			).statusCode,
+		).toBe(200);
+		expect((await initialize(port)).statusCode).toBe(200);
+		await vi.waitFor(async () => {
+			const result = await initialize(port);
+			expect(result.statusCode).toBe(429);
+		});
+		await vi.waitFor(
+			async () => expect((await initialize(port)).statusCode).toBe(200),
+			{ timeout: 1_000, interval: 5 },
+		);
+	});
+
+	it("returns a safe 408 when a request body stalls", async () => {
+		const handle = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"test-key",
+			createMcpServer,
+			{ bodyTimeoutMs: 10 },
+		);
+		handles.push(handle);
+		const result = await new Promise<HttpResult>((resolve, reject) => {
+			const client = request(
+				{
+					host: "127.0.0.1",
+					port: serverPort(handle),
+					path: "/mcp",
+					method: "POST",
+				},
+				(response) => {
+					const chunks: Buffer[] = [];
+					response.on("data", (chunk: Buffer) => chunks.push(chunk));
+					response.once("end", () =>
+						resolve({
+							statusCode: response.statusCode,
+							headers: response.headers,
+							body: Buffer.concat(chunks).toString("utf8"),
+						}),
+					);
+				},
+			);
+			client.once("error", reject);
+			client.flushHeaders();
+		});
+		expect(result.statusCode).toBe(408);
+		expect(result.body).toBe('{"error":"Request body timed out."}');
+	});
+
 	it("supports initialize, tools/list, and a mocked tools/call", async () => {
 		const { port } = await startTestServer();
 		const initialized = await initialize(port);
