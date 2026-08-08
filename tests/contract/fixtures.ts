@@ -38,12 +38,13 @@ export const validGetWorkoutsOutput =
 
 /** Deterministic client shared by every adapter case in the initial matrix. */
 export function createDeterministicHevyClient(): HevyClient {
-	const getWorkouts: HevyClient["getWorkouts"] = async (params) => {
-		if (params?.page !== 1 || params.pageSize !== 5) {
-			throw new Error("Contract fixture received unexpected pagination input");
-		}
-		return deterministicGetWorkoutsResult;
-	};
+	const getWorkouts: HevyClient["getWorkouts"] = (params) =>
+		Promise.resolve().then(() => {
+			if (params?.page !== 1 || params.pageSize !== 5) {
+				throw new Error("Contract fixture received unexpected pagination input");
+			}
+			return deterministicGetWorkoutsResult;
+		});
 	const getUserInfo: HevyClient["getUserInfo"] = () =>
 		Promise.resolve({ data: { id: "contract-user" } });
 	return { getWorkouts, getUserInfo } as unknown as HevyClient;

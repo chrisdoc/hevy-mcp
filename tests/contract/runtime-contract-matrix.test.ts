@@ -153,10 +153,12 @@ describe("initial runtime contract matrix", () => {
 		const handle = await startStreamableHttpServer(
 			{ transport: "http", host: "127.0.0.1", port: 0 },
 			"contract-test-key",
-			async () =>
-				createHevyMcpServer({
-					createClient: () => createDeterministicHevyClient(),
-				}),
+			() =>
+				Promise.resolve(
+					createHevyMcpServer({
+						createClient: () => createDeterministicHevyClient(),
+					}),
+				),
 		);
 		try {
 			const address = handle.server.address();
