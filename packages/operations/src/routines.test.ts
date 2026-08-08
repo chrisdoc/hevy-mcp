@@ -57,10 +57,10 @@ function createInMemoryGetAdapter(
 	const requests: InMemoryRoutinesGetAdapter["requests"] = [];
 	return {
 		requests,
-		async getRoutineById(routineId, options) {
+		getRoutineById(routineId, options) {
 			requests.push({ routineId, options });
-			if (response instanceof Error) throw response;
-			return response;
+			if (response instanceof Error) return Promise.reject(response);
+			return Promise.resolve(response);
 		},
 	};
 }
