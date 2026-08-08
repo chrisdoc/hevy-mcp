@@ -86,9 +86,7 @@ describe("workouts.get operation", () => {
 	});
 
 	it("normalizes a missing workout response to null", async () => {
-		const operation = createWorkoutsGetOperation(
-			createInMemoryGetAdapter(),
-		);
+		const operation = createWorkoutsGetOperation(createInMemoryGetAdapter());
 
 		await expect(operation.execute({ workoutId: "missing" })).resolves.toEqual({
 			workout: null,
