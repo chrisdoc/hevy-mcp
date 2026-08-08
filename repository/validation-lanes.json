@@ -70,7 +70,8 @@
 					"packages/node/src/utils/config.test.ts",
 					"packages/core/src/tools/register.test.ts",
 					"packages/core/src/utils/output-schemas.test.ts",
-					"tests/unit/server-manifest.test.ts"
+					"tests/unit/server-manifest.test.ts",
+					"tests/contract/runtime-contract-matrix.test.ts"
 				]
 			},
 			"runtimes": ["node-24"],

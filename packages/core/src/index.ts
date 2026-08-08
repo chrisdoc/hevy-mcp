@@ -1,4 +1,12 @@
 export {
+	CONTRACT_MATRIX_PROTOCOL_VERSION,
+	getWorkoutsCapabilityDescriptor,
+	toolCapabilityCatalog,
+	type ToolCapabilityCatalog,
+	type ToolCapabilityDescriptor,
+} from "./tools/capabilities.js";
+
+export {
 	HEVY_CLIENT_OPTION_INDEXES,
 	bindClientExecution,
 	createExecutionProjection,
