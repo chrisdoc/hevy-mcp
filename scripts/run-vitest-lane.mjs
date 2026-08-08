@@ -44,4 +44,8 @@ const result = spawnSync(process.execPath, [vitest, ...args], {
 	stdio: "inherit",
 });
 if (result.error) throw result.error;
-process.exit(result.status ?? 1);
+if (result.status !== 0) {
+	throw new Error(
+		`Vitest ${lane} lane failed with ${result.signal ? `signal ${result.signal}` : `exit code ${result.status ?? 1}`}`,
+	);
+}

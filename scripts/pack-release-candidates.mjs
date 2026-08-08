@@ -26,7 +26,11 @@ const packed = spawnSync(
 	{ cwd: repositoryRoot, env: process.env, stdio: "inherit" },
 );
 if (packed.error) throw packed.error;
-if (packed.status !== 0) process.exit(packed.status ?? 1);
+if (packed.status !== 0) {
+	throw new Error(
+		`npm pack failed with ${packed.signal ? `signal ${packed.signal}` : `exit code ${packed.status ?? 1}`}`,
+	);
+}
 
 const candidates = await Promise.all([
 	releaseCandidateArtifact("packages/node"),

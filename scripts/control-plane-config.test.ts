@@ -154,17 +154,17 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		);
 
 		expect(node26Build).toContain("if: matrix.node-version == '26.x'");
-		expect(node26Build).toContain(
-			"SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}",
+		expect(node26Build).toMatch(
+			/SENTRY_AUTH_TOKEN: \$\{\{ secrets\.SENTRY_AUTH_TOKEN \}\}/,
 		);
-		expect(node26Build).toContain(
-			"OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
+		expect(node26Build).toMatch(
+			/OTEL_COLLECTOR_TOKEN: \$\{\{ secrets\.OTEL_COLLECTOR_TOKEN \}\}/,
 		);
-		expect(packageBuild).toContain(
-			"SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}",
+		expect(packageBuild).toMatch(
+			/SENTRY_AUTH_TOKEN: \$\{\{ secrets\.SENTRY_AUTH_TOKEN \}\}/,
 		);
-		expect(packageBuild).toContain(
-			"OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
+		expect(packageBuild).toMatch(
+			/OTEL_COLLECTOR_TOKEN: \$\{\{ secrets\.OTEL_COLLECTOR_TOKEN \}\}/,
 		);
 		expect(prepare).not.toContain("secrets.");
 		expect(prepare).toContain("npx nx run @chrisdoc/hevy-cli:build");

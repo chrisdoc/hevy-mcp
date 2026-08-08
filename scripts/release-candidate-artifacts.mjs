@@ -25,10 +25,19 @@ export async function releaseCandidateArtifact(
 	const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 	const filename = candidateTarballFilename(manifest);
 	const path = resolve(root, ".nx/pack", filename);
-	let details;
+	let details = null;
 	try {
 		details = await stat(path);
-	} catch {}
+	} catch (error) {
+		if (
+			!error ||
+			typeof error !== "object" ||
+			!("code" in error) ||
+			error.code !== "ENOENT"
+		) {
+			throw error;
+		}
+	}
 	if (!details?.isFile() || details.size === 0) {
 		throw new Error(
 			`Release candidate is missing or empty for ${manifest.name}@${manifest.version}: ${path}`,

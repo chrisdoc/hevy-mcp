@@ -80,12 +80,13 @@ function waitForMcpResponse(child, id, timeoutMs = 10_000) {
 async function stopChild(child) {
 	if (child.exitCode !== null || child.signalCode !== null) return;
 	await new Promise((resolve) => {
+		let timer = null;
 		const finish = () => {
-			clearTimeout(timer);
+			if (timer !== null) clearTimeout(timer);
 			child.off("exit", finish);
 			resolve();
 		};
-		const timer = setTimeout(() => {
+		timer = setTimeout(() => {
 			child.kill("SIGKILL");
 			finish();
 		}, 2_000);

@@ -23,5 +23,9 @@ for (const candidate of candidates) {
 		{ cwd: repositoryRoot, env: process.env, stdio: "inherit" },
 	);
 	if (result.error) throw result.error;
-	if (result.status !== 0) process.exit(result.status ?? 1);
+	if (result.status !== 0) {
+		throw new Error(
+			`Publint failed for ${candidate.filename} with ${result.signal ? `signal ${result.signal}` : `exit code ${result.status ?? 1}`}`,
+		);
+	}
 }

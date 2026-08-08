@@ -292,23 +292,25 @@ export function parseWorkflowLaneExecutions(
 		});
 		if (!hasMappedCommand) continue;
 
-		let runtimeByMatrixValue;
-		let setupNodeSeen = false;
+		const runtimeState = {
+			byMatrixValue: null,
+			setupNodeSeen: false,
+		};
 		walkJobSteps(steps, (step) => {
 			if (
 				typeof step.uses === "string" &&
 				step.uses.startsWith("actions/setup-node@")
 			) {
 				assert(
-					!setupNodeSeen,
+					!runtimeState.setupNodeSeen,
 					`Workflow job ${jobId} has multiple setup-node steps`,
 				);
-				runtimeByMatrixValue = setupNodeRuntimeByMatrix(
+				runtimeState.byMatrixValue = setupNodeRuntimeByMatrix(
 					step,
 					rootDir,
 					versions,
 				);
-				setupNodeSeen = true;
+				runtimeState.setupNodeSeen = true;
 				return;
 			}
 			if (typeof step.run !== "string") return;
@@ -316,7 +318,7 @@ export function parseWorkflowLaneExecutions(
 				for (const command of parseNxRunCommands(line)) {
 					if (!mappedTargets.has(command.target)) continue;
 					assert(
-						runtimeByMatrixValue,
+						runtimeState.byMatrixValue,
 						`Workflow lane ${mappedTargets.get(command.target)} must follow an unconditional setup-node step in job ${jobId}`,
 					);
 					const rawStepCondition = step.if ?? null;
@@ -338,7 +340,9 @@ export function parseWorkflowLaneExecutions(
 						: [undefined];
 					const runtimes = [
 						...new Set(
-							selectedValues.map((value) => runtimeByMatrixValue.get(value)),
+							selectedValues.map((value) =>
+								runtimeState.byMatrixValue.get(value),
+							),
 						),
 					];
 					assert(
