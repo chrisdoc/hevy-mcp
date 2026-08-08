@@ -6,7 +6,9 @@ import {
 	type RoutinesListOperation,
 } from "./routines.js";
 import {
+	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
+	type WorkoutsGetOperation,
 	type WorkoutsListOperation,
 } from "./workouts.js";
 
@@ -29,9 +31,17 @@ export {
 	type RoutinesListOutput,
 } from "./routines.js";
 export {
+	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
+	isWorkoutsGetNotFound,
 	isWorkoutsListEndOfList,
+	workoutsGetDescriptor,
 	workoutsListDescriptor,
+	type WorkoutsGetAdapter,
+	type WorkoutsGetDescriptor,
+	type WorkoutsGetInput,
+	type WorkoutsGetOperation,
+	type WorkoutsGetOutput,
 	type WorkoutsListAdapter,
 	type WorkoutsListDescriptor,
 	type WorkoutsListInput,
@@ -45,6 +55,7 @@ export interface HevyOperations {
 		readonly list: RoutinesListOperation;
 	};
 	readonly workouts: {
+		readonly get: WorkoutsGetOperation;
 		readonly list: WorkoutsListOperation;
 	};
 }
@@ -56,6 +67,7 @@ export function createOperations(client: HevyClient): HevyOperations {
 			list: createRoutinesListOperation(client),
 		},
 		workouts: {
+			get: createWorkoutsGetOperation(client),
 			list: createWorkoutsListOperation(client),
 		},
 	};
