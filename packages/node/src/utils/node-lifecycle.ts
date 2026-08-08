@@ -118,15 +118,13 @@ export interface NodeLifecycleStartupResult {
 
 export interface RunNodeLifecycleOptions {
 	transport: NodeLifecycleTransport;
-	start(
-		this: void,
+	readonly start: (
 		context: NodeLifecycleContext,
-	): Promise<NodeLifecycleStartupResult>;
-	onFailure?(
-		this: void,
+	) => Promise<NodeLifecycleStartupResult>;
+	readonly onFailure?: (
 		reason: LifecycleTerminationReason,
 		outcome: NodeLifecycleOutcome,
-	): void;
+	) => void;
 }
 
 function createOutcomeState(transport: NodeLifecycleTransport) {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const doubles = vi.hoisted(() => ({
 	cleanup: vi.fn(),
-	flush: vi.fn().mockResolvedValue(undefined),
+	flush: vi.fn().mockImplementation(() => Promise.resolve()),
 	capture: vi.fn(),
 	startup: { add: vi.fn() },
 	schedule: vi.fn(),
@@ -41,20 +41,22 @@ vi.mock("./graceful-shutdown.js", () => ({
 
 import { runNodeLifecycle } from "./node-lifecycle.js";
 
-const target = { close: vi.fn().mockResolvedValue(undefined) };
+const target = {
+	close: vi.fn().mockImplementation(() => Promise.resolve()),
+};
 
 afterEach(() => {
 	vi.clearAllMocks();
-	target.close.mockResolvedValue(undefined);
+	target.close.mockImplementation(() => Promise.resolve());
 });
 
 describe("Node lifecycle runner", () => {
 	it("starts, schedules updates, and installs shutdown ownership", async () => {
 		await runNodeLifecycle({
 			transport: "http",
-			start: async (context) => {
+			start: (context) => {
 				context.markListening();
-				return { target };
+				return Promise.resolve({ target });
 			},
 		});
 
@@ -77,9 +79,7 @@ describe("Node lifecycle runner", () => {
 		await expect(
 			runNodeLifecycle({
 				transport: "http",
-				start: async () => {
-					throw error;
-				},
+				start: () => Promise.reject(error),
 				onFailure,
 			}),
 		).rejects.toBe(error);
@@ -101,9 +101,9 @@ describe("Node lifecycle runner", () => {
 		await expect(
 			runNodeLifecycle({
 				transport: "http",
-				start: async (context) => {
+				start: (context) => {
 					context.markListening();
-					throw new Error("runtime failure");
+					return Promise.reject(new Error("runtime failure"));
 				},
 				onFailure,
 			}),
@@ -122,9 +122,9 @@ describe("Node lifecycle runner", () => {
 		await expect(
 			runNodeLifecycle({
 				transport: "stdio",
-				start: async (context) => {
+				start: (context) => {
 					context.markConnectAttempted();
-					throw new Error("connect failure");
+					return Promise.reject(new Error("connect failure"));
 				},
 				onFailure,
 			}),
@@ -144,10 +144,10 @@ describe("Node lifecycle runner", () => {
 		let sessionSignal: AbortSignal | undefined;
 		await runNodeLifecycle({
 			transport: "http",
-			start: async ({ signal }) => {
+			start: ({ signal }) => {
 				processSignal = signal;
 				sessionSignal = sessionController.signal;
-				return { target };
+				return Promise.resolve({ target });
 			},
 		});
 
@@ -163,14 +163,14 @@ describe("Node lifecycle runner", () => {
 	it("flushes telemetry and cleans process tracking on shutdown", async () => {
 		await runNodeLifecycle({
 			transport: "stdio",
-			start: async (context) => {
+			start: (context) => {
 				context.markConnectAttempted();
 				context.markConnectSucceeded();
-				return {
+				return Promise.resolve({
 					target,
 					onShutdown: (succeeded) =>
 						doubles.termination(succeeded ? "clean" : "shutdown_failure"),
-				};
+				});
 			},
 		});
 
