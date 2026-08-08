@@ -1,9 +1,14 @@
 import type { HevyClient, HevyExecutionOptions } from "@hevy-mcp/hevy-client";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
-import type { GetV1Routines200 } from "@hevy-mcp/hevy-client/types";
+import type {
+	GetV1Routines200,
+	GetV1RoutinesRoutineid200,
+} from "@hevy-mcp/hevy-client/types";
 import { describe, expect, it } from "vitest";
 import {
+	createRoutinesGetOperation,
 	createRoutinesListOperation,
+	type RoutinesGetAdapter,
 	type RoutinesListAdapter,
 } from "./routines.js";
 
@@ -38,6 +43,78 @@ function notFound(endpoint = "/v1/routines") {
 		outcome: "expected",
 	});
 }
+
+interface InMemoryRoutinesGetAdapter extends RoutinesGetAdapter {
+	readonly requests: Array<{
+		readonly routineId: Parameters<HevyClient["getRoutineById"]>[0];
+		readonly options: Parameters<HevyClient["getRoutineById"]>[1];
+	}>;
+}
+
+function createInMemoryGetAdapter(
+	response: GetV1RoutinesRoutineid200 | Error,
+): InMemoryRoutinesGetAdapter {
+	const requests: InMemoryRoutinesGetAdapter["requests"] = [];
+	return {
+		requests,
+		async getRoutineById(routineId, options) {
+			requests.push({ routineId, options });
+			if (response instanceof Error) throw response;
+			return response;
+		},
+	};
+}
+
+describe("routines.get operation", () => {
+	it("maps the routine ID, propagates execution options, and normalizes the response", async () => {
+		const adapter = createInMemoryGetAdapter({
+			routine: { id: "r1", title: "Push", exercises: [] },
+		});
+		const operation = createRoutinesGetOperation(adapter);
+		const signal = new AbortController().signal;
+		const options: HevyExecutionOptions = {
+			signal,
+			deadline: Date.now() + 5_000,
+		};
+
+		await expect(
+			operation.execute({ routineId: "r1" }, options),
+		).resolves.toEqual({
+			routine: { id: "r1", title: "Push", exercises: [] },
+		});
+		expect(operation.descriptor).toEqual({
+			id: "routines.get",
+			safety: "read",
+		});
+		expect(adapter.requests).toEqual([{ routineId: "r1", options }]);
+	});
+
+	it("normalizes a missing routine field to null", async () => {
+		const operation = createRoutinesGetOperation(createInMemoryGetAdapter({}));
+
+		await expect(operation.execute({ routineId: "missing" })).resolves.toEqual({
+			routine: null,
+		});
+	});
+
+	it("returns not_found only for the canonical routine resource 404", async () => {
+		const operation = createRoutinesGetOperation(
+			createInMemoryGetAdapter(notFound("/v1/routines/r1")),
+		);
+
+		await expect(operation.execute({ routineId: "r1" })).resolves.toEqual({
+			routine: null,
+			expected404Outcome: "not_found",
+		});
+
+		const unrelatedOperation = createRoutinesGetOperation(
+			createInMemoryGetAdapter(notFound("/v1/workouts/w1")),
+		);
+		await expect(
+			unrelatedOperation.execute({ routineId: "r1" }),
+		).rejects.toBeInstanceOf(HevyHttpError);
+	});
+});
 
 describe("routines.list operation", () => {
 	it("describes a read and normalizes the curated client page", async () => {

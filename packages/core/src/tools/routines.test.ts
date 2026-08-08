@@ -124,6 +124,32 @@ describe("routine tools", () => {
 		});
 	});
 
+	it("uses the injected routines get operation and execution context", async () => {
+		const execute = vi.fn().mockResolvedValue({
+			routine: { id: "r1", title: "Push", exercises: [] },
+		});
+		const operations = {
+			routines: { get: { execute }, list: { execute: vi.fn() } },
+		} as unknown as HevyOperations;
+		const execution: ToolExecutionContext = {
+			signal: new AbortController().signal,
+			deadline: Date.now() + 5_000,
+		};
+		const tool = register(null, operations, execution);
+
+		const response = await handler(
+			tool,
+			"get-routine",
+		)({
+			routine_id: "r1",
+		});
+
+		expect(execute).toHaveBeenCalledWith({ routineId: "r1" }, execution);
+		expect(response).toMatchObject({
+			structuredContent: { routine: { id: "r1", title: "Push" } },
+		});
+	});
+
 	it("parses a routine whose exercise rest_seconds is an integer", async () => {
 		// Regression: the Hevy API returns rest_seconds as an integer, but the
 		// Routine read schema (and the get-routine output contract) previously

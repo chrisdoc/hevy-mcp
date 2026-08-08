@@ -1,5 +1,4 @@
 import type {
-	GetV1RoutinesRoutineid200,
 	PostV1Routines201,
 	PutV1RoutinesRoutineid200,
 	Routine,
@@ -26,7 +25,6 @@ import { buildRoutinePayload } from "./mutation-semantics.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import type { PaginatedToolResult } from "../utils/response-contracts.js";
-import { isExpectedReadNotFound } from "../utils/hevy-error-policy.js";
 
 const getRoutinesSchema = paginationShape({
 	defaultPageSize: 5,
@@ -57,7 +55,7 @@ const getRoutinesDefinition: ToolDefinition<
 const getRoutineSchema = { routine_id: nonEmptyId } as const;
 
 type GetRoutineResult = {
-	routine: GetV1RoutinesRoutineid200["routine"] | null;
+	routine: Routine | null;
 	routine_id: string;
 	expected404Outcome?: "not_found";
 };
@@ -76,21 +74,10 @@ const getRoutineDefinition: ToolDefinition<
 	annotations: readOnlyAnnotations("Get Routine"),
 	responseContract: routineResponse,
 	execute: async (runtime, { routine_id }) => {
-		try {
-			const data: GetV1RoutinesRoutineid200 = await runtime
-				.getClient()
-				.getRoutineById(String(routine_id));
-			return { routine: data?.routine, routine_id };
-		} catch (error) {
-			if (isExpectedReadNotFound(error)) {
-				return {
-					routine: null,
-					routine_id,
-					expected404Outcome: "not_found",
-				};
-			}
-			throw error;
-		}
+		const data = await runtime
+			.getOperations()
+			.routines.get.execute({ routineId: routine_id }, runtime.execution);
+		return { ...data, routine_id };
 	},
 };
 
