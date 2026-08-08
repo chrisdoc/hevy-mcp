@@ -239,12 +239,12 @@ function readBody(
 		let size = 0;
 		let settled = false;
 		const chunks: Buffer[] = [];
-		let timer: ReturnType<typeof setTimeout> | undefined;
+		let onError: (error: Error) => void;
 		const removeErrorListenerAfterDrain = () => {
 			request.removeListener("error", onError);
 		};
 		const cleanup = (retainErrorListener = false) => {
-			if (timer) clearTimeout(timer);
+			clearTimeout(timer);
 			request.removeListener("data", onData);
 			request.removeListener("end", onEnd);
 			if (retainErrorListener) {
@@ -276,7 +276,7 @@ function readBody(
 			}
 			if (!settled) chunks.push(buffer);
 		};
-		const onError = (error: Error) => settle(() => reject(error));
+		onError = (error: Error) => settle(() => reject(error));
 		const onAbort = () =>
 			rejectAndDrain(
 				new HttpRequestError(
@@ -297,7 +297,7 @@ function readBody(
 		request.once("error", onError);
 		request.once("end", onEnd);
 		signal?.addEventListener("abort", onAbort, { once: true });
-		timer = setTimeout(() => {
+		const timer = setTimeout(() => {
 			rejectAndDrain(new HttpRequestError(408, "Request body timed out."));
 		}, timeoutMs);
 		timer.unref?.();
@@ -443,7 +443,7 @@ export async function startStreamableHttpServer(
 				return;
 			}
 			recordHttpSessionEviction();
-			void closeSession(session).catch((error: unknown) => {
+			closeSession(session).catch((error: unknown) => {
 				cleanupErrors.push(error);
 			});
 		}, config.idleTimeoutMs);
@@ -520,7 +520,7 @@ export async function startStreamableHttpServer(
 			// for this transport, so evict and close the whole session rather than
 			// leaving an aborted session reusable or poisoning future requests.
 			if (!response.writableEnded && !session.closed) {
-				void closeSession(session).catch((error: unknown) => {
+				closeSession(session).catch((error: unknown) => {
 					cleanupErrors.push(error);
 				});
 			} else if (!session.closed) {
@@ -529,126 +529,304 @@ export async function startStreamableHttpServer(
 		});
 	}
 
+	interface RequestSessionResolution {
+		sessionId?: string;
+		existingSession?: HttpSession;
+		trackedExistingResponse: boolean;
+	}
+
+	function resolveRequestSession(
+		request: IncomingMessage,
+		response: ServerResponse,
+	): RequestSessionResolution | undefined {
+		if (request.url?.split("?", 1)[0] !== MCP_PATH) {
+			writeJson(response, 404, "Not found");
+			return;
+		}
+		if (
+			!validateHostHeader(
+				request,
+				hostNamesFor(options),
+				expectedPort(options, server),
+				wildcard,
+			)
+		) {
+			writeJson(response, 403, "Invalid Host header");
+			return;
+		}
+		if (!loopback && !isBearerAuthorized(request, bearerToken)) {
+			writeJson(response, 401, "Authorization required");
+			return;
+		}
+
+		const sessionHeader = request.headers["mcp-session-id"];
+		const sessionId =
+			typeof sessionHeader === "string" ? sessionHeader : undefined;
+		const existingSession = sessionId ? sessions.get(sessionId) : undefined;
+		if (sessionId && !existingSession) {
+			rejectBeforeBody(
+				request,
+				response,
+				404,
+				"Unknown Mcp-Session-Id.",
+				config.bodyTimeoutMs,
+			);
+			return;
+		}
+		if (existingSession && request.method !== "DELETE") {
+			trackSessionResponse(existingSession, response);
+			return { sessionId, existingSession, trackedExistingResponse: true };
+		}
+		return { sessionId, existingSession, trackedExistingResponse: false };
+	}
+
+	interface InitializationReservation {
+		controller: AbortController;
+		release: () => void;
+	}
+
+	function reserveInitialization(
+		request: IncomingMessage,
+		response: ServerResponse,
+	): InitializationReservation | null {
+		if (shuttingDown) {
+			recordHttpAdmissionRejection("shutting_down");
+			rejectBeforeBody(
+				request,
+				response,
+				503,
+				"HTTP server is shutting down. Retry shortly.",
+				config.bodyTimeoutMs,
+			);
+			return null;
+		}
+		if (initializationControllers.size >= config.maxInitializing) {
+			recordHttpAdmissionRejection("initializing_capacity");
+			rejectBeforeBody(
+				request,
+				response,
+				503,
+				"MCP server is busy initializing sessions. Retry shortly.",
+				config.bodyTimeoutMs,
+			);
+			return null;
+		}
+		if (sessions.size + initializationControllers.size >= config.maxSessions) {
+			recordHttpAdmissionRejection("session_capacity");
+			rejectBeforeBody(
+				request,
+				response,
+				429,
+				"MCP session capacity reached. Retry after an existing session closes.",
+				config.bodyTimeoutMs,
+			);
+			return null;
+		}
+
+		const controller = new AbortController();
+		initializationControllers.add(controller);
+		let resolveInitialization!: () => void;
+		const initializationComplete = new Promise<void>((resolve) => {
+			resolveInitialization = resolve;
+		});
+		initializationPromises.add(initializationComplete);
+		let released = false;
+		const onResponseClose = () => {
+			if (!response.writableEnded) {
+				controller.abort(
+					new DOMException("MCP initialization response closed", "AbortError"),
+				);
+			}
+		};
+		response.once("close", onResponseClose);
+		return {
+			controller,
+			release: () => {
+				if (released) return;
+				released = true;
+				response.removeListener("close", onResponseClose);
+				initializationControllers.delete(controller);
+				initializationPromises.delete(initializationComplete);
+				resolveInitialization();
+			},
+		};
+	}
+
+	async function handleInitializedSession(
+		request: IncomingMessage,
+		response: ServerResponse,
+		body: unknown,
+		reservation: InitializationReservation,
+	): Promise<void> {
+		const context = createMcpSessionContext(body, "http");
+		recordMcpSessionStart(body, "http", context);
+		let session: HttpSession | undefined;
+		let mcpServer: OwnedMcpServer | undefined;
+		let connected = false;
+		const lifecycleController = reservation.controller;
+		const transport = new NodeStreamableHTTPServerTransport({
+			sessionIdGenerator: randomUUID,
+			onsessioninitialized: (id) => {
+				if (!session) return;
+				if (shuttingDown || lifecycleController.signal.aborted) {
+					closeSession(session).catch((error: unknown) => {
+						cleanupErrors.push(error);
+					});
+					return;
+				}
+				sessions.set(id, session);
+				pendingSessions.delete(session);
+				initializationControllers.delete(lifecycleController);
+				armIdleTimer(session);
+			},
+		});
+		transport.onclose = () => {
+			if (session) {
+				closeSession(session).catch((error: unknown) => {
+					cleanupErrors.push(error);
+				});
+			}
+		};
+		try {
+			mcpServer = await createMcpServer({
+				apiKey,
+				lifecycleSignal: lifecycleController.signal,
+			});
+			if (shuttingDown || lifecycleController.signal.aborted) {
+				await closeUnregistered(transport, mcpServer);
+				recordMcpSessionTermination("startup_failure", context);
+				return;
+			}
+			session = {
+				transport,
+				server: mcpServer,
+				context,
+				lifecycleController,
+				responses: new Set(),
+				closed: false,
+			};
+			pendingSessions.add(session);
+			await mcpServer.connect(transport);
+			connected = true;
+			if (shuttingDown || lifecycleController.signal.aborted) {
+				await closeSession(session);
+				return;
+			}
+			trackSessionResponse(session, response);
+			await runWithMcpSessionContext(context, () =>
+				transport.handleRequest(request, response, body),
+			);
+		} catch (error) {
+			lifecycleController.abort(
+				new DOMException("MCP session startup failed", "AbortError"),
+			);
+			console.error(`HTTP session request failed: ${safeDiagnostic(error)}`);
+			let cleanupError: unknown;
+			try {
+				if (session) {
+					await closeSession(
+						session,
+						connected ? "unknown" : "connect_failure",
+					);
+				} else {
+					await closeUnregistered(transport, mcpServer);
+					recordMcpSessionTermination("startup_failure", context);
+				}
+			} catch (cleanupFailure) {
+				cleanupError = cleanupFailure;
+				if (!session) recordMcpSessionTermination("unknown", context);
+			}
+			if (cleanupError) {
+				console.error(`HTTP cleanup failed: ${safeDiagnostic(cleanupError)}`);
+			}
+			if (!response.writableEnded && !shuttingDown)
+				writeExecutionJson(response, 500, "Internal server error.", error);
+		}
+	}
+
+	async function handleInitializationRequest(
+		request: IncomingMessage,
+		response: ServerResponse,
+		body: unknown,
+		sessionId: string | undefined,
+		reservation: InitializationReservation | undefined,
+	): Promise<boolean> {
+		if (request.method !== "POST" || !isInitializeRequest(body)) return false;
+		if (sessionId) {
+			writeJson(
+				response,
+				400,
+				"Initialization must not include Mcp-Session-Id.",
+			);
+			return true;
+		}
+		if (!reservation) {
+			writeJson(
+				response,
+				503,
+				"MCP initialization capacity is unavailable. Retry shortly.",
+			);
+			return true;
+		}
+		await handleInitializedSession(request, response, body, reservation);
+		return true;
+	}
+
+	async function handleExistingSessionRequest(
+		request: IncomingMessage,
+		response: ServerResponse,
+		body: unknown,
+		sessionId: string | undefined,
+		existingSession: HttpSession | undefined,
+		trackedExistingResponse: boolean,
+	): Promise<void> {
+		if (!sessionId) {
+			writeJson(response, 400, "Mcp-Session-Id header is required.");
+			return;
+		}
+		const session = existingSession ?? sessions.get(sessionId);
+		if (!session) {
+			writeJson(response, 404, "Unknown Mcp-Session-Id.");
+			return;
+		}
+		armIdleTimer(session);
+		if (request.method !== "DELETE" && !trackedExistingResponse) {
+			trackSessionResponse(session, response);
+		}
+		await runWithMcpSessionContext(session.context, () =>
+			session.transport.handleRequest(request, response, body),
+		);
+		if (request.method === "DELETE" && !session.closed) {
+			try {
+				await closeSession(session);
+			} catch (error: unknown) {
+				cleanupErrors.push(error);
+			}
+		}
+	}
+
 	async function handleRequest(
 		request: IncomingMessage,
 		response: ServerResponse,
 	): Promise<void> {
 		let releaseInitialization: (() => void) | undefined;
 		try {
-			if (request.url?.split("?", 1)[0] !== MCP_PATH) {
-				writeJson(response, 404, "Not found");
-				return;
-			}
-			if (
-				!validateHostHeader(
-					request,
-					hostNamesFor(options),
-					expectedPort(options, server),
-					wildcard,
-				)
-			) {
-				writeJson(response, 403, "Invalid Host header");
-				return;
-			}
-			if (!loopback && !isBearerAuthorized(request, bearerToken)) {
-				writeJson(response, 401, "Authorization required");
-				return;
-			}
-
-			const sessionHeader = request.headers["mcp-session-id"];
-			const sessionId =
-				typeof sessionHeader === "string" ? sessionHeader : undefined;
-			const existingSession = sessionId ? sessions.get(sessionId) : undefined;
-			if (sessionId && !existingSession) {
-				rejectBeforeBody(
-					request,
-					response,
-					404,
-					"Unknown Mcp-Session-Id.",
-					config.bodyTimeoutMs,
-				);
-				return;
-			}
-			let trackedExistingResponse = false;
-			if (existingSession && request.method !== "DELETE") {
-				trackSessionResponse(existingSession, response);
-				trackedExistingResponse = true;
-			}
-			let initializationController: AbortController | undefined;
-			if (request.method === "POST" && !sessionId) {
-				if (shuttingDown) {
-					recordHttpAdmissionRejection("shutting_down");
-					rejectBeforeBody(
-						request,
-						response,
-						503,
-						"HTTP server is shutting down. Retry shortly.",
-						config.bodyTimeoutMs,
-					);
-					return;
-				}
-				if (initializationControllers.size >= config.maxInitializing) {
-					recordHttpAdmissionRejection("initializing_capacity");
-					rejectBeforeBody(
-						request,
-						response,
-						503,
-						"MCP server is busy initializing sessions. Retry shortly.",
-						config.bodyTimeoutMs,
-					);
-					return;
-				}
-				if (
-					sessions.size + initializationControllers.size >=
-					config.maxSessions
-				) {
-					recordHttpAdmissionRejection("session_capacity");
-					rejectBeforeBody(
-						request,
-						response,
-						429,
-						"MCP session capacity reached. Retry after an existing session closes.",
-						config.bodyTimeoutMs,
-					);
-					return;
-				}
-				const controller = new AbortController();
-				initializationController = controller;
-				initializationControllers.add(controller);
-				let resolveInitialization!: () => void;
-				const initializationComplete = new Promise<void>((resolve) => {
-					resolveInitialization = resolve;
-				});
-				initializationPromises.add(initializationComplete);
-				let released = false;
-				const onResponseClose = () => {
-					if (!response.writableEnded) {
-						controller.abort(
-							new DOMException(
-								"MCP initialization response closed",
-								"AbortError",
-							),
-						);
-					}
-				};
-				response.once("close", onResponseClose);
-				releaseInitialization = () => {
-					if (released) return;
-					released = true;
-					response.removeListener("close", onResponseClose);
-					initializationControllers.delete(controller);
-					initializationPromises.delete(initializationComplete);
-					resolveInitialization();
-				};
-			}
-
+			const resolution = resolveRequestSession(request, response);
+			if (!resolution) return;
+			const requiresInitialization =
+				request.method === "POST" && !resolution.sessionId;
+			const reservation = requiresInitialization
+				? reserveInitialization(request, response)
+				: undefined;
+			if (requiresInitialization && !reservation) return;
+			releaseInitialization = reservation?.release;
 			const body =
 				request.method === "POST"
 					? await readBody(
 							request,
 							config.bodyTimeoutMs,
-							initializationController?.signal ??
-								existingSession?.lifecycleController.signal,
+							reservation?.controller.signal ??
+								resolution.existingSession?.lifecycleController.signal,
 						)
 					: undefined;
 			if (shuttingDown) {
@@ -659,140 +837,24 @@ export async function startStreamableHttpServer(
 				);
 				return;
 			}
-			const initializing =
-				request.method === "POST" && isInitializeRequest(body);
-
-			if (initializing) {
-				if (sessionId) {
-					writeJson(
-						response,
-						400,
-						"Initialization must not include Mcp-Session-Id.",
-					);
-					return;
-				}
-				if (!initializationController) {
-					writeJson(
-						response,
-						503,
-						"MCP initialization capacity is unavailable. Retry shortly.",
-					);
-					return;
-				}
-				const context = createMcpSessionContext(body, "http");
-				recordMcpSessionStart(body, "http", context);
-				let session: HttpSession | undefined;
-				let mcpServer: OwnedMcpServer | undefined;
-				let connected = false;
-				const lifecycleController = initializationController;
-				const transport = new NodeStreamableHTTPServerTransport({
-					sessionIdGenerator: randomUUID,
-					onsessioninitialized: (id) => {
-						if (!session) return;
-						if (shuttingDown || lifecycleController.signal.aborted) {
-							void closeSession(session).catch((error: unknown) => {
-								cleanupErrors.push(error);
-							});
-							return;
-						}
-						sessions.set(id, session);
-						pendingSessions.delete(session);
-						initializationControllers.delete(lifecycleController);
-						armIdleTimer(session);
-					},
-				});
-				transport.onclose = () => {
-					if (session) {
-						void closeSession(session).catch((error: unknown) => {
-							cleanupErrors.push(error);
-						});
-					}
-				};
-				try {
-					mcpServer = await createMcpServer({
-						apiKey,
-						lifecycleSignal: lifecycleController.signal,
-					});
-					if (shuttingDown || lifecycleController.signal.aborted) {
-						await closeUnregistered(transport, mcpServer);
-						recordMcpSessionTermination("startup_failure", context);
-						return;
-					}
-					session = {
-						transport,
-						server: mcpServer,
-						context,
-						lifecycleController,
-						responses: new Set(),
-						closed: false,
-					};
-					pendingSessions.add(session);
-					await mcpServer.connect(transport);
-					connected = true;
-					if (shuttingDown || lifecycleController.signal.aborted) {
-						await closeSession(session);
-						return;
-					}
-					trackSessionResponse(session, response);
-					await runWithMcpSessionContext(context, () =>
-						transport.handleRequest(request, response, body),
-					);
-				} catch (error) {
-					lifecycleController.abort(
-						new DOMException("MCP session startup failed", "AbortError"),
-					);
-					console.error(
-						`HTTP session request failed: ${safeDiagnostic(error)}`,
-					);
-					let cleanupError: unknown;
-					try {
-						if (session) {
-							await closeSession(
-								session,
-								connected ? "unknown" : "connect_failure",
-							);
-						} else {
-							await closeUnregistered(transport, mcpServer);
-							recordMcpSessionTermination("startup_failure", context);
-						}
-					} catch (cleanupFailure) {
-						cleanupError = cleanupFailure;
-						if (!session) recordMcpSessionTermination("unknown", context);
-					}
-					if (cleanupError) {
-						console.error(
-							`HTTP cleanup failed: ${safeDiagnostic(cleanupError)}`,
-						);
-					}
-					if (!response.writableEnded && !shuttingDown)
-						writeExecutionJson(response, 500, "Internal server error.", error);
-				}
+			if (
+				await handleInitializationRequest(
+					request,
+					response,
+					body,
+					resolution.sessionId,
+					reservation ?? undefined,
+				)
+			)
 				return;
-			}
-
-			if (!sessionId) {
-				writeJson(response, 400, "Mcp-Session-Id header is required.");
-				return;
-			}
-			const session = existingSession ?? sessions.get(sessionId);
-			if (!session) {
-				writeJson(response, 404, "Unknown Mcp-Session-Id.");
-				return;
-			}
-			armIdleTimer(session);
-			if (request.method !== "DELETE" && !trackedExistingResponse) {
-				trackSessionResponse(session, response);
-			}
-			await runWithMcpSessionContext(session.context, () =>
-				session.transport.handleRequest(request, response, body),
+			await handleExistingSessionRequest(
+				request,
+				response,
+				body,
+				resolution.sessionId,
+				resolution.existingSession,
+				resolution.trackedExistingResponse,
 			);
-			if (request.method === "DELETE" && !session.closed) {
-				try {
-					await closeSession(session);
-				} catch (error: unknown) {
-					cleanupErrors.push(error);
-				}
-			}
 		} finally {
 			releaseInitialization?.();
 		}
