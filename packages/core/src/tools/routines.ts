@@ -48,7 +48,7 @@ const getRoutinesDefinition: ToolDefinition<
 	outputSchema: routinesResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Routines"),
 	responseContract: routinesResponse,
-	execute: async (runtime: ToolRuntime, { page, page_size }) =>
+	execute: (runtime: ToolRuntime, { page, page_size }) =>
 		runtime
 			.getOperations()
 			.routines.list.execute({ page, pageSize: page_size }, runtime.execution),

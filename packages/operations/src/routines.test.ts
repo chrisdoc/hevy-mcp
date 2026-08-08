@@ -21,11 +21,11 @@ function createInMemoryAdapter(
 	const requests: InMemoryRoutinesAdapter["requests"] = [];
 	return {
 		requests,
-		async getRoutines(params, options) {
+		getRoutines(params, options) {
 			requests.push({ params, options });
 			const response = responses[responseIndex++] ?? { routines: [] };
-			if (response instanceof Error) throw response;
-			return response;
+			if (response instanceof Error) return Promise.reject(response);
+			return Promise.resolve(response);
 		},
 	};
 }
