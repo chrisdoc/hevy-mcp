@@ -77,8 +77,11 @@ npx vitest run scripts/control-plane-config.test.ts
 - Deterministic checks and test lanes may be cached; live integration, nightly,
   release/version, package, Worker deployment/dry-run, performance, and
   token-cost targets are explicitly non-cacheable.
-- Worker and package smoke lanes opt out of Nx task parallelism because they
-  exercise shared local runtimes and publishable output directories.
+- The workerd pool lane remains machine-exclusive because CPU contention can
+  violate its five-second integration timeout. Worker HTTP and dry-run lanes
+  use isolated runtimes and can run concurrently. The `pack:artifacts` target
+  is the sole writer for publishable output; package smoke and Publint targets
+  consume its immutable tarballs concurrently.
 - Vitest and token-cost arguments pass through Nx with `npx nx run ... -- ...`;
   no workflow needs to depend on undocumented Nx executor internals.
 - `npm ci`, Docker actions, Wrangler deployment commands, Changesets actions,

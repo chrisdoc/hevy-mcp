@@ -27,7 +27,6 @@ const inferredTargets = [
 	"check:control-plane",
 	"check:boundaries",
 	"check:exports",
-	"check:publint",
 	"check:package-changesets",
 	"check",
 	"check:types",
@@ -45,15 +44,19 @@ const inferredTargets = [
 	"test:stdio",
 	"test:worker",
 	"test:worker-http",
-	"test:pack",
 	"test:cli",
-	"test:pack:cli",
 	"test:nightly",
 	"test:live",
 	"test:worker-http:live",
 	"measure:tokens",
 	"worker:dry-run",
 	"test:coverage",
+] as const;
+
+const orchestratedTargets = [
+	"check:publint",
+	"test:pack",
+	"test:pack:cli",
 	"test:performance",
 ] as const;
 
@@ -120,6 +123,62 @@ async function createFixture(
 }
 
 describe("Nx and dependency-cruiser control-plane migration", () => {
+	it("scopes pull-request secrets to build steps and reuses their artifacts", async () => {
+		const workflow = await readFile(
+			resolve(root, ".github/workflows/build-and-test.yml"),
+			"utf8",
+		);
+		const node26Build = workflow.slice(
+			workflow.indexOf("      - name: Run Node 26 build"),
+			workflow.indexOf("      - name: Run Node 24 validation graph"),
+		);
+		const node24 = workflow.slice(
+			workflow.indexOf("      - name: Run Node 24 validation graph"),
+			workflow.indexOf("      - name: Run Node 26 validation graph"),
+		);
+		const packageJob = workflow.slice(
+			workflow.indexOf("  package-performance:"),
+			workflow.indexOf("  docker:"),
+		);
+		const packageBuild = packageJob.slice(
+			packageJob.indexOf("      - name: Build package candidate"),
+			packageJob.indexOf("      - name: Prepare shared package candidates"),
+		);
+		const prepare = packageJob.slice(
+			packageJob.indexOf("      - name: Prepare shared package candidates"),
+			packageJob.indexOf("      - name: Run isolated performance validation"),
+		);
+		const packageValidation = packageJob.slice(
+			packageJob.indexOf("      - name: Run isolated performance validation"),
+			packageJob.indexOf("      - name: Upload performance summary"),
+		);
+
+		expect(node26Build).toContain("if: matrix.node-version == '26.x'");
+		expect(node26Build).toMatch(
+			/SENTRY_AUTH_TOKEN: \$\{\{ secrets\.SENTRY_AUTH_TOKEN \}\}/,
+		);
+		expect(node26Build).toMatch(
+			/OTEL_COLLECTOR_TOKEN: \$\{\{ secrets\.OTEL_COLLECTOR_TOKEN \}\}/,
+		);
+		expect(packageBuild).toMatch(
+			/SENTRY_AUTH_TOKEN: \$\{\{ secrets\.SENTRY_AUTH_TOKEN \}\}/,
+		);
+		expect(packageBuild).toMatch(
+			/OTEL_COLLECTOR_TOKEN: \$\{\{ secrets\.OTEL_COLLECTOR_TOKEN \}\}/,
+		);
+		expect(prepare).not.toContain("secrets.");
+		expect(prepare).toContain("npx nx run @chrisdoc/hevy-cli:build");
+		expect(prepare).toContain(
+			"npx nx run repository:pack:artifacts --excludeTaskDependencies",
+		);
+		expect(node24).not.toContain("secrets.");
+		expect(node24).toContain("--excludeTaskDependencies");
+		expect(packageValidation).not.toContain("secrets.");
+		expect(packageValidation).toContain(
+			"npx nx run repository:test:performance --excludeTaskDependencies",
+		);
+	});
+
 	it("declares the canonical model check as an explicit target", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
@@ -181,7 +240,21 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		]);
 	});
 
-	it("runs strict Publint against both public package workspaces", async () => {
+	it("keeps both package candidates in release validation", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as { targets: Record<string, { dependsOn?: string[] }> };
+		expect(project.targets["release:validate"]?.dependsOn).toEqual(
+			expect.arrayContaining([
+				"check:server-manifest",
+				"test:pack",
+				"test:pack:cli",
+				"check:publint",
+			]),
+		);
+	});
+
+	it("runs package validation against the same release candidates", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
 		) as {
@@ -190,7 +263,9 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				{
 					cache?: boolean;
 					dependsOn?: string[];
+					executor?: string;
 					parallelism?: boolean;
+					options?: { command?: string };
 				}
 			>;
 		};
@@ -198,14 +273,54 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			await readFile(resolve(root, "package.json"), "utf8"),
 		) as { scripts: Record<string, string> };
 
-		expect(packageJson.scripts["check:publint"]).toBe(
-			"publint run --strict --pack npm packages/node && publint run --strict --pack npm packages/cli",
+		const expected = {
+			"check:publint": "mise exec -- node scripts/check-candidate-publint.mjs",
+			"test:pack": "mise exec -- node tests/package/npm-pack-smoke.mjs",
+			"test:pack:cli":
+				"cross-env FORCE_COLOR=0 mise exec -- node packages/cli/tests/npm-pack-smoke.mjs",
+		};
+		for (const [target, command] of Object.entries(expected)) {
+			expect(packageJson.scripts[target]).toBe(
+				`mise exec -- npx nx run repository:${target}`,
+			);
+			expect(project.targets[target]).toMatchObject({
+				cache: false,
+				dependsOn: ["pack:artifacts"],
+				executor: "nx:run-commands",
+				options: { command },
+			});
+			expect(project.targets[target]?.parallelism).toBeUndefined();
+		}
+	});
+
+	it("keeps CI reporting inside the canonical unit and mocked lanes", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as {
+			targets: Record<string, { inputs?: Array<string | { env: string }> }>;
+		};
+		const packageJson = JSON.parse(
+			await readFile(resolve(root, "package.json"), "utf8"),
+		) as { scripts: Record<string, string> };
+		const runner = await readFile(
+			resolve(root, "scripts/run-vitest-lane.mjs"),
+			"utf8",
 		);
-		expect(project.targets["check:publint"]).toMatchObject({
-			cache: false,
-			dependsOn: ["build", "@chrisdoc/hevy-cli:build"],
-			parallelism: false,
-		});
+
+		expect(packageJson.scripts["test:unit"]).toBe(
+			"mise exec -- node scripts/run-vitest-lane.mjs unit",
+		);
+		expect(packageJson.scripts["test:mcp"]).toBe(
+			"mise exec -- node scripts/run-vitest-lane.mjs mocked",
+		);
+		for (const target of ["test:unit", "test:mcp"]) {
+			expect(project.targets[target]?.inputs).toContainEqual({
+				env: "HEVY_TEST_REPORT_MODE",
+			});
+		}
+		expect(runner).toContain(
+			'args.push("--coverage", "--coverage.reportsDirectory=coverage/unit");',
+		);
 	});
 
 	it("leaves dependency-cruiser as an inferred npm target", async () => {
@@ -249,7 +364,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		expect(project.targets["control-plane"]?.executor).toBe("nx:noop");
 	});
 
-	it("builds both publishable packages before packing artifacts", async () => {
+	it("builds both publishable packages once before packing artifacts", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
 		) as {
@@ -269,27 +384,60 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		};
 		const pack = project.targets["pack:artifacts"];
 		expect(pack?.executor).toBe("nx:run-commands");
-		expect(pack?.dependsOn).toEqual(
-			expect.arrayContaining(["hevy-mcp:build", "@chrisdoc/hevy-cli:build"]),
-		);
-		expect(pack?.cache).toBe(false);
-		expect(pack?.options?.command).toBeUndefined();
-		expect(pack?.options?.commands).toEqual([
-			"node -e \"require('node:fs').mkdirSync('.nx/pack', { recursive: true })\"",
-			"npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent",
+		expect(pack?.dependsOn).toEqual([
+			"build",
+			"@chrisdoc/hevy-cli:build",
+			"check:server-manifest",
 		]);
-		expect(pack?.options?.parallel).toBe(false);
+		expect(pack?.cache).toBe(false);
+		expect(pack?.options?.command).toBe(
+			"mise exec -- node scripts/pack-release-candidates.mjs",
+		);
+		expect(pack?.options?.commands).toBeUndefined();
+	});
+
+	it("runs performance checks against the shared Node build", async () => {
+		const project = JSON.parse(
+			await readFile(resolve(root, "project.json"), "utf8"),
+		) as {
+			targets: Record<
+				string,
+				{
+					cache?: boolean;
+					dependsOn?: string[];
+					executor?: string;
+					options?: { command?: string };
+				}
+			>;
+		};
+		const packageJson = JSON.parse(
+			await readFile(resolve(root, "package.json"), "utf8"),
+		) as { scripts: Record<string, string> };
+
+		expect(packageJson.scripts["test:performance"]).toBe(
+			"mise exec -- npx nx run repository:test:performance",
+		);
+		expect(project.targets["test:performance"]).toMatchObject({
+			cache: false,
+			dependsOn: ["build"],
+			executor: "nx:run-commands",
+			options: {
+				command:
+					"mise exec -- vitest run tests/performance/performance.test.ts",
+			},
+		});
 	});
 
 	it("keeps cached targets on explicit narrow named inputs", async () => {
+		type TaskInput = string | { env: string };
 		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
 			namedInputs: Record<string, unknown>;
 			targetDefaults: Record<
 				string,
-				| { cache?: boolean; inputs?: string[] }
+				| { cache?: boolean; inputs?: TaskInput[] }
 				| Array<{
 						cache?: boolean;
-						inputs?: string[];
+						inputs?: TaskInput[];
 						dependsOn?: string[];
 				  }>
 			>;
@@ -297,7 +445,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
 		) as {
-			targets: Record<string, { cache?: boolean; inputs?: string[] }>;
+			targets: Record<string, { cache?: boolean; inputs?: TaskInput[] }>;
 		};
 
 		expect(nx.namedInputs.default).toBeUndefined();
@@ -343,8 +491,12 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			expect(nx.namedInputs[input]).toEqual(expect.any(Array));
 
 		const namedInputNames = new Set(Object.keys(nx.namedInputs));
-		const assertNamedInputsResolve = (inputs: string[] | undefined) => {
+		const assertNamedInputsResolve = (inputs: TaskInput[] | undefined) => {
 			for (const input of inputs ?? []) {
+				if (typeof input !== "string") {
+					expect(input).toEqual({ env: expect.any(String) });
+					continue;
+				}
 				if (input.startsWith("{")) continue;
 				expect(namedInputNames.has(input)).toBe(true);
 			}
@@ -524,14 +676,17 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 			expect(project.targets[target]?.cache).toBe(false);
 		}
 		for (const target of [
-			"test:worker",
 			"test:worker-http",
 			"test:pack",
 			"test:pack:cli",
+			"check:publint",
 		]) {
-			expect(project.targets[target]?.parallelism).toBe(false);
+			expect(project.targets[target]?.parallelism).toBeUndefined();
 		}
-		expect(project.targets["test:pack:cli"]?.options).toBeUndefined();
+		expect(project.targets["test:worker"]?.parallelism).toBe(false);
+		for (const target of orchestratedTargets) {
+			expect(project.targets[target]?.options).toBeDefined();
+		}
 		expect(project.targets["worker:dry-run"]?.outputs).toEqual([
 			"{workspaceRoot}/.wrangler/dry-run",
 		]);
