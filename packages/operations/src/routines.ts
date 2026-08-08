@@ -25,6 +25,35 @@ export interface RoutinesListOutput {
 
 export type RoutinesListAdapter = Pick<HevyClient, "getRoutines">;
 
+export interface RoutinesGetInput {
+	readonly routineId: string;
+}
+
+export interface RoutinesGetOutput {
+	readonly routine: Routine | null;
+	readonly expected404Outcome?: "not_found";
+}
+
+export type RoutinesGetAdapter = Pick<HevyClient, "getRoutineById">;
+
+export interface RoutinesGetDescriptor {
+	readonly id: "routines.get";
+	readonly safety: Extract<HevyOperationSafety, "read">;
+}
+
+export const routinesGetDescriptor: RoutinesGetDescriptor = {
+	id: "routines.get",
+	safety: "read",
+};
+
+export interface RoutinesGetOperation {
+	readonly descriptor: RoutinesGetDescriptor;
+	execute(
+		input: RoutinesGetInput,
+		options?: HevyExecutionOptions,
+	): Promise<RoutinesGetOutput>;
+}
+
 export interface RoutinesListDescriptor {
 	readonly id: "routines.list";
 	readonly safety: Extract<HevyOperationSafety, "read">;
@@ -66,6 +95,44 @@ function normalizeRoutinesPage(
 		items: response.routines ?? [],
 		page: response.page ?? input.page,
 		pageCount: response.page_count,
+	};
+}
+
+function isExpectedRoutineNotFound(error: unknown): boolean {
+	return (
+		isHevyHttpError(error) &&
+		canonicalEndpointIdentity(error.endpoint) === "/v1/routines/:routineId" &&
+		expectedGet404Outcome(error.endpoint, error.method, error.status) ===
+			"not_found"
+	);
+}
+
+export function isRoutinesGetNotFound(error: unknown): error is HevyHttpError {
+	return isExpectedRoutineNotFound(error);
+}
+
+export function createRoutinesGetOperation(
+	adapter: RoutinesGetAdapter,
+): RoutinesGetOperation {
+	return {
+		descriptor: routinesGetDescriptor,
+		async execute(input, options) {
+			try {
+				const response =
+					options === undefined
+						? await adapter.getRoutineById(input.routineId)
+						: await adapter.getRoutineById(input.routineId, options);
+				return { routine: response.routine ?? null };
+			} catch (error) {
+				if (isRoutinesGetNotFound(error)) {
+					return {
+						routine: null,
+						expected404Outcome: "not_found",
+					};
+				}
+				throw error;
+			}
+		},
 	};
 }
 
