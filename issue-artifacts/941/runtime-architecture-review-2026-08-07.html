@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>hevy-mcp Runtime Architecture Review</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							ink: "#07111f",
+							panel: "#0d1b2a",
+							line: "#203349",
+							cyan: "#3dd6d0",
+							lime: "#a3e635",
+							amber: "#fbbf24",
+							coral: "#fb7185",
+						},
+						boxShadow: {
+							glow: "0 0 0 1px rgba(61,214,208,.18), 0 24px 80px rgba(0,0,0,.28)",
+						},
+					},
+				},
+			};
+		</script>
+		<style>
+			body {
+				background: radial-gradient(circle at 12% 8%, #12304a 0, #07111f 35rem);
+			}
+			.grid-noise {
+				background-image:
+					linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+					linear-gradient(
+						90deg,
+						rgba(255, 255, 255, 0.022) 1px,
+						transparent 1px
+					);
+				background-size: 28px 28px;
+			}
+			.glass {
+				background: linear-gradient(
+					145deg,
+					rgba(15, 31, 48, 0.96),
+					rgba(9, 21, 34, 0.94)
+				);
+			}
+			.mermaid {
+				display: flex;
+				justify-content: center;
+				min-height: 180px;
+			}
+			.mermaid svg {
+				max-width: 100%;
+				height: auto;
+			}
+			code {
+				color: #b7f7f4;
+			}
+			summary::-webkit-details-marker {
+				display: none;
+			}
+			summary::after {
+				content: "+";
+				float: right;
+				color: #3dd6d0;
+				font-size: 1.35rem;
+				line-height: 1;
+			}
+			details[open] summary::after {
+				content: "−";
+			}
+			a {
+				text-underline-offset: 3px;
+			}
+		</style>
+	</head>
+	<body class="grid-noise min-h-screen text-slate-200 antialiased">
+		<div class="mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-16">
+			<header
+				class="mb-10 overflow-hidden rounded-3xl border border-line glass p-7 shadow-glow lg:p-11"
+			>
+				<div
+					class="mb-7 flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[.22em] text-slate-400"
+				>
+					<span
+						class="rounded-full border border-cyan/30 bg-cyan/10 px-3 py-1 text-cyan"
+						>Architecture review</span
+					>
+					<span>Snapshot 2443cad</span>
+					<span>7 August 2026</span>
+					<span>Read-only</span>
+				</div>
+				<div class="grid gap-8 lg:grid-cols-[1.35fr_.65fr] lg:items-end">
+					<div>
+						<h1
+							class="max-w-4xl text-4xl font-black tracking-tight text-white sm:text-6xl"
+						>
+							One deep application spine.<br /><span class="text-cyan"
+								>Three honest runtime hosts.</span
+							>
+						</h1>
+						<p class="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
+							The repository already has the right macro-shape. The best
+							architecture is to deepen the runtime-neutral operation and
+							capability modules, then keep Node stdio, Node HTTP, and the
+							Cloudflare Worker as independent adapters with their own
+							lifecycle, authentication, and state.
+						</p>
+					</div>
+					<div class="rounded-2xl border border-lime/30 bg-lime/10 p-5">
+						<p class="text-xs font-bold uppercase tracking-[.2em] text-lime">
+							Top recommendation
+						</p>
+						<p class="mt-3 text-lg font-bold text-white">
+							Finish the shared operations kernel; do not add a universal
+							runtime base class.
+						</p>
+						<p class="mt-3 text-sm leading-6 text-slate-300">
+							The first bounded slice should centralize endpoint policy, then
+							continue operations domain by domain.
+						</p>
+					</div>
+				</div>
+			</header>
+
+			<section id="decision" class="mb-10 grid gap-6 lg:grid-cols-[.8fr_1.2fr]">
+				<article class="rounded-3xl border border-line glass p-7 shadow-glow">
+					<p class="text-xs font-bold uppercase tracking-[.2em] text-cyan">
+						Decision in one minute
+					</p>
+					<h2 class="mt-3 text-2xl font-black text-white">
+						Preserve the seams that are real
+					</h2>
+					<ul class="mt-5 space-y-4 text-sm leading-6 text-slate-300">
+						<li>
+							<span class="font-bold text-white">Deep shared modules:</span>
+							Hevy client mechanics, endpoint/execution policy, domain
+							operations, capability semantics, and MCP projection.
+						</li>
+						<li>
+							<span class="font-bold text-white">Concrete adapters:</span> Node
+							stdio, stateful Node HTTP, stateless Worker HTTP/OAuth, and CLI
+							presentation.
+						</li>
+						<li>
+							<span class="font-bold text-white">Shared semantic events:</span>
+							safe tool, cache, request, and outcome observations; exporters
+							remain runtime-specific.
+						</li>
+						<li>
+							<span class="font-bold text-white"
+								>No transport unification:</span
+							>
+							stateful sessions and process shutdown are not the same problem as
+							isolated Worker requests.
+						</li>
+					</ul>
+					<div
+						class="mt-6 rounded-xl border border-amber/30 bg-amber/10 p-4 text-sm leading-6 text-amber-100"
+					>
+						This report deliberately stops before concrete TypeScript interface
+						design. Candidate selection comes first.
+					</div>
+				</article>
+
+				<article
+					class="rounded-3xl border border-line glass p-5 shadow-glow lg:p-7"
+				>
+					<div class="mb-3 flex items-center justify-between gap-4">
+						<h2 class="text-xl font-black text-white">
+							Recommended target shape
+						</h2>
+						<span
+							class="rounded-full bg-cyan/10 px-3 py-1 text-xs font-semibold text-cyan"
+							>arrows = consumption</span
+						>
+					</div>
+					<pre class="mermaid">
+flowchart LR
+  HEVY["Hevy HTTP"] --> CLIENT["hevy-client<br/>request adapter"]
+  POLICY["Endpoint + execution<br/>policy"] --> CLIENT
+  CLIENT --> OPS["Operations + capability<br/>application kernel"]
+  OPS --> MCP["Core MCP projection<br/>+ primitive factory"]
+  OPS --> CLI["CLI adapter"]
+  MCP --> STDIO["Node stdio host"]
+  MCP --> NHTTP["Node HTTP host<br/>stateful sessions"]
+  MCP --> WORKER["Worker host<br/>stateless + OAuth"]
+  EVENTS["Safe observation<br/>vocabulary"] -.-> CLIENT
+  EVENTS -.-> OPS
+  EVENTS -.-> MCP
+  STDIO --> NOTEL["Node OTel / Sentry"]
+  NHTTP --> NOTEL
+  WORKER --> CF["Cloudflare logs / traces"]
+  classDef neutral fill:#123047,stroke:#3dd6d0,color:#fff,stroke-width:2px
+  classDef adapter fill:#2a2038,stroke:#fbbf24,color:#fff,stroke-width:2px
+  classDef external fill:#182635,stroke:#64748b,color:#fff
+  class CLIENT,POLICY,OPS,MCP,EVENTS neutral
+  class STDIO,NHTTP,WORKER,CLI,NOTEL,CF adapter
+  class HEVY external
+        </pre>
+					<p class="mt-3 text-xs leading-5 text-slate-400">
+						Boxes do not imply one package per box. Prefer ownership and
+						deletion leverage over package count.
+					</p>
+				</article>
+			</section>
+
+			<section
+				id="evidence"
+				class="mb-10 rounded-3xl border border-line glass p-7 shadow-glow"
+			>
+				<div class="grid gap-8 lg:grid-cols-[.7fr_1.3fr]">
+					<div>
+						<p class="text-xs font-bold uppercase tracking-[.2em] text-cyan">
+							Measured current state
+						</p>
+						<h2 class="mt-3 text-2xl font-black text-white">
+							The architecture is asymmetrically deep
+						</h2>
+						<p class="mt-4 text-sm leading-6 text-slate-300">
+							Core is already deep and valuable. Operations is still a pilot.
+							Runtime observation is rich on Node and coarse on Worker. Those
+							asymmetries, not the package diagram itself, are the main sources
+							of change amplification.
+						</p>
+					</div>
+					<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+						<div class="rounded-2xl border border-line bg-black/15 p-4">
+							<p class="text-3xl font-black text-white">131</p>
+							<p class="mt-1 text-xs uppercase tracking-wider text-slate-400">
+								operations prod LOC
+							</p>
+						</div>
+						<div class="rounded-2xl border border-line bg-black/15 p-4">
+							<p class="text-3xl font-black text-white">5,978</p>
+							<p class="mt-1 text-xs uppercase tracking-wider text-slate-400">
+								core prod LOC
+							</p>
+						</div>
+						<div class="rounded-2xl border border-line bg-black/15 p-4">
+							<p class="text-3xl font-black text-white">13 : 1</p>
+							<p class="mt-1 text-xs uppercase tracking-wider text-slate-400">
+								core client : operations calls
+							</p>
+						</div>
+						<div class="rounded-2xl border border-line bg-black/15 p-4">
+							<p class="text-3xl font-black text-white">0</p>
+							<p class="mt-1 text-xs uppercase tracking-wider text-slate-400">
+								Worker observer hooks wired
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="mt-7 overflow-x-auto">
+					<table class="w-full min-w-[760px] text-left text-sm">
+						<thead
+							class="border-b border-line text-xs uppercase tracking-wider text-slate-400"
+						>
+							<tr>
+								<th class="py-3 pr-4">Module</th>
+								<th class="px-4 py-3">Current depth</th>
+								<th class="px-4 py-3">Deletion test</th>
+								<th class="pl-4 py-3">Finding</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line/70 text-slate-300">
+							<tr>
+								<td class="py-4 pr-4 font-semibold text-white">core</td>
+								<td class="px-4 py-4">Deep</td>
+								<td class="px-4 py-4">
+									Removing it deletes the MCP contract for both runtimes.
+								</td>
+								<td class="pl-4 py-4">
+									Keep and narrow it toward MCP projection.
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 font-semibold text-white">operations</td>
+								<td class="px-4 py-4">Shallow today</td>
+								<td class="px-4 py-4">
+									Removing it requires reverting one workout-list path.
+								</td>
+								<td class="pl-4 py-4">
+									Deepen decisively or delete; two production adapters justify
+									the seam.
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 font-semibold text-white">node</td>
+								<td class="px-4 py-4">Broad</td>
+								<td class="px-4 py-4">
+									Removing it leaves Worker behavior intact.
+								</td>
+								<td class="pl-4 py-4">
+									Improve locality inside the adapter; do not move process state
+									into core.
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 font-semibold text-white">worker</td>
+								<td class="px-4 py-4">Broad ingress</td>
+								<td class="px-4 py-4">
+									Removing it leaves Node behavior intact.
+								</td>
+								<td class="pl-4 py-4">
+									Normalize routing/auth once, then project safe observations.
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+
+			<section
+				id="ranking"
+				class="mb-10 rounded-3xl border border-line glass p-7 shadow-glow"
+			>
+				<p class="text-xs font-bold uppercase tracking-[.2em] text-cyan">
+					Candidate ranking
+				</p>
+				<h2 class="mt-3 text-2xl font-black text-white">
+					Structural value before implementation convenience
+				</h2>
+				<div class="mt-6 overflow-x-auto">
+					<table class="w-full min-w-[900px] text-left text-sm">
+						<thead
+							class="border-b border-line text-xs uppercase tracking-wider text-slate-400"
+						>
+							<tr>
+								<th class="py-3 pr-4">Rank</th>
+								<th class="px-4 py-3">Candidate</th>
+								<th class="px-4 py-3">Depth</th>
+								<th class="px-4 py-3">Leverage</th>
+								<th class="px-4 py-3">Locality</th>
+								<th class="px-4 py-3">Runtime parity</th>
+								<th class="pl-4 py-3">Recommendation</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line/70">
+							<tr>
+								<td class="py-4 pr-4 text-2xl font-black text-cyan">1</td>
+								<td class="px-4 py-4 font-bold text-white">
+									Complete operations + capabilities
+								</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">High</td>
+								<td class="pl-4 py-4">
+									<span class="rounded-full bg-lime/10 px-3 py-1 text-lime"
+										>Strongest structural move</span
+									>
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 text-2xl font-black text-cyan">2</td>
+								<td class="px-4 py-4 font-bold text-white">
+									One endpoint-policy vocabulary
+								</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="px-4 py-4">High</td>
+								<td class="pl-4 py-4">
+									<span class="rounded-full bg-lime/10 px-3 py-1 text-lime"
+										>Best first slice</span
+									>
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 text-2xl font-black text-cyan">3</td>
+								<td class="px-4 py-4 font-bold text-white">
+									Deepen each runtime host
+								</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="px-4 py-4">Medium</td>
+								<td class="pl-4 py-4">
+									<span class="rounded-full bg-cyan/10 px-3 py-1 text-cyan"
+										>Strong, keep separate</span
+									>
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 text-2xl font-black text-cyan">4</td>
+								<td class="px-4 py-4 font-bold text-white">
+									Worker observation parity
+								</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">Medium</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="pl-4 py-4">
+									<span class="rounded-full bg-cyan/10 px-3 py-1 text-cyan"
+										>Strong targeted move</span
+									>
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 text-2xl font-black text-cyan">5</td>
+								<td class="px-4 py-4 font-bold text-white">
+									Side-effect-free Node embedding
+								</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">Medium</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="px-4 py-4">Low</td>
+								<td class="pl-4 py-4">
+									<span class="rounded-full bg-amber/10 px-3 py-1 text-amber"
+										>Worth exploring</span
+									>
+								</td>
+							</tr>
+							<tr>
+								<td class="py-4 pr-4 text-2xl font-black text-cyan">6</td>
+								<td class="px-4 py-4 font-bold text-white">
+									Runtime contract matrix
+								</td>
+								<td class="px-4 py-4">Medium</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">High</td>
+								<td class="px-4 py-4">Very high</td>
+								<td class="pl-4 py-4">
+									<span class="rounded-full bg-cyan/10 px-3 py-1 text-cyan"
+										>Required proof layer</span
+									>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+
+			<main id="candidates" class="space-y-6">
+				<details
+					open
+					class="rounded-3xl border border-cyan/35 glass shadow-glow"
+				>
+					<summary class="cursor-pointer list-none p-7">
+						<div class="pr-10">
+							<div class="flex flex-wrap items-center gap-3">
+								<span class="text-3xl font-black text-cyan">01</span>
+								<h2 class="text-2xl font-black text-white">
+									Complete the operations and capability kernel
+								</h2>
+								<span
+									class="rounded-full bg-lime/10 px-3 py-1 text-xs font-bold text-lime"
+									>Strongest</span
+								>
+							</div>
+							<p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+								Turn the one-operation pilot into the application module that
+								owns Hevy intent and policy across MCP and CLI.
+							</p>
+						</div>
+					</summary>
+					<div class="border-t border-line px-7 pb-8 pt-6">
+						<div class="grid gap-7 lg:grid-cols-2">
+							<div>
+								<h3 class="font-bold text-white">Files and evidence</h3>
+								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+									<li>
+										<code>packages/operations/src/index.ts:18-29</code> — only
+										<code>workouts.list</code>.
+									</li>
+									<li>
+										<code>packages/operations/src/workouts.ts:10-101</code> —
+										the entire production implementation.
+									</li>
+									<li>
+										<code>packages/core/src/tools/*</code> — 13 direct client
+										call sites versus one operations call.
+									</li>
+									<li>
+										<code>packages/cli/src/commands/index.ts:97-448</code> —
+										most orchestration still bypasses operations.
+									</li>
+									<li>
+										Existing owner:
+										<a
+											class="text-cyan underline"
+											href="https://github.com/chrisdoc/hevy-mcp/issues/872"
+											>issue #872</a
+										>.
+									</li>
+								</ul>
+								<h3 class="mt-6 font-bold text-white">Problem</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Expected absence, pagination, search, mutation semantics, and
+									composite workflows still live in presentation modules. The
+									operations module is too shallow to justify its seam under the
+									deletion test.
+								</p>
+								<h3 class="mt-6 font-bold text-white">Direction</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Migrate vertical domains incrementally. Operations owns
+									intent-level normalization and outcomes; core owns MCP schemas
+									and response presentation; CLI owns parsing and rendering.
+									Delete superseded policy and tests as each slice lands.
+								</p>
+							</div>
+							<div>
+								<h3 class="font-bold text-white">Before → after</h3>
+								<pre class="mermaid mt-3">
+flowchart TB
+  subgraph B["Before"]
+    BC["MCP core"] --> BCL["Hevy client"]
+    BCLI["CLI"] --> BCL
+    BOPS["operations<br/>workouts.list only"] --> BCL
+    BC -. one call .-> BOPS
+  end
+  subgraph A["After"]
+    ACORE["MCP projection"] --> AOPS["Deep operations<br/>+ capability kernel"]
+    ACLI["CLI adapter"] --> AOPS
+    AOPS --> ACL["Hevy client"]
+  end
+  classDef before fill:#301d2a,stroke:#fb7185,color:#fff
+  classDef after fill:#123047,stroke:#3dd6d0,color:#fff
+  class BC,BCL,BCLI,BOPS before
+  class ACORE,AOPS,ACLI,ACL after
+              </pre>
+								<div
+									class="mt-4 rounded-xl border border-lime/30 bg-lime/10 p-4"
+								>
+									<h3 class="font-bold text-lime">Benefits</h3>
+									<ul
+										class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-200"
+									>
+										<li>One policy owner for two real production adapters.</li>
+										<li>
+											Core becomes a deeper MCP projection instead of a mixed
+											application module.
+										</li>
+										<li>
+											Operation-level tests replace duplicated tool/CLI
+											implementation tests.
+										</li>
+										<li>
+											Future runtime hosts reuse application behavior without
+											new transport abstractions.
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+				</details>
+
+				<details class="rounded-3xl border border-line glass shadow-glow">
+					<summary class="cursor-pointer list-none p-7">
+						<div class="pr-10">
+							<div class="flex flex-wrap items-center gap-3">
+								<span class="text-3xl font-black text-cyan">02</span>
+								<h2 class="text-2xl font-black text-white">
+									Create one endpoint-policy vocabulary
+								</h2>
+								<span
+									class="rounded-full bg-lime/10 px-3 py-1 text-xs font-bold text-lime"
+									>Best first slice</span
+								>
+							</div>
+							<p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+								Centralize endpoint identity while keeping retry, absence,
+								diagnostic safety, and metric identity as distinct facts.
+							</p>
+						</div>
+					</summary>
+					<div class="border-t border-line px-7 pb-8 pt-6">
+						<div class="grid gap-7 lg:grid-cols-2">
+							<div>
+								<h3 class="font-bold text-white">Files and evidence</h3>
+								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+									<li>
+										<code>hevy-client-kubb.ts:137-186</code> — safe,
+										expected-404, and dynamic endpoint lists.
+									</li>
+									<li>
+										<code>packages/core/utils/hevy-error-policy.ts:7-66</code> —
+										overlapping read/list/mutation sets.
+									</li>
+									<li>
+										<code>packages/core/utils/error-policy.ts:99-149</code> —
+										safe codes, endpoints, and source identities.
+									</li>
+									<li>
+										<code
+											>packages/node/utils/hevy-client-observability.ts:19-45</code
+										>
+										— another endpoint normalizer.
+									</li>
+									<li>
+										Current routing owner:
+										<a
+											class="text-cyan underline"
+											href="https://github.com/chrisdoc/hevy-mcp/issues/937"
+											>issue #937</a
+										>.
+									</li>
+								</ul>
+								<h3 class="mt-6 font-bold text-white">Problem</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									An endpoint change can drift among retry behavior, expected
+									absence, privacy-safe diagnostics, operations behavior, and
+									metric labels. A broad allowlist would be dangerous because
+									those facts have different security and product meaning.
+								</p>
+								<h3 class="mt-6 font-bold text-white">Direction</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Give canonical endpoint identity one neutral owner and let
+									each policy consume explicit facts. Unknown endpoints remain
+									fail-closed. This is a bounded prerequisite for deepening
+									operations and aligning observation.
+								</p>
+							</div>
+							<div>
+								<h3 class="font-bold text-white">Before → after</h3>
+								<pre class="mermaid mt-3">
+flowchart TB
+  subgraph B["Before: repeated registries"]
+    E1["client retry / expected 404"]
+    E2["core absence policy"]
+    E3["safe diagnostics"]
+    E4["Node metric normalization"]
+  end
+  subgraph A["After: one identity, distinct facts"]
+    ID["Canonical endpoint identity"] --> R["Retry facts"]
+    ID --> N["Absence facts"]
+    ID --> D["Diagnostic facts"]
+    ID --> M["Metric identity"]
+  end
+  classDef before fill:#301d2a,stroke:#fb7185,color:#fff
+  classDef after fill:#123047,stroke:#3dd6d0,color:#fff
+  class E1,E2,E3,E4 before
+  class ID,R,N,D,M after
+              </pre>
+								<div
+									class="mt-4 rounded-xl border border-lime/30 bg-lime/10 p-4"
+								>
+									<h3 class="font-bold text-lime">Benefits</h3>
+									<ul
+										class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-200"
+									>
+										<li>High change leverage with a small first migration.</li>
+										<li>
+											Stronger privacy because unknown identity stays explicit.
+										</li>
+										<li>Removes one major source of cross-module drift.</li>
+										<li>
+											Creates stable vocabulary for operations and both
+											observation adapters.
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+				</details>
+
+				<details class="rounded-3xl border border-line glass shadow-glow">
+					<summary class="cursor-pointer list-none p-7">
+						<div class="pr-10">
+							<div class="flex flex-wrap items-center gap-3">
+								<span class="text-3xl font-black text-cyan">03</span>
+								<h2 class="text-2xl font-black text-white">
+									Deepen each runtime host without merging them
+								</h2>
+								<span
+									class="rounded-full bg-cyan/10 px-3 py-1 text-xs font-bold text-cyan"
+									>Strong</span
+								>
+							</div>
+							<p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+								Improve locality inside Node and Worker while keeping three
+								concrete transport lifetimes.
+							</p>
+						</div>
+					</summary>
+					<div class="border-t border-line px-7 pb-8 pt-6">
+						<div class="grid gap-7 lg:grid-cols-2">
+							<div>
+								<h3 class="font-bold text-white">Files and evidence</h3>
+								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+									<li>
+										<code>packages/node/src/index.ts:303-497</code> — duplicated
+										stdio/HTTP lifecycle policy.
+									</li>
+									<li>
+										<code>packages/node/utils/streamable-http.ts:231-494</code>
+										— stateful sessions, admission, disconnect, cleanup.
+									</li>
+									<li>
+										<code>packages/worker/src/worker.ts:323-566</code> —
+										stateless exchange plus raw-key/OAuth routing.
+									</li>
+									<li>
+										<code>packages/worker/src/worker-oauth.ts:328-540</code> —
+										OAuth grant and authorized request path.
+									</li>
+									<li>
+										Existing owners:
+										<a
+											class="text-cyan underline"
+											href="https://github.com/chrisdoc/hevy-mcp/issues/878"
+											>#878 Node</a
+										>,
+										<a
+											class="text-cyan underline"
+											href="https://github.com/chrisdoc/hevy-mcp/issues/879"
+											>#879 Worker</a
+										>,
+										<a
+											class="text-cyan underline"
+											href="https://github.com/chrisdoc/hevy-mcp/issues/876"
+											>#876 protocol serving</a
+										>.
+									</li>
+								</ul>
+								<h3 class="mt-6 font-bold text-white">Problem</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Node repeats startup, telemetry, failure classification,
+									cancellation, and shutdown between stdio and HTTP. Worker
+									normalizes origin/config more than once across raw-key and
+									OAuth branches. A cross-runtime base class would hide rather
+									than solve these differences.
+								</p>
+								<h3 class="mt-6 font-bold text-white">Direction</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Use one private Node lifecycle owner around two transport
+									adapters. Use one Worker request-normalization owner before
+									two auth adapters and one authenticated MCP exchange. Share
+									only the primitive factory and neutral outcome vocabulary.
+								</p>
+							</div>
+							<div>
+								<h3 class="font-bold text-white">Recommended ownership</h3>
+								<pre class="mermaid mt-3">
+flowchart TB
+  PF["Shared MCP primitive factory"] --> NL["Node lifecycle owner"]
+  PF --> WR["Worker request owner"]
+  NL --> S["stdio adapter"]
+  NL --> H["stateful HTTP adapter"]
+  WR --> A1["OAuth adapter"]
+  WR --> A2["direct-key adapter<br/>self-hosted / transition"]
+  A1 --> X["stateless authenticated exchange"]
+  A2 --> X
+  classDef shared fill:#123047,stroke:#3dd6d0,color:#fff
+  classDef adapter fill:#2a2038,stroke:#fbbf24,color:#fff
+  class PF shared
+  class NL,WR,S,H,A1,A2,X adapter
+              </pre>
+								<div
+									class="mt-4 rounded-xl border border-coral/30 bg-coral/10 p-4"
+								>
+									<h3 class="font-bold text-coral">Guardrail</h3>
+									<p class="mt-2 text-sm leading-6 text-slate-200">
+										Do not make Node stateful sessions and Worker stateless
+										requests implement one universal lifecycle. The official SDK
+										and Cloudflare guidance explicitly support different
+										deployment modes.
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</details>
+
+				<details class="rounded-3xl border border-line glass shadow-glow">
+					<summary class="cursor-pointer list-none p-7">
+						<div class="pr-10">
+							<div class="flex flex-wrap items-center gap-3">
+								<span class="text-3xl font-black text-cyan">04</span>
+								<h2 class="text-2xl font-black text-white">
+									Close the Worker observation seam
+								</h2>
+								<span
+									class="rounded-full bg-cyan/10 px-3 py-1 text-xs font-bold text-cyan"
+									>Strong targeted move</span
+								>
+							</div>
+							<p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+								Keep one safe semantic event vocabulary while projecting it
+								through runtime-native sinks.
+							</p>
+						</div>
+					</summary>
+					<div class="border-t border-line px-7 pb-8 pt-6">
+						<div class="grid gap-7 lg:grid-cols-2">
+							<div>
+								<h3 class="font-bold text-white">Files and evidence</h3>
+								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+									<li>
+										<code>packages/core/src/observation.ts:53-127</code> —
+										privacy-safe tool observation interface.
+									</li>
+									<li>
+										<code>packages/core/src/utils/cache.ts:10-32</code> — cache
+										observation seam.
+									</li>
+									<li>
+										<code>packages/node/src/index.ts:264-277</code> — Node wires
+										tool, cache, and client observers.
+									</li>
+									<li>
+										<code>packages/worker/src/worker.ts:220-244</code> — Worker
+										passes only client logging.
+									</li>
+									<li>
+										<code>cloudflare.config.ts:20-53</code> — platform
+										observability is enabled.
+									</li>
+									<li>
+										Related owner:
+										<a
+											class="text-cyan underline"
+											href="https://github.com/chrisdoc/hevy-mcp/issues/928"
+											>issue #928</a
+										>.
+									</li>
+								</ul>
+								<h3 class="mt-6 font-bold text-white">Problem</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									The Worker has request-level logs and platform traces, but no
+									application-level tool, cache, retry, or Hevy-call correlation
+									through the existing neutral interface. “No Worker
+									observability” would be inaccurate; semantic parity is the
+									gap.
+								</p>
+								<h3 class="mt-6 font-bold text-white">Direction</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Implement a Worker-native adapter over existing bounded
+									observations. Keep Sentry and Node OTel packages out of the
+									Worker graph. Exporters may differ; event meaning and privacy
+									rules should not.
+								</p>
+							</div>
+							<div>
+								<h3 class="font-bold text-white">Before → after</h3>
+								<pre class="mermaid mt-3">
+flowchart LR
+  subgraph B["Before"]
+    EV1["safe core events"] --> NO["Node observer"]
+    NO --> OT["OTel / Sentry"]
+    WREQ["Worker request logs"] --> CF1["Cloudflare"]
+  end
+  subgraph A["After"]
+    EV2["same safe events"] --> NO2["Node observer"]
+    EV2 --> WO["Worker observer"]
+    NO2 --> OT2["OTel / Sentry"]
+    WO --> CF2["Cloudflare-native sink"]
+  end
+  classDef shared fill:#123047,stroke:#3dd6d0,color:#fff
+  classDef adapter fill:#2a2038,stroke:#fbbf24,color:#fff
+  class EV1,EV2 shared
+  class NO,OT,WREQ,CF1,NO2,WO,OT2,CF2 adapter
+              </pre>
+								<div
+									class="mt-4 rounded-xl border border-lime/30 bg-lime/10 p-4"
+								>
+									<h3 class="font-bold text-lime">Benefits</h3>
+									<ul
+										class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-200"
+									>
+										<li>
+											Cross-runtime operational parity without exporter
+											coupling.
+										</li>
+										<li>One privacy review surface for semantic fields.</li>
+										<li>
+											Tool and upstream failures become correlatable on Worker.
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+				</details>
+
+				<details class="rounded-3xl border border-line glass shadow-glow">
+					<summary class="cursor-pointer list-none p-7">
+						<div class="pr-10">
+							<div class="flex flex-wrap items-center gap-3">
+								<span class="text-3xl font-black text-cyan">05</span>
+								<h2 class="text-2xl font-black text-white">
+									Separate Node embedding from executable startup
+								</h2>
+								<span
+									class="rounded-full bg-amber/10 px-3 py-1 text-xs font-bold text-amber"
+									>Worth exploring</span
+								>
+							</div>
+							<p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+								Make the published programmatic interface safe to import without
+								installing global telemetry providers.
+							</p>
+						</div>
+					</summary>
+					<div class="border-t border-line px-7 pb-8 pt-6">
+						<div class="grid gap-7 lg:grid-cols-2">
+							<div>
+								<h3 class="font-bold text-white">Files and evidence</h3>
+								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+									<li>
+										<code>packages/node/src/index.ts:1-37</code> — telemetry
+										import must execute first.
+									</li>
+									<li>
+										<code>packages/node/utils/telemetry.ts:107-217</code> —
+										import-time Sentry/OTel global setup.
+									</li>
+									<li>
+										<code>packages/node/src/index.ts:293-301</code> — public
+										builder performs a network validation probe.
+									</li>
+									<li>
+										<code>packages/node/README.md:184-199</code> — published
+										embedding contract.
+									</li>
+									<li>
+										<code>packages/node/tsdown.config.ts:58-99</code> — library
+										and CLI share the same source graph.
+									</li>
+								</ul>
+								<h3 class="mt-6 font-bold text-white">Problem</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									The public library entrypoint and executable composition share
+									import-time telemetry. An embedding application can therefore
+									acquire global providers and network behavior merely by using
+									the builder. This weakens locality and makes the interface
+									shallower than its documentation suggests.
+								</p>
+								<h3 class="mt-6 font-bold text-white">Direction</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Separate a side-effect-free embedding entry from the
+									executable bootstrap. The executable explicitly initializes
+									telemetry, environment config, update checks, and process
+									lifecycle before running the chosen transport.
+								</p>
+							</div>
+							<div>
+								<h3 class="font-bold text-white">Before → after</h3>
+								<pre class="mermaid mt-3">
+flowchart TB
+  subgraph B["Before"]
+    IMP["import hevy-mcp"] --> GLOBAL["global telemetry init"]
+    GLOBAL --> BUILD["createNodeMcpServer"]
+    GLOBAL --> RUN["run executable"]
+  end
+  subgraph A["After"]
+    LIB["side-effect-free library entry"] --> BUILD2["embedded server composition"]
+    EXE["executable entry"] --> INIT["telemetry + config + lifecycle"]
+    INIT --> RUN2["stdio / HTTP runner"]
+  end
+  classDef before fill:#301d2a,stroke:#fb7185,color:#fff
+  classDef after fill:#123047,stroke:#3dd6d0,color:#fff
+  class IMP,GLOBAL,BUILD,RUN before
+  class LIB,BUILD2,EXE,INIT,RUN2 after
+              </pre>
+								<div
+									class="mt-4 rounded-xl border border-amber/30 bg-amber/10 p-4"
+								>
+									<h3 class="font-bold text-amber">Why not first?</h3>
+									<p class="mt-2 text-sm leading-6 text-slate-200">
+										This materially improves the public Node interface, but it
+										does not resolve the larger shared-policy duplication.
+										Coordinate it with Node lifecycle work rather than creating
+										a second runner.
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</details>
+
+				<details class="rounded-3xl border border-line glass shadow-glow">
+					<summary class="cursor-pointer list-none p-7">
+						<div class="pr-10">
+							<div class="flex flex-wrap items-center gap-3">
+								<span class="text-3xl font-black text-cyan">06</span>
+								<h2 class="text-2xl font-black text-white">
+									Prove the seam with one runtime contract matrix
+								</h2>
+								<span
+									class="rounded-full bg-cyan/10 px-3 py-1 text-xs font-bold text-cyan"
+									>Required proof</span
+								>
+							</div>
+							<p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+								Exercise the same primitive catalog and outcome semantics
+								through core, Node stdio, Node HTTP, and Worker HTTP.
+							</p>
+						</div>
+					</summary>
+					<div class="border-t border-line px-7 pb-8 pt-6">
+						<div class="grid gap-7 lg:grid-cols-2">
+							<div>
+								<h3 class="font-bold text-white">Files and evidence</h3>
+								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+									<li>
+										<code>tests/integration/mocked/*</code> — broad core
+										contract coverage.
+									</li>
+									<li>
+										<code
+											>tests/integration/worker-http.integration.test.ts:504-705</code
+										>
+										— representative Worker coverage.
+									</li>
+									<li>
+										<code>packages/node/utils/streamable-http.test.ts</code> —
+										stateful host behavior.
+									</li>
+									<li>
+										<code>packages/worker/src/worker.test.ts:383-440</code> —
+										fresh server/transport per Worker request.
+									</li>
+									<li>
+										Existing owner:
+										<a
+											class="text-cyan underline"
+											href="https://github.com/chrisdoc/hevy-mcp/issues/880"
+											>issue #880</a
+										>.
+									</li>
+								</ul>
+								<h3 class="mt-6 font-bold text-white">Problem</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Adapter tests prove local mechanics, but parity of every
+									primitive, schema, safe outcome, and protocol era is not yet
+									one generated contract. A seam with three runtime adapters
+									needs interface-level proof.
+								</p>
+								<h3 class="mt-6 font-bold text-white">Direction</h3>
+								<p class="mt-2 text-sm leading-6 text-slate-300">
+									Generate behavior cases from accepted capability descriptors,
+									execute them through each supported host, and keep
+									host-specific lifecycle tests separate. Tests consume the
+									model; they do not redefine it.
+								</p>
+							</div>
+							<div>
+								<h3 class="font-bold text-white">Proof topology</h3>
+								<pre class="mermaid mt-3">
+flowchart LR
+  MODEL["Capability + outcome model"] --> MATRIX["Generated contract matrix"]
+  MATRIX --> CORE["in-memory core"]
+  MATRIX --> STDIO["Node stdio"]
+  MATRIX --> HTTP["Node HTTP"]
+  MATRIX --> WORKER["Worker HTTP"]
+  CORE --> REPORT["Parity report"]
+  STDIO --> REPORT
+  HTTP --> REPORT
+  WORKER --> REPORT
+  classDef shared fill:#123047,stroke:#3dd6d0,color:#fff
+  classDef adapter fill:#2a2038,stroke:#fbbf24,color:#fff
+  class MODEL,MATRIX,REPORT shared
+  class CORE,STDIO,HTTP,WORKER adapter
+              </pre>
+								<div
+									class="mt-4 rounded-xl border border-lime/30 bg-lime/10 p-4"
+								>
+									<h3 class="font-bold text-lime">Benefits</h3>
+									<ul
+										class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-200"
+									>
+										<li>Runtime parity becomes executable, not documentary.</li>
+										<li>Protocol upgrades expose drift before deployment.</li>
+										<li>
+											Deep modules can replace shallow tests with confidence.
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+				</details>
+			</main>
+
+			<section
+				id="sequence"
+				class="mt-10 rounded-3xl border border-cyan/35 glass p-7 shadow-glow lg:p-9"
+			>
+				<p class="text-xs font-bold uppercase tracking-[.2em] text-cyan">
+					Recommended sequence
+				</p>
+				<h2 class="mt-3 text-2xl font-black text-white">
+					Small vertical moves toward the target
+				</h2>
+				<div class="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+					<div class="rounded-2xl border border-line bg-black/15 p-5">
+						<p class="text-xs font-bold text-cyan">01</p>
+						<h3 class="mt-2 font-bold text-white">Endpoint identity</h3>
+						<p class="mt-2 text-sm leading-6 text-slate-400">
+							One identity owner; distinct fail-closed policy facts.
+						</p>
+					</div>
+					<div class="rounded-2xl border border-line bg-black/15 p-5">
+						<p class="text-xs font-bold text-cyan">02</p>
+						<h3 class="mt-2 font-bold text-white">Operations domains</h3>
+						<p class="mt-2 text-sm leading-6 text-slate-400">
+							Migrate reads, writes, search, then workflows; delete duplicates.
+						</p>
+					</div>
+					<div class="rounded-2xl border border-line bg-black/15 p-5">
+						<p class="text-xs font-bold text-cyan">03</p>
+						<h3 class="mt-2 font-bold text-white">MCP projection</h3>
+						<p class="mt-2 text-sm leading-6 text-slate-400">
+							Project capabilities through one primitive factory.
+						</p>
+					</div>
+					<div class="rounded-2xl border border-line bg-black/15 p-5">
+						<p class="text-xs font-bold text-cyan">04</p>
+						<h3 class="mt-2 font-bold text-white">Runtime hosts</h3>
+						<p class="mt-2 text-sm leading-6 text-slate-400">
+							Refactor Node and Worker independently around their real
+							lifetimes.
+						</p>
+					</div>
+					<div class="rounded-2xl border border-line bg-black/15 p-5">
+						<p class="text-xs font-bold text-cyan">05</p>
+						<h3 class="mt-2 font-bold text-white">Parity proof</h3>
+						<p class="mt-2 text-sm leading-6 text-slate-400">
+							Conformance matrix plus runtime-native observation.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<section
+				id="sources"
+				class="mt-10 rounded-3xl border border-line glass p-7 shadow-glow"
+			>
+				<h2 class="text-xl font-black text-white">
+					Decision record and current guidance
+				</h2>
+				<div
+					class="mt-5 grid gap-5 text-sm leading-6 text-slate-300 md:grid-cols-2"
+				>
+					<div>
+						<h3 class="font-bold text-white">Repository decisions</h3>
+						<ul class="mt-2 space-y-2">
+							<li>
+								<a
+									class="text-cyan underline"
+									href="https://github.com/chrisdoc/hevy-mcp/issues/865#issuecomment-5166093667"
+									>#865 architecture synthesis</a
+								>
+							</li>
+							<li>
+								<a
+									class="text-cyan underline"
+									href="https://github.com/chrisdoc/hevy-mcp/issues/866#issuecomment-5166449105"
+									>#866 accepted portfolio</a
+								>
+							</li>
+							<li>
+								<a
+									class="text-cyan underline"
+									href="https://github.com/chrisdoc/hevy-mcp/issues/937"
+									>#937 current-checkout review routing</a
+								>
+							</li>
+						</ul>
+					</div>
+					<div>
+						<h3 class="font-bold text-white">Primary external guidance</h3>
+						<ul class="mt-2 space-y-2">
+							<li>
+								<a
+									class="text-cyan underline"
+									href="https://github.com/modelcontextprotocol/typescript-sdk/blob/main/docs/server.md"
+									>MCP TypeScript SDK server guide</a
+								>
+								— stateful/stateless deployment and host protection.
+							</li>
+							<li>
+								<a
+									class="text-cyan underline"
+									href="https://developers.cloudflare.com/agents/model-context-protocol/apis/handler-api/"
+									>Cloudflare MCP handler guide</a
+								>
+								— stateless Worker handler as the current default.
+							</li>
+						</ul>
+					</div>
+				</div>
+				<p
+					class="mt-6 border-t border-line pt-5 text-xs leading-5 text-slate-500"
+				>
+					Method: current source inspection, deletion test, module depth, seam
+					reality, change leverage, locality, adapter parity, live issue state,
+					and current primary SDK/runtime guidance. No source or repository file
+					was changed.
+				</p>
+			</section>
+		</div>
+
+		<script type="module">
+			import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+			mermaid.initialize({
+				startOnLoad: true,
+				theme: "base",
+				securityLevel: "loose",
+				themeVariables: {
+					background: "#0d1b2a",
+					primaryColor: "#123047",
+					primaryTextColor: "#ffffff",
+					primaryBorderColor: "#3dd6d0",
+					lineColor: "#7890a8",
+					secondaryColor: "#2a2038",
+					tertiaryColor: "#182635",
+					fontFamily: "ui-sans-serif, system-ui, sans-serif",
+				},
+				flowchart: { curve: "basis", htmlLabels: true },
+			});
+		</script>
+	</body>
+</html>
