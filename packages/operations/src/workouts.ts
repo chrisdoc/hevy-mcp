@@ -25,6 +25,35 @@ export interface WorkoutsListOutput {
 
 export type WorkoutsListAdapter = Pick<HevyClient, "getWorkouts">;
 
+export interface WorkoutsGetInput {
+	readonly workoutId: string;
+}
+
+export interface WorkoutsGetOutput {
+	readonly workout: Workout | null;
+	readonly expected404Outcome?: "not_found";
+}
+
+export type WorkoutsGetAdapter = Pick<HevyClient, "getWorkout">;
+
+export interface WorkoutsGetDescriptor {
+	readonly id: "workouts.get";
+	readonly safety: Extract<HevyOperationSafety, "read">;
+}
+
+export const workoutsGetDescriptor: WorkoutsGetDescriptor = {
+	id: "workouts.get",
+	safety: "read",
+};
+
+export interface WorkoutsGetOperation {
+	readonly descriptor: WorkoutsGetDescriptor;
+	execute(
+		input: WorkoutsGetInput,
+		options?: HevyExecutionOptions,
+	): Promise<WorkoutsGetOutput>;
+}
+
 export interface WorkoutsListDescriptor {
 	readonly id: "workouts.list";
 	readonly safety: Extract<HevyOperationSafety, "read">;
@@ -41,6 +70,19 @@ export interface WorkoutsListOperation {
 		input: WorkoutsListInput,
 		options?: HevyExecutionOptions,
 	): Promise<WorkoutsListOutput>;
+}
+
+function isExpectedWorkoutNotFound(error: unknown): boolean {
+	return (
+		isHevyHttpError(error) &&
+		canonicalEndpointIdentity(error.endpoint) === "/v1/workouts/:workoutId" &&
+		expectedGet404Outcome(error.endpoint, error.method, error.status) ===
+			"not_found"
+	);
+}
+
+export function isWorkoutsGetNotFound(error: unknown): error is HevyHttpError {
+	return isExpectedWorkoutNotFound(error);
 }
 
 function isExpectedEndOfList(error: unknown, page: number): boolean {
@@ -66,6 +108,31 @@ function normalizeWorkoutsPage(
 		items: response.workouts ?? [],
 		page: response.page ?? input.page,
 		pageCount: response.page_count,
+	};
+}
+
+export function createWorkoutsGetOperation(
+	adapter: WorkoutsGetAdapter,
+): WorkoutsGetOperation {
+	return {
+		descriptor: workoutsGetDescriptor,
+		async execute(input, options) {
+			try {
+				const response =
+					options === undefined
+						? await adapter.getWorkout(input.workoutId)
+						: await adapter.getWorkout(input.workoutId, options);
+				return { workout: response ?? null };
+			} catch (error) {
+				if (isWorkoutsGetNotFound(error)) {
+					return {
+						workout: null,
+						expected404Outcome: "not_found",
+					};
+				}
+				throw error;
+			}
+		},
 	};
 }
 
