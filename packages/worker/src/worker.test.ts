@@ -439,6 +439,48 @@ describe("real stateless SDK transport", () => {
 		);
 	});
 
+	it("constructs a fresh observer for every stateless MCP request", async () => {
+		const observers: object[] = [];
+		const createObserver = vi.fn(() => {
+			const observer = { start: vi.fn() };
+			observers.push(observer);
+			return observer;
+		});
+		const createServer = vi.fn(
+			(
+				createClient: CreateHevyMcpServerOptions["createClient"],
+				_signal: AbortSignal | undefined,
+				_deadline: number | undefined,
+				observer: CreateHevyMcpServerOptions["observer"],
+			) => createHevyMcpServer({ createClient, observer }),
+		);
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient: () => createMockClient(),
+			createObserver,
+			createServer,
+		});
+		const initialize = {
+			jsonrpc: "2.0",
+			id: 1,
+			method: "initialize",
+			params: {
+				protocolVersion: "2025-11-25",
+				capabilities: {},
+				clientInfo: { name: "fresh-observer-test", version: "1" },
+			},
+		};
+
+		expect((await handler(mcpRequest(initialize), {})).status).toBe(200);
+		expect(
+			(await handler(mcpRequest({ ...initialize, id: 2 }), {})).status,
+		).toBe(200);
+		expect(createObserver).toHaveBeenCalledTimes(2);
+		expect(observers[0]).not.toBe(observers[1]);
+		expect(createServer.mock.calls[0]?.[3]).toBe(observers[0]);
+		expect(createServer.mock.calls[1]?.[3]).toBe(observers[1]);
+	});
+
 	it("shares one absolute deadline across validation and MCP execution", async () => {
 		let validationOptions:
 			| { signal?: AbortSignal; deadline?: number }
@@ -473,7 +515,9 @@ describe("real stateless SDK transport", () => {
 
 		expect(result.status).toBe(200);
 		expect(validationOptions?.signal).toBeInstanceOf(AbortSignal);
-		expect(requestOptions?.signal).toBeInstanceOf(AbortSignal);
+		await vi.waitFor(() =>
+			expect(requestOptions?.signal).toBeInstanceOf(AbortSignal),
+		);
 		expect(validationOptions?.deadline).toBeLessThan(
 			requestOptions?.deadline ?? Number.POSITIVE_INFINITY,
 		);
