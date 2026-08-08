@@ -18,20 +18,26 @@ const serverConfigSchema = z.object({
  * telemetry, or connect a transport. The embedding application owns those
  * concerns and the transport lifecycle.
  */
-export async function createNodeMcpServer(
+export function createNodeMcpServer(
 	{ apiKey }: { apiKey: string },
 	_transport: NodeTransport = "stdio",
 	lifecycleSignal?: AbortSignal,
 ) {
-	const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
-	return createHevyMcpServer({
-		createClient: ({ onLog }) =>
-			createHevyClient({
-				apiKey: validatedApiKey,
-				onLog,
+	try {
+		const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
+		return Promise.resolve(
+			createHevyMcpServer({
+				createClient: ({ onLog }) =>
+					createHevyClient({
+						apiKey: validatedApiKey,
+						onLog,
+					}),
+				lifecycleSignal,
 			}),
-		lifecycleSignal,
-	});
+		);
+	} catch (error) {
+		return Promise.reject(error);
+	}
 }
 
 /**

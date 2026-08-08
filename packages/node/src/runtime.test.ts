@@ -17,8 +17,8 @@ const testDoubles = vi.hoisted(() => {
 		>(),
 	};
 	const server = {
-		connect: vi.fn().mockResolvedValue(undefined),
-		close: vi.fn().mockResolvedValue(undefined),
+		connect: vi.fn().mockImplementation(() => Promise.resolve()),
+		close: vi.fn().mockImplementation(() => Promise.resolve()),
 		server: sdkProtocol,
 		createToolError: undefined as ((message: string) => unknown) | undefined,
 	};
@@ -26,7 +26,9 @@ const testDoubles = vi.hoisted(() => {
 		getUserInfo: vi.fn().mockResolvedValue({ id: "user" }),
 	};
 	const runtimeClient = { kind: "runtime-client" };
-	const httpHandle = { close: vi.fn().mockResolvedValue(undefined) };
+	const httpHandle = {
+		close: vi.fn().mockImplementation(() => Promise.resolve()),
+	};
 
 	return {
 		server,
@@ -41,7 +43,7 @@ const testDoubles = vi.hoisted(() => {
 		startStreamableHttpServer: vi.fn(),
 		captureFailure: vi.fn(),
 		installProcessExceptionTracking: vi.fn(() => vi.fn()),
-		flushTelemetry: vi.fn().mockResolvedValue(undefined),
+		flushTelemetry: vi.fn().mockImplementation(() => Promise.resolve()),
 		serverStartups: { add: vi.fn() },
 		installGracefulShutdown: vi.fn(),
 		instrumentTransport: vi.fn(() => ({ kind: "stdio-transport" })),
@@ -103,7 +105,9 @@ vi.mock("@hevy-mcp/core", () => ({
 }));
 
 vi.mock("@modelcontextprotocol/server/stdio", () => ({
-	StdioServerTransport: class StdioServerTransport {},
+	StdioServerTransport: class StdioServerTransport {
+		readonly isTestDouble = true;
+	},
 }));
 
 vi.mock("./utils/streamable-http.js", () => ({
@@ -170,7 +174,7 @@ describe("Node package entrypoint", () => {
 		testDoubles.sdkProtocol._requestHandlers.clear();
 		testDoubles.sdkProtocol.onerror = undefined;
 		testDoubles.server.createToolError = undefined;
-		testDoubles.server.connect.mockResolvedValue(undefined);
+		testDoubles.server.connect.mockImplementation(() => Promise.resolve());
 		testDoubles.startupClient.getUserInfo.mockResolvedValue({ id: "user" });
 		configureSuccessfulConstruction();
 		testDoubles.startStreamableHttpServer.mockResolvedValue(
@@ -178,8 +182,8 @@ describe("Node package entrypoint", () => {
 		);
 		process.argv = [originalArgv[0] ?? "node", "hevy-mcp"];
 		delete process.env.HEVY_API_KEY;
-		vi.spyOn(console, "error").mockImplementation(() => {});
-		vi.spyOn(console, "log").mockImplementation(() => {});
+		vi.spyOn(console, "error").mockImplementation(() => undefined);
+		vi.spyOn(console, "log").mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {
