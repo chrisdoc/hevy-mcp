@@ -179,15 +179,15 @@
 					</div>
 					<pre class="mermaid">
 flowchart LR
-  HEVY["Hevy HTTP"] --> CLIENT["hevy-client\nrequest adapter"]
-  POLICY["Endpoint + execution\npolicy"] --> CLIENT
-  CLIENT --> OPS["Operations + capability\napplication kernel"]
-  OPS --> MCP["Core MCP projection\n+ primitive factory"]
+  HEVY["Hevy HTTP"] --> CLIENT["hevy-client<br/>request adapter"]
+  POLICY["Endpoint + execution<br/>policy"] --> CLIENT
+  CLIENT --> OPS["Operations + capability<br/>application kernel"]
+  OPS --> MCP["Core MCP projection<br/>+ primitive factory"]
   OPS --> CLI["CLI adapter"]
   MCP --> STDIO["Node stdio host"]
-  MCP --> NHTTP["Node HTTP host\nstateful sessions"]
-  MCP --> WORKER["Worker host\nstateless + OAuth"]
-  EVENTS["Safe observation\nvocabulary"] -.-> CLIENT
+  MCP --> NHTTP["Node HTTP host<br/>stateful sessions"]
+  MCP --> WORKER["Worker host<br/>stateless + OAuth"]
+  EVENTS["Safe observation<br/>vocabulary"] -.-> CLIENT
   EVENTS -.-> OPS
   EVENTS -.-> MCP
   STDIO --> NOTEL["Node OTel / Sentry"]
@@ -509,11 +509,11 @@ flowchart TB
   subgraph B["Before"]
     BC["MCP core"] --> BCL["Hevy client"]
     BCLI["CLI"] --> BCL
-    BOPS["operations\nworkouts.list only"] --> BCL
+    BOPS["operations<br/>workouts.list only"] --> BCL
     BC -. one call .-> BOPS
   end
   subgraph A["After"]
-    ACORE["MCP projection"] --> AOPS["Deep operations\n+ capability kernel"]
+    ACORE["MCP projection"] --> AOPS["Deep operations<br/>+ capability kernel"]
     ACLI["CLI adapter"] --> AOPS
     AOPS --> ACL["Hevy client"]
   end
@@ -578,15 +578,15 @@ flowchart TB
 										expected-404, and dynamic endpoint lists.
 									</li>
 									<li>
-										<code>core/utils/hevy-error-policy.ts:7-66</code> —
+										<code>packages/core/utils/hevy-error-policy.ts:7-66</code> —
 										overlapping read/list/mutation sets.
 									</li>
 									<li>
-										<code>core/utils/error-policy.ts:99-149</code> — safe codes,
+										<code>packages/core/utils/error-policy.ts:99-149</code> — safe codes,
 										endpoints, and source identities.
 									</li>
 									<li>
-										<code>node/utils/hevy-client-observability.ts:19-45</code> —
+										<code>packages/node/utils/hevy-client-observability.ts:19-45</code> —
 										another endpoint normalizer.
 									</li>
 									<li>
@@ -682,19 +682,19 @@ flowchart TB
 								<h3 class="font-bold text-white">Files and evidence</h3>
 								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
 									<li>
-										<code>node/src/index.ts:303-497</code> — duplicated
+										<code>packages/node/src/index.ts:303-497</code> — duplicated
 										stdio/HTTP lifecycle policy.
 									</li>
 									<li>
-										<code>node/utils/streamable-http.ts:231-494</code> —
+										<code>packages/node/utils/streamable-http.ts:231-494</code> —
 										stateful sessions, admission, disconnect, cleanup.
 									</li>
 									<li>
-										<code>worker/src/worker.ts:323-566</code> — stateless
+										<code>packages/worker/src/worker.ts:323-566</code> — stateless
 										exchange plus raw-key/OAuth routing.
 									</li>
 									<li>
-										<code>worker/src/worker-oauth.ts:328-540</code> — OAuth
+										<code>packages/worker/src/worker-oauth.ts:328-540</code> — OAuth
 										grant and authorized request path.
 									</li>
 									<li>
@@ -741,7 +741,7 @@ flowchart TB
   NL --> S["stdio adapter"]
   NL --> H["stateful HTTP adapter"]
   WR --> A1["OAuth adapter"]
-  WR --> A2["direct-key adapter\nself-hosted / transition"]
+  WR --> A2["direct-key adapter<br/>self-hosted / transition"]
   A1 --> X["stateless authenticated exchange"]
   A2 --> X
   classDef shared fill:#123047,stroke:#3dd6d0,color:#fff
@@ -790,19 +790,19 @@ flowchart TB
 								<h3 class="font-bold text-white">Files and evidence</h3>
 								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
 									<li>
-										<code>core/src/observation.ts:53-127</code> — privacy-safe
+										<code>packages/core/src/observation.ts:53-127</code> — privacy-safe
 										tool observation interface.
 									</li>
 									<li>
-										<code>core/src/utils/cache.ts:10-32</code> — cache
+										<code>packages/core/src/utils/cache.ts:10-32</code> — cache
 										observation seam.
 									</li>
 									<li>
-										<code>node/src/index.ts:264-277</code> — Node wires tool,
+										<code>packages/node/src/index.ts:264-277</code> — Node wires tool,
 										cache, and client observers.
 									</li>
 									<li>
-										<code>worker/src/worker.ts:220-244</code> — Worker passes
+										<code>packages/worker/src/worker.ts:220-244</code> — Worker passes
 										only client logging.
 									</li>
 									<li>
@@ -901,23 +901,23 @@ flowchart LR
 								<h3 class="font-bold text-white">Files and evidence</h3>
 								<ul class="mt-3 space-y-2 text-sm leading-6 text-slate-300">
 									<li>
-										<code>node/src/index.ts:1-37</code> — telemetry import must
+										<code>packages/node/src/index.ts:1-37</code> — telemetry import must
 										execute first.
 									</li>
 									<li>
-										<code>node/utils/telemetry.ts:107-217</code> — import-time
+										<code>packages/node/utils/telemetry.ts:107-217</code> — import-time
 										Sentry/OTel global setup.
 									</li>
 									<li>
-										<code>node/src/index.ts:293-301</code> — public builder
+										<code>packages/node/src/index.ts:293-301</code> — public builder
 										performs a network validation probe.
 									</li>
 									<li>
-										<code>node/README.md:184-199</code> — published embedding
+										<code>packages/node/README.md:184-199</code> — published embedding
 										contract.
 									</li>
 									<li>
-										<code>node/tsdown.config.ts:58-99</code> — library and CLI
+										<code>packages/node/tsdown.config.ts:58-99</code> — library and CLI
 										share the same source graph.
 									</li>
 								</ul>
@@ -1007,11 +1007,11 @@ flowchart TB
 										— representative Worker coverage.
 									</li>
 									<li>
-										<code>node/utils/streamable-http.test.ts</code> — stateful
+										<code>packages/node/utils/streamable-http.test.ts</code> — stateful
 										host behavior.
 									</li>
 									<li>
-										<code>worker/src/worker.test.ts:383-440</code> — fresh
+										<code>packages/worker/src/worker.test.ts:383-440</code> — fresh
 										server/transport per Worker request.
 									</li>
 									<li>
