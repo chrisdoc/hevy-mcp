@@ -115,6 +115,6 @@ describe("Hevy endpoint policy", () => {
 		}
 		expect(isTransientRetryFailure(503, "HEVY_RETRY_EXHAUSTED")).toBe(false);
 		expect(isTransientRetryFailure(503, "HEVY_REQUEST_ABORTED")).toBe(false);
-		expect(isTransientRetryFailure(503, undefined)).toBe(true);
+		expect(isTransientRetryFailure(503)).toBe(true);
 	});
 });

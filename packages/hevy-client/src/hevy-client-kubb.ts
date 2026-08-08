@@ -754,88 +754,106 @@ interface AttemptFailureTransition {
 	readonly retryWaitScope?: HevyRetryWaitScope;
 }
 
-/** Classify an attempt failure, emit its observation, and choose retry/backoff. */
-function transitionAfterAttemptFailure(
+function createAttemptFailureError(
 	options: AttemptFailureTransitionOptions,
-): AttemptFailureTransition {
-	const failure = classifyExecutionFailure(
-		options.cause,
-		options.executionSignal.signal,
-		options.deadline,
-		options.executionSignal.deadlineTriggered(),
-	);
-	const { deadlineExceeded, canceled, attemptTimedOut } = failure;
-	const error = isHevyHttpError(options.cause)
-		? normalizeHevyHttpError(options.cause, options.method, options.endpoint)
-		: createExecutionError({
-				method: options.method,
-				endpoint: options.endpoint,
-				safety: options.safety,
-				phase: options.phase,
-				deadlineExceeded,
-				canceled,
-				responseConfirmed: options.responseConfirmed,
-				code: attemptTimedOut ? "ETIMEDOUT" : getNetworkCode(options.cause),
-				cause: options.cause,
-			});
-	const safeToRetry =
-		!deadlineExceeded &&
-		!canceled &&
+	failure: ExecutionFailureState,
+): HevyHttpError {
+	if (isHevyHttpError(options.cause)) {
+		return normalizeHevyHttpError(
+			options.cause,
+			options.method,
+			options.endpoint,
+		);
+	}
+	return createExecutionError({
+		method: options.method,
+		endpoint: options.endpoint,
+		safety: options.safety,
+		phase: options.phase,
+		deadlineExceeded: failure.deadlineExceeded,
+		canceled: failure.canceled,
+		responseConfirmed: options.responseConfirmed,
+		code: failure.attemptTimedOut ? "ETIMEDOUT" : getNetworkCode(options.cause),
+		cause: options.cause,
+	});
+}
+
+function canRetryAttempt(
+	options: AttemptFailureTransitionOptions,
+	failure: ExecutionFailureState,
+	error: HevyHttpError,
+): boolean {
+	return (
+		!failure.deadlineExceeded &&
+		!failure.canceled &&
 		options.safety !== "non-idempotent-write" &&
 		canRetryOperation(options.safety, options.phase) &&
 		isRetryable(error) &&
-		remainingDeadlineMs(options.deadline) > 0;
-	const commitState =
-		error.commitState ??
-		commitStateFor(options.safety, options.phase, options.responseConfirmed);
-	applyExecutionMetadata(
-		error,
-		options.phase,
-		options.safety,
-		commitState,
-		safeToRetry,
-		deadlineExceeded
-			? "deadline_exceeded"
-			: canceled
-				? "cancelled"
-				: "terminal_failure",
+		remainingDeadlineMs(options.deadline) > 0
 	);
-	const expectedReason = expectedGet404Outcome(
-		options.endpoint,
-		options.method,
-		error.status,
-		options.page,
-	);
-	const retryExhausted =
-		safeToRetry && options.retryCount >= options.maxGetRetries;
-	if (retryExhausted) {
-		error.hevyRetryExhausted = true;
-		error.hevyRetryCount = options.retryCount;
-		error.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
-		error.setExecutionMetadata({
-			phase: error.phase,
-			operationSafety: error.operationSafety,
-			commitState: error.commitState,
-			safeToRetry: false,
-			outcome: "terminal_failure",
-		});
-	}
-	const observationOutcome: HevyApiOutcome = expectedReason
-		? "expected"
-		: deadlineExceeded
-			? "deadline_exceeded"
-			: canceled
-				? "cancelled"
-				: safeToRetry && !retryExhausted
-					? "retryable_failure"
-					: "terminal_failure";
-	const observation: HevyRequestObservation = {
+}
+
+function failureMetadataOutcome(
+	failure: ExecutionFailureState,
+): HevyApiOutcome {
+	if (failure.deadlineExceeded) return "deadline_exceeded";
+	if (failure.canceled) return "cancelled";
+	return "terminal_failure";
+}
+
+function applyRetryExhaustion(
+	error: HevyHttpError,
+	options: AttemptFailureTransitionOptions,
+	safeToRetry: boolean,
+): boolean {
+	if (!safeToRetry || options.retryCount < options.maxGetRetries) return false;
+	error.hevyRetryExhausted = true;
+	error.hevyRetryCount = options.retryCount;
+	error.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
+	error.setExecutionMetadata({
+		phase: error.phase,
+		operationSafety: error.operationSafety,
+		commitState: error.commitState,
+		safeToRetry: false,
+		outcome: "terminal_failure",
+	});
+	return true;
+}
+
+function failureObservationOutcome(
+	failure: ExecutionFailureState,
+	expectedReason: HevyRequestObservation["expectedReason"],
+	safeToRetry: boolean,
+	retryExhausted: boolean,
+): HevyApiOutcome {
+	if (expectedReason) return "expected";
+	if (failure.deadlineExceeded) return "deadline_exceeded";
+	if (failure.canceled) return "cancelled";
+	if (safeToRetry && !retryExhausted) return "retryable_failure";
+	return "terminal_failure";
+}
+
+function createFailureObservation(
+	options: AttemptFailureTransitionOptions,
+	failure: ExecutionFailureState,
+	error: HevyHttpError,
+	commitState: HevyCommitState,
+	safeToRetry: boolean,
+	retryExhausted: boolean,
+	expectedReason: HevyRequestObservation["expectedReason"],
+): HevyRequestObservation {
+	return {
 		method: options.method,
 		endpoint: options.endpoint,
 		status: error.status ?? 0,
 		durationMs: Date.now() - options.startedAt,
 		retryCount: options.retryCount,
-		outcome: observationOutcome,
+		outcome: failureObservationOutcome(
+			failure,
+			expectedReason,
+			safeToRetry,
+			retryExhausted,
+		),
 		phase: options.phase,
 		operationSafety: options.safety,
 		commitState,
@@ -850,25 +868,28 @@ function transitionAfterAttemptFailure(
 			category: error.status === undefined ? "NetworkError" : "HevyHttpError",
 		},
 	};
-	finishRequestObservation(options.observationScope, observation);
-	emitRequestObservation(options.clientOptions.onRequestComplete, observation);
-	if (expectedReason || !safeToRetry || retryExhausted) {
-		emitClientLog(options.clientOptions.onLog, {
-			level: "error",
-			logger: "hevy-api",
-			data: {
-				message: "Hevy API request failed",
-				status: error.status ?? null,
-				method: options.method,
-				endpoint: options.endpoint,
-			},
-		});
-		return {
-			retry: false,
-			error,
-			retryCount: options.retryCount,
-		};
-	}
+}
+
+function emitTerminalFailureLog(
+	options: AttemptFailureTransitionOptions,
+	error: HevyHttpError,
+): void {
+	emitClientLog(options.clientOptions.onLog, {
+		level: "error",
+		logger: "hevy-api",
+		data: {
+			message: "Hevy API request failed",
+			status: error.status ?? null,
+			method: options.method,
+			endpoint: options.endpoint,
+		},
+	});
+}
+
+function createRetryTransition(
+	options: AttemptFailureTransitionOptions,
+	error: HevyHttpError,
+): AttemptFailureTransition {
 	const retryCount = options.retryCount + 1;
 	const delayMs = getRetryDelayMs(error, retryCount);
 	emitClientLog(options.clientOptions.onLog, {
@@ -896,6 +917,58 @@ function transitionAfterAttemptFailure(
 			delayMs,
 		}),
 	};
+}
+
+/** Classify an attempt failure, emit its observation, and choose retry/backoff. */
+function transitionAfterAttemptFailure(
+	options: AttemptFailureTransitionOptions,
+): AttemptFailureTransition {
+	const failure = classifyExecutionFailure(
+		options.cause,
+		options.executionSignal.signal,
+		options.deadline,
+		options.executionSignal.deadlineTriggered(),
+	);
+	const error = createAttemptFailureError(options, failure);
+	const safeToRetry = canRetryAttempt(options, failure, error);
+	const commitState =
+		error.commitState ??
+		commitStateFor(options.safety, options.phase, options.responseConfirmed);
+	applyExecutionMetadata(
+		error,
+		options.phase,
+		options.safety,
+		commitState,
+		safeToRetry,
+		failureMetadataOutcome(failure),
+	);
+	const expectedReason = expectedGet404Outcome(
+		options.endpoint,
+		options.method,
+		error.status,
+		options.page,
+	);
+	const retryExhausted = applyRetryExhaustion(error, options, safeToRetry);
+	const observation = createFailureObservation(
+		options,
+		failure,
+		error,
+		commitState,
+		safeToRetry,
+		retryExhausted,
+		expectedReason,
+	);
+	finishRequestObservation(options.observationScope, observation);
+	emitRequestObservation(options.clientOptions.onRequestComplete, observation);
+	if (expectedReason || !safeToRetry || retryExhausted) {
+		emitTerminalFailureLog(options, error);
+		return {
+			retry: false,
+			error,
+			retryCount: options.retryCount,
+		};
+	}
+	return createRetryTransition(options, error);
 }
 
 function createNativeClient(

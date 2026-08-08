@@ -223,7 +223,7 @@ export function isTransientRetryCode(code: string | undefined): boolean {
 /** Shared status/code classification; execution layers still own retry budgets. */
 export function isTransientRetryFailure(
 	status: number | undefined,
-	code: string | undefined,
+	code?: string,
 ): boolean {
 	return isTransientRetryCode(code) && isTransientRetryStatus(status);
 }
