@@ -46,7 +46,7 @@
 		"test:mcp": "vitest run tests/integration/mocked",
 		"test:integration": "vitest run tests/integration",
 		"test:diagnostics": "node --test tests/nightly/diagnostics.test.mjs",
-		"test:contract": "vitest run packages/node/src/index.test.ts packages/node/src/utils/config.test.ts packages/core/src/tools/register.test.ts packages/core/src/utils/output-schemas.test.ts tests/unit/server-manifest.test.ts",
+		"test:contract": "vitest run packages/node/src/index.test.ts packages/node/src/utils/config.test.ts packages/core/src/tools/register.test.ts packages/core/src/utils/output-schemas.test.ts tests/unit/server-manifest.test.ts tests/contract/runtime-contract-matrix.test.ts",
 		"test:stdio": "vitest run packages/node/src/index.test.ts packages/node/src/runtime.test.ts packages/node/src/utils/stdio-observability.test.ts packages/node/src/utils/graceful-shutdown.test.ts packages/node/src/utils/graceful-shutdown.child-process.test.ts",
 		"test:worker-http": "vitest run tests/integration/worker-http.integration.test.ts",
 		"test:worker": "vitest run --config vitest.workers.config.ts",
