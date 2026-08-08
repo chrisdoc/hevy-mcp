@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type {
 	GetV1WorkoutsEvents200,
-	GetV1WorkoutsWorkoutid200,
 	PostV1Workouts201,
 	PutV1WorkoutsWorkoutid200,
 } from "@hevy-mcp/hevy-client/types";
@@ -29,10 +28,7 @@ import {
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { buildWorkoutUpdatePayload } from "./mutation-semantics.js";
-import {
-	isExpectedListPageNotFound,
-	isExpectedReadNotFound,
-} from "../utils/hevy-error-policy.js";
+import { isExpectedListPageNotFound } from "../utils/hevy-error-policy.js";
 
 const getWorkoutsSchema = paginationShape({
 	defaultPageSize: 5,
@@ -96,21 +92,13 @@ export const workoutToolDefinitions = [
 		kind: "read" as const,
 		responseContract: workoutResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutParams) => {
-			try {
-				const data: GetV1WorkoutsWorkoutid200 = await runtime
-					.getClient()
-					.getWorkout(args.workout_id);
-				return { workout: data, workout_id: args.workout_id };
-			} catch (error) {
-				if (isExpectedReadNotFound(error)) {
-					return {
-						workout: null,
-						workout_id: args.workout_id,
-						expected404Outcome: "not_found",
-					};
-				}
-				throw error;
-			}
+			const data = await runtime
+				.getOperations()
+				.workouts.get.execute(
+					{ workoutId: args.workout_id },
+					runtime.execution,
+				);
+			return { ...data, workout_id: args.workout_id };
 		},
 	},
 	{

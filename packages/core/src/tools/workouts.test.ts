@@ -1,15 +1,26 @@
 /* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyOperations } from "@hevy-mcp/operations";
+import type { ToolExecutionContext } from "../execution.js";
 import { describe, expect, it, vi } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { workoutToolDefinitions } from "./workouts.js";
 
-function register(client: HevyClient | null) {
+function register(
+	client: HevyClient | null,
+	operations?: HevyOperations,
+	execution?: ToolExecutionContext,
+) {
 	const tool = vi.fn();
 	const server = { tool, registerTool: tool } as unknown as McpServer;
-	const runtime = createToolRuntime({ client, catalog: {} as never });
+	const runtime = createToolRuntime({
+		client,
+		operations,
+		execution,
+		catalog: {} as never,
+	});
 	for (const definition of workoutToolDefinitions) {
 		registerToolDefinition(server, runtime, definition);
 	}
@@ -81,6 +92,35 @@ describe("workout tools", () => {
 			pageSize: 5,
 			since: "2025-01-01T00:00:00Z",
 		});
+	});
+
+	it("uses the injected workout get operation and execution context", async () => {
+		const execute = vi.fn().mockResolvedValue({
+			workout: { id: "w1", title: "Push" },
+		});
+		const operations = {
+			workouts: { get: { execute }, list: { execute: vi.fn() } },
+		} as unknown as HevyOperations;
+		const execution: ToolExecutionContext = {
+			signal: new AbortController().signal,
+			deadline: Date.now() + 5_000,
+		};
+		const tool = register(null, operations, execution);
+
+		const response = await toolHandler(
+			tool,
+			"get-workout",
+		)({
+			workout_id: "w1",
+		});
+
+		expect(execute).toHaveBeenCalledWith({ workoutId: "w1" }, execution);
+		expect(response).toMatchObject({
+			structuredContent: {
+				workout: { id: "w1", title: "Push" },
+			},
+		});
+		expect(response).toMatchObject({ content: [{ type: "text" }] });
 	});
 
 	it("gets before patching metadata and sends the exact built payload", async () => {
