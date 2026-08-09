@@ -313,6 +313,44 @@ describe("Node package entrypoint", () => {
 		expect(testDoubles.captureFailure).toHaveBeenCalled();
 	});
 
+	it("treats unknown MCP tool requests as expected validation failures", async () => {
+		const toolHandler = vi
+			.fn()
+			.mockRejectedValue(new Error("Tool get-workout-workoutId not found"));
+		testDoubles.sdkProtocol._requestHandlers.set("tools/call", toolHandler);
+		await createNodeMcpServer({ apiKey: "valid-key" });
+
+		const wrappedToolHandler =
+			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
+		if (!wrappedToolHandler) return;
+
+		testDoubles.captureFailure.mockClear();
+		testDoubles.span.addEvent.mockClear();
+		testDoubles.span.setStatus.mockClear();
+		const activeSpanSpy = vi
+			.spyOn(trace, "getActiveSpan")
+			.mockReturnValue(testDoubles.span as never);
+
+		await expect(
+			wrappedToolHandler({ params: { name: "get-workout-workoutId" } }, {}),
+		).rejects.toThrow("Tool get-workout-workoutId not found");
+
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				expected: true,
+				attributes: expect.objectContaining({
+					"mcp.tool.name": "get-workout-workoutId",
+					"mcp.validation.kind": "tool_not_found",
+				}),
+			}),
+		);
+		expect(testDoubles.span.setStatus).not.toHaveBeenCalledWith({
+			code: SpanStatusCode.ERROR,
+		});
+		activeSpanSpy.mockRestore();
+	});
+
 	it("tracks SDK validation and protocol failures", async () => {
 		const previousOnError = vi.fn(() => {
 			throw new Error("previous SDK handler failure");
