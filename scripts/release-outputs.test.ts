@@ -83,4 +83,20 @@ describe("calculateReleaseOutputs", () => {
 			worker_released: false,
 		});
 	});
+
+	it("reports released without a Node version when only other packages publish", () => {
+		expect(
+			calculateReleaseOutputs({
+				beforeWorkerManifest,
+				afterWorkerManifest: beforeWorkerManifest,
+				published: true,
+				publishedPackages: [{ name: "hevy-mcp" }],
+				nodePackageName: "hevy-mcp",
+			}),
+		).toMatchObject({
+			version: "",
+			released: true,
+			node_released: false,
+		});
+	});
 });
