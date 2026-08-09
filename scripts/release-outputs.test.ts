@@ -24,6 +24,11 @@ const changesetConfig = JSON.parse(
 ) as {
 	privatePackages?: { tag?: boolean; version?: boolean };
 };
+const releaseJob = workflow.slice(
+	workflow.indexOf("  release:"),
+	workflow.indexOf("  publish-container:"),
+);
+const publishPreview = workflow.slice(workflow.indexOf("  publish-preview:"));
 const deployProduction = workflow.slice(
 	workflow.indexOf("  deploy-production:"),
 );
@@ -193,6 +198,15 @@ describe("release outputs", () => {
 		expect(publishContainer).not.toContain(
 			"needs.release.outputs.released == 'true'",
 		);
+	});
+
+	it("installs mise before release and preview package commands", () => {
+		for (const job of [releaseJob, publishPreview]) {
+			expect(job).toContain(
+				"uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654",
+			);
+			expect(job.indexOf("Set up mise")).toBeLessThan(job.indexOf("npm ci"));
+		}
 	});
 
 	it("gates production deployment on the Worker release", () => {
