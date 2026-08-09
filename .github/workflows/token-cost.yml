@@ -37,10 +37,12 @@ jobs:
         run: npm ci
 
       - name: Measure current revision
-        run: >-
-          npx nx run repository:measure:tokens --
-          --output token-cost-current.json
-          --enforce-budget | tee "$GITHUB_STEP_SUMMARY"
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx nx run repository:measure:tokens -- \
+            --output token-cost-current.json \
+            --enforce-budget | tee "$GITHUB_STEP_SUMMARY"
 
       - name: Upload token cost artifact
         if: always()
