@@ -917,6 +917,66 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(rejected.status).toBe(401);
 	});
 
+	it("accepts Claude's published CIMD metadata with an optional JWT grant", async () => {
+		const clientId = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+		const metadata = {
+			client_id: clientId,
+			client_name: "Claude",
+			client_uri: "https://claude.ai",
+			redirect_uris: [redirectUri],
+			grant_types: [
+				"authorization_code",
+				"refresh_token",
+				"urn:ietf:params:oauth:grant-type:jwt-bearer",
+			],
+			response_types: ["code"],
+			token_endpoint_auth_method: "none",
+		};
+		const fetchMock = vi.fn((_input: RequestInfo | URL) =>
+			Promise.resolve(Response.json(metadata)),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		const { handler, env } = createHandlerWithEnv();
+		const verifier = base64UrlEncode(
+			crypto.getRandomValues(new Uint8Array(32)),
+		);
+		const challenge = base64UrlEncode(
+			new Uint8Array(
+				await crypto.subtle.digest(
+					"SHA-256",
+					new TextEncoder().encode(verifier),
+				),
+			),
+		);
+		const authorizeUrl = new URL("https://worker.example/authorize");
+		authorizeUrl.searchParams.set("response_type", "code");
+		authorizeUrl.searchParams.set("client_id", clientId);
+		authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+		authorizeUrl.searchParams.set("code_challenge", challenge);
+		authorizeUrl.searchParams.set("code_challenge_method", "S256");
+		authorizeUrl.searchParams.set("state", "claude-state");
+		authorizeUrl.searchParams.set("scope", "mcp");
+		authorizeUrl.searchParams.set("resource", "https://worker.example/mcp");
+
+		const result = await handler(new Request(authorizeUrl), env, {});
+
+		// Regression coverage for issue #942: provider 0.10.0 rejected
+		// Claude's optional JWT grant; 0.10.2 negotiates it away and renders
+		// the consent page.
+		expect(result.status).toBe(200);
+		expect(await result.text()).toContain("Claude");
+		expect(fetchMock).toHaveBeenCalled();
+		for (const [input] of fetchMock.mock.calls) {
+			const requestedUrl =
+				input instanceof Request
+					? input.url
+					: input instanceof URL
+						? input.href
+						: input;
+			expect(requestedUrl).toBe(clientId);
+		}
+	});
+
 	it("completes the CIMD OAuth flow and serves MCP requests", async () => {
 		const clientId = "https://chatgpt.com/oauth/hevy-mcp/client.json";
 		const cimdRedirectUri = "https://chatgpt.com/connector/oauth/test-callback";
