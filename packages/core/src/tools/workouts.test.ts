@@ -1,7 +1,13 @@
 /* oxlint-disable typescript/unbound-method */
 import type { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import type { HevyOperations } from "@hevy-mcp/operations";
+import {
+	routinesGetDescriptor,
+	routinesListDescriptor,
+	type HevyOperations,
+	workoutsGetDescriptor,
+	workoutsListDescriptor,
+} from "@hevy-mcp/operations";
 import type { ToolExecutionContext } from "../execution.js";
 import { describe, expect, it, vi } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
@@ -103,12 +109,24 @@ describe("workout tools", () => {
 		const routinesListExecute = vi.fn();
 		const operations: HevyOperations = {
 			workouts: {
-				get: { execute: workoutsGetExecute },
-				list: { execute: workoutsListExecute },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					execute: workoutsGetExecute,
+				},
+				list: {
+					descriptor: workoutsListDescriptor,
+					execute: workoutsListExecute,
+				},
 			},
 			routines: {
-				get: { execute: routinesGetExecute },
-				list: { execute: routinesListExecute },
+				get: {
+					descriptor: routinesGetDescriptor,
+					execute: routinesGetExecute,
+				},
+				list: {
+					descriptor: routinesListDescriptor,
+					execute: routinesListExecute,
+				},
 			},
 		};
 		const execution: ToolExecutionContext = {
@@ -124,7 +142,10 @@ describe("workout tools", () => {
 			workout_id: "w1",
 		});
 
-		expect(workoutsGetExecute).toHaveBeenCalledWith({ workoutId: "w1" }, execution);
+		expect(workoutsGetExecute).toHaveBeenCalledWith(
+			{ workoutId: "w1" },
+			execution,
+		);
 		expect(response).toMatchObject({
 			structuredContent: {
 				workout: { id: "w1", title: "Push" },
