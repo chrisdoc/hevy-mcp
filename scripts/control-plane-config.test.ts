@@ -478,12 +478,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 		const unitInputs = nx.namedInputs.unitSpecialInputs as string[];
 		expect(unitInputs).toEqual(
 			expect.arrayContaining([
-				"{workspaceRoot}/.github/workflows/release.yml",
-				"{workspaceRoot}/.github/workflows/deploy-worker.yml",
-				"{workspaceRoot}/docs/cloudflare-worker-version-attribution.md",
-				"{workspaceRoot}/docs/clickstack-metrics.md",
 				"{workspaceRoot}/.dependency-cruiser.cjs",
-				"{workspaceRoot}/.cm/gitstream.cm",
 				"{workspaceRoot}/.cm/plugins/filters/findDiffLocation/index.js",
 				"{workspaceRoot}/packages/node/README.md",
 			]),

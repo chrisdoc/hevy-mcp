@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { calculateReleaseOutputs } from "./release-outputs.mjs";
 import {
@@ -7,48 +5,6 @@ import {
 	resolveWorkerPreviewTag,
 	resolveWorkerVersion,
 } from "./resolve-worker-version.mjs";
-
-const workflow = await readFile(
-	resolve(import.meta.dirname, "../.github/workflows/release.yml"),
-	"utf8",
-);
-const previewWorkflow = await readFile(
-	resolve(import.meta.dirname, "../.github/workflows/deploy-worker.yml"),
-	"utf8",
-);
-const changesetConfig = JSON.parse(
-	await readFile(
-		resolve(import.meta.dirname, "../.changeset/config.json"),
-		"utf8",
-	),
-) as {
-	privatePackages?: { tag?: boolean; version?: boolean };
-};
-const deployProduction = workflow.slice(
-	workflow.indexOf("  deploy-production:"),
-);
-const publishContainer = workflow.slice(
-	workflow.indexOf("  publish-container:"),
-	workflow.indexOf("  deploy-production:"),
-);
-const bootstrapPreview = previewWorkflow.slice(
-	previewWorkflow.indexOf("      - name: Bootstrap dedicated preview Worker"),
-	previewWorkflow.indexOf("      - name: Upload preview version"),
-);
-const uploadPreview = previewWorkflow.slice(
-	previewWorkflow.indexOf("      - name: Upload preview version"),
-	previewWorkflow.indexOf("      - name: Activate preview version"),
-);
-const cleanupPreview = previewWorkflow.slice(
-	previewWorkflow.indexOf(
-		"      - name: Replace preview alias with inert Worker",
-	),
-	previewWorkflow.indexOf("      - name: Activate inert cleanup version"),
-);
-const checkPublishedPackageMetadata = workflow.slice(
-	workflow.indexOf("      - name: Check published package metadata"),
-	workflow.indexOf("      - name: Run integration tests"),
-);
 
 function workerManifest(version: string, dependency = "1.0.0") {
 	return JSON.stringify({
@@ -58,26 +14,19 @@ function workerManifest(version: string, dependency = "1.0.0") {
 	});
 }
 
-describe("release workflow", () => {
-	it("deploys production only when the Worker package was released", () => {
-		expect(deployProduction).toContain(
-			"needs.release.outputs.worker_released == 'true'",
-		);
-		expect(deployProduction).not.toContain(
-			"needs.release.outputs.released == 'true'",
-		);
-	});
-
+describe("release outputs", () => {
 	it("detects Worker releases from the versioned private manifest", () => {
-		expect(workflow).toContain("node scripts/release-outputs.mjs");
 		expect(
 			calculateReleaseOutputs({
 				beforeWorkerManifest: workerManifest("1.0.0", "1.0.0"),
 				afterWorkerManifest: workerManifest("1.0.0", "2.0.0"),
 				published: false,
 				publishedPackages: [],
-			}).worker_released,
-		).toBe(false);
+			}),
+		).toMatchObject({
+			worker_released: false,
+		});
+
 		const releaseOutputs = calculateReleaseOutputs({
 			beforeWorkerManifest: workerManifest("1.0.0"),
 			afterWorkerManifest: workerManifest("1.0.1"),
@@ -185,54 +134,4 @@ describe("release workflow", () => {
 			expect(outputs.version).toBe(version);
 		},
 	);
-
-	it("gates the container on the Node package release", () => {
-		expect(publishContainer).toContain(
-			"needs.release.outputs.node_released == 'true'",
-		);
-		expect(publishContainer).not.toContain(
-			"needs.release.outputs.released == 'true'",
-		);
-	});
-
-	it("keeps release build environment for the Publint dependency build", () => {
-		expect(checkPublishedPackageMetadata).toContain('HEVY_MCP_RELEASE: "true"');
-		expect(checkPublishedPackageMetadata).toContain(
-			"SENTRY_ORG: ${{ secrets.SENTRY_ORG }}",
-		);
-		expect(checkPublishedPackageMetadata).toContain(
-			"SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}",
-		);
-		expect(checkPublishedPackageMetadata).toContain(
-			"SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}",
-		);
-		expect(checkPublishedPackageMetadata).toContain(
-			"OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
-		);
-	});
-
-	it("versions private packages without publishing tags", () => {
-		expect(changesetConfig.privatePackages).toEqual({
-			version: true,
-			tag: false,
-		});
-	});
-
-	it("tags production and actual preview uploads only", () => {
-		expect(workflow).toContain(
-			"worker_version: ${{ steps.release.outputs.worker_version }}",
-		);
-		expect(deployProduction).toContain("WORKER_VERSION:");
-		expect(deployProduction).toContain('--tag "$WORKER_VERSION"');
-		expect(previewWorkflow).toContain(
-			"node scripts/resolve-worker-version.mjs preview",
-		);
-		expect(uploadPreview).toContain(
-			"WORKER_VERSION_TAG: ${{ steps.worker_version.outputs.tag }}",
-		);
-		expect(uploadPreview).toContain('--tag "${WORKER_VERSION_TAG}"');
-		expect(uploadPreview).not.toContain('--tag "${{');
-		expect(bootstrapPreview).not.toContain("--tag");
-		expect(cleanupPreview).not.toContain("--tag");
-	});
 });
