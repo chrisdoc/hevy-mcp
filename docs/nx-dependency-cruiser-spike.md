@@ -60,13 +60,6 @@ The pack target builds the publishable Node server and CLI before writing
 representative artifact metadata only: Node and CLI npm packs are exercised;
 Worker and Docker candidate provenance is absent.
 
-The dependency-cruiser test fixture proves that representative neutral Node
-builtin, neutral-to-Node, and Worker observability imports fail closed:
-
-```sh
-npx vitest run scripts/control-plane-config.test.ts
-```
-
 ## Migration contract
 
 - Nx target metadata and executors own local task orchestration, including
