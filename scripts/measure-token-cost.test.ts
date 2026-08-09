@@ -367,7 +367,7 @@ describe("registered tool measurement", () => {
 		const getEncoder = vi.fn(() => ({ ...encoder, free }));
 		const report = await measureRegisteredTools({
 			getEncoder,
-			listTools: async () => [tool("alpha", "measured")],
+			listTools: () => Promise.resolve([tool("alpha", "measured")]),
 		});
 
 		expect(getEncoder).toHaveBeenCalledWith(TOKEN_ENCODING);
@@ -377,7 +377,7 @@ describe("registered tool measurement", () => {
 
 	it("instantiates and frees the configured real tokenizer", async () => {
 		const report = await measureRegisteredTools({
-			listTools: async () => [tool("alpha", "measured")],
+			listTools: () => Promise.resolve([tool("alpha", "measured")]),
 		});
 
 		expect(report).toMatchObject({
@@ -402,9 +402,7 @@ describe("registered tool measurement", () => {
 		await expect(
 			measureRegisteredTools({
 				getEncoder: () => ({ ...encoder, free }),
-				listTools: async () => {
-					throw new Error("collection failed");
-				},
+				listTools: () => Promise.reject(new Error("collection failed")),
 			}),
 		).rejects.toThrow("collection failed");
 		expect(free).toHaveBeenCalledOnce();
@@ -414,7 +412,7 @@ describe("registered tool measurement", () => {
 describe("run", () => {
 	it("prints help without measuring tools", async () => {
 		const log = vi.fn();
-		const measureTools = vi.fn(async () => reportWith());
+		const measureTools = vi.fn(() => Promise.resolve(reportWith()));
 
 		await run(["--help"], { log, measureTools });
 
@@ -428,7 +426,7 @@ describe("run", () => {
 		const current = reportWith();
 		const log = vi.fn();
 
-		await run([], { log, measureTools: async () => current });
+		await run([], { log, measureTools: () => Promise.resolve(current) });
 
 		expect(log).toHaveBeenCalledWith(formatTable(current));
 	});
@@ -452,7 +450,10 @@ describe("run", () => {
 						markdownPath,
 						"--enforce-budget",
 					],
-					{ log: vi.fn(), measureTools: async () => overBudget },
+					{
+						log: vi.fn(),
+						measureTools: () => Promise.resolve(overBudget),
+					},
 				),
 			).rejects.toThrow(
 				`MCP tool catalog exceeds the 8900-token budget: ${TOTAL_TOKEN_BUDGET + 1}`,
@@ -491,7 +492,7 @@ describe("run", () => {
 					"--markdown",
 					markdownPath,
 				],
-				{ log, measureTools: async () => current },
+				{ log, measureTools: () => Promise.resolve(current) },
 			);
 
 			expect(JSON.parse(await readFile(outputPath, "utf8"))).toEqual(current);
@@ -524,7 +525,7 @@ describe("run", () => {
 				await run(["--baseline", baselinePath, "--markdown", markdownPath], {
 					error,
 					log: vi.fn(),
-					measureTools: async () => reportWith(),
+					measureTools: () => Promise.resolve(reportWith()),
 				});
 
 				expect(error).toHaveBeenCalledWith(
@@ -554,7 +555,7 @@ describe("run", () => {
 			await run(["--baseline", baselinePath, "--markdown", markdownPath], {
 				error,
 				log: vi.fn(),
-				measureTools: async () => reportWith(),
+				measureTools: () => Promise.resolve(reportWith()),
 			});
 
 			expect(error).toHaveBeenCalledWith(
@@ -587,7 +588,7 @@ describe("run", () => {
 				await expect(
 					run([flag, outputPath], {
 						log: vi.fn(),
-						measureTools: async () => reportWith(),
+						measureTools: () => Promise.resolve(reportWith()),
 					}),
 				).rejects.toMatchObject({ code: "EEXIST" });
 				expect(await readFile(outputPath, "utf8")).toBe("keep me");
@@ -610,7 +611,7 @@ describe("run", () => {
 				await expect(
 					run(["--output", outputPath], {
 						log: vi.fn(),
-						measureTools: async () => reportWith(),
+						measureTools: () => Promise.resolve(reportWith()),
 					}),
 				).rejects.toMatchObject({ code: "EEXIST" });
 				expect(await readFile(targetPath, "utf8")).toBe("keep target");

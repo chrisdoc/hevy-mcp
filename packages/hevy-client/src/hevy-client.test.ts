@@ -27,21 +27,19 @@ function hangingResponse(): Response {
 
 describe("@hevy-mcp/hevy-client", () => {
 	it("uses object-form options and safely encodes requests", async () => {
-		const fetchMock = vi.fn(
-			async (input: RequestInfo | URL, init?: RequestInit) => {
-				const requestUrl =
-					input instanceof Request
-						? input.url
-						: input instanceof URL
-							? input.href
-							: input;
-				const url = new URL(requestUrl);
-				expect(url.pathname).toBe("/v1/workouts");
-				expect(url.searchParams.get("page")).toBe("2");
-				expect(new Headers(init?.headers).get("api-key")).toBe("secret-key");
-				return response({ page: 2 });
-			},
-		);
+		const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+			const requestUrl =
+				input instanceof Request
+					? input.url
+					: input instanceof URL
+						? input.href
+						: input;
+			const url = new URL(requestUrl);
+			expect(url.pathname).toBe("/v1/workouts");
+			expect(url.searchParams.get("page")).toBe("2");
+			expect(new Headers(init?.headers).get("api-key")).toBe("secret-key");
+			return Promise.resolve(response({ page: 2 }));
+		});
 
 		const client = createHevyClient({
 			apiKey: "secret-key",
@@ -280,8 +278,8 @@ describe("@hevy-mcp/hevy-client", () => {
 			releaseBody = resolve;
 		});
 		const events: string[] = [];
-		const fetchMock = vi.fn(
-			async () =>
+		const fetchMock = vi.fn(() =>
+			Promise.resolve(
 				new Response(
 					new ReadableStream({
 						async start(controller) {
@@ -292,6 +290,7 @@ describe("@hevy-mcp/hevy-client", () => {
 					}),
 					{ status: 200 },
 				),
+			),
 		);
 		const client = createHevyClient({
 			apiKey: "secret-key",
@@ -326,8 +325,9 @@ describe("@hevy-mcp/hevy-client", () => {
 			apiKey: "secret-key",
 			fetch: fetchMock,
 			maxGetRetries: 1,
-			sleep: async (milliseconds) => {
+			sleep: (milliseconds) => {
 				waits.push(milliseconds);
+				return Promise.resolve();
 			},
 			onRequestStart: ({ retryCount }) => {
 				attempts.push(`start:${retryCount}`);
@@ -676,8 +676,9 @@ describe("@hevy-mcp/hevy-client", () => {
 				apiKey: "secret-key",
 				fetch: fetchMock,
 				maxGetRetries: 1,
-				sleep: async (delay) => {
+				sleep: (delay) => {
 					waits.push(delay);
+					return Promise.resolve();
 				},
 			});
 			await client.getUserInfo();
@@ -706,8 +707,9 @@ describe("@hevy-mcp/hevy-client", () => {
 				apiKey: "secret-key",
 				fetch: fetchMock,
 				maxGetRetries: 1,
-				sleep: async (delay) => {
+				sleep: (delay) => {
 					waits.push(delay);
+					return Promise.resolve();
 				},
 			});
 			await client.getUserInfo({ deadline: Date.now() + 30_000 });
@@ -801,7 +803,9 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("forwards every curated operation through its generated API wrapper", async () => {
-		const fetchMock = vi.fn().mockImplementation(async () => response({}));
+		const fetchMock = vi
+			.fn()
+			.mockImplementation(() => Promise.resolve(response({})));
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
@@ -849,9 +853,10 @@ describe("@hevy-mcp/hevy-client", () => {
 				apiKey: "secret-key",
 				fetch: fetchMock,
 				maxGetRetries: 1,
-				sleep: async (delay) => {
+				sleep: (delay) => {
 					waits.push(delay);
 					vi.advanceTimersByTime(delay);
+					return Promise.resolve();
 				},
 			});
 			await expect(

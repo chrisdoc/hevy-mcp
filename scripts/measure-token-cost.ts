@@ -564,7 +564,7 @@ export async function listRegisteredTools(): Promise<Tool[]> {
 		createToolRuntime({
 			client: null,
 			catalog: {
-				get: async () => [],
+				get: () => Promise.resolve([]),
 				reset: () => {},
 			} satisfies ExerciseTemplateCatalog,
 		}),

@@ -172,7 +172,7 @@ async function main() {
 		report("setup-or-handshake", true);
 		setupRecorded = true;
 
-		await runTest("server-info", async () => {
+		await runTest("server-info", () => {
 			assertCondition(serverInfo?.name, "$.server.name");
 			assertCondition(serverInfo?.version, "$.server.version");
 		});

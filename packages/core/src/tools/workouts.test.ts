@@ -156,13 +156,13 @@ describe("workout tools", () => {
 			createWorkout: vi
 				.fn()
 				.mockResolvedValue({ id: "w1", ...workoutInput.workout }),
-			getWorkout: vi.fn().mockImplementation(async () => {
+			getWorkout: vi.fn().mockImplementation(() => {
 				calls.push("get");
-				return current;
+				return Promise.resolve(current);
 			}),
-			updateWorkout: vi.fn().mockImplementation(async () => {
+			updateWorkout: vi.fn().mockImplementation(() => {
 				calls.push("put");
-				return current;
+				return Promise.resolve(current);
 			}),
 		} as unknown as HevyClient;
 		const tool = register(client);
