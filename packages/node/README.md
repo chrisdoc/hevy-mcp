@@ -190,13 +190,22 @@ server:
 import { createNodeMcpServer, runStdioServer } from "hevy-mcp";
 
 const server = await createNodeMcpServer({ apiKey: process.env.HEVY_API_KEY! });
-// Connect `server` to the transport owned by your application, or use:
+// Connect `server` to the transport owned by your application.
+```
+
+For the CLI-owned stdio process, use the executable instead of creating an
+embedded server:
+
+```ts
+import { runStdioServer } from "hevy-mcp";
+
 await runStdioServer();
 ```
 
-`createNodeMcpServer` never reads environment variables, connects a transport,
-or installs process lifecycle handlers. The CLI-only `runStdioServer` function
-owns those concerns.
+`createNodeMcpServer` is the side-effect-free embedding entry: it validates the
+supplied key locally, but never reads environment variables, probes Hevy,
+connects a transport, initializes telemetry, or installs process lifecycle
+handlers. The CLI-only `runStdioServer` function owns those concerns.
 
 <details>
 <summary><strong>Use bunx instead</strong></summary>

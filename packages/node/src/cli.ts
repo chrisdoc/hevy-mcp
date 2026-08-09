@@ -1,4 +1,4 @@
-import { runServer } from "./index.js";
+import { runServer } from "./runtime.js";
 import { MissingHevyApiKeyError } from "./utils/config.js";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
 import { flushTelemetry } from "./utils/telemetry.js";
