@@ -932,7 +932,9 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			response_types: ["code"],
 			token_endpoint_auth_method: "none",
 		};
-		const fetchMock = vi.fn(() => Promise.resolve(Response.json(metadata)));
+		const fetchMock = vi.fn((_input: RequestInfo | URL) =>
+			Promise.resolve(Response.json(metadata)),
+		);
 		vi.stubGlobal("fetch", fetchMock);
 		const { handler, env } = createHandlerWithEnv();
 		const verifier = base64UrlEncode(
