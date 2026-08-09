@@ -80,20 +80,29 @@ function createReleaseSentryPlugin() {
 		...plugin,
 		renderChunk(
 			code: string,
-			chunk: { facadeModuleId?: string | null },
+			chunk: { facadeModuleId?: string | null; moduleIds?: string[] },
 			options: unknown,
 			meta: unknown,
 		) {
-			const facadeModuleId = chunk.facadeModuleId?.replaceAll("\\", "/");
-			// The published package root is an embedding surface. Only inject
-			// Sentry debug IDs into the executable entry; shared chunks may be
-			// imported by the embedding entry and must remain inert too.
-			if (
-				facadeModuleId !== "src/cli.ts" &&
-				!facadeModuleId?.endsWith("/src/cli.ts")
-			) {
-				return null;
-			}
+			const normalizeModuleId = (moduleId: string) =>
+				moduleId.replaceAll("\\", "/");
+			const isExecutableModule = (moduleId: string | null | undefined) => {
+				const normalized = moduleId && normalizeModuleId(moduleId);
+				return (
+					normalized === "src/cli.ts" ||
+					normalized?.endsWith("/src/cli.ts") ||
+					normalized === "src/runtime.ts" ||
+					normalized?.endsWith("/src/runtime.ts")
+				);
+			};
+			// The published package root is an embedding surface. Inject Sentry
+			// debug IDs into the executable entry and its lazy runtime chunk;
+			// shared chunks imported by the embedding entry must remain inert.
+			const isExecutableChunk = [
+				chunk.facadeModuleId,
+				...(chunk.moduleIds ?? []),
+			].some(isExecutableModule);
+			if (!isExecutableChunk) return null;
 			return plugin.renderChunk?.(code, chunk, options, meta);
 		},
 	};
