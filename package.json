@@ -37,6 +37,7 @@
 	"scripts": {
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env packages/node/dist/cli.mjs",
 		"measure:tokens": "tsx scripts/measure-token-cost.ts",
+		"knip": "knip --no-exit-code --exclude unlisted,unresolved,exports,types,duplicates",
 		"test": "npm run build && node --env-file-if-exists=.env node_modules/vitest/vitest.mjs --run",
 		"test:unit": "mise exec -- node scripts/run-vitest-lane.mjs unit",
 		"test:release-unit": "mise exec -- vitest run --exclude 'tests/integration/**'",
@@ -111,6 +112,7 @@
 		"cross-env": "^10.1.0",
 		"dependency-cruiser": "^18.1.1",
 		"js-yaml": "^5.2.3",
+		"knip": "^6.32.0",
 		"nock": "^14.0.17",
 		"nx": "^23.1.1",
 		"oxfmt": "^0.62.0",
