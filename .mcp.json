@@ -1,0 +1,9 @@
+{
+	"mcpServers": {
+		"hevy": {
+			"type": "http",
+			"url": "https://mcp.hevy-mcp.dev/mcp",
+			"oauth": true
+		}
+	}
+}

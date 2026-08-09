@@ -91,6 +91,33 @@ Try asking:
 > Create a completed workout from my saved routine. Ask me for any missing set
 > results before writing it to Hevy.
 
+## Claude integration
+
+The repository includes a Claude plugin that connects to the hosted OAuth-enabled
+MCP endpoint without embedding a user's Hevy API key.
+
+### Claude.ai and Claude Desktop
+
+In Claude, open **Settings → Connectors → Add custom connector** and enter:
+
+```text
+https://mcp.hevy-mcp.dev/mcp
+```
+
+Complete the OAuth flow and enter the Hevy API key when prompted. The same
+remote endpoint can be used by Claude Desktop and other clients that support
+remote MCP connectors.
+
+### Claude Code and Cowork
+
+The Claude plugin is defined by [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json)
+and [`.mcp.json`](./.mcp.json). Install it from this public repository or from
+the Claude Plugin Directory after publication. It adds the hosted Hevy MCP
+connector and the [Hevy workout skill](./skills/hevy-workouts/SKILL.md).
+
+See the [privacy policy](./docs/privacy-policy.md) for the hosted service's
+data handling details.
+
 ## Quick start
 
 ### 1. Get your Hevy API key
