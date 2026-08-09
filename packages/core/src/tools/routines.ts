@@ -1,8 +1,8 @@
 import type {
-	GetV1Routines200,
 	GetV1RoutinesRoutineid200,
 	PostV1Routines201,
 	PutV1RoutinesRoutineid200,
+	Routine,
 } from "@hevy-mcp/hevy-client/types";
 import {
 	createRoutineResponse,
@@ -24,20 +24,16 @@ import {
 } from "./input-schemas.js";
 import { buildRoutinePayload } from "./mutation-semantics.js";
 import type { ToolDefinition } from "./define-tool.js";
+import type { ToolRuntime } from "./tool-runtime.js";
 import type { PaginatedToolResult } from "../utils/response-contracts.js";
-import {
-	isExpectedListPageNotFound,
-	isExpectedReadNotFound,
-} from "../utils/hevy-error-policy.js";
+import { isExpectedReadNotFound } from "../utils/hevy-error-policy.js";
 
 const getRoutinesSchema = paginationShape({
 	defaultPageSize: 5,
 	maxPageSize: 10,
 });
 
-type GetRoutinesResult = PaginatedToolResult<
-	NonNullable<GetV1Routines200["routines"]>[number]
->;
+type GetRoutinesResult = PaginatedToolResult<Routine>;
 const getRoutinesDefinition: ToolDefinition<
 	typeof getRoutinesSchema,
 	GetRoutinesResult
@@ -52,20 +48,10 @@ const getRoutinesDefinition: ToolDefinition<
 	outputSchema: routinesResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get Routines"),
 	responseContract: routinesResponse,
-	execute: async (runtime, { page, page_size }) => {
-		try {
-			const data: GetV1Routines200 = await runtime.getClient().getRoutines({
-				page,
-				pageSize: page_size,
-			});
-			return { items: data?.routines ?? [], page, pageCount: data?.page_count };
-		} catch (error) {
-			if (isExpectedListPageNotFound(error, page)) {
-				return { items: [], page, expected404Outcome: "end_of_list" };
-			}
-			throw error;
-		}
-	},
+	execute: (runtime: ToolRuntime, { page, page_size }) =>
+		runtime
+			.getOperations()
+			.routines.list.execute({ page, pageSize: page_size }, runtime.execution),
 };
 
 const getRoutineSchema = { routine_id: nonEmptyId } as const;

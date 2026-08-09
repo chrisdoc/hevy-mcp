@@ -1,5 +1,6 @@
 /* oxlint-disable typescript/unbound-method */
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyOperations } from "@hevy-mcp/operations";
 import { describe, expect, it, vi } from "vitest";
 import type { CliArgs } from "../arguments.js";
 import { ApiResponseError } from "../errors.js";
@@ -79,6 +80,50 @@ const options = (data: unknown): CliArgs["options"] => ({
 });
 
 describe("execute command/API mappings", () => {
+	it("uses the injected routines list operation while retaining the page envelope", async () => {
+		const api = client();
+		const executeList = vi.fn().mockResolvedValue({
+			items: [{ id: "r1", title: "Push", exercises: [] }],
+			page: 2,
+			pageCount: 3,
+		});
+		const operations = {
+			routines: { list: { execute: executeList } },
+		} as unknown as HevyOperations;
+
+		await expect(
+			execute(
+				args("routines", "list", [], { page: "2" }),
+				api,
+				undefined,
+				undefined,
+				operations,
+			),
+		).resolves.toEqual({
+			page: 2,
+			page_count: 3,
+			routines: [{ id: "r1", title: "Push", exercises: [] }],
+		});
+		expect(executeList).toHaveBeenCalledWith({ page: 2, pageSize: 5 });
+		expect(api.getRoutines).not.toHaveBeenCalled();
+
+		executeList.mockResolvedValue({
+			items: [],
+			page: 2,
+			pageCount: undefined,
+			expected404Outcome: "end_of_list",
+		});
+		await expect(
+			execute(
+				args("routines", "list", [], { page: "2" }),
+				api,
+				undefined,
+				undefined,
+				operations,
+			),
+		).resolves.toEqual({ page: 2, page_count: 0, routines: [] });
+	});
+
 	it.each([
 		["user", undefined, [], "getUserInfo"],
 		["workouts", "list", [], "getWorkouts"],
