@@ -246,12 +246,11 @@ describe("Node package entrypoint", () => {
 			testDoubles.sdkProtocol._requestHandlers.get("initialize");
 		expect(wrappedToolHandler).toBeDefined();
 		expect(wrappedInitializeHandler).toBeDefined();
-		if (!wrappedToolHandler || !wrappedInitializeHandler) return;
 
 		const activeSpanSpy = vi
 			.spyOn(trace, "getActiveSpan")
 			.mockReturnValue(testDoubles.span as never);
-		await expect(wrappedInitializeHandler({}, {})).resolves.toEqual({
+		await expect(wrappedInitializeHandler!({}, {})).resolves.toEqual({
 			protocolVersion: "1",
 		});
 		expect(testDoubles.span.setAttributes).toHaveBeenCalledWith({
@@ -264,7 +263,7 @@ describe("Node package entrypoint", () => {
 		testDoubles.span.setAttributes.mockClear();
 
 		await expect(
-			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
+			wrappedToolHandler!({ params: { name: "get-workouts" } }, {}),
 		).resolves.toEqual({});
 		expect(testDoubles.span.setAttributes).toHaveBeenCalledWith({
 			"mcp.span.category": "protocol",
@@ -295,18 +294,19 @@ describe("Node package entrypoint", () => {
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
 		const wrappedDiscoveryHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("server/discover");
-		if (!wrappedToolHandler || !wrappedDiscoveryHandler) return;
+		expect(wrappedToolHandler).toBeDefined();
+		expect(wrappedDiscoveryHandler).toBeDefined();
 
 		await expect(
-			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
+			wrappedToolHandler!({ params: { name: "get-workouts" } }, {}),
 		).resolves.toEqual({ isError: true });
 		await expect(
-			wrappedToolHandler({ params: { name: "bad name" } }, {}),
+			wrappedToolHandler!({ params: { name: "bad name" } }, {}),
 		).rejects.toThrow("tool failure");
-		await expect(wrappedDiscoveryHandler({}, {})).resolves.toEqual({
+		await expect(wrappedDiscoveryHandler!({}, {})).resolves.toEqual({
 			capabilities: [],
 		});
-		await expect(wrappedDiscoveryHandler({}, {})).rejects.toThrow(
+		await expect(wrappedDiscoveryHandler!({}, {})).rejects.toThrow(
 			"discovery failure",
 		);
 
@@ -314,15 +314,14 @@ describe("Node package entrypoint", () => {
 	});
 
 	it("treats unknown MCP tool requests as expected validation failures", async () => {
-		const toolHandler = vi
-			.fn()
-			.mockRejectedValue(new Error("Tool get-workout-workoutId not found"));
+		const unknownToolError = new Error("Tool get-workout-workoutId not found");
+		const toolHandler = vi.fn().mockRejectedValue(unknownToolError);
 		testDoubles.sdkProtocol._requestHandlers.set("tools/call", toolHandler);
 		await createNodeMcpServer({ apiKey: "valid-key" });
 
 		const wrappedToolHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
-		if (!wrappedToolHandler) return;
+		expect(wrappedToolHandler).toBeDefined();
 
 		testDoubles.captureFailure.mockClear();
 		testDoubles.span.addEvent.mockClear();
@@ -332,11 +331,11 @@ describe("Node package entrypoint", () => {
 			.mockReturnValue(testDoubles.span as never);
 
 		await expect(
-			wrappedToolHandler({ params: { name: "get-workout-workoutId" } }, {}),
+			wrappedToolHandler!({ params: { name: "get-workout-workoutId" } }, {}),
 		).rejects.toThrow("Tool get-workout-workoutId not found");
 
 		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
-			expect.any(Error),
+			unknownToolError,
 			expect.objectContaining({
 				expected: true,
 				attributes: expect.objectContaining({
@@ -451,14 +450,14 @@ describe("Node package entrypoint", () => {
 
 		const wrappedToolHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
-		if (!wrappedToolHandler) return;
+		expect(wrappedToolHandler).toBeDefined();
 		const activeSpanSpy = vi
 			.spyOn(trace, "getActiveSpan")
 			.mockReturnValue(testDoubles.span as never);
 		testDoubles.span.setStatus.mockClear();
 
 		await expect(
-			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
+			wrappedToolHandler!({ params: { name: "get-workouts" } }, {}),
 		).resolves.toEqual({ isError: true });
 		expect(testDoubles.span.setStatus).not.toHaveBeenCalledWith({
 			code: SpanStatusCode.ERROR,
@@ -488,11 +487,12 @@ describe("Node package entrypoint", () => {
 			testDoubles.sdkProtocol._requestHandlers.get("initialize");
 		const wrappedTool =
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
-		if (!wrappedInitialize || !wrappedTool) return;
+		expect(wrappedInitialize).toBeDefined();
+		expect(wrappedTool).toBeDefined();
 
-		await expect(wrappedInitialize({}, {})).resolves.toEqual({});
+		await expect(wrappedInitialize!({}, {})).resolves.toEqual({});
 		await expect(
-			wrappedTool({ params: { name: "get-workouts" } }, {}),
+			wrappedTool!({ params: { name: "get-workouts" } }, {}),
 		).resolves.toEqual({});
 		expect(initializeHandler).toHaveBeenCalledOnce();
 		expect(toolHandler).toHaveBeenCalledOnce();

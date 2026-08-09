@@ -159,7 +159,7 @@ describe("@hevy-mcp/hevy-client", () => {
 			response(
 				{
 					message:
-						"Invalid email jane@example.com; Authorization: Bearer response-secret; see https://api.example.test/workouts/123",
+						"Invalid email jane@example.com; Authorization: Bearer response-secret; Cookie: session=body-secret; validation failed; see https://api.example.test/workouts/123",
 					token: "body-secret",
 				},
 				500,
@@ -181,7 +181,7 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		expect(thrown).toMatchObject({
 			responseError:
-				"Invalid email [EMAIL_REDACTED]; Authorization: [REDACTED]; see [URL_REDACTED]",
+				"Invalid email [EMAIL_REDACTED]; Authorization: [REDACTED]; Cookie: [REDACTED]; validation failed; see [URL_REDACTED]",
 		});
 		const observationText = JSON.stringify(observations);
 		expect(observationText).toContain("response_error");

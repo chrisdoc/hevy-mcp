@@ -311,16 +311,10 @@ function installToolCallTracking(
 									? classifySdkValidation(error.message)
 									: { kind: "unknown" as const, expected: false };
 							if (validation.kind === "tool_not_found") {
-								markSdkToolFailure(
-									span,
-									new Error("MCP tool validation failed"),
-									toolName,
-									"validation",
-									{
-										expected: true,
-										validationKind: validation.kind,
-									},
-								);
+								markSdkToolFailure(span, error, toolName, "validation", {
+									expected: true,
+									validationKind: validation.kind,
+								});
 							} else {
 								markSdkToolFailure(span, error, toolName);
 							}

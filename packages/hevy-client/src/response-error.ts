@@ -2,7 +2,7 @@ const MAX_RESPONSE_ERROR_INPUT_LENGTH = 4_096;
 const MAX_RESPONSE_ERROR_LENGTH = 256;
 const RESPONSE_ERROR_KEYS = ["error", "message", "detail"] as const;
 
-const COOKIE_ASSIGNMENT = /\b(?:cookie|set-cookie)\s*[:=][^\r\n]*/gi;
+const COOKIE_ASSIGNMENT = /(\b(?:cookie|set-cookie)\s*[:=]\s*)[^;\s]+/gi;
 const SECRET_ASSIGNMENT =
 	/(\b(?:authorization|proxy-authorization|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|id[-_ ]?token|token|client[-_ ]?secret|password|passwd|secret|credential|signature)\b\s*[:=]\s*)(?:"[^"]*"|'[^']*'|(?:Bearer\s+)?[^\s,;}"]+)/gi;
 const BEARER_TOKEN = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
@@ -10,7 +10,7 @@ const JSON_WEB_TOKEN =
 	/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/g;
 const SECRET_QUERY_PARAMETER =
 	/([?&](?:api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|token|signature|password|secret)=)[^&#\s]+/gi;
-const URL = /\bhttps?:\/\/[^\s<>"']+/gi;
+const HTTP_URL = /\bhttps?:\/\/[^\s<>"']+/gi;
 const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const UUID =
 	/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
@@ -71,12 +71,12 @@ function sanitizeResponseErrorText(value: string): string {
 	);
 	return truncate(
 		bounded
-			.replace(COOKIE_ASSIGNMENT, "[REDACTED]")
+			.replace(COOKIE_ASSIGNMENT, "$1[REDACTED]")
 			.replace(SECRET_ASSIGNMENT, "$1[REDACTED]")
 			.replace(BEARER_TOKEN, "Bearer [REDACTED]")
 			.replace(JSON_WEB_TOKEN, "[JWT_REDACTED]")
 			.replace(SECRET_QUERY_PARAMETER, "$1[REDACTED]")
-			.replace(URL, "[URL_REDACTED]")
+			.replace(HTTP_URL, "[URL_REDACTED]")
 			.replace(EMAIL, "[EMAIL_REDACTED]")
 			.replace(UUID, "[ID_REDACTED]")
 			.replace(/\s+/g, " ")
