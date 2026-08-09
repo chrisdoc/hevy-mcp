@@ -421,9 +421,14 @@ function createMemoryKV() {
 			const entry = store.get(key);
 			if (!entry) return Promise.resolve(null);
 			const type = typeof options === "string" ? options : options?.type;
-			return Promise.resolve(
-				type === "json" ? JSON.parse(entry.value) : entry.value,
-			);
+			if (type === "json") {
+				try {
+					return Promise.resolve(JSON.parse(entry.value));
+				} catch (error) {
+					return Promise.reject(error);
+				}
+			}
+			return Promise.resolve(entry.value);
 		},
 		put(key: string, value: string) {
 			store.set(key, { value });
