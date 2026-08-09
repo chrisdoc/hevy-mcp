@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
+	type JSONObject,
 	StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, describe, it } from "vitest";
@@ -17,7 +18,6 @@ const MAX_CAPTURED_LOG_LENGTH = 32 * 1024;
 const LIVE_TESTS_ENABLED =
 	process.env.HEVY_RUN_LIVE_WORKER_TESTS === "1" &&
 	Boolean(process.env.HEVY_API_KEY);
-type JsonObject = { [key: string]: unknown };
 const describeLive = LIVE_TESTS_ENABLED ? describe.sequential : describe.skip;
 
 const INVOKED_READ_TOOLS = [
@@ -56,7 +56,7 @@ function assertCondition(
 function assertRecord(
 	value: unknown,
 	schemaPath: string,
-): asserts value is JsonObject {
+): asserts value is JSONObject {
 	assertCondition(value !== null && typeof value === "object", schemaPath);
 }
 
@@ -241,8 +241,8 @@ async function startWrangler(): Promise<void> {
 async function callReadTool(
 	client: Client,
 	name: (typeof INVOKED_READ_TOOLS)[number],
-	arguments_: JsonObject,
-): Promise<JsonObject> {
+	arguments_: JSONObject,
+): Promise<JSONObject> {
 	let result;
 	try {
 		result = await client.callTool(
@@ -262,14 +262,14 @@ async function callReadTool(
 function assertBoundedList(
 	value: unknown,
 	schemaPath: string,
-): asserts value is JsonObject[] {
+): asserts value is JSONObject[] {
 	assertCondition(Array.isArray(value), schemaPath);
 	assertCondition(value.length <= 1, `${schemaPath}/length`);
 	if (value[0] !== undefined) assertRecord(value[0], `${schemaPath}/0`);
 }
 
 function optionalStringId(
-	value: JsonObject[] | undefined,
+	value: JSONObject[] | undefined,
 	schemaPath: string,
 ): string | undefined {
 	if (!value?.[0]) return undefined;

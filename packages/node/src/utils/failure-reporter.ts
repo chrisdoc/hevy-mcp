@@ -62,9 +62,8 @@ const SAFE_TAG_PREFIXES = [
 const TELEMETRY_ENABLED = process.env.HEVY_MCP_TELEMETRY !== "0";
 const DIAGNOSTIC_DETAILS_ENABLED =
 	process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS !== "0";
-type UnknownObject = { [key: string]: unknown };
 
-function isRecord(value: unknown): value is UnknownObject {
+function isObject(value: unknown): value is object {
 	return typeof value === "object" && value !== null;
 }
 
@@ -287,7 +286,7 @@ export function normalizeFailure(
 function sanitizeContext(
 	value: unknown,
 ): Record<string, TelemetryAttributeValue> {
-	if (!isRecord(value)) return {};
+	if (!isObject(value)) return {};
 	const output: Record<string, TelemetryAttributeValue> = {};
 	for (const [key, rawValue] of Object.entries(value).slice(0, 32)) {
 		if (
@@ -430,13 +429,13 @@ const reportedErrors = new WeakSet<object>();
 const diagnosticIds = new WeakMap<object, string>();
 
 function getDiagnosticId(error: unknown): string | undefined {
-	if (isRecord(error)) {
+	if (isObject(error)) {
 		const existing = diagnosticIds.get(error);
 		if (existing) return existing;
 	}
 	try {
 		const generated = randomUUID();
-		if (isRecord(error)) diagnosticIds.set(error, generated);
+		if (isObject(error)) diagnosticIds.set(error, generated);
 		return generated;
 	} catch {
 		return undefined;
@@ -444,7 +443,7 @@ function getDiagnosticId(error: unknown): string | undefined {
 }
 
 function hasReportedError(error: unknown): boolean {
-	if (!isRecord(error)) return false;
+	if (!isObject(error)) return false;
 	if (reportedErrors.has(error)) return true;
 	reportedErrors.add(error);
 	return false;

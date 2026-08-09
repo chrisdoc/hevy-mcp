@@ -2,7 +2,6 @@ const DEBUG_PREFIX = "[hevy-mcp:debug] ";
 const MAX_DEBUG_RECORD_LENGTH = 8_192;
 const MAX_REDACTION_DEPTH = 4;
 const MAX_OBJECT_KEYS = 20;
-type UnknownObject = { [key: string]: unknown };
 
 type RedactedValue =
 	| number
@@ -126,7 +125,7 @@ export function redactToolArgs(args: unknown): RedactedValue {
 /**
  * Write a single bounded structured debug record to stderr without throwing.
  */
-export function debugLog(event: string, data: UnknownObject): void {
+export function debugLog(event: string, data: object): void {
 	if (!isDebugEnabled()) {
 		return;
 	}

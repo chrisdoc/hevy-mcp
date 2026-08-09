@@ -15,7 +15,6 @@ export const MEASUREMENT_SCOPE =
 export const TOOL_COUNT_TARGET = 20;
 export const AVERAGE_TOKEN_TARGET = 600;
 export const TOTAL_TOKEN_BUDGET = 8_900;
-type UnknownObject = { [key: string]: unknown };
 
 export type ToolComponent =
 	| "name"
@@ -338,7 +337,7 @@ function hasComponentTokenTotals(
 	value: unknown,
 ): value is ComponentTokenTotals {
 	if (!value || typeof value !== "object") return false;
-	const candidate = value as UnknownObject;
+	const candidate = value as Partial<ComponentTokenTotals>;
 	return TOOL_COMPONENTS.every(
 		(component) => typeof candidate[component] === "number",
 	);

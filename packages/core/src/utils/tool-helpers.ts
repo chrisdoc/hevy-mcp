@@ -8,7 +8,6 @@ import type { ToolExecutionContext } from "../execution.js";
 
 export const HEVY_CLIENT_NOT_INITIALIZED_ERROR =
 	"API client not initialized. Please provide HEVY_API_KEY.";
-type ToolArguments = { [key: string]: unknown };
 
 /**
  * Assert that the Hevy API client is initialized before running a tool.
@@ -68,12 +67,9 @@ export function createTypedToolHandler<T extends Record<string, z.ZodTypeAny>>(
 		args: InferToolParams<T>,
 		context?: ToolExecutionContext,
 	) => Promise<McpToolResponse>,
-): (
-	args: ToolArguments,
-	context?: ToolExecutionContext,
-) => Promise<McpToolResponse> {
+): (args: object, context?: ToolExecutionContext) => Promise<McpToolResponse> {
 	const zodSchema = z.strictObject(schema);
-	return async (args: ToolArguments, context?: ToolExecutionContext) => {
+	return async (args: object, context?: ToolExecutionContext) => {
 		const validated = zodSchema.parse(args);
 		return handler(validated, context);
 	};

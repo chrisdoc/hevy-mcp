@@ -2,11 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
 	FIXTURE_RESULT_PREFIX,
 	parseFixtureResult,
+	type FixtureResult,
 } from "../performance/fixture-result.js";
 
-type FixtureOverrides = { [key: string]: unknown };
-
-function marker(overrides: FixtureOverrides = {}) {
+function marker(overrides: Partial<FixtureResult> = {}) {
 	return `${FIXTURE_RESULT_PREFIX}${JSON.stringify({
 		version: 1,
 		mode: "startup",

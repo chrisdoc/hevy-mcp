@@ -5,7 +5,10 @@ import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools, hevyToolDefinitions } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
-type JsonObject = { [key: string]: unknown };
+type SchemaObject = {
+	properties?: object;
+	items?: unknown;
+};
 
 const EXPECTED_TOOL_NAMES = [
 	"get-workouts",
@@ -129,11 +132,9 @@ describe("registerHevyTools", () => {
 		const propertyNames: string[] = [];
 		const visit = (schema: unknown): void => {
 			if (!schema || typeof schema !== "object") return;
-			const record = schema as JsonObject;
-			if (record.properties && typeof record.properties === "object") {
-				for (const [name, child] of Object.entries(
-					record.properties as JsonObject,
-				)) {
+			const record = schema as SchemaObject;
+			if (record.properties) {
+				for (const [name, child] of Object.entries(record.properties)) {
 					propertyNames.push(name);
 					visit(child);
 				}

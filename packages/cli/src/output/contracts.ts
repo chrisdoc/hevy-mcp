@@ -1,4 +1,5 @@
-export type JsonObject = { [key: string]: unknown };
+export type ApiValue = string | number | boolean | null | object | ApiValue[];
+export type ApiObject = { [key: string]: ApiValue };
 
 export interface PaginationEnvelope<T> {
 	page: number;
@@ -27,13 +28,13 @@ export interface SummaryResult {
 }
 
 export function pageEnvelope(
-	data: JsonObject,
+	data: ApiObject,
 	key: string,
-	items: unknown[],
-): JsonObject {
+	items: readonly ApiValue[],
+): ApiObject {
 	return {
-		page: data.page ?? 1,
-		page_count: data.page_count ?? 0,
+		page: typeof data.page === "number" ? data.page : 1,
+		page_count: typeof data.page_count === "number" ? data.page_count : 0,
 		[key]: items,
 	};
 }

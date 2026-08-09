@@ -20,7 +20,6 @@ const validHeaders = {
 	"content-type": "application/json",
 	authorization: "Bearer test-key",
 };
-type JsonObject = { [key: string]: unknown };
 
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -49,7 +48,7 @@ function createMockClient(overrides: Partial<HevyClient> = {}): HevyClient {
 	} as HevyClient;
 }
 
-async function parseMcpResponse(response: Response) {
+async function parseMcpResponse(response: Response): Promise<unknown> {
 	const text = await response.text();
 	if (response.headers.get("content-type")?.includes("text/event-stream")) {
 		const data = text
@@ -57,9 +56,9 @@ async function parseMcpResponse(response: Response) {
 			.find((line) => line.startsWith("data: "))
 			?.slice(6);
 		if (!data) throw new Error(`Missing SSE data: ${text}`);
-		return JSON.parse(data) as JsonObject;
+		return JSON.parse(data);
 	}
-	return JSON.parse(text) as JsonObject;
+	return JSON.parse(text);
 }
 
 describe("Worker authentication helpers", () => {

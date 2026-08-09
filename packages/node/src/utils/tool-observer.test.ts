@@ -6,8 +6,6 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNodeToolObserver } from "./tool-observer.js";
 
-type UnknownObject = { [key: string]: unknown };
-
 const testDoubles = vi.hoisted(() => ({
 	activeSpanDepth: 0,
 	span: {
@@ -171,14 +169,12 @@ describe("createNodeToolObserver", () => {
 				is_error: "false",
 			}),
 		);
-		const durationAttributes = testDoubles.toolDurationRecord.mock
-			.calls[0]?.[1] as UnknownObject;
-		expect(durationAttributes).not.toHaveProperty(
-			"mcp.tool.result.content_count_bucket",
-		);
-		expect(durationAttributes).not.toHaveProperty(
-			"mcp.tool.result.item_count_bucket",
-		);
+		expect(
+			testDoubles.toolDurationRecord.mock.calls[0]?.[1],
+		).not.toHaveProperty("mcp.tool.result.content_count_bucket");
+		expect(
+			testDoubles.toolDurationRecord.mock.calls[0]?.[1],
+		).not.toHaveProperty("mcp.tool.result.item_count_bucket");
 		expect(testDoubles.recordMcpToolFailure).not.toHaveBeenCalled();
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});

@@ -72,13 +72,13 @@ const BOOLEAN_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
 const structuralArgumentKeys = Object.keys(
 	STRUCTURAL_ARGUMENT_KEYS,
 ) as SafeToolArgumentKey[];
-type ToolArguments = { [key: string]: unknown };
 
 function createSafeInvocation(
 	name: string,
-	args: ToolArguments,
+	args: object,
 	taxonomy: ToolTelemetryMetadata | undefined,
 ) {
+	const argumentValues = new Map<string, unknown>(Object.entries(args));
 	const argumentKeys = structuralArgumentKeys.filter((key) => key in args);
 	const argumentPresence: Record<string, true> = {};
 	const numericArgumentBuckets: Record<
@@ -88,7 +88,7 @@ function createSafeInvocation(
 	const booleanArguments: Record<string, boolean> = {};
 
 	for (const key of argumentKeys) {
-		const value = args[key];
+		const value = argumentValues.get(key);
 		if (
 			key in PRESENCE_ARGUMENT_KEYS &&
 			value !== null &&
@@ -115,12 +115,12 @@ function createSafeInvocation(
 	};
 }
 
-export type ToolHandler<TParams extends ToolArguments = ToolArguments> = (
+export type ToolHandler<TParams extends object = object> = (
 	args: TParams,
 	context?: ToolExecutionContext,
 ) => Promise<McpToolResponse>;
 
-export type ToolHandlerFactory = <TParams extends ToolArguments>(
+export type ToolHandlerFactory = <TParams extends object>(
 	fn: ToolHandler<TParams>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
@@ -156,7 +156,7 @@ export interface CreateToolRuntimeOptions {
 }
 
 export const defaultHandlerFactory: ToolHandlerFactory = <
-	TParams extends ToolArguments,
+	TParams extends object,
 >(
 	fn: ToolHandler<TParams>,
 	context: string,
@@ -179,9 +179,7 @@ export function createToolRuntime({
 	const resolvedOperations =
 		operations ?? (rawClient ? createOperations(rawClient) : null);
 	const effectiveExecutionDeadline = executionDeadline ?? execution?.deadline;
-	const createObservedHandler: ToolHandlerFactory = <
-		TParams extends ToolArguments,
-	>(
+	const createObservedHandler: ToolHandlerFactory = <TParams extends object>(
 		fn: ToolHandler<TParams>,
 		context: string,
 		metadata?: ToolTelemetryMetadata,

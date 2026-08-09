@@ -1,5 +1,3 @@
-type JsonObject = { [key: string]: unknown };
-
 function scalar(value: unknown): string {
 	if (value === null || value === undefined) return "null";
 	if (typeof value === "object") return JSON.stringify(value);
@@ -12,15 +10,14 @@ export function human(value: unknown): string {
 			? value.map((item) => human(item)).join("\n")
 			: "No results.";
 	if (!value || typeof value !== "object") return scalar(value);
-	const record = value as JsonObject;
 	const lines: string[] = [];
-	for (const [key, item] of Object.entries(record)) {
+	for (const [key, item] of Object.entries(value)) {
 		if (Array.isArray(item)) {
 			lines.push(`${key}: ${item.length} item(s)`);
 			for (const child of item.slice(0, 20)) {
 				if (child && typeof child === "object")
 					lines.push(
-						`  - ${Object.entries(child as JsonObject)
+						`  - ${Object.entries(child)
 							.map(([k, v]) => `${k}=${scalar(v)}`)
 							.join(", ")}`,
 					);

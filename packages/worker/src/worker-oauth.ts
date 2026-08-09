@@ -59,8 +59,6 @@ interface OAuthProviderEnv {
 	OAUTH_PROVIDER: OAuthHelpers;
 }
 
-type UnknownObject = { [key: string]: unknown };
-
 export interface HevyOAuthWorker<Env> {
 	fetch(request: Request, env: Env, ctx: object): Promise<Response>;
 }
@@ -77,12 +75,15 @@ export function hasOAuthAccessTokenShape(token: string): boolean {
 
 function isKvNamespaceLike(value: unknown): boolean {
 	if (typeof value !== "object" || value === null) return false;
-	const kv = value as UnknownObject;
 	return (
-		typeof kv.get === "function" &&
-		typeof kv.put === "function" &&
-		typeof kv.delete === "function" &&
-		typeof kv.list === "function"
+		"get" in value &&
+		typeof value.get === "function" &&
+		"put" in value &&
+		typeof value.put === "function" &&
+		"delete" in value &&
+		typeof value.delete === "function" &&
+		"list" in value &&
+		typeof value.list === "function"
 	);
 }
 

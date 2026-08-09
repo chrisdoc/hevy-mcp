@@ -54,9 +54,17 @@ const contextStorage = new AsyncLocalStorage<McpSessionContext>();
 // attached to an AsyncLocalStorage scope. HTTP never uses this fallback: every
 // request is explicitly run with its own session context.
 let activeStdioSession: McpSessionContext | undefined;
-type UnknownObject = { [key: string]: unknown };
 
-function isRecord(value: unknown): value is UnknownObject {
+type InitializeParams = {
+	clientInfo?: unknown;
+	protocolVersion?: unknown;
+};
+type ClientInfo = {
+	name?: unknown;
+	version?: unknown;
+};
+
+function isObject(value: unknown): value is object {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
@@ -73,14 +81,18 @@ function normalizeMetadata(value: unknown): string {
 	return normalized;
 }
 
-function getInitializeParams(message: unknown): UnknownObject {
-	if (!isRecord(message) || message.method !== "initialize") return {};
-	return isRecord(message.params) ? message.params : {};
+function getInitializeParams(message: unknown): InitializeParams {
+	if (!isObject(message) || !("method" in message)) return {};
+	if (message.method !== "initialize") return {};
+	const params = "params" in message ? message.params : undefined;
+	return isObject(params) ? (params as InitializeParams) : {};
 }
 
 export function extractMcpClientMetadata(message: unknown): McpClientMetadata {
 	const params = getInitializeParams(message);
-	const clientInfo = isRecord(params.clientInfo) ? params.clientInfo : {};
+	const clientInfo = isObject(params.clientInfo)
+		? (params.clientInfo as ClientInfo)
+		: {};
 	return {
 		name: normalizeMetadata(clientInfo.name),
 		version: normalizeMetadata(clientInfo.version),

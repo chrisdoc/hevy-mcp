@@ -5,6 +5,7 @@ import { networkInterfaces } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
+	type JSONObject,
 	StreamableHTTPClientTransport,
 	LATEST_PROTOCOL_VERSION,
 } from "@modelcontextprotocol/client";
@@ -20,7 +21,6 @@ const STARTUP_TIMEOUT_MS = 20_000;
 const MAX_STARTUP_ATTEMPTS = 3;
 const SHUTDOWN_TIMEOUT_MS = 3_000;
 const MAX_CAPTURED_LOG_LENGTH = 64 * 1024;
-type JsonObject = { [key: string]: unknown };
 
 interface RecordedHevyRequest {
 	apiKey: string | undefined;
@@ -144,18 +144,18 @@ function writeJson(
 	response.end(JSON.stringify(body));
 }
 
-function isRecord(value: unknown): value is JsonObject {
+function isRecord(value: unknown): value is JSONObject {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function requireRecord(value: unknown, label: string): JsonObject {
+function requireRecord(value: unknown, label: string): JSONObject {
 	if (!isRecord(value)) {
 		throw new Error(`Expected ${label} to be an object`);
 	}
 	return value;
 }
 
-function requireArrayField(record: JsonObject, field: string): unknown[] {
+function requireArrayField(record: JSONObject, field: string): unknown[] {
 	const value = record[field];
 	if (!Array.isArray(value)) {
 		throw new Error(`Expected ${field} to be an array`);
@@ -166,7 +166,7 @@ function requireArrayField(record: JsonObject, field: string): unknown[] {
 function requireToolListPayload(
 	result: unknown,
 	field: string,
-): { firstItem: JsonObject; items: unknown[]; text: string } {
+): { firstItem: JSONObject; items: unknown[]; text: string } {
 	const resultRecord = requireRecord(result, "MCP tool response");
 	const content = requireArrayField(resultRecord, "content");
 	const firstContent = requireRecord(content[0], "content[0]");
@@ -271,7 +271,7 @@ function mcpHeaders(apiKey = VALID_API_KEY): Headers {
 	});
 }
 
-function initializeRequest(id = 1): JsonObject {
+function initializeRequest(id = 1): JSONObject {
 	return {
 		jsonrpc: "2.0",
 		id,

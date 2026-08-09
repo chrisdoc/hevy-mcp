@@ -40,15 +40,19 @@ import {
 	readDataSource as defaultDataSourceReader,
 	type DataSourceReader,
 } from "../input.js";
-import { pageEnvelope, type JsonObject } from "../output/contracts.js";
+import {
+	pageEnvelope,
+	type ApiObject,
+	type ApiValue,
+} from "../output/contracts.js";
 
-type Body = JsonObject;
+type Body = ApiObject;
 function body(value: unknown): Body {
 	return value && typeof value === "object" && !Array.isArray(value)
 		? (value as Body)
 		: {};
 }
-function array(value: unknown): unknown[] {
+function array(value: unknown): ApiValue[] {
 	return Array.isArray(value) ? value : [];
 }
 function text(value: unknown): string {
@@ -114,7 +118,7 @@ async function executeWorkoutList({
 	return list(
 		{
 			page: result.page,
-			page_count: result.pageCount,
+			page_count: result.pageCount ?? 0,
 			workouts: result.items,
 		},
 		"workouts",
@@ -219,7 +223,7 @@ async function executeRoutineList({
 	return list(
 		{
 			page: result.page,
-			page_count: result.pageCount,
+			page_count: result.pageCount ?? 0,
 			routines: result.items,
 		},
 		"routines",

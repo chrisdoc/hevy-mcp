@@ -1,5 +1,5 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client } from "@modelcontextprotocol/client";
+import { Client, type JSONObject } from "@modelcontextprotocol/client";
 import {
 	createHevyMcpServer,
 	type CreateHevyMcpServerOptions,
@@ -16,11 +16,9 @@ import {
 } from "./fixtures.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-type JsonObject = { [key: string]: unknown };
-
 const minimalInput = getWorkoutsCapabilityDescriptor.inputSchema.parse({
 	page: 1,
-}) as JsonObject;
+}) as JSONObject;
 
 function assertGetWorkoutsResult(result: unknown): void {
 	if (typeof result !== "object" || result === null) {
@@ -51,20 +49,20 @@ function assertGetWorkoutsResult(result: unknown): void {
 	expect(JSON.parse(firstContent.text)).toEqual(structured.workouts);
 }
 
-function parseStreamableResponse(text: string): JsonObject {
+function parseStreamableResponse(text: string): JSONObject {
 	const data = text
 		.split("\n")
 		.find((line) => line.startsWith("data: "))
 		?.slice("data: ".length);
 	if (!data) throw new Error(`Missing MCP SSE data: ${text}`);
-	return JSON.parse(data) as JsonObject;
+	return JSON.parse(data) as JSONObject;
 }
 
 async function postNodeMcp(
 	url: string,
 	body: unknown,
 	extraHeaders: Record<string, string> = {},
-): Promise<{ response: Response; payload: JsonObject }> {
+): Promise<{ response: Response; payload: JSONObject }> {
 	const response = await fetch(url, {
 		method: "POST",
 		headers: {
@@ -92,7 +90,7 @@ function mcpRequest(body: unknown): Request {
 async function postWorkerMcp(
 	handler: ReturnType<typeof createWorkerHandler>,
 	body: unknown,
-): Promise<{ response: Response; payload: JsonObject }> {
+): Promise<{ response: Response; payload: JSONObject }> {
 	const response = await handler(mcpRequest(body), {});
 	return { response, payload: parseStreamableResponse(await response.text()) };
 }

@@ -7,7 +7,19 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-type JsonObject = { [key: string]: unknown };
+type PackageJson = {
+	files?: string[];
+	name?: string;
+};
+type NxTarget = {
+	cache?: boolean;
+	inputs?: string[];
+	options?: object;
+	outputs?: string[];
+	parallelism?: boolean;
+};
+type NxProject = { targets: Record<string, NxTarget> };
+type NamedInputs = Record<string, string[]>;
 type ControlPlaneRuleSet = IFlattenedRuleSet & {
 	forbidden: NonNullable<IFlattenedRuleSet["forbidden"]>;
 };
@@ -16,8 +28,8 @@ const dependencyCruiserConfig = require(
 ) as ControlPlaneRuleSet;
 
 const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
-	buildOutputs(packageJson: JsonObject): string[];
-	buildTarget(packageJson: JsonObject): {
+	buildOutputs(packageJson: PackageJson): string[];
+	buildTarget(packageJson: PackageJson): {
 		cache?: boolean;
 		inputs?: string[];
 		outputs: string[];
@@ -212,7 +224,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 	it("leaves dependency-cruiser as an inferred npm target", async () => {
 		const project = JSON.parse(
 			await readFile(resolve(root, "project.json"), "utf8"),
-		) as { targets: JsonObject };
+		) as NxProject;
 		const packageJson = JSON.parse(
 			await readFile(resolve(root, "package.json"), "utf8"),
 		) as { scripts: Record<string, string> };
@@ -284,7 +296,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 
 	it("keeps cached targets on explicit narrow named inputs", async () => {
 		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
-			namedInputs: JsonObject;
+			namedInputs: NamedInputs;
 			targetDefaults: Record<
 				string,
 				| { cache?: boolean; inputs?: string[] }
@@ -428,7 +440,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 							resolve(root, "packages", directory, "package.json"),
 							"utf8",
 						),
-					) as JsonObject,
+					) as PackageJson,
 			),
 		);
 		const byName = new Map(
@@ -463,7 +475,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 
 	it("keeps package task inputs local and repository inputs broad", async () => {
 		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
-			namedInputs: JsonObject;
+			namedInputs: NamedInputs;
 		};
 		expect(nx.namedInputs.projectSources).toEqual(["{projectRoot}/src/**/*"]);
 		expect(nx.namedInputs.projectTypeCheckInputs).toEqual([
@@ -494,7 +506,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				string,
 				{
 					cache?: boolean;
-					options?: JsonObject;
+					options?: object;
 					outputs?: string[];
 					parallelism?: boolean;
 				}
