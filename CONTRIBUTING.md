@@ -112,14 +112,10 @@ npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
 npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
 ```
 
-The lane and aggregate registry below is generated from
+The lane and aggregate registry below mirrors
 [`repository/validation-lanes.json`](./repository/validation-lanes.json). The
-renderer derives public aliases and Nx targets from the model; it does not
-encode dispatcher commands in the model. Run the renderer without arguments to
-fail closed on documentation drift, or pass `--write` after an intentional
-model change.
-
-<!-- repository-control-plane:validation-lanes:start -->
+canonical model is validated by `npm run check:control-plane`; use the named
+commands below instead of copying raw selectors into automation.
 
 | Lane ID                    | Command / integration                                                | Gate          | Runtime ownership | Credentials                                        | Artifacts                                                         | Purpose                                                                                                                                                                                                                                                                |
 | -------------------------- | -------------------------------------------------------------------- | ------------- | ----------------- | -------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -153,18 +149,12 @@ model change.
 | `nightly`                  | npm run test:nightly (Nx: repository:test:nightly)                   | nightly       | node-24           | HEVY_API_KEY, HEVY_MCP_COMMAND, HEVY_MCP_ARGS_JSON | nightly-diagnostics                                               | launcher-canary                                                                                                                                                                                                                                                        |
 | `diagnostics`              | npx nx run repository:test:diagnostics                               | blocking      | node-24           | —                                                  | —                                                                 | node-test; include: tests/nightly/diagnostics.test.mjs                                                                                                                                                                                                                 |
 
-<!-- repository-control-plane:validation-aggregates:start -->
-
 | Aggregate ID      | Nx target / command                    | Members                                                                                                                                                                                                                                                                                                  | Count | Mapping  |
 | ----------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
 | `pull-request`    | npx nx run repository:test:pr          | `unit`, `mocked-mcp`, `contract`, `stdio`, `worker`, `worker-http`, `pack`, `cli`, `pack-cli`, `package-publint`                                                                                                                                                                                         | 10    | mapped   |
 | `pull-request-ci` | external: github-actions               | `repository-control-plane`, `package-boundaries`, `package-exports`, `package-publint`, `types`, `server-manifest`, `check`, `package-changesets`, `diagnostics`, `build`, `worker-http`, `worker`, `mocked-mcp`, `unit`, `contract`, `stdio`, `pack`, `cli`, `pack-cli`, `worker-bundle`, `performance` | 21    | external |
 | `release`         | npx nx run repository:release:validate | `build`, `server-manifest`, `release-unit`, `worker`, `pack`, `cli`, `pack-cli`, `package-publint`, `release-integration`, `nightly`, `worker-http-live`                                                                                                                                                 | 11    | mapped   |
 | `pre-push`        | npx nx run repository:pre-push         | `types`, `changeset-status`, `pull-request`                                                                                                                                                                                                                                                              | 3     | mapped   |
-
-<!-- repository-control-plane:validation-aggregates:end -->
-
-<!-- repository-control-plane:validation-lanes:end -->
 
 The live integration file under `tests/integration` is credential-gated in its
 own implementation, but contributors should use the explicit `test:live` lane
@@ -197,13 +187,6 @@ npm run build
 npm run test:pr
 npm run test:performance
 npm run check:changeset
-```
-
-Also verify the generated contributor projection when changing validation lane
-identities, aliases, or aggregate membership:
-
-```bash
-node scripts/render-validation-lanes.mjs
 ```
 
 Also run the narrow checks related to your change. In particular:

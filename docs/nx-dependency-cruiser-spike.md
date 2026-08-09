@@ -109,7 +109,7 @@ through the shared facade rather than maintaining duplicate registries.
 
 | Evidence                            | Current migration result                                                                                         |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Canonical validation policy         | `repository/validation-lanes.json`, projected by `scripts/render-validation-lanes.mjs`                           |
+| Canonical validation policy         | `repository/validation-lanes.json`, validated by `scripts/check-control-plane.mjs`                               |
 | Current aggregate and target counts | Derived at check time from the lane model and `project.json`; see `npx nx show project repository --json`        |
 | Current workflow command ownership  | Workflows invoke Nx targets; credentials, matrices, permissions, and deployment conditions remain workflow-owned |
 | Historical migration measurements   | Not repeated here; preserve only as immutable before-adoption evidence when a comparison is required             |

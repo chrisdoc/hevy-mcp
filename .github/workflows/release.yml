@@ -77,7 +77,6 @@ jobs:
           HEVY_MCP_DIAGNOSTICS_PATH: test-results/release-source.json
 
       - name: Smoke test live local Worker HTTP path
-        continue-on-error: true
         run: npx nx run repository:test:worker-http:live
         env:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}

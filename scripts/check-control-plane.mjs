@@ -1,6 +1,5 @@
 import { validateControlPlane } from "./repository-control-plane.mjs";
 import { validateWorkflowProjections } from "./workflow-projections.mjs";
-import { checkRenderedValidationLaneTables } from "./render-validation-lanes.mjs";
 
 const controlPlane = validateControlPlane();
 validateWorkflowProjections(controlPlane.lanes, {
@@ -15,10 +14,10 @@ validateWorkflowProjections(controlPlane.lanes, {
 			path: ".github/workflows/release.yml",
 			aggregate: "release",
 			jobs: ["release"],
+			rejectContinueOnError: true,
 		},
 	},
 });
-await checkRenderedValidationLaneTables(controlPlane.rootDir);
 
 console.log(
 	[

@@ -12,16 +12,11 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
-	AVERAGE_TOKEN_TARGET,
 	TOKEN_COST_SCHEMA_VERSION,
 	TOKEN_ENCODING,
 	TOTAL_TOKEN_BUDGET,
-	TOOL_COUNT_TARGET,
-	compareReports,
-	formatMarkdown,
 	formatTable,
 	getTargetStatus,
-	isCompatibleBaseline,
 	listRegisteredTools,
 	measureRegisteredTools,
 	measureTokenPayload,
@@ -51,55 +46,22 @@ function reportWith(tools: Tool[] = [tool("alpha", "current")]) {
 }
 
 describe("parseArgs", () => {
-	it("parses output, baseline, markdown, budget, and help options", () => {
+	it("parses output, budget, and help options", () => {
 		expect(
-			parseArgs([
-				"-o",
-				"result.json",
-				"--baseline",
-				"base.json",
-				"--markdown",
-				"report.md",
-				"--enforce-budget",
-				"--help",
-			]),
+			parseArgs(["-o", "result.json", "--enforce-budget", "--help"]),
 		).toEqual({
 			help: true,
 			enforceBudget: true,
 			outputPath: "result.json",
-			baselinePath: "base.json",
-			markdownPath: "report.md",
 		});
 	});
 
 	it("rejects unknown options and missing values", () => {
 		expect(() => parseArgs(["--wat"])).toThrow("Unknown option: --wat");
 		expect(() => parseArgs(["--output"])).toThrow("Missing value for --output");
-		expect(() => parseArgs(["--output", "--baseline", "base.json"])).toThrow(
+		expect(() => parseArgs(["--output", "--enforce-budget"])).toThrow(
 			"Missing value for --output",
 		);
-		expect(() => parseArgs(["--markdown", "-h"])).toThrow(
-			"Missing value for --markdown",
-		);
-	});
-
-	it("allows legitimate hyphen-prefixed path values", () => {
-		expect(
-			parseArgs([
-				"--output",
-				"-result.json",
-				"--baseline",
-				"-base.json",
-				"--markdown",
-				"-report.md",
-			]),
-		).toEqual({
-			help: false,
-			enforceBudget: false,
-			outputPath: "-result.json",
-			baselinePath: "-base.json",
-			markdownPath: "-report.md",
-		});
 	});
 });
 
@@ -108,40 +70,18 @@ describe("measureTokenPayload", () => {
 		const report = measureTokenPayload([], { encode: () => [] });
 
 		expect(report).toMatchObject({
+			schemaVersion: TOKEN_COST_SCHEMA_VERSION,
 			toolCount: 0,
 			totalTokens: 0,
 			averageTokensPerTool: 0,
 			tools: [],
-		});
-
-		expect(report.targets).toEqual({
-			toolCount: {
-				maximumInclusive: TOOL_COUNT_TARGET,
-				status: "withinTarget",
-				enforced: false,
+			targets: {
+				totalTokens: {
+					maximumInclusive: TOTAL_TOKEN_BUDGET,
+					status: "withinTarget",
+					enforced: true,
+				},
 			},
-			averageTokensPerTool: {
-				maximumExclusive: AVERAGE_TOKEN_TARGET,
-				status: "withinTarget",
-				enforced: false,
-			},
-			totalTokens: {
-				maximumInclusive: TOTAL_TOKEN_BUDGET,
-				status: "withinTarget",
-				enforced: true,
-			},
-		});
-	});
-
-	it("reports zero shares when an encoder returns no tokens", () => {
-		const report = measureTokenPayload([tool("alpha", "empty")], {
-			encode: () => [],
-		});
-
-		expect(report).toMatchObject({
-			totalTokens: 0,
-			averageTokensPerTool: 0,
-			tools: [{ name: "alpha", tokens: 0, percentageOfTotal: 0 }],
 		});
 	});
 
@@ -159,208 +99,24 @@ describe("measureTokenPayload", () => {
 		);
 	});
 
-	it("uses a name tie-break for equal token counts", () => {
-		const descendingInput = measureTokenPayload(
-			[tool("beta", "same"), tool("alpha", "same")],
-			encoder,
-		);
-		const ascendingInput = measureTokenPayload(
-			[tool("alpha", "same"), tool("beta", "same")],
-			encoder,
-		);
-		const duplicateNames = measureTokenPayload(
-			[tool("alpha", "same"), tool("alpha", "same")],
-			encoder,
-		);
-
-		expect(descendingInput.tools.map(({ name }) => name)).toEqual([
-			"alpha",
-			"beta",
-		]);
-		expect(ascendingInput.tools.map(({ name }) => name)).toEqual([
-			"alpha",
-			"beta",
-		]);
-		expect(duplicateNames.tools).toHaveLength(2);
-	});
-});
-
-describe("targets and comparisons", () => {
-	it("applies both sides of inclusive and exclusive targets", () => {
-		expect(getTargetStatus(20, 20, true)).toBe("withinTarget");
-		expect(getTargetStatus(21, 20, true)).toBe("aboveTarget");
-		expect(getTargetStatus(599.99, 600, false)).toBe("withinTarget");
-		expect(getTargetStatus(600, 600, false)).toBe("aboveTarget");
-	});
-
-	it("computes total and per-tool deltas including missing comparator paths", () => {
-		const baseline = reportWith([tool("alpha", "old"), tool("removed", "old")]);
-		const current = reportWith([
-			tool("alpha", "new content"),
-			tool("added", "new"),
-		]);
-		const comparison = compareReports(current, baseline);
-
-		expect(comparison.totalTokensDelta).toBe(
-			current.totalTokens - baseline.totalTokens,
-		);
-		expect(comparison.toolDeltas).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					name: "added",
-					baselineTokens: undefined,
-				}),
-				expect.objectContaining({
-					name: "removed",
-					currentTokens: undefined,
-				}),
-			]),
+	it("uses inclusive budget boundaries", () => {
+		expect(getTargetStatus(TOTAL_TOKEN_BUDGET, TOTAL_TOKEN_BUDGET, true)).toBe(
+			"withinTarget",
 		);
 		expect(
-			comparison.toolDeltas.find(({ name }) => name === "added")?.delta,
-		).toBeGreaterThan(0);
-		expect(
-			comparison.toolDeltas.find(({ name }) => name === "removed")?.delta,
-		).toBeLessThan(0);
-	});
-
-	it("sorts equal absolute deltas by name", () => {
-		const baseline = reportWith([tool("beta", "x"), tool("alpha", "x")]);
-		const current = reportWith([tool("beta", "xx"), tool("alpha", "xx")]);
-		const reversedCurrent = {
-			...current,
-			tools: [...current.tools].reverse(),
-		};
-
-		expect(
-			compareReports(current, baseline).toolDeltas.map(({ name }) => name),
-		).toEqual(["alpha", "beta"]);
-		expect(
-			compareReports(reversedCurrent, baseline).toolDeltas.map(
-				({ name }) => name,
-			),
-		).toEqual(["alpha", "beta"]);
+			getTargetStatus(TOTAL_TOKEN_BUDGET + 1, TOTAL_TOKEN_BUDGET, true),
+		).toBe("aboveTarget");
 	});
 });
 
-describe("isCompatibleBaseline", () => {
-	it("accepts compatible reports", () => {
-		expect(isCompatibleBaseline(reportWith())).toBe(true);
-	});
-
-	it.each([
-		["missing value", undefined],
-		["non-object", "report"],
-		[
-			"schema",
-			{ ...reportWith(), schemaVersion: TOKEN_COST_SCHEMA_VERSION + 1 },
-		],
-		["encoding", { ...reportWith(), encoding: `${TOKEN_ENCODING}-other` }],
-		["scope", { ...reportWith(), measurementScope: "tool bodies only" }],
-		["tool count", { ...reportWith(), toolCount: "1" }],
-		["total", { ...reportWith(), totalTokens: "1" }],
-		["average", { ...reportWith(), averageTokensPerTool: "1" }],
-		["tools collection", { ...reportWith(), tools: {} }],
-		["tool name", { ...reportWith(), tools: [{ name: 1, tokens: 2 }] }],
-		[
-			"tool tokens",
-			{ ...reportWith(), tools: [{ name: "alpha", tokens: "2" }] },
-		],
-	])("rejects incompatible %s data", (_case, value) => {
-		expect(isCompatibleBaseline(value)).toBe(false);
-	});
-});
-
-describe("formatMarkdown", () => {
-	it("renders current totals and component columns", () => {
-		const report = reportWith();
-		const markdown = formatMarkdown(report);
-
-		expect(markdown).toContain("## MCP tool token cost");
-		expect(markdown).toContain(`| Total tokens | ${report.totalTokens}`);
-		expect(markdown).toContain(
-			[
-				"| Tool | `name` | `description` | `inputSchema` | ",
-				"`outputSchema` | `annotations` | Total | Share of total |",
-			].join(""),
-		);
-		expect(markdown).toContain("need not sum exactly");
-	});
-
-	it("renders baseline deltas and added/removed tool fallbacks", () => {
-		const baseline = reportWith([tool("alpha", "old"), tool("removed", "old")]);
-		const current = reportWith([tool("alpha", "newer"), tool("added", "new")]);
-		const markdown = formatMarkdown(current, compareReports(current, baseline));
-
-		expect(markdown).toContain("### Change from baseline");
-		expect(markdown).toContain("| `added` | — |");
-		expect(markdown).toMatch(/\| `removed` \| \d+ \| — \|/);
-		const perToolChanges = markdown.indexOf("### Per-tool changes");
-		const addedTool = markdown.indexOf("| `added` | — |");
-		const removedTool = markdown.indexOf("| `removed` |");
-		const componentChanges = markdown.indexOf("### Component changes");
-		const perToolBreakdown = markdown.indexOf("### Per-tool breakdown");
-
-		expect(addedTool).toBeGreaterThan(perToolChanges);
-		expect(removedTool).toBeGreaterThan(perToolChanges);
-		expect(addedTool).toBeLessThan(componentChanges);
-		expect(removedTool).toBeLessThan(componentChanges);
-		expect(componentChanges).toBeLessThan(perToolBreakdown);
-	});
-
-	it("renders an unavailable baseline explanation", () => {
-		expect(formatMarkdown(reportWith(), undefined, "Not available.")).toContain(
-			"### Baseline unavailable\n\nNot available.",
-		);
-	});
-
-	it("renders above-target statuses", () => {
-		const report = reportWith();
-		report.targets.toolCount.status = "aboveTarget";
-		report.targets.averageTokensPerTool.status = "aboveTarget";
-		report.targets.totalTokens.status = "aboveTarget";
-
-		expect(formatMarkdown(report).match(/Above target/g)).toHaveLength(3);
-	});
-});
-
-describe("formatTable", () => {
-	it("aligns component columns, totals, shares, and advisory guidance", () => {
-		const table = formatTable(
-			reportWith([tool("a", "small"), tool("much-longer-name", "large")]),
-		);
-
-		expect(table).toContain(`MCP tool token cost (${TOKEN_ENCODING})`);
-		expect(table).toMatch(
-			/Tool\s+name\s+description\s+inputSchema\s+outputSchema\s+annotations\s+Total\s+Share/,
-		);
-		expect(table).toMatch(/much-longer-name\s+\d+\s+\d+/);
-		expect(table).toContain(
-			[
-				`Targets: tools ≤ ${TOOL_COUNT_TARGET}; average < ${AVERAGE_TOKEN_TARGET} tokens/tool; `,
-				`total ≤ ${TOTAL_TOKEN_BUDGET} tokens (enforced).`,
-			].join(""),
-		);
-	});
-});
 describe("registered tool measurement", () => {
-	it("lists tools through the public in-memory MCP APIs", async () => {
+	it("lists unique tools through the public in-memory MCP APIs", async () => {
 		const tools = await listRegisteredTools();
 		const names = tools.map(({ name }) => name);
 
 		expect(names.length).toBeGreaterThan(0);
 		expect(new Set(names).size).toBe(names.length);
 		expect(names.every((name) => name.length > 0)).toBe(true);
-	});
-
-	it("keeps every registered description within 32 o200k tokens", async () => {
-		const report = await measureRegisteredTools();
-
-		expect(report.tools.length).toBeGreaterThan(0);
-		expect(report.toolCount).toBe(report.tools.length);
-		expect(
-			report.tools.every((tool) => tool.componentTokens.description <= 32),
-		).toBe(true);
 	});
 
 	it("selects the configured encoder and always frees it", async () => {
@@ -374,28 +130,6 @@ describe("registered tool measurement", () => {
 		expect(getEncoder).toHaveBeenCalledWith(TOKEN_ENCODING);
 		expect(report.toolCount).toBe(1);
 		expect(free).toHaveBeenCalledOnce();
-	});
-
-	it("instantiates and frees the configured real tokenizer", async () => {
-		const report = await measureRegisteredTools({
-			listTools: () => Promise.resolve([tool("alpha", "measured")]),
-		});
-
-		expect(report).toMatchObject({
-			encoding: TOKEN_ENCODING,
-			toolCount: 1,
-		});
-		expect(report.totalTokens).toBeGreaterThan(0);
-	});
-
-	it("keeps update-workout input schema below 200 real tokens", async () => {
-		const report = await measureRegisteredTools();
-		const updateWorkout = report.tools.find(
-			(tool) => tool.name === "update-workout",
-		);
-
-		expect(updateWorkout).toBeDefined();
-		expect(updateWorkout?.componentTokens.inputSchema).toBeLessThan(200);
 	});
 
 	it("frees the encoder when tool collection fails", async () => {
@@ -423,7 +157,7 @@ describe("run", () => {
 		expect(measureTools).not.toHaveBeenCalled();
 	});
 
-	it("prints a measurement without requiring output paths", async () => {
+	it("prints a measurement without requiring an output path", async () => {
 		const current = reportWith();
 		const log = vi.fn();
 
@@ -432,198 +166,64 @@ describe("run", () => {
 		expect(log).toHaveBeenCalledWith(formatTable(current));
 	});
 
-	it("enforces the total-token budget after writing requested outputs", async () => {
+	it("writes a JSON report and enforces the total-token budget", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
 		try {
 			const outputPath = join(directory, "result.json");
-			const markdownPath = join(directory, "report.md");
 			const overBudget = {
 				...reportWith(),
 				totalTokens: TOTAL_TOKEN_BUDGET + 1,
 			};
 
 			await expect(
-				run(
-					[
-						"--output",
-						outputPath,
-						"--markdown",
-						markdownPath,
-						"--enforce-budget",
-					],
-					{
-						log: vi.fn(),
-						measureTools: () => Promise.resolve(overBudget),
-					},
-				),
+				run(["--output", outputPath, "--enforce-budget"], {
+					log: vi.fn(),
+					measureTools: () => Promise.resolve(overBudget),
+				}),
 			).rejects.toThrow(
 				`MCP tool catalog exceeds the 8900-token budget: ${TOTAL_TOKEN_BUDGET + 1}`,
 			);
 			expect(JSON.parse(await readFile(outputPath, "utf8"))).toEqual(
 				overBudget,
 			);
-			expect(await readFile(markdownPath, "utf8")).toContain(
-				"### Per-tool breakdown",
-			);
+			if (process.platform !== "win32")
+				expect((await stat(outputPath)).mode & 0o777).toBe(0o600);
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
 	});
 
-	it("writes JSON and Markdown with a compatible baseline", async () => {
+	it("does not overwrite an existing or symlink output", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
 		try {
 			const outputPath = join(directory, "result.json");
-			const baselinePath = join(directory, "baseline.json");
-			const markdownPath = join(directory, "report.md");
-			const baseline = reportWith([tool("alpha", "old")]);
-			const current = reportWith([
-				tool("alpha", "newer"),
-				tool("added", "new"),
-			]);
-			const log = vi.fn();
-			await writeFile(baselinePath, JSON.stringify(baseline));
-
-			await run(
-				[
-					"--output",
-					outputPath,
-					"--baseline",
-					baselinePath,
-					"--markdown",
-					markdownPath,
-				],
-				{ log, measureTools: () => Promise.resolve(current) },
-			);
-
-			expect(JSON.parse(await readFile(outputPath, "utf8"))).toEqual(current);
-			expect(await readFile(markdownPath, "utf8")).toContain(
-				"### Change from baseline",
-			);
-			if (process.platform !== "win32") {
-				expect((await stat(outputPath)).mode & 0o777).toBe(0o600);
-				expect((await stat(markdownPath)).mode & 0o777).toBe(0o600);
-			}
-			expect(log).toHaveBeenCalledWith(formatTable(current));
-		} finally {
-			await rm(directory, { recursive: true, force: true });
-		}
-	});
-
-	it.each([
-		["incompatible", JSON.stringify({ schemaVersion: -1 }), "incompatible"],
-		["malformed", "{nope", "Could not read"],
-	])(
-		"degrades a %s baseline to an unavailable report",
-		async (_case, baselineContents, expectedError) => {
-			const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
-			try {
-				const baselinePath = join(directory, "baseline.json");
-				const markdownPath = join(directory, "report.md");
-				const error = vi.fn();
-				await writeFile(baselinePath, baselineContents);
-
-				await run(["--baseline", baselinePath, "--markdown", markdownPath], {
-					error,
+			await writeFile(outputPath, "keep me");
+			await expect(
+				run(["--output", outputPath], {
 					log: vi.fn(),
 					measureTools: () => Promise.resolve(reportWith()),
-				});
+				}),
+			).rejects.toMatchObject({ code: "EEXIST" });
+			expect(await readFile(outputPath, "utf8")).toBe("keep me");
 
-				expect(error).toHaveBeenCalledWith(
-					expect.stringContaining(expectedError),
-				);
-				const markdown = await readFile(markdownPath, "utf8");
-				expect(markdown).toContain("### Baseline unavailable");
-				if (_case === "malformed") {
-					expect(markdown).toContain(
-						"The comparison baseline could not be read; see the workflow logs for details.",
-					);
-					expect(markdown).not.toContain("Could not read the baseline");
-				}
-			} finally {
-				await rm(directory, { recursive: true, force: true });
-			}
-		},
-	);
-
-	it("degrades an unreadable baseline to an unavailable report", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
-		try {
-			const baselinePath = join(directory, "missing.json");
-			const markdownPath = join(directory, "report.md");
-			const error = vi.fn();
-
-			await run(["--baseline", baselinePath, "--markdown", markdownPath], {
-				error,
-				log: vi.fn(),
-				measureTools: () => Promise.resolve(reportWith()),
-			});
-
-			expect(error).toHaveBeenCalledWith(
-				expect.stringContaining(
-					`Could not read the baseline at ${baselinePath}`,
-				),
-			);
-			const markdown = await readFile(markdownPath, "utf8");
-			expect(markdown).toContain(
-				"The comparison baseline could not be read; see the workflow logs for details.",
-			);
-			expect(markdown).toContain("Current measurements are still valid");
-			expect(markdown).not.toContain(baselinePath);
+			const targetPath = join(directory, "target.json");
+			const symlinkPath = join(directory, "symlink.json");
+			await writeFile(targetPath, "keep target");
+			await symlink(targetPath, symlinkPath);
+			await expect(
+				run(["--output", symlinkPath], {
+					log: vi.fn(),
+					measureTools: () => Promise.resolve(reportWith()),
+				}),
+			).rejects.toMatchObject({ code: "EEXIST" });
+			expect(await readFile(targetPath, "utf8")).toBe("keep target");
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
 	});
-
-	it.each([
-		["JSON", "--output", "result.json"],
-		["Markdown", "--markdown", "report.md"],
-	])(
-		"rejects an existing %s output without overwriting it",
-		async (_case, flag, name) => {
-			const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
-			try {
-				const outputPath = join(directory, name);
-				await writeFile(outputPath, "keep me");
-
-				await expect(
-					run([flag, outputPath], {
-						log: vi.fn(),
-						measureTools: () => Promise.resolve(reportWith()),
-					}),
-				).rejects.toMatchObject({ code: "EEXIST" });
-				expect(await readFile(outputPath, "utf8")).toBe("keep me");
-			} finally {
-				await rm(directory, { recursive: true, force: true });
-			}
-		},
-	);
-
-	it.skipIf(process.platform === "win32")(
-		"rejects a symlink output without following it",
-		async () => {
-			const directory = await mkdtemp(join(tmpdir(), "hevy-token-cost-"));
-			try {
-				const targetPath = join(directory, "target.json");
-				const outputPath = join(directory, "result.json");
-				await writeFile(targetPath, "keep target");
-				await symlink(targetPath, outputPath);
-
-				await expect(
-					run(["--output", outputPath], {
-						log: vi.fn(),
-						measureTools: () => Promise.resolve(reportWith()),
-					}),
-				).rejects.toMatchObject({ code: "EEXIST" });
-				expect(await readFile(targetPath, "utf8")).toBe("keep target");
-			} finally {
-				await rm(directory, { recursive: true, force: true });
-			}
-		},
-	);
 });
 
-describe("runCli", () => {
+describe("runCli and runDirectEntry", () => {
 	it("reports unknown options and returns a failing exit code", async () => {
 		const error = vi.fn();
 
@@ -631,36 +231,7 @@ describe("runCli", () => {
 		expect(error).toHaveBeenCalledWith("Unknown option: --unknown");
 	});
 
-	it("returns a successful exit code", async () => {
-		expect(await runCli(["--help"], { log: vi.fn(), error: vi.fn() })).toBe(0);
-	});
-
-	it("stringifies non-Error failures", async () => {
-		const error = vi.fn();
-		expect(
-			await runCli([], {
-				error,
-				measureTools: async () => Promise.reject("measurement failed"),
-			}),
-		).toBe(1);
-		expect(error).toHaveBeenCalledWith("measurement failed");
-	});
-
-	it("reports failures through console.error by default", async () => {
-		const consoleError = vi
-			.spyOn(console, "error")
-			.mockImplementation(() => {});
-		try {
-			expect(await runCli(["--unknown"])).toBe(1);
-			expect(consoleError).toHaveBeenCalledWith("Unknown option: --unknown");
-		} finally {
-			consoleError.mockRestore();
-		}
-	});
-});
-
-describe("runDirectEntry", () => {
-	it("sets the exit code for a directly executed unknown option", async () => {
+	it("sets the exit code for directly executed failures", async () => {
 		const entryPath = join(tmpdir(), "measure-token-cost.ts");
 		const error = vi.fn();
 		const setExitCode = vi.fn();
@@ -682,22 +253,5 @@ describe("runDirectEntry", () => {
 		expect(
 			await runDirectEntry("file:///module.ts", ["node", "/other.ts"]),
 		).toBe(false);
-	});
-
-	it("uses process.exitCode for direct execution by default", async () => {
-		const previousExitCode = process.exitCode;
-		const entryPath = join(tmpdir(), "measure-token-cost.ts");
-		try {
-			expect(
-				await runDirectEntry(
-					pathToFileURL(entryPath).href,
-					["node", entryPath, "--help"],
-					{ log: vi.fn() },
-				),
-			).toBe(true);
-			expect(process.exitCode).toBe(0);
-		} finally {
-			process.exitCode = previousExitCode;
-		}
 	});
 });

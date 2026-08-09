@@ -4,13 +4,10 @@ This document owns the stable public commands introduced by testing-strategy
 ticket TS-06. Contributors and CI should use these names instead of copying raw
 Vitest selectors.
 
-The lane and aggregate registry below is generated from
+The lane and aggregate registry below mirrors
 [`repository/validation-lanes.json`](../repository/validation-lanes.json). The
-plain renderer command is a drift check; use `--write` after an intentional
-model change. It derives contributor aliases and Nx targets from the model and
-does not add dispatcher commands to that model.
-
-<!-- repository-control-plane:validation-lanes:start -->
+canonical model is validated by `npm run check:control-plane`; use the named
+commands below instead of copying raw selectors into automation.
 
 | Lane ID                    | Command / integration                                                | Gate          | Runtime ownership | Credentials                                        | Artifacts                                                         | Purpose                                                                                                                                                                                                                                                                |
 | -------------------------- | -------------------------------------------------------------------- | ------------- | ----------------- | -------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,18 +41,12 @@ does not add dispatcher commands to that model.
 | `nightly`                  | npm run test:nightly (Nx: repository:test:nightly)                   | nightly       | node-24           | HEVY_API_KEY, HEVY_MCP_COMMAND, HEVY_MCP_ARGS_JSON | nightly-diagnostics                                               | launcher-canary                                                                                                                                                                                                                                                        |
 | `diagnostics`              | npx nx run repository:test:diagnostics                               | blocking      | node-24           | —                                                  | —                                                                 | node-test; include: tests/nightly/diagnostics.test.mjs                                                                                                                                                                                                                 |
 
-<!-- repository-control-plane:validation-aggregates:start -->
-
 | Aggregate ID      | Nx target / command                    | Members                                                                                                                                                                                                                                                                                                  | Count | Mapping  |
 | ----------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
 | `pull-request`    | npx nx run repository:test:pr          | `unit`, `mocked-mcp`, `contract`, `stdio`, `worker`, `worker-http`, `pack`, `cli`, `pack-cli`, `package-publint`                                                                                                                                                                                         | 10    | mapped   |
 | `pull-request-ci` | external: github-actions               | `repository-control-plane`, `package-boundaries`, `package-exports`, `package-publint`, `types`, `server-manifest`, `check`, `package-changesets`, `diagnostics`, `build`, `worker-http`, `worker`, `mocked-mcp`, `unit`, `contract`, `stdio`, `pack`, `cli`, `pack-cli`, `worker-bundle`, `performance` | 21    | external |
 | `release`         | npx nx run repository:release:validate | `build`, `server-manifest`, `release-unit`, `worker`, `pack`, `cli`, `pack-cli`, `package-publint`, `release-integration`, `nightly`, `worker-http-live`                                                                                                                                                 | 11    | mapped   |
 | `pre-push`        | npx nx run repository:pre-push         | `types`, `changeset-status`, `pull-request`                                                                                                                                                                                                                                                              | 3     | mapped   |
-
-<!-- repository-control-plane:validation-aggregates:end -->
-
-<!-- repository-control-plane:validation-lanes:end -->
 
 ## Lane ownership
 
@@ -95,13 +86,6 @@ use their generated Nx commands directly. Inspect the current target graph with:
 ```sh
 npx nx show project repository --json
 npx nx graph --file=.nx/project-graph.html
-```
-
-To verify or refresh the generated tables:
-
-```sh
-node scripts/render-validation-lanes.mjs
-node scripts/render-validation-lanes.mjs --write
 ```
 
 CI selects its reporters and coverage outputs through the same lane wrappers,

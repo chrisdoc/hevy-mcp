@@ -259,6 +259,7 @@ export function parseWorkflowLaneExecutions(
 		laneTargets,
 		includeCommands = false,
 		jobIds,
+		rejectContinueOnError = false,
 	} = {},
 ) {
 	const workflow = parseYaml(source);
@@ -317,6 +318,15 @@ export function parseWorkflowLaneExecutions(
 			for (const line of step.run.split(/\r?\n/)) {
 				for (const command of parseNxRunCommands(line)) {
 					if (!mappedTargets.has(command.target)) continue;
+					if (rejectContinueOnError) {
+						const continueOnError = step["continue-on-error"];
+						assert(
+							continueOnError === undefined ||
+								continueOnError === false ||
+								continueOnError === "false",
+							`Workflow lane ${mappedTargets.get(command.target)} must not use continue-on-error`,
+						);
+					}
 					assert(
 						runtimeState.byMatrixValue,
 						`Workflow lane ${mappedTargets.get(command.target)} must follow an unconditional setup-node step in job ${jobId}`,
@@ -428,6 +438,7 @@ export function validateWorkflowAggregate(
 		expectedJobs,
 		job,
 		jobIds,
+		rejectContinueOnError = false,
 	} = {},
 ) {
 	assert(
@@ -485,6 +496,7 @@ export function validateWorkflowAggregate(
 		laneTargets: targets,
 		includeCommands: true,
 		jobIds,
+		rejectContinueOnError,
 	});
 	const expectedMembers = new Set(memberIds);
 	const actualRuntimes = new Map();
@@ -590,6 +602,7 @@ export function validateWorkflowProjections(
 				(Array.isArray(config.jobs) ? undefined : config.jobs),
 			job: config.job,
 			jobIds: Array.isArray(config.jobs) ? config.jobs : undefined,
+			rejectContinueOnError: config.rejectContinueOnError ?? false,
 		});
 	}
 	return results;
