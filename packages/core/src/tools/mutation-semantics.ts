@@ -191,13 +191,6 @@ function normalizeFetchedWorkoutTimestamp(value: unknown): unknown {
 	const offsetHour = offset === "Z" ? 0 : Number(offset.slice(1, 3));
 	const offsetMinute = offset === "Z" ? 0 : Number(offset.slice(4, 6));
 	if (
-		!year ||
-		!month ||
-		!day ||
-		!hour ||
-		!minute ||
-		!second ||
-		!offset ||
 		numericMonth < 1 ||
 		numericMonth > 12 ||
 		numericDay < 1 ||

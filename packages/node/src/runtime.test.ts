@@ -402,7 +402,7 @@ describe("Node package entrypoint", () => {
 		testDoubles.server.createToolError = createToolError;
 		testDoubles.sdkProtocol._requestHandlers.set(
 			"tools/call",
-			vi.fn().mockImplementation(async () => {
+			vi.fn().mockImplementation(() => {
 				testDoubles.server.createToolError?.(
 					"Input validation error: Invalid arguments for tool get-workouts",
 				);
