@@ -1,0 +1,23 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"workspaces": {
+		".": {
+			"entry": [
+				".agents/**/*.ts",
+				".github/workers/**/*.ts",
+				"*.config.{js,ts}",
+				"scripts/**/*.{js,mjs,cjs,ts,mts,cts}",
+				"tests/package/**/*.mjs",
+				"tests/performance/child-fixture.mjs"
+			]
+		},
+		"packages/hevy-client": {
+			"entry": ["kubb.config.ts"]
+		},
+		"packages/cli": {
+			"entry": ["tests/npm-pack-smoke.mjs"]
+		}
+	},
+	"ignoreBinaries": ["mise"],
+	"ignore": ["packages/hevy-client/src/generated/**", "tests/fixtures/**"]
+}
