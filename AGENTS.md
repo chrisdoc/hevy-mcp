@@ -58,6 +58,13 @@ Run Node.js and npm commands through mise so they do not fall back to system
 installations. Use `mise exec -- npm ...`, `mise exec -- npx ...`, and
 `mise exec -- node ...` in setup, validation, and troubleshooting commands.
 
+Git hooks are managed by hk. After `mise install`, enable them once per clone
+with:
+
+```bash
+mise exec hk -- hk install --mise
+```
+
 ## Repository shape and boundaries
 
 The root is a private workspace orchestrator and has no runtime `src/` tree.
