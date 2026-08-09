@@ -12,6 +12,11 @@ export default defineConfig({
 		},
 	},
 	test: {
+		setupFiles: [
+			fileURLToPath(
+				new URL("./tests/setup/cloudflare-runtime.ts", import.meta.url),
+			),
+		],
 		server: {
 			deps: {
 				// Inline so the `cloudflare:workers` alias above applies to the
