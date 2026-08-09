@@ -69,8 +69,8 @@ describe("release outputs", () => {
 	it("detects Worker releases from the versioned private manifest", () => {
 		expect(
 			calculateReleaseOutputs({
-				beforeWorkerManifest: workerManifest("1.0.0", "1.0.0"),
-				afterWorkerManifest: workerManifest("1.0.0", "2.0.0"),
+				beforeWorkerManifest: workerManifest("1.0.0"),
+				afterWorkerManifest: workerManifest("1.0.0"),
 				published: false,
 				publishedPackages: [],
 			}),
@@ -192,6 +192,12 @@ describe("release outputs", () => {
 		);
 		expect(publishContainer).not.toContain(
 			"needs.release.outputs.released == 'true'",
+		);
+	});
+
+	it("gates production deployment on the Worker release", () => {
+		expect(deployProduction).toContain(
+			"needs.release.outputs.worker_released == 'true'",
 		);
 	});
 

@@ -276,7 +276,7 @@ describe("Streamable HTTP server", () => {
 			{ transport: "http", host: "127.0.0.1", port: 0 },
 			"test-key",
 			createMcpServer,
-			{ maxSessions: 1, idleTimeoutMs: 100 },
+			{ maxSessions: 1, idleTimeoutMs: 200 },
 		);
 		handles.push(handle);
 		const port = serverPort(handle);
@@ -290,10 +290,8 @@ describe("Streamable HTTP server", () => {
 			).statusCode,
 		).toBe(200);
 		expect((await initialize(port)).statusCode).toBe(200);
-		await vi.waitFor(async () => {
-			const result = await initialize(port);
-			expect(result.statusCode).toBe(429);
-		});
+		const secondInitialize = await initialize(port);
+		expect(secondInitialize.statusCode).toBe(429);
 		await vi.waitFor(
 			async () => expect((await initialize(port)).statusCode).toBe(200),
 			{ timeout: 1_000, interval: 5 },
