@@ -899,8 +899,8 @@ describe("real stateless SDK transport", () => {
 	});
 
 	it("uses a normalized override for authentication and tool requests", async () => {
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
-			async () =>
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+			Promise.resolve(
 				new Response(
 					JSON.stringify({
 						page: 1,
@@ -912,6 +912,7 @@ describe("real stateless SDK transport", () => {
 						headers: { "content-type": "application/json" },
 					},
 				),
+			),
 		);
 
 		const result = await worker.fetch(

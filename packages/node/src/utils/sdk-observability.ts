@@ -29,8 +29,17 @@ interface ToolResultLike {
 
 type FailureAttributes = Record<string, string | number | boolean>;
 type SdkFailureKind = "protocol" | "tool_call" | "validation";
+type SdkValidationKind = "input" | "output" | "tool_not_found" | "unknown";
+
+type SdkFailureOptions = {
+	expected?: boolean;
+	validationKind?: SdkValidationKind;
+};
 
 const sdkToolNameStorage = new AsyncLocalStorage<string>();
+const sdkRequestStateStorage = new AsyncLocalStorage<{
+	expectedValidation?: boolean;
+}>();
 const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
 const SDK_FAILURE_TAXONOMY: Record<
 	SdkFailureKind,
@@ -94,21 +103,32 @@ function markSdkToolFailure(
 	error: unknown,
 	toolName = sdkToolNameStorage.getStore() ?? "unknown",
 	kind: SdkFailureKind = "tool_call",
+	options: SdkFailureOptions = {},
 ): void {
 	const taxonomy = SDK_FAILURE_TAXONOMY[kind];
-	const attributes = createFailureAttributes(
-		error,
-		"sdk",
-		taxonomy.errorType,
-		taxonomy.errorCategory,
-	);
-	span.addEvent("mcp.tool.failure", {
+	const attributes: FailureAttributes = {
 		"mcp.tool.name": toolName,
-		...attributes,
-	});
+		...createFailureAttributes(
+			error,
+			"sdk",
+			taxonomy.errorType,
+			taxonomy.errorCategory,
+		),
+		...(options.validationKind
+			? { "mcp.validation.kind": options.validationKind }
+			: {}),
+	};
+	span.addEvent("mcp.tool.failure", attributes);
 	span.setAttribute("error.type", taxonomy.errorType);
-	captureFailure(error, { kind: "sdk", attributes, span });
-	span.setStatus({ code: SpanStatusCode.ERROR });
+	captureFailure(error, {
+		kind: "sdk",
+		attributes,
+		span,
+		expected: options.expected,
+	});
+	if (options.expected !== true) {
+		span.setStatus({ code: SpanStatusCode.ERROR });
+	}
 }
 
 function installProtocolErrorTracking(
@@ -166,20 +186,65 @@ function installProtocolErrorTracking(
 	};
 }
 
+function classifySdkValidation(message: string): {
+	kind: SdkValidationKind;
+	expected: boolean;
+	toolName?: string;
+} {
+	const inputValidation =
+		/^Input validation error: Invalid arguments for tool ([A-Za-z0-9][A-Za-z0-9._-]{0,63})(?::|$)/u.exec(
+			message,
+		);
+	if (inputValidation) {
+		return {
+			kind: "input",
+			expected: true,
+			toolName: inputValidation[1],
+		};
+	}
+	if (message.startsWith("Input validation error:")) {
+		return { kind: "input", expected: true };
+	}
+	if (message.startsWith("Output validation error:")) {
+		return { kind: "output", expected: false };
+	}
+	const missingTool =
+		/^Tool ([A-Za-z0-9][A-Za-z0-9._-]{0,63}) not found$/u.exec(message);
+	if (missingTool) {
+		return {
+			kind: "tool_not_found",
+			expected: true,
+			toolName: missingTool[1],
+		};
+	}
+	return { kind: "unknown", expected: false };
+}
+
 function installValidationErrorTracking(server: object): void {
 	const toolErrorHost = server as SdkToolErrorHost;
 	const previousCreateToolError = toolErrorHost.createToolError;
 	if (!previousCreateToolError) return;
 	const createToolError = previousCreateToolError.bind(server);
 	toolErrorHost.createToolError = (message) => {
+		const validation = classifySdkValidation(message);
+		const requestState = sdkRequestStateStorage.getStore();
+		if (requestState) requestState.expectedValidation = validation.expected;
 		const result = createToolError(message);
 		const activeSpan = trace.getActiveSpan();
 		if (activeSpan) {
 			markSdkToolFailure(
 				activeSpan,
-				new Error("MCP tool validation failed"),
-				undefined,
+				new Error(
+					validation.kind === "output"
+						? "MCP tool output validation failed"
+						: "MCP tool validation failed",
+				),
+				sdkToolNameStorage.getStore() ?? validation.toolName ?? "unknown",
 				"validation",
+				{
+					expected: validation.expected,
+					validationKind: validation.kind,
+				},
 			);
 		}
 		return result;
@@ -219,29 +284,35 @@ function installToolCallTracking(
 		};
 		enrichActiveSdkSpan(attributes);
 		return sdkToolNameStorage.run(toolName, () =>
-			tracer.startActiveSpan(
-				"mcp.sdk.tools.call",
-				{ attributes },
-				async (span) => {
-					try {
-						const result = (await toolHandler(
-							request,
-							extra,
-						)) as ToolResultLike;
-						if (result?.isError === true) {
-							span.setAttribute("mcp.tool.outcome", "returned_error");
-							span.setStatus({ code: SpanStatusCode.ERROR });
-						} else {
-							span.setStatus({ code: SpanStatusCode.OK });
+			sdkRequestStateStorage.run({}, () =>
+				tracer.startActiveSpan(
+					"mcp.sdk.tools.call",
+					{ attributes },
+					async (span) => {
+						try {
+							const result = (await toolHandler(
+								request,
+								extra,
+							)) as ToolResultLike;
+							if (result?.isError === true) {
+								span.setAttribute("mcp.tool.outcome", "returned_error");
+								if (
+									sdkRequestStateStorage.getStore()?.expectedValidation !== true
+								) {
+									span.setStatus({ code: SpanStatusCode.ERROR });
+								}
+							} else {
+								span.setStatus({ code: SpanStatusCode.OK });
+							}
+							return result;
+						} catch (error) {
+							markSdkToolFailure(span, error, toolName);
+							throw error;
+						} finally {
+							span.end();
 						}
-						return result;
-					} catch (error) {
-						markSdkToolFailure(span, error, toolName);
-						throw error;
-					} finally {
-						span.end();
-					}
-				},
+					},
+				),
 			),
 		);
 	});

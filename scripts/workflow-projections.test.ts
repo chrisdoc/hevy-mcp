@@ -62,6 +62,25 @@ jobs:
         run: npx nx run repository:test:stdio
 `;
 
+const runManyWorkflow = `
+jobs:
+  build:
+    strategy:
+      matrix:
+        node-version: ["24.x", "26.x"]
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@test
+        with:
+          node-version: \${{ matrix.node-version }}
+      - name: Validate Node 24
+        if: \${{ !cancelled() && matrix.node-version == '24.x' }}
+        run: npx nx run-many --projects=repository --targets=test:unit,test:stdio --parallel=3 --outputStyle=stream
+      - name: Validate Node 26
+        if: \${{ !cancelled() && matrix.node-version == '26.x' }}
+        run: npx nx run-many -p repository -t test:unit --parallel=3 --outputStyle=stream
+`;
+
 function expectFailure(callback: () => unknown, pattern: RegExp) {
 	expect(callback).toThrow(pattern);
 }
@@ -101,6 +120,41 @@ describe("workflow projection adapter", () => {
 			command: "npx nx run repository:test:unit -- --coverage",
 			job: "build",
 		});
+	});
+
+	it("expands aggregate run-many commands into canonical lane executions", () => {
+		const result = validate(runManyWorkflow);
+		expect(
+			result.executions.map(({ lane, runtimes }) => ({ lane, runtimes })),
+		).toEqual([
+			{ lane: "unit", runtimes: ["node-24"] },
+			{ lane: "stdio", runtimes: ["node-24"] },
+			{ lane: "unit", runtimes: ["node-26"] },
+		]);
+
+		const targets = mappedLaneTargets(lanes);
+		const executions = parseWorkflowLaneExecutions(runManyWorkflow, {
+			laneTargets: targets,
+			includeCommands: true,
+		});
+		expect(executions[0]).toMatchObject({
+			target: "test:unit",
+			args: "--projects=repository --targets=test:unit,test:stdio --parallel=3 --outputStyle=stream",
+			command:
+				"npx nx run-many --projects=repository --targets=test:unit,test:stdio --parallel=3 --outputStyle=stream",
+			step: "Validate Node 24",
+		});
+	});
+
+	it("rejects run-many commands for a different project", () => {
+		const wrongProject = runManyWorkflow.replace(
+			"--projects=repository",
+			"--projects=another-project",
+		);
+		expectFailure(
+			() => validate(wrongProject),
+			/run-many must target only the repository project/,
+		);
 	});
 
 	it("fails closed on duplicate mapped command identity", () => {

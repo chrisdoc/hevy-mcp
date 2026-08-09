@@ -6,14 +6,12 @@ import {
 	startStreamableHttpServer,
 } from "./streamable-http.js";
 
-const createMcpServer = async () => {
+const createMcpServer = () => {
 	const server = new McpServer({ name: "test-server", version: "1.0.0" });
-	server.registerTool(
-		"mock-tool",
-		{ description: "A mocked tool" },
-		async () => ({ content: [{ type: "text", text: "mock result" }] }),
+	server.registerTool("mock-tool", { description: "A mocked tool" }, () =>
+		Promise.resolve({ content: [{ type: "text", text: "mock result" }] }),
 	);
-	return server;
+	return Promise.resolve(server);
 };
 
 const handles: Array<{ close(): Promise<void> }> = [];
@@ -129,7 +127,7 @@ async function startDisconnectTestServer() {
 	const toolRelease = new Promise<void>((resolve) => {
 		releaseTool = resolve;
 	});
-	const createHangingServer = async () => {
+	const createHangingServer = () => {
 		const server = new McpServer({ name: "test-server", version: "1.0.0" });
 		server.registerTool(
 			"mock-tool",
@@ -140,7 +138,7 @@ async function startDisconnectTestServer() {
 				return { content: [{ type: "text", text: "mock result" }] };
 			},
 		);
-		return server;
+		return Promise.resolve(server);
 	};
 	const started = await startStreamableHttpServer(
 		{ transport: "http", host: "127.0.0.1", port: 0 },
@@ -278,7 +276,7 @@ describe("Streamable HTTP server", () => {
 			{ transport: "http", host: "127.0.0.1", port: 0 },
 			"test-key",
 			createMcpServer,
-			{ maxSessions: 1, idleTimeoutMs: 100 },
+			{ maxSessions: 1, idleTimeoutMs: 200 },
 		);
 		handles.push(handle);
 		const port = serverPort(handle);
@@ -292,10 +290,8 @@ describe("Streamable HTTP server", () => {
 			).statusCode,
 		).toBe(200);
 		expect((await initialize(port)).statusCode).toBe(200);
-		await vi.waitFor(async () => {
-			const result = await initialize(port);
-			expect(result.statusCode).toBe(429);
-		});
+		const secondInitialize = await initialize(port);
+		expect(secondInitialize.statusCode).toBe(429);
 		await vi.waitFor(
 			async () => expect((await initialize(port)).statusCode).toBe(200),
 			{ timeout: 1_000, interval: 5 },
@@ -475,7 +471,7 @@ describe("Streamable HTTP server", () => {
 		const toolStarted = new Promise<void>((resolve) => {
 			markStarted = resolve;
 		});
-		const createAbortAwareServer = async ({
+		const createAbortAwareServer = ({
 			lifecycleSignal,
 		}: {
 			apiKey: string;
@@ -496,7 +492,7 @@ describe("Streamable HTTP server", () => {
 					return { content: [{ type: "text", text: "aborted" }] };
 				},
 			);
-			return server;
+			return Promise.resolve(server);
 		};
 		const handle = await startStreamableHttpServer(
 			{ transport: "http", host: "127.0.0.1", port: 0 },
@@ -572,9 +568,7 @@ describe("Streamable HTTP server", () => {
 		const handle = await startStreamableHttpServer(
 			{ transport: "http", host: "127.0.0.1", port: 0 },
 			"test-key",
-			async () => {
-				throw new Error("private startup detail");
-			},
+			() => Promise.reject(new Error("private startup detail")),
 		);
 		handles.push(handle);
 

@@ -6,7 +6,7 @@ const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>
 	operation();
 
 const catalog = {
-	get: async () => [],
+	get: () => Promise.resolve([]),
 	reset: () => undefined,
 };
 
@@ -26,9 +26,9 @@ describe("createToolRuntime observation scope", () => {
 				}),
 			},
 		});
-		const handler = runtime.createHandler(async () => {
+		const handler = runtime.createHandler(() => {
 			executions += 1;
-			return { content: [{ type: "text", text: "ok" }] };
+			return Promise.resolve({ content: [{ type: "text", text: "ok" }] });
 		}, "create-workout");
 
 		await expect(handler({ id: "workout-id" })).resolves.toMatchObject({
@@ -40,9 +40,11 @@ describe("createToolRuntime observation scope", () => {
 
 	it("starts the handler lazily inside the active observer scope", async () => {
 		let active = false;
-		const handler = vi.fn(async () => {
+		const handler = vi.fn(() => {
 			expect(active).toBe(true);
-			return { content: [{ type: "text" as const, text: "ok" }] };
+			return Promise.resolve({
+				content: [{ type: "text" as const, text: "ok" }],
+			});
 		});
 		let runCalls = 0;
 		const run = async <T>(operation: () => Promise<T>): Promise<T> => {
@@ -101,7 +103,7 @@ describe("createToolRuntime observation scope", () => {
 		});
 		const secret = "private-routine-title-sentinel";
 		const handler = runtime.createHandler(
-			async () => ({ content: [] }),
+			() => Promise.resolve({ content: [] }),
 			"list-routines",
 			{ feature: "routines", kind: "read", operation: "list" },
 		);
@@ -154,7 +156,10 @@ describe("createToolRuntime observation scope", () => {
 			text: `result-${index}`,
 		}));
 
-		await runtime.createHandler(async () => ({ content }), "list-workouts")({});
+		await runtime.createHandler(
+			() => Promise.resolve({ content }),
+			"list-workouts",
+		)({});
 
 		expect(finish).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -181,9 +186,10 @@ describe("createToolRuntime observation scope", () => {
 		});
 		const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
-		const result = await runtime.createHandler(async () => {
-			throw new Error(secret);
-		}, "get-workouts")({});
+		const result = await runtime.createHandler(
+			() => Promise.reject(new Error(secret)),
+			"get-workouts",
+		)({});
 
 		expect(result).toMatchObject({ isError: true });
 		expect(finish).toHaveBeenCalledWith(

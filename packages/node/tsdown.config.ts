@@ -76,6 +76,7 @@ function createReleaseSentryPlugin() {
 	});
 	if (!plugin) throw new Error("Sentry release plugin was not created");
 
+	const originalRenderChunk = plugin.renderChunk;
 	return {
 		...plugin,
 		renderChunk(
@@ -103,7 +104,7 @@ function createReleaseSentryPlugin() {
 				...(chunk.moduleIds ?? []),
 			].some(isExecutableModule);
 			if (!isExecutableChunk) return null;
-			return plugin.renderChunk?.(code, chunk, options, meta);
+			return originalRenderChunk?.call(this, code, chunk, options, meta);
 		},
 	};
 }

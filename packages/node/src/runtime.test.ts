@@ -339,8 +339,92 @@ describe("Node package entrypoint", () => {
 			}),
 		);
 		expect(testDoubles.captureFailure).toHaveBeenCalled();
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				expected: false,
+				attributes: expect.objectContaining({
+					"mcp.tool.name": "unknown",
+					"mcp.validation.kind": "unknown",
+				}),
+			}),
+		);
 		expect(createToolError).toHaveBeenCalledWith("invalid tool");
 		expect(previousOnError).toHaveBeenCalledTimes(2);
+		activeSpanSpy.mockRestore();
+	});
+
+	it("does not report expected SDK caller errors as Sentry issues", async () => {
+		const createToolError = vi.fn((message: string) => ({ message }));
+		testDoubles.server.createToolError = createToolError;
+		await createNodeMcpServer({ apiKey: "valid-key" });
+
+		const activeSpanSpy = vi
+			.spyOn(trace, "getActiveSpan")
+			.mockReturnValue(testDoubles.span as never);
+		testDoubles.captureFailure.mockClear();
+		testDoubles.span.setStatus.mockClear();
+		testDoubles.server.createToolError?.(
+			"Input validation error: Invalid arguments for tool get-workouts",
+		);
+		testDoubles.server.createToolError?.("Tool get-workout-by-id not found");
+
+		expect(testDoubles.captureFailure).toHaveBeenNthCalledWith(
+			1,
+			expect.any(Error),
+			expect.objectContaining({
+				expected: true,
+				attributes: expect.objectContaining({
+					"mcp.tool.name": "get-workouts",
+					"mcp.validation.kind": "input",
+				}),
+			}),
+		);
+		expect(testDoubles.captureFailure).toHaveBeenNthCalledWith(
+			2,
+			expect.any(Error),
+			expect.objectContaining({
+				expected: true,
+				attributes: expect.objectContaining({
+					"mcp.tool.name": "get-workout-by-id",
+					"mcp.validation.kind": "tool_not_found",
+				}),
+			}),
+		);
+		expect(testDoubles.span.setStatus).not.toHaveBeenCalledWith({
+			code: SpanStatusCode.ERROR,
+		});
+		activeSpanSpy.mockRestore();
+	});
+
+	it("keeps expected SDK result spans out of error status", async () => {
+		const createToolError = vi.fn((message: string) => ({ message }));
+		testDoubles.server.createToolError = createToolError;
+		testDoubles.sdkProtocol._requestHandlers.set(
+			"tools/call",
+			vi.fn().mockImplementation(() => {
+				testDoubles.server.createToolError?.(
+					"Input validation error: Invalid arguments for tool get-workouts",
+				);
+				return { isError: true };
+			}),
+		);
+		await createNodeMcpServer({ apiKey: "valid-key" });
+
+		const wrappedToolHandler =
+			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
+		if (!wrappedToolHandler) return;
+		const activeSpanSpy = vi
+			.spyOn(trace, "getActiveSpan")
+			.mockReturnValue(testDoubles.span as never);
+		testDoubles.span.setStatus.mockClear();
+
+		await expect(
+			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
+		).resolves.toEqual({ isError: true });
+		expect(testDoubles.span.setStatus).not.toHaveBeenCalledWith({
+			code: SpanStatusCode.ERROR,
+		});
 		activeSpanSpy.mockRestore();
 	});
 

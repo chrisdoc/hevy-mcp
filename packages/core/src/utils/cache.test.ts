@@ -49,7 +49,7 @@ describe("AsyncTtlCache", () => {
 			maxSize: 2,
 		});
 
-		const fetcher = vi.fn(async (key: string) => `${key}-value`);
+		const fetcher = vi.fn((key: string) => Promise.resolve(`${key}-value`));
 		const load = (key: string) => cache.getOrFetch(key, () => fetcher(key));
 
 		await load("a");

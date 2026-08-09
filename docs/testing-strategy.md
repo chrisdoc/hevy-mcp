@@ -289,18 +289,20 @@ these names rather than duplicating selectors:
 
 ```json
 {
-	"test:unit": "vitest run --exclude 'tests/integration/**' --exclude 'tests/performance/**'",
-	"test:mcp": "vitest run tests/integration/mocked",
+	"test:unit": "node scripts/run-vitest-lane.mjs unit",
+	"test:mcp": "node scripts/run-vitest-lane.mjs mocked",
 	"test:contract": "vitest run <current contract baseline>",
 	"test:stdio": "vitest run <current stdio/process baseline>",
-	"test:pack": "node tests/package/npm-pack-smoke.mjs",
+	"test:pack": "nx run repository:test:pack",
 	"test:live": "node --env-file-if-exists=.env scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
-	"test:performance": "npm run build && vitest run tests/performance/performance.test.ts",
-	"test:coverage": "unit and mocked MCP coverage via their named lanes",
-	"test:pr": "npm run test:unit && npm run test:mcp && npm run test:contract && npm run test:stdio && npm run test:pack"
+	"test:performance": "nx run repository:test:performance",
+	"test:pr": "nx run repository:test:pr"
 }
 ```
+
+Coverage uses the unit and mocked MCP commands with their existing
+`--coverage.reportsDirectory` arguments instead of a separate wrapper alias.
 
 `test:live` and `test:nightly` must fail fast with a clear message when they are
 explicitly invoked without required credentials. They should not silently turn

@@ -47,9 +47,9 @@ describe("mutation input sources", () => {
 			const stdin = await loadMutationInput(
 				"@-",
 				workoutInputSchema,
-				async (source) => {
+				(source) => {
 					expect(source).toBe("-");
-					return JSON.stringify(workout);
+					return Promise.resolve(JSON.stringify(workout));
 				},
 			);
 			expect(file).toEqual(inline);
@@ -60,9 +60,7 @@ describe("mutation input sources", () => {
 	});
 
 	it("reports source, JSON, and schema failures as usage errors", async () => {
-		const reader: DataSourceReader = async () => {
-			throw new Error("missing");
-		};
+		const reader: DataSourceReader = () => Promise.reject(new Error("missing"));
 		await expect(
 			loadMutationInput("@", workoutInputSchema, reader),
 		).rejects.toThrow(new UsageError("--data source is required after @"));

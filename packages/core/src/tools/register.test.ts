@@ -46,7 +46,7 @@ describe("registerHevyTools", () => {
 	beforeEach(async () => {
 		server = new McpServer({ name: "tool-list-test", version: "1.0.0" });
 		const catalog: ExerciseTemplateCatalog = {
-			get: async () => [],
+			get: () => Promise.resolve([]),
 			reset: () => {},
 		};
 		registerHevyTools(

@@ -1,13 +1,4 @@
-import {
-	access,
-	cp,
-	mkdtemp,
-	mkdir,
-	readdir,
-	readFile,
-	rm,
-	writeFile,
-} from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,18 +6,11 @@ import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+import { releaseCandidateArtifact } from "../../../scripts/release-candidate-artifacts.mjs";
+
 const exec = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL("../../..", import.meta.url));
-const packageDist = fileURLToPath(new URL("../dist", import.meta.url));
 const dir = await mkdtemp(join(tmpdir(), "hevy-cli-pack-"));
-const backupDir = await mkdtemp(join(tmpdir(), "hevy-cli-dist-"));
-const backupDist = join(backupDir, "dist");
-let hadDist = false;
-
-async function moveDirectory(source, destination) {
-	await cp(source, destination, { recursive: true });
-	await rm(source, { recursive: true, force: true });
-}
 
 function runWithInput(command, args, options, input) {
 	return new Promise((resolve, reject) => {
@@ -47,21 +31,7 @@ function runWithInput(command, args, options, input) {
 }
 
 try {
-	try {
-		await access(packageDist);
-		hadDist = true;
-		await moveDirectory(packageDist, backupDist);
-	} catch {}
-
-	await exec(
-		"npm",
-		["pack", "--workspace=@chrisdoc/hevy-cli", "--pack-destination", dir],
-		{ cwd: repositoryRoot },
-	);
-	const names = await readdir(dir);
-	if (names.length !== 1 || !names[0].endsWith(".tgz"))
-		throw new Error("CLI tarball was not created");
-	const tarball = join(dir, names[0]);
+	const { path: tarball } = await releaseCandidateArtifact("packages/cli");
 	const manifest = JSON.parse(
 		(await exec("tar", ["-xOf", tarball, "package/package.json"])).stdout,
 	);
@@ -74,7 +44,6 @@ try {
 	if (manifest.scripts?.prepack !== "npm run build")
 		throw new Error("CLI package does not build before packing");
 
-	await exec("tar", ["-xzf", tarball, "-C", dir]);
 	const consumer = join(dir, "consumer");
 	await mkdir(consumer);
 	await exec(
@@ -227,8 +196,5 @@ globalThis.fetch = async (input, init = {}) => {
 	)
 		throw new Error("Packed workout request contract is incorrect");
 } finally {
-	await rm(packageDist, { recursive: true, force: true });
-	if (hadDist) await moveDirectory(backupDist, packageDist);
-	await rm(backupDir, { recursive: true, force: true });
 	await rm(dir, { recursive: true, force: true });
 }

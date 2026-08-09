@@ -45,11 +45,18 @@ const cleanupPreview = previewWorkflow.slice(
 	),
 	previewWorkflow.indexOf("      - name: Activate inert cleanup version"),
 );
-const checkPublishedPackageMetadata = workflow.slice(
-	workflow.indexOf("      - name: Check published package metadata"),
+const validateReleaseCandidates = workflow.slice(
+	workflow.indexOf("      - name: Validate release candidates"),
 	workflow.indexOf("      - name: Run integration tests"),
 );
-
+const buildReleasePackage = workflow.slice(
+	workflow.indexOf("      - name: Build release package"),
+	workflow.indexOf("      - name: Prepare shared package candidates"),
+);
+const prepareReleaseCandidates = workflow.slice(
+	workflow.indexOf("      - name: Prepare shared package candidates"),
+	workflow.indexOf("      - name: Validate release candidates"),
+);
 function workerManifest(version: string, dependency = "1.0.0") {
 	return JSON.stringify({
 		name: "@hevy-mcp/worker",
@@ -58,26 +65,19 @@ function workerManifest(version: string, dependency = "1.0.0") {
 	});
 }
 
-describe("release workflow", () => {
-	it("deploys production only when the Worker package was released", () => {
-		expect(deployProduction).toContain(
-			"needs.release.outputs.worker_released == 'true'",
-		);
-		expect(deployProduction).not.toContain(
-			"needs.release.outputs.released == 'true'",
-		);
-	});
-
+describe("release outputs", () => {
 	it("detects Worker releases from the versioned private manifest", () => {
-		expect(workflow).toContain("node scripts/release-outputs.mjs");
 		expect(
 			calculateReleaseOutputs({
-				beforeWorkerManifest: workerManifest("1.0.0", "1.0.0"),
-				afterWorkerManifest: workerManifest("1.0.0", "2.0.0"),
+				beforeWorkerManifest: workerManifest("1.0.0"),
+				afterWorkerManifest: workerManifest("1.0.0"),
 				published: false,
 				publishedPackages: [],
-			}).worker_released,
-		).toBe(false);
+			}),
+		).toMatchObject({
+			worker_released: false,
+		});
+
 		const releaseOutputs = calculateReleaseOutputs({
 			beforeWorkerManifest: workerManifest("1.0.0"),
 			afterWorkerManifest: workerManifest("1.0.1"),
@@ -195,20 +195,38 @@ describe("release workflow", () => {
 		);
 	});
 
-	it("keeps release build environment for the Publint dependency build", () => {
-		expect(checkPublishedPackageMetadata).toContain('HEVY_MCP_RELEASE: "true"');
-		expect(checkPublishedPackageMetadata).toContain(
+	it("gates production deployment on the Worker release", () => {
+		expect(deployProduction).toContain(
+			"needs.release.outputs.worker_released == 'true'",
+		);
+	});
+
+	it("scopes release secrets to the release build", () => {
+		expect(buildReleasePackage).toContain('HEVY_MCP_RELEASE: "true"');
+		expect(buildReleasePackage).toContain(
 			"SENTRY_ORG: ${{ secrets.SENTRY_ORG }}",
 		);
-		expect(checkPublishedPackageMetadata).toContain(
+		expect(buildReleasePackage).toContain(
 			"SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}",
 		);
-		expect(checkPublishedPackageMetadata).toContain(
+		expect(buildReleasePackage).toContain(
 			"SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}",
 		);
-		expect(checkPublishedPackageMetadata).toContain(
+		expect(buildReleasePackage).toContain(
 			"OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
 		);
+		expect(prepareReleaseCandidates).not.toContain("secrets.");
+		expect(prepareReleaseCandidates).toContain(
+			"npx nx run @chrisdoc/hevy-cli:build",
+		);
+		expect(prepareReleaseCandidates).toContain(
+			"npx nx run repository:pack:artifacts --excludeTaskDependencies",
+		);
+		expect(validateReleaseCandidates).not.toContain("secrets.");
+		expect(validateReleaseCandidates).toContain(
+			"--targets=test:release-unit,test:worker,test:pack,test:cli,test:pack:cli,check:publint",
+		);
+		expect(validateReleaseCandidates).toContain("--excludeTaskDependencies");
 	});
 
 	it("versions private packages without publishing tags", () => {
