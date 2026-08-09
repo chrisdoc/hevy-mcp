@@ -1,0 +1,5 @@
+{
+	"name": "hevy-mcp",
+	"version": "1.0.0",
+	"description": "Read, analyze, create, and update Hevy workouts, routines, exercises, and body measurements in Claude."
+}
