@@ -1,28 +1,14 @@
 // Telemetry must be initialized before any other imports so that
 // OpenTelemetry and Sentry are ready before application code runs.
-import {
-	captureFailure,
-	flushTelemetry,
-	installProcessExceptionTracking,
-	tracer,
-	serviceName,
-	serviceVersion,
-} from "./utils/telemetry.js";
+import { tracer, serviceName, serviceVersion } from "./utils/telemetry.js";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import { serverStartups } from "./utils/metrics.js";
-
-import { SpanStatusCode, type Span } from "@opentelemetry/api";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { z } from "zod";
 import { createHevyMcpServer, mergeAbortSignals } from "@hevy-mcp/core";
 import { createHevyClient, isHevyHttpError } from "@hevy-mcp/hevy-client";
-import {
-	assertApiKey,
-	MissingHevyApiKeyError,
-	parseConfig,
-} from "./utils/config.js";
+import { assertApiKey, parseConfig } from "./utils/config.js";
 import { parseNodeCliOptions, type NodeTransport } from "./utils/arguments.js";
 import { startStreamableHttpServer } from "./utils/streamable-http.js";
-import { installGracefulShutdown } from "./utils/graceful-shutdown.js";
 import {
 	createNodeCacheObserver,
 	createNodeHevyClientOptions,
@@ -34,7 +20,11 @@ import {
 	resolveSessionTerminationCategory,
 } from "./utils/mcp-session-observability.js";
 import { installSdkErrorTracking } from "./utils/sdk-observability.js";
-import { scheduleUpdateCheck } from "./utils/version-check.js";
+import {
+	INVALID_API_KEY_MESSAGE,
+	recordLifecycleFailure,
+	runNodeLifecycle,
+} from "./utils/node-lifecycle.js";
 
 const name = serviceName;
 const version = serviceVersion;
@@ -79,8 +69,6 @@ function getCliAction(args: string[]): "start" | "version" | "help" {
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const STARTUP_PROBE_TIMEOUT_MS = 5_000;
 
-const INVALID_API_KEY_MESSAGE =
-	"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.";
 const API_KEY_VALIDATION_WARNING =
 	"Warning: HEVY_API_KEY could not be validated during startup. Startup will continue; check your network connection and Hevy API availability.";
 const SAFE_NETWORK_ERROR_CODES = new Set([
@@ -138,79 +126,6 @@ function getSafeValidationDiagnostic(error: unknown): string | undefined {
 	return typeof code === "string" && SAFE_NETWORK_ERROR_CODES.has(code)
 		? code
 		: undefined;
-}
-type LifecycleFailurePhase =
-	| "config"
-	| "api_key_validation"
-	| "build"
-	| "connect"
-	| "run";
-
-const LIFECYCLE_FAILURE_TAXONOMY: Record<
-	LifecycleFailurePhase,
-	{ errorType: string; errorCategory: string }
-> = {
-	config: {
-		errorType: "MCP_SERVER_CONFIG_ERROR",
-		errorCategory: "McpServerConfigFailure",
-	},
-	api_key_validation: {
-		errorType: "MCP_API_KEY_VALIDATION_ERROR",
-		errorCategory: "McpApiKeyValidationFailure",
-	},
-	build: {
-		errorType: "MCP_SERVER_BUILD_ERROR",
-		errorCategory: "McpServerBuildFailure",
-	},
-	connect: {
-		errorType: "MCP_TRANSPORT_CONNECT_ERROR",
-		errorCategory: "McpTransportConnectFailure",
-	},
-	run: {
-		errorType: "MCP_SERVER_RUN_ERROR",
-		errorCategory: "McpServerRunFailure",
-	},
-};
-
-type LifecycleTerminationReason =
-	| "connect_failure"
-	| "runtime_failure"
-	| "startup_failure";
-
-function isExpectedLifecycleFailure(error: unknown): boolean {
-	return (
-		error instanceof MissingHevyApiKeyError ||
-		(error instanceof Error && error.message === INVALID_API_KEY_MESSAGE)
-	);
-}
-
-function createLifecycleFailureAttributes(
-	phase: LifecycleFailurePhase,
-	terminationReason: LifecycleTerminationReason,
-): Record<string, string | number | boolean> {
-	const taxonomy = LIFECYCLE_FAILURE_TAXONOMY[phase];
-	return {
-		"mcp.failure.phase": phase,
-		"mcp.termination.reason": terminationReason,
-		"error.type": taxonomy.errorType,
-		"error.category": taxonomy.errorCategory,
-	};
-}
-
-function recordLifecycleFailure(
-	span: Span,
-	error: unknown,
-	phase: LifecycleFailurePhase,
-	terminationReason: LifecycleTerminationReason,
-): void {
-	const attributes = createLifecycleFailureAttributes(phase, terminationReason);
-	span.addEvent("mcp.lifecycle.failure", attributes);
-	captureFailure(error, {
-		kind: "lifecycle",
-		attributes,
-		...(isExpectedLifecycleFailure(error) ? { expected: true } : {}),
-		span,
-	});
 }
 async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 	// Keep the startup probe separate from the normal MCP-aware client. The
@@ -308,107 +223,65 @@ export async function runStdioServer() {
 		console.error(`${name} v${version}`);
 		return;
 	}
-
 	if (cliAction === "help") {
 		console.log(HELP_TEXT);
 		return;
 	}
-	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
-	const lifecycleController = new AbortController();
 
-	serverStartups.add(1, { version });
-
-	let connectAttempted = false;
-	let connectSucceeded = false;
-	await tracer.startActiveSpan(
-		"mcp.server.run",
-		{
-			attributes: {
-				"mcp.span.category": "startup",
-				"mcp.transport": "stdio",
-			},
-		},
-		async (span) => {
-			try {
-				const cfg = parseConfig(process.env);
-				const apiKey = cfg.apiKey;
-				assertApiKey(apiKey);
-
-				const server = await createNodeMcpServer(
-					{ apiKey },
-					"stdio",
-					lifecycleController.signal,
-				);
-				console.error("Starting MCP server in stdio mode");
-				const transport = createInstrumentedStdioTransport(
-					new StdioServerTransport(),
-				);
-				connectAttempted = true;
-
-				await tracer.startActiveSpan(
-					"mcp.server.connect",
-					{
-						attributes: {
-							"mcp.span.category": "session",
-							"mcp.transport": "stdio",
-						},
+	await runNodeLifecycle({
+		transport: "stdio",
+		start: async (context) => {
+			const { signal } = context;
+			const cfg = parseConfig(process.env);
+			const apiKey = cfg.apiKey;
+			assertApiKey(apiKey);
+			const server = await createNodeMcpServer({ apiKey }, "stdio", signal);
+			console.error("Starting MCP server in stdio mode");
+			const transport = createInstrumentedStdioTransport(
+				new StdioServerTransport(),
+			);
+			context.markConnectAttempted();
+			await tracer.startActiveSpan(
+				"mcp.server.connect",
+				{
+					attributes: {
+						"mcp.span.category": "session",
+						"mcp.transport": "stdio",
 					},
-					async (connectSpan) => {
-						try {
-							await server.connect(transport);
-							connectSucceeded = true;
-							connectSpan.setStatus({ code: SpanStatusCode.OK });
-						} catch (e) {
-							recordLifecycleFailure(
-								connectSpan,
-								e,
-								"connect",
-								"connect_failure",
-							);
-							connectSpan.setStatus({ code: SpanStatusCode.ERROR });
-							throw e;
-						} finally {
-							connectSpan.end();
-						}
-					},
-				);
-				scheduleUpdateCheck({
-					packageName: serviceName,
-					currentVersion: serviceVersion,
-				});
-				installGracefulShutdown({
-					target: server,
-					cancel: lifecycleController,
-					onComplete: async (succeeded) => {
-						recordMcpSessionTermination(
-							resolveSessionTerminationCategory(succeeded),
+				},
+				async (connectSpan) => {
+					try {
+						await server.connect(transport);
+						context.markConnectSucceeded();
+						connectSpan.setStatus({ code: SpanStatusCode.OK });
+					} catch (error) {
+						recordLifecycleFailure(
+							connectSpan,
+							error,
+							"connect",
+							"connect_failure",
 						);
-						cleanupProcessExceptionTracking();
-						await flushTelemetry();
-					},
-				});
-
-				span.setStatus({ code: SpanStatusCode.OK });
-			} catch (e) {
-				if (!connectAttempted || connectSucceeded) {
-					recordLifecycleFailure(
-						span,
-						e,
-						"run",
-						connectSucceeded ? "runtime_failure" : "startup_failure",
-					);
-				}
-				recordMcpSessionTermination(
-					connectAttempted ? "connect_failure" : "startup_failure",
-				);
-				span.setStatus({ code: SpanStatusCode.ERROR });
-				cleanupProcessExceptionTracking();
-				throw e;
-			} finally {
-				span.end();
+						connectSpan.setStatus({ code: SpanStatusCode.ERROR });
+						throw error;
+					} finally {
+						connectSpan.end();
+					}
+				},
+			);
+			return {
+				target: server,
+				onShutdown: (succeeded) =>
+					recordMcpSessionTermination(
+						resolveSessionTerminationCategory(succeeded),
+					),
+			};
+		},
+		onFailure: (reason, outcome) => {
+			if (outcome.transport === "stdio") {
+				recordMcpSessionTermination(reason);
 			}
 		},
-	);
+	});
 }
 
 export async function runServer(): Promise<void> {
@@ -428,70 +301,38 @@ export async function runServer(): Promise<void> {
 		await runStdioServer();
 		return;
 	}
-	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
-	const lifecycleController = new AbortController();
 
-	await tracer.startActiveSpan(
-		"mcp.server.run",
-		{
-			attributes: {
-				"mcp.span.category": "startup",
-				"mcp.transport": "http",
-			},
-		},
-		async (span) => {
-			let listening = false;
-			serverStartups.add(1, { version });
-			try {
-				const cfg = parseConfig(process.env);
-				assertApiKey(cfg.apiKey);
-				await validateApiKey(cfg.apiKey, lifecycleController.signal);
-				const handle = await startStreamableHttpServer(
-					options,
-					cfg.apiKey,
-					(params) =>
-						Promise.resolve(
-							buildServer(
-								params.apiKey,
-								"http",
-								mergeAbortSignals(
-									lifecycleController.signal,
-									params.lifecycleSignal,
-								),
-							),
+	await runNodeLifecycle({
+		transport: "http",
+		start: async (context) => {
+			const { signal } = context;
+			const cfg = parseConfig(process.env);
+			assertApiKey(cfg.apiKey);
+			await validateApiKey(cfg.apiKey, signal);
+			const handle = await startStreamableHttpServer(
+				options,
+				cfg.apiKey,
+				(params) =>
+					Promise.resolve(
+						buildServer(
+							params.apiKey,
+							"http",
+							mergeAbortSignals(signal, params.lifecycleSignal),
 						),
+					),
+			);
+			context.markListening();
+			console.error(
+				`Starting MCP server in HTTP mode at ${options.host}:${options.port}/mcp`,
+			);
+			return { target: handle };
+		},
+		onFailure: (_reason, outcome) => {
+			if (outcome.transport === "http") {
+				recordMcpSessionTermination(
+					outcome.listening ? "unknown" : "startup_failure",
 				);
-				listening = true;
-				console.error(
-					`Starting MCP server in HTTP mode at ${options.host}:${options.port}/mcp`,
-				);
-				scheduleUpdateCheck({
-					packageName: serviceName,
-					currentVersion: serviceVersion,
-				});
-				installGracefulShutdown({
-					target: handle,
-					cancel: lifecycleController,
-					onComplete: async () => {
-						cleanupProcessExceptionTracking();
-						await flushTelemetry();
-					},
-				});
-				span.setStatus({ code: SpanStatusCode.OK });
-			} catch (error) {
-				recordLifecycleFailure(
-					span,
-					error,
-					"run",
-					listening ? "runtime_failure" : "startup_failure",
-				);
-				recordMcpSessionTermination(listening ? "unknown" : "startup_failure");
-				span.setStatus({ code: SpanStatusCode.ERROR });
-				cleanupProcessExceptionTracking();
-				throw error;
-			} finally {
-				span.end();
 			}
 		},
-	);
+	});
 }
