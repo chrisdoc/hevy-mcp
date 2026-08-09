@@ -306,7 +306,18 @@ function installToolCallTracking(
 							}
 							return result;
 						} catch (error) {
-							markSdkToolFailure(span, error, toolName);
+							const validation =
+								error instanceof Error
+									? classifySdkValidation(error.message)
+									: { kind: "unknown" as const, expected: false };
+							if (validation.kind === "tool_not_found") {
+								markSdkToolFailure(span, error, toolName, "validation", {
+									expected: true,
+									validationKind: validation.kind,
+								});
+							} else {
+								markSdkToolFailure(span, error, toolName);
+							}
 							throw error;
 						} finally {
 							span.end();

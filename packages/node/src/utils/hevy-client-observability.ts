@@ -32,6 +32,14 @@ function safeErrorAttributes(observation: HevyRequestObservation): {
 	};
 }
 
+function getDiagnosticResponseError(
+	observation: HevyRequestObservation,
+): string | undefined {
+	return process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS === "0"
+		? undefined
+		: observation.error?.response_error;
+}
+
 function startApiSpan(start: HevyRequestStart) {
 	const sessionId = getCurrentMcpSessionId();
 	const diagnosticEndpoint = diagnosticEndpointIdentity(start.endpoint);
@@ -71,11 +79,13 @@ function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
 				: SpanStatusCode.ERROR,
 	});
 	if (observation.outcome !== "success" && observation.outcome !== "expected") {
+		const responseError = getDiagnosticResponseError(observation);
 		span.addEvent("hevy.api.failure", {
 			"error.category": errorAttributes.error_category ?? "HevyHttpError",
 			...(errorAttributes.error_code
 				? { "error.code": errorAttributes.error_code }
 				: {}),
+			...(responseError ? { "hevy.api.response_error": responseError } : {}),
 		});
 	}
 	span.end();
@@ -105,6 +115,7 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 		onRequestComplete(observation) {
 			const retryCountBucket = bucketCount(observation.retryCount);
 			const errorAttributes = safeErrorAttributes(observation);
+			const responseError = getDiagnosticResponseError(observation);
 			const metricEndpoint = metricEndpointIdentity(observation.endpoint);
 			const diagnosticEndpoint = diagnosticEndpointIdentity(
 				observation.endpoint,
@@ -143,6 +154,7 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 				status: observation.status || null,
 				retryCountBucket,
 				outcome: observation.outcome,
+				...(responseError ? { response_error: responseError } : {}),
 				...errorAttributes,
 			});
 		},

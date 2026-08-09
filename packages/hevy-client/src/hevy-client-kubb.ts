@@ -100,6 +100,8 @@ export interface HevyRequestObservation {
 		readonly status?: number;
 		readonly code?: string;
 		readonly category?: "HevyHttpError" | "NetworkError";
+		/** Bounded, sanitized text from an allowlisted upstream error field. */
+		readonly response_error?: string;
 	};
 }
 
@@ -866,6 +868,7 @@ function createFailureObservation(
 					? error.code
 					: undefined,
 			category: error.status === undefined ? "NetworkError" : "HevyHttpError",
+			...(error.responseError ? { response_error: error.responseError } : {}),
 		},
 	};
 }

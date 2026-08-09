@@ -231,6 +231,69 @@ describe("createNodeHevyClientOptions", () => {
 		);
 	});
 
+	it("records response diagnostics on failure events but not metric labels", () => {
+		const options = createNodeHevyClientOptions();
+		observe(options, {
+			method: "PUT",
+			endpoint: "/v1/workouts/:workoutId",
+			status: 500,
+			durationMs: 25,
+			retryCount: 3,
+			outcome: "terminal_failure",
+			error: {
+				status: 500,
+				category: "HevyHttpError",
+				response_error: "Invalid email [EMAIL_REDACTED]",
+			},
+		});
+
+		expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
+			"hevy.api.failure",
+			expect.objectContaining({
+				"hevy.api.response_error": "Invalid email [EMAIL_REDACTED]",
+			}),
+		);
+		const metricText = JSON.stringify([
+			testDoubles.apiCallsAdd.mock.calls,
+			testDoubles.apiDurationRecord.mock.calls,
+		]);
+		expect(metricText).not.toContain("response_error");
+	});
+
+	it("honors the diagnostics opt-out for response details", () => {
+		const originalSetting = process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS;
+		process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS = "0";
+		try {
+			const options = createNodeHevyClientOptions();
+			observe(options, {
+				method: "PUT",
+				endpoint: "/v1/workouts/:workoutId",
+				status: 500,
+				durationMs: 25,
+				retryCount: 3,
+				outcome: "terminal_failure",
+				error: {
+					status: 500,
+					category: "HevyHttpError",
+					response_error: "sensitive upstream detail",
+				},
+			});
+
+			expect(testDoubles.span.addEvent).toHaveBeenCalledWith(
+				"hevy.api.failure",
+				{
+					"error.category": "HevyHttpError",
+				},
+			);
+		} finally {
+			if (originalSetting === undefined) {
+				delete process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS;
+			} else {
+				process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS = originalSetting;
+			}
+		}
+	});
+
 	it("records allowlisted error codes and normalizes an absent status", () => {
 		const error = new HevyHttpError("private retry message", {
 			method: "GET",

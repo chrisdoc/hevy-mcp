@@ -244,9 +244,9 @@ describe("Node package entrypoint", () => {
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
 		const wrappedInitializeHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("initialize");
-		expect(wrappedToolHandler).toBeDefined();
-		expect(wrappedInitializeHandler).toBeDefined();
-		if (!wrappedToolHandler || !wrappedInitializeHandler) return;
+		if (!wrappedToolHandler || !wrappedInitializeHandler) {
+			throw new Error("Expected SDK handlers to be installed");
+		}
 
 		const activeSpanSpy = vi
 			.spyOn(trace, "getActiveSpan")
@@ -295,7 +295,9 @@ describe("Node package entrypoint", () => {
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
 		const wrappedDiscoveryHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("server/discover");
-		if (!wrappedToolHandler || !wrappedDiscoveryHandler) return;
+		if (!wrappedToolHandler || !wrappedDiscoveryHandler) {
+			throw new Error("Expected SDK handlers to be installed");
+		}
 
 		await expect(
 			wrappedToolHandler({ params: { name: "get-workouts" } }, {}),
@@ -311,6 +313,45 @@ describe("Node package entrypoint", () => {
 		);
 
 		expect(testDoubles.captureFailure).toHaveBeenCalled();
+	});
+
+	it("treats unknown MCP tool requests as expected validation failures", async () => {
+		const unknownToolError = new Error("Tool get-workout-workoutId not found");
+		const toolHandler = vi.fn().mockRejectedValue(unknownToolError);
+		testDoubles.sdkProtocol._requestHandlers.set("tools/call", toolHandler);
+		await createNodeMcpServer({ apiKey: "valid-key" });
+
+		const wrappedToolHandler =
+			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
+		if (!wrappedToolHandler) {
+			throw new Error("Expected wrapped tools/call handler to be installed");
+		}
+
+		testDoubles.captureFailure.mockClear();
+		testDoubles.span.addEvent.mockClear();
+		testDoubles.span.setStatus.mockClear();
+		const activeSpanSpy = vi
+			.spyOn(trace, "getActiveSpan")
+			.mockReturnValue(testDoubles.span as never);
+
+		await expect(
+			wrappedToolHandler({ params: { name: "get-workout-workoutId" } }, {}),
+		).rejects.toThrow("Tool get-workout-workoutId not found");
+
+		expect(testDoubles.captureFailure).toHaveBeenCalledWith(
+			unknownToolError,
+			expect.objectContaining({
+				expected: true,
+				attributes: expect.objectContaining({
+					"mcp.tool.name": "get-workout-workoutId",
+					"mcp.validation.kind": "tool_not_found",
+				}),
+			}),
+		);
+		expect(testDoubles.span.setStatus).not.toHaveBeenCalledWith({
+			code: SpanStatusCode.ERROR,
+		});
+		activeSpanSpy.mockRestore();
 	});
 
 	it("tracks SDK validation and protocol failures", async () => {
@@ -413,7 +454,9 @@ describe("Node package entrypoint", () => {
 
 		const wrappedToolHandler =
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
-		if (!wrappedToolHandler) return;
+		if (!wrappedToolHandler) {
+			throw new Error("Expected wrapped tools/call handler to be installed");
+		}
 		const activeSpanSpy = vi
 			.spyOn(trace, "getActiveSpan")
 			.mockReturnValue(testDoubles.span as never);
@@ -450,7 +493,9 @@ describe("Node package entrypoint", () => {
 			testDoubles.sdkProtocol._requestHandlers.get("initialize");
 		const wrappedTool =
 			testDoubles.sdkProtocol._requestHandlers.get("tools/call");
-		if (!wrappedInitialize || !wrappedTool) return;
+		if (!wrappedInitialize || !wrappedTool) {
+			throw new Error("Expected SDK handlers to be installed");
+		}
 
 		await expect(wrappedInitialize({}, {})).resolves.toEqual({});
 		await expect(
