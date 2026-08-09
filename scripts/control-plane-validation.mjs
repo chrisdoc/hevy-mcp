@@ -963,8 +963,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 		}
 		for (const member of aggregate.lanes)
 			assert(
-				laneIds.has(member) ||
-					Object.prototype.hasOwnProperty.call(aggregates, member),
+				laneIds.has(member) || Object.hasOwn(aggregates, member),
 				id + " references unknown lane or aggregate " + member,
 			);
 	}
@@ -1003,8 +1002,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 		assertString(entry.id, "unresolved mapping id");
 		assertString(entry.reason, entry.id + ".reason");
 		assert(
-			laneIds.has(entry.id) ||
-				Object.prototype.hasOwnProperty.call(aggregates, entry.id),
+			laneIds.has(entry.id) || Object.hasOwn(aggregates, entry.id),
 			"unresolved mapping references unknown identity " + entry.id,
 		);
 	}

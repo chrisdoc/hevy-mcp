@@ -40,7 +40,7 @@ async function git(root: string, ...args: string[]) {
 
 afterEach(async () => {
 	await Promise.all(
-		[...fixtureDirectories].map((directory) =>
+		Array.from(fixtureDirectories, (directory) =>
 			rm(directory, { recursive: true, force: true }),
 		),
 	);

@@ -138,13 +138,13 @@ for (const file of changedChangesetFiles) {
 
 if (changedChangesetCount === 0) {
 	throw new Error(
-		`Changed workspace packages need a changeset added or modified by this branch:\n${[...changedPackages.entries()].map(([path, packageName]) => `- ${path} -> ${packageName}`).join("\n")}`,
+		`Changed workspace packages need a changeset added or modified by this branch:\n${Array.from(changedPackages.entries(), ([path, packageName]) => `- ${path} -> ${packageName}`).join("\n")}`,
 	);
 }
 
 if (emptyChangesetFiles.length > 0) {
 	throw new Error(
-		`Empty Changesets cannot accompany release-triggering changes:\n${emptyChangesetFiles.map((file) => `- ${file}`).join("\n")}\nRelease-triggering changes require non-empty bumps:\n${[...changedPackages.entries()].map(([path, packageName]) => `- ${path} -> ${packageName}`).join("\n")}`,
+		`Empty Changesets cannot accompany release-triggering changes:\n${emptyChangesetFiles.map((file) => `- ${file}`).join("\n")}\nRelease-triggering changes require non-empty bumps:\n${Array.from(changedPackages.entries(), ([path, packageName]) => `- ${path} -> ${packageName}`).join("\n")}`,
 	);
 }
 
