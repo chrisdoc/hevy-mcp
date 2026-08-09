@@ -117,7 +117,11 @@ export function percentile(values: number[], fraction: number) {
 
 	const sorted = [...values].sort((left, right) => left - right);
 	const index = Math.ceil(fraction * sorted.length) - 1;
-	return sorted[index] ?? sorted[sorted.length - 1]!;
+	const percentileValue = sorted[index] ?? sorted.at(-1);
+	if (percentileValue === undefined) {
+		throw new Error("Cannot calculate a percentile for an empty sample");
+	}
+	return percentileValue;
 }
 
 export function summarizeDurations(values: number[]) {

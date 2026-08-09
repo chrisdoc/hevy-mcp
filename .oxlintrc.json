@@ -7,6 +7,7 @@
 	"ignorePatterns": [
 		"**/node_modules",
 		"**/dist",
+		"**/*.d.ts",
 		"**/src/generated",
 		"**/coverage",
 		"**/.agents",
@@ -22,6 +23,7 @@
 		"correctness": "error"
 	},
 	"rules": {
+		"typescript/no-non-null-assertion": "error",
 		"no-param-reassign": "error",
 		"@typescript-eslint/consistent-type-assertions": "error",
 		"default-param-last": "error",

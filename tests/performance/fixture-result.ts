@@ -32,7 +32,8 @@ export function parseFixtureResult(stderr: string, expectedMode: FixtureMode) {
 	const markers = stderr
 		.split(/\r?\n/u)
 		.filter((line) => line.startsWith(FIXTURE_RESULT_PREFIX));
-	if (markers.length !== 1) {
+	const marker = markers[0];
+	if (markers.length !== 1 || marker === undefined) {
 		throw new Error(
 			`expected exactly one child fixture result marker, found ${markers.length}`,
 		);
@@ -40,7 +41,7 @@ export function parseFixtureResult(stderr: string, expectedMode: FixtureMode) {
 
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(markers[0]!.slice(FIXTURE_RESULT_PREFIX.length));
+		parsed = JSON.parse(marker.slice(FIXTURE_RESULT_PREFIX.length));
 	} catch (error) {
 		throw new Error("child fixture result marker contained malformed JSON", {
 			cause: error,
