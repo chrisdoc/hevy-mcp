@@ -20,5 +20,3 @@
 !packages/node/**
 !packages/worker/
 !packages/worker/**
-
-!scripts/
