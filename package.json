@@ -84,6 +84,7 @@
 		"@commitlint/cli": "^21.2.1",
 		"@commitlint/config-conventional": "^21.2.0",
 		"@commitlint/prompt-cli": "^21.2.0",
+		"@e18e/eslint-plugin": "^0.8.0",
 		"@kubb/cli": "^4.39.3",
 		"@kubb/core": "^4.39.3",
 		"@kubb/plugin-client": "^4.39.3",

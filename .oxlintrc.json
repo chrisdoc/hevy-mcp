@@ -1,12 +1,14 @@
 {
 	"$schema": "./node_modules/oxlint/configuration_schema.json",
 	"plugins": ["typescript", "unicorn", "oxc"],
+	"jsPlugins": ["@e18e/eslint-plugin"],
 	"options": {
 		"typeAware": true
 	},
 	"ignorePatterns": [
 		"**/node_modules",
 		"**/dist",
+		"**/*.d.ts",
 		"**/src/generated",
 		"**/coverage",
 		"**/.agents",
@@ -22,6 +24,7 @@
 		"correctness": "error"
 	},
 	"rules": {
+		"typescript/no-non-null-assertion": "error",
 		"no-param-reassign": "error",
 		"@typescript-eslint/consistent-type-assertions": "error",
 		"default-param-last": "error",
@@ -46,7 +49,16 @@
 			}
 		],
 		"await-thenable": "error",
-		"no-floating-promises": "error"
+		"no-floating-promises": "error",
+		"e18e/prefer-array-at": "error",
+		"e18e/prefer-includes": "error",
+		"e18e/prefer-array-to-reversed": "error",
+		"e18e/prefer-array-to-spliced": "error",
+		"e18e/prefer-url-canparse": "error",
+		"e18e/prefer-date-now": "error",
+		"e18e/prefer-regex-test": "error",
+		"e18e/prefer-array-from-map": "error",
+		"e18e/prefer-object-has-own": "error"
 	},
 	"env": {
 		"builtin": true

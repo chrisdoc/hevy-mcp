@@ -103,7 +103,7 @@ const invalidManifestCases: Array<
 
 afterEach(async () => {
 	await Promise.all(
-		[...fixtureDirs].map((fixtureDir) =>
+		Array.from(fixtureDirs, (fixtureDir) =>
 			rm(fixtureDir, { force: true, recursive: true }),
 		),
 	);

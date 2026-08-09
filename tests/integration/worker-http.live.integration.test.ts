@@ -185,16 +185,17 @@ async function waitForWranglerReady(): Promise<void> {
 }
 
 async function stopWrangler(): Promise<void> {
-	if (!wrangler || wrangler.exitCode !== null || wrangler.pid === undefined)
-		return;
+	const child = wrangler;
+	if (!child || child.exitCode !== null || child.pid === undefined) return;
+	const pid = child.pid;
 
 	const exited = new Promise<void>((resolve) =>
-		wrangler?.once("exit", () => resolve()),
+		child.once("exit", () => resolve()),
 	);
 	const signalProcessGroup = (signal: NodeJS.Signals) => {
 		try {
-			if (process.platform === "win32") wrangler?.kill(signal);
-			else process.kill(-wrangler!.pid!, signal);
+			if (process.platform === "win32") child.kill(signal);
+			else process.kill(-pid, signal);
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
 		}
