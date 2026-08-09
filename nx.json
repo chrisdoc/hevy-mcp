@@ -104,7 +104,6 @@
 			"openapiInputs",
 			"{workspaceRoot}/scripts/check-generated-client.mjs",
 			"{workspaceRoot}/scripts/check-generated-client.d.mts",
-			"{workspaceRoot}/scripts/check-generated-client.test.ts",
 			"{workspaceRoot}/scripts/openapi-spec.js",
 			"{workspaceRoot}/tests/fixtures/generated-client/**/*",
 			"{workspaceRoot}/packages/hevy-client/src/generated/**/*",
