@@ -18,9 +18,12 @@
 			"inputs": ["packageManifestInputs", "controlPlaneInputs"]
 		},
 		"check:publint": {
+			"executor": "nx:run-commands",
 			"cache": false,
-			"dependsOn": ["build", "@chrisdoc/hevy-cli:build"],
-			"parallelism": false,
+			"dependsOn": ["pack:artifacts"],
+			"options": {
+				"command": "mise exec -- node scripts/check-candidate-publint.mjs"
+			},
 			"inputs": ["validationInputs"]
 		},
 		"check:package-changesets": {
@@ -59,7 +62,7 @@
 		},
 		"test:unit": {
 			"cache": true,
-			"inputs": ["unitTests"],
+			"inputs": ["unitTests", { "env": "HEVY_TEST_REPORT_MODE" }],
 			"outputs": [
 				"{workspaceRoot}/coverage/unit",
 				"{workspaceRoot}/test-results/unit-tests.xml"
@@ -71,7 +74,7 @@
 		},
 		"test:mcp": {
 			"cache": true,
-			"inputs": ["mockedTests"],
+			"inputs": ["mockedTests", { "env": "HEVY_TEST_REPORT_MODE" }],
 			"outputs": ["{workspaceRoot}/coverage/mocked"]
 		},
 		"test:integration": {
@@ -98,12 +101,15 @@
 		},
 		"test:worker-http": {
 			"cache": false,
-			"parallelism": false,
 			"inputs": ["validationInputs"]
 		},
 		"test:pack": {
+			"executor": "nx:run-commands",
 			"cache": false,
-			"parallelism": false,
+			"dependsOn": ["pack:artifacts"],
+			"options": {
+				"command": "mise exec -- node tests/package/npm-pack-smoke.mjs"
+			},
 			"inputs": ["validationInputs"]
 		},
 		"test:cli": {
@@ -111,9 +117,12 @@
 			"inputs": ["cliTests"]
 		},
 		"test:pack:cli": {
+			"executor": "nx:run-commands",
 			"cache": false,
-			"dependsOn": ["test:pack"],
-			"parallelism": false,
+			"dependsOn": ["pack:artifacts"],
+			"options": {
+				"command": "cross-env FORCE_COLOR=0 mise exec -- node packages/cli/tests/npm-pack-smoke.mjs"
+			},
 			"inputs": ["validationInputs"]
 		},
 		"test:nightly": {
@@ -153,8 +162,10 @@
 			"executor": "nx:noop",
 			"dependsOn": [
 				"build",
+				"check:server-manifest",
 				"test:release-unit",
 				"test:worker",
+				"test:pack",
 				"test:cli",
 				"test:pack:cli",
 				"check:publint",
@@ -187,20 +198,25 @@
 			"inputs": ["validationInputs"]
 		},
 		"test:performance": {
+			"executor": "nx:run-commands",
 			"cache": false,
+			"dependsOn": ["build"],
+			"options": {
+				"command": "mise exec -- vitest run tests/performance/performance.test.ts"
+			},
 			"outputs": ["{workspaceRoot}/test-results/performance/summary.json"],
 			"inputs": ["validationInputs"]
 		},
 		"pack:artifacts": {
 			"executor": "nx:run-commands",
 			"cache": false,
-			"dependsOn": ["hevy-mcp:build", "@chrisdoc/hevy-cli:build"],
+			"dependsOn": [
+				"build",
+				"@chrisdoc/hevy-cli:build",
+				"check:server-manifest"
+			],
 			"options": {
-				"commands": [
-					"node -e \"require('node:fs').mkdirSync('.nx/pack', { recursive: true })\"",
-					"npm pack --workspace=hevy-mcp --workspace=@chrisdoc/hevy-cli --pack-destination .nx/pack --ignore-scripts --silent"
-				],
-				"parallel": false
+				"command": "mise exec -- node scripts/pack-release-candidates.mjs"
 			},
 			"outputs": [
 				"{workspaceRoot}/packages/node/dist",

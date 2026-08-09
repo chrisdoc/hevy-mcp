@@ -497,6 +497,7 @@
 				"unit",
 				"contract",
 				"stdio",
+				"pack",
 				"cli",
 				"pack-cli",
 				"worker-bundle",
@@ -512,8 +513,10 @@
 		"release": {
 			"lanes": [
 				"build",
+				"server-manifest",
 				"release-unit",
 				"worker",
+				"pack",
 				"cli",
 				"pack-cli",
 				"package-publint",
@@ -523,6 +526,7 @@
 			],
 			"workflowRuntimes": {
 				"build": ["node-24"],
+				"server-manifest": ["node-24"],
 				"release-unit": ["node-24"],
 				"worker": ["node-24"]
 			},

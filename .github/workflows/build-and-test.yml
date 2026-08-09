@@ -37,6 +37,11 @@ jobs:
         node-version:
           - "24.x"
           - "26.x"
+    # Nx 23 reads these self-hosted names. Require both repository secrets so
+    # fork PRs, or partially configured environments, use only local caching.
+    env:
+      NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_TOKEN || '' }}
+      NX_SELF_HOSTED_REMOTE_CACHE_SERVER: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_SERVER || '' }}
 
     steps:
       - name: Checkout repository
@@ -51,26 +56,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
 
+      - name: Set up mise
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+
       - name: Install dependencies
         run: npm ci
-
-      - name: Validate repository control plane
-        run: npx nx run repository:check:control-plane
-
-      - name: Check package boundaries
-        run: npx nx run repository:check:boundaries
-
-      - name: Check package export maps
-        run: npx nx run repository:check:exports
-
-      - name: Run type check
-        run: npx nx run repository:check:types
-
-      - name: Check server manifest
-        run: npx nx run repository:check:server-manifest
-
-      - name: Run Check
-        run: npx nx run repository:check
 
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
@@ -88,13 +78,8 @@ jobs:
           npx changeset status --since="origin/${BASE_REF}"
           npx nx run repository:check:package-changesets -- --since "origin/${BASE_REF}"
 
-      - name: Run nightly diagnostics redaction regression tests
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:diagnostics
-        env:
-          HEVY_API_KEY: ""
-
-      - name: Run build
+      - name: Run Node 26 build
+        if: matrix.node-version == '26.x'
         run: npx nx run repository:build
         env:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -103,25 +88,20 @@ jobs:
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
           CODECOV_TOKEN: ${{ matrix.node-version == '24.x' && secrets.CODECOV_TOKEN || '' }}
 
-      - name: Run Worker HTTP integration tests
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:worker-http
-
-      - name: Run Worker tests
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:worker
-
-      - name: Run mocked integration tests with coverage
-        if: matrix.node-version == '24.x'
-        run: npx nx run repository:test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
-
-      - name: Run mocked integration tests
-        if: matrix.node-version == '26.x'
-        run: npx nx run repository:test:mcp
-
-      - name: Run unit tests with coverage and JUnit output
+      - name: Run Node 24 validation graph
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:unit -- --coverage --coverage.reportsDirectory=coverage/unit --reporter=default --reporter=junit --outputFile.junit=test-results/unit-tests.xml
+        env:
+          HEVY_API_KEY: ""
+          HEVY_TEST_REPORT_MODE: ci
+        run: >-
+          npx nx run-many --projects=repository --targets=test:unit,check:types,check,check:boundaries,test:worker-http,test:mcp,test:contract,test:cli,worker:dry-run,check:control-plane,check:exports,test:worker --parallel=3 --outputStyle=stream --excludeTaskDependencies
+
+      - name: Run Node 26 validation graph
+        if: ${{ !cancelled() && matrix.node-version == '26.x' }}
+        env:
+          HEVY_TEST_REPORT_MODE: ci
+        run: >-
+          npx nx run-many --projects=repository --targets=check:control-plane,check:boundaries,check:exports,check:types,check:server-manifest,check,test:mcp,test:unit --parallel=3 --outputStyle=stream
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
@@ -131,46 +111,6 @@ jobs:
           files: ./test-results/unit-tests.xml
           disable_search: true
           report_type: test_results
-
-      - name: Run unit tests with coverage
-        if: ${{ !cancelled() && matrix.node-version == '26.x' }}
-        run: npx nx run repository:test:unit -- --coverage
-
-      - name: Run contract baseline
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:contract
-
-      - name: Run stdio baseline
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:stdio
-
-      - name: Run package and CLI package baselines
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:pack:cli
-
-      - name: Check published package metadata
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:check:publint
-
-      - name: Run CLI tests
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:cli
-
-      - name: Build and scan Worker dry run
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:worker:dry-run
-
-      - name: Run performance baseline
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        run: npx nx run repository:test:performance
-
-      - name: Upload performance summary
-        if: ${{ always() && matrix.node-version == '24.x' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: performance-summary-node-24
-          path: test-results/performance/summary.json
-          if-no-files-found: error
 
       - name: Upload unit test results
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
@@ -186,6 +126,70 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/unit/lcov.info,./coverage/mocked/lcov.info
+
+  package-performance:
+    name: Package and performance (Node 24.x)
+    runs-on: ubuntu-24.04
+    # Nx 23 reads these self-hosted names. Require both repository secrets so
+    # fork PRs, or partially configured environments, use only local caching.
+    env:
+      NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_TOKEN || '' }}
+      NX_SELF_HOSTED_REMOTE_CACHE_SERVER: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_SERVER || '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.x"
+          cache: "npm"
+
+      - name: Set up mise
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package candidate
+        run: npx nx run repository:build
+        env:
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Prepare shared package candidates
+        if: ${{ !cancelled() }}
+        run: |
+          npx nx run @chrisdoc/hevy-cli:build
+          npx nx run repository:check:server-manifest
+          npx nx run repository:pack:artifacts --excludeTaskDependencies
+
+      - name: Run isolated performance validation
+        if: ${{ !cancelled() }}
+        env:
+          HEVY_API_KEY: ""
+        run: npx nx run repository:test:performance --excludeTaskDependencies
+
+      - name: Run package validation graph
+        if: ${{ !cancelled() }}
+        env:
+          HEVY_API_KEY: ""
+        run: >-
+          npx nx run-many --projects=repository --targets=test:diagnostics,test:stdio,test:pack,test:pack:cli,check:publint --parallel=3 --outputStyle=stream --excludeTaskDependencies
+
+      - name: Upload performance summary
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: performance-summary-node-24
+          path: test-results/performance/summary.json
+          if-no-files-found: error
 
   docker:
     name: Build and smoke test Docker image
@@ -205,6 +209,8 @@ jobs:
           context: .
           load: true
           tags: hevy-mcp:ci
+          cache-from: type=gha,scope=hevy-mcp-ci
+          cache-to: type=gha,mode=max,scope=hevy-mcp-ci,ignore-error=true
 
       - name: Smoke test version output without an API key
         run: docker run --rm hevy-mcp:ci --version
@@ -224,7 +230,7 @@ jobs:
     if: always()
     name: OpenTelemetry Export Trace
     runs-on: ubuntu-latest
-    needs: [build, docker]
+    needs: [build, package-performance, docker]
     env:
       OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
     steps:
