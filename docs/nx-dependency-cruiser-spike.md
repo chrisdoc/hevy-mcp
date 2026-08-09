@@ -41,17 +41,16 @@ lane model. The generated contributor tables in
 [`docs/test-lanes.md`](./test-lanes.md) show the current lane and aggregate
 membership, while `project.json` is the source for target dependencies. Do not
 copy a target or member count into prose: derive the current graph with
-`npx nx show project repository --json` (or `npx nx graph`). Root aliases remain
-supported compatibility entrypoints; workflow steps invoke the corresponding
-Nx targets, so command text is not duplicated in the policy model.
+`npx nx show project repository --json` (or `npx nx graph`). Contributor-facing
+root aliases remain supported compatibility entrypoints; internal-only lanes
+use their corresponding Nx targets directly, so command text is not duplicated
+in the policy model.
 
-Run the dependency rules independently, through the combined boundary lane,
-and exercise the representative pack target:
+Run the dependency rules through the combined boundary lane and exercise the
+representative pack target:
 
 ```sh
-npm run check:dependency-cruiser
 npm run check:boundaries
-npx nx run repository:check:dependency-cruiser
 npx nx run repository:check:boundaries
 npx nx run repository:pack:artifacts --skip-nx-cache
 ```

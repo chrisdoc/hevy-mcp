@@ -230,7 +230,6 @@
 		},
 		{
 			"id": "package-exports",
-			"alias": "check:exports",
 			"selector": {
 				"kind": "control-plane",
 				"check": "exports"
@@ -245,7 +244,6 @@
 		},
 		{
 			"id": "package-publint",
-			"alias": "check:publint",
 			"selector": {
 				"kind": "control-plane",
 				"check": "publint"
@@ -260,7 +258,6 @@
 		},
 		{
 			"id": "package-changesets",
-			"alias": "check:package-changesets",
 			"selector": {
 				"kind": "control-plane",
 				"check": "changesets"
