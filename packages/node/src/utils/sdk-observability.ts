@@ -37,6 +37,9 @@ type SdkFailureOptions = {
 };
 
 const sdkToolNameStorage = new AsyncLocalStorage<string>();
+const sdkRequestStateStorage = new AsyncLocalStorage<{
+	expectedValidation?: boolean;
+}>();
 const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
 const SDK_FAILURE_TAXONOMY: Record<
 	SdkFailureKind,
@@ -123,7 +126,9 @@ function markSdkToolFailure(
 		span,
 		expected: options.expected,
 	});
-	span.setStatus({ code: SpanStatusCode.ERROR });
+	if (options.expected !== true) {
+		span.setStatus({ code: SpanStatusCode.ERROR });
+	}
 }
 
 function installProtocolErrorTracking(
@@ -184,15 +189,33 @@ function installProtocolErrorTracking(
 function classifySdkValidation(message: string): {
 	kind: SdkValidationKind;
 	expected: boolean;
+	toolName?: string;
 } {
+	const inputValidation =
+		/^Input validation error: Invalid arguments for tool ([A-Za-z0-9][A-Za-z0-9._-]{0,63})(?::|$)/u.exec(
+			message,
+		);
+	if (inputValidation) {
+		return {
+			kind: "input",
+			expected: true,
+			toolName: inputValidation[1],
+		};
+	}
 	if (message.startsWith("Input validation error:")) {
 		return { kind: "input", expected: true };
 	}
 	if (message.startsWith("Output validation error:")) {
 		return { kind: "output", expected: false };
 	}
-	if (message.startsWith("Tool ") && message.endsWith(" not found")) {
-		return { kind: "tool_not_found", expected: true };
+	const missingTool =
+		/^Tool ([A-Za-z0-9][A-Za-z0-9._-]{0,63}) not found$/u.exec(message);
+	if (missingTool) {
+		return {
+			kind: "tool_not_found",
+			expected: true,
+			toolName: missingTool[1],
+		};
 	}
 	return { kind: "unknown", expected: false };
 }
@@ -203,10 +226,12 @@ function installValidationErrorTracking(server: object): void {
 	if (!previousCreateToolError) return;
 	const createToolError = previousCreateToolError.bind(server);
 	toolErrorHost.createToolError = (message) => {
+		const validation = classifySdkValidation(message);
+		const requestState = sdkRequestStateStorage.getStore();
+		if (requestState) requestState.expectedValidation = validation.expected;
 		const result = createToolError(message);
 		const activeSpan = trace.getActiveSpan();
 		if (activeSpan) {
-			const validation = classifySdkValidation(message);
 			markSdkToolFailure(
 				activeSpan,
 				new Error(
@@ -214,7 +239,7 @@ function installValidationErrorTracking(server: object): void {
 						? "MCP tool output validation failed"
 						: "MCP tool validation failed",
 				),
-				sdkToolNameStorage.getStore() ?? "unknown",
+				sdkToolNameStorage.getStore() ?? validation.toolName ?? "unknown",
 				"validation",
 				{
 					expected: validation.expected,
@@ -259,29 +284,35 @@ function installToolCallTracking(
 		};
 		enrichActiveSdkSpan(attributes);
 		return sdkToolNameStorage.run(toolName, () =>
-			tracer.startActiveSpan(
-				"mcp.sdk.tools.call",
-				{ attributes },
-				async (span) => {
-					try {
-						const result = (await toolHandler(
-							request,
-							extra,
-						)) as ToolResultLike;
-						if (result?.isError === true) {
-							span.setAttribute("mcp.tool.outcome", "returned_error");
-							span.setStatus({ code: SpanStatusCode.ERROR });
-						} else {
-							span.setStatus({ code: SpanStatusCode.OK });
+			sdkRequestStateStorage.run({}, () =>
+				tracer.startActiveSpan(
+					"mcp.sdk.tools.call",
+					{ attributes },
+					async (span) => {
+						try {
+							const result = (await toolHandler(
+								request,
+								extra,
+							)) as ToolResultLike;
+							if (result?.isError === true) {
+								span.setAttribute("mcp.tool.outcome", "returned_error");
+								if (
+									sdkRequestStateStorage.getStore()?.expectedValidation !== true
+								) {
+									span.setStatus({ code: SpanStatusCode.ERROR });
+								}
+							} else {
+								span.setStatus({ code: SpanStatusCode.OK });
+							}
+							return result;
+						} catch (error) {
+							markSdkToolFailure(span, error, toolName);
+							throw error;
+						} finally {
+							span.end();
 						}
-						return result;
-					} catch (error) {
-						markSdkToolFailure(span, error, toolName);
-						throw error;
-					} finally {
-						span.end();
-					}
-				},
+					},
+				),
 			),
 		);
 	});

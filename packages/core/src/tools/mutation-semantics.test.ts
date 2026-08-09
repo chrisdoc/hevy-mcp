@@ -277,6 +277,54 @@ describe("mutation semantics", () => {
 			start_time: "2026-07-29T08:00:00Z",
 			end_time: "2026-07-29T09:00:00Z",
 		});
+		expect(
+			buildWorkoutUpdatePayload(
+				{
+					title: "Original",
+					start_time: "2026-07-29T08:00:00.000Z",
+					end_time: "2026-07-29T09:00:00Z",
+					exercises: [],
+				},
+				{ title: "Renamed" },
+			).start_time,
+		).toBe("2026-07-29T08:00:00Z");
+	});
+
+	it("rejects malformed fetched timestamps instead of relying on Date parsing", () => {
+		for (const start_time of [
+			"2026-02-30T08:00:00Z",
+			"0",
+			"2026-07-29T08:00:00",
+		]) {
+			expect(() =>
+				buildWorkoutUpdatePayload(
+					{
+						title: "Original",
+						start_time,
+						end_time: "2026-07-29T09:00:00Z",
+						exercises: [],
+					},
+					{ title: "Renamed" },
+				),
+			).toThrow();
+		}
+	});
+
+	it("keeps caller-supplied timestamps strict", () => {
+		expect(() =>
+			buildWorkoutUpdatePayload(
+				{
+					title: "Original",
+					start_time: "2026-07-29T08:00:00Z",
+					end_time: "2026-07-29T09:00:00Z",
+					exercises: [],
+				},
+				{
+					title: "Renamed",
+					start_time: "2026-07-29T08:00:00.123Z",
+				},
+			),
+		).toThrow();
 	});
 
 	it("replaces or removes exercises without requiring fetched exercises", () => {

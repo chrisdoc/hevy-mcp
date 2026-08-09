@@ -168,17 +168,63 @@ const workoutUpdateMetadataSchema = z.object({
 	end_time: utcSecondTimestamp,
 });
 
+const FETCHED_ISO_TIMESTAMP =
+	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/u;
+
 /**
  * Hevy documents ISO 8601 timestamps but can return millisecond or offset
- * variants. Normalize fetched values before reusing them in the API's
- * second-precision update contract. Caller-supplied values remain strict.
+ * variants. Normalize only those explicit-timezone variants before reusing
+ * fetched values in the API's second-precision update contract. Caller-
+ * supplied values remain strict.
  */
 function normalizeFetchedWorkoutTimestamp(value: unknown): unknown {
 	if (typeof value !== "string") return value;
+	const match = FETCHED_ISO_TIMESTAMP.exec(value);
+	if (!match) return value;
+
+	const [, year, month, day, hour, minute, second, offset] = match;
+	const numericMonth = Number(month);
+	const numericDay = Number(day);
+	const numericHour = Number(hour);
+	const numericMinute = Number(minute);
+	const numericSecond = Number(second);
+	const offsetHour = offset === "Z" ? 0 : Number(offset.slice(1, 3));
+	const offsetMinute = offset === "Z" ? 0 : Number(offset.slice(4, 6));
+	if (
+		!year ||
+		!month ||
+		!day ||
+		!hour ||
+		!minute ||
+		!second ||
+		!offset ||
+		numericMonth < 1 ||
+		numericMonth > 12 ||
+		numericDay < 1 ||
+		numericDay > 31 ||
+		numericHour > 23 ||
+		numericMinute > 59 ||
+		numericSecond > 59 ||
+		offsetHour > 23 ||
+		offsetMinute > 59
+	) {
+		return value;
+	}
+
+	const calendarDate = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+	if (
+		Number.isNaN(calendarDate.getTime()) ||
+		calendarDate.getUTCFullYear() !== Number(year) ||
+		calendarDate.getUTCMonth() !== numericMonth - 1 ||
+		calendarDate.getUTCDate() !== numericDay
+	) {
+		return value;
+	}
+
 	const timestamp = new Date(value);
 	if (Number.isNaN(timestamp.getTime())) return value;
 	timestamp.setUTCMilliseconds(0);
-	return timestamp.toISOString().replace(".000Z", "Z");
+	return `${timestamp.toISOString().slice(0, 19)}Z`;
 }
 
 /**
