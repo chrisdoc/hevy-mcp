@@ -935,11 +935,22 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		const fetchMock = vi.fn(() => Promise.resolve(Response.json(metadata)));
 		vi.stubGlobal("fetch", fetchMock);
 		const { handler, env } = createHandlerWithEnv();
+		const verifier = base64UrlEncode(
+			crypto.getRandomValues(new Uint8Array(32)),
+		);
+		const challenge = base64UrlEncode(
+			new Uint8Array(
+				await crypto.subtle.digest(
+					"SHA-256",
+					new TextEncoder().encode(verifier),
+				),
+			),
+		);
 		const authorizeUrl = new URL("https://worker.example/authorize");
 		authorizeUrl.searchParams.set("response_type", "code");
 		authorizeUrl.searchParams.set("client_id", clientId);
 		authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-		authorizeUrl.searchParams.set("code_challenge", "claude-s256-challenge");
+		authorizeUrl.searchParams.set("code_challenge", challenge);
 		authorizeUrl.searchParams.set("code_challenge_method", "S256");
 		authorizeUrl.searchParams.set("state", "claude-state");
 		authorizeUrl.searchParams.set("scope", "mcp");
@@ -947,12 +958,21 @@ describe("OAuth-enabled Worker fetch handler", () => {
 
 		const result = await handler(new Request(authorizeUrl), env, {});
 
-		// This is the expected behavior. With workers-oauth-provider 0.10.0,
-		// the optional JWT grant is rejected before the consent page renders,
-		// so this test reproduces issue #942 until the provider is upgraded.
+		// Regression coverage for issue #942: provider 0.10.0 rejected
+		// Claude's optional JWT grant; 0.10.2 negotiates it away and renders
+		// the consent page.
 		expect(result.status).toBe(200);
 		expect(await result.text()).toContain("Claude");
 		expect(fetchMock).toHaveBeenCalled();
+		for (const [input] of fetchMock.mock.calls) {
+			const requestedUrl =
+				input instanceof Request
+					? input.url
+					: input instanceof URL
+						? input.href
+						: input;
+			expect(requestedUrl).toBe(clientId);
+		}
 	});
 
 	it("completes the CIMD OAuth flow and serves MCP requests", async () => {
