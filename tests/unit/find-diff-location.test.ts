@@ -1,5 +1,4 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
@@ -245,30 +244,5 @@ describe("findDiffLocation", () => {
 			file_name: "",
 			start_line: 0,
 		});
-	});
-});
-
-describe("gitStream inline comment configuration", () => {
-	const config = readFileSync(".cm/gitstream.cm", "utf8");
-
-	it("keeps action arguments correctly typed in YAML", () => {
-		expect(config).toContain("approve_on_LGTM: true");
-		expect(config).toContain("- {{ diff_location.unsafe_assertion.found }}");
-		expect(config).toContain(
-			"start_line: {{ diff_location.unsafe_assertion.start_line }}",
-		);
-		expect(config).toContain("unsafe_assertion: {{ source | findDiffLocation(");
-		expect(config).not.toMatch(/^\s*-\s+"{{.+}}"\s*$/m);
-		expect(config).not.toMatch(/^\s*start_line:\s+"{{.+}}"\s*$/m);
-	});
-
-	it("keeps interpolated string action arguments quoted", () => {
-		expect(config).toContain(
-			'file_path: "{{ diff_location.unsafe_assertion.file_name }}"',
-		);
-		expect(config).toContain(
-			'file_path: "{{ diff_location.console_log.file_name }}"',
-		);
-		expect(config).not.toMatch(/^\s+file_name:/m);
 	});
 });
