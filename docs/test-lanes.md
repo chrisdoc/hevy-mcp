@@ -78,10 +78,10 @@ npm run test:pr
 npm run test:performance
 ```
 
-The generated aggregate table identifies the current Nx targets and direct
-members. Nx owns local aggregate ordering and dependencies; contributor-facing
-`npm run` aliases remain compatibility entrypoints, while internal-only lanes
-use their generated Nx commands directly. Inspect the current target graph with:
+The aggregate table identifies the current Nx targets and direct members. Nx
+owns local aggregate ordering and dependencies; contributor-facing `npm run`
+aliases remain compatibility entrypoints, while internal-only lanes use their
+Nx commands directly. Inspect the current target graph with:
 
 ```sh
 npx nx show project repository --json

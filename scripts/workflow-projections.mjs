@@ -292,6 +292,15 @@ export function parseWorkflowLaneExecutions(
 			}
 		});
 		if (!hasMappedCommand) continue;
+		if (rejectContinueOnError) {
+			const continueOnError = job["continue-on-error"];
+			assert(
+				continueOnError === undefined ||
+					continueOnError === false ||
+					continueOnError === "false",
+				`Workflow job ${jobId} must not use continue-on-error for release lanes`,
+			);
+		}
 
 		const runtimeState = {
 			byMatrixValue: null,

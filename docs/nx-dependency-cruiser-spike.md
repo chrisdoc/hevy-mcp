@@ -11,7 +11,7 @@ they carry credentials or release policy.
 
 ## Run the proof of concept
 
-Nx discovers the five npm workspaces from `packages/*` and the root
+Nx discovers the six npm workspaces from `packages/*` and the root
 `repository` project from `project.json`:
 
 ```sh
@@ -37,9 +37,9 @@ npx nx affected --target=control-plane --base=origin/main --head=HEAD
 ```
 
 The aggregate target and member identities come from the canonical validation
-lane model. The generated contributor tables in
-[`docs/test-lanes.md`](./test-lanes.md) show the current lane and aggregate
-membership, while `project.json` is the source for target dependencies. Do not
+lane model. The contributor tables in [`docs/test-lanes.md`](./test-lanes.md)
+show the current lane and aggregate membership, while `project.json` is the
+source for target dependencies. Do not
 copy a target or member count into prose: derive the current graph with
 `npx nx show project repository --json` (or `npx nx graph`). Contributor-facing
 root aliases remain supported compatibility entrypoints; internal-only lanes
@@ -85,12 +85,12 @@ Worker and Docker candidate provenance is absent.
 
 - The canonical `repository/` models own workspace identities, publishability,
   release policy, artifact provenance, and validation lanes. Nx projects and
-  targets consume those facts for local graph execution; the generated lane
-  documentation is a projection, not another policy registry.
+  targets consume those facts for local graph execution; the contributor lane
+  documentation mirrors the model, not another policy registry.
 - Nx target metadata and its task graph now own local task orchestration. The
   build/test, nightly, release-local, and token-cost workflows invoke Nx
-  targets; no workflow trigger, matrix, permission, secret, or deployment
-  condition was changed.
+  targets; workflow triggers, matrices, permissions, secrets, and deployment
+  conditions remain explicit, while the release Worker canary is now blocking.
 - dependency-cruiser supplies a library-backed module graph and declarative
   package/runtime restrictions instead of another custom graph walker. The
   compiler-backed boundary checker remains authoritative.
@@ -128,8 +128,9 @@ count as if it were a live measurement.
 - Credentials, live-network gates, release selectors, Docker actions, and exact
   GitHub matrix/job/step conditions remain workflow-owned. Only local command
   invocation moved to Nx.
-- The token-cost job intentionally keeps its base-revision fallback on the npm
-  alias because that checkout may predate Nx; the current revision uses Nx.
+- The token-cost job measures the current revision through Nx, enforces only
+  the total catalog budget, and publishes the current JSON report; it does not
+  maintain a historical comparison baseline.
 - Historical before/after execution evidence is not inferable from Nx. Any
   retained number must be labeled immutable before-adoption evidence; current
   counts are derived from the canonical model and project graph.

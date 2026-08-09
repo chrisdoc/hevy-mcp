@@ -16,8 +16,8 @@ const lanes = {
 	},
 };
 
-function workflow(step: string): string {
-	return `jobs:\n  release:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24.x"\n      - name: Validate lane\n${step}`;
+function workflow(step: string, jobOptions = ""): string {
+	return `jobs:\n  release:\n${jobOptions}    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24.x"\n      - name: Validate lane\n${step}`;
 }
 
 describe("release workflow projections", () => {
@@ -41,19 +41,26 @@ describe("release workflow projections", () => {
 		]);
 	});
 
-	it("rejects a release lane that can be ignored", () => {
-		expect(() =>
-			validateWorkflowAggregate(
-				workflow(
-					"        continue-on-error: true\n        run: npx nx run repository:test:worker-http:live\n",
+	it.each([
+		["step", "", "        continue-on-error: true\n"],
+		["job", "    continue-on-error: true\n", ""],
+	])(
+		"rejects a release lane that can be ignored at the %s level",
+		(_level, jobOptions, stepOptions) => {
+			expect(() =>
+				validateWorkflowAggregate(
+					workflow(
+						`${stepOptions}        run: npx nx run repository:test:worker-http:live\n`,
+						jobOptions,
+					),
+					{
+						lanes,
+						aggregate: "release",
+						expectedJobs: "release",
+						rejectContinueOnError: true,
+					},
 				),
-				{
-					lanes,
-					aggregate: "release",
-					expectedJobs: "release",
-					rejectContinueOnError: true,
-				},
-			),
-		).toThrow("must not use continue-on-error");
-	});
+			).toThrow("must not use continue-on-error");
+		},
+	);
 });
