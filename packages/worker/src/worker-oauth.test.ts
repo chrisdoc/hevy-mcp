@@ -917,6 +917,44 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(rejected.status).toBe(401);
 	});
 
+	it("accepts Claude's published CIMD metadata with an optional JWT grant", async () => {
+		const clientId = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+		const metadata = {
+			client_id: clientId,
+			client_name: "Claude",
+			client_uri: "https://claude.ai",
+			redirect_uris: [redirectUri],
+			grant_types: [
+				"authorization_code",
+				"refresh_token",
+				"urn:ietf:params:oauth:grant-type:jwt-bearer",
+			],
+			response_types: ["code"],
+			token_endpoint_auth_method: "none",
+		};
+		const fetchMock = vi.fn(() => Promise.resolve(Response.json(metadata)));
+		vi.stubGlobal("fetch", fetchMock);
+		const { handler, env } = createHandlerWithEnv();
+		const authorizeUrl = new URL("https://worker.example/authorize");
+		authorizeUrl.searchParams.set("response_type", "code");
+		authorizeUrl.searchParams.set("client_id", clientId);
+		authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+		authorizeUrl.searchParams.set("code_challenge", "claude-s256-challenge");
+		authorizeUrl.searchParams.set("code_challenge_method", "S256");
+		authorizeUrl.searchParams.set("state", "claude-state");
+		authorizeUrl.searchParams.set("scope", "mcp");
+		authorizeUrl.searchParams.set("resource", "https://worker.example/mcp");
+
+		const result = await handler(new Request(authorizeUrl), env, {});
+
+		// This is the expected behavior. With workers-oauth-provider 0.10.0,
+		// the optional JWT grant is rejected before the consent page renders,
+		// so this test reproduces issue #942 until the provider is upgraded.
+		expect(result.status).toBe(200);
+		expect(await result.text()).toContain("Claude");
+		expect(fetchMock).toHaveBeenCalled();
+	});
+
 	it("completes the CIMD OAuth flow and serves MCP requests", async () => {
 		const clientId = "https://chatgpt.com/oauth/hevy-mcp/client.json";
 		const cimdRedirectUri = "https://chatgpt.com/connector/oauth/test-callback";
