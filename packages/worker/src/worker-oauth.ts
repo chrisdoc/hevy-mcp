@@ -75,12 +75,15 @@ export function hasOAuthAccessTokenShape(token: string): boolean {
 
 function isKvNamespaceLike(value: unknown): boolean {
 	if (typeof value !== "object" || value === null) return false;
-	const kv = value as Record<string, unknown>;
 	return (
-		typeof kv.get === "function" &&
-		typeof kv.put === "function" &&
-		typeof kv.delete === "function" &&
-		typeof kv.list === "function"
+		"get" in value &&
+		typeof value.get === "function" &&
+		"put" in value &&
+		typeof value.put === "function" &&
+		"delete" in value &&
+		typeof value.delete === "function" &&
+		"list" in value &&
+		typeof value.list === "function"
 	);
 }
 

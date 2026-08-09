@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
+	type JSONObject,
 	StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, describe, it } from "vitest";
@@ -55,7 +56,7 @@ function assertCondition(
 function assertRecord(
 	value: unknown,
 	schemaPath: string,
-): asserts value is Record<string, unknown> {
+): asserts value is JSONObject {
 	assertCondition(value !== null && typeof value === "object", schemaPath);
 }
 
@@ -240,8 +241,8 @@ async function startWrangler(): Promise<void> {
 async function callReadTool(
 	client: Client,
 	name: (typeof INVOKED_READ_TOOLS)[number],
-	arguments_: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
+	arguments_: JSONObject,
+): Promise<JSONObject> {
 	let result;
 	try {
 		result = await client.callTool(
@@ -261,14 +262,14 @@ async function callReadTool(
 function assertBoundedList(
 	value: unknown,
 	schemaPath: string,
-): asserts value is Record<string, unknown>[] {
+): asserts value is JSONObject[] {
 	assertCondition(Array.isArray(value), schemaPath);
 	assertCondition(value.length <= 1, `${schemaPath}/length`);
 	if (value[0] !== undefined) assertRecord(value[0], `${schemaPath}/0`);
 }
 
 function optionalStringId(
-	value: Record<string, unknown>[] | undefined,
+	value: JSONObject[] | undefined,
 	schemaPath: string,
 ): string | undefined {
 	if (!value?.[0]) return undefined;

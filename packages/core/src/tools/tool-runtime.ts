@@ -75,9 +75,10 @@ const structuralArgumentKeys = Object.keys(
 
 function createSafeInvocation(
 	name: string,
-	args: Record<string, unknown>,
+	args: object,
 	taxonomy: ToolTelemetryMetadata | undefined,
 ) {
+	const argumentValues = new Map<string, unknown>(Object.entries(args));
 	const argumentKeys = structuralArgumentKeys.filter((key) => key in args);
 	const argumentPresence: Record<string, true> = {};
 	const numericArgumentBuckets: Record<
@@ -87,7 +88,7 @@ function createSafeInvocation(
 	const booleanArguments: Record<string, boolean> = {};
 
 	for (const key of argumentKeys) {
-		const value = args[key];
+		const value = argumentValues.get(key);
 		if (
 			key in PRESENCE_ARGUMENT_KEYS &&
 			value !== null &&
@@ -114,11 +115,12 @@ function createSafeInvocation(
 	};
 }
 
-export type ToolHandler<
-	TParams extends Record<string, unknown> = Record<string, unknown>,
-> = (args: TParams, context?: ToolExecutionContext) => Promise<McpToolResponse>;
+export type ToolHandler<TParams extends object = object> = (
+	args: TParams,
+	context?: ToolExecutionContext,
+) => Promise<McpToolResponse>;
 
-export type ToolHandlerFactory = <TParams extends Record<string, unknown>>(
+export type ToolHandlerFactory = <TParams extends object>(
 	fn: ToolHandler<TParams>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
@@ -154,7 +156,7 @@ export interface CreateToolRuntimeOptions {
 }
 
 export const defaultHandlerFactory: ToolHandlerFactory = <
-	TParams extends Record<string, unknown>,
+	TParams extends object,
 >(
 	fn: ToolHandler<TParams>,
 	context: string,
@@ -177,9 +179,7 @@ export function createToolRuntime({
 	const resolvedOperations =
 		operations ?? (rawClient ? createOperations(rawClient) : null);
 	const effectiveExecutionDeadline = executionDeadline ?? execution?.deadline;
-	const createObservedHandler: ToolHandlerFactory = <
-		TParams extends Record<string, unknown>,
-	>(
+	const createObservedHandler: ToolHandlerFactory = <TParams extends object>(
 		fn: ToolHandler<TParams>,
 		context: string,
 		metadata?: ToolTelemetryMetadata,

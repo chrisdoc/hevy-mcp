@@ -125,7 +125,7 @@ export function redactToolArgs(args: unknown): RedactedValue {
 /**
  * Write a single bounded structured debug record to stderr without throwing.
  */
-export function debugLog(event: string, data: Record<string, unknown>): void {
+export function debugLog(event: string, data: object): void {
 	if (!isDebugEnabled()) {
 		return;
 	}

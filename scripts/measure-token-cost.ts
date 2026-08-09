@@ -337,7 +337,7 @@ function hasComponentTokenTotals(
 	value: unknown,
 ): value is ComponentTokenTotals {
 	if (!value || typeof value !== "object") return false;
-	const candidate = value as Record<string, unknown>;
+	const candidate = value as Partial<ComponentTokenTotals>;
 	return TOOL_COMPONENTS.every(
 		(component) => typeof candidate[component] === "number",
 	);

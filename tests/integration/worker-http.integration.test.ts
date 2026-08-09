@@ -5,6 +5,7 @@ import { networkInterfaces } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
+	type JSONObject,
 	StreamableHTTPClientTransport,
 	LATEST_PROTOCOL_VERSION,
 } from "@modelcontextprotocol/client";
@@ -143,21 +144,18 @@ function writeJson(
 	response.end(JSON.stringify(body));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is JSONObject {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function requireRecord(value: unknown, label: string): Record<string, unknown> {
+function requireRecord(value: unknown, label: string): JSONObject {
 	if (!isRecord(value)) {
 		throw new Error(`Expected ${label} to be an object`);
 	}
 	return value;
 }
 
-function requireArrayField(
-	record: Record<string, unknown>,
-	field: string,
-): unknown[] {
+function requireArrayField(record: JSONObject, field: string): unknown[] {
 	const value = record[field];
 	if (!Array.isArray(value)) {
 		throw new Error(`Expected ${field} to be an array`);
@@ -168,7 +166,7 @@ function requireArrayField(
 function requireToolListPayload(
 	result: unknown,
 	field: string,
-): { firstItem: Record<string, unknown>; items: unknown[]; text: string } {
+): { firstItem: JSONObject; items: unknown[]; text: string } {
 	const resultRecord = requireRecord(result, "MCP tool response");
 	const content = requireArrayField(resultRecord, "content");
 	const firstContent = requireRecord(content[0], "content[0]");
@@ -273,7 +271,7 @@ function mcpHeaders(apiKey = VALID_API_KEY): Headers {
 	});
 }
 
-function initializeRequest(id = 1): Record<string, unknown> {
+function initializeRequest(id = 1): JSONObject {
 	return {
 		jsonrpc: "2.0",
 		id,

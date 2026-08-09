@@ -12,7 +12,7 @@ type PromptResult = {
 	}>;
 };
 
-function withPromptObservation<TArgs extends Record<string, unknown>>(
+function withPromptObservation<TArgs extends object>(
 	name: string,
 	observer: ToolObserver | undefined,
 	handler: (args: TArgs) => Promise<PromptResult> | PromptResult,
@@ -21,14 +21,19 @@ function withPromptObservation<TArgs extends Record<string, unknown>>(
 		const startedAt = Date.now();
 		let scope;
 		try {
+			const argumentKeys = Object.keys(args).filter(
+				(key): key is "routine_id" => key === "routine_id",
+			);
+			const routineId =
+				"routine_id" in args && typeof args.routine_id === "string"
+					? args.routine_id
+					: undefined;
 			scope = memoizeObservationScope(
 				observer?.start({
 					name,
 					kind: "prompt",
-					argumentKeys: Object.keys(args).filter(
-						(key) => key === "routine_id",
-					) as "routine_id"[],
-					argumentPresence: args.routine_id ? { routine_id: true } : {},
+					argumentKeys,
+					argumentPresence: routineId ? { routine_id: true } : {},
 					argumentKeyCountBucket: bucketCount(Object.keys(args).length),
 				}),
 			);

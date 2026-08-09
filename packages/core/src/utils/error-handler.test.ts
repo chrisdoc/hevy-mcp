@@ -194,7 +194,7 @@ describe("createErrorResponse", () => {
 	});
 
 	it("does not expose non-Error thrown values in client responses", () => {
-		const cyclic: Record<string, unknown> = {};
+		const cyclic: { self?: object } = {};
 		cyclic.self = cyclic;
 		const cases: unknown[] = [
 			"Bearer secret-string",

@@ -22,6 +22,9 @@ export enum ErrorType {
 	UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
+type HeaderValue = string | number | string[] | undefined;
+type HeaderMap = { [key: string]: HeaderValue };
+
 export type SafeErrorCategory =
 	| "AggregateError"
 	| "DOMException"
@@ -165,7 +168,7 @@ function getHeaderValue(headers: unknown, key: string): string | undefined {
 			return normalizeHeaderValue(value);
 		}
 
-		const headerRecord = headers as Record<string, unknown>;
+		const headerRecord = headers as HeaderMap;
 		return normalizeHeaderValue(
 			headerRecord[key] ??
 				headerRecord[key.toLowerCase()] ??

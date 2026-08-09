@@ -31,10 +31,10 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const handler = match.at(-1) as (args: Record<string, unknown>) => Promise<{
+	const handler = match.at(-1) as (args: object) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
-		structuredContent?: Record<string, unknown>;
+		structuredContent?: object;
 	}>;
 	const config = match[1] as { outputSchema?: unknown } | undefined;
 	return { outputSchema: config?.outputSchema, handler };

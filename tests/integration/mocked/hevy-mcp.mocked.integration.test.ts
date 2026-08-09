@@ -1,5 +1,5 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client } from "@modelcontextprotocol/client";
+import { Client, type JSONObject } from "@modelcontextprotocol/client";
 import nock from "nock";
 import {
 	afterAll,
@@ -28,11 +28,7 @@ function getApiScope() {
 	});
 }
 
-async function callTool(
-	client: Client,
-	name: string,
-	arguments_: Record<string, unknown>,
-) {
+async function callTool(client: Client, name: string, arguments_: JSONObject) {
 	const result = await client.request({
 		method: "tools/call",
 		params: {
@@ -232,7 +228,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 		const structuredContent = result.structuredContent as {
 			workout: {
-				exercises: Array<Record<string, unknown>>;
+				exercises: Array<object>;
 			};
 		};
 
@@ -461,7 +457,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		const structuredContent = result.structuredContent as {
 			routine: {
 				folder_id?: number;
-				exercises: Array<Record<string, unknown>>;
+				exercises: Array<object>;
 			};
 		};
 

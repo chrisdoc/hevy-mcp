@@ -470,7 +470,7 @@ const initializeBody = {
 	},
 };
 
-async function parseMcpResponse(response: Response) {
+async function parseMcpResponse(response: Response): Promise<unknown> {
 	const text = await response.text();
 	if (response.headers.get("content-type")?.includes("text/event-stream")) {
 		const data = text
@@ -478,9 +478,9 @@ async function parseMcpResponse(response: Response) {
 			.find((line) => line.startsWith("data: "))
 			?.slice(6);
 		if (!data) throw new Error(`Missing SSE data: ${text}`);
-		return JSON.parse(data) as Record<string, unknown>;
+		return JSON.parse(data);
 	}
-	return JSON.parse(text) as Record<string, unknown>;
+	return JSON.parse(text);
 }
 
 describe("OAuth-enabled Worker fetch handler", () => {
@@ -508,17 +508,14 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			{},
 		);
 		expect(authServer.status).toBe(200);
-		const metadata = (await authServer.json()) as Record<string, unknown>;
-		expect(metadata.authorization_endpoint).toBe(
-			"https://worker.example/authorize",
-		);
-		expect(metadata.token_endpoint).toBe("https://worker.example/token");
-		expect(metadata.registration_endpoint).toBe(
-			"https://worker.example/register",
-		);
-		expect(metadata.scopes_supported).toEqual(["mcp"]);
-		expect(metadata.client_id_metadata_document_supported).toBe(true);
-		expect(metadata.code_challenge_methods_supported).toEqual(["S256"]);
+		expect(await authServer.json()).toMatchObject({
+			authorization_endpoint: "https://worker.example/authorize",
+			token_endpoint: "https://worker.example/token",
+			registration_endpoint: "https://worker.example/register",
+			scopes_supported: ["mcp"],
+			client_id_metadata_document_supported: true,
+			code_challenge_methods_supported: ["S256"],
+		});
 
 		const resource = await handler(
 			new Request(
@@ -528,8 +525,9 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			{},
 		);
 		expect(resource.status).toBe(200);
-		const resourceMetadata = (await resource.json()) as Record<string, unknown>;
-		expect(resourceMetadata.resource).toBe("https://worker.example/mcp");
+		expect(await resource.json()).toMatchObject({
+			resource: "https://worker.example/mcp",
+		});
 	});
 
 	it("keeps discovery paths returning 404 without OAUTH_KV", async () => {

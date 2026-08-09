@@ -7,6 +7,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
+type PackageJson = {
+	files?: string[];
+	name?: string;
+};
+type NamedInputs = Record<string, string[]>;
 type ControlPlaneRuleSet = IFlattenedRuleSet & {
 	forbidden: NonNullable<IFlattenedRuleSet["forbidden"]>;
 };
@@ -15,8 +20,8 @@ const dependencyCruiserConfig = require(
 ) as ControlPlaneRuleSet;
 
 const metadata = require(resolve(root, "scripts/nx-project-metadata.cjs")) as {
-	buildOutputs(packageJson: Record<string, unknown>): string[];
-	buildTarget(packageJson: Record<string, unknown>): {
+	buildOutputs(packageJson: PackageJson): string[];
+	buildTarget(packageJson: PackageJson): {
 		cache?: boolean;
 		inputs?: string[];
 		outputs: string[];
@@ -506,7 +511,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 	it("keeps cached targets on explicit narrow named inputs", async () => {
 		type TaskInput = string | { env: string };
 		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
-			namedInputs: Record<string, unknown>;
+			namedInputs: NamedInputs;
 			targetDefaults: Record<
 				string,
 				| { cache?: boolean; inputs?: TaskInput[] }
@@ -649,7 +654,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 							resolve(root, "packages", directory, "package.json"),
 							"utf8",
 						),
-					) as Record<string, unknown>,
+					) as PackageJson,
 			),
 		);
 		const byName = new Map(
@@ -684,7 +689,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 
 	it("keeps package task inputs local and repository inputs broad", async () => {
 		const nx = JSON.parse(await readFile(resolve(root, "nx.json"), "utf8")) as {
-			namedInputs: Record<string, unknown>;
+			namedInputs: NamedInputs;
 		};
 		expect(nx.namedInputs.projectSources).toEqual(["{projectRoot}/src/**/*"]);
 		expect(nx.namedInputs.projectTypeCheckInputs).toEqual([
@@ -715,7 +720,7 @@ describe("Nx and dependency-cruiser control-plane migration", () => {
 				string,
 				{
 					cache?: boolean;
-					options?: Record<string, unknown>;
+					options?: object;
 					outputs?: string[];
 					parallelism?: boolean;
 				}

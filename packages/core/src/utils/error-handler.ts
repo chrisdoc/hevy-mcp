@@ -170,21 +170,15 @@ export function createErrorResponse(
  * @param context - Context information for error messages
  * @returns A function that catches errors and returns standardized error responses
  */
-export function withErrorHandling<TParams extends Record<string, unknown>>(
+export function withErrorHandling<TParams extends object>(
 	fn: (
 		args: TParams,
 		context?: ToolExecutionContext,
 	) => Promise<McpToolResponse>,
 	context: string,
 	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
-): (
-	args: Record<string, unknown>,
-	context?: ToolExecutionContext,
-) => Promise<McpToolResponse> {
-	return async (
-		rawArgs: Record<string, unknown>,
-		requestContext?: ToolExecutionContext,
-	) => {
+): (args: object, context?: ToolExecutionContext) => Promise<McpToolResponse> {
+	return async (rawArgs: object, requestContext?: ToolExecutionContext) => {
 		const normalizedArgs = rawArgs ?? {};
 		try {
 			return await fn(normalizedArgs as TParams, requestContext);

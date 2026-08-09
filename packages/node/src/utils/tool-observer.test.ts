@@ -169,14 +169,12 @@ describe("createNodeToolObserver", () => {
 				is_error: "false",
 			}),
 		);
-		const durationAttributes = testDoubles.toolDurationRecord.mock
-			.calls[0]?.[1] as Record<string, unknown>;
-		expect(durationAttributes).not.toHaveProperty(
-			"mcp.tool.result.content_count_bucket",
-		);
-		expect(durationAttributes).not.toHaveProperty(
-			"mcp.tool.result.item_count_bucket",
-		);
+		expect(
+			testDoubles.toolDurationRecord.mock.calls[0]?.[1],
+		).not.toHaveProperty("mcp.tool.result.content_count_bucket");
+		expect(
+			testDoubles.toolDurationRecord.mock.calls[0]?.[1],
+		).not.toHaveProperty("mcp.tool.result.item_count_bucket");
 		expect(testDoubles.recordMcpToolFailure).not.toHaveBeenCalled();
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});

@@ -1,5 +1,5 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client } from "@modelcontextprotocol/client";
+import { Client, type JSONObject } from "@modelcontextprotocol/client";
 import nock from "nock";
 import {
 	afterAll,
@@ -27,11 +27,7 @@ function getApiScope() {
 	});
 }
 
-async function callTool(
-	client: Client,
-	name: string,
-	arguments_: Record<string, unknown>,
-) {
+async function callTool(client: Client, name: string, arguments_: JSONObject) {
 	const result = await client.request({
 		method: "tools/call",
 		params: {

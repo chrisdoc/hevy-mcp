@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import type { Readable } from "node:stream";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
-import { Client } from "@modelcontextprotocol/client";
+import { Client, type JSONObject } from "@modelcontextprotocol/client";
 import {
 	FIXTURE_RESULT_PREFIX,
 	parseFixtureResult,
@@ -170,7 +170,7 @@ export async function createPerformanceHarness(
 export async function callPerformanceTool(
 	client: Client,
 	name: string,
-	arguments_: Record<string, unknown>,
+	arguments_: JSONObject,
 ) {
 	const result = await client.request({
 		method: "tools/call",

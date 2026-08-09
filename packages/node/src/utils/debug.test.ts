@@ -49,7 +49,7 @@ describe("debug diagnostics", () => {
 	});
 
 	it("redacts all input scalars while preserving bounded structure", () => {
-		const args: Record<string, unknown> = {
+		const args = {
 			page: 2,
 			includeCustom: true,
 			weightKg: 81.5,
@@ -73,9 +73,12 @@ describe("debug diagnostics", () => {
 				sets: 4,
 			},
 		};
-		args.circular = args;
+		const argsWithCircular = Object.assign(args, {
+			circular: undefined as object | undefined,
+		});
+		argsWithCircular.circular = argsWithCircular;
 
-		const redacted = redactToolArgs(args);
+		const redacted = redactToolArgs(argsWithCircular);
 		const serialized = JSON.stringify(redacted);
 
 		expect(redacted).toMatchObject({

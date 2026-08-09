@@ -1,6 +1,9 @@
+import type { JSONSchema } from "zod/v4/core";
 import { z } from "zod";
 
-type JsonSchema = Record<string, unknown>;
+type JsonSchema = Omit<JSONSchema.JSONSchema, "type"> & {
+	type?: JSONSchema.JSONSchema["type"] | string[];
+};
 
 function isRecord(value: unknown): value is JsonSchema {
 	return value !== null && typeof value === "object" && !Array.isArray(value);

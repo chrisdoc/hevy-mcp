@@ -89,7 +89,7 @@ function getToolHandler(tool: ReturnType<typeof vi.fn>, name: string) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
 
-	return match.at(-1) as (args: Record<string, unknown>) => Promise<{
+	return match.at(-1) as (args: object) => Promise<{
 		content: Array<{ type: string; text: string }>;
 	}>;
 }
