@@ -35,7 +35,6 @@
 	],
 	"type": "module",
 	"scripts": {
-		"prepare": "node scripts/install-git-hooks.mjs",
 		"inspect": "npm run build && npx @modelcontextprotocol/inspector@latest node --env-file .env packages/node/dist/cli.mjs",
 		"measure:tokens": "tsx scripts/measure-token-cost.ts",
 		"test": "npm run build && node --env-file-if-exists=.env node_modules/vitest/vitest.mjs --run",

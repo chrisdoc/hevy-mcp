@@ -23,13 +23,14 @@ Both deployments run the **same MCP tool contract**, which is the central archit
 ```bash
 git clone https://github.com/chrisdoc/hevy-mcp.git
 cd hevy-mcp
-nvm use
-npm install
-npm run build
+mise install
+mise exec -- node --version
+mise exec -- npm install
+mise exec -- npm run build
 ```
 
 > [!TIP]
-> `nvm use` switches to the exact Node.js version in `.nvmrc` (currently Node 24). CI tests against this version — using it locally keeps your environment consistent. [[3]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+> `mise install` installs the exact Node.js and npm versions from `mise.toml` (currently Node 24 and npm 12). CI tests against Node 24 and 26. [[3]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ### 2. Verify everything works
 
@@ -42,7 +43,7 @@ You should see all unit tests pass in about 1–2 seconds. [[2]](https://app.dos
 > [!NOTE]
 > **Integration tests require a Hevy API key** and will fail intentionally without one. `npm run test:unit` is fully deterministic and works without any credentials — it's your go-to command during development. If you need to run integration tests later, copy `.env.sample` to `.env` and add your `HEVY_API_KEY`. [[4]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
-### 3. (Optional) Set up Git hooks
+### 3. Set up Git hooks
 
 Git hooks are managed by [hk](https://github.com/nicholasgasior/hk) via [mise](https://mise.jdx.dev/). Run this once per clone to enable pre-commit, commit-msg, and pre-push hooks:
 
@@ -454,14 +455,14 @@ This is **expected in sandboxed environments**. The command fetches the live Hev
 
 ### "Git hook failures on commit or push"
 
-If your Git hooks aren't running or are failing with unexpected errors, re-install them:
+If your Git hooks aren't running or are failing with unexpected errors, make sure mise is installed and re-install the hk hooks:
 
 ```bash
 mise install
 mise exec hk -- hk install --mise
 ```
 
-This sets up the hk-managed hooks (formatting, unit tests, commit message linting, and pre-push validation) without requiring mise to be fully activated in your shell. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+This installs the hk-managed hooks for formatting, unit tests, commit message linting, and pre-push validation without requiring mise to be activated in your shell. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ---
 

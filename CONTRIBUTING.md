@@ -7,6 +7,7 @@ configuration remain in [README.md](./README.md).
 ## Prerequisites
 
 - Git
+- mise
 - npm
 - Node.js
 
@@ -14,18 +15,17 @@ The repository currently has a deliberate Node policy difference:
 
 - `package.json` declares the published package compatible with Node.js 20 or
   newer.
-- Repository development guidance uses the exact version in `.nvmrc`, which is
-  Node.js 24 at the current base.
+- Repository development guidance uses the versions pinned in `mise.toml`,
+  currently Node.js 24 and npm 12.
 - CI tests Node.js 24 and 26 at the current base, as configured in
   `.github/workflows/build-and-test.yml`.
 
-Use `.nvmrc` for development unless a change is specifically testing the wider
-published compatibility range:
+Use mise for development:
 
 ```bash
-nvm use
-node --version
-npm install
+mise install
+mise exec -- node --version
+mise exec -- npm install
 ```
 
 Do not silently change the published Node policy as part of unrelated work.
@@ -229,10 +229,9 @@ Git hook execution.
 Git hooks are managed by hk, replacing the former Lefthook setup. The
 `hk.pkl` configuration runs formatting and unit tests on pre-commit, commit
 message linting on commit-msg, and changeset plus PR validation checks on
-pre-push. hk is managed by mise in `mise.toml`; after installing mise, run
-`mise install` and `mise exec hk -- hk install --mise` once per clone to enable
-the repository's Git hooks without requiring mise activation. CI runs the npm
-validation scripts directly.
+pre-push. hk is installed through mise. After `mise install`, enable the
+repository's hooks once per clone with `mise exec hk -- hk install --mise`.
+CI runs the npm validation scripts directly.
 
 ## Generated API client
 
