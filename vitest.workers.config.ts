@@ -10,6 +10,9 @@ export default defineConfig({
 		}),
 	],
 	test: {
+		// Workerd cold starts can exceed Vitest's five-second default on shared
+		// runners; keep the test lane reliable before caching its result.
+		testTimeout: 15_000,
 		include: ["tests/cloudflare/**/*.test.ts"],
 	},
 });

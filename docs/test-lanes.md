@@ -48,6 +48,16 @@ commands below instead of copying raw selectors into automation.
 | `release`         | npx nx run repository:release:validate | `build`, `server-manifest`, `release-unit`, `worker`, `pack`, `cli`, `pack-cli`, `package-publint`, `release-integration`, `nightly`, `worker-http-live`                                                                                                                                                 | 11    | mapped   |
 | `pre-push`        | npx nx run repository:pre-push         | `types`, `changeset-status`, `pull-request`                                                                                                                                                                                                                                                              | 3     | mapped   |
 
+## Nx cache policy
+
+Nx remote caching is enabled for deterministic checks, client generation, and
+the Workerd test lane when their named inputs include the source files, test
+files, and runtime configuration they consume. The live Hevy, release
+integration, nightly, live Worker, Wrangler-backed HTTP Worker, packaging, and
+publish-oriented lanes stay uncached so a cache hit cannot hide an
+external-service or environment failure.
+Use `--skip-nx-cache` when a fresh execution of a cacheable lane is required.
+
 ## Lane ownership
 
 | Command                         | Current owner and purpose                                                                                     | Network and credentials                                                            |

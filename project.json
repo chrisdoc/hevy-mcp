@@ -6,16 +6,24 @@
 	"tags": ["runtime:neutral", "publishability:private", "role:control-plane"],
 	"targets": {
 		"check:control-plane": {
+			"cache": true,
 			"inputs": ["controlPlaneInputs"]
 		},
 		"check:generated": {
+			"cache": true,
 			"inputs": ["generatedClientInputs"]
 		},
+		"check:openapi": {
+			"cache": true,
+			"inputs": ["openapiCheckInputs"]
+		},
 		"check:boundaries": {
+			"cache": true,
 			"inputs": ["boundaryInputs", "controlPlaneInputs"]
 		},
 		"check:exports": {
 			"executor": "nx:run-commands",
+			"cache": true,
 			"options": {
 				"command": "node scripts/check-package-exports.mjs"
 			},
@@ -46,6 +54,7 @@
 			"inputs": ["validationInputs"]
 		},
 		"check:server-manifest": {
+			"cache": true,
 			"inputs": ["manifestInputs"]
 		},
 		"check:changeset": {
@@ -103,9 +112,9 @@
 			"outputs": ["{workspaceRoot}/test-results/stdio"]
 		},
 		"test:worker": {
-			"cache": false,
+			"cache": true,
 			"parallelism": false,
-			"inputs": ["validationInputs"]
+			"inputs": ["workerTests"]
 		},
 		"test:worker-http": {
 			"cache": false,
@@ -163,8 +172,9 @@
 			"inputs": ["repositoryNodeBuildInputs"]
 		},
 		"build:client": {
+			"cache": true,
 			"outputs": ["{workspaceRoot}/packages/hevy-client/src/generated"],
-			"inputs": ["openapiInputs"]
+			"inputs": ["clientGenerationInputs"]
 		},
 		"release:validate": {
 			"executor": "nx:noop",

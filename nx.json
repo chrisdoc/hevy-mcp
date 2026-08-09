@@ -193,6 +193,21 @@
 			"testScripts",
 			"packageManifestInputs",
 			"controlPlaneInputs"
+		],
+		"clientGenerationInputs": ["openapiInputs", "{workspaceRoot}/package.json"],
+		"openapiCheckInputs": [
+			"openapiInputs",
+			"controlPlaneModels",
+			"{workspaceRoot}/scripts/check-openapi-spec.js",
+			"{workspaceRoot}/scripts/openapi-spec.js",
+			"{workspaceRoot}/scripts/repository-control-plane.mjs",
+			"{workspaceRoot}/scripts/control-plane-models.mjs",
+			"{workspaceRoot}/scripts/control-plane-validation.mjs"
+		],
+		"workerTests": [
+			"validationInputs",
+			"{workspaceRoot}/tests/cloudflare/**/*",
+			"{workspaceRoot}/wrangler.test.jsonc"
 		]
 	},
 	"plugins": ["./scripts/nx-project-metadata.cjs"],
