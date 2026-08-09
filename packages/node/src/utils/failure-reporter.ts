@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import { isHevyHttpError } from "@hevy-mcp/hevy-client";
 import * as Sentry from "@sentry/node";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import type { ErrorEvent, EventHint } from "@sentry/node";
@@ -31,6 +32,7 @@ export interface NormalizedFailure {
 	readonly exceptionType: string;
 	readonly message?: string;
 	readonly stack?: string;
+	readonly responseError?: string;
 	readonly exception: {
 		readonly name: string;
 		readonly message?: string;
@@ -83,6 +85,8 @@ function removeHomePath(value: string): string {
 	return withConfiguredHome.replace(/\/(?:Users|home)\/[^/\s]+/g, "~");
 }
 
+const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+
 function removeControlCharacters(value: string): string {
 	let output = "";
 	let inEscapeSequence = false;
@@ -124,6 +128,7 @@ export function sanitizeDiagnosticText(
 			/\b(api[-_ ]?key|authorization|password|secret|token)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,
 			"$1=[REDACTED]",
 		)
+		.replace(EMAIL, "[EMAIL_REDACTED]")
 		.replace(/\bhttps?:\/\/[^\s)<>]+/gi, "[URL]");
 	return truncate(removeHomePath(withoutSecrets).trim(), maxLength);
 }
@@ -262,6 +267,10 @@ export function normalizeFailure(
 		DIAGNOSTIC_DETAILS_ENABLED && text.stack
 			? sanitizeDiagnosticText(text.stack, MAX_STACK_LENGTH)
 			: undefined;
+	const responseError =
+		DIAGNOSTIC_DETAILS_ENABLED && isHevyHttpError(error) && error.responseError
+			? sanitizeDiagnosticText(error.responseError, MAX_ATTRIBUTE_LENGTH)
+			: undefined;
 
 	attributes["exception.type"] = exceptionType;
 	addErrorAttributes(attributes, diagnostic, context.expected);
@@ -273,6 +282,7 @@ export function normalizeFailure(
 		exceptionType,
 		...(message ? { message } : {}),
 		...(stack ? { stack } : {}),
+		...(responseError ? { responseError } : {}),
 		exception: {
 			name: exceptionType,
 			...(message ? { message } : {}),
@@ -479,6 +489,9 @@ export function captureFailure(
 				scope.setContext("mcp", {
 					kind: context.kind,
 					...record.attributes,
+					...(record.responseError
+						? { "hevy.api.response_error": record.responseError }
+						: {}),
 				});
 				return Sentry.captureException(createSentryError(record));
 			});
@@ -491,6 +504,11 @@ export function captureFailure(
 		try {
 			if (!duplicate && !context.expected) {
 				span.recordException(record.exception);
+				if (record.responseError) {
+					span.addEvent("mcp.failure.detail", {
+						"hevy.api.response_error": record.responseError,
+					});
+				}
 			}
 			setSpanAttributes(span, record.attributes);
 			if (!context.expected) {

@@ -76,6 +76,9 @@ function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
 			...(errorAttributes.error_code
 				? { "error.code": errorAttributes.error_code }
 				: {}),
+			...(observation.error?.response_error
+				? { "hevy.api.response_error": observation.error.response_error }
+				: {}),
 		});
 	}
 	span.end();
@@ -143,6 +146,9 @@ export function createNodeHevyClientOptions(): HevyClientOptions {
 				status: observation.status || null,
 				retryCountBucket,
 				outcome: observation.outcome,
+				...(observation.error?.response_error
+					? { response_error: observation.error.response_error }
+					: {}),
 				...errorAttributes,
 			});
 		},

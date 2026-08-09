@@ -153,6 +153,44 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(eventText).not.toContain("observer-secret");
 		expect(onLog).toHaveBeenCalled();
 	});
+	it("exposes only bounded, sanitized allowlisted response diagnostics", async () => {
+		const observations: unknown[] = [];
+		const fetchMock = vi.fn().mockResolvedValue(
+			response(
+				{
+					message:
+						"Invalid email jane@example.com; Authorization: Bearer response-secret; see https://api.example.test/workouts/123",
+					token: "body-secret",
+				},
+				500,
+			),
+		);
+		const client = createHevyClient({
+			apiKey: "api-key-secret",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			onRequestComplete: (observation) => observations.push(observation),
+		});
+
+		let thrown: unknown;
+		try {
+			await client.getUserInfo();
+		} catch (error) {
+			thrown = error;
+		}
+
+		expect(thrown).toMatchObject({
+			responseError:
+				"Invalid email [EMAIL_REDACTED]; Authorization: [REDACTED]; see [URL_REDACTED]",
+		});
+		const observationText = JSON.stringify(observations);
+		expect(observationText).toContain("response_error");
+		expect(observationText).toContain("[EMAIL_REDACTED]");
+		expect(observationText).not.toContain("jane@example.com");
+		expect(observationText).not.toContain("response-secret");
+		expect(observationText).not.toContain("body-secret");
+	});
+
 	it("times out while consuming a response body", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
 		const client = createHevyClient({
