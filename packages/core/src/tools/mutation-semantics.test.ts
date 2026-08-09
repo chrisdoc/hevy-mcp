@@ -262,6 +262,23 @@ describe("mutation semantics", () => {
 		expect(payload).not.toHaveProperty("is_private");
 	});
 
+	it("normalizes ISO timestamp variants returned by Hevy", () => {
+		const payload = buildWorkoutUpdatePayload(
+			{
+				title: "Original",
+				start_time: "2026-07-29T08:00:00.123Z",
+				end_time: "2026-07-29T11:00:00+02:00",
+				exercises: [],
+			},
+			{ title: "Renamed" },
+		);
+
+		expect(payload).toMatchObject({
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+		});
+	});
+
 	it("replaces or removes exercises without requiring fetched exercises", () => {
 		const current = {
 			title: "Original",

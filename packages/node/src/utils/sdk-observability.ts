@@ -29,6 +29,12 @@ interface ToolResultLike {
 
 type FailureAttributes = Record<string, string | number | boolean>;
 type SdkFailureKind = "protocol" | "tool_call" | "validation";
+type SdkValidationKind = "input" | "output" | "tool_not_found" | "unknown";
+
+type SdkFailureOptions = {
+	expected?: boolean;
+	validationKind?: SdkValidationKind;
+};
 
 const sdkToolNameStorage = new AsyncLocalStorage<string>();
 const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
@@ -94,20 +100,29 @@ function markSdkToolFailure(
 	error: unknown,
 	toolName = sdkToolNameStorage.getStore() ?? "unknown",
 	kind: SdkFailureKind = "tool_call",
+	options: SdkFailureOptions = {},
 ): void {
 	const taxonomy = SDK_FAILURE_TAXONOMY[kind];
-	const attributes = createFailureAttributes(
-		error,
-		"sdk",
-		taxonomy.errorType,
-		taxonomy.errorCategory,
-	);
-	span.addEvent("mcp.tool.failure", {
+	const attributes: FailureAttributes = {
 		"mcp.tool.name": toolName,
-		...attributes,
-	});
+		...createFailureAttributes(
+			error,
+			"sdk",
+			taxonomy.errorType,
+			taxonomy.errorCategory,
+		),
+		...(options.validationKind
+			? { "mcp.validation.kind": options.validationKind }
+			: {}),
+	};
+	span.addEvent("mcp.tool.failure", attributes);
 	span.setAttribute("error.type", taxonomy.errorType);
-	captureFailure(error, { kind: "sdk", attributes, span });
+	captureFailure(error, {
+		kind: "sdk",
+		attributes,
+		span,
+		expected: options.expected,
+	});
 	span.setStatus({ code: SpanStatusCode.ERROR });
 }
 
@@ -166,6 +181,22 @@ function installProtocolErrorTracking(
 	};
 }
 
+function classifySdkValidation(message: string): {
+	kind: SdkValidationKind;
+	expected: boolean;
+} {
+	if (message.startsWith("Input validation error:")) {
+		return { kind: "input", expected: true };
+	}
+	if (message.startsWith("Output validation error:")) {
+		return { kind: "output", expected: false };
+	}
+	if (message.startsWith("Tool ") && message.endsWith(" not found")) {
+		return { kind: "tool_not_found", expected: true };
+	}
+	return { kind: "unknown", expected: false };
+}
+
 function installValidationErrorTracking(server: object): void {
 	const toolErrorHost = server as SdkToolErrorHost;
 	const previousCreateToolError = toolErrorHost.createToolError;
@@ -175,11 +206,20 @@ function installValidationErrorTracking(server: object): void {
 		const result = createToolError(message);
 		const activeSpan = trace.getActiveSpan();
 		if (activeSpan) {
+			const validation = classifySdkValidation(message);
 			markSdkToolFailure(
 				activeSpan,
-				new Error("MCP tool validation failed"),
-				undefined,
+				new Error(
+					validation.kind === "output"
+						? "MCP tool output validation failed"
+						: "MCP tool validation failed",
+				),
+				sdkToolNameStorage.getStore() ?? "unknown",
 				"validation",
+				{
+					expected: validation.expected,
+					validationKind: validation.kind,
+				},
 			);
 		}
 		return result;

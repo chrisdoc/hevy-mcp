@@ -169,6 +169,19 @@ const workoutUpdateMetadataSchema = z.object({
 });
 
 /**
+ * Hevy documents ISO 8601 timestamps but can return millisecond or offset
+ * variants. Normalize fetched values before reusing them in the API's
+ * second-precision update contract. Caller-supplied values remain strict.
+ */
+function normalizeFetchedWorkoutTimestamp(value: unknown): unknown {
+	if (typeof value !== "string") return value;
+	const timestamp = new Date(value);
+	if (Number.isNaN(timestamp.getTime())) return value;
+	timestamp.setUTCMilliseconds(0);
+	return timestamp.toISOString().replace(".000Z", "Z");
+}
+
+/**
  * Map fetched API exercises to the update shape without validating legacy data.
  * Caller-supplied replacement exercises are still validated by their input schema.
  */
@@ -204,8 +217,13 @@ export function buildWorkoutUpdatePayload(
 	const metadata = workoutUpdateMetadataSchema.parse({
 		title: patch.title !== undefined ? patch.title : current.title,
 		start_time:
-			patch.start_time !== undefined ? patch.start_time : current.start_time,
-		end_time: patch.end_time !== undefined ? patch.end_time : current.end_time,
+			patch.start_time !== undefined
+				? patch.start_time
+				: normalizeFetchedWorkoutTimestamp(current.start_time),
+		end_time:
+			patch.end_time !== undefined
+				? patch.end_time
+				: normalizeFetchedWorkoutTimestamp(current.end_time),
 	});
 
 	return {
