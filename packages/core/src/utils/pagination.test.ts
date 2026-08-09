@@ -3,10 +3,12 @@ import { fetchAllPages } from "./pagination.js";
 
 describe("fetchAllPages", () => {
 	it("preserves page order and forwards the explicit page size", async () => {
-		const loader = vi.fn(async (page: number, _pageSize: number) => ({
-			items: [`page-${page}`],
-			pageCount: 3,
-		}));
+		const loader = vi.fn((page: number, _pageSize: number) =>
+			Promise.resolve({
+				items: [`page-${page}`],
+				pageCount: 3,
+			}),
+		);
 
 		await expect(fetchAllPages(loader, 10)).resolves.toEqual([
 			"page-1",
@@ -18,10 +20,12 @@ describe("fetchAllPages", () => {
 	});
 
 	it("stops when a page is empty even if the reported count keeps growing", async () => {
-		const loader = vi.fn(async (page: number) => ({
-			items: page === 1 ? ["first-page"] : [],
-			pageCount: 1_000,
-		}));
+		const loader = vi.fn((page: number) =>
+			Promise.resolve({
+				items: page === 1 ? ["first-page"] : [],
+				pageCount: 1_000,
+			}),
+		);
 
 		await expect(fetchAllPages(loader, 10)).resolves.toEqual(["first-page"]);
 		expect(loader).toHaveBeenCalledTimes(2);

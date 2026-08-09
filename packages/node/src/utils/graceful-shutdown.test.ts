@@ -36,14 +36,16 @@ describe("package-local graceful shutdown", () => {
 		const events: string[] = [];
 		const controller = installGracefulShutdown({
 			target: {
-				close: vi.fn(async () => {
+				close: vi.fn(() => {
 					events.push("close");
+					return Promise.resolve();
 				}),
 			},
 			process,
 			logError: (message) => events.push(message),
-			flush: vi.fn(async () => {
+			flush: vi.fn(() => {
 				events.push("flush");
+				return Promise.resolve();
 			}),
 		});
 

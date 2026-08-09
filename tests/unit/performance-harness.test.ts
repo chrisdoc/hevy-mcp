@@ -135,8 +135,9 @@ describe("server RSS observations", () => {
 describe("performance harness helpers", () => {
 	it("creates and closes a fixture-backed client harness", async () => {
 		resetHarnessMocks();
-		harnessMocks.client.connect.mockImplementation(async () => {
+		harnessMocks.client.connect.mockImplementation(() => {
 			emitFixtureMarker();
+			return Promise.resolve();
 		});
 
 		const harness = await createPerformanceHarness("startup");
@@ -160,8 +161,9 @@ describe("performance harness helpers", () => {
 
 	it("detects a fixture marker split across stderr chunks", async () => {
 		resetHarnessMocks();
-		harnessMocks.client.connect.mockImplementation(async () => {
+		harnessMocks.client.connect.mockImplementation(() => {
 			emitSplitFixtureMarker();
+			return Promise.resolve();
 		});
 
 		const harness = await createPerformanceHarness("startup");
@@ -174,9 +176,9 @@ describe("performance harness helpers", () => {
 
 	it("includes fixture diagnostics when client initialization fails", async () => {
 		resetHarnessMocks();
-		harnessMocks.client.connect.mockImplementation(async () => {
+		harnessMocks.client.connect.mockImplementation(() => {
 			emitFixtureMarker();
-			throw new Error("connection refused");
+			return Promise.reject(new Error("connection refused"));
 		});
 
 		await expect(createPerformanceHarness("startup")).rejects.toThrow(

@@ -151,44 +151,45 @@ try {
 		result.expectedRequestCount += 100;
 	}
 
-	globalThis.fetch = async (input, init) => {
-		const request = input instanceof Request ? input : undefined;
-		const url = new URL(
-			request?.url ??
-				(typeof input === "string"
-					? input
-					: input instanceof URL
-						? input.href
-						: "<unsupported-fetch-input>"),
-		);
-		if (url.href === EXPECTED_UPDATE_CHECK_URL) {
-			result.blockedFetchRequests.push(url.href);
-			throw new Error("performance fixture blocked update check");
-		}
+	globalThis.fetch = (input, init) =>
+		Promise.resolve().then(() => {
+			const request = input instanceof Request ? input : undefined;
+			const url = new URL(
+				request?.url ??
+					(typeof input === "string"
+						? input
+						: input instanceof URL
+							? input.href
+							: "<unsupported-fetch-input>"),
+			);
+			if (url.href === EXPECTED_UPDATE_CHECK_URL) {
+				result.blockedFetchRequests.push(url.href);
+				throw new Error("performance fixture blocked update check");
+			}
 
-		const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
-		const headers = new Headers(init?.headers ?? request?.headers);
-		const requestDescription = `${method} ${url.href}`;
-		if (url.origin !== API_BASE || headers.get("api-key") !== API_KEY) {
-			result.unexpectedRequests.push(requestDescription);
-			throw new Error("performance fixture blocked unexpected fetch");
-		}
+			const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
+			const headers = new Headers(init?.headers ?? request?.headers);
+			const requestDescription = `${method} ${url.href}`;
+			if (url.origin !== API_BASE || headers.get("api-key") !== API_KEY) {
+				result.unexpectedRequests.push(requestDescription);
+				throw new Error("performance fixture blocked unexpected fetch");
+			}
 
-		const index = expectedRequests.findIndex(
-			(expected) =>
-				expected.method === method && expected.path === url.pathname,
-		);
-		if (index === -1) {
-			result.unexpectedRequests.push(requestDescription);
-			throw new Error("performance fixture received an unexpected fetch");
-		}
+			const index = expectedRequests.findIndex(
+				(expected) =>
+					expected.method === method && expected.path === url.pathname,
+			);
+			if (index === -1) {
+				result.unexpectedRequests.push(requestDescription);
+				throw new Error("performance fixture received an unexpected fetch");
+			}
 
-		const [{ body }] = expectedRequests.splice(index, 1);
-		return new Response(JSON.stringify(body()), {
-			status: 200,
-			headers: { "content-type": "application/json" },
+			const [{ body }] = expectedRequests.splice(index, 1);
+			return new Response(JSON.stringify(body()), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			});
 		});
-	};
 } catch (error) {
 	result.setupFailure = error instanceof Error ? error.message : String(error);
 	process.exitCode = 1;

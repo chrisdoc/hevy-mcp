@@ -417,26 +417,35 @@ function createMemoryKV() {
 	const store = new Map<string, MemoryKVEntry>();
 	return {
 		store,
-		async get(key: string, options?: { type?: string } | string) {
+		get(key: string, options?: { type?: string } | string) {
 			const entry = store.get(key);
-			if (!entry) return null;
+			if (!entry) return Promise.resolve(null);
 			const type = typeof options === "string" ? options : options?.type;
-			return type === "json" ? JSON.parse(entry.value) : entry.value;
+			if (type === "json") {
+				try {
+					return Promise.resolve(JSON.parse(entry.value));
+				} catch (error) {
+					return Promise.reject(error);
+				}
+			}
+			return Promise.resolve(entry.value);
 		},
-		async put(key: string, value: string) {
+		put(key: string, value: string) {
 			store.set(key, { value });
+			return Promise.resolve();
 		},
-		async delete(key: string) {
+		delete(key: string) {
 			store.delete(key);
+			return Promise.resolve();
 		},
-		async list(options?: { prefix?: string }) {
+		list(options?: { prefix?: string }) {
 			const prefix = options?.prefix ?? "";
-			return {
+			return Promise.resolve({
 				keys: [...store.keys()]
 					.filter((name) => name.startsWith(prefix))
 					.map((name) => ({ name })),
 				list_complete: true,
-			};
+			});
 		},
 	};
 }
@@ -919,7 +928,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			redirect_uris: [cimdRedirectUri],
 			token_endpoint_auth_methods_supported: ["none", "private_key_jwt"],
 		};
-		const fetchMock = vi.fn(async () => Response.json(metadata));
+		const fetchMock = vi.fn(() => Promise.resolve(Response.json(metadata)));
 		vi.stubGlobal("fetch", fetchMock);
 		const { handler, env } = createHandlerWithEnv();
 
@@ -1046,7 +1055,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		const redirectUri = "https://chatgpt.com/connector/oauth/test-callback";
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json(metadata)),
+			vi.fn(() => Promise.resolve(Response.json(metadata))),
 		);
 		const { handler, env } = createHandlerWithEnv();
 		const authorizeUrl = new URL("https://worker.example/authorize");

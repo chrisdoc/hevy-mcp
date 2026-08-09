@@ -1,6 +1,9 @@
 {
 	"$schema": "./node_modules/oxlint/configuration_schema.json",
 	"plugins": ["typescript", "unicorn", "oxc"],
+	"options": {
+		"typeAware": true
+	},
 	"ignorePatterns": [
 		"**/node_modules",
 		"**/dist",
@@ -23,6 +26,7 @@
 		"@typescript-eslint/consistent-type-assertions": "error",
 		"default-param-last": "error",
 		"@typescript-eslint/no-inferrable-types": "error",
+		"typescript/require-await": "error",
 		"unicorn/no-useless-fallback-in-spread": "off",
 		"unicorn/no-useless-spread": "off",
 		"no-unused-vars": [
