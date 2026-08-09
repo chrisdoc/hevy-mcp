@@ -118,7 +118,7 @@ async function executeWorkoutList({
 	return list(
 		{
 			page: result.page,
-			page_count: result.pageCount,
+			page_count: result.pageCount ?? 0,
 			workouts: result.items,
 		},
 		"workouts",
@@ -223,7 +223,7 @@ async function executeRoutineList({
 	return list(
 		{
 			page: result.page,
-			page_count: result.pageCount,
+			page_count: result.pageCount ?? 0,
 			routines: result.items,
 		},
 		"routines",
