@@ -613,7 +613,6 @@ export function validateArtifactProvenance(
 			"packages/core/package.json",
 			"packages/node/package.json",
 			"packages/worker/package.json",
-			"scripts/install-git-hooks.mjs",
 			"packages/hevy-client/**",
 			"packages/core/**",
 			"packages/node/**",
