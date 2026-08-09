@@ -35,6 +35,7 @@ export interface WorkflowParseOptions {
 	laneTargets?: Map<string, string> | Record<string, string>;
 	includeCommands?: boolean;
 	jobIds?: string[];
+	rejectContinueOnError?: boolean;
 }
 
 export interface WorkflowAggregateOptions {
@@ -46,6 +47,7 @@ export interface WorkflowAggregateOptions {
 	expectedJobs?: string | Record<string, string>;
 	job?: string | Record<string, string>;
 	jobIds?: string[];
+	rejectContinueOnError?: boolean;
 }
 
 export interface WorkflowAggregateResult {
@@ -61,6 +63,7 @@ export interface WorkflowProjectionConfig {
 	jobs?: string | string[];
 	job?: string | Record<string, string>;
 	expectedJobs?: string | Record<string, string>;
+	rejectContinueOnError?: boolean;
 }
 
 export interface ValidateWorkflowProjectionsOptions {

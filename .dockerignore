@@ -20,6 +20,3 @@
 !packages/node/**
 !packages/worker/
 !packages/worker/**
-
-!scripts/
-!scripts/install-git-hooks.mjs
