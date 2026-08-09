@@ -72,10 +72,11 @@ const BOOLEAN_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
 const structuralArgumentKeys = Object.keys(
 	STRUCTURAL_ARGUMENT_KEYS,
 ) as SafeToolArgumentKey[];
+type ToolArguments = { [key: string]: unknown };
 
 function createSafeInvocation(
 	name: string,
-	args: Record<string, unknown>,
+	args: ToolArguments,
 	taxonomy: ToolTelemetryMetadata | undefined,
 ) {
 	const argumentKeys = structuralArgumentKeys.filter((key) => key in args);
@@ -114,11 +115,12 @@ function createSafeInvocation(
 	};
 }
 
-export type ToolHandler<
-	TParams extends Record<string, unknown> = Record<string, unknown>,
-> = (args: TParams, context?: ToolExecutionContext) => Promise<McpToolResponse>;
+export type ToolHandler<TParams extends ToolArguments = ToolArguments> = (
+	args: TParams,
+	context?: ToolExecutionContext,
+) => Promise<McpToolResponse>;
 
-export type ToolHandlerFactory = <TParams extends Record<string, unknown>>(
+export type ToolHandlerFactory = <TParams extends ToolArguments>(
 	fn: ToolHandler<TParams>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
@@ -154,7 +156,7 @@ export interface CreateToolRuntimeOptions {
 }
 
 export const defaultHandlerFactory: ToolHandlerFactory = <
-	TParams extends Record<string, unknown>,
+	TParams extends ToolArguments,
 >(
 	fn: ToolHandler<TParams>,
 	context: string,
@@ -178,7 +180,7 @@ export function createToolRuntime({
 		operations ?? (rawClient ? createOperations(rawClient) : null);
 	const effectiveExecutionDeadline = executionDeadline ?? execution?.deadline;
 	const createObservedHandler: ToolHandlerFactory = <
-		TParams extends Record<string, unknown>,
+		TParams extends ToolArguments,
 	>(
 		fn: ToolHandler<TParams>,
 		context: string,

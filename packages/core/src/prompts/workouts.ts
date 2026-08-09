@@ -11,8 +11,9 @@ type PromptResult = {
 		content: { type: "text"; text: string };
 	}>;
 };
+type PromptArguments = { [key: string]: unknown };
 
-function withPromptObservation<TArgs extends Record<string, unknown>>(
+function withPromptObservation<TArgs extends PromptArguments>(
 	name: string,
 	observer: ToolObserver | undefined,
 	handler: (args: TArgs) => Promise<PromptResult> | PromptResult,

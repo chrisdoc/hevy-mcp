@@ -15,6 +15,8 @@ import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
 export { ErrorType } from "./error-policy.js";
 export type { StructuredExecutionError } from "../execution.js";
 
+type ToolArguments = { [key: string]: unknown };
+
 /**
  * Standard error response interface
  */
@@ -170,7 +172,7 @@ export function createErrorResponse(
  * @param context - Context information for error messages
  * @returns A function that catches errors and returns standardized error responses
  */
-export function withErrorHandling<TParams extends Record<string, unknown>>(
+export function withErrorHandling<TParams extends ToolArguments>(
 	fn: (
 		args: TParams,
 		context?: ToolExecutionContext,
@@ -178,11 +180,11 @@ export function withErrorHandling<TParams extends Record<string, unknown>>(
 	context: string,
 	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
 ): (
-	args: Record<string, unknown>,
+	args: ToolArguments,
 	context?: ToolExecutionContext,
 ) => Promise<McpToolResponse> {
 	return async (
-		rawArgs: Record<string, unknown>,
+		rawArgs: ToolArguments,
 		requestContext?: ToolExecutionContext,
 	) => {
 		const normalizedArgs = rawArgs ?? {};

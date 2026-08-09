@@ -20,6 +20,7 @@ const validHeaders = {
 	"content-type": "application/json",
 	authorization: "Bearer test-key",
 };
+type JsonObject = { [key: string]: unknown };
 
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -56,9 +57,9 @@ async function parseMcpResponse(response: Response) {
 			.find((line) => line.startsWith("data: "))
 			?.slice(6);
 		if (!data) throw new Error(`Missing SSE data: ${text}`);
-		return JSON.parse(data) as Record<string, unknown>;
+		return JSON.parse(data) as JsonObject;
 	}
-	return JSON.parse(text) as Record<string, unknown>;
+	return JSON.parse(text) as JsonObject;
 }
 
 describe("Worker authentication helpers", () => {

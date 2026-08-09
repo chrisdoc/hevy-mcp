@@ -165,7 +165,7 @@ function getHeaderValue(headers: unknown, key: string): string | undefined {
 			return normalizeHeaderValue(value);
 		}
 
-		const headerRecord = headers as Record<string, unknown>;
+		const headerRecord = headers as { [key: string]: unknown };
 		return normalizeHeaderValue(
 			headerRecord[key] ??
 				headerRecord[key.toLowerCase()] ??

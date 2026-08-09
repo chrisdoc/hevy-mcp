@@ -34,6 +34,8 @@ function createMockClient(overrides: Partial<HevyClient> = {}): HevyClient {
 	} as HevyClient;
 }
 
+type JsonObject = { [key: string]: unknown };
+
 const sampleAuthRequest: AuthRequest = {
 	responseType: "code",
 	clientId: "client-123",
@@ -469,9 +471,9 @@ async function parseMcpResponse(response: Response) {
 			.find((line) => line.startsWith("data: "))
 			?.slice(6);
 		if (!data) throw new Error(`Missing SSE data: ${text}`);
-		return JSON.parse(data) as Record<string, unknown>;
+		return JSON.parse(data) as JsonObject;
 	}
-	return JSON.parse(text) as Record<string, unknown>;
+	return JSON.parse(text) as JsonObject;
 }
 
 describe("OAuth-enabled Worker fetch handler", () => {
@@ -499,7 +501,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			{},
 		);
 		expect(authServer.status).toBe(200);
-		const metadata = (await authServer.json()) as Record<string, unknown>;
+		const metadata = (await authServer.json()) as JsonObject;
 		expect(metadata.authorization_endpoint).toBe(
 			"https://worker.example/authorize",
 		);
@@ -519,7 +521,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			{},
 		);
 		expect(resource.status).toBe(200);
-		const resourceMetadata = (await resource.json()) as Record<string, unknown>;
+		const resourceMetadata = (await resource.json()) as JsonObject;
 		expect(resourceMetadata.resource).toBe("https://worker.example/mcp");
 	});
 

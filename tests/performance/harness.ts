@@ -167,10 +167,12 @@ export async function createPerformanceHarness(
 	};
 }
 
+type ToolArguments = { [key: string]: unknown };
+
 export async function callPerformanceTool(
 	client: Client,
 	name: string,
-	arguments_: Record<string, unknown>,
+	arguments_: ToolArguments,
 ) {
 	const result = await client.request({
 		method: "tools/call",

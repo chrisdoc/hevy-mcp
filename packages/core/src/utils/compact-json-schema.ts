@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-type JsonSchema = Record<string, unknown>;
+type JsonSchema = { [key: string]: unknown };
 
 function isRecord(value: unknown): value is JsonSchema {
 	return value !== null && typeof value === "object" && !Array.isArray(value);

@@ -18,6 +18,7 @@ import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
+type ToolArguments = { [key: string]: unknown };
 
 function getApiScope() {
 	return nock(HEVY_API_BASEURL, {
@@ -30,7 +31,7 @@ function getApiScope() {
 async function callTool(
 	client: Client,
 	name: string,
-	arguments_: Record<string, unknown>,
+	arguments_: ToolArguments,
 ) {
 	const result = await client.request({
 		method: "tools/call",

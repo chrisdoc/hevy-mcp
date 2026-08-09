@@ -1,3 +1,5 @@
+export type JsonObject = { [key: string]: unknown };
+
 export interface PaginationEnvelope<T> {
 	page: number;
 	page_count: number;
@@ -25,10 +27,10 @@ export interface SummaryResult {
 }
 
 export function pageEnvelope(
-	data: Record<string, unknown>,
+	data: JsonObject,
 	key: string,
 	items: unknown[],
-): Record<string, unknown> {
+): JsonObject {
 	return {
 		page: data.page ?? 1,
 		page_count: data.page_count ?? 0,

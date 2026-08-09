@@ -4,7 +4,9 @@ import {
 	parseFixtureResult,
 } from "../performance/fixture-result.js";
 
-function marker(overrides: Record<string, unknown> = {}) {
+type FixtureOverrides = { [key: string]: unknown };
+
+function marker(overrides: FixtureOverrides = {}) {
 	return `${FIXTURE_RESULT_PREFIX}${JSON.stringify({
 		version: 1,
 		mode: "startup",

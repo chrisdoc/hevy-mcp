@@ -40,9 +40,9 @@ import {
 	readDataSource as defaultDataSourceReader,
 	type DataSourceReader,
 } from "../input.js";
-import { pageEnvelope } from "../output/contracts.js";
+import { pageEnvelope, type JsonObject } from "../output/contracts.js";
 
-type Body = Record<string, unknown>;
+type Body = JsonObject;
 function body(value: unknown): Body {
 	return value && typeof value === "object" && !Array.isArray(value)
 		? (value as Body)

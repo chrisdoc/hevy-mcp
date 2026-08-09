@@ -62,8 +62,9 @@ const SAFE_TAG_PREFIXES = [
 const TELEMETRY_ENABLED = process.env.HEVY_MCP_TELEMETRY !== "0";
 const DIAGNOSTIC_DETAILS_ENABLED =
 	process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS !== "0";
+type UnknownObject = { [key: string]: unknown };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is UnknownObject {
 	return typeof value === "object" && value !== null;
 }
 

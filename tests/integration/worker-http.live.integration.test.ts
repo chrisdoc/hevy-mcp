@@ -17,6 +17,7 @@ const MAX_CAPTURED_LOG_LENGTH = 32 * 1024;
 const LIVE_TESTS_ENABLED =
 	process.env.HEVY_RUN_LIVE_WORKER_TESTS === "1" &&
 	Boolean(process.env.HEVY_API_KEY);
+type JsonObject = { [key: string]: unknown };
 const describeLive = LIVE_TESTS_ENABLED ? describe.sequential : describe.skip;
 
 const INVOKED_READ_TOOLS = [
@@ -55,7 +56,7 @@ function assertCondition(
 function assertRecord(
 	value: unknown,
 	schemaPath: string,
-): asserts value is Record<string, unknown> {
+): asserts value is JsonObject {
 	assertCondition(value !== null && typeof value === "object", schemaPath);
 }
 
@@ -240,8 +241,8 @@ async function startWrangler(): Promise<void> {
 async function callReadTool(
 	client: Client,
 	name: (typeof INVOKED_READ_TOOLS)[number],
-	arguments_: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
+	arguments_: JsonObject,
+): Promise<JsonObject> {
 	let result;
 	try {
 		result = await client.callTool(
@@ -261,14 +262,14 @@ async function callReadTool(
 function assertBoundedList(
 	value: unknown,
 	schemaPath: string,
-): asserts value is Record<string, unknown>[] {
+): asserts value is JsonObject[] {
 	assertCondition(Array.isArray(value), schemaPath);
 	assertCondition(value.length <= 1, `${schemaPath}/length`);
 	if (value[0] !== undefined) assertRecord(value[0], `${schemaPath}/0`);
 }
 
 function optionalStringId(
-	value: Record<string, unknown>[] | undefined,
+	value: JsonObject[] | undefined,
 	schemaPath: string,
 ): string | undefined {
 	if (!value?.[0]) return undefined;

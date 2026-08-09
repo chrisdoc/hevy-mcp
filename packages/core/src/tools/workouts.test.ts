@@ -32,9 +32,7 @@ function toolHandler(tool: ReturnType<typeof vi.fn>, name: string) {
 		([registeredName]) => registeredName === name,
 	);
 	if (!call) throw new Error(`Tool ${name} was not registered`);
-	return call.at(-1) as (
-		args: Record<string, unknown>,
-	) => Promise<Record<string, unknown>>;
+	return call.at(-1) as (args: object) => Promise<object>;
 }
 
 const workoutInput = {

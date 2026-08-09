@@ -6,6 +6,8 @@ import {
 	startStreamableHttpServer,
 } from "./streamable-http.js";
 
+type JsonObject = { [key: string]: unknown };
+
 const createMcpServer = async () => {
 	const server = new McpServer({ name: "test-server", version: "1.0.0" });
 	server.registerTool(
@@ -98,7 +100,7 @@ function serverPort(handle: { server: Server }): number {
 	return address.port;
 }
 
-function jsonBody(result: HttpResult): Record<string, unknown> {
+function jsonBody(result: HttpResult): JsonObject {
 	const json = result.body.startsWith("event:")
 		? result.body
 				.split("\n")
@@ -107,7 +109,7 @@ function jsonBody(result: HttpResult): Record<string, unknown> {
 				.join("\n")
 		: result.body;
 	if (!json) throw new Error(`empty response: ${JSON.stringify(result)}`);
-	return JSON.parse(json) as Record<string, unknown>;
+	return JSON.parse(json) as JsonObject;
 }
 
 async function startTestServer(host = "127.0.0.1") {

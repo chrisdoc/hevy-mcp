@@ -20,6 +20,7 @@ const STARTUP_TIMEOUT_MS = 20_000;
 const MAX_STARTUP_ATTEMPTS = 3;
 const SHUTDOWN_TIMEOUT_MS = 3_000;
 const MAX_CAPTURED_LOG_LENGTH = 64 * 1024;
+type JsonObject = { [key: string]: unknown };
 
 interface RecordedHevyRequest {
 	apiKey: string | undefined;
@@ -143,21 +144,18 @@ function writeJson(
 	response.end(JSON.stringify(body));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is JsonObject {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function requireRecord(value: unknown, label: string): Record<string, unknown> {
+function requireRecord(value: unknown, label: string): JsonObject {
 	if (!isRecord(value)) {
 		throw new Error(`Expected ${label} to be an object`);
 	}
 	return value;
 }
 
-function requireArrayField(
-	record: Record<string, unknown>,
-	field: string,
-): unknown[] {
+function requireArrayField(record: JsonObject, field: string): unknown[] {
 	const value = record[field];
 	if (!Array.isArray(value)) {
 		throw new Error(`Expected ${field} to be an array`);
@@ -168,7 +166,7 @@ function requireArrayField(
 function requireToolListPayload(
 	result: unknown,
 	field: string,
-): { firstItem: Record<string, unknown>; items: unknown[]; text: string } {
+): { firstItem: JsonObject; items: unknown[]; text: string } {
 	const resultRecord = requireRecord(result, "MCP tool response");
 	const content = requireArrayField(resultRecord, "content");
 	const firstContent = requireRecord(content[0], "content[0]");
@@ -273,7 +271,7 @@ function mcpHeaders(apiKey = VALID_API_KEY): Headers {
 	});
 }
 
-function initializeRequest(id = 1): Record<string, unknown> {
+function initializeRequest(id = 1): JsonObject {
 	return {
 		jsonrpc: "2.0",
 		id,
