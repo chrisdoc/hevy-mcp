@@ -21,6 +21,7 @@ import {
 	WORKER_INVOCATION_TIMEOUT_MS,
 } from "./worker-oauth.js";
 import { executionResponse } from "./execution-response.js";
+import { createWorkerToolObserver } from "./worker-observer.js";
 
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
@@ -68,8 +69,10 @@ interface WorkerDependencies {
 		createClient: CreateHevyMcpServerOptions["createClient"],
 		lifecycleSignal?: AbortSignal,
 		executionDeadline?: number,
+		observer?: CreateHevyMcpServerOptions["observer"],
 	) => McpServer;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
+	createObserver?: () => CreateHevyMcpServerOptions["observer"];
 }
 
 type ResolvedWorkerDependencies = Required<WorkerDependencies>;
@@ -229,9 +232,11 @@ function createDefaultServer(
 	createClient: CreateHevyMcpServerOptions["createClient"],
 	lifecycleSignal?: AbortSignal,
 	executionDeadline?: number,
+	observer?: CreateHevyMcpServerOptions["observer"],
 ): McpServer {
 	return createHevyMcpServer({
 		createClient,
+		observer,
 		lifecycleSignal,
 		executionDeadline,
 	});
@@ -286,6 +291,7 @@ function resolveWorkerDependencies(
 			dependencies.createRequestClient ?? createDefaultRequestClient,
 		createServer: dependencies.createServer ?? createDefaultServer,
 		createTransport: dependencies.createTransport ?? createDefaultTransport,
+		createObserver: dependencies.createObserver ?? createWorkerToolObserver,
 	};
 }
 
@@ -328,11 +334,13 @@ async function serveMcpRequest(
 	deadline: number,
 ): Promise<Response> {
 	try {
+		const observer = dependencies.createObserver();
 		const server = dependencies.createServer(
 			({ onLog }) =>
 				dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),
 			request.signal,
 			deadline,
+			observer,
 		);
 		const transport = dependencies.createTransport();
 		transport.onerror = (error) => {
