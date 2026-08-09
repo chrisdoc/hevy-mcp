@@ -1,4 +1,11 @@
-export type ApiValue = string | number | boolean | null | object | ApiValue[];
+export type ApiValue =
+	| string
+	| number
+	| boolean
+	| null
+	| undefined
+	| object
+	| ApiValue[];
 export type ApiObject = { [key: string]: ApiValue };
 
 export interface PaginationEnvelope<T> {
