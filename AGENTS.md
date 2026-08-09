@@ -32,6 +32,14 @@ Never push directly to `main`. Use Conventional Commits (`feat:`, `fix:`,
 `docs:`, `test:`, `refactor:`, `build:`, `ci:`, `chore:`, or `style:`) and keep
 Git hooks enabled. Fix hook failures instead of bypassing them.
 
+## Git safety in tests
+
+- Never write tests that invoke Git, execute `git` commands, or mutate Git
+  repositories or Git configuration. Use pure logic and ordinary filesystem
+  fixtures instead.
+- Never create, configure, or persist test Git identities such as
+  `user.name`, `user.email`, `GIT_AUTHOR_*`, or `GIT_COMMITTER_*`.
+
 ## Source-of-truth pointers
 
 - `CONTRIBUTING.md` owns development setup, Node policy, Worker operations,
