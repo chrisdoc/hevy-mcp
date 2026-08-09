@@ -43,29 +43,22 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
       - run: npm ci
-      - run: npx nx run repository:build
+      - name: Build release package
+        run: npx nx run repository:build
         env:
           HEVY_MCP_RELEASE: "true"
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
-      - name: Run unit tests
-        run: npx nx run repository:test:release-unit
-      - name: Run Worker tests
-        run: npx nx run repository:test:worker
-      - name: Run CLI tests
-        run: npx nx run repository:test:cli
-      - name: Verify published packages
-        run: npx nx run repository:test:pack:cli
-      - name: Check published package metadata
-        run: npx nx run repository:check:publint
-        env:
-          HEVY_MCP_RELEASE: "true"
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
+      - name: Prepare shared package candidates
+        run: |
+          npx nx run @chrisdoc/hevy-cli:build
+          npx nx run repository:check:server-manifest
+          npx nx run repository:pack:artifacts --excludeTaskDependencies
+      - name: Validate release candidates
+        run: >-
+          npx nx run-many --projects=repository --targets=test:release-unit,test:worker,test:pack,test:cli,test:pack:cli,check:publint --parallel=3 --outputStyle=stream --excludeTaskDependencies
       - name: Run integration tests
         run: npx nx run repository:test:integration
         env:

@@ -46,12 +46,12 @@ does not add dispatcher commands to that model.
 
 <!-- repository-control-plane:validation-aggregates:start -->
 
-| Aggregate ID      | Nx target / command                    | Members                                                                                                                                                                                                                                                                                          | Count | Mapping  |
-| ----------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | -------- |
-| `pull-request`    | npx nx run repository:test:pr          | `unit`, `mocked-mcp`, `contract`, `stdio`, `worker`, `worker-http`, `pack`, `cli`, `pack-cli`, `package-publint`                                                                                                                                                                                 | 10    | mapped   |
-| `pull-request-ci` | external: github-actions               | `repository-control-plane`, `package-boundaries`, `package-exports`, `package-publint`, `types`, `server-manifest`, `check`, `package-changesets`, `diagnostics`, `build`, `worker-http`, `worker`, `mocked-mcp`, `unit`, `contract`, `stdio`, `cli`, `pack-cli`, `worker-bundle`, `performance` | 20    | external |
-| `release`         | npx nx run repository:release:validate | `build`, `release-unit`, `worker`, `cli`, `pack-cli`, `package-publint`, `release-integration`, `nightly`, `worker-http-live`                                                                                                                                                                    | 9     | mapped   |
-| `pre-push`        | npx nx run repository:pre-push         | `types`, `changeset-status`, `pull-request`                                                                                                                                                                                                                                                      | 3     | mapped   |
+| Aggregate ID      | Nx target / command                    | Members                                                                                                                                                                                                                                                                                                  | Count | Mapping  |
+| ----------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
+| `pull-request`    | npx nx run repository:test:pr          | `unit`, `mocked-mcp`, `contract`, `stdio`, `worker`, `worker-http`, `pack`, `cli`, `pack-cli`, `package-publint`                                                                                                                                                                                         | 10    | mapped   |
+| `pull-request-ci` | external: github-actions               | `repository-control-plane`, `package-boundaries`, `package-exports`, `package-publint`, `types`, `server-manifest`, `check`, `package-changesets`, `diagnostics`, `build`, `worker-http`, `worker`, `mocked-mcp`, `unit`, `contract`, `stdio`, `pack`, `cli`, `pack-cli`, `worker-bundle`, `performance` | 21    | external |
+| `release`         | npx nx run repository:release:validate | `build`, `server-manifest`, `release-unit`, `worker`, `pack`, `cli`, `pack-cli`, `package-publint`, `release-integration`, `nightly`, `worker-http-live`                                                                                                                                                 | 11    | mapped   |
+| `pre-push`        | npx nx run repository:pre-push         | `types`, `changeset-status`, `pull-request`                                                                                                                                                                                                                                                              | 3     | mapped   |
 
 <!-- repository-control-plane:validation-aggregates:end -->
 
@@ -59,21 +59,24 @@ does not add dispatcher commands to that model.
 
 ## Lane ownership
 
-| Command                         | Current owner and purpose                                                                           | Network and credentials                                                        |
-| ------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `npm run test:unit`             | Repository unit/component tests, excluding integration and performance discovery.                   | Deterministic; no network or credentials.                                      |
-| `npm run test:mcp`              | Existing Nock-backed, in-memory MCP client/server integration coverage.                             | Outbound network disabled by the tests; fake API key only.                     |
-| `npm run test:contract`         | Current registration, output-schema, server-manifest, and initial runtime-matrix contract coverage. | Deterministic. Issue #880 owns expansion to the complete MCP contract matrix.  |
-| `npm run test:stdio`            | Current stdio instrumentation and graceful-shutdown/process regression baseline.                    | Deterministic. Issue #609 owns full spawned built-stdio coverage.              |
-| `npm run test:pack`             | Builds and inspects the `npm pack --dry-run` inventory, binary mapping, and package files.          | Deterministic. Issue #609 owns install-and-spawn coverage of the real tarball. |
-| `npm run test:live`             | Read-only source canary against Hevy.                                                               | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.               |
-| `npm run test:worker-http:live` | Local Wrangler Worker canary with comprehensive bounded representative reads against Hevy.          | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.   |
-| `npm run test:nightly`          | Published/source launcher canary configured by the nightly or release workflow.                     | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.   |
-| `npm run test:performance`      | Builds, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline.             | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.            |
-| `npm run test:pr`               | Deterministic named lanes expected on every pull request.                                           | No live credentials or live network.                                           |
+| Command                         | Current owner and purpose                                                                                     | Network and credentials                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `npm run test:unit`             | Repository unit/component tests, excluding integration and performance discovery.                             | Deterministic; no network or credentials.                                          |
+| `npm run test:mcp`              | Existing Nock-backed, in-memory MCP client/server integration coverage.                                       | Outbound network disabled by the tests; fake API key only.                         |
+| `npm run test:contract`         | Current registration, output-schema, server-manifest, and initial runtime-matrix contract coverage.           | Deterministic. Issue #880 owns expansion to the complete MCP contract matrix.      |
+| `npm run test:stdio`            | Current stdio instrumentation and graceful-shutdown/process regression baseline.                              | Deterministic. Issue #609 owns full spawned built-stdio coverage.                  |
+| `npm run test:pack`             | Builds the shared package candidates once, then inspects, installs, and spawns the same Node tarball.         | Deterministic; the candidate producer is the only task that writes package output. |
+| `npm run test:live`             | Read-only source canary against Hevy.                                                                         | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.                   |
+| `npm run test:worker-http:live` | Local Wrangler Worker canary with comprehensive bounded representative reads against Hevy.                    | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.       |
+| `npm run test:nightly`          | Published/source launcher canary configured by the nightly or release workflow.                               | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.       |
+| `npm run test:performance`      | Reuses the shared Node build, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline. | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.                |
+| `npm run test:pr`               | Deterministic named lanes expected on every pull request.                                                     | No live credentials or live network.                                               |
 
 The current contract, stdio, and package commands are intentionally narrow but
 real. They do not claim the complete scope assigned to issues #607 and #609.
+The package lanes share one immutable tarball per package within a validation
+graph. Changesets still repacks packages during publication; issue #882 owns
+the later handoff needed to make the validated and published tarballs identical.
 
 ## Exact commands
 
@@ -101,13 +104,20 @@ node scripts/render-validation-lanes.mjs
 node scripts/render-validation-lanes.mjs --write
 ```
 
-CI can add reporters and coverage settings after `--` while retaining the same
-selector, for example:
+CI selects its reporters and coverage outputs through the same lane wrappers,
+so selectors do not drift between local and hosted runs:
 
 ```sh
-npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
-npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
+HEVY_TEST_REPORT_MODE=ci npm run test:unit
+HEVY_TEST_REPORT_MODE=ci npm run test:mcp
 ```
+
+The build workflow invokes mapped targets per Node runtime with Nx `run-many`:
+Node 24 runs worker, contract, stdio, CLI, and dry-run targets, while Node 26
+runs selected repository checks, unit, and mocked MCP targets. The release
+workflow does the same for its deterministic candidate-validation subset. Nx
+owns dependency ordering and concurrency, while the control-plane projection
+still checks every individual lane and runtime against the canonical aggregate.
 
 Explicit live commands are separate and credential-gated:
 
@@ -128,7 +138,7 @@ it would load the full exercise catalog.
 
 ## Performance scenarios and report
 
-`npm run test:performance` builds first, then uses the MCP SDK
+`npm run test:performance` depends on the shared Node build, then uses the MCP SDK
 `StdioClientTransport` to spawn the real `dist/cli.mjs` with `process.execPath`.
 Build time is therefore outside every latency sample. A child-only Node
 `--import` preload installs deterministic Nock fixtures before the CLI loads,
@@ -137,6 +147,9 @@ rejects `globalThis.fetch` so the background update check cannot contact npm.
 The expected blocked npm-registry URL is recorded; any other fetch target is an
 unexpected request and fails fixture verification. It never contacts live Hevy.
 Issue #609 remains responsible for the broader installed-tarball expansion.
+Hosted pull-request CI runs this lane in its own Node 24 job so concurrent unit,
+type, and bundle work cannot distort the latency samples; package smoke checks
+reuse that job's already-built release candidates after the measurements finish.
 
 The lane records exactly five stable scenarios:
 

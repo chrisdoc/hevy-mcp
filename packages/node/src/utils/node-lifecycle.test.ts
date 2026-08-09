@@ -139,14 +139,23 @@ describe("Node lifecycle runner", () => {
 	});
 
 	it("keeps an HTTP session controller independent from process shutdown", async () => {
-		const sessionController = new AbortController();
 		let processSignal: AbortSignal | undefined;
 		let sessionSignal: AbortSignal | undefined;
+		// Mirrors how startStreamableHttpServer mints a per-session
+		// lifecycleController that is independent of the process-wide signal.
+		const sessionController = new AbortController();
+		const mockServerFactory = vi.fn(
+			({ lifecycleSignal }: { lifecycleSignal?: AbortSignal }) => {
+				sessionSignal = lifecycleSignal;
+				return Promise.resolve({ close: vi.fn(), connect: vi.fn() });
+			},
+		);
+
 		await runNodeLifecycle({
 			transport: "http",
-			start: ({ signal }) => {
+			start: async ({ signal }) => {
 				processSignal = signal;
-				sessionSignal = sessionController.signal;
+				await mockServerFactory({ lifecycleSignal: sessionController.signal });
 				return Promise.resolve({ target });
 			},
 		});
@@ -155,9 +164,15 @@ describe("Node lifecycle runner", () => {
 			cancel: AbortController;
 		};
 		options.cancel.abort();
+		expect(mockServerFactory).toHaveBeenCalledOnce();
+		expect(processSignal).toBeDefined();
+		expect(sessionSignal).toBeDefined();
 		expect(processSignal).not.toBe(sessionSignal);
 		expect(processSignal?.aborted).toBe(true);
+		// Aborting the process-wide lifecycle controller must not cascade into
+		// the independently-owned session controller.
 		expect(sessionSignal?.aborted).toBe(false);
+		expect(sessionController.signal.aborted).toBe(false);
 	});
 
 	it("flushes telemetry and cleans process tracking on shutdown", async () => {
