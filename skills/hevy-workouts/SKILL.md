@@ -7,6 +7,32 @@ description: Use when the user asks to inspect, summarize, plan, log, or update 
 
 Use the Hevy MCP connector for the user's authenticated Hevy account.
 
+## MCP server connection
+
+This plugin registers the remote MCP server as `hevy` through the repository's
+`.mcp.json` file:
+
+```json
+{
+	"mcpServers": {
+		"hevy": {
+			"type": "http",
+			"url": "https://mcp.hevy-mcp.dev/mcp",
+			"oauth": true
+		}
+	}
+}
+```
+
+When the plugin is installed, connect or authorize the `hevy` server in Claude's
+connector settings. The authorization page asks the user for their Hevy API
+key. Never put an API key in this skill, plugin files, or a conversation. If the
+server is unavailable, ask the user to complete the connector authorization
+instead of attempting to start a different server.
+
+Use the tools and resources exposed by the `hevy` server for Hevy requests. Do
+not call the Hevy API directly or invent an alternative authentication path.
+
 ## Analysis and retrieval
 
 - Prefer `get-training-summary` for a high-level trend across workouts and body measurements.
