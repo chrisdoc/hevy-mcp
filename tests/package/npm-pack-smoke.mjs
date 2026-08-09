@@ -1,15 +1,10 @@
 import { spawn, spawnSync } from "node:child_process";
-import {
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+
+import { releaseCandidateArtifact } from "../../scripts/release-candidate-artifacts.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
@@ -83,63 +78,43 @@ function waitForMcpResponse(child, id, timeoutMs = 10_000) {
 }
 
 async function stopChild(child) {
-	if (child.exitCode !== null) return;
-	const exited = new Promise((resolve) => child.once("exit", resolve));
-	child.kill("SIGTERM");
-	await Promise.race([
-		exited,
-		new Promise((resolve) =>
-			setTimeout(() => {
-				child.kill("SIGKILL");
-				resolve();
-			}, 2_000),
-		),
-	]);
+	if (child.exitCode !== null || child.signalCode !== null) return;
+	await new Promise((resolve) => {
+		let timer = null;
+		const finish = () => {
+			if (timer !== null) clearTimeout(timer);
+			child.off("exit", finish);
+			resolve();
+		};
+		timer = setTimeout(() => {
+			child.kill("SIGKILL");
+			finish();
+		}, 2_000);
+		child.once("exit", finish);
+		child.kill("SIGTERM");
+	});
 }
 
-runNpm(["run", "check:server-manifest"], { stdio: "inherit" });
-runNpm(["run", "build"], { stdio: "inherit" });
-
-const result = spawnSync(
-	npmCommand,
-	[
-		"pack",
-		"--workspace",
-		"hevy-mcp",
-		"--dry-run",
-		"--json",
-		"--ignore-scripts",
-		"--silent",
-	],
-	{
-		encoding: "utf8",
-		env: process.env,
-	},
+const candidate = await releaseCandidateArtifact("packages/node");
+const tarball = candidate.path;
+const inventory = spawnSync("tar", ["-tzf", tarball], { encoding: "utf8" });
+if (inventory.error) throw inventory.error;
+if (inventory.status !== 0) throw new Error("Could not inspect Node tarball");
+const files = new Set(
+	inventory.stdout
+		.split("\n")
+		.filter(Boolean)
+		.map((path) => path.replace(/^package\//, "")),
 );
-
-if (result.error) throw result.error;
-if (result.status !== 0) process.exit(result.status ?? 1);
-
-let packResult;
-try {
-	const parsed = JSON.parse(result.stdout);
-	packResult = Array.isArray(parsed)
-		? parsed[0]
-		: parsed.files
-			? parsed
-			: Object.values(parsed)[0];
-} catch (error) {
-	throw new Error(`Could not parse npm pack output: ${error.message}`);
-}
-
-if (!packResult || !Array.isArray(packResult.files)) {
-	throw new Error("npm pack did not return a package file inventory");
-}
-
-const packageJson = JSON.parse(
-	readFileSync("packages/node/package.json", "utf8"),
+const manifestResult = spawnSync(
+	"tar",
+	["-xOf", tarball, "package/package.json"],
+	{ encoding: "utf8" },
 );
-const files = new Set(packResult.files.map(({ path }) => path));
+if (manifestResult.error) throw manifestResult.error;
+if (manifestResult.status !== 0)
+	throw new Error("Could not read the packed Node manifest");
+const packedManifest = JSON.parse(manifestResult.stdout);
 const requiredFiles = [
 	"README.md",
 	"dist/cli.mjs",
@@ -155,7 +130,7 @@ for (const path of requiredFiles) {
 	}
 }
 
-if (packageJson.bin?.["hevy-mcp"] !== "dist/cli.mjs") {
+if (packedManifest.bin?.["hevy-mcp"] !== "dist/cli.mjs") {
 	throw new Error("package.json must expose hevy-mcp from dist/cli.mjs");
 }
 
@@ -164,7 +139,7 @@ for (const section of [
 	"optionalDependencies",
 	"peerDependencies",
 ]) {
-	for (const name of Object.keys(packageJson[section] ?? {})) {
+	for (const name of Object.keys(packedManifest[section] ?? {})) {
 		if (name.startsWith("@hevy-mcp/")) {
 			throw new Error(
 				`Public package must not declare private workspace ${name}`,
@@ -173,11 +148,17 @@ for (const section of [
 	}
 }
 
-const emittedFiles = packResult.files
-	.filter(({ path }) => /\.(?:mjs|cjs|js|d\.mts|d\.cts|d\.ts)$/.test(path))
-	.map(({ path }) => path);
+const emittedFiles = [...files].filter((path) =>
+	/\.(?:mjs|cjs|js|d\.mts|d\.cts|d\.ts)$/.test(path),
+);
 for (const path of emittedFiles) {
-	const packedText = readFileSync(join("packages/node", path), "utf8");
+	const content = spawnSync("tar", ["-xOf", tarball, `package/${path}`], {
+		encoding: "utf8",
+	});
+	if (content.error) throw content.error;
+	if (content.status !== 0)
+		throw new Error(`Could not read packed artifact file: ${path}`);
+	const packedText = content.stdout;
 	if (
 		packedText.includes("@hevy-mcp/core") ||
 		packedText.includes("@hevy-mcp/hevy-client")
@@ -189,32 +170,11 @@ for (const path of emittedFiles) {
 }
 
 console.log(
-	`Package smoke passed: ${packResult.files.length} files, ${packResult.size} bytes.`,
+	`Package inventory passed: ${files.size} entries, ${candidate.size} bytes.`,
 );
 
 const tempDir = mkdtempSync(join(tmpdir(), "hevy-mcp-pack-"));
 try {
-	const packed = runNpm(
-		[
-			"pack",
-			"--workspace",
-			"hevy-mcp",
-			"--pack-destination",
-			tempDir,
-			"--silent",
-		],
-		{ stdio: "pipe" },
-	);
-	const tarballName = packed.stdout.trim().split("\n").at(-1);
-	if (!tarballName || !existsSync(join(tempDir, tarballName))) {
-		throw new Error("npm pack did not produce a real Node workspace tarball");
-	}
-	const tarball = join(tempDir, tarballName);
-	const packedManifest = JSON.parse(
-		spawnSync("tar", ["-xOf", tarball, "package/package.json"], {
-			encoding: "utf8",
-		}).stdout,
-	);
 	if (
 		packedManifest.repository?.url !== "https://github.com/chrisdoc/hevy-mcp"
 	) {
@@ -222,7 +182,6 @@ try {
 	}
 	const installDir = join(tempDir, "consumer");
 	mkdirSync(installDir, { recursive: true });
-	runNpm(["init", "--yes"], { cwd: installDir, stdio: "pipe" });
 	runNpm(
 		[
 			"install",
