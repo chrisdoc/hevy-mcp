@@ -391,6 +391,7 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				}
 
 				const events = await callReadTool(client, "get-workout-events", {
+					page: 1,
 					page_size: 1,
 					since: "1970-01-01T00:00:00Z",
 				});
