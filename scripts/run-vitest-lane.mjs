@@ -11,15 +11,6 @@ const selectors = {
 		"tests/integration/**",
 		"--exclude",
 		"tests/performance/**",
-		// The CLI `--exclude` flag replaces vitest.config.ts's `test.exclude`
-		// array rather than merging with it, so the fixture directory exclusion
-		// from that config must be repeated here to keep
-		// scripts/check-generated-client.mjs's temporary `.generated-client-check-*`
-		// directories out of this lane's test run. Vitest matches exclude globs
-		// against absolute paths, so the pattern needs a `**/` prefix to match
-		// the fixture directory regardless of where it sits under the repo root.
-		"--exclude",
-		"**/.generated-client-check-*/**",
 	],
 	mocked: ["tests/integration/mocked"],
 };

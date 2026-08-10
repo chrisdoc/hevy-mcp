@@ -6,8 +6,10 @@ import {
 	readdir,
 	rm,
 	stat,
+	symlink,
 	writeFile,
 } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -357,7 +359,7 @@ async function readNormalizedSpec() {
 }
 
 async function createFixtureRepository(normalizedSpec) {
-	const root = await mkdtemp(join(repositoryRoot, ".generated-client-check-"));
+	const root = await mkdtemp(join(tmpdir(), "hevy-generated-client-check-"));
 	try {
 		const fixtureClient = resolve(root, "packages/hevy-client");
 		await cp(clientRoot, fixtureClient, {
@@ -371,6 +373,17 @@ async function createFixtureRepository(normalizedSpec) {
 		await cp(
 			resolve(repositoryRoot, "tsconfig.base.json"),
 			resolve(root, "tsconfig.base.json"),
+		);
+		await cp(
+			resolve(repositoryRoot, ".oxfmtrc.json"),
+			resolve(root, ".oxfmtrc.json"),
+		);
+		// Kubb loads the copied config from the temporary tree, so expose the
+		// repository dependencies there without copying the entire installation.
+		await symlink(
+			resolve(repositoryRoot, "node_modules"),
+			resolve(root, "node_modules"),
+			"junction",
 		);
 		await writeFile(
 			resolve(root, "openapi-spec.json"),
@@ -402,11 +415,7 @@ export async function checkGeneratedClient() {
 		);
 		await runCommand(
 			oxfmt.command,
-			// The fixture tree lives under a `.generated-client-check-*` directory
-			// that the repository's own `.gitignore` excludes, and oxfmt applies
-			// `.gitignore` rules by default. Without `--no-ignore`, oxfmt treats
-			// every file under the fixture as excluded and refuses to run.
-			[...oxfmt.args, "--write", "--no-ignore", generatedRelative],
+			[...oxfmt.args, "--write", generatedRelative],
 			fixture.client,
 		);
 
