@@ -275,6 +275,9 @@ export const workflowToolDefinitions = [
 		execute: async (runtime: ToolRuntime, args: TrainingSummaryParams) =>
 			getTrainingSummary(runtime, args.weeks),
 	},
-] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];
+] as const satisfies readonly ToolDefinition<
+	Record<string, z.ZodTypeAny>,
+	unknown
+>[];
 
 export { fetchRecentPages };

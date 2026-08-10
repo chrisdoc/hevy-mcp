@@ -32,11 +32,8 @@ const getRoutinesSchema = paginationShape({
 });
 
 type GetRoutinesResult = PaginatedToolResult<Routine>;
-const getRoutinesDefinition: ToolDefinition<
-	typeof getRoutinesSchema,
-	GetRoutinesResult
-> = {
-	name: "get-routines",
+const getRoutinesDefinition = {
+	name: "get-routines" as const,
 	feature: "routines",
 	operation: "list",
 	description:
@@ -50,7 +47,7 @@ const getRoutinesDefinition: ToolDefinition<
 		runtime
 			.getOperations()
 			.routines.list.execute({ page, pageSize: page_size }, runtime.execution),
-};
+} satisfies ToolDefinition<typeof getRoutinesSchema, GetRoutinesResult>;
 
 const getRoutineSchema = { routine_id: nonEmptyId } as const;
 
@@ -59,11 +56,8 @@ type GetRoutineResult = {
 	routine_id: string;
 	expected404Outcome?: "not_found";
 };
-const getRoutineDefinition: ToolDefinition<
-	typeof getRoutineSchema,
-	GetRoutineResult
-> = {
-	name: "get-routine",
+const getRoutineDefinition = {
+	name: "get-routine" as const,
 	feature: "routines",
 	operation: "get",
 	description:
@@ -79,7 +73,7 @@ const getRoutineDefinition: ToolDefinition<
 			.routines.get.execute({ routineId: routine_id }, runtime.execution);
 		return { ...data, routine_id };
 	},
-};
+} satisfies ToolDefinition<typeof getRoutineSchema, GetRoutineResult>;
 
 const createRoutineSchema = createRoutineInputShape;
 
@@ -87,11 +81,8 @@ type CreateRoutineResult = {
 	routine: PostV1Routines201 | null | undefined;
 	usesRepRanges: boolean;
 };
-const createRoutineDefinition: ToolDefinition<
-	typeof createRoutineSchema,
-	CreateRoutineResult
-> = {
-	name: "create-routine",
+const createRoutineDefinition = {
+	name: "create-routine" as const,
 	feature: "routines",
 	operation: "create",
 	description:
@@ -110,7 +101,7 @@ const createRoutineDefinition: ToolDefinition<
 			.createRoutine({ routine: payload });
 		return { routine: data, usesRepRanges };
 	},
-};
+} satisfies ToolDefinition<typeof createRoutineSchema, CreateRoutineResult>;
 
 const updateRoutineSchema = updateRoutineInputShape;
 
@@ -119,11 +110,8 @@ type UpdateRoutineResult = {
 	routine_id: string;
 	usesRepRanges: boolean;
 };
-const updateRoutineDefinition: ToolDefinition<
-	typeof updateRoutineSchema,
-	UpdateRoutineResult
-> = {
-	name: "update-routine",
+const updateRoutineDefinition = {
+	name: "update-routine" as const,
 	feature: "routines",
 	operation: "update",
 	description:
@@ -143,7 +131,7 @@ const updateRoutineDefinition: ToolDefinition<
 			.updateRoutine(routine_id, { routine: payload });
 		return { routine: data, routine_id, usesRepRanges };
 	},
-};
+} satisfies ToolDefinition<typeof updateRoutineSchema, UpdateRoutineResult>;
 
 export const routineToolDefinitions = [
 	getRoutinesDefinition,

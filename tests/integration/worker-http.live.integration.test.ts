@@ -8,6 +8,7 @@ import {
 	StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, describe, it } from "vitest";
+import type { HevyToolArguments } from "@hevy-mcp/core";
 
 const LOOPBACK = "127.0.0.1";
 const STARTUP_TIMEOUT_MS = 20_000;
@@ -239,10 +240,10 @@ async function startWrangler(): Promise<void> {
 	);
 }
 
-async function callReadTool(
+async function callReadTool<TName extends (typeof INVOKED_READ_TOOLS)[number]>(
 	client: Client,
-	name: (typeof INVOKED_READ_TOOLS)[number],
-	arguments_: JSONObject,
+	name: TName,
+	arguments_: HevyToolArguments<TName>,
 ): Promise<JSONObject> {
 	let result;
 	try {

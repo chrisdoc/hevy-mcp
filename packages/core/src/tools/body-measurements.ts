@@ -42,11 +42,8 @@ const getBodyMeasurementSchema = {
 const createBodyMeasurementSchema = createBodyMeasurementInputShape;
 const updateBodyMeasurementSchema = updateBodyMeasurementInputShape;
 
-const getBodyMeasurementsDefinition: ToolDefinition<
-	typeof getBodyMeasurementsSchema,
-	GetBodyMeasurementsResult
-> = {
-	name: "get-body-measurements",
+const getBodyMeasurementsDefinition = {
+	name: "get-body-measurements" as const,
 	feature: "measurements",
 	operation: "list",
 	description:
@@ -74,16 +71,13 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 			throw error;
 		}
 	},
-};
+} satisfies ToolDefinition<
+	typeof getBodyMeasurementsSchema,
+	GetBodyMeasurementsResult
+>;
 
-const getBodyMeasurementDefinition: ToolDefinition<
-	typeof getBodyMeasurementSchema,
-	{
-		body_measurement: GetV1BodyMeasurementsDate200 | null | undefined;
-		date: string;
-	}
-> = {
-	name: "get-body-measurement",
+const getBodyMeasurementDefinition = {
+	name: "get-body-measurement" as const,
 	feature: "measurements",
 	operation: "get",
 	description:
@@ -111,13 +105,16 @@ const getBodyMeasurementDefinition: ToolDefinition<
 			throw error;
 		}
 	},
-};
+} satisfies ToolDefinition<
+	typeof getBodyMeasurementSchema,
+	{
+		body_measurement: GetV1BodyMeasurementsDate200 | null | undefined;
+		date: string;
+	}
+>;
 
-const createBodyMeasurementDefinition: ToolDefinition<
-	typeof createBodyMeasurementSchema,
-	string
-> = {
-	name: "create-body-measurement",
+const createBodyMeasurementDefinition = {
+	name: "create-body-measurement" as const,
 	feature: "measurements",
 	operation: "create",
 	description:
@@ -134,13 +131,10 @@ const createBodyMeasurementDefinition: ToolDefinition<
 		});
 		return date;
 	},
-};
+} satisfies ToolDefinition<typeof createBodyMeasurementSchema, string>;
 
-const updateBodyMeasurementDefinition: ToolDefinition<
-	typeof updateBodyMeasurementSchema,
-	string
-> = {
-	name: "update-body-measurement",
+const updateBodyMeasurementDefinition = {
+	name: "update-body-measurement" as const,
 	feature: "measurements",
 	operation: "update",
 	description:
@@ -160,7 +154,7 @@ const updateBodyMeasurementDefinition: ToolDefinition<
 		await runtime.getClient().updateBodyMeasurement(date, payload);
 		return date;
 	},
-};
+} satisfies ToolDefinition<typeof updateBodyMeasurementSchema, string>;
 
 export const bodyMeasurementToolDefinitions = [
 	getBodyMeasurementsDefinition,

@@ -85,6 +85,9 @@ export const routineDiscoveryToolDefinitions = [
 		execute: async (runtime: ToolRuntime, args: RoutineDiscoveryParams) =>
 			discoverRoutines(runtime, args),
 	},
-] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];
+] as const satisfies readonly ToolDefinition<
+	Record<string, z.ZodTypeAny>,
+	unknown
+>[];
 
 export { discoverRoutines };

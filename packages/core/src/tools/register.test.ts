@@ -1,8 +1,20 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	expectTypeOf,
+	it,
+} from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
-import { registerHevyTools, hevyToolDefinitions } from "./register.js";
+import {
+	registerHevyTools,
+	hevyToolDefinitions,
+	type HevyToolArguments,
+	type HevyToolName,
+} from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 type SchemaObject = {
@@ -40,6 +52,17 @@ const EXPECTED_TOOL_NAMES = [
 ] as const;
 
 describe("registerHevyTools", () => {
+	it("preserves literal tool names for typed callers", () => {
+		expectTypeOf<HevyToolName>().toEqualTypeOf<
+			(typeof EXPECTED_TOOL_NAMES)[number]
+		>();
+		expectTypeOf<HevyToolArguments<"get-workout-events">>().toEqualTypeOf<{
+			page: number;
+			page_size: number;
+			since: string;
+		}>();
+	});
+
 	let client: Client;
 	let server: McpServer;
 

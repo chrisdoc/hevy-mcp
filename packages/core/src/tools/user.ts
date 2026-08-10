@@ -6,11 +6,8 @@ import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 
 const getUserInfoSchema = {} as const;
 
-const getUserInfoDefinition: ToolDefinition<
-	typeof getUserInfoSchema,
-	UserInfoResponse["data"]
-> = {
-	name: "get-user-info",
+const getUserInfoDefinition = {
+	name: "get-user-info" as const,
 	feature: "profile",
 	operation: "get",
 	description:
@@ -24,6 +21,6 @@ const getUserInfoDefinition: ToolDefinition<
 		const data: UserInfoResponse = await runtime.getClient().getUserInfo();
 		return data?.data;
 	},
-};
+} satisfies ToolDefinition<typeof getUserInfoSchema, UserInfoResponse["data"]>;
 
 export const userToolDefinitions = [getUserInfoDefinition] as const;

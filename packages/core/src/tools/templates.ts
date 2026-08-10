@@ -47,7 +47,7 @@ const searchExerciseTemplatesSchema = {
 } as const;
 
 const getExerciseTemplateDefinition = {
-	name: "get-exercise-template",
+	name: "get-exercise-template" as const,
 	feature: "templates" as const,
 	operation: "get" as const,
 	description:
@@ -81,7 +81,7 @@ const getExerciseTemplateDefinition = {
 };
 
 const getExerciseHistoryDefinition = {
-	name: "get-exercise-history",
+	name: "get-exercise-history" as const,
 	feature: "templates" as const,
 	operation: "get" as const,
 	description:
@@ -110,7 +110,7 @@ const getExerciseHistoryDefinition = {
 };
 
 const createExerciseTemplateDefinition = {
-	name: "create-exercise-template",
+	name: "create-exercise-template" as const,
 	feature: "templates" as const,
 	operation: "create" as const,
 	description:
@@ -128,7 +128,7 @@ const createExerciseTemplateDefinition = {
 };
 
 const searchExerciseTemplatesDefinition = {
-	name: "search-exercise-templates",
+	name: "search-exercise-templates" as const,
 	feature: "templates" as const,
 	operation: "search" as const,
 	description:

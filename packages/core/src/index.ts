@@ -5,6 +5,7 @@ export {
 	type ToolCapabilityCatalog,
 	type ToolCapabilityDescriptor,
 } from "./tools/capabilities.js";
+export type { HevyToolArguments, HevyToolName } from "./tools/register.js";
 
 export {
 	HEVY_CLIENT_OPTION_INDEXES,

@@ -206,4 +206,7 @@ export const workoutToolDefinitions = [
 			return { workout: data, workout_id: args.workout_id };
 		},
 	},
-] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];
+] as const satisfies readonly ToolDefinition<
+	Record<string, z.ZodTypeAny>,
+	unknown
+>[];

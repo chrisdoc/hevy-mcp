@@ -1,5 +1,5 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client, type JSONObject } from "@modelcontextprotocol/client";
+import { Client } from "@modelcontextprotocol/client";
 import nock from "nock";
 import {
 	afterAll,
@@ -16,6 +16,7 @@ import { registerHevyTools } from "../../../packages/core/src/tools/register.js"
 import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
 import { createExerciseTemplateCatalog } from "../../../packages/core/src/utils/exercise-template-catalog.js";
 import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
+import type { HevyToolArguments, HevyToolName } from "@hevy-mcp/core";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
@@ -28,7 +29,11 @@ function getApiScope() {
 	});
 }
 
-async function callTool(client: Client, name: string, arguments_: JSONObject) {
+async function callTool<TName extends HevyToolName>(
+	client: Client,
+	name: TName,
+	arguments_: HevyToolArguments<TName>,
+) {
 	const result = await client.request({
 		method: "tools/call",
 		params: {

@@ -27,7 +27,7 @@ type CreateRoutineFolderParams = InferToolParams<
 >;
 
 const getRoutineFolderDefinition = {
-	name: "get-routine-folder",
+	name: "get-routine-folder" as const,
 	feature: "folders" as const,
 	operation: "get" as const,
 	description:
@@ -72,7 +72,7 @@ const getRoutineFolderDefinition = {
 >;
 
 const createRoutineFolderDefinition = {
-	name: "create-routine-folder",
+	name: "create-routine-folder" as const,
 	feature: "folders" as const,
 	operation: "create" as const,
 	description:
