@@ -28,7 +28,7 @@ export default defineConfig({
 			...configDefaults.exclude,
 			"tests/nightly/**",
 			"tests/cloudflare/**",
-			".generated-client-check-*/**",
+			"**/.generated-client-check-*/**",
 		],
 		coverage: {
 			provider: "v8",
