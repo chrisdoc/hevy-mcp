@@ -17,6 +17,7 @@ export default defineConfig({
 		// Kubb resolves output paths from the workspace process directory.
 		path: "./src/generated",
 		clean: true,
+		format: "oxfmt",
 	},
 	plugins: [
 		pluginOas({ output: { path: "./client" } }),

@@ -2,13 +2,14 @@
 import {
 	cp,
 	mkdtemp,
-	mkdir,
 	readFile,
 	readdir,
 	rm,
 	stat,
+	symlink,
 	writeFile,
 } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -358,9 +359,7 @@ async function readNormalizedSpec() {
 }
 
 async function createFixtureRepository(normalizedSpec) {
-	const fixtureParent = resolve(repositoryRoot, "node_modules/.cache");
-	await mkdir(fixtureParent, { recursive: true });
-	const root = await mkdtemp(join(fixtureParent, "generated-client-check-"));
+	const root = await mkdtemp(join(tmpdir(), "hevy-generated-client-check-"));
 	try {
 		const fixtureClient = resolve(root, "packages/hevy-client");
 		await cp(clientRoot, fixtureClient, {
@@ -374,6 +373,17 @@ async function createFixtureRepository(normalizedSpec) {
 		await cp(
 			resolve(repositoryRoot, "tsconfig.base.json"),
 			resolve(root, "tsconfig.base.json"),
+		);
+		await cp(
+			resolve(repositoryRoot, ".oxfmtrc.json"),
+			resolve(root, ".oxfmtrc.json"),
+		);
+		// Kubb loads the copied config from the temporary tree, so expose the
+		// repository dependencies there without copying the entire installation.
+		await symlink(
+			resolve(repositoryRoot, "node_modules"),
+			resolve(root, "node_modules"),
+			"junction",
 		);
 		await writeFile(
 			resolve(root, "openapi-spec.json"),
@@ -397,15 +407,15 @@ export async function checkGeneratedClient() {
 	try {
 		fixture = await createFixtureRepository(normalized);
 		const kubb = await resolvePackageExecutable("@kubb/cli", "kubb");
-		const prettier = await resolvePackageExecutable("prettier", "prettier");
+		const oxfmt = await resolvePackageExecutable("oxfmt", "oxfmt");
 		await runCommand(
 			kubb.command,
 			[...kubb.args, "generate", "--config", "./kubb.config.ts"],
 			fixture.client,
 		);
 		await runCommand(
-			prettier.command,
-			[...prettier.args, "--ignore-unknown", "--write", generatedRelative],
+			oxfmt.command,
+			[...oxfmt.args, "--write", generatedRelative],
 			fixture.client,
 		);
 
