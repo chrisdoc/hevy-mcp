@@ -7,15 +7,5 @@ declare module "cloudflare:workers" {
 		default: WorkerExport;
 	};
 
-	interface WorkerTraceSpan {
-		setAttribute(
-			key: string,
-			value: string | number | boolean | undefined,
-		): void;
-		end(): void;
-	}
-
-	export const tracing: {
-		startActiveSpan<T>(name: string, callback: (span: WorkerTraceSpan) => T): T;
-	};
+	export const tracing: import("@cloudflare/workers-types").Tracing;
 }

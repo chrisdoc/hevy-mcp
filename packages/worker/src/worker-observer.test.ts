@@ -3,12 +3,12 @@ import {
 	type SafeToolCompletion,
 	type SafeToolInvocation,
 } from "@hevy-mcp/core";
+import type { Span } from "@cloudflare/workers-types";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createWorkerToolObserver,
 	type WorkerObservationEvent,
 	type WorkerToolObserverOptions,
-	type WorkerTraceSpan,
 } from "./worker-observer.js";
 
 const invocation = {
@@ -45,6 +45,7 @@ function finish(
 
 function createTracingDouble() {
 	const span = {
+		isTraced: true,
 		setAttribute: vi.fn(),
 		end: vi.fn(),
 	};
@@ -52,9 +53,9 @@ function createTracingDouble() {
 		startActiveSpan<T>(
 			this: void,
 			_name: string,
-			callback: (traceSpan: WorkerTraceSpan) => T,
+			callback: (traceSpan: Span) => T,
 		): T {
-			return callback(span);
+			return callback(span as unknown as Span);
 		},
 	};
 	const startActiveSpan = vi.spyOn(tracing, "startActiveSpan");

@@ -1,3 +1,4 @@
+import type { Span } from "@cloudflare/workers-types";
 import { tracing } from "cloudflare:workers";
 import {
 	createExecutionProjection,
@@ -178,13 +179,8 @@ export type WorkerObservationSink = (
 	event: WorkerObservationEvent,
 ) => void | Promise<void>;
 
-export interface WorkerTraceSpan {
-	setAttribute(key: string, value: string | number | boolean | undefined): void;
-	end(): void;
-}
-
 export interface WorkerTracing {
-	startActiveSpan<T>(name: string, callback: (span: WorkerTraceSpan) => T): T;
+	startActiveSpan<T>(name: string, callback: (span: Span) => T): T;
 }
 
 export interface WorkerToolObserverOptions {
@@ -489,7 +485,7 @@ function emitBestEffort(
 }
 
 function setSpanAttributes(
-	span: WorkerTraceSpan,
+	span: Span,
 	attributes: Readonly<Record<string, string | number | boolean>>,
 ): void {
 	for (const [key, value] of Object.entries(attributes)) {
@@ -501,10 +497,7 @@ function setSpanAttributes(
 	}
 }
 
-function finishSpan(
-	span: WorkerTraceSpan,
-	outcome: SafeToolCompletion["outcome"],
-): void {
+function finishSpan(span: Span, outcome: SafeToolCompletion["outcome"]): void {
 	try {
 		span.setAttribute("mcp.tool.outcome", outcome);
 	} catch {
@@ -523,7 +516,7 @@ export function createWorkerToolObserver(
 ): ToolObserver {
 	const sink =
 		options.sink ?? ((event: WorkerObservationEvent) => console.log(event));
-	const workerTracing = options.tracing ?? tracing;
+	const workerTracing: WorkerTracing = options.tracing ?? tracing;
 	const userHash = safeUserHash(options.userHash);
 	const cloudflareColo = safeCloudflareColo(options.cloudflareColo);
 	return {
@@ -537,7 +530,7 @@ export function createWorkerToolObserver(
 			const startedAt = Date.now();
 			emitBestEffort(sink, { event: "worker.tool.invocation", ...safe });
 			let finished = false;
-			let activeSpan: WorkerTraceSpan | undefined;
+			let activeSpan: Span | undefined;
 			return {
 				run<T>(operation: () => Promise<T>): Promise<T> {
 					if (activeSpan) return operation();
