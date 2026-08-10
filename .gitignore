@@ -144,3 +144,6 @@ worker-configuration.d.ts
 .env.sentry-build-plugin
 .aider*
 .dev.vars
+
+# Temporary fixture directories created by scripts/check-generated-client.mjs
+/.generated-client-check-*
