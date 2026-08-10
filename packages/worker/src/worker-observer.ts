@@ -1,5 +1,5 @@
 import type { Span } from "@cloudflare/workers-types";
-import { tracing } from "cloudflare:workers";
+import * as cloudflareWorkers from "cloudflare:workers";
 import {
 	createExecutionProjection,
 	createSafeErrorDiagnostic,
@@ -190,7 +190,7 @@ export interface WorkerToolObserverOptions {
 	readonly userHash?: string;
 	/** Cloudflare's three-letter edge colo, when the request has one. */
 	readonly cloudflareColo?: string;
-	/** Injectable for unit tests; production uses Cloudflare's tracing API. */
+	/** Injectable for unit tests; production uses Cloudflare's tracing API when available. */
 	readonly tracing?: WorkerTracing;
 }
 
@@ -497,9 +497,16 @@ function setSpanAttributes(
 	}
 }
 
-function finishSpan(span: Span, outcome: SafeToolCompletion["outcome"]): void {
+function finishSpan(
+	span: Span,
+	kind: WorkerObservationEvent["kind"],
+	outcome: SafeToolCompletion["outcome"],
+): void {
 	try {
-		span.setAttribute("mcp.tool.outcome", outcome);
+		span.setAttribute(
+			kind === "prompt" ? "mcp.prompt.outcome" : "mcp.tool.outcome",
+			outcome,
+		);
 	} catch {
 		// Trace enrichment must never affect MCP behavior.
 	}
@@ -516,7 +523,8 @@ export function createWorkerToolObserver(
 ): ToolObserver {
 	const sink =
 		options.sink ?? ((event: WorkerObservationEvent) => console.log(event));
-	const workerTracing: WorkerTracing = options.tracing ?? tracing;
+	const workerTracing: WorkerTracing | undefined =
+		options.tracing ?? cloudflareWorkers.tracing;
 	const userHash = safeUserHash(options.userHash);
 	const cloudflareColo = safeCloudflareColo(options.cloudflareColo);
 	return {
@@ -533,7 +541,7 @@ export function createWorkerToolObserver(
 			let activeSpan: Span | undefined;
 			return {
 				run<T>(operation: () => Promise<T>): Promise<T> {
-					if (activeSpan) return operation();
+					if (activeSpan || !workerTracing?.startActiveSpan) return operation();
 					let callbackEntered = false;
 					try {
 						return workerTracing.startActiveSpan(
@@ -567,7 +575,7 @@ export function createWorkerToolObserver(
 					if (finished) return;
 					finished = true;
 					if (activeSpan) {
-						finishSpan(activeSpan, completion.outcome);
+						finishSpan(activeSpan, safe.kind, completion.outcome);
 						activeSpan = undefined;
 					}
 					try {

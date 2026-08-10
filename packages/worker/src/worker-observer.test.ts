@@ -25,13 +25,14 @@ const invocation = {
 function createScope(
 	events: WorkerObservationEvent[],
 	options: Omit<WorkerToolObserverOptions, "sink"> = {},
+	currentInvocation: SafeToolInvocation = invocation,
 ) {
 	const scope = createWorkerToolObserver({
 		...options,
 		sink: (event) => {
 			events.push(event);
 		},
-	}).start(invocation);
+	}).start(currentInvocation);
 	if (!scope) throw new Error("Expected a Worker observation scope");
 	return scope;
 }
@@ -50,11 +51,7 @@ function createTracingDouble() {
 		end: vi.fn(),
 	};
 	const tracing: NonNullable<WorkerToolObserverOptions["tracing"]> = {
-		startActiveSpan<T>(
-			this: void,
-			_name: string,
-			callback: (traceSpan: Span) => T,
-		): T {
+		startActiveSpan<T>(_name: string, callback: (traceSpan: Span) => T): T {
 			return callback(span as unknown as Span);
 		},
 	};
@@ -84,6 +81,28 @@ describe("createWorkerToolObserver", () => {
 		expect(span.end).toHaveBeenCalledOnce();
 		expect(JSON.stringify(span.setAttribute.mock.calls)).not.toContain(
 			"test-key",
+		);
+	});
+
+	it("uses a prompt-specific outcome attribute for prompt spans", async () => {
+		const events: WorkerObservationEvent[] = [];
+		const { span, tracing } = createTracingDouble();
+		const scope = createScope(
+			events,
+			{ tracing },
+			{ ...invocation, kind: "prompt" },
+		);
+
+		await scope.run(() => Promise.resolve("ok"));
+		finish(scope, { outcome: "success", durationMs: 1 });
+
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			"mcp.prompt.outcome",
+			"success",
+		);
+		expect(span.setAttribute).not.toHaveBeenCalledWith(
+			"mcp.tool.outcome",
+			"success",
 		);
 	});
 

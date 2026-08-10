@@ -61,11 +61,13 @@ The stdio initialize message may provide client name, client version, and MCP
 protocol version. Each value is trimmed, restricted to the safe token
 character set `[A-Za-z0-9._+:/@-]`, and limited to 64 characters; malformed or
 missing values become `unknown`. The transport is always `stdio` for this
-path. Metrics never contain a session ID, request ID, progress token, prompt,
-argument, result, or API-key-derived identity. Hosted Worker MCP activity spans
-may carry `user.hash` for distinct-user analysis and `cloudflare.colo` only when
-Cloudflare supplies it on the request. The hash is pseudonymous, and the colo is
-an edge point of presence rather than the user's location.
+path. Emitted metrics never contain a session ID, request ID, progress token, prompt,
+argument, result, or API-key-derived identity. TraceQL-derived metrics may
+aggregate the approved attributes from hosted Worker activity spans. Hosted
+Worker MCP activity spans may carry `user.hash` for distinct-user analysis and
+`cloudflare.colo` only when Cloudflare supplies it on the request. The hash is
+pseudonymous, and the colo is an edge point of presence rather than the user's
+location.
 The server version is supplied by the service resource (`service.version`)
 and server lifecycle spans. Cloudflare-native telemetry is normalized at the
 collector from the deployment tag in `faas.version` only when

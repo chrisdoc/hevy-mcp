@@ -33,7 +33,7 @@ processed the request; it is a regional proxy, not the user's exact geography.
 Use a scoped TraceQL metrics query to produce one row per user/colo pair:
 
 ```text
-{ span.user.hash != "" && span.cloudflare.colo != "" }
+{ span.user.hash != nil && span.cloudflare.colo != nil }
 | count_over_time() by (span.cloudflare.colo, span.user.hash)
 ```
 
