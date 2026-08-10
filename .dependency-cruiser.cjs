@@ -85,7 +85,12 @@ module.exports = {
 				"Workspace source should not resolve an internal package through an undeclared path.",
 			severity: "error",
 			from: { path: packageSources },
-			to: { couldNotResolve: true },
+			to: {
+				couldNotResolve: true,
+				// `cloudflare:workers` is a workerd-provided runtime module, not
+				// an npm package that dependency-cruiser can resolve locally.
+				pathNot: "^cloudflare:workers$",
+			},
 		},
 	],
 	options: {

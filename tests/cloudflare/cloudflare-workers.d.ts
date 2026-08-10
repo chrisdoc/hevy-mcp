@@ -6,4 +6,6 @@ declare module "cloudflare:workers" {
 	export const exports: {
 		default: WorkerExport;
 	};
+
+	export const tracing: import("@cloudflare/workers-types").Tracing;
 }

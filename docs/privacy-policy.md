@@ -17,10 +17,14 @@ The hosted service processes the following information to provide MCP tools:
   routines, exercise templates, and body measurements.
 - Operational request metadata such as the request path, client origin,
   authentication mode, response status, and duration.
+- Hosted MCP activity spans may contain a short HMAC-based pseudonym derived
+  from the API key and the Cloudflare colo that processed the request. The
+  pseudonym is not the API key, and the colo is a regional edge proxy rather
+  than exact user geography.
 
 The service does not intentionally collect conversation history, prompts, tool
-arguments, tool results, workout content, measurement values, or API keys in
-its operational telemetry.
+arguments, tool results, workout content, measurement values, raw client IP
+addresses, or API keys in its operational telemetry.
 
 ## How information is used
 
@@ -39,6 +43,10 @@ grant in encrypted Cloudflare KV storage so that the client can refresh its
 access. OAuth access tokens expire after seven days and refresh tokens expire
 after thirty days. Rotating the Hevy API key invalidates grants created with
 that key.
+
+Hosted activity spans containing `span.user.hash` or `span.cloudflare.colo` are
+retained for 30 days and are accessible only to repository maintainers and the
+on-call operator.
 
 The hosted Worker uses request-scoped in-memory caches and does not maintain a
 shared workout-data database. Cloudflare may process operational logs under

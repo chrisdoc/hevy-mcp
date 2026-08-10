@@ -1,3 +1,5 @@
+import type { Span } from "@cloudflare/workers-types";
+import * as cloudflareWorkers from "cloudflare:workers";
 import {
 	createExecutionProjection,
 	createSafeErrorDiagnostic,
@@ -15,6 +17,8 @@ const MAX_STRING_LENGTH = 160;
 const MAX_ARGUMENT_KEYS = 32;
 const MAX_WORKFLOW_PAGES = 10_000;
 const MAX_WORKFLOW_ITEMS = 1_000_000;
+const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
+const SAFE_CLOUDFLARE_COLO_PATTERN = /^[A-Z]{3}$/u;
 
 const SAFE_ARGUMENT_KEYS = new Set([
 	"date",
@@ -175,9 +179,19 @@ export type WorkerObservationSink = (
 	event: WorkerObservationEvent,
 ) => void | Promise<void>;
 
+export interface WorkerTracing {
+	startActiveSpan<T>(name: string, callback: (span: Span) => T): T;
+}
+
 export interface WorkerToolObserverOptions {
 	/** Defaults to console.log; test callers can provide an isolated sink. */
 	readonly sink?: WorkerObservationSink;
+	/** HMAC pseudonym derived from the request's Hevy API key. */
+	readonly userHash?: string;
+	/** Cloudflare's three-letter edge colo, when the request has one. */
+	readonly cloudflareColo?: string;
+	/** Injectable for unit tests; production uses Cloudflare's tracing API when available. */
+	readonly tracing?: WorkerTracing;
 }
 
 function boundedString(
@@ -190,6 +204,18 @@ function boundedString(
 
 function safeName(value: unknown): string {
 	return boundedString(value, MAX_NAME_LENGTH) ?? "unknown";
+}
+
+function safeUserHash(value: unknown): string | undefined {
+	return typeof value === "string" && SAFE_USER_HASH_PATTERN.test(value)
+		? value
+		: undefined;
+}
+
+function safeCloudflareColo(value: unknown): string | undefined {
+	return typeof value === "string" && SAFE_CLOUDFLARE_COLO_PATTERN.test(value)
+		? value
+		: undefined;
 }
 
 function safeBucket(value: unknown): string | undefined {
@@ -458,12 +484,49 @@ function emitBestEffort(
 	}
 }
 
+function setSpanAttributes(
+	span: Span,
+	attributes: Readonly<Record<string, string | number | boolean>>,
+): void {
+	for (const [key, value] of Object.entries(attributes)) {
+		try {
+			span.setAttribute(key, value);
+		} catch {
+			// Trace enrichment must never affect MCP behavior.
+		}
+	}
+}
+
+function finishSpan(
+	span: Span,
+	kind: WorkerObservationEvent["kind"],
+	outcome: SafeToolCompletion["outcome"],
+): void {
+	try {
+		span.setAttribute(
+			kind === "prompt" ? "mcp.prompt.outcome" : "mcp.tool.outcome",
+			outcome,
+		);
+	} catch {
+		// Trace enrichment must never affect MCP behavior.
+	}
+	try {
+		span.end();
+	} catch {
+		// Trace enrichment must never affect MCP behavior.
+	}
+}
+
 /** Worker-only adapter for Core's privacy-safe semantic observation contract. */
 export function createWorkerToolObserver(
 	options: WorkerToolObserverOptions = {},
 ): ToolObserver {
 	const sink =
 		options.sink ?? ((event: WorkerObservationEvent) => console.log(event));
+	const workerTracing: WorkerTracing | undefined =
+		options.tracing ?? cloudflareWorkers.tracing;
+	const userHash = safeUserHash(options.userHash);
+	const cloudflareColo = safeCloudflareColo(options.cloudflareColo);
 	return {
 		start(invocation): ToolObservationScope {
 			let safe: Omit<WorkerObservationEvent, "event">;
@@ -475,11 +538,46 @@ export function createWorkerToolObserver(
 			const startedAt = Date.now();
 			emitBestEffort(sink, { event: "worker.tool.invocation", ...safe });
 			let finished = false;
+			let activeSpan: Span | undefined;
 			return {
-				run: <T>(operation: () => Promise<T>) => operation(),
+				run<T>(operation: () => Promise<T>): Promise<T> {
+					if (activeSpan || !workerTracing?.startActiveSpan) return operation();
+					let callbackEntered = false;
+					try {
+						return workerTracing.startActiveSpan(
+							`mcp.${safe.kind}.${safe.name}`,
+							(span) => {
+								callbackEntered = true;
+								activeSpan = span;
+								setSpanAttributes(span, {
+									"mcp.span.category": safe.kind,
+									"mcp.operation.kind": safe.kind,
+									[safe.kind === "prompt"
+										? "mcp.prompt.name"
+										: "mcp.tool.name"]: safe.name,
+									...(userHash ? { "user.hash": userHash } : {}),
+									...(cloudflareColo
+										? { "cloudflare.colo": cloudflareColo }
+										: {}),
+								});
+								return operation();
+							},
+						);
+					} catch (error) {
+						// If the callback ran, its error belongs to the operation and the
+						// core runtime will call finish. Only bypass a failed tracing API
+						// before callback entry.
+						if (callbackEntered) throw error;
+						return operation();
+					}
+				},
 				finish(completion) {
 					if (finished) return;
 					finished = true;
+					if (activeSpan) {
+						finishSpan(activeSpan, safe.kind, completion.outcome);
+						activeSpan = undefined;
+					}
 					try {
 						const durationMs = boundedCount(
 							completion.durationMs || Date.now() - startedAt,
