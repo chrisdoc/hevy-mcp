@@ -439,6 +439,36 @@ describe("real stateless SDK transport", () => {
 		);
 	});
 
+	it("passes the user hash and Cloudflare colo to activity observation", async () => {
+		let observerOptions:
+			| { userHash?: string; cloudflareColo?: string }
+			| undefined;
+		const request = mcpRequest({
+			jsonrpc: "2.0",
+			id: 1,
+			method: "initialize",
+			params: {
+				protocolVersion: "2025-11-25",
+				capabilities: {},
+				clientInfo: { name: "telemetry-context-test", version: "1" },
+			},
+		});
+		Object.defineProperty(request, "cf", { value: { colo: "SFO" } });
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createObserver: (options) => {
+				observerOptions = options;
+				return { start: vi.fn() };
+			},
+		});
+
+		expect((await handler(request, {})).status).toBe(200);
+		expect(observerOptions).toEqual({
+			userHash: "2cb0b5f95a",
+			cloudflareColo: "SFO",
+		});
+	});
+
 	it("constructs a fresh observer for every stateless MCP request", async () => {
 		const observers: object[] = [];
 		const createObserver = vi.fn(() => {

@@ -23,6 +23,24 @@ GROUP BY hevy.feature, mcp.tool.kind, mcp.tool.operation
 WHERE transport = "stdio"
 ```
 
+## Hosted Worker regional activity
+
+Hosted Worker MCP activity spans carry the deterministic pseudonymous
+`span.user.hash` and, only for requests with Cloudflare request metadata,
+`span.cloudflare.colo`. A colo is the Cloudflare edge point of presence that
+processed the request; it is a regional proxy, not the user's exact geography.
+
+Use a scoped TraceQL metrics query to produce one row per user/colo pair:
+
+```text
+{ span.user.hash != "" && span.cloudflare.colo != "" }
+| count_over_time() by (span.cloudflare.colo, span.user.hash)
+```
+
+Count distinct `span.user.hash` values per `span.cloudflare.colo` client-side
+for the selected window. Do not include raw client IP addresses, and do not
+save the pseudonymous hash as a per-user behavior history.
+
 ## Tool reliability
 
 | Panel                       | Source                 | Grouping/filter                                                | Question answered                                             |

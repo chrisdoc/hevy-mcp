@@ -21,7 +21,11 @@ import {
 	WORKER_INVOCATION_TIMEOUT_MS,
 } from "./worker-oauth.js";
 import { executionResponse } from "./execution-response.js";
-import { createWorkerToolObserver } from "./worker-observer.js";
+import {
+	createWorkerToolObserver,
+	type WorkerToolObserverOptions,
+} from "./worker-observer.js";
+import { createWorkerUserHash, getCloudflareColo } from "./worker-telemetry.js";
 
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
@@ -72,7 +76,9 @@ interface WorkerDependencies {
 		observer?: CreateHevyMcpServerOptions["observer"],
 	) => McpServer;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
-	createObserver?: () => CreateHevyMcpServerOptions["observer"];
+	createObserver?: (
+		options: WorkerToolObserverOptions,
+	) => CreateHevyMcpServerOptions["observer"];
 }
 
 type ResolvedWorkerDependencies = Required<WorkerDependencies>;
@@ -291,7 +297,9 @@ function resolveWorkerDependencies(
 			dependencies.createRequestClient ?? createDefaultRequestClient,
 		createServer: dependencies.createServer ?? createDefaultServer,
 		createTransport: dependencies.createTransport ?? createDefaultTransport,
-		createObserver: dependencies.createObserver ?? createWorkerToolObserver,
+		createObserver:
+			dependencies.createObserver ??
+			((options) => createWorkerToolObserver(options)),
 	};
 }
 
@@ -334,7 +342,10 @@ async function serveMcpRequest(
 	deadline: number,
 ): Promise<Response> {
 	try {
-		const observer = dependencies.createObserver();
+		const observer = dependencies.createObserver({
+			userHash: await createWorkerUserHash(apiKey),
+			cloudflareColo: getCloudflareColo(request),
+		});
 		const server = dependencies.createServer(
 			({ onLog }) =>
 				dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),

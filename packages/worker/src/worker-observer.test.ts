@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	createWorkerToolObserver,
 	type WorkerObservationEvent,
+	type WorkerToolObserverOptions,
+	type WorkerTraceSpan,
 } from "./worker-observer.js";
 
 const invocation = {
@@ -20,8 +22,12 @@ const invocation = {
 	argumentKeyCountBucket: "2-10",
 } as unknown as SafeToolInvocation;
 
-function createScope(events: WorkerObservationEvent[]) {
+function createScope(
+	events: WorkerObservationEvent[],
+	options: Omit<WorkerToolObserverOptions, "sink"> = {},
+) {
 	const scope = createWorkerToolObserver({
+		...options,
 		sink: (event) => {
 			events.push(event);
 		},
@@ -37,7 +43,66 @@ function finish(
 	Promise.resolve(scope.finish(completion)).catch(() => undefined);
 }
 
+function createTracingDouble() {
+	const span = {
+		setAttribute: vi.fn(),
+		end: vi.fn(),
+	};
+	const tracing: NonNullable<WorkerToolObserverOptions["tracing"]> = {
+		startActiveSpan<T>(
+			this: void,
+			_name: string,
+			callback: (traceSpan: WorkerTraceSpan) => T,
+		): T {
+			return callback(span);
+		},
+	};
+	const startActiveSpan = vi.spyOn(tracing, "startActiveSpan");
+	return { span, tracing, startActiveSpan };
+}
+
 describe("createWorkerToolObserver", () => {
+	it("creates a user-associated span with the Cloudflare colo", async () => {
+		const events: WorkerObservationEvent[] = [];
+		const { span, tracing, startActiveSpan } = createTracingDouble();
+		const scope = createScope(events, {
+			userHash: "2cb0b5f95a",
+			cloudflareColo: "SFO",
+			tracing,
+		});
+
+		await expect(scope.run(() => Promise.resolve("ok"))).resolves.toBe("ok");
+		finish(scope, { outcome: "success", durationMs: 1 });
+
+		expect(startActiveSpan).toHaveBeenCalledWith(
+			"mcp.tool.get-workouts",
+			expect.any(Function),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith("user.hash", "2cb0b5f95a");
+		expect(span.setAttribute).toHaveBeenCalledWith("cloudflare.colo", "SFO");
+		expect(span.end).toHaveBeenCalledOnce();
+		expect(JSON.stringify(span.setAttribute.mock.calls)).not.toContain(
+			"test-key",
+		);
+	});
+
+	it("omits the colo for non-Cloudflare requests", async () => {
+		const events: WorkerObservationEvent[] = [];
+		const { span, tracing } = createTracingDouble();
+		const scope = createScope(events, {
+			userHash: "2cb0b5f95a",
+			tracing,
+		});
+
+		await scope.run(() => Promise.resolve("ok"));
+		finish(scope, { outcome: "success", durationMs: 1 });
+
+		expect(span.setAttribute).not.toHaveBeenCalledWith(
+			"cloudflare.colo",
+			expect.anything(),
+		);
+	});
+
 	it("emits safe bounded invocation and successful completion events", async () => {
 		const events: WorkerObservationEvent[] = [];
 		const scope = createScope(events);

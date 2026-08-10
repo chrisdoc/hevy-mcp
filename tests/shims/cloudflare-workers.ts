@@ -3,3 +3,15 @@
 // @cloudflare/workers-oauth-provider. The library only uses this export for
 // `instanceof` checks on class-based handlers, which the tests do not use.
 export class WorkerEntrypoint {}
+
+const noopSpan = {
+	isTraced: true,
+	setAttribute: (_key: string, _value: unknown): void => {},
+	end: (): void => {},
+};
+
+export const tracing = {
+	startActiveSpan<T>(_name: string, callback: (span: typeof noopSpan) => T): T {
+		return callback(noopSpan);
+	},
+};
