@@ -402,7 +402,11 @@ export async function checkGeneratedClient() {
 		);
 		await runCommand(
 			oxfmt.command,
-			[...oxfmt.args, "--write", generatedRelative],
+			// The fixture tree lives under a `.generated-client-check-*` directory
+			// that the repository's own `.gitignore` excludes, and oxfmt applies
+			// `.gitignore` rules by default. Without `--no-ignore`, oxfmt treats
+			// every file under the fixture as excluded and refuses to run.
+			[...oxfmt.args, "--write", "--no-ignore", generatedRelative],
 			fixture.client,
 		);
 
