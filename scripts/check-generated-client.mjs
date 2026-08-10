@@ -2,7 +2,6 @@
 import {
 	cp,
 	mkdtemp,
-	mkdir,
 	readFile,
 	readdir,
 	rm,
@@ -358,9 +357,7 @@ async function readNormalizedSpec() {
 }
 
 async function createFixtureRepository(normalizedSpec) {
-	const fixtureParent = resolve(repositoryRoot, "node_modules/.cache");
-	await mkdir(fixtureParent, { recursive: true });
-	const root = await mkdtemp(join(fixtureParent, "generated-client-check-"));
+	const root = await mkdtemp(join(repositoryRoot, ".generated-client-check-"));
 	try {
 		const fixtureClient = resolve(root, "packages/hevy-client");
 		await cp(clientRoot, fixtureClient, {
@@ -397,15 +394,19 @@ export async function checkGeneratedClient() {
 	try {
 		fixture = await createFixtureRepository(normalized);
 		const kubb = await resolvePackageExecutable("@kubb/cli", "kubb");
-		const prettier = await resolvePackageExecutable("prettier", "prettier");
+		const oxfmt = await resolvePackageExecutable("oxfmt", "oxfmt");
 		await runCommand(
 			kubb.command,
 			[...kubb.args, "generate", "--config", "./kubb.config.ts"],
 			fixture.client,
 		);
 		await runCommand(
-			prettier.command,
-			[...prettier.args, "--ignore-unknown", "--write", generatedRelative],
+			oxfmt.command,
+			// The fixture tree lives under a `.generated-client-check-*` directory
+			// that the repository's own `.gitignore` excludes, and oxfmt applies
+			// `.gitignore` rules by default. Without `--no-ignore`, oxfmt treats
+			// every file under the fixture as excluded and refuses to run.
+			[...oxfmt.args, "--write", "--no-ignore", generatedRelative],
 			fixture.client,
 		);
 
