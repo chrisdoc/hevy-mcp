@@ -1,5 +1,15 @@
 # @hevy-mcp/worker
 
+## 0.2.1
+
+### Patch Changes
+
+- [#982](https://github.com/chrisdoc/hevy-mcp/pull/982) [`4685bbb`](https://github.com/chrisdoc/hevy-mcp/commit/4685bbb8f5819b7ef14e5ea4e31daaab9bf73231) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Propagate the request's pseudonymous user hash and Cloudflare edge colo onto hosted Worker MCP activity spans when the colo is available, with privacy-safe tests and dashboard documentation.
+
+- [#968](https://github.com/chrisdoc/hevy-mcp/pull/968) [`23afac3`](https://github.com/chrisdoc/hevy-mcp/commit/23afac3c4ab0d66b60cb193d9efc86b598b1d6da) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use Oxfmt for generated client formatting and remove the repository's Prettier dependency.
+
+- [#968](https://github.com/chrisdoc/hevy-mcp/pull/968) [`23afac3`](https://github.com/chrisdoc/hevy-mcp/commit/23afac3c4ab0d66b60cb193d9efc86b598b1d6da) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Capture bounded, allowlisted, redacted upstream error details in API diagnostics without adding response text to metrics.
+
 ## 0.2.0
 
 ### Minor Changes

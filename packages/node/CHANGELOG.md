@@ -1,5 +1,17 @@
 # hevy-mcp
 
+## 6.1.1
+
+### Patch Changes
+
+- [#980](https://github.com/chrisdoc/hevy-mcp/pull/980) [`ac18809`](https://github.com/chrisdoc/hevy-mcp/commit/ac18809a23ef04a6f9d75bb3138611385cc5ab7f) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Update the published Node package documentation to use the current hosted MCP endpoint.
+
+- [#968](https://github.com/chrisdoc/hevy-mcp/pull/968) [`23afac3`](https://github.com/chrisdoc/hevy-mcp/commit/23afac3c4ab0d66b60cb193d9efc86b598b1d6da) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Treat unknown MCP tool calls as expected caller validation failures instead of reporting them as Sentry errors.
+
+- [#968](https://github.com/chrisdoc/hevy-mcp/pull/968) [`23afac3`](https://github.com/chrisdoc/hevy-mcp/commit/23afac3c4ab0d66b60cb193d9efc86b598b1d6da) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use Oxfmt for generated client formatting and remove the repository's Prettier dependency.
+
+- [#968](https://github.com/chrisdoc/hevy-mcp/pull/968) [`23afac3`](https://github.com/chrisdoc/hevy-mcp/commit/23afac3c4ab0d66b60cb193d9efc86b598b1d6da) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Capture bounded, allowlisted, redacted upstream error details in API diagnostics without adding response text to metrics.
+
 ## 6.1.0
 
 ### Minor Changes
