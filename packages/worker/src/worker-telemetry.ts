@@ -1,12 +1,68 @@
 const USER_HASH_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 const USER_HASH_LENGTH = 10;
 const CLOUDFLARE_COLO_PATTERN = /^[A-Z]{3}$/u;
+const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/u;
+const GEO_VALUE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .,'’()/_-]{0,63}$/u;
+const IDENTIFIER_SHAPED_GEO_VALUE_PATTERN =
+	/^(?:(?:\d{1,3}\.){3}\d{1,3}|-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?)?|\d[\d -]*\d)$/u;
+const MAX_GEO_VALUE_LENGTH = 64;
 
 type RequestWithCloudflareProperties = Request & {
 	readonly cf?: {
 		readonly colo?: unknown;
+		readonly city?: unknown;
+		readonly region?: unknown;
+		readonly country?: unknown;
 	};
 };
+
+export interface CloudflareGeography {
+	readonly localityName?: string;
+	readonly localityRegion?: string;
+	readonly countryCode?: string;
+}
+
+/**
+ * Sanitize a Cloudflare-provided locality or region without allowing
+ * identifier-shaped values such as IP addresses, coordinates, or postal codes.
+ */
+export function sanitizeCloudflareGeographyValue(
+	value: unknown,
+): string | undefined {
+	if (typeof value !== "string" || value.length > MAX_GEO_VALUE_LENGTH)
+		return undefined;
+	const normalized = value.trim().replace(/\s+/gu, " ");
+	return normalized.length <= MAX_GEO_VALUE_LENGTH &&
+		!IDENTIFIER_SHAPED_GEO_VALUE_PATTERN.test(normalized) &&
+		GEO_VALUE_PATTERN.test(normalized)
+		? normalized
+		: undefined;
+}
+
+/**
+ * Return bounded Cloudflare IP-geolocation fields. These values describe the
+ * request's approximate location; they are not exact location data.
+ */
+export function getCloudflareGeography(request: Request): CloudflareGeography {
+	try {
+		const cf = (request as RequestWithCloudflareProperties).cf;
+		const country = cf?.country;
+		const countryCode =
+			typeof country === "string" && COUNTRY_CODE_PATTERN.test(country)
+				? country
+				: undefined;
+		const localityName = sanitizeCloudflareGeographyValue(cf?.city);
+		const localityRegion = sanitizeCloudflareGeographyValue(cf?.region);
+		return {
+			...(localityName ? { localityName } : {}),
+			...(localityRegion ? { localityRegion } : {}),
+			...(countryCode ? { countryCode } : {}),
+		};
+	} catch {
+		// Request metadata is optional and must never affect MCP behavior.
+		return {};
+	}
+}
 
 /**
  * Return the Cloudflare edge colo only when the Worker supplied a valid value.

@@ -25,7 +25,11 @@ import {
 	createWorkerToolObserver,
 	type WorkerToolObserverOptions,
 } from "./worker-observer.js";
-import { createWorkerUserHash, getCloudflareColo } from "./worker-telemetry.js";
+import {
+	createWorkerUserHash,
+	getCloudflareColo,
+	getCloudflareGeography,
+} from "./worker-telemetry.js";
 
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
@@ -342,9 +346,13 @@ async function serveMcpRequest(
 	deadline: number,
 ): Promise<Response> {
 	try {
+		const geography = getCloudflareGeography(request);
 		const observer = dependencies.createObserver({
 			userHash: await createWorkerUserHash(apiKey),
 			cloudflareColo: getCloudflareColo(request),
+			geoLocalityName: geography.localityName,
+			geoLocalityRegion: geography.localityRegion,
+			geoCountryCode: geography.countryCode,
 		});
 		const server = dependencies.createServer(
 			({ onLog }) =>

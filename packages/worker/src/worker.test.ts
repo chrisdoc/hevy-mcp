@@ -441,7 +441,13 @@ describe("real stateless SDK transport", () => {
 
 	it("passes the user hash and Cloudflare colo to activity observation", async () => {
 		let observerOptions:
-			| { userHash?: string; cloudflareColo?: string }
+			| {
+					userHash?: string;
+					cloudflareColo?: string;
+					geoLocalityName?: string;
+					geoLocalityRegion?: string;
+					geoCountryCode?: string;
+			  }
 			| undefined;
 		const request = mcpRequest({
 			jsonrpc: "2.0",
@@ -453,7 +459,14 @@ describe("real stateless SDK transport", () => {
 				clientInfo: { name: "telemetry-context-test", version: "1" },
 			},
 		});
-		Object.defineProperty(request, "cf", { value: { colo: "SFO" } });
+		Object.defineProperty(request, "cf", {
+			value: {
+				colo: "SFO",
+				city: "San Francisco",
+				region: "California",
+				country: "US",
+			},
+		});
 		const handler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
 			createObserver: (options) => {
@@ -466,6 +479,9 @@ describe("real stateless SDK transport", () => {
 		expect(observerOptions).toEqual({
 			userHash: "2cb0b5f95a",
 			cloudflareColo: "SFO",
+			geoLocalityName: "San Francisco",
+			geoLocalityRegion: "California",
+			geoCountryCode: "US",
 		});
 	});
 
