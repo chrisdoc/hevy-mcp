@@ -51,6 +51,33 @@ describe("Worker telemetry context", () => {
 		);
 	});
 
+	it("reads each geography field once", () => {
+		const reads = { city: 0, region: 0, country: 0 };
+		const cf = {
+			get city() {
+				reads.city += 1;
+				return "San Francisco";
+			},
+			get region() {
+				reads.region += 1;
+				return "California";
+			},
+			get country() {
+				reads.country += 1;
+				return "US";
+			},
+		};
+		const request = new Request("https://worker.example/mcp");
+		Object.defineProperty(request, "cf", { value: cf });
+
+		expect(getCloudflareGeography(request)).toEqual({
+			localityName: "San Francisco",
+			localityRegion: "California",
+			countryCode: "US",
+		});
+		expect(reads).toEqual({ city: 1, region: 1, country: 1 });
+	});
+
 	it.each([
 		{ city: "", region: "California", country: "US" },
 		{ city: "San Francisco", region: "California", country: "USA" },
@@ -63,6 +90,21 @@ describe("Worker telemetry context", () => {
 				? { localityName: "San Francisco", localityRegion: "California" }
 				: { localityRegion: "California", countryCode: "US" },
 		);
+	});
+
+	it.each([
+		"198.51.100.10",
+		"37.7749",
+		"37.7749, -122.4194",
+		"94103",
+		"12345-6789",
+		"a".repeat(65),
+	])("rejects identifier-shaped or oversized geography values: %s", (value) => {
+		const request = new Request("https://worker.example/mcp");
+		Object.defineProperty(request, "cf", {
+			value: { city: value, region: value, country: "US" },
+		});
+		expect(getCloudflareGeography(request)).toEqual({ countryCode: "US" });
 	});
 
 	it.each([

@@ -3,6 +3,8 @@ const USER_HASH_LENGTH = 10;
 const CLOUDFLARE_COLO_PATTERN = /^[A-Z]{3}$/u;
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/u;
 const GEO_VALUE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .,'’()/_-]{0,63}$/u;
+const IDENTIFIER_SHAPED_GEO_VALUE_PATTERN =
+	/^(?:(?:\d{1,3}\.){3}\d{1,3}|-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?)?|\d[\d -]*\d)$/u;
 const MAX_GEO_VALUE_LENGTH = 64;
 
 type RequestWithCloudflareProperties = Request & {
@@ -20,10 +22,18 @@ export interface CloudflareGeography {
 	readonly countryCode?: string;
 }
 
-function safeGeoValue(value: unknown): string | undefined {
-	if (typeof value !== "string") return undefined;
+/**
+ * Sanitize a Cloudflare-provided locality or region without allowing
+ * identifier-shaped values such as IP addresses, coordinates, or postal codes.
+ */
+export function sanitizeCloudflareGeographyValue(
+	value: unknown,
+): string | undefined {
+	if (typeof value !== "string" || value.length > MAX_GEO_VALUE_LENGTH)
+		return undefined;
 	const normalized = value.trim().replace(/\s+/gu, " ");
 	return normalized.length <= MAX_GEO_VALUE_LENGTH &&
+		!IDENTIFIER_SHAPED_GEO_VALUE_PATTERN.test(normalized) &&
 		GEO_VALUE_PATTERN.test(normalized)
 		? normalized
 		: undefined;
@@ -36,17 +46,16 @@ function safeGeoValue(value: unknown): string | undefined {
 export function getCloudflareGeography(request: Request): CloudflareGeography {
 	try {
 		const cf = (request as RequestWithCloudflareProperties).cf;
+		const country = cf?.country;
 		const countryCode =
-			typeof cf?.country === "string" && COUNTRY_CODE_PATTERN.test(cf.country)
-				? cf.country
+			typeof country === "string" && COUNTRY_CODE_PATTERN.test(country)
+				? country
 				: undefined;
+		const localityName = sanitizeCloudflareGeographyValue(cf?.city);
+		const localityRegion = sanitizeCloudflareGeographyValue(cf?.region);
 		return {
-			...(safeGeoValue(cf?.city)
-				? { localityName: safeGeoValue(cf?.city) }
-				: {}),
-			...(safeGeoValue(cf?.region)
-				? { localityRegion: safeGeoValue(cf?.region) }
-				: {}),
+			...(localityName ? { localityName } : {}),
+			...(localityRegion ? { localityRegion } : {}),
 			...(countryCode ? { countryCode } : {}),
 		};
 	} catch {

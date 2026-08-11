@@ -48,7 +48,9 @@ that key.
 Hosted activity spans containing `span.user.hash`,
 `span.cloudflare.colo`, or approximate geography fields are retained for 30
 days and are accessible only to repository maintainers and the on-call
-operator.
+operator. Trace-derived Worker usage metrics that retain `user_hash` together
+with locality use the same 30-day retention and access policy; tool-usage and
+Worker-location rollups omit `user_hash`.
 
 The hosted Worker uses request-scoped in-memory caches and does not maintain a
 shared workout-data database. Cloudflare may process operational logs under

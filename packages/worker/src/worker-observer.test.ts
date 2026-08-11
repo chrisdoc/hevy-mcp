@@ -156,6 +156,40 @@ describe("createWorkerToolObserver", () => {
 		);
 	});
 
+	it.each([
+		"198.51.100.10",
+		"37.7749",
+		"37.7749, -122.4194",
+		"94103",
+		"12345-6789",
+		"a".repeat(65),
+	])(
+		"omits identifier-shaped or oversized geography attributes: %s",
+		async (value) => {
+			const events: WorkerObservationEvent[] = [];
+			const { span, tracing } = createTracingDouble();
+			const scope = createScope(events, {
+				geoLocalityName: value,
+				geoLocalityRegion: value,
+				geoCountryCode: "US",
+				tracing,
+			});
+
+			await scope.run(() => Promise.resolve("ok"));
+			finish(scope, { outcome: "success", durationMs: 1 });
+
+			expect(span.setAttribute).not.toHaveBeenCalledWith(
+				"geo.locality.name",
+				expect.anything(),
+			);
+			expect(span.setAttribute).not.toHaveBeenCalledWith(
+				"geo.locality.region",
+				expect.anything(),
+			);
+			expect(span.setAttribute).toHaveBeenCalledWith("geo.country.code", "US");
+		},
+	);
+
 	it("emits safe bounded invocation and successful completion events", async () => {
 		const events: WorkerObservationEvent[] = [];
 		const scope = createScope(events);

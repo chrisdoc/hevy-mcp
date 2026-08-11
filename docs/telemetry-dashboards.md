@@ -92,7 +92,10 @@ with placeholders; raw IDs never reach these panels.
 
 Approved application policy for these dashboards:
 
-- aggregate metrics: 90 days;
+- application aggregate metrics without a user pseudonym: 90 days;
+- trace-derived Worker usage metrics containing `user_hash` with locality:
+  30 days, with access limited to repository maintainers and the on-call
+  operator;
 - Sentry error events and OTel traces containing sanitized client metadata or
   bounded diagnostic details: 30 days;
 - correlation-ID troubleshooting views: 24 hours of access and no saved
