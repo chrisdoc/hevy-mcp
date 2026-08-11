@@ -481,7 +481,8 @@ header, such as Claude.ai custom connectors. Self-hosted Workers can opt in by
 following the `OAUTH_KV` setup in [CONTRIBUTING.md](./CONTRIBUTING.md):
 
 - RFC 8414 / RFC 9728 discovery metadata under `/.well-known/`
-- Dynamic client registration (`/register`) and PKCE token exchange (`/token`)
+- Client ID Metadata Documents (CIMD), with dynamic client registration
+  (`/register`) as a fallback, and PKCE token exchange (`/token`)
 - An `/authorize` page where you paste your Hevy API key once; the key is
   validated with Hevy and stored encrypted inside the OAuth grant
 
@@ -497,8 +498,8 @@ refresh for supported clients.
 
 The endpoint does not expose legacy SSE or a `GET` event stream. Without the
 opt-in OAuth layer, clients that require OAuth discovery, dynamic
-registration, or token refresh are not compatible unless they can send the
-fixed custom header above.
+registration, CIMD, or token refresh are not compatible unless they can send
+the fixed custom header above.
 
 ### Self-host the Worker
 
