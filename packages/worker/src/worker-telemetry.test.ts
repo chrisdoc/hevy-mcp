@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createWorkerUserHash, getCloudflareColo } from "./worker-telemetry.js";
+import {
+	createWorkerUserHash,
+	getCloudflareColo,
+	getCloudflareGeography,
+} from "./worker-telemetry.js";
 
 describe("Worker telemetry context", () => {
 	it("keeps the existing deterministic HMAC user pseudonym", async () => {
@@ -24,6 +28,40 @@ describe("Worker telemetry context", () => {
 		expect(getCloudflareColo(request)).toBe("SFO");
 		expect(JSON.stringify(getCloudflareColo(request))).not.toContain(
 			"198.51.100.10",
+		);
+	});
+
+	it("returns bounded approximate geography without client identifiers", () => {
+		const request = new Request("https://worker.example/mcp");
+		Object.defineProperty(request, "cf", {
+			value: {
+				city: "San Francisco",
+				region: "California",
+				country: "US",
+				clientIp: "198.51.100.10",
+			},
+		});
+		expect(getCloudflareGeography(request)).toEqual({
+			localityName: "San Francisco",
+			localityRegion: "California",
+			countryCode: "US",
+		});
+		expect(JSON.stringify(getCloudflareGeography(request))).not.toContain(
+			"198.51.100.10",
+		);
+	});
+
+	it.each([
+		{ city: "", region: "California", country: "US" },
+		{ city: "San Francisco", region: "California", country: "USA" },
+		{ city: "<script>", region: "California", country: "US" },
+	])("drops malformed geography fields: %j", (cf) => {
+		const request = new Request("https://worker.example/mcp");
+		Object.defineProperty(request, "cf", { value: cf });
+		expect(getCloudflareGeography(request)).toEqual(
+			cf.country === "USA"
+				? { localityName: "San Francisco", localityRegion: "California" }
+				: { localityRegion: "California", countryCode: "US" },
 		);
 	});
 

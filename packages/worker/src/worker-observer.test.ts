@@ -66,6 +66,9 @@ describe("createWorkerToolObserver", () => {
 		const scope = createScope(events, {
 			userHash: "2cb0b5f95a",
 			cloudflareColo: "SFO",
+			geoLocalityName: "San Francisco",
+			geoLocalityRegion: "California",
+			geoCountryCode: "US",
 			tracing,
 		});
 
@@ -78,6 +81,21 @@ describe("createWorkerToolObserver", () => {
 		);
 		expect(span.setAttribute).toHaveBeenCalledWith("user.hash", "2cb0b5f95a");
 		expect(span.setAttribute).toHaveBeenCalledWith("cloudflare.colo", "SFO");
+		expect(span.setAttribute).toHaveBeenCalledWith("hevy.feature", "workouts");
+		expect(span.setAttribute).toHaveBeenCalledWith("mcp.tool.kind", "read");
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			"mcp.tool.operation",
+			"list",
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			"geo.locality.name",
+			"San Francisco",
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			"geo.locality.region",
+			"California",
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith("geo.country.code", "US");
 		expect(span.end).toHaveBeenCalledOnce();
 		expect(JSON.stringify(span.setAttribute.mock.calls)).not.toContain(
 			"test-key",
@@ -111,6 +129,9 @@ describe("createWorkerToolObserver", () => {
 		const { span, tracing } = createTracingDouble();
 		const scope = createScope(events, {
 			userHash: "2cb0b5f95a",
+			geoLocalityName: "<script>",
+			geoLocalityRegion: "California",
+			geoCountryCode: "USA",
 			tracing,
 		});
 
@@ -119,6 +140,18 @@ describe("createWorkerToolObserver", () => {
 
 		expect(span.setAttribute).not.toHaveBeenCalledWith(
 			"cloudflare.colo",
+			expect.anything(),
+		);
+		expect(span.setAttribute).not.toHaveBeenCalledWith(
+			"geo.locality.name",
+			expect.anything(),
+		);
+		expect(span.setAttribute).toHaveBeenCalledWith(
+			"geo.locality.region",
+			"California",
+		);
+		expect(span.setAttribute).not.toHaveBeenCalledWith(
+			"geo.country.code",
 			expect.anything(),
 		);
 	});

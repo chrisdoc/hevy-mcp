@@ -26,20 +26,30 @@ WHERE transport = "stdio"
 ## Hosted Worker regional activity
 
 Hosted Worker MCP activity spans carry the deterministic pseudonymous
-`span.user.hash` and, only for requests with Cloudflare request metadata,
-`span.cloudflare.colo`. A colo is the Cloudflare edge point of presence that
-processed the request; it is a regional proxy, not the user's exact geography.
+`span.user.hash`, Cloudflare's edge `span.cloudflare.colo`, and, when
+available, bounded approximate request geography:
+`span.geo.locality.name`, `span.geo.locality.region`, and
+`span.geo.country.code`. A colo is the Cloudflare edge point of presence that
+processed the request; geography is IP-derived and is not verified residence.
 
-Use a scoped TraceQL metrics query to produce one row per user/colo pair:
+Use a scoped TraceQL metrics query to produce one row per user/locality pair:
 
 ```text
-{ span.user.hash != nil && span.cloudflare.colo != nil }
-| count_over_time() by (span.cloudflare.colo, span.user.hash)
+{ span.user.hash != nil && span.geo.locality.name != nil }
+| count_over_time() by (
+    span.geo.locality.name,
+    span.geo.locality.region,
+    span.geo.country.code,
+    span.user.hash
+  )
 ```
 
-Count distinct `span.user.hash` values per `span.cloudflare.colo` client-side
-for the selected window. Do not include raw client IP addresses, and do not
-save the pseudonymous hash as a per-user behavior history.
+The production VictoriaMetrics path should use separate trace-derived metric
+profiles: user activity keeps `user_hash` plus locality, while tool usage keeps
+tool taxonomy plus locality and omits `user_hash`. This avoids a
+`user_hash × tool × locality` series explosion. Count distinct user hashes per
+locality for the selected window. Do not include raw client IP addresses, and
+do not save a per-user behavior history beyond the approved retention window.
 
 ## Tool reliability
 

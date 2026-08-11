@@ -17,8 +17,11 @@ const MAX_STRING_LENGTH = 160;
 const MAX_ARGUMENT_KEYS = 32;
 const MAX_WORKFLOW_PAGES = 10_000;
 const MAX_WORKFLOW_ITEMS = 1_000_000;
+const MAX_GEO_VALUE_LENGTH = 64;
 const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
 const SAFE_CLOUDFLARE_COLO_PATTERN = /^[A-Z]{3}$/u;
+const SAFE_COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/u;
+const SAFE_GEO_VALUE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .,'’()/_-]{0,63}$/u;
 
 const SAFE_ARGUMENT_KEYS = new Set([
 	"date",
@@ -190,6 +193,12 @@ export interface WorkerToolObserverOptions {
 	readonly userHash?: string;
 	/** Cloudflare's three-letter edge colo, when the request has one. */
 	readonly cloudflareColo?: string;
+	/** Approximate Cloudflare IP-geolocation locality name. */
+	readonly geoLocalityName?: string;
+	/** Approximate Cloudflare IP-geolocation region. */
+	readonly geoLocalityRegion?: string;
+	/** Approximate Cloudflare IP-geolocation country code. */
+	readonly geoCountryCode?: string;
 	/** Injectable for unit tests; production uses Cloudflare's tracing API when available. */
 	readonly tracing?: WorkerTracing;
 }
@@ -214,6 +223,21 @@ function safeUserHash(value: unknown): string | undefined {
 
 function safeCloudflareColo(value: unknown): string | undefined {
 	return typeof value === "string" && SAFE_CLOUDFLARE_COLO_PATTERN.test(value)
+		? value
+		: undefined;
+}
+
+function safeGeoValue(value: unknown): string | undefined {
+	if (typeof value !== "string") return undefined;
+	const normalized = value.trim().replace(/\s+/gu, " ");
+	return normalized.length <= MAX_GEO_VALUE_LENGTH &&
+		SAFE_GEO_VALUE_PATTERN.test(normalized)
+		? normalized
+		: undefined;
+}
+
+function safeCountryCode(value: unknown): string | undefined {
+	return typeof value === "string" && SAFE_COUNTRY_CODE_PATTERN.test(value)
 		? value
 		: undefined;
 }
@@ -527,6 +551,9 @@ export function createWorkerToolObserver(
 		options.tracing ?? cloudflareWorkers.tracing;
 	const userHash = safeUserHash(options.userHash);
 	const cloudflareColo = safeCloudflareColo(options.cloudflareColo);
+	const geoLocalityName = safeGeoValue(options.geoLocalityName);
+	const geoLocalityRegion = safeGeoValue(options.geoLocalityRegion);
+	const geoCountryCode = safeCountryCode(options.geoCountryCode);
 	return {
 		start(invocation): ToolObservationScope {
 			let safe: Omit<WorkerObservationEvent, "event">;
@@ -555,9 +582,25 @@ export function createWorkerToolObserver(
 									[safe.kind === "prompt"
 										? "mcp.prompt.name"
 										: "mcp.tool.name"]: safe.name,
+									...(safe.taxonomy
+										? {
+												"hevy.feature": safe.taxonomy.feature,
+												"mcp.tool.kind": safe.taxonomy.kind,
+												"mcp.tool.operation": safe.taxonomy.operation,
+											}
+										: {}),
 									...(userHash ? { "user.hash": userHash } : {}),
 									...(cloudflareColo
 										? { "cloudflare.colo": cloudflareColo }
+										: {}),
+									...(geoLocalityName
+										? { "geo.locality.name": geoLocalityName }
+										: {}),
+									...(geoLocalityRegion
+										? { "geo.locality.region": geoLocalityRegion }
+										: {}),
+									...(geoCountryCode
+										? { "geo.country.code": geoCountryCode }
 										: {}),
 								});
 								return operation();
