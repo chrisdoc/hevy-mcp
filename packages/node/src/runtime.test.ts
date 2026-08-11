@@ -223,6 +223,12 @@ describe("Node package entrypoint", () => {
 			"mcp.tools.count",
 			25,
 		);
+		expect(testDoubles.createNodeToolObserver).toHaveBeenCalledWith({
+			userHash: "0b633a8f53",
+		});
+		expect(
+			JSON.stringify(testDoubles.createNodeToolObserver.mock.calls),
+		).not.toContain("programmatic-key");
 		expect(testDoubles.server.connect).not.toHaveBeenCalled();
 	});
 	it("enriches initialize and tool SDK spans", async () => {

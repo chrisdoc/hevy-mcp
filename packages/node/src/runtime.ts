@@ -14,6 +14,7 @@ import {
 	createNodeHevyClientOptions,
 } from "./utils/hevy-client-observability.js";
 import { createNodeToolObserver } from "./utils/tool-observer.js";
+import { createNodeUserHash } from "./utils/user-hash.js";
 import { createInstrumentedStdioTransport } from "./utils/stdio-observability.js";
 import {
 	recordMcpSessionTermination,
@@ -186,7 +187,9 @@ function buildServer(
 					lifecycleSignal,
 					onToolsRegistered: (count) =>
 						span.setAttribute("mcp.tools.count", count),
-					observer: createNodeToolObserver(),
+					observer: createNodeToolObserver({
+						userHash: createNodeUserHash(apiKey),
+					}),
 					cacheObserver: createNodeCacheObserver(),
 				});
 				installSdkErrorTracking(server, transport);

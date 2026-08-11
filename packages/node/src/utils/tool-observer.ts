@@ -25,6 +25,7 @@ import { captureFailure, tracer } from "./telemetry.js";
 
 type AttributeValue = string | number | boolean;
 const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
+const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
 
 const WORKFLOW_PAGINATION_RESOURCES = new Set([
 	"workouts",
@@ -58,6 +59,7 @@ function metricAttributes(
 
 function createAttributes(
 	invocation: SafeToolInvocation,
+	userHash?: string,
 ): Record<string, AttributeValue> {
 	const clientMetadata = getCurrentMcpClientMetadata();
 	const isPrompt = invocation.kind === "prompt";
@@ -73,6 +75,7 @@ function createAttributes(
 		"mcp.client.version": clientMetadata.version,
 		"mcp.protocol.version": clientMetadata.protocolVersion,
 		"mcp.transport": getCurrentMcpTransport(),
+		...(userHash ? { "user.hash": userHash } : {}),
 		"mcp.tool.args.key_count_bucket":
 			invocation.argumentKeyCountBucket ?? "unknown",
 		"mcp.tool.args.keys": invocation.argumentKeys?.join(",") ?? "",
@@ -199,8 +202,20 @@ function bestEffort(operation: () => void): void {
 	}
 }
 
+export interface NodeToolObserverOptions {
+	/** HMAC pseudonym derived from the authenticated Hevy API key. */
+	readonly userHash?: string;
+}
+
 /** Node-only adapter from core's privacy-safe observation contract to OTel. */
-export function createNodeToolObserver(): ToolObserver {
+export function createNodeToolObserver(
+	options: NodeToolObserverOptions = {},
+): ToolObserver {
+	const userHash =
+		typeof options.userHash === "string" &&
+		SAFE_USER_HASH_PATTERN.test(options.userHash)
+			? options.userHash
+			: undefined;
 	return {
 		start(invocation): ToolObservationScope {
 			const startedAt = Date.now();
@@ -214,7 +229,7 @@ export function createNodeToolObserver(): ToolObserver {
 				run<T>(operation: () => Promise<T>): Promise<T> {
 					return tracer.startActiveSpan(
 						`mcp.tool.${invocation.name}`,
-						{ attributes: createAttributes(invocation) },
+						{ attributes: createAttributes(invocation, userHash) },
 						async (span) => {
 							activeSpan = span;
 							try {

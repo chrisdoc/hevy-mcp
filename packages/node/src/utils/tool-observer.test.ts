@@ -179,6 +179,52 @@ describe("createNodeToolObserver", () => {
 		expect(testDoubles.span.end).toHaveBeenCalledOnce();
 	});
 
+	it.each([
+		{ name: "get-workouts", category: "tool" },
+		{ name: "search-routines", category: "discovery" },
+		{
+			name: "create-workout-from-routine",
+			kind: "prompt" as const,
+			category: "tool",
+		},
+	])("propagates user.hash to $name activity spans", async (caseData) => {
+		const userHash = "2cb0b5f95a";
+		const { category, ...invocation } = caseData;
+		const typedInvocation = invocation satisfies SafeToolInvocation;
+		const scope = createNodeToolObserver({ userHash }).start(typedInvocation);
+		if (!scope) throw new Error("Expected the Node observer to create a scope");
+
+		await scope.run(() => Promise.resolve("result"));
+		await scope.finish({ outcome: "success", durationMs: 1 });
+
+		const spanOptions = testDoubles.startActiveSpan.mock.calls[0]?.[1] as {
+			attributes: Record<string, string | number | boolean>;
+		};
+		expect(spanOptions.attributes).toEqual(
+			expect.objectContaining({
+				"mcp.span.category": category,
+				"user.hash": userHash,
+			}),
+		);
+	});
+
+	it("does not attach raw API keys to activity spans", async () => {
+		const secret = "node-api-key-secret-sentinel";
+		const scope = createNodeToolObserver({ userHash: secret }).start(
+			invocation,
+		);
+		if (!scope) throw new Error("Expected the Node observer to create a scope");
+
+		await scope.run(() => Promise.resolve("result"));
+		await scope.finish({ outcome: "success", durationMs: 1 });
+
+		const spanOptions = testDoubles.startActiveSpan.mock.calls[0]?.[1] as {
+			attributes: Record<string, string | number | boolean>;
+		};
+		expect(spanOptions.attributes).not.toHaveProperty("user.hash");
+		expect(JSON.stringify(spanOptions)).not.toContain(secret);
+	});
+
 	it("records only core-sanitized diagnostics for thrown errors", async () => {
 		const secret = "private-error-message-and-stack";
 		const error = new Error(secret);
