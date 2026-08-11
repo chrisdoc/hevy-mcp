@@ -1,5 +1,11 @@
 # @hevy-mcp/worker
 
+## 0.2.2
+
+### Patch Changes
+
+- [#986](https://github.com/chrisdoc/hevy-mcp/pull/986) [`e338d8a`](https://github.com/chrisdoc/hevy-mcp/commit/e338d8abb17d50e811a968508703fdc1bad03975) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add bounded Cloudflare locality, region, and country attributes to hosted MCP activity spans for privacy-reviewed usage aggregation.
+
 ## 0.2.1
 
 ### Patch Changes
