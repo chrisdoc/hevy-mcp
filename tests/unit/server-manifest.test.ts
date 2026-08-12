@@ -110,7 +110,7 @@ afterEach(async () => {
 	fixtureDirs.clear();
 });
 
-async function writeJson(path: string, value: unknown) {
+async function writeJson(path: string, value: object) {
 	await writeFile(path, `${JSON.stringify(value, null, "\t")}\n`);
 }
 

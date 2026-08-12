@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SpanStatusCode } from "@opentelemetry/api";
+import type { Context, Span } from "@opentelemetry/api";
 import {
 	HevyHttpError,
 	type HevyRequestObservation,
@@ -20,11 +21,11 @@ const testDoubles = vi.hoisted(() => ({
 	apiCallsAdd: vi.fn(),
 	apiDurationRecord: vi.fn(),
 	contextActive: vi.fn(() => "active-context"),
-	contextWith: vi.fn((_context: unknown, operation: () => Promise<unknown>) =>
+	contextWith: vi.fn((_context: Context, operation: () => Promise<unknown>) =>
 		operation(),
 	),
 	traceSetSpan: vi.fn(
-		(_context: unknown, _span: unknown) => "api-span-context",
+		(_context: Context, _span: Span) => "api-span-context",
 	),
 }));
 vi.mock("./telemetry.js", () => ({

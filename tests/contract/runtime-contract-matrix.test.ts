@@ -1,5 +1,5 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client, type JSONObject } from "@modelcontextprotocol/client";
+import { Client, type JSONObject, type JSONValue } from "@modelcontextprotocol/client";
 import {
 	createHevyMcpServer,
 	type CreateHevyMcpServerOptions,
@@ -20,7 +20,7 @@ const minimalInput = getWorkoutsCapabilityDescriptor.inputSchema.parse({
 	page: 1,
 }) as JSONObject;
 
-function assertGetWorkoutsResult(result: unknown): void {
+function assertGetWorkoutsResult(result: JSONValue | object): void {
 	if (typeof result !== "object" || result === null) {
 		throw new Error("Expected MCP tool result object");
 	}
@@ -60,7 +60,7 @@ function parseStreamableResponse(text: string): JSONObject {
 
 async function postNodeMcp(
 	url: string,
-	body: unknown,
+	body: JSONValue,
 	extraHeaders: Record<string, string> = {},
 ): Promise<{ response: Response; payload: JSONObject }> {
 	const response = await fetch(url, {
@@ -75,7 +75,7 @@ async function postNodeMcp(
 	return { response, payload: parseStreamableResponse(await response.text()) };
 }
 
-function mcpRequest(body: unknown): Request {
+function mcpRequest(body: JSONValue): Request {
 	return new Request("https://contract-matrix.example/mcp", {
 		method: "POST",
 		headers: {
@@ -89,7 +89,7 @@ function mcpRequest(body: unknown): Request {
 
 async function postWorkerMcp(
 	handler: ReturnType<typeof createWorkerHandler>,
-	body: unknown,
+	body: JSONValue,
 ): Promise<{ response: Response; payload: JSONObject }> {
 	const response = await handler(mcpRequest(body), {});
 	return { response, payload: parseStreamableResponse(await response.text()) };

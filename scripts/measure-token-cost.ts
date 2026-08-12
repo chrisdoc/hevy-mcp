@@ -143,7 +143,10 @@ export function getTargetStatus(
 			: "aboveTarget";
 }
 
-function countEncodedTokens(value: unknown, encoder: EncoderLike): number {
+function countEncodedTokens(
+	value: string | number | boolean | null | object | undefined,
+	encoder: EncoderLike,
+): number {
 	const serialized = JSON.stringify(value);
 	return serialized === undefined ? 0 : encoder.encode(serialized).length;
 }

@@ -1,22 +1,23 @@
 import type { JSONSchema } from "zod/v4/core";
 import { z } from "zod";
 import { isObject, isString } from "./type-predicates.js";
+import type { RuntimeValue } from "./type-predicates.js";
 
 type JsonSchema = Omit<JSONSchema.JSONSchema, "type"> & {
 	type?: JSONSchema.JSONSchema["type"] | string[];
 };
 
-function isRecord(value: unknown): value is JsonSchema {
+function isRecord(value: RuntimeValue): value is JsonSchema {
 	return isObject(value) && !Array.isArray(value);
 }
 
-function isNullSchema(value: unknown): value is JsonSchema {
+function isNullSchema(value: RuntimeValue): value is JsonSchema {
 	return (
 		isRecord(value) && value.type === "null" && Object.keys(value).length === 1
 	);
 }
 
-function compactNullableSchema(value: unknown): unknown {
+function compactNullableSchema(value: RuntimeValue): RuntimeValue {
 	if (Array.isArray(value)) {
 		return value.map(compactNullableSchema);
 	}
@@ -50,7 +51,7 @@ function compactNullableSchema(value: unknown): unknown {
 	);
 }
 
-function omitOutputObjectRestrictions(value: unknown): unknown {
+function omitOutputObjectRestrictions(value: RuntimeValue): RuntimeValue {
 	if (Array.isArray(value)) {
 		return value.map(omitOutputObjectRestrictions);
 	}

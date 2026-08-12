@@ -37,7 +37,7 @@ const testDoubles = vi.hoisted(() => ({
 vi.mock("@sentry/node", () => ({
 	init: testDoubles.sentryInit,
 	flush: testDoubles.sentryFlush,
-	withScope: vi.fn((callback: (scope: unknown) => unknown) =>
+	withScope: vi.fn((callback: (scope: object) => unknown) =>
 		callback({
 			setTag: testDoubles.sentrySetTag,
 			setContext: testDoubles.sentrySetContext,
@@ -60,7 +60,7 @@ vi.mock("@opentelemetry/api", () => ({
 			startActiveSpan: vi.fn(
 				(
 					_name: string,
-					_options: unknown,
+					_options: object,
 					callback: (span: typeof testDoubles.activeSpan) => unknown,
 				) => callback(testDoubles.activeSpan),
 			),
@@ -96,7 +96,7 @@ vi.mock("@opentelemetry/sdk-trace-base", () => ({
 
 vi.mock("@opentelemetry/sdk-trace-node", () => {
 	class MockNodeTracerProvider {
-		constructor(options: unknown) {
+		constructor(options: object) {
 			testDoubles.nodeTracerProvider(options);
 			testDoubles.nodeTracerProviderOptions = options;
 		}
@@ -110,7 +110,7 @@ vi.mock("@opentelemetry/sdk-trace-node", () => {
 
 vi.mock("@opentelemetry/sdk-metrics", () => {
 	class MockMeterProvider {
-		constructor(options: unknown) {
+		constructor(options: object) {
 			testDoubles.meterProvider(options);
 			testDoubles.meterProviderOptions = options;
 		}
@@ -250,13 +250,13 @@ describe("telemetry initialization", () => {
 	it("records process failures with native exception diagnostics", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
-		const listeners = new Map<string, (error: unknown) => void>();
+		const listeners = new Map<string, (error: Error | string) => void>();
 		const processLike = {
-			on: vi.fn((event: string, listener: (error: unknown) => void) => {
+			on: vi.fn((event: string, listener: (error: Error | string) => void) => {
 				listeners.set(event, listener);
 			}),
 			removeListener: vi.fn(
-				(event: string, listener: (error: unknown) => void) => {
+				(event: string, listener: (error: Error | string) => void) => {
 					expect(listeners.get(event)).toBe(listener);
 				},
 			),

@@ -13,7 +13,7 @@ const testDoubles = vi.hoisted(() => {
 		onerror: undefined as ((error: Error) => void) | undefined,
 		_requestHandlers: new Map<
 			string,
-			(request: unknown, extra: unknown) => Promise<unknown>
+			(request: object, extra: object) => Promise<object>
 		>(),
 	};
 	const server = {
@@ -80,7 +80,7 @@ vi.mock("./utils/metrics.js", () => ({
 
 vi.mock("@hevy-mcp/hevy-client", () => ({
 	createHevyClient: testDoubles.createHevyClient,
-	isHevyHttpError: (error: unknown) =>
+	isHevyHttpError: (error: object) =>
 		Boolean(
 			error &&
 			typeof error === "object" &&
@@ -546,7 +546,7 @@ describe("Node package entrypoint", () => {
 		process.argv.push("--transport", "http");
 		testDoubles.startStreamableHttpServer.mockImplementationOnce(
 			async (
-				_options: unknown,
+				_options: object,
 				_apiKey: string,
 				factory: (params: { apiKey: string }) => Promise<unknown>,
 			) => {
@@ -691,7 +691,7 @@ describe("Node package entrypoint", () => {
 		process.argv.push("--transport", "http");
 		testDoubles.startStreamableHttpServer.mockImplementationOnce(
 			async (
-				_options: unknown,
+				_options: object,
 				_apiKey: string,
 				factory: (params: { apiKey: string }) => Promise<unknown>,
 			) => {

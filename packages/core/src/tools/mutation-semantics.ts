@@ -16,6 +16,7 @@ import type {
 } from "./input-schemas.js";
 import { utcSecondTimestamp } from "../utils/schemas.js";
 import { isFiniteNumber, isString } from "../utils/type-predicates.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 
 type RoutineRepRange = { start?: number; end?: number } | null;
 
@@ -176,7 +177,7 @@ const FETCHED_ISO_TIMESTAMP =
  * fetched values in the API's second-precision update contract. Caller-
  * supplied values remain strict.
  */
-function normalizeFetchedWorkoutTimestamp(value: unknown): unknown {
+function normalizeFetchedWorkoutTimestamp(value: RuntimeValue): RuntimeValue {
   if (!isString(value)) return value;
   const match = FETCHED_ISO_TIMESTAMP.exec(value);
   if (!match) return value;

@@ -1,6 +1,11 @@
 import type { ErrorEvent } from "@sentry/node";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import type { Span } from "@opentelemetry/api";
+type ScopeDouble = {
+	setTag: typeof testDoubles.setTag;
+	setContext: typeof testDoubles.setContext;
+	setFingerprint: typeof testDoubles.setFingerprint;
+};
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	captureFailure,
@@ -17,7 +22,7 @@ const testDoubles = vi.hoisted(() => ({
 }));
 
 vi.mock("@sentry/node", () => ({
-	withScope: vi.fn((callback: (scope: unknown) => unknown) =>
+	withScope: vi.fn((callback: (scope: ScopeDouble) => unknown) =>
 		callback({
 			setTag: testDoubles.setTag,
 			setContext: testDoubles.setContext,

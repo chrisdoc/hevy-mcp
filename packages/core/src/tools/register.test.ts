@@ -130,7 +130,7 @@ describe("registerHevyTools", () => {
 	it("exposes only snake_case public input property names", async () => {
 		const { tools } = await client.listTools();
 		const propertyNames: string[] = [];
-		const visit = (schema: unknown): void => {
+		const visit = (schema: object): void => {
 			if (!schema || typeof schema !== "object") return;
 			const record = schema as SchemaObject;
 			if (record.properties) {

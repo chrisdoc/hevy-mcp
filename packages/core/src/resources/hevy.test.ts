@@ -78,7 +78,7 @@ function getResourceRegistration(
 		metadata: match[2] as { description?: string; mimeType?: string },
 		handler: match[3] as (
 			uri: URL,
-			ctx: unknown,
+			ctx: object,
 		) => Promise<ReadResourceResult>,
 	};
 }

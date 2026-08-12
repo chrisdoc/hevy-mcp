@@ -55,7 +55,7 @@ function openStream(
 function call(
 	port: number,
 	method: string,
-	body?: unknown,
+	body?: object | string,
 	extraHeaders: Record<string, string> = {},
 ): Promise<HttpResult> {
 	return new Promise((resolve, reject) => {

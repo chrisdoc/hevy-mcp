@@ -1,5 +1,6 @@
 import type { LoggingMessageNotification } from "@modelcontextprotocol/server";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import type { RuntimeValue } from "./type-predicates.js";
 
 export type McpClientLogMessage = LoggingMessageNotification["params"];
 export type McpClientLogger = (message: McpClientLogMessage) => void;
@@ -26,7 +27,7 @@ export function createMcpClientLogger(server: LoggingServer): McpClientLogger {
 				return;
 			}
 
-			void server.sendLoggingMessage(message).catch((error: unknown) => {
+			void server.sendLoggingMessage(message).catch((error: RuntimeValue) => {
 				console.error(SEND_FAILURE_MESSAGE, createSafeErrorDiagnostic(error));
 			});
 		} catch (error) {

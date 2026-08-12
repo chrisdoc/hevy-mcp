@@ -11,6 +11,7 @@ import {
   type ToolExecutionContext,
 } from "../execution.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import type { RuntimeValue } from "./type-predicates.js";
 
 export { ErrorType } from "./error-policy.js";
 export type { StructuredExecutionError } from "../execution.js";
@@ -33,7 +34,7 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 
 /** Build the canonical execution projection for an arbitrary thrown value. */
 export function createExecutionErrorProjection(
-  error: unknown,
+  error: RuntimeValue,
 ): StructuredExecutionProjection {
   return createExecutionProjection(createSafeErrorDiagnostic(error));
 }
@@ -118,7 +119,7 @@ export interface ErrorDebugContext {
  * @returns A formatted MCP tool response with error information
  */
 export function createErrorResponse(
-  error: unknown,
+  error: RuntimeValue,
   context?: string,
 ): McpToolResponse {
   const policy = resolveErrorPolicy(
@@ -179,7 +180,7 @@ export function withErrorHandling<TParams extends object>(
     context?: ToolExecutionContext,
   ) => Promise<McpToolResponse>,
   context: string,
-  onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
+  onError?: (error: RuntimeValue, context: string, argumentKeyCount: number) => void,
 ): (args: Record<string, unknown>, context?: ToolExecutionContext) => Promise<McpToolResponse> {
   return async (rawArgs: Record<string, unknown>, requestContext?: ToolExecutionContext) => {
     const normalizedArgs = rawArgs ?? {};

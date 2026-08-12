@@ -1,6 +1,7 @@
 import { PassThrough, Writable } from "node:stream";
 import * as ServerPackage from "@modelcontextprotocol/server";
 import type { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import type { Span } from "@opentelemetry/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	deserializeMessageWithObservability,
@@ -13,9 +14,9 @@ const testDoubles = vi.hoisted(() => ({
 		setStatus: vi.fn(),
 		addEvent: vi.fn(),
 		end: vi.fn(),
-	},
+	} as unknown as Span,
 	startActiveSpan: vi.fn((...args: unknown[]) => {
-		const callback = args.at(-1) as (span: unknown) => unknown;
+		const callback = args.at(-1) as (span: Span) => unknown;
 		return callback(testDoubles.span);
 	}),
 	parseErrors: { add: vi.fn() },
@@ -166,7 +167,13 @@ describe("package-local stdio observability", () => {
 			"test-client",
 		);
 		expect(
-			JSON.stringify(testDoubles.span.setAttribute.mock.calls),
+			JSON.stringify(
+				(
+					testDoubles.span as Span & {
+						setAttribute: ReturnType<typeof vi.fn>;
+					}
+				).setAttribute.mock.calls,
+			),
 		).not.toContain("private-prompt-sentinel");
 	});
 

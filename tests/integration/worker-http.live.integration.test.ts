@@ -5,6 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
 	type JSONObject,
+	type JSONValue,
 	StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, describe, it } from "vitest";
@@ -46,7 +47,7 @@ let wranglerLogs = "";
 let wranglerSpawnError: Error | undefined;
 
 function assertCondition(
-	condition: unknown,
+	condition: boolean | string | undefined,
 	schemaPath: string,
 ): asserts condition {
 	if (!condition)
@@ -54,13 +55,13 @@ function assertCondition(
 }
 
 function assertRecord(
-	value: unknown,
+	value: JSONValue | object | null,
 	schemaPath: string,
 ): asserts value is JSONObject {
 	assertCondition(value !== null && typeof value === "object", schemaPath);
 }
 
-function sanitizeDiagnostic(value: unknown): string {
+function sanitizeDiagnostic(value: string | Error): string {
 	const apiKey = process.env.HEVY_API_KEY;
 	let diagnostic = value instanceof Error ? value.message : String(value);
 	if (apiKey) diagnostic = diagnostic.replaceAll(apiKey, "[REDACTED]");
@@ -175,7 +176,9 @@ async function waitForWranglerReady(): Promise<void> {
 			if (response.status === 404) return;
 			lastError = `unexpected status ${response.status}`;
 		} catch (error) {
-			lastError = sanitizeDiagnostic(error);
+			lastError = sanitizeDiagnostic(
+				error instanceof Error ? error : String(error),
+			);
 		}
 		await delay(100);
 	}
@@ -230,7 +233,9 @@ async function startWrangler(): Promise<void> {
 			await waitForWranglerReady();
 			return;
 		} catch (error) {
-			failures.push(`Attempt ${attempt}: ${sanitizeDiagnostic(error)}`);
+			failures.push(
+				`Attempt ${attempt}: ${sanitizeDiagnostic(error instanceof Error ? error : String(error))}`,
+			);
 			await stopWrangler();
 		}
 	}
@@ -256,12 +261,13 @@ async function callReadTool(
 		throw new Error(`Live Worker request failed for tools/${name}`);
 	}
 	assertCondition(result.isError !== true, `tools/${name}/isError`);
-	assertRecord(result.structuredContent, `tools/${name}/structuredContent`);
-	return result.structuredContent;
+	const structuredContent = result.structuredContent as JSONObject;
+	assertRecord(structuredContent, `tools/${name}/structuredContent`);
+	return structuredContent;
 }
 
 function assertBoundedList(
-	value: unknown,
+	value: JSONValue | null,
 	schemaPath: string,
 ): asserts value is JSONObject[] {
 	assertCondition(Array.isArray(value), schemaPath);

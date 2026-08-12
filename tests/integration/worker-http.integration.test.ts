@@ -6,6 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
 	type JSONObject,
+	type JSONValue,
 	StreamableHTTPClientTransport,
 	LATEST_PROTOCOL_VERSION,
 } from "@modelcontextprotocol/client";
@@ -138,24 +139,24 @@ function spawnWrangler(workerPort: number, inspectorPort: number): void {
 function writeJson(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: JSONValue,
 ): void {
 	response.writeHead(status, { "content-type": "application/json" });
 	response.end(JSON.stringify(body));
 }
 
-function isRecord(value: unknown): value is JSONObject {
+function isRecord(value: JSONValue | object | null): value is JSONObject {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function requireRecord(value: unknown, label: string): JSONObject {
+function requireRecord(value: JSONValue, label: string): JSONObject {
 	if (!isRecord(value)) {
 		throw new Error(`Expected ${label} to be an object`);
 	}
 	return value;
 }
 
-function requireArrayField(record: JSONObject, field: string): unknown[] {
+function requireArrayField(record: JSONObject, field: string): JSONValue[] {
 	const value = record[field];
 	if (!Array.isArray(value)) {
 		throw new Error(`Expected ${field} to be an array`);
@@ -164,10 +165,10 @@ function requireArrayField(record: JSONObject, field: string): unknown[] {
 }
 
 function requireToolListPayload(
-	result: unknown,
+	result: object,
 	field: string,
-): { firstItem: JSONObject; items: unknown[]; text: string } {
-	const resultRecord = requireRecord(result, "MCP tool response");
+): { firstItem: JSONObject; items: JSONValue[]; text: string } {
+	const resultRecord = result as JSONObject;
 	const content = requireArrayField(resultRecord, "content");
 	const firstContent = requireRecord(content[0], "content[0]");
 	if (firstContent.type !== "text" || typeof firstContent.text !== "string") {

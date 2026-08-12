@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const findDiffLocation =
 	require("../../.cm/plugins/filters/findDiffLocation/index.js") as (
-		source: unknown,
+		source: object | null,
 		pattern: RegExp | string,
 		includePath?: RegExp | string,
 		excludePath?: RegExp | string,

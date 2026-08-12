@@ -4,9 +4,15 @@
 // `instanceof` checks on class-based handlers, which the tests do not use.
 export class WorkerEntrypoint {}
 
-const noopSpan = {
+interface NoopSpan {
+	isTraced: boolean;
+	setAttribute(key: string, value: string | number | boolean): void;
+	end(): void;
+}
+
+const noopSpan: NoopSpan = {
 	isTraced: true,
-	setAttribute: (_key: string, _value: unknown): void => {},
+	setAttribute: (_key: string, _value: string | number | boolean): void => {},
 	end: (): void => {},
 };
 

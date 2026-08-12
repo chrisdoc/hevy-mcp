@@ -18,8 +18,8 @@ const testDoubles = vi.hoisted(() => ({
 	startActiveSpan: vi.fn(
 		(
 			_name: string,
-			_options: unknown,
-			callback: (span: unknown) => unknown,
+			_options: object,
+			callback: (span: object) => unknown,
 		) => {
 			testDoubles.activeSpanDepth += 1;
 			return Promise.resolve(callback(testDoubles.span)).finally(() => {

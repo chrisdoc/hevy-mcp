@@ -12,10 +12,11 @@ import type { ToolRuntime } from "../tools/tool-runtime.js";
 import { fetchAllPages } from "../utils/pagination.js";
 import { projectRoutineFolder } from "../utils/response-contracts.js";
 import { createExecutionErrorProjection } from "../utils/error-handler.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 
 const JSON_MIME_TYPE = "application/json";
 
-function createJsonResourceResult(uri: URL, data: unknown): ReadResourceResult {
+function createJsonResourceResult(uri: URL, data: RuntimeValue): ReadResourceResult {
 	return {
 		contents: [
 			{
@@ -29,7 +30,7 @@ function createJsonResourceResult(uri: URL, data: unknown): ReadResourceResult {
 
 function createResourceErrorResult(
 	uri: URL,
-	error: unknown,
+	error: RuntimeValue,
 ): ReadResourceResult {
 	return createJsonResourceResult(uri, {
 		error: createExecutionErrorProjection(error),

@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 function mcpRequest(
-	body: unknown,
+	body: object,
 	headers: RequestInit["headers"] = validHeaders,
 ) {
 	return new Request("https://worker.example/mcp", {

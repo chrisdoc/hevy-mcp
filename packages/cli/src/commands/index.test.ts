@@ -74,7 +74,7 @@ const routine = {
 		],
 	},
 };
-const options = (data: unknown): CliArgs["options"] => ({
+const options = (data: object): CliArgs["options"] => ({
 	data: JSON.stringify(data),
 	yes: true,
 });

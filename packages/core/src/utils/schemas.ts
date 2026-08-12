@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { isString } from "./type-predicates.js";
+import type { RuntimeValue } from "./type-predicates.js";
 
-function coerceNullishNumberInput(value: unknown): unknown {
+function coerceNullishNumberInput(value: RuntimeValue): RuntimeValue {
 	if (value === null || value === undefined) {
 		return value;
 	}
