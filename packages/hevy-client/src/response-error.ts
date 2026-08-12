@@ -25,7 +25,9 @@ function isResponseErrorBody(value: unknown): value is ResponseErrorBody {
 	return typeof value === "object" && value !== null;
 }
 
-function ownValue(value: object, key: PropertyKey): unknown {
+type ResponseErrorOwner = object;
+
+function ownValue(value: ResponseErrorOwner, key: PropertyKey): unknown {
 	const descriptor = Object.getOwnPropertyDescriptor(value, key);
 	return descriptor && "value" in descriptor ? descriptor.value : undefined;
 }

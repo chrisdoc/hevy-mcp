@@ -16,7 +16,7 @@ function register(
 	execution?: ToolExecutionContext,
 ) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as McpServer;
 	const runtime = createToolRuntime({
 		client,
 		operations,
@@ -60,7 +60,7 @@ describe("routine tools", () => {
 					endpoint: "/v1/routines/:routineId",
 				}),
 			),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 		const response = await handler(
 			tool,
@@ -81,7 +81,7 @@ describe("routine tools", () => {
 			getRoutineById: vi.fn().mockResolvedValue({
 				routine: { id: "r1", title: "Push", folder_id: 3, exercises: [] },
 			}),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 		await handler(tool, "get-routines")({ page: 2, page_size: 5 });
 		await handler(tool, "get-routine")({ routine_id: "r1" });
@@ -97,7 +97,7 @@ describe("routine tools", () => {
 		});
 		const operations = {
 			routines: { list: { execute } },
-		} as unknown as HevyOperations;
+		} as HevyOperations;
 		const execution: ToolExecutionContext = {
 			signal: new AbortController().signal,
 			deadline: Date.now() + 5_000,
@@ -128,7 +128,7 @@ describe("routine tools", () => {
 		});
 		const operations = {
 			routines: { get: { execute }, list: { execute: vi.fn() } },
-		} as unknown as HevyOperations;
+		} as HevyOperations;
 		const execution: ToolExecutionContext = {
 			signal: new AbortController().signal,
 			deadline: Date.now() + 5_000,
@@ -168,7 +168,7 @@ describe("routine tools", () => {
 					],
 				},
 			}),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 
 		const response = await handler(tool, "get-routine")({ routine_id: "r1" });
@@ -190,7 +190,7 @@ describe("routine tools", () => {
 					code: "ETIMEDOUT",
 				}),
 			),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 		const response = await handler(
 			tool,
@@ -206,7 +206,7 @@ describe("routine tools", () => {
 		const client = {
 			createRoutine: vi.fn().mockResolvedValue(routineInput.routine),
 			updateRoutine: vi.fn().mockResolvedValue(routineInput.routine),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 
 		await handler(tool, "create-routine")(routineInput);

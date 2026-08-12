@@ -6,9 +6,13 @@ import { createToolRuntime } from "./tool-runtime.js";
 import { folderToolDefinitions } from "./folders.js";
 import { registerToolDefinition } from "./define-tool.js";
 
+function mockOf<T>(value: unknown): T {
+	return value as T;
+}
+
 function register(client: HevyClient | null) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+	const server = mockOf<McpServer>({ tool, registerTool: tool });
 	const runtime = createToolRuntime({ client, catalog: {} as never });
 	for (const definition of folderToolDefinitions)
 		registerToolDefinition(server, runtime, definition);
@@ -25,9 +29,9 @@ function handler(tool: { mock: { calls: unknown[][] } }, name: string) {
 
 describe("routine folder tools", () => {
 	it("maps snake_case pagination and folder identifiers", async () => {
-		const client = {
+		const client = mockOf<HevyClient>({
 			getRoutineFolder: vi.fn().mockResolvedValue({ id: 3, title: "Strength" }),
-		} as unknown as HevyClient;
+		});
 		const tool = register(client);
 
 		await handler(tool, "get-routine-folder")({ folder_id: "3" });
@@ -35,11 +39,11 @@ describe("routine folder tools", () => {
 	});
 
 	it("wraps folder creation in the generated request envelope", async () => {
-		const client = {
+		const client = mockOf<HevyClient>({
 			createRoutineFolder: vi
 				.fn()
 				.mockResolvedValue({ id: 4, title: "Strength" }),
-		} as unknown as HevyClient;
+		});
 		const tool = register(client);
 		await handler(
 			tool,

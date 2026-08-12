@@ -5,6 +5,7 @@ const MAX_OBJECT_KEYS = 20;
 
 type RedactedValue =
 	| number
+	| bigint
 	| string
 	| {
 			type: "array";
@@ -18,6 +19,10 @@ type RedactedValue =
 			fields: Record<string, RedactedValue> | "[max-depth]";
 			truncatedFields?: number;
 	  };
+
+type DebugData = {
+	readonly [key: string]: string | number | boolean | null | RedactedValue;
+};
 
 export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 	return env.HEVY_MCP_DEBUG === "1";
@@ -67,14 +72,14 @@ function redactValue(
 						: "[empty-or-accessor]";
 			}
 
-			return {
+			const result: Extract<RedactedValue, { type: "array" }> = {
 				type: "array",
 				length,
 				items,
-				...(length > MAX_OBJECT_KEYS
-					? { truncatedItems: length - MAX_OBJECT_KEYS }
-					: {}),
 			};
+			if (length > MAX_OBJECT_KEYS)
+				result.truncatedItems = length - MAX_OBJECT_KEYS;
+			return result;
 		} finally {
 			seen.delete(value);
 		}
@@ -100,14 +105,14 @@ function redactValue(
 					: "[accessor]";
 		}
 
-		return {
+		const result: Extract<RedactedValue, { type: "object" }> = {
 			type: "object",
 			fieldCount: keys.length,
 			fields,
-			...(keys.length > MAX_OBJECT_KEYS
-				? { truncatedFields: keys.length - MAX_OBJECT_KEYS }
-				: {}),
 		};
+		if (keys.length > MAX_OBJECT_KEYS)
+			result.truncatedFields = keys.length - MAX_OBJECT_KEYS;
+		return result;
 	} finally {
 		seen.delete(value);
 	}
@@ -125,7 +130,7 @@ export function redactToolArgs(args: unknown): RedactedValue {
 /**
  * Write a single bounded structured debug record to stderr without throwing.
  */
-export function debugLog(event: string, data: object): void {
+export function debugLog(event: string, data: DebugData): void {
 	if (!isDebugEnabled()) {
 		return;
 	}

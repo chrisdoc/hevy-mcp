@@ -160,7 +160,7 @@ export const defaultHandlerFactory: ToolHandlerFactory = <
 >(
 	fn: ToolHandler<TParams>,
 	context: string,
-) => withErrorHandling(fn, context);
+) => withErrorHandling(fn, context) as ToolHandler;
 
 export function createToolRuntime({
 	client,
@@ -214,19 +214,28 @@ export function createToolRuntime({
 						runPromise = invokeHandler();
 					}
 					const result = await runPromise.catch(invokeHandler);
-					void scope?.finish({
+					const telemetry: {
+						outcome: "success" | "returned_error";
+						durationMs: number;
+						errorOutcome?: typeof result.errorOutcome;
+						result: {
+							isError: boolean;
+							hasStructuredContent: boolean;
+							contentCountBucket: "0" | "1" | "2-10" | "11-50" | "51+";
+							summary: ReturnType<typeof getResultTelemetry>;
+						};
+					} = {
 						outcome: result.isError ? "returned_error" : "success",
 						durationMs: Date.now() - startedAt,
-						...(result.errorOutcome
-							? { errorOutcome: result.errorOutcome }
-							: {}),
 						result: {
 							isError: Boolean(result.isError),
 							hasStructuredContent: result.structuredContent !== undefined,
 							contentCountBucket: bucketCount(result.content.length),
 							summary: getResultTelemetry(result),
 						},
-					});
+					};
+					if (result.errorOutcome) telemetry.errorOutcome = result.errorOutcome;
+					void scope?.finish(telemetry);
 					return result;
 				} catch (error) {
 					const policy = resolveErrorPolicy(error, "");
@@ -272,14 +281,21 @@ export function createToolRuntime({
 				logger,
 				createHandler,
 				observer,
-				execution: {
-					...(nextExecution ?? {}),
-					signal: mergeAbortSignals(lifecycleSignal, nextExecution?.signal),
-					deadline:
+				execution: (() => {
+					const nested: {
+						-readonly [K in keyof ToolExecutionContext]?: ToolExecutionContext[K];
+					} = {};
+					if (nextExecution) Object.assign(nested, nextExecution);
+					nested.signal = mergeAbortSignals(
+						lifecycleSignal,
+						nextExecution?.signal,
+					);
+					nested.deadline =
 						nextExecution?.deadline ??
 						effectiveExecutionDeadline ??
-						Date.now() + executionTimeoutMs,
-				},
+						Date.now() + executionTimeoutMs;
+					return nested as ToolExecutionContext;
+				})(),
 				executionTimeoutMs,
 				executionDeadline:
 					nextExecution?.deadline ?? effectiveExecutionDeadline,

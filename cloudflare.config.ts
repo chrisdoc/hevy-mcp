@@ -23,26 +23,20 @@ export default defineWorker((ctx) => {
 	const logDestinations = parseDestinations(
 		process.env.CLOUDFLARE_OTEL_LOGS_DESTINATIONS,
 	);
-	const observability = {
+	const observability: {
+		enabled: true;
+		traces?: { enabled: true; destinations: string[] };
+		logs?: { enabled: true; destinations: string[] };
+	} = {
 		enabled: true,
-		...(traceDestinations.length > 0
-			? {
-					traces: {
-						enabled: true,
-						destinations: traceDestinations,
-					},
-				}
-			: {}),
-		...(logDestinations.length > 0
-			? {
-					logs: {
-						enabled: true,
-						destinations: logDestinations,
-					},
-				}
-			: {}),
 	};
+	if (traceDestinations.length > 0) observability.traces = { enabled: true, destinations: traceDestinations };
+	if (logDestinations.length > 0) observability.logs = { enabled: true, destinations: logDestinations };
 
+	const env: { OAUTH_KV: ReturnType<typeof bindings.kv>; MCP_DISABLE_ORIGIN_CHECK?: ReturnType<typeof bindings.text> } = {
+		OAUTH_KV: bindings.kv(kvNamespaceId ? { id: kvNamespaceId } : undefined),
+	};
+	if (environment === "preview") env.MCP_DISABLE_ORIGIN_CHECK = bindings.text("true");
 	return {
 		name: workerName,
 		entrypoint,
@@ -52,11 +46,6 @@ export default defineWorker((ctx) => {
 		previewUrls: true,
 		observability,
 		domains: route ? [route] : undefined,
-		env: {
-			OAUTH_KV: bindings.kv(kvNamespaceId ? { id: kvNamespaceId } : undefined),
-			...(environment === "preview"
-				? { MCP_DISABLE_ORIGIN_CHECK: bindings.text("true") }
-				: {}),
-		},
+		env,
 	};
 });

@@ -177,6 +177,8 @@ interface SafeResultSummary {
 	};
 }
 
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+
 export type WorkerObservationSink = (
 	event: WorkerObservationEvent,
 ) => void | Promise<void>;
@@ -278,18 +280,21 @@ function safeInvocation(
 		}
 	}
 	const keyCountBucket = safeBucket(invocation.argumentKeyCountBucket);
-	return {
+	const safe: Mutable<Omit<WorkerObservationEvent, "event">> = {
 		name: safeName(invocation.name),
 		kind: invocation.kind === "prompt" ? "prompt" : "tool",
-		...(safeTaxonomy(invocation) ? { taxonomy: safeTaxonomy(invocation) } : {}),
-		...(argumentKeys.length ? { argumentKeys } : {}),
-		...(Object.keys(argumentPresence).length ? { argumentPresence } : {}),
-		...(Object.keys(numericArgumentBuckets).length
-			? { numericArgumentBuckets }
-			: {}),
-		...(Object.keys(booleanArguments).length ? { booleanArguments } : {}),
-		...(keyCountBucket ? { argumentKeyCountBucket: keyCountBucket } : {}),
 	};
+	const taxonomy = safeTaxonomy(invocation);
+	if (taxonomy) safe.taxonomy = taxonomy;
+	if (argumentKeys.length) safe.argumentKeys = argumentKeys;
+	if (Object.keys(argumentPresence).length)
+		safe.argumentPresence = argumentPresence;
+	if (Object.keys(numericArgumentBuckets).length)
+		safe.numericArgumentBuckets = numericArgumentBuckets;
+	if (Object.keys(booleanArguments).length)
+		safe.booleanArguments = booleanArguments;
+	if (keyCountBucket) safe.argumentKeyCountBucket = keyCountBucket;
+	return safe;
 }
 
 function boundedCount(value: unknown, maximum: number): number {
@@ -334,26 +339,26 @@ function safeSummary(
 	) {
 		return undefined;
 	}
-	return {
-		...(itemCountBucket ? { itemCountBucket } : {}),
-		...(exerciseCountBucket ? { exerciseCountBucket } : {}),
-		...(setCountBucket ? { setCountBucket } : {}),
-		...(safeWorkflow ? { workflow: safeWorkflow } : {}),
-	};
+	const safe: Mutable<SafeResultSummary> = {};
+	if (itemCountBucket) safe.itemCountBucket = itemCountBucket;
+	if (exerciseCountBucket) safe.exerciseCountBucket = exerciseCountBucket;
+	if (setCountBucket) safe.setCountBucket = setCountBucket;
+	if (safeWorkflow) safe.workflow = safeWorkflow;
+	return safe;
 }
 
 function safeResult(
 	result: ToolResultObservation | undefined,
 ): WorkerResultObservation | undefined {
 	if (!result) return undefined;
-	return {
+	const safe: Mutable<WorkerResultObservation> = {
 		isError: result.isError === true,
 		hasStructuredContent: result.hasStructuredContent === true,
 		contentCountBucket: safeBucket(result.contentCountBucket) ?? "0",
-		...(safeSummary(result.summary)
-			? { summary: safeSummary(result.summary) }
-			: {}),
 	};
+	const summary = safeSummary(result.summary);
+	if (summary) safe.summary = summary;
+	return safe;
 }
 
 type SafeErrorOutput = ReturnType<typeof createSafeErrorDiagnostic>;
@@ -570,33 +575,32 @@ export function createWorkerToolObserver(
 							(span) => {
 								callbackEntered = true;
 								activeSpan = span;
-								setSpanAttributes(span, {
+								const spanAttributes: Record<
+									string,
+									string | number | boolean
+								> = {
 									"mcp.span.category": safe.kind,
 									"mcp.operation.kind": safe.kind,
 									[safe.kind === "prompt"
 										? "mcp.prompt.name"
 										: "mcp.tool.name"]: safe.name,
-									...(safe.taxonomy
-										? {
-												"hevy.feature": safe.taxonomy.feature,
-												"mcp.tool.kind": safe.taxonomy.kind,
-												"mcp.tool.operation": safe.taxonomy.operation,
-											}
-										: {}),
-									...(userHash ? { "user.hash": userHash } : {}),
-									...(cloudflareColo
-										? { "cloudflare.colo": cloudflareColo }
-										: {}),
-									...(geoLocalityName
-										? { "geo.locality.name": geoLocalityName }
-										: {}),
-									...(geoLocalityRegion
-										? { "geo.locality.region": geoLocalityRegion }
-										: {}),
-									...(geoCountryCode
-										? { "geo.country.code": geoCountryCode }
-										: {}),
-								});
+								};
+								if (safe.taxonomy) {
+									spanAttributes["hevy.feature"] = safe.taxonomy.feature;
+									spanAttributes["mcp.tool.kind"] = safe.taxonomy.kind;
+									spanAttributes["mcp.tool.operation"] =
+										safe.taxonomy.operation;
+								}
+								if (userHash) spanAttributes["user.hash"] = userHash;
+								if (cloudflareColo)
+									spanAttributes["cloudflare.colo"] = cloudflareColo;
+								if (geoLocalityName)
+									spanAttributes["geo.locality.name"] = geoLocalityName;
+								if (geoLocalityRegion)
+									spanAttributes["geo.locality.region"] = geoLocalityRegion;
+								if (geoCountryCode)
+									spanAttributes["geo.country.code"] = geoCountryCode;
+								setSpanAttributes(span, spanAttributes);
 								return operation();
 							},
 						);
@@ -625,18 +629,21 @@ export function createWorkerToolObserver(
 							? safeExecution(completion.errorOutcome)
 							: safeExecution(error);
 						const result = safeResult(completion.result);
-						emitBestEffort(sink, {
+						const event: Mutable<WorkerObservationEvent> = {
 							event: "worker.tool.completion",
 							...safe,
 							outcome: completion.outcome,
 							durationMs,
-							...(result ? { result } : {}),
-							...(SAFE_ERROR_TYPES.has(completion.errorType ?? "")
-								? { errorType: completion.errorType }
-								: {}),
-							...(error ? { error } : {}),
-							...(execution ? { execution } : {}),
-						});
+						};
+						if (result) event.result = result;
+						if (
+							SAFE_ERROR_TYPES.has(completion.errorType ?? "") &&
+							completion.errorType
+						)
+							event.errorType = completion.errorType;
+						if (error) event.error = error;
+						if (execution) event.execution = execution;
+						emitBestEffort(sink, event);
 					} catch {
 						// Observation projection is best effort and must not affect MCP behavior.
 					}

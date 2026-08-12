@@ -8,7 +8,7 @@ import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
 
 function register(client: HevyClient | null) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as McpServer;
 	const runtime = createToolRuntime({ client, catalog: {} as never });
 	for (const definition of bodyMeasurementToolDefinitions)
 		registerToolDefinition(server, runtime, definition);
@@ -32,7 +32,7 @@ describe("body measurement tools", () => {
 			getBodyMeasurement: vi
 				.fn()
 				.mockResolvedValue({ date: "2025-01-01", weight_kg: 80 }),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 		await handler(tool, "get-body-measurements")({ page: 2, page_size: 10 });
 		await handler(tool, "get-body-measurement")({ date: "2025-01-01" });
@@ -47,7 +47,7 @@ describe("body measurement tools", () => {
 		const client = {
 			createBodyMeasurement: vi.fn().mockResolvedValue(undefined),
 			updateBodyMeasurement: vi.fn().mockResolvedValue(undefined),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 		await handler(
 			tool,
@@ -67,7 +67,7 @@ describe("body measurement tools", () => {
 	});
 
 	it("rejects camelCase measurement fields and effectively empty updates", async () => {
-		const client = { updateBodyMeasurement: vi.fn() } as unknown as HevyClient;
+		const client = { updateBodyMeasurement: vi.fn() } as HevyClient;
 		const tool = register(client);
 		const definition = tool.mock.calls.find(
 			([name]) => name === "update-body-measurement",

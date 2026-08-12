@@ -10,7 +10,7 @@ import {
 	encodeAuthRequest,
 	handleAuthorizeGet,
 	handleAuthorizePost,
-	hasOAuthAccessTokenShape,
+	hasOAuthAccessTokenFormat,
 	renderAuthorizePage,
 	type HevyOAuthDependencies,
 } from "./worker-oauth.js";
@@ -96,7 +96,7 @@ describe("OAuth helpers", () => {
 		["a:b:c:d", false],
 		["::secret", false],
 	])("classifies bearer value %j as OAuth token: %j", (token, expected) => {
-		expect(hasOAuthAccessTokenShape(token)).toBe(expected);
+		expect(hasOAuthAccessTokenFormat(token)).toBe(expected);
 	});
 
 	it("round-trips an auth request through encode/decode", () => {
@@ -831,7 +831,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			token_type: string;
 		};
 		expect(tokens.token_type.toLowerCase()).toBe("bearer");
-		expect(hasOAuthAccessTokenShape(tokens.access_token)).toBe(true);
+		expect(hasOAuthAccessTokenFormat(tokens.access_token)).toBe(true);
 		expect(tokens.access_token).not.toContain("users-hevy-api-key");
 		expect(tokens.refresh_token).toBeTruthy();
 
@@ -1060,7 +1060,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			token_type: string;
 		};
 		expect(tokens.token_type.toLowerCase()).toBe("bearer");
-		expect(hasOAuthAccessTokenShape(tokens.access_token)).toBe(true);
+		expect(hasOAuthAccessTokenFormat(tokens.access_token)).toBe(true);
 		expect(
 			[...env.OAUTH_KV.store.keys()].some((key) => key.startsWith("client:")),
 		).toBe(false);

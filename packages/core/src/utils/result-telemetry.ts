@@ -25,17 +25,20 @@ export function bucketCount(value: number): ResultCountBucket {
 	return "51+";
 }
 
-const resultTelemetry = new WeakMap<object, ToolResultTelemetry>();
+import type { McpToolResponse } from "./response-contracts.js";
+
+type ResultOwner = McpToolResponse;
+const resultTelemetry = new WeakMap<ResultOwner, ToolResultTelemetry>();
 
 export function attachResultTelemetry(
-	result: object,
+	result: ResultOwner,
 	telemetry: ToolResultTelemetry | undefined,
 ): void {
 	if (telemetry) resultTelemetry.set(result, telemetry);
 }
 
 export function getResultTelemetry(
-	result: object,
+	result: ResultOwner,
 ): ToolResultTelemetry | undefined {
 	return resultTelemetry.get(result);
 }

@@ -69,6 +69,7 @@ type KubbClient = {
 type InternalRequestControl = {
 	readonly hevyDeadline?: number;
 };
+type MutableRequest = { hevyDeadline?: number; client: KubbClient; signal?: AbortSignal };
 
 export type HevyApiOutcome =
 	| "success"
@@ -580,13 +581,10 @@ function requestOptions(
 	options: HevyRequestOptions | undefined,
 	client: KubbClient,
 ): InternalRequestControl & { client: KubbClient; signal?: AbortSignal } {
-	return {
-		client,
-		...(options?.signal ? { signal: options.signal } : {}),
-		...(options?.deadline !== undefined
-			? { hevyDeadline: options.deadline }
-			: {}),
-	};
+	const request: MutableRequest = { client };
+	if (options?.signal) request.signal = options.signal;
+	if (options?.deadline !== undefined) request.hevyDeadline = options.deadline;
+	return request;
 }
 
 interface RequestAttemptExecutionOptions {
@@ -844,7 +842,10 @@ function createFailureObservation(
 	retryExhausted: boolean,
 	expectedReason: HevyRequestObservation["expectedReason"],
 ): HevyRequestObservation {
-	return {
+	const observation: Omit<HevyRequestObservation, "expectedReason" | "error"> & {
+		expectedReason?: HevyRequestObservation["expectedReason"];
+		error?: { status?: number; code?: string; category?: "HevyHttpError" | "NetworkError"; response_error?: string };
+	} = {
 		method: options.method,
 		endpoint: options.endpoint,
 		status: error.status ?? 0,
@@ -860,7 +861,6 @@ function createFailureObservation(
 		operationSafety: options.safety,
 		commitState,
 		safeToRetry: safeToRetry && !retryExhausted,
-		...(expectedReason ? { expectedReason } : {}),
 		error: {
 			status: error.status,
 			code:
@@ -868,9 +868,13 @@ function createFailureObservation(
 					? error.code
 					: undefined,
 			category: error.status === undefined ? "NetworkError" : "HevyHttpError",
-			...(error.responseError ? { response_error: error.responseError } : {}),
 		},
 	};
+	if (expectedReason) observation.expectedReason = expectedReason;
+	if (error.responseError && observation.error) {
+		observation.error = { ...observation.error, response_error: error.responseError };
+	}
+	return observation;
 }
 
 function emitTerminalFailureLog(

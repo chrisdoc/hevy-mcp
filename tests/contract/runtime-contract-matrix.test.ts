@@ -33,7 +33,7 @@ function assertGetWorkoutsResult(result: unknown): void {
 	}
 	const structured = getWorkoutsCapabilityDescriptor.outputSchema.parse(
 		response.structuredContent,
-	) as unknown as { workouts: readonly unknown[] };
+	);
 	expect(structured).toEqual(validGetWorkoutsOutput);
 	const firstContent = response.content[0];
 	if (

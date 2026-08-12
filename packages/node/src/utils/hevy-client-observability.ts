@@ -1,216 +1,215 @@
 import type { CacheObservationMetadata, CacheObserver } from "@hevy-mcp/core";
 import {
-	diagnosticEndpointIdentity,
-	metricEndpointIdentity,
-	SAFE_OBSERVATION_CODES,
+  diagnosticEndpointIdentity,
+  metricEndpointIdentity,
+  SAFE_OBSERVATION_CODES,
 } from "@hevy-mcp/hevy-client";
 import type {
-	HevyClientOptions,
-	HevyRequestObservation,
-	HevyRequestStart,
+  HevyClientOptions,
+  HevyRequestObservation,
+  HevyRequestStart,
 } from "@hevy-mcp/hevy-client";
 import { context, SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import { debugLog } from "./debug.js";
 import { apiCalls, apiDuration } from "./metrics.js";
 import { bucketCount } from "./result-telemetry.js";
 import {
-	getCurrentMcpSessionId,
-	getCurrentMcpTransport,
+  getCurrentMcpSessionId,
+  getCurrentMcpTransport,
 } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { tracer } from "./telemetry.js";
 
 function safeErrorAttributes(observation: HevyRequestObservation): {
-	error_category?: string;
-	error_code?: string;
+  error_category?: string;
+  error_code?: string;
 } {
-	if (!observation.error) return {};
-	const code = observation.error.code;
-	return {
-		error_category: observation.error.category ?? "HevyHttpError",
-		...(code && SAFE_OBSERVATION_CODES.has(code) ? { error_code: code } : {}),
-	};
+  if (!observation.error) return {};
+  const code = observation.error.code;
+  const attributes: { error_category?: string; error_code?: string } = {
+    error_category: observation.error.category ?? "HevyHttpError",
+  };
+  if (code && SAFE_OBSERVATION_CODES.has(code)) attributes.error_code = code;
+  return attributes;
 }
 
 function getDiagnosticResponseError(
-	observation: HevyRequestObservation,
+  observation: HevyRequestObservation,
 ): string | undefined {
-	return process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS === "0"
-		? undefined
-		: observation.error?.response_error;
+  return process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS === "0"
+    ? undefined
+    : observation.error?.response_error;
 }
 
 function startApiSpan(start: HevyRequestStart) {
-	const sessionId = getCurrentMcpSessionId();
-	const diagnosticEndpoint = diagnosticEndpointIdentity(start.endpoint);
-	return tracer.startSpan(`hevy.api.${start.method}`, {
-		attributes: {
-			"mcp.span.category": "api",
-			"http.request.method": start.method,
-			...(diagnosticEndpoint
-				? { "hevy.api.endpoint": diagnosticEndpoint }
-				: {}),
-			"hevy.api.retry_count_bucket": bucketCount(start.retryCount),
-			"mcp.transport": getCurrentMcpTransport(),
-			...(sessionId ? { "mcp.session.id": sessionId } : {}),
-		},
-	});
+  const sessionId = getCurrentMcpSessionId();
+  const diagnosticEndpoint = diagnosticEndpointIdentity(start.endpoint);
+  const attributes: Record<string, string | number> = {
+    "mcp.span.category": "api",
+    "http.request.method": start.method,
+    "hevy.api.retry_count_bucket": bucketCount(start.retryCount),
+    "mcp.transport": getCurrentMcpTransport(),
+  };
+  if (diagnosticEndpoint) attributes["hevy.api.endpoint"] = diagnosticEndpoint;
+  if (sessionId) attributes["mcp.session.id"] = sessionId;
+  return tracer.startSpan(`hevy.api.${start.method}`, { attributes });
 }
 function finishApiSpan(span: Span, observation: HevyRequestObservation): void {
-	const errorAttributes = safeErrorAttributes(observation);
-	if (observation.status > 0) {
-		span.setAttribute("http.response.status_code", observation.status);
-	}
-	for (const [key, value] of Object.entries(
-		projectExecutionAttributes(observation),
-	)) {
-		span.setAttribute(key, value);
-	}
-	if (observation.expectedReason) {
-		span.setAttribute("hevy.api.expected_reason", observation.expectedReason);
-	}
-	for (const [key, value] of Object.entries(errorAttributes)) {
-		span.setAttribute(key, value);
-	}
-	span.setStatus({
-		code:
-			observation.outcome === "success" || observation.outcome === "expected"
-				? SpanStatusCode.OK
-				: SpanStatusCode.ERROR,
-	});
-	if (observation.outcome !== "success" && observation.outcome !== "expected") {
-		const responseError = getDiagnosticResponseError(observation);
-		span.addEvent("hevy.api.failure", {
-			"error.category": errorAttributes.error_category ?? "HevyHttpError",
-			...(errorAttributes.error_code
-				? { "error.code": errorAttributes.error_code }
-				: {}),
-			...(responseError ? { "hevy.api.response_error": responseError } : {}),
-		});
-	}
-	span.end();
+  const errorAttributes = safeErrorAttributes(observation);
+  if (observation.status > 0) {
+    span.setAttribute("http.response.status_code", observation.status);
+  }
+  for (const [key, value] of Object.entries(
+    projectExecutionAttributes(observation),
+  )) {
+    span.setAttribute(key, value);
+  }
+  if (observation.expectedReason) {
+    span.setAttribute("hevy.api.expected_reason", observation.expectedReason);
+  }
+  for (const [key, value] of Object.entries(errorAttributes)) {
+    span.setAttribute(key, value);
+  }
+  span.setStatus({
+    code:
+      observation.outcome === "success" || observation.outcome === "expected"
+        ? SpanStatusCode.OK
+        : SpanStatusCode.ERROR,
+  });
+  if (observation.outcome !== "success" && observation.outcome !== "expected") {
+    const responseError = getDiagnosticResponseError(observation);
+    const failureAttributes: Record<string, string> = {
+      "error.category": errorAttributes.error_category ?? "HevyHttpError",
+    };
+    if (errorAttributes.error_code)
+      failureAttributes["error.code"] = errorAttributes.error_code;
+    if (responseError)
+      failureAttributes["hevy.api.response_error"] = responseError;
+    span.addEvent("hevy.api.failure", failureAttributes);
+  }
+  span.end();
 }
 
 /** Node-only adapter; the Worker graph never imports telemetry or metrics. */
 export function createNodeHevyClientOptions(): HevyClientOptions {
-	const rawTimeout = process.env.HEVY_MCP_API_TIMEOUT;
-	const parsedTimeout = rawTimeout ? Number(rawTimeout) : Number.NaN;
-	const timeoutMs =
-		Number.isFinite(parsedTimeout) && parsedTimeout > 0
-			? Math.floor(parsedTimeout)
-			: undefined;
-	return {
-		...(timeoutMs ? { timeoutMs } : {}),
-		onRequestStart(start) {
-			const span = startApiSpan(start);
-			return {
-				run<T>(operation: () => Promise<T>) {
-					return context.with(trace.setSpan(context.active(), span), operation);
-				},
-				finish(observation) {
-					finishApiSpan(span, observation);
-				},
-			};
-		},
-		onRequestComplete(observation) {
-			const retryCountBucket = bucketCount(observation.retryCount);
-			const errorAttributes = safeErrorAttributes(observation);
-			const responseError = getDiagnosticResponseError(observation);
-			const metricEndpoint = metricEndpointIdentity(observation.endpoint);
-			const diagnosticEndpoint = diagnosticEndpointIdentity(
-				observation.endpoint,
-			);
-			const metricExecutionAttributes = projectExecutionAttributes(
-				observation,
-				"metric",
-			);
-			apiCalls.add(1, {
-				method: observation.method,
-				endpoint: metricEndpoint,
-				status_code: observation.status,
-				retry_count_bucket: retryCountBucket,
-				...metricExecutionAttributes,
-				transport: getCurrentMcpTransport(),
-				...(observation.expectedReason
-					? { expected_reason: observation.expectedReason }
-					: {}),
-				...errorAttributes,
-			});
-			apiDuration.record(observation.durationMs, {
-				method: observation.method,
-				endpoint: metricEndpoint,
-				retry_count_bucket: retryCountBucket,
-				...metricExecutionAttributes,
-				transport: getCurrentMcpTransport(),
-				...(observation.expectedReason
-					? { expected_reason: observation.expectedReason }
-					: {}),
-				...errorAttributes,
-			});
-			debugLog("api_response", {
-				method: observation.method,
-				...(diagnosticEndpoint ? { endpoint: diagnosticEndpoint } : {}),
-				durationMs: observation.durationMs,
-				status: observation.status || null,
-				retryCountBucket,
-				outcome: observation.outcome,
-				...(responseError ? { response_error: responseError } : {}),
-				...errorAttributes,
-			});
-		},
-		onRetryWait(observation) {
-			const sessionId = getCurrentMcpSessionId();
-			const span = tracer.startSpan("hevy.api.retry_wait", {
-				attributes: {
-					"mcp.span.category": "api",
-					"http.request.method": observation.method,
-					"hevy.api.retry_count_bucket": bucketCount(observation.retryCount),
-					"hevy.api.retry_wait_ms": Math.max(
-						0,
-						Math.min(5_000, observation.delayMs),
-					),
-					...(sessionId ? { "mcp.session.id": sessionId } : {}),
-				},
-			});
-			return { finish: () => span.end() };
-		},
-	};
+  const rawTimeout = process.env.HEVY_MCP_API_TIMEOUT;
+  const parsedTimeout = rawTimeout ? Number(rawTimeout) : Number.NaN;
+  const timeoutMs =
+    Number.isFinite(parsedTimeout) && parsedTimeout > 0
+      ? Math.floor(parsedTimeout)
+      : undefined;
+  const options: HevyClientOptions = {
+    onRequestStart(start) {
+      const span = startApiSpan(start);
+      return {
+        run<T>(operation: () => Promise<T>) {
+          return context.with(trace.setSpan(context.active(), span), operation);
+        },
+        finish(observation) {
+          finishApiSpan(span, observation);
+        },
+      };
+    },
+    onRequestComplete(observation) {
+      const retryCountBucket = bucketCount(observation.retryCount);
+      const errorAttributes = safeErrorAttributes(observation);
+      const responseError = getDiagnosticResponseError(observation);
+      const metricEndpoint = metricEndpointIdentity(observation.endpoint);
+      const diagnosticEndpoint = diagnosticEndpointIdentity(
+        observation.endpoint,
+      );
+      const metricExecutionAttributes = projectExecutionAttributes(
+        observation,
+        "metric",
+      );
+      const metricAttributes = {
+        ...metricExecutionAttributes,
+        transport: getCurrentMcpTransport(),
+        ...errorAttributes,
+      } as Record<string, string | number | boolean>;
+      if (observation.expectedReason)
+        metricAttributes.expected_reason = observation.expectedReason;
+      apiCalls.add(1, {
+        method: observation.method,
+        endpoint: metricEndpoint,
+        status_code: observation.status,
+        retry_count_bucket: retryCountBucket,
+        ...metricAttributes,
+      });
+      apiDuration.record(observation.durationMs, {
+        method: observation.method,
+        endpoint: metricEndpoint,
+        retry_count_bucket: retryCountBucket,
+        ...metricAttributes,
+      });
+      const debugAttributes: Record<string, string | number | boolean | null> =
+        {
+          method: observation.method,
+          durationMs: observation.durationMs,
+          status: observation.status || null,
+          retryCountBucket,
+          outcome: observation.outcome,
+          ...errorAttributes,
+        };
+      if (diagnosticEndpoint) debugAttributes.endpoint = diagnosticEndpoint;
+      if (responseError) debugAttributes.response_error = responseError;
+      debugLog("api_response", debugAttributes);
+    },
+    onRetryWait(observation) {
+      const sessionId = getCurrentMcpSessionId();
+      const attributes: Record<string, string | number> = {
+        "mcp.span.category": "api",
+        "http.request.method": observation.method,
+        "hevy.api.retry_count_bucket": bucketCount(observation.retryCount),
+        "hevy.api.retry_wait_ms": Math.max(
+          0,
+          Math.min(5_000, observation.delayMs),
+        ),
+      };
+      if (sessionId) attributes["mcp.session.id"] = sessionId;
+      const span = tracer.startSpan("hevy.api.retry_wait", { attributes });
+      return { finish: () => span.end() };
+    },
+  };
+  if (timeoutMs) options.timeoutMs = timeoutMs;
+  return options;
 }
 export function createNodeCacheObserver(): CacheObserver {
-	return {
-		start(observation) {
-			const sessionId = getCurrentMcpSessionId();
-			const span = tracer.startSpan(`hevy.cache.${observation.state}`, {
-				attributes: {
-					"mcp.span.category": "cache",
-					"hevy.cache.state": observation.state,
-					"mcp.transport": getCurrentMcpTransport(),
-					...(sessionId ? { "mcp.session.id": sessionId } : {}),
-				},
-			});
-			return {
-				finish(metadata?: CacheObservationMetadata) {
-					if (metadata?.refreshReason) {
-						span.setAttribute(
-							"hevy.cache.refresh_reason",
-							metadata.refreshReason,
-						);
-					}
-					if (metadata?.pageCountBucket) {
-						span.setAttribute(
-							"hevy.cache.page_count_bucket",
-							metadata.pageCountBucket,
-						);
-					}
-					if (metadata?.itemCountBucket) {
-						span.setAttribute(
-							"hevy.cache.item_count_bucket",
-							metadata.itemCountBucket,
-						);
-					}
-					span.end();
-				},
-			};
-		},
-	};
+  return {
+    start(observation) {
+      const sessionId = getCurrentMcpSessionId();
+      const attributes: Record<string, string> = {
+        "mcp.span.category": "cache",
+        "hevy.cache.state": observation.state,
+        "mcp.transport": getCurrentMcpTransport(),
+      };
+      if (sessionId) attributes["mcp.session.id"] = sessionId;
+      const span = tracer.startSpan(`hevy.cache.${observation.state}`, {
+        attributes,
+      });
+      return {
+        finish(metadata?: CacheObservationMetadata) {
+          if (metadata?.refreshReason) {
+            span.setAttribute(
+              "hevy.cache.refresh_reason",
+              metadata.refreshReason,
+            );
+          }
+          if (metadata?.pageCountBucket) {
+            span.setAttribute(
+              "hevy.cache.page_count_bucket",
+              metadata.pageCountBucket,
+            );
+          }
+          if (metadata?.itemCountBucket) {
+            span.setAttribute(
+              "hevy.cache.item_count_bucket",
+              metadata.itemCountBucket,
+            );
+          }
+          span.end();
+        },
+      };
+    },
+  };
 }

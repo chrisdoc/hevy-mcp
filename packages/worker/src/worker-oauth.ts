@@ -69,7 +69,7 @@ export interface HevyOAuthWorker<Env> {
  * bearer value matching this shape routes to the OAuth layer while
  * everything else keeps using the legacy direct-API-key path.
  */
-export function hasOAuthAccessTokenShape(token: string): boolean {
+export function hasOAuthAccessTokenFormat(token: string): boolean {
 	return /^[^:]+:[^:]+:[^:]+$/.test(token);
 }
 

@@ -19,18 +19,18 @@ import {
 	zStrictOptionalRepRange,
 } from "../utils/schemas.js";
 
-export interface PaginationShapeOptions {
+export interface PaginationSchemaOptions {
 	defaultPageSize: number;
 	maxPageSize: number;
 	integerPage?: boolean;
 }
 
 /** Build the page and page_size fields shared by paginated tools. */
-export function paginationShape({
+export function paginationFields({
 	defaultPageSize,
 	maxPageSize,
 	integerPage = true,
-}: PaginationShapeOptions) {
+}: PaginationSchemaOptions) {
 	const pageNumber = z.coerce.number().gte(1);
 	return {
 		page: integerPage ? pageNumber.int() : pageNumber,
@@ -45,7 +45,7 @@ export function paginationShape({
 
 export const nonEmptyId = z.string().min(1);
 
-const exerciseTemplatePayloadShape = {
+const exerciseTemplatePayloadFields = {
 	title: z.string().min(1),
 	exercise_type: exerciseTypeEnum,
 	equipment_category: equipmentCategoryEnum,
@@ -54,18 +54,18 @@ const exerciseTemplatePayloadShape = {
 } as const;
 
 export const exerciseTemplateInputSchema = z.strictObject({
-	exercise: z.strictObject(exerciseTemplatePayloadShape),
+	exercise: z.strictObject(exerciseTemplatePayloadFields),
 });
-export const exerciseTemplateInputShape = exerciseTemplateInputSchema.shape;
+export const exerciseTemplateInputFields = exerciseTemplateInputSchema.shape;
 
-const routineFolderPayloadShape = {
+const routineFolderPayloadFields = {
 	title: z.string().min(1),
 } as const;
 
 export const routineFolderInputSchema = z.strictObject({
-	routine_folder: z.strictObject(routineFolderPayloadShape),
+	routine_folder: z.strictObject(routineFolderPayloadFields),
 });
-export const routineFolderInputShape = routineFolderInputSchema.shape;
+export const routineFolderInputFields = routineFolderInputSchema.shape;
 
 const CALENDAR_DATE_MESSAGE = "Date must be in YYYY-MM-DD format";
 export const calendarDate = z
@@ -89,7 +89,7 @@ const rpeEnum = z.union([
 	z.literal(10),
 ]);
 
-export const workoutSetShape = {
+export const workoutSetFields = {
 	type: setTypeEnum,
 	weight_kg: z.coerce.number().optional().nullable(),
 	reps: z.coerce.number().int().optional().nullable(),
@@ -101,8 +101,8 @@ export const workoutSetShape = {
 	[K in keyof PostWorkoutsRequestSet]: z.ZodTypeAny;
 };
 
-const workoutSetSchema = z.strictObject(workoutSetShape);
-export const workoutExerciseShape = {
+const workoutSetSchema = z.strictObject(workoutSetFields);
+export const workoutExerciseFields = {
 	exercise_template_id: nonEmptyId,
 	superset_id: z.coerce.number().nullable().optional(),
 	notes: z.string().optional().nullable(),
@@ -113,13 +113,13 @@ export const workoutExerciseShape = {
 	>[number]]: z.ZodTypeAny;
 };
 
-const workoutExerciseSchema = z.strictObject(workoutExerciseShape);
+const workoutExerciseSchema = z.strictObject(workoutExerciseFields);
 export const workoutExercisesSchema = z.preprocess(
 	parseJsonArray,
 	z.array(workoutExerciseSchema),
 );
 
-export const replaceWorkoutPayloadShape = {
+export const replaceWorkoutPayloadFields = {
 	title: z.string().min(1),
 	description: z.string().optional().nullable(),
 	start_time: utcSecondTimestamp,
@@ -130,17 +130,17 @@ export const replaceWorkoutPayloadShape = {
 	[K in keyof NonNullable<PostWorkoutsRequestBody["workout"]>]: z.ZodTypeAny;
 };
 
-const replaceWorkoutPayloadSchema = z.strictObject(replaceWorkoutPayloadShape);
+const replaceWorkoutPayloadSchema = z.strictObject(replaceWorkoutPayloadFields);
 export const workoutInputSchema = z.strictObject({
 	workout: replaceWorkoutPayloadSchema,
 });
-export const workoutInputShape = workoutInputSchema.shape;
+export const workoutInputFields = workoutInputSchema.shape;
 
 export const replaceWorkoutInputSchema = z.strictObject({
 	workout_id: nonEmptyId,
 	workout: replaceWorkoutPayloadSchema,
 });
-export const replaceWorkoutInputShape = replaceWorkoutInputSchema.shape;
+export const replaceWorkoutInputFields = replaceWorkoutInputSchema.shape;
 
 export const workoutMetadataPatchSchema = z
 	.strictObject({
@@ -160,7 +160,7 @@ export const updateWorkoutInputSchema = z.strictObject({
 	workout_id: nonEmptyId,
 	workout: workoutMetadataPatchSchema,
 });
-export const updateWorkoutInputShape = updateWorkoutInputSchema.shape;
+export const updateWorkoutInputFields = updateWorkoutInputSchema.shape;
 
 export const replaceWorkoutExercisesInputSchema = z.strictObject({
 	workout_id: nonEmptyId,
@@ -168,10 +168,10 @@ export const replaceWorkoutExercisesInputSchema = z.strictObject({
 		exercises: workoutExercisesSchema,
 	}),
 });
-export const replaceWorkoutExercisesInputShape =
+export const replaceWorkoutExercisesInputFields =
 	replaceWorkoutExercisesInputSchema.shape;
 
-export const routineSetShape = {
+export const routineSetFields = {
 	type: setTypeEnum,
 	weight_kg: z.coerce.number().optional(),
 	reps: zNullableInt,
@@ -183,8 +183,8 @@ export const routineSetShape = {
 	[K in keyof PostRoutinesRequestSet]: z.ZodTypeAny;
 };
 
-const routineSetSchema = z.strictObject(routineSetShape);
-export const routineExerciseShape = {
+const routineSetSchema = z.strictObject(routineSetFields);
+export const routineExerciseFields = {
 	exercise_template_id: nonEmptyId,
 	superset_id: z.coerce.number().nullable().optional(),
 	rest_seconds: z.coerce.number().int().min(0).optional(),
@@ -196,14 +196,14 @@ export const routineExerciseShape = {
 	>[number]]: z.ZodTypeAny;
 };
 
-const routineExerciseSchema = z.strictObject(routineExerciseShape);
+const routineExerciseSchema = z.strictObject(routineExerciseFields);
 
 const routineExercisesSchema = z.preprocess(
 	parseJsonArray,
 	z.array(routineExerciseSchema),
 );
 
-export const routinePayloadShape = {
+export const routinePayloadFields = {
 	title: z.string().min(1),
 	folder_id: z.coerce.number().nullable().optional(),
 	notes: z.string().optional(),
@@ -212,13 +212,13 @@ export const routinePayloadShape = {
 	[K in keyof NonNullable<PostRoutinesRequestBody["routine"]>]: z.ZodTypeAny;
 };
 
-const routinePayloadSchema = z.strictObject(routinePayloadShape);
+const routinePayloadSchema = z.strictObject(routinePayloadFields);
 export const createRoutineInputSchema = z.strictObject({
 	routine: routinePayloadSchema,
 });
-export const createRoutineInputShape = createRoutineInputSchema.shape;
+export const createRoutineInputFields = createRoutineInputSchema.shape;
 
-const routineUpdatePayloadShape = {
+const routineUpdatePayloadFields = {
 	title: z.string().min(1),
 	notes: z.string().optional(),
 	exercises: routineExercisesSchema,
@@ -226,12 +226,12 @@ const routineUpdatePayloadShape = {
 	[K in keyof NonNullable<PutRoutinesRequestBody["routine"]>]: z.ZodTypeAny;
 };
 
-const routineUpdatePayloadSchema = z.strictObject(routineUpdatePayloadShape);
+const routineUpdatePayloadSchema = z.strictObject(routineUpdatePayloadFields);
 export const updateRoutineInputSchema = z.strictObject({
 	routine_id: nonEmptyId,
 	routine: routineUpdatePayloadSchema,
 });
-export const updateRoutineInputShape = updateRoutineInputSchema.shape;
+export const updateRoutineInputFields = updateRoutineInputSchema.shape;
 
 export const bodyMeasurementFieldsSchema = {
 	weight_kg: zNullableNumber,
@@ -266,9 +266,9 @@ export const updateBodyMeasurementInputSchema = z.strictObject({
 	date: calendarDate,
 	...bodyMeasurementFieldsSchema,
 });
-export const createBodyMeasurementInputShape =
+export const createBodyMeasurementInputFields =
 	createBodyMeasurementInputSchema.shape;
-export const updateBodyMeasurementInputShape =
+export const updateBodyMeasurementInputFields =
 	updateBodyMeasurementInputSchema.shape;
 
 export type WorkoutSetInput = z.infer<typeof workoutSetSchema>;

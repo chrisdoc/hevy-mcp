@@ -20,7 +20,7 @@ function register(
 	execution?: ToolExecutionContext,
 ) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as McpServer;
 	const runtime = createToolRuntime({
 		client,
 		operations,
@@ -79,7 +79,7 @@ describe("workout tools", () => {
 			getWorkoutEvents: vi
 				.fn()
 				.mockResolvedValue({ events: [], page_count: 1 }),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 
 		await toolHandler(tool, "get-workouts")({ page: 2, page_size: 5 });
@@ -193,7 +193,7 @@ describe("workout tools", () => {
 				calls.push("put");
 				return Promise.resolve(current);
 			}),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 
 		await toolHandler(tool, "create-workout")(workoutInput);
@@ -253,7 +253,7 @@ describe("workout tools", () => {
 		const client = {
 			getWorkout: vi.fn().mockResolvedValue(current),
 			updateWorkout: vi.fn().mockResolvedValue(current),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 
 		await toolHandler(
@@ -292,7 +292,7 @@ describe("workout tools", () => {
 		const getFailureClient = {
 			getWorkout: vi.fn().mockRejectedValue(new Error("GET failed")),
 			updateWorkout: vi.fn(),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const getFailureTool = register(getFailureClient);
 		const getFailure = await toolHandler(
 			getFailureTool,
@@ -314,7 +314,7 @@ describe("workout tools", () => {
 				exercises: [],
 			}),
 			updateWorkout: vi.fn().mockRejectedValue(new Error("PUT failed")),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 
 		const response = await toolHandler(

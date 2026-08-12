@@ -20,7 +20,7 @@ const invocation = {
 	numericArgumentBuckets: { page: "2-10", limit: "not-a-bucket" },
 	booleanArguments: { refresh: true },
 	argumentKeyCountBucket: "2-10",
-} as unknown as SafeToolInvocation;
+} as SafeToolInvocation;
 
 function createScope(
 	events: WorkerObservationEvent[],
@@ -52,7 +52,7 @@ function createTracingDouble() {
 	};
 	const tracing: NonNullable<WorkerToolObserverOptions["tracing"]> = {
 		startActiveSpan<T>(_name: string, callback: (traceSpan: Span) => T): T {
-			return callback(span as unknown as Span);
+			return callback(span as Span);
 		},
 	};
 	const startActiveSpan = vi.spyOn(tracing, "startActiveSpan");
@@ -325,7 +325,7 @@ describe("createWorkerToolObserver", () => {
 				code: "secret-code",
 				status: 999,
 			},
-		} as unknown as SafeToolCompletion);
+		} as SafeToolCompletion);
 
 		const event = events[1];
 		expect(event).toMatchObject({

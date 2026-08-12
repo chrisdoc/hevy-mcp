@@ -24,7 +24,7 @@ describe("search-routines", () => {
 			],
 		});
 		const runtime = createToolRuntime({
-			client: { getRoutines } as unknown as HevyClient,
+			client: { getRoutines } as HevyClient,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
 
@@ -73,7 +73,7 @@ describe("search-routines", () => {
 				],
 			});
 		const runtime = createToolRuntime({
-			client: { getRoutines } as unknown as HevyClient,
+			client: { getRoutines } as HevyClient,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
 		const result = await discoverRoutines(runtime, {
@@ -99,7 +99,7 @@ describe("search-routines", () => {
 		const runtime = createToolRuntime({
 			client: {
 				getRoutines: vi.fn().mockResolvedValue(undefined),
-			} as unknown as HevyClient,
+			} as HevyClient,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
 		await expect(

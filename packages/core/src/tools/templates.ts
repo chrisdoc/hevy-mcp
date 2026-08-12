@@ -18,7 +18,7 @@ import {
 } from "../utils/tool-annotations.js";
 
 import { type InferToolParams } from "../utils/tool-helpers.js";
-import { exerciseTemplateInputShape, nonEmptyId } from "./input-schemas.js";
+import { exerciseTemplateInputFields, nonEmptyId } from "./input-schemas.js";
 import { muscleGroupEnum } from "../utils/schemas.js";
 import { isExpectedReadNotFound } from "../utils/hevy-error-policy.js";
 
@@ -39,7 +39,7 @@ const getExerciseHistorySchema = {
 	start_date: isoDateTimeWithOffset.optional(),
 	end_date: isoDateTimeWithOffset.optional(),
 } as const;
-const createExerciseTemplateSchema = exerciseTemplateInputShape;
+const createExerciseTemplateSchema = exerciseTemplateInputFields;
 const searchExerciseTemplatesSchema = {
 	query: z.string().min(1),
 	primary_muscle_group: muscleGroupEnum.optional(),
@@ -96,12 +96,15 @@ const getExerciseHistoryDefinition = {
 		args: InferToolParams<typeof getExerciseHistorySchema>,
 	) => {
 		const { exercise_template_id, start_date, end_date } = args;
+		const query: {
+			start_date?: string;
+			end_date?: string;
+		} = {};
+		if (start_date) query.start_date = start_date;
+		if (end_date) query.end_date = end_date;
 		const data: GetV1ExerciseHistoryExercisetemplateid200 = await runtime
 			.getClient()
-			.getExerciseHistory(exercise_template_id, {
-				...(start_date ? { start_date } : {}),
-				...(end_date ? { end_date } : {}),
-			});
+			.getExerciseHistory(exercise_template_id, query);
 		return {
 			exercise_history: data?.exercise_history,
 			exercise_template_id,

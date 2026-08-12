@@ -21,6 +21,7 @@ interface ToolRequestLike {
 
 interface SdkToolErrorHost {
 	createToolError?: (message: string) => unknown;
+	onerror?: (error: Error) => void;
 }
 
 interface ToolResultLike {
@@ -66,20 +67,19 @@ function createFailureAttributes(
 	errorCategory: string,
 ): FailureAttributes {
 	const diagnostic = createSafeErrorDiagnostic(error);
-	return {
+	const attributes: FailureAttributes = {
 		"mcp.failure.phase": phase,
 		"error.type": errorType,
 		"error.category": errorCategory,
-		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
-		...(diagnostic.status !== undefined
-			? { "http.response.status_code": diagnostic.status }
-			: {}),
-		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
-		...(diagnostic.endpoint
-			? { "hevy.api.endpoint": diagnostic.endpoint }
-			: {}),
 		...projectExecutionAttributes(diagnostic),
 	};
+	if (diagnostic.code) attributes["error.code"] = diagnostic.code;
+	if (diagnostic.status !== undefined)
+		attributes["http.response.status_code"] = diagnostic.status;
+	if (diagnostic.method) attributes["http.request.method"] = diagnostic.method;
+	if (diagnostic.endpoint)
+		attributes["hevy.api.endpoint"] = diagnostic.endpoint;
+	return attributes;
 }
 
 function enrichActiveSdkSpan(attributes: FailureAttributes): void {
@@ -114,10 +114,9 @@ function markSdkToolFailure(
 			taxonomy.errorType,
 			taxonomy.errorCategory,
 		),
-		...(options.validationKind
-			? { "mcp.validation.kind": options.validationKind }
-			: {}),
 	};
+	if (options.validationKind)
+		attributes["mcp.validation.kind"] = options.validationKind;
 	span.addEvent("mcp.tool.failure", attributes);
 	span.setAttribute("error.type", taxonomy.errorType);
 	captureFailure(error, {
@@ -162,11 +161,14 @@ function installProtocolErrorTracking(
 			tracer.startActiveSpan(
 				"mcp.sdk.failure",
 				{
-					attributes: {
-						"mcp.span.category": "protocol",
-						"mcp.transport": transport,
-						...(sessionId ? { "mcp.session.id": sessionId } : {}),
-					},
+					attributes: (() => {
+						const spanAttributes: FailureAttributes = {
+							"mcp.span.category": "protocol",
+							"mcp.transport": transport,
+						};
+						if (sessionId) spanAttributes["mcp.session.id"] = sessionId;
+						return spanAttributes;
+					})(),
 				},
 				(span) => {
 					span.addEvent("mcp.tool.failure", {
@@ -220,8 +222,8 @@ function classifySdkValidation(message: string): {
 	return { kind: "unknown", expected: false };
 }
 
-function installValidationErrorTracking(server: object): void {
-	const toolErrorHost = server as SdkToolErrorHost;
+function installValidationErrorTracking(server: SdkToolErrorHost): void {
+	const toolErrorHost = server;
 	const previousCreateToolError = toolErrorHost.createToolError;
 	if (!previousCreateToolError) return;
 	const createToolError = previousCreateToolError.bind(server);
@@ -275,13 +277,13 @@ function installToolCallTracking(
 	handlers.set("tools/call", (request, extra) => {
 		const sessionId = getCurrentMcpSessionId();
 		const toolName = getSdkToolName(request);
-		const attributes = {
+		const attributes: FailureAttributes = {
 			"mcp.span.category": "protocol",
 			"mcp.transport": transport,
 			"mcp.operation.kind": "tool",
 			"mcp.tool.name": toolName,
-			...(sessionId ? { "mcp.session.id": sessionId } : {}),
 		};
+		if (sessionId) attributes["mcp.session.id"] = sessionId;
 		enrichActiveSdkSpan(attributes);
 		return sdkToolNameStorage.run(toolName, () =>
 			sdkRequestStateStorage.run({}, () =>
@@ -339,11 +341,14 @@ function installDiscoveryTracking(
 		return tracer.startActiveSpan(
 			"mcp.server.discover",
 			{
-				attributes: {
-					"mcp.span.category": "discovery",
-					"mcp.transport": getCurrentMcpTransport(),
-					...(sessionId ? { "mcp.session.id": sessionId } : {}),
-				},
+				attributes: (() => {
+					const attributes: FailureAttributes = {
+						"mcp.span.category": "discovery",
+						"mcp.transport": getCurrentMcpTransport(),
+					};
+					if (sessionId) attributes["mcp.session.id"] = sessionId;
+					return attributes;
+				})(),
 			},
 			async (span) => {
 				try {
@@ -373,7 +378,7 @@ export function installSdkErrorTracking(
 	transport: NodeTransport,
 ): void {
 	installProtocolErrorTracking(server, transport);
-	installValidationErrorTracking(server);
+	if (server.server) installValidationErrorTracking(server.server);
 	const handlers = (server.server as SdkProtocolInternals | undefined)
 		?._requestHandlers;
 	if (!(handlers instanceof Map)) return;

@@ -12,7 +12,7 @@ import {
 } from "./mcp-session-observability.js";
 const UTF8_BOM = "\uFEFF";
 /** Maximum escaped characters included in a malformed stdin shape preview. */
-const STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH = 200;
+const STDIN_PARSE_PREVIEW_MAX_LENGTH = 200;
 const SAFE_MCP_METHODS: Record<string, true> = {
 	initialize: true,
 	"notifications/initialized": true,
@@ -172,23 +172,23 @@ function getFailureLocation(
 	return "unknown";
 }
 
-function createStructuralShapePreview(line: string): {
-	shapePreview: string;
+function createStructuralPreview(line: string): {
+	structuralPreview: string;
 	truncated: boolean;
 } {
-	let shapePreview = "";
+	let structuralPreview = "";
 	let inContentRun = false;
 	let inWhitespaceRun = false;
 
 	const append = (token: string): boolean => {
 		if (
-			shapePreview.length + token.length >
-			STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH
+			structuralPreview.length + token.length >
+			STDIN_PARSE_PREVIEW_MAX_LENGTH
 		) {
 			return false;
 		}
 
-		shapePreview += token;
+		structuralPreview += token;
 		return true;
 	};
 
@@ -197,7 +197,7 @@ function createStructuralShapePreview(line: string): {
 			inContentRun = false;
 			inWhitespaceRun = false;
 			if (!append(character === '"' ? "\\u0022" : character)) {
-				return { shapePreview, truncated: true };
+				return { structuralPreview, truncated: true };
 			}
 			continue;
 		}
@@ -206,7 +206,7 @@ function createStructuralShapePreview(line: string): {
 			inContentRun = false;
 			if (!inWhitespaceRun) {
 				if (!append("\\s")) {
-					return { shapePreview, truncated: true };
+					return { structuralPreview, truncated: true };
 				}
 				inWhitespaceRun = true;
 			}
@@ -216,14 +216,14 @@ function createStructuralShapePreview(line: string): {
 		inWhitespaceRun = false;
 		if (!inContentRun) {
 			if (!append(REDACTED_CONTENT_MARKER)) {
-				return { shapePreview, truncated: true };
+				return { structuralPreview, truncated: true };
 			}
 			inContentRun = true;
 		}
 	}
 
 	return {
-		shapePreview,
+		structuralPreview,
 		truncated: false,
 	};
 }
@@ -249,11 +249,11 @@ function reportStdinParseFailure(
 ): void {
 	try {
 		const errorKind = getSafeErrorKind(error);
-		const { shapePreview, truncated } = createStructuralShapePreview(line);
+		const { structuralPreview, truncated } = createStructuralPreview(line);
 		const position = failurePosition === null ? "unknown" : failurePosition;
 
 		console.error(
-			`Failed to parse MCP stdin message: error_kind=${errorKind} line_bytes=${lineByteLength} failure_location=${failureLocation} failure_position=${position} shape_preview="${shapePreview}" shape_preview_redacted=true shape_preview_truncated=${truncated}`,
+			`Failed to parse MCP stdin message: error_kind=${errorKind} line_bytes=${lineByteLength} failure_location=${failureLocation} failure_position=${position} shape_preview="${structuralPreview}" shape_preview_redacted=true shape_preview_truncated=${truncated}`,
 		);
 	} catch {
 		// Diagnostics are best-effort and must not replace the parser error.
@@ -268,22 +268,22 @@ export function deserializeMessageWithObservability(
 	const normalizedLine = lineHadLeadingBom ? line.slice(1) : line;
 	const lineByteLength = Buffer.byteLength(line);
 	const sessionId = getCurrentMcpSessionId();
+	const attributes: Record<string, string | number | boolean> = {
+		"mcp.span.category": "protocol",
+		"mcp.transport": "stdio",
+		"mcp.stdio.parse.line.char_length": line.length,
+		"mcp.stdio.parse.line.byte_length": lineByteLength,
+		"mcp.stdio.parse.line.had_leading_bom": lineHadLeadingBom,
+		"mcp.stdio.parse.line.bom_stripped": lineHadLeadingBom,
+		"mcp.stdio.parse.chunk.last_byte_length": chunkSnapshot.lastChunkByteLength,
+		"mcp.stdio.parse.chunk.last_had_utf8_bom":
+			chunkSnapshot.lastChunkStartsWithUtf8Bom,
+	};
+	if (sessionId) attributes["mcp.session.id"] = sessionId;
 	return tracer.startActiveSpan(
 		"mcp.stdio.deserialize",
 		{
-			attributes: {
-				"mcp.span.category": "protocol",
-				"mcp.transport": "stdio",
-				"mcp.stdio.parse.line.char_length": line.length,
-				"mcp.stdio.parse.line.byte_length": lineByteLength,
-				"mcp.stdio.parse.line.had_leading_bom": lineHadLeadingBom,
-				"mcp.stdio.parse.line.bom_stripped": lineHadLeadingBom,
-				"mcp.stdio.parse.chunk.last_byte_length":
-					chunkSnapshot.lastChunkByteLength,
-				"mcp.stdio.parse.chunk.last_had_utf8_bom":
-					chunkSnapshot.lastChunkStartsWithUtf8Bom,
-				...(sessionId ? { "mcp.session.id": sessionId } : {}),
-			},
+			attributes,
 		},
 		(span) => {
 			try {

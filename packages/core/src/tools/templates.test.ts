@@ -8,7 +8,7 @@ import { templateToolDefinitions } from "./templates.js";
 
 function register(client: HevyClient | null) {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+	const server = { tool, registerTool: tool } as McpServer;
 	const runtime = createToolRuntime({ client, catalog: {} as never });
 	for (const definition of templateToolDefinitions)
 		registerToolDefinition(server, runtime, definition);
@@ -40,7 +40,7 @@ describe("exercise template tools", () => {
 				.fn()
 				.mockResolvedValue({ id: "t1", title: "Cable Row" }),
 			getExerciseHistory: vi.fn().mockResolvedValue({ exercise_history: [] }),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 
 		await handler(
@@ -68,7 +68,7 @@ describe("exercise template tools", () => {
 			createExerciseTemplate: vi
 				.fn()
 				.mockResolvedValue({ id: "t1", ...templateInput.exercise }),
-		} as unknown as HevyClient;
+		} as HevyClient;
 		const tool = register(client);
 		await handler(tool, "create-exercise-template")(templateInput);
 		expect(client.createExerciseTemplate).toHaveBeenCalledWith(templateInput);

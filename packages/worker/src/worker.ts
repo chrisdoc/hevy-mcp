@@ -14,7 +14,7 @@ import {
 } from "@hevy-mcp/hevy-client";
 import {
 	createHevyOAuthProvider,
-	hasOAuthAccessTokenShape,
+	hasOAuthAccessTokenFormat,
 	type HevyApiKeyValidation,
 	type HevyOAuthWorker,
 	isOAuthEnabled,
@@ -125,7 +125,7 @@ function createRequestLogContext(
 			? "none"
 			: !bearer
 				? "invalid"
-				: hasOAuthAccessTokenShape(bearer)
+				: hasOAuthAccessTokenFormat(bearer)
 					? "oauth"
 					: "bearer",
 		oauthEnabled: isOAuthEnabled(env),
@@ -552,7 +552,7 @@ export function createWorkerFetchHandler(
 					return legacyResponse;
 				}
 				const bearer = parseBearerApiKey(request.headers.get("authorization"));
-				if (bearer && !hasOAuthAccessTokenShape(bearer)) {
+				if (bearer && !hasOAuthAccessTokenFormat(bearer)) {
 					const legacyResponse = await legacyHandler(request, env);
 					responseStatus = legacyResponse.status;
 					return legacyResponse;

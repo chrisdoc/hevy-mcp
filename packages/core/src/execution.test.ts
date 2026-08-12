@@ -41,7 +41,7 @@ describe("bindClientExecution", () => {
 				Object.keys(HEVY_CLIENT_OPTION_INDEXES).map((name) => [name, vi.fn()]),
 			),
 			extra,
-		} as unknown as HevyClient & { extra: typeof extra };
+		} as HevyClient & { extra: typeof extra };
 
 		const bound = bindClientExecution(methods, {
 			deadline: 123,
@@ -54,13 +54,13 @@ describe("bindClientExecution", () => {
 	it("places merged control in every curated options slot", () => {
 		const methods = Object.fromEntries(
 			Object.keys(HEVY_CLIENT_OPTION_INDEXES).map((name) => [name, vi.fn()]),
-		) as unknown as HevyClient;
+		) as HevyClient;
 		const signal = new AbortController().signal;
 		const control = {
 			signal,
 			deadline: 123,
 		};
-		const bound = bindClientExecution(methods, control) as unknown as Record<
+		const bound = bindClientExecution(methods, control) as Record<
 			string,
 			(...args: unknown[]) => unknown
 		>;
@@ -69,7 +69,7 @@ describe("bindClientExecution", () => {
 			const method = name as keyof HevyClient;
 			const invoke = bound[name];
 			const spy = (
-				methods as unknown as Record<string, ReturnType<typeof vi.fn>>
+				methods as Record<string, ReturnType<typeof vi.fn>>
 			)[name];
 			const args = [...baseArgs[method]];
 			invoke(...args);

@@ -60,17 +60,18 @@ function call(
 ): Promise<HttpResult> {
 	return new Promise((resolve, reject) => {
 		const payload = body === undefined ? undefined : JSON.stringify(body);
+		const headers: Record<string, string> = {
+			Accept: "application/json, text/event-stream",
+			...extraHeaders,
+		};
+		if (payload) headers["Content-Type"] = "application/json";
 		const client = request(
 			{
 				host: "127.0.0.1",
 				port,
 				path: "/mcp",
 				method,
-				headers: {
-					Accept: "application/json, text/event-stream",
-					...(payload ? { "Content-Type": "application/json" } : {}),
-					...extraHeaders,
-				},
+				headers,
 			},
 			(response) => {
 				const chunks: Buffer[] = [];

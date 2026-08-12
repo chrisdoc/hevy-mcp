@@ -48,7 +48,7 @@ describe("get-training-summary", () => {
 				],
 			});
 			const runtime = createToolRuntime({
-				client: { getWorkouts, getBodyMeasurements } as unknown as HevyClient,
+				client: { getWorkouts, getBodyMeasurements } as HevyClient,
 				catalog: {} as ExerciseTemplateCatalog,
 			});
 			const summary = await getTrainingSummary(runtime, 4);
@@ -109,7 +109,7 @@ describe("get-training-summary", () => {
 				client: {
 					getWorkouts: vi.fn().mockResolvedValue(undefined),
 					getBodyMeasurements: vi.fn().mockResolvedValue(undefined),
-				} as unknown as HevyClient,
+				} as HevyClient,
 				catalog: {} as ExerciseTemplateCatalog,
 			});
 			await expect(

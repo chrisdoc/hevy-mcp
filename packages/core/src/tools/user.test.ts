@@ -8,6 +8,10 @@ import { registerToolDefinition } from "./define-tool.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { userToolDefinitions } from "./user.js";
 
+function mockOf<T>(value: unknown): T {
+	return value as T;
+}
+
 function registerUserDefinition(server: McpServer, client: HevyClient | null) {
 	const catalog: ExerciseTemplateCatalog = {
 		get: vi.fn(),
@@ -22,7 +26,7 @@ function registerUserDefinition(server: McpServer, client: HevyClient | null) {
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+	const server = mockOf<McpServer>({ tool, registerTool: tool });
 	return { server, tool };
 }
 
@@ -62,9 +66,9 @@ describe("userToolDefinitions", () => {
 
 	it("get-user-info returns an error response when the client rejects", async () => {
 		const { server, tool } = createMockServer();
-		const hevyClient: HevyClient = {
+		const hevyClient = mockOf<HevyClient>({
 			getUserInfo: vi.fn().mockRejectedValue(new Error("User API timeout")),
-		} as unknown as HevyClient;
+		});
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
@@ -90,9 +94,9 @@ describe("userToolDefinitions", () => {
 			name: "Chris",
 			url: "https://hevy.com/user/chris",
 		};
-		const hevyClient: HevyClient = {
+		const hevyClient = mockOf<HevyClient>({
 			getUserInfo: vi.fn().mockResolvedValue({ data: userInfo }),
-		} as unknown as HevyClient;
+		});
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
@@ -107,9 +111,9 @@ describe("userToolDefinitions", () => {
 
 	it("get-user-info returns empty response when no user info is found", async () => {
 		const { server, tool } = createMockServer();
-		const hevyClient: HevyClient = {
+		const hevyClient = mockOf<HevyClient>({
 			getUserInfo: vi.fn().mockResolvedValue({}),
-		} as unknown as HevyClient;
+		});
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");

@@ -205,7 +205,7 @@ describe("createToolRuntime observation scope", () => {
 
 	it("lets the newest nested execution scope control the client", async () => {
 		const getUserInfo = vi.fn().mockResolvedValue({ data: { id: "user" } });
-		const client = { getUserInfo } as unknown as HevyClient;
+		const client = { getUserInfo } as HevyClient;
 		const runtime = createToolRuntime({ client, catalog });
 		const firstSignal = new AbortController().signal;
 		const secondSignal = new AbortController().signal;

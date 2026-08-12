@@ -18,9 +18,9 @@ import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
 	calendarDate,
-	createBodyMeasurementInputShape,
-	paginationShape,
-	updateBodyMeasurementInputShape,
+	createBodyMeasurementInputFields,
+	paginationFields,
+	updateBodyMeasurementInputFields,
 } from "./input-schemas.js";
 import { buildMeasurementPayload } from "./mutation-semantics.js";
 import type { PaginatedToolResult } from "../utils/response-contracts.js";
@@ -29,7 +29,7 @@ import {
 	isExpectedReadNotFound,
 } from "../utils/hevy-error-policy.js";
 const getBodyMeasurementsSchema = {
-	...paginationShape({ defaultPageSize: 10, maxPageSize: 10 }),
+	...paginationFields({ defaultPageSize: 10, maxPageSize: 10 }),
 } as const;
 type GetBodyMeasurementsResult = PaginatedToolResult<
 	NonNullable<GetV1BodyMeasurements200["body_measurements"]>[number]
@@ -39,8 +39,8 @@ const getBodyMeasurementSchema = {
 	date: calendarDate,
 } as const;
 
-const createBodyMeasurementSchema = createBodyMeasurementInputShape;
-const updateBodyMeasurementSchema = updateBodyMeasurementInputShape;
+const createBodyMeasurementSchema = createBodyMeasurementInputFields;
+const updateBodyMeasurementSchema = updateBodyMeasurementInputFields;
 
 const getBodyMeasurementsDefinition: ToolDefinition<
 	typeof getBodyMeasurementsSchema,

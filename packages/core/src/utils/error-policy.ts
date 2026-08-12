@@ -389,17 +389,18 @@ function getExecutionFields(
 		}
 		return {};
 	}
-	return {
-		...(error.phase ? { phase: error.phase } : {}),
-		...(error.operation_safety
-			? { operation_safety: error.operation_safety }
-			: {}),
-		...(error.commit_state ? { commit_state: error.commit_state } : {}),
-		...(typeof error.safe_to_retry === "boolean"
-			? { safe_to_retry: error.safe_to_retry }
-			: {}),
-		...(error.outcome ? { outcome: error.outcome } : {}),
-	};
+	const fields: Partial<
+		Pick<
+			SafeErrorDiagnostic,
+			"phase" | "operation_safety" | "commit_state" | "safe_to_retry" | "outcome"
+		>
+	> = {};
+	if (error.phase) fields.phase = error.phase;
+	if (error.operation_safety) fields.operation_safety = error.operation_safety;
+	if (error.commit_state) fields.commit_state = error.commit_state;
+	if (typeof error.safe_to_retry === "boolean") fields.safe_to_retry = error.safe_to_retry;
+	if (error.outcome) fields.outcome = error.outcome;
+	return fields;
 }
 
 function parseSafeStackFrames(error: unknown): SafeStackFrame[] | undefined {

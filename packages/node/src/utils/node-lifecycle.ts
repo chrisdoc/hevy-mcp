@@ -80,12 +80,18 @@ export function recordLifecycleFailure(
 ): void {
 	const attributes = createLifecycleFailureAttributes(phase, terminationReason);
 	span.addEvent("mcp.lifecycle.failure", attributes);
-	captureFailure(error, {
+	const failure: {
+		kind: "lifecycle";
+		attributes: Record<string, string | number | boolean>;
+		expected?: boolean;
+		span: Span;
+	} = {
 		kind: "lifecycle",
 		attributes,
-		...(isExpectedLifecycleFailure(error) ? { expected: true } : {}),
 		span,
-	});
+	};
+	if (isExpectedLifecycleFailure(error)) failure.expected = true;
+	captureFailure(error, failure);
 }
 
 export type NodeLifecycleTransport = "stdio" | "http";

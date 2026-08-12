@@ -4,6 +4,10 @@ import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools } from "./register.js";
 
+function mockOf<T>(value: unknown): T {
+	return value as T;
+}
+
 const READ_ONLY_TOOLS = [
 	"get-workouts",
 	"get-workout",
@@ -93,7 +97,7 @@ const EXPECTED_DESCRIPTIONS = {
 function registerAllTools() {
 	const tool = vi.fn();
 	const registerTool = vi.fn();
-	const server = { tool, registerTool } as unknown as McpServer;
+	const server = mockOf<McpServer>({ tool, registerTool });
 	const runtime = createToolRuntime({
 		client: null,
 		catalog: {} as ExerciseTemplateCatalog,

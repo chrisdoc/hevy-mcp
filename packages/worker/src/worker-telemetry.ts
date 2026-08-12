@@ -1,9 +1,11 @@
+import { z } from "zod";
+
 const USER_HASH_CONTEXT = "hevy-mcp:sentry-user-id:v1";
 const USER_HASH_LENGTH = 10;
 const CLOUDFLARE_COLO_PATTERN = /^[A-Z]{3}$/u;
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/u;
 const GEO_VALUE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .,'’()/_-]{0,63}$/u;
-const IDENTIFIER_SHAPED_GEO_VALUE_PATTERN =
+const IDENTIFIER_GEO_VALUE_PATTERN =
 	/^(?:(?:\d{1,3}\.){3}\d{1,3}|-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?)?|\d[\d -]*\d)$/u;
 const MAX_GEO_VALUE_LENGTH = 64;
 
@@ -22,18 +24,24 @@ export interface CloudflareGeography {
 	readonly countryCode?: string;
 }
 
+type MutableCloudflareGeography = {
+	localityName?: string;
+	localityRegion?: string;
+	countryCode?: string;
+};
+
 /**
  * Sanitize a Cloudflare-provided locality or region without allowing
  * identifier-shaped values such as IP addresses, coordinates, or postal codes.
  */
 export function sanitizeCloudflareGeographyValue(
-	value: unknown,
+	value: string | undefined,
 ): string | undefined {
-	if (typeof value !== "string" || value.length > MAX_GEO_VALUE_LENGTH)
+	if (value === undefined || value.length > MAX_GEO_VALUE_LENGTH)
 		return undefined;
 	const normalized = value.trim().replace(/\s+/gu, " ");
 	return normalized.length <= MAX_GEO_VALUE_LENGTH &&
-		!IDENTIFIER_SHAPED_GEO_VALUE_PATTERN.test(normalized) &&
+		!IDENTIFIER_GEO_VALUE_PATTERN.test(normalized) &&
 		GEO_VALUE_PATTERN.test(normalized)
 		? normalized
 		: undefined;
@@ -46,18 +54,22 @@ export function sanitizeCloudflareGeographyValue(
 export function getCloudflareGeography(request: Request): CloudflareGeography {
 	try {
 		const cf = (request as RequestWithCloudflareProperties).cf;
-		const country = cf?.country;
+		const country = z.string().safeParse(cf?.country).data;
 		const countryCode =
-			typeof country === "string" && COUNTRY_CODE_PATTERN.test(country)
+			country !== undefined && COUNTRY_CODE_PATTERN.test(country)
 				? country
 				: undefined;
-		const localityName = sanitizeCloudflareGeographyValue(cf?.city);
-		const localityRegion = sanitizeCloudflareGeographyValue(cf?.region);
-		return {
-			...(localityName ? { localityName } : {}),
-			...(localityRegion ? { localityRegion } : {}),
-			...(countryCode ? { countryCode } : {}),
-		};
+		const localityName = sanitizeCloudflareGeographyValue(
+			z.string().safeParse(cf?.city).data,
+		);
+		const localityRegion = sanitizeCloudflareGeographyValue(
+			z.string().safeParse(cf?.region).data,
+		);
+		const geography: MutableCloudflareGeography = {};
+		if (localityName) geography.localityName = localityName;
+		if (localityRegion) geography.localityRegion = localityRegion;
+		if (countryCode) geography.countryCode = countryCode;
+		return geography;
 	} catch {
 		// Request metadata is optional and must never affect MCP behavior.
 		return {};
@@ -70,9 +82,11 @@ export function getCloudflareGeography(request: Request): CloudflareGeography {
  */
 export function getCloudflareColo(request: Request): string | undefined {
 	try {
-		const colo = (request as RequestWithCloudflareProperties).cf?.colo;
-		return typeof colo === "string" && CLOUDFLARE_COLO_PATTERN.test(colo)
-			? colo
+		const parsedColo = z.string().safeParse(
+			(request as RequestWithCloudflareProperties).cf?.colo,
+		).data;
+		return parsedColo !== undefined && CLOUDFLARE_COLO_PATTERN.test(parsedColo)
+			? parsedColo
 			: undefined;
 	} catch {
 		// Request metadata is optional and must never affect MCP behavior.

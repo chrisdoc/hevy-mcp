@@ -25,6 +25,8 @@ export interface StructuredExecutionProjection {
 
 /** Backward-compatible name for the structured error projection. */
 export type StructuredExecutionError = StructuredExecutionProjection;
+type MutableExecutionProjection = { -readonly [K in keyof StructuredExecutionProjection]?: StructuredExecutionProjection[K] } &
+	Pick<StructuredExecutionProjection, "outcome" | "phase" | "operation_safety" | "commit_state" | "safe_to_retry">;
 
 export type ExecutionProjectionSource = Partial<
 	Pick<
@@ -42,15 +44,16 @@ export type ExecutionProjectionSource = Partial<
 export function createExecutionProjection(
 	source?: ExecutionProjectionSource,
 ): StructuredExecutionProjection {
-	return {
+	const projection: MutableExecutionProjection = {
 		outcome: source?.outcome ?? "terminal_failure",
 		phase: source?.phase ?? "before-dispatch",
 		operation_safety: source?.operation_safety ?? "read",
 		commit_state: source?.commit_state ?? "not_sent",
 		safe_to_retry: source?.safe_to_retry ?? false,
-		...(source?.code ? { code: source.code } : {}),
-		...(source?.status !== undefined ? { status: source.status } : {}),
 	};
+	if (source?.code) projection.code = source.code;
+	if (source?.status !== undefined) projection.status = source.status;
+	return projection;
 }
 
 export function mergeAbortSignals(

@@ -135,7 +135,7 @@ function validatePackageJson(packageJson) {
 	);
 }
 
-function validateManifestShape(manifest) {
+function validateManifestForm(manifest) {
 	assert(
 		manifest && typeof manifest === "object" && !Array.isArray(manifest),
 		"server.json must contain an object",
@@ -261,7 +261,7 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 	}
 
 	validatePackageJson(packageJson);
-	validateManifestShape(manifest);
+	validateManifestForm(manifest);
 
 	const drift = findDrift(packageJson, manifest);
 	for (const packageManifest of packageManifests) {

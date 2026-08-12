@@ -87,7 +87,7 @@ function createTransportDouble() {
 	};
 }
 
-function extractShapePreview(diagnostic: string): string {
+function extractStructuralPreview(diagnostic: string): string {
 	const prefix = ' shape_preview="';
 	const suffix = '" shape_preview_redacted=';
 	const start = diagnostic.indexOf(prefix);
@@ -200,12 +200,12 @@ describe("package-local stdio observability", () => {
 		).toThrow();
 
 		const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
-		const shapePreview = extractShapePreview(diagnostic);
+		const structuralPreview = extractStructuralPreview(diagnostic);
 		expect(diagnostic).toContain("shape_preview_redacted=true");
 		expect(diagnostic).not.toContain("credential-sentinel");
 		expect(diagnostic).not.toContain("bearer-sentinel");
 		expect(diagnostic).not.toContain("private-workout-sentinel");
-		expect(shapePreview.length).toBeLessThanOrEqual(200);
+		expect(structuralPreview.length).toBeLessThanOrEqual(200);
 	});
 
 	it("keeps the SDK-internal transport adapter package-local", () => {

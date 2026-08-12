@@ -6,6 +6,16 @@ import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import type { ErrorEvent, EventHint } from "@sentry/node";
 
 type SafeErrorDiagnostic = ReturnType<typeof createSafeErrorDiagnostic>;
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+type SentryExceptionValue = NonNullable<
+	NonNullable<ErrorEvent["exception"]>["values"]
+>[number];
+type SentryStackFrame = NonNullable<
+	NonNullable<SentryExceptionValue["stacktrace"]>["frames"]
+>[number];
+type SentryContext = { kind: FailureKind } & TelemetryAttributes & {
+		"hevy.api.response_error"?: string;
+	};
 
 export type TelemetryAttributeValue = string | number | boolean;
 export type TelemetryAttributes = Record<string, TelemetryAttributeValue>;
@@ -165,10 +175,10 @@ function getExceptionText(error: unknown): {
 	stack?: string;
 } {
 	if (!(error instanceof Error)) return {};
-	return {
-		...(error.message ? { message: error.message } : {}),
-		...(error.stack ? { stack: error.stack } : {}),
-	};
+	const text: { message?: string; stack?: string } = {};
+	if (error.message) text.message = error.message;
+	if (error.stack) text.stack = error.stack;
+	return text;
 }
 
 function getTraceContext(span: Span | undefined): {
@@ -277,20 +287,39 @@ export function normalizeFailure(
 	addHttpAttributes(attributes, diagnostic);
 	addExecutionAttributes(attributes, diagnostic);
 
-	return {
+	const normalizedException: {
+		name: string;
+		message?: string;
+		stack?: string;
+	} = {
+		name: exceptionType,
+	};
+	const normalized: {
+		diagnostic: SafeErrorDiagnostic;
+		exceptionType: string;
+		message?: string;
+		stack?: string;
+		responseError?: string;
+		exception: typeof normalizedException;
+		attributes: TelemetryAttributes;
+		fingerprint: string[];
+	} = {
 		diagnostic,
 		exceptionType,
-		...(message ? { message } : {}),
-		...(stack ? { stack } : {}),
-		...(responseError ? { responseError } : {}),
-		exception: {
-			name: exceptionType,
-			...(message ? { message } : {}),
-			...(stack ? { stack } : {}),
-		},
+		exception: normalizedException,
 		attributes,
 		fingerprint: getFingerprint(context.kind, attributes, diagnostic),
 	};
+	if (message) {
+		normalized.message = message;
+		normalized.exception.message = message;
+	}
+	if (stack) {
+		normalized.stack = stack;
+		normalized.exception.stack = stack;
+	}
+	if (responseError) normalized.responseError = responseError;
+	return normalized as NormalizedFailure;
 }
 
 function sanitizeContext(
@@ -354,42 +383,40 @@ function sanitizeSentryExceptionValues(
 	const values = event.exception?.values;
 	if (!values) return undefined;
 	return {
-		values: values.map((value) => ({
-			...(value.type
-				? { type: sanitizeDiagnosticText(value.type, MAX_ATTRIBUTE_LENGTH) }
-				: {}),
-			...(value.value
-				? { value: sanitizeDiagnosticText(value.value, MAX_MESSAGE_LENGTH) }
-				: {}),
-			stacktrace: value.stacktrace
-				? {
-						frames: value.stacktrace.frames?.map((frame) => ({
-							...(frame.filename
-								? {
-										filename: normalizeStackFilename(frame.filename),
-									}
-								: {}),
-							...(frame.function
-								? {
-										function: sanitizeDiagnosticText(
-											frame.function,
-											MAX_ATTRIBUTE_LENGTH,
-										),
-									}
-								: {}),
-							...(typeof frame.lineno === "number"
-								? { lineno: frame.lineno }
-								: {}),
-							...(typeof frame.colno === "number"
-								? { colno: frame.colno }
-								: {}),
-							...(typeof frame.in_app === "boolean"
-								? { in_app: frame.in_app }
-								: {}),
-						})),
-					}
-				: undefined,
-		})),
+		values: values.map((value) => {
+			const safeValue: Mutable<SentryExceptionValue> = {};
+			if (value.type)
+				safeValue.type = sanitizeDiagnosticText(
+					value.type,
+					MAX_ATTRIBUTE_LENGTH,
+				);
+			if (value.value)
+				safeValue.value = sanitizeDiagnosticText(
+					value.value,
+					MAX_MESSAGE_LENGTH,
+				);
+			if (value.stacktrace) {
+				safeValue.stacktrace = {
+					frames: value.stacktrace.frames?.map((frame) => {
+						const safeFrame: Mutable<SentryStackFrame> = {};
+						if (frame.filename)
+							safeFrame.filename = normalizeStackFilename(frame.filename);
+						if (frame.function)
+							safeFrame.function = sanitizeDiagnosticText(
+								frame.function,
+								MAX_ATTRIBUTE_LENGTH,
+							);
+						if (typeof frame.lineno === "number")
+							safeFrame.lineno = frame.lineno;
+						if (typeof frame.colno === "number") safeFrame.colno = frame.colno;
+						if (typeof frame.in_app === "boolean")
+							safeFrame.in_app = frame.in_app;
+						return safeFrame;
+					}),
+				};
+			}
+			return safeValue;
+		}),
 	};
 }
 
@@ -398,11 +425,8 @@ export function sanitizeSentryEvent(
 	event: ErrorEvent,
 	_hint?: EventHint,
 ): ErrorEvent {
-	return {
+	const sanitized: ErrorEvent = {
 		...event,
-		...(event.message
-			? { message: sanitizeDiagnosticText(event.message, MAX_MESSAGE_LENGTH) }
-			: {}),
 		request: undefined,
 		user: undefined,
 		server_name: undefined,
@@ -418,6 +442,12 @@ export function sanitizeSentryEvent(
 		exception: sanitizeSentryExceptionValues(event),
 		spans: undefined,
 	};
+	if (event.message)
+		sanitized.message = sanitizeDiagnosticText(
+			event.message,
+			MAX_MESSAGE_LENGTH,
+		);
+	return sanitized;
 }
 
 function createSentryError(record: NormalizedFailure): Error {
@@ -486,13 +516,13 @@ export function captureFailure(
 					scope.setTag(key, String(value));
 				}
 				scope.setFingerprint([...record.fingerprint]);
-				scope.setContext("mcp", {
+				const sentryContext: SentryContext = {
 					kind: context.kind,
 					...record.attributes,
-					...(record.responseError
-						? { "hevy.api.response_error": record.responseError }
-						: {}),
-				});
+				};
+				if (record.responseError)
+					sentryContext["hevy.api.response_error"] = record.responseError;
+				scope.setContext("mcp", sentryContext);
 				return Sentry.captureException(createSentryError(record));
 			});
 		} catch {
@@ -520,10 +550,10 @@ export function captureFailure(
 		}
 	}
 
-	return {
-		...(diagnosticId ? { diagnosticId } : {}),
-		...(eventId ? { eventId } : {}),
-		...(traceContext.traceId ? { traceId: traceContext.traceId } : {}),
-		...(traceContext.spanId ? { spanId: traceContext.spanId } : {}),
-	};
+	const receipt: Mutable<FailureReceipt> = {};
+	if (diagnosticId) receipt.diagnosticId = diagnosticId;
+	if (eventId) receipt.eventId = eventId;
+	if (traceContext.traceId) receipt.traceId = traceContext.traceId;
+	if (traceContext.spanId) receipt.spanId = traceContext.spanId;
+	return receipt;
 }

@@ -75,12 +75,12 @@ function createAttributes(
 		"mcp.client.version": clientMetadata.version,
 		"mcp.protocol.version": clientMetadata.protocolVersion,
 		"mcp.transport": getCurrentMcpTransport(),
-		...(userHash ? { "user.hash": userHash } : {}),
 		"mcp.tool.args.key_count_bucket":
 			invocation.argumentKeyCountBucket ?? "unknown",
 		"mcp.tool.args.keys": invocation.argumentKeys?.join(",") ?? "",
-		...(sessionId ? { "mcp.session.id": sessionId } : {}),
 	};
+	if (userHash) attributes["user.hash"] = userHash;
+	if (sessionId) attributes["mcp.session.id"] = sessionId;
 	for (const key of Object.keys(invocation.argumentPresence ?? {})) {
 		attributes[`mcp.tool.args.${key}.present`] = true;
 	}
@@ -158,21 +158,20 @@ function createFailureAttributes(
 	const execution = projectExecutionAttributes(
 		createExecutionProjection(diagnostic),
 	);
-	return {
+	const attributes: Record<string, AttributeValue> = {
 		[invocation.kind === "prompt" ? "mcp.prompt.name" : "mcp.tool.name"]:
 			invocation.name,
 		"error.type": errorType,
 		"error.category": diagnostic?.category ?? "UnknownError",
-		...(diagnostic?.code ? { "error.code": diagnostic.code } : {}),
-		...(diagnostic?.status !== undefined
-			? { "http.response.status_code": diagnostic.status }
-			: {}),
-		...(diagnostic?.method ? { "http.request.method": diagnostic.method } : {}),
-		...(diagnostic?.endpoint
-			? { "hevy.api.endpoint": diagnostic.endpoint }
-			: {}),
 		...execution,
 	};
+	if (diagnostic?.code) attributes["error.code"] = diagnostic.code;
+	if (diagnostic?.status !== undefined)
+		attributes["http.response.status_code"] = diagnostic.status;
+	if (diagnostic?.method) attributes["http.request.method"] = diagnostic.method;
+	if (diagnostic?.endpoint)
+		attributes["hevy.api.endpoint"] = diagnostic.endpoint;
+	return attributes;
 }
 
 function setSafeErrorAttributes(
