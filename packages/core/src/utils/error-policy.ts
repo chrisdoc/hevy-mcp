@@ -5,6 +5,7 @@ import {
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	isHevyHttpError,
 } from "@hevy-mcp/hevy-client";
+import { isBoolean, isFiniteNumber, isFunction, isObject, isString } from "./type-predicates.js";
 import type {
 	HevyCommitState,
 	HevyExecutionOutcome,
@@ -138,12 +139,12 @@ const PROJECT_PATH_MARKER = "/hevy-mcp/";
 const MAX_STACK_POSITION = 1_000_000;
 
 function normalizeHeaderValue(value: unknown): string | undefined {
-	if (typeof value === "string") {
+	if (isString(value)) {
 		const trimmed = value.trim();
 		return trimmed.length > 0 ? trimmed : undefined;
 	}
 
-	if (typeof value === "number" && Number.isFinite(value)) {
+	if (isFiniteNumber(value)) {
 		return String(value);
 	}
 
@@ -156,11 +157,11 @@ function normalizeHeaderValue(value: unknown): string | undefined {
 
 function getHeaderValue(headers: unknown, key: string): string | undefined {
 	try {
-		if (!headers || typeof headers !== "object") return undefined;
+		if (!isObject(headers)) return undefined;
 
 		if (
 			"get" in headers &&
-			typeof (headers as { get?: unknown }).get === "function"
+			isFunction((headers as { get?: unknown }).get)
 		) {
 			const value = (headers as { get: (headerName: string) => unknown }).get(
 				key,
@@ -199,7 +200,7 @@ export function isRetryExhausted(error: unknown): boolean {
 	try {
 		return (
 			!!error &&
-			typeof error === "object" &&
+			isObject(error) &&
 			(error as RetryAwareError).hevyRetryExhausted === true
 		);
 	} catch {
@@ -265,14 +266,14 @@ function getRetryExhaustedMessage(error: unknown): string {
 	let retryCount: unknown;
 	try {
 		retryCount =
-			typeof error === "object" && error !== null
+			isObject(error)
 				? (error as RetryAwareError).hevyRetryCount
 				: undefined;
 	} catch {
 		retryCount = undefined;
 	}
 	const attemptCount =
-		typeof retryCount === "number" && Number.isFinite(retryCount)
+		isFiniteNumber(retryCount)
 			? retryCount + 1
 			: undefined;
 	if (attemptCount) {
@@ -342,7 +343,7 @@ function classifyError(error: unknown): SafeErrorCategory {
 	if (error instanceof URIError) return "URIError";
 	if (error instanceof EvalError) return "EvalError";
 	if (error instanceof AggregateError) return "AggregateError";
-	if (typeof DOMException !== "undefined" && error instanceof DOMException) {
+	if (error instanceof DOMException) {
 		return "DOMException";
 	}
 	if (error instanceof Error) return "Error";
@@ -352,11 +353,11 @@ function classifyError(error: unknown): SafeErrorCategory {
 function getSafeCode(error: unknown): string | undefined {
 	const abortTimeout = getAbortTimeoutErrorMetadata(error);
 	if (abortTimeout) return abortTimeout.code;
-	if (!error || typeof error !== "object" || !("code" in error)) {
+	if (!isObject(error) || !("code" in error)) {
 		return undefined;
 	}
 	const code = error.code;
-	return typeof code === "string" && SAFE_ERROR_CODES.has(code)
+	return isString(code) && SAFE_ERROR_CODES.has(code)
 		? code
 		: undefined;
 }
@@ -398,13 +399,13 @@ function getExecutionFields(
 	if (error.phase) fields.phase = error.phase;
 	if (error.operation_safety) fields.operation_safety = error.operation_safety;
 	if (error.commit_state) fields.commit_state = error.commit_state;
-	if (typeof error.safe_to_retry === "boolean") fields.safe_to_retry = error.safe_to_retry;
+	if (isBoolean(error.safe_to_retry)) fields.safe_to_retry = error.safe_to_retry;
 	if (error.outcome) fields.outcome = error.outcome;
 	return fields;
 }
 
 function parseSafeStackFrames(error: unknown): SafeStackFrame[] | undefined {
-	if (!(error instanceof Error) || typeof error.stack !== "string") {
+	if (!(error instanceof Error) || !isString(error.stack)) {
 		return undefined;
 	}
 

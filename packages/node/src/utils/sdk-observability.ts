@@ -8,6 +8,7 @@ import {
 } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { captureFailure, tracer } from "./telemetry.js";
+import { z } from "zod";
 
 type SdkRequestHandler = (request: unknown, extra: unknown) => Promise<unknown>;
 
@@ -91,9 +92,9 @@ function enrichActiveSdkSpan(attributes: FailureAttributes): void {
 }
 
 function getSdkToolName(request: unknown): string {
-	if (!request || typeof request !== "object") return "unknown";
-	const candidate = (request as ToolRequestLike).params?.name;
-	return typeof candidate === "string" && SAFE_TOOL_NAME_PATTERN.test(candidate)
+	const parsed = z.object({ params: z.object({ name: z.string().optional() }).optional() }).safeParse(request);
+	const candidate = parsed.success ? parsed.data.params?.name : undefined;
+	return candidate && SAFE_TOOL_NAME_PATTERN.test(candidate)
 		? candidate
 		: "unknown";
 }

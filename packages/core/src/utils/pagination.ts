@@ -1,3 +1,5 @@
+import { isFiniteNumber } from "./type-predicates.js";
+
 export interface PageResult<T> {
 	items: readonly T[];
 	pageCount?: number;
@@ -24,7 +26,7 @@ export async function fetchAllPages<T>(
 		items.push(...result.items);
 		const pageCount = result.pageCount;
 		if (
-			typeof pageCount !== "number" ||
+			!isFiniteNumber(pageCount) ||
 			!Number.isSafeInteger(pageCount) ||
 			pageCount <= page
 		) {

@@ -1,3 +1,5 @@
+import { isString } from "./type-predicates.js";
+
 /**
  * Preprocessor to handle MCP clients that send JSON-stringified arrays
  * instead of native arrays for complex parameters.
@@ -10,7 +12,7 @@
  */
 export function parseJsonArray(val: unknown): unknown {
 	// Handle case where MCP client sends JSON string instead of array
-	if (typeof val === "string") {
+	if (isString(val)) {
 		try {
 			return JSON.parse(val);
 		} catch {

@@ -15,10 +15,10 @@ import type { HevyOperations } from "@hevy-mcp/operations";
 import { execute } from "./commands/index.js";
 import type { CliArgs } from "./arguments.js";
 import type { DataSourceReader } from "./input.js";
+import { z } from "zod";
 
 declare const __HEVY_CLI_VERSION__: string;
-const cliVersion =
-	typeof __HEVY_CLI_VERSION__ === "string" ? __HEVY_CLI_VERSION__ : "0.0.0";
+const cliVersion = z.string().safeParse(__HEVY_CLI_VERSION__).data ?? "0.0.0";
 
 export interface CliRuntimeContext extends CommandContext {
 	readonly process: StricliProcess;
@@ -97,7 +97,7 @@ function toArgs(
 ): CliArgs {
 	const options: Record<string, string | boolean> = {};
 	for (const [name, value] of Object.entries(flags)) {
-		if (typeof value === "string" || typeof value === "boolean")
+		if (z.union([z.string(), z.boolean()]).safeParse(value).success)
 			options[name] = value;
 	}
 	return { command, subcommand, positionals, options };

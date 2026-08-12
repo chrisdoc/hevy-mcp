@@ -10,6 +10,7 @@ import {
   type TrainingSummaryResult,
 } from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
+import { isFiniteNumber } from "../utils/type-predicates.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
@@ -82,7 +83,7 @@ async function fetchRecentPages<T>(
     }
     const pageCount = result.pageCount;
     if (
-      typeof pageCount !== "number" ||
+      !isFiniteNumber(pageCount) ||
       !Number.isSafeInteger(pageCount) ||
       pageCount <= page
     ) {

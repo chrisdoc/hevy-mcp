@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { isString } from "./type-predicates.js";
 
 function coerceNullishNumberInput(value: unknown): unknown {
 	if (value === null || value === undefined) {
 		return value;
 	}
 
-	if (typeof value !== "string") {
+	if (!isString(value)) {
 		return value;
 	}
 

@@ -1,12 +1,13 @@
 import type { JSONSchema } from "zod/v4/core";
 import { z } from "zod";
+import { isObject, isString } from "./type-predicates.js";
 
 type JsonSchema = Omit<JSONSchema.JSONSchema, "type"> & {
 	type?: JSONSchema.JSONSchema["type"] | string[];
 };
 
 function isRecord(value: unknown): value is JsonSchema {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
+	return isObject(value) && !Array.isArray(value);
 }
 
 function isNullSchema(value: unknown): value is JsonSchema {
@@ -30,7 +31,7 @@ function compactNullableSchema(value: unknown): unknown {
 		if (
 			nullableBranch !== undefined &&
 			isRecord(valueBranch) &&
-			typeof valueBranch.type === "string"
+			isString(valueBranch.type)
 		) {
 			const { anyOf: _anyOf, ...metadata } = value;
 			return compactNullableSchema({

@@ -4,6 +4,7 @@ import { utcSecondTimestamp } from "../utils/schemas.js";
 import { memoizeObservationScope, type ToolObserver } from "../observation.js";
 import { bucketCount } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
+import { isString } from "../utils/type-predicates.js";
 
 type PromptResult = {
 	messages: Array<{
@@ -25,7 +26,7 @@ function withPromptObservation<TArgs extends object>(
 				(key): key is "routine_id" => key === "routine_id",
 			);
 			const routineId =
-				"routine_id" in args && typeof args.routine_id === "string"
+				"routine_id" in args && isString(args.routine_id)
 					? args.routine_id
 					: undefined;
 			scope = memoizeObservationScope(

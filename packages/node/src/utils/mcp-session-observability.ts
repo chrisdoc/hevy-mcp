@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { sessionEnded, sessionStarted } from "./metrics.js";
 import { bucketCount } from "./result-telemetry.js";
+import { z } from "zod";
 
 export const MCP_SESSION_TERMINATION_CATEGORIES = [
 	"clean",
@@ -65,12 +66,13 @@ type ClientInfo = {
 };
 
 function isObject(value: unknown): value is object {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
+	return z.object({}).passthrough().safeParse(value).success;
 }
 
 function normalizeMetadata(value: unknown): string {
-	if (typeof value !== "string") return UNKNOWN_METADATA;
-	const normalized = value.trim();
+	const parsed = z.string().safeParse(value);
+	if (!parsed.success) return UNKNOWN_METADATA;
+	const normalized = parsed.data.trim();
 	if (
 		normalized.length === 0 ||
 		normalized.length > MAX_METADATA_LENGTH ||
@@ -105,10 +107,16 @@ export function createMcpSessionContext(
 	transport: McpTransport = "stdio",
 	options: McpSessionContextOptions | (() => string) = {},
 ): McpSessionContext {
-	const normalizedOptions =
-		typeof options === "function"
-			? { generateTelemetrySessionId: options }
-			: options;
+	const parsedFunction = z.custom<() => string>().safeParse(options);
+	const normalizedOptions: McpSessionContextOptions = parsedFunction.success
+		? { generateTelemetrySessionId: parsedFunction.data }
+		: z
+				.object({
+					telemetrySessionId: z.string().optional(),
+					generateTelemetrySessionId: z.custom<() => string>().optional(),
+					now: z.custom<() => number>().optional(),
+				})
+				.parse(options);
 	return {
 		metadata: extractMcpClientMetadata(message),
 		startedAt: (normalizedOptions.now ?? Date.now)(),

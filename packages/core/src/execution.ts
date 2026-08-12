@@ -6,6 +6,7 @@ import type {
 	HevyRequestOptions,
 	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
+import { isFunction } from "./utils/type-predicates.js";
 
 /** Per-request control supplied by MCP, HTTP, CLI, or a lifecycle owner. */
 export interface ToolExecutionContext extends HevyRequestOptions {
@@ -115,7 +116,7 @@ export function bindClientExecution(
 	return new Proxy(client, {
 		get(target, property, receiver) {
 			const value = Reflect.get(target, property, receiver);
-			if (typeof value !== "function") return value;
+			if (!isFunction(value)) return value;
 			const optionIndex =
 				property in HEVY_CLIENT_OPTION_INDEXES
 					? HEVY_CLIENT_OPTION_INDEXES[property as ClientMethod]

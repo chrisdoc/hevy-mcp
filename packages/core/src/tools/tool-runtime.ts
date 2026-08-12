@@ -22,6 +22,7 @@ import {
 	type ToolExecutionContext,
 } from "../execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
+import { isBoolean, isFiniteNumber } from "../utils/type-predicates.js";
 
 const STRUCTURAL_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
 	page: true,
@@ -96,10 +97,10 @@ function createSafeInvocation(
 		) {
 			argumentPresence[key] = true;
 		}
-		if (key in NUMERIC_ARGUMENT_KEYS && typeof value === "number") {
+		if (key in NUMERIC_ARGUMENT_KEYS && isFiniteNumber(value)) {
 			numericArgumentBuckets[key] = bucketCount(value);
 		}
-		if (key in BOOLEAN_ARGUMENT_KEYS && typeof value === "boolean") {
+		if (key in BOOLEAN_ARGUMENT_KEYS && isBoolean(value)) {
 			booleanArguments[key] = value;
 		}
 	}

@@ -15,6 +15,7 @@ import type {
   WorkoutMetadataPatchInput,
 } from "./input-schemas.js";
 import { utcSecondTimestamp } from "../utils/schemas.js";
+import { isFiniteNumber, isString } from "../utils/type-predicates.js";
 
 type RoutineRepRange = { start?: number; end?: number } | null;
 
@@ -66,7 +67,7 @@ function buildRoutineSets(
   return sets.map((set) => {
     const repRange = buildRepRange(set.rep_range);
     const reps =
-      typeof set.reps === "number"
+      isFiniteNumber(set.reps)
         ? set.reps
         : getFixedRepsFromRepRange(repRange);
     const common = {
@@ -176,7 +177,7 @@ const FETCHED_ISO_TIMESTAMP =
  * supplied values remain strict.
  */
 function normalizeFetchedWorkoutTimestamp(value: unknown): unknown {
-  if (typeof value !== "string") return value;
+  if (!isString(value)) return value;
   const match = FETCHED_ISO_TIMESTAMP.exec(value);
   if (!match) return value;
 
