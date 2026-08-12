@@ -29,7 +29,7 @@ const REDACTED_CONTENT_MARKER = "[REDACTED]";
 
 const MAX_MALFORMED_LINES_PER_READ = 100;
 
-function isMalformedMessageError(error: unknown): boolean {
+function isMalformedMessageError(error: Error | string): boolean {
 	return error instanceof SyntaxError || error instanceof ZodError;
 }
 
@@ -114,7 +114,9 @@ function createSdkPrivateStdioAdapter(
 					try {
 						return onReadLine(line);
 					} catch (error) {
-						if (!isMalformedMessageError(error)) {
+						const normalizedError =
+							error instanceof Error ? error : String(error);
+						if (!isMalformedMessageError(normalizedError)) {
 							throw error;
 						}
 						skippedMalformedLines += 1;
@@ -142,7 +144,7 @@ function hasUtf8BomPrefix(chunk: Buffer): boolean {
 	);
 }
 
-function parseFailurePosition(error: unknown): number | null {
+function parseFailurePosition(error: Error | string): number | null {
 	if (!(error instanceof Error)) {
 		return null;
 	}
@@ -229,7 +231,7 @@ function createStructuralPreview(line: string): {
 }
 
 function getSafeErrorKind(
-	error: unknown,
+	error: Error | string,
 ): "SyntaxError" | "Error" | "UnknownError" {
 	if (error instanceof SyntaxError) {
 		return "SyntaxError";
@@ -241,7 +243,7 @@ function getSafeErrorKind(
 }
 
 function reportStdinParseFailure(
-	error: unknown,
+	error: Error | string,
 	line: string,
 	lineByteLength: number,
 	failureLocation: string,
@@ -307,8 +309,9 @@ export function deserializeMessageWithObservability(
 				}
 				return message;
 			} catch (error) {
-				const diagnostic = createSafeErrorDiagnostic(error);
-				const failurePosition = parseFailurePosition(error);
+				const normalizedError = error instanceof Error ? error : String(error);
+				const diagnostic = createSafeErrorDiagnostic(normalizedError);
+				const failurePosition = parseFailurePosition(normalizedError);
 				const failureLocation = getFailureLocation(
 					failurePosition,
 					lineHadLeadingBom,
@@ -329,7 +332,7 @@ export function deserializeMessageWithObservability(
 				stdioParseErrors.add(1, { failure_location: failureLocation });
 
 				reportStdinParseFailure(
-					error,
+					error instanceof Error ? error : String(error),
 					line,
 					lineByteLength,
 					failureLocation,

@@ -33,11 +33,11 @@ import { captureFailure, sanitizeSentryEvent } from "./failure-reporter.js";
 export type ProcessExceptionSource = {
 	on(
 		event: "uncaughtExceptionMonitor" | "unhandledRejection",
-		listener: (error: unknown) => void,
+		listener: (error: Error | string) => void,
 	): void;
 	removeListener(
 		event: "uncaughtExceptionMonitor" | "unhandledRejection",
-		listener: (error: unknown) => void,
+		listener: (error: Error | string) => void,
 	): void;
 };
 
@@ -52,7 +52,7 @@ export function installProcessExceptionTracking(
 	if (!telemetryEnabled) return () => {};
 	const recordProcessException = (
 		source: keyof typeof PROCESS_FAILURE_TAXONOMY,
-		error: unknown,
+		error: Error | string,
 	) => {
 		try {
 			tracer.startActiveSpan(
@@ -79,9 +79,9 @@ export function installProcessExceptionTracking(
 			// Process telemetry must never affect Node's lifecycle.
 		}
 	};
-	const uncaughtException = (error: unknown) =>
+	const uncaughtException = (error: Error | string) =>
 		recordProcessException("uncaughtException", error);
-	const unhandledRejection = (error: unknown) =>
+	const unhandledRejection = (error: Error | string) =>
 		recordProcessException("unhandledRejection", error);
 	processLike.on("uncaughtExceptionMonitor", uncaughtException);
 	processLike.on("unhandledRejection", unhandledRejection);

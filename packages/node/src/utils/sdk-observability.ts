@@ -10,7 +10,7 @@ import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { captureFailure, tracer } from "./telemetry.js";
 import { z } from "zod";
 
-type SdkRequestHandler = (request: unknown, extra: unknown) => Promise<unknown>;
+type SdkRequestHandler = (request: object, extra: object) => Promise<unknown>;
 
 interface SdkProtocolInternals {
 	_requestHandlers?: Map<string, SdkRequestHandler>;
@@ -62,7 +62,7 @@ const SDK_FAILURE_TAXONOMY: Record<
 };
 
 function createFailureAttributes(
-	error: unknown,
+	error: Error | string,
 	phase: "discovery" | "sdk",
 	errorType: string,
 	errorCategory: string,
@@ -91,8 +91,10 @@ function enrichActiveSdkSpan(attributes: FailureAttributes): void {
 	}
 }
 
-function getSdkToolName(request: unknown): string {
-	const parsed = z.object({ params: z.object({ name: z.string().optional() }).optional() }).safeParse(request);
+function getSdkToolName(request: object): string {
+	const parsed = z
+		.object({ params: z.object({ name: z.string().optional() }).optional() })
+		.safeParse(request);
 	const candidate = parsed.success ? parsed.data.params?.name : undefined;
 	return candidate && SAFE_TOOL_NAME_PATTERN.test(candidate)
 		? candidate
@@ -101,7 +103,7 @@ function getSdkToolName(request: unknown): string {
 
 function markSdkToolFailure(
 	span: Span,
-	error: unknown,
+	error: Error | string,
 	toolName = sdkToolNameStorage.getStore() ?? "unknown",
 	kind: SdkFailureKind = "tool_call",
 	options: SdkFailureOptions = {},
@@ -314,12 +316,22 @@ function installToolCallTracking(
 									? classifySdkValidation(error.message)
 									: { kind: "unknown" as const, expected: false };
 							if (validation.kind === "tool_not_found") {
-								markSdkToolFailure(span, error, toolName, "validation", {
-									expected: true,
-									validationKind: validation.kind,
-								});
+								markSdkToolFailure(
+									span,
+									error instanceof Error ? error : String(error),
+									toolName,
+									"validation",
+									{
+										expected: true,
+										validationKind: validation.kind,
+									},
+								);
 							} else {
-								markSdkToolFailure(span, error, toolName);
+								markSdkToolFailure(
+									span,
+									error instanceof Error ? error : String(error),
+									toolName,
+								);
 							}
 							throw error;
 						} finally {
@@ -357,14 +369,20 @@ function installDiscoveryTracking(
 					span.setStatus({ code: SpanStatusCode.OK });
 					return result;
 				} catch (error) {
+					const normalizedError =
+						error instanceof Error ? error : String(error);
 					const attributes = createFailureAttributes(
-						error,
+						normalizedError,
 						"discovery",
 						ErrorType.UNKNOWN_ERROR,
 						"McpServerDiscoveryFailure",
 					);
 					span.addEvent("mcp.discovery.failure", attributes);
-					captureFailure(error, { kind: "discovery", attributes, span });
+					captureFailure(normalizedError, {
+						kind: "discovery",
+						attributes,
+						span,
+					});
 					throw error;
 				} finally {
 					span.end();

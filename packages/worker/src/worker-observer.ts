@@ -204,37 +204,39 @@ export interface WorkerToolObserverOptions {
 	readonly tracing?: WorkerTracing;
 }
 
+type SafeScalar = string | number | boolean | null | undefined;
+
 function boundedString(
-	value: unknown,
+	value: SafeScalar,
 	maxLength = MAX_STRING_LENGTH,
 ): string | undefined {
 	if (typeof value !== "string" || value.length === 0) return undefined;
 	return value.slice(0, maxLength);
 }
 
-function safeName(value: unknown): string {
+function safeName(value: SafeScalar): string {
 	return boundedString(value, MAX_NAME_LENGTH) ?? "unknown";
 }
 
-function safeUserHash(value: unknown): string | undefined {
+function safeUserHash(value: SafeScalar): string | undefined {
 	return typeof value === "string" && SAFE_USER_HASH_PATTERN.test(value)
 		? value
 		: undefined;
 }
 
-function safeCloudflareColo(value: unknown): string | undefined {
+function safeCloudflareColo(value: SafeScalar): string | undefined {
 	return typeof value === "string" && SAFE_CLOUDFLARE_COLO_PATTERN.test(value)
 		? value
 		: undefined;
 }
 
-function safeCountryCode(value: unknown): string | undefined {
+function safeCountryCode(value: SafeScalar): string | undefined {
 	return typeof value === "string" && SAFE_COUNTRY_CODE_PATTERN.test(value)
 		? value
 		: undefined;
 }
 
-function safeBucket(value: unknown): string | undefined {
+function safeBucket(value: SafeScalar): string | undefined {
 	return typeof value === "string" && SAFE_COUNT_BUCKETS.has(value)
 		? value
 		: undefined;
@@ -297,7 +299,7 @@ function safeInvocation(
 	return safe;
 }
 
-function boundedCount(value: unknown, maximum: number): number {
+function boundedCount(value: SafeScalar, maximum: number): number {
 	if (typeof value !== "number" || !Number.isFinite(value)) return 0;
 	return Math.min(maximum, Math.max(0, Math.floor(value)));
 }
@@ -363,14 +365,14 @@ function safeResult(
 
 type SafeErrorOutput = ReturnType<typeof createSafeErrorDiagnostic>;
 
-function safeErrorStatus(value: unknown): number | undefined {
+function safeErrorStatus(value: SafeScalar): number | undefined {
 	if (typeof value !== "number") return undefined;
 	return Number.isInteger(value) && value >= 100 && value <= 599
 		? value
 		: undefined;
 }
 
-function safeErrorMethod(value: unknown): string | undefined {
+function safeErrorMethod(value: SafeScalar): string | undefined {
 	if (typeof value !== "string") return undefined;
 	const method = value.toUpperCase();
 	return SAFE_HTTP_METHODS.has(method) ? method : undefined;
@@ -391,7 +393,7 @@ function safeErrorFrames(
 		.slice(0, 3);
 }
 
-function safeErrorBoolean(value: unknown): boolean | undefined {
+function safeErrorBoolean(value: SafeScalar): boolean | undefined {
 	return typeof value === "boolean" ? value : undefined;
 }
 
@@ -453,7 +455,7 @@ type SafeExecutionSource = Partial<
 >;
 
 function allowedValue<T extends string>(
-	value: unknown,
+	value: SafeScalar,
 	allowed: ReadonlySet<string>,
 ): T | undefined {
 	return typeof value === "string" && allowed.has(value)

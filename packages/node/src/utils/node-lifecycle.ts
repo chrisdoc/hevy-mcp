@@ -52,7 +52,7 @@ const LIFECYCLE_FAILURE_TAXONOMY: Record<
 	},
 };
 
-function isExpectedLifecycleFailure(error: unknown): boolean {
+function isExpectedLifecycleFailure(error: Error | string): boolean {
 	return (
 		error instanceof MissingHevyApiKeyError ||
 		(error instanceof Error && error.message === INVALID_API_KEY_MESSAGE)
@@ -74,7 +74,7 @@ function createLifecycleFailureAttributes(
 
 export function recordLifecycleFailure(
 	span: Span,
-	error: unknown,
+	error: Error | string,
 	phase: LifecycleFailurePhase,
 	terminationReason: LifecycleTerminationReason,
 ): void {
@@ -217,7 +217,12 @@ export async function runNodeLifecycle({
 				// A failed stdio connect already has its own connect span. Preserve
 				// that taxonomy and only record the common run failure otherwise.
 				if (!(outcome.transport === "stdio" && reason === "connect_failure")) {
-					recordLifecycleFailure(span, error, "run", reason);
+					recordLifecycleFailure(
+						span,
+						error instanceof Error ? error : String(error),
+						"run",
+						reason,
+					);
 				}
 				onFailure?.(reason, outcome);
 				span.setStatus({ code: SpanStatusCode.ERROR });

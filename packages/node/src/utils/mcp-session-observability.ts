@@ -57,19 +57,19 @@ const contextStorage = new AsyncLocalStorage<McpSessionContext>();
 let activeStdioSession: McpSessionContext | undefined;
 
 type InitializeParams = {
-	clientInfo?: unknown;
-	protocolVersion?: unknown;
+	clientInfo?: ClientInfo;
+	protocolVersion?: string;
 };
 type ClientInfo = {
-	name?: unknown;
-	version?: unknown;
+	name?: string;
+	version?: string;
 };
 
-function isObject(value: unknown): value is object {
+function isObject(value: object | null | undefined): value is object {
 	return z.object({}).passthrough().safeParse(value).success;
 }
 
-function normalizeMetadata(value: unknown): string {
+function normalizeMetadata(value: string | undefined): string {
 	const parsed = z.string().safeParse(value);
 	if (!parsed.success) return UNKNOWN_METADATA;
 	const normalized = parsed.data.trim();
@@ -83,18 +83,24 @@ function normalizeMetadata(value: unknown): string {
 	return normalized;
 }
 
-function getInitializeParams(message: unknown): InitializeParams {
+function getInitializeParams(message: object): InitializeParams {
 	if (!isObject(message) || !("method" in message)) return {};
 	if (message.method !== "initialize") return {};
 	const params = "params" in message ? message.params : undefined;
-	return isObject(params) ? (params as InitializeParams) : {};
+	const parsed = z
+		.object({
+			clientInfo: z
+				.object({ name: z.string().optional(), version: z.string().optional() })
+				.optional(),
+			protocolVersion: z.string().optional(),
+		})
+		.safeParse(params);
+	return parsed.success ? parsed.data : {};
 }
 
-export function extractMcpClientMetadata(message: unknown): McpClientMetadata {
+export function extractMcpClientMetadata(message: object): McpClientMetadata {
 	const params = getInitializeParams(message);
-	const clientInfo = isObject(params.clientInfo)
-		? (params.clientInfo as ClientInfo)
-		: {};
+	const clientInfo = params.clientInfo ?? {};
 	return {
 		name: normalizeMetadata(clientInfo.name),
 		version: normalizeMetadata(clientInfo.version),
@@ -103,7 +109,7 @@ export function extractMcpClientMetadata(message: unknown): McpClientMetadata {
 }
 
 export function createMcpSessionContext(
-	message: unknown,
+	message: object,
 	transport: McpTransport = "stdio",
 	options: McpSessionContextOptions | (() => string) = {},
 ): McpSessionContext {
@@ -166,7 +172,7 @@ function durationBucket(durationMs: number): string {
 }
 
 export function recordMcpSessionStart(
-	message: unknown,
+	message: object,
 	transport: McpTransport = "stdio",
 	context?: McpSessionContext,
 ): McpClientMetadata {

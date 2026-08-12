@@ -664,8 +664,11 @@ export async function startStreamableHttpServer(
 		body: unknown,
 		reservation: InitializationReservation,
 	): Promise<void> {
-		const context = createMcpSessionContext(body, "http");
-		recordMcpSessionStart(body, "http", context);
+		const context = createMcpSessionContext(
+			body !== null && typeof body === "object" ? body : {},
+			"http",
+		);
+		recordMcpSessionStart(context.metadata, "http", context);
 		let session: HttpSession | undefined;
 		let mcpServer: OwnedMcpServer | undefined;
 		let connected = false;

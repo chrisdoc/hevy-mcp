@@ -72,7 +72,9 @@ export interface RoutinesListOperation {
 	): Promise<RoutinesListOutput>;
 }
 
-function isExpectedEndOfList(error: unknown, page: number): boolean {
+type ErrorInput = Error | string;
+
+function isExpectedEndOfList(error: ErrorInput, page: number): boolean {
 	return (
 		page > 1 &&
 		isHevyHttpError(error) &&
@@ -98,7 +100,7 @@ function normalizeRoutinesPage(
 	};
 }
 
-function isExpectedRoutineNotFound(error: unknown): boolean {
+function isExpectedRoutineNotFound(error: ErrorInput): boolean {
 	return (
 		isHevyHttpError(error) &&
 		canonicalEndpointIdentity(error.endpoint) === "/v1/routines/:routineId" &&
@@ -107,7 +109,7 @@ function isExpectedRoutineNotFound(error: unknown): boolean {
 	);
 }
 
-export function isRoutinesGetNotFound(error: unknown): error is HevyHttpError {
+export function isRoutinesGetNotFound(error: ErrorInput): error is HevyHttpError {
 	return isExpectedRoutineNotFound(error);
 }
 
@@ -124,7 +126,7 @@ export function createRoutinesGetOperation(
 						: await adapter.getRoutineById(input.routineId, options);
 				return { routine: response.routine ?? null };
 			} catch (error) {
-				if (isRoutinesGetNotFound(error)) {
+				if (isRoutinesGetNotFound(error instanceof Error ? error : String(error))) {
 					return {
 						routine: null,
 						expected404Outcome: "not_found",
@@ -150,7 +152,7 @@ export function createRoutinesListOperation(
 						: await adapter.getRoutines(params, options);
 				return normalizeRoutinesPage(response, input);
 			} catch (error) {
-				if (isExpectedEndOfList(error, input.page)) {
+				if (isExpectedEndOfList(error instanceof Error ? error : String(error), input.page)) {
 					return {
 						items: [],
 						page: input.page,
@@ -165,7 +167,7 @@ export function createRoutinesListOperation(
 }
 
 export function isRoutinesListEndOfList(
-	error: unknown,
+	error: ErrorInput,
 	page: number,
 ): error is HevyHttpError {
 	return isExpectedEndOfList(error, page);

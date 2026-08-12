@@ -92,7 +92,7 @@ const serverConfigSchema = z.object({
 		.describe("Your Hevy API key (available in the Hevy app settings)."),
 });
 
-function getHttpStatus(error: unknown): number | undefined {
+function getHttpStatus(error: Error | string): number | undefined {
 	if (isHevyHttpError(error)) {
 		return error.status;
 	}
@@ -113,7 +113,7 @@ function getHttpStatus(error: unknown): number | undefined {
 		: undefined;
 }
 
-function getSafeValidationDiagnostic(error: unknown): string | undefined {
+function getSafeValidationDiagnostic(error: Error | string): string | undefined {
 	const status = getHttpStatus(error);
 	if (status !== undefined) {
 		return `HTTP ${status}`;
@@ -144,7 +144,8 @@ async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 			signal,
 			deadline: Date.now() + STARTUP_PROBE_TIMEOUT_MS,
 		});
-	} catch (error) {
+	} catch (caughtError) {
+		const error = caughtError instanceof Error ? caughtError : String(caughtError);
 		if (signal?.aborted) throw error;
 		const status = getHttpStatus(error);
 		if (status === 401 || status === 403) {
@@ -197,7 +198,8 @@ function buildServer(
 
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;
-			} catch (e) {
+			} catch (caughtError) {
+				const e = caughtError instanceof Error ? caughtError : String(caughtError);
 				recordLifecycleFailure(span, e, "build", "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
@@ -257,7 +259,8 @@ export async function runStdioServer() {
 						await server.connect(transport);
 						context.markConnectSucceeded();
 						connectSpan.setStatus({ code: SpanStatusCode.OK });
-					} catch (error) {
+					} catch (caughtError) {
+						const error = caughtError instanceof Error ? caughtError : String(caughtError);
 						recordLifecycleFailure(
 							connectSpan,
 							error,

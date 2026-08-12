@@ -29,7 +29,7 @@ export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 function redactValue(
-	value: unknown,
+	value: object | string | number | boolean | bigint | symbol | null | undefined,
 	depth: number,
 	seen: WeakSet<object>,
 ): RedactedValue {
@@ -119,7 +119,9 @@ function redactValue(
 }
 
 /** Redact every input scalar while preserving bounded argument structure. */
-export function redactToolArgs(args: unknown): RedactedValue {
+export function redactToolArgs(
+	args: object | string | number | boolean | bigint | symbol | null | undefined,
+): RedactedValue {
 	try {
 		return redactValue(args, 0, new WeakSet<object>());
 	} catch {
