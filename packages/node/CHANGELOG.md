@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 6.1.2
+
+### Patch Changes
+
+- [#989](https://github.com/chrisdoc/hevy-mcp/pull/989) [`f34db48`](https://github.com/chrisdoc/hevy-mcp/commit/f34db48e503263c52de1e1f8261e0587a43cec9b) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Propagate the bounded HMAC `user.hash` pseudonym onto Node tool, discovery, and prompt activity spans without exporting raw Hevy API keys.
+
 ## 6.1.1
 
 ### Patch Changes
