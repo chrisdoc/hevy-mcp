@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import { z } from "zod";
 import { isHevyHttpError } from "@hevy-mcp/hevy-client";
 import * as Sentry from "@sentry/node";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
@@ -76,7 +77,19 @@ const DIAGNOSTIC_DETAILS_ENABLED =
 	process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS !== "0";
 
 function isObject(value: unknown): value is object {
-	return typeof value === "object" && value !== null;
+	return z.object({}).passthrough().safeParse(value).success;
+}
+
+function isString(value: unknown): value is string {
+	return z.string().safeParse(value).success;
+}
+
+function isNumber(value: unknown): value is number {
+	return z.number().safeParse(value).success;
+}
+
+function isBoolean(value: unknown): value is boolean {
+	return z.boolean().safeParse(value).success;
 }
 
 function truncate(value: string, length: number): string {
@@ -147,7 +160,7 @@ function sanitizeAttributeValue(
 	_key: string,
 	value: TelemetryAttributeValue,
 ): TelemetryAttributeValue {
-	if (typeof value !== "string") return value;
+	if (!isString(value)) return value;
 	return sanitizeDiagnosticText(value, MAX_ATTRIBUTE_LENGTH);
 }
 
@@ -161,7 +174,7 @@ function copyAttributes(
 		if (
 			!key ||
 			!SAFE_TAG_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
-			(typeof rawValue === "number" && !Number.isFinite(rawValue))
+			(isNumber(rawValue) && !Number.isFinite(rawValue))
 		) {
 			continue;
 		}
@@ -335,13 +348,13 @@ function sanitizeContext(
 			continue;
 		}
 		if (
-			typeof rawValue !== "string" &&
-			typeof rawValue !== "number" &&
-			typeof rawValue !== "boolean"
+			!isString(rawValue) &&
+			!isNumber(rawValue) &&
+			!isBoolean(rawValue)
 		) {
 			continue;
 		}
-		if (typeof rawValue === "number" && !Number.isFinite(rawValue)) {
+		if (isNumber(rawValue) && !Number.isFinite(rawValue)) {
 			continue;
 		}
 		output[truncate(key, 128)] = sanitizeAttributeValue(key, rawValue);
@@ -355,14 +368,14 @@ function sanitizeSentryTags(tags: ErrorEvent["tags"]): ErrorEvent["tags"] {
 	for (const [key, value] of Object.entries(tags)) {
 		if (!SAFE_TAG_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
 		if (
-			typeof value !== "string" &&
-			typeof value !== "number" &&
-			typeof value !== "boolean"
+			!isString(value) &&
+			!isNumber(value) &&
+			!isBoolean(value)
 		) {
 			continue;
 		}
 		output[truncate(key, 128)] =
-			typeof value === "string"
+			isString(value)
 				? sanitizeDiagnosticText(value, MAX_ATTRIBUTE_LENGTH)
 				: value;
 	}
@@ -406,10 +419,10 @@ function sanitizeSentryExceptionValues(
 								frame.function,
 								MAX_ATTRIBUTE_LENGTH,
 							);
-						if (typeof frame.lineno === "number")
+						if (isNumber(frame.lineno))
 							safeFrame.lineno = frame.lineno;
-						if (typeof frame.colno === "number") safeFrame.colno = frame.colno;
-						if (typeof frame.in_app === "boolean")
+						if (isNumber(frame.colno)) safeFrame.colno = frame.colno;
+						if (isBoolean(frame.in_app))
 							safeFrame.in_app = frame.in_app;
 						return safeFrame;
 					}),

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { load as parseYaml } from "js-yaml";
+import { isNumber, isObjectLike, isString } from "./runtime-value-predicates.mjs";
 
 function assert(condition, message) {
 	if (!condition) throw new Error(message);
@@ -37,7 +38,7 @@ function setupNodeRuntimeByMatrix(step, rootDir, versions) {
 	);
 	const options = step.with;
 	assert(
-		options && typeof options === "object",
+		options && isObjectLike(options),
 		"actions/setup-node must declare with.node-version or node-version-file",
 	);
 	const nodeVersion = options["node-version"];
@@ -48,7 +49,7 @@ function setupNodeRuntimeByMatrix(step, rootDir, versions) {
 	);
 
 	let configuration;
-	if (typeof nodeVersion === "string" || typeof nodeVersion === "number") {
+	if (isString(nodeVersion) || isNumber(nodeVersion)) {
 		const value = String(nodeVersion).trim();
 		if (value.includes("matrix.node-version")) {
 			assert(
@@ -63,7 +64,7 @@ function setupNodeRuntimeByMatrix(step, rootDir, versions) {
 			};
 		}
 	}
-	if (typeof nodeVersionFile === "string") {
+	if (isString(nodeVersionFile)) {
 		const path = resolve(rootDir, nodeVersionFile);
 		let version;
 		try {
@@ -141,8 +142,8 @@ function walkJobSteps(value, visit, path = []) {
 			walkJobSteps(item, visit, [...path, index]);
 		return;
 	}
-	if (!value || typeof value !== "object") return;
-	if (typeof value.run === "string" || typeof value.uses === "string") {
+	if (!value || !isObjectLike(value)) return;
+	if (isString(value.run) || isString(value.uses)) {
 		visit(value, path);
 		return;
 	}
@@ -219,12 +220,12 @@ export function mappedLaneTargets(lanes) {
 	const targets = new Map();
 	for (const lane of lanes.lanes) {
 		assert(
-			typeof lane.id === "string" && lane.id.length > 0,
+			isString(lane.id) && lane.id.length > 0,
 			"validation lane id is required",
 		);
 		if (lane.mappingStatus === "mapped") {
 			assert(
-				typeof lane.nxTarget === "string" && lane.nxTarget.length > 0,
+				isString(lane.nxTarget) && lane.nxTarget.length > 0,
 				`${lane.id} mapped lane requires nxTarget`,
 			);
 			assert(
@@ -264,7 +265,7 @@ export function parseWorkflowLaneExecutions(
 ) {
 	const workflow = parseYaml(source);
 	assert(
-		workflow && typeof workflow === "object",
+		workflow && isObjectLike(workflow),
 		"workflow must contain a YAML object",
 	);
 	const mappedTargets = normalizeLaneTargets(laneTargets);
@@ -272,7 +273,7 @@ export function parseWorkflowLaneExecutions(
 	if (selectedJobs) {
 		assert(
 			selectedJobs.size > 0 &&
-				[...selectedJobs].every((id) => typeof id === "string"),
+				[...selectedJobs].every((id) => isString(id)),
 			"workflow jobIds must be a non-empty string array",
 		);
 	}
@@ -284,7 +285,7 @@ export function parseWorkflowLaneExecutions(
 		const steps = job.steps ?? [];
 		let hasMappedCommand = false;
 		walkJobSteps(steps, (step) => {
-			if (typeof step.run !== "string") return;
+			if (!isString(step.run)) return;
 			for (const line of step.run.split(/\r?\n/)) {
 				for (const command of parseNxRunCommands(line)) {
 					if (mappedTargets.has(command.target)) hasMappedCommand = true;
@@ -308,7 +309,7 @@ export function parseWorkflowLaneExecutions(
 		};
 		walkJobSteps(steps, (step) => {
 			if (
-				typeof step.uses === "string" &&
+				isString(step.uses) &&
 				step.uses.startsWith("actions/setup-node@")
 			) {
 				assert(
@@ -323,7 +324,7 @@ export function parseWorkflowLaneExecutions(
 				runtimeState.setupNodeSeen = true;
 				return;
 			}
-			if (typeof step.run !== "string") return;
+			if (!isString(step.run)) return;
 			for (const line of step.run.split(/\r?\n/)) {
 				for (const command of parseNxRunCommands(line)) {
 					if (!mappedTargets.has(command.target)) continue;
@@ -455,11 +456,11 @@ export function validateWorkflowAggregate(
 		"canonical lane model is required",
 	);
 	const selectedAggregate =
-		typeof aggregate === "string"
+		isString(aggregate)
 			? lanes.aggregates?.[aggregate]
 			: (aggregate ?? lanes.aggregates?.[aggregateId]);
 	assert(
-		selectedAggregate && typeof selectedAggregate === "object",
+		selectedAggregate && isObjectLike(selectedAggregate),
 		`${label} definition is required`,
 	);
 	const memberIds = aggregateLaneIds(lanes, selectedAggregate);
@@ -467,7 +468,7 @@ export function validateWorkflowAggregate(
 	if (aggregateWorkflowRuntimes !== undefined) {
 		assert(
 			aggregateWorkflowRuntimes &&
-				typeof aggregateWorkflowRuntimes === "object" &&
+				isObjectLike(aggregateWorkflowRuntimes) &&
 				!Array.isArray(aggregateWorkflowRuntimes),
 			`${label}.workflowRuntimes must be an object`,
 		);
@@ -482,7 +483,7 @@ export function validateWorkflowAggregate(
 			assert(
 				runtimes.length > 0 &&
 					runtimes.every(
-						(runtime) => typeof runtime === "string" && runtime.length > 0,
+						(runtime) => isString(runtime) && runtime.length > 0,
 					),
 				`${label}.workflowRuntimes.${laneId} must contain runtime ids`,
 			);
@@ -514,11 +515,11 @@ export function validateWorkflowAggregate(
 	for (const execution of actual) {
 		if (expectedJobSelection !== undefined) {
 			const expectedJob =
-				typeof expectedJobSelection === "string"
+				isString(expectedJobSelection)
 					? expectedJobSelection
 					: expectedJobSelection?.[execution.lane];
 			assert(
-				typeof expectedJob === "string" && expectedJob.length > 0,
+				isString(expectedJob) && expectedJob.length > 0,
 				`${label} expected job is required for lane ${execution.lane}`,
 			);
 			assert(
@@ -586,16 +587,16 @@ export function validateWorkflowProjections(
 	const results = {};
 	for (const [id, workflowConfig] of Object.entries(workflows)) {
 		const config =
-			typeof workflowConfig === "string"
+			isString(workflowConfig)
 				? { path: workflowConfig }
 				: workflowConfig;
 		assert(
-			config && typeof config === "object",
+			config && isObjectLike(config),
 			`${id} workflow projection configuration is required`,
 		);
 		const relativePath = config.path ?? config.file ?? config.workflow;
 		assert(
-			typeof relativePath === "string" && relativePath.length > 0,
+			isString(relativePath) && relativePath.length > 0,
 			`${id} workflow projection path is required`,
 		);
 		const aggregateId = aggregates[id] ?? config.aggregate ?? id;

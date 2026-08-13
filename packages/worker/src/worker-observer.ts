@@ -1,4 +1,5 @@
 import type { Span } from "@cloudflare/workers-types";
+import { z } from "zod";
 import * as cloudflareWorkers from "cloudflare:workers";
 import { sanitizeCloudflareGeographyValue } from "./worker-telemetry.js";
 import {
@@ -206,11 +207,25 @@ export interface WorkerToolObserverOptions {
 
 type SafeScalar = string | number | boolean | null | undefined;
 
+const safeStringSchema = z.string();
+const safeNumberSchema = z.number();
+const safeBooleanSchema = z.boolean();
+const safeObjectSchema = z.object({}).passthrough();
+
+const isSafeString = (value: SafeScalar): value is string =>
+	safeStringSchema.safeParse(value).success;
+const isSafeNumber = (value: SafeScalar): value is number =>
+	safeNumberSchema.safeParse(value).success;
+const isSafeBoolean = (value: SafeScalar): value is boolean =>
+	safeBooleanSchema.safeParse(value).success;
+const isSafeObject = (value: unknown): value is object =>
+	safeObjectSchema.safeParse(value).success;
+
 function boundedString(
 	value: SafeScalar,
 	maxLength = MAX_STRING_LENGTH,
 ): string | undefined {
-	if (typeof value !== "string" || value.length === 0) return undefined;
+	if (!isSafeString(value) || value.length === 0) return undefined;
 	return value.slice(0, maxLength);
 }
 
@@ -219,25 +234,25 @@ function safeName(value: SafeScalar): string {
 }
 
 function safeUserHash(value: SafeScalar): string | undefined {
-	return typeof value === "string" && SAFE_USER_HASH_PATTERN.test(value)
+	return isSafeString(value) && SAFE_USER_HASH_PATTERN.test(value)
 		? value
 		: undefined;
 }
 
 function safeCloudflareColo(value: SafeScalar): string | undefined {
-	return typeof value === "string" && SAFE_CLOUDFLARE_COLO_PATTERN.test(value)
+	return isSafeString(value) && SAFE_CLOUDFLARE_COLO_PATTERN.test(value)
 		? value
 		: undefined;
 }
 
 function safeCountryCode(value: SafeScalar): string | undefined {
-	return typeof value === "string" && SAFE_COUNTRY_CODE_PATTERN.test(value)
+	return isSafeString(value) && SAFE_COUNTRY_CODE_PATTERN.test(value)
 		? value
 		: undefined;
 }
 
 function safeBucket(value: SafeScalar): string | undefined {
-	return typeof value === "string" && SAFE_COUNT_BUCKETS.has(value)
+	return isSafeString(value) && SAFE_COUNT_BUCKETS.has(value)
 		? value
 		: undefined;
 }
@@ -277,7 +292,7 @@ function safeInvocation(
 	for (const [key, value] of Object.entries(
 		invocation.booleanArguments ?? {},
 	)) {
-		if (SAFE_ARGUMENT_KEYS.has(key) && typeof value === "boolean") {
+		if (SAFE_ARGUMENT_KEYS.has(key) && isSafeBoolean(value)) {
 			booleanArguments[key] = value;
 		}
 	}
@@ -300,7 +315,7 @@ function safeInvocation(
 }
 
 function boundedCount(value: SafeScalar, maximum: number): number {
-	if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+	if (!isSafeNumber(value) || !Number.isFinite(value)) return 0;
 	return Math.min(maximum, Math.max(0, Math.floor(value)));
 }
 
@@ -366,14 +381,14 @@ function safeResult(
 type SafeErrorOutput = ReturnType<typeof createSafeErrorDiagnostic>;
 
 function safeErrorStatus(value: SafeScalar): number | undefined {
-	if (typeof value !== "number") return undefined;
+	if (!isSafeNumber(value)) return undefined;
 	return Number.isInteger(value) && value >= 100 && value <= 599
 		? value
 		: undefined;
 }
 
 function safeErrorMethod(value: SafeScalar): string | undefined {
-	if (typeof value !== "string") return undefined;
+	if (!isSafeString(value)) return undefined;
 	const method = value.toUpperCase();
 	return SAFE_HTTP_METHODS.has(method) ? method : undefined;
 }
@@ -394,13 +409,13 @@ function safeErrorFrames(
 }
 
 function safeErrorBoolean(value: SafeScalar): boolean | undefined {
-	return typeof value === "boolean" ? value : undefined;
+	return isSafeBoolean(value) ? value : undefined;
 }
 
 function safeError(
 	error: ReturnType<typeof createSafeErrorDiagnostic> | undefined,
 ): ReturnType<typeof createSafeErrorDiagnostic> | undefined {
-	if (!error || typeof error !== "object") return undefined;
+	if (!error || !isSafeObject(error)) return undefined;
 	const category =
 		allowedValue<SafeErrorOutput["category"]>(
 			error.category,
@@ -458,7 +473,7 @@ function allowedValue<T extends string>(
 	value: SafeScalar,
 	allowed: ReadonlySet<string>,
 ): T | undefined {
-	return typeof value === "string" && allowed.has(value)
+	return isSafeString(value) && allowed.has(value)
 		? (value as T)
 		: undefined;
 }
@@ -476,15 +491,15 @@ function safeExecution(
 		),
 		commit_state: allowedValue(source.commit_state, SAFE_COMMIT_STATES),
 		safe_to_retry:
-			typeof source.safe_to_retry === "boolean"
+			isSafeBoolean(source.safe_to_retry)
 				? source.safe_to_retry
 				: undefined,
 		code:
-			typeof source.code === "string" && SAFE_ERROR_CODES.has(source.code)
+			isSafeString(source.code) && SAFE_ERROR_CODES.has(source.code)
 				? source.code
 				: undefined,
 		status:
-			typeof source.status === "number" &&
+			isSafeNumber(source.status) &&
 			Number.isInteger(source.status) &&
 			source.status >= 100 &&
 			source.status <= 599
