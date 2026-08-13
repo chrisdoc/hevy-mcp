@@ -27,6 +27,19 @@ import {
 	runNodeLifecycle,
 } from "./utils/node-lifecycle.js";
 
+const objectSchema = z.object({}).passthrough();
+const stringSchema = z.string();
+const numberSchema = z.number();
+
+function isObject(value: unknown): value is object {
+	return objectSchema.safeParse(value).success;
+}
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
+function isNumber(value: unknown): value is number {
+	return numberSchema.safeParse(value).success;
+}
 const name = serviceName;
 const version = serviceVersion;
 
@@ -96,16 +109,16 @@ function getHttpStatus(error: Error | string): number | undefined {
 	if (isHevyHttpError(error)) {
 		return error.status;
 	}
-	if (!error || typeof error !== "object" || !("response" in error)) {
+	if (!error || !isObject(error) || !("response" in error)) {
 		return undefined;
 	}
 
 	const response = error.response;
-	if (!response || typeof response !== "object" || !("status" in response)) {
+	if (!response || !isObject(response) || !("status" in response)) {
 		return undefined;
 	}
 
-	return typeof response.status === "number" &&
+	return isNumber(response.status) &&
 		Number.isInteger(response.status) &&
 		response.status >= 100 &&
 		response.status <= 599
@@ -113,18 +126,20 @@ function getHttpStatus(error: Error | string): number | undefined {
 		: undefined;
 }
 
-function getSafeValidationDiagnostic(error: Error | string): string | undefined {
+function getSafeValidationDiagnostic(
+	error: Error | string,
+): string | undefined {
 	const status = getHttpStatus(error);
 	if (status !== undefined) {
 		return `HTTP ${status}`;
 	}
 
-	if (!error || typeof error !== "object" || !("code" in error)) {
+	if (!error || !isObject(error) || !("code" in error)) {
 		return undefined;
 	}
 
 	const code = error.code;
-	return typeof code === "string" && SAFE_NETWORK_ERROR_CODES.has(code)
+	return isString(code) && SAFE_NETWORK_ERROR_CODES.has(code)
 		? code
 		: undefined;
 }
@@ -145,7 +160,8 @@ async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 			deadline: Date.now() + STARTUP_PROBE_TIMEOUT_MS,
 		});
 	} catch (caughtError) {
-		const error = caughtError instanceof Error ? caughtError : String(caughtError);
+		const error =
+			caughtError instanceof Error ? caughtError : String(caughtError);
 		if (signal?.aborted) throw error;
 		const status = getHttpStatus(error);
 		if (status === 401 || status === 403) {
@@ -199,7 +215,8 @@ function buildServer(
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;
 			} catch (caughtError) {
-				const e = caughtError instanceof Error ? caughtError : String(caughtError);
+				const e =
+					caughtError instanceof Error ? caughtError : String(caughtError);
 				recordLifecycleFailure(span, e, "build", "startup_failure");
 				span.setStatus({ code: SpanStatusCode.ERROR });
 				throw e;
@@ -260,7 +277,8 @@ export async function runStdioServer() {
 						context.markConnectSucceeded();
 						connectSpan.setStatus({ code: SpanStatusCode.OK });
 					} catch (caughtError) {
-						const error = caughtError instanceof Error ? caughtError : String(caughtError);
+						const error =
+							caughtError instanceof Error ? caughtError : String(caughtError);
 						recordLifecycleFailure(
 							connectSpan,
 							error,
