@@ -17,8 +17,19 @@ import type { CliArgs } from "./arguments.js";
 import type { DataSourceReader } from "./input.js";
 import { z } from "zod";
 
-declare const __HEVY_CLI_VERSION__: string;
-const cliVersion = z.string().safeParse(__HEVY_CLI_VERSION__).data ?? "0.0.0";
+declare const __HEVY_CLI_VERSION__: string | undefined;
+const cliVersion = z
+	.string()
+	.safeParse(
+		(() => {
+			try {
+				return __HEVY_CLI_VERSION__;
+			} catch {
+				return undefined;
+			}
+		})(),
+	)
+	.data ?? "0.0.0";
 
 export interface CliRuntimeContext extends CommandContext {
 	readonly process: StricliProcess;

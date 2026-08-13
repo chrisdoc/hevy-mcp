@@ -9,8 +9,19 @@ function readBuildString(value: string | undefined, fallback: string): string {
 	return buildString.parse(value) ?? fallback;
 }
 
-export const SERVER_NAME = readBuildString(__HEVY_MCP_NAME__, "hevy-mcp");
-export const SERVER_VERSION = readBuildString(__HEVY_MCP_VERSION__, "dev");
+function readBuildGlobal(value: () => string | undefined): string | undefined {
+	try {
+		return value();
+	} catch {
+		return undefined;
+	}
+}
+
+const buildName = readBuildGlobal(() => __HEVY_MCP_NAME__);
+const buildVersion = readBuildGlobal(() => __HEVY_MCP_VERSION__);
+
+export const SERVER_NAME = readBuildString(buildName, "hevy-mcp");
+export const SERVER_VERSION = readBuildString(buildVersion, "dev");
 
 export const SERVER_INSTRUCTIONS = [
 	"Hevy MCP connects clients to the authenticated user's Hevy workout-tracking data, including workouts, routines, exercise templates, routine folders, body measurements, and profile information. HEVY_API_KEY must contain a valid Hevy API key for local stdio use.",
