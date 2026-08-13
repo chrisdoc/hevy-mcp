@@ -25,9 +25,7 @@ export function bucketCount(value: number): ResultCountBucket {
 	return "51+";
 }
 
-import type { McpToolResponse } from "./response-contracts.js";
-
-type ResultOwner = McpToolResponse;
+type ResultOwner = { readonly content: readonly unknown[] };
 const resultTelemetry = new WeakMap<ResultOwner, ToolResultTelemetry>();
 
 export function attachResultTelemetry(
