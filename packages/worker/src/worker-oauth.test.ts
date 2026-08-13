@@ -3,6 +3,7 @@ import type {
 	OAuthHelpers,
 } from "@cloudflare/workers-oauth-provider";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import {
@@ -26,6 +27,12 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
+
+const stringSchema = z.string();
+
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
 
 function createMockClient(overrides: Partial<HevyClient> = {}): HevyClient {
 	return {
@@ -420,7 +427,7 @@ function createMemoryKV() {
 		get(key: string, options?: { type?: string } | string) {
 			const entry = store.get(key);
 			if (!entry) return Promise.resolve(null);
-			const type = typeof options === "string" ? options : options?.type;
+			const type = isString(options) ? options : options?.type;
 			if (type === "json") {
 				try {
 					return Promise.resolve(JSON.parse(entry.value));

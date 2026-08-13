@@ -7,6 +7,7 @@ import {
 	loadArtifactProvenance,
 	repositoryRoot,
 } from "./repository-control-plane.mjs";
+import { isString } from "./runtime-value-predicates.mjs";
 
 function assert(condition, message) {
 	if (!condition) throw new Error(message);
@@ -27,7 +28,7 @@ function resolveOpenApiSpecPath(provenance, rootDir) {
 	);
 	const [path] = source.paths;
 	assert(
-		typeof path === "string" && path.length > 0,
+		isString(path) && path.length > 0,
 		"Artifact provenance OpenAPI source path must be non-empty",
 	);
 	return resolve(rootDir, path);

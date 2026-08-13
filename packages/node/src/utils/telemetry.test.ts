@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
+const objectSchema = z.object({}).passthrough();
+const functionSchema = z.function();
 const originalEnv = { ...process.env };
-
 const testDoubles = vi.hoisted(() => ({
 	activeSpan: {
 		addEvent: vi.fn(),
@@ -367,9 +369,9 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.otlpMetricExporter).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalTracerProvider).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalMeterProvider).not.toHaveBeenCalled();
-		expect(typeof mod.tracer).toBe("object");
-		expect(typeof mod.meter).toBe("object");
-		expect(typeof mod.flushTelemetry).toBe("function");
+		expect(objectSchema.safeParse(mod.tracer).success).toBe(true);
+		expect(objectSchema.safeParse(mod.meter).success).toBe(true);
+		expect(functionSchema.safeParse(mod.flushTelemetry).success).toBe(true);
 
 		await mod.flushTelemetry();
 		expect(testDoubles.tracerProviderForceFlush).not.toHaveBeenCalled();

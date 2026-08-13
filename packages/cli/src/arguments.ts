@@ -11,6 +11,12 @@ import {
 } from "@hevy-mcp/hevy-client/schemas";
 import { z } from "zod";
 
+const stringSchema = z.string();
+
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
+
 export interface CliArgs {
 	command?: string;
 	subcommand?: string;
@@ -33,9 +39,8 @@ function parseForUsage<T>(
 	} catch (error) {
 		if (!(error instanceof z.ZodError)) throw error;
 		const issue = error.issues[0];
-		const key = typeof issue?.path[0] === "string" ? issue.path[0] : undefined;
-		const label =
-			typeof labels === "string" ? labels : (key && labels[key]) || "Value";
+		const key = isString(issue?.path[0]) ? issue.path[0] : undefined;
+		const label = isString(labels) ? labels : (key && labels[key]) || "Value";
 		throw new UsageError(
 			`${label} ${messages[key ?? "_"] ?? issue?.message ?? "is invalid"}`,
 		);

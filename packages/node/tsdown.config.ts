@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { readFileSync } from "node:fs";
+import { z } from "zod";
 import { codecovRollupPlugin } from "@codecov/rollup-plugin";
 import { sentryRollupPlugin } from "@sentry/rollup-plugin";
 import { defineConfig } from "tsdown";
@@ -44,8 +45,8 @@ if (process.env.HEVY_MCP_RELEASE === "true") {
 }
 
 if (
-	typeof name !== "string" ||
-	typeof version !== "string" ||
+	!z.string().safeParse(name).success ||
+	!z.string().safeParse(version).success ||
 	!name ||
 	!version
 ) {
@@ -154,7 +155,7 @@ export default defineConfig({
 	inputOptions: {
 		onLog(level, log, defaultHandler) {
 			if (
-				typeof log === "object" &&
+				z.object({}).passthrough().safeParse(log).success &&
 				log !== null &&
 				"code" in log &&
 				log.code === "SOURCEMAP_BROKEN"

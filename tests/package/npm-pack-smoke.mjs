@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { releaseCandidateArtifact } from "../../scripts/release-candidate-artifacts.mjs";
+import { isString } from "../../scripts/runtime-value-predicates.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
@@ -254,7 +255,7 @@ try {
 			})}\n`,
 		);
 		const initialize = await waitForMcpResponse(child, 1);
-		if (typeof initialize.result?.protocolVersion !== "string") {
+		if (!isString(initialize.result?.protocolVersion)) {
 			throw new Error("Installed CLI MCP initialize handshake failed");
 		}
 		child.stdin.write(

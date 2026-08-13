@@ -1,6 +1,7 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools, hevyToolDefinitions } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
@@ -9,6 +10,11 @@ type SchemaObject = {
 	properties?: object;
 	items?: unknown;
 };
+
+const objectLikeSchema = z.union([
+	z.object({}).passthrough(),
+	z.array(z.unknown()),
+]);
 
 const EXPECTED_TOOL_NAMES = [
 	"get-workouts",
@@ -131,7 +137,7 @@ describe("registerHevyTools", () => {
 		const { tools } = await client.listTools();
 		const propertyNames: string[] = [];
 		const visit = (schema: object): void => {
-			if (!schema || typeof schema !== "object") return;
+			if (!schema || !objectLikeSchema.safeParse(schema).success) return;
 			const record = schema as SchemaObject;
 			if (record.properties) {
 				for (const [name, child] of Object.entries(record.properties)) {

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import * as ast from "typescript/unstable/ast";
 import { API } from "typescript/unstable/sync";
 import { loadTopology, repositoryRoot } from "./repository-control-plane.mjs";
+import { isObjectLike } from "./runtime-value-predicates.mjs";
 
 const root = repositoryRoot;
 const topology = loadTopology(root);
@@ -39,12 +40,7 @@ async function collectOptional(directory) {
 	try {
 		return await collect(directory);
 	} catch (error) {
-		if (
-			error &&
-			typeof error === "object" &&
-			"code" in error &&
-			error.code === "ENOENT"
-		) {
+		if (isObjectLike(error) && "code" in error && error.code === "ENOENT") {
 			return [];
 		}
 		throw error;

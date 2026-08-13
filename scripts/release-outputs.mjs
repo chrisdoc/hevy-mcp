@@ -7,6 +7,7 @@ import {
 	repositoryRoot,
 	workspaceById,
 } from "./repository-control-plane.mjs";
+import { isString } from "./runtime-value-predicates.mjs";
 import { resolveWorkerVersion } from "./resolve-worker-version.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -41,7 +42,7 @@ export function calculateReleaseOutputs({
 	const nodeRelease = publishedPackages.find(
 		(candidate) => candidate?.name === nodePackageName,
 	);
-	const nodeReleased = didPublish && typeof nodeRelease?.version === "string";
+	const nodeReleased = didPublish && isString(nodeRelease?.version);
 	const beforeWorkerVersion = resolveWorkerVersion(beforeWorkerManifest);
 	const workerVersion = resolveWorkerVersion(afterWorkerManifest);
 

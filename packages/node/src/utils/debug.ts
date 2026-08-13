@@ -1,3 +1,19 @@
+import { z } from "zod";
+
+const numberSchema = z.number();
+
+function isObjectLike(value: unknown): value is object {
+	return (
+		value !== null &&
+		Object(value) === value &&
+		Object.prototype.toString.call(value) !== "[object Function]"
+	);
+}
+
+function scalarTag(value: unknown): string {
+	return Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
+}
+
 const DEBUG_PREFIX = "[hevy-mcp:debug] ";
 const MAX_DEBUG_RECORD_LENGTH = 8_192;
 const MAX_REDACTION_DEPTH = 4;
@@ -29,7 +45,15 @@ export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 function redactValue(
-	value: object | string | number | boolean | bigint | symbol | null | undefined,
+	value:
+		| object
+		| string
+		| number
+		| boolean
+		| bigint
+		| symbol
+		| null
+		| undefined,
 	depth: number,
 	seen: WeakSet<object>,
 ): RedactedValue {
@@ -37,8 +61,8 @@ function redactValue(
 		return "[null]";
 	}
 
-	if (typeof value !== "object") {
-		return `[${typeof value}]`;
+	if (!isObjectLike(value)) {
+		return `[${scalarTag(value)}]`;
 	}
 
 	if (seen.has(value)) {
@@ -50,7 +74,7 @@ function redactValue(
 		const length =
 			lengthDescriptor &&
 			"value" in lengthDescriptor &&
-			typeof lengthDescriptor.value === "number"
+			numberSchema.safeParse(lengthDescriptor.value).success
 				? lengthDescriptor.value
 				: 0;
 		if (depth >= MAX_REDACTION_DEPTH) {

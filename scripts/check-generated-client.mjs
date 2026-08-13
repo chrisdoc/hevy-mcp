@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fixOpenAPISpec, validateOpenAPISpec } from "./openapi-spec.js";
+import { isString } from "./runtime-value-predicates.mjs";
 
 const require = createRequire(import.meta.url);
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -220,12 +221,11 @@ export async function resolvePackageExecutable(packageName, binName) {
 		);
 	}
 	const packageBin = packageJson.bin;
-	const binary =
-		typeof packageBin === "string"
-			? packageBin
-			: (packageBin?.[binName] ?? packageBin?.[packageName]);
+	const binary = isString(packageBin)
+		? packageBin
+		: (packageBin?.[binName] ?? packageBin?.[packageName]);
 
-	if (typeof binary !== "string" || binary.length === 0) {
+	if (!isString(binary) || binary.length === 0) {
 		throw new Error(
 			`Package ${packageName} does not declare a ${binName} executable`,
 		);

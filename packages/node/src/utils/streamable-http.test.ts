@@ -1,6 +1,7 @@
 import { request, type Server } from "node:http";
 import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import {
 	resolveHttpAdmissionConfig,
 	startStreamableHttpServer,
@@ -13,6 +14,12 @@ const createMcpServer = () => {
 	);
 	return Promise.resolve(server);
 };
+
+const stringSchema = z.string();
+
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
 
 const handles: Array<{ close(): Promise<void> }> = [];
 
@@ -93,7 +100,7 @@ function call(
 
 function serverPort(handle: { server: Server }): number {
 	const address = handle.server.address();
-	if (!address || typeof address === "string") throw new Error("No address");
+	if (!address || isString(address)) throw new Error("No address");
 	return address.port;
 }
 
@@ -339,7 +346,7 @@ describe("Streamable HTTP server", () => {
 		const initialized = await initialize(port);
 		expect(initialized.statusCode).toBe(200);
 		const sessionId = initialized.headers["mcp-session-id"];
-		expect(typeof sessionId).toBe("string");
+		expect(stringSchema.safeParse(sessionId).success).toBe(true);
 
 		const headers = { "mcp-session-id": String(sessionId) };
 		const listed = await call(

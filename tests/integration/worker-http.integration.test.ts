@@ -11,6 +11,18 @@ import {
 	LATEST_PROTOCOL_VERSION,
 } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
+
+const stringSchema = z.string();
+const objectSchema = z.object({}).passthrough();
+
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
+
+function isObjectLike(value: unknown): value is object {
+	return objectSchema.safeParse(value).success;
+}
 
 const LOOPBACK = "127.0.0.1";
 const BROWSER_ORIGIN = "https://chatgpt.com";
@@ -146,7 +158,7 @@ function writeJson(
 }
 
 function isRecord(value: JSONValue | object | null): value is JSONObject {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+	return value !== null && isObjectLike(value) && !Array.isArray(value);
 }
 
 function requireRecord(value: JSONValue, label: string): JSONObject {
@@ -171,7 +183,7 @@ function requireToolListPayload(
 	const resultRecord = result as JSONObject;
 	const content = requireArrayField(resultRecord, "content");
 	const firstContent = requireRecord(content[0], "content[0]");
-	if (firstContent.type !== "text" || typeof firstContent.text !== "string") {
+	if (firstContent.type !== "text" || !isString(firstContent.text)) {
 		throw new Error("Expected text content in MCP tool response");
 	}
 	const structuredContent = requireRecord(
@@ -635,7 +647,7 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 				});
 				const payload = requireToolListPayload(result, call.field);
 				expect(payload.firstItem.id).toBe(call.expectedId);
-				expect(typeof payload.firstItem.id).toBe("string");
+				expect(isString(payload.firstItem.id)).toBe(true);
 				if (call.name === "get-workouts" || call.name === "get-routines") {
 					expect(payload.firstItem.exercise_count).toBe(0);
 					expect(payload.firstItem.set_count).toBe(0);

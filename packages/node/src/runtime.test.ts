@@ -1,5 +1,10 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+
+const hevyHttpErrorSchema = z
+	.object({ isHevyHttpError: z.literal(true) })
+	.passthrough();
 
 const testDoubles = vi.hoisted(() => {
 	const span = {
@@ -83,7 +88,7 @@ vi.mock("@hevy-mcp/hevy-client", () => ({
 	isHevyHttpError: (error: object) =>
 		Boolean(
 			error &&
-			typeof error === "object" &&
+			hevyHttpErrorSchema.safeParse(error).success &&
 			"isHevyHttpError" in error &&
 			error.isHevyHttpError === true,
 		),

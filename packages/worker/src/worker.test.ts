@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import {
 	createHevyMcpServer,
@@ -14,6 +15,15 @@ import {
 	parseBearerApiKey,
 } from "./worker.js";
 import worker from "./worker.js";
+
+const objectLikeSchema = z.union([
+	z.object({}).passthrough(),
+	z.array(z.unknown()),
+]);
+
+function isObjectLike(value: unknown): value is object {
+	return objectLikeSchema.safeParse(value).success;
+}
 
 const validHeaders = {
 	accept: "application/json, text/event-stream",
@@ -346,8 +356,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 			.map(([entry]) => entry)
 			.find(
 				(entry) =>
-					typeof entry === "object" &&
-					entry !== null &&
+					isObjectLike(entry) &&
 					"event" in entry &&
 					entry.event === "worker.request",
 			);
@@ -363,8 +372,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 			.map(([entry]) => entry)
 			.find(
 				(entry) =>
-					typeof entry === "object" &&
-					entry !== null &&
+					isObjectLike(entry) &&
 					"event" in entry &&
 					entry.event === "worker.origin_rejected",
 			);

@@ -22,10 +22,16 @@ import {
 import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { captureFailure, tracer } from "./telemetry.js";
+import { z } from "zod";
 
 type AttributeValue = string | number | boolean;
 const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
 const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
+const stringSchema = z.string();
+
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
 
 const WORKFLOW_PAGINATION_RESOURCES = new Set([
 	"workouts",
@@ -211,8 +217,7 @@ export function createNodeToolObserver(
 	options: NodeToolObserverOptions = {},
 ): ToolObserver {
 	const userHash =
-		typeof options.userHash === "string" &&
-		SAFE_USER_HASH_PATTERN.test(options.userHash)
+		isString(options.userHash) && SAFE_USER_HASH_PATTERN.test(options.userHash)
 			? options.userHash
 			: undefined;
 	return {

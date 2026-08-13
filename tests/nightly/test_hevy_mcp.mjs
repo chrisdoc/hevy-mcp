@@ -6,6 +6,10 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+	isObjectLike,
+	isString,
+} from "../../scripts/runtime-value-predicates.mjs";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { Client } from "@modelcontextprotocol/client";
 import {
@@ -36,7 +40,7 @@ function readFirstText(result) {
 	const first = result?.content?.[0];
 	assertCondition(first, "$.content[0]");
 	assertCondition(first.type === "text", "$.content[0].type");
-	assertCondition(typeof first.text === "string", "$.content[0].text");
+	assertCondition(isString(first.text), "$.content[0].text");
 	return first.text;
 }
 
@@ -68,7 +72,7 @@ function parseLauncherConfig() {
 	assertCondition(
 		Array.isArray(args) &&
 			args.length > 0 &&
-			args.every((arg) => typeof arg === "string"),
+			args.every((arg) => isString(arg)),
 		undefined,
 		"assertion",
 	);
@@ -192,8 +196,7 @@ async function main() {
 			assertCondition(Array.isArray(parsed), "$");
 			assertCondition(parsed.length <= 5, "$", "assertion");
 			assertCondition(
-				parsed[0] === undefined ||
-					(parsed[0] !== null && typeof parsed[0] === "object"),
+				parsed[0] === undefined || isObjectLike(parsed[0]),
 				"$[0]",
 			);
 		});

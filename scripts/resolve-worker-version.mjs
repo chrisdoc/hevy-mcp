@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import semver from "semver";
+import { isString } from "./runtime-value-predicates.mjs";
 
 export const MAX_WORKER_PREVIEW_TAG_LENGTH = 64;
 
@@ -13,7 +14,7 @@ export function resolveWorkerVersion(manifest) {
 		throw new Error("Worker package manifest must be valid JSON");
 	}
 	const version = packageJson?.version;
-	if (typeof version !== "string" || semver.valid(version) !== version) {
+	if (!isString(version) || semver.valid(version) !== version) {
 		throw new Error(
 			"Worker package manifest version must be a valid semantic version",
 		);
@@ -33,7 +34,7 @@ export function resolveWorkerPreviewTag({
 			"Worker preview tag requires a positive pull request number",
 		);
 	}
-	if (typeof headSha !== "string" || !/^[0-9a-f]{7,64}$/i.test(headSha)) {
+	if (!isString(headSha) || !/^[0-9a-f]{7,64}$/i.test(headSha)) {
 		throw new Error("Worker preview tag requires a hexadecimal commit SHA");
 	}
 
