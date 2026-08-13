@@ -104,8 +104,18 @@ const serverConfigSchema = z.object({
 		.min(1, "Hevy API key is required")
 		.describe("Your Hevy API key (available in the Hevy app settings)."),
 });
+const validationErrorDetailsSchema = z.object({
+	response: z.object({ status: z.number().optional() }).optional(),
+	code: z.string().optional(),
+});
+const validationErrorSchema = z.union([
+	z.instanceof(Error),
+	z.string(),
+	validationErrorDetailsSchema,
+]);
+type ValidationError = z.infer<typeof validationErrorSchema>;
 
-function getHttpStatus(error: Error | string): number | undefined {
+function getHttpStatus(error: ValidationError): number | undefined {
 	if (isHevyHttpError(error)) {
 		return error.status;
 	}
@@ -126,9 +136,7 @@ function getHttpStatus(error: Error | string): number | undefined {
 		: undefined;
 }
 
-function getSafeValidationDiagnostic(
-	error: Error | string,
-): string | undefined {
+function getSafeValidationDiagnostic(error: ValidationError): string | undefined {
 	const status = getHttpStatus(error);
 	if (status !== undefined) {
 		return `HTTP ${status}`;
@@ -160,8 +168,12 @@ async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 			deadline: Date.now() + STARTUP_PROBE_TIMEOUT_MS,
 		});
 	} catch (caughtError) {
-		const error =
-			caughtError instanceof Error ? caughtError : String(caughtError);
+		const parsedError = validationErrorSchema.safeParse(caughtError);
+		const error: ValidationError = isHevyHttpError(caughtError)
+			? caughtError
+			: parsedError.success
+				? parsedError.data
+				: String(caughtError);
 		if (signal?.aborted) throw error;
 		const status = getHttpStatus(error);
 		if (status === 401 || status === 403) {

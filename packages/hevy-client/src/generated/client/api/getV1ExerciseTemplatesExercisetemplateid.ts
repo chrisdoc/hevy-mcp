@@ -3,18 +3,18 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1ExerciseTemplatesExercisetemplateidQueryResponse,
   GetV1ExerciseTemplatesExercisetemplateidPathParams,
   GetV1ExerciseTemplatesExercisetemplateidHeaderParams,
   GetV1ExerciseTemplatesExercisetemplateid404,
 } from "../types/GetV1ExerciseTemplatesExercisetemplateid.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1ExerciseTemplatesExercisetemplateidUrl(
   exerciseTemplateId: GetV1ExerciseTemplatesExercisetemplateidPathParams["exerciseTemplateId"],

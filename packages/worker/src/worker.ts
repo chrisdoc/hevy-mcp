@@ -53,11 +53,44 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 /** Reserve most of the invocation budget for MCP execution after validation. */
 const WORKER_VALIDATION_TIMEOUT_MS = 5_000;
 
+class FallbackSpan implements Span {
+	get isTraced(): boolean {
+		return false;
+	}
+
+	setAttribute(_key: string, _value?: boolean | number | string): void {}
+
+	end(): void {}
+}
+
+const FALLBACK_EXECUTION_CONTEXT = {
+	waitUntil(_promise: Promise<unknown>): void {},
+	passThroughOnException(): void {},
+	exports: {},
+	props: {},
+	tracing: {
+		enterSpan<T, A extends unknown[]>(
+			_name: string,
+			callback: (span: Span, ...args: A) => T,
+			...args: A
+		): T {
+			return callback(new FallbackSpan(), ...args);
+		},
+		startActiveSpan<T, A extends unknown[]>(
+			_name: string,
+			callback: (span: Span, ...args: A) => T,
+			...args: A
+		): T {
+			return callback(new FallbackSpan(), ...args);
+		},
+		Span: FallbackSpan,
+	},
+} satisfies ExecutionContext;
+
 function requireExecutionContext(
 	context: ExecutionContext | undefined,
 ): ExecutionContext {
-	if (!context) throw new TypeError("Worker execution context is unavailable");
-	return context;
+	return context ?? FALLBACK_EXECUTION_CONTEXT;
 }
 
 export interface WorkerEnv {

@@ -2,6 +2,7 @@ import { PassThrough, Writable } from "node:stream";
 import * as ServerPackage from "@modelcontextprotocol/server";
 import type { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import type { Span } from "@opentelemetry/api";
+import { z } from "zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	deserializeMessageWithObservability,
@@ -96,10 +97,9 @@ function createTransportDouble() {
 function asStdioTransport(
 	transport: ReturnType<typeof createTransportDouble>["transport"],
 ): StdioServerTransport {
-	return Object.assign(
-		{} as Parameters<typeof createInstrumentedStdioTransport>[0],
-		transport,
-	);
+	return z.custom<StdioServerTransport>((value) =>
+		z.object({}).passthrough().safeParse(value).success,
+	).parse(transport);
 }
 
 function extractStructuralPreview(diagnostic: string): string {

@@ -3,17 +3,17 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1UserInfoQueryResponse,
   GetV1UserInfoHeaderParams,
   GetV1UserInfo404,
 } from "../types/GetV1UserInfo.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1UserInfoUrl() {
   const res = { method: "GET", url: `/v1/user/info` as const };

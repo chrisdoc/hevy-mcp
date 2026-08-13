@@ -3,18 +3,18 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1RoutineFoldersFolderidQueryResponse,
   GetV1RoutineFoldersFolderidPathParams,
   GetV1RoutineFoldersFolderidHeaderParams,
   GetV1RoutineFoldersFolderid404,
 } from "../types/GetV1RoutineFoldersFolderid.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1RoutineFoldersFolderidUrl(
   folderId: GetV1RoutineFoldersFolderidPathParams["folderId"],

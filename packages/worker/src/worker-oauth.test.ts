@@ -17,7 +17,7 @@ import {
 } from "./worker-oauth.js";
 import { createWorkerFetchHandler } from "./worker.js";
 
-class TestExecutionSpan extends Span {
+class TestExecutionSpan implements Span {
 	get isTraced(): boolean {
 		return false;
 	}

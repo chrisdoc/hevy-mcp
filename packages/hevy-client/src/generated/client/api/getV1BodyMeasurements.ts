@@ -3,11 +3,12 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1BodyMeasurementsQueryResponse,
   GetV1BodyMeasurementsQueryParams,
@@ -15,7 +16,6 @@ import type {
   GetV1BodyMeasurements400,
   GetV1BodyMeasurements404,
 } from "../types/GetV1BodyMeasurements.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1BodyMeasurementsUrl() {
   const res = { method: "GET", url: `/v1/body_measurements` as const };

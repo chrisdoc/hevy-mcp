@@ -3,18 +3,18 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PostV1WorkoutsMutationRequest,
   PostV1WorkoutsMutationResponse,
   PostV1WorkoutsHeaderParams,
   PostV1Workouts400,
 } from "../types/PostV1Workouts.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPostV1WorkoutsUrl() {
   const res = { method: "POST", url: `/v1/workouts` as const };

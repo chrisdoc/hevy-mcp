@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import type {
 	JSONRPCRequest,
+	McpServer,
 	PerRequestMessageExtra,
 } from "@modelcontextprotocol/server";
 import { createSafeErrorDiagnostic, ErrorType } from "@hevy-mcp/core";
@@ -27,6 +28,17 @@ interface SdkToolErrorHost {
 	createToolError?: (message: string) => unknown;
 	onerror?: (error: Error) => void;
 }
+
+const sdkToolErrorHostSchema = z.custom<SdkToolErrorHost>((value) =>
+	z.object({ createToolError: z.function() }).passthrough().safeParse(value)
+		.success,
+);
+const sdkProtocolInternalsSchema = z.custom<SdkProtocolInternals>((value) =>
+	z
+		.object({ _requestHandlers: z.instanceof(Map) })
+		.passthrough()
+		.safeParse(value).success,
+);
 
 interface ToolResultLike {
 	isError?: unknown;
@@ -231,8 +243,10 @@ function classifySdkValidation(message: string): SdkValidationResult {
 	return { kind: "unknown", expected: false };
 }
 
-function installValidationErrorTracking(server: SdkToolErrorHost): void {
-	const toolErrorHost = server;
+function installValidationErrorTracking(server: McpServer): void {
+	const parsedHost = sdkToolErrorHostSchema.safeParse(server);
+	if (!parsedHost.success) return;
+	const toolErrorHost = parsedHost.data;
 	const previousCreateToolError = toolErrorHost.createToolError;
 	if (!previousCreateToolError) return;
 	const createToolError = previousCreateToolError.bind(server);
@@ -399,13 +413,14 @@ function installDiscoveryTracking(
 }
 
 export function installSdkErrorTracking(
-	server: { server?: { onerror?: (error: Error) => void } },
+	server: McpServer,
 	transport: NodeTransport,
 ): void {
 	installProtocolErrorTracking(server, transport);
-	if (server.server) installValidationErrorTracking(server.server);
-	const handlers = (server.server as SdkProtocolInternals | undefined)
-		?._requestHandlers;
+	installValidationErrorTracking(server);
+	const parsedInternals = sdkProtocolInternalsSchema.safeParse(server.server);
+	if (!parsedInternals.success) return;
+	const handlers = parsedInternals.data._requestHandlers;
 	if (!(handlers instanceof Map)) return;
 	installInitializeEnrichment(handlers, transport);
 	installToolCallTracking(handlers, transport);

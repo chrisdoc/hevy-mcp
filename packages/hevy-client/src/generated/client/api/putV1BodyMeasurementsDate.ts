@@ -3,11 +3,12 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PutV1BodyMeasurementsDateMutationRequest,
   PutV1BodyMeasurementsDateMutationResponse,
@@ -16,7 +17,6 @@ import type {
   PutV1BodyMeasurementsDate400,
   PutV1BodyMeasurementsDate404,
 } from "../types/PutV1BodyMeasurementsDate.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPutV1BodyMeasurementsDateUrl(
   date: PutV1BodyMeasurementsDatePathParams["date"],

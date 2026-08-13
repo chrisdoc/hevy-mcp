@@ -3,11 +3,12 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PostV1BodyMeasurementsMutationRequest,
   PostV1BodyMeasurementsMutationResponse,
@@ -15,7 +16,6 @@ import type {
   PostV1BodyMeasurements400,
   PostV1BodyMeasurements409,
 } from "../types/PostV1BodyMeasurements.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPostV1BodyMeasurementsUrl() {
   const res = { method: "POST", url: `/v1/body_measurements` as const };

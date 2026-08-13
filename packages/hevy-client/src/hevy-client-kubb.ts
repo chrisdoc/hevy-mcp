@@ -10,7 +10,7 @@ const isNumber = <T>(value: T): value is T & number =>
 const isString = <T>(value: T): value is T & string =>
 	stringSchema.safeParse(value).success;
 
-import type { RequestConfig, ResponseConfig } from "./generated/.kubb/fetch.ts";
+import type { RequestConfig, ResponseConfig } from "./fetch.ts";
 import * as api from "./generated/client/api";
 import type {
 	GetV1BodyMeasurementsQueryParams,

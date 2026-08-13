@@ -3,11 +3,12 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PutV1WorkoutsWorkoutidMutationRequest,
   PutV1WorkoutsWorkoutidMutationResponse,
@@ -15,7 +16,6 @@ import type {
   PutV1WorkoutsWorkoutidHeaderParams,
   PutV1WorkoutsWorkoutid400,
 } from "../types/PutV1WorkoutsWorkoutid.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPutV1WorkoutsWorkoutidUrl(
   workoutId: PutV1WorkoutsWorkoutidPathParams["workoutId"],

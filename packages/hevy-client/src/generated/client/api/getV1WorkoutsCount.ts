@@ -3,16 +3,16 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1WorkoutsCountQueryResponse,
   GetV1WorkoutsCountHeaderParams,
 } from "../types/GetV1WorkoutsCount.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1WorkoutsCountUrl() {
   const res = { method: "GET", url: `/v1/workouts/count` as const };

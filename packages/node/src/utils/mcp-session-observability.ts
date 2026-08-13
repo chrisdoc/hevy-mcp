@@ -121,14 +121,20 @@ export function createMcpSessionContext(
 	transport: McpTransport = "stdio",
 	options: McpSessionContextOptions | (() => string) = {},
 ): McpSessionContext {
-	const parsedFunction = z.custom<() => string>().safeParse(options);
+	const parsedFunction = z
+		.function()
+		.output(z.string())
+		.safeParse(options);
 	const normalizedOptions: McpSessionContextOptions = parsedFunction.success
 		? { generateTelemetrySessionId: parsedFunction.data }
 		: z
 				.object({
 					telemetrySessionId: z.string().optional(),
-					generateTelemetrySessionId: z.custom<() => string>().optional(),
-					now: z.custom<() => number>().optional(),
+					generateTelemetrySessionId: z
+						.function()
+						.output(z.string())
+						.optional(),
+					now: z.function().output(z.number()).optional(),
 				})
 				.parse(options);
 	return {

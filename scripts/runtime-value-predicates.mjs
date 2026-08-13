@@ -1,25 +1,15 @@
-import { z } from "zod";
-
-const stringSchema = z.string();
-const numberSchema = z.number();
-const booleanSchema = z.boolean();
-const objectLikeSchema = z.union([
-	z.object({}).passthrough(),
-	z.array(z.unknown()),
-]);
-
 export function isString(value) {
-	return stringSchema.safeParse(value).success;
+	return String(value) === value;
 }
 
 export function isNumber(value) {
-	return numberSchema.safeParse(value).success;
+	return Number.isFinite(value);
 }
 
 export function isBoolean(value) {
-	return booleanSchema.safeParse(value).success;
+	return value === true || value === false;
 }
 
 export function isObjectLike(value) {
-	return objectLikeSchema.safeParse(value).success;
+	return value !== null && Object(value) === value;
 }

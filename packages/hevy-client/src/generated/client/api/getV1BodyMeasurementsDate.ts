@@ -3,18 +3,18 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1BodyMeasurementsDateQueryResponse,
   GetV1BodyMeasurementsDatePathParams,
   GetV1BodyMeasurementsDateHeaderParams,
   GetV1BodyMeasurementsDate404,
 } from "../types/GetV1BodyMeasurementsDate.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1BodyMeasurementsDateUrl(
   date: GetV1BodyMeasurementsDatePathParams["date"],
