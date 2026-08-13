@@ -59,8 +59,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		}
 		return 0;
 	} catch (error) {
-		const normalizedError =
-			error instanceof Error ? error : String(error);
+		const normalizedError = error instanceof Error ? error : String(error);
 		const failure = diagnostic(normalizedError);
 		if (options.argv.includes("--json")) {
 			streams.stderr(`${JSON.stringify(failure)}\n`);

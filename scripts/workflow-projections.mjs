@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { load as parseYaml } from "js-yaml";
-import { isNumber, isObjectLike, isString } from "./runtime-value-predicates.mjs";
+import {
+	isNumber,
+	isObjectLike,
+	isString,
+} from "./runtime-value-predicates.mjs";
 
 function assert(condition, message) {
 	if (!condition) throw new Error(message);
@@ -272,8 +276,7 @@ export function parseWorkflowLaneExecutions(
 	const selectedJobs = jobIds === undefined ? null : new Set(jobIds);
 	if (selectedJobs) {
 		assert(
-			selectedJobs.size > 0 &&
-				[...selectedJobs].every((id) => isString(id)),
+			selectedJobs.size > 0 && [...selectedJobs].every((id) => isString(id)),
 			"workflow jobIds must be a non-empty string array",
 		);
 	}
@@ -308,10 +311,7 @@ export function parseWorkflowLaneExecutions(
 			setupNodeSeen: false,
 		};
 		walkJobSteps(steps, (step) => {
-			if (
-				isString(step.uses) &&
-				step.uses.startsWith("actions/setup-node@")
-			) {
+			if (isString(step.uses) && step.uses.startsWith("actions/setup-node@")) {
 				assert(
 					!runtimeState.setupNodeSeen,
 					`Workflow job ${jobId} has multiple setup-node steps`,
@@ -455,10 +455,9 @@ export function validateWorkflowAggregate(
 		lanes && Array.isArray(lanes.lanes),
 		"canonical lane model is required",
 	);
-	const selectedAggregate =
-		isString(aggregate)
-			? lanes.aggregates?.[aggregate]
-			: (aggregate ?? lanes.aggregates?.[aggregateId]);
+	const selectedAggregate = isString(aggregate)
+		? lanes.aggregates?.[aggregate]
+		: (aggregate ?? lanes.aggregates?.[aggregateId]);
 	assert(
 		selectedAggregate && isObjectLike(selectedAggregate),
 		`${label} definition is required`,
@@ -482,9 +481,7 @@ export function validateWorkflowAggregate(
 			assertArray(runtimes, `${label}.workflowRuntimes.${laneId}`);
 			assert(
 				runtimes.length > 0 &&
-					runtimes.every(
-						(runtime) => isString(runtime) && runtime.length > 0,
-					),
+					runtimes.every((runtime) => isString(runtime) && runtime.length > 0),
 				`${label}.workflowRuntimes.${laneId} must contain runtime ids`,
 			);
 		}
@@ -514,10 +511,9 @@ export function validateWorkflowAggregate(
 	const expectedJobSelection = expectedJobs ?? job;
 	for (const execution of actual) {
 		if (expectedJobSelection !== undefined) {
-			const expectedJob =
-				isString(expectedJobSelection)
-					? expectedJobSelection
-					: expectedJobSelection?.[execution.lane];
+			const expectedJob = isString(expectedJobSelection)
+				? expectedJobSelection
+				: expectedJobSelection?.[execution.lane];
 			assert(
 				isString(expectedJob) && expectedJob.length > 0,
 				`${label} expected job is required for lane ${execution.lane}`,
@@ -586,10 +582,9 @@ export function validateWorkflowProjections(
 	assert(lanes?.aggregates, "canonical lane model aggregates are required");
 	const results = {};
 	for (const [id, workflowConfig] of Object.entries(workflows)) {
-		const config =
-			isString(workflowConfig)
-				? { path: workflowConfig }
-				: workflowConfig;
+		const config = isString(workflowConfig)
+			? { path: workflowConfig }
+			: workflowConfig;
 		assert(
 			config && isObjectLike(config),
 			`${id} workflow projection configuration is required`,

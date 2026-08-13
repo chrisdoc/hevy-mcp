@@ -83,7 +83,9 @@ function isExpectedWorkoutNotFound(error: ErrorInput): boolean {
 	);
 }
 
-export function isWorkoutsGetNotFound(error: ErrorInput): error is HevyHttpError {
+export function isWorkoutsGetNotFound(
+	error: ErrorInput,
+): error is HevyHttpError {
 	return isExpectedWorkoutNotFound(error);
 }
 
@@ -126,7 +128,9 @@ export function createWorkoutsGetOperation(
 						: await adapter.getWorkout(input.workoutId, options);
 				return { workout: response ?? null };
 			} catch (error) {
-				if (isWorkoutsGetNotFound(error instanceof Error ? error : String(error))) {
+				if (
+					isWorkoutsGetNotFound(error instanceof Error ? error : String(error))
+				) {
 					return {
 						workout: null,
 						expected404Outcome: "not_found",
@@ -152,7 +156,12 @@ export function createWorkoutsListOperation(
 						: await adapter.getWorkouts(params, options);
 				return normalizeWorkoutsPage(response, input);
 			} catch (error) {
-				if (isExpectedEndOfList(error instanceof Error ? error : String(error), input.page)) {
+				if (
+					isExpectedEndOfList(
+						error instanceof Error ? error : String(error),
+						input.page,
+					)
+				) {
 					return {
 						items: [],
 						page: input.page,

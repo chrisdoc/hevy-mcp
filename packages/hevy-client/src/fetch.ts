@@ -59,11 +59,7 @@ export type Client = <TData, _TError = unknown, TVariables = unknown>(
 	requestConfig: RequestConfig<TVariables>,
 ) => Promise<ResponseConfig<TData>>;
 
-export const fetch = async <
-	TData,
-	_TError = unknown,
-	TVariables = unknown,
->(
+export const fetch = async <TData, _TError = unknown, TVariables = unknown>(
 	paramsConfig: RequestConfig<TVariables>,
 ): Promise<ResponseConfig<TData>> => {
 	const normalizedParams = new URLSearchParams();

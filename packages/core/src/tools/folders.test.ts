@@ -3,10 +3,7 @@ import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { describe, expect, it, vi } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
 import { folderToolDefinitions } from "./folders.js";
-import {
-	registerToolDefinition,
-	type ToolRegistrar,
-} from "./define-tool.js";
+import { registerToolDefinition, type ToolRegistrar } from "./define-tool.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 
 type FolderToolArgs =

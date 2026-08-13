@@ -1,7 +1,4 @@
-import {
-	registerToolDefinition,
-	type ToolRegistrar,
-} from "./define-tool.js";
+import { registerToolDefinition, type ToolRegistrar } from "./define-tool.js";
 import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
 import { folderToolDefinitions } from "./folders.js";
 import { routineToolDefinitions } from "./routines.js";

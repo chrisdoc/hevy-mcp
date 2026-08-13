@@ -16,7 +16,10 @@ import type { RuntimeValue } from "../utils/type-predicates.js";
 
 const JSON_MIME_TYPE = "application/json";
 
-function createJsonResourceResult(uri: URL, data: RuntimeValue): ReadResourceResult {
+function createJsonResourceResult(
+	uri: URL,
+	data: RuntimeValue,
+): ReadResourceResult {
 	return {
 		contents: [
 			{

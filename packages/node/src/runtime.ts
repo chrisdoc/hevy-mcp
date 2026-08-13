@@ -136,7 +136,9 @@ function getHttpStatus(error: ValidationError): number | undefined {
 		: undefined;
 }
 
-function getSafeValidationDiagnostic(error: ValidationError): string | undefined {
+function getSafeValidationDiagnostic(
+	error: ValidationError,
+): string | undefined {
 	const status = getHttpStatus(error);
 	if (status !== undefined) {
 		return `HTTP ${status}`;

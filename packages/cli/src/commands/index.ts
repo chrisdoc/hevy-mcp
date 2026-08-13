@@ -53,9 +53,15 @@ function body(value: ApiValue): Body {
 	if (!parsed.success) return {};
 	const result: Body = {};
 	for (const [key, item] of Object.entries(parsed.data)) {
-		const parsedItem = z.union([
-			z.string(), z.number(), z.boolean(), z.null(), z.array(z.unknown()),
-		]).safeParse(item);
+		const parsedItem = z
+			.union([
+				z.string(),
+				z.number(),
+				z.boolean(),
+				z.null(),
+				z.array(z.unknown()),
+			])
+			.safeParse(item);
 		if (parsedItem.success) result[key] = parsedItem.data as ApiValue;
 	}
 	return result;
@@ -176,7 +182,9 @@ async function executeWorkoutUpdate({
 }
 
 async function executeWorkoutCount({ client }: CommandContext) {
-	const count = z.number().safeParse(body(await client.getWorkoutCount()).workout_count).data;
+	const count = z
+		.number()
+		.safeParse(body(await client.getWorkoutCount()).workout_count).data;
 	if (count === undefined || !Number.isInteger(count) || count < 0)
 		throw new ApiResponseError("The API returned an invalid workout count");
 	return { workout_count: count };

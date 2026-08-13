@@ -3,10 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import type { InferToolParams } from "../utils/tool-helpers.js";
-import {
-	registerToolDefinition,
-	type ToolRegistrar,
-} from "./define-tool.js";
+import { registerToolDefinition, type ToolRegistrar } from "./define-tool.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { userToolDefinitions } from "./user.js";
 

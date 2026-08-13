@@ -17,7 +17,13 @@ const createMcpServer = () => {
 };
 
 const stringSchema = z.string();
-type HttpJsonValue = string | number | boolean | null | HttpJsonObject | HttpJsonValue[];
+type HttpJsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| HttpJsonObject
+	| HttpJsonValue[];
 type HttpJsonObject = { readonly [key: string]: HttpJsonValue };
 
 function isString(value: string | AddressInfo | null): value is string {

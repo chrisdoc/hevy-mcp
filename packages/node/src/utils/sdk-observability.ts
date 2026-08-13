@@ -29,15 +29,17 @@ interface SdkToolErrorHost {
 	onerror?: (error: Error) => void;
 }
 
-const sdkToolErrorHostSchema = z.custom<SdkToolErrorHost>((value) =>
-	z.object({ createToolError: z.function() }).passthrough().safeParse(value)
-		.success,
+const sdkToolErrorHostSchema = z.custom<SdkToolErrorHost>(
+	(value) =>
+		z.object({ createToolError: z.function() }).passthrough().safeParse(value)
+			.success,
 );
-const sdkProtocolInternalsSchema = z.custom<SdkProtocolInternals>((value) =>
-	z
-		.object({ _requestHandlers: z.instanceof(Map) })
-		.passthrough()
-		.safeParse(value).success,
+const sdkProtocolInternalsSchema = z.custom<SdkProtocolInternals>(
+	(value) =>
+		z
+			.object({ _requestHandlers: z.instanceof(Map) })
+			.passthrough()
+			.safeParse(value).success,
 );
 
 interface ToolResultLike {

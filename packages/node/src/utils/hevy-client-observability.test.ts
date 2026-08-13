@@ -24,9 +24,7 @@ const testDoubles = vi.hoisted(() => ({
 	contextWith: vi.fn((_context: Context, operation: () => Promise<unknown>) =>
 		operation(),
 	),
-	traceSetSpan: vi.fn(
-		(_context: Context, _span: Span) => "api-span-context",
-	),
+	traceSetSpan: vi.fn((_context: Context, _span: Span) => "api-span-context"),
 }));
 vi.mock("./telemetry.js", () => ({
 	tracer: { startSpan: testDoubles.startSpan },

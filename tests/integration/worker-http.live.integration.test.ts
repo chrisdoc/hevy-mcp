@@ -299,10 +299,7 @@ function optionalStringId(
 ): string | undefined {
 	if (!value?.[0]) return undefined;
 	const id = value[0].id;
-	assertCondition(
-		isString(id) || isNumber(id),
-		`${schemaPath}/0/id`,
-	);
+	assertCondition(isString(id) || isNumber(id), `${schemaPath}/0/id`);
 	assertCondition(String(id).length > 0, `${schemaPath}/0/id`);
 	return String(id);
 }

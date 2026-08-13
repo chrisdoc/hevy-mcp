@@ -18,9 +18,8 @@ import type { DataSourceReader } from "./input.js";
 import { z } from "zod";
 
 declare const __HEVY_CLI_VERSION__: string | undefined;
-const cliVersion = z
-	.string()
-	.safeParse(
+const cliVersion =
+	z.string().safeParse(
 		(() => {
 			try {
 				return __HEVY_CLI_VERSION__;
@@ -28,8 +27,7 @@ const cliVersion = z
 				return undefined;
 			}
 		})(),
-	)
-	.data ?? "0.0.0";
+	).data ?? "0.0.0";
 
 export interface CliState {
 	result?: unknown;

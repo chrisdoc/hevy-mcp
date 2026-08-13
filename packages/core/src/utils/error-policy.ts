@@ -5,7 +5,13 @@ import {
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	isHevyHttpError,
 } from "@hevy-mcp/hevy-client";
-import { isBoolean, isFiniteNumber, isFunction, isObject, isString } from "./type-predicates.js";
+import {
+	isBoolean,
+	isFiniteNumber,
+	isFunction,
+	isObject,
+	isString,
+} from "./type-predicates.js";
 import type { RuntimeValue } from "./type-predicates.js";
 import type {
 	HevyCommitState,
@@ -156,14 +162,14 @@ function normalizeHeaderValue(value: RuntimeValue): string | undefined {
 	return undefined;
 }
 
-function getHeaderValue(headers: RuntimeValue, key: string): string | undefined {
+function getHeaderValue(
+	headers: RuntimeValue,
+	key: string,
+): string | undefined {
 	try {
 		if (!isObject(headers)) return undefined;
 
-		if (
-			"get" in headers &&
-			isFunction((headers as { get?: unknown }).get)
-		) {
+		if ("get" in headers && isFunction((headers as { get?: unknown }).get)) {
 			const value = (headers as { get: (headerName: string) => unknown }).get(
 				key,
 			);
@@ -266,17 +272,13 @@ function getRateLimitMessage(error: RuntimeValue): string {
 function getRetryExhaustedMessage(error: RuntimeValue): string {
 	let retryCount: unknown;
 	try {
-		retryCount =
-			isObject(error)
-				? (error as RetryAwareError).hevyRetryCount
-				: undefined;
+		retryCount = isObject(error)
+			? (error as RetryAwareError).hevyRetryCount
+			: undefined;
 	} catch {
 		retryCount = undefined;
 	}
-	const attemptCount =
-		isFiniteNumber(retryCount)
-			? retryCount + 1
-			: undefined;
+	const attemptCount = isFiniteNumber(retryCount) ? retryCount + 1 : undefined;
 	if (attemptCount) {
 		return `Unable to complete the request after ${attemptCount} attempts to the Hevy API due to transient failures. Please try again shortly.`;
 	}
@@ -284,7 +286,10 @@ function getRetryExhaustedMessage(error: RuntimeValue): string {
 }
 
 /** Classify an error using bounded status, names, and supplied text. */
-export function determineErrorType(error: RuntimeValue, message: string): ErrorType {
+export function determineErrorType(
+	error: RuntimeValue,
+	message: string,
+): ErrorType {
 	if (isRetryExhausted(error)) return ErrorType.NETWORK_ERROR;
 	if (extractErrorStatus(error) === 429) return ErrorType.RATE_LIMIT;
 
@@ -358,9 +363,7 @@ function getSafeCode(error: RuntimeValue): string | undefined {
 		return undefined;
 	}
 	const code = error.code;
-	return isString(code) && SAFE_ERROR_CODES.has(code)
-		? code
-		: undefined;
+	return isString(code) && SAFE_ERROR_CODES.has(code) ? code : undefined;
 }
 
 function getSafeMethod(error: RuntimeValue): string | undefined {
@@ -394,18 +397,25 @@ function getExecutionFields(
 	const fields: Partial<
 		Pick<
 			SafeErrorDiagnostic,
-			"phase" | "operation_safety" | "commit_state" | "safe_to_retry" | "outcome"
+			| "phase"
+			| "operation_safety"
+			| "commit_state"
+			| "safe_to_retry"
+			| "outcome"
 		>
 	> = {};
 	if (error.phase) fields.phase = error.phase;
 	if (error.operation_safety) fields.operation_safety = error.operation_safety;
 	if (error.commit_state) fields.commit_state = error.commit_state;
-	if (isBoolean(error.safe_to_retry)) fields.safe_to_retry = error.safe_to_retry;
+	if (isBoolean(error.safe_to_retry))
+		fields.safe_to_retry = error.safe_to_retry;
 	if (error.outcome) fields.outcome = error.outcome;
 	return fields;
 }
 
-function parseSafeStackFrames(error: RuntimeValue): SafeStackFrame[] | undefined {
+function parseSafeStackFrames(
+	error: RuntimeValue,
+): SafeStackFrame[] | undefined {
 	if (!(error instanceof Error) || !isString(error.stack)) {
 		return undefined;
 	}
@@ -450,7 +460,9 @@ function parseSafeStackFrames(error: RuntimeValue): SafeStackFrame[] | undefined
 }
 
 /** Build bounded diagnostic metadata with no raw messages, payloads, or URLs. */
-export function createSafeErrorDiagnostic(error: RuntimeValue): SafeErrorDiagnostic {
+export function createSafeErrorDiagnostic(
+	error: RuntimeValue,
+): SafeErrorDiagnostic {
 	try {
 		const diagnostic: SafeErrorDiagnostic = { category: classifyError(error) };
 		const code = getSafeCode(error);

@@ -1,7 +1,4 @@
-import {
-	bindings,
-	defineWorker,
-} from "wrangler/experimental-config";
+import { bindings, defineWorker } from "wrangler/experimental-config";
 import * as entrypoint from "./packages/worker/src/worker.ts" with { type: "cf-worker" };
 
 interface WorkerObservability {

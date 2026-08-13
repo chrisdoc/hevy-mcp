@@ -28,7 +28,6 @@ type LifecycleTerminationReason =
 	| "startup_failure";
 
 const LIFECYCLE_FAILURE_TAXONOMY = {
-
 	config: {
 		errorType: "MCP_SERVER_CONFIG_ERROR",
 		errorCategory: "McpServerConfigFailure",

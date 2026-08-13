@@ -82,9 +82,9 @@ export function getCloudflareGeography(request: Request): CloudflareGeography {
  */
 export function getCloudflareColo(request: Request): string | undefined {
 	try {
-		const parsedColo = z.string().safeParse(
-			(request as RequestWithCloudflareProperties).cf?.colo,
-		).data;
+		const parsedColo = z
+			.string()
+			.safeParse((request as RequestWithCloudflareProperties).cf?.colo).data;
 		return parsedColo !== undefined && CLOUDFLARE_COLO_PATTERN.test(parsedColo)
 			? parsedColo
 			: undefined;

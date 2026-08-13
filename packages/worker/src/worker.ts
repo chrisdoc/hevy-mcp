@@ -410,8 +410,7 @@ async function serveMcpRequest(
 		await server.connect(transport);
 		return await transport.handleRequest(request);
 	} catch (error) {
-		const normalizedError =
-			error instanceof Error ? error : String(error);
+		const normalizedError = error instanceof Error ? error : String(error);
 		logWorkerFailure("mcp-request-processing", normalizedError);
 		return executionHttpResponse(
 			normalizedError,
@@ -477,8 +476,7 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 				},
 			);
 		} catch (error) {
-			const normalizedError =
-				error instanceof Error ? error : String(error);
+			const normalizedError = error instanceof Error ? error : String(error);
 			return executionHttpResponse(
 				normalizedError,
 				"Unable to validate the Hevy API key",
@@ -621,8 +619,7 @@ export function createWorkerFetchHandler(
 			logOAuthResponse(logContext, responseStatus);
 			return withCors(oauthResponse, origin);
 		} catch (error) {
-			const normalizedError =
-				error instanceof Error ? error : String(error);
+			const normalizedError = error instanceof Error ? error : String(error);
 			logWorkerFailure("request", normalizedError, logContext);
 			throw error;
 		} finally {

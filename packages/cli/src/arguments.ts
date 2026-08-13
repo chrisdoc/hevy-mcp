@@ -267,9 +267,14 @@ export function parseSearchMaxPages(args: CliArgs): number {
 }
 
 export function parseWeeks(args: CliArgs): number {
-	return parseForUsage(weeksSchema, stringOption(args.options.weeks), "--weeks", {
-		_: "must be a positive integer no greater than 520",
-	});
+	return parseForUsage(
+		weeksSchema,
+		stringOption(args.options.weeks),
+		"--weeks",
+		{
+			_: "must be a positive integer no greater than 520",
+		},
+	);
 }
 
 export function requireMutationConfirmation(args: CliArgs): void {

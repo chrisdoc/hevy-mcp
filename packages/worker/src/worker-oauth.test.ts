@@ -826,7 +826,11 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		authorizeUrl.searchParams.set("state", "state-123");
 		authorizeUrl.searchParams.set("code_challenge", challenge);
 		authorizeUrl.searchParams.set("code_challenge_method", "S256");
-		const consent = await handler(new Request(authorizeUrl), env, testExecutionContext);
+		const consent = await handler(
+			new Request(authorizeUrl),
+			env,
+			testExecutionContext,
+		);
 		expect(consent.status).toBe(200);
 		const consentHtml = await consent.text();
 		const encodedRequest = /name="oauth_request" value="([^"]+)"/.exec(
@@ -1003,7 +1007,11 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		authorizeUrl.searchParams.set("scope", "mcp");
 		authorizeUrl.searchParams.set("resource", "https://worker.example/mcp");
 
-		const result = await handler(new Request(authorizeUrl), env, testExecutionContext);
+		const result = await handler(
+			new Request(authorizeUrl),
+			env,
+			testExecutionContext,
+		);
 
 		// Regression coverage for issue #942: provider 0.10.0 rejected
 		// Claude's optional JWT grant; 0.10.2 negotiates it away and renders
@@ -1056,7 +1064,11 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		authorizeUrl.searchParams.set("code_challenge_method", "S256");
 		authorizeUrl.searchParams.set("resource", resource);
 
-		const consent = await handler(new Request(authorizeUrl), env, testExecutionContext);
+		const consent = await handler(
+			new Request(authorizeUrl),
+			env,
+			testExecutionContext,
+		);
 		expect(consent.status).toBe(200);
 		const consentHtml = await consent.text();
 		expect(consentHtml).toContain("ChatGPT");
@@ -1169,7 +1181,11 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		authorizeUrl.searchParams.set("code_challenge", "challenge");
 		authorizeUrl.searchParams.set("code_challenge_method", "S256");
 
-		const result = await handler(new Request(authorizeUrl), env, testExecutionContext);
+		const result = await handler(
+			new Request(authorizeUrl),
+			env,
+			testExecutionContext,
+		);
 		expect(result.status).toBe(400);
 		expect(await result.text()).toContain("Invalid authorization request.");
 		const keyNames = [...env.OAUTH_KV.store.keys()];

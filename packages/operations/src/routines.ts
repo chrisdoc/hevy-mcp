@@ -109,7 +109,9 @@ function isExpectedRoutineNotFound(error: ErrorInput): boolean {
 	);
 }
 
-export function isRoutinesGetNotFound(error: ErrorInput): error is HevyHttpError {
+export function isRoutinesGetNotFound(
+	error: ErrorInput,
+): error is HevyHttpError {
 	return isExpectedRoutineNotFound(error);
 }
 
@@ -126,7 +128,9 @@ export function createRoutinesGetOperation(
 						: await adapter.getRoutineById(input.routineId, options);
 				return { routine: response.routine ?? null };
 			} catch (error) {
-				if (isRoutinesGetNotFound(error instanceof Error ? error : String(error))) {
+				if (
+					isRoutinesGetNotFound(error instanceof Error ? error : String(error))
+				) {
 					return {
 						routine: null,
 						expected404Outcome: "not_found",
@@ -152,7 +156,12 @@ export function createRoutinesListOperation(
 						: await adapter.getRoutines(params, options);
 				return normalizeRoutinesPage(response, input);
 			} catch (error) {
-				if (isExpectedEndOfList(error instanceof Error ? error : String(error), input.page)) {
+				if (
+					isExpectedEndOfList(
+						error instanceof Error ? error : String(error),
+						input.page,
+					)
+				) {
 					return {
 						items: [],
 						page: input.page,

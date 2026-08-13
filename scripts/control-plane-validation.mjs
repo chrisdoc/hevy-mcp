@@ -1,7 +1,11 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadControlPlane, repositoryRoot } from "./control-plane-models.mjs";
-import { isBoolean, isObjectLike, isString } from "./runtime-value-predicates.mjs";
+import {
+	isBoolean,
+	isObjectLike,
+	isString,
+} from "./runtime-value-predicates.mjs";
 
 const selectorKinds = new Set([
 	"vitest",
@@ -57,8 +61,7 @@ function assertUnique(values, label) {
 }
 
 function packageExports(packageJson) {
-	if (!packageJson.exports || !isObjectLike(packageJson.exports))
-		return [];
+	if (!packageJson.exports || !isObjectLike(packageJson.exports)) return [];
 	return Object.keys(packageJson.exports);
 }
 
@@ -215,8 +218,7 @@ export function validateTopology(rootDir, topology, artifactIds) {
 			workspace.id + ".boundary.rejectDynamicImports must be boolean",
 		);
 		assert(
-			workspace.boundary.allowed &&
-				isObjectLike(workspace.boundary.allowed),
+			workspace.boundary.allowed && isObjectLike(workspace.boundary.allowed),
 			workspace.id + ".boundary.allowed is required",
 		);
 		for (const packageName of Object.keys(workspace.boundary.allowed)) {
@@ -299,10 +301,7 @@ export function validateTopology(rootDir, topology, artifactIds) {
 		"every non-private workspace must be declared publishable",
 	);
 	const release = topology.release;
-	assert(
-		release && isObjectLike(release),
-		"topology.release is required",
-	);
+	assert(release && isObjectLike(release), "topology.release is required");
 	assertArray(release.triggers, "topology.release.triggers");
 	assertUnique(
 		release.triggers.map((trigger) => trigger?.path),
@@ -384,10 +383,7 @@ export function validateArtifactProvenance(
 		);
 	};
 	const assertProducer = (producer, label) => {
-		assert(
-			producer && isObjectLike(producer),
-			label + " producer is required",
-		);
+		assert(producer && isObjectLike(producer), label + " producer is required");
 		assertString(producer.kind, label + ".producer.kind");
 		assert(
 			!("command" in producer) && !("credentials" in producer),
@@ -539,8 +535,7 @@ export function validateArtifactProvenance(
 			candidate.id + " must not encode commands or credentials",
 		);
 		assert(
-			isString(candidate.workspace) &&
-				workspaceIds.has(candidate.workspace),
+			isString(candidate.workspace) && workspaceIds.has(candidate.workspace),
 			candidate.id + " references unknown workspace",
 		);
 		assertArray(candidate.sourcePaths, candidate.id + ".sourcePaths");
@@ -663,10 +658,7 @@ export function validateArtifactProvenance(
 
 function validateSelector(lane) {
 	const selector = lane.selector;
-	assert(
-		selector && isObjectLike(selector),
-		lane.id + ".selector is required",
-	);
+	assert(selector && isObjectLike(selector), lane.id + ".selector is required");
 	assert(
 		selectorKinds.has(selector.kind),
 		lane.id + " has unknown selector kind " + selector.kind,

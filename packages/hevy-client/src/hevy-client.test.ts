@@ -477,7 +477,9 @@ describe("@hevy-mcp/hevy-client", () => {
 			},
 		});
 
-		const thrown = await client.getUserInfo().catch((error: Error | string) => error);
+		const thrown = await client
+			.getUserInfo()
+			.catch((error: Error | string) => error);
 		expect(thrown).toMatchObject({
 			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 			safeToRetry: false,

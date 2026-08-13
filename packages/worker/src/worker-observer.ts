@@ -482,9 +482,7 @@ function allowedValue<T extends string>(
 	value: SafeScalar,
 	allowed: ReadonlySet<string>,
 ): T | undefined {
-	return isSafeString(value) && allowed.has(value)
-		? (value as T)
-		: undefined;
+	return isSafeString(value) && allowed.has(value) ? (value as T) : undefined;
 }
 
 function safeExecution(
@@ -499,10 +497,9 @@ function safeExecution(
 			SAFE_OPERATION_SAFETY,
 		),
 		commit_state: allowedValue(source.commit_state, SAFE_COMMIT_STATES),
-		safe_to_retry:
-			isSafeBoolean(source.safe_to_retry)
-				? source.safe_to_retry
-				: undefined,
+		safe_to_retry: isSafeBoolean(source.safe_to_retry)
+			? source.safe_to_retry
+			: undefined,
 		code:
 			isSafeString(source.code) && SAFE_ERROR_CODES.has(source.code)
 				? source.code

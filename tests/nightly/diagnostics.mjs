@@ -1,6 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { isNumber, isObjectLike, isString } from "../../scripts/runtime-value-predicates.mjs";
+import {
+	isNumber,
+	isObjectLike,
+	isString,
+} from "../../scripts/runtime-value-predicates.mjs";
 
 export const RESULT_CATEGORIES = Object.freeze([
 	"launcher",
@@ -107,9 +111,7 @@ function safeVersion(value) {
 }
 
 function safeRevision(value) {
-	return isString(value) && /^[a-f0-9]{7,64}$/i.test(value)
-		? value
-		: null;
+	return isString(value) && /^[a-f0-9]{7,64}$/i.test(value) ? value : null;
 }
 
 function safeSchemaPath(value) {
@@ -132,11 +134,7 @@ export function normalizeError(error, suppliedSchemaPath) {
 	if (ERROR_CLASSES.includes(explicitKind)) errorClass = explicitKind;
 	else if (safeRead(error, "isAxiosError") === true || name === "AxiosError") {
 		errorClass = "axios";
-	} else if (
-		isNumber(code) ||
-		name === "McpError" ||
-		name === "JSONRPCError"
-	) {
+	} else if (isNumber(code) || name === "McpError" || name === "JSONRPCError") {
 		errorClass = "mcp";
 	} else if (name === "AssertionError") errorClass = "assertion";
 	else if (isString(code) && TRANSPORT_CODES.has(code)) {
@@ -171,8 +169,7 @@ export function createDiagnostics({
 		},
 		runtime: {
 			node:
-				isString(runtime.node) &&
-				/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(runtime.node)
+				isString(runtime.node) && /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(runtime.node)
 					? runtime.node
 					: null,
 			platform: SAFE_PLATFORMS.has(runtime.platform) ? runtime.platform : null,

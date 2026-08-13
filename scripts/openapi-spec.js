@@ -9,7 +9,11 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pkg from "abstract-syntax-tree";
-import { isNumber, isObjectLike, isString } from "./runtime-value-predicates.mjs";
+import {
+	isNumber,
+	isObjectLike,
+	isString,
+} from "./runtime-value-predicates.mjs";
 
 const SPEC_FILE = "openapi-spec.json";
 const HEVY_SWAGGER_URL = "https://api.hevyapp.com/docs/swagger-ui-init.js";
@@ -56,15 +60,11 @@ function fixRoutineRestSecondsType(schemas) {
 	const previousExample = restSeconds.example;
 	restSeconds.type = "integer";
 
-	if (
-		isString(restSeconds.example) &&
-		/^-?\d+$/.test(restSeconds.example)
-	) {
+	if (isString(restSeconds.example) && /^-?\d+$/.test(restSeconds.example)) {
 		restSeconds.example = Number(restSeconds.example);
 	} else if (
 		restSeconds.example !== undefined &&
-		(!Number.isInteger(restSeconds.example) ||
-			!isNumber(restSeconds.example))
+		(!Number.isInteger(restSeconds.example) || !isNumber(restSeconds.example))
 	) {
 		delete restSeconds.example;
 	}
@@ -95,8 +95,7 @@ export function validateOpenAPISpec(spec) {
 	}
 	if (
 		restSeconds.example !== undefined &&
-		(!isNumber(restSeconds.example) ||
-			!Number.isInteger(restSeconds.example))
+		(!isNumber(restSeconds.example) || !Number.isInteger(restSeconds.example))
 	) {
 		throw new Error(
 			"Routine.exercises[].rest_seconds.example must be an integer when present",

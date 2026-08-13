@@ -9,10 +9,7 @@ import {
 	createInstrumentedStdioTransport,
 } from "./stdio-observability.js";
 
-type TestSpan = Pick<
-	Span,
-	"setAttribute" | "setStatus" | "addEvent" | "end"
->;
+type TestSpan = Pick<Span, "setAttribute" | "setStatus" | "addEvent" | "end">;
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -97,9 +94,11 @@ function createTransportDouble() {
 function asStdioTransport(
 	transport: ReturnType<typeof createTransportDouble>["transport"],
 ): StdioServerTransport {
-	return z.custom<StdioServerTransport>((value) =>
-		z.object({}).passthrough().safeParse(value).success,
-	).parse(transport);
+	return z
+		.custom<StdioServerTransport>(
+			(value) => z.object({}).passthrough().safeParse(value).success,
+		)
+		.parse(transport);
 }
 
 function extractStructuralPreview(diagnostic: string): string {

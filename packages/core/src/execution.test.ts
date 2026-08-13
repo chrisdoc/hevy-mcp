@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type {
-	HevyClient,
-	HevyRequestOptions,
-} from "@hevy-mcp/hevy-client";
+import type { HevyClient, HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import {
 	bindClientExecution,
 	createExecutionProjection,
