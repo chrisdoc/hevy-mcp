@@ -1,3 +1,14 @@
+import { z } from "zod";
+
+const objectSchema = z.object({}).passthrough();
+const stringSchema = z.string();
+function isObject(value: unknown): value is object {
+	return objectSchema.safeParse(value).success;
+}
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
+
 const MAX_RESPONSE_ERROR_INPUT_LENGTH = 4_096;
 const MAX_RESPONSE_ERROR_LENGTH = 256;
 const RESPONSE_ERROR_KEYS = ["error", "message", "detail"] as const;
@@ -22,7 +33,7 @@ type ResponseErrorBody = {
 };
 
 function isResponseErrorBody(value: unknown): value is ResponseErrorBody {
-	return typeof value === "object" && value !== null;
+	return isObject(value);
 }
 
 type ResponseErrorOwner = object;
@@ -36,12 +47,12 @@ function responseErrorText(value: unknown): string | undefined {
 	if (!isResponseErrorBody(value)) return undefined;
 	for (const key of RESPONSE_ERROR_KEYS) {
 		const candidate = ownValue(value, key);
-		if (typeof candidate === "string") return candidate;
+		if (isString(candidate)) return candidate;
 		if (!isResponseErrorBody(candidate)) continue;
 		const nestedMessage = ownValue(candidate, "message");
-		if (typeof nestedMessage === "string") return nestedMessage;
+		if (isString(nestedMessage)) return nestedMessage;
 		const nestedDetail = ownValue(candidate, "detail");
-		if (typeof nestedDetail === "string") return nestedDetail;
+		if (isString(nestedDetail)) return nestedDetail;
 	}
 	return undefined;
 }

@@ -1,5 +1,9 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client, type JSONObject, type JSONValue } from "@modelcontextprotocol/client";
+import {
+	Client,
+	type JSONObject,
+	type JSONValue,
+} from "@modelcontextprotocol/client";
 import {
 	createHevyMcpServer,
 	type CreateHevyMcpServerOptions,
@@ -14,6 +18,15 @@ import {
 	createDeterministicHevyClient,
 	validGetWorkoutsOutput,
 } from "./fixtures.js";
+import { z } from "zod";
+
+const objectSchema = z.object({}).passthrough();
+const stringSchema = z.string();
+const isObject = (value: unknown): value is object =>
+	objectSchema.safeParse(value).success;
+const isString = (value: unknown): value is string =>
+	stringSchema.safeParse(value).success;
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const minimalInput = getWorkoutsCapabilityDescriptor.inputSchema.parse({
@@ -21,7 +34,7 @@ const minimalInput = getWorkoutsCapabilityDescriptor.inputSchema.parse({
 }) as JSONObject;
 
 function assertGetWorkoutsResult(result: JSONValue | object): void {
-	if (typeof result !== "object" || result === null) {
+	if (!isObject(result)) {
 		throw new Error("Expected MCP tool result object");
 	}
 	const response = result as {
@@ -37,12 +50,12 @@ function assertGetWorkoutsResult(result: JSONValue | object): void {
 	expect(structured).toEqual(validGetWorkoutsOutput);
 	const firstContent = response.content[0];
 	if (
-		typeof firstContent !== "object" ||
+		!isObject(firstContent) ||
 		firstContent === null ||
 		!("type" in firstContent) ||
 		firstContent.type !== "text" ||
 		!("text" in firstContent) ||
-		typeof firstContent.text !== "string"
+		!isString(firstContent.text)
 	) {
 		throw new Error("Expected text content in MCP tool response");
 	}
@@ -162,7 +175,7 @@ describe("initial runtime contract matrix", () => {
 		);
 		try {
 			const address = handle.server.address();
-			if (!address || typeof address === "string") throw new Error("No port");
+			if (!address || isString(address)) throw new Error("No port");
 			const url = `http://127.0.0.1:${address.port}/mcp`;
 			const initialized = await postNodeMcp(url, initializeBody());
 			expect(initialized.response.status).toBe(200);

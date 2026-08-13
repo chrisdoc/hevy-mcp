@@ -1,3 +1,15 @@
+import { z } from "zod";
+
+const objectSchema = z.object({}).passthrough();
+const numberSchema = z.number();
+const stringSchema = z.string();
+const isObject = (value: unknown): value is object =>
+	objectSchema.safeParse(value).success;
+const isNumber = (value: unknown): value is number =>
+	numberSchema.safeParse(value).success;
+const isString = (value: unknown): value is string =>
+	stringSchema.safeParse(value).success;
+
 import type { RequestConfig, ResponseConfig } from "./generated/.kubb/fetch.ts";
 import * as api from "./generated/client/api";
 import type {
@@ -69,7 +81,11 @@ type KubbClient = {
 type InternalRequestControl = {
 	readonly hevyDeadline?: number;
 };
-type MutableRequest = { hevyDeadline?: number; client: KubbClient; signal?: AbortSignal };
+type MutableRequest = {
+	hevyDeadline?: number;
+	client: KubbClient;
+	signal?: AbortSignal;
+};
 
 export type HevyApiOutcome =
 	| "success"
@@ -267,9 +283,9 @@ function getRequestContext(config: {
 	const endpoint = canonicalEndpointIdentity(config.url ?? "");
 	const page =
 		config.params !== null &&
-		typeof config.params === "object" &&
+		isObject(config.params) &&
 		"page" in config.params &&
-		typeof config.params.page === "number"
+		isNumber(config.params.page)
 			? config.params.page
 			: undefined;
 	return { method, endpoint, page };
@@ -395,7 +411,7 @@ function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
 		});
 	}
 	const url = new URL(config.url, baseUrl);
-	if (config.params && typeof config.params === "object") {
+	if (config.params && isObject(config.params)) {
 		for (const [key, value] of Object.entries(config.params)) {
 			if (value !== undefined) {
 				url.searchParams.append(key, value === null ? "null" : String(value));
@@ -842,9 +858,17 @@ function createFailureObservation(
 	retryExhausted: boolean,
 	expectedReason: HevyRequestObservation["expectedReason"],
 ): HevyRequestObservation {
-	const observation: Omit<HevyRequestObservation, "expectedReason" | "error"> & {
+	const observation: Omit<
+		HevyRequestObservation,
+		"expectedReason" | "error"
+	> & {
 		expectedReason?: HevyRequestObservation["expectedReason"];
-		error?: { status?: number; code?: string; category?: "HevyHttpError" | "NetworkError"; response_error?: string };
+		error?: {
+			status?: number;
+			code?: string;
+			category?: "HevyHttpError" | "NetworkError";
+			response_error?: string;
+		};
 	} = {
 		method: options.method,
 		endpoint: options.endpoint,
@@ -864,7 +888,7 @@ function createFailureObservation(
 		error: {
 			status: error.status,
 			code:
-				typeof error.code === "string" && SAFE_OBSERVATION_CODES.has(error.code)
+				isString(error.code) && SAFE_OBSERVATION_CODES.has(error.code)
 					? error.code
 					: undefined,
 			category: error.status === undefined ? "NetworkError" : "HevyHttpError",
@@ -872,7 +896,10 @@ function createFailureObservation(
 	};
 	if (expectedReason) observation.expectedReason = expectedReason;
 	if (error.responseError && observation.error) {
-		observation.error = { ...observation.error, response_error: error.responseError };
+		observation.error = {
+			...observation.error,
+			response_error: error.responseError,
+		};
 	}
 	return observation;
 }

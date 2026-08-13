@@ -1,4 +1,5 @@
 import { access, readFile } from "node:fs/promises";
+import { isObjectLike, isString } from "./runtime-value-predicates.mjs";
 import { resolve } from "node:path";
 import { loadTopology, repositoryRoot } from "./repository-control-plane.mjs";
 
@@ -27,7 +28,7 @@ for (const workspace of topology.workspaces) {
 			errors.push(`${relative}: topology declares no public exports`);
 		continue;
 	}
-	if (!pkg.exports || typeof pkg.exports !== "object") {
+	if (!pkg.exports || !isObjectLike(pkg.exports)) {
 		errors.push(`${relative}: exports map is required`);
 		continue;
 	}
@@ -43,13 +44,13 @@ for (const workspace of topology.workspaces) {
 			errors.push(`${relative}: missing export ${key}`);
 	}
 	for (const [key, target] of Object.entries(pkg.exports)) {
-		const record = typeof target === "string" ? { import: target } : target;
-		if (!record || typeof record !== "object") {
+		const record = isString(target) ? { import: target } : target;
+		if (!record || !isObjectLike(record)) {
 			errors.push(`${relative}: export ${key} must be a condition map`);
 			continue;
 		}
 		for (const [condition, value] of Object.entries(record)) {
-			if (typeof value !== "string") {
+			if (!isString(value)) {
 				errors.push(`${relative}: export ${key}.${condition} must be a string`);
 				continue;
 			}
