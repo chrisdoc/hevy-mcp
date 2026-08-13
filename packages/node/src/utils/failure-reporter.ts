@@ -8,6 +8,21 @@ import type { ErrorEvent, EventHint } from "@sentry/node";
 
 type SafeErrorDiagnostic = ReturnType<typeof createSafeErrorDiagnostic>;
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+type NormalizedException = {
+	name: string;
+	message?: string;
+	stack?: string;
+};
+type NormalizedFailureDraft = {
+	diagnostic: SafeErrorDiagnostic;
+	exceptionType: string;
+	message?: string;
+	stack?: string;
+	responseError?: string;
+	exception: NormalizedException;
+	attributes: TelemetryAttributes;
+	fingerprint: string[];
+};
 type SentryExceptionValue = NonNullable<
 	NonNullable<ErrorEvent["exception"]>["values"]
 >[number];
@@ -76,19 +91,19 @@ const TELEMETRY_ENABLED = process.env.HEVY_MCP_TELEMETRY !== "0";
 const DIAGNOSTIC_DETAILS_ENABLED =
 	process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS !== "0";
 
-function isObject(value: unknown): value is object {
+function isObject<T>(value: T): value is T & object {
 	return z.object({}).passthrough().safeParse(value).success;
 }
 
-function isString(value: unknown): value is string {
+function isString<T>(value: T): value is T & string {
 	return z.string().safeParse(value).success;
 }
 
-function isNumber(value: unknown): value is number {
+function isNumber<T>(value: T): value is T & number {
 	return z.number().safeParse(value).success;
 }
 
-function isBoolean(value: unknown): value is boolean {
+function isBoolean<T>(value: T): value is T & boolean {
 	return z.boolean().safeParse(value).success;
 }
 
@@ -183,21 +198,25 @@ function copyAttributes(
 	return output;
 }
 
-function getExceptionText(error: unknown): {
+type ExceptionText = {
 	message?: string;
 	stack?: string;
-} {
+};
+
+type TraceContext = {
+	traceId?: string;
+	spanId?: string;
+};
+
+function getExceptionText<T>(error: T): ExceptionText {
 	if (!(error instanceof Error)) return {};
-	const text: { message?: string; stack?: string } = {};
+	const text: ExceptionText = {};
 	if (error.message) text.message = error.message;
 	if (error.stack) text.stack = error.stack;
 	return text;
 }
 
-function getTraceContext(span: Span | undefined): {
-	traceId?: string;
-	spanId?: string;
-} {
+function getTraceContext(span: Span | undefined): TraceContext {
 	try {
 		const spanContext = span?.spanContext();
 		if (!spanContext || !spanContext.traceId || !spanContext.spanId) {
@@ -274,8 +293,8 @@ function addExecutionAttributes(
 	}
 }
 
-export function normalizeFailure(
-	error: unknown,
+export function normalizeFailure<T>(
+	error: T,
 	context: FailureContext,
 ): NormalizedFailure {
 	const diagnostic = createSafeErrorDiagnostic(error);
@@ -300,23 +319,10 @@ export function normalizeFailure(
 	addHttpAttributes(attributes, diagnostic);
 	addExecutionAttributes(attributes, diagnostic);
 
-	const normalizedException: {
-		name: string;
-		message?: string;
-		stack?: string;
-	} = {
+	const normalizedException: NormalizedException = {
 		name: exceptionType,
 	};
-	const normalized: {
-		diagnostic: SafeErrorDiagnostic;
-		exceptionType: string;
-		message?: string;
-		stack?: string;
-		responseError?: string;
-		exception: typeof normalizedException;
-		attributes: TelemetryAttributes;
-		fingerprint: string[];
-	} = {
+	const normalized: NormalizedFailureDraft = {
 		diagnostic,
 		exceptionType,
 		exception: normalizedException,
@@ -335,11 +341,9 @@ export function normalizeFailure(
 	return normalized as NormalizedFailure;
 }
 
-function sanitizeContext(
-	value: unknown,
-): Record<string, TelemetryAttributeValue> {
+function sanitizeContext<T>(value: T): TelemetryAttributes {
 	if (!isObject(value)) return {};
-	const output: Record<string, TelemetryAttributeValue> = {};
+	const output: TelemetryAttributes = {};
 	for (const [key, rawValue] of Object.entries(value).slice(0, 32)) {
 		if (
 			key !== "kind" &&
@@ -347,11 +351,7 @@ function sanitizeContext(
 		) {
 			continue;
 		}
-		if (
-			!isString(rawValue) &&
-			!isNumber(rawValue) &&
-			!isBoolean(rawValue)
-		) {
+		if (!isString(rawValue) && !isNumber(rawValue) && !isBoolean(rawValue)) {
 			continue;
 		}
 		if (isNumber(rawValue) && !Number.isFinite(rawValue)) {
@@ -367,17 +367,12 @@ function sanitizeSentryTags(tags: ErrorEvent["tags"]): ErrorEvent["tags"] {
 	const output: NonNullable<ErrorEvent["tags"]> = {};
 	for (const [key, value] of Object.entries(tags)) {
 		if (!SAFE_TAG_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
-		if (
-			!isString(value) &&
-			!isNumber(value) &&
-			!isBoolean(value)
-		) {
+		if (!isString(value) && !isNumber(value) && !isBoolean(value)) {
 			continue;
 		}
-		output[truncate(key, 128)] =
-			isString(value)
-				? sanitizeDiagnosticText(value, MAX_ATTRIBUTE_LENGTH)
-				: value;
+		output[truncate(key, 128)] = isString(value)
+			? sanitizeDiagnosticText(value, MAX_ATTRIBUTE_LENGTH)
+			: value;
 	}
 	return output;
 }
@@ -419,11 +414,9 @@ function sanitizeSentryExceptionValues(
 								frame.function,
 								MAX_ATTRIBUTE_LENGTH,
 							);
-						if (isNumber(frame.lineno))
-							safeFrame.lineno = frame.lineno;
+						if (isNumber(frame.lineno)) safeFrame.lineno = frame.lineno;
 						if (isNumber(frame.colno)) safeFrame.colno = frame.colno;
-						if (isBoolean(frame.in_app))
-							safeFrame.in_app = frame.in_app;
+						if (isBoolean(frame.in_app)) safeFrame.in_app = frame.in_app;
 						return safeFrame;
 					}),
 				};
@@ -481,7 +474,7 @@ function setSpanAttributes(span: Span, attributes: TelemetryAttributes): void {
 const reportedErrors = new WeakSet<object>();
 const diagnosticIds = new WeakMap<object, string>();
 
-function getDiagnosticId(error: unknown): string | undefined {
+function getDiagnosticId<T>(error: T): string | undefined {
 	if (isObject(error)) {
 		const existing = diagnosticIds.get(error);
 		if (existing) return existing;
@@ -495,15 +488,15 @@ function getDiagnosticId(error: unknown): string | undefined {
 	}
 }
 
-function hasReportedError(error: unknown): boolean {
+function hasReportedError<T>(error: T): boolean {
 	if (!isObject(error)) return false;
 	if (reportedErrors.has(error)) return true;
 	reportedErrors.add(error);
 	return false;
 }
 
-export function captureFailure(
-	error: unknown,
+export function captureFailure<T>(
+	error: T,
 	context: FailureContext,
 ): FailureReceipt | undefined {
 	if (!TELEMETRY_ENABLED) return undefined;

@@ -14,6 +14,16 @@ export const MEASUREMENT_SCOPE =
 	"Complete JSON-serialized MCP tools/list result payload: { tools }";
 export const TOTAL_TOKEN_BUDGET = 8_900;
 
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+type JsonObject = { readonly [key: string]: JsonValue };
+type TokenValue =
+	| JsonValue
+	| Tool
+	| { readonly tools: Tool[] }
+	| Tool["inputSchema"]
+	| Tool["outputSchema"]
+	| Tool["annotations"];
+
 export type ToolComponent =
 	| "name"
 	| "description"
@@ -144,7 +154,7 @@ export function getTargetStatus(
 }
 
 function countEncodedTokens(
-	value: string | number | boolean | null | object | undefined,
+	value: TokenValue | undefined,
 	encoder: EncoderLike,
 ): number {
 	const serialized = JSON.stringify(value);

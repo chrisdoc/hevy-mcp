@@ -318,10 +318,15 @@ export function buildMeasurementPayload(
   return payload;
 }
 
+export type MeasurementMergeResult = {
+  payload: MeasurementPayload;
+  measurement: BodyMeasurement;
+};
+
 export function mergeMeasurementPayload(
   existing: BodyMeasurement,
   changes: MeasurementFields,
-): { payload: MeasurementPayload; measurement: BodyMeasurement } {
+): MeasurementMergeResult {
   const payload: MeasurementPayload = {};
   const measurement = { ...existing };
 

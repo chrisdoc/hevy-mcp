@@ -83,8 +83,8 @@ function createReleaseSentryPlugin() {
 		renderChunk(
 			code: string,
 			chunk: { facadeModuleId?: string | null; moduleIds?: string[] },
-			options: unknown,
-			meta: unknown,
+			options: Parameters<NonNullable<typeof originalRenderChunk>>[2],
+			meta: Parameters<NonNullable<typeof originalRenderChunk>>[3],
 		) {
 			const normalizeModuleId = (moduleId: string) =>
 				moduleId.replaceAll("\\", "/");

@@ -8,15 +8,20 @@ import {
 	createInstrumentedStdioTransport,
 } from "./stdio-observability.js";
 
+type TestSpan = Pick<
+	Span,
+	"setAttribute" | "setStatus" | "addEvent" | "end"
+>;
+
 const testDoubles = vi.hoisted(() => ({
 	span: {
 		setAttribute: vi.fn(),
 		setStatus: vi.fn(),
 		addEvent: vi.fn(),
 		end: vi.fn(),
-	} as unknown as Span,
+	} as TestSpan,
 	startActiveSpan: vi.fn((...args: unknown[]) => {
-		const callback = args.at(-1) as (span: Span) => unknown;
+		const callback = args.at(-1) as (span: TestSpan) => unknown;
 		return callback(testDoubles.span);
 	}),
 	parseErrors: { add: vi.fn() },
@@ -86,6 +91,15 @@ function createTransportDouble() {
 			_ondata: originalOnData,
 		},
 	};
+}
+
+function asStdioTransport(
+	transport: ReturnType<typeof createTransportDouble>["transport"],
+): StdioServerTransport {
+	return Object.assign(
+		{} as Parameters<typeof createInstrumentedStdioTransport>[0],
+		transport,
+	);
 }
 
 function extractStructuralPreview(diagnostic: string): string {
@@ -224,9 +238,7 @@ describe("package-local stdio observability", () => {
 
 	it("wraps _ondata, preserves buffering, and records the last chunk", () => {
 		const { originalOnData, readBuffer, transport } = createTransportDouble();
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		const firstChunk = Buffer.from('\uFEFF{"jsonrpc":"2.0","id":1,', "utf8");
 		const secondChunk = Buffer.from('"method":"ping"}\r\n', "utf8");
 
@@ -251,9 +263,7 @@ describe("package-local stdio observability", () => {
 
 	it("parses multiple messages buffered in one chunk", () => {
 		const { readBuffer, transport } = createTransportDouble();
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		transport._ondata(
 			Buffer.from(
 				'{"jsonrpc":"2.0","id":1,"method":"ping"}\n' +
@@ -318,18 +328,14 @@ describe("package-local stdio observability", () => {
 		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
 			throw unexpected;
 		});
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		transport._ondata?.(Buffer.from('{"jsonrpc":"2.0"}\n', "utf8"));
 
 		expect(() => readBuffer.readMessage()).toThrow(unexpected);
 	});
 	it("defers the message after the malformed-line drain cap", async () => {
 		const { readBuffer, transport } = createTransportDouble();
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		const malformedLines = Array.from({ length: 100 }, () => "{bad}").join(
 			"\n",
 		);

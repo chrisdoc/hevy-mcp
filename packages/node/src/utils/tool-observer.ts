@@ -22,14 +22,17 @@ import {
 import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { captureFailure, tracer } from "./telemetry.js";
+import type { TelemetryAttributes } from "./failure-reporter.js";
 import { z } from "zod";
 
-type AttributeValue = string | number | boolean;
+type ToolMetricAttributes = McpClientMetricAttributes & {
+	readonly tool_name: string;
+};
 const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
 const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
 const stringSchema = z.string();
 
-function isString(value: unknown): value is string {
+function isString<T>(value: T): value is T & string {
 	return stringSchema.safeParse(value).success;
 }
 
@@ -55,7 +58,7 @@ function taxonomyAttributes(
 function metricAttributes(
 	invocation: SafeToolInvocation,
 	clientAttributes: McpClientMetricAttributes,
-): Record<string, string> {
+): ToolMetricAttributes {
 	return {
 		tool_name: invocation.name,
 		...taxonomyAttributes(invocation),
@@ -66,11 +69,11 @@ function metricAttributes(
 function createAttributes(
 	invocation: SafeToolInvocation,
 	userHash?: string,
-): Record<string, AttributeValue> {
+): TelemetryAttributes {
 	const clientMetadata = getCurrentMcpClientMetadata();
 	const isPrompt = invocation.kind === "prompt";
 	const sessionId = getCurrentMcpSessionId();
-	const attributes: Record<string, AttributeValue> = {
+	const attributes: TelemetryAttributes = {
 		"mcp.span.category": DISCOVERY_TOOL_NAMES.has(invocation.name)
 			? "discovery"
 			: "tool",
@@ -159,12 +162,12 @@ function createFailureAttributes(
 	invocation: SafeToolInvocation,
 	completion: SafeToolCompletion,
 	errorType = completion.errorType ?? "UNKNOWN_ERROR",
-): Record<string, AttributeValue> {
+): TelemetryAttributes {
 	const diagnostic = completion.error;
 	const execution = projectExecutionAttributes(
 		createExecutionProjection(diagnostic),
 	);
-	const attributes: Record<string, AttributeValue> = {
+	const attributes: TelemetryAttributes = {
 		[invocation.kind === "prompt" ? "mcp.prompt.name" : "mcp.tool.name"]:
 			invocation.name,
 		"error.type": errorType,

@@ -17,7 +17,7 @@ export interface CliDiagnostic {
 }
 
 function executionFields(
-	error: unknown,
+	error: Error | string,
 ): Omit<CliDiagnostic, "code" | "message"> {
 	if (!isHevyHttpError(error)) return {};
 	const {
@@ -28,7 +28,7 @@ function executionFields(
 	return execution;
 }
 
-export function diagnostic(error: unknown): CliDiagnostic {
+export function diagnostic(error: Error | string): CliDiagnostic {
 	if (error instanceof ConfigurationError)
 		return { code: EXIT.configuration, message: error.message };
 	if (error instanceof ApiResponseError)

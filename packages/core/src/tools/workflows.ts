@@ -98,10 +98,7 @@ function utcDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function getPeriod(weeks: number): {
-  startDate: string;
-  endDate: string;
-} {
+function getPeriod(weeks: number) {
   const end = new Date();
   const start = new Date(end);
   start.setUTCDate(start.getUTCDate() - weeks * 7);

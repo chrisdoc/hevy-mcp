@@ -31,19 +31,23 @@ const cliVersion = z
 	)
 	.data ?? "0.0.0";
 
+export interface CliState {
+	result?: unknown;
+	error?: unknown;
+}
+
 export interface CliRuntimeContext extends CommandContext {
 	readonly process: StricliProcess;
 	client?: HevyClient;
 	operations?: HevyOperations;
 	now: () => Date;
 	readDataSource: DataSourceReader;
-	state: {
-		result?: unknown;
-		error?: unknown;
-	};
+	state: CliState;
 }
 
-type CliFlags = object;
+type CliFlags = {
+	readonly [key: string]: string | boolean | undefined;
+};
 type JsonFlags = { json?: boolean };
 type SearchFlags = JsonFlags & { "max-pages"?: string };
 type PageFlags = JsonFlags & { page?: string; "page-size"?: string };
@@ -103,13 +107,13 @@ const summaryFlags = {
 function toArgs(
 	command: string,
 	subcommand: string | undefined,
-	flags: object,
+	flags: CliFlags,
 	positionals: string[],
 ): CliArgs {
 	const options: Record<string, string | boolean> = {};
 	for (const [name, value] of Object.entries(flags)) {
-		if (z.union([z.string(), z.boolean()]).safeParse(value).success)
-			options[name] = value;
+		const parsed = z.union([z.string(), z.boolean()]).safeParse(value);
+		if (parsed.success) options[name] = parsed.data;
 	}
 	return { command, subcommand, positionals, options };
 }
@@ -137,7 +141,7 @@ async function invoke(
 	}
 }
 
-function noArgsCommand<FLAGS extends object>(
+function noArgsCommand<FLAGS extends CliFlags>(
 	command: string,
 	subcommand: string | undefined,
 	brief: string,
@@ -152,7 +156,7 @@ function noArgsCommand<FLAGS extends object>(
 	});
 }
 
-function idCommand<FLAGS extends object>(
+function idCommand<FLAGS extends CliFlags>(
 	command: string,
 	subcommand: string,
 	brief: string,

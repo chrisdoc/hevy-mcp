@@ -13,6 +13,7 @@ import {
 	memoizeObservationScope,
 	type SafeToolArgumentKey,
 	type ToolObserver,
+	type ToolCompletionObservation,
 } from "../observation.js";
 import { bucketCount, getResultTelemetry } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
@@ -24,7 +25,11 @@ import {
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
 import { isBoolean, isFiniteNumber } from "../utils/type-predicates.js";
 
-const STRUCTURAL_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+interface ArgumentKeySet {
+	readonly [key: string]: true;
+}
+
+const STRUCTURAL_ARGUMENT_KEYS: Readonly<ArgumentKeySet> = {
 	page: true,
 	page_size: true,
 	since: true,
@@ -44,7 +49,7 @@ const STRUCTURAL_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
 	primary_muscle_group: true,
 };
 
-const PRESENCE_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+const PRESENCE_ARGUMENT_KEYS: Readonly<ArgumentKeySet> = {
 	since: true,
 	workout_id: true,
 	routine_id: true,
@@ -58,14 +63,14 @@ const PRESENCE_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
 	primary_muscle_group: true,
 };
 
-const NUMERIC_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+const NUMERIC_ARGUMENT_KEYS: Readonly<ArgumentKeySet> = {
 	page: true,
 	page_size: true,
 	limit: true,
 	offset: true,
 };
 
-const BOOLEAN_ARGUMENT_KEYS: Readonly<Record<string, true>> = {
+const BOOLEAN_ARGUMENT_KEYS: Readonly<ArgumentKeySet> = {
 	include_custom: true,
 	refresh: true,
 };
@@ -74,9 +79,9 @@ const structuralArgumentKeys = Object.keys(
 	STRUCTURAL_ARGUMENT_KEYS,
 ) as SafeToolArgumentKey[];
 
-function createSafeInvocation(
+function createSafeInvocation<TArgs extends object>(
 	name: string,
-	args: object,
+	args: TArgs,
 	taxonomy: ToolTelemetryMetadata | undefined,
 ) {
 	const argumentValues = new Map<string, unknown>(Object.entries(args));
@@ -215,27 +220,17 @@ export function createToolRuntime({
 						runPromise = invokeHandler();
 					}
 					const result = await runPromise.catch(invokeHandler);
-					const telemetry: {
-						outcome: "success" | "returned_error";
-						durationMs: number;
-						errorOutcome?: typeof result.errorOutcome;
-						result: {
-							isError: boolean;
-							hasStructuredContent: boolean;
-							contentCountBucket: "0" | "1" | "2-10" | "11-50" | "51+";
-							summary: ReturnType<typeof getResultTelemetry>;
-						};
-					} = {
+					const telemetry = {
 						outcome: result.isError ? "returned_error" : "success",
 						durationMs: Date.now() - startedAt,
+						errorOutcome: result.errorOutcome,
 						result: {
 							isError: Boolean(result.isError),
 							hasStructuredContent: result.structuredContent !== undefined,
 							contentCountBucket: bucketCount(result.content.length),
 							summary: getResultTelemetry(result),
 						},
-					};
-					if (result.errorOutcome) telemetry.errorOutcome = result.errorOutcome;
+					} satisfies ToolCompletionObservation;
 					void scope?.finish(telemetry);
 					return result;
 				} catch (error) {

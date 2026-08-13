@@ -1,5 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
+import type {
+	JSONRPCRequest,
+	PerRequestMessageExtra,
+} from "@modelcontextprotocol/server";
 import { createSafeErrorDiagnostic, ErrorType } from "@hevy-mcp/core";
 import type { NodeTransport } from "./arguments.js";
 import {
@@ -10,14 +14,13 @@ import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { captureFailure, tracer } from "./telemetry.js";
 import { z } from "zod";
 
-type SdkRequestHandler = (request: object, extra: object) => Promise<unknown>;
+type SdkRequestHandler = (
+	request: JSONRPCRequest,
+	extra: PerRequestMessageExtra,
+) => Promise<unknown>;
 
 interface SdkProtocolInternals {
 	_requestHandlers?: Map<string, SdkRequestHandler>;
-}
-
-interface ToolRequestLike {
-	params?: { name?: unknown };
 }
 
 interface SdkToolErrorHost {
@@ -33,6 +36,16 @@ type FailureAttributes = Record<string, string | number | boolean>;
 type SdkFailureKind = "protocol" | "tool_call" | "validation";
 type SdkValidationKind = "input" | "output" | "tool_not_found" | "unknown";
 
+interface SdkFailureTaxonomy {
+	readonly [key: string]: { errorType: ErrorType; errorCategory: string };
+}
+
+interface SdkValidationResult {
+	kind: SdkValidationKind;
+	expected: boolean;
+	toolName?: string;
+}
+
 type SdkFailureOptions = {
 	expected?: boolean;
 	validationKind?: SdkValidationKind;
@@ -43,10 +56,7 @@ const sdkRequestStateStorage = new AsyncLocalStorage<{
 	expectedValidation?: boolean;
 }>();
 const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
-const SDK_FAILURE_TAXONOMY: Record<
-	SdkFailureKind,
-	{ errorType: ErrorType; errorCategory: string }
-> = {
+const SDK_FAILURE_TAXONOMY: SdkFailureTaxonomy = {
 	protocol: {
 		errorType: ErrorType.UNKNOWN_ERROR,
 		errorCategory: "McpSdkProtocolFailure",
@@ -91,7 +101,7 @@ function enrichActiveSdkSpan(attributes: FailureAttributes): void {
 	}
 }
 
-function getSdkToolName(request: object): string {
+function getSdkToolName(request: JSONRPCRequest): string {
 	const parsed = z
 		.object({ params: z.object({ name: z.string().optional() }).optional() })
 		.safeParse(request);
@@ -191,11 +201,7 @@ function installProtocolErrorTracking(
 	};
 }
 
-function classifySdkValidation(message: string): {
-	kind: SdkValidationKind;
-	expected: boolean;
-	toolName?: string;
-} {
+function classifySdkValidation(message: string): SdkValidationResult {
 	const inputValidation =
 		/^Input validation error: Invalid arguments for tool ([A-Za-z0-9][A-Za-z0-9._-]{0,63})(?::|$)/u.exec(
 			message,

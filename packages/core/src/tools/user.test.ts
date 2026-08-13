@@ -1,18 +1,27 @@
-import type { McpServer } from "@modelcontextprotocol/server";
-
 /* oxlint-disable typescript/unbound-method */
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import { registerToolDefinition } from "./define-tool.js";
+import type { InferToolParams } from "../utils/tool-helpers.js";
+import {
+	registerToolDefinition,
+	type ToolRegistrar,
+} from "./define-tool.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { userToolDefinitions } from "./user.js";
 
-function mockOf<T>(value: unknown): T {
+function mockOf<T>(value: Partial<T>): T {
 	return value as T;
 }
 
-function registerUserDefinition(server: McpServer, client: HevyClient | null) {
+type UserToolArgs = InferToolParams<
+	(typeof userToolDefinitions)[number]["inputSchema"]
+>;
+
+function registerUserDefinition(
+	server: ToolRegistrar,
+	client: HevyClient | null,
+) {
 	const catalog: ExerciseTemplateCatalog = {
 		get: vi.fn(),
 		reset: vi.fn(),
@@ -26,7 +35,7 @@ function registerUserDefinition(server: McpServer, client: HevyClient | null) {
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = mockOf<McpServer>({ tool, registerTool: tool });
+	const server = { registerTool: tool } satisfies ToolRegistrar;
 	return { server, tool };
 }
 
@@ -35,7 +44,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const handler = match.at(-1) as (args: object) => Promise<{
+	const handler = match.at(-1) as (args: UserToolArgs) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
 		structuredContent?: object;

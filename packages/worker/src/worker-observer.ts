@@ -179,6 +179,14 @@ interface SafeResultSummary {
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+type SafeInvocationProjection = Mutable<Omit<WorkerObservationEvent, "event">>;
+type SafeResultSummaryProjection = Mutable<SafeResultSummary>;
+type WorkerResultProjection = Mutable<WorkerResultObservation>;
+type MutableWorkerObservationEvent = Mutable<WorkerObservationEvent>;
+
+interface WorkerSpanAttributes {
+	[key: string]: string | number | boolean;
+}
 
 export type WorkerObservationSink = (
 	event: WorkerObservationEvent,
@@ -218,8 +226,9 @@ const isSafeNumber = (value: SafeScalar): value is number =>
 	safeNumberSchema.safeParse(value).success;
 const isSafeBoolean = (value: SafeScalar): value is boolean =>
 	safeBooleanSchema.safeParse(value).success;
-const isSafeObject = (value: unknown): value is object =>
-	safeObjectSchema.safeParse(value).success;
+function isSafeObject<T>(value: T): value is T & object {
+	return safeObjectSchema.safeParse(value).success;
+}
 
 function boundedString(
 	value: SafeScalar,
@@ -297,7 +306,7 @@ function safeInvocation(
 		}
 	}
 	const keyCountBucket = safeBucket(invocation.argumentKeyCountBucket);
-	const safe: Mutable<Omit<WorkerObservationEvent, "event">> = {
+	const safe: SafeInvocationProjection = {
 		name: safeName(invocation.name),
 		kind: invocation.kind === "prompt" ? "prompt" : "tool",
 	};
@@ -356,7 +365,7 @@ function safeSummary(
 	) {
 		return undefined;
 	}
-	const safe: Mutable<SafeResultSummary> = {};
+	const safe: SafeResultSummaryProjection = {};
 	if (itemCountBucket) safe.itemCountBucket = itemCountBucket;
 	if (exerciseCountBucket) safe.exerciseCountBucket = exerciseCountBucket;
 	if (setCountBucket) safe.setCountBucket = setCountBucket;
@@ -368,7 +377,7 @@ function safeResult(
 	result: ToolResultObservation | undefined,
 ): WorkerResultObservation | undefined {
 	if (!result) return undefined;
-	const safe: Mutable<WorkerResultObservation> = {
+	const safe: WorkerResultProjection = {
 		isError: result.isError === true,
 		hasStructuredContent: result.hasStructuredContent === true,
 		contentCountBucket: safeBucket(result.contentCountBucket) ?? "0",
@@ -592,10 +601,7 @@ export function createWorkerToolObserver(
 							(span) => {
 								callbackEntered = true;
 								activeSpan = span;
-								const spanAttributes: Record<
-									string,
-									string | number | boolean
-								> = {
+								const spanAttributes: WorkerSpanAttributes = {
 									"mcp.span.category": safe.kind,
 									"mcp.operation.kind": safe.kind,
 									[safe.kind === "prompt"
@@ -646,7 +652,7 @@ export function createWorkerToolObserver(
 							? safeExecution(completion.errorOutcome)
 							: safeExecution(error);
 						const result = safeResult(completion.result);
-						const event: Mutable<WorkerObservationEvent> = {
+						const event: MutableWorkerObservationEvent = {
 							event: "worker.tool.completion",
 							...safe,
 							outcome: completion.outcome,

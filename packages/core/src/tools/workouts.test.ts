@@ -1,6 +1,7 @@
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { z } from "zod";
+import { createMockHevyClient, createMockMcpServer } from "../../../../tests/fixtures/mock-hevy.js";
 import {
 	routinesGetDescriptor,
 	routinesListDescriptor,
@@ -13,14 +14,17 @@ import { describe, expect, it, vi } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { workoutToolDefinitions } from "./workouts.js";
+import { workoutInputSchema } from "./input-schemas.js";
+type WorkoutToolArgs = Parameters<
+	(typeof workoutToolDefinitions)[number]["execute"]
+>[1];
 
 function register(
 	client: HevyClient | null,
 	operations?: HevyOperations,
 	execution?: ToolExecutionContext,
 ) {
-	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as McpServer;
+	const { server, registerTool: tool } = createMockMcpServer();
 	const runtime = createToolRuntime({
 		client,
 		operations,
@@ -38,10 +42,12 @@ function toolHandler(tool: ReturnType<typeof vi.fn>, name: string) {
 		([registeredName]) => registeredName === name,
 	);
 	if (!call) throw new Error(`Tool ${name} was not registered`);
-	return call.at(-1) as (args: object) => Promise<object>;
+	return call.at(-1) as <TArgs extends WorkoutToolArgs>(
+		args: TArgs,
+	) => Promise<object>;
 }
 
-const workoutInput = {
+const workoutInput = workoutInputSchema.parse({
 	workout: {
 		title: "Push",
 		start_time: "2025-01-01T10:00:00Z",
@@ -50,36 +56,37 @@ const workoutInput = {
 			{ exercise_template_id: "bench", sets: [{ type: "normal", reps: 8 }] },
 		],
 	},
-};
+});
 
 describe("workout tools", () => {
 	it("exposes only generated-aligned snake_case input keys", () => {
 		const tool = register(null);
-		const definition = tool.mock.calls.find(
+		const registration = tool.mock.calls.find(
 			([name]) => name === "get-workouts",
-		)?.[1] as { inputSchema: { parse(value: unknown): unknown } };
+		);
+		if (!registration) throw new Error("Tool was not registered");
+		const inputSchema = registration[1]?.inputSchema;
+		if (!inputSchema) throw new Error("Tool input schema is missing");
+		const parsedInputSchema = z.instanceof(z.ZodType).parse(inputSchema);
 
-		expect(definition.inputSchema.parse({ page: 2, page_size: 5 })).toEqual({
+		expect(parsedInputSchema.parse({ page: 2, page_size: 5 })).toEqual({
 			page: 2,
 			page_size: 5,
 		});
 		expect(() =>
-			definition.inputSchema.parse({ page: 2, pageSize: 5 }),
+			parsedInputSchema.parse({ page: 2, pageSize: 5 }),
 		).toThrow();
 	});
 
 	it("maps snake_case pagination and identifiers to generated client arguments", async () => {
-		const client = {
-			getWorkouts: vi.fn().mockResolvedValue({ workouts: [], page_count: 2 }),
-			getWorkout: vi.fn().mockResolvedValue({
-				id: "w1",
-				start_time: "2025-01-01T10:00:00Z",
-				end_time: "2025-01-01T10:30:00Z",
-			}),
-			getWorkoutEvents: vi
-				.fn()
-				.mockResolvedValue({ events: [], page_count: 1 }),
-		} as HevyClient;
+		const client = createMockHevyClient();
+		client.getWorkouts.mockResolvedValue({ workouts: [], page_count: 2 });
+		client.getWorkout.mockResolvedValue({
+			id: "w1",
+			start_time: "2025-01-01T10:00:00Z",
+			end_time: "2025-01-01T10:30:00Z",
+		});
+		client.getWorkoutEvents.mockResolvedValue({ events: [], page_count: 1 });
 		const tool = register(client);
 
 		await toolHandler(tool, "get-workouts")({ page: 2, page_size: 5 });
@@ -181,19 +188,16 @@ describe("workout tools", () => {
 				},
 			],
 		};
-		const client = {
-			createWorkout: vi
-				.fn()
-				.mockResolvedValue({ id: "w1", ...workoutInput.workout }),
-			getWorkout: vi.fn().mockImplementation(() => {
-				calls.push("get");
-				return Promise.resolve(current);
-			}),
-			updateWorkout: vi.fn().mockImplementation(() => {
-				calls.push("put");
-				return Promise.resolve(current);
-			}),
-		} as HevyClient;
+		const client = createMockHevyClient();
+		client.createWorkout.mockResolvedValue({ id: "w1", ...workoutInput.workout });
+		client.getWorkout.mockImplementation(() => {
+			calls.push("get");
+			return Promise.resolve(current);
+		});
+		client.updateWorkout.mockImplementation(() => {
+			calls.push("put");
+			return Promise.resolve(current);
+		});
 		const tool = register(client);
 
 		await toolHandler(tool, "create-workout")(workoutInput);
@@ -250,10 +254,9 @@ describe("workout tools", () => {
 				},
 			],
 		};
-		const client = {
-			getWorkout: vi.fn().mockResolvedValue(current),
-			updateWorkout: vi.fn().mockResolvedValue(current),
-		} as HevyClient;
+		const client = createMockHevyClient();
+		client.getWorkout.mockResolvedValue(current);
+		client.updateWorkout.mockResolvedValue(current);
 		const tool = register(client);
 
 		await toolHandler(
@@ -289,10 +292,8 @@ describe("workout tools", () => {
 	});
 
 	it("does not put when GET fails", async () => {
-		const getFailureClient = {
-			getWorkout: vi.fn().mockRejectedValue(new Error("GET failed")),
-			updateWorkout: vi.fn(),
-		} as HevyClient;
+		const getFailureClient = createMockHevyClient();
+		getFailureClient.getWorkout.mockRejectedValue(new Error("GET failed"));
 		const getFailureTool = register(getFailureClient);
 		const getFailure = await toolHandler(
 			getFailureTool,
@@ -306,15 +307,14 @@ describe("workout tools", () => {
 	});
 
 	it("reports PUT failures after exactly one GET", async () => {
-		const client = {
-			getWorkout: vi.fn().mockResolvedValue({
-				title: "Original",
-				start_time: "2025-01-01T10:00:00Z",
-				end_time: "2025-01-01T11:00:00Z",
-				exercises: [],
-			}),
-			updateWorkout: vi.fn().mockRejectedValue(new Error("PUT failed")),
-		} as HevyClient;
+		const client = createMockHevyClient();
+		client.getWorkout.mockResolvedValue({
+			title: "Original",
+			start_time: "2025-01-01T10:00:00Z",
+			end_time: "2025-01-01T11:00:00Z",
+			exercises: [],
+		});
+		client.updateWorkout.mockRejectedValue(new Error("PUT failed"));
 		const tool = register(client);
 
 		const response = await toolHandler(

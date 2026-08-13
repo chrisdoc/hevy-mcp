@@ -85,6 +85,6 @@ export class HevyHttpError extends Error {
 	}
 }
 
-export function isHevyHttpError(error: unknown): error is HevyHttpError {
+export function isHevyHttpError<T>(error: T): error is T & HevyHttpError {
 	return error instanceof HevyHttpError;
 }

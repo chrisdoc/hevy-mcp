@@ -84,8 +84,7 @@ function parseCacheEntry(value: string, now: number): CacheEntry | undefined {
 		if (!cacheEntry.success) return undefined;
 
 		const { checkedAt, latestVersion } = cacheEntry.data;
-		if (!Number.isFinite(checkedAt) || !semver.valid(latestVersion)
-		) {
+		if (!Number.isFinite(checkedAt) || !semver.valid(latestVersion)) {
 			return undefined;
 		}
 
@@ -100,20 +99,23 @@ function parseCacheEntry(value: string, now: number): CacheEntry | undefined {
 	}
 }
 
-function parseLatestVersion(value: unknown): string | undefined {
-	const parsed = z.object({ "dist-tags": z.unknown() }).passthrough().safeParse(value);
+function parseLatestVersion<T>(value: T): string | undefined {
+	const parsed = z
+		.object({ "dist-tags": z.unknown() })
+		.passthrough()
+		.safeParse(value);
 	if (!parsed.success) {
 		return undefined;
 	}
 
 	const distTags = parsed.data["dist-tags"];
-	const parsedDistTags = z.object({ latest: z.unknown() }).passthrough().safeParse(distTags);
+	const parsedDistTags = z
+		.object({ latest: z.unknown() })
+		.passthrough()
+		.safeParse(distTags);
 	if (!parsedDistTags.success) return undefined;
 	const latest = z.string().safeParse(parsedDistTags.data.latest).data;
-	if (
-		latest === undefined ||
-		!semver.valid(latest)
-	) {
+	if (latest === undefined || !semver.valid(latest)) {
 		return undefined;
 	}
 

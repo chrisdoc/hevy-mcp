@@ -95,17 +95,21 @@ export function commitStateFor(
 	return phase === "before-dispatch" ? "not_sent" : "unknown";
 }
 
+export interface HevyExecutionSignal {
+	readonly signal: AbortSignal;
+	readonly abort: (reason?: Error | string | DOMException) => void;
+	readonly cleanup: () => void;
+	readonly deadlineTriggered: () => boolean;
+}
+
 /**
  * Build a signal that follows both caller cancellation and one absolute
  * deadline. The returned cleanup function must be called when the operation
  * completes so a long-lived server does not retain timers/listeners.
  */
-export function createExecutionSignal(control: HevyExecutionControl): {
-	signal: AbortSignal;
-	abort: (reason?: unknown) => void;
-	cleanup: () => void;
-	deadlineTriggered: () => boolean;
-} {
+export function createExecutionSignal(
+	control: HevyExecutionControl,
+): HevyExecutionSignal {
 	const controller = new AbortController();
 	let deadlineTriggered = false;
 	const abortFromCaller = () => {
@@ -128,7 +132,7 @@ export function createExecutionSignal(control: HevyExecutionControl): {
 	}
 	return {
 		signal: controller.signal,
-		abort: (reason?: unknown) => {
+		abort: (reason?: Error | string | DOMException) => {
 			if (!controller.signal.aborted) controller.abort(reason);
 		},
 		cleanup: () => {
@@ -139,7 +143,7 @@ export function createExecutionSignal(control: HevyExecutionControl): {
 	};
 }
 
-export function isAbortLike(error: unknown): boolean {
+export function isAbortLike<T>(error: T): boolean {
 	if (!(error instanceof Error)) return false;
 	return error.name === "AbortError" || error.name === "TimeoutError";
 }

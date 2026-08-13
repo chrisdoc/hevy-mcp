@@ -3,6 +3,10 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { sessionEnded, sessionStarted } from "./metrics.js";
 import { bucketCount } from "./result-telemetry.js";
 import { z } from "zod";
+interface McpSessionMessage {
+	readonly method?: string;
+	readonly params?: unknown;
+}
 
 export const MCP_SESSION_TERMINATION_CATEGORIES = [
 	"clean",
@@ -65,7 +69,9 @@ type ClientInfo = {
 	version?: string;
 };
 
-function isObject(value: object | null | undefined): value is object {
+function isObject(
+	value: McpSessionMessage | null | undefined,
+): value is McpSessionMessage {
 	return z.object({}).passthrough().safeParse(value).success;
 }
 
@@ -83,7 +89,7 @@ function normalizeMetadata(value: string | undefined): string {
 	return normalized;
 }
 
-function getInitializeParams(message: object): InitializeParams {
+function getInitializeParams(message: McpSessionMessage): InitializeParams {
 	if (!isObject(message) || !("method" in message)) return {};
 	if (message.method !== "initialize") return {};
 	const params = "params" in message ? message.params : undefined;
@@ -98,7 +104,9 @@ function getInitializeParams(message: object): InitializeParams {
 	return parsed.success ? parsed.data : {};
 }
 
-export function extractMcpClientMetadata(message: object): McpClientMetadata {
+export function extractMcpClientMetadata(
+	message: McpSessionMessage,
+): McpClientMetadata {
 	const params = getInitializeParams(message);
 	const clientInfo = params.clientInfo ?? {};
 	return {
@@ -109,7 +117,7 @@ export function extractMcpClientMetadata(message: object): McpClientMetadata {
 }
 
 export function createMcpSessionContext(
-	message: object,
+	message: McpSessionMessage,
 	transport: McpTransport = "stdio",
 	options: McpSessionContextOptions | (() => string) = {},
 ): McpSessionContext {
@@ -172,7 +180,7 @@ function durationBucket(durationMs: number): string {
 }
 
 export function recordMcpSessionStart(
-	message: object,
+	message: McpSessionMessage,
 	transport: McpTransport = "stdio",
 	context?: McpSessionContext,
 ): McpClientMetadata {

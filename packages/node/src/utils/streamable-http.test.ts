@@ -1,4 +1,5 @@
 import { request, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -16,8 +17,10 @@ const createMcpServer = () => {
 };
 
 const stringSchema = z.string();
+type HttpJsonValue = string | number | boolean | null | HttpJsonObject | HttpJsonValue[];
+type HttpJsonObject = { readonly [key: string]: HttpJsonValue };
 
-function isString(value: unknown): value is string {
+function isString(value: string | AddressInfo | null): value is string {
 	return stringSchema.safeParse(value).success;
 }
 
@@ -31,6 +34,10 @@ interface HttpResult {
 	statusCode?: number;
 	headers: Record<string, string | string[] | undefined>;
 	body: string;
+}
+
+interface HttpRequestHeaders {
+	[key: string]: string;
 }
 
 function openStream(
@@ -62,12 +69,12 @@ function openStream(
 function call(
 	port: number,
 	method: string,
-	body?: object | string,
+	body?: HttpJsonObject | string,
 	extraHeaders: Record<string, string> = {},
 ): Promise<HttpResult> {
 	return new Promise((resolve, reject) => {
 		const payload = body === undefined ? undefined : JSON.stringify(body);
-		const headers: Record<string, string> = {
+		const headers: HttpRequestHeaders = {
 			Accept: "application/json, text/event-stream",
 			...extraHeaders,
 		};

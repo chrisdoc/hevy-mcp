@@ -1,6 +1,8 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
+import type { AddressInfo } from "node:net";
 import {
 	Client,
+	type CallToolResult,
 	type JSONObject,
 	type JSONValue,
 } from "@modelcontextprotocol/client";
@@ -22,9 +24,10 @@ import { z } from "zod";
 
 const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
-const isObject = (value: unknown): value is object =>
-	objectSchema.safeParse(value).success;
-const isString = (value: unknown): value is string =>
+const isObject = (
+	value: JSONValue | CallToolResult | null | undefined,
+): value is JSONObject => objectSchema.safeParse(value).success;
+const isString = (value: JSONValue | AddressInfo | null): value is string =>
 	stringSchema.safeParse(value).success;
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -33,13 +36,15 @@ const minimalInput = getWorkoutsCapabilityDescriptor.inputSchema.parse({
 	page: 1,
 }) as JSONObject;
 
-function assertGetWorkoutsResult(result: JSONValue | object): void {
+function assertGetWorkoutsResult(
+	result: JSONValue | CallToolResult | null,
+): void {
 	if (!isObject(result)) {
 		throw new Error("Expected MCP tool result object");
 	}
 	const response = result as {
-		content?: unknown;
-		structuredContent?: unknown;
+		content?: JSONValue[];
+		structuredContent?: JSONValue;
 	};
 	if (!Array.isArray(response.content)) {
 		throw new Error("Expected MCP tool content array");

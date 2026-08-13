@@ -2,10 +2,10 @@ import { z } from "zod";
 
 const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
-function isObject(value: unknown): value is object {
+function isObject<T>(value: T): value is T & object {
 	return objectSchema.safeParse(value).success;
 }
-function isString(value: unknown): value is string {
+function isString<T>(value: T): value is T & string {
 	return stringSchema.safeParse(value).success;
 }
 
@@ -32,18 +32,16 @@ type ResponseErrorBody = {
 	readonly detail?: unknown;
 };
 
-function isResponseErrorBody(value: unknown): value is ResponseErrorBody {
+function isResponseErrorBody<T>(value: T): value is T & ResponseErrorBody {
 	return isObject(value);
 }
 
-type ResponseErrorOwner = object;
-
-function ownValue(value: ResponseErrorOwner, key: PropertyKey): unknown {
+function ownValue(value: ResponseErrorBody, key: PropertyKey): unknown {
 	const descriptor = Object.getOwnPropertyDescriptor(value, key);
 	return descriptor && "value" in descriptor ? descriptor.value : undefined;
 }
 
-function responseErrorText(value: unknown): string | undefined {
+function responseErrorText<T>(value: T): string | undefined {
 	if (!isResponseErrorBody(value)) return undefined;
 	for (const key of RESPONSE_ERROR_KEYS) {
 		const candidate = ownValue(value, key);
@@ -98,7 +96,7 @@ function sanitizeResponseErrorText(value: string): string {
 }
 
 /** Extract one bounded, sanitized diagnostic string from an upstream error body. */
-export function extractSafeResponseError(data: unknown): string | undefined {
+export function extractSafeResponseError<T>(data: T): string | undefined {
 	try {
 		const text = responseErrorText(data);
 		if (!text) return undefined;

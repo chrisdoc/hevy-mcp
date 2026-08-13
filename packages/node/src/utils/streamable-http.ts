@@ -26,15 +26,15 @@ const stringSchema = z.string();
 const numberSchema = z.number();
 const objectSchema = z.object({}).passthrough();
 
-function isString(value: unknown): value is string {
+function isString<T>(value: T): value is T & string {
 	return stringSchema.safeParse(value).success;
 }
 
-function isNumber(value: unknown): value is number {
+function isNumber<T>(value: T): value is T & number {
 	return numberSchema.safeParse(value).success;
 }
 
-function isObject(value: unknown): value is object {
+function isObject<T>(value: T): value is T & object {
 	return objectSchema.safeParse(value).success;
 }
 
@@ -62,8 +62,8 @@ export interface HttpAdmissionConfig {
 	bodyTimeoutMs: number;
 }
 
-function parsePositiveLimit(
-	value: unknown,
+function parsePositiveLimit<T>(
+	value: T,
 	fallback: number,
 	maximum: number,
 ): number {
@@ -218,7 +218,7 @@ function validateHostHeader(
 	}
 }
 
-function safeDiagnostic(error: unknown): string {
+function safeDiagnostic<T>(error: T): string {
 	return JSON.stringify(createSafeErrorDiagnostic(error));
 }
 
@@ -229,11 +229,11 @@ function writeJson(res: ServerResponse, status: number, message: string): void {
 	res.end(JSON.stringify({ error: message }));
 }
 
-function writeExecutionJson(
+function writeExecutionJson<T>(
 	res: ServerResponse,
 	status: number,
 	message: string,
-	error: unknown,
+	error: T,
 ): void {
 	if (res.headersSent || res.destroyed) return;
 	const diagnostic = createSafeErrorDiagnostic(error);
@@ -247,6 +247,18 @@ function writeExecutionJson(
 	);
 }
 
+interface ReadBodyHandlers {
+	onData: (chunk: Buffer | string) => void;
+	onError: (error: Error) => void;
+	onAbort: () => void;
+	onEnd: () => void;
+	onTimeout: () => void;
+}
+
+interface RejectBeforeBodyHandlers {
+	onError: () => void;
+}
+
 function readBody(
 	request: IncomingMessage,
 	timeoutMs: number,
@@ -256,12 +268,12 @@ function readBody(
 		let size = 0;
 		let settled = false;
 		const chunks: Buffer[] = [];
-		const handlers = {} as {
-			onData: (chunk: Buffer | string) => void;
-			onError: (error: Error) => void;
-			onAbort: () => void;
-			onEnd: () => void;
-			onTimeout: () => void;
+		const handlers: ReadBodyHandlers = {
+			onData: () => {},
+			onError: () => {},
+			onAbort: () => {},
+			onEnd: () => {},
+			onTimeout: () => {},
 		};
 		const timer = setTimeout(() => handlers.onTimeout(), timeoutMs);
 		const removeErrorListenerAfterDrain = () => {
@@ -328,7 +340,7 @@ function readBody(
 	});
 }
 
-function isInitializeRequest(body: unknown): boolean {
+function isInitializeRequest<T>(body: T): boolean {
 	return Boolean(
 		body &&
 		isObject(body) &&
@@ -365,7 +377,7 @@ function isBearerAuthorized(
 	);
 }
 
-function aggregateErrors(errors: unknown[], message: string): unknown {
+function aggregateErrors<T>(errors: T[], message: string): T | AggregateError {
 	if (errors.length === 1) return errors[0];
 	return new AggregateError(errors, message);
 }
@@ -395,7 +407,7 @@ function rejectBeforeBody(
 	message: string,
 	timeoutMs: number,
 ): void {
-	const handlers = {} as { onError: () => void };
+	const handlers: RejectBeforeBodyHandlers = { onError: () => {} };
 	const timer = setTimeout(() => request.destroy(), timeoutMs);
 	const cleanup = () => {
 		clearTimeout(timer);
@@ -440,7 +452,7 @@ export async function startStreamableHttpServer(
 	const cleanupErrors: unknown[] = [];
 	let shuttingDown = false;
 	const server = createServer((request, response) => {
-		void handleRequest(request, response).catch((error: unknown) => {
+		void handleRequest(request, response).catch((error) => {
 			if (response.headersSent || response.destroyed) {
 				if (!response.writableEnded) response.destroy();
 				return;
@@ -466,7 +478,7 @@ export async function startStreamableHttpServer(
 				return;
 			}
 			recordHttpSessionEviction();
-			closeSession(session).catch((error: unknown) => {
+			closeSession(session).catch((error) => {
 				cleanupErrors.push(error);
 			});
 		}, config.idleTimeoutMs);
@@ -543,7 +555,7 @@ export async function startStreamableHttpServer(
 			// for this transport, so evict and close the whole session rather than
 			// leaving an aborted session reusable or poisoning future requests.
 			if (!response.writableEnded && !session.closed) {
-				closeSession(session).catch((error: unknown) => {
+				closeSession(session).catch((error) => {
 					cleanupErrors.push(error);
 				});
 			} else if (!session.closed) {
@@ -583,8 +595,7 @@ export async function startStreamableHttpServer(
 		}
 
 		const sessionHeader = request.headers["mcp-session-id"];
-		const sessionId =
-			isString(sessionHeader) ? sessionHeader : undefined;
+		const sessionId = isString(sessionHeader) ? sessionHeader : undefined;
 		const existingSession = sessionId ? sessions.get(sessionId) : undefined;
 		if (sessionId && !existingSession) {
 			rejectBeforeBody(
@@ -675,17 +686,14 @@ export async function startStreamableHttpServer(
 		};
 	}
 
-	async function handleInitializedSession(
+	async function handleInitializedSession<T>(
 		request: IncomingMessage,
 		response: ServerResponse,
-		body: unknown,
+		body: T,
 		reservation: InitializationReservation,
 	): Promise<void> {
-		const context = createMcpSessionContext(
-			isObject(body) ? body : {},
-			"http",
-		);
-		recordMcpSessionStart(context.metadata, "http", context);
+		const context = createMcpSessionContext(isObject(body) ? body : {}, "http");
+		recordMcpSessionStart({}, "http", context);
 		let session: HttpSession | undefined;
 		let mcpServer: OwnedMcpServer | undefined;
 		let connected = false;
@@ -695,7 +703,7 @@ export async function startStreamableHttpServer(
 			onsessioninitialized: (id) => {
 				if (!session) return;
 				if (shuttingDown || lifecycleController.signal.aborted) {
-					closeSession(session).catch((error: unknown) => {
+					closeSession(session).catch((error) => {
 						cleanupErrors.push(error);
 					});
 					return;
@@ -708,7 +716,7 @@ export async function startStreamableHttpServer(
 		});
 		transport.onclose = () => {
 			if (session) {
-				closeSession(session).catch((error: unknown) => {
+				closeSession(session).catch((error) => {
 					cleanupErrors.push(error);
 				});
 			}
@@ -770,10 +778,10 @@ export async function startStreamableHttpServer(
 		}
 	}
 
-	async function handleInitializationRequest(
+	async function handleInitializationRequest<T>(
 		request: IncomingMessage,
 		response: ServerResponse,
-		body: unknown,
+		body: T,
 		sessionId: string | undefined,
 		reservation: InitializationReservation | undefined,
 	): Promise<boolean> {
@@ -798,10 +806,10 @@ export async function startStreamableHttpServer(
 		return true;
 	}
 
-	async function handleExistingSessionRequest(
+	async function handleExistingSessionRequest<T>(
 		request: IncomingMessage,
 		response: ServerResponse,
-		body: unknown,
+		body: T,
 		sessionId: string | undefined,
 		existingSession: HttpSession | undefined,
 		trackedExistingResponse: boolean,
@@ -825,7 +833,7 @@ export async function startStreamableHttpServer(
 		if (request.method === "DELETE" && !session.closed) {
 			try {
 				await closeSession(session);
-			} catch (error: unknown) {
+			} catch (error) {
 				cleanupErrors.push(error);
 			}
 		}

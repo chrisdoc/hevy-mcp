@@ -11,6 +11,7 @@ import { serverStartups } from "./metrics.js";
 import { installGracefulShutdown } from "./graceful-shutdown.js";
 import { scheduleUpdateCheck } from "./version-check.js";
 import { MissingHevyApiKeyError } from "./config.js";
+import type { FailureContext } from "./failure-reporter.js";
 export const INVALID_API_KEY_MESSAGE =
 	"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.";
 
@@ -26,10 +27,8 @@ type LifecycleTerminationReason =
 	| "runtime_failure"
 	| "startup_failure";
 
-const LIFECYCLE_FAILURE_TAXONOMY: Record<
-	LifecycleFailurePhase,
-	{ errorType: string; errorCategory: string }
-> = {
+const LIFECYCLE_FAILURE_TAXONOMY = {
+
 	config: {
 		errorType: "MCP_SERVER_CONFIG_ERROR",
 		errorCategory: "McpServerConfigFailure",
@@ -50,7 +49,10 @@ const LIFECYCLE_FAILURE_TAXONOMY: Record<
 		errorType: "MCP_SERVER_RUN_ERROR",
 		errorCategory: "McpServerRunFailure",
 	},
-};
+} satisfies Record<
+	LifecycleFailurePhase,
+	{ errorType: string; errorCategory: string }
+>;
 
 function isExpectedLifecycleFailure(error: Error | string): boolean {
 	return (
@@ -62,7 +64,7 @@ function isExpectedLifecycleFailure(error: Error | string): boolean {
 function createLifecycleFailureAttributes(
 	phase: LifecycleFailurePhase,
 	terminationReason: LifecycleTerminationReason,
-): Record<string, string | number | boolean> {
+) {
 	const taxonomy = LIFECYCLE_FAILURE_TAXONOMY[phase];
 	return {
 		"mcp.failure.phase": phase,
@@ -80,18 +82,17 @@ export function recordLifecycleFailure(
 ): void {
 	const attributes = createLifecycleFailureAttributes(phase, terminationReason);
 	span.addEvent("mcp.lifecycle.failure", attributes);
-	const failure: {
-		kind: "lifecycle";
-		attributes: Record<string, string | number | boolean>;
-		expected?: boolean;
-		span: Span;
-	} = {
+	const failure = {
 		kind: "lifecycle",
 		attributes,
 		span,
-	};
-	if (isExpectedLifecycleFailure(error)) failure.expected = true;
-	captureFailure(error, failure);
+	} satisfies FailureContext;
+	captureFailure(
+		error,
+		isExpectedLifecycleFailure(error)
+			? { ...failure, expected: true }
+			: failure,
+	);
 }
 
 export type NodeLifecycleTransport = "stdio" | "http";

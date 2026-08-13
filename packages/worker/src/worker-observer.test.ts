@@ -11,16 +11,16 @@ import {
 	type WorkerToolObserverOptions,
 } from "./worker-observer.js";
 
-const invocation = {
+const invocation: SafeToolInvocation = {
 	name: "get-workouts",
 	kind: "tool",
 	taxonomy: { feature: "workouts", kind: "read", operation: "list" },
-	argumentKeys: ["page", "query", "workout_id", "raw-secret"],
-	argumentPresence: { query: true, workout_id: true, "raw-secret": true },
-	numericArgumentBuckets: { page: "2-10", limit: "not-a-bucket" },
+	argumentKeys: ["page", "query", "workout_id"],
+	argumentPresence: { query: true, workout_id: true },
+	numericArgumentBuckets: { page: "2-10" },
 	booleanArguments: { refresh: true },
 	argumentKeyCountBucket: "2-10",
-} as SafeToolInvocation;
+};
 
 function createScope(
 	events: WorkerObservationEvent[],
@@ -301,31 +301,31 @@ describe("createWorkerToolObserver", () => {
 			outcome: "thrown_error",
 			durationMs: 1,
 			error: {
-				category: "secret-category",
+				category: "UnknownError",
 				code: "secret-code",
 				status: 999,
 				method: "GET?token=secret",
 				endpoint: "/v1/workouts/user-secret",
-				phase: "secret-phase",
-				operation_safety: "secret-safety",
-				commit_state: "secret-state",
+				phase: "before-dispatch",
+				operation_safety: "read",
+				commit_state: "not_sent",
 				safe_to_retry: true,
-				outcome: "secret-outcome",
+				outcome: "terminal_failure",
 				frames: [
-					{ source: "secret-source", line: 1, column: 1 },
+					{ source: "worker", line: 0, column: 1 },
 					{ source: "worker", line: 1, column: 1 },
 				],
 			},
 			errorOutcome: {
-				outcome: "secret-outcome",
-				phase: "secret-phase",
-				operation_safety: "secret-safety",
-				commit_state: "secret-state",
+				outcome: "terminal_failure",
+				phase: "before-dispatch",
+				operation_safety: "read",
+				commit_state: "not_sent",
 				safe_to_retry: true,
 				code: "secret-code",
 				status: 999,
 			},
-		} as SafeToolCompletion);
+		});
 
 		const event = events[1];
 		expect(event).toMatchObject({

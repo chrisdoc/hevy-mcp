@@ -48,7 +48,7 @@ import {
 } from "../output/contracts.js";
 
 type Body = ApiObject;
-function body(value: unknown): Body {
+function body(value: ApiValue): Body {
 	const parsed = z.object({}).passthrough().safeParse(value);
 	if (!parsed.success) return {};
 	const result: Body = {};
@@ -60,10 +60,10 @@ function body(value: unknown): Body {
 	}
 	return result;
 }
-function array(value: unknown): ApiValue[] {
+function array(value: ApiValue): ApiValue[] {
 	return Array.isArray(value) ? value : [];
 }
-function text(value: unknown): string {
+function text(value: ApiValue): string {
 	return z.string().safeParse(value).data ?? "";
 }
 function list(data: Body, source: string, output: string, page: number): Body {

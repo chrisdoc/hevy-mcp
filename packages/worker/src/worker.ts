@@ -1,3 +1,5 @@
+/// <reference types="@cloudflare/workers-types" />
+
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import type { McpServer } from "@modelcontextprotocol/server";
 import {
@@ -50,6 +52,13 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 
 /** Reserve most of the invocation budget for MCP execution after validation. */
 const WORKER_VALIDATION_TIMEOUT_MS = 5_000;
+
+function requireExecutionContext(
+	context: ExecutionContext | undefined,
+): ExecutionContext {
+	if (!context) throw new TypeError("Worker execution context is unavailable");
+	return context;
+}
 
 export interface WorkerEnv {
 	// Trusted deployment/test binding; invalid values fail closed before auth.
@@ -260,7 +269,7 @@ function createDefaultTransport(): WebStandardStreamableHTTPServerTransport {
 
 function logWorkerFailure(
 	context: string,
-	error: unknown,
+	error: Error | string,
 	fields: Partial<WorkerRequestLogContext> = {},
 ): void {
 	console.error({
@@ -283,7 +292,7 @@ function logOAuthResponse(
 }
 
 function executionHttpResponse(
-	error: unknown,
+	error: Error | string,
 	message: string,
 	status: number,
 	origin: string | null,
@@ -368,9 +377,11 @@ async function serveMcpRequest(
 		await server.connect(transport);
 		return await transport.handleRequest(request);
 	} catch (error) {
-		logWorkerFailure("mcp-request-processing", error);
+		const normalizedError =
+			error instanceof Error ? error : String(error);
+		logWorkerFailure("mcp-request-processing", normalizedError);
 		return executionHttpResponse(
-			error,
+			normalizedError,
 			"Unable to process MCP request",
 			500,
 			null,
@@ -433,8 +444,10 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 				},
 			);
 		} catch (error) {
+			const normalizedError =
+				error instanceof Error ? error : String(error);
 			return executionHttpResponse(
-				error,
+				normalizedError,
 				"Unable to validate the Hevy API key",
 				502,
 				origin,
@@ -517,7 +530,7 @@ export function createWorkerFetchHandler(
 	return async function handleWorkerFetch(
 		request: Request,
 		env: WorkerEnv,
-		ctx?: object,
+		ctx?: ExecutionContext,
 	): Promise<Response> {
 		const logContext = createRequestLogContext(request, env);
 		const startedAt = Date.now();
@@ -560,18 +573,24 @@ export function createWorkerFetchHandler(
 				const oauthResponse = await oauthProvider.fetch(
 					request,
 					env,
-					ctx ?? {},
+					requireExecutionContext(ctx),
 				);
 				responseStatus = oauthResponse.status;
 				logOAuthResponse(logContext, responseStatus);
 				return withCors(oauthResponse, origin);
 			}
-			const oauthResponse = await oauthProvider.fetch(request, env, ctx ?? {});
+			const oauthResponse = await oauthProvider.fetch(
+				request,
+				env,
+				requireExecutionContext(ctx),
+			);
 			responseStatus = oauthResponse.status;
 			logOAuthResponse(logContext, responseStatus);
 			return withCors(oauthResponse, origin);
 		} catch (error) {
-			logWorkerFailure("request", error, logContext);
+			const normalizedError =
+				error instanceof Error ? error : String(error);
+			logWorkerFailure("request", normalizedError, logContext);
 			throw error;
 		} finally {
 			console.log({
@@ -587,7 +606,11 @@ export function createWorkerFetchHandler(
 const handleWorkerFetch = createWorkerFetchHandler();
 
 export default {
-	fetch(request: Request, env: WorkerEnv, ctx?: object): Promise<Response> {
+	fetch(
+		request: Request,
+		env: WorkerEnv,
+		ctx?: ExecutionContext,
+	): Promise<Response> {
 		return handleWorkerFetch(request, env, ctx);
 	},
 };

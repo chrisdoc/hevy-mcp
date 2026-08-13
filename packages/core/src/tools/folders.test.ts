@@ -1,18 +1,25 @@
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { describe, expect, it, vi } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
 import { folderToolDefinitions } from "./folders.js";
-import { registerToolDefinition } from "./define-tool.js";
+import {
+	registerToolDefinition,
+	type ToolRegistrar,
+} from "./define-tool.js";
+import type { InferToolParams } from "../utils/tool-helpers.js";
 
-function mockOf<T>(value: unknown): T {
+type FolderToolArgs =
+	| InferToolParams<(typeof folderToolDefinitions)[0]["inputSchema"]>
+	| InferToolParams<(typeof folderToolDefinitions)[1]["inputSchema"]>;
+
+function mockOf<T>(value: Partial<T>): T {
 	return value as T;
 }
 
 function register(client: HevyClient | null) {
 	const tool = vi.fn();
-	const server = mockOf<McpServer>({ tool, registerTool: tool });
+	const server = { registerTool: tool } satisfies ToolRegistrar;
 	const runtime = createToolRuntime({ client, catalog: {} as never });
 	for (const definition of folderToolDefinitions)
 		registerToolDefinition(server, runtime, definition);
@@ -24,7 +31,7 @@ function handler(tool: { mock: { calls: unknown[][] } }, name: string) {
 		([registeredName]) => registeredName === name,
 	);
 	if (!call) throw new Error(`Tool ${name} was not registered`);
-	return call.at(-1) as (args: object) => Promise<object>;
+	return call.at(-1) as (args: FolderToolArgs) => Promise<object>;
 }
 
 describe("routine folder tools", () => {

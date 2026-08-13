@@ -2,20 +2,20 @@ import { z } from "zod";
 
 const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
-function isObject(value: unknown): value is object {
+function isObject<T>(value: T): value is T & object {
 	return objectSchema.safeParse(value).success;
 }
-function isString(value: unknown): value is string {
+function isString<T>(value: T): value is T & string {
 	return stringSchema.safeParse(value).success;
 }
 
-function scalar(value: unknown): string {
+function scalar<T>(value: T): string {
 	if (value === null || value === undefined) return "null";
 	if (isObject(value)) return JSON.stringify(value);
 	return isString(value) ? value : (JSON.stringify(value) ?? "");
 }
 
-export function human(value: unknown): string {
+export function human<T>(value: T): string {
 	if (Array.isArray(value))
 		return value.length
 			? value.map((item) => human(item)).join("\n")

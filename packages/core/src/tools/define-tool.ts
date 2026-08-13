@@ -31,6 +31,8 @@ type RegisteredToolConfig = {
 	outputSchema?: ReturnType<typeof compactJsonSchema>;
 };
 
+export type ToolRegistrar = Pick<McpServer, "registerTool">;
+
 export type ToolDefinition<
 	TSchema extends Record<string, z.ZodTypeAny>,
 	TResult,
@@ -47,7 +49,7 @@ export type ToolDefinition<
 	);
 
 export function registerToolDefinition(
-	server: McpServer,
+	server: ToolRegistrar,
 	runtime: ToolRuntime,
 	definition: ToolDefinition<Record<string, z.ZodTypeAny>, unknown>,
 ): void {

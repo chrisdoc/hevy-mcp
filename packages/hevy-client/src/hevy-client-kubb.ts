@@ -3,11 +3,11 @@ import { z } from "zod";
 const objectSchema = z.object({}).passthrough();
 const numberSchema = z.number();
 const stringSchema = z.string();
-const isObject = (value: unknown): value is object =>
+const isObject = <T>(value: T): value is T & object =>
 	objectSchema.safeParse(value).success;
-const isNumber = (value: unknown): value is number =>
+const isNumber = <T>(value: T): value is T & number =>
 	numberSchema.safeParse(value).success;
-const isString = (value: unknown): value is string =>
+const isString = <T>(value: T): value is T & string =>
 	stringSchema.safeParse(value).success;
 
 import type { RequestConfig, ResponseConfig } from "./generated/.kubb/fetch.ts";
@@ -207,7 +207,7 @@ function defaultSleep(
 			cleanup();
 			resolve();
 		};
-		const rejectSleep = (reason: unknown) => {
+		const rejectSleep = <T>(reason: T) => {
 			if (settled) return;
 			settled = true;
 			cleanup();
@@ -260,7 +260,7 @@ function withTimeout<T>(
 				signal?.removeEventListener("abort", onAbort);
 				resolve(value);
 			},
-			(error: unknown) => {
+			<T>(error: T) => {
 				if (settled) return;
 				settled = true;
 				if (timer !== undefined) clearTimeout(timer);
@@ -432,7 +432,7 @@ async function parseResponseData(response: Response): Promise<unknown> {
 	}
 }
 
-function getNetworkCode(error: unknown): string {
+function getNetworkCode<T>(error: T): string {
 	return error instanceof DOMException && error.name === "AbortError"
 		? "ETIMEDOUT"
 		: "ERR_NETWORK";

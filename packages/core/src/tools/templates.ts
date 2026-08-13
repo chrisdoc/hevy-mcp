@@ -34,6 +34,11 @@ const isoDateTimeWithOffset = z
 	)
 	.meta({ format: "date-time" });
 
+type ExerciseHistoryQuery = {
+	start_date?: string;
+	end_date?: string;
+};
+
 const getExerciseHistorySchema = {
 	exercise_template_id: nonEmptyId,
 	start_date: isoDateTimeWithOffset.optional(),
@@ -96,10 +101,7 @@ const getExerciseHistoryDefinition = {
 		args: InferToolParams<typeof getExerciseHistorySchema>,
 	) => {
 		const { exercise_template_id, start_date, end_date } = args;
-		const query: {
-			start_date?: string;
-			end_date?: string;
-		} = {};
+		const query: ExerciseHistoryQuery = {};
 		if (start_date) query.start_date = start_date;
 		if (end_date) query.end_date = end_date;
 		const data: GetV1ExerciseHistoryExercisetemplateid200 = await runtime

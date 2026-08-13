@@ -1,5 +1,9 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client, type JSONObject } from "@modelcontextprotocol/client";
+import {
+	Client,
+	type JSONObject,
+	type JSONValue,
+} from "@modelcontextprotocol/client";
 import nock from "nock";
 import {
 	afterAll,
@@ -20,7 +24,7 @@ import { z } from "zod";
 
 const stringSchema = z.string();
 
-function isString(value: unknown): value is string {
+function isString(value: JSONValue | undefined): value is string {
 	return stringSchema.safeParse(value).success;
 }
 

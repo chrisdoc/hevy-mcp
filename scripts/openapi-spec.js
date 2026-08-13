@@ -197,7 +197,7 @@ function fixRefSiblingsRecursive(obj, path = "") {
 			if (propSchema && isObjectLike(propSchema)) {
 				if (propSchema.$ref && Object.keys(propSchema).length > 1) {
 					const ref = propSchema.$ref;
-					const otherProps = { ...propSchema };
+					const otherProps = Object.assign({}, propSchema);
 					delete otherProps.$ref;
 					obj.properties[propName] = { allOf: [{ $ref: ref }, otherProps] };
 					console.log(

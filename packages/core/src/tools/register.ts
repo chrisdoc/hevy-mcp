@@ -1,5 +1,7 @@
-import type { McpServer } from "@modelcontextprotocol/server";
-import { registerToolDefinition } from "./define-tool.js";
+import {
+	registerToolDefinition,
+	type ToolRegistrar,
+} from "./define-tool.js";
 import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
 import { folderToolDefinitions } from "./folders.js";
 import { routineToolDefinitions } from "./routines.js";
@@ -21,7 +23,7 @@ export const hevyToolDefinitions = [
 
 /** Register every Hevy tool in its production ordering. */
 export function registerHevyTools(
-	server: McpServer,
+	server: ToolRegistrar,
 	runtime: ToolRuntime,
 ): void {
 	for (const definition of hevyToolDefinitions) {

@@ -3,6 +3,7 @@
  */
 
 import { ErrorType, resolveErrorPolicy } from "./error-policy.js";
+import type { JSONObject } from "@modelcontextprotocol/server";
 import type { McpToolResponse } from "./response-contracts.js";
 import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "./tool-helpers.js";
 import {
@@ -38,10 +39,6 @@ export function createExecutionErrorProjection(
 ): StructuredExecutionProjection {
   return createExecutionProjection(createSafeErrorDiagnostic(error));
 }
-
-type MutableMcpToolFailureEvent = {
-  -readonly [K in keyof McpToolFailureEvent]: McpToolFailureEvent[K];
-};
 
 export interface McpToolFailureEvent {
   readonly event: "mcp.tool.failure";
@@ -181,8 +178,8 @@ export function withErrorHandling<TParams extends object>(
   ) => Promise<McpToolResponse>,
   context: string,
   onError?: (error: RuntimeValue, context: string, argumentKeyCount: number) => void,
-): (args: Record<string, unknown>, context?: ToolExecutionContext) => Promise<McpToolResponse> {
-  return async (rawArgs: Record<string, unknown>, requestContext?: ToolExecutionContext) => {
+): (args: JSONObject, context?: ToolExecutionContext) => Promise<McpToolResponse> {
+  return async (rawArgs: JSONObject, requestContext?: ToolExecutionContext) => {
     const normalizedArgs = rawArgs ?? {};
     try {
       return await fn(normalizedArgs as TParams, requestContext);

@@ -31,13 +31,13 @@ const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
 const numberSchema = z.number();
 
-function isObject(value: unknown): value is object {
+function isObject<T>(value: T): value is T & object {
 	return objectSchema.safeParse(value).success;
 }
-function isString(value: unknown): value is string {
+function isString<T>(value: T): value is T & string {
 	return stringSchema.safeParse(value).success;
 }
-function isNumber(value: unknown): value is number {
+function isNumber<T>(value: T): value is T & number {
 	return numberSchema.safeParse(value).success;
 }
 const name = serviceName;

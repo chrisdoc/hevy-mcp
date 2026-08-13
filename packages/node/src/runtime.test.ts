@@ -1,10 +1,22 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import type { NodeCliOptions } from "./utils/arguments.js";
 
 const hevyHttpErrorSchema = z
 	.object({ isHevyHttpError: z.literal(true) })
 	.passthrough();
+
+type HevyHttpErrorFixture = {
+	readonly isHevyHttpError: true;
+	readonly status?: number;
+};
+type SdkRequestFixture = {
+	readonly params?: { readonly name?: string };
+};
+type SdkExtraFixture = {
+	readonly signal?: AbortSignal;
+};
 
 const testDoubles = vi.hoisted(() => {
 	const span = {
@@ -18,7 +30,7 @@ const testDoubles = vi.hoisted(() => {
 		onerror: undefined as ((error: Error) => void) | undefined,
 		_requestHandlers: new Map<
 			string,
-			(request: object, extra: object) => Promise<object>
+			(request: SdkRequestFixture, extra: SdkExtraFixture) => Promise<unknown>
 		>(),
 	};
 	const server = {
@@ -85,13 +97,10 @@ vi.mock("./utils/metrics.js", () => ({
 
 vi.mock("@hevy-mcp/hevy-client", () => ({
 	createHevyClient: testDoubles.createHevyClient,
-	isHevyHttpError: (error: object) =>
-		Boolean(
-			error &&
-			hevyHttpErrorSchema.safeParse(error).success &&
-			"isHevyHttpError" in error &&
-			error.isHevyHttpError === true,
-		),
+	isHevyHttpError: (error: Error | string | HevyHttpErrorFixture) => {
+		const parsed = hevyHttpErrorSchema.safeParse(error);
+		return parsed.success && parsed.data.isHevyHttpError === true;
+	},
 }));
 vi.mock("@hevy-mcp/core", () => ({
 	createHevyMcpServer: testDoubles.createHevyMcpServer,
@@ -551,7 +560,7 @@ describe("Node package entrypoint", () => {
 		process.argv.push("--transport", "http");
 		testDoubles.startStreamableHttpServer.mockImplementationOnce(
 			async (
-				_options: object,
+				_options: NodeCliOptions,
 				_apiKey: string,
 				factory: (params: { apiKey: string }) => Promise<unknown>,
 			) => {
@@ -696,7 +705,7 @@ describe("Node package entrypoint", () => {
 		process.argv.push("--transport", "http");
 		testDoubles.startStreamableHttpServer.mockImplementationOnce(
 			async (
-				_options: object,
+				_options: NodeCliOptions,
 				_apiKey: string,
 				factory: (params: { apiKey: string }) => Promise<unknown>,
 			) => {

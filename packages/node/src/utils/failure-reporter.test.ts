@@ -1,6 +1,6 @@
 import type { ErrorEvent } from "@sentry/node";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
-import type { Span } from "@opentelemetry/api";
+import type { Span, SpanContext } from "@opentelemetry/api";
 type ScopeDouble = {
 	setTag: typeof testDoubles.setTag;
 	setContext: typeof testDoubles.setContext;
@@ -45,9 +45,40 @@ const spanDoubles = {
 	setAttributes: vi.fn(),
 	setAttribute: vi.fn(),
 	setStatus: vi.fn(),
-	spanContext: vi.fn(() => ({ traceId: "trace-id", spanId: "span-id" })),
 };
-const span = spanDoubles as unknown as Span;
+const spanContext: SpanContext = {
+	traceId: "trace-id",
+	spanId: "span-id",
+	traceFlags: 1,
+	isRemote: false,
+};
+const span: Span = {
+	spanContext: () => spanContext,
+	setAttribute: (...args: Parameters<Span["setAttribute"]>) => {
+		spanDoubles.setAttribute(...args);
+		return span;
+	},
+	setAttributes: (...args: Parameters<Span["setAttributes"]>) => {
+		spanDoubles.setAttributes(...args);
+		return span;
+	},
+	addEvent: (...args: Parameters<Span["addEvent"]>) => {
+		spanDoubles.addEvent(...args);
+		return span;
+	},
+	setStatus: (...args: Parameters<Span["setStatus"]>) => {
+		spanDoubles.setStatus(...args);
+		return span;
+	},
+	recordException: (...args: Parameters<Span["recordException"]>) => {
+		spanDoubles.recordException(...args);
+	},
+	end: vi.fn(),
+	addLink: vi.fn().mockReturnThis(),
+	addLinks: vi.fn().mockReturnThis(),
+	updateName: vi.fn().mockReturnThis(),
+	isRecording: vi.fn(() => true),
+};
 
 describe("failure reporter", () => {
 	beforeEach(() => {

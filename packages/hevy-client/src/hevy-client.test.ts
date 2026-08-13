@@ -7,7 +7,11 @@ import {
 	HevyHttpError,
 } from "./hevy-http-error.js";
 import { createExecutionSignal, isAbortLike } from "./execution.js";
-function response(data: object, status = 200): Response {
+
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+type JsonObject = { readonly [key: string]: JsonValue };
+
+function response(data: JsonObject, status = 200): Response {
 	return new Response(JSON.stringify(data), {
 		status,
 		headers: { "content-type": "application/json" },

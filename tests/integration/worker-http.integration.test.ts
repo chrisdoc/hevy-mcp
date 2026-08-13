@@ -5,6 +5,7 @@ import { networkInterfaces } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
+	type CallToolResult,
 	type JSONObject,
 	type JSONValue,
 	StreamableHTTPClientTransport,
@@ -14,14 +15,23 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 const stringSchema = z.string();
-const objectSchema = z.object({}).passthrough();
+const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(jsonValueSchema),
+		z.record(z.string(), jsonValueSchema),
+	]),
+);
+const jsonObjectSchema: z.ZodType<JSONObject> = z.record(
+	z.string(),
+	jsonValueSchema,
+);
 
-function isString(value: unknown): value is string {
+function isString(value: JSONValue | null): value is string {
 	return stringSchema.safeParse(value).success;
-}
-
-function isObjectLike(value: unknown): value is object {
-	return objectSchema.safeParse(value).success;
 }
 
 const LOOPBACK = "127.0.0.1";
@@ -157,8 +167,10 @@ function writeJson(
 	response.end(JSON.stringify(body));
 }
 
-function isRecord(value: JSONValue | object | null): value is JSONObject {
-	return value !== null && isObjectLike(value) && !Array.isArray(value);
+function isRecord(
+	value: JSONValue | CallToolResult | null,
+): value is JSONObject {
+	return jsonObjectSchema.safeParse(value).success;
 }
 
 function requireRecord(value: JSONValue, label: string): JSONObject {
@@ -166,6 +178,15 @@ function requireRecord(value: JSONValue, label: string): JSONObject {
 		throw new Error(`Expected ${label} to be an object`);
 	}
 	return value;
+}
+
+function requireJsonObject(
+	value: CallToolResult["structuredContent"],
+	label: string,
+): JSONObject {
+	const parsed = jsonObjectSchema.safeParse(value);
+	if (!parsed.success) throw new Error(`Expected ${label} to be an object`);
+	return parsed.data;
 }
 
 function requireArrayField(record: JSONObject, field: string): JSONValue[] {
@@ -176,17 +197,24 @@ function requireArrayField(record: JSONObject, field: string): JSONValue[] {
 	return value;
 }
 
+interface ToolListPayload {
+	firstItem: JSONObject;
+	items: JSONValue[];
+	text: string;
+}
+
 function requireToolListPayload(
-	result: object,
+	result: CallToolResult,
 	field: string,
-): { firstItem: JSONObject; items: JSONValue[]; text: string } {
-	const resultRecord = result as JSONObject;
+): ToolListPayload {
+	if (!isRecord(result)) throw new Error("Expected a tool result object");
+	const resultRecord = result;
 	const content = requireArrayField(resultRecord, "content");
 	const firstContent = requireRecord(content[0], "content[0]");
 	if (firstContent.type !== "text" || !isString(firstContent.text)) {
 		throw new Error("Expected text content in MCP tool response");
 	}
-	const structuredContent = requireRecord(
+	const structuredContent = requireJsonObject(
 		resultRecord.structuredContent,
 		"structuredContent",
 	);
@@ -197,7 +225,7 @@ function requireToolListPayload(
 
 async function waitForWranglerReady(): Promise<void> {
 	const deadline = Date.now() + STARTUP_TIMEOUT_MS;
-	let lastError: unknown;
+	let lastError: Error | string | undefined;
 	while (Date.now() < deadline) {
 		if (wranglerSpawnError) throw wranglerSpawnError;
 		if (wrangler.exitCode !== null) {
@@ -213,7 +241,7 @@ async function waitForWranglerReady(): Promise<void> {
 			if (response.status === 404) return;
 			lastError = new Error(`Unexpected readiness status ${response.status}`);
 		} catch (error) {
-			lastError = error;
+			lastError = error instanceof Error ? error : String(error);
 		}
 		await delay(100);
 	}

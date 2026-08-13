@@ -13,7 +13,7 @@ import {
 const UTF8_BOM = "\uFEFF";
 /** Maximum escaped characters included in a malformed stdin shape preview. */
 const STDIN_PARSE_PREVIEW_MAX_LENGTH = 200;
-const SAFE_MCP_METHODS: Record<string, true> = {
+const SAFE_MCP_METHODS: SafeMcpMethods = {
 	initialize: true,
 	"notifications/initialized": true,
 	"notifications/cancelled": true,
@@ -32,13 +32,13 @@ const functionSchema = z.function();
 const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
 
-function isFunction(value: unknown): value is (...args: never[]) => unknown {
+function isFunction<T>(value: T): value is T & ((...args: never[]) => void) {
 	return functionSchema.safeParse(value).success;
 }
-function isObject(value: unknown): value is object {
+function isObject<T>(value: T): value is T & object {
 	return objectSchema.safeParse(value).success;
 }
-function isString(value: unknown): value is string {
+function isString<T>(value: T): value is T & string {
 	return stringSchema.safeParse(value).success;
 }
 
@@ -49,6 +49,19 @@ function isMalformedMessageError(error: Error | string): boolean {
 export interface StdioChunkSnapshot {
 	lastChunkByteLength: number;
 	lastChunkStartsWithUtf8Bom: boolean;
+}
+
+interface StdioSpanAttributes {
+	[key: string]: string | number | boolean;
+}
+
+interface SafeMcpMethods {
+	[key: string]: true;
+}
+
+interface StructuralPreview {
+	structuralPreview: string;
+	truncated: boolean;
 }
 
 interface MutableReadBuffer {
@@ -79,10 +92,14 @@ interface SdkPrivateStdioAdapter {
  * If those internals change in a future SDK release, this adapter should fail
  * closed and preserve default transport behavior (no instrumentation patching).
  */
+const mutableStdioServerTransportSchema = z.custom<MutableStdioServerTransport>(
+	(value): value is MutableStdioServerTransport => isObject(value),
+);
+
 function createSdkPrivateStdioAdapter(
 	transport: StdioServerTransport,
 ): SdkPrivateStdioAdapter {
-	const mutableTransport = transport as unknown as MutableStdioServerTransport;
+	const mutableTransport = mutableStdioServerTransportSchema.parse(transport);
 
 	return {
 		wrapOnData(onChunk) {
@@ -187,10 +204,7 @@ function getFailureLocation(
 	return "unknown";
 }
 
-function createStructuralPreview(line: string): {
-	structuralPreview: string;
-	truncated: boolean;
-} {
+function createStructuralPreview(line: string): StructuralPreview {
 	let structuralPreview = "";
 	let inContentRun = false;
 	let inWhitespaceRun = false;
@@ -283,7 +297,7 @@ export function deserializeMessageWithObservability(
 	const normalizedLine = lineHadLeadingBom ? line.slice(1) : line;
 	const lineByteLength = Buffer.byteLength(line);
 	const sessionId = getCurrentMcpSessionId();
-	const attributes: Record<string, string | number | boolean> = {
+	const attributes: StdioSpanAttributes = {
 		"mcp.span.category": "protocol",
 		"mcp.transport": "stdio",
 		"mcp.stdio.parse.line.char_length": line.length,

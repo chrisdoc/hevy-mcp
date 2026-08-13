@@ -103,7 +103,7 @@ function readBuildGlobal<T>(read: () => T): T | undefined {
 	}
 }
 
-function parseBuildString(value: unknown, fallback: string): string {
+function parseBuildString<T>(value: T, fallback: string): string {
 	return z.string().parse(value ?? fallback);
 }
 declare const __HEVY_MCP_NAME__: string | undefined;

@@ -4,8 +4,8 @@ export interface Streams {
 	stdout: (text: string) => void;
 	stderr: (text: string) => void;
 }
-export function writeResult(
-	value: unknown,
+export function writeResult<T>(
+	value: T,
 	json: boolean,
 	streams: Streams,
 ): void {

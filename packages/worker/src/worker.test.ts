@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
+import {
+	WebStandardStreamableHTTPServerTransport,
+	type JSONObject,
+} from "@modelcontextprotocol/server";
 import {
 	createHevyMcpServer,
 	type CreateHevyMcpServerOptions,
@@ -16,12 +19,14 @@ import {
 } from "./worker.js";
 import worker from "./worker.js";
 
-const objectLikeSchema = z.union([
-	z.object({}).passthrough(),
-	z.array(z.unknown()),
-]);
+const objectLikeSchema = z.object({}).passthrough();
+type WorkerLogEntry = {
+	readonly [key: string]: string | number | boolean | null | undefined;
+};
 
-function isObjectLike(value: unknown): value is object {
+function isObjectLike(
+	value: WorkerLogEntry | string | null | undefined,
+): value is WorkerLogEntry {
 	return objectLikeSchema.safeParse(value).success;
 }
 
@@ -36,7 +41,7 @@ afterEach(() => {
 });
 
 function mcpRequest(
-	body: object,
+	body: JSONObject,
 	headers: RequestInit["headers"] = validHeaders,
 ) {
 	return new Request("https://worker.example/mcp", {
@@ -832,7 +837,11 @@ describe("real stateless SDK transport", () => {
 		});
 		await hostileHandler(mcpRequest({}), {});
 
-		const cyclic: { self?: unknown; secret: string } = { secret };
+		type CyclicThrownValue = {
+			self?: CyclicThrownValue;
+			secret: string;
+		};
+		const cyclic: CyclicThrownValue = { secret };
 		cyclic.self = cyclic;
 		const unknownHandler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),

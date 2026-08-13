@@ -2,13 +2,14 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
-import { isNumber, isObjectLike, isString } from "../../scripts/runtime-value-predicates.mjs";
+import { isNumber, isString } from "../../scripts/runtime-value-predicates.mjs";
 import {
 	Client,
 	type JSONObject,
 	type JSONValue,
 	StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
+import { z } from "zod";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 const LOOPBACK = "127.0.0.1";
@@ -55,11 +56,27 @@ function assertCondition(
 		throw new Error(`Live Worker response failed at ${schemaPath}`);
 }
 
+const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(jsonValueSchema),
+		z.record(z.string(), jsonValueSchema),
+	]),
+);
+const jsonObjectSchema: z.ZodType<JSONObject> = z.record(
+	z.string(),
+	jsonValueSchema,
+);
+
 function assertRecord(
-	value: JSONValue | object | null,
+	value: JSONValue | null,
 	schemaPath: string,
 ): asserts value is JSONObject {
-	assertCondition(value !== null && isObjectLike(value), schemaPath);
+	const parsed = jsonObjectSchema.safeParse(value);
+	assertCondition(parsed.success, schemaPath);
 }
 
 function sanitizeDiagnostic(value: string | Error): string {

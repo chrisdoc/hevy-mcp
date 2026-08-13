@@ -1,12 +1,9 @@
-import type { McpServer, ToolAnnotations } from "@modelcontextprotocol/server";
+import type { ToolAnnotations } from "@modelcontextprotocol/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools } from "./register.js";
-
-function mockOf<T>(value: unknown): T {
-	return value as T;
-}
+import type { ToolRegistrar } from "./define-tool.js";
 
 const READ_ONLY_TOOLS = [
 	"get-workouts",
@@ -95,15 +92,14 @@ const EXPECTED_DESCRIPTIONS = {
 } as const;
 
 function registerAllTools() {
-	const tool = vi.fn();
 	const registerTool = vi.fn();
-	const server = mockOf<McpServer>({ tool, registerTool });
+	const server = { registerTool } satisfies ToolRegistrar;
 	const runtime = createToolRuntime({
 		client: null,
 		catalog: {} as ExerciseTemplateCatalog,
 	});
 	registerHevyTools(server, runtime);
-	return { tool, registerTool };
+	return { registerTool };
 }
 
 function getAnnotations(
@@ -113,15 +109,10 @@ function getAnnotations(
 	const registered = spies.registerTool.mock.calls.find(
 		([toolName]) => toolName === name,
 	);
-	if (registered) {
-		return (registered[1] as { annotations: ToolAnnotations }).annotations;
-	}
-	const match = spies.tool.mock.calls.find(([toolName]) => toolName === name);
-	if (!match) {
+	if (!registered) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	// server.tool(name, description, schema, annotations, handler)
-	return match[3] as ToolAnnotations;
+	return (registered[1] as { annotations: ToolAnnotations }).annotations;
 }
 
 function getDescription(
@@ -131,15 +122,10 @@ function getDescription(
 	const registered = spies.registerTool.mock.calls.find(
 		([toolName]) => toolName === name,
 	);
-	if (registered) {
-		return (registered[1] as { description: string }).description;
-	}
-	const match = spies.tool.mock.calls.find(([toolName]) => toolName === name);
-	if (!match) {
+	if (!registered) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	// server.tool(name, description, schema, annotations, handler)
-	return match[1] as string;
+	return (registered[1] as { description: string }).description;
 }
 
 describe("tool annotations", () => {
@@ -147,10 +133,9 @@ describe("tool annotations", () => {
 
 	it("registers all known tools", () => {
 		const byName = (a: string, b: string) => a.localeCompare(b);
-		const registered = [
-			...spies.tool.mock.calls.map(([name]) => name as string),
-			...spies.registerTool.mock.calls.map(([name]) => name as string),
-		].sort(byName);
+		const registered = spies.registerTool.mock.calls
+			.map(([name]) => name as string)
+			.sort(byName);
 		const expected = [
 			...READ_ONLY_TOOLS,
 			...CREATE_TOOLS,

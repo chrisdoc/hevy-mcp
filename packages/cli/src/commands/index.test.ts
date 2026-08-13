@@ -1,6 +1,12 @@
 /* oxlint-disable typescript/unbound-method */
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import type { HevyOperations } from "@hevy-mcp/operations";
+import {
+	routinesGetDescriptor,
+	routinesListDescriptor,
+	workoutsGetDescriptor,
+	workoutsListDescriptor,
+	type HevyOperations,
+} from "@hevy-mcp/operations";
 import { describe, expect, it, vi } from "vitest";
 import type { CliArgs } from "../arguments.js";
 import { ApiResponseError } from "../errors.js";
@@ -74,7 +80,10 @@ const routine = {
 		],
 	},
 };
-const options = (data: object): CliArgs["options"] => ({
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+type JsonObject = { readonly [key: string]: JsonValue };
+
+const options = (data: JsonObject): CliArgs["options"] => ({
 	data: JSON.stringify(data),
 	yes: true,
 });
@@ -88,8 +97,15 @@ describe("execute command/API mappings", () => {
 			pageCount: 3,
 		});
 		const operations = {
-			routines: { list: { execute: executeList } },
-		} as unknown as HevyOperations;
+			routines: {
+				get: { descriptor: routinesGetDescriptor, execute: vi.fn() },
+				list: { descriptor: routinesListDescriptor, execute: executeList },
+			},
+			workouts: {
+				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
+				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+			},
+		} satisfies HevyOperations;
 
 		await expect(
 			execute(
