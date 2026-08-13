@@ -11,20 +11,34 @@ import {
 } from "@hevy-mcp/hevy-client/schemas";
 import { z } from "zod";
 
+const stringSchema = z.string();
+
+function isString<T>(value: T): value is T & string {
+	return stringSchema.safeParse(value).success;
+}
+
+interface UsageInput {
+	[key: string]: string | undefined;
+}
+
 export interface CliArgs {
 	command?: string;
 	subcommand?: string;
 	positionals: string[];
-	options: Record<string, string | boolean>;
+	options: Partial<Record<string, string | boolean>>;
 }
 
 export class UsageError extends Error {}
 
 export class ConfigurationError extends Error {}
 
+function stringOption(value: string | boolean | undefined): string | undefined {
+	return isString(value) ? value : undefined;
+}
+
 function parseForUsage<T>(
 	schema: z.ZodType<T>,
-	value: unknown,
+	value: string | undefined | UsageInput,
 	labels: string | Record<string, string>,
 	messages: Record<string, string> = {},
 ): T {
@@ -33,9 +47,8 @@ function parseForUsage<T>(
 	} catch (error) {
 		if (!(error instanceof z.ZodError)) throw error;
 		const issue = error.issues[0];
-		const key = typeof issue?.path[0] === "string" ? issue.path[0] : undefined;
-		const label =
-			typeof labels === "string" ? labels : (key && labels[key]) || "Value";
+		const key = isString(issue?.path[0]) ? issue.path[0] : undefined;
+		const label = isString(labels) ? labels : (key && labels[key]) || "Value";
 		throw new UsageError(
 			`${label} ${messages[key ?? "_"] ?? issue?.message ?? "is invalid"}`,
 		);
@@ -155,7 +168,10 @@ export function parsePagination(
 } {
 	return parseForUsage(
 		paginationSchema(source),
-		{ page: args.options.page, pageSize: args.options["page-size"] },
+		{
+			page: stringOption(args.options.page),
+			pageSize: stringOption(args.options["page-size"]),
+		},
 		{ page: "--page", pageSize: "--page-size" },
 		{
 			page: "must be a positive integer",
@@ -172,9 +188,9 @@ export function parseWorkoutEventsOptions(args: CliArgs): {
 	return parseForUsage(
 		eventOptionsSchema,
 		{
-			page: args.options.page,
-			pageSize: args.options["page-size"],
-			since: args.options.since,
+			page: stringOption(args.options.page),
+			pageSize: stringOption(args.options["page-size"]),
+			since: stringOption(args.options.since),
 		},
 		{ page: "--page", pageSize: "--page-size", since: "--since" },
 		{
@@ -194,8 +210,8 @@ export function parseExerciseHistoryOptions(
 	return parseForUsage(
 		exerciseHistoryOptionsSchema,
 		{
-			start_date: args.options["start-date"],
-			end_date: args.options["end-date"],
+			start_date: stringOption(args.options["start-date"]),
+			end_date: stringOption(args.options["end-date"]),
 		},
 		{ start_date: "--start-date", end_date: "--end-date" },
 		{
@@ -244,16 +260,21 @@ export function parseSearchQuery(value: string | undefined): string {
 export function parseSearchMaxPages(args: CliArgs): number {
 	return parseForUsage(
 		searchOptionsSchema,
-		{ maxPages: args.options["max-pages"] },
+		{ maxPages: stringOption(args.options["max-pages"]) },
 		{ maxPages: "--max-pages" },
 		{ maxPages: "must be a positive integer no greater than 100" },
 	).maxPages;
 }
 
 export function parseWeeks(args: CliArgs): number {
-	return parseForUsage(weeksSchema, args.options.weeks, "--weeks", {
-		_: "must be a positive integer no greater than 520",
-	});
+	return parseForUsage(
+		weeksSchema,
+		stringOption(args.options.weeks),
+		"--weeks",
+		{
+			_: "must be a positive integer no greater than 520",
+		},
+	);
 }
 
 export function requireMutationConfirmation(args: CliArgs): void {

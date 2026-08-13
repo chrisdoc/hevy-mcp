@@ -5,11 +5,34 @@ import { networkInterfaces } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
+	type CallToolResult,
 	type JSONObject,
+	type JSONValue,
 	StreamableHTTPClientTransport,
 	LATEST_PROTOCOL_VERSION,
 } from "@modelcontextprotocol/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
+
+const stringSchema = z.string();
+const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(jsonValueSchema),
+		z.record(z.string(), jsonValueSchema),
+	]),
+);
+const jsonObjectSchema: z.ZodType<JSONObject> = z.record(
+	z.string(),
+	jsonValueSchema,
+);
+
+function isString(value: JSONValue | null): value is string {
+	return stringSchema.safeParse(value).success;
+}
 
 const LOOPBACK = "127.0.0.1";
 const BROWSER_ORIGIN = "https://chatgpt.com";
@@ -138,24 +161,35 @@ function spawnWrangler(workerPort: number, inspectorPort: number): void {
 function writeJson(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: JSONValue,
 ): void {
 	response.writeHead(status, { "content-type": "application/json" });
 	response.end(JSON.stringify(body));
 }
 
-function isRecord(value: unknown): value is JSONObject {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(
+	value: JSONValue | CallToolResult | null,
+): value is JSONObject {
+	return jsonObjectSchema.safeParse(value).success;
 }
 
-function requireRecord(value: unknown, label: string): JSONObject {
+function requireRecord(value: JSONValue, label: string): JSONObject {
 	if (!isRecord(value)) {
 		throw new Error(`Expected ${label} to be an object`);
 	}
 	return value;
 }
 
-function requireArrayField(record: JSONObject, field: string): unknown[] {
+function requireJsonObject(
+	value: CallToolResult["structuredContent"],
+	label: string,
+): JSONObject {
+	const parsed = jsonObjectSchema.safeParse(value);
+	if (!parsed.success) throw new Error(`Expected ${label} to be an object`);
+	return parsed.data;
+}
+
+function requireArrayField(record: JSONObject, field: string): JSONValue[] {
 	const value = record[field];
 	if (!Array.isArray(value)) {
 		throw new Error(`Expected ${field} to be an array`);
@@ -163,17 +197,24 @@ function requireArrayField(record: JSONObject, field: string): unknown[] {
 	return value;
 }
 
+interface ToolListPayload {
+	firstItem: JSONObject;
+	items: JSONValue[];
+	text: string;
+}
+
 function requireToolListPayload(
-	result: unknown,
+	result: CallToolResult,
 	field: string,
-): { firstItem: JSONObject; items: unknown[]; text: string } {
-	const resultRecord = requireRecord(result, "MCP tool response");
+): ToolListPayload {
+	if (!isRecord(result)) throw new Error("Expected a tool result object");
+	const resultRecord = result;
 	const content = requireArrayField(resultRecord, "content");
 	const firstContent = requireRecord(content[0], "content[0]");
-	if (firstContent.type !== "text" || typeof firstContent.text !== "string") {
+	if (firstContent.type !== "text" || !isString(firstContent.text)) {
 		throw new Error("Expected text content in MCP tool response");
 	}
-	const structuredContent = requireRecord(
+	const structuredContent = requireJsonObject(
 		resultRecord.structuredContent,
 		"structuredContent",
 	);
@@ -184,7 +225,7 @@ function requireToolListPayload(
 
 async function waitForWranglerReady(): Promise<void> {
 	const deadline = Date.now() + STARTUP_TIMEOUT_MS;
-	let lastError: unknown;
+	let lastError: Error | string | undefined;
 	while (Date.now() < deadline) {
 		if (wranglerSpawnError) throw wranglerSpawnError;
 		if (wrangler.exitCode !== null) {
@@ -200,7 +241,7 @@ async function waitForWranglerReady(): Promise<void> {
 			if (response.status === 404) return;
 			lastError = new Error(`Unexpected readiness status ${response.status}`);
 		} catch (error) {
-			lastError = error;
+			lastError = error instanceof Error ? error : String(error);
 		}
 		await delay(100);
 	}
@@ -634,7 +675,7 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 				});
 				const payload = requireToolListPayload(result, call.field);
 				expect(payload.firstItem.id).toBe(call.expectedId);
-				expect(typeof payload.firstItem.id).toBe("string");
+				expect(isString(payload.firstItem.id)).toBe(true);
 				if (call.name === "get-workouts" || call.name === "get-routines") {
 					expect(payload.firstItem.exercise_count).toBe(0);
 					expect(payload.firstItem.set_count).toBe(0);

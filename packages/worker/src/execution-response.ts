@@ -1,13 +1,16 @@
 import { createExecutionErrorProjection } from "@hevy-mcp/core";
+import { z } from "zod";
 
 export interface ExecutionOutcome {
 	readonly execution: ReturnType<typeof createExecutionErrorProjection>;
 	readonly status: number;
 }
 
+type ExecutionErrorInput = Parameters<typeof createExecutionErrorProjection>[0];
+
 /** Compute one bounded projection and transport status for a failure. */
 export function executionOutcome(
-	error: unknown,
+	error: ExecutionErrorInput,
 	fallback: number,
 ): ExecutionOutcome {
 	const execution = createExecutionErrorProjection(error);
@@ -26,14 +29,22 @@ export function executionOutcome(
  * fields always come from the shared core/client taxonomy.
  */
 export function executionResponse(
-	error: unknown,
+	error: ExecutionErrorInput,
 	message: string,
 	statusOrOutcome: number | ExecutionOutcome,
 ): Response {
-	const outcome =
-		typeof statusOrOutcome === "number"
-			? executionOutcome(error, statusOrOutcome)
-			: statusOrOutcome;
+	const parsedStatus = z.number().safeParse(statusOrOutcome);
+	if (parsedStatus.success) {
+		const outcome = executionOutcome(error, parsedStatus.data);
+		return new Response(
+			JSON.stringify({ error: { message, ...outcome.execution } }),
+			{
+				status: outcome.status,
+				headers: { "Content-Type": "application/json" },
+			},
+		);
+	}
+	const outcome = statusOrOutcome as ExecutionOutcome;
 	return new Response(
 		JSON.stringify({ error: { message, ...outcome.execution } }),
 		{
@@ -43,6 +54,9 @@ export function executionResponse(
 	);
 }
 
-export function executionStatus(error: unknown, fallback: number): number {
+export function executionStatus(
+	error: ExecutionErrorInput,
+	fallback: number,
+): number {
 	return executionOutcome(error, fallback).status;
 }

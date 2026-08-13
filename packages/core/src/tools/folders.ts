@@ -15,13 +15,13 @@ import {
 } from "../utils/tool-annotations.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
-import { nonEmptyId, routineFolderInputShape } from "./input-schemas.js";
+import { nonEmptyId, routineFolderInputFields } from "./input-schemas.js";
 import { isExpectedReadNotFound } from "../utils/hevy-error-policy.js";
 
 const getRoutineFolderSchema = { folder_id: nonEmptyId } as const;
 type GetRoutineFolderParams = InferToolParams<typeof getRoutineFolderSchema>;
 
-const createRoutineFolderSchema = routineFolderInputShape;
+const createRoutineFolderSchema = routineFolderInputFields;
 type CreateRoutineFolderParams = InferToolParams<
 	typeof createRoutineFolderSchema
 >;

@@ -6,6 +6,7 @@ import {
 	type CompactRoutinesResult,
 } from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
+import { isFiniteNumber } from "../utils/type-predicates.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
@@ -50,7 +51,7 @@ async function discoverRoutines(
 
 		const pageCount = data?.page_count;
 		if (
-			typeof pageCount !== "number" ||
+			!isFiniteNumber(pageCount) ||
 			!Number.isSafeInteger(pageCount) ||
 			pageCount <= page
 		) {

@@ -9,6 +9,7 @@ import {
 	workspaceById,
 	workspaceByName,
 } from "./repository-control-plane.mjs";
+import { isString } from "./runtime-value-predicates.mjs";
 
 const execFileAsync = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -54,7 +55,7 @@ async function readPackageName(packagePath) {
 
 	try {
 		const packageJson = JSON.parse(contents);
-		return typeof packageJson.name === "string" ? packageJson.name : undefined;
+		return isString(packageJson.name) ? packageJson.name : undefined;
 	} catch {
 		return undefined;
 	}

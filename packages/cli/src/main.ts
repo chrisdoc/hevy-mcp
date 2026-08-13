@@ -4,7 +4,7 @@ import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import { getApiKey } from "./auth.js";
 import { diagnostic, EXIT } from "./errors.js";
 import { readDataSource, type DataSourceReader } from "./input.js";
-import { runRoutes } from "./routes.js";
+import { runRoutes, type CliState } from "./routes.js";
 import { writeResult, type Streams } from "./output/write.js";
 export interface RunCliOptions {
 	argv: string[];
@@ -21,7 +21,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		stdout: (text) => process.stdout.write(text),
 		stderr: (text) => process.stderr.write(text),
 	};
-	const state: { result?: unknown; error?: unknown } = {};
+	const state: CliState = {};
 	const stricliProcess = {
 		stdout: { write: streams.stdout },
 		stderr: { write: streams.stderr },
@@ -59,7 +59,8 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		}
 		return 0;
 	} catch (error) {
-		const failure = diagnostic(error);
+		const normalizedError = error instanceof Error ? error : String(error);
+		const failure = diagnostic(normalizedError);
 		if (options.argv.includes("--json")) {
 			streams.stderr(`${JSON.stringify(failure)}\n`);
 		} else {

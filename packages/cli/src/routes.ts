@@ -15,10 +15,24 @@ import type { HevyOperations } from "@hevy-mcp/operations";
 import { execute } from "./commands/index.js";
 import type { CliArgs } from "./arguments.js";
 import type { DataSourceReader } from "./input.js";
+import { z } from "zod";
 
-declare const __HEVY_CLI_VERSION__: string;
+declare const __HEVY_CLI_VERSION__: string | undefined;
 const cliVersion =
-	typeof __HEVY_CLI_VERSION__ === "string" ? __HEVY_CLI_VERSION__ : "0.0.0";
+	z.string().safeParse(
+		(() => {
+			try {
+				return __HEVY_CLI_VERSION__;
+			} catch {
+				return undefined;
+			}
+		})(),
+	).data ?? "0.0.0";
+
+export interface CliState {
+	result?: unknown;
+	error?: unknown;
+}
 
 export interface CliRuntimeContext extends CommandContext {
 	readonly process: StricliProcess;
@@ -26,13 +40,12 @@ export interface CliRuntimeContext extends CommandContext {
 	operations?: HevyOperations;
 	now: () => Date;
 	readDataSource: DataSourceReader;
-	state: {
-		result?: unknown;
-		error?: unknown;
-	};
+	state: CliState;
 }
 
-type CliFlags = object;
+type CliFlags = {
+	readonly [key: string]: string | boolean | undefined;
+};
 type JsonFlags = { json?: boolean };
 type SearchFlags = JsonFlags & { "max-pages"?: string };
 type PageFlags = JsonFlags & { page?: string; "page-size"?: string };
@@ -92,13 +105,13 @@ const summaryFlags = {
 function toArgs(
 	command: string,
 	subcommand: string | undefined,
-	flags: object,
+	flags: CliFlags,
 	positionals: string[],
 ): CliArgs {
 	const options: Record<string, string | boolean> = {};
 	for (const [name, value] of Object.entries(flags)) {
-		if (typeof value === "string" || typeof value === "boolean")
-			options[name] = value;
+		const parsed = z.union([z.string(), z.boolean()]).safeParse(value);
+		if (parsed.success) options[name] = parsed.data;
 	}
 	return { command, subcommand, positionals, options };
 }
@@ -126,7 +139,7 @@ async function invoke(
 	}
 }
 
-function noArgsCommand<FLAGS extends object>(
+function noArgsCommand<FLAGS extends CliFlags>(
 	command: string,
 	subcommand: string | undefined,
 	brief: string,
@@ -141,7 +154,7 @@ function noArgsCommand<FLAGS extends object>(
 	});
 }
 
-function idCommand<FLAGS extends object>(
+function idCommand<FLAGS extends CliFlags>(
 	command: string,
 	subcommand: string,
 	brief: string,

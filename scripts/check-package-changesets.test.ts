@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
 const scriptPath = fileURLToPath(
-	new URL("./check-package-changesets.mjs", import.meta.url),
+	new URL("./check-package-changesets.mjs", import.meta.url).href,
 );
 const fixtureDirectories = new Set<string>();
 const fixtureGitIdentity = {
@@ -99,6 +99,7 @@ async function createFixture(
 		"scripts/repository-control-plane.mjs",
 		"scripts/control-plane-models.mjs",
 		"scripts/control-plane-validation.mjs",
+		"scripts/runtime-value-predicates.mjs",
 		"repository/topology.json",
 		"repository/artifact-provenance.json",
 		"repository/validation-lanes.json",
@@ -107,7 +108,7 @@ async function createFixture(
 			root,
 			relativePath,
 			await readFile(
-				join(fileURLToPath(new URL("..", import.meta.url)), relativePath),
+				join(fileURLToPath(new URL("..", import.meta.url).href), relativePath),
 				"utf8",
 			),
 		);

@@ -1,5 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
+import type {
+	JSONRPCRequest,
+	McpServer,
+	PerRequestMessageExtra,
+} from "@modelcontextprotocol/server";
 import { createSafeErrorDiagnostic, ErrorType } from "@hevy-mcp/core";
 import type { NodeTransport } from "./arguments.js";
 import {
@@ -8,20 +13,34 @@ import {
 } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { captureFailure, tracer } from "./telemetry.js";
+import { z } from "zod";
 
-type SdkRequestHandler = (request: unknown, extra: unknown) => Promise<unknown>;
+type SdkRequestHandler = (
+	request: JSONRPCRequest,
+	extra: PerRequestMessageExtra,
+) => Promise<unknown>;
 
 interface SdkProtocolInternals {
 	_requestHandlers?: Map<string, SdkRequestHandler>;
 }
 
-interface ToolRequestLike {
-	params?: { name?: unknown };
-}
-
 interface SdkToolErrorHost {
 	createToolError?: (message: string) => unknown;
+	onerror?: (error: Error) => void;
 }
+
+const sdkToolErrorHostSchema = z.custom<SdkToolErrorHost>(
+	(value) =>
+		z.object({ createToolError: z.function() }).passthrough().safeParse(value)
+			.success,
+);
+const sdkProtocolInternalsSchema = z.custom<SdkProtocolInternals>(
+	(value) =>
+		z
+			.object({ _requestHandlers: z.instanceof(Map) })
+			.passthrough()
+			.safeParse(value).success,
+);
 
 interface ToolResultLike {
 	isError?: unknown;
@@ -30,6 +49,16 @@ interface ToolResultLike {
 type FailureAttributes = Record<string, string | number | boolean>;
 type SdkFailureKind = "protocol" | "tool_call" | "validation";
 type SdkValidationKind = "input" | "output" | "tool_not_found" | "unknown";
+
+interface SdkFailureTaxonomy {
+	readonly [key: string]: { errorType: ErrorType; errorCategory: string };
+}
+
+interface SdkValidationResult {
+	kind: SdkValidationKind;
+	expected: boolean;
+	toolName?: string;
+}
 
 type SdkFailureOptions = {
 	expected?: boolean;
@@ -41,10 +70,7 @@ const sdkRequestStateStorage = new AsyncLocalStorage<{
 	expectedValidation?: boolean;
 }>();
 const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
-const SDK_FAILURE_TAXONOMY: Record<
-	SdkFailureKind,
-	{ errorType: ErrorType; errorCategory: string }
-> = {
+const SDK_FAILURE_TAXONOMY: SdkFailureTaxonomy = {
 	protocol: {
 		errorType: ErrorType.UNKNOWN_ERROR,
 		errorCategory: "McpSdkProtocolFailure",
@@ -60,26 +86,25 @@ const SDK_FAILURE_TAXONOMY: Record<
 };
 
 function createFailureAttributes(
-	error: unknown,
+	error: Error | string,
 	phase: "discovery" | "sdk",
 	errorType: string,
 	errorCategory: string,
 ): FailureAttributes {
 	const diagnostic = createSafeErrorDiagnostic(error);
-	return {
+	const attributes: FailureAttributes = {
 		"mcp.failure.phase": phase,
 		"error.type": errorType,
 		"error.category": errorCategory,
-		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
-		...(diagnostic.status !== undefined
-			? { "http.response.status_code": diagnostic.status }
-			: {}),
-		...(diagnostic.method ? { "http.request.method": diagnostic.method } : {}),
-		...(diagnostic.endpoint
-			? { "hevy.api.endpoint": diagnostic.endpoint }
-			: {}),
 		...projectExecutionAttributes(diagnostic),
 	};
+	if (diagnostic.code) attributes["error.code"] = diagnostic.code;
+	if (diagnostic.status !== undefined)
+		attributes["http.response.status_code"] = diagnostic.status;
+	if (diagnostic.method) attributes["http.request.method"] = diagnostic.method;
+	if (diagnostic.endpoint)
+		attributes["hevy.api.endpoint"] = diagnostic.endpoint;
+	return attributes;
 }
 
 function enrichActiveSdkSpan(attributes: FailureAttributes): void {
@@ -90,17 +115,19 @@ function enrichActiveSdkSpan(attributes: FailureAttributes): void {
 	}
 }
 
-function getSdkToolName(request: unknown): string {
-	if (!request || typeof request !== "object") return "unknown";
-	const candidate = (request as ToolRequestLike).params?.name;
-	return typeof candidate === "string" && SAFE_TOOL_NAME_PATTERN.test(candidate)
+function getSdkToolName(request: JSONRPCRequest): string {
+	const parsed = z
+		.object({ params: z.object({ name: z.string().optional() }).optional() })
+		.safeParse(request);
+	const candidate = parsed.success ? parsed.data.params?.name : undefined;
+	return candidate && SAFE_TOOL_NAME_PATTERN.test(candidate)
 		? candidate
 		: "unknown";
 }
 
 function markSdkToolFailure(
 	span: Span,
-	error: unknown,
+	error: Error | string,
 	toolName = sdkToolNameStorage.getStore() ?? "unknown",
 	kind: SdkFailureKind = "tool_call",
 	options: SdkFailureOptions = {},
@@ -114,10 +141,9 @@ function markSdkToolFailure(
 			taxonomy.errorType,
 			taxonomy.errorCategory,
 		),
-		...(options.validationKind
-			? { "mcp.validation.kind": options.validationKind }
-			: {}),
 	};
+	if (options.validationKind)
+		attributes["mcp.validation.kind"] = options.validationKind;
 	span.addEvent("mcp.tool.failure", attributes);
 	span.setAttribute("error.type", taxonomy.errorType);
 	captureFailure(error, {
@@ -162,11 +188,14 @@ function installProtocolErrorTracking(
 			tracer.startActiveSpan(
 				"mcp.sdk.failure",
 				{
-					attributes: {
-						"mcp.span.category": "protocol",
-						"mcp.transport": transport,
-						...(sessionId ? { "mcp.session.id": sessionId } : {}),
-					},
+					attributes: (() => {
+						const spanAttributes: FailureAttributes = {
+							"mcp.span.category": "protocol",
+							"mcp.transport": transport,
+						};
+						if (sessionId) spanAttributes["mcp.session.id"] = sessionId;
+						return spanAttributes;
+					})(),
 				},
 				(span) => {
 					span.addEvent("mcp.tool.failure", {
@@ -186,11 +215,7 @@ function installProtocolErrorTracking(
 	};
 }
 
-function classifySdkValidation(message: string): {
-	kind: SdkValidationKind;
-	expected: boolean;
-	toolName?: string;
-} {
+function classifySdkValidation(message: string): SdkValidationResult {
 	const inputValidation =
 		/^Input validation error: Invalid arguments for tool ([A-Za-z0-9][A-Za-z0-9._-]{0,63})(?::|$)/u.exec(
 			message,
@@ -220,8 +245,10 @@ function classifySdkValidation(message: string): {
 	return { kind: "unknown", expected: false };
 }
 
-function installValidationErrorTracking(server: object): void {
-	const toolErrorHost = server as SdkToolErrorHost;
+function installValidationErrorTracking(server: McpServer): void {
+	const parsedHost = sdkToolErrorHostSchema.safeParse(server);
+	if (!parsedHost.success) return;
+	const toolErrorHost = parsedHost.data;
 	const previousCreateToolError = toolErrorHost.createToolError;
 	if (!previousCreateToolError) return;
 	const createToolError = previousCreateToolError.bind(server);
@@ -275,13 +302,13 @@ function installToolCallTracking(
 	handlers.set("tools/call", (request, extra) => {
 		const sessionId = getCurrentMcpSessionId();
 		const toolName = getSdkToolName(request);
-		const attributes = {
+		const attributes: FailureAttributes = {
 			"mcp.span.category": "protocol",
 			"mcp.transport": transport,
 			"mcp.operation.kind": "tool",
 			"mcp.tool.name": toolName,
-			...(sessionId ? { "mcp.session.id": sessionId } : {}),
 		};
+		if (sessionId) attributes["mcp.session.id"] = sessionId;
 		enrichActiveSdkSpan(attributes);
 		return sdkToolNameStorage.run(toolName, () =>
 			sdkRequestStateStorage.run({}, () =>
@@ -311,12 +338,22 @@ function installToolCallTracking(
 									? classifySdkValidation(error.message)
 									: { kind: "unknown" as const, expected: false };
 							if (validation.kind === "tool_not_found") {
-								markSdkToolFailure(span, error, toolName, "validation", {
-									expected: true,
-									validationKind: validation.kind,
-								});
+								markSdkToolFailure(
+									span,
+									error instanceof Error ? error : String(error),
+									toolName,
+									"validation",
+									{
+										expected: true,
+										validationKind: validation.kind,
+									},
+								);
 							} else {
-								markSdkToolFailure(span, error, toolName);
+								markSdkToolFailure(
+									span,
+									error instanceof Error ? error : String(error),
+									toolName,
+								);
 							}
 							throw error;
 						} finally {
@@ -339,11 +376,14 @@ function installDiscoveryTracking(
 		return tracer.startActiveSpan(
 			"mcp.server.discover",
 			{
-				attributes: {
-					"mcp.span.category": "discovery",
-					"mcp.transport": getCurrentMcpTransport(),
-					...(sessionId ? { "mcp.session.id": sessionId } : {}),
-				},
+				attributes: (() => {
+					const attributes: FailureAttributes = {
+						"mcp.span.category": "discovery",
+						"mcp.transport": getCurrentMcpTransport(),
+					};
+					if (sessionId) attributes["mcp.session.id"] = sessionId;
+					return attributes;
+				})(),
 			},
 			async (span) => {
 				try {
@@ -351,14 +391,20 @@ function installDiscoveryTracking(
 					span.setStatus({ code: SpanStatusCode.OK });
 					return result;
 				} catch (error) {
+					const normalizedError =
+						error instanceof Error ? error : String(error);
 					const attributes = createFailureAttributes(
-						error,
+						normalizedError,
 						"discovery",
 						ErrorType.UNKNOWN_ERROR,
 						"McpServerDiscoveryFailure",
 					);
 					span.addEvent("mcp.discovery.failure", attributes);
-					captureFailure(error, { kind: "discovery", attributes, span });
+					captureFailure(normalizedError, {
+						kind: "discovery",
+						attributes,
+						span,
+					});
 					throw error;
 				} finally {
 					span.end();
@@ -369,13 +415,14 @@ function installDiscoveryTracking(
 }
 
 export function installSdkErrorTracking(
-	server: { server?: { onerror?: (error: Error) => void } },
+	server: McpServer,
 	transport: NodeTransport,
 ): void {
 	installProtocolErrorTracking(server, transport);
 	installValidationErrorTracking(server);
-	const handlers = (server.server as SdkProtocolInternals | undefined)
-		?._requestHandlers;
+	const parsedInternals = sdkProtocolInternalsSchema.safeParse(server.server);
+	if (!parsedInternals.success) return;
+	const handlers = parsedInternals.data._requestHandlers;
 	if (!(handlers instanceof Map)) return;
 	installInitializeEnrichment(handlers, transport);
 	installToolCallTracking(handlers, transport);

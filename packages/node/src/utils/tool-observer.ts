@@ -22,10 +22,19 @@ import {
 import type { McpClientMetricAttributes } from "./mcp-session-observability.js";
 import { projectExecutionAttributes } from "./execution-telemetry.js";
 import { captureFailure, tracer } from "./telemetry.js";
+import type { TelemetryAttributes } from "./failure-reporter.js";
+import { z } from "zod";
 
-type AttributeValue = string | number | boolean;
+type ToolMetricAttributes = McpClientMetricAttributes & {
+	readonly tool_name: string;
+};
 const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
 const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
+const stringSchema = z.string();
+
+function isString<T>(value: T): value is T & string {
+	return stringSchema.safeParse(value).success;
+}
 
 const WORKFLOW_PAGINATION_RESOURCES = new Set([
 	"workouts",
@@ -49,7 +58,7 @@ function taxonomyAttributes(
 function metricAttributes(
 	invocation: SafeToolInvocation,
 	clientAttributes: McpClientMetricAttributes,
-): Record<string, string> {
+): ToolMetricAttributes {
 	return {
 		tool_name: invocation.name,
 		...taxonomyAttributes(invocation),
@@ -60,11 +69,11 @@ function metricAttributes(
 function createAttributes(
 	invocation: SafeToolInvocation,
 	userHash?: string,
-): Record<string, AttributeValue> {
+): TelemetryAttributes {
 	const clientMetadata = getCurrentMcpClientMetadata();
 	const isPrompt = invocation.kind === "prompt";
 	const sessionId = getCurrentMcpSessionId();
-	const attributes: Record<string, AttributeValue> = {
+	const attributes: TelemetryAttributes = {
 		"mcp.span.category": DISCOVERY_TOOL_NAMES.has(invocation.name)
 			? "discovery"
 			: "tool",
@@ -75,12 +84,12 @@ function createAttributes(
 		"mcp.client.version": clientMetadata.version,
 		"mcp.protocol.version": clientMetadata.protocolVersion,
 		"mcp.transport": getCurrentMcpTransport(),
-		...(userHash ? { "user.hash": userHash } : {}),
 		"mcp.tool.args.key_count_bucket":
 			invocation.argumentKeyCountBucket ?? "unknown",
 		"mcp.tool.args.keys": invocation.argumentKeys?.join(",") ?? "",
-		...(sessionId ? { "mcp.session.id": sessionId } : {}),
 	};
+	if (userHash) attributes["user.hash"] = userHash;
+	if (sessionId) attributes["mcp.session.id"] = sessionId;
 	for (const key of Object.keys(invocation.argumentPresence ?? {})) {
 		attributes[`mcp.tool.args.${key}.present`] = true;
 	}
@@ -153,26 +162,25 @@ function createFailureAttributes(
 	invocation: SafeToolInvocation,
 	completion: SafeToolCompletion,
 	errorType = completion.errorType ?? "UNKNOWN_ERROR",
-): Record<string, AttributeValue> {
+): TelemetryAttributes {
 	const diagnostic = completion.error;
 	const execution = projectExecutionAttributes(
 		createExecutionProjection(diagnostic),
 	);
-	return {
+	const attributes: TelemetryAttributes = {
 		[invocation.kind === "prompt" ? "mcp.prompt.name" : "mcp.tool.name"]:
 			invocation.name,
 		"error.type": errorType,
 		"error.category": diagnostic?.category ?? "UnknownError",
-		...(diagnostic?.code ? { "error.code": diagnostic.code } : {}),
-		...(diagnostic?.status !== undefined
-			? { "http.response.status_code": diagnostic.status }
-			: {}),
-		...(diagnostic?.method ? { "http.request.method": diagnostic.method } : {}),
-		...(diagnostic?.endpoint
-			? { "hevy.api.endpoint": diagnostic.endpoint }
-			: {}),
 		...execution,
 	};
+	if (diagnostic?.code) attributes["error.code"] = diagnostic.code;
+	if (diagnostic?.status !== undefined)
+		attributes["http.response.status_code"] = diagnostic.status;
+	if (diagnostic?.method) attributes["http.request.method"] = diagnostic.method;
+	if (diagnostic?.endpoint)
+		attributes["hevy.api.endpoint"] = diagnostic.endpoint;
+	return attributes;
 }
 
 function setSafeErrorAttributes(
@@ -212,8 +220,7 @@ export function createNodeToolObserver(
 	options: NodeToolObserverOptions = {},
 ): ToolObserver {
 	const userHash =
-		typeof options.userHash === "string" &&
-		SAFE_USER_HASH_PATTERN.test(options.userHash)
+		isString(options.userHash) && SAFE_USER_HASH_PATTERN.test(options.userHash)
 			? options.userHash
 			: undefined;
 	return {

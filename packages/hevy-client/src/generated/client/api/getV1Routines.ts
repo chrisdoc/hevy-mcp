@@ -3,18 +3,18 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1RoutinesQueryResponse,
   GetV1RoutinesQueryParams,
   GetV1RoutinesHeaderParams,
   GetV1Routines400,
 } from "../types/GetV1Routines.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1RoutinesUrl() {
   const res = { method: "GET", url: `/v1/routines` as const };

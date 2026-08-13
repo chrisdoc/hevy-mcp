@@ -41,7 +41,7 @@ export function recordFailure(
 	state: ScenarioState,
 	iteration: number,
 	phase: PerformanceFailure["phase"],
-	error: unknown,
+	error: Error | string,
 ) {
 	state.failures.push({
 		iteration,

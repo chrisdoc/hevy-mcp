@@ -1,7 +1,13 @@
 {
 	"$schema": "./node_modules/oxlint/configuration_schema.json",
 	"plugins": ["typescript", "unicorn", "oxc"],
-	"jsPlugins": ["@e18e/eslint-plugin"],
+	"jsPlugins": [
+		"@e18e/eslint-plugin",
+		{
+			"name": "anti-slop",
+			"specifier": "./tools/oxlint/anti-slop/index.ts"
+		}
+	],
 	"options": {
 		"typeAware": true
 	},
@@ -58,7 +64,17 @@
 		"e18e/prefer-date-now": "error",
 		"e18e/prefer-regex-test": "error",
 		"e18e/prefer-array-from-map": "error",
-		"e18e/prefer-object-has-own": "error"
+		"e18e/prefer-object-has-own": "error",
+		"anti-slop/no-chained-type-assertions": "error",
+		"anti-slop/no-conditional-empty-object-spread": "error",
+		"anti-slop/no-known-value-widening": "error",
+		"anti-slop/no-object-parameters": "error",
+		"anti-slop/no-runtime-typeof": "error",
+		"anti-slop/no-shape-in-symbol-names": "error",
+		"anti-slop/no-unknown-parameters": "error",
+		"anti-slop/no-unknown-type-aliases": "error",
+		"anti-slop/no-unsafe-dictionary-type": "error",
+		"anti-slop/no-widen-then-assert": "error"
 	},
 	"env": {
 		"builtin": true

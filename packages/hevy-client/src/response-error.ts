@@ -1,3 +1,14 @@
+import { z } from "zod";
+
+const objectSchema = z.object({}).passthrough();
+const stringSchema = z.string();
+function isObject<T>(value: T): value is T & object {
+	return objectSchema.safeParse(value).success;
+}
+function isString<T>(value: T): value is T & string {
+	return stringSchema.safeParse(value).success;
+}
+
 const MAX_RESPONSE_ERROR_INPUT_LENGTH = 4_096;
 const MAX_RESPONSE_ERROR_LENGTH = 256;
 const RESPONSE_ERROR_KEYS = ["error", "message", "detail"] as const;
@@ -21,25 +32,25 @@ type ResponseErrorBody = {
 	readonly detail?: unknown;
 };
 
-function isResponseErrorBody(value: unknown): value is ResponseErrorBody {
-	return typeof value === "object" && value !== null;
+function isResponseErrorBody<T>(value: T): value is T & ResponseErrorBody {
+	return isObject(value);
 }
 
-function ownValue(value: object, key: PropertyKey): unknown {
+function ownValue(value: ResponseErrorBody, key: PropertyKey): unknown {
 	const descriptor = Object.getOwnPropertyDescriptor(value, key);
 	return descriptor && "value" in descriptor ? descriptor.value : undefined;
 }
 
-function responseErrorText(value: unknown): string | undefined {
+function responseErrorText<T>(value: T): string | undefined {
 	if (!isResponseErrorBody(value)) return undefined;
 	for (const key of RESPONSE_ERROR_KEYS) {
 		const candidate = ownValue(value, key);
-		if (typeof candidate === "string") return candidate;
+		if (isString(candidate)) return candidate;
 		if (!isResponseErrorBody(candidate)) continue;
 		const nestedMessage = ownValue(candidate, "message");
-		if (typeof nestedMessage === "string") return nestedMessage;
+		if (isString(nestedMessage)) return nestedMessage;
 		const nestedDetail = ownValue(candidate, "detail");
-		if (typeof nestedDetail === "string") return nestedDetail;
+		if (isString(nestedDetail)) return nestedDetail;
 	}
 	return undefined;
 }
@@ -85,7 +96,7 @@ function sanitizeResponseErrorText(value: string): string {
 }
 
 /** Extract one bounded, sanitized diagnostic string from an upstream error body. */
-export function extractSafeResponseError(data: unknown): string | undefined {
+export function extractSafeResponseError<T>(data: T): string | undefined {
 	try {
 		const text = responseErrorText(data);
 		if (!text) return undefined;

@@ -3,11 +3,12 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PostV1RoutinesMutationRequest,
   PostV1RoutinesMutationResponse,
@@ -15,7 +16,6 @@ import type {
   PostV1Routines400,
   PostV1Routines403,
 } from "../types/PostV1Routines.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPostV1RoutinesUrl() {
   const res = { method: "POST", url: `/v1/routines` as const };

@@ -3,7 +3,9 @@ import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import { ErrorType } from "./error-policy.js";
 import { createErrorResponse, withErrorHandling } from "./error-handler.js";
 
-function httpError(status: number, data?: unknown, headers?: Headers) {
+type ErrorPayload = { readonly error: string };
+
+function httpError(status: number, data?: ErrorPayload, headers?: Headers) {
 	return new HevyHttpError(`HTTP ${status}`, {
 		status,
 		statusText: "Error",
@@ -194,7 +196,8 @@ describe("createErrorResponse", () => {
 	});
 
 	it("does not expose non-Error thrown values in client responses", () => {
-		const cyclic: { self?: object } = {};
+		type CyclicThrownValue = { self?: CyclicThrownValue };
+		const cyclic: CyclicThrownValue = {};
 		cyclic.self = cyclic;
 		const cases: unknown[] = [
 			"Bearer secret-string",

@@ -1,3 +1,6 @@
+import { isString } from "./type-predicates.js";
+import type { RuntimeValue } from "./type-predicates.js";
+
 /**
  * Preprocessor to handle MCP clients that send JSON-stringified arrays
  * instead of native arrays for complex parameters.
@@ -8,9 +11,9 @@
  * @param val - The value to potentially parse
  * @returns The parsed array if val is a valid JSON string, otherwise returns val unchanged
  */
-export function parseJsonArray(val: unknown): unknown {
+export function parseJsonArray(val: RuntimeValue): RuntimeValue {
 	// Handle case where MCP client sends JSON string instead of array
-	if (typeof val === "string") {
+	if (isString(val)) {
 		try {
 			return JSON.parse(val);
 		} catch {

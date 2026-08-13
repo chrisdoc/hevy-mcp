@@ -1,14 +1,20 @@
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/server";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import {
+	createMockHevyClient,
+	createMockMcpServer,
+} from "../../test-fixtures/mock-hevy.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
 
-function register(client: HevyClient | null) {
-	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+type BodyMeasurementToolArgs = Parameters<
+	(typeof bodyMeasurementToolDefinitions)[number]["execute"]
+>[1];
+
+function register(client: ReturnType<typeof createMockHevyClient> | null) {
+	const { server, registerTool: tool } = createMockMcpServer();
 	const runtime = createToolRuntime({ client, catalog: {} as never });
 	for (const definition of bodyMeasurementToolDefinitions)
 		registerToolDefinition(server, runtime, definition);
@@ -20,19 +26,22 @@ function handler(tool: { mock: { calls: unknown[][] } }, name: string) {
 		([registeredName]) => registeredName === name,
 	);
 	if (!call) throw new Error(`Tool ${name} was not registered`);
-	return call.at(-1) as (args: object) => Promise<object>;
+	return call.at(-1) as <TArgs extends BodyMeasurementToolArgs>(
+		args: TArgs,
+	) => Promise<object>;
 }
 
 describe("body measurement tools", () => {
 	it("maps snake_case list and date arguments to generated client methods", async () => {
-		const client = {
-			getBodyMeasurements: vi
-				.fn()
-				.mockResolvedValue({ body_measurements: [], page_count: 1 }),
-			getBodyMeasurement: vi
-				.fn()
-				.mockResolvedValue({ date: "2025-01-01", weight_kg: 80 }),
-		} as unknown as HevyClient;
+		const client = createMockHevyClient();
+		client.getBodyMeasurements.mockResolvedValue({
+			body_measurements: [],
+			page_count: 1,
+		});
+		client.getBodyMeasurement.mockResolvedValue({
+			date: "2025-01-01",
+			weight_kg: 80,
+		});
 		const tool = register(client);
 		await handler(tool, "get-body-measurements")({ page: 2, page_size: 10 });
 		await handler(tool, "get-body-measurement")({ date: "2025-01-01" });
@@ -44,10 +53,9 @@ describe("body measurement tools", () => {
 	});
 
 	it("creates and updates numeric fields while omitting explicit nulls", async () => {
-		const client = {
-			createBodyMeasurement: vi.fn().mockResolvedValue(undefined),
-			updateBodyMeasurement: vi.fn().mockResolvedValue(undefined),
-		} as unknown as HevyClient;
+		const client = createMockHevyClient();
+		client.createBodyMeasurement.mockImplementation(() => undefined);
+		client.updateBodyMeasurement.mockImplementation(() => undefined);
 		const tool = register(client);
 		await handler(
 			tool,
@@ -67,13 +75,17 @@ describe("body measurement tools", () => {
 	});
 
 	it("rejects camelCase measurement fields and effectively empty updates", async () => {
-		const client = { updateBodyMeasurement: vi.fn() } as unknown as HevyClient;
+		const client = createMockHevyClient();
 		const tool = register(client);
-		const definition = tool.mock.calls.find(
+		const registration = tool.mock.calls.find(
 			([name]) => name === "update-body-measurement",
-		)?.[1] as { inputSchema: { parse(value: unknown): unknown } };
+		);
+		if (!registration) throw new Error("Tool was not registered");
+		const inputSchema = registration[1]?.inputSchema;
+		if (!inputSchema) throw new Error("Tool input schema is missing");
+		const parsedInputSchema = z.instanceof(z.ZodType).parse(inputSchema);
 		expect(() =>
-			definition.inputSchema.parse({ date: "2025-01-01", weightKg: 80 }),
+			parsedInputSchema.parse({ date: "2025-01-01", weightKg: 80 }),
 		).toThrow();
 		const response = await handler(
 			tool,

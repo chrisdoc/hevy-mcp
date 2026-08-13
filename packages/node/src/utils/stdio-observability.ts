@@ -1,4 +1,4 @@
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { deserializeMessage } from "@modelcontextprotocol/server";
 import type { JSONRPCMessage } from "@modelcontextprotocol/server";
@@ -12,8 +12,8 @@ import {
 } from "./mcp-session-observability.js";
 const UTF8_BOM = "\uFEFF";
 /** Maximum escaped characters included in a malformed stdin shape preview. */
-const STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH = 200;
-const SAFE_MCP_METHODS: Record<string, true> = {
+const STDIN_PARSE_PREVIEW_MAX_LENGTH = 200;
+const SAFE_MCP_METHODS: SafeMcpMethods = {
 	initialize: true,
 	"notifications/initialized": true,
 	"notifications/cancelled": true,
@@ -28,14 +28,40 @@ const SAFE_MCP_METHODS: Record<string, true> = {
 const REDACTED_CONTENT_MARKER = "[REDACTED]";
 
 const MAX_MALFORMED_LINES_PER_READ = 100;
+const functionSchema = z.function();
+const objectSchema = z.object({}).passthrough();
+const stringSchema = z.string();
 
-function isMalformedMessageError(error: unknown): boolean {
+function isFunction<T>(value: T): value is T & ((...args: never[]) => void) {
+	return functionSchema.safeParse(value).success;
+}
+function isObject<T>(value: T): value is T & object {
+	return objectSchema.safeParse(value).success;
+}
+function isString<T>(value: T): value is T & string {
+	return stringSchema.safeParse(value).success;
+}
+
+function isMalformedMessageError(error: Error | string): boolean {
 	return error instanceof SyntaxError || error instanceof ZodError;
 }
 
 export interface StdioChunkSnapshot {
 	lastChunkByteLength: number;
 	lastChunkStartsWithUtf8Bom: boolean;
+}
+
+interface StdioSpanAttributes {
+	[key: string]: string | number | boolean;
+}
+
+interface SafeMcpMethods {
+	[key: string]: true;
+}
+
+interface StructuralPreview {
+	structuralPreview: string;
+	truncated: boolean;
 }
 
 interface MutableReadBuffer {
@@ -66,15 +92,19 @@ interface SdkPrivateStdioAdapter {
  * If those internals change in a future SDK release, this adapter should fail
  * closed and preserve default transport behavior (no instrumentation patching).
  */
+const mutableStdioServerTransportSchema = z.custom<MutableStdioServerTransport>(
+	(value): value is MutableStdioServerTransport => isObject(value),
+);
+
 function createSdkPrivateStdioAdapter(
 	transport: StdioServerTransport,
 ): SdkPrivateStdioAdapter {
-	const mutableTransport = transport as unknown as MutableStdioServerTransport;
+	const mutableTransport = mutableStdioServerTransportSchema.parse(transport);
 
 	return {
 		wrapOnData(onChunk) {
 			const originalOnData = mutableTransport._ondata;
-			if (typeof originalOnData !== "function") {
+			if (!isFunction(originalOnData)) {
 				return;
 			}
 
@@ -85,7 +115,7 @@ function createSdkPrivateStdioAdapter(
 		},
 		installReadMessageHook(onReadLine) {
 			const readBuffer = mutableTransport._readBuffer;
-			if (!readBuffer || typeof readBuffer.readMessage !== "function") {
+			if (!readBuffer || !isFunction(readBuffer.readMessage)) {
 				return false;
 			}
 			let deferredMessage: JSONRPCMessage | null = null;
@@ -114,7 +144,9 @@ function createSdkPrivateStdioAdapter(
 					try {
 						return onReadLine(line);
 					} catch (error) {
-						if (!isMalformedMessageError(error)) {
+						const normalizedError =
+							error instanceof Error ? error : String(error);
+						if (!isMalformedMessageError(normalizedError)) {
 							throw error;
 						}
 						skippedMalformedLines += 1;
@@ -142,7 +174,7 @@ function hasUtf8BomPrefix(chunk: Buffer): boolean {
 	);
 }
 
-function parseFailurePosition(error: unknown): number | null {
+function parseFailurePosition(error: Error | string): number | null {
 	if (!(error instanceof Error)) {
 		return null;
 	}
@@ -172,23 +204,20 @@ function getFailureLocation(
 	return "unknown";
 }
 
-function createStructuralShapePreview(line: string): {
-	shapePreview: string;
-	truncated: boolean;
-} {
-	let shapePreview = "";
+function createStructuralPreview(line: string): StructuralPreview {
+	let structuralPreview = "";
 	let inContentRun = false;
 	let inWhitespaceRun = false;
 
 	const append = (token: string): boolean => {
 		if (
-			shapePreview.length + token.length >
-			STDIN_PARSE_SHAPE_PREVIEW_MAX_LENGTH
+			structuralPreview.length + token.length >
+			STDIN_PARSE_PREVIEW_MAX_LENGTH
 		) {
 			return false;
 		}
 
-		shapePreview += token;
+		structuralPreview += token;
 		return true;
 	};
 
@@ -197,7 +226,7 @@ function createStructuralShapePreview(line: string): {
 			inContentRun = false;
 			inWhitespaceRun = false;
 			if (!append(character === '"' ? "\\u0022" : character)) {
-				return { shapePreview, truncated: true };
+				return { structuralPreview, truncated: true };
 			}
 			continue;
 		}
@@ -206,7 +235,7 @@ function createStructuralShapePreview(line: string): {
 			inContentRun = false;
 			if (!inWhitespaceRun) {
 				if (!append("\\s")) {
-					return { shapePreview, truncated: true };
+					return { structuralPreview, truncated: true };
 				}
 				inWhitespaceRun = true;
 			}
@@ -216,20 +245,20 @@ function createStructuralShapePreview(line: string): {
 		inWhitespaceRun = false;
 		if (!inContentRun) {
 			if (!append(REDACTED_CONTENT_MARKER)) {
-				return { shapePreview, truncated: true };
+				return { structuralPreview, truncated: true };
 			}
 			inContentRun = true;
 		}
 	}
 
 	return {
-		shapePreview,
+		structuralPreview,
 		truncated: false,
 	};
 }
 
 function getSafeErrorKind(
-	error: unknown,
+	error: Error | string,
 ): "SyntaxError" | "Error" | "UnknownError" {
 	if (error instanceof SyntaxError) {
 		return "SyntaxError";
@@ -241,7 +270,7 @@ function getSafeErrorKind(
 }
 
 function reportStdinParseFailure(
-	error: unknown,
+	error: Error | string,
 	line: string,
 	lineByteLength: number,
 	failureLocation: string,
@@ -249,11 +278,11 @@ function reportStdinParseFailure(
 ): void {
 	try {
 		const errorKind = getSafeErrorKind(error);
-		const { shapePreview, truncated } = createStructuralShapePreview(line);
+		const { structuralPreview, truncated } = createStructuralPreview(line);
 		const position = failurePosition === null ? "unknown" : failurePosition;
 
 		console.error(
-			`Failed to parse MCP stdin message: error_kind=${errorKind} line_bytes=${lineByteLength} failure_location=${failureLocation} failure_position=${position} shape_preview="${shapePreview}" shape_preview_redacted=true shape_preview_truncated=${truncated}`,
+			`Failed to parse MCP stdin message: error_kind=${errorKind} line_bytes=${lineByteLength} failure_location=${failureLocation} failure_position=${position} shape_preview="${structuralPreview}" shape_preview_redacted=true shape_preview_truncated=${truncated}`,
 		);
 	} catch {
 		// Diagnostics are best-effort and must not replace the parser error.
@@ -268,30 +297,30 @@ export function deserializeMessageWithObservability(
 	const normalizedLine = lineHadLeadingBom ? line.slice(1) : line;
 	const lineByteLength = Buffer.byteLength(line);
 	const sessionId = getCurrentMcpSessionId();
+	const attributes: StdioSpanAttributes = {
+		"mcp.span.category": "protocol",
+		"mcp.transport": "stdio",
+		"mcp.stdio.parse.line.char_length": line.length,
+		"mcp.stdio.parse.line.byte_length": lineByteLength,
+		"mcp.stdio.parse.line.had_leading_bom": lineHadLeadingBom,
+		"mcp.stdio.parse.line.bom_stripped": lineHadLeadingBom,
+		"mcp.stdio.parse.chunk.last_byte_length": chunkSnapshot.lastChunkByteLength,
+		"mcp.stdio.parse.chunk.last_had_utf8_bom":
+			chunkSnapshot.lastChunkStartsWithUtf8Bom,
+	};
+	if (sessionId) attributes["mcp.session.id"] = sessionId;
 	return tracer.startActiveSpan(
 		"mcp.stdio.deserialize",
 		{
-			attributes: {
-				"mcp.span.category": "protocol",
-				"mcp.transport": "stdio",
-				"mcp.stdio.parse.line.char_length": line.length,
-				"mcp.stdio.parse.line.byte_length": lineByteLength,
-				"mcp.stdio.parse.line.had_leading_bom": lineHadLeadingBom,
-				"mcp.stdio.parse.line.bom_stripped": lineHadLeadingBom,
-				"mcp.stdio.parse.chunk.last_byte_length":
-					chunkSnapshot.lastChunkByteLength,
-				"mcp.stdio.parse.chunk.last_had_utf8_bom":
-					chunkSnapshot.lastChunkStartsWithUtf8Bom,
-				...(sessionId ? { "mcp.session.id": sessionId } : {}),
-			},
+			attributes,
 		},
 		(span) => {
 			try {
 				const message = deserializeMessage(normalizedLine);
 				span.setStatus({ code: SpanStatusCode.OK });
-				if (message && typeof message === "object" && "method" in message) {
+				if (message && isObject(message) && "method" in message) {
 					const method = message.method;
-					if (typeof method === "string" && SAFE_MCP_METHODS[method] === true) {
+					if (isString(method) && SAFE_MCP_METHODS[method] === true) {
 						span.setAttribute("mcp.method", method);
 					}
 					if (method === "initialize") {
@@ -307,8 +336,9 @@ export function deserializeMessageWithObservability(
 				}
 				return message;
 			} catch (error) {
-				const diagnostic = createSafeErrorDiagnostic(error);
-				const failurePosition = parseFailurePosition(error);
+				const normalizedError = error instanceof Error ? error : String(error);
+				const diagnostic = createSafeErrorDiagnostic(normalizedError);
+				const failurePosition = parseFailurePosition(normalizedError);
 				const failureLocation = getFailureLocation(
 					failurePosition,
 					lineHadLeadingBom,
@@ -329,7 +359,7 @@ export function deserializeMessageWithObservability(
 				stdioParseErrors.add(1, { failure_location: failureLocation });
 
 				reportStdinParseFailure(
-					error,
+					error instanceof Error ? error : String(error),
 					line,
 					lineByteLength,
 					failureLocation,

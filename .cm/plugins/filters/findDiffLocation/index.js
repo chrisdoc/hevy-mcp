@@ -1,3 +1,11 @@
+const { z } = require("zod");
+
+const stringSchema = z.string();
+
+function isString(value) {
+	return stringSchema.safeParse(value).success;
+}
+
 /**
  * Find the first added diff line that matches a pattern.
  *
@@ -30,8 +38,8 @@ function findDiffLocation(source, pattern, includePath, excludePath) {
 	for (const file of files) {
 		const fileName = file?.new_file || file?.original_file;
 		if (
-			typeof fileName !== "string" ||
-			typeof file?.diff !== "string" ||
+			!isString(fileName) ||
+			!isString(file?.diff) ||
 			(includePattern && !test(includePattern, fileName)) ||
 			(excludePattern && test(excludePattern, fileName))
 		) {
@@ -92,7 +100,7 @@ function toRegExp(value, optional = false) {
 		return value;
 	}
 
-	if (typeof value !== "string") {
+	if (!isString(value)) {
 		return null;
 	}
 

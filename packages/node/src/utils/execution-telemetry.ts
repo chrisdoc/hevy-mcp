@@ -13,27 +13,26 @@ type ExecutionAttributeSource = {
 };
 
 export type ExecutionTelemetryNamespace = "span" | "metric";
+type ExecutionAttributes = Record<string, string | boolean>;
 
 /** Project either structured errors or client observations into stable OTel keys. */
 export function projectExecutionAttributes(
 	execution: ExecutionAttributeSource | undefined,
 	namespace: ExecutionTelemetryNamespace = "span",
-): Record<string, string | boolean> {
+): ExecutionAttributes {
 	if (!execution) return {};
 	const prefix = namespace === "span" ? "hevy.api." : "";
 	const operationSafety =
 		execution.operation_safety ?? execution.operationSafety;
 	const commitState = execution.commit_state ?? execution.commitState;
 	const safeToRetry = execution.safe_to_retry ?? execution.safeToRetry;
-	return {
-		...(execution.outcome ? { [`${prefix}outcome`]: execution.outcome } : {}),
-		...(execution.phase ? { [`${prefix}phase`]: execution.phase } : {}),
-		...(operationSafety
-			? { [`${prefix}operation_safety`]: operationSafety }
-			: {}),
-		...(commitState ? { [`${prefix}commit_state`]: commitState } : {}),
-		...(safeToRetry !== undefined
-			? { [`${prefix}safe_to_retry`]: safeToRetry }
-			: {}),
-	};
+	const attributes: Record<string, string | boolean> = {};
+	if (execution.outcome) attributes[`${prefix}outcome`] = execution.outcome;
+	if (execution.phase) attributes[`${prefix}phase`] = execution.phase;
+	if (operationSafety)
+		attributes[`${prefix}operation_safety`] = operationSafety;
+	if (commitState) attributes[`${prefix}commit_state`] = commitState;
+	if (safeToRetry !== undefined)
+		attributes[`${prefix}safe_to_retry`] = safeToRetry;
+	return attributes;
 }

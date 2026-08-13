@@ -1,11 +1,11 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 
-import { exports } from "cloudflare:workers";
+import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 describe("Cloudflare Worker integration", () => {
 	it("serves OAuth discovery metadata from the configured Worker", async () => {
-		const response = await exports.default.fetch(
+		const response = await SELF.fetch(
 			"https://worker.example/.well-known/oauth-authorization-server",
 		);
 
@@ -20,7 +20,7 @@ describe("Cloudflare Worker integration", () => {
 	});
 
 	it("returns an OAuth challenge for an unauthenticated MCP request", async () => {
-		const response = await exports.default.fetch("https://worker.example/mcp", {
+		const response = await SELF.fetch("https://worker.example/mcp", {
 			method: "POST",
 			body: "{}",
 		});

@@ -3,11 +3,12 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PostV1ExerciseTemplatesMutationRequest,
   PostV1ExerciseTemplatesMutationResponse,
@@ -15,7 +16,6 @@ import type {
   PostV1ExerciseTemplates400,
   PostV1ExerciseTemplates403,
 } from "../types/PostV1ExerciseTemplates.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPostV1ExerciseTemplatesUrl() {
   const res = { method: "POST", url: `/v1/exercise_templates` as const };

@@ -1,3 +1,19 @@
+import { z } from "zod";
+
+const numberSchema = z.number();
+
+function isObjectLike<T>(value: T): value is T & object {
+	return (
+		value !== null &&
+		Object(value) === value &&
+		Object.prototype.toString.call(value) !== "[object Function]"
+	);
+}
+
+function scalarTag<T>(value: T): string {
+	return Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
+}
+
 const DEBUG_PREFIX = "[hevy-mcp:debug] ";
 const MAX_DEBUG_RECORD_LENGTH = 8_192;
 const MAX_REDACTION_DEPTH = 4;
@@ -5,6 +21,7 @@ const MAX_OBJECT_KEYS = 20;
 
 type RedactedValue =
 	| number
+	| bigint
 	| string
 	| {
 			type: "array";
@@ -19,12 +36,16 @@ type RedactedValue =
 			truncatedFields?: number;
 	  };
 
+type DebugData = {
+	readonly [key: string]: string | number | boolean | null | RedactedValue;
+};
+
 export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 	return env.HEVY_MCP_DEBUG === "1";
 }
 
-function redactValue(
-	value: unknown,
+function redactValue<T>(
+	value: T,
 	depth: number,
 	seen: WeakSet<object>,
 ): RedactedValue {
@@ -32,8 +53,8 @@ function redactValue(
 		return "[null]";
 	}
 
-	if (typeof value !== "object") {
-		return `[${typeof value}]`;
+	if (!isObjectLike(value)) {
+		return `[${scalarTag(value)}]`;
 	}
 
 	if (seen.has(value)) {
@@ -45,7 +66,7 @@ function redactValue(
 		const length =
 			lengthDescriptor &&
 			"value" in lengthDescriptor &&
-			typeof lengthDescriptor.value === "number"
+			numberSchema.safeParse(lengthDescriptor.value).success
 				? lengthDescriptor.value
 				: 0;
 		if (depth >= MAX_REDACTION_DEPTH) {
@@ -67,14 +88,14 @@ function redactValue(
 						: "[empty-or-accessor]";
 			}
 
-			return {
+			const result: Extract<RedactedValue, { type: "array" }> = {
 				type: "array",
 				length,
 				items,
-				...(length > MAX_OBJECT_KEYS
-					? { truncatedItems: length - MAX_OBJECT_KEYS }
-					: {}),
 			};
+			if (length > MAX_OBJECT_KEYS)
+				result.truncatedItems = length - MAX_OBJECT_KEYS;
+			return result;
 		} finally {
 			seen.delete(value);
 		}
@@ -100,21 +121,21 @@ function redactValue(
 					: "[accessor]";
 		}
 
-		return {
+		const result: Extract<RedactedValue, { type: "object" }> = {
 			type: "object",
 			fieldCount: keys.length,
 			fields,
-			...(keys.length > MAX_OBJECT_KEYS
-				? { truncatedFields: keys.length - MAX_OBJECT_KEYS }
-				: {}),
 		};
+		if (keys.length > MAX_OBJECT_KEYS)
+			result.truncatedFields = keys.length - MAX_OBJECT_KEYS;
+		return result;
 	} finally {
 		seen.delete(value);
 	}
 }
 
 /** Redact every input scalar while preserving bounded argument structure. */
-export function redactToolArgs(args: unknown): RedactedValue {
+export function redactToolArgs<T>(args: T): RedactedValue {
 	try {
 		return redactValue(args, 0, new WeakSet<object>());
 	} catch {
@@ -125,7 +146,7 @@ export function redactToolArgs(args: unknown): RedactedValue {
 /**
  * Write a single bounded structured debug record to stderr without throwing.
  */
-export function debugLog(event: string, data: object): void {
+export function debugLog(event: string, data: DebugData): void {
 	if (!isDebugEnabled()) {
 		return;
 	}

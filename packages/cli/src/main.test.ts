@@ -3,6 +3,9 @@ import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "./main.js";
 
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+type JsonObject = { readonly [key: string]: JsonValue };
+
 const mockClient = (getWorkouts: HevyClient["getWorkouts"]): HevyClient => {
 	const client = Object.create(null) as HevyClient;
 	client.getWorkouts = getWorkouts;
@@ -202,7 +205,7 @@ describe("CLI mutation process contract", () => {
 			},
 		};
 		const routine = { routine: { title: "Strength", exercises: [] } };
-		const json = (value: unknown) => JSON.stringify(value);
+		const json = (value: JsonObject) => JSON.stringify(value);
 		const commands = [
 			["workouts", "create", "--data", json(workout), "--yes", "--json"],
 			[

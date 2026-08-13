@@ -1,11 +1,13 @@
 import { z } from "zod";
+import { isString } from "./type-predicates.js";
+import type { RuntimeValue } from "./type-predicates.js";
 
-function coerceNullishNumberInput(value: unknown): unknown {
+function coerceNullishNumberInput(value: RuntimeValue): RuntimeValue {
 	if (value === null || value === undefined) {
 		return value;
 	}
 
-	if (typeof value !== "string") {
+	if (!isString(value)) {
 		return value;
 	}
 
@@ -40,7 +42,7 @@ export const zNullableNumber = z.preprocess(
 	z.coerce.number().nullable().optional(),
 );
 
-const repRangeShape = {
+const repRangeFields = {
 	start: zNullableInt,
 	end: zNullableInt,
 } as const;
@@ -50,11 +52,11 @@ function optionalRepRangeSchema<T extends z.ZodType>(schema: T) {
 }
 
 export const zOptionalRepRange = optionalRepRangeSchema(
-	z.object(repRangeShape).optional(),
+	z.object(repRangeFields).optional(),
 );
 
 export const zStrictOptionalRepRange = optionalRepRangeSchema(
-	z.object(repRangeShape).strict().optional(),
+	z.object(repRangeFields).strict().optional(),
 );
 
 const setTypeValues = ["warmup", "normal", "failure", "dropset"] as const;

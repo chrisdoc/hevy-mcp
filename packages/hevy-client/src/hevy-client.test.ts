@@ -7,7 +7,11 @@ import {
 	HevyHttpError,
 } from "./hevy-http-error.js";
 import { createExecutionSignal, isAbortLike } from "./execution.js";
-function response(data: unknown, status = 200): Response {
+
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+type JsonObject = { readonly [key: string]: JsonValue };
+
+function response(data: JsonObject, status = 200): Response {
 	return new Response(JSON.stringify(data), {
 		status,
 		headers: { "content-type": "application/json" },
@@ -473,7 +477,9 @@ describe("@hevy-mcp/hevy-client", () => {
 			},
 		});
 
-		const thrown = await client.getUserInfo().catch((error: unknown) => error);
+		const thrown = await client
+			.getUserInfo()
+			.catch((error: Error | string) => error);
 		expect(thrown).toMatchObject({
 			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 			safeToRetry: false,

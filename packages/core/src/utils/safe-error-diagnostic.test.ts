@@ -67,7 +67,11 @@ describe("createSafeErrorDiagnostic", () => {
 	it("handles ordinary, cyclic, and adversarial thrown values", () => {
 		const ordinary = new TypeError(SECRET, { cause: { token: SECRET } });
 		ordinary.stack = `TypeError: ${SECRET}\n    at /home/user/hevy-mcp/packages/core/src/server.ts:44:5`;
-		const cyclic: { self?: unknown; secret: string } = { secret: SECRET };
+		type CyclicThrownValue = {
+			self?: CyclicThrownValue;
+			secret: string;
+		};
+		const cyclic: CyclicThrownValue = { secret: SECRET };
 		cyclic.self = cyclic;
 		const hostile = new Proxy(
 			{},

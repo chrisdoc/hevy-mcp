@@ -1,6 +1,14 @@
+import type { Scope } from "@sentry/core";
+import type { SpanOptions } from "@opentelemetry/api";
+import type { MeterProviderOptions } from "@opentelemetry/sdk-metrics";
+import type { TracerConfig } from "@opentelemetry/sdk-trace-base";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
+const objectSchema = z.object({}).passthrough();
+const functionSchema = z.function();
 const originalEnv = { ...process.env };
+type ScopeDouble = Pick<Scope, "setTag" | "setContext" | "setFingerprint">;
 
 const testDoubles = vi.hoisted(() => ({
 	activeSpan: {
@@ -26,18 +34,18 @@ const testDoubles = vi.hoisted(() => ({
 	batchSpanProcessor: vi.fn(),
 	alwaysOnSampler: vi.fn(),
 	meterProvider: vi.fn(),
-	meterProviderOptions: undefined as unknown,
+	meterProviderOptions: undefined as MeterProviderOptions | undefined,
 	meterProviderForceFlush: vi.fn(() => Promise.resolve()),
 	periodicExportingMetricReader: vi.fn(),
 	nodeTracerProvider: vi.fn(),
 	tracerProviderForceFlush: vi.fn(() => Promise.resolve()),
-	nodeTracerProviderOptions: undefined as unknown,
+	nodeTracerProviderOptions: undefined as TracerConfig | undefined,
 }));
 
 vi.mock("@sentry/node", () => ({
 	init: testDoubles.sentryInit,
 	flush: testDoubles.sentryFlush,
-	withScope: vi.fn((callback: (scope: unknown) => unknown) =>
+	withScope: vi.fn((callback: (scope: ScopeDouble) => unknown) =>
 		callback({
 			setTag: testDoubles.sentrySetTag,
 			setContext: testDoubles.sentrySetContext,
@@ -60,7 +68,7 @@ vi.mock("@opentelemetry/api", () => ({
 			startActiveSpan: vi.fn(
 				(
 					_name: string,
-					_options: unknown,
+					_options: SpanOptions,
 					callback: (span: typeof testDoubles.activeSpan) => unknown,
 				) => callback(testDoubles.activeSpan),
 			),
@@ -96,7 +104,7 @@ vi.mock("@opentelemetry/sdk-trace-base", () => ({
 
 vi.mock("@opentelemetry/sdk-trace-node", () => {
 	class MockNodeTracerProvider {
-		constructor(options: unknown) {
+		constructor(options: TracerConfig) {
 			testDoubles.nodeTracerProvider(options);
 			testDoubles.nodeTracerProviderOptions = options;
 		}
@@ -110,7 +118,7 @@ vi.mock("@opentelemetry/sdk-trace-node", () => {
 
 vi.mock("@opentelemetry/sdk-metrics", () => {
 	class MockMeterProvider {
-		constructor(options: unknown) {
+		constructor(options: MeterProviderOptions) {
 			testDoubles.meterProvider(options);
 			testDoubles.meterProviderOptions = options;
 		}
@@ -250,13 +258,13 @@ describe("telemetry initialization", () => {
 	it("records process failures with native exception diagnostics", async () => {
 		vi.resetModules();
 		const mod = await import("./telemetry.js");
-		const listeners = new Map<string, (error: unknown) => void>();
+		const listeners = new Map<string, (error: Error | string) => void>();
 		const processLike = {
-			on: vi.fn((event: string, listener: (error: unknown) => void) => {
+			on: vi.fn((event: string, listener: (error: Error | string) => void) => {
 				listeners.set(event, listener);
 			}),
 			removeListener: vi.fn(
-				(event: string, listener: (error: unknown) => void) => {
+				(event: string, listener: (error: Error | string) => void) => {
 					expect(listeners.get(event)).toBe(listener);
 				},
 			),
@@ -367,9 +375,9 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.otlpMetricExporter).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalTracerProvider).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalMeterProvider).not.toHaveBeenCalled();
-		expect(typeof mod.tracer).toBe("object");
-		expect(typeof mod.meter).toBe("object");
-		expect(typeof mod.flushTelemetry).toBe("function");
+		expect(objectSchema.safeParse(mod.tracer).success).toBe(true);
+		expect(objectSchema.safeParse(mod.meter).success).toBe(true);
+		expect(functionSchema.safeParse(mod.flushTelemetry).success).toBe(true);
 
 		await mod.flushTelemetry();
 		expect(testDoubles.tracerProviderForceFlush).not.toHaveBeenCalled();

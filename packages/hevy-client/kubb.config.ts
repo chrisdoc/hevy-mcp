@@ -24,8 +24,10 @@ export default defineConfig({
 		pluginTs({ output: { path: "./client/types" } }),
 		pluginClient({
 			output: { path: "./client/api" },
-			client: "fetch",
-			bundle: true,
+			// Keep the generated operations on the runtime-neutral client adapter.
+			// Kubb's bundled fetch template sets `credentials`, which Cloudflare's
+			// RequestInit intentionally does not support.
+			importPath: "../../../fetch.ts",
 		}),
 		pluginZod({ output: { path: "./client/schemas" } }),
 	],

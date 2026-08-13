@@ -2,11 +2,14 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
+import { isNumber, isString } from "../../scripts/runtime-value-predicates.mjs";
 import {
 	Client,
 	type JSONObject,
+	type JSONValue,
 	StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
+import { z } from "zod";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 const LOOPBACK = "127.0.0.1";
@@ -46,21 +49,37 @@ let wranglerLogs = "";
 let wranglerSpawnError: Error | undefined;
 
 function assertCondition(
-	condition: unknown,
+	condition: boolean | string | undefined,
 	schemaPath: string,
 ): asserts condition {
 	if (!condition)
 		throw new Error(`Live Worker response failed at ${schemaPath}`);
 }
 
+const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(jsonValueSchema),
+		z.record(z.string(), jsonValueSchema),
+	]),
+);
+const jsonObjectSchema: z.ZodType<JSONObject> = z.record(
+	z.string(),
+	jsonValueSchema,
+);
+
 function assertRecord(
-	value: unknown,
+	value: JSONValue | null,
 	schemaPath: string,
 ): asserts value is JSONObject {
-	assertCondition(value !== null && typeof value === "object", schemaPath);
+	const parsed = jsonObjectSchema.safeParse(value);
+	assertCondition(parsed.success, schemaPath);
 }
 
-function sanitizeDiagnostic(value: unknown): string {
+function sanitizeDiagnostic(value: string | Error): string {
 	const apiKey = process.env.HEVY_API_KEY;
 	let diagnostic = value instanceof Error ? value.message : String(value);
 	if (apiKey) diagnostic = diagnostic.replaceAll(apiKey, "[REDACTED]");
@@ -175,7 +194,9 @@ async function waitForWranglerReady(): Promise<void> {
 			if (response.status === 404) return;
 			lastError = `unexpected status ${response.status}`;
 		} catch (error) {
-			lastError = sanitizeDiagnostic(error);
+			lastError = sanitizeDiagnostic(
+				error instanceof Error ? error : String(error),
+			);
 		}
 		await delay(100);
 	}
@@ -230,7 +251,9 @@ async function startWrangler(): Promise<void> {
 			await waitForWranglerReady();
 			return;
 		} catch (error) {
-			failures.push(`Attempt ${attempt}: ${sanitizeDiagnostic(error)}`);
+			failures.push(
+				`Attempt ${attempt}: ${sanitizeDiagnostic(error instanceof Error ? error : String(error))}`,
+			);
 			await stopWrangler();
 		}
 	}
@@ -256,12 +279,13 @@ async function callReadTool(
 		throw new Error(`Live Worker request failed for tools/${name}`);
 	}
 	assertCondition(result.isError !== true, `tools/${name}/isError`);
-	assertRecord(result.structuredContent, `tools/${name}/structuredContent`);
-	return result.structuredContent;
+	const structuredContent = result.structuredContent as JSONObject;
+	assertRecord(structuredContent, `tools/${name}/structuredContent`);
+	return structuredContent;
 }
 
 function assertBoundedList(
-	value: unknown,
+	value: JSONValue | null,
 	schemaPath: string,
 ): asserts value is JSONObject[] {
 	assertCondition(Array.isArray(value), schemaPath);
@@ -275,10 +299,7 @@ function optionalStringId(
 ): string | undefined {
 	if (!value?.[0]) return undefined;
 	const id = value[0].id;
-	assertCondition(
-		typeof id === "string" || typeof id === "number",
-		`${schemaPath}/0/id`,
-	);
+	assertCondition(isString(id) || isNumber(id), `${schemaPath}/0/id`);
 	assertCondition(String(id).length > 0, `${schemaPath}/0/id`);
 	return String(id);
 }
@@ -355,8 +376,8 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				const firstWorkout = workouts.workouts[0];
 				if (firstWorkout) {
 					assertCondition(
-						typeof firstWorkout.exercise_count === "number" &&
-							typeof firstWorkout.set_count === "number" &&
+						isNumber(firstWorkout.exercise_count) &&
+							isNumber(firstWorkout.set_count) &&
 							!("exercises" in firstWorkout),
 						"tools/get-workouts/workouts/0/compact",
 					);
@@ -405,8 +426,8 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				const firstRoutine = routines.routines[0];
 				if (firstRoutine) {
 					assertCondition(
-						typeof firstRoutine.exercise_count === "number" &&
-							typeof firstRoutine.set_count === "number" &&
+						isNumber(firstRoutine.exercise_count) &&
+							isNumber(firstRoutine.set_count) &&
 							!("exercises" in firstRoutine),
 						"tools/get-routines/routines/0/compact",
 					);
@@ -447,7 +468,7 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				const firstMeasurement = measurements.body_measurements[0];
 				if (firstMeasurement) {
 					assertCondition(
-						typeof firstMeasurement.date === "string",
+						isString(firstMeasurement.date),
 						"tools/get-body-measurements/body_measurements/0/date",
 					);
 					const measurement = await callReadTool(

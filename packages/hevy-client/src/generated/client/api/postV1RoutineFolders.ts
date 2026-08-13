@@ -3,18 +3,18 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PostV1RoutineFoldersMutationRequest,
   PostV1RoutineFoldersMutationResponse,
   PostV1RoutineFoldersHeaderParams,
   PostV1RoutineFolders400,
 } from "../types/PostV1RoutineFolders.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPostV1RoutineFoldersUrl() {
   const res = { method: "POST", url: `/v1/routine_folders` as const };

@@ -1,6 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isObjectLike, isString } from "./runtime-value-predicates.mjs";
 
 export const repositoryRoot = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -8,10 +9,10 @@ export const repositoryRoot = resolve(
 );
 
 export function candidateTarballFilename({ name, version }) {
-	if (typeof name !== "string" || !name) {
+	if (!isString(name) || !name) {
 		throw new Error("Release candidate package name is required");
 	}
-	if (typeof version !== "string" || !version) {
+	if (!isString(version) || !version) {
 		throw new Error(`Release candidate version is required for ${name}`);
 	}
 	return `${name.replace(/^@/, "").replaceAll("/", "-")}-${version}.tgz`;
@@ -29,12 +30,7 @@ export async function releaseCandidateArtifact(
 	try {
 		details = await stat(path);
 	} catch (error) {
-		if (
-			!error ||
-			typeof error !== "object" ||
-			!("code" in error) ||
-			error.code !== "ENOENT"
-		) {
+		if (!isObjectLike(error) || !("code" in error) || error.code !== "ENOENT") {
 			throw error;
 		}
 	}

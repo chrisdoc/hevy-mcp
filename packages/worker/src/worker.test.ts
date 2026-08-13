@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
+import { z } from "zod";
+import {
+	WebStandardStreamableHTTPServerTransport,
+	type JSONObject,
+} from "@modelcontextprotocol/server";
 import {
 	createHevyMcpServer,
 	type CreateHevyMcpServerOptions,
@@ -15,6 +19,17 @@ import {
 } from "./worker.js";
 import worker from "./worker.js";
 
+const objectLikeSchema = z.object({}).passthrough();
+type WorkerLogEntry = {
+	readonly [key: string]: string | number | boolean | null | undefined;
+};
+
+function isObjectLike(
+	value: WorkerLogEntry | string | null | undefined,
+): value is WorkerLogEntry {
+	return objectLikeSchema.safeParse(value).success;
+}
+
 const validHeaders = {
 	accept: "application/json, text/event-stream",
 	"content-type": "application/json",
@@ -26,7 +41,7 @@ afterEach(() => {
 });
 
 function mcpRequest(
-	body: unknown,
+	body: JSONObject,
 	headers: RequestInit["headers"] = validHeaders,
 ) {
 	return new Request("https://worker.example/mcp", {
@@ -346,8 +361,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 			.map(([entry]) => entry)
 			.find(
 				(entry) =>
-					typeof entry === "object" &&
-					entry !== null &&
+					isObjectLike(entry) &&
 					"event" in entry &&
 					entry.event === "worker.request",
 			);
@@ -363,8 +377,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 			.map(([entry]) => entry)
 			.find(
 				(entry) =>
-					typeof entry === "object" &&
-					entry !== null &&
+					isObjectLike(entry) &&
 					"event" in entry &&
 					entry.event === "worker.origin_rejected",
 			);
@@ -824,7 +837,11 @@ describe("real stateless SDK transport", () => {
 		});
 		await hostileHandler(mcpRequest({}), {});
 
-		const cyclic: { self?: unknown; secret: string } = { secret };
+		type CyclicThrownValue = {
+			self?: CyclicThrownValue;
+			secret: string;
+		};
+		const cyclic: CyclicThrownValue = { secret };
 		cyclic.self = cyclic;
 		const unknownHandler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),

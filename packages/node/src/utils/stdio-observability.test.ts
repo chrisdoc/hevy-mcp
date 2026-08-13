@@ -1,11 +1,15 @@
 import { PassThrough, Writable } from "node:stream";
 import * as ServerPackage from "@modelcontextprotocol/server";
 import type { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import type { Span } from "@opentelemetry/api";
+import { z } from "zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	deserializeMessageWithObservability,
 	createInstrumentedStdioTransport,
 } from "./stdio-observability.js";
+
+type TestSpan = Pick<Span, "setAttribute" | "setStatus" | "addEvent" | "end">;
 
 const testDoubles = vi.hoisted(() => ({
 	span: {
@@ -13,9 +17,9 @@ const testDoubles = vi.hoisted(() => ({
 		setStatus: vi.fn(),
 		addEvent: vi.fn(),
 		end: vi.fn(),
-	},
+	} as TestSpan,
 	startActiveSpan: vi.fn((...args: unknown[]) => {
-		const callback = args.at(-1) as (span: unknown) => unknown;
+		const callback = args.at(-1) as (span: TestSpan) => unknown;
 		return callback(testDoubles.span);
 	}),
 	parseErrors: { add: vi.fn() },
@@ -87,7 +91,17 @@ function createTransportDouble() {
 	};
 }
 
-function extractShapePreview(diagnostic: string): string {
+function asStdioTransport(
+	transport: ReturnType<typeof createTransportDouble>["transport"],
+): StdioServerTransport {
+	return z
+		.custom<StdioServerTransport>(
+			(value) => z.object({}).passthrough().safeParse(value).success,
+		)
+		.parse(transport);
+}
+
+function extractStructuralPreview(diagnostic: string): string {
 	const prefix = ' shape_preview="';
 	const suffix = '" shape_preview_redacted=';
 	const start = diagnostic.indexOf(prefix);
@@ -166,7 +180,13 @@ describe("package-local stdio observability", () => {
 			"test-client",
 		);
 		expect(
-			JSON.stringify(testDoubles.span.setAttribute.mock.calls),
+			JSON.stringify(
+				(
+					testDoubles.span as Span & {
+						setAttribute: ReturnType<typeof vi.fn>;
+					}
+				).setAttribute.mock.calls,
+			),
 		).not.toContain("private-prompt-sentinel");
 	});
 
@@ -200,12 +220,12 @@ describe("package-local stdio observability", () => {
 		).toThrow();
 
 		const diagnostic = String(stderrSpy.mock.calls[0]?.[0]);
-		const shapePreview = extractShapePreview(diagnostic);
+		const structuralPreview = extractStructuralPreview(diagnostic);
 		expect(diagnostic).toContain("shape_preview_redacted=true");
 		expect(diagnostic).not.toContain("credential-sentinel");
 		expect(diagnostic).not.toContain("bearer-sentinel");
 		expect(diagnostic).not.toContain("private-workout-sentinel");
-		expect(shapePreview.length).toBeLessThanOrEqual(200);
+		expect(structuralPreview.length).toBeLessThanOrEqual(200);
 	});
 
 	it("keeps the SDK-internal transport adapter package-local", () => {
@@ -217,9 +237,7 @@ describe("package-local stdio observability", () => {
 
 	it("wraps _ondata, preserves buffering, and records the last chunk", () => {
 		const { originalOnData, readBuffer, transport } = createTransportDouble();
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		const firstChunk = Buffer.from('\uFEFF{"jsonrpc":"2.0","id":1,', "utf8");
 		const secondChunk = Buffer.from('"method":"ping"}\r\n', "utf8");
 
@@ -244,9 +262,7 @@ describe("package-local stdio observability", () => {
 
 	it("parses multiple messages buffered in one chunk", () => {
 		const { readBuffer, transport } = createTransportDouble();
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		transport._ondata(
 			Buffer.from(
 				'{"jsonrpc":"2.0","id":1,"method":"ping"}\n' +
@@ -311,18 +327,14 @@ describe("package-local stdio observability", () => {
 		sdkSharedTestDoubles.deserializeMessage.mockImplementationOnce(() => {
 			throw unexpected;
 		});
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		transport._ondata?.(Buffer.from('{"jsonrpc":"2.0"}\n', "utf8"));
 
 		expect(() => readBuffer.readMessage()).toThrow(unexpected);
 	});
 	it("defers the message after the malformed-line drain cap", async () => {
 		const { readBuffer, transport } = createTransportDouble();
-		createInstrumentedStdioTransport(
-			transport as unknown as StdioServerTransport,
-		);
+		createInstrumentedStdioTransport(asStdioTransport(transport));
 		const malformedLines = Array.from({ length: 100 }, () => "{bad}").join(
 			"\n",
 		);

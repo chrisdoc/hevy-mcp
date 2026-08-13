@@ -11,6 +11,14 @@ const serverManifestScript = join(rootDir, "scripts/server-manifest.mjs");
 const fixtureDirs = new Set<string>();
 let cliImportId = 0;
 
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+type JsonObject = { readonly [key: string]: JsonValue };
+type JsonDocument =
+	| JsonObject
+	| PackageFixture
+	| ManifestFixture
+	| ProvenanceFixture;
+
 interface PackageFixture {
 	files: string[];
 	mcpName: string;
@@ -110,7 +118,7 @@ afterEach(async () => {
 	fixtureDirs.clear();
 });
 
-async function writeJson(path: string, value: unknown) {
+async function writeJson(path: string, value: JsonDocument) {
 	await writeFile(path, `${JSON.stringify(value, null, "\t")}\n`);
 }
 

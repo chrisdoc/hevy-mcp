@@ -1,3 +1,5 @@
+import { isString } from "../../scripts/runtime-value-predicates.mjs";
+
 const PREFIX = "HEVY_PERFORMANCE_FIXTURE_RESULT=";
 const API_BASE = "https://api.hevyapp.com";
 const API_KEY = "performance-fixture-api-key";
@@ -156,7 +158,7 @@ try {
 			const request = input instanceof Request ? input : undefined;
 			const url = new URL(
 				request?.url ??
-					(typeof input === "string"
+					(isString(input)
 						? input
 						: input instanceof URL
 							? input.href

@@ -1,6 +1,19 @@
 import { bindings, defineWorker } from "wrangler/experimental-config";
 import * as entrypoint from "./packages/worker/src/worker.ts" with { type: "cf-worker" };
 
+interface WorkerObservability {
+	enabled: true;
+	traces?: { enabled: true; destinations: string[] };
+	logs?: { enabled: true; destinations: string[] };
+}
+
+interface WorkerEnvironmentBindings {
+	[key: string]:
+		| ReturnType<typeof bindings.kv>
+		| ReturnType<typeof bindings.text>;
+	OAUTH_KV: ReturnType<typeof bindings.kv>;
+}
+
 export default defineWorker((ctx) => {
 	const environment =
 		process.env.WRANGLER_MODE ??
@@ -23,26 +36,25 @@ export default defineWorker((ctx) => {
 	const logDestinations = parseDestinations(
 		process.env.CLOUDFLARE_OTEL_LOGS_DESTINATIONS,
 	);
-	const observability = {
+	const observability: WorkerObservability = {
 		enabled: true,
-		...(traceDestinations.length > 0
-			? {
-					traces: {
-						enabled: true,
-						destinations: traceDestinations,
-					},
-				}
-			: {}),
-		...(logDestinations.length > 0
-			? {
-					logs: {
-						enabled: true,
-						destinations: logDestinations,
-					},
-				}
-			: {}),
 	};
+	if (traceDestinations.length > 0)
+		observability.traces = {
+			enabled: true,
+			destinations: traceDestinations,
+		};
+	if (logDestinations.length > 0)
+		observability.logs = {
+			enabled: true,
+			destinations: logDestinations,
+		};
 
+	const env: WorkerEnvironmentBindings = {
+		OAUTH_KV: bindings.kv(kvNamespaceId ? { id: kvNamespaceId } : undefined),
+	};
+	if (environment === "preview")
+		env.MCP_DISABLE_ORIGIN_CHECK = bindings.text("true");
 	return {
 		name: workerName,
 		entrypoint,
@@ -52,11 +64,6 @@ export default defineWorker((ctx) => {
 		previewUrls: true,
 		observability,
 		domains: route ? [route] : undefined,
-		env: {
-			OAUTH_KV: bindings.kv(kvNamespaceId ? { id: kvNamespaceId } : undefined),
-			...(environment === "preview"
-				? { MCP_DISABLE_ORIGIN_CHECK: bindings.text("true") }
-				: {}),
-		},
+		env,
 	};
 });

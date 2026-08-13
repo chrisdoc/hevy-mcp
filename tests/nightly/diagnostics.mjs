@@ -1,5 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import {
+	isNumber,
+	isObjectLike,
+	isString,
+} from "../../scripts/runtime-value-predicates.mjs";
 
 export const RESULT_CATEGORIES = Object.freeze([
 	"launcher",
@@ -95,20 +100,18 @@ const SAFE_ARCHES = new Set([
 
 function safeRead(value, key) {
 	try {
-		return value && typeof value === "object" ? value[key] : undefined;
+		return value && isObjectLike(value) ? value[key] : undefined;
 	} catch {
 		return undefined;
 	}
 }
 
 function safeVersion(value) {
-	return typeof value === "string" && SAFE_VERSION.test(value) ? value : null;
+	return isString(value) && SAFE_VERSION.test(value) ? value : null;
 }
 
 function safeRevision(value) {
-	return typeof value === "string" && /^[a-f0-9]{7,64}$/i.test(value)
-		? value
-		: null;
+	return isString(value) && /^[a-f0-9]{7,64}$/i.test(value) ? value : null;
 }
 
 function safeSchemaPath(value) {
@@ -131,14 +134,10 @@ export function normalizeError(error, suppliedSchemaPath) {
 	if (ERROR_CLASSES.includes(explicitKind)) errorClass = explicitKind;
 	else if (safeRead(error, "isAxiosError") === true || name === "AxiosError") {
 		errorClass = "axios";
-	} else if (
-		typeof code === "number" ||
-		name === "McpError" ||
-		name === "JSONRPCError"
-	) {
+	} else if (isNumber(code) || name === "McpError" || name === "JSONRPCError") {
 		errorClass = "mcp";
 	} else if (name === "AssertionError") errorClass = "assertion";
-	else if (typeof code === "string" && TRANSPORT_CODES.has(code)) {
+	else if (isString(code) && TRANSPORT_CODES.has(code)) {
 		errorClass = "transport";
 	}
 
@@ -170,8 +169,7 @@ export function createDiagnostics({
 		},
 		runtime: {
 			node:
-				typeof runtime.node === "string" &&
-				/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(runtime.node)
+				isString(runtime.node) && /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(runtime.node)
 					? runtime.node
 					: null,
 			platform: SAFE_PLATFORMS.has(runtime.platform) ? runtime.platform : null,
@@ -290,7 +288,7 @@ function createArtifact(summary) {
 }
 
 export async function writeDiagnostics(path, summary) {
-	if (typeof path !== "string" || path.length === 0) return false;
+	if (!isString(path) || path.length === 0) return false;
 	await mkdir(dirname(path), { recursive: true });
 	await writeFile(
 		path,

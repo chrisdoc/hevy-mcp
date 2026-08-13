@@ -1,14 +1,24 @@
-import type { McpServer } from "@modelcontextprotocol/server";
-
 /* oxlint-disable typescript/unbound-method */
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import { registerToolDefinition } from "./define-tool.js";
+import type { InferToolParams } from "../utils/tool-helpers.js";
+import { registerToolDefinition, type ToolRegistrar } from "./define-tool.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { userToolDefinitions } from "./user.js";
 
-function registerUserDefinition(server: McpServer, client: HevyClient | null) {
+function mockOf<T>(value: Partial<T>): T {
+	return value as T;
+}
+
+type UserToolArgs = InferToolParams<
+	(typeof userToolDefinitions)[number]["inputSchema"]
+>;
+
+function registerUserDefinition(
+	server: ToolRegistrar,
+	client: HevyClient | null,
+) {
 	const catalog: ExerciseTemplateCatalog = {
 		get: vi.fn(),
 		reset: vi.fn(),
@@ -22,7 +32,7 @@ function registerUserDefinition(server: McpServer, client: HevyClient | null) {
 
 function createMockServer() {
 	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+	const server = { registerTool: tool } satisfies ToolRegistrar;
 	return { server, tool };
 }
 
@@ -31,7 +41,7 @@ function getToolRegistration(toolSpy: ReturnType<typeof vi.fn>, name: string) {
 	if (!match) {
 		throw new Error(`Tool ${name} was not registered`);
 	}
-	const handler = match.at(-1) as (args: object) => Promise<{
+	const handler = match.at(-1) as (args: UserToolArgs) => Promise<{
 		content: Array<{ type: string; text: string }>;
 		isError?: boolean;
 		structuredContent?: object;
@@ -62,9 +72,9 @@ describe("userToolDefinitions", () => {
 
 	it("get-user-info returns an error response when the client rejects", async () => {
 		const { server, tool } = createMockServer();
-		const hevyClient: HevyClient = {
+		const hevyClient = mockOf<HevyClient>({
 			getUserInfo: vi.fn().mockRejectedValue(new Error("User API timeout")),
-		} as unknown as HevyClient;
+		});
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
@@ -90,9 +100,9 @@ describe("userToolDefinitions", () => {
 			name: "Chris",
 			url: "https://hevy.com/user/chris",
 		};
-		const hevyClient: HevyClient = {
+		const hevyClient = mockOf<HevyClient>({
 			getUserInfo: vi.fn().mockResolvedValue({ data: userInfo }),
-		} as unknown as HevyClient;
+		});
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
@@ -107,9 +117,9 @@ describe("userToolDefinitions", () => {
 
 	it("get-user-info returns empty response when no user info is found", async () => {
 		const { server, tool } = createMockServer();
-		const hevyClient: HevyClient = {
+		const hevyClient = mockOf<HevyClient>({
 			getUserInfo: vi.fn().mockResolvedValue({}),
-		} as unknown as HevyClient;
+		});
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");

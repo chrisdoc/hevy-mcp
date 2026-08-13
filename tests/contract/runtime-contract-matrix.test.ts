@@ -1,5 +1,11 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client, type JSONObject } from "@modelcontextprotocol/client";
+import type { AddressInfo } from "node:net";
+import {
+	Client,
+	type CallToolResult,
+	type JSONObject,
+	type JSONValue,
+} from "@modelcontextprotocol/client";
 import {
 	createHevyMcpServer,
 	type CreateHevyMcpServerOptions,
@@ -14,35 +20,47 @@ import {
 	createDeterministicHevyClient,
 	validGetWorkoutsOutput,
 } from "./fixtures.js";
+import { z } from "zod";
+
+const objectSchema = z.object({}).passthrough();
+const stringSchema = z.string();
+const isObject = (
+	value: JSONValue | CallToolResult | null | undefined,
+): value is JSONObject => objectSchema.safeParse(value).success;
+const isString = (value: JSONValue | AddressInfo | null): value is string =>
+	stringSchema.safeParse(value).success;
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const minimalInput = getWorkoutsCapabilityDescriptor.inputSchema.parse({
 	page: 1,
 }) as JSONObject;
 
-function assertGetWorkoutsResult(result: unknown): void {
-	if (typeof result !== "object" || result === null) {
+function assertGetWorkoutsResult(
+	result: JSONValue | CallToolResult | null,
+): void {
+	if (!isObject(result)) {
 		throw new Error("Expected MCP tool result object");
 	}
 	const response = result as {
-		content?: unknown;
-		structuredContent?: unknown;
+		content?: JSONValue[];
+		structuredContent?: JSONValue;
 	};
 	if (!Array.isArray(response.content)) {
 		throw new Error("Expected MCP tool content array");
 	}
 	const structured = getWorkoutsCapabilityDescriptor.outputSchema.parse(
 		response.structuredContent,
-	) as unknown as { workouts: readonly unknown[] };
+	);
 	expect(structured).toEqual(validGetWorkoutsOutput);
 	const firstContent = response.content[0];
 	if (
-		typeof firstContent !== "object" ||
+		!isObject(firstContent) ||
 		firstContent === null ||
 		!("type" in firstContent) ||
 		firstContent.type !== "text" ||
 		!("text" in firstContent) ||
-		typeof firstContent.text !== "string"
+		!isString(firstContent.text)
 	) {
 		throw new Error("Expected text content in MCP tool response");
 	}
@@ -60,7 +78,7 @@ function parseStreamableResponse(text: string): JSONObject {
 
 async function postNodeMcp(
 	url: string,
-	body: unknown,
+	body: JSONValue,
 	extraHeaders: Record<string, string> = {},
 ): Promise<{ response: Response; payload: JSONObject }> {
 	const response = await fetch(url, {
@@ -75,7 +93,7 @@ async function postNodeMcp(
 	return { response, payload: parseStreamableResponse(await response.text()) };
 }
 
-function mcpRequest(body: unknown): Request {
+function mcpRequest(body: JSONValue): Request {
 	return new Request("https://contract-matrix.example/mcp", {
 		method: "POST",
 		headers: {
@@ -89,7 +107,7 @@ function mcpRequest(body: unknown): Request {
 
 async function postWorkerMcp(
 	handler: ReturnType<typeof createWorkerHandler>,
-	body: unknown,
+	body: JSONValue,
 ): Promise<{ response: Response; payload: JSONObject }> {
 	const response = await handler(mcpRequest(body), {});
 	return { response, payload: parseStreamableResponse(await response.text()) };
@@ -162,7 +180,7 @@ describe("initial runtime contract matrix", () => {
 		);
 		try {
 			const address = handle.server.address();
-			if (!address || typeof address === "string") throw new Error("No port");
+			if (!address || isString(address)) throw new Error("No port");
 			const url = `http://127.0.0.1:${address.port}/mcp`;
 			const initialized = await postNodeMcp(url, initializeBody());
 			expect(initialized.response.status).toBe(200);

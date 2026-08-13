@@ -2,16 +2,25 @@ import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
+type DiffFile = {
+	readonly new_file?: string;
+	readonly diff?: string;
+};
+type DiffSource = { readonly diff: { readonly files: DiffFile[] } };
+type DiffSourceInput =
+	| DiffSource
+	| { readonly diff?: { readonly files?: DiffFile[] | string } }
+	| null;
 const findDiffLocation =
 	require("../../.cm/plugins/filters/findDiffLocation/index.js") as (
-		source: unknown,
+		source: DiffSourceInput,
 		pattern: RegExp | string,
 		includePath?: RegExp | string,
 		excludePath?: RegExp | string,
 	) => string;
 
 function find(
-	files: unknown[],
+	files: DiffFile[],
 	pattern: RegExp | string,
 	includePath?: RegExp | string,
 	excludePath?: RegExp | string,

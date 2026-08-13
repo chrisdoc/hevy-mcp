@@ -1,11 +1,14 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { z } = require("zod");
+
+const stringSchema = z.string();
 
 /** Return the emitted dist output for manifests that publish a dist subtree. */
 function buildOutputs(packageJson) {
 	const files = Array.isArray(packageJson.files) ? packageJson.files : [];
 	const publishesDist = files.some((entry) => {
-		if (typeof entry !== "string") return false;
+		if (!stringSchema.safeParse(entry).success) return false;
 		const normalized = entry.replace(/^\.\//, "");
 		return normalized === "dist" || normalized.startsWith("dist/");
 	});

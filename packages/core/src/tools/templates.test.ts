@@ -1,14 +1,17 @@
 /* oxlint-disable typescript/unbound-method */
-import type { McpServer } from "@modelcontextprotocol/server";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
-import { describe, expect, it, vi } from "vitest";
+import type { JSONObject } from "@modelcontextprotocol/server";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import {
+	createMockHevyClient,
+	createMockMcpServer,
+} from "../../test-fixtures/mock-hevy.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { templateToolDefinitions } from "./templates.js";
 
-function register(client: HevyClient | null) {
-	const tool = vi.fn();
-	const server = { tool, registerTool: tool } as unknown as McpServer;
+function register(client: ReturnType<typeof createMockHevyClient> | null) {
+	const { server, registerTool: tool } = createMockMcpServer();
 	const runtime = createToolRuntime({ client, catalog: {} as never });
 	for (const definition of templateToolDefinitions)
 		registerToolDefinition(server, runtime, definition);
@@ -20,7 +23,7 @@ function handler(tool: { mock: { calls: unknown[][] } }, name: string) {
 		([registeredName]) => registeredName === name,
 	);
 	if (!call) throw new Error(`Tool ${name} was not registered`);
-	return call.at(-1) as (args: object) => Promise<object>;
+	return call.at(-1) as (args: JSONObject) => Promise<object>;
 }
 
 const templateInput = {
@@ -35,12 +38,12 @@ const templateInput = {
 
 describe("exercise template tools", () => {
 	it("maps pagination, identifiers, and history query fields", async () => {
-		const client = {
-			getExerciseTemplate: vi
-				.fn()
-				.mockResolvedValue({ id: "t1", title: "Cable Row" }),
-			getExerciseHistory: vi.fn().mockResolvedValue({ exercise_history: [] }),
-		} as unknown as HevyClient;
+		const client = createMockHevyClient();
+		client.getExerciseTemplate.mockResolvedValue({
+			id: "t1",
+			title: "Cable Row",
+		});
+		client.getExerciseHistory.mockResolvedValue({ exercise_history: [] });
 		const tool = register(client);
 
 		await handler(
@@ -64,11 +67,11 @@ describe("exercise template tools", () => {
 	});
 
 	it("passes the snake_case exercise envelope unchanged", async () => {
-		const client = {
-			createExerciseTemplate: vi
-				.fn()
-				.mockResolvedValue({ id: "t1", ...templateInput.exercise }),
-		} as unknown as HevyClient;
+		const client = createMockHevyClient();
+		client.createExerciseTemplate.mockResolvedValue({
+			id: "t1",
+			...templateInput.exercise,
+		});
 		const tool = register(client);
 		await handler(tool, "create-exercise-template")(templateInput);
 		expect(client.createExerciseTemplate).toHaveBeenCalledWith(templateInput);
@@ -76,18 +79,22 @@ describe("exercise template tools", () => {
 
 	it("uses snake_case search filters and rejects camelCase aliases", () => {
 		const tool = register(null);
-		const searchSchema = tool.mock.calls.find(
+		const registration = tool.mock.calls.find(
 			([name]) => name === "search-exercise-templates",
-		)?.[1] as { inputSchema: { parse(value: unknown): unknown } };
+		);
+		if (!registration) throw new Error("Tool was not registered");
+		const inputSchema = registration[1]?.inputSchema;
+		if (!inputSchema) throw new Error("Tool input schema is missing");
+		const parsedInputSchema = z.instanceof(z.ZodType).parse(inputSchema);
 		expect(
-			searchSchema.inputSchema.parse({
+			parsedInputSchema.parse({
 				query: "bench",
 				primary_muscle_group: "chest",
 				refresh: true,
 			}),
 		).toMatchObject({ primary_muscle_group: "chest" });
 		expect(() =>
-			searchSchema.inputSchema.parse({
+			parsedInputSchema.parse({
 				query: "bench",
 				primaryMuscleGroup: "chest",
 			}),

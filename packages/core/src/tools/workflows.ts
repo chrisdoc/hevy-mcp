@@ -10,6 +10,7 @@ import {
 	type TrainingSummaryResult,
 } from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
+import { isFiniteNumber } from "../utils/type-predicates.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
@@ -82,7 +83,7 @@ async function fetchRecentPages<T>(
 		}
 		const pageCount = result.pageCount;
 		if (
-			typeof pageCount !== "number" ||
+			!isFiniteNumber(pageCount) ||
 			!Number.isSafeInteger(pageCount) ||
 			pageCount <= page
 		) {
@@ -97,10 +98,7 @@ function utcDateString(date: Date): string {
 	return date.toISOString().slice(0, 10);
 }
 
-function getPeriod(weeks: number): {
-	startDate: string;
-	endDate: string;
-} {
+function getPeriod(weeks: number) {
 	const end = new Date();
 	const start = new Date(end);
 	start.setUTCDate(start.getUTCDate() - weeks * 7);
@@ -122,37 +120,33 @@ function compactSession(
 ): TrainingSummaryResult["workouts"]["sessions"][number] {
 	const exercises = workout.exercises ?? [];
 	const elapsedSeconds = durationSeconds(workout);
-	return {
-		...(workout.id ? { id: workout.id } : {}),
-		...(workout.title ? { title: workout.title } : {}),
-		...(workout.start_time ? { start_time: workout.start_time } : {}),
-		...(workout.end_time ? { end_time: workout.end_time } : {}),
-		...(elapsedSeconds === undefined
-			? {}
-			: { duration_seconds: elapsedSeconds }),
+	const session: TrainingSummaryResult["workouts"]["sessions"][number] = {
 		exercise_count: exercises.length,
 		set_count: exercises.reduce(
 			(total, exercise) => total + (exercise.sets?.length ?? 0),
 			0,
 		),
 	};
+	if (workout.id) session.id = workout.id;
+	if (workout.title) session.title = workout.title;
+	if (workout.start_time) session.start_time = workout.start_time;
+	if (workout.end_time) session.end_time = workout.end_time;
+	if (elapsedSeconds !== undefined) session.duration_seconds = elapsedSeconds;
+	return session;
 }
 
 function compactMeasurement(
 	measurement: BodyMeasurement,
 ): NonNullable<TrainingSummaryResult["body_measurements"]["latest"]> {
-	return {
-		date: measurement.date,
-		...(measurement.weight_kg == null
-			? {}
-			: { weight_kg: measurement.weight_kg }),
-		...(measurement.lean_mass_kg == null
-			? {}
-			: { lean_mass_kg: measurement.lean_mass_kg }),
-		...(measurement.fat_percent == null
-			? {}
-			: { fat_percent: measurement.fat_percent }),
-	};
+	const result: NonNullable<
+		TrainingSummaryResult["body_measurements"]["latest"]
+	> = { date: measurement.date };
+	if (measurement.weight_kg != null) result.weight_kg = measurement.weight_kg;
+	if (measurement.lean_mass_kg != null)
+		result.lean_mass_kg = measurement.lean_mass_kg;
+	if (measurement.fat_percent != null)
+		result.fat_percent = measurement.fat_percent;
+	return result;
 }
 
 export async function getTrainingSummary(
@@ -223,6 +217,14 @@ export async function getTrainingSummary(
 			? latest.weight_kg - earliest.weight_kg
 			: undefined;
 
+	const bodyMeasurements: TrainingSummaryResult["body_measurements"] = {
+		count: measurements.length,
+	};
+	if (latest) bodyMeasurements.latest = latest;
+	if (earliest) bodyMeasurements.earliest = earliest;
+	if (weight_change_kg !== undefined)
+		bodyMeasurements.weight_change_kg = weight_change_kg;
+
 	return {
 		period: { start_date: period.startDate, end_date: period.endDate, weeks },
 		workouts: {
@@ -242,12 +244,7 @@ export async function getTrainingSummary(
 			unique_exercise_template_ids,
 			sessions,
 		},
-		body_measurements: {
-			count: measurements.length,
-			...(latest ? { latest } : {}),
-			...(earliest ? { earliest } : {}),
-			...(weight_change_kg === undefined ? {} : { weight_change_kg }),
-		},
+		body_measurements: bodyMeasurements,
 		workflow: {
 			name: "training-summary",
 			pagination: {

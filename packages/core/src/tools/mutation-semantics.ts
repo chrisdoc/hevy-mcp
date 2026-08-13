@@ -15,6 +15,8 @@ import type {
 	WorkoutMetadataPatchInput,
 } from "./input-schemas.js";
 import { utcSecondTimestamp } from "../utils/schemas.js";
+import { isFiniteNumber, isString } from "../utils/type-predicates.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 
 type RoutineRepRange = { start?: number; end?: number } | null;
 
@@ -65,10 +67,9 @@ function buildRoutineSets(
 ): PostRoutinesRequestSet[] | PutRoutinesRequestSet[] {
 	return sets.map((set) => {
 		const repRange = buildRepRange(set.rep_range);
-		const reps =
-			typeof set.reps === "number"
-				? set.reps
-				: getFixedRepsFromRepRange(repRange);
+		const reps = isFiniteNumber(set.reps)
+			? set.reps
+			: getFixedRepsFromRepRange(repRange);
 		const common = {
 			weight_kg: set.weight_kg ?? null,
 			reps: reps ?? null,
@@ -84,11 +85,9 @@ function buildRoutineSets(
 				rep_range: repRange,
 			};
 		}
-		return {
-			...common,
-			type: set.type,
-			...(repRange ? { rep_range: repRange } : {}),
-		};
+		const payload: PutRoutinesRequestSet = { ...common, type: set.type };
+		if (repRange) payload.rep_range = repRange;
+		return payload;
 	});
 }
 
@@ -177,8 +176,8 @@ const FETCHED_ISO_TIMESTAMP =
  * fetched values in the API's second-precision update contract. Caller-
  * supplied values remain strict.
  */
-function normalizeFetchedWorkoutTimestamp(value: unknown): unknown {
-	if (typeof value !== "string") return value;
+function normalizeFetchedWorkoutTimestamp(value: RuntimeValue): RuntimeValue {
+	if (!isString(value)) return value;
 	const match = FETCHED_ISO_TIMESTAMP.exec(value);
 	if (!match) return value;
 
@@ -233,17 +232,19 @@ function preserveWorkoutExercises(
 			superset_id: exercise.supersets_id ?? null,
 			notes: exercise.notes ?? null,
 			sets:
-				exercise.sets?.map((set) => ({
-					...(set.type === undefined
-						? {}
-						: { type: set.type as WorkoutUpdateSet["type"] }),
-					weight_kg: set.weight_kg ?? null,
-					reps: set.reps ?? null,
-					distance_meters: set.distance_meters ?? null,
-					duration_seconds: set.duration_seconds ?? null,
-					rpe: set.rpe as WorkoutUpdateSet["rpe"],
-					custom_metric: set.custom_metric ?? null,
-				})) ?? [],
+				exercise.sets?.map((set) => {
+					const updateSet: WorkoutUpdateSet = {
+						weight_kg: set.weight_kg ?? null,
+						reps: set.reps ?? null,
+						distance_meters: set.distance_meters ?? null,
+						duration_seconds: set.duration_seconds ?? null,
+						rpe: set.rpe as WorkoutUpdateSet["rpe"],
+						custom_metric: set.custom_metric ?? null,
+					};
+					if (set.type !== undefined)
+						updateSet.type = set.type as WorkoutUpdateSet["type"];
+					return updateSet;
+				}) ?? [],
 		})) ?? []
 	);
 }
@@ -265,7 +266,7 @@ export function buildWorkoutUpdatePayload(
 				: normalizeFetchedWorkoutTimestamp(current.end_time),
 	});
 
-	return {
+	const payload: WorkoutUpdatePayload = {
 		...metadata,
 		description:
 			patch.description !== undefined
@@ -275,8 +276,9 @@ export function buildWorkoutUpdatePayload(
 			replacementExercises === undefined
 				? preserveWorkoutExercises(current)
 				: replacementExercises,
-		...(patch.is_private !== undefined ? { is_private: patch.is_private } : {}),
 	};
+	if (patch.is_private !== undefined) payload.is_private = patch.is_private;
+	return payload;
 }
 
 export type MeasurementPayload = Omit<BodyMeasurement, "date">;
@@ -315,10 +317,15 @@ export function buildMeasurementPayload(
 	return payload;
 }
 
+export type MeasurementMergeResult = {
+	payload: MeasurementPayload;
+	measurement: BodyMeasurement;
+};
+
 export function mergeMeasurementPayload(
 	existing: BodyMeasurement,
 	changes: MeasurementFields,
-): { payload: MeasurementPayload; measurement: BodyMeasurement } {
+): MeasurementMergeResult {
 	const payload: MeasurementPayload = {};
 	const measurement = { ...existing };
 

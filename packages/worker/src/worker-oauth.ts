@@ -1,3 +1,5 @@
+/// <reference types="@cloudflare/workers-types" />
+
 import {
 	type AuthRequest,
 	OAuthProvider,
@@ -60,7 +62,7 @@ interface OAuthProviderEnv {
 }
 
 export interface HevyOAuthWorker<Env> {
-	fetch(request: Request, env: Env, ctx: object): Promise<Response>;
+	fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response>;
 }
 
 /**
@@ -69,21 +71,33 @@ export interface HevyOAuthWorker<Env> {
  * bearer value matching this shape routes to the OAuth layer while
  * everything else keeps using the legacy direct-API-key path.
  */
-export function hasOAuthAccessTokenShape(token: string): boolean {
+export function hasOAuthAccessTokenFormat(token: string): boolean {
 	return /^[^:]+:[^:]+:[^:]+$/.test(token);
 }
 
-function isKvNamespaceLike(value: unknown): boolean {
-	if (typeof value !== "object" || value === null) return false;
+function isObjectLike<T>(value: T): value is T & object {
+	return z.object({}).passthrough().safeParse(value).success;
+}
+
+function isFunction<T>(value: T): value is T & ((...args: never[]) => void) {
+	return z.function().safeParse(value).success;
+}
+
+function isString<T>(value: T): value is T & string {
+	return z.string().safeParse(value).success;
+}
+
+function isKvNamespaceLike<T>(value: T): boolean {
+	if (!isObjectLike(value)) return false;
 	return (
 		"get" in value &&
-		typeof value.get === "function" &&
+		isFunction(value.get) &&
 		"put" in value &&
-		typeof value.put === "function" &&
+		isFunction(value.put) &&
 		"delete" in value &&
-		typeof value.delete === "function" &&
+		isFunction(value.delete) &&
 		"list" in value &&
-		typeof value.list === "function"
+		isFunction(value.list)
 	);
 }
 
@@ -137,7 +151,7 @@ const authRequestSchema = z.looseObject({
 	resource: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
-export function validateAuthRequest(value: unknown): AuthRequest | null {
+export function validateAuthRequest<T>(value: T): AuthRequest | null {
 	const result = authRequestSchema.safeParse(value);
 	return result.success ? result.data : null;
 }
@@ -164,7 +178,11 @@ function escapeHtml(value: string): string {
 		.replaceAll("'", "&#39;");
 }
 
-const HTML_RESPONSE_HEADERS: Record<string, string> = {
+interface HtmlResponseHeaders {
+	readonly [key: string]: string;
+}
+
+const HTML_RESPONSE_HEADERS: HtmlResponseHeaders = {
 	"Content-Type": "text/html; charset=utf-8",
 	"Cache-Control": "no-store",
 	"X-Frame-Options": "DENY",
@@ -282,10 +300,7 @@ interface ValidationFailure {
 	readonly outcome: ReturnType<typeof executionOutcome>;
 }
 
-function validationFailure(
-	error: unknown,
-	request: Request,
-): ValidationFailure {
+function validationFailure<T>(error: T, request: Request): ValidationFailure {
 	const outcome = executionOutcome(error, request.signal.aborted ? 499 : 502);
 	const executionOutcomeName = outcome.execution.outcome;
 	return {
@@ -300,8 +315,8 @@ function validationFailure(
 	};
 }
 
-function renderValidationFailure(
-	error: unknown,
+function renderValidationFailure<T>(
+	error: T,
 	request: Request,
 	rerender: (message: string, status: number) => Response,
 ): Response {
@@ -309,7 +324,7 @@ function renderValidationFailure(
 	return rerender(failure.message, failure.status);
 }
 
-function jsonValidationFailure(error: unknown, request: Request): Response {
+function jsonValidationFailure<T>(error: T, request: Request): Response {
 	const failure = validationFailure(error, request);
 	return executionResponse(error, failure.message, failure.outcome);
 }
@@ -372,10 +387,9 @@ export async function handleAuthorizePost<Env>(
 		return authorizeErrorResponse("Invalid form submission.", 400);
 	}
 	const encodedRequest = form.get("oauth_request");
-	const authRequest =
-		typeof encodedRequest === "string"
-			? decodeAuthRequest(encodedRequest)
-			: null;
+	const authRequest = isString(encodedRequest)
+		? decodeAuthRequest(encodedRequest)
+		: null;
 	if (!authRequest) {
 		return authorizeErrorResponse("Invalid authorization request.", 400);
 	}
@@ -395,7 +409,7 @@ export async function handleAuthorizePost<Env>(
 		);
 
 	const apiKeyEntry = form.get("hevy_api_key");
-	const apiKey = typeof apiKeyEntry === "string" ? apiKeyEntry.trim() : "";
+	const apiKey = isString(apiKeyEntry) ? apiKeyEntry.trim() : "";
 	if (!apiKey) return rerender("Enter your Hevy API key.", 400);
 
 	let validation: HevyOAuthValidation;
@@ -464,14 +478,13 @@ function oauthUnauthorizedResponse(request: Request): Response {
 async function handleAuthorizedMcpRequest<Env>(
 	request: Request,
 	env: Env,
-	ctx: object,
+	ctx: ExecutionContext,
 	dependencies: HevyOAuthDependencies<Env>,
 ): Promise<Response> {
 	const deadline = Date.now() + WORKER_INVOCATION_TIMEOUT_MS;
 	const props = (ctx as { props?: Partial<HevyGrantProps> } | null | undefined)
 		?.props;
-	const apiKey =
-		typeof props?.hevyApiKey === "string" ? props.hevyApiKey : null;
+	const apiKey = isString(props?.hevyApiKey) ? props.hevyApiKey : null;
 	if (!apiKey) return oauthUnauthorizedResponse(request);
 
 	let validation: HevyOAuthValidation;
@@ -504,7 +517,7 @@ export function createHevyOAuthProvider<Env extends object>(
 	const provider = new OAuthProvider({
 		apiRoute: MCP_PATH,
 		apiHandler: {
-			fetch: (request: Request, env: Env, ctx: object) =>
+			fetch: (request: Request, env: Env, ctx: ExecutionContext) =>
 				handleAuthorizedMcpRequest(request, env, ctx, dependencies),
 		},
 		defaultHandler: {
@@ -540,5 +553,5 @@ export function createHevyOAuthProvider<Env extends object>(
 		allowPlainPKCE: false,
 		resourceMetadata: { resource_name: "Hevy MCP Server" },
 	});
-	return provider as unknown as HevyOAuthWorker<Env>;
+	return provider satisfies HevyOAuthWorker<Env>;
 }

@@ -6,6 +6,7 @@ import type {
 	HevyRequestOptions,
 	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
+import { isFunction } from "./utils/type-predicates.js";
 
 /** Per-request control supplied by MCP, HTTP, CLI, or a lifecycle owner. */
 export interface ToolExecutionContext extends HevyRequestOptions {
@@ -25,6 +26,12 @@ export interface StructuredExecutionProjection {
 
 /** Backward-compatible name for the structured error projection. */
 export type StructuredExecutionError = StructuredExecutionProjection;
+type MutableExecutionProjection = {
+	-readonly [K in keyof StructuredExecutionProjection]?: StructuredExecutionProjection[K];
+} & Pick<
+	StructuredExecutionProjection,
+	"outcome" | "phase" | "operation_safety" | "commit_state" | "safe_to_retry"
+>;
 
 export type ExecutionProjectionSource = Partial<
 	Pick<
@@ -42,15 +49,16 @@ export type ExecutionProjectionSource = Partial<
 export function createExecutionProjection(
 	source?: ExecutionProjectionSource,
 ): StructuredExecutionProjection {
-	return {
+	const projection: MutableExecutionProjection = {
 		outcome: source?.outcome ?? "terminal_failure",
 		phase: source?.phase ?? "before-dispatch",
 		operation_safety: source?.operation_safety ?? "read",
 		commit_state: source?.commit_state ?? "not_sent",
 		safe_to_retry: source?.safe_to_retry ?? false,
-		...(source?.code ? { code: source.code } : {}),
-		...(source?.status !== undefined ? { status: source.status } : {}),
 	};
+	if (source?.code) projection.code = source.code;
+	if (source?.status !== undefined) projection.status = source.status;
+	return projection;
 }
 
 export function mergeAbortSignals(
@@ -75,7 +83,7 @@ type ClientMethod = keyof HevyClient;
  * objects/strings and most generated wrappers silently ignore extra args.
  */
 /** Canonical options-slot metadata shared by binding and table-driven tests. */
-export const HEVY_CLIENT_OPTION_INDEXES: Record<ClientMethod, number> = {
+export const HEVY_CLIENT_OPTION_INDEXES = {
 	getWorkouts: 1,
 	getWorkout: 1,
 	createWorkout: 1,
@@ -98,21 +106,21 @@ export const HEVY_CLIENT_OPTION_INDEXES: Record<ClientMethod, number> = {
 	createBodyMeasurement: 1,
 	updateBodyMeasurement: 2,
 	getUserInfo: 0,
-};
+} satisfies Record<ClientMethod, number>;
 
 /**
  * Bind one immutable control object to every curated client operation. A
  * proxy keeps existing tool code source-compatible while making it impossible
  * for one page of a workflow to silently lose cancellation/deadline state.
  */
-export function bindClientExecution(
-	client: HevyClient,
+export function bindClientExecution<TClient extends HevyClient>(
+	client: TClient,
 	control: ToolExecutionContext,
-): HevyClient {
+): TClient {
 	return new Proxy(client, {
 		get(target, property, receiver) {
 			const value = Reflect.get(target, property, receiver);
-			if (typeof value !== "function") return value;
+			if (!isFunction(value)) return value;
 			const optionIndex =
 				property in HEVY_CLIENT_OPTION_INDEXES
 					? HEVY_CLIENT_OPTION_INDEXES[property as ClientMethod]
@@ -130,5 +138,5 @@ export function bindClientExecution(
 				return Reflect.apply(value, target, args);
 			};
 		},
-	}) as HevyClient;
+	}) as TClient;
 }

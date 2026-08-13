@@ -25,17 +25,18 @@ export function bucketCount(value: number): ResultCountBucket {
 	return "51+";
 }
 
-const resultTelemetry = new WeakMap<object, ToolResultTelemetry>();
+type ResultOwner = { readonly content: readonly unknown[] };
+const resultTelemetry = new WeakMap<ResultOwner, ToolResultTelemetry>();
 
 export function attachResultTelemetry(
-	result: object,
+	result: ResultOwner,
 	telemetry: ToolResultTelemetry | undefined,
 ): void {
 	if (telemetry) resultTelemetry.set(result, telemetry);
 }
 
 export function getResultTelemetry(
-	result: object,
+	result: ResultOwner,
 ): ToolResultTelemetry | undefined {
 	return resultTelemetry.get(result);
 }

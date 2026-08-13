@@ -1,4 +1,16 @@
-import type { RequestConfig, ResponseConfig } from "./generated/.kubb/fetch.ts";
+import { z } from "zod";
+
+const objectSchema = z.object({}).passthrough();
+const numberSchema = z.number();
+const stringSchema = z.string();
+const isObject = <T>(value: T): value is T & object =>
+	objectSchema.safeParse(value).success;
+const isNumber = <T>(value: T): value is T & number =>
+	numberSchema.safeParse(value).success;
+const isString = <T>(value: T): value is T & string =>
+	stringSchema.safeParse(value).success;
+
+import type { RequestConfig, ResponseConfig } from "./fetch.ts";
 import * as api from "./generated/client/api";
 import type {
 	GetV1BodyMeasurementsQueryParams,
@@ -68,6 +80,11 @@ type KubbClient = {
 
 type InternalRequestControl = {
 	readonly hevyDeadline?: number;
+};
+type MutableRequest = {
+	hevyDeadline?: number;
+	client: KubbClient;
+	signal?: AbortSignal;
 };
 
 export type HevyApiOutcome =
@@ -190,7 +207,7 @@ function defaultSleep(
 			cleanup();
 			resolve();
 		};
-		const rejectSleep = (reason: unknown) => {
+		const rejectSleep = <T>(reason: T) => {
 			if (settled) return;
 			settled = true;
 			cleanup();
@@ -243,7 +260,7 @@ function withTimeout<T>(
 				signal?.removeEventListener("abort", onAbort);
 				resolve(value);
 			},
-			(error: unknown) => {
+			<T>(error: T) => {
 				if (settled) return;
 				settled = true;
 				if (timer !== undefined) clearTimeout(timer);
@@ -266,9 +283,9 @@ function getRequestContext(config: {
 	const endpoint = canonicalEndpointIdentity(config.url ?? "");
 	const page =
 		config.params !== null &&
-		typeof config.params === "object" &&
+		isObject(config.params) &&
 		"page" in config.params &&
-		typeof config.params.page === "number"
+		isNumber(config.params.page)
 			? config.params.page
 			: undefined;
 	return { method, endpoint, page };
@@ -394,7 +411,7 @@ function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
 		});
 	}
 	const url = new URL(config.url, baseUrl);
-	if (config.params && typeof config.params === "object") {
+	if (config.params && isObject(config.params)) {
 		for (const [key, value] of Object.entries(config.params)) {
 			if (value !== undefined) {
 				url.searchParams.append(key, value === null ? "null" : String(value));
@@ -415,7 +432,7 @@ async function parseResponseData(response: Response): Promise<unknown> {
 	}
 }
 
-function getNetworkCode(error: unknown): string {
+function getNetworkCode<T>(error: T): string {
 	return error instanceof DOMException && error.name === "AbortError"
 		? "ETIMEDOUT"
 		: "ERR_NETWORK";
@@ -580,13 +597,10 @@ function requestOptions(
 	options: HevyRequestOptions | undefined,
 	client: KubbClient,
 ): InternalRequestControl & { client: KubbClient; signal?: AbortSignal } {
-	return {
-		client,
-		...(options?.signal ? { signal: options.signal } : {}),
-		...(options?.deadline !== undefined
-			? { hevyDeadline: options.deadline }
-			: {}),
-	};
+	const request: MutableRequest = { client };
+	if (options?.signal) request.signal = options.signal;
+	if (options?.deadline !== undefined) request.hevyDeadline = options.deadline;
+	return request;
 }
 
 interface RequestAttemptExecutionOptions {
@@ -844,7 +858,18 @@ function createFailureObservation(
 	retryExhausted: boolean,
 	expectedReason: HevyRequestObservation["expectedReason"],
 ): HevyRequestObservation {
-	return {
+	const observation: Omit<
+		HevyRequestObservation,
+		"expectedReason" | "error"
+	> & {
+		expectedReason?: HevyRequestObservation["expectedReason"];
+		error?: {
+			status?: number;
+			code?: string;
+			category?: "HevyHttpError" | "NetworkError";
+			response_error?: string;
+		};
+	} = {
 		method: options.method,
 		endpoint: options.endpoint,
 		status: error.status ?? 0,
@@ -860,17 +885,23 @@ function createFailureObservation(
 		operationSafety: options.safety,
 		commitState,
 		safeToRetry: safeToRetry && !retryExhausted,
-		...(expectedReason ? { expectedReason } : {}),
 		error: {
 			status: error.status,
 			code:
-				typeof error.code === "string" && SAFE_OBSERVATION_CODES.has(error.code)
+				isString(error.code) && SAFE_OBSERVATION_CODES.has(error.code)
 					? error.code
 					: undefined,
 			category: error.status === undefined ? "NetworkError" : "HevyHttpError",
-			...(error.responseError ? { response_error: error.responseError } : {}),
 		},
 	};
+	if (expectedReason) observation.expectedReason = expectedReason;
+	if (error.responseError && observation.error) {
+		observation.error = {
+			...observation.error,
+			response_error: error.responseError,
+		};
+	}
+	return observation;
 }
 
 function emitTerminalFailureLog(

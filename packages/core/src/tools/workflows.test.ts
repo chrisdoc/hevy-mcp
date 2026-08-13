@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
@@ -13,8 +13,8 @@ describe("get-training-summary", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
 		try {
-			const getWorkouts = vi
-				.fn()
+			const client = createMockHevyClient();
+			client.getWorkouts
 				.mockResolvedValueOnce({
 					page: 1,
 					page_count: 2,
@@ -39,7 +39,7 @@ describe("get-training-summary", () => {
 						},
 					],
 				});
-			const getBodyMeasurements = vi.fn().mockResolvedValue({
+			client.getBodyMeasurements.mockResolvedValue({
 				page: 1,
 				page_count: 1,
 				body_measurements: [
@@ -48,7 +48,7 @@ describe("get-training-summary", () => {
 				],
 			});
 			const runtime = createToolRuntime({
-				client: { getWorkouts, getBodyMeasurements } as unknown as HevyClient,
+				client,
 				catalog: {} as ExerciseTemplateCatalog,
 			});
 			const summary = await getTrainingSummary(runtime, 4);
@@ -105,11 +105,11 @@ describe("get-training-summary", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
 		try {
+			const client = createMockHevyClient();
+			client.getWorkouts.mockImplementation(() => undefined);
+			client.getBodyMeasurements.mockImplementation(() => undefined);
 			const runtime = createToolRuntime({
-				client: {
-					getWorkouts: vi.fn().mockResolvedValue(undefined),
-					getBodyMeasurements: vi.fn().mockResolvedValue(undefined),
-				} as unknown as HevyClient,
+				client,
 				catalog: {} as ExerciseTemplateCatalog,
 			});
 			await expect(

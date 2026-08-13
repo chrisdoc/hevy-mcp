@@ -1,5 +1,9 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
-import { Client, type JSONObject } from "@modelcontextprotocol/client";
+import {
+	Client,
+	type JSONObject,
+	type JSONValue,
+} from "@modelcontextprotocol/client";
 import nock from "nock";
 import {
 	afterAll,
@@ -16,6 +20,13 @@ import { registerHevyTools } from "../../../packages/core/src/tools/register.js"
 import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
 import { createExerciseTemplateCatalog } from "../../../packages/core/src/utils/exercise-template-catalog.js";
 import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
+import { z } from "zod";
+
+const stringSchema = z.string();
+
+function isString(value: JSONValue | undefined): value is string {
+	return stringSchema.safeParse(value).success;
+}
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
@@ -196,7 +207,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			exercise_count: 0,
 			set_count: 0,
 		});
-		expect(typeof structuredContent.workouts[0]?.id).toBe("string");
+		expect(isString(structuredContent.workouts[0]?.id)).toBe(true);
 		expect(structuredContent.workouts[0]).not.toHaveProperty("exercises");
 		expect(payload).toEqual(structuredContent.workouts);
 	});
@@ -424,7 +435,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 			exercise_count: 1,
 			set_count: 0,
 		});
-		expect(typeof structuredContent.routines[0]?.id).toBe("string");
+		expect(isString(structuredContent.routines[0]?.id)).toBe(true);
 		expect(structuredContent.routines[0]).not.toHaveProperty("exercises");
 		expect(payload).toEqual(structuredContent.routines);
 	});

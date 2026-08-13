@@ -1,6 +1,11 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadControlPlane, repositoryRoot } from "./control-plane-models.mjs";
+import {
+	isBoolean,
+	isObjectLike,
+	isString,
+} from "./runtime-value-predicates.mjs";
 
 const selectorKinds = new Set([
 	"vitest",
@@ -42,7 +47,7 @@ function assertArray(value, label) {
 }
 
 function assertString(value, label) {
-	assert(typeof value === "string" && value.length > 0, label + " is required");
+	assert(isString(value) && value.length > 0, label + " is required");
 }
 
 function assertUnique(values, label) {
@@ -56,8 +61,7 @@ function assertUnique(values, label) {
 }
 
 function packageExports(packageJson) {
-	if (!packageJson.exports || typeof packageJson.exports !== "object")
-		return [];
+	if (!packageJson.exports || !isObjectLike(packageJson.exports)) return [];
 	return Object.keys(packageJson.exports);
 }
 
@@ -174,11 +178,11 @@ export function validateTopology(rootDir, topology, artifactIds) {
 			workspace.id + " has unknown role",
 		);
 		assert(
-			typeof workspace.private === "boolean",
+			isBoolean(workspace.private),
 			workspace.id + " private must be boolean",
 		);
 		assert(
-			typeof workspace.publishable === "boolean",
+			isBoolean(workspace.publishable),
 			workspace.id + " publishable must be boolean",
 		);
 		assert(
@@ -196,7 +200,7 @@ export function validateTopology(rootDir, topology, artifactIds) {
 				workspace.id + " references unknown dependency " + dependency,
 			);
 		assert(
-			workspace.boundary && typeof workspace.boundary === "object",
+			workspace.boundary && isObjectLike(workspace.boundary),
 			workspace.id + ".boundary is required",
 		);
 		assertArray(
@@ -206,16 +210,15 @@ export function validateTopology(rootDir, topology, artifactIds) {
 		for (const pattern of workspace.boundary.forbidden)
 			assertString(pattern, workspace.id + ".boundary.forbidden pattern");
 		assert(
-			typeof workspace.boundary.rejectBuiltins === "boolean",
+			isBoolean(workspace.boundary.rejectBuiltins),
 			workspace.id + ".boundary.rejectBuiltins must be boolean",
 		);
 		assert(
-			typeof workspace.boundary.rejectDynamicImports === "boolean",
+			isBoolean(workspace.boundary.rejectDynamicImports),
 			workspace.id + ".boundary.rejectDynamicImports must be boolean",
 		);
 		assert(
-			workspace.boundary.allowed &&
-				typeof workspace.boundary.allowed === "object",
+			workspace.boundary.allowed && isObjectLike(workspace.boundary.allowed),
 			workspace.id + ".boundary.allowed is required",
 		);
 		for (const packageName of Object.keys(workspace.boundary.allowed)) {
@@ -234,7 +237,7 @@ export function validateTopology(rootDir, topology, artifactIds) {
 			assertArray(subpaths, workspace.id + ".boundary.allowed." + packageName);
 			for (const subpath of subpaths)
 				assert(
-					typeof subpath === "string",
+					isString(subpath),
 					workspace.id + ".boundary.allowed subpaths must be strings",
 				);
 		}
@@ -298,10 +301,7 @@ export function validateTopology(rootDir, topology, artifactIds) {
 		"every non-private workspace must be declared publishable",
 	);
 	const release = topology.release;
-	assert(
-		release && typeof release === "object",
-		"topology.release is required",
-	);
+	assert(release && isObjectLike(release), "topology.release is required");
 	assertArray(release.triggers, "topology.release.triggers");
 	assertUnique(
 		release.triggers.map((trigger) => trigger?.path),
@@ -383,10 +383,7 @@ export function validateArtifactProvenance(
 		);
 	};
 	const assertProducer = (producer, label) => {
-		assert(
-			producer && typeof producer === "object",
-			label + " producer is required",
-		);
+		assert(producer && isObjectLike(producer), label + " producer is required");
 		assertString(producer.kind, label + ".producer.kind");
 		assert(
 			!("command" in producer) && !("credentials" in producer),
@@ -398,7 +395,7 @@ export function validateArtifactProvenance(
 		}
 		assert(
 			producer.kind === "external" &&
-				typeof producer.id === "string" &&
+				isString(producer.id) &&
 				producer.id.length > 0,
 			label + ".producer must be an Nx target or named external producer",
 		);
@@ -538,8 +535,7 @@ export function validateArtifactProvenance(
 			candidate.id + " must not encode commands or credentials",
 		);
 		assert(
-			typeof candidate.workspace === "string" &&
-				workspaceIds.has(candidate.workspace),
+			isString(candidate.workspace) && workspaceIds.has(candidate.workspace),
 			candidate.id + " references unknown workspace",
 		);
 		assertArray(candidate.sourcePaths, candidate.id + ".sourcePaths");
@@ -662,10 +658,7 @@ export function validateArtifactProvenance(
 
 function validateSelector(lane) {
 	const selector = lane.selector;
-	assert(
-		selector && typeof selector === "object",
-		lane.id + ".selector is required",
-	);
+	assert(selector && isObjectLike(selector), lane.id + ".selector is required");
 	assert(
 		selectorKinds.has(selector.kind),
 		lane.id + " has unknown selector kind " + selector.kind,
@@ -722,13 +715,13 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 		"validation lane manifest version must be 1",
 	);
 	assert(
-		lanes.runtimeMatrix && typeof lanes.runtimeMatrix === "object",
+		lanes.runtimeMatrix && isObjectLike(lanes.runtimeMatrix),
 		"validation runtimeMatrix is required",
 	);
 	for (const [runtimeId, runtime] of Object.entries(lanes.runtimeMatrix)) {
 		assertString(runtimeId, "validation runtime id");
 		assert(
-			runtime && typeof runtime === "object",
+			runtime && isObjectLike(runtime),
 			runtimeId + " runtime is required",
 		);
 		assertString(runtime.kind, runtimeId + ".kind");
@@ -740,7 +733,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 	}
 	assertArray(lanes.lanes, "validation lanes");
 	assert(
-		lanes.aggregates && typeof lanes.aggregates === "object",
+		lanes.aggregates && isObjectLike(lanes.aggregates),
 		"validation aggregates are required",
 	);
 	assertArray(lanes.unresolvedMappings, "validation unresolvedMappings");
@@ -764,7 +757,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			...(config.options?.commands || []),
 			config.metadata?.scriptContent,
 			config.metadata?.runCommand,
-		].filter((command) => typeof command === "string");
+		].filter((command) => isString(command));
 		const hasPublicationCommand = commands.some((command) =>
 			/(?:npm\s+publish|nx\s+release\s+publish|changeset\s+publish)/.test(
 				command,
@@ -855,7 +848,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				"validation lane alias duplicated: " + lane.alias,
 			);
 			assert(
-				typeof packageJson.scripts[lane.alias] === "string",
+				isString(packageJson.scripts[lane.alias]),
 				lane.id + " alias is not a root script",
 			);
 			assert(
@@ -971,7 +964,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 		if (aggregate.workflowRuntimes === undefined) continue;
 		assert(
 			aggregate.workflowRuntimes &&
-				typeof aggregate.workflowRuntimes === "object" &&
+				isObjectLike(aggregate.workflowRuntimes) &&
 				!Array.isArray(aggregate.workflowRuntimes),
 			id + ".workflowRuntimes must be an object",
 		);
@@ -990,7 +983,7 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				runtimes.length > 0 &&
 					runtimes.every(
 						(runtime) =>
-							typeof runtime === "string" &&
+							isString(runtime) &&
 							runtime.length > 0 &&
 							lanes.runtimeMatrix[runtime],
 					),
@@ -1046,10 +1039,10 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 		const target = project.targets[aggregate.nxTarget];
 		const expected = aggregateTargetMembers(id);
 		const actual = (target.dependsOn ?? []).map((dependency) =>
-			typeof dependency === "string" ? dependency : dependency.target,
+			isString(dependency) ? dependency : dependency.target,
 		);
 		assert(
-			actual.every((dependency) => typeof dependency === "string"),
+			actual.every((dependency) => isString(dependency)),
 			id + " mapped target dependencies must be target names",
 		);
 		assert(

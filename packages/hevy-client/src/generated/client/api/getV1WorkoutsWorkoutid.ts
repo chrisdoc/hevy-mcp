@@ -3,18 +3,18 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   GetV1WorkoutsWorkoutidQueryResponse,
   GetV1WorkoutsWorkoutidPathParams,
   GetV1WorkoutsWorkoutidHeaderParams,
   GetV1WorkoutsWorkoutid404,
 } from "../types/GetV1WorkoutsWorkoutid.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getGetV1WorkoutsWorkoutidUrl(
   workoutId: GetV1WorkoutsWorkoutidPathParams["workoutId"],

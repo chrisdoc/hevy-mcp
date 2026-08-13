@@ -7,14 +7,14 @@ export default defineConfig({
 			// @cloudflare/workers-oauth-provider imports this Workers runtime
 			// module; outside workerd it needs a shim.
 			"cloudflare:workers": fileURLToPath(
-				new URL("./tests/shims/cloudflare-workers.ts", import.meta.url),
+				new URL("./tests/shims/cloudflare-workers.ts", import.meta.url).href,
 			),
 		},
 	},
 	test: {
 		setupFiles: [
 			fileURLToPath(
-				new URL("./tests/setup/cloudflare-runtime.ts", import.meta.url),
+				new URL("./tests/setup/cloudflare-runtime.ts", import.meta.url).href,
 			),
 		],
 		server: {

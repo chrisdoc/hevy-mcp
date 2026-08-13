@@ -5,11 +5,11 @@ import type {
 	PutV1WorkoutsWorkoutid200,
 } from "@hevy-mcp/hevy-client/types";
 import {
-	paginationShape,
+	paginationFields,
 	nonEmptyId,
-	replaceWorkoutExercisesInputShape,
-	updateWorkoutInputShape,
-	workoutInputShape,
+	replaceWorkoutExercisesInputFields,
+	updateWorkoutInputFields,
+	workoutInputFields,
 } from "./input-schemas.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
@@ -30,7 +30,7 @@ import type { InferToolParams } from "../utils/tool-helpers.js";
 import { buildWorkoutUpdatePayload } from "./mutation-semantics.js";
 import { isExpectedListPageNotFound } from "../utils/hevy-error-policy.js";
 
-const getWorkoutsSchema = paginationShape({
+const getWorkoutsSchema = paginationFields({
 	defaultPageSize: 5,
 	maxPageSize: 10,
 	integerPage: false,
@@ -41,18 +41,18 @@ const getWorkoutSchema = { workout_id: nonEmptyId } as const;
 type GetWorkoutParams = InferToolParams<typeof getWorkoutSchema>;
 
 const getWorkoutEventsSchema = {
-	...paginationShape({ defaultPageSize: 5, maxPageSize: 10 }),
+	...paginationFields({ defaultPageSize: 5, maxPageSize: 10 }),
 	since: z.string().default("1970-01-01T00:00:00Z"),
 } as const;
 type GetWorkoutEventsParams = InferToolParams<typeof getWorkoutEventsSchema>;
 
-const createWorkoutSchema = workoutInputShape;
+const createWorkoutSchema = workoutInputFields;
 type CreateWorkoutParams = InferToolParams<typeof createWorkoutSchema>;
 
-const updateWorkoutSchema = updateWorkoutInputShape;
+const updateWorkoutSchema = updateWorkoutInputFields;
 type UpdateWorkoutParams = InferToolParams<typeof updateWorkoutSchema>;
 
-const replaceWorkoutExercisesSchema = replaceWorkoutExercisesInputShape;
+const replaceWorkoutExercisesSchema = replaceWorkoutExercisesInputFields;
 type ReplaceWorkoutExercisesParams = InferToolParams<
 	typeof replaceWorkoutExercisesSchema
 >;

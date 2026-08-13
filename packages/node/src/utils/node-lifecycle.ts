@@ -11,6 +11,7 @@ import { serverStartups } from "./metrics.js";
 import { installGracefulShutdown } from "./graceful-shutdown.js";
 import { scheduleUpdateCheck } from "./version-check.js";
 import { MissingHevyApiKeyError } from "./config.js";
+import type { FailureContext } from "./failure-reporter.js";
 export const INVALID_API_KEY_MESSAGE =
 	"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.";
 
@@ -26,10 +27,7 @@ type LifecycleTerminationReason =
 	| "runtime_failure"
 	| "startup_failure";
 
-const LIFECYCLE_FAILURE_TAXONOMY: Record<
-	LifecycleFailurePhase,
-	{ errorType: string; errorCategory: string }
-> = {
+const LIFECYCLE_FAILURE_TAXONOMY = {
 	config: {
 		errorType: "MCP_SERVER_CONFIG_ERROR",
 		errorCategory: "McpServerConfigFailure",
@@ -50,9 +48,12 @@ const LIFECYCLE_FAILURE_TAXONOMY: Record<
 		errorType: "MCP_SERVER_RUN_ERROR",
 		errorCategory: "McpServerRunFailure",
 	},
-};
+} satisfies Record<
+	LifecycleFailurePhase,
+	{ errorType: string; errorCategory: string }
+>;
 
-function isExpectedLifecycleFailure(error: unknown): boolean {
+function isExpectedLifecycleFailure(error: Error | string): boolean {
 	return (
 		error instanceof MissingHevyApiKeyError ||
 		(error instanceof Error && error.message === INVALID_API_KEY_MESSAGE)
@@ -62,7 +63,7 @@ function isExpectedLifecycleFailure(error: unknown): boolean {
 function createLifecycleFailureAttributes(
 	phase: LifecycleFailurePhase,
 	terminationReason: LifecycleTerminationReason,
-): Record<string, string | number | boolean> {
+) {
 	const taxonomy = LIFECYCLE_FAILURE_TAXONOMY[phase];
 	return {
 		"mcp.failure.phase": phase,
@@ -74,18 +75,23 @@ function createLifecycleFailureAttributes(
 
 export function recordLifecycleFailure(
 	span: Span,
-	error: unknown,
+	error: Error | string,
 	phase: LifecycleFailurePhase,
 	terminationReason: LifecycleTerminationReason,
 ): void {
 	const attributes = createLifecycleFailureAttributes(phase, terminationReason);
 	span.addEvent("mcp.lifecycle.failure", attributes);
-	captureFailure(error, {
+	const failure = {
 		kind: "lifecycle",
 		attributes,
-		...(isExpectedLifecycleFailure(error) ? { expected: true } : {}),
 		span,
-	});
+	} satisfies FailureContext;
+	captureFailure(
+		error,
+		isExpectedLifecycleFailure(error)
+			? { ...failure, expected: true }
+			: failure,
+	);
 }
 
 export type NodeLifecycleTransport = "stdio" | "http";
@@ -211,7 +217,12 @@ export async function runNodeLifecycle({
 				// A failed stdio connect already has its own connect span. Preserve
 				// that taxonomy and only record the common run failure otherwise.
 				if (!(outcome.transport === "stdio" && reason === "connect_failure")) {
-					recordLifecycleFailure(span, error, "run", reason);
+					recordLifecycleFailure(
+						span,
+						error instanceof Error ? error : String(error),
+						"run",
+						reason,
+					);
 				}
 				onFailure?.(reason, outcome);
 				span.setStatus({ code: SpanStatusCode.ERROR });

@@ -38,7 +38,12 @@ async function closeHarness(
 	try {
 		recordFixtureResult(state, iteration, await harness.close());
 	} catch (error) {
-		recordFailure(state, iteration, "cleanup", error);
+		recordFailure(
+			state,
+			iteration,
+			"cleanup",
+			error instanceof Error ? error : String(error),
+		);
 	}
 }
 
@@ -66,7 +71,12 @@ async function runStartupScenario() {
 			);
 		} catch (error) {
 			state.durations.push(measuredDuration(startedAt));
-			recordFailure(state, iteration, "setup", error);
+			recordFailure(
+				state,
+				iteration,
+				"setup",
+				error instanceof Error ? error : String(error),
+			);
 		}
 		if (harness) await closeHarness(state, harness, iteration);
 	}
@@ -89,7 +99,12 @@ async function runSingleProcessScenario(
 		harness = await createPerformanceHarness(mode);
 	} catch (error) {
 		state.durations.push(measuredDuration(scenarioStartedAt));
-		recordFailure(state, 1, "setup", error);
+		recordFailure(
+			state,
+			1,
+			"setup",
+			error instanceof Error ? error : String(error),
+		);
 	}
 
 	if (harness) {
@@ -100,7 +115,12 @@ async function runSingleProcessScenario(
 			if (state.durations.length === 0) {
 				state.durations.push(measuredDuration(scenarioStartedAt));
 			}
-			recordFailure(state, 1, "operation", error);
+			recordFailure(
+				state,
+				1,
+				"operation",
+				error instanceof Error ? error : String(error),
+			);
 		} finally {
 			await closeHarness(
 				state,
@@ -131,7 +151,12 @@ async function runToolsListScenario() {
 				expect(result.tools.map(({ name }) => name)).toContain("get-workouts");
 				state.completedIterations += 1;
 			} catch (error) {
-				recordFailure(state, iteration, "iteration", error);
+				recordFailure(
+					state,
+					iteration,
+					"iteration",
+					error instanceof Error ? error : String(error),
+				);
 			} finally {
 				state.durations.push(measuredDuration(startedAt));
 			}
@@ -175,7 +200,12 @@ async function runRepresentativeReadScenario() {
 					});
 					state.completedIterations += 1;
 				} catch (error) {
-					recordFailure(state, iteration, "iteration", error);
+					recordFailure(
+						state,
+						iteration,
+						"iteration",
+						error instanceof Error ? error : String(error),
+					);
 				} finally {
 					state.durations.push(measuredDuration(startedAt));
 				}
@@ -263,7 +293,12 @@ async function runSequentialScenario() {
 					});
 					state.completedIterations += 1;
 				} catch (error) {
-					recordFailure(state, iteration, "iteration", error);
+					recordFailure(
+						state,
+						iteration,
+						"iteration",
+						error instanceof Error ? error : String(error),
+					);
 				} finally {
 					state.durations.push(measuredDuration(startedAt));
 				}
@@ -280,7 +315,12 @@ async function runFailureSafe(
 	try {
 		return await runner();
 	} catch (error) {
-		recordFailure(fallback, 1, "setup", error);
+		recordFailure(
+			fallback,
+			1,
+			"setup",
+			error instanceof Error ? error : String(error),
+		);
 		return finalizeScenario(fallback, measuredDuration(startedAt));
 	}
 }

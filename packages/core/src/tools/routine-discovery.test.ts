@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { describe, expect, it } from "vitest";
+import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
@@ -9,7 +9,8 @@ import {
 
 describe("search-routines", () => {
 	it("filters routine titles and returns snake_case compact metadata", async () => {
-		const getRoutines = vi.fn().mockResolvedValue({
+		const client = createMockHevyClient();
+		const getRoutines = client.getRoutines.mockResolvedValue({
 			page: 1,
 			page_count: 1,
 			routines: [
@@ -24,7 +25,7 @@ describe("search-routines", () => {
 			],
 		});
 		const runtime = createToolRuntime({
-			client: { getRoutines } as unknown as HevyClient,
+			client,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
 
@@ -52,8 +53,8 @@ describe("search-routines", () => {
 	});
 
 	it("paginates and respects the snake_case limit result", async () => {
-		const getRoutines = vi
-			.fn()
+		const client = createMockHevyClient();
+		const getRoutines = client.getRoutines
 			.mockResolvedValueOnce({
 				page: 1,
 				page_count: 2,
@@ -73,7 +74,7 @@ describe("search-routines", () => {
 				],
 			});
 		const runtime = createToolRuntime({
-			client: { getRoutines } as unknown as HevyClient,
+			client,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
 		const result = await discoverRoutines(runtime, {
@@ -96,10 +97,10 @@ describe("search-routines", () => {
 	});
 
 	it("executes through the composed search definition", async () => {
+		const client = createMockHevyClient();
+		client.getRoutines.mockImplementation(() => undefined);
 		const runtime = createToolRuntime({
-			client: {
-				getRoutines: vi.fn().mockResolvedValue(undefined),
-			} as unknown as HevyClient,
+			client,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
 		await expect(

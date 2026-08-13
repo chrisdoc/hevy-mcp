@@ -24,6 +24,15 @@ type ToolDefinitionBase<
 	): Promise<TResult>;
 };
 
+type RegisteredToolConfig = {
+	description: string;
+	inputSchema: ReturnType<typeof compactJsonSchema>;
+	annotations: ToolAnnotations;
+	outputSchema?: ReturnType<typeof compactJsonSchema>;
+};
+
+export type ToolRegistrar = Pick<McpServer, "registerTool">;
+
 export type ToolDefinition<
 	TSchema extends Record<string, z.ZodTypeAny>,
 	TResult,
@@ -40,7 +49,7 @@ export type ToolDefinition<
 	);
 
 export function registerToolDefinition(
-	server: McpServer,
+	server: ToolRegistrar,
 	runtime: ToolRuntime,
 	definition: ToolDefinition<Record<string, z.ZodTypeAny>, unknown>,
 ): void {
@@ -63,20 +72,20 @@ export function registerToolDefinition(
 	const callback = handler;
 
 	const inputSchema = compactJsonSchema(z.strictObject(definition.inputSchema));
-	const config = {
+	const config: RegisteredToolConfig = {
 		description: definition.description,
 		inputSchema,
 		annotations: definition.annotations,
-		...(definition.kind === "read"
-			? {
-					outputSchema: compactJsonSchema(z.object(definition.outputSchema)),
-				}
-			: {}),
 	};
+	if (definition.kind === "read") {
+		config.outputSchema = compactJsonSchema(
+			z.object(definition.outputSchema as z.ZodRawShape),
+		);
+	}
 
 	server.registerTool(definition.name, config, (args, context) =>
 		callback(
-			args,
+			z.strictObject(definition.inputSchema).parse(args),
 			context
 				? {
 						signal: context.mcpReq.signal,

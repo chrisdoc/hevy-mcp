@@ -3,8 +3,14 @@ import {
 	type SafeToolCompletion,
 	type SafeToolInvocation,
 } from "@hevy-mcp/core";
+import type { Span, SpanOptions } from "@opentelemetry/api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNodeToolObserver } from "./tool-observer.js";
+
+type TestSpan = Pick<
+	Span,
+	"addEvent" | "setAttribute" | "setStatus" | "recordException" | "end"
+>;
 
 const testDoubles = vi.hoisted(() => ({
 	activeSpanDepth: 0,
@@ -18,8 +24,8 @@ const testDoubles = vi.hoisted(() => ({
 	startActiveSpan: vi.fn(
 		(
 			_name: string,
-			_options: unknown,
-			callback: (span: unknown) => unknown,
+			_options: SpanOptions,
+			callback: (span: TestSpan) => unknown,
 		) => {
 			testDoubles.activeSpanDepth += 1;
 			return Promise.resolve(callback(testDoubles.span)).finally(() => {

@@ -67,9 +67,15 @@ export function createTypedToolHandler<T extends Record<string, z.ZodTypeAny>>(
 		args: InferToolParams<T>,
 		context?: ToolExecutionContext,
 	) => Promise<McpToolResponse>,
-): (args: object, context?: ToolExecutionContext) => Promise<McpToolResponse> {
+): <TArgs extends object>(
+	args: TArgs,
+	context?: ToolExecutionContext,
+) => Promise<McpToolResponse> {
 	const zodSchema = z.strictObject(schema);
-	return async (args: object, context?: ToolExecutionContext) => {
+	return async <TArgs extends object>(
+		args: TArgs,
+		context?: ToolExecutionContext,
+	) => {
 		const validated = zodSchema.parse(args);
 		return handler(validated, context);
 	};

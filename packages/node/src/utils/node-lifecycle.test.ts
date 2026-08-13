@@ -1,3 +1,4 @@
+import type { SpanOptions } from "@opentelemetry/api";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const doubles = vi.hoisted(() => ({
@@ -25,7 +26,7 @@ vi.mock("./telemetry.js", () => ({
 		startActiveSpan: vi.fn(
 			(
 				_name: string,
-				_options: unknown,
+				_options: SpanOptions,
 				callback: (span: typeof doubles.span) => unknown,
 			) => callback(doubles.span),
 		),

@@ -8,6 +8,7 @@ import {
 	repositoryRoot,
 	workspaceById,
 } from "./repository-control-plane.mjs";
+import { isString } from "./runtime-value-predicates.mjs";
 
 function assert(condition, message) {
 	if (!condition) throw new Error(message);
@@ -31,7 +32,7 @@ function uniqueProvenanceEntry(provenance, collection, id) {
 	);
 	const [path] = entry.paths;
 	assert(
-		typeof path === "string" && path.length > 0,
+		isString(path) && path.length > 0,
 		`Artifact provenance ${collection} entry ${id} path must be non-empty`,
 	);
 	return path;
@@ -91,7 +92,7 @@ export async function checkWorkerBundle({ rootDir = repositoryRoot } = {}) {
 			`Worker dependency ${dependency} must be a private workspace`,
 		);
 		assert(
-			typeof workspace.name === "string" && workspace.name.length > 0,
+			isString(workspace.name) && workspace.name.length > 0,
 			`Worker dependency ${dependency} package name is required`,
 		);
 		return workspace.name;

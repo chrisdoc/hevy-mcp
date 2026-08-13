@@ -3,6 +3,7 @@
  */
 
 import { ErrorType, resolveErrorPolicy } from "./error-policy.js";
+import type { JSONObject } from "@modelcontextprotocol/server";
 import type { McpToolResponse } from "./response-contracts.js";
 import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "./tool-helpers.js";
 import {
@@ -11,6 +12,7 @@ import {
 	type ToolExecutionContext,
 } from "../execution.js";
 import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import type { RuntimeValue } from "./type-predicates.js";
 
 export { ErrorType } from "./error-policy.js";
 export type { StructuredExecutionError } from "../execution.js";
@@ -33,7 +35,7 @@ export interface EnhancedErrorResponse extends ErrorResponse {
 
 /** Build the canonical execution projection for an arbitrary thrown value. */
 export function createExecutionErrorProjection(
-	error: unknown,
+	error: RuntimeValue,
 ): StructuredExecutionProjection {
 	return createExecutionProjection(createSafeErrorDiagnostic(error));
 }
@@ -67,29 +69,28 @@ export function createMcpToolFailureEvent(
 	},
 ): McpToolFailureEvent {
 	const execution = diagnostic.execution;
-	return {
+	type MutableFailureEvent = {
+		-readonly [K in keyof McpToolFailureEvent]: McpToolFailureEvent[K];
+	};
+	const event: MutableFailureEvent = {
 		event: "mcp.tool.failure",
 		"mcp.tool.name": toolName,
 		"error.type": errorType,
 		"error.category": diagnostic.category,
-		...(diagnostic.code ? { "error.code": diagnostic.code } : {}),
-		...(diagnostic.status !== undefined
-			? { "http.status_code": diagnostic.status }
-			: {}),
-		...(diagnostic.method ? { "http.method": diagnostic.method } : {}),
-		...(diagnostic.endpoint
-			? { "hevy.api.endpoint": diagnostic.endpoint }
-			: {}),
-		...(execution
-			? {
-					"hevy.api.outcome": execution.outcome,
-					"hevy.api.phase": execution.phase,
-					"hevy.api.operation_safety": execution.operation_safety,
-					"hevy.api.commit_state": execution.commit_state,
-					"hevy.api.safe_to_retry": execution.safe_to_retry,
-				}
-			: {}),
 	};
+	if (diagnostic.code) event["error.code"] = diagnostic.code;
+	if (diagnostic.status !== undefined)
+		event["http.status_code"] = diagnostic.status;
+	if (diagnostic.method) event["http.method"] = diagnostic.method;
+	if (diagnostic.endpoint) event["hevy.api.endpoint"] = diagnostic.endpoint;
+	if (execution) {
+		event["hevy.api.outcome"] = execution.outcome;
+		event["hevy.api.phase"] = execution.phase;
+		event["hevy.api.operation_safety"] = execution.operation_safety;
+		event["hevy.api.commit_state"] = execution.commit_state;
+		event["hevy.api.safe_to_retry"] = execution.safe_to_retry;
+	}
+	return event;
 }
 
 /** Structured debug context containing only bounded, safe metadata. */
@@ -115,7 +116,7 @@ export interface ErrorDebugContext {
  * @returns A formatted MCP tool response with error information
  */
 export function createErrorResponse(
-	error: unknown,
+	error: RuntimeValue,
 	context?: string,
 ): McpToolResponse {
 	const policy = resolveErrorPolicy(
@@ -176,9 +177,16 @@ export function withErrorHandling<TParams extends object>(
 		context?: ToolExecutionContext,
 	) => Promise<McpToolResponse>,
 	context: string,
-	onError?: (error: unknown, context: string, argumentKeyCount: number) => void,
-): (args: object, context?: ToolExecutionContext) => Promise<McpToolResponse> {
-	return async (rawArgs: object, requestContext?: ToolExecutionContext) => {
+	onError?: (
+		error: RuntimeValue,
+		context: string,
+		argumentKeyCount: number,
+	) => void,
+): (
+	args: JSONObject,
+	context?: ToolExecutionContext,
+) => Promise<McpToolResponse> {
+	return async (rawArgs: JSONObject, requestContext?: ToolExecutionContext) => {
 		const normalizedArgs = rawArgs ?? {};
 		try {
 			return await fn(normalizedArgs as TParams, requestContext);

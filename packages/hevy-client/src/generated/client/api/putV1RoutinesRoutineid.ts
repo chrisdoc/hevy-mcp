@@ -3,11 +3,12 @@
  * Do not edit manually.
  */
 
+import fetch from "../../../fetch.ts";
 import type {
   Client,
   RequestConfig,
   ResponseErrorConfig,
-} from "../../.kubb/fetch.ts";
+} from "../../../fetch.ts";
 import type {
   PutV1RoutinesRoutineidMutationRequest,
   PutV1RoutinesRoutineidMutationResponse,
@@ -16,7 +17,6 @@ import type {
   PutV1RoutinesRoutineid400,
   PutV1RoutinesRoutineid404,
 } from "../types/PutV1RoutinesRoutineid.ts";
-import { fetch } from "../../.kubb/fetch.ts";
 
 function getPutV1RoutinesRoutineidUrl(
   routineId: PutV1RoutinesRoutineidPathParams["routineId"],

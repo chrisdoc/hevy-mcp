@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import semver from "semver";
+import { z } from "zod";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1_000;
 const REQUEST_TIMEOUT_MS = 3_000;
@@ -17,6 +18,11 @@ interface CacheEntry {
 	checkedAt: number;
 	latestVersion: string;
 }
+
+const cacheEntrySchema = z.object({
+	checkedAt: z.number(),
+	latestVersion: z.string(),
+});
 
 interface ImmediateHandle {
 	unref(): unknown;
@@ -74,22 +80,11 @@ function getCachePath(dependencies: VersionCheckDependencies): string {
 function parseCacheEntry(value: string, now: number): CacheEntry | undefined {
 	try {
 		const parsed: unknown = JSON.parse(value);
-		if (
-			typeof parsed !== "object" ||
-			parsed === null ||
-			!("checkedAt" in parsed) ||
-			!("latestVersion" in parsed)
-		) {
-			return undefined;
-		}
+		const cacheEntry = cacheEntrySchema.safeParse(parsed);
+		if (!cacheEntry.success) return undefined;
 
-		const { checkedAt, latestVersion } = parsed;
-		if (
-			typeof checkedAt !== "number" ||
-			!Number.isFinite(checkedAt) ||
-			typeof latestVersion !== "string" ||
-			!semver.valid(latestVersion)
-		) {
+		const { checkedAt, latestVersion } = cacheEntry.data;
+		if (!Number.isFinite(checkedAt) || !semver.valid(latestVersion)) {
 			return undefined;
 		}
 
@@ -104,23 +99,27 @@ function parseCacheEntry(value: string, now: number): CacheEntry | undefined {
 	}
 }
 
-function parseLatestVersion(value: unknown): string | undefined {
-	if (typeof value !== "object" || value === null || !("dist-tags" in value)) {
+function parseLatestVersion<T>(value: T): string | undefined {
+	const parsed = z
+		.object({ "dist-tags": z.unknown() })
+		.passthrough()
+		.safeParse(value);
+	if (!parsed.success) {
 		return undefined;
 	}
 
-	const distTags = value["dist-tags"];
-	if (
-		typeof distTags !== "object" ||
-		distTags === null ||
-		!("latest" in distTags) ||
-		typeof distTags.latest !== "string" ||
-		!semver.valid(distTags.latest)
-	) {
+	const distTags = parsed.data["dist-tags"];
+	const parsedDistTags = z
+		.object({ latest: z.unknown() })
+		.passthrough()
+		.safeParse(distTags);
+	if (!parsedDistTags.success) return undefined;
+	const latest = z.string().safeParse(parsedDistTags.data.latest).data;
+	if (latest === undefined || !semver.valid(latest)) {
 		return undefined;
 	}
 
-	return distTags.latest;
+	return latest;
 }
 
 function shouldNotifyAboutUpdate(

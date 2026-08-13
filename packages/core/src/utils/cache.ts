@@ -1,4 +1,5 @@
 import type { ResultCountBucket } from "./result-telemetry.js";
+import type { RuntimeValue } from "./type-predicates.js";
 
 export type CacheObservationState =
 	| "hit"
@@ -150,7 +151,7 @@ export class AsyncTtlCache<TKey, TValue> {
 			}
 			void promise.then(
 				(value) => finish(() => resolve(value)),
-				(error: unknown) => finish(() => reject(error)),
+				(error: RuntimeValue) => finish(() => reject(error)),
 			);
 		});
 	}

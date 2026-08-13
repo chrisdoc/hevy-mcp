@@ -7,6 +7,7 @@ import {
 	loadArtifactProvenance,
 	repositoryRoot,
 } from "./repository-control-plane.mjs";
+import { isObjectLike, isString } from "./runtime-value-predicates.mjs";
 
 const manifestSchema =
 	"https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json";
@@ -68,7 +69,7 @@ function provenanceEntry(provenance, collection, id, pathCount) {
 			`Artifact provenance ${collection} entry ${id} must own exactly ${pathCount} path${pathCount === 1 ? "" : "s"}`,
 		);
 	assert(
-		entry.paths.every((path) => typeof path === "string" && path.length > 0),
+		entry.paths.every((path) => isString(path) && path.length > 0),
 		`Artifact provenance ${collection} entry ${id} paths must be non-empty`,
 	);
 	assert(
@@ -125,7 +126,7 @@ function validatePackageJson(packageJson) {
 		"package.json mcpName must be io.github.chrisdoc/hevy-mcp",
 	);
 	assert(
-		typeof packageJson.version === "string" && packageJson.version.length > 0,
+		isString(packageJson.version) && packageJson.version.length > 0,
 		"package.json version must be a non-empty string",
 	);
 	assert(
@@ -135,9 +136,9 @@ function validatePackageJson(packageJson) {
 	);
 }
 
-function validateManifestShape(manifest) {
+function validateManifestForm(manifest) {
 	assert(
-		manifest && typeof manifest === "object" && !Array.isArray(manifest),
+		isObjectLike(manifest) && !Array.isArray(manifest),
 		"server.json must contain an object",
 	);
 	assert(
@@ -261,7 +262,7 @@ export async function runServerManifest({ mode, rootDir = process.cwd() }) {
 	}
 
 	validatePackageJson(packageJson);
-	validateManifestShape(manifest);
+	validateManifestForm(manifest);
 
 	const drift = findDrift(packageJson, manifest);
 	for (const packageManifest of packageManifests) {

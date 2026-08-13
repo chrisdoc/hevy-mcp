@@ -8,7 +8,7 @@ const OPTIONS = {
 	currentVersion: "1.0.0",
 };
 
-function registryResponse(latestVersion: unknown, ok = true): Response {
+function registryResponse(latestVersion: string, ok = true): Response {
 	return new Response(
 		JSON.stringify({
 			"dist-tags": { latest: latestVersion },
@@ -125,7 +125,7 @@ describe("checkForUpdate", () => {
 			"non-OK response",
 			() => Promise.resolve(registryResponse("2.0.0", false)),
 		],
-		["invalid payload", () => Promise.resolve(registryResponse(undefined))],
+		["invalid payload", () => Promise.resolve(registryResponse(""))],
 		[
 			"invalid remote version",
 			() => Promise.resolve(registryResponse("latest")),

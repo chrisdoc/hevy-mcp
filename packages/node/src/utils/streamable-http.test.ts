@@ -1,6 +1,8 @@
 import { request, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import {
 	resolveHttpAdmissionConfig,
 	startStreamableHttpServer,
@@ -14,6 +16,20 @@ const createMcpServer = () => {
 	return Promise.resolve(server);
 };
 
+const stringSchema = z.string();
+type HttpJsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| HttpJsonObject
+	| HttpJsonValue[];
+type HttpJsonObject = { readonly [key: string]: HttpJsonValue };
+
+function isString(value: string | AddressInfo | null): value is string {
+	return stringSchema.safeParse(value).success;
+}
+
 const handles: Array<{ close(): Promise<void> }> = [];
 
 afterEach(async () => {
@@ -24,6 +40,10 @@ interface HttpResult {
 	statusCode?: number;
 	headers: Record<string, string | string[] | undefined>;
 	body: string;
+}
+
+interface HttpRequestHeaders {
+	[key: string]: string;
 }
 
 function openStream(
@@ -55,22 +75,23 @@ function openStream(
 function call(
 	port: number,
 	method: string,
-	body?: unknown,
+	body?: HttpJsonObject | string,
 	extraHeaders: Record<string, string> = {},
 ): Promise<HttpResult> {
 	return new Promise((resolve, reject) => {
 		const payload = body === undefined ? undefined : JSON.stringify(body);
+		const headers: HttpRequestHeaders = {
+			Accept: "application/json, text/event-stream",
+			...extraHeaders,
+		};
+		if (payload) headers["Content-Type"] = "application/json";
 		const client = request(
 			{
 				host: "127.0.0.1",
 				port,
 				path: "/mcp",
 				method,
-				headers: {
-					Accept: "application/json, text/event-stream",
-					...(payload ? { "Content-Type": "application/json" } : {}),
-					...extraHeaders,
-				},
+				headers,
 			},
 			(response) => {
 				const chunks: Buffer[] = [];
@@ -92,7 +113,7 @@ function call(
 
 function serverPort(handle: { server: Server }): number {
 	const address = handle.server.address();
-	if (!address || typeof address === "string") throw new Error("No address");
+	if (!address || isString(address)) throw new Error("No address");
 	return address.port;
 }
 
@@ -338,7 +359,7 @@ describe("Streamable HTTP server", () => {
 		const initialized = await initialize(port);
 		expect(initialized.statusCode).toBe(200);
 		const sessionId = initialized.headers["mcp-session-id"];
-		expect(typeof sessionId).toBe("string");
+		expect(stringSchema.safeParse(sessionId).success).toBe(true);
 
 		const headers = { "mcp-session-id": String(sessionId) };
 		const listed = await call(

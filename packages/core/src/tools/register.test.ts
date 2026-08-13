@@ -1,14 +1,24 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools, hevyToolDefinitions } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 type SchemaObject = {
-	properties?: object;
-	items?: unknown;
+	readonly properties?: Record<string, SchemaObject>;
+	readonly items?: SchemaObject;
 };
+
+const schemaObjectSchema: z.ZodType<SchemaObject> = z.lazy(() =>
+	z
+		.object({
+			properties: z.record(z.string(), schemaObjectSchema).optional(),
+			items: schemaObjectSchema.optional(),
+		})
+		.passthrough(),
+);
 
 const EXPECTED_TOOL_NAMES = [
 	"get-workouts",
@@ -130,18 +140,19 @@ describe("registerHevyTools", () => {
 	it("exposes only snake_case public input property names", async () => {
 		const { tools } = await client.listTools();
 		const propertyNames: string[] = [];
-		const visit = (schema: unknown): void => {
-			if (!schema || typeof schema !== "object") return;
-			const record = schema as SchemaObject;
-			if (record.properties) {
-				for (const [name, child] of Object.entries(record.properties)) {
+		const visit = (schema: SchemaObject): void => {
+			if (schema.properties) {
+				for (const [name, child] of Object.entries(schema.properties)) {
 					propertyNames.push(name);
 					visit(child);
 				}
 			}
-			if (record.items) visit(record.items);
+			if (schema.items) visit(schema.items);
 		};
-		for (const tool of tools) visit(tool.inputSchema);
+		for (const tool of tools) {
+			const parsed = schemaObjectSchema.safeParse(tool.inputSchema);
+			if (parsed.success) visit(parsed.data);
+		}
 		expect(
 			propertyNames.filter((name) => !/^[a-z][a-z0-9_]*$/u.test(name)),
 		).toEqual([]);

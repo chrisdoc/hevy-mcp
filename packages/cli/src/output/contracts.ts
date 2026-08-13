@@ -1,3 +1,7 @@
+import { z } from "zod";
+
+const numberSchema = z.number();
+
 export type ApiValue =
 	| string
 	| number
@@ -40,8 +44,10 @@ export function pageEnvelope(
 	items: readonly ApiValue[],
 ): ApiObject {
 	return {
-		page: typeof data.page === "number" ? data.page : 1,
-		page_count: typeof data.page_count === "number" ? data.page_count : 0,
+		page: numberSchema.safeParse(data.page).success ? data.page : 1,
+		page_count: numberSchema.safeParse(data.page_count).success
+			? data.page_count
+			: 0,
 		[key]: items,
 	};
 }

@@ -1,12 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyClient, HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import {
 	bindClientExecution,
 	createExecutionProjection,
 	HEVY_CLIENT_OPTION_INDEXES,
 } from "./execution.js";
 
-const baseArgs: { [K in keyof HevyClient]: unknown[] } = {
+type ClientTestArgument =
+	| HevyRequestOptions
+	| string
+	| {
+			readonly [key: string]:
+				| object
+				| string
+				| number
+				| boolean
+				| null
+				| undefined;
+	  };
+type ClientMethodArguments = {
+	[K in keyof HevyClient]: ClientTestArgument[];
+};
+
+const baseArgs = {
 	getWorkouts: [{ page: 1 }],
 	getWorkout: ["workout-1"],
 	createWorkout: [{ workout: {} }],
@@ -29,57 +45,92 @@ const baseArgs: { [K in keyof HevyClient]: unknown[] } = {
 	createBodyMeasurement: [{ body_measurement: {} }],
 	updateBodyMeasurement: ["2025-01-01", { body_measurement: {} }],
 	getUserInfo: [],
-};
+} satisfies ClientMethodArguments;
 
 describe("bindClientExecution", () => {
 	it("binds unknown function properties without injecting options", () => {
-		const extra = vi.fn(function (this: object) {
+		const extra = vi.fn(function (this: HevyClient) {
 			return this;
 		});
 		const methods = {
-			...Object.fromEntries(
-				Object.keys(HEVY_CLIENT_OPTION_INDEXES).map((name) => [name, vi.fn()]),
-			),
+			getWorkouts: vi.fn(),
+			getWorkout: vi.fn(),
+			createWorkout: vi.fn(),
+			updateWorkout: vi.fn(),
+			getWorkoutCount: vi.fn(),
+			getWorkoutEvents: vi.fn(),
+			getRoutines: vi.fn(),
+			getRoutineById: vi.fn(),
+			createRoutine: vi.fn(),
+			updateRoutine: vi.fn(),
+			getExerciseTemplates: vi.fn(),
+			getExerciseTemplate: vi.fn(),
+			getExerciseHistory: vi.fn(),
+			createExerciseTemplate: vi.fn(),
+			getRoutineFolders: vi.fn(),
+			createRoutineFolder: vi.fn(),
+			getRoutineFolder: vi.fn(),
+			getBodyMeasurements: vi.fn(),
+			getBodyMeasurement: vi.fn(),
+			createBodyMeasurement: vi.fn(),
+			updateBodyMeasurement: vi.fn(),
+			getUserInfo: vi.fn(),
 			extra,
-		} as unknown as HevyClient & { extra: typeof extra };
+		} satisfies HevyClient & { extra: typeof extra };
 
 		const bound = bindClientExecution(methods, {
 			deadline: 123,
-		}) as typeof methods;
+		});
 
 		expect(bound.extra()).toBe(methods);
 		expect(extra).toHaveBeenCalledOnce();
 	});
 
 	it("places merged control in every curated options slot", () => {
-		const methods = Object.fromEntries(
-			Object.keys(HEVY_CLIENT_OPTION_INDEXES).map((name) => [name, vi.fn()]),
-		) as unknown as HevyClient;
+		const methods = {
+			getWorkouts: vi.fn(),
+			getWorkout: vi.fn(),
+			createWorkout: vi.fn(),
+			updateWorkout: vi.fn(),
+			getWorkoutCount: vi.fn(),
+			getWorkoutEvents: vi.fn(),
+			getRoutines: vi.fn(),
+			getRoutineById: vi.fn(),
+			createRoutine: vi.fn(),
+			updateRoutine: vi.fn(),
+			getExerciseTemplates: vi.fn(),
+			getExerciseTemplate: vi.fn(),
+			getExerciseHistory: vi.fn(),
+			createExerciseTemplate: vi.fn(),
+			getRoutineFolders: vi.fn(),
+			createRoutineFolder: vi.fn(),
+			getRoutineFolder: vi.fn(),
+			getBodyMeasurements: vi.fn(),
+			getBodyMeasurement: vi.fn(),
+			createBodyMeasurement: vi.fn(),
+			updateBodyMeasurement: vi.fn(),
+			getUserInfo: vi.fn(),
+		} satisfies HevyClient;
 		const signal = new AbortController().signal;
 		const control = {
 			signal,
 			deadline: 123,
 		};
-		const bound = bindClientExecution(methods, control) as unknown as Record<
-			string,
-			(...args: unknown[]) => unknown
-		>;
+		const bound = bindClientExecution(methods, control);
 
 		for (const [name, index] of Object.entries(HEVY_CLIENT_OPTION_INDEXES)) {
 			const method = name as keyof HevyClient;
-			const invoke = bound[name];
-			const spy = (
-				methods as unknown as Record<string, ReturnType<typeof vi.fn>>
-			)[name];
+			const invoke = bound[method];
+			const spy = methods[method];
 			const args = [...baseArgs[method]];
-			invoke(...args);
+			Reflect.apply(invoke, methods, args);
 			const firstCall = spy.mock.calls.at(-1) ?? [];
 			expect(firstCall[index]).toMatchObject(control);
 
 			const existingOptions = { deadline: 456 };
-			const withOptions = [...baseArgs[method]];
+			const withOptions: ClientTestArgument[] = [...baseArgs[method]];
 			withOptions[index] = existingOptions;
-			invoke(...withOptions);
+			Reflect.apply(invoke, methods, withOptions);
 			const secondCall = spy.mock.calls.at(-1) ?? [];
 			expect(secondCall[index]).toMatchObject({
 				...existingOptions,
