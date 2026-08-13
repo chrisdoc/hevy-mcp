@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
+import { isNumber, isObjectLike, isString } from "../../scripts/runtime-value-predicates.mjs";
 import {
 	Client,
 	type JSONObject,
@@ -58,7 +59,7 @@ function assertRecord(
 	value: JSONValue | object | null,
 	schemaPath: string,
 ): asserts value is JSONObject {
-	assertCondition(value !== null && typeof value === "object", schemaPath);
+	assertCondition(value !== null && isObjectLike(value), schemaPath);
 }
 
 function sanitizeDiagnostic(value: string | Error): string {
@@ -282,7 +283,7 @@ function optionalStringId(
 	if (!value?.[0]) return undefined;
 	const id = value[0].id;
 	assertCondition(
-		typeof id === "string" || typeof id === "number",
+		isString(id) || isNumber(id),
 		`${schemaPath}/0/id`,
 	);
 	assertCondition(String(id).length > 0, `${schemaPath}/0/id`);
@@ -361,8 +362,8 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				const firstWorkout = workouts.workouts[0];
 				if (firstWorkout) {
 					assertCondition(
-						typeof firstWorkout.exercise_count === "number" &&
-							typeof firstWorkout.set_count === "number" &&
+						isNumber(firstWorkout.exercise_count) &&
+							isNumber(firstWorkout.set_count) &&
 							!("exercises" in firstWorkout),
 						"tools/get-workouts/workouts/0/compact",
 					);
@@ -411,8 +412,8 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				const firstRoutine = routines.routines[0];
 				if (firstRoutine) {
 					assertCondition(
-						typeof firstRoutine.exercise_count === "number" &&
-							typeof firstRoutine.set_count === "number" &&
+						isNumber(firstRoutine.exercise_count) &&
+							isNumber(firstRoutine.set_count) &&
 							!("exercises" in firstRoutine),
 						"tools/get-routines/routines/0/compact",
 					);
@@ -453,7 +454,7 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				const firstMeasurement = measurements.body_measurements[0];
 				if (firstMeasurement) {
 					assertCondition(
-						typeof firstMeasurement.date === "string",
+						isString(firstMeasurement.date),
 						"tools/get-body-measurements/body_measurements/0/date",
 					);
 					const measurement = await callReadTool(

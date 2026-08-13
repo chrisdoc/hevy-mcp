@@ -6,6 +6,7 @@ import {
 	type ServerResponse,
 } from "node:http";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { z } from "zod";
 import {
 	createExecutionProjection,
 	createSafeErrorDiagnostic,
@@ -20,6 +21,22 @@ import {
 	resolveSessionTerminationCategory,
 	type McpSessionContext,
 } from "./mcp-session-observability.js";
+
+const stringSchema = z.string();
+const numberSchema = z.number();
+const objectSchema = z.object({}).passthrough();
+
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
+
+function isNumber(value: unknown): value is number {
+	return numberSchema.safeParse(value).success;
+}
+
+function isObject(value: unknown): value is object {
+	return objectSchema.safeParse(value).success;
+}
 
 const MCP_PATH = "/mcp";
 const MAX_BODY_BYTES = 1_048_576;
@@ -50,7 +67,7 @@ function parsePositiveLimit(
 	fallback: number,
 	maximum: number,
 ): number {
-	const parsed = typeof value === "number" ? value : Number(value);
+	const parsed = isNumber(value) ? value : Number(value);
 	if (!Number.isFinite(parsed) || parsed < 1) return fallback;
 	return Math.min(Math.floor(parsed), maximum);
 }
@@ -169,7 +186,7 @@ function hostNamesFor(options: NodeCliOptions): Set<string> {
 function expectedPort(options: NodeCliOptions, server: Server): number {
 	if (options.port !== 0) return options.port;
 	const address = server.address();
-	return address && typeof address !== "string" ? address.port : 0;
+	return address && !isString(address) ? address.port : 0;
 }
 
 function validateHostHeader(
@@ -314,7 +331,7 @@ function readBody(
 function isInitializeRequest(body: unknown): boolean {
 	return Boolean(
 		body &&
-		typeof body === "object" &&
+		isObject(body) &&
 		!Array.isArray(body) &&
 		"method" in body &&
 		body.method === "initialize",
@@ -339,7 +356,7 @@ function isBearerAuthorized(
 ): boolean {
 	if (!token) return false;
 	const header = request.headers.authorization;
-	if (typeof header !== "string") return false;
+	if (!isString(header)) return false;
 	const expected = Buffer.from(`Bearer ${token}`);
 	const actual = Buffer.from(header);
 	return (
@@ -567,7 +584,7 @@ export async function startStreamableHttpServer(
 
 		const sessionHeader = request.headers["mcp-session-id"];
 		const sessionId =
-			typeof sessionHeader === "string" ? sessionHeader : undefined;
+			isString(sessionHeader) ? sessionHeader : undefined;
 		const existingSession = sessionId ? sessions.get(sessionId) : undefined;
 		if (sessionId && !existingSession) {
 			rejectBeforeBody(
@@ -665,7 +682,7 @@ export async function startStreamableHttpServer(
 		reservation: InitializationReservation,
 	): Promise<void> {
 		const context = createMcpSessionContext(
-			body !== null && typeof body === "object" ? body : {},
+			isObject(body) ? body : {},
 			"http",
 		);
 		recordMcpSessionStart(context.metadata, "http", context);
