@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMockHevyClient } from "../../../../tests/fixtures/mock-hevy.js";
+import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
@@ -106,8 +106,8 @@ describe("get-training-summary", () => {
 		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
 		try {
 			const client = createMockHevyClient();
-			client.getWorkouts.mockResolvedValue(undefined);
-			client.getBodyMeasurements.mockResolvedValue(undefined);
+			client.getWorkouts.mockImplementation(() => undefined);
+			client.getBodyMeasurements.mockImplementation(() => undefined);
 			const runtime = createToolRuntime({
 				client,
 				catalog: {} as ExerciseTemplateCatalog,

@@ -20,7 +20,10 @@ import { createToolRuntime, type ToolRuntime } from "../tools/tool-runtime.js";
 import { registerToolDefinition } from "../tools/define-tool.js";
 import { templateToolDefinitions } from "../tools/templates.js";
 import { registerHevyResources } from "./hevy.js";
-import { createMockHevyClient, createMockMcpServer } from "../../../../tests/fixtures/mock-hevy.js";
+import {
+	createMockHevyClient,
+	createMockMcpServer,
+} from "../../test-fixtures/mock-hevy.js";
 
 function createTestRuntime(
 	client: HevyClient | null,
@@ -296,8 +299,8 @@ describe("registerHevyResources", () => {
 	it("returns an empty folder resource when the API omits the page", async () => {
 		const { registerResource, server } = createMockServer();
 		const hevyClient = createMockHevyClient();
-		const getRoutineFolders = hevyClient.getRoutineFolders.mockResolvedValue(
-			undefined,
+		const getRoutineFolders = hevyClient.getRoutineFolders.mockImplementation(
+			() => undefined,
 		);
 		registerHevyResources(server, createTestRuntime(hevyClient));
 		const registration = getResourceRegistration(

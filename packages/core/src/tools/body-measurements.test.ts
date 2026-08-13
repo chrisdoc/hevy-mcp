@@ -1,7 +1,10 @@
 /* oxlint-disable typescript/unbound-method */
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createMockHevyClient, createMockMcpServer } from "../../../../tests/fixtures/mock-hevy.js";
+import {
+	createMockHevyClient,
+	createMockMcpServer,
+} from "../../test-fixtures/mock-hevy.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
@@ -51,8 +54,8 @@ describe("body measurement tools", () => {
 
 	it("creates and updates numeric fields while omitting explicit nulls", async () => {
 		const client = createMockHevyClient();
-		client.createBodyMeasurement.mockResolvedValue(undefined);
-		client.updateBodyMeasurement.mockResolvedValue(undefined);
+		client.createBodyMeasurement.mockImplementation(() => undefined);
+		client.updateBodyMeasurement.mockImplementation(() => undefined);
 		const tool = register(client);
 		await handler(
 			tool,

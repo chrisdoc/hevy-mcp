@@ -2,7 +2,10 @@
 import type { JSONObject } from "@modelcontextprotocol/server";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createMockHevyClient, createMockMcpServer } from "../../../../tests/fixtures/mock-hevy.js";
+import {
+	createMockHevyClient,
+	createMockMcpServer,
+} from "../../test-fixtures/mock-hevy.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { templateToolDefinitions } from "./templates.js";

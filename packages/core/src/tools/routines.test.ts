@@ -1,7 +1,10 @@
 /* oxlint-disable typescript/unbound-method */
 import type { JSONObject } from "@modelcontextprotocol/server";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import { createMockHevyClient, createMockMcpServer } from "../../../../tests/fixtures/mock-hevy.js";
+import {
+	createMockHevyClient,
+	createMockMcpServer,
+} from "../../test-fixtures/mock-hevy.js";
 import {
 	routinesGetDescriptor,
 	routinesListDescriptor,
@@ -103,13 +106,13 @@ describe("routine tools", () => {
 		});
 		const operations = {
 			routines: {
-			get: { descriptor: routinesGetDescriptor, execute: vi.fn() },
-			list: { descriptor: routinesListDescriptor, execute },
-		},
-		workouts: {
-			get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
-			list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
-		},
+				get: { descriptor: routinesGetDescriptor, execute: vi.fn() },
+				list: { descriptor: routinesListDescriptor, execute },
+			},
+			workouts: {
+				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
+				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+			},
 		} satisfies HevyOperations;
 		const execution: ToolExecutionContext = {
 			signal: new AbortController().signal,
@@ -141,13 +144,13 @@ describe("routine tools", () => {
 		});
 		const operations = {
 			routines: {
-			get: { descriptor: routinesGetDescriptor, execute },
-			list: { descriptor: routinesListDescriptor, execute: vi.fn() },
-		},
-		workouts: {
-			get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
-			list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
-		},
+				get: { descriptor: routinesGetDescriptor, execute },
+				list: { descriptor: routinesListDescriptor, execute: vi.fn() },
+			},
+			workouts: {
+				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
+				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+			},
 		} satisfies HevyOperations;
 		const execution: ToolExecutionContext = {
 			signal: new AbortController().signal,
@@ -175,18 +178,18 @@ describe("routine tools", () => {
 		const client = createMockHevyClient();
 		client.getRoutineById.mockResolvedValue({
 			routine: {
-			id: "r1",
-			title: "Legs A",
-			exercises: [
-				{
-					index: 0,
-					title: "Hip Thrust (Barbell)",
-					exercise_template_id: "D57C2EC7",
-					rest_seconds: 120,
-					sets: [{ type: "normal", weight_kg: 22.68, reps: 12 }],
-				},
-			],
-		},
+				id: "r1",
+				title: "Legs A",
+				exercises: [
+					{
+						index: 0,
+						title: "Hip Thrust (Barbell)",
+						exercise_template_id: "D57C2EC7",
+						rest_seconds: 120,
+						sets: [{ type: "normal", weight_kg: 22.68, reps: 12 }],
+					},
+				],
+			},
 		});
 		const tool = register(client);
 

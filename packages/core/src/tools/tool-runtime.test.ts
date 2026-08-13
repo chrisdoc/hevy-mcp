@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMockHevyClient } from "../../../../tests/fixtures/mock-hevy.js";
+import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import { createToolRuntime } from "./tool-runtime.js";
 
 const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>

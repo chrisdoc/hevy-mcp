@@ -1,7 +1,10 @@
 /* oxlint-disable typescript/unbound-method */
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { z } from "zod";
-import { createMockHevyClient, createMockMcpServer } from "../../../../tests/fixtures/mock-hevy.js";
+import {
+	createMockHevyClient,
+	createMockMcpServer,
+} from "../../test-fixtures/mock-hevy.js";
 import {
 	routinesGetDescriptor,
 	routinesListDescriptor,
@@ -73,9 +76,7 @@ describe("workout tools", () => {
 			page: 2,
 			page_size: 5,
 		});
-		expect(() =>
-			parsedInputSchema.parse({ page: 2, pageSize: 5 }),
-		).toThrow();
+		expect(() => parsedInputSchema.parse({ page: 2, pageSize: 5 })).toThrow();
 	});
 
 	it("maps snake_case pagination and identifiers to generated client arguments", async () => {
@@ -189,7 +190,10 @@ describe("workout tools", () => {
 			],
 		};
 		const client = createMockHevyClient();
-		client.createWorkout.mockResolvedValue({ id: "w1", ...workoutInput.workout });
+		client.createWorkout.mockResolvedValue({
+			id: "w1",
+			...workoutInput.workout,
+		});
 		client.getWorkout.mockImplementation(() => {
 			calls.push("get");
 			return Promise.resolve(current);

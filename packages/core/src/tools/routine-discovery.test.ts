@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMockHevyClient } from "../../../../tests/fixtures/mock-hevy.js";
+import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
@@ -98,7 +98,7 @@ describe("search-routines", () => {
 
 	it("executes through the composed search definition", async () => {
 		const client = createMockHevyClient();
-		client.getRoutines.mockResolvedValue(undefined);
+		client.getRoutines.mockImplementation(() => undefined);
 		const runtime = createToolRuntime({
 			client,
 			catalog: {} as ExerciseTemplateCatalog,
