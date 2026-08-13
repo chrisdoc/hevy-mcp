@@ -10,6 +10,7 @@
  */
 
 import { randomBytes, randomUUID as nodeRandomUUID } from "node:crypto";
+import { z } from "zod";
 import * as Sentry from "@sentry/node";
 import { metrics, trace } from "@opentelemetry/api";
 
@@ -94,15 +95,30 @@ export function installProcessExceptionTracking(
 	};
 }
 
+function readBuildGlobal<T>(read: () => T): T | undefined {
+	try {
+		return read();
+	} catch {
+		return undefined;
+	}
+}
+
+function parseBuildString(value: unknown, fallback: string): string {
+	return z.string().parse(value ?? fallback);
+}
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
 declare const __HEVY_MCP_BUILD__: boolean | undefined;
 declare const __OTEL_COLLECTOR_TOKEN__: string | undefined;
 
-const name =
-	typeof __HEVY_MCP_NAME__ === "string" ? __HEVY_MCP_NAME__ : "hevy-mcp";
-const version =
-	typeof __HEVY_MCP_VERSION__ === "string" ? __HEVY_MCP_VERSION__ : "dev";
+const name = parseBuildString(
+	readBuildGlobal(() => __HEVY_MCP_NAME__),
+	"hevy-mcp",
+);
+const version = parseBuildString(
+	readBuildGlobal(() => __HEVY_MCP_VERSION__),
+	"dev",
+);
 
 const telemetryEnabled = process.env.HEVY_MCP_TELEMETRY !== "0";
 
@@ -111,9 +127,9 @@ const telemetryEnabled = process.env.HEVY_MCP_TELEMETRY !== "0";
 // traces and metrics to Honeycomb, keeping the Honeycomb API key off the
 // client. The collector endpoint is public (behind Cloudflare Tunnel).
 const collectorToken =
-	typeof __OTEL_COLLECTOR_TOKEN__ === "string" && __OTEL_COLLECTOR_TOKEN__
-		? __OTEL_COLLECTOR_TOKEN__
-		: (process.env.OTEL_COLLECTOR_TOKEN ?? "");
+	z.string().safeParse(readBuildGlobal(() => __OTEL_COLLECTOR_TOKEN__)).data ??
+	process.env.OTEL_COLLECTOR_TOKEN ??
+	"";
 
 const COLLECTOR_ENDPOINT = "https://otel.chrisdoc.dev/v1";
 const DEFAULT_SENTRY_DSN =
@@ -148,7 +164,9 @@ let meterProvider: MeterProvider | undefined;
 if (telemetryEnabled) {
 	const rawDsn = process.env.SENTRY_DSN ?? DEFAULT_SENTRY_DSN;
 	const isValidDsn =
-		typeof rawDsn === "string" && rawDsn.length > 0 && !rawDsn.startsWith("*");
+		z.string().safeParse(rawDsn).success &&
+		rawDsn.length > 0 &&
+		!rawDsn.startsWith("*");
 
 	// --- Sentry error monitoring ---
 	Sentry.init({

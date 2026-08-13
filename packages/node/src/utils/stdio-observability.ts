@@ -1,4 +1,4 @@
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { deserializeMessage } from "@modelcontextprotocol/server";
 import type { JSONRPCMessage } from "@modelcontextprotocol/server";
@@ -28,6 +28,19 @@ const SAFE_MCP_METHODS: Record<string, true> = {
 const REDACTED_CONTENT_MARKER = "[REDACTED]";
 
 const MAX_MALFORMED_LINES_PER_READ = 100;
+const functionSchema = z.function();
+const objectSchema = z.object({}).passthrough();
+const stringSchema = z.string();
+
+function isFunction(value: unknown): value is (...args: never[]) => unknown {
+	return functionSchema.safeParse(value).success;
+}
+function isObject(value: unknown): value is object {
+	return objectSchema.safeParse(value).success;
+}
+function isString(value: unknown): value is string {
+	return stringSchema.safeParse(value).success;
+}
 
 function isMalformedMessageError(error: Error | string): boolean {
 	return error instanceof SyntaxError || error instanceof ZodError;
@@ -74,7 +87,7 @@ function createSdkPrivateStdioAdapter(
 	return {
 		wrapOnData(onChunk) {
 			const originalOnData = mutableTransport._ondata;
-			if (typeof originalOnData !== "function") {
+			if (!isFunction(originalOnData)) {
 				return;
 			}
 
@@ -85,7 +98,7 @@ function createSdkPrivateStdioAdapter(
 		},
 		installReadMessageHook(onReadLine) {
 			const readBuffer = mutableTransport._readBuffer;
-			if (!readBuffer || typeof readBuffer.readMessage !== "function") {
+			if (!readBuffer || !isFunction(readBuffer.readMessage)) {
 				return false;
 			}
 			let deferredMessage: JSONRPCMessage | null = null;
@@ -291,9 +304,9 @@ export function deserializeMessageWithObservability(
 			try {
 				const message = deserializeMessage(normalizedLine);
 				span.setStatus({ code: SpanStatusCode.OK });
-				if (message && typeof message === "object" && "method" in message) {
+				if (message && isObject(message) && "method" in message) {
 					const method = message.method;
-					if (typeof method === "string" && SAFE_MCP_METHODS[method] === true) {
+					if (isString(method) && SAFE_MCP_METHODS[method] === true) {
 						span.setAttribute("mcp.method", method);
 					}
 					if (method === "initialize") {
