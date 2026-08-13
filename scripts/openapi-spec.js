@@ -9,6 +9,7 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pkg from "abstract-syntax-tree";
+import { isNumber, isObjectLike, isString } from "./runtime-value-predicates.mjs";
 
 const SPEC_FILE = "openapi-spec.json";
 const HEVY_SWAGGER_URL = "https://api.hevyapp.com/docs/swagger-ui-init.js";
@@ -56,14 +57,14 @@ function fixRoutineRestSecondsType(schemas) {
 	restSeconds.type = "integer";
 
 	if (
-		typeof restSeconds.example === "string" &&
+		isString(restSeconds.example) &&
 		/^-?\d+$/.test(restSeconds.example)
 	) {
 		restSeconds.example = Number(restSeconds.example);
 	} else if (
 		restSeconds.example !== undefined &&
 		(!Number.isInteger(restSeconds.example) ||
-			typeof restSeconds.example !== "number")
+			!isNumber(restSeconds.example))
 	) {
 		delete restSeconds.example;
 	}
@@ -94,7 +95,7 @@ export function validateOpenAPISpec(spec) {
 	}
 	if (
 		restSeconds.example !== undefined &&
-		(typeof restSeconds.example !== "number" ||
+		(!isNumber(restSeconds.example) ||
 			!Number.isInteger(restSeconds.example))
 	) {
 		throw new Error(
@@ -108,20 +109,20 @@ export function validateOpenAPISpec(spec) {
  */
 function fixInvalidRequiredProperties(schemas, path = "schemas") {
 	for (const [schemaName, schema] of Object.entries(schemas)) {
-		if (schema && typeof schema === "object") {
+		if (schema && isObjectLike(schema)) {
 			fixSchemaRequired(schema, `${path}.${schemaName}`);
 		}
 	}
 }
 
 function fixSchemaRequired(schema, path = "") {
-	if (!schema || typeof schema !== "object") return;
+	if (!isObjectLike(schema)) return;
 
-	if (schema.properties && typeof schema.properties === "object") {
+	if (schema.properties && isObjectLike(schema.properties)) {
 		const requiredProps = [];
 
 		for (const [propName, propSchema] of Object.entries(schema.properties)) {
-			if (propSchema && typeof propSchema === "object") {
+			if (propSchema && isObjectLike(propSchema)) {
 				if (propSchema.required === true) {
 					requiredProps.push(propName);
 					delete propSchema.required;
@@ -152,7 +153,7 @@ function fixSchemaRequired(schema, path = "") {
 
 	if (
 		schema.additionalProperties &&
-		typeof schema.additionalProperties === "object"
+		isObjectLike(schema.additionalProperties)
 	) {
 		fixSchemaRequired(
 			schema.additionalProperties,
@@ -168,7 +169,7 @@ function fixInvalidEnumTypes(schemas) {
 	for (const [schemaName, schema] of Object.entries(schemas)) {
 		if (schema && schema.type === "enum" && Array.isArray(schema.enum)) {
 			const firstValue = schema.enum[0];
-			const inferredType = typeof firstValue === "number" ? "number" : "string";
+			const inferredType = isNumber(firstValue) ? "number" : "string";
 			schema.type = inferredType;
 			console.log(
 				`  Fixed: schemas.${schemaName} - changed "type": "enum" to "type": "${inferredType}"`,
@@ -182,18 +183,18 @@ function fixInvalidEnumTypes(schemas) {
  */
 function fixRefSiblings(schemas) {
 	for (const [schemaName, schema] of Object.entries(schemas)) {
-		if (schema && typeof schema === "object") {
+		if (schema && isObjectLike(schema)) {
 			fixRefSiblingsRecursive(schema, `schemas.${schemaName}`);
 		}
 	}
 }
 
 function fixRefSiblingsRecursive(obj, path = "") {
-	if (!obj || typeof obj !== "object") return;
+	if (!isObjectLike(obj)) return;
 
 	if (obj.properties) {
 		for (const [propName, propSchema] of Object.entries(obj.properties)) {
-			if (propSchema && typeof propSchema === "object") {
+			if (propSchema && isObjectLike(propSchema)) {
 				if (propSchema.$ref && Object.keys(propSchema).length > 1) {
 					const ref = propSchema.$ref;
 					const otherProps = { ...propSchema };
@@ -277,7 +278,7 @@ function fixMissingGlobalTags(spec) {
 	const existingTags = new Set(spec.tags.map((t) => t.name));
 
 	for (const tag of usedTags) {
-		if (typeof tag !== "string") {
+		if (!isString(tag)) {
 			console.warn(
 				`  Warning: Skipping invalid non-string tag: ${JSON.stringify(tag)}`,
 			);

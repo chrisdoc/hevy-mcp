@@ -73,17 +73,29 @@ export function hasOAuthAccessTokenFormat(token: string): boolean {
 	return /^[^:]+:[^:]+:[^:]+$/.test(token);
 }
 
+function isObjectLike(value: unknown): value is object {
+	return z.object({}).passthrough().safeParse(value).success;
+}
+
+function isFunction(value: unknown): value is (...args: never[]) => unknown {
+	return z.function().safeParse(value).success;
+}
+
+function isString(value: unknown): value is string {
+	return z.string().safeParse(value).success;
+}
+
 function isKvNamespaceLike(value: unknown): boolean {
-	if (typeof value !== "object" || value === null) return false;
+	if (!isObjectLike(value)) return false;
 	return (
 		"get" in value &&
-		typeof value.get === "function" &&
+		isFunction(value.get) &&
 		"put" in value &&
-		typeof value.put === "function" &&
+		isFunction(value.put) &&
 		"delete" in value &&
-		typeof value.delete === "function" &&
+		isFunction(value.delete) &&
 		"list" in value &&
-		typeof value.list === "function"
+		isFunction(value.list)
 	);
 }
 
@@ -373,7 +385,7 @@ export async function handleAuthorizePost<Env>(
 	}
 	const encodedRequest = form.get("oauth_request");
 	const authRequest =
-		typeof encodedRequest === "string"
+		isString(encodedRequest)
 			? decodeAuthRequest(encodedRequest)
 			: null;
 	if (!authRequest) {
@@ -395,7 +407,7 @@ export async function handleAuthorizePost<Env>(
 		);
 
 	const apiKeyEntry = form.get("hevy_api_key");
-	const apiKey = typeof apiKeyEntry === "string" ? apiKeyEntry.trim() : "";
+	const apiKey = isString(apiKeyEntry) ? apiKeyEntry.trim() : "";
 	if (!apiKey) return rerender("Enter your Hevy API key.", 400);
 
 	let validation: HevyOAuthValidation;
@@ -471,7 +483,7 @@ async function handleAuthorizedMcpRequest<Env>(
 	const props = (ctx as { props?: Partial<HevyGrantProps> } | null | undefined)
 		?.props;
 	const apiKey =
-		typeof props?.hevyApiKey === "string" ? props.hevyApiKey : null;
+		isString(props?.hevyApiKey) ? props.hevyApiKey : null;
 	if (!apiKey) return oauthUnauthorizedResponse(request);
 
 	let validation: HevyOAuthValidation;
