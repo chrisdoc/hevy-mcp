@@ -198,10 +198,9 @@ export const routineExerciseFields = {
 
 const routineExerciseSchema = z.strictObject(routineExerciseFields);
 
-const routineExercisesSchema = z.preprocess(
-	parseJsonArray,
-	z.array(routineExerciseSchema),
-);
+const routineExercisesSchema = z
+	.preprocess(parseJsonArray, z.array(routineExerciseSchema))
+	.nonoptional();
 
 export const routinePayloadFields = {
 	title: z.string().min(1),

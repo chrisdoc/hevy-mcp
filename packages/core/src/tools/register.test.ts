@@ -1,14 +1,20 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
+import type { Routine } from "@hevy-mcp/hevy-client/types";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools, hevyToolDefinitions } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 
 type SchemaObject = {
+	readonly type?: string | readonly string[];
 	readonly properties?: Record<string, SchemaObject>;
 	readonly items?: SchemaObject;
+	readonly anyOf?: readonly SchemaObject[];
+	readonly required?: readonly string[];
+	readonly additionalProperties?: boolean;
 };
 
 const schemaObjectSchema: z.ZodType<SchemaObject> = z.lazy(() =>
@@ -16,9 +22,186 @@ const schemaObjectSchema: z.ZodType<SchemaObject> = z.lazy(() =>
 		.object({
 			properties: z.record(z.string(), schemaObjectSchema).optional(),
 			items: schemaObjectSchema.optional(),
+			anyOf: z.array(schemaObjectSchema).optional(),
 		})
 		.passthrough(),
 );
+
+function schemaProperty(schema: SchemaObject, name: string): SchemaObject {
+	const property = schema.properties?.[name];
+	if (!property) throw new Error(`Schema property ${name} is missing`);
+	return property;
+}
+
+function schemaItems(schema: SchemaObject): SchemaObject {
+	if (!schema.items) throw new Error("Schema items are missing");
+	return schema.items;
+}
+
+type ListedTool = {
+	readonly name: string;
+	readonly inputSchema: unknown;
+};
+
+function schemaFor(tools: readonly ListedTool[], name: string): SchemaObject {
+	const tool = tools.find(({ name: toolName }) => toolName === name);
+	if (!tool) throw new Error(`Tool ${name} is missing`);
+	return schemaObjectSchema.parse(tool.inputSchema);
+}
+
+function assertRoutineSchemas(tools: readonly ListedTool[]): void {
+	const createSchema = schemaFor(tools, "create-routine");
+	const updateSchema = schemaFor(tools, "update-routine");
+	expect(createSchema).toEqual(
+		expect.objectContaining({
+			additionalProperties: false,
+			required: ["routine"],
+		}),
+	);
+	expect(updateSchema).toEqual(
+		expect.objectContaining({
+			additionalProperties: false,
+			required: ["routine_id", "routine"],
+		}),
+	);
+
+	const createRoutineSchema = schemaProperty(createSchema, "routine");
+	const updateRoutineSchema = schemaProperty(updateSchema, "routine");
+	expect(createRoutineSchema).toEqual(
+		expect.objectContaining({
+			additionalProperties: false,
+			required: expect.arrayContaining(["title", "exercises"]),
+		}),
+	);
+	expect(updateRoutineSchema).toEqual(
+		expect.objectContaining({
+			additionalProperties: false,
+			required: expect.arrayContaining(["title", "exercises"]),
+		}),
+	);
+
+	const exerciseSchema = schemaItems(
+		schemaProperty(createRoutineSchema, "exercises"),
+	);
+	expect(exerciseSchema).toEqual(
+		expect.objectContaining({
+			additionalProperties: false,
+			required: expect.arrayContaining(["exercise_template_id", "sets"]),
+		}),
+	);
+	expect(schemaProperty(exerciseSchema, "superset_id")).toEqual(
+		expect.objectContaining({
+			type: expect.arrayContaining(["number", "null"]),
+		}),
+	);
+	expect(schemaProperty(exerciseSchema, "rest_seconds")).toEqual(
+		expect.objectContaining({ type: "integer" }),
+	);
+	const repRangeSchema = schemaProperty(
+		schemaItems(schemaProperty(exerciseSchema, "sets")),
+		"rep_range",
+	);
+	expect(repRangeSchema).toEqual(
+		expect.objectContaining({
+			type: "object",
+			additionalProperties: false,
+			properties: expect.objectContaining({
+				start: expect.objectContaining({
+					type: expect.arrayContaining(["integer", "null"]),
+				}),
+				end: expect.objectContaining({
+					type: expect.arrayContaining(["integer", "null"]),
+				}),
+			}),
+		}),
+	);
+}
+
+const createRoutinePayload = {
+	routine: {
+		title: "Full Body A",
+		folder_id: 123,
+		notes: "First four exercises are the minimum viable workout",
+		exercises: [
+			{
+				exercise_template_id: "30E293E3",
+				superset_id: null,
+				rest_seconds: 120,
+				notes: "Controlled active ROM",
+				sets: [
+					{
+						type: "normal",
+						rep_range: {
+							start: 6,
+							end: 10,
+						},
+					},
+				],
+			},
+		],
+	},
+};
+
+const expectedCreateRoutineRequest = {
+	routine: {
+		title: "Full Body A",
+		folder_id: 123,
+		notes: "First four exercises are the minimum viable workout",
+		exercises: [
+			{
+				exercise_template_id: "30E293E3",
+				superset_id: null,
+				rest_seconds: 120,
+				notes: "Controlled active ROM",
+				sets: [
+					{
+						type: "normal",
+						weight_kg: null,
+						reps: null,
+						distance_meters: null,
+						duration_seconds: null,
+						custom_metric: null,
+						rep_range: {
+							start: 6,
+							end: 10,
+						},
+					},
+				],
+			},
+		],
+	},
+};
+
+const createdRoutineResponse = {
+	id: "routine-1",
+	title: "Full Body A",
+	folder_id: 123,
+	created_at: "2026-08-15T09:00:00Z",
+	updated_at: "2026-08-15T09:00:00Z",
+	exercises: [
+		{
+			index: 0,
+			title: "Bench Press",
+			exercise_template_id: "30E293E3",
+			rest_seconds: 120,
+			notes: "Controlled active ROM",
+			supersets_id: null,
+			sets: [
+				{
+					index: 0,
+					type: "normal",
+					weight_kg: null,
+					reps: null,
+					rep_range: { start: 6, end: 10 },
+					distance_meters: null,
+					duration_seconds: null,
+					rpe: null,
+					custom_metric: null,
+				},
+			],
+		},
+	],
+} satisfies Routine;
 
 const EXPECTED_TOOL_NAMES = [
 	"get-workouts",
@@ -105,6 +288,96 @@ describe("registerHevyTools", () => {
 			}),
 		);
 	});
+	it("keeps the serialized create-routine contract aligned with dispatch", async () => {
+		const mockClient = createMockHevyClient();
+		const productionServer = new McpServer({
+			name: "create-routine-contract-server",
+			version: "1.0.0",
+		});
+		const catalog: ExerciseTemplateCatalog = {
+			get: () => Promise.resolve([]),
+			reset: () => {},
+		};
+		registerHevyTools(
+			productionServer,
+			createToolRuntime({
+				client: mockClient,
+				catalog,
+			}),
+		);
+		const protocolClient = new Client({
+			name: "create-routine-contract-client",
+			version: "1.0.0",
+		});
+		const [clientTransport, serverTransport] =
+			InMemoryTransport.createLinkedPair();
+
+		try {
+			await Promise.all([
+				productionServer.connect(serverTransport),
+				protocolClient.connect(clientTransport),
+			]);
+
+			const { tools } = await protocolClient.listTools();
+			assertRoutineSchemas(tools);
+
+			const payload = createRoutinePayload;
+			mockClient.createRoutine.mockResolvedValue(createdRoutineResponse);
+
+			const result = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: payload,
+			});
+			expect(result).not.toMatchObject({ isError: true });
+			expect(result.content[0]).toMatchObject({
+				type: "text",
+				text: expect.stringContaining('"id": "routine-1"'),
+			});
+			expect(result.content[0]).toMatchObject({
+				text: expect.stringContaining('"exercise_template_id": "30E293E3"'),
+			});
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(1);
+			expect(mockClient.createRoutine.mock.calls[0]?.[0]).toEqual(
+				expectedCreateRoutineRequest,
+			);
+
+			const invalidResult = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: {
+					routine: {
+						title: "SECRET-TITLE-SENTINEL",
+						notes: "SECRET-NOTES-SENTINEL",
+						exercises: [
+							{
+								exercise_template_id: "SECRET-TEMPLATE-SENTINEL",
+								restSeconds: 120,
+								sets: [{ type: "normal" }],
+							},
+						],
+					},
+				},
+			});
+			const invalidText = JSON.stringify(invalidResult);
+			expect(invalidResult).toMatchObject({ isError: true });
+			expect(invalidText).toContain("routine.exercises.0");
+			expect(invalidText).toContain("restSeconds");
+			expect(invalidText).not.toContain("SECRET-TITLE-SENTINEL");
+			expect(invalidText).not.toContain("SECRET-NOTES-SENTINEL");
+			expect(invalidText).not.toContain("SECRET-TEMPLATE-SENTINEL");
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(1);
+
+			const missingExercisesResult = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: { routine: { title: "No Exercises" } },
+			});
+			const missingExercisesText = JSON.stringify(missingExercisesResult);
+			expect(missingExercisesResult).toMatchObject({ isError: true });
+			expect(missingExercisesText).toContain("routine.exercises");
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(1);
+		} finally {
+			await Promise.all([protocolClient.close(), productionServer.close()]);
+		}
+	});
 
 	it("declares bounded feature, kind, and operation metadata for every tool", () => {
 		expect(hevyToolDefinitions).toHaveLength(EXPECTED_TOOL_NAMES.length);
@@ -148,10 +421,12 @@ describe("registerHevyTools", () => {
 				}
 			}
 			if (schema.items) visit(schema.items);
+			if (schema.anyOf) {
+				for (const branch of schema.anyOf) visit(branch);
+			}
 		};
 		for (const tool of tools) {
-			const parsed = schemaObjectSchema.safeParse(tool.inputSchema);
-			if (parsed.success) visit(parsed.data);
+			visit(schemaObjectSchema.parse(tool.inputSchema));
 		}
 		expect(
 			propertyNames.filter((name) => !/^[a-z][a-z0-9_]*$/u.test(name)),

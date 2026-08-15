@@ -345,6 +345,35 @@ can request confirmation.
 | Body measurements  | `create-body-measurement`   | Create a dated body measurement.                                                  |
 | Body measurements  | `update-body-measurement`   | Update the body measurement for an existing date.                                 |
 
+`create-routine` requires a top-level `routine` envelope with a required `exercises` array; fields use snake_case at every level:
+
+```json
+{
+	"routine": {
+		"title": "Full Body A",
+		"folder_id": 123,
+		"notes": "First four exercises are the minimum viable workout",
+		"exercises": [
+			{
+				"exercise_template_id": "30E293E3",
+				"superset_id": null,
+				"rest_seconds": 120,
+				"notes": "Controlled active ROM",
+				"sets": [
+					{
+						"type": "normal",
+						"rep_range": {
+							"start": 6,
+							"end": 10
+						}
+					}
+				]
+			}
+		]
+	}
+}
+```
+
 The Hevy API currently exposes no delete endpoints for workouts, routines,
 routine folders, exercise templates, or body measurements, so there are no
 corresponding delete tools.
