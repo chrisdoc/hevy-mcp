@@ -1,14 +1,19 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools, hevyToolDefinitions } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 type SchemaObject = {
+	readonly type?: string | readonly string[];
 	readonly properties?: Record<string, SchemaObject>;
 	readonly items?: SchemaObject;
+	readonly anyOf?: readonly SchemaObject[];
+	readonly required?: readonly string[];
+	readonly additionalProperties?: boolean;
 };
 
 const schemaObjectSchema: z.ZodType<SchemaObject> = z.lazy(() =>
@@ -19,6 +24,44 @@ const schemaObjectSchema: z.ZodType<SchemaObject> = z.lazy(() =>
 		})
 		.passthrough(),
 );
+
+function createMockHevyClient() {
+	return {
+		getWorkouts: vi.fn(),
+		getWorkout: vi.fn(),
+		createWorkout: vi.fn(),
+		updateWorkout: vi.fn(),
+		getWorkoutCount: vi.fn(),
+		getWorkoutEvents: vi.fn(),
+		getRoutines: vi.fn(),
+		getRoutineById: vi.fn(),
+		createRoutine: vi.fn(),
+		updateRoutine: vi.fn(),
+		getExerciseTemplates: vi.fn(),
+		getExerciseTemplate: vi.fn(),
+		getExerciseHistory: vi.fn(),
+		createExerciseTemplate: vi.fn(),
+		getRoutineFolders: vi.fn(),
+		createRoutineFolder: vi.fn(),
+		getRoutineFolder: vi.fn(),
+		getBodyMeasurements: vi.fn(),
+		getBodyMeasurement: vi.fn(),
+		createBodyMeasurement: vi.fn(),
+		updateBodyMeasurement: vi.fn(),
+		getUserInfo: vi.fn(),
+	} satisfies HevyClient;
+}
+
+function schemaProperty(schema: SchemaObject, name: string): SchemaObject {
+	const property = schema.properties?.[name];
+	if (!property) throw new Error(`Schema property ${name} is missing`);
+	return property;
+}
+
+function schemaItems(schema: SchemaObject): SchemaObject {
+	if (!schema.items) throw new Error("Schema items are missing");
+	return schema.items;
+}
 
 const EXPECTED_TOOL_NAMES = [
 	"get-workouts",
@@ -104,6 +147,203 @@ describe("registerHevyTools", () => {
 				}),
 			}),
 		);
+	});
+	it("keeps the serialized create-routine contract aligned with dispatch", async () => {
+		const mockClient = createMockHevyClient();
+		const productionServer = new McpServer({
+			name: "create-routine-contract-server",
+			version: "1.0.0",
+		});
+		const catalog: ExerciseTemplateCatalog = {
+			get: () => Promise.resolve([]),
+			reset: () => {},
+		};
+		registerHevyTools(
+			productionServer,
+			createToolRuntime({
+				client: mockClient,
+				catalog,
+			}),
+		);
+		const protocolClient = new Client({
+			name: "create-routine-contract-client",
+			version: "1.0.0",
+		});
+		const [clientTransport, serverTransport] =
+			InMemoryTransport.createLinkedPair();
+
+		try {
+			await Promise.all([
+				productionServer.connect(serverTransport),
+				protocolClient.connect(clientTransport),
+			]);
+
+			const { tools } = await protocolClient.listTools();
+			const createRoutineTool = tools.find(
+				({ name }) => name === "create-routine",
+			);
+			const updateRoutineTool = tools.find(
+				({ name }) => name === "update-routine",
+			);
+			if (!createRoutineTool || !updateRoutineTool) {
+				throw new Error("Routine mutation tools are missing");
+			}
+
+			const createSchema = createRoutineTool.inputSchema as SchemaObject;
+			const updateSchema = updateRoutineTool.inputSchema as SchemaObject;
+			expect(createSchema).toEqual(
+				expect.objectContaining({
+					additionalProperties: false,
+					required: ["routine"],
+				}),
+			);
+			expect(updateSchema).toEqual(
+				expect.objectContaining({
+					additionalProperties: false,
+					required: ["routine_id", "routine"],
+				}),
+			);
+
+			const createRoutineSchema = schemaProperty(createSchema, "routine");
+			const updateRoutineSchema = schemaProperty(updateSchema, "routine");
+			expect(createRoutineSchema).toEqual(
+				expect.objectContaining({
+					additionalProperties: false,
+					required: expect.arrayContaining(["title", "exercises"]),
+				}),
+			);
+			expect(updateRoutineSchema).toEqual(
+				expect.objectContaining({
+					additionalProperties: false,
+					required: expect.arrayContaining(["title", "exercises"]),
+				}),
+			);
+
+			const exerciseSchema = schemaItems(
+				schemaProperty(createRoutineSchema, "exercises"),
+			);
+			expect(exerciseSchema).toEqual(
+				expect.objectContaining({
+					additionalProperties: false,
+					required: expect.arrayContaining(["exercise_template_id", "sets"]),
+				}),
+			);
+			expect(schemaProperty(exerciseSchema, "superset_id")).toEqual(
+				expect.objectContaining({
+					type: expect.arrayContaining(["number", "null"]),
+				}),
+			);
+			expect(schemaProperty(exerciseSchema, "rest_seconds")).toEqual(
+				expect.objectContaining({ type: "integer" }),
+			);
+			const repRangeSchema = schemaProperty(
+				schemaItems(schemaProperty(exerciseSchema, "sets")),
+				"rep_range",
+			);
+			expect(repRangeSchema).toEqual(
+				expect.objectContaining({
+					type: "object",
+					additionalProperties: false,
+					properties: expect.objectContaining({
+						start: expect.objectContaining({
+							type: expect.arrayContaining(["integer", "null"]),
+						}),
+						end: expect.objectContaining({
+							type: expect.arrayContaining(["integer", "null"]),
+						}),
+					}),
+				}),
+			);
+
+			const payload = {
+				routine: {
+					title: "Full Body A",
+					folder_id: 123,
+					notes: "First four exercises are the minimum viable workout",
+					exercises: [
+						{
+							exercise_template_id: "30E293E3",
+							superset_id: null,
+							rest_seconds: 120,
+							notes: "Controlled active ROM",
+							sets: [
+								{
+									type: "normal",
+									rep_range: {
+										start: 6,
+										end: 10,
+									},
+								},
+							],
+						},
+					],
+				},
+			};
+			mockClient.createRoutine.mockResolvedValue(payload.routine);
+
+			const result = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: payload,
+			});
+			expect(result).not.toMatchObject({ isError: true });
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(1);
+			expect(mockClient.createRoutine.mock.calls[0]?.[0]).toEqual({
+				routine: {
+					title: "Full Body A",
+					folder_id: 123,
+					notes: "First four exercises are the minimum viable workout",
+					exercises: [
+						{
+							exercise_template_id: "30E293E3",
+							superset_id: null,
+							rest_seconds: 120,
+							notes: "Controlled active ROM",
+							sets: [
+								{
+									type: "normal",
+									weight_kg: null,
+									reps: null,
+									distance_meters: null,
+									duration_seconds: null,
+									custom_metric: null,
+									rep_range: {
+										start: 6,
+										end: 10,
+									},
+								},
+							],
+						},
+					],
+				},
+			});
+
+			const invalidResult = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: {
+					routine: {
+						title: "SECRET-TITLE-SENTINEL",
+						notes: "SECRET-NOTES-SENTINEL",
+						exercises: [
+							{
+								exercise_template_id: "SECRET-TEMPLATE-SENTINEL",
+								restSeconds: 120,
+								sets: [{ type: "normal" }],
+							},
+						],
+					},
+				},
+			});
+			const invalidText = JSON.stringify(invalidResult);
+			expect(invalidResult).toMatchObject({ isError: true });
+			expect(invalidText).toContain("routine.exercises.0");
+			expect(invalidText).toContain("restSeconds");
+			expect(invalidText).not.toContain("SECRET-TITLE-SENTINEL");
+			expect(invalidText).not.toContain("SECRET-NOTES-SENTINEL");
+			expect(invalidText).not.toContain("SECRET-TEMPLATE-SENTINEL");
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(1);
+		} finally {
+			await Promise.all([protocolClient.close(), productionServer.close()]);
+		}
 	});
 
 	it("declares bounded feature, kind, and operation metadata for every tool", () => {
