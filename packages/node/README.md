@@ -345,7 +345,7 @@ can request confirmation.
 | Body measurements  | `create-body-measurement`   | Create a dated body measurement.                                                  |
 | Body measurements  | `update-body-measurement`   | Update the body measurement for an existing date.                                 |
 
-`create-routine` uses a required top-level `routine` envelope and snake_case fields at every level:
+`create-routine` requires a top-level `routine` envelope with a required `exercises` array; fields use snake_case at every level:
 
 ```json
 {
