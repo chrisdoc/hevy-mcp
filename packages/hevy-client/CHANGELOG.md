@@ -1,5 +1,11 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.2
+
+### Patch Changes
+
+- [#1015](https://github.com/chrisdoc/hevy-mcp/pull/1015) [`0e4d8a3`](https://github.com/chrisdoc/hevy-mcp/commit/0e4d8a33a54f07670aeb8a53d575981010a0f7e7) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add the anti-slop Oxlint plugin and migrate omission-preserving response projection helpers to a shared typed helper.
+
 ## 0.2.1
 
 ### Patch Changes
