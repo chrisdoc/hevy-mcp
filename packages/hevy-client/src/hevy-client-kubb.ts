@@ -151,7 +151,9 @@ export interface HevyClientOptions {
 	timeoutMs?: number;
 }
 
-export const DEFAULT_API_TIMEOUT_MS = 30_000;
+// Hevy's larger collection endpoints can take longer than the usual HTTP
+// request window, especially when returning exercise templates or workouts.
+export const DEFAULT_API_TIMEOUT_MS = 60_000;
 export const MAX_GET_RETRIES = 3;
 export const RETRY_BACKOFF_BASE_MS = 300;
 export { HEVY_RETRY_EXHAUSTED_ERROR_CODE };
