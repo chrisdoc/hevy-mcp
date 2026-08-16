@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import * as crypto from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { sessionEnded, sessionStarted } from "./metrics.js";
 import { bucketCount } from "./result-telemetry.js";
@@ -55,6 +55,21 @@ const UNKNOWN_METADATA = "unknown";
 const MAX_METADATA_LENGTH = 64;
 const SAFE_METADATA_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+:/@-]{0,63}$/u;
 const contextStorage = new AsyncLocalStorage<McpSessionContext>();
+
+function generateFallbackTelemetrySessionId(): string {
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+const parsedRandomUUID = z
+	.function()
+	.output(z.string())
+	.safeParse(crypto.randomUUID);
+
+function generateTelemetrySessionId(): string {
+	return parsedRandomUUID.success
+		? parsedRandomUUID.data()
+		: generateFallbackTelemetrySessionId();
+}
 // Stdio has one process-wide connection and its parser callbacks are not
 // attached to an AsyncLocalStorage scope. HTTP never uses this fallback: every
 // request is explicitly run with its own session context.
@@ -142,7 +157,10 @@ export function createMcpSessionContext(
 		transport,
 		telemetrySessionId:
 			normalizedOptions.telemetrySessionId ??
-			(normalizedOptions.generateTelemetrySessionId ?? randomUUID)(),
+			(
+				normalizedOptions.generateTelemetrySessionId ??
+				generateTelemetrySessionId
+			)(),
 	};
 }
 
