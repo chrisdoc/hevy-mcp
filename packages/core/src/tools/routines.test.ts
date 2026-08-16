@@ -223,6 +223,43 @@ describe("routine tools", () => {
 		expect(response).toMatchObject({ isError: true });
 	});
 
+	it("returns a confirmed acknowledgement when creation has no body", async () => {
+		const client = createMockHevyClient();
+		client.createRoutine.mockResolvedValue({});
+		const tool = register(client);
+
+		const response = await handler(tool, "create-routine")(routineInput);
+
+		expect(response).toMatchObject({
+			structuredContent: {
+				created: true,
+				commit_state: "confirmed",
+				routine: null,
+				routine_id: null,
+				uses_rep_ranges: true,
+			},
+		});
+	});
+
+	it("returns the authoritative routine and ID when creation has a body", async () => {
+		const client = createMockHevyClient();
+		client.createRoutine.mockResolvedValue({
+			id: "routine-1",
+			title: "Push",
+			exercises: [],
+		});
+		const tool = register(client);
+
+		const response = await handler(tool, "create-routine")(routineInput);
+
+		expect(response.structuredContent).toMatchObject({
+			created: true,
+			commit_state: "confirmed",
+			routine_id: "routine-1",
+			routine: { id: "routine-1", title: "Push" },
+		});
+	});
+
 	it("passes nested snake_case routine payloads to create and update", async () => {
 		const client = createMockHevyClient();
 		client.createRoutine.mockResolvedValue(routineInput.routine);

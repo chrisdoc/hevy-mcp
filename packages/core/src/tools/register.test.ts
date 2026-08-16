@@ -320,6 +320,18 @@ describe("registerHevyTools", () => {
 
 			const { tools } = await protocolClient.listTools();
 			assertRoutineSchemas(tools);
+			const createRoutineTool = tools.find(
+				({ name }) => name === "create-routine",
+			);
+			expect(createRoutineTool?.outputSchema).toBeDefined();
+			expect(createRoutineTool?.outputSchema).toMatchObject({
+				type: "object",
+				properties: {
+					created: { const: true },
+					commit_state: { const: "confirmed" },
+					routine_id: { type: ["string", "null"] },
+				},
+			});
 
 			const payload = createRoutinePayload;
 			mockClient.createRoutine.mockResolvedValue(createdRoutineResponse);
@@ -340,6 +352,19 @@ describe("registerHevyTools", () => {
 			expect(mockClient.createRoutine.mock.calls[0]?.[0]).toEqual(
 				expectedCreateRoutineRequest,
 			);
+
+			mockClient.createRoutine.mockResolvedValue({});
+			const emptyResult = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: payload,
+			});
+			expect(emptyResult).not.toMatchObject({ isError: true });
+			expect(emptyResult.structuredContent).toMatchObject({
+				created: true,
+				commit_state: "confirmed",
+				routine: null,
+				routine_id: null,
+			});
 
 			const invalidResult = await protocolClient.callTool({
 				name: "create-routine",
@@ -364,7 +389,7 @@ describe("registerHevyTools", () => {
 			expect(invalidText).not.toContain("SECRET-TITLE-SENTINEL");
 			expect(invalidText).not.toContain("SECRET-NOTES-SENTINEL");
 			expect(invalidText).not.toContain("SECRET-TEMPLATE-SENTINEL");
-			expect(mockClient.createRoutine).toHaveBeenCalledTimes(1);
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(2);
 
 			const missingExercisesResult = await protocolClient.callTool({
 				name: "create-routine",
@@ -373,7 +398,7 @@ describe("registerHevyTools", () => {
 			const missingExercisesText = JSON.stringify(missingExercisesResult);
 			expect(missingExercisesResult).toMatchObject({ isError: true });
 			expect(missingExercisesText).toContain("routine.exercises");
-			expect(mockClient.createRoutine).toHaveBeenCalledTimes(1);
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(2);
 		} finally {
 			await Promise.all([protocolClient.close(), productionServer.close()]);
 		}

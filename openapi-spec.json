@@ -462,7 +462,16 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Routine"
+									"oneOf": [
+										{
+											"$ref": "#/components/schemas/Routine"
+										},
+										{
+											"type": "object",
+											"properties": {},
+											"additionalProperties": false
+										}
+									]
 								}
 							}
 						}

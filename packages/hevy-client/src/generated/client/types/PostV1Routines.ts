@@ -16,7 +16,7 @@ export type PostV1RoutinesHeaderParams = {
 /**
  * @description The routine was successfully created
  */
-export type PostV1Routines201 = Routine;
+export type PostV1Routines201 = Routine | object;
 
 /**
  * @description Invalid request body
