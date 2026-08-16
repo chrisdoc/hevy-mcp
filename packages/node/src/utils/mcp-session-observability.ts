@@ -57,7 +57,7 @@ const SAFE_METADATA_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+:/@-]{0,63}$/u;
 const contextStorage = new AsyncLocalStorage<McpSessionContext>();
 
 function generateFallbackTelemetrySessionId(): string {
-	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+	return `${Date.now().toString(36)}-${crypto.randomBytes(16).toString("hex")}`;
 }
 
 const parsedRandomUUID = z
