@@ -238,15 +238,15 @@ export function getRetryAfterSeconds(
 
 /** Map bounded Hevy HTTP statuses to stable user-facing messages. */
 export function getStatusErrorMessage(status?: number): string | null {
+	if (status === 400 || status === 422) {
+		return "The request failed Hevy validation. Check the field values and try again.";
+	}
 	if (status === 401 || status === 403) {
 		return "The Hevy API key is invalid or has expired. Check HEVY_API_KEY.";
 	}
 	if (status === 404) return "The requested resource was not found in Hevy.";
 	if (status === 409) {
 		return "A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.";
-	}
-	if (status === 422) {
-		return "The request failed Hevy validation. Check the field values and try again.";
 	}
 	if (status === 429) return "Rate limited by Hevy. Please wait and retry.";
 	if (status !== undefined && status >= 500 && status <= 599) {
