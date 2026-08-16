@@ -118,12 +118,13 @@ export function validateOpenAPISpec(spec) {
 			"application/json"
 		]?.schema;
 	if (
-		!routineCreateSchema ||
-		!Array.isArray(routineCreateSchema.oneOf) ||
-		!routineCreateSchema.oneOf.some(
-			(entry) =>
-				entry?.type === "object" && entry?.additionalProperties === false,
-		)
+		routineCreateSchema &&
+		(!Array.isArray(routineCreateSchema.oneOf) ||
+			!routineCreateSchema.oneOf.some(
+				(entry) =>
+					entry?.type === "object" &&
+					entry?.additionalProperties === false,
+			))
 	) {
 		throw new Error(
 			"POST /v1/routines 201 must allow an empty successful response body",
