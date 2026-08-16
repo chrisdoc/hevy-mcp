@@ -72,12 +72,18 @@ describe("createErrorResponse", () => {
 	it.each([
 		[401, "The Hevy API key is invalid or has expired"],
 		[404, "The requested resource was not found"],
-		[409, "A conflict occurred"],
+		[409, "A conflict occurred because the resource already exists"],
 		[422, "The request failed Hevy validation"],
 		[503, "Hevy API experienced an error"],
 	])("maps HTTP %s to a safe Hevy message", (status, expected) => {
 		const result = createErrorResponse(httpError(status));
 		expect(result.content[0]?.text).toContain(expected);
+		if (status === 409) {
+			expect(result.content[0]?.text).not.toContain("body measurement");
+			expect(result.content[0]?.text).toContain(
+				"use the update tool when appropriate",
+			);
+		}
 	});
 
 	it("does not expose parsed upstream payloads for unmapped statuses", () => {
