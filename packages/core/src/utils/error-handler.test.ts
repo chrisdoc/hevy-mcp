@@ -5,14 +5,20 @@ import { createErrorResponse, withErrorHandling } from "./error-handler.js";
 
 type ErrorPayload = { readonly error: string };
 
-function httpError(status: number, data?: ErrorPayload, headers?: Headers) {
+function httpError(
+	status: number,
+	data?: ErrorPayload,
+	headers?: Headers,
+	method = "GET",
+	endpoint = "/v1/user/info",
+) {
 	return new HevyHttpError(`HTTP ${status}`, {
 		status,
 		statusText: "Error",
 		data,
 		headers,
-		method: "GET",
-		endpoint: "/v1/user/info",
+		method,
+		endpoint,
 	});
 }
 
@@ -67,6 +73,15 @@ describe("createErrorResponse", () => {
 		expect(result.errorContext).toMatchObject({
 			errorType: ErrorType.VALIDATION_ERROR,
 		});
+	});
+
+	it("gives routine update 404s actionable guidance", () => {
+		const result = createErrorResponse(
+			httpError(404, undefined, undefined, "PUT", "/v1/routines/:routineId"),
+		);
+		expect(result.content[0]?.text).toContain(
+			"The requested routine was not found in Hevy. It may have been deleted or the routine ID is incorrect.",
+		);
 	});
 
 	it.each([
