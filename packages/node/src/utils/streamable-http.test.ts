@@ -628,6 +628,8 @@ describe("Streamable HTTP server", () => {
 				"test-key",
 				createMcpServer,
 			),
-		).rejects.toThrow("HEVY_MCP_HTTP_BEARER_TOKEN");
+		).rejects.toThrow(
+			"Set HEVY_MCP_HTTP_BEARER_TOKEN to a secure random value, then retry.",
+		);
 	});
 });
