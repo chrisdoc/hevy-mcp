@@ -7,6 +7,7 @@ import {
 	HevyHttpError,
 } from "./hevy-http-error.js";
 import { createExecutionSignal, isAbortLike } from "./execution.js";
+import { DEFAULT_API_TIMEOUT_MS } from "./hevy-client-kubb.js";
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 type JsonObject = { readonly [key: string]: JsonValue };
@@ -30,6 +31,10 @@ function hangingResponse(): Response {
 }
 
 describe("@hevy-mcp/hevy-client", () => {
+	it("allows slow collection endpoints a one-minute default deadline", () => {
+		expect(DEFAULT_API_TIMEOUT_MS).toBe(60_000);
+	});
+
 	it("uses object-form options and safely encodes requests", async () => {
 		const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
 			const requestUrl =
