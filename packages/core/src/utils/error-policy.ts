@@ -243,7 +243,7 @@ export function getStatusErrorMessage(status?: number): string | null {
 	}
 	if (status === 404) return "The requested resource was not found in Hevy.";
 	if (status === 409) {
-		return "A conflict occurred (e.g., a body measurement already exists for this date). Use the update tool instead.";
+		return "A conflict occurred because the resource already exists or conflicts with the current server state. Check whether it already exists and use the update tool when appropriate.";
 	}
 	if (status === 422) {
 		return "The request failed Hevy validation. Check the field values and try again.";
