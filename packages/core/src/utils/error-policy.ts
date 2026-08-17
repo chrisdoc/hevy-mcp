@@ -237,7 +237,18 @@ export function getRetryAfterSeconds(
 }
 
 /** Map bounded Hevy HTTP statuses to stable user-facing messages. */
-export function getStatusErrorMessage(status?: number): string | null {
+export function getStatusErrorMessage(
+	status?: number,
+	method?: string,
+	endpoint?: string,
+): string | null {
+	if (
+		status === 404 &&
+		method?.toUpperCase() === "PUT" &&
+		endpoint === "/v1/routines/:routineId"
+	) {
+		return "The requested routine was not found in Hevy. It may have been deleted or the routine ID is incorrect.";
+	}
 	if (status === 401 || status === 403) {
 		return "The Hevy API key is invalid or has expired. Check HEVY_API_KEY.";
 	}
@@ -495,7 +506,11 @@ export function resolveErrorPolicy(
 	notInitializedMessage?: string,
 ): ErrorPolicyResult {
 	const diagnostic = createSafeErrorDiagnostic(error);
-	const mappedMessage = getStatusErrorMessage(diagnostic.status);
+	const mappedMessage = getStatusErrorMessage(
+		diagnostic.status,
+		diagnostic.method,
+		diagnostic.endpoint,
+	);
 	let message =
 		mappedMessage ??
 		(diagnostic.status !== undefined
