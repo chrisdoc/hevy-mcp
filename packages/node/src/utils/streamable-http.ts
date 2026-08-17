@@ -441,7 +441,7 @@ export async function startStreamableHttpServer(
 	const bearerToken = process.env[HTTP_BEARER_TOKEN];
 	if (!loopback && !bearerToken) {
 		throw new Error(
-			`Non-loopback HTTP mode requires ${HTTP_BEARER_TOKEN} to protect the shared Hevy account.`,
+			`Non-loopback HTTP mode requires ${HTTP_BEARER_TOKEN} to protect the shared Hevy account. Set ${HTTP_BEARER_TOKEN} to a secure random value, then retry.`,
 		);
 	}
 
