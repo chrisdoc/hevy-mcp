@@ -22,7 +22,15 @@ class TestExecutionSpan implements Span {
 		return false;
 	}
 
-	setAttribute(_key: string, _value?: boolean | number | string): void {}
+	setAttribute(_key: string, _value: boolean | number | string): this {
+		return this;
+	}
+
+	setAttributes(
+		_attributes: Record<string, boolean | number | string | undefined>,
+	): this {
+		return this;
+	}
 
 	end(): void {}
 }
@@ -30,6 +38,7 @@ class TestExecutionSpan implements Span {
 const testExecutionContext = {
 	waitUntil(_promise: Promise<unknown>): void {},
 	passThroughOnException(): void {},
+	abort(_reason?: string): void {},
 	exports: {},
 	props: {},
 	tracing: {
@@ -46,6 +55,9 @@ const testExecutionContext = {
 			...args: A
 		): T {
 			return callback(new TestExecutionSpan(), ...args);
+		},
+		startSpan(_name: string): Span {
+			return new TestExecutionSpan();
 		},
 		Span: TestExecutionSpan,
 	},

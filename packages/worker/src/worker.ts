@@ -58,7 +58,15 @@ class FallbackSpan implements Span {
 		return false;
 	}
 
-	setAttribute(_key: string, _value?: boolean | number | string): void {}
+	setAttribute(_key: string, _value: boolean | number | string): this {
+		return this;
+	}
+
+	setAttributes(
+		_attributes: Record<string, boolean | number | string | undefined>,
+	): this {
+		return this;
+	}
 
 	end(): void {}
 }
@@ -66,6 +74,7 @@ class FallbackSpan implements Span {
 const FALLBACK_EXECUTION_CONTEXT = {
 	waitUntil(_promise: Promise<unknown>): void {},
 	passThroughOnException(): void {},
+	abort(_reason?: string): void {},
 	exports: {},
 	props: {},
 	tracing: {
@@ -82,6 +91,9 @@ const FALLBACK_EXECUTION_CONTEXT = {
 			...args: A
 		): T {
 			return callback(new FallbackSpan(), ...args);
+		},
+		startSpan(_name: string): Span {
+			return new FallbackSpan();
 		},
 		Span: FallbackSpan,
 	},
