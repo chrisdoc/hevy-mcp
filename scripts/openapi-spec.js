@@ -122,8 +122,7 @@ export function validateOpenAPISpec(spec) {
 		(!Array.isArray(routineCreateSchema.oneOf) ||
 			!routineCreateSchema.oneOf.some(
 				(entry) =>
-					entry?.type === "object" &&
-					entry?.additionalProperties === false,
+					entry?.type === "object" && entry?.additionalProperties === false,
 			))
 	) {
 		throw new Error(
