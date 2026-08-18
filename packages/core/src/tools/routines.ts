@@ -109,10 +109,7 @@ const createRoutineDefinition: ToolDefinition<
 		const data: Routine | undefined = await runtime
 			.getClient()
 			.createRoutine({ routine: payload });
-		return {
-			routine: data && Object.keys(data).length > 0 ? data : undefined,
-			usesRepRanges,
-		};
+		return { routine: data, usesRepRanges };
 	},
 };
 
