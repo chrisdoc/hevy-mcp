@@ -22,6 +22,7 @@ export {
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
 } from "./server.js";
+export { preloadHevyToolSchemas } from "./tools/register.js";
 export {
 	memoizeObservationScope,
 	type ToolCompletionObservation,
