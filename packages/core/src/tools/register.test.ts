@@ -4,7 +4,11 @@ import type { Routine } from "@hevy-mcp/hevy-client/types";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createToolRuntime } from "./tool-runtime.js";
-import { registerHevyTools, hevyToolDefinitions } from "./register.js";
+import {
+	registerHevyTools,
+	hevyToolDefinitions,
+	preloadHevyToolSchemas,
+} from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 
@@ -268,6 +272,57 @@ describe("registerHevyTools", () => {
 
 		expect(tools).toHaveLength(EXPECTED_TOOL_NAMES.length);
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
+	});
+
+	it("shares memoized tool schemas across independently built servers", async () => {
+		preloadHevyToolSchemas();
+		preloadHevyToolSchemas();
+		const { tools: firstTools } = await client.listTools();
+
+		const catalog: ExerciseTemplateCatalog = {
+			get: () => Promise.resolve([]),
+			reset: () => {},
+		};
+		const buildPair = (name: string) => {
+			const rebuilt = new McpServer({
+				name: `server-${name}`,
+				version: "1.0.0",
+			});
+			registerHevyTools(rebuilt, createToolRuntime({ client: null, catalog }));
+			const protocolClient = new Client({
+				name: `client-${name}`,
+				version: "1.0.0",
+			});
+			const [clientTransport, serverTransport] =
+				InMemoryTransport.createLinkedPair();
+			return { rebuilt, protocolClient, clientTransport, serverTransport };
+		};
+		const second = buildPair("second");
+		const third = buildPair("third");
+		try {
+			await Promise.all([
+				second.rebuilt.connect(second.serverTransport),
+				second.protocolClient.connect(second.clientTransport),
+			]);
+			const secondTools = (await second.protocolClient.listTools()).tools;
+			expect(secondTools).toEqual(firstTools);
+
+			// The memoized path must also hold through yet another rebuild.
+			await Promise.all([
+				third.rebuilt.connect(third.serverTransport),
+				third.protocolClient.connect(third.clientTransport),
+			]);
+			const thirdTools = (await third.protocolClient.listTools()).tools;
+			expect(thirdTools).toEqual(firstTools);
+			expect(thirdTools).toHaveLength(EXPECTED_TOOL_NAMES.length);
+		} finally {
+			await Promise.all([
+				second.protocolClient.close(),
+				second.rebuilt.close(),
+				third.protocolClient.close(),
+				third.rebuilt.close(),
+			]);
+		}
 	});
 
 	it("advertises the non-empty update-workout patch invariant", async () => {

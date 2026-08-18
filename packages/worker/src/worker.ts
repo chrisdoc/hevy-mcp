@@ -5,6 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import {
 	createHevyMcpServer,
 	createSafeErrorDiagnostic,
+	preloadHevyToolSchemas,
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
 } from "@hevy-mcp/core";
@@ -36,6 +37,14 @@ import {
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
 const HEVY_API_BASE_URL = "https://api.hevyapp.com";
+
+/**
+ * Warm the tool-schema memo at module scope so the per-isolate conversion
+ * cost runs during isolate warm-up instead of inside a request's billed CPU.
+ * See `preloadHevyToolSchemas` in packages/core. Client requests stay within
+ * the Worker CPU budget by reusing the memoized tool schemas.
+ */
+preloadHevyToolSchemas();
 const CORS_ALLOWED_HEADERS =
 	"Authorization, Content-Type, Accept, MCP-Protocol-Version";
 const CORS_ALLOWED_METHODS = "POST, OPTIONS";

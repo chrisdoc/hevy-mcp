@@ -17,6 +17,8 @@ function isNullSchema(value: RuntimeValue): value is JsonSchema {
 	);
 }
 
+let conversionCount = 0;
+
 function compactNullableSchema(value: RuntimeValue): RuntimeValue {
 	if (Array.isArray(value)) {
 		return value.map(compactNullableSchema);
@@ -71,6 +73,7 @@ function convertSchema(
 	schema: z.ZodTypeAny,
 	io: "input" | "output",
 ): JsonSchema {
+	conversionCount += 1;
 	const converted = z.toJSONSchema(schema, {
 		target: "draft-2020-12",
 		io,
@@ -118,4 +121,35 @@ export function compactJsonSchema<TSchema extends z.ZodTypeAny>(
 		writable: true,
 	});
 	return schema;
+}
+
+/**
+ * Force the compact JSON Schema conversion for one direction now instead of
+ * lazily on first use.
+ *
+ * `compactJsonSchema` stores the conversion behind memoized `input`/`output`
+ * closures so Node CLI and test processes never pay for a conversion they do
+ * not use. On isolate-based edge runtimes (Cloudflare Workers), module-scope
+ * work runs outside a request's billed CPU, so callers such as
+ * `preloadHevyToolSchemas` can warm the memo for the exact directions the MCP
+ * SDK consumes during `registerTool` (`input` for `inputSchema`, `output` for
+ * `outputSchema`) and move the one-time cost out of the first request.
+ * Calling again for an already-warm direction is a no-op.
+ */
+export function preloadCompactJsonSchema<TSchema extends z.ZodTypeAny>(
+	schema: TSchema,
+	io: "input" | "output",
+): void {
+	schema["~standard"].jsonSchema?.[io]({ target: "draft-2020-12" });
+}
+
+/**
+ * Number of compact JSON Schema conversions computed in this process/isolate.
+ *
+ * Increments only on actual computation inside `convertSchema`, never on a
+ * cached read, so tests can observe that a preload performed conversions and
+ * that later server construction did not repeat them.
+ */
+export function getCompactJsonSchemaConversionCount(): number {
+	return conversionCount;
 }
