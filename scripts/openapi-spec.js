@@ -32,6 +32,7 @@ export function fixOpenAPISpec(spec) {
 	fixMissingParameterSchemas(fixed.paths || {});
 	fixInvalidExamples(fixed.components?.schemas || {});
 	fixRoutineRestSecondsType(fixed.components?.schemas || {});
+	fixOptionalRoutineCreationResponse(fixed.paths || {});
 
 	if (!fixed.servers || fixed.servers.length === 0) {
 		fixed.servers = [
@@ -51,6 +52,30 @@ export function fixOpenAPISpec(spec) {
  * Upstream currently describes this field inconsistently as a string even
  * though responses contain an integer and the write schemas already use one.
  */
+/**
+ * Hevy may acknowledge routine creation with HTTP 201 and no response body.
+ * Keep that live behavior in the generated client contract while retaining the
+ * authoritative Routine body when the API returns one.
+ */
+function fixOptionalRoutineCreationResponse(paths) {
+	const response = paths["/v1/routines"]?.post?.responses?.["201"];
+	const schema = response?.content?.["application/json"]?.schema;
+	if (!schema || schema.oneOf) return;
+	response.content["application/json"].schema = {
+		oneOf: [
+			schema,
+			{
+				type: "object",
+				properties: {},
+				additionalProperties: false,
+			},
+		],
+	};
+	console.log(
+		"  Fixed: POST /v1/routines 201 - allowed an empty successful response body",
+	);
+}
+
 function fixRoutineRestSecondsType(schemas) {
 	const restSeconds =
 		schemas.Routine?.properties?.exercises?.items?.properties?.rest_seconds;
@@ -86,6 +111,22 @@ export function validateOpenAPISpec(spec) {
 	if (!restSeconds) {
 		throw new Error(
 			"Routine.exercises[].rest_seconds field is missing from the OpenAPI spec",
+		);
+	}
+	const routineCreateSchema =
+		spec.paths?.["/v1/routines"]?.post?.responses?.["201"]?.content?.[
+			"application/json"
+		]?.schema;
+	if (
+		routineCreateSchema &&
+		(!Array.isArray(routineCreateSchema.oneOf) ||
+			!routineCreateSchema.oneOf.some(
+				(entry) =>
+					entry?.type === "object" && entry?.additionalProperties === false,
+			))
+	) {
+		throw new Error(
+			"POST /v1/routines 201 must allow an empty successful response body",
 		);
 	}
 	if (restSeconds.type !== "integer") {

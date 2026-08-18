@@ -27,7 +27,7 @@ import type {
 	PostV1RoutineFoldersMutationRequest,
 	PostV1RoutineFoldersMutationResponse,
 	PostV1RoutinesMutationRequest,
-	PostV1RoutinesMutationResponse,
+	Routine,
 	PostV1WorkoutsMutationRequest,
 	PostV1WorkoutsMutationResponse,
 	PutV1BodyMeasurementsDateMutationRequest,
@@ -82,7 +82,7 @@ export interface HevyClient {
 	createRoutine(
 		data: PostV1RoutinesMutationRequest,
 		options?: HevyRequestOptions,
-	): Promise<PostV1RoutinesMutationResponse>;
+	): Promise<Routine | undefined>;
 	updateRoutine(
 		routineId: string,
 		data: PutV1RoutinesRoutineidMutationRequest,

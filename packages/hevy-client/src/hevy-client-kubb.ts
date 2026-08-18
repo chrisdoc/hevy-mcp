@@ -23,7 +23,9 @@ import type {
 	PostV1BodyMeasurementsMutationRequest,
 	PostV1ExerciseTemplatesMutationRequest,
 	PostV1RoutineFoldersMutationRequest,
+	PostV1Routines201,
 	PostV1RoutinesMutationRequest,
+	Routine,
 	PostV1WorkoutsMutationRequest,
 	PutV1BodyMeasurementsDateMutationRequest,
 	PutV1RoutinesRoutineidMutationRequest,
@@ -1234,11 +1236,19 @@ export function createClient(
 				headers,
 				requestOptions(options, client),
 			),
-		createRoutine: (
+		createRoutine: async (
 			data: PostV1RoutinesMutationRequest,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.postV1Routines> =>
-			api.postV1Routines(data, headers, requestOptions(options, client)),
+		): Promise<Routine | undefined> => {
+			const response: PostV1Routines201 = await api.postV1Routines(
+				data,
+				headers,
+				requestOptions(options, client),
+			);
+			return Object.keys(response).length === 0
+				? undefined
+				: (response as Routine);
+		},
 		updateRoutine: (
 			routineId: string,
 			data: PutV1RoutinesRoutineidMutationRequest,

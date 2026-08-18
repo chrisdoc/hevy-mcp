@@ -1,9 +1,9 @@
 import type {
-	PostV1Routines201,
 	PutV1RoutinesRoutineid200,
 	Routine,
 } from "@hevy-mcp/hevy-client/types";
 import {
+	createRoutineOutputSchema,
 	createRoutineResponse,
 	routineResponse,
 	routinesResponse,
@@ -84,7 +84,7 @@ const getRoutineDefinition: ToolDefinition<
 const createRoutineSchema = createRoutineInputFields;
 
 type CreateRoutineResult = {
-	routine: PostV1Routines201 | null | undefined;
+	routine: Routine | null | undefined;
 	usesRepRanges: boolean;
 };
 const createRoutineDefinition: ToolDefinition<
@@ -98,6 +98,7 @@ const createRoutineDefinition: ToolDefinition<
 		"Writes a reusable routine; use create-workout for completed sessions. Retries can create duplicates.",
 	inputSchema: createRoutineSchema,
 	kind: "write",
+	outputSchema: createRoutineOutputSchema,
 	annotations: createAnnotations("Create Routine"),
 	responseContract: createRoutineResponse,
 	execute: async (runtime, args) => {
@@ -105,7 +106,7 @@ const createRoutineDefinition: ToolDefinition<
 			args.routine,
 			"create",
 		);
-		const data: PostV1Routines201 = await runtime
+		const data: Routine | undefined = await runtime
 			.getClient()
 			.createRoutine({ routine: payload });
 		return { routine: data, usesRepRanges };

@@ -206,6 +206,14 @@ export const formattedRoutineSchema = z.object({
 	exercises: z.array(formattedRoutineExerciseSchema).optional(),
 });
 
+export const createRoutineOutputSchema = {
+	created: z.literal(true),
+	commit_state: z.literal("confirmed"),
+	routine: formattedRoutineSchema.nullable(),
+	routine_id: z.string().nullable(),
+	uses_rep_ranges: z.boolean(),
+} as const;
+
 export const formattedRoutineFolderSchema = z.object({
 	id: z.number().optional(),
 	title: z.string().optional(),
@@ -1150,18 +1158,23 @@ const repRangeDisplayWarningText =
 	"(input_modifier). See https://github.com/chrisdoc/hevy-mcp/issues/261 for " +
 	"details/workarounds.";
 
-export const createRoutineResponse = defineJsonResponseContract(
-	(data: { routine: Routine | null | undefined; usesRepRanges: boolean }) =>
-		data.routine
-			? {
-					json: projectRoutine(data.routine),
-					additionalText: data.usesRepRanges
-						? [repRangeDisplayWarningText]
-						: [],
-				}
-			: { text: "Failed to create routine: Server returned no data" },
-	(data) => routineResultTelemetry(data.routine),
-);
+export const createRoutineResponse = defineStructuredResponseContract({
+	outputSchema: createRoutineOutputSchema,
+	normalize: (data: {
+		routine: Routine | null | undefined;
+		usesRepRanges: boolean;
+	}) => ({
+		created: true as const,
+		commit_state: "confirmed" as const,
+		routine: data.routine ? projectRoutine(data.routine) : null,
+		routine_id: data.routine?.id ?? null,
+		uses_rep_ranges: data.usesRepRanges,
+	}),
+	legacyJson: (output) => output,
+	additionalText: (_data, output) =>
+		output.uses_rep_ranges ? [repRangeDisplayWarningText] : [],
+	telemetry: (data) => routineResultTelemetry(data.routine),
+});
 
 export const updateRoutineResponse = defineJsonResponseContract(
 	(data: {

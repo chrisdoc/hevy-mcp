@@ -44,7 +44,7 @@ export type ToolDefinition<
 		  }
 		| {
 				readonly kind: "write";
-				readonly outputSchema?: never;
+				readonly outputSchema?: z.ZodRawShape;
 		  }
 	);
 
@@ -77,10 +77,8 @@ export function registerToolDefinition(
 		inputSchema,
 		annotations: definition.annotations,
 	};
-	if (definition.kind === "read") {
-		config.outputSchema = compactJsonSchema(
-			z.object(definition.outputSchema as z.ZodRawShape),
-		);
+	if (definition.outputSchema) {
+		config.outputSchema = compactJsonSchema(z.object(definition.outputSchema));
 	}
 
 	server.registerTool(definition.name, config, (args, context) =>
