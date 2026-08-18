@@ -136,6 +136,13 @@ const DEFAULT_SENTRY_DSN =
 	"https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312";
 const sentryRelease = process.env.SENTRY_RELEASE ?? `${name}@${version}`;
 
+/** Hex-encode bytes without relying on Buffer typings that vary across @types/node releases. */
+function toHex(bytes: Uint8Array): string {
+	let hex = "";
+	for (const byte of bytes) hex += byte.toString(16).padStart(2, "0");
+	return hex;
+}
+
 export function createServiceInstanceId(
 	generate: () => string = nodeRandomUUID,
 ): string {
@@ -145,7 +152,7 @@ export function createServiceInstanceId(
 	} catch {
 		// Fall back to a process-local opaque identifier.
 	}
-	return randomBytes(16).toString("hex");
+	return toHex(randomBytes(16));
 }
 
 const serviceInstanceId = createServiceInstanceId();

@@ -48,6 +48,7 @@ function createTracingDouble() {
 	const span = {
 		isTraced: true,
 		setAttribute: vi.fn(),
+		setAttributes: vi.fn(),
 		end: vi.fn(),
 	};
 	const tracing: NonNullable<WorkerToolObserverOptions["tracing"]> = {

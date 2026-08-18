@@ -56,8 +56,15 @@ const MAX_METADATA_LENGTH = 64;
 const SAFE_METADATA_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+:/@-]{0,63}$/u;
 const contextStorage = new AsyncLocalStorage<McpSessionContext>();
 
+/** Hex-encode bytes without relying on Buffer typings that vary across @types/node releases. */
+function toHex(bytes: Uint8Array): string {
+	let hex = "";
+	for (const byte of bytes) hex += byte.toString(16).padStart(2, "0");
+	return hex;
+}
+
 function generateFallbackTelemetrySessionId(): string {
-	return `${Date.now().toString(36)}-${crypto.randomBytes(16).toString("hex")}`;
+	return `${Date.now().toString(36)}-${toHex(crypto.randomBytes(16))}`;
 }
 
 const parsedRandomUUID = z
