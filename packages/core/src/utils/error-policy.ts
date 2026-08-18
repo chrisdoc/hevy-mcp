@@ -249,15 +249,15 @@ export function getStatusErrorMessage(
 	) {
 		return "The requested routine was not found in Hevy. It may have been deleted or the routine ID is incorrect.";
 	}
+	if (status === 400 || status === 422) {
+		return "The request failed Hevy validation. Check the field values and try again.";
+	}
 	if (status === 401 || status === 403) {
 		return "The Hevy API key is invalid or has expired. Check HEVY_API_KEY.";
 	}
 	if (status === 404) return "The requested resource was not found in Hevy.";
 	if (status === 409) {
 		return "A conflict occurred because the resource already exists or conflicts with the current server state. Check whether it already exists and use the update tool when appropriate.";
-	}
-	if (status === 422) {
-		return "The request failed Hevy validation. Check the field values and try again.";
 	}
 	if (status === 429) return "Rate limited by Hevy. Please wait and retry.";
 	if (status !== undefined && status >= 500 && status <= 599) {

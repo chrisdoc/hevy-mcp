@@ -87,6 +87,7 @@ describe("createErrorResponse", () => {
 	it.each([
 		[401, "The Hevy API key is invalid or has expired"],
 		[404, "The requested resource was not found"],
+		[400, "The request failed Hevy validation"],
 		[409, "A conflict occurred because the resource already exists"],
 		[422, "The request failed Hevy validation"],
 		[503, "Hevy API experienced an error"],
@@ -109,7 +110,7 @@ describe("createErrorResponse", () => {
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const result = createErrorResponse(error);
 		expect(result.content[0]?.text).toContain(
-			"Hevy API request failed (HTTP 400)",
+			"The request failed Hevy validation",
 		);
 		expect(JSON.stringify(result)).not.toContain(secret);
 		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
