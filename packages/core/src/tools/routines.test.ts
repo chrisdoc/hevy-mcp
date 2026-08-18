@@ -225,7 +225,7 @@ describe("routine tools", () => {
 
 	it("returns a confirmed acknowledgement when creation has no body", async () => {
 		const client = createMockHevyClient();
-		client.createRoutine.mockResolvedValue({});
+		client.createRoutine.mockResolvedValue(undefined);
 		const tool = register(client);
 
 		const response = await handler(tool, "create-routine")(routineInput);

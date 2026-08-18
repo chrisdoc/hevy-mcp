@@ -353,7 +353,7 @@ describe("registerHevyTools", () => {
 				expectedCreateRoutineRequest,
 			);
 
-			mockClient.createRoutine.mockResolvedValue({});
+			mockClient.createRoutine.mockResolvedValue(undefined);
 			const emptyResult = await protocolClient.callTool({
 				name: "create-routine",
 				arguments: payload,
