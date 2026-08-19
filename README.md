@@ -548,7 +548,7 @@ self-hosted Streamable HTTP.
 | Setting                          | Default                          | Scope                         | Notes                                                                                                          |
 | -------------------------------- | -------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `HEVY_API_KEY`                   | None; required                   | Local stdio or HTTP           | Hevy API key from the Hevy app. Never pass it in a URL.                                                        |
-| `HEVY_MCP_API_TIMEOUT`           | `30000` ms                       | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 30 seconds.                             |
+| `HEVY_MCP_API_TIMEOUT`           | `60000` ms                       | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 60 seconds.                             |
 | `HEVY_MCP_DEBUG`                 | Disabled                         | Local Node                    | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.        |
 | `HEVY_MCP_HTTP_BEARER_TOKEN`     | None                             | Non-loopback HTTP             | Required when `--host` is not loopback; use a separate token, never the Hevy API key.                          |
 | `HEVY_MCP_HTTP_MAX_SESSIONS`     | `100`                            | Local HTTP                    | Maximum established sessions, including sessions currently initializing; excess requests receive `429`.        |
