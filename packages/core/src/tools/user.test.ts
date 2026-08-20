@@ -87,7 +87,7 @@ describe("userToolDefinitions", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("User API timeout"),
+					text: expect.stringContaining("The request failed unexpectedly"),
 				},
 			],
 		});

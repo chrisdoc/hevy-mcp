@@ -325,6 +325,7 @@ describe("mutation semantics", () => {
 				{
 					title: "Renamed",
 					start_time: "2026-07-29T08:00:00.123Z",
+					is_private: false,
 				},
 			),
 		).toThrow();

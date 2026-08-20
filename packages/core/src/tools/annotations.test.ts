@@ -52,9 +52,9 @@ const EXPECTED_DESCRIPTIONS = {
 	"create-workout":
 		"Writes a completed workout. Requires exercise-template IDs and UTC times. Retries can create duplicates.",
 	"update-workout":
-		"Mutates workout metadata by ID. Omitted fields and all exercises remain unchanged.",
+		"Mutates workout metadata by ID. is_private must be supplied explicitly because the Hevy API requires it on PUT; omitted fields and all exercises otherwise remain unchanged.",
 	"replace-workout-exercises":
-		"Mutates a workout by replacing all exercises and sets. Workout metadata remains unchanged.",
+		"Mutates a workout by replacing all exercises and sets. is_private must be supplied explicitly and is updated with the request; other workout metadata remains unchanged.",
 	"get-routines":
 		"Read-only. Lists compact routine summaries. Use get-routine for exercises and sets; results are paginated.",
 	"get-routine":

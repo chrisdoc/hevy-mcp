@@ -162,24 +162,12 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "update" as const,
 		description:
-			"Mutates workout metadata by ID. Omitted fields and all exercises remain unchanged.",
+			"Mutates workout metadata by ID. is_private must be supplied explicitly because the Hevy API requires it on PUT; omitted fields and all exercises otherwise remain unchanged.",
 		inputSchema: updateWorkoutSchema,
 		annotations: updateAnnotations("Update Workout"),
 		kind: "write" as const,
 		responseContract: updateWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: UpdateWorkoutParams) => {
-			// The Hevy API requires is_private in PUT requests, but the GET endpoint
-			// does not return it. Therefore, is_private must be explicitly provided
-			// for metadata-only updates.
-			if (args.workout.is_private === undefined) {
-				throw new Error(
-					"is_private is required when updating workout metadata. " +
-					"The Hevy API does not return the current privacy setting on GET, " +
-					"so it must be explicitly provided on PUT. Set to true to make the workout private, " +
-					"or false to make it public.",
-				);
-			}
-
 			const client = runtime.getClient();
 			const current = await client.getWorkout(args.workout_id);
 			const payload = buildWorkoutUpdatePayload(current, args.workout);
@@ -195,7 +183,7 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "update" as const,
 		description:
-			"Mutates a workout by replacing all exercises and sets. Workout metadata remains unchanged.",
+			"Mutates a workout by replacing all exercises and sets. is_private must be supplied explicitly and is updated with the request; other workout metadata remains unchanged.",
 		inputSchema: replaceWorkoutExercisesSchema,
 		annotations: updateAnnotations("Replace Workout Exercises"),
 		kind: "write" as const,

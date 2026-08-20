@@ -51,33 +51,33 @@ describe("snake_case mutation schemas", () => {
 		expect(
 			updateWorkoutInputSchema.parse({
 				workout_id: "w1",
-				workout: { title: "Renamed" },
+				workout: { title: "Renamed", is_private: false },
 			}).workout,
-		).toEqual({ title: "Renamed" });
+		).toEqual({ title: "Renamed", is_private: false });
 		expect(
 			updateWorkoutInputSchema.parse({
 				workout_id: "w1",
-				workout: { description: "Notes" },
+				workout: { description: "Notes", is_private: false },
 			}).workout,
-		).toEqual({ description: "Notes" });
+		).toEqual({ description: "Notes", is_private: false });
 		expect(
 			updateWorkoutInputSchema.parse({
 				workout_id: "w1",
-				workout: { start_time: "2026-07-29T08:00:00Z" },
+				workout: { start_time: "2026-07-29T08:00:00Z", is_private: false },
 			}).workout,
-		).toEqual({ start_time: "2026-07-29T08:00:00Z" });
+		).toEqual({ start_time: "2026-07-29T08:00:00Z", is_private: false });
 		expect(
 			updateWorkoutInputSchema.parse({
 				workout_id: "w1",
-				workout: { end_time: "2026-07-29T09:00:00Z" },
+				workout: { end_time: "2026-07-29T09:00:00Z", is_private: false },
 			}).workout,
-		).toEqual({ end_time: "2026-07-29T09:00:00Z" });
+		).toEqual({ end_time: "2026-07-29T09:00:00Z", is_private: false });
 		expect(
 			updateWorkoutInputSchema.parse({
 				workout_id: "w1",
-				workout: { is_private: false },
+				workout: { title: "Renamed", is_private: false },
 			}).workout,
-		).toEqual({ is_private: false });
+		).toEqual({ title: "Renamed", is_private: false });
 	});
 
 	it("retains explicit null and false patch values", () => {
@@ -93,19 +93,19 @@ describe("snake_case mutation schemas", () => {
 		expect(
 			updateWorkoutInputSchema.safeParse({
 				workout_id: "w1",
-				workout: { start_time: "2026-07-29T08:00Z" },
+				workout: { start_time: "2026-07-29T08:00Z", is_private: false },
 			}).success,
 		).toBe(false);
 		expect(
 			updateWorkoutInputSchema.safeParse({
 				workout_id: "w1",
-				workout: { end_time: "2026-07-29T09:00:00+00:00" },
+				workout: { end_time: "2026-07-29T09:00:00+00:00", is_private: false },
 			}).success,
 		).toBe(false);
 		expect(
 			updateWorkoutInputSchema.safeParse({
 				workout_id: "w1",
-				workout: { start_time: "2026-07-29T08:00:00Z" },
+				workout: { start_time: "2026-07-29T08:00:00Z", is_private: false },
 			}).success,
 		).toBe(true);
 	});
@@ -118,16 +118,23 @@ describe("snake_case mutation schemas", () => {
 		expect(empty.success).toBe(false);
 		if (!empty.success) {
 			expect(empty.error.issues).toContainEqual(
-				expect.objectContaining({
-					message: "Include at least one workout metadata field",
-				}),
-			);
+			expect.objectContaining({
+				path: ["workout", "is_private"],
+			}),
+		);
 		}
 
+		expect(
+			updateWorkoutInputSchema.safeParse({
+				workout_id: "w1",
+				workout: { title: "Renamed" },
+			}).success,
+		).toBe(false);
+
 		for (const workout of [
-			{ exercises: [] },
-			{ startTime: "2026-07-29T08:00:00Z" },
-			{ unknown_field: "nope" },
+			{ exercises: [], is_private: false },
+			{ startTime: "2026-07-29T08:00:00Z", is_private: false },
+			{ unknown_field: "nope", is_private: false },
 		]) {
 			expect(
 				updateWorkoutInputSchema.safeParse({

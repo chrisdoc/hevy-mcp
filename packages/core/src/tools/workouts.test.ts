@@ -308,18 +308,12 @@ describe("workout tools", () => {
 		});
 		const tool = register(client);
 
-		const response = await toolHandler(
-			tool,
-			"update-workout",
-		)({
-			workout_id: "w1",
-			workout: { description: "Updated" },
-		});
-
-		expect(response).toMatchObject({ isError: true });
-		// The error should indicate that is_private is required
-		const errorMessage = response.content[0]?.text || "";
-		expect(errorMessage).toContain("is_private");
+		expect(() =>
+			toolHandler(tool, "update-workout")({
+				workout_id: "w1",
+				workout: { description: "Updated" },
+			}),
+		).toThrow("Invalid input");
 		expect(client.getWorkout).not.toHaveBeenCalled();
 		expect(client.updateWorkout).not.toHaveBeenCalled();
 	});

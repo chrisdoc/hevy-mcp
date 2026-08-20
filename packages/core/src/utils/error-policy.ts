@@ -13,6 +13,7 @@ import {
 	isString,
 } from "./type-predicates.js";
 import type { RuntimeValue } from "./type-predicates.js";
+import { SafeUserError } from "./safe-user-error.js";
 import type {
 	HevyCommitState,
 	HevyExecutionOutcome,
@@ -296,20 +297,7 @@ function getRetryExhaustedMessage(error: RuntimeValue): string {
 	return "Unable to complete the request after multiple attempts to the Hevy API due to transient failures. Please try again shortly.";
 }
 
-/** Check if an error message is safe to expose to users. Blocks messages that might contain sensitive info. */
-function isSafeErrorMessage(message: string): boolean {
-	// Block messages that might contain secrets or sensitive information
-	const dangerousPatterns = [
-		/Bearer\s+/i,
-		/API[_\s]*key/i,
-		/password/i,
-		/secret/i,
-		/token/i,
-		/credential/i,
-	];
-
-	return !dangerousPatterns.some((pattern) => pattern.test(message));
-}
+const MAX_SAFE_USER_ERROR_LENGTH = 512;
 
 /** Classify an error using bounded status, names, and supplied text. */
 export function determineErrorType(
@@ -548,14 +536,11 @@ export function resolveErrorPolicy(
 		message = getRateLimitMessage(error);
 	} else if (
 		diagnostic.status === undefined &&
-		error instanceof Error &&
+		error instanceof SafeUserError &&
 		error.message &&
-		error.message !== notInitializedMessage &&
-		isSafeErrorMessage(error.message)
+		error.message !== notInitializedMessage
 	) {
-		// Preserve error message from plain Error objects only if safe
-		// (e.g., validation errors that don't contain sensitive information)
-		message = error.message;
+		message = error.message.slice(0, MAX_SAFE_USER_ERROR_LENGTH);
 	}
 	return { type: determineErrorType(error, message), message, diagnostic };
 }

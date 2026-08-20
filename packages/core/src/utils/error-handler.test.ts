@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import { ErrorType } from "./error-policy.js";
 import { createErrorResponse, withErrorHandling } from "./error-handler.js";
+import { SafeUserError } from "./safe-user-error.js";
 
 type ErrorPayload = { readonly error: string };
 
@@ -73,6 +74,20 @@ describe("createErrorResponse", () => {
 		expect(result.errorContext).toMatchObject({
 			errorType: ErrorType.VALIDATION_ERROR,
 		});
+	});
+
+	it("only exposes explicitly safe user errors and bounds their messages", () => {
+		const longMessage = "validation failed ".repeat(100);
+		const result = createErrorResponse(new Error(longMessage), "test-tool");
+		const safeResult = createErrorResponse(
+			new SafeUserError(longMessage),
+			"test-tool",
+		);
+
+		expect(result.content[0]?.text).toContain(
+			"The request failed unexpectedly",
+		);
+		expect(safeResult.content[0]?.text.length).toBeLessThan(600);
 	});
 
 	it("gives routine update 404s actionable guidance", () => {
