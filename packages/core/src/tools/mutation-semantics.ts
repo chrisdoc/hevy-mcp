@@ -254,6 +254,19 @@ export function buildWorkoutUpdatePayload(
 	patch: WorkoutMetadataPatchInput,
 	replacementExercises?: WorkoutExerciseInput[],
 ): WorkoutUpdatePayload {
+	// When doing a metadata-only update (not replacing exercises), the Hevy API
+	// requires is_private in the PUT request, but the GET endpoint does not return it.
+	// Therefore, is_private must be explicitly provided for metadata updates.
+	const isMetadataOnlyUpdate = replacementExercises === undefined;
+	if (isMetadataOnlyUpdate && patch.is_private === undefined) {
+		throw new Error(
+			"is_private is required when updating workout metadata. " +
+			"The Hevy API does not return the current privacy setting on GET, " +
+			"so it must be explicitly provided on PUT. Set to true to make the workout private, " +
+			"or false to make it public.",
+		);
+	}
+
 	const metadata = workoutUpdateMetadataSchema.parse({
 		title: patch.title !== undefined ? patch.title : current.title,
 		start_time:

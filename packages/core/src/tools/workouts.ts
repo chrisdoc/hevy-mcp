@@ -168,6 +168,18 @@ export const workoutToolDefinitions = [
 		kind: "write" as const,
 		responseContract: updateWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: UpdateWorkoutParams) => {
+			// The Hevy API requires is_private in PUT requests, but the GET endpoint
+			// does not return it. Therefore, is_private must be explicitly provided
+			// for metadata-only updates.
+			if (args.workout.is_private === undefined) {
+				throw new Error(
+					"is_private is required when updating workout metadata. " +
+					"The Hevy API does not return the current privacy setting on GET, " +
+					"so it must be explicitly provided on PUT. Set to true to make the workout private, " +
+					"or false to make it public.",
+				);
+			}
+
 			const client = runtime.getClient();
 			const current = await client.getWorkout(args.workout_id);
 			const payload = buildWorkoutUpdatePayload(current, args.workout);
@@ -196,7 +208,7 @@ export const workoutToolDefinitions = [
 			const current = await client.getWorkout(args.workout_id);
 			const payload = buildWorkoutUpdatePayload(
 				current,
-				{},
+				{ is_private: args.workout.is_private },
 				args.workout.exercises,
 			);
 			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(

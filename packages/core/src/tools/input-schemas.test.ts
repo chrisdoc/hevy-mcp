@@ -143,6 +143,7 @@ describe("snake_case mutation schemas", () => {
 			replaceWorkoutExercisesInputSchema.parse({
 				workout_id: "w1",
 				workout: {
+					is_private: false,
 					exercises: [
 						{
 							exercise_template_id: "bench",
@@ -155,7 +156,7 @@ describe("snake_case mutation schemas", () => {
 		expect(
 			replaceWorkoutExercisesInputSchema.parse({
 				workout_id: "w1",
-				workout: { exercises: [] },
+				workout: { is_private: false, exercises: [] },
 			}).workout.exercises,
 		).toEqual([]);
 	});

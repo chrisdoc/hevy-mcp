@@ -165,6 +165,7 @@ export const updateWorkoutInputFields = updateWorkoutInputSchema.shape;
 export const replaceWorkoutExercisesInputSchema = z.strictObject({
 	workout_id: nonEmptyId,
 	workout: z.strictObject({
+		is_private: z.boolean(),
 		exercises: workoutExercisesSchema,
 	}),
 });

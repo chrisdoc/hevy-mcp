@@ -210,7 +210,7 @@ describe("workout tools", () => {
 			"update-workout",
 		)({
 			workout_id: "w1",
-			workout: { title: "Renamed", description: null },
+			workout: { title: "Renamed", description: null, is_private: false },
 		});
 
 		expect(response).not.toMatchObject({ isError: true });
@@ -221,6 +221,7 @@ describe("workout tools", () => {
 				description: null,
 				start_time: "2025-01-01T10:00:00Z",
 				end_time: "2025-01-01T11:00:00Z",
+				is_private: false,
 				exercises: [
 					{
 						exercise_template_id: "bench",
@@ -269,6 +270,7 @@ describe("workout tools", () => {
 		)({
 			workout_id: "w1",
 			workout: {
+				is_private: false,
 				exercises: [
 					{
 						exercise_template_id: "row",
@@ -285,6 +287,7 @@ describe("workout tools", () => {
 				description: "Keep",
 				start_time: "2025-01-01T10:00:00Z",
 				end_time: "2025-01-01T11:00:00Z",
+				is_private: false,
 				exercises: [
 					{
 						exercise_template_id: "row",
@@ -294,7 +297,32 @@ describe("workout tools", () => {
 			},
 		});
 	});
+	it("requires is_private when updating workout metadata", async () => {
+		const client = createMockHevyClient();
+		client.getWorkout.mockResolvedValue({
+			title: "Original",
+			description: "Keep",
+			start_time: "2025-01-01T10:00:00Z",
+			end_time: "2025-01-01T11:00:00Z",
+			exercises: [],
+		});
+		const tool = register(client);
 
+		const response = await toolHandler(
+			tool,
+			"update-workout",
+		)({
+			workout_id: "w1",
+			workout: { description: "Updated" },
+		});
+
+		expect(response).toMatchObject({ isError: true });
+		// The error should indicate that is_private is required
+		const errorMessage = response.content[0]?.text || "";
+		expect(errorMessage).toContain("is_private");
+		expect(client.getWorkout).not.toHaveBeenCalled();
+		expect(client.updateWorkout).not.toHaveBeenCalled();
+	});
 	it("does not put when GET fails", async () => {
 		const getFailureClient = createMockHevyClient();
 		getFailureClient.getWorkout.mockRejectedValue(new Error("GET failed"));
@@ -304,7 +332,7 @@ describe("workout tools", () => {
 			"update-workout",
 		)({
 			workout_id: "w1",
-			workout: { title: "Renamed" },
+			workout: { title: "Renamed", is_private: false },
 		});
 		expect(getFailure).toMatchObject({ isError: true });
 		expect(getFailureClient.updateWorkout).not.toHaveBeenCalled();
@@ -326,7 +354,7 @@ describe("workout tools", () => {
 			"update-workout",
 		)({
 			workout_id: "w1",
-			workout: { title: "Renamed" },
+			workout: { title: "Renamed", is_private: false },
 		});
 
 		expect(response).toMatchObject({ isError: true });
