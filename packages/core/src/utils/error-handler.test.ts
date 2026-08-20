@@ -84,10 +84,12 @@ describe("createErrorResponse", () => {
 			"test-tool",
 		);
 
-		expect(result.content[0]?.text).toContain(
-			"The request failed unexpectedly",
+		expect(result.content[0]?.text).toBe(
+			"[test-tool] Error: The request failed unexpectedly. Please try again.",
 		);
-		expect(safeResult.content[0]?.text.length).toBeLessThan(600);
+		expect(safeResult.content[0]?.text).toBe(
+			`[test-tool] Error: ${longMessage.slice(0, 512)}`,
+		);
 	});
 
 	it("gives routine update 404s actionable guidance", () => {

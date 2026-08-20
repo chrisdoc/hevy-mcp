@@ -297,7 +297,7 @@ describe("workout tools", () => {
 			},
 		});
 	});
-	it("requires is_private when updating workout metadata", async () => {
+	it("requires is_private when updating workout metadata", () => {
 		const client = createMockHevyClient();
 		client.getWorkout.mockResolvedValue({
 			title: "Original",
