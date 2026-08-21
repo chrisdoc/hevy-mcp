@@ -408,8 +408,8 @@ can request confirmation.
 
 | Workouts | `get-workout-events` | List workout update and delete events since a timestamp. |
 | Workouts | `create-workout` | Create a completed workout in Hevy. |
-| Workouts | `update-workout` | Patch workout metadata by ID; omitted fields and all exercises remain unchanged. |
-| Workouts | `replace-workout-exercises` | Replace all exercises and sets while preserving workout metadata. |
+| Workouts | `update-workout` | Patch workout metadata by ID; `is_private` is required, while other omitted fields and all exercises remain unchanged. |
+| Workouts | `replace-workout-exercises` | Replace all exercises and sets; `is_private` is required and updated, while other workout metadata remains unchanged. |
 | Routines | `search-routines` | Search routine titles and return compact metadata for discovery. |
 | Routines | `get-routines` | List custom and default workout routines. |
 | Routines | `get-routine` | Get one routine and its exercise configuration by ID. |
