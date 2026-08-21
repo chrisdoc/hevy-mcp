@@ -1,5 +1,20 @@
 # @chrisdoc/hevy-cli
 
+## 1.2.4
+
+### Patch Changes
+
+- [#1049](https://github.com/chrisdoc/hevy-mcp/pull/1049) [`e7934bb`](https://github.com/chrisdoc/hevy-mcp/commit/e7934bb0d01ef1bbb9915bbd1252998fa25c440a) Thanks [@jacksonpradolima](https://github.com/jacksonpradolima)! - Fix update-workout failing with Hevy API HTTP 500 when is_private is omitted.
+  
+  The upstream Hevy API requires `is_private` in PUT requests, but the GET endpoint does not return it. The tool description stated that omitted fields remain unchanged, but this was not true for `is_private` due to API contract mismatch.
+  
+  Changes:
+  
+  - Add validation in `update-workout` to require explicit `is_private` value, preventing the opaque transient-error from the API
+  - Add `is_private` requirement to `replace-workout-exercises` schema and tool handler
+  - Improve error message handling to preserve safe user-facing error messages while blocking sensitive information
+  - Add regression test for metadata-only workout updates
+
 ## 1.2.3
 
 ### Patch Changes
