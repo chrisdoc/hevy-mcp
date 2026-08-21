@@ -43,7 +43,7 @@ const UPDATE_TOOLS = [
 const DESTRUCTIVE_TOOLS = [] as const;
 const EXPECTED_DESCRIPTIONS = {
 	"get-workouts":
-		"Read-only. Lists compact workout summaries newest first. Use get-workout for exercises and sets; results are paginated.",
+		"Read-only. Lists compact workout summaries in Hevy API pagination order, not sorted by workout start_time. Use get-workout for exercises and sets; results are paginated.",
 	"get-workout":
 		"Read-only. Gets one workout with exercises and sets by workout_id. Use get-workouts to discover IDs.",
 

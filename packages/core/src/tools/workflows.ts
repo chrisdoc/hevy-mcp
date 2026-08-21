@@ -72,15 +72,6 @@ async function fetchRecentPages<T>(
 			}
 		}
 
-		const lastDate = result.items
-			.map(getDate)
-			.filter((date): date is string => date !== undefined)
-			.at(-1);
-		const lastTimestamp =
-			lastDate === undefined ? undefined : parseUtcDate(lastDate);
-		if (lastTimestamp !== undefined && lastTimestamp < startTimestamp) {
-			break;
-		}
 		const pageCount = result.pageCount;
 		if (
 			!isFiniteNumber(pageCount) ||

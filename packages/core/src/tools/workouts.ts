@@ -63,7 +63,7 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "list" as const,
 		description:
-			"Read-only. Lists compact workout summaries newest first. Use get-workout for exercises and sets; results are paginated.",
+			"Read-only. Lists compact workout summaries in Hevy API pagination order, not sorted by workout start_time. Use get-workout for exercises and sets; results are paginated.",
 		inputSchema: getWorkoutsSchema,
 		outputSchema: workoutsResponse.outputSchema,
 		annotations: readOnlyAnnotations("Get Workouts"),
