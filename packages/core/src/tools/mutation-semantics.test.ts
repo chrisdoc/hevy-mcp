@@ -345,11 +345,18 @@ describe("mutation semantics", () => {
 		];
 
 		expect(
-			buildWorkoutUpdatePayload(current, { title: "Renamed", is_private: false }, replacement)
-				.exercises,
+			buildWorkoutUpdatePayload(
+				current,
+				{ title: "Renamed", is_private: false },
+				replacement,
+			).exercises,
 		).toEqual(replacement);
 		expect(
-			buildWorkoutUpdatePayload(current, { title: "Renamed", is_private: false }, []).exercises,
+			buildWorkoutUpdatePayload(
+				current,
+				{ title: "Renamed", is_private: false },
+				[],
+			).exercises,
 		).toEqual([]);
 	});
 
@@ -424,8 +431,10 @@ describe("mutation semantics", () => {
 			).exercises,
 		).toMatchObject([{ sets: [{ type: "invalid", rpe: 5, reps: 1.5 }] }]);
 		expect(
-			buildWorkoutUpdatePayload({ ...valid, exercises: [] }, { title: "New", is_private: false })
-				.exercises,
+			buildWorkoutUpdatePayload(
+				{ ...valid, exercises: [] },
+				{ title: "New", is_private: false },
+			).exercises,
 		).toEqual([]);
 		expect(() =>
 			buildWorkoutUpdatePayload(

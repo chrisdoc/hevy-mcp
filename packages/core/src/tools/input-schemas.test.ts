@@ -118,10 +118,10 @@ describe("snake_case mutation schemas", () => {
 		expect(empty.success).toBe(false);
 		if (!empty.success) {
 			expect(empty.error.issues).toContainEqual(
-			expect.objectContaining({
-				path: ["workout", "is_private"],
-			}),
-		);
+				expect.objectContaining({
+					path: ["workout", "is_private"],
+				}),
+			);
 		}
 
 		expect(

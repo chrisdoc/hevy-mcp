@@ -309,7 +309,10 @@ describe("workout tools", () => {
 		const tool = register(client);
 
 		expect(() =>
-			toolHandler(tool, "update-workout")({
+			toolHandler(
+				tool,
+				"update-workout",
+			)({
 				workout_id: "w1",
 				workout: { description: "Updated" },
 			}),
