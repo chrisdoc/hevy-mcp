@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { createSafeErrorDiagnostic } from "./error-policy.js";
 import { AsyncTtlCache } from "./cache.js";
 
 describe("AsyncTtlCache", () => {

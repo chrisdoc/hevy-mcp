@@ -1,6 +1,71 @@
 import { describe, expect, it } from "vitest";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
-import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+
+import {
+	createSafeErrorDiagnostic,
+	SAFE_ERROR_CATEGORIES,
+	SAFE_ERROR_CODES,
+	SAFE_HTTP_METHODS,
+	SAFE_STACK_SOURCES,
+} from "./error-policy.js";
+
+/** A category with no corresponding JS constructor (produced by fallthrough). */
+const LAST_RESORT_CATEGORY = "UnknownError" as const;
+
+describe("safe-error diagnostic vocabulary", () => {
+	it("freezes the exported allowlists so adapters cannot widen them", () => {
+		expect(Object.isFrozen(SAFE_ERROR_CODES)).toBe(true);
+		expect(Object.isFrozen(SAFE_HTTP_METHODS)).toBe(true);
+		expect(Object.isFrozen(SAFE_ERROR_CATEGORIES)).toBe(true);
+		expect(Object.isFrozen(SAFE_STACK_SOURCES)).toBe(true);
+	});
+
+	it("covers every category createSafeErrorDiagnostic can classify", () => {
+		const samples: unknown[] = [
+			new TypeError("t"),
+			new RangeError("r"),
+			new ReferenceError("ref"),
+			new SyntaxError("s"),
+			new URIError("u"),
+			new EvalError("e"),
+			new AggregateError([]),
+			new DOMException("d", "AbortError"),
+			new Error("plain"),
+			"not-an-error",
+		];
+		for (const sample of samples) {
+			const { category } = createSafeErrorDiagnostic(sample);
+			expect(SAFE_ERROR_CATEGORIES.has(category)).toBe(true);
+		}
+		expect(SAFE_ERROR_CATEGORIES.has(LAST_RESORT_CATEGORY)).toBe(true);
+		expect(SAFE_ERROR_CATEGORIES.has("HevyHttpError")).toBe(true);
+	});
+
+	it("emits only codes from the shared allowlist", () => {
+		const allowed = createSafeErrorDiagnostic(
+			Object.assign(new Error("net"), { code: "ECONNRESET" }),
+		);
+		expect(allowed.code).toBe("ECONNRESET");
+		expect(SAFE_ERROR_CODES.has(allowed.code ?? "")).toBe(true);
+
+		const rejected = createSafeErrorDiagnostic(
+			Object.assign(new Error("secret"), { code: "INTERNAL_TOKEN_XY" }),
+		);
+		expect(rejected.code).toBeUndefined();
+	});
+
+	it("emits only HTTP methods from the shared allowlist", () => {
+		const method = createSafeErrorDiagnostic(
+			Object.assign(new Error("http"), {
+				status: 500,
+				method: "TRACE",
+				endpoint: "/v1/workouts",
+			}),
+		).method;
+		expect(method).toBeUndefined();
+		expect(SAFE_HTTP_METHODS.has("GET")).toBe(true);
+	});
+});
 
 const SECRET = "sentinel-api-key-value";
 
