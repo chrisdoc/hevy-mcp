@@ -25,6 +25,7 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
+import { WORKOUT_PUT_REQUIRES_IS_PRIVATE } from "./hevy-quirks.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { buildWorkoutUpdatePayload } from "./mutation-semantics.js";
@@ -162,7 +163,9 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "update" as const,
 		description:
-			"Mutates workout metadata by ID. is_private must be supplied explicitly because the Hevy API requires it on PUT; omitted fields and all exercises otherwise remain unchanged.",
+			"Mutates workout metadata by ID. " +
+			WORKOUT_PUT_REQUIRES_IS_PRIVATE.updateClause +
+			"; omitted fields and all exercises otherwise remain unchanged.",
 		inputSchema: updateWorkoutSchema,
 		annotations: updateAnnotations("Update Workout"),
 		kind: "write" as const,
@@ -183,7 +186,9 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "update" as const,
 		description:
-			"Mutates a workout by replacing all exercises and sets. is_private must be supplied explicitly and is updated with the request; other workout metadata remains unchanged.",
+			"Mutates a workout by replacing all exercises and sets. " +
+			WORKOUT_PUT_REQUIRES_IS_PRIVATE.replaceExercisesClause +
+			"; other workout metadata remains unchanged.",
 		inputSchema: replaceWorkoutExercisesSchema,
 		annotations: updateAnnotations("Replace Workout Exercises"),
 		kind: "write" as const,
