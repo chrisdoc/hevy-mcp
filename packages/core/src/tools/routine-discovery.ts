@@ -2,9 +2,9 @@ import { z } from "zod";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
 import {
 	compactRoutinesResponse,
-	summarizeRoutine,
 	type CompactRoutinesResult,
 } from "../utils/response-contracts.js";
+import { summarizeRoutine } from "../utils/formatters.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 import { isFiniteNumber } from "../utils/type-predicates.js";
 
