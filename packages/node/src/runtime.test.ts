@@ -116,6 +116,8 @@ vi.mock("@hevy-mcp/core", () => ({
 		UNKNOWN_ERROR: "UNKNOWN_ERROR",
 		VALIDATION_ERROR: "VALIDATION_ERROR",
 	},
+	USER_HASH_CONTEXT: "hevy-mcp:sentry-user-id:v1",
+	USER_HASH_LENGTH: 10,
 }));
 
 vi.mock("@modelcontextprotocol/server/stdio", () => ({
