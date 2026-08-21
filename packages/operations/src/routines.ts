@@ -1,7 +1,6 @@
 import type {
 	HevyClient,
 	HevyExecutionOptions,
-	HevyHttpError,
 	HevyOperationSafety,
 } from "@hevy-mcp/hevy-client";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
@@ -169,11 +168,4 @@ export function createRoutinesListOperation(
 			}
 		},
 	};
-}
-
-export function isRoutinesListEndOfList(
-	error: ErrorInput,
-	page: number,
-): error is HevyHttpError {
-	return isExpectedEndOfList(error, page);
 }
