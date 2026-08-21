@@ -50,6 +50,12 @@ export {
 	SAFE_STACK_SOURCES,
 } from "./utils/error-policy.js";
 export {
+	SAFE_USER_HASH_PATTERN,
+	TELEMETRY_ARGUMENT_KEYS,
+	USER_HASH_CONTEXT,
+	USER_HASH_LENGTH,
+} from "./utils/telemetry-contract.js";
+export {
 	createMcpToolFailureEvent,
 	createExecutionErrorProjection,
 	type McpToolFailureEvent,

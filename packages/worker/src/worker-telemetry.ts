@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-const USER_HASH_CONTEXT = "hevy-mcp:sentry-user-id:v1";
-const USER_HASH_LENGTH = 10;
+import { USER_HASH_CONTEXT, USER_HASH_LENGTH } from "@hevy-mcp/core";
+
 const CLOUDFLARE_COLO_PATTERN = /^[A-Z]{3}$/u;
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/u;
 const GEO_VALUE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .,'’()/_-]{0,63}$/u;

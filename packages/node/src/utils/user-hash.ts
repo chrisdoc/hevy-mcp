@@ -1,7 +1,6 @@
 import { createHmac } from "node:crypto";
 
-const USER_HASH_CONTEXT = "hevy-mcp:sentry-user-id:v1";
-const USER_HASH_LENGTH = 10;
+import { USER_HASH_CONTEXT, USER_HASH_LENGTH } from "@hevy-mcp/core";
 
 /**
  * Derive the short, deterministic HMAC pseudonym shared with the Worker
