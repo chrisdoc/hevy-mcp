@@ -148,7 +148,7 @@ export const workoutMetadataPatchSchema = z
 		description: z.string().nullable().optional(),
 		start_time: utcSecondTimestamp.optional(),
 		end_time: utcSecondTimestamp.optional(),
-		is_private: z.boolean().optional(),
+		is_private: z.boolean(),
 	})
 	.refine(
 		(patch) => Object.values(patch).some((value) => value !== undefined),
@@ -165,6 +165,7 @@ export const updateWorkoutInputFields = updateWorkoutInputSchema.shape;
 export const replaceWorkoutExercisesInputSchema = z.strictObject({
 	workout_id: nonEmptyId,
 	workout: z.strictObject({
+		is_private: z.boolean(),
 		exercises: workoutExercisesSchema,
 	}),
 });

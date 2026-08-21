@@ -17,6 +17,10 @@ import type {
 import { utcSecondTimestamp } from "../utils/schemas.js";
 import { isFiniteNumber, isString } from "../utils/type-predicates.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
+import {
+	SafeUserError,
+	WORKOUT_METADATA_PRIVACY_REQUIRED_ERROR,
+} from "../utils/safe-user-error.js";
 
 type RoutineRepRange = { start?: number; end?: number } | null;
 
@@ -254,6 +258,14 @@ export function buildWorkoutUpdatePayload(
 	patch: WorkoutMetadataPatchInput,
 	replacementExercises?: WorkoutExerciseInput[],
 ): WorkoutUpdatePayload {
+	// When doing a metadata-only update (not replacing exercises), the Hevy API
+	// requires is_private in the PUT request, but the GET endpoint does not return it.
+	// Therefore, is_private must be explicitly provided for metadata updates.
+	const isMetadataOnlyUpdate = replacementExercises === undefined;
+	if (isMetadataOnlyUpdate && patch.is_private === undefined) {
+		throw new SafeUserError(WORKOUT_METADATA_PRIVACY_REQUIRED_ERROR);
+	}
+
 	const metadata = workoutUpdateMetadataSchema.parse({
 		title: patch.title !== undefined ? patch.title : current.title,
 		start_time:

@@ -13,6 +13,7 @@ import {
 	isString,
 } from "./type-predicates.js";
 import type { RuntimeValue } from "./type-predicates.js";
+import { SafeUserError } from "./safe-user-error.js";
 import type {
 	HevyCommitState,
 	HevyExecutionOutcome,
@@ -296,6 +297,8 @@ function getRetryExhaustedMessage(error: RuntimeValue): string {
 	return "Unable to complete the request after multiple attempts to the Hevy API due to transient failures. Please try again shortly.";
 }
 
+const MAX_SAFE_USER_ERROR_LENGTH = 512;
+
 /** Classify an error using bounded status, names, and supplied text. */
 export function determineErrorType(
 	error: RuntimeValue,
@@ -531,6 +534,13 @@ export function resolveErrorPolicy(
 		message = getRetryExhaustedMessage(error);
 	} else if (diagnostic.status === 429) {
 		message = getRateLimitMessage(error);
+	} else if (
+		diagnostic.status === undefined &&
+		error instanceof SafeUserError &&
+		error.message &&
+		error.message !== notInitializedMessage
+	) {
+		message = error.message.slice(0, MAX_SAFE_USER_ERROR_LENGTH);
 	}
 	return { type: determineErrorType(error, message), message, diagnostic };
 }

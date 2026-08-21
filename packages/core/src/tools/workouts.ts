@@ -162,7 +162,7 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "update" as const,
 		description:
-			"Mutates workout metadata by ID. Omitted fields and all exercises remain unchanged.",
+			"Mutates workout metadata by ID. is_private must be supplied explicitly because the Hevy API requires it on PUT; omitted fields and all exercises otherwise remain unchanged.",
 		inputSchema: updateWorkoutSchema,
 		annotations: updateAnnotations("Update Workout"),
 		kind: "write" as const,
@@ -183,7 +183,7 @@ export const workoutToolDefinitions = [
 		feature: "workouts" as const,
 		operation: "update" as const,
 		description:
-			"Mutates a workout by replacing all exercises and sets. Workout metadata remains unchanged.",
+			"Mutates a workout by replacing all exercises and sets. is_private must be supplied explicitly and is updated with the request; other workout metadata remains unchanged.",
 		inputSchema: replaceWorkoutExercisesSchema,
 		annotations: updateAnnotations("Replace Workout Exercises"),
 		kind: "write" as const,
@@ -196,7 +196,7 @@ export const workoutToolDefinitions = [
 			const current = await client.getWorkout(args.workout_id);
 			const payload = buildWorkoutUpdatePayload(
 				current,
-				{},
+				{ is_private: args.workout.is_private },
 				args.workout.exercises,
 			);
 			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
