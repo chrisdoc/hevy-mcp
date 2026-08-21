@@ -294,6 +294,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 					description: null,
 					start_time: "2025-03-27T07:00:00Z",
 					end_time: "2025-03-27T08:00:00Z",
+					is_private: false,
 					exercises: [
 						{
 							exercise_template_id: "bench",
@@ -345,7 +346,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		const result = await callTool(client, "update-workout", {
 			workout_id: "w1",
-			workout: { title: "Renamed", description: null },
+			workout: { title: "Renamed", description: null, is_private: false },
 		});
 		expect(requestMethods).toEqual(["GET", "PUT"]);
 		const payload: unknown = JSON.parse(result.text);
