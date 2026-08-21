@@ -6,8 +6,8 @@ import {
 	formattedRoutineFolderSchema,
 	formattedRoutineSchema,
 	formattedWorkoutSchema,
-	workoutEventsResponse,
-} from "./response-contracts.js";
+} from "./output-schemas.js";
+import { workoutEventsResponse } from "./response-contracts.js";
 
 describe("snake_case formatted output schemas", () => {
 	it("accepts generated-aligned workout and routine projections", () => {

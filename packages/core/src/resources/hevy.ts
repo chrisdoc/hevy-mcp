@@ -10,7 +10,7 @@ import type {
 } from "@hevy-mcp/hevy-client/types";
 import type { ToolRuntime } from "../tools/tool-runtime.js";
 import { fetchAllPages } from "../utils/pagination.js";
-import { projectRoutineFolder } from "../utils/response-contracts.js";
+import { projectRoutineFolder } from "../utils/formatters.js";
 import { createExecutionErrorProjection } from "../utils/error-handler.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
 

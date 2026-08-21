@@ -11,7 +11,7 @@ import type {
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
-import { projectRoutineFolder } from "../utils/response-contracts.js";
+import { projectRoutineFolder } from "../utils/formatters.js";
 import {
 	createExerciseTemplateCatalog,
 	type ExerciseTemplateCatalog,

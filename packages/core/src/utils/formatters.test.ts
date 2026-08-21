@@ -7,7 +7,7 @@ import {
 	projectRoutine,
 	projectRoutineFolder,
 	projectWorkout,
-} from "./response-contracts.js";
+} from "./formatters.js";
 
 describe("snake_case response projections", () => {
 	it("projects workouts without camelCase members", () => {
