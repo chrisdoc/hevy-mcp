@@ -109,12 +109,6 @@ function isExpectedRoutineNotFound(error: ErrorInput): boolean {
 	);
 }
 
-export function isRoutinesGetNotFound(
-	error: ErrorInput,
-): error is HevyHttpError {
-	return isExpectedRoutineNotFound(error);
-}
-
 export function createRoutinesGetOperation(
 	adapter: RoutinesGetAdapter,
 ): RoutinesGetOperation {
@@ -129,7 +123,9 @@ export function createRoutinesGetOperation(
 				return { routine: response.routine ?? null };
 			} catch (error) {
 				if (
-					isRoutinesGetNotFound(error instanceof Error ? error : String(error))
+					isExpectedRoutineNotFound(
+						error instanceof Error ? error : String(error),
+					)
 				) {
 					return {
 						routine: null,
