@@ -64,7 +64,12 @@ jobs:
 
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
-        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # pull_request.base.sha freezes at PR-open time, so after main moves
+          # the range re-lints already-merged history; lint from merge-base instead.
+          npx commitlint --from "$(git merge-base "origin/${BASE_REF}" HEAD)" --to HEAD --verbose
 
       - name: Check for changeset
         if: >-
