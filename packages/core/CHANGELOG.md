@@ -1,5 +1,11 @@
 # @hevy-mcp/core
 
+## 0.2.5
+
+### Patch Changes
+
+- [#1051](https://github.com/chrisdoc/hevy-mcp/pull/1051) [`2cd03b0`](https://github.com/chrisdoc/hevy-mcp/commit/2cd03b09d8d59d19118a4af81ae568f34914441a) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Scan all reported training-summary pages so later workouts and body measurements are not hidden by older records on earlier pages, and apply the same fix to the `hevy` CLI summary export.
+
 ## 0.2.4
 
 ### Patch Changes
