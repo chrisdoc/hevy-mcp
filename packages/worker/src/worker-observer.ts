@@ -2,9 +2,14 @@ import type { Span } from "@cloudflare/workers-types";
 import { z } from "zod";
 import * as cloudflareWorkers from "cloudflare:workers";
 import { sanitizeCloudflareGeographyValue } from "./worker-telemetry.js";
+import { HEVY_ENDPOINT_TEMPLATES } from "@hevy-mcp/hevy-client";
 import {
 	createExecutionProjection,
 	createSafeErrorDiagnostic,
+	SAFE_ERROR_CATEGORIES,
+	SAFE_ERROR_CODES,
+	SAFE_HTTP_METHODS,
+	SAFE_STACK_SOURCES,
 	type SafeToolCompletion,
 	type SafeToolInvocation,
 	type StructuredExecutionProjection,
@@ -53,59 +58,7 @@ const SAFE_ERROR_TYPES = new Set([
 	"NETWORK_ERROR",
 	"UNKNOWN_ERROR",
 ]);
-const SAFE_ERROR_CATEGORIES = new Set([
-	"AggregateError",
-	"DOMException",
-	"Error",
-	"EvalError",
-	"HevyHttpError",
-	"RangeError",
-	"ReferenceError",
-	"SyntaxError",
-	"TypeError",
-	"URIError",
-	"UnknownError",
-]);
-const SAFE_ERROR_CODES = new Set([
-	"EAI_AGAIN",
-	"ECONNABORTED",
-	"ECONNREFUSED",
-	"ECONNRESET",
-	"ENETUNREACH",
-	"ENOTFOUND",
-	"ERR_NETWORK",
-	"ERR_SOCKET_TIMEOUT",
-	"ETIMEDOUT",
-	"HEVY_INVALID_ENDPOINT",
-	"HEVY_REQUEST_ABORTED",
-	"HEVY_RETRY_EXHAUSTED",
-	"HEVY_DEADLINE_EXCEEDED",
-]);
-const SAFE_HTTP_METHODS = new Set([
-	"DELETE",
-	"GET",
-	"HEAD",
-	"OPTIONS",
-	"PATCH",
-	"POST",
-	"PUT",
-]);
-const SAFE_ENDPOINTS = new Set([
-	"/v1/body_measurements",
-	"/v1/body_measurements/:date",
-	"/v1/exercise_history/:exerciseTemplateId",
-	"/v1/exercise_templates",
-	"/v1/exercise_templates/:exerciseTemplateId",
-	"/v1/routine_folders",
-	"/v1/routine_folders/:folderId",
-	"/v1/routines",
-	"/v1/routines/:routineId",
-	"/v1/user/info",
-	"/v1/workouts",
-	"/v1/workouts/:workoutId",
-	"/v1/workouts/count",
-	"/v1/workouts/events",
-]);
+const SAFE_ENDPOINTS = new Set<string>(HEVY_ENDPOINT_TEMPLATES);
 const SAFE_EXECUTION_OUTCOMES = new Set([
 	"success",
 	"expected",
@@ -128,13 +81,6 @@ const SAFE_OPERATION_SAFETY = new Set([
 	"non-idempotent-write",
 ]);
 const SAFE_COMMIT_STATES = new Set(["not_sent", "confirmed", "unknown"]);
-const SAFE_STACK_SOURCES = new Set([
-	"error-handler",
-	"hevy-client",
-	"index",
-	"server",
-	"worker",
-]);
 
 /** Structured events emitted by the Worker adapter's private observation sink. */
 export interface WorkerObservationEvent {

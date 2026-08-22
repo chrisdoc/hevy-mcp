@@ -1,5 +1,5 @@
 import type { LoggingMessageNotification } from "@modelcontextprotocol/server";
-import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { createSafeErrorDiagnostic } from "./error-policy.js";
 import type { RuntimeValue } from "./type-predicates.js";
 
 export type McpClientLogMessage = LoggingMessageNotification["params"];

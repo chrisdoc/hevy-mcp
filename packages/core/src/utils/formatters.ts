@@ -22,7 +22,7 @@ import type {
 	FormattedWorkoutSet,
 	FormattedWorkoutSummary,
 } from "./output-schemas.js";
-import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { createSafeErrorDiagnostic } from "./error-policy.js";
 
 type ExerciseWithSupersetVariants = {
 	supersets_id?: number | null;
