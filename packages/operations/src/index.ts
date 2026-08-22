@@ -12,42 +12,8 @@ import {
 	type WorkoutsListOperation,
 } from "./workouts.js";
 
-export {
-	createRoutinesGetOperation,
-	createRoutinesListOperation,
-	isRoutinesGetNotFound,
-	isRoutinesListEndOfList,
-	routinesGetDescriptor,
-	routinesListDescriptor,
-	type RoutinesGetAdapter,
-	type RoutinesGetDescriptor,
-	type RoutinesGetInput,
-	type RoutinesGetOperation,
-	type RoutinesGetOutput,
-	type RoutinesListAdapter,
-	type RoutinesListDescriptor,
-	type RoutinesListInput,
-	type RoutinesListOperation,
-	type RoutinesListOutput,
-} from "./routines.js";
-export {
-	createWorkoutsGetOperation,
-	createWorkoutsListOperation,
-	isWorkoutsGetNotFound,
-	isWorkoutsListEndOfList,
-	workoutsGetDescriptor,
-	workoutsListDescriptor,
-	type WorkoutsGetAdapter,
-	type WorkoutsGetDescriptor,
-	type WorkoutsGetInput,
-	type WorkoutsGetOperation,
-	type WorkoutsGetOutput,
-	type WorkoutsListAdapter,
-	type WorkoutsListDescriptor,
-	type WorkoutsListInput,
-	type WorkoutsListOperation,
-	type WorkoutsListOutput,
-} from "./workouts.js";
+export { routinesGetDescriptor, routinesListDescriptor } from "./routines.js";
+export { workoutsGetDescriptor, workoutsListDescriptor } from "./workouts.js";
 
 export interface HevyOperations {
 	readonly routines: {

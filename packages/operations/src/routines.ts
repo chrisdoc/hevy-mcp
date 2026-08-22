@@ -1,7 +1,6 @@
 import type {
 	HevyClient,
 	HevyExecutionOptions,
-	HevyHttpError,
 	HevyOperationSafety,
 } from "@hevy-mcp/hevy-client";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
@@ -109,12 +108,6 @@ function isExpectedRoutineNotFound(error: ErrorInput): boolean {
 	);
 }
 
-export function isRoutinesGetNotFound(
-	error: ErrorInput,
-): error is HevyHttpError {
-	return isExpectedRoutineNotFound(error);
-}
-
 export function createRoutinesGetOperation(
 	adapter: RoutinesGetAdapter,
 ): RoutinesGetOperation {
@@ -129,7 +122,9 @@ export function createRoutinesGetOperation(
 				return { routine: response.routine ?? null };
 			} catch (error) {
 				if (
-					isRoutinesGetNotFound(error instanceof Error ? error : String(error))
+					isExpectedRoutineNotFound(
+						error instanceof Error ? error : String(error),
+					)
 				) {
 					return {
 						routine: null,
@@ -173,11 +168,4 @@ export function createRoutinesListOperation(
 			}
 		},
 	};
-}
-
-export function isRoutinesListEndOfList(
-	error: ErrorInput,
-	page: number,
-): error is HevyHttpError {
-	return isExpectedEndOfList(error, page);
 }
