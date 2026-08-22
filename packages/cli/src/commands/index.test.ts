@@ -221,6 +221,44 @@ describe("execute command/API mappings", () => {
 			() => new Date("2024-02-01"),
 		);
 		expect(summary).toMatchObject({ pages_scanned: 1, complete: true });
+
+		vi.mocked(api.getWorkouts)
+			.mockResolvedValueOnce({
+				page: 1,
+				page_count: 2,
+				workouts: [
+					{
+						start_time: "2023-01-01T00:00:00Z",
+						end_time: "2023-01-01T01:00:00Z",
+						exercises: [],
+					},
+				],
+			})
+			.mockResolvedValueOnce({
+				page: 2,
+				page_count: 2,
+				workouts: [
+					{
+						start_time: "2024-01-30T00:00:00Z",
+						end_time: "2024-01-30T01:00:00Z",
+						exercises: [],
+					},
+				],
+			});
+		const laterPage = await execute(
+			args("summary"),
+			api,
+			() => new Date("2024-02-01"),
+		);
+		expect(vi.mocked(api.getWorkouts)).toHaveBeenNthCalledWith(3, {
+			page: 2,
+			pageSize: 10,
+		});
+		expect(laterPage).toMatchObject({
+			workout_count: 1,
+			pages_scanned: 2,
+			complete: true,
+		});
 	});
 
 	it("forwards API-shaped mutation envelopes unchanged", async () => {

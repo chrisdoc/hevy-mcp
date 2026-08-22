@@ -400,11 +400,11 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 and update tools are exposed with MCP mutation annotations so compatible clients
 can request confirmation.
 
-| Category          | Tool                   | Description                                                                       |
-| ----------------- | ---------------------- | --------------------------------------------------------------------------------- |
-| Training analysis | `get-training-summary` | Summarize 1-12 weeks of workout activity and body-measurement trends in one call. |
-| Workouts          | `get-workouts`         | List workouts from newest to oldest with exercise and timing details.             |
-| Workouts          | `get-workout`          | Get complete details for one workout by ID.                                       |
+| Category          | Tool                   | Description                                                                           |
+| ----------------- | ---------------------- | ------------------------------------------------------------------------------------- |
+| Training analysis | `get-training-summary` | Summarize 1-12 weeks of workout activity and body-measurement trends in one call.     |
+| Workouts          | `get-workouts`         | List workouts in Hevy API order, not by start time, with exercise and timing details. |
+| Workouts          | `get-workout`          | Get complete details for one workout by ID.                                           |
 
 | Workouts | `get-workout-events` | List workout update and delete events since a timestamp. |
 | Workouts | `create-workout` | Create a completed workout in Hevy. |
