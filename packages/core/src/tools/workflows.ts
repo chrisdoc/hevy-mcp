@@ -36,7 +36,7 @@ function parseUtcDate(value: string): number | undefined {
 	return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
-async function fetchRecentPages<T>(
+async function scanPagesInWindow<T>(
 	loader: (
 		page: number,
 		pageSize: number,
@@ -146,9 +146,11 @@ export async function getTrainingSummary(
 ): Promise<TrainingSummaryResult> {
 	const client = runtime.getClient();
 	const period = getPeriod(weeks);
+	// Hevy caps pageSize at 10 and orders pages by creation time, so a full
+	// sequential scan is the only correct option; parallelize or cache if latency bites.
 	const pageSize = 10;
 	const [workoutPages, measurementPages] = await Promise.all([
-		fetchRecentPages(
+		scanPagesInWindow(
 			async (page, pageSize) => {
 				const data: GetV1Workouts200 = await client.getWorkouts({
 					page,
@@ -161,7 +163,7 @@ export async function getTrainingSummary(
 			period.endDate,
 			(workout) => workout.start_time,
 		),
-		fetchRecentPages(
+		scanPagesInWindow(
 			async (page, pageSize) => {
 				const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements(
 					{
@@ -265,4 +267,4 @@ export const workflowToolDefinitions = [
 	},
 ] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];
 
-export { fetchRecentPages };
+export { scanPagesInWindow };

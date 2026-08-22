@@ -3,7 +3,7 @@ import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
-	fetchRecentPages,
+	scanPagesInWindow,
 	getTrainingSummary,
 	workflowToolDefinitions,
 } from "./workflows.js";
@@ -93,7 +93,7 @@ describe("get-training-summary", () => {
 				pageCount: 2,
 			});
 		await expect(
-			fetchRecentPages<Item>(
+			scanPagesInWindow<Item>(
 				loader,
 				10,
 				"2026-07-01",

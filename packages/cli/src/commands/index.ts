@@ -505,7 +505,6 @@ async function collectSummaryWorkouts(
 	let pageCount = 1;
 	let pagesScanned = 0;
 	const workouts: Body[] = [];
-	let stoppedEarly = false;
 	while (pageNumber <= pageCount) {
 		const result = body(
 			await client.getWorkouts({ page: pageNumber, pageSize: 10 }),
@@ -534,14 +533,9 @@ async function collectSummaryWorkouts(
 			if (timestamp >= from.getTime() && timestamp <= to.getTime())
 				workouts.push(workout);
 		}
-		const oldest = items.at(-1)?.start_time;
-		if (oldest && Date.parse(text(oldest)) < from.getTime()) {
-			stoppedEarly = true;
-			break;
-		}
 		pageNumber += 1;
 	}
-	return { workouts, pageNumber, pageCount, pagesScanned, stoppedEarly };
+	return { workouts, pageNumber, pageCount, pagesScanned };
 }
 
 function summarizeWorkouts(workouts: readonly Body[]) {
@@ -585,10 +579,7 @@ async function executeSummary({ args, client, now }: CommandContext) {
 		set_count: totals.setCount,
 		total_volume_kg: totals.totalVolumeKg,
 		pages_scanned: collection.pagesScanned,
-		complete:
-			collection.stoppedEarly ||
-			collection.pageNumber > collection.pageCount ||
-			collection.pagesScanned === collection.pageCount,
+		complete: collection.pageNumber > collection.pageCount,
 	};
 }
 
