@@ -1,4 +1,5 @@
 import { SpanStatusCode, type Span } from "@opentelemetry/api";
+import { SAFE_USER_HASH_PATTERN } from "@hevy-mcp/core";
 import type {
 	SafeToolCompletion,
 	SafeToolInvocation,
@@ -29,7 +30,6 @@ type ToolMetricAttributes = McpClientMetricAttributes & {
 	readonly tool_name: string;
 };
 const DISCOVERY_TOOL_NAMES = new Set(["search-routines"]);
-const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
 const stringSchema = z.string();
 
 function isString<T>(value: T): value is T & string {

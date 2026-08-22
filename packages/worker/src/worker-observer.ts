@@ -10,6 +10,8 @@ import {
 	SAFE_ERROR_CODES,
 	SAFE_HTTP_METHODS,
 	SAFE_STACK_SOURCES,
+	SAFE_USER_HASH_PATTERN,
+	TELEMETRY_ARGUMENT_KEYS,
 	type SafeToolCompletion,
 	type SafeToolInvocation,
 	type StructuredExecutionProjection,
@@ -24,29 +26,10 @@ const MAX_STRING_LENGTH = 160;
 const MAX_ARGUMENT_KEYS = 32;
 const MAX_WORKFLOW_PAGES = 10_000;
 const MAX_WORKFLOW_ITEMS = 1_000_000;
-const SAFE_USER_HASH_PATTERN = /^[0-9a-f]{10}$/u;
 const SAFE_CLOUDFLARE_COLO_PATTERN = /^[A-Z]{3}$/u;
 const SAFE_COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/u;
 
-const SAFE_ARGUMENT_KEYS = new Set([
-	"date",
-	"end_date",
-	"exercise_template_id",
-	"folder_id",
-	"include_custom",
-	"limit",
-	"offset",
-	"page",
-	"page_size",
-	"primary_muscle_group",
-	"query",
-	"refresh",
-	"routine_id",
-	"since",
-	"start_date",
-	"updated_since",
-	"workout_id",
-]);
+const SAFE_ARGUMENT_KEYS = new Set<string>(TELEMETRY_ARGUMENT_KEYS);
 const SAFE_COUNT_BUCKETS = new Set(["0", "1", "2-10", "11-50", "51+"]);
 const SAFE_WORKFLOW_NAMES = new Set(["training-summary", "routine-discovery"]);
 const SAFE_CACHE_STATUSES = new Set(["hit", "miss", "not-used"]);
