@@ -42,7 +42,13 @@ export {
 	type CacheObservationState,
 	type CacheObserver,
 } from "./utils/cache.js";
-export { createSafeErrorDiagnostic } from "./utils/safe-error-diagnostic.js";
+export {
+	createSafeErrorDiagnostic,
+	SAFE_ERROR_CATEGORIES,
+	SAFE_ERROR_CODES,
+	SAFE_HTTP_METHODS,
+	SAFE_STACK_SOURCES,
+} from "./utils/error-policy.js";
 export {
 	createMcpToolFailureEvent,
 	createExecutionErrorProjection,

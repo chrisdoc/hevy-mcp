@@ -74,6 +74,24 @@ type SafeSourceId =
 	| "server"
 	| "worker";
 
+/** Categories createSafeErrorDiagnostic may emit; part of the module's interface. */
+export const SAFE_ERROR_CATEGORIES: ReadonlySet<SafeErrorCategory> =
+	Object.freeze(
+		new Set<SafeErrorCategory>([
+			"AggregateError",
+			"DOMException",
+			"Error",
+			"EvalError",
+			"HevyHttpError",
+			"RangeError",
+			"ReferenceError",
+			"SyntaxError",
+			"TypeError",
+			"URIError",
+			"UnknownError",
+		]),
+	);
+
 type RetryAwareError = {
 	hevyRetryCount?: number;
 	hevyRetryExhausted?: boolean;
@@ -109,31 +127,29 @@ function getAbortTimeoutErrorMetadata(
 	}
 }
 
-const SAFE_ERROR_CODES = new Set([
-	"EAI_AGAIN",
-	"ECONNABORTED",
-	"ECONNREFUSED",
-	"ECONNRESET",
-	"ENETUNREACH",
-	"ENOTFOUND",
-	"ERR_NETWORK",
-	"ERR_SOCKET_TIMEOUT",
-	"ETIMEDOUT",
-	"HEVY_INVALID_ENDPOINT",
-	HEVY_REQUEST_ABORTED_ERROR_CODE,
-	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
-	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
-]);
+/** Bounded error codes diagnostics may carry; adapters validate against this. */
+export const SAFE_ERROR_CODES: ReadonlySet<string> = Object.freeze(
+	new Set([
+		"EAI_AGAIN",
+		"ECONNABORTED",
+		"ECONNREFUSED",
+		"ECONNRESET",
+		"ENETUNREACH",
+		"ENOTFOUND",
+		"ERR_NETWORK",
+		"ERR_SOCKET_TIMEOUT",
+		"ETIMEDOUT",
+		"HEVY_INVALID_ENDPOINT",
+		HEVY_REQUEST_ABORTED_ERROR_CODE,
+		HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+		HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+	]),
+);
 
-const SAFE_HTTP_METHODS = new Set([
-	"DELETE",
-	"GET",
-	"HEAD",
-	"OPTIONS",
-	"PATCH",
-	"POST",
-	"PUT",
-]);
+/** Bounded HTTP methods diagnostics may carry. */
+export const SAFE_HTTP_METHODS: ReadonlySet<string> = Object.freeze(
+	new Set(["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]),
+);
 
 const SAFE_SOURCE_SUFFIXES: ReadonlyArray<readonly [string, SafeSourceId]> = [
 	["/packages/core/src/utils/error-handler.ts", "error-handler"],
@@ -144,6 +160,11 @@ const SAFE_SOURCE_SUFFIXES: ReadonlyArray<readonly [string, SafeSourceId]> = [
 ];
 
 const PROJECT_PATH_MARKER = "/hevy-mcp/";
+
+/** Stack-frame sources diagnostics may name; adapters validate against this. */
+export const SAFE_STACK_SOURCES: ReadonlySet<SafeSourceId> = Object.freeze(
+	new Set(SAFE_SOURCE_SUFFIXES.map(([, id]) => id)),
+);
 const MAX_STACK_POSITION = 1_000_000;
 
 function normalizeHeaderValue(value: RuntimeValue): string | undefined {

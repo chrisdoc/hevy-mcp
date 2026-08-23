@@ -11,7 +11,7 @@ import {
 	type StructuredExecutionProjection,
 	type ToolExecutionContext,
 } from "../execution.js";
-import { createSafeErrorDiagnostic } from "./safe-error-diagnostic.js";
+import { createSafeErrorDiagnostic } from "./error-policy.js";
 import type { RuntimeValue } from "./type-predicates.js";
 
 export { ErrorType } from "./error-policy.js";

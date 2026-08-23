@@ -11,7 +11,7 @@ import {
 	exerciseTemplateResponse,
 	searchExerciseTemplatesResponse,
 } from "../utils/response-contracts.js";
-import { createSafeErrorDiagnostic } from "../utils/safe-error-diagnostic.js";
+import { createSafeErrorDiagnostic } from "../utils/error-policy.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
