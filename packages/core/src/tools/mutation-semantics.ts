@@ -14,13 +14,11 @@ import type {
 	WorkoutExerciseInput,
 	WorkoutMetadataPatchInput,
 } from "./input-schemas.js";
+import { WORKOUT_PUT_REQUIRES_IS_PRIVATE } from "./hevy-quirks.js";
 import { utcSecondTimestamp } from "../utils/schemas.js";
 import { isFiniteNumber, isString } from "../utils/type-predicates.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
-import {
-	SafeUserError,
-	WORKOUT_METADATA_PRIVACY_REQUIRED_ERROR,
-} from "../utils/safe-user-error.js";
+import { SafeUserError } from "../utils/safe-user-error.js";
 
 type RoutineRepRange = { start?: number; end?: number } | null;
 
@@ -263,7 +261,7 @@ export function buildWorkoutUpdatePayload(
 	// Therefore, is_private must be explicitly provided for metadata updates.
 	const isMetadataOnlyUpdate = replacementExercises === undefined;
 	if (isMetadataOnlyUpdate && patch.is_private === undefined) {
-		throw new SafeUserError(WORKOUT_METADATA_PRIVACY_REQUIRED_ERROR);
+		throw new SafeUserError(WORKOUT_PUT_REQUIRES_IS_PRIVATE.error);
 	}
 
 	const metadata = workoutUpdateMetadataSchema.parse({
