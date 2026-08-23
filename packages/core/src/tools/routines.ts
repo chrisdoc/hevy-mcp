@@ -2,8 +2,8 @@ import type {
 	PutV1RoutinesRoutineid200,
 	Routine,
 } from "@hevy-mcp/hevy-client/types";
+import { createRoutineOutputSchema } from "../utils/output-schemas.js";
 import {
-	createRoutineOutputSchema,
 	createRoutineResponse,
 	routineResponse,
 	routinesResponse,
