@@ -23,31 +23,19 @@ import {
 	type ToolExecutionContext,
 } from "../execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
+import { TELEMETRY_ARGUMENT_KEYS } from "../utils/telemetry-contract.js";
 import { isBoolean, isFiniteNumber } from "../utils/type-predicates.js";
 
 interface ArgumentKeySet {
 	readonly [key: string]: true;
 }
 
-const STRUCTURAL_ARGUMENT_KEYS: Readonly<ArgumentKeySet> = {
-	page: true,
-	page_size: true,
-	since: true,
-	workout_id: true,
-	routine_id: true,
-	folder_id: true,
-	exercise_template_id: true,
-	date: true,
-	start_date: true,
-	end_date: true,
-	updated_since: true,
-	include_custom: true,
-	limit: true,
-	offset: true,
-	refresh: true,
-	query: true,
-	primary_muscle_group: true,
-};
+const toKeySet = (keys: readonly string[]): Readonly<ArgumentKeySet> =>
+	Object.fromEntries(keys.map((key) => [key, true as const]));
+
+const STRUCTURAL_ARGUMENT_KEYS: Readonly<ArgumentKeySet> = toKeySet(
+	TELEMETRY_ARGUMENT_KEYS,
+);
 
 const PRESENCE_ARGUMENT_KEYS: Readonly<ArgumentKeySet> = {
 	since: true,
