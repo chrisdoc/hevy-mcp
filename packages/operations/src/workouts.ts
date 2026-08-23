@@ -1,7 +1,6 @@
 import type {
 	HevyClient,
 	HevyExecutionOptions,
-	HevyHttpError,
 	HevyOperationSafety,
 } from "@hevy-mcp/hevy-client";
 import type { GetV1Workouts200, Workout } from "@hevy-mcp/hevy-client/types";
@@ -83,12 +82,6 @@ function isExpectedWorkoutNotFound(error: ErrorInput): boolean {
 	);
 }
 
-export function isWorkoutsGetNotFound(
-	error: ErrorInput,
-): error is HevyHttpError {
-	return isExpectedWorkoutNotFound(error);
-}
-
 function isExpectedEndOfList(error: ErrorInput, page: number): boolean {
 	return (
 		page > 1 &&
@@ -129,7 +122,9 @@ export function createWorkoutsGetOperation(
 				return { workout: response ?? null };
 			} catch (error) {
 				if (
-					isWorkoutsGetNotFound(error instanceof Error ? error : String(error))
+					isExpectedWorkoutNotFound(
+						error instanceof Error ? error : String(error),
+					)
 				) {
 					return {
 						workout: null,
@@ -173,11 +168,4 @@ export function createWorkoutsListOperation(
 			}
 		},
 	};
-}
-
-export function isWorkoutsListEndOfList(
-	error: ErrorInput,
-	page: number,
-): error is HevyHttpError {
-	return isExpectedEndOfList(error, page);
 }
