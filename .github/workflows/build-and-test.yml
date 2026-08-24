@@ -57,7 +57,7 @@ jobs:
           cache: "npm"
 
       - name: Set up mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
 
       - name: Install dependencies
         run: npm ci
@@ -154,7 +154,7 @@ jobs:
           cache: "npm"
 
       - name: Set up mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
 
       - name: Install dependencies
         run: npm ci
@@ -206,7 +206,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Build Docker image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -244,7 +244,7 @@ jobs:
         # run without secrets — skip the export when the token is absent
         # instead of failing the whole workflow.
         if: env.OTEL_COLLECTOR_TOKEN != ''
-        uses: corentinmusard/otel-cicd-action@6022e68732c1cab4d2c8218b810f69006ee5cc34 # v4.1.0
+        uses: corentinmusard/otel-cicd-action@895874bfae14f840e3032f1a14c3f2b45c93f4af # v4.1.1
         with:
           otlpEndpoint: "https://otel.chrisdoc.dev/v1/traces"
           otlpHeaders: "Authorization=Bearer ${{ env.OTEL_COLLECTOR_TOKEN }}"
