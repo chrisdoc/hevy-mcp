@@ -1,5 +1,23 @@
 # @chrisdoc/hevy-cli
 
+## 1.2.5
+
+### Patch Changes
+
+- [#1056](https://github.com/chrisdoc/hevy-mcp/pull/1056) [`3a29218`](https://github.com/chrisdoc/hevy-mcp/commit/3a29218d6b1d837eeecb5cb849396eee9f62e3e0) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Narrow the operations interface to the names consumers actually use; remove four dead exported predicates and stop re-exporting internal operation plumbing.
+
+- [#1053](https://github.com/chrisdoc/hevy-mcp/pull/1053) [`4556c13`](https://github.com/chrisdoc/hevy-mcp/commit/4556c13e18fb7281788e86505b09985e1f061e62) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Export the safe-error diagnostic vocabulary (codes, methods, categories, stack sources) from core as its interface; the Worker adapter validates against the shared vocabulary instead of private copies. Folds the safe-error-diagnostic re-export into error-policy.
+
+- [#1054](https://github.com/chrisdoc/hevy-mcp/pull/1054) [`1b83866`](https://github.com/chrisdoc/hevy-mcp/commit/1b83866030f004bc19ccb8ebc860828fc853957d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Own the telemetry contract constants (user hash context, hash shape, argument-key allowlist) in core so the Node and Worker adapters cannot drift apart.
+
+- [#1057](https://github.com/chrisdoc/hevy-mcp/pull/1057) [`139ae78`](https://github.com/chrisdoc/hevy-mcp/commit/139ae78a3293ebe401a13ea88f3946f29848577e) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Export the generated workout and routine set schemas from the curated schemas entry point and pin the MCP input enum vocabularies (RPE, set type) to them with a contract test, so upstream enum changes surface at test time instead of drifting.
+
+- [#1051](https://github.com/chrisdoc/hevy-mcp/pull/1051) [`2cd03b0`](https://github.com/chrisdoc/hevy-mcp/commit/2cd03b09d8d59d19118a4af81ae568f34914441a) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Scan all reported training-summary pages so later workouts and body measurements are not hidden by older records on earlier pages, and apply the same fix to the `hevy` CLI summary export.
+
+- [#1052](https://github.com/chrisdoc/hevy-mcp/pull/1052) [`5c9a57a`](https://github.com/chrisdoc/hevy-mcp/commit/5c9a57aead4e7b64d4dbfae7785742be26eaf196) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Split response-contracts into output-schemas and formatters modules with no behavior change; response contract wiring stays in response-contracts.
+
+- [#1055](https://github.com/chrisdoc/hevy-mcp/pull/1055) [`4f2b707`](https://github.com/chrisdoc/hevy-mcp/commit/4f2b7074505948b3dfb6021f9e0e20fd971a66d6) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Give the workout is_private quirk one home in hevy-quirks; the runtime rule, user-facing error, and tool-description clauses all derive from the same constants so they cannot drift.
+
 ## 1.2.4
 
 ### Patch Changes
