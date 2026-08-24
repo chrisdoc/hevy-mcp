@@ -98,7 +98,9 @@ packages/core/src/
 └── utils/                 # Shared helpers
     ├── tool-helpers.ts    # InferToolParams type inference utility
     ├── error-handler.ts   # withErrorHandling wrapper
-    ├── response-formatter.ts  # Output schemas and MCP response assembly
+    ├── output-schemas.ts      # Snake_case Zod output schemas and inferred types
+    ├── formatters.ts          # Raw-to-public response projections
+    ├── response-contracts.ts  # MCP response contracts and assembly
     └── cache.ts           # Per-server template/cache helpers
 ```
 
@@ -186,7 +188,7 @@ New tools live in `packages/core/` and are shared by both the Node.js and Cloudf
    );
    ```
 
-5. **Define response formatting** in `packages/core/src/utils/response-formatter.ts` — co-locate Zod output schemas, raw-to-public normalization, and MCP response assembly there
+5. **Define response formatting** across `packages/core/src/utils/output-schemas.ts` for output schemas and inferred types, `packages/core/src/utils/formatters.ts` for raw-to-public projections, and `packages/core/src/utils/response-contracts.ts` for MCP contract wiring and response assembly
 
 6. **Register the tool** in `packages/core/src/tools/register.ts`
 

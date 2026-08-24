@@ -224,7 +224,7 @@ type GetRoutinesParams = InferToolParams<typeof getRoutinesSchema>;
 // ↑ Types are automatically derived — no manual interface needed
 ```
 
-See [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) for the complete pattern, including `createTypedToolHandler` and response-formatter co-location rules.
+See [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) for the complete pattern, including `createTypedToolHandler` and response-formatting module boundaries.
 
 > [!NOTE]
 > Never use `args as { ... }` type assertions, `Record<string, unknown>` in handler signatures, or define parameter types separately from their Zod schemas. These patterns break the single-source-of-truth contract and defeat compile-time safety [[26]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
@@ -266,11 +266,11 @@ The adapter is **fail-closed**: if the private fields are absent (e.g., after an
 
 ## Related Documentation
 
-| Document                                       | What it covers                                                                                                 |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| [CONTRIBUTING.md](../CONTRIBUTING.md)          | Development workflow, environment setup, testing lanes, PR requirements, and changeset rules                   |
-| [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) | Type safety patterns, `InferToolParams` usage, API client barrel imports, and response-formatter co-location   |
-| [test-lanes.md](./test-lanes.md)               | Testing strategy, lane ownership, and which lane covers which package or concern                               |
-| `deployment-modes.md`                          | _(forthcoming)_ Detailed coverage of Node stdio, Node HTTP, Cloudflare Worker HTTP, and OAuth deployment modes |
+| Document                                       | What it covers                                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| [CONTRIBUTING.md](../CONTRIBUTING.md)          | Development workflow, environment setup, testing lanes, PR requirements, and changeset rules                        |
+| [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) | Type safety patterns, `InferToolParams` usage, API client barrel imports, and response-formatting module boundaries |
+| [test-lanes.md](./test-lanes.md)               | Testing strategy, lane ownership, and which lane covers which package or concern                                    |
+| `deployment-modes.md`                          | _(forthcoming)_ Detailed coverage of Node stdio, Node HTTP, Cloudflare Worker HTTP, and OAuth deployment modes      |
 
 For the machine-readable source of truth on CI validation, see [`repository/validation-lanes.json`](../repository/validation-lanes.json) [[32]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L1-L15), which defines all blocking and informational lanes, runtime matrices, and aggregate workflows used by CI and pre-push hooks.
