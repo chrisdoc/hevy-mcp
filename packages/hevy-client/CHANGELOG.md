@@ -1,5 +1,11 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.4
+
+### Patch Changes
+
+- [#1057](https://github.com/chrisdoc/hevy-mcp/pull/1057) [`139ae78`](https://github.com/chrisdoc/hevy-mcp/commit/139ae78a3293ebe401a13ea88f3946f29848577e) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Export the generated workout and routine set schemas from the curated schemas entry point and pin the MCP input enum vocabularies (RPE, set type) to them with a contract test, so upstream enum changes surface at test time instead of drifting.
+
 ## 0.2.3
 
 ### Patch Changes
