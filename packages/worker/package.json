@@ -14,7 +14,7 @@
 		"check:types": "tsc --noEmit -p tsconfig.json"
 	},
 	"dependencies": {
-		"@cloudflare/workers-oauth-provider": "^0.10.2",
+		"@cloudflare/workers-oauth-provider": "^0.10.3",
 		"@modelcontextprotocol/server": "^2.0.0",
 		"zod": "^4.4.3"
 	},
