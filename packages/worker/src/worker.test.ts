@@ -18,6 +18,7 @@ import {
 	parseBearerApiKey,
 } from "./worker.js";
 import worker from "./worker.js";
+import { resetMemoryValidationCacheForTests } from "./validation-cache.js";
 
 const objectLikeSchema = z.object({}).passthrough();
 type WorkerLogEntry = {
@@ -38,6 +39,9 @@ const validHeaders = {
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	// The validation cache's in-memory fallback is module-scoped; reset it so
+	// one test's cached verdict never masks another test's expectations.
+	resetMemoryValidationCacheForTests();
 });
 
 function mcpRequest(
@@ -338,6 +342,99 @@ describe("Cloudflare Worker routes and CORS", () => {
 			});
 		},
 	);
+	describe("Hevy key validation cache", () => {
+		const initializeBody = {
+			jsonrpc: "2.0",
+			id: 1,
+			method: "initialize",
+			params: {
+				protocolVersion: "2025-11-25",
+				capabilities: {},
+				clientInfo: { name: "validation-cache-test", version: "1" },
+			},
+		};
+
+		it("skips a second upstream validation for the same key within the TTL", async () => {
+			const createValidationClient = vi.fn(() => createMockClient());
+			const cachedHandler = createWorkerHandler({ createValidationClient });
+
+			expect((await cachedHandler(mcpRequest(initializeBody), {})).status).toBe(
+				200,
+			);
+			expect((await cachedHandler(mcpRequest(initializeBody), {})).status).toBe(
+				200,
+			);
+
+			expect(createValidationClient).toHaveBeenCalledTimes(1);
+		});
+
+		it("validates independently for a key that was never cached", async () => {
+			const createValidationClient = vi.fn(() => createMockClient());
+			const freshHandler = createWorkerHandler({ createValidationClient });
+
+			expect(
+				(
+					await freshHandler(
+						mcpRequest(initializeBody, {
+							...validHeaders,
+							authorization: "Bearer other-key",
+						}),
+						{},
+					)
+				).status,
+			).toBe(200);
+
+			expect(createValidationClient).toHaveBeenCalledTimes(1);
+		});
+
+		it("never caches an invalid verdict", async () => {
+			const createValidationClient = vi.fn(() =>
+				createMockClient({
+					getUserInfo: vi.fn().mockRejectedValue(
+						new HevyHttpError("HTTP 401", {
+							status: 401,
+							method: "GET",
+							endpoint: "/v1/user/info",
+						}),
+					),
+				}),
+			);
+			const invalidHandler = createWorkerHandler({ createValidationClient });
+
+			expect((await invalidHandler(mcpRequest({}), {})).status).toBe(401);
+			expect((await invalidHandler(mcpRequest({}), {})).status).toBe(401);
+
+			expect(createValidationClient).toHaveBeenCalledTimes(2);
+		});
+
+		it("logs the upstream status when key validation throws", async () => {
+			const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+			const throwingHandler = createWorkerHandler({
+				createValidationClient: () =>
+					createMockClient({
+						getUserInfo: vi.fn().mockRejectedValue(
+							new HevyHttpError("HTTP 503", {
+								status: 503,
+								method: "GET",
+								endpoint: "/v1/user/info",
+								code: "HEVY_RETRY_EXHAUSTED",
+							}),
+						),
+					}),
+			});
+
+			const result = await throwingHandler(mcpRequest({}), {});
+
+			expect(result.status).toBe(502);
+			const diagnostic = JSON.stringify(stderrSpy.mock.calls);
+			expect(diagnostic).toContain("hevy-key-validation");
+			expect(diagnostic).toContain("HevyHttpError");
+			expect(diagnostic).toContain("503");
+			expect(diagnostic).toContain("HEVY_RETRY_EXHAUSTED");
+			stderrSpy.mockRestore();
+		});
+	});
+
 	it("logs safe structured request outcomes", async () => {
 		const secret = "sentinel-structured-log-value";
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -440,7 +537,9 @@ describe("real stateless SDK transport", () => {
 		const payload = await parseMcpResponse(list);
 		expect(payload).toMatchObject({ id: 2 });
 		expect(JSON.stringify(payload)).toContain("get-workouts");
-		expect(createValidationClient).toHaveBeenCalledTimes(2);
+		// The second request reuses the same bearer key within the validation
+		// cache TTL, so it never re-validates against Hevy.
+		expect(createValidationClient).toHaveBeenCalledTimes(1);
 		expect(createRequestClient).toHaveBeenCalledTimes(2);
 		expect(createServer).toHaveBeenCalledTimes(2);
 		expect(createTransport).toHaveBeenCalledTimes(2);
@@ -958,6 +1057,70 @@ describe("real stateless SDK transport", () => {
 		expect(new URL(requestUrl).origin).toBe("https://api.hevyapp.com");
 		expect(init?.redirect).toBe("manual");
 		expect(new Headers(init?.headers).get("api-key")).toBe("test-key");
+		fetchSpy.mockRestore();
+	});
+
+	it("retries a transient (non-429) validation failure and logs the attempt", async () => {
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		let attempt = 0;
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+			attempt += 1;
+			return Promise.resolve(
+				attempt === 1
+					? new Response("Service Unavailable", { status: 503 })
+					: new Response(JSON.stringify({ id: "user" }), {
+							status: 200,
+							headers: { "content-type": "application/json" },
+						}),
+			);
+		});
+
+		const result = await worker.fetch(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 11,
+				method: "initialize",
+				params: {
+					protocolVersion: "2025-11-25",
+					capabilities: {},
+					clientInfo: { name: "retry-test", version: "1" },
+				},
+			}),
+			{},
+		);
+
+		expect(result.status).toBe(200);
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		const diagnostic = JSON.stringify(warnSpy.mock.calls);
+		expect(diagnostic).toContain("worker.hevy_validation_retry");
+		expect(diagnostic).toContain("503");
+		fetchSpy.mockRestore();
+		warnSpy.mockRestore();
+	});
+
+	it("never retries a 429 validation failure", async () => {
+		// A single transient 429 must fail in one attempt: fast-retrying it would
+		// spend multiple calls against the exact rate limit that caused it.
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValue(new Response("Too Many Requests", { status: 429 }));
+
+		const result = await worker.fetch(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 12,
+				method: "initialize",
+				params: {
+					protocolVersion: "2025-11-25",
+					capabilities: {},
+					clientInfo: { name: "no-429-retry-test", version: "1" },
+				},
+			}),
+			{},
+		);
+
+		expect(result.status).toBe(502);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		fetchSpy.mockRestore();
 	});
 

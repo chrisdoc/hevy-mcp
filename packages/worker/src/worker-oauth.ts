@@ -320,13 +320,24 @@ function renderValidationFailure<T>(
 	request: Request,
 	rerender: (message: string, status: number) => Response,
 ): Response {
+	logOAuthValidationFailure("oauth-authorize-validation", error);
 	const failure = validationFailure(error, request);
 	return rerender(failure.message, failure.status);
 }
 
 function jsonValidationFailure<T>(error: T, request: Request): Response {
+	logOAuthValidationFailure("oauth-mcp-validation", error);
 	const failure = validationFailure(error, request);
 	return executionResponse(error, failure.message, failure.outcome);
+}
+
+/** Settle "what did Hevy actually return" for a validation failure incident. */
+function logOAuthValidationFailure<T>(context: string, error: T): void {
+	console.error({
+		event: "worker.error",
+		context,
+		...createSafeErrorDiagnostic(error),
+	});
 }
 
 function authorizeConfigErrorResponse(

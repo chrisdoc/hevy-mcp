@@ -33,6 +33,7 @@ import {
 	getCloudflareColo,
 	getCloudflareGeography,
 } from "./worker-telemetry.js";
+import { validateHevyApiKeyResilient } from "./validation-cache.js";
 
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
@@ -448,6 +449,7 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 	return async function handleRequest(
 		request: Request,
 		env: WorkerEnv,
+		ctx?: ExecutionContext,
 	): Promise<Response> {
 		const url = new URL(request.url);
 		if (url.pathname !== MCP_PATH)
@@ -487,17 +489,21 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		const deadline = Date.now() + WORKER_INVOCATION_TIMEOUT_MS;
 		let validation: HevyApiKeyValidation;
 		try {
-			validation = await validateHevyApiKey(
+			validation = await validateHevyApiKeyResilient(
 				apiKey,
 				hevyApiBaseUrl,
 				resolved.createValidationClient,
+				validateHevyApiKey,
+				env,
 				{
 					signal: request.signal,
 					deadline,
 				},
+				requireExecutionContext(ctx),
 			);
 		} catch (error) {
 			const normalizedError = error instanceof Error ? error : String(error);
+			logWorkerFailure("hevy-key-validation", normalizedError);
 			return executionHttpResponse(
 				normalizedError,
 				"Unable to validate the Hevy API key",
@@ -535,10 +541,16 @@ function createWorkerOAuthProvider(
 			} catch {
 				return "config-error";
 			}
-			return validateHevyApiKey(
+			// No ExecutionContext reaches this dependency today (the
+			// HevyOAuthDependencies.validateApiKey interface doesn't thread one),
+			// so the cache write stays awaited here rather than deferred via
+			// waitUntil.
+			return validateHevyApiKeyResilient(
 				apiKey,
 				hevyApiBaseUrl,
 				resolved.createValidationClient,
+				validateHevyApiKey,
+				env,
 				{
 					signal,
 					deadline: deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
@@ -598,7 +610,7 @@ export function createWorkerFetchHandler(
 						logContext,
 					);
 				}
-				const legacyResponse = await legacyHandler(request, env);
+				const legacyResponse = await legacyHandler(request, env, ctx);
 				responseStatus = legacyResponse.status;
 				return legacyResponse;
 			}
@@ -612,13 +624,13 @@ export function createWorkerFetchHandler(
 			const url = new URL(request.url);
 			if (url.pathname === MCP_PATH) {
 				if (request.method === "OPTIONS") {
-					const legacyResponse = await legacyHandler(request, env);
+					const legacyResponse = await legacyHandler(request, env, ctx);
 					responseStatus = legacyResponse.status;
 					return legacyResponse;
 				}
 				const bearer = parseBearerApiKey(request.headers.get("authorization"));
 				if (bearer && !hasOAuthAccessTokenFormat(bearer)) {
-					const legacyResponse = await legacyHandler(request, env);
+					const legacyResponse = await legacyHandler(request, env, ctx);
 					responseStatus = legacyResponse.status;
 					return legacyResponse;
 				}

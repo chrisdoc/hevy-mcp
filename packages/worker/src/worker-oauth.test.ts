@@ -16,6 +16,7 @@ import {
 	type HevyOAuthDependencies,
 } from "./worker-oauth.js";
 import { createWorkerFetchHandler } from "./worker.js";
+import { resetMemoryValidationCacheForTests } from "./validation-cache.js";
 
 class TestExecutionSpan implements Span {
 	get isTraced(): boolean {
@@ -72,6 +73,7 @@ beforeEach(() => {
 afterEach(() => {
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
+	resetMemoryValidationCacheForTests();
 });
 
 const stringSchema = z.string();
@@ -1292,7 +1294,12 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			)
 		).json()) as { access_token: string };
 
-		// The key gets revoked in Hevy after the grant was issued.
+		// The key gets revoked in Hevy after the grant was issued. Clear the
+		// validation cache entry the approval step above just wrote, so this
+		// request re-checks Hevy instead of reusing that now-stale "valid" verdict.
+		for (const key of [...env.OAUTH_KV.store.keys()]) {
+			if (key.startsWith("keyvalid:")) env.OAUTH_KV.store.delete(key);
+		}
 		validationFactory = revokedValidation;
 		const result = await handler(
 			new Request("https://worker.example/mcp", {
@@ -1310,5 +1317,121 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(result.headers.get("www-authenticate")).toContain(
 			'error="invalid_token"',
 		);
+	});
+
+	it("logs the upstream status when key validation throws for an authorized MCP request", async () => {
+		const validValidation = vi.fn(() => createMockClient());
+		const throwingValidation = vi.fn(() =>
+			createMockClient({
+				getUserInfo: vi.fn().mockRejectedValue(
+					new HevyHttpError("HTTP 503", {
+						status: 503,
+						method: "GET",
+						endpoint: "/v1/user/info",
+						code: "HEVY_RETRY_EXHAUSTED",
+					}),
+				),
+			}),
+		);
+		let validationFactory = validValidation;
+		const { handler, env } = createHandlerWithEnv({
+			createValidationClient: () => validationFactory(),
+		});
+
+		const registration = await handler(
+			new Request("https://worker.example/register", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					redirect_uris: [redirectUri],
+					token_endpoint_auth_method: "none",
+				}),
+			}),
+			env,
+			testExecutionContext,
+		);
+		const client = (await registration.json()) as { client_id: string };
+		const verifier = base64UrlEncode(
+			crypto.getRandomValues(new Uint8Array(32)),
+		);
+		const challenge = base64UrlEncode(
+			new Uint8Array(
+				await crypto.subtle.digest(
+					"SHA-256",
+					new TextEncoder().encode(verifier),
+				),
+			),
+		);
+		const authorizeUrl = new URL("https://worker.example/authorize");
+		authorizeUrl.searchParams.set("response_type", "code");
+		authorizeUrl.searchParams.set("client_id", client.client_id);
+		authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+		authorizeUrl.searchParams.set("state", "s");
+		authorizeUrl.searchParams.set("code_challenge", challenge);
+		authorizeUrl.searchParams.set("code_challenge_method", "S256");
+		const consentHtml = await (
+			await handler(new Request(authorizeUrl), env, testExecutionContext)
+		).text();
+		const encodedRequest = /name="oauth_request" value="([^"]+)"/.exec(
+			consentHtml,
+		)?.[1] as string;
+		const approval = await handler(
+			new Request("https://worker.example/authorize", {
+				method: "POST",
+				body: new URLSearchParams({
+					oauth_request: encodedRequest,
+					hevy_api_key: "flaky-connection-key",
+				}),
+			}),
+			env,
+			testExecutionContext,
+		);
+		const code = new URL(
+			approval.headers.get("location") as string,
+		).searchParams.get("code") as string;
+		const tokens = (await (
+			await handler(
+				new Request("https://worker.example/token", {
+					method: "POST",
+					body: new URLSearchParams({
+						grant_type: "authorization_code",
+						code,
+						redirect_uri: redirectUri,
+						client_id: client.client_id,
+						code_verifier: verifier,
+					}),
+				}),
+				env,
+				testExecutionContext,
+			)
+		).json()) as { access_token: string };
+
+		// Force a live validation call: the approval step above already cached
+		// this key as valid, which would otherwise mask the throw below.
+		for (const key of [...env.OAUTH_KV.store.keys()]) {
+			if (key.startsWith("keyvalid:")) env.OAUTH_KV.store.delete(key);
+		}
+		validationFactory = throwingValidation;
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const result = await handler(
+			new Request("https://worker.example/mcp", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					authorization: `Bearer ${tokens.access_token}`,
+				},
+				body: JSON.stringify(initializeBody),
+			}),
+			env,
+			testExecutionContext,
+		);
+
+		expect(result.status).toBe(502);
+		const diagnostic = JSON.stringify(stderrSpy.mock.calls);
+		expect(diagnostic).toContain("oauth-mcp-validation");
+		expect(diagnostic).toContain("HevyHttpError");
+		expect(diagnostic).toContain("503");
+		expect(diagnostic).toContain("HEVY_RETRY_EXHAUSTED");
+		stderrSpy.mockRestore();
 	});
 });
