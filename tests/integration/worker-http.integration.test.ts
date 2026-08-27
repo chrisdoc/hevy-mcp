@@ -1,7 +1,9 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { networkInterfaces } from "node:os";
+import { networkInterfaces, tmpdir } from "node:os";
+import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import {
 	Client,
@@ -57,6 +59,7 @@ let fakeHevyBaseUrl: string;
 let redirectRecorderServer: Server;
 let redirectDestinationUrl: string;
 let wrangler: ChildProcessWithoutNullStreams;
+let wranglerPersistDir: string | undefined;
 let workerBaseUrl: string;
 let wranglerLogs = "";
 let wranglerSpawnError: Error | undefined;
@@ -115,6 +118,11 @@ async function allocateWranglerPorts(): Promise<{
 }
 
 function spawnWrangler(workerPort: number, inspectorPort: number): void {
+	if (wranglerPersistDir === undefined) {
+		throw new Error(
+			"spawnWrangler called before the persistence directory was created",
+		);
+	}
 	workerBaseUrl = `http://${LOOPBACK}:${workerPort}`;
 	wranglerSpawnError = undefined;
 	const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -141,6 +149,8 @@ function spawnWrangler(workerPort: number, inspectorPort: number): void {
 			"--show-interactive-dev-session=false",
 			"--log-level",
 			"warn",
+			"--persist-to",
+			wranglerPersistDir,
 			"--var",
 			`HEVY_API_BASE_URL:${fakeHevyBaseUrl}`,
 		],
@@ -385,6 +395,14 @@ async function parseSseMessage(response: Response): Promise<{
 describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 	beforeAll(
 		async () => {
+			// A fresh, isolated Miniflare persistence directory per run: without
+			// this, local KV (including the Hevy key validation cache) survives
+			// across separate `wrangler dev` invocations via `.wrangler/state`,
+			// so a previous run's cached "valid" verdict for a fixed test API key
+			// would silently short-circuit this run's Hevy request assertions.
+			wranglerPersistDir = await mkdtemp(
+				join(tmpdir(), "hevy-mcp-worker-http-test-"),
+			);
 			redirectRecorderServer = createServer((request, response) => {
 				redirectRequests.push({
 					apiKey: request.headers["api-key"] as string | undefined,
@@ -534,6 +552,11 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 			await stopWrangler();
 		} finally {
 			await Promise.all([close(fakeHevyServer), close(redirectRecorderServer)]);
+			// Guard against a failed mkdtemp (undefined dir): rm(undefined) would
+			// throw and mask whatever error made beforeAll fail in the first place.
+			if (wranglerPersistDir) {
+				await rm(wranglerPersistDir, { recursive: true, force: true });
+			}
 		}
 	}, 10_000);
 
@@ -623,7 +646,9 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 				arguments: { page: 1, page_size: 1 },
 			});
 			expect(JSON.stringify(result)).toContain("worker-workout-1");
-			expect(hevyRequests.length - requestsBeforeToolCall).toBe(2);
+			// The preceding `connect()` (initialize) call already validated and
+			// cached this key, so the tool call itself skips re-validation.
+			expect(hevyRequests.length - requestsBeforeToolCall).toBe(1);
 			expect(transport.sessionId).toBeUndefined();
 			expect(
 				hevyRequests.every((request) => request.apiKey === VALID_API_KEY),
@@ -726,8 +751,12 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(invalid.status).toBe(401);
 		expect(invalid.headers.get("www-authenticate")).toBe("Bearer");
 		expect(unavailable.status).toBe(502);
+		// A 401 is never retried; a 503 is transient and retried twice (three
+		// attempts total) before the validation client gives up.
 		expect(hevyRequests.map((request) => request.apiKey)).toEqual([
 			INVALID_API_KEY,
+			UPSTREAM_FAILURE_API_KEY,
+			UPSTREAM_FAILURE_API_KEY,
 			UPSTREAM_FAILURE_API_KEY,
 		]);
 	});
@@ -756,7 +785,11 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(await unsupported.json()).toMatchObject({ error: { code: -32000 } });
 		expect(invalidJson.status).toBe(400);
 		expect(await invalidJson.json()).toMatchObject({ error: { code: -32700 } });
-		expect(hevyRequests).toHaveLength(3);
+		// All three requests use the default valid key, and the very first test
+		// in this file ("routes requests and returns stateless SSE initialize
+		// responses") already validated and cached it — so none of these three
+		// need a real Hevy round trip.
+		expect(hevyRequests.length).toBe(0);
 	});
 
 	it("allows configured CORS origins and rejects unconfigured origins", async () => {
