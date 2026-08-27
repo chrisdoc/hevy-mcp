@@ -1,5 +1,11 @@
 # @hevy-mcp/worker
 
+## 0.2.7
+
+### Patch Changes
+
+- [#1074](https://github.com/chrisdoc/hevy-mcp/pull/1074) [`65970a1`](https://github.com/chrisdoc/hevy-mcp/commit/65970a1fc95f80b82e52e67cf45fd3481fdbcc45) Thanks [@manelpb](https://github.com/manelpb)! - Retry transient Hevy API key validation failures (e.g. HTTP 503 or 408; HTTP 429 is intentionally not retried, to avoid spending calls against the rate limit that caused the outage), log the upstream status/code when validation still fails, and cache successful validations for 15 minutes so a brief Hevy outage no longer turns into a 502 for a key that was just confirmed valid.
+
 ## 0.2.6
 
 ### Patch Changes
