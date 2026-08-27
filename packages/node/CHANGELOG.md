@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 6.1.7
+
+### Patch Changes
+
+- [#1074](https://github.com/chrisdoc/hevy-mcp/pull/1074) [`65970a1`](https://github.com/chrisdoc/hevy-mcp/commit/65970a1fc95f80b82e52e67cf45fd3481fdbcc45) Thanks [@manelpb](https://github.com/manelpb)! - Apply oxfmt 0.63.0 formatting to core mapped-type declarations in `execution.ts`, `tools/input-schemas.ts`, and `tools/tool-runtime.ts`. Formatting only — no functional change. `hevy-mcp` and `@chrisdoc/hevy-cli` get a patch bump solely because the release cascade re-releases core's consumers.
+
 ## 6.1.6
 
 ### Patch Changes
