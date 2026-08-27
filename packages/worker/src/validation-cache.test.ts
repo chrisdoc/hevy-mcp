@@ -257,6 +257,26 @@ describe("validateHevyApiKeyResilient", () => {
 		expect(validate).toHaveBeenCalledTimes(1);
 	});
 
+	it("stops retrying when aborted during backoff, without another attempt", async () => {
+		const env = {};
+		const controller = new AbortController();
+		const validate = rejectingValidator(503, 1);
+
+		const pending = validateHevyApiKeyResilient(
+			"resilient-abort-key",
+			"https://api.hevyapp.com",
+			createValidationClient,
+			validate,
+			env,
+			{ signal: controller.signal },
+		);
+		// Abort while the wrapper is sleeping between attempt 1 and attempt 2.
+		setTimeout(() => controller.abort(), 10);
+
+		await expect(pending).rejects.toBeInstanceOf(HevyHttpError);
+		expect(validate).toHaveBeenCalledTimes(1);
+	});
+
 	it("defers the cache write via waitUntil when given an execution context", async () => {
 		const env = {};
 		const validate: HevyKeyValidator = vi.fn().mockResolvedValue("valid");

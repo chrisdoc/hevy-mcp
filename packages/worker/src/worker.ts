@@ -497,9 +497,21 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 				env,
 				{
 					signal: request.signal,
-					deadline,
+					// One absolute deadline for the whole validation phase, shared
+					// across the wrapper's retries. Passing the full invocation
+					// deadline instead would let each retry's inner validateHevyApiKey
+					// re-anchor its own now+WORKER_VALIDATION_TIMEOUT_MS window, so
+					// three attempts could consume ~3x the budget this cap reserves
+					// for MCP execution.
+					deadline: Math.min(
+						deadline,
+						Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
+					),
 				},
-				requireExecutionContext(ctx),
+				// Pass the context through as-is: when it's absent (direct callers),
+				// the wrapper awaits the cache write inline rather than handing it to
+				// a no-op waitUntil that would drop it.
+				ctx,
 			);
 		} catch (error) {
 			const normalizedError = error instanceof Error ? error : String(error);
@@ -553,7 +565,12 @@ function createWorkerOAuthProvider(
 				env,
 				{
 					signal,
-					deadline: deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+					// Cap the whole validation phase (see the bearer path) so the
+					// wrapper's retries share one deadline instead of re-anchoring.
+					deadline: Math.min(
+						deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+						Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
+					),
 				},
 			);
 		},

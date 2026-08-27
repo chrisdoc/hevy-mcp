@@ -256,6 +256,10 @@ export async function validateHevyApiKeyResilient(
 				error,
 			);
 			await delay(delayMs, options?.signal);
+			// `delay` resolves (rather than rejects) on abort, so re-check here:
+			// without this an abort during backoff would fall through to another
+			// validate() call with an already-aborted signal.
+			if (options?.signal?.aborted) throw error;
 		}
 	}
 	// Unreachable: the loop always returns or throws before exhausting its
