@@ -193,12 +193,14 @@ describe("mergeAbortSignals", () => {
 		} finally {
 			if (nativeDescriptor) {
 				Object.defineProperty(AbortSignal, "any", nativeDescriptor);
+			} else {
+				Reflect.deleteProperty(AbortSignal, "any");
 			}
 		}
 	});
 
 	it("composes with the native AbortSignal.any when available", () => {
-		if (!Reflect.has(AbortSignal, "any")) return;
+		if (typeof AbortSignal.any !== "function") return;
 		const first = new AbortController();
 		const second = new AbortController();
 		const composed = mergeAbortSignals(first.signal, second.signal);
