@@ -27,9 +27,7 @@ export interface StructuredExecutionProjection {
 /** Backward-compatible name for the structured error projection. */
 export type StructuredExecutionError = StructuredExecutionProjection;
 type MutableExecutionProjection = {
-	-readonly [
-		K in keyof StructuredExecutionProjection
-	]?: StructuredExecutionProjection[K];
+	-readonly [K in keyof StructuredExecutionProjection]?: StructuredExecutionProjection[K];
 } & Pick<
 	StructuredExecutionProjection,
 	"outcome" | "phase" | "operation_safety" | "commit_state" | "safe_to_retry"

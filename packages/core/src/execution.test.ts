@@ -18,7 +18,7 @@ type ClientTestArgument =
 				| boolean
 				| null
 				| undefined;
-		};
+	  };
 type ClientMethodArguments = {
 	[K in keyof HevyClient]: ClientTestArgument[];
 };

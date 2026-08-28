@@ -108,11 +108,9 @@ export const workoutExerciseFields = {
 	notes: z.string().optional().nullable(),
 	sets: z.array(workoutSetSchema),
 } as const satisfies {
-	[
-		K in keyof NonNullable<
-			NonNullable<PostWorkoutsRequestBody["workout"]>["exercises"]
-		>[number]
-	]: z.ZodTypeAny;
+	[K in keyof NonNullable<
+		NonNullable<PostWorkoutsRequestBody["workout"]>["exercises"]
+	>[number]]: z.ZodTypeAny;
 };
 
 const workoutExerciseSchema = z.strictObject(workoutExerciseFields);
@@ -194,11 +192,9 @@ export const routineExerciseFields = {
 	notes: z.string().optional(),
 	sets: z.array(routineSetSchema),
 } as const satisfies {
-	[
-		K in keyof NonNullable<
-			NonNullable<PostRoutinesRequestBody["routine"]>["exercises"]
-		>[number]
-	]: z.ZodTypeAny;
+	[K in keyof NonNullable<
+		NonNullable<PostRoutinesRequestBody["routine"]>["exercises"]
+	>[number]]: z.ZodTypeAny;
 };
 
 const routineExerciseSchema = z.strictObject(routineExerciseFields);
