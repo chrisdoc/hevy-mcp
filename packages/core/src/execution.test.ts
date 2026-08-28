@@ -200,7 +200,7 @@ describe("mergeAbortSignals", () => {
 	});
 
 	it("composes with the native AbortSignal.any when available", () => {
-		if (!Reflect.has(AbortSignal, "any")) return;
+		if (typeof AbortSignal.any !== "function") return;
 		const first = new AbortController();
 		const second = new AbortController();
 		const composed = mergeAbortSignals(first.signal, second.signal);
