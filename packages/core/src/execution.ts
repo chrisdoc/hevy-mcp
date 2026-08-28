@@ -73,8 +73,29 @@ export function mergeAbortSignals(
 	if (active.length === 1) return active[0];
 	// Node 24 and the supported Worker runtimes provide AbortSignal.any. The
 	// native composition owns listener cleanup when the derived signal settles,
-	// avoiding one retained lifecycle/request listener per invocation.
-	return AbortSignal.any(active);
+	// avoiding one retained lifecycle/request listener per invocation. Older
+	// self-hosted Node runtimes (< 20.3) lack it; the TypeError from the missing
+	// static falls through to manual composition instead of failing dispatch.
+	try {
+		return AbortSignal.any(active);
+	} catch (error) {
+		if (!(error instanceof TypeError)) throw error;
+	}
+	const composed = new AbortController();
+	for (const signal of active) {
+		if (signal.aborted) {
+			composed.abort(signal.reason);
+			break;
+		}
+		signal.addEventListener(
+			"abort",
+			() => {
+				composed.abort(signal.reason);
+			},
+			{ once: true },
+		);
+	}
+	return composed.signal;
 }
 
 type ClientMethod = keyof HevyClient;
