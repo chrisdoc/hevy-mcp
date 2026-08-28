@@ -454,12 +454,21 @@ describe("package changeset coverage", () => {
 		);
 		await writeChangeset(fixture.root, []);
 
-		await expect(
-			runCheck(fixture, {
-				changedFiles: ["cloudflare.config.ts"],
-				changesetDiffLines: ["A\t.changeset/new.md"],
-			}),
-		).rejects.toThrow("cloudflare.config.ts -> @hevy-mcp/worker");
+		const failure = await runCheck(fixture, {
+			changedFiles: ["cloudflare.config.ts"],
+			changesetDiffLines: ["A\t.changeset/new.md"],
+		}).catch((error: Error) => error);
+
+		expect(failure).toBeInstanceOf(Error);
+		expect((failure as Error).message).toContain(
+			"Empty Changesets cannot accompany release-triggering changes",
+		);
+		expect((failure as Error).message).toContain(
+			"Release-triggering changes require non-empty bumps",
+		);
+		expect((failure as Error).message).toContain(
+			"cloudflare.config.ts -> @hevy-mcp/worker",
+		);
 	});
 
 	it("accepts a Worker release for production Worker config changes", async () => {
