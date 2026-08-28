@@ -4,6 +4,7 @@ import {
 	bindClientExecution,
 	createExecutionProjection,
 	HEVY_CLIENT_OPTION_INDEXES,
+	mergeAbortSignals,
 } from "./execution.js";
 
 type ClientTestArgument =
@@ -151,5 +152,60 @@ describe("bindClientExecution", () => {
 			commit_state: "not_sent",
 			safe_to_retry: false,
 		});
+	});
+});
+
+describe("mergeAbortSignals", () => {
+	it("returns undefined without signals and passes a single signal through", () => {
+		expect(mergeAbortSignals()).toBeUndefined();
+		const signal = new AbortController().signal;
+		expect(mergeAbortSignals(undefined, signal, undefined)).toBe(signal);
+	});
+
+	it("aborts the composed fallback signal when a source signal aborts", () => {
+		const nativeDescriptor = Object.getOwnPropertyDescriptor(
+			AbortSignal,
+			"any",
+		);
+		// Simulate runtimes without AbortSignal.any (Node < 20.3).
+		Object.defineProperty(AbortSignal, "any", {
+			value: undefined,
+			configurable: true,
+		});
+		try {
+			const first = new AbortController();
+			const second = new AbortController();
+			const reason = new Error("lifecycle closed");
+			const composed = mergeAbortSignals(first.signal, second.signal);
+
+			expect(composed).toBeDefined();
+			expect(composed?.aborted).toBe(false);
+
+			first.abort(reason);
+			expect(composed?.aborted).toBe(true);
+			expect(composed?.reason).toBe(reason);
+
+			const aborted = new AbortController();
+			aborted.abort();
+			expect(mergeAbortSignals(aborted.signal, second.signal)?.aborted).toBe(
+				true,
+			);
+		} finally {
+			if (nativeDescriptor) {
+				Object.defineProperty(AbortSignal, "any", nativeDescriptor);
+			} else {
+				Reflect.deleteProperty(AbortSignal, "any");
+			}
+		}
+	});
+
+	it("composes with the native AbortSignal.any when available", () => {
+		if (!("any" in AbortSignal)) return;
+		const first = new AbortController();
+		const second = new AbortController();
+		const composed = mergeAbortSignals(first.signal, second.signal);
+		expect(composed?.aborted).toBe(false);
+		second.abort();
+		expect(composed?.aborted).toBe(true);
 	});
 });

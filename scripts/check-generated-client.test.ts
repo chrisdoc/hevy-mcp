@@ -334,11 +334,17 @@ describe("generated client closure checks", () => {
 		}
 	});
 
-	it("regenerates the checked client without drift", async () => {
-		const result = await checkGeneratedClient();
+	it.skipIf(process.env.HEVY_UNIT_LANE === "1")(
+		"regenerates the checked client without drift",
+		async () => {
+			// Redundant with `check:generated` (npm run check), which runs the
+			// same full Kubb regeneration; skipped in the fast unit lane.
+			const result = await checkGeneratedClient();
 
-		expect(result.generatedFiles).toBeGreaterThan(0);
-	}, 60_000);
+			expect(result.generatedFiles).toBeGreaterThan(0);
+		},
+		60_000,
+	);
 
 	it("reports a missing named public export", async () => {
 		const fixture = await materializeFixture(

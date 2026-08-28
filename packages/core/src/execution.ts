@@ -27,9 +27,7 @@ export interface StructuredExecutionProjection {
 /** Backward-compatible name for the structured error projection. */
 export type StructuredExecutionError = StructuredExecutionProjection;
 type MutableExecutionProjection = {
-	-readonly [
-		K in keyof StructuredExecutionProjection
-	]?: StructuredExecutionProjection[K];
+	-readonly [K in keyof StructuredExecutionProjection]?: StructuredExecutionProjection[K];
 } & Pick<
 	StructuredExecutionProjection,
 	"outcome" | "phase" | "operation_safety" | "commit_state" | "safe_to_retry"
@@ -73,8 +71,36 @@ export function mergeAbortSignals(
 	if (active.length === 1) return active[0];
 	// Node 24 and the supported Worker runtimes provide AbortSignal.any. The
 	// native composition owns listener cleanup when the derived signal settles,
-	// avoiding one retained lifecycle/request listener per invocation.
-	return AbortSignal.any(active);
+	// avoiding one retained lifecycle/request listener per invocation. Older
+	// self-hosted Node runtimes (< 20.3) lack it; the TypeError from the missing
+	// static falls through to manual composition instead of failing dispatch.
+	try {
+		return AbortSignal.any(active);
+	} catch (error) {
+		if (!(error instanceof TypeError)) throw error;
+	}
+	const composed = new AbortController();
+	const listeners: Array<{
+		signal: AbortSignal;
+		onAbort: () => void;
+	}> = [];
+	const abort = (signal: AbortSignal) => {
+		for (const listener of listeners) {
+			listener.signal.removeEventListener("abort", listener.onAbort);
+		}
+		listeners.length = 0;
+		composed.abort(signal.reason);
+	};
+	for (const signal of active) {
+		if (signal.aborted) {
+			abort(signal);
+			break;
+		}
+		const onAbort = () => abort(signal);
+		listeners.push({ signal, onAbort });
+		signal.addEventListener("abort", onAbort, { once: true });
+	}
+	return composed.signal;
 }
 
 type ClientMethod = keyof HevyClient;

@@ -267,9 +267,7 @@ export function createToolRuntime({
 				observer,
 				execution: (() => {
 					const nested: {
-						-readonly [
-							K in keyof ToolExecutionContext
-						]?: ToolExecutionContext[K];
+						-readonly [K in keyof ToolExecutionContext]?: ToolExecutionContext[K];
 					} = {};
 					if (nextExecution) Object.assign(nested, nextExecution);
 					nested.signal = mergeAbortSignals(

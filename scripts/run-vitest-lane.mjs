@@ -19,6 +19,11 @@ if (!Object.hasOwn(selectors, lane)) {
 }
 
 const args = ["run", ...selectors[lane]];
+if (lane === "unit") {
+	// Lets slow, expensive tests that duplicate the `check` targets skip
+	// themselves in the fast unit lane (see check-generated-client.test.ts).
+	process.env.HEVY_UNIT_LANE = "1";
+}
 if (process.env.HEVY_TEST_REPORT_MODE === "ci") {
 	const nodeMajor = Number.parseInt(process.versions.node, 10);
 	if (lane === "unit") {
