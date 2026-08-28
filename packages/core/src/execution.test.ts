@@ -193,6 +193,8 @@ describe("mergeAbortSignals", () => {
 		} finally {
 			if (nativeDescriptor) {
 				Object.defineProperty(AbortSignal, "any", nativeDescriptor);
+			} else {
+				Reflect.deleteProperty(AbortSignal, "any");
 			}
 		}
 	});

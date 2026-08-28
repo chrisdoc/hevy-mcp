@@ -82,18 +82,25 @@ export function mergeAbortSignals(
 		if (!(error instanceof TypeError)) throw error;
 	}
 	const composed = new AbortController();
+	const listeners: Array<{
+		signal: AbortSignal;
+		onAbort: () => void;
+	}> = [];
+	const abort = (signal: AbortSignal) => {
+		for (const listener of listeners) {
+			listener.signal.removeEventListener("abort", listener.onAbort);
+		}
+		listeners.length = 0;
+		composed.abort(signal.reason);
+	};
 	for (const signal of active) {
 		if (signal.aborted) {
-			composed.abort(signal.reason);
+			abort(signal);
 			break;
 		}
-		signal.addEventListener(
-			"abort",
-			() => {
-				composed.abort(signal.reason);
-			},
-			{ once: true },
-		);
+		const onAbort = () => abort(signal);
+		listeners.push({ signal, onAbort });
+		signal.addEventListener("abort", onAbort, { once: true });
 	}
 	return composed.signal;
 }

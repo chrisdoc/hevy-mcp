@@ -228,4 +228,42 @@ describe("createToolRuntime observation scope", () => {
 			deadline: 222,
 		});
 	});
+
+	it("cleans up fallback listeners across repeated execution scopes", () => {
+		const nativeDescriptor = Object.getOwnPropertyDescriptor(
+			AbortSignal,
+			"any",
+		);
+		Object.defineProperty(AbortSignal, "any", {
+			value: undefined,
+			configurable: true,
+		});
+		try {
+			const lifecycle = new AbortController();
+			const removeEventListener = vi.spyOn(
+				lifecycle.signal,
+				"removeEventListener",
+			);
+			const runtime = createToolRuntime({
+				client: null,
+				catalog,
+				lifecycleSignal: lifecycle.signal,
+			});
+
+			for (let index = 0; index < 3; index += 1) {
+				const request = new AbortController();
+				const scoped = runtime.forExecution({ signal: request.signal });
+				request.abort();
+				expect(scoped.execution?.signal?.aborted).toBe(true);
+			}
+
+			expect(removeEventListener).toHaveBeenCalledTimes(3);
+		} finally {
+			if (nativeDescriptor) {
+				Object.defineProperty(AbortSignal, "any", nativeDescriptor);
+			} else {
+				Reflect.deleteProperty(AbortSignal, "any");
+			}
+		}
+	});
 });
