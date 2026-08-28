@@ -18,7 +18,7 @@ type ClientTestArgument =
 				| boolean
 				| null
 				| undefined;
-	  };
+		};
 type ClientMethodArguments = {
 	[K in keyof HevyClient]: ClientTestArgument[];
 };
@@ -200,7 +200,7 @@ describe("mergeAbortSignals", () => {
 	});
 
 	it("composes with the native AbortSignal.any when available", () => {
-		if (typeof AbortSignal.any !== "function") return;
+		if (!("any" in AbortSignal)) return;
 		const first = new AbortController();
 		const second = new AbortController();
 		const composed = mergeAbortSignals(first.signal, second.signal);
