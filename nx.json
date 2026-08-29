@@ -5,7 +5,7 @@
 			"{workspaceRoot}/nx.json",
 			"{workspaceRoot}/project.json",
 			"{workspaceRoot}/package.json",
-			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/pnpm-lock.yaml",
 			"{workspaceRoot}/tsconfig*.json",
 			"{workspaceRoot}/vitest*.config.*",
 			"{workspaceRoot}/.oxlintrc.json",
@@ -16,7 +16,7 @@
 			"{workspaceRoot}/nx.json",
 			"{workspaceRoot}/project.json",
 			"{workspaceRoot}/package.json",
-			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/pnpm-lock.yaml",
 			"{workspaceRoot}/packages/*/package.json",
 			"{workspaceRoot}/.github/workflows/build-and-test.yml",
 			"{workspaceRoot}/.github/workflows/release.yml",
@@ -30,7 +30,7 @@
 		],
 		"packageManifestInputs": [
 			"{workspaceRoot}/package.json",
-			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/pnpm-lock.yaml",
 			"{workspaceRoot}/packages/*/package.json"
 		],
 		"packageConfigs": [
@@ -47,7 +47,7 @@
 			"{projectRoot}/kubb.config.ts"
 		],
 		"projectSharedConfigs": [
-			"{workspaceRoot}/package-lock.json",
+			"{workspaceRoot}/pnpm-lock.yaml",
 			"{workspaceRoot}/tsconfig*.json"
 		],
 		"projectTypeCheckInputs": [
@@ -177,7 +177,7 @@
 			"{workspaceRoot}/openapi-spec.json",
 			"{workspaceRoot}/packages/hevy-client/kubb.config.ts",
 			"{workspaceRoot}/packages/hevy-client/package.json",
-			"{workspaceRoot}/package-lock.json"
+			"{workspaceRoot}/pnpm-lock.yaml"
 		],
 		"boundaryInputs": [
 			"runtimeSources",

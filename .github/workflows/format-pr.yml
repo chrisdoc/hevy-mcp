@@ -94,7 +94,7 @@ jobs:
           test "$(git rev-parse "refs/remotes/origin/${PR_HEAD_REF}")" = "$PR_HEAD_SHA"
           git reset --hard "$PR_HEAD_SHA"
 
-      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 12.0.0
 
@@ -105,7 +105,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies without lifecycle scripts
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run formatter
         run: pnpm run check:fix

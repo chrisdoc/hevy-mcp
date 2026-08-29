@@ -41,7 +41,7 @@ try {
 		throw new Error("CLI package repository metadata missing");
 	if (manifest.dependencies && Object.keys(manifest.dependencies).length)
 		throw new Error("CLI has runtime dependencies");
-	if (manifest.scripts?.prepack !== "npm run build")
+	if (manifest.scripts?.prepack !== "pnpm run build")
 		throw new Error("CLI package does not build before packing");
 
 	const consumer = join(dir, "consumer");

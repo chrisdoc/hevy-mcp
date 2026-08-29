@@ -12,8 +12,8 @@ The only enforced policy is the total catalog budget:
 Run the measurement locally with:
 
 ```sh
-ppnpm run measure:tokens
-ppnpm run measure:tokens -- --output token-cost.json --enforce-budget
+pnpm run measure:tokens
+pnpm run measure:tokens -- --output token-cost.json --enforce-budget
 ```
 
 The JSON report includes the total, per-tool totals, and component counts so a

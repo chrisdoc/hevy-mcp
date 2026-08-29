@@ -146,7 +146,7 @@ When adding a new tool or handler:
 
 - [ ] Import the response type from `@hevy-mcp/hevy-client/types`
 - [ ] Add explicit type annotation: `const data: ResponseType = await hevyClient.method()`
-- [ ] Verify type checking passes: `ppnpm run check:types`
+- [ ] Verify type checking passes: `pnpm run check:types`
 - [ ] Verify tests pass: `npx vitest run --exclude tests/integration/**`
 
 ## Troubleshooting
@@ -177,11 +177,11 @@ If the hevyClient method returns a different type than expected:
 
 ### When Regenerating the API Client
 
-If you need to refresh the checked-in spec first, run `ppnpm run openapi`.
+If you need to refresh the checked-in spec first, run `pnpm run openapi`.
 
-After running `ppnpm run build:client`:
+After running `pnpm run build:client`:
 
-1. Run `ppnpm run check:types` to catch any breaking changes
+1. Run `pnpm run check:types` to catch any breaking changes
 2. Update type annotations in tool handlers if needed
 3. Run tests to verify behavior: `npx vitest run --exclude tests/integration/**`
 

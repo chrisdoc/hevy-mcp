@@ -134,7 +134,7 @@ The private workspaces (`core`, `hevy-client`, `operations`, `worker`) are still
 
 ## Changeset Cascade
 
-Because the private packages are bundled into the published adapters, a change in a shared package must version-bump every downstream consumer. This "cascade" is enforced by the `package-changesets` CI lane (`ppnpm run check:changeset`), which uses the `release-cascade` comparison from `repository/validation-lanes.json` as its machine-readable source of truth [[16]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L259-L273).
+Because the private packages are bundled into the published adapters, a change in a shared package must version-bump every downstream consumer. This "cascade" is enforced by the `package-changesets` CI lane (`pnpm run check:changeset`), which uses the `release-cascade` comparison from `repository/validation-lanes.json` as its machine-readable source of truth [[16]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L259-L273).
 
 ### Cascade rules
 
@@ -187,7 +187,7 @@ The full matrix [[17]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-34
 
 ### How it is enforced
 
-CI runs `ppnpm run check:changeset` (`npx changeset status --since=origin/<base_branch>`) as a blocking gate on every pull request [[19]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6). The `package-changesets` lane checks that every changed workspace directory has a changeset file that names that package, then applies the transitive composition matrix. The `release-cascade` comparison label in `repository/validation-lanes.json` is the machine-readable definition driving this check [[20]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L259-L287).
+CI runs `pnpm run check:changeset` (`npx changeset status --since=origin/<base_branch>`) as a blocking gate on every pull request [[19]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6). The `package-changesets` lane checks that every changed workspace directory has a changeset file that names that package, then applies the transitive composition matrix. The `release-cascade` comparison label in `repository/validation-lanes.json` is the machine-readable definition driving this check [[20]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L259-L287).
 
 > [!IMPORTANT]
 > The Conventional Commit type (`chore:`, `docs:`, etc.) does **not** determine changeset eligibility. What matters is whether the change touches a file under `packages/*`, modifies runtime-visible behaviour, changes a workspace dependency, or updates an explicit release trigger like `cloudflare.config.ts` [[21]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
@@ -199,8 +199,8 @@ CI runs `ppnpm run check:changeset` (`npx changeset status --since=origin/<base_
 The Hevy API client, TypeScript types, and Zod schemas under `packages/hevy-client/src/generated/` are produced by [Kubb](https://kubb.dev/) from the Hevy OpenAPI specification [[22]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae). The generation pipeline is:
 
 ```bash
-ppnpm run openapi       # fetch upstream Hevy spec → openapi-spec.json
-ppnpm run build:client  # run Kubb → packages/hevy-client/src/generated/
+pnpm run openapi       # fetch upstream Hevy spec → openapi-spec.json
+pnpm run build:client  # run Kubb → packages/hevy-client/src/generated/
 ```
 
 > [!WARNING]
@@ -262,7 +262,7 @@ server.registerTool(
 The adapter is **fail-closed**: if the private fields are absent (e.g., after an SDK refactor), instrumentation is silently skipped and the original transport is returned unchanged [[30]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/packages/node/src/utils/stdio-observability.ts#L86-L90).
 
 > [!WARNING]
-> This is a deliberate architectural tradeoff: private SDK field access provides critical stdio observability that cannot be obtained otherwise, but it means SDK upgrades need careful testing. **Always re-run the complete stdio observability test suite (`ppnpm run test:stdio`) after every MCP TypeScript SDK package upgrade** and inspect the SDK compatibility assumptions before merging [[31]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae).
+> This is a deliberate architectural tradeoff: private SDK field access provides critical stdio observability that cannot be obtained otherwise, but it means SDK upgrades need careful testing. **Always re-run the complete stdio observability test suite (`pnpm run test:stdio`) after every MCP TypeScript SDK package upgrade** and inspect the SDK compatibility assumptions before merging [[31]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae).
 
 ## Related Documentation
 

@@ -55,15 +55,15 @@ Git hooks enabled. Fix hook failures instead of bypassing them.
 
 ## Runtime and package manager
 
-Use mise for Node.js and npm. The repository pins Node.js 24 and pnpm 12 in
+Use mise for Node.js and pnpm. The repository pins Node.js 24 and pnpm 12 in
 `mise.toml`; install the pinned tools before running development commands:
 
 ```bash
 mise install
 ```
 
-Run Node.js and npm commands through mise so they do not fall back to system
-installations. Use `mise exec -- npm ...`, `mise exec -- npx ...`, and
+Run Node.js and pnpm commands through mise so they do not fall back to system
+installations. Use `mise exec -- pnpm ...`, `mise exec -- npx ...`, and
 `mise exec -- node ...` in setup, validation, and troubleshooting commands.
 
 Git hooks are managed by hk. After `mise install`, enable them once per clone

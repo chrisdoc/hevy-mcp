@@ -25,23 +25,23 @@ git clone https://github.com/chrisdoc/hevy-mcp.git
 cd hevy-mcp
 mise install
 mise exec -- node --version
-mise exec -- ppnpm install
-mise exec -- ppnpm run build
+mise exec -- pnpm install
+mise exec -- pnpm run build
 ```
 
 > [!TIP]
-> `mise install` installs the exact Node.js and npm versions from `mise.toml` (currently Node 24 and ppnpm 12). CI tests against Node 24 and 26. [[3]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+> `mise install` installs the exact Node.js and npm versions from `mise.toml` (currently Node 24 and pnpm 12). CI tests against Node 24 and 26. [[3]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ### 2. Verify everything works
 
 ```bash
-ppnpm run test:unit
+pnpm run test:unit
 ```
 
 You should see all unit tests pass in about 1–2 seconds. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661)
 
 > [!NOTE]
-> **Integration tests require a Hevy API key** and will fail intentionally without one. `ppnpm run test:unit` is fully deterministic and works without any credentials — it's your go-to command during development. If you need to run integration tests later, copy `.env.sample` to `.env` and add your `HEVY_API_KEY`. [[4]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+> **Integration tests require a Hevy API key** and will fail intentionally without one. `pnpm run test:unit` is fully deterministic and works without any credentials — it's your go-to command during development. If you need to run integration tests later, copy `.env.sample` to `.env` and add your `HEVY_API_KEY`. [[4]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ### 3. Set up Git hooks
 
@@ -114,8 +114,8 @@ The repository has 20+ test lanes. Here's a practical grouping so you know exact
 ### Daily development — always run these
 
 ```bash
-ppnpm run test:unit      # Fast unit tests, no credentials needed (~1-2 seconds)
-ppnpm run test:mcp       # Mocked MCP integration tests, no credentials needed
+pnpm run test:unit      # Fast unit tests, no credentials needed (~1-2 seconds)
+pnpm run test:mcp       # Mocked MCP integration tests, no credentials needed
 ```
 
 These two lanes are deterministic and form the core feedback loop during development. [[6]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md#L60-L75)
@@ -123,28 +123,28 @@ These two lanes are deterministic and form the core feedback loop during develop
 ### Before opening a PR — run all of these
 
 ```bash
-ppnpm run test:pr           # Full deterministic PR baseline (runs unit, mocked MCP, contract, stdio, worker, worker-http, pack, and more)
-ppnpm run test:performance  # Performance checks — currently informational, not a blocking gate
-ppnpm run check:changeset   # Verify your changeset file is correct
+pnpm run test:pr           # Full deterministic PR baseline (runs unit, mocked MCP, contract, stdio, worker, worker-http, pack, and more)
+pnpm run test:performance  # Performance checks — currently informational, not a blocking gate
+pnpm run check:changeset   # Verify your changeset file is correct
 ```
 
 > [!TIP]
-> `ppnpm run test:pr` is the single most important pre-PR command. It runs 10 deterministic lanes in one shot and is what CI checks. `ppnpm run test:performance` writes a report to `test-results/performance/summary.json` — timing targets are informational today, but correctness failures are blocking. [[7]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md#L79-L86) [[8]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md#L158-L175)
+> `pnpm run test:pr` is the single most important pre-PR command. It runs 10 deterministic lanes in one shot and is what CI checks. `pnpm run test:performance` writes a report to `test-results/performance/summary.json` — timing targets are informational today, but correctness failures are blocking. [[7]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md#L79-L86) [[8]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md#L158-L175)
 
 ### Situational — run when relevant
 
-| Command                      | When to run                                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------------------ |
-| `ppnpm run test:stdio`       | After changes to process lifecycle, stdio transport, diagnostics, or MCP TypeScript SDK upgrades |
-| `ppnpm run test:pack`        | After changes to package entry points, binary mapping, or published files                        |
-| `ppnpm run test:live`        | Only with a valid `HEVY_API_KEY` — runs a read-only canary against the real Hevy API             |
-| `ppnpm run test:worker`      | After changes to the Cloudflare Worker                                                           |
-| `ppnpm run test:worker-http` | After changes to the Cloudflare Worker HTTP integration                                          |
+| Command                     | When to run                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `pnpm run test:stdio`       | After changes to process lifecycle, stdio transport, diagnostics, or MCP TypeScript SDK upgrades |
+| `pnpm run test:pack`        | After changes to package entry points, binary mapping, or published files                        |
+| `pnpm run test:live`        | Only with a valid `HEVY_API_KEY` — runs a read-only canary against the real Hevy API             |
+| `pnpm run test:worker`      | After changes to the Cloudflare Worker                                                           |
+| `pnpm run test:worker-http` | After changes to the Cloudflare Worker HTTP integration                                          |
 
 [[6]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md#L60-L75) [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 > [!IMPORTANT]
-> `ppnpm run test:live` **does not skip gracefully** without an API key — it exits with an error before Vitest even starts. Use `ppnpm run test:unit` for deterministic testing. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+> `pnpm run test:live` **does not skip gracefully** without an API key — it exits with an error before Vitest even starts. Use `pnpm run test:unit` for deterministic testing. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 See [test-lanes.md](./test-lanes.md) for the complete reference including all lane IDs, runtime ownership, and credential requirements.
 
@@ -208,13 +208,13 @@ The Hevy API client under `packages/hevy-client/src/generated/` is **fully gener
 1. **Refresh the OpenAPI spec**:
 
    ```bash
-   ppnpm run openapi
+   pnpm run openapi
    ```
 
 2. **Regenerate the client**:
 
    ```bash
-   ppnpm run build:client
+   pnpm run build:client
    ```
 
 3. **Review the generated diff** carefully — look for removed or renamed types that affect existing tools
@@ -224,7 +224,7 @@ The Hevy API client under `packages/hevy-client/src/generated/` is **fully gener
 5. **Create a changeset** bumping `@hevy-mcp/hevy-client`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`
 
 > [!NOTE]
-> `ppnpm run openapi` fetches the upstream Hevy spec and will fail with `ENOTFOUND api.hevyapp.com` in sandboxed environments — this is expected. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661) TypeScript errors inside the generated directory are also expected and should not be patched by hand; fixes belong in `scripts/openapi-spec.js`. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+> `pnpm run openapi` fetches the upstream Hevy spec and will fail with `ENOTFOUND api.hevyapp.com` in sandboxed environments — this is expected. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661) TypeScript errors inside the generated directory are also expected and should not be patched by hand; fixes belong in `scripts/openapi-spec.js`. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ---
 
@@ -237,20 +237,20 @@ Changes to `packages/worker/` affect only the hosted Cloudflare deployment. [[1]
 2. **Test locally** with Wrangler dev mode:
 
    ```bash
-   ppnpm run worker:dev
+   pnpm run worker:dev
    ```
 
 3. **Validate the bundle** without deploying:
 
    ```bash
-   ppnpm run worker:dry-run
+   pnpm run worker:dry-run
    ```
 
 4. **Run Worker tests**:
 
    ```bash
-   ppnpm run test:worker
-   ppnpm run test:worker-http
+   pnpm run test:worker
+   pnpm run test:worker-http
    ```
 
 5. **Create a changeset** bumping `@hevy-mcp/worker` only
@@ -267,7 +267,7 @@ Changes to `packages/worker/` affect only the hosted Cloudflare deployment. [[1]
 2. **Run formatting and linting**:
 
    ```bash
-   ppnpm run check
+   pnpm run check
    ```
 
 3. **Create an empty changeset**:
@@ -318,7 +318,7 @@ Use this for pure documentation, CI, or repository tooling changes that don't af
 ### Validating your changeset
 
 ```bash
-ppnpm run check:changeset
+pnpm run check:changeset
 ```
 
 Run this before committing. CI will also run it and fail the PR if no valid changeset is present. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661)
@@ -379,32 +379,32 @@ Before opening your pull request, verify all of the following pass locally:
 1. **Formatting and linting:**
 
    ```bash
-   ppnpm run check
+   pnpm run check
    ```
 
 2. **TypeScript type checking:**
 
    ```bash
-   ppnpm run check:types
+   pnpm run check:types
    ```
 
 3. **Build:**
 
    ```bash
-   ppnpm run build
+   pnpm run build
    ```
 
 4. **Full PR test baseline:**
 
    ```bash
-   ppnpm run test:pr
-   ppnpm run test:performance
+   pnpm run test:pr
+   pnpm run test:performance
    ```
 
 5. **Changeset validation:**
 
    ```bash
-   ppnpm run check:changeset
+   pnpm run check:changeset
    ```
 
 [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
@@ -419,13 +419,13 @@ Before opening your pull request, verify all of the following pass locally:
 Run the formatter/linter to identify problems:
 
 ```bash
-ppnpm run check
+pnpm run check
 ```
 
 For automated fixes, use:
 
 ```bash
-ppnpm run check:fix
+pnpm run check:fix
 ```
 
 Review the diff before staging — `check:fix` modifies files but does not stage them. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
@@ -440,16 +440,16 @@ This is **expected**. The generated client directory contains auto-generated Typ
 
 ### "Integration tests fail without an API key"
 
-This is **by design**. `ppnpm run test:live` exits with an error before Vitest even starts when `HEVY_API_KEY` is absent. For deterministic testing during development, use: [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+This is **by design**. `pnpm run test:live` exits with an error before Vitest even starts when `HEVY_API_KEY` is absent. For deterministic testing during development, use: [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ```bash
-ppnpm run test:unit    # unit tests only
-ppnpm run test:mcp     # mocked MCP integration tests
+pnpm run test:unit    # unit tests only
+pnpm run test:mcp     # mocked MCP integration tests
 ```
 
 ---
 
-### "`ppnpm run openapi` fails with `ENOTFOUND`"
+### "`pnpm run openapi` fails with `ENOTFOUND`"
 
 This is **expected in sandboxed environments**. The command fetches the live Hevy OpenAPI spec from `api.hevyapp.com` and cannot reach it without network access. If you're working on a client regeneration locally, make sure you have outbound network access before running this command. [[2]](https://app.dosu.dev/documents/8d8e965a-36c3-4f95-b2d6-3779bce46661)
 
@@ -488,7 +488,7 @@ See [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) for the complete pattern and 
 | [CONTRIBUTING.md](../CONTRIBUTING.md)              | Full contributor reference: prerequisites, local development, all test lanes, Cloudflare Worker development, changeset rules, and PR requirements |
 | [test-lanes.md](./test-lanes.md)                   | Complete test lane reference: all lane IDs, runtime ownership, credential requirements, aggregate definitions, and performance baseline details   |
 | [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md)     | Type safety patterns: `InferToolParams` usage, generated API response types, `hevyClient` annotation rules, and troubleshooting type errors       |
-| [token-cost-tracking.md](./token-cost-tracking.md) | Token measurement guide: when and how to run `ppnpm run measure:tokens` after changing tool descriptions or schemas                               |
+| [token-cost-tracking.md](./token-cost-tracking.md) | Token measurement guide: when and how to run `pnpm run measure:tokens` after changing tool descriptions or schemas                                |
 
 [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae) [[5]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/test-lanes.md) [[12]](https://github.com/chrisdoc/hevy-mcp/blob/01d1e0ea12f26ff22f8967f52b5577fae7fc03b9/docs/TYPE_SAFETY_GUIDE.md)
 
