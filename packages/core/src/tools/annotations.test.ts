@@ -1,4 +1,5 @@
 import type { ToolAnnotations } from "@modelcontextprotocol/server";
+import { ZodObject } from "zod";
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
@@ -148,7 +149,7 @@ describe("tool annotations", () => {
 	it("every tool has a title and closed-world hint", () => {
 		for (const name of [...READ_ONLY_TOOLS, ...CREATE_TOOLS, ...UPDATE_TOOLS]) {
 			const annotations = getAnnotations(spies, name);
-			expect(annotations.title, `${name} title`).toBeTruthy();
+			expect(annotations.title, `${name} title`).toMatch(/\S/);
 			expect(annotations.openWorldHint, `${name} openWorldHint`).toBe(false);
 		}
 	});
@@ -190,14 +191,16 @@ describe("tool annotations", () => {
 	});
 
 	it.each(READ_ONLY_TOOLS)(
-		"%s uses registerTool with an output schema",
+		"%s uses registerTool with an object output schema",
 		(name) => {
 			const match = spies.registerTool.mock.calls.find(
 				([toolName]) => toolName === name,
 			);
 			expect(match, `${name} registerTool call`).toBeTruthy();
 			const config = match?.[1] as { outputSchema?: unknown } | undefined;
-			expect(config?.outputSchema, `${name} outputSchema`).toBeTruthy();
+			expect(config?.outputSchema, `${name} outputSchema`).toBeInstanceOf(
+				ZodObject,
+			);
 		},
 	);
 
