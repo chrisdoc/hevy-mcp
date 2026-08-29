@@ -12,7 +12,7 @@ import {
 import { isString } from "./runtime-value-predicates.mjs";
 
 const execFileAsync = promisify(execFile);
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * Evaluate package-changeset coverage for a set of changed files.
@@ -42,14 +42,10 @@ export async function packageChangesetCoverage({
 
 	async function readPackageName(packagePath) {
 		const manifestPath = `${packagePath}/package.json`;
-		let contents;
-
-		try {
-			contents = await readFile(resolve(root, manifestPath), "utf8");
-		} catch {
-			contents = await readManifestFromBase(packagePath);
-			if (contents === undefined) return undefined;
-		}
+		const contents = await readFile(resolve(root, manifestPath), "utf8").catch(
+			() => readManifestFromBase(packagePath),
+		);
+		if (contents === undefined) return undefined;
 
 		try {
 			const packageJson = JSON.parse(contents);
@@ -95,12 +91,10 @@ export async function packageChangesetCoverage({
 	const emptyChangesetFiles = [];
 	let changedChangesetCount = 0;
 	for (const file of changedChangesetFiles) {
-		let contents;
-		try {
-			contents = await readFile(resolve(root, file), "utf8");
-		} catch {
-			continue;
-		}
+		const contents = await readFile(resolve(root, file), "utf8").catch(
+			() => undefined,
+		);
+		if (contents === undefined) continue;
 		changedChangesetCount += 1;
 		const fileReleases = new Set();
 		const frontmatter = contents.match(/^---\s*\n([\s\S]*?)\n---/);
@@ -143,7 +137,7 @@ export async function packageChangesetCoverage({
 	}
 
 	function getTransitiveConsumers(packageName) {
-		let workspace;
+		let workspace = null;
 		try {
 			workspace = workspaceByName(topology, packageName);
 		} catch {
@@ -165,14 +159,14 @@ export async function packageChangesetCoverage({
 				(consumer) => !changesetReleases.has(consumer),
 			),
 		}))
-		.filter(({ missing }) => missing.length > 0);
+		.filter(({ missing: missingConsumers }) => missingConsumers.length > 0);
 
 	if (incompleteCascades.length > 0) {
 		throw new Error(
 			`Bundled release cascades must include every transitive shipped consumer with at least a patch bump:\n${incompleteCascades
 				.map(
-					({ packageName, missing }) =>
-						`- ${packageName} -> missing ${missing.join(", ")}`,
+					({ packageName, missing: missingConsumers }) =>
+						`- ${packageName} -> missing ${missingConsumers.join(", ")}`,
 				)
 				.join("\n")}`,
 		);
@@ -215,7 +209,7 @@ if (isMain) {
 	const { stdout } = await execFileAsync(
 		"git",
 		["diff", "--name-only", "--diff-filter=ACMRD", `${since}...HEAD`],
-		{ cwd: root },
+		{ cwd: repositoryRoot },
 	);
 	const changedFiles = stdout.trim().split("\n").filter(Boolean);
 	const readManifestFromBase = async (packagePath) => {
@@ -223,7 +217,7 @@ if (isMain) {
 			const result = await execFileAsync(
 				"git",
 				["show", `${since}:${packagePath}/package.json`],
-				{ cwd: root },
+				{ cwd: repositoryRoot },
 			);
 			return result.stdout;
 		} catch {
@@ -240,18 +234,18 @@ if (isMain) {
 			"--",
 			".changeset",
 		],
-		{ cwd: root },
+		{ cwd: repositoryRoot },
 	);
 
 	try {
 		await packageChangesetCoverage({
-			root,
+			root: repositoryRoot,
 			changedFiles,
 			readManifestFromBase,
 			changesetDiffLines: changesetDiff.trim().split("\n").filter(Boolean),
 		});
 	} catch (error) {
 		console.error(error.message);
-		process.exit(1);
+		process.exitCode = 1;
 	}
 }
