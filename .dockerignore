@@ -8,7 +8,8 @@
 
 # Standalone build inputs.
 !package.json
-!package-lock.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
 !tsconfig.base.json
 !tsconfig.json
 !packages/
