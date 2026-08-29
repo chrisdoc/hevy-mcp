@@ -1,42 +1,11 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { packageChangesetCoverage } from "./check-package-changesets.mjs";
 
-const execFileAsync = promisify(execFile);
-const scriptPath = fileURLToPath(
-	new URL("./check-package-changesets.mjs", import.meta.url).href,
-);
 const fixtureDirectories = new Set<string>();
-const fixtureGitIdentity = {
-	GIT_AUTHOR_NAME: "Test User",
-	GIT_AUTHOR_EMAIL: "test@example.com",
-	GIT_COMMITTER_NAME: "Test User",
-	GIT_COMMITTER_EMAIL: "test@example.com",
-} as const;
-
-function fixtureGitEnvironment(root: string): NodeJS.ProcessEnv {
-	const environment = Object.fromEntries(
-		Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
-	);
-
-	return {
-		...environment,
-		GIT_CONFIG_GLOBAL: join(root, ".gitconfig"),
-		GIT_CONFIG_NOSYSTEM: "1",
-		...fixtureGitIdentity,
-	};
-}
-
-async function git(root: string, ...args: string[]) {
-	return execFileAsync("git", args, {
-		cwd: root,
-		env: fixtureGitEnvironment(root),
-	});
-}
+const repositoryRoot = resolve(import.meta.dirname, "..");
 
 afterEach(async () => {
 	await Promise.all(
@@ -53,28 +22,29 @@ async function writeFixtureFile(root: string, path: string, contents: string) {
 	await writeFile(target, contents);
 }
 
-async function commitFixture(root: string) {
-	await git(root, "add", "--all");
-	await git(root, "commit", "--quiet", "-m", "test: change fixture");
-}
-
-async function writeChangeset(root: string, packages: string[]) {
-	await writeChangesetWithBumps(
-		root,
-		Object.fromEntries(packages.map((packageName) => [packageName, "patch"])),
-	);
-}
-
-async function writeChangesetWithBumps(
-	root: string,
+function changesetFrontmatter(
 	releases: Record<string, "major" | "minor" | "patch">,
+	summary: string,
+): string {
+	return `---\n${Object.entries(releases)
+		.map(([packageName, bump]) => `"${packageName}": ${bump}`)
+		.join("\n")}\n---\n\n${summary}\n`;
+}
+
+async function writeChangeset(
+	root: string,
+	packages: string[],
+	bumps: Record<string, "major" | "minor" | "patch"> = {},
 ) {
+	const releases: Record<string, "major" | "minor" | "patch"> = {};
+	for (const packageName of packages) {
+		releases[packageName] = bumps[packageName] ?? "patch";
+	}
+	Object.assign(releases, bumps);
 	await writeFixtureFile(
 		root,
 		".changeset/new.md",
-		`---\n${Object.entries(releases)
-			.map(([packageName, bump]) => `"${packageName}": ${bump}`)
-			.join("\n")}\n---\n\nRuntime package release.\n`,
+		changesetFrontmatter(releases, "Runtime package release."),
 	);
 }
 
@@ -90,281 +60,252 @@ async function createFixture(
 	const packageName = options.packageName ?? "@example/pkg";
 	const packagePath = options.packagePath ?? "packages/example";
 
-	await writeFixtureFile(
-		root,
-		"scripts/check-package-changesets.mjs",
-		await readFile(scriptPath, "utf8"),
-	);
-	for (const relativePath of [
-		"scripts/repository-control-plane.mjs",
-		"scripts/control-plane-models.mjs",
-		"scripts/control-plane-validation.mjs",
-		"scripts/runtime-value-predicates.mjs",
-		"repository/topology.json",
-		"repository/artifact-provenance.json",
-		"repository/validation-lanes.json",
-	]) {
-		await writeFixtureFile(
-			root,
-			relativePath,
-			await readFile(
-				join(fileURLToPath(new URL("..", import.meta.url).href), relativePath),
-				"utf8",
-			),
-		);
-	}
-	await writeFixtureFile(
-		root,
+	// Base revision state, used for the deleted-manifest fallback.
+	const base = new Map<string, string>();
+	const put = async (path: string, contents: string) => {
+		base.set(path, contents);
+		await writeFixtureFile(root, path, contents);
+	};
+
+	await put(
 		`${packagePath}/package.json`,
 		JSON.stringify({ name: packageName }) + "\n",
 	);
-	await writeFixtureFile(
-		root,
-		`${packagePath}/src/index.js`,
-		'export const value = "base";\n',
+	await put(`${packagePath}/src/index.js`, 'export const value = "base";\n');
+	await put(
+		"repository/topology.json",
+		await readFile(join(repositoryRoot, "repository/topology.json"), "utf8"),
 	);
-	await writeFixtureFile(root, ".changeset/README.md", "# Changesets\n");
-	await writeFixtureFile(
-		root,
-		"cloudflare.config.ts",
-		'export const workerName = "base";\n',
-	);
+	await put(".changeset/README.md", "# Changesets\n");
 	if (options.existingChangeset) {
-		await writeFixtureFile(
-			root,
+		await put(
 			".changeset/existing.md",
 			'---\n"@example/pkg": patch\n---\n\nExisting release note.\n',
 		);
 	}
 
-	await git(root, "init", "--quiet");
-	await git(root, "add", ".");
-	await git(root, "commit", "--quiet", "-m", "test: create fixture");
-	const { stdout } = await git(root, "rev-parse", "HEAD");
-
-	return { base: stdout.trim(), root };
+	return {
+		root,
+		packageName,
+		packagePath,
+		readManifestFromBase: (changedPackagePath: string) =>
+			base.get(`${changedPackagePath}/package.json`),
+	};
 }
 
-async function runCheck(root: string, base: string) {
-	try {
-		const result = await execFileAsync(
-			process.execPath,
-			[join(root, "scripts/check-package-changesets.mjs"), "--since", base],
-			{ cwd: root, env: fixtureGitEnvironment(root) },
-		);
-		return {
-			exitCode: 0,
-			stderr: result.stderr,
-			stdout: result.stdout,
-		};
-	} catch (error) {
-		const failure = error as {
-			code: number;
-			stderr: string;
-			stdout: string;
-		};
-		return {
-			exitCode: failure.code,
-			stderr: failure.stderr,
-			stdout: failure.stdout,
-		};
-	}
+function runCheck(
+	fixture: Awaited<ReturnType<typeof createFixture>>,
+	options: {
+		changedFiles?: string[];
+		changesetDiffLines?: string[];
+	} = {},
+) {
+	return packageChangesetCoverage({
+		root: fixture.root,
+		changedFiles: options.changedFiles ?? [],
+		changesetDiffLines: options.changesetDiffLines ?? [],
+		readManifestFromBase: fixture.readManifestFromBase,
+	});
 }
 
 describe("package changeset coverage", () => {
-	it("does not persist fixture commit identity in Git config", async () => {
-		const { root } = await createFixture();
-
-		await expect(
-			git(root, "config", "--local", "--get", "user.name"),
-		).rejects.toMatchObject({ code: 1 });
-
-		await expect(
-			git(root, "config", "--global", "--get", "user.name"),
-		).rejects.toMatchObject({ code: 1 });
-	});
 	it("does not let a base-branch changeset cover a PR package change", async () => {
-		const { base, root } = await createFixture({ existingChangeset: true });
+		const fixture = await createFixture({ existingChangeset: true });
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/example/src/index.js",
 			'export const value = "changed";\n',
 		);
-		await commitFixture(root);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain(
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/example/src/index.js"],
+			}),
+		).rejects.toThrow(
 			"Changed workspace packages need a changeset added or modified by this branch",
 		);
 	});
 
 	it("does not let a rename-only changeset cover a PR package change", async () => {
-		const { base, root } = await createFixture({ existingChangeset: true });
+		const fixture = await createFixture({ existingChangeset: true });
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/example/src/index.js",
 			'export const value = "changed";\n',
 		);
-		await git(root, "mv", ".changeset/existing.md", ".changeset/renamed.md");
-		await commitFixture(root);
+		await rm(join(fixture.root, ".changeset/existing.md"));
+		await writeFixtureFile(
+			fixture.root,
+			".changeset/renamed.md",
+			'---\n"@example/pkg": patch\n---\n\nExisting release note.\n',
+		);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain(
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/example/src/index.js"],
+				changesetDiffLines: [
+					"R100\t.changeset/existing.md\t.changeset/renamed.md",
+				],
+			}),
+		).rejects.toThrow(
 			"Changed workspace packages need a changeset added or modified by this branch",
 		);
 	});
 
 	it("rejects an empty changeset for a workspace package change", async () => {
-		const { base, root } = await createFixture();
+		const fixture = await createFixture();
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/example/src/index.js",
 			'export const value = "changed";\n',
 		);
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			".changeset/empty.md",
 			"---\n---\n\nNo release.\n",
 		);
-		await commitFixture(root);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain(
-			"Empty Changesets cannot accompany release-triggering changes",
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/example/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/empty.md"],
+			}),
+		).rejects.toThrow(
+			/Empty Changesets cannot accompany release-triggering changes[\s\S]*\.changeset\/empty\.md/,
 		);
-		expect(result.stderr).toContain(".changeset/empty.md");
 	});
 
 	it("rejects an empty changeset alongside a matching bump", async () => {
-		const { base, root } = await createFixture();
+		const fixture = await createFixture();
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/example/src/index.js",
 			'export const value = "changed";\n',
 		);
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			".changeset/bump.md",
 			'---\n"@example/pkg": patch\n---\n\nRelease change.\n',
 		);
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			".changeset/empty.md",
 			"---\n---\n\nNo release.\n",
 		);
-		await commitFixture(root);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain(
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/example/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/bump.md", "A\t.changeset/empty.md"],
+			}),
+		).rejects.toThrow(
 			"Empty Changesets cannot accompany release-triggering changes",
 		);
-		expect(result.stderr).toContain(".changeset/empty.md");
 	});
 
 	it("accepts an empty changeset for a root-level no-release change", async () => {
-		const { base, root } = await createFixture();
-		await writeFixtureFile(root, "CONTRIBUTING.md", "No release.\n");
+		const fixture = await createFixture();
+		await writeFixtureFile(fixture.root, "CONTRIBUTING.md", "No release.\n");
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			".changeset/empty.md",
 			"---\n---\n\nNo release.\n",
 		);
-		await commitFixture(root);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout).toContain(
-			"No workspace package changes require a package changeset",
-		);
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["CONTRIBUTING.md"],
+				changesetDiffLines: ["A\t.changeset/empty.md"],
+			}),
+		).resolves.toEqual({ changedPackageCount: 0 });
 	});
 
 	it("requires a changeset for deletion-only package changes", async () => {
-		const { base, root } = await createFixture();
-		await rm(join(root, "packages/example/src/index.js"));
-		await commitFixture(root);
+		const fixture = await createFixture();
+		await rm(join(fixture.root, "packages/example/src/index.js"));
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain("packages/example -> @example/pkg");
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/example/src/index.js"],
+			}),
+		).rejects.toThrow("packages/example -> @example/pkg");
 	});
 
 	it("resolves a fully deleted package name from the base revision", async () => {
-		const { base, root } = await createFixture();
-		await rm(join(root, "packages/example"), { recursive: true });
-		await commitFixture(root);
+		const fixture = await createFixture();
+		await rm(join(fixture.root, "packages/example"), {
+			recursive: true,
+		});
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain("packages/example -> @example/pkg");
+		await expect(
+			runCheck(fixture, {
+				changedFiles: [
+					"packages/example/package.json",
+					"packages/example/src/index.js",
+				],
+			}),
+		).rejects.toThrow("packages/example -> @example/pkg");
 	});
 
 	it("accepts a matching changeset added by the branch", async () => {
-		const { base, root } = await createFixture({ existingChangeset: true });
+		const fixture = await createFixture({ existingChangeset: true });
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/example/src/index.js",
 			'export const value = "changed";\n',
 		);
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			".changeset/new.md",
 			'---\n"@example/pkg": patch\n---\n\nNew release note.\n',
 		);
-		await commitFixture(root);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).toBe(0);
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/example/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).resolves.toEqual({ changedPackageCount: 1 });
 	});
 
 	it("lists every missing transitive consumer for a client release", async () => {
-		const { base, root } = await createFixture({
+		const fixture = await createFixture({
 			packageName: "@hevy-mcp/hevy-client",
 			packagePath: "packages/hevy-client",
 		});
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/hevy-client/src/index.js",
 			'export const value = "changed";\n',
 		);
-		await writeChangeset(root, [
+		await writeChangeset(fixture.root, [
 			"@hevy-mcp/hevy-client",
 			"@hevy-mcp/operations",
 			"@hevy-mcp/core",
 			"hevy-mcp",
 		]);
-		await commitFixture(root);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain("@hevy-mcp/hevy-client");
-		expect(result.stderr).toContain("@hevy-mcp/worker");
-		expect(result.stderr).toContain("@chrisdoc/hevy-cli");
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/hevy-client/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).rejects.toThrow(
+			/@hevy-mcp\/worker[\s\S]*@chrisdoc\/hevy-cli|@chrisdoc\/hevy-cli[\s\S]*@hevy-mcp\/worker/,
+		);
 	});
 
 	it("accepts the complete client release cascade", async () => {
-		const { base, root } = await createFixture({
+		const fixture = await createFixture({
 			packageName: "@hevy-mcp/hevy-client",
 			packagePath: "packages/hevy-client",
 		});
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/hevy-client/src/index.js",
 			'export const value = "changed";\n',
 		);
-		await writeChangeset(root, [
+		await writeChangeset(fixture.root, [
 			"@hevy-mcp/hevy-client",
 			"@hevy-mcp/operations",
 			"@hevy-mcp/core",
@@ -372,22 +313,26 @@ describe("package changeset coverage", () => {
 			"@hevy-mcp/worker",
 			"@chrisdoc/hevy-cli",
 		]);
-		await commitFixture(root);
 
-		expect((await runCheck(root, base)).exitCode).toBe(0);
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/hevy-client/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).resolves.toEqual({ changedPackageCount: 1 });
 	});
 
 	it("allows patch consumer bumps for a major client release", async () => {
-		const { base, root } = await createFixture({
+		const fixture = await createFixture({
 			packageName: "@hevy-mcp/hevy-client",
 			packagePath: "packages/hevy-client",
 		});
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/hevy-client/src/index.js",
 			'export const value = "changed";\n',
 		);
-		await writeChangesetWithBumps(root, {
+		await writeChangeset(fixture.root, ["@hevy-mcp/hevy-client"], {
 			"@hevy-mcp/hevy-client": "major",
 			"@hevy-mcp/operations": "patch",
 			"@hevy-mcp/core": "patch",
@@ -395,50 +340,60 @@ describe("package changeset coverage", () => {
 			"@hevy-mcp/worker": "patch",
 			"@chrisdoc/hevy-cli": "patch",
 		});
-		await commitFixture(root);
 
-		expect((await runCheck(root, base)).exitCode).toBe(0);
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/hevy-client/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).resolves.toEqual({ changedPackageCount: 1 });
 	});
 
 	it("lists missing shipped consumers for a core release", async () => {
-		const { base, root } = await createFixture({
+		const fixture = await createFixture({
 			packageName: "@hevy-mcp/core",
 			packagePath: "packages/core",
 		});
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/core/src/index.js",
 			'export const value = "changed";\n',
 		);
-		await writeChangeset(root, ["@hevy-mcp/core", "hevy-mcp"]);
-		await commitFixture(root);
+		await writeChangeset(fixture.root, ["@hevy-mcp/core", "hevy-mcp"]);
 
-		const result = await runCheck(root, base);
-
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain("@hevy-mcp/worker");
-		expect(result.stderr).toContain("@chrisdoc/hevy-cli");
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/core/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).rejects.toThrow(
+			/@hevy-mcp\/worker[\s\S]*@chrisdoc\/hevy-cli|@chrisdoc\/hevy-cli[\s\S]*@hevy-mcp\/worker/,
+		);
 	});
 
 	it("accepts the complete core release cascade", async () => {
-		const { base, root } = await createFixture({
+		const fixture = await createFixture({
 			packageName: "@hevy-mcp/core",
 			packagePath: "packages/core",
 		});
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"packages/core/src/index.js",
 			'export const value = "changed";\n',
 		);
-		await writeChangeset(root, [
+		await writeChangeset(fixture.root, [
 			"@hevy-mcp/core",
 			"hevy-mcp",
 			"@hevy-mcp/worker",
 			"@chrisdoc/hevy-cli",
 		]);
-		await commitFixture(root);
 
-		expect((await runCheck(root, base)).exitCode).toBe(0);
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/core/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).resolves.toEqual({ changedPackageCount: 1 });
 	});
 
 	it.each([
@@ -446,16 +401,20 @@ describe("package changeset coverage", () => {
 		["@hevy-mcp/worker", "packages/worker"],
 		["@chrisdoc/hevy-cli", "packages/cli"],
 	])("accepts an isolated %s release", async (packageName, packagePath) => {
-		const { base, root } = await createFixture({ packageName, packagePath });
+		const fixture = await createFixture({ packageName, packagePath });
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			`${packagePath}/src/index.js`,
 			'export const value = "changed";\n',
 		);
-		await writeChangeset(root, [packageName]);
-		await commitFixture(root);
+		await writeChangeset(fixture.root, [packageName]);
 
-		expect((await runCheck(root, base)).exitCode).toBe(0);
+		await expect(
+			runCheck(fixture, {
+				changedFiles: [`${packagePath}/src/index.js`],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).resolves.toEqual({ changedPackageCount: 1 });
 	});
 
 	it.each([
@@ -465,54 +424,67 @@ describe("package changeset coverage", () => {
 	])(
 		"rejects %s changes coupled to an unrelated release",
 		async (packageName, packagePath, unrelatedPackage) => {
-			const { base, root } = await createFixture({
-				packageName,
-				packagePath,
-			});
+			const fixture = await createFixture({ packageName, packagePath });
 			await writeFixtureFile(
-				root,
+				fixture.root,
 				`${packagePath}/src/index.js`,
 				'export const value = "changed";\n',
 			);
-			await writeChangeset(root, [packageName, unrelatedPackage]);
-			await commitFixture(root);
+			await writeChangeset(fixture.root, [packageName, unrelatedPackage]);
 
-			const result = await runCheck(root, base);
+			const failure = await runCheck(fixture, {
+				changedFiles: [`${packagePath}/src/index.js`],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}).catch((error: Error) => error);
 
-			expect(result.exitCode).not.toBe(0);
-			expect(result.stderr).toContain(
+			expect(failure).toBeInstanceOf(Error);
+			expect((failure as Error).message).toContain(
 				"Changesets must not couple unrelated package releases",
 			);
-			expect(result.stderr).toContain(unrelatedPackage);
+			expect((failure as Error).message).toContain(unrelatedPackage);
 		},
 	);
 
 	it("requires a Worker release for production Worker config changes", async () => {
-		const { base, root } = await createFixture();
+		const fixture = await createFixture();
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"cloudflare.config.ts",
 			'export const workerName = "changed";\n',
 		);
-		await writeChangeset(root, []);
-		await commitFixture(root);
+		await writeChangeset(fixture.root, []);
 
-		const result = await runCheck(root, base);
+		const failure = await runCheck(fixture, {
+			changedFiles: ["cloudflare.config.ts"],
+			changesetDiffLines: ["A\t.changeset/new.md"],
+		}).catch((error: Error) => error);
 
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr).toContain("cloudflare.config.ts -> @hevy-mcp/worker");
+		expect(failure).toBeInstanceOf(Error);
+		expect((failure as Error).message).toContain(
+			"Empty Changesets cannot accompany release-triggering changes",
+		);
+		expect((failure as Error).message).toContain(
+			"Release-triggering changes require non-empty bumps",
+		);
+		expect((failure as Error).message).toContain(
+			"cloudflare.config.ts -> @hevy-mcp/worker",
+		);
 	});
 
 	it("accepts a Worker release for production Worker config changes", async () => {
-		const { base, root } = await createFixture();
+		const fixture = await createFixture();
 		await writeFixtureFile(
-			root,
+			fixture.root,
 			"cloudflare.config.ts",
 			'export const workerName = "changed";\n',
 		);
-		await writeChangeset(root, ["@hevy-mcp/worker"]);
-		await commitFixture(root);
+		await writeChangeset(fixture.root, ["@hevy-mcp/worker"]);
 
-		expect((await runCheck(root, base)).exitCode).toBe(0);
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["cloudflare.config.ts"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).resolves.toEqual({ changedPackageCount: 1 });
 	});
 });

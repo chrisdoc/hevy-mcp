@@ -151,7 +151,10 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 
 		expect(readOnlyTools).toHaveLength(readOnlyNames.size);
 		for (const tool of readOnlyTools) {
-			expect(tool.outputSchema, `${tool.name} output schema`).toBeTruthy();
+			expect(tool.outputSchema, `${tool.name} output schema`).toMatchObject({
+				type: "object",
+				properties: expect.any(Object),
+			});
 		}
 	});
 
