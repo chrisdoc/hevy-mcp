@@ -1,5 +1,17 @@
 # hevy-mcp
 
+## 6.1.8
+
+### Patch Changes
+
+- [#1078](https://github.com/chrisdoc/hevy-mcp/pull/1078) [`9e86cb2`](https://github.com/chrisdoc/hevy-mcp/commit/9e86cb269e5d1ceedf9eb0f0208559d288bb297f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Guard `mergeAbortSignals` with an `AbortSignal.any` capability check and a manual composition fallback so self-hosted Node runtimes older than 20.3 no longer fail every tool dispatch with `TypeError: AbortSignal.any is not a function`.
+
+- [#1083](https://github.com/chrisdoc/hevy-mcp/pull/1083) [`a9cca6b`](https://github.com/chrisdoc/hevy-mcp/commit/a9cca6bc167c7a296532d10d1a272851b43487a4) Thanks [@chrisdoc](https://github.com/chrisdoc)! - chore: switch the repository package manager from npm to pnpm 12. Internal workspace dependencies use the `workspace:*` protocol, scripts/workflows/docs were migrated, and the lockfile is now `pnpm-lock.yaml`. No runtime behavior change.
+
+- [#1081](https://github.com/chrisdoc/hevy-mcp/pull/1081) [`37ded34`](https://github.com/chrisdoc/hevy-mcp/commit/37ded345d7ea1b8639bd0ebe373a76c38f22a94d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - chore(deps): update `@sentry/node` to 10.72.0, `@types/node` to 26.4.0, and `zod` to 4.5.2 within existing semver ranges.
+
+- [#1080](https://github.com/chrisdoc/hevy-mcp/pull/1080) [`919ad8e`](https://github.com/chrisdoc/hevy-mcp/commit/919ad8e5da1bcd45c817727bedb5d1daedb25988) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Test-only: strengthen tool output-schema assertions and replace Git-based changeset fixtures with pure filesystem fixtures.
+
 ## 6.1.7
 
 ### Patch Changes
