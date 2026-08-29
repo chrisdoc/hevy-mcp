@@ -19,7 +19,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"@hevy-mcp/core": "*",
-		"@hevy-mcp/hevy-client": "*"
+		"@hevy-mcp/core": "workspace:*",
+		"@hevy-mcp/hevy-client": "workspace:*"
 	}
 }

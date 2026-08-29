@@ -45,7 +45,7 @@ Git hooks enabled. Fix hook failures instead of bypassing them.
 - `CONTRIBUTING.md` owns development setup, Node policy, Worker operations,
   release policy, and the required validation baseline. Read the relevant
   section before that class of change.
-- `docs/test-lanes.md` owns named test lanes. Prefer the `npm run test:*`
+- `docs/test-lanes.md` owns named test lanes. Prefer the `pnpm run test:*`
   aliases over copying raw Vitest selectors.
 - `repository/topology.json` owns workspace boundaries and release bundles.
 - `package.json` owns the current command names. Inspect it instead of
@@ -55,15 +55,15 @@ Git hooks enabled. Fix hook failures instead of bypassing them.
 
 ## Runtime and package manager
 
-Use mise for Node.js and npm. The repository pins Node.js 24 and npm 12 in
+Use mise for Node.js and pnpm. The repository pins Node.js 24 and pnpm 12 in
 `mise.toml`; install the pinned tools before running development commands:
 
 ```bash
 mise install
 ```
 
-Run Node.js and npm commands through mise so they do not fall back to system
-installations. Use `mise exec -- npm ...`, `mise exec -- npx ...`, and
+Run Node.js and pnpm commands through mise so they do not fall back to system
+installations. Use `mise exec -- pnpm ...`, `mise exec -- npx ...`, and
 `mise exec -- node ...` in setup, validation, and troubleshooting commands.
 
 Git hooks are managed by hk. After `mise install`, enable them once per clone
@@ -103,10 +103,10 @@ Treat every file under `packages/hevy-client/src/generated/` as generated
 output. Change the OpenAPI source or the Kubb configuration, then regenerate:
 
 ```bash
-mise exec -- npm run openapi          # refreshes the upstream spec; needs network access
-mise exec -- npm run build:client
-mise exec -- npm run check:openapi
-mise exec -- npm run check:generated
+mise exec -- pnpm run openapi          # refreshes the upstream spec; needs network access
+mise exec -- pnpm run build:client
+mise exec -- pnpm run check:openapi
+mise exec -- pnpm run check:generated
 ```
 
 Review the complete generated diff. Consumers use the curated
@@ -130,7 +130,7 @@ pattern when adding or changing one:
 4. Register the definition through `tools/register.ts`, use the existing
    `ToolRuntime` error/observation path, and add a co-located test.
 5. Measure token cost when tool descriptions or schemas materially change:
-   `npm run measure:tokens`.
+   `pnpm run measure:tokens`.
 
 Handlers receive inferred arguments. Keep manual argument casts, `any`, and
 `unknown` out of tool-handler code. Reuse the existing error policy,
@@ -157,7 +157,7 @@ before changing deployment, origin, authentication, or OAuth behavior.
 Before every commit, classify the diff and run:
 
 ```bash
-npm run check:changeset
+pnpm run check:changeset
 ```
 
 A change under `packages/*`, a runtime-visible behavior change, a workspace
@@ -193,28 +193,28 @@ For source changes, run the narrow relevant lane and the unit suite. Before a
 pull request, use the repository baseline from `CONTRIBUTING.md`:
 
 ```bash
-mise exec -- npm run check
-mise exec -- npm run check:types
-mise exec -- npm run build
-mise exec -- npm run test:pr
-mise exec -- npm run test:performance
-mise exec -- npm run check:changeset
+mise exec -- pnpm run check
+mise exec -- pnpm run check:types
+mise exec -- pnpm run build
+mise exec -- pnpm run test:pr
+mise exec -- pnpm run test:performance
+mise exec -- pnpm run check:changeset
 ```
 
 Useful focused checks include:
 
-- `npm run test:stdio` after MCP SDK, stdio, lifecycle, or Node transport
+- `pnpm run test:stdio` after MCP SDK, stdio, lifecycle, or Node transport
   changes. `packages/node/src/utils/stdio-observability.ts` uses private MCP
   SDK fields, so inspect compatibility after every SDK upgrade.
-- `npm run test:worker`, `npm run test:worker-http`, and
-  `npm run worker:dry-run` after Worker changes.
-- `npm run test:pack` or `npm run test:pack:cli` after package entry point,
+- `pnpm run test:worker`, `pnpm run test:worker-http`, and
+  `pnpm run worker:dry-run` after Worker changes.
+- `pnpm run test:pack` or `pnpm run test:pack:cli` after package entry point,
   binary, manifest, or published-file changes.
-- `npm run check:server-manifest` after server metadata changes.
-- `npm run check:boundaries` after workspace dependency or runtime-boundary
+- `pnpm run check:server-manifest` after server metadata changes.
+- `pnpm run check:boundaries` after workspace dependency or runtime-boundary
   changes.
 
-`npm run test:unit` is the deterministic default for local source work.
+`pnpm run test:unit` is the deterministic default for local source work.
 `npm test` builds first and runs broad Vitest discovery; it is not a substitute
 for the named PR lanes. Integration, live, nightly, and live Worker commands
 are credential-gated and should be run only when the relevant safe credentials
@@ -222,12 +222,12 @@ and environment are available.
 
 Known environment-dependent operations:
 
-- `npm run openapi` needs network access to the upstream Hevy API and may fail
+- `pnpm run openapi` needs network access to the upstream Hevy API and may fail
   with `ENOTFOUND api.hevyapp.com` in a sandbox.
-- `npm run inspect` may time out without a correctly configured MCP client or
+- `pnpm run inspect` may time out without a correctly configured MCP client or
   browser environment.
 
-Treat all other documented checks, including `npm run check:types`, as real
+Treat all other documented checks, including `pnpm run check:types`, as real
 failures to investigate.
 
 ## Completion checklist

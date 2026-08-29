@@ -250,7 +250,7 @@ of every tool, resource, and prompt. For each applicable item it must validate:
    redactions, and the contract behavior it protects. Never commit API keys or
    identifying user data.
 3. **Commit OpenAPI changes intentionally.** Changes to `openapi-spec.json` must
-   include the regenerated Kubb diff from `npm run build:client`, a concise
+   include the regenerated Kubb diff from `pnpm run build:client`, a concise
    upstream-change summary, and tests for any repository-owned formatter/schema
    changes. Generated files remain reviewable output, not manual edit targets.
 4. **Review generated client regeneration.** Review endpoint additions/removals,

@@ -16,7 +16,7 @@ The repository currently has a deliberate Node policy difference:
 - `package.json` declares the published package compatible with Node.js 20 or
   newer.
 - Repository development guidance uses the versions pinned in `mise.toml`,
-  currently Node.js 24 and npm 12.
+  currently Node.js 24 and pnpm 12.
 - CI tests Node.js 24 and 26 at the current base, as configured in
   `.github/workflows/build-and-test.yml`.
 
@@ -25,7 +25,7 @@ Use mise for development:
 ```bash
 mise install
 mise exec -- node --version
-mise exec -- npm install
+mise exec -- pnpm install
 ```
 
 Do not silently change the published Node policy as part of unrelated work.
@@ -49,7 +49,7 @@ HEVY_API_KEY=your-hevy-api-key
 - Never pass the key through CLI arguments, URLs, logs, fixtures, or screenshots.
 - Deterministic unit, mocked MCP, contract, stdio, package, and performance
   lanes do not need a live key.
-- `npm run test:live` requires `HEVY_API_KEY` and fails its preflight when the
+- `pnpm run test:live` requires `HEVY_API_KEY` and fails its preflight when the
   key is absent.
 
 ## Local development
@@ -57,15 +57,15 @@ HEVY_API_KEY=your-hevy-api-key
 Install, build, and start the production stdio executable:
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm run build
 npm start
 ```
 
 For watch mode:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Both commands load `.env` and require `HEVY_API_KEY`. The Node entry point
@@ -78,7 +78,7 @@ into the terminal.
 Useful inspection commands are:
 
 ```bash
-npm run inspect
+pnpm run inspect
 npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest
 ```
 
@@ -91,63 +91,63 @@ Stable lane names and their detailed ownership live in
 [docs/test-lanes.md](./docs/test-lanes.md). Use the listed npm aliases or Nx
 targets instead of copying raw Vitest selectors into automation.
 
-| Command                         | Purpose                                                                                                                    | Credentials/network                                                                                  |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `npm run test:unit`             | Unit and component tests, excluding integration and performance discovery.                                                 | Deterministic; no live credentials or network.                                                       |
-| `npm run test:mcp`              | Nock-backed in-memory MCP integration tests under `tests/integration/mocked`.                                              | Deterministic; fake key and blocked outbound network.                                                |
-| `npm run test:contract`         | Tool registration, output-schema, and server-manifest contract baseline.                                                   | Deterministic.                                                                                       |
-| `npm run test:stdio`            | Stdio instrumentation and graceful-shutdown/process regression baseline.                                                   | Deterministic.                                                                                       |
-| `npm run test:pack`             | Build the shared package candidates once, then inspect, install, and spawn the same Node tarball.                          | Deterministic.                                                                                       |
-| `npm run test:live`             | Read-only source canary against the real Hevy API.                                                                         | Requires `HEVY_API_KEY`; preflight fails before Vitest starts when absent.                           |
-| `npm run test:worker-http:live` | Local Wrangler Worker canary with comprehensive bounded representative reads against the real Hevy API.                    | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.                         |
-| `npm run test:nightly`          | Published/source launcher canary used by nightly and release workflows.                                                    | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.                         |
-| `npm run test:performance`      | Reuse the shared Node build and spawn `dist/cli.mjs` for mocked correctness and latency/memory trend scenarios.            | Deterministic; fake key, child-local Nock, and blocked child network.                                |
-| `npm run test:pr`               | Run the deterministic unit, mocked MCP, contract, stdio, worker, worker-http, and package lanes expected on pull requests. | Deterministic; does not include the separate performance lane.                                       |
-| `npm test`                      | Build, then run full Vitest discovery with optional `.env` loading.                                                        | Broad local command; use the named lanes when you need explicit deterministic or live test behavior. |
+| Command                          | Purpose                                                                                                                    | Credentials/network                                                                                  |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `pnpm run test:unit`             | Unit and component tests, excluding integration and performance discovery.                                                 | Deterministic; no live credentials or network.                                                       |
+| `pnpm run test:mcp`              | Nock-backed in-memory MCP integration tests under `tests/integration/mocked`.                                              | Deterministic; fake key and blocked outbound network.                                                |
+| `pnpm run test:contract`         | Tool registration, output-schema, and server-manifest contract baseline.                                                   | Deterministic.                                                                                       |
+| `pnpm run test:stdio`            | Stdio instrumentation and graceful-shutdown/process regression baseline.                                                   | Deterministic.                                                                                       |
+| `pnpm run test:pack`             | Build the shared package candidates once, then inspect, install, and spawn the same Node tarball.                          | Deterministic.                                                                                       |
+| `pnpm run test:live`             | Read-only source canary against the real Hevy API.                                                                         | Requires `HEVY_API_KEY`; preflight fails before Vitest starts when absent.                           |
+| `pnpm run test:worker-http:live` | Local Wrangler Worker canary with comprehensive bounded representative reads against the real Hevy API.                    | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.                         |
+| `pnpm run test:nightly`          | Published/source launcher canary used by nightly and release workflows.                                                    | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.                         |
+| `pnpm run test:performance`      | Reuse the shared Node build and spawn `dist/cli.mjs` for mocked correctness and latency/memory trend scenarios.            | Deterministic; fake key, child-local Nock, and blocked child network.                                |
+| `pnpm run test:pr`               | Run the deterministic unit, mocked MCP, contract, stdio, worker, worker-http, and package lanes expected on pull requests. | Deterministic; does not include the separate performance lane.                                       |
+| `npm test`                       | Build, then run full Vitest discovery with optional `.env` loading.                                                        | Broad local command; use the named lanes when you need explicit deterministic or live test behavior. |
 
 Produce the two coverage reports without a wrapper alias:
 
 ```bash
-npm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
-npm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
+pnpm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
+pnpm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
 ```
 
 The lane and aggregate registry below mirrors
 [`repository/validation-lanes.json`](./repository/validation-lanes.json). The
-canonical model is validated by `npm run check:control-plane`; use the named
+canonical model is validated by `pnpm run check:control-plane`; use the named
 commands below instead of copying raw selectors into automation.
 
-| Lane ID                    | Command / integration                                                | Gate          | Runtime ownership | Credentials                                        | Artifacts                                                         | Purpose                                                                                                                                                                                                                                                                |
-| -------------------------- | -------------------------------------------------------------------- | ------------- | ----------------- | -------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unit`                     | npm run test:unit (Nx: repository:test:unit)                         | blocking      | node-24, node-26  | —                                                  | unit-coverage, unit-junit                                         | vitest; exclude: tests/integration/**, tests/performance/**                                                                                                                                                                                                            |
-| `release-unit`             | npm run test:release-unit (Nx: repository:test:release-unit)         | blocking      | node-24, node-26  | —                                                  | —                                                                 | vitest; exclude: tests/integration/**                                                                                                                                                                                                                                  |
-| `mocked-mcp`               | npm run test:mcp (Nx: repository:test:mcp)                           | blocking      | node-24, node-26  | —                                                  | mocked-coverage                                                   | vitest; include: tests/integration/mocked/**                                                                                                                                                                                                                           |
-| `contract`                 | npm run test:contract (Nx: repository:test:contract)                 | blocking      | node-24           | —                                                  | —                                                                 | vitest; include: packages/node/src/index.test.ts, packages/node/src/utils/config.test.ts, packages/core/src/tools/register.test.ts, packages/core/src/utils/output-schemas.test.ts, tests/unit/server-manifest.test.ts, tests/contract/runtime-contract-matrix.test.ts |
-| `stdio`                    | npm run test:stdio (Nx: repository:test:stdio)                       | blocking      | node-24           | —                                                  | stdio-diagnostics                                                 | vitest; include: packages/node/src/index.test.ts, packages/node/src/runtime.test.ts, packages/node/src/utils/stdio-observability.test.ts, packages/node/src/utils/graceful-shutdown.test.ts, packages/node/src/utils/graceful-shutdown.child-process.test.ts           |
-| `worker`                   | npm run test:worker (Nx: repository:test:worker)                     | blocking      | workerd           | —                                                  | —                                                                 | vitest-worker-config; config: vitest.workers.config.ts                                                                                                                                                                                                                 |
-| `worker-http`              | npm run test:worker-http (Nx: repository:test:worker-http)           | blocking      | workerd           | —                                                  | worker-bundle                                                     | vitest; include: tests/integration/worker-http.integration.test.ts                                                                                                                                                                                                     |
-| `pack`                     | npm run test:pack (Nx: repository:test:pack)                         | blocking      | node-24           | —                                                  | node-package-tarball                                              | npm-pack-smoke                                                                                                                                                                                                                                                         |
-| `cli`                      | npm run test:cli (Nx: repository:test:cli)                           | blocking      | node-24           | —                                                  | cli-dist                                                          | workspace-test; workspace: @chrisdoc/hevy-cli                                                                                                                                                                                                                          |
-| `pack-cli`                 | npm run test:pack:cli (Nx: repository:test:pack:cli)                 | blocking      | node-24           | —                                                  | cli-package-tarball                                               | npm-pack-smoke; workspace: @chrisdoc/hevy-cli                                                                                                                                                                                                                          |
-| `performance`              | npm run test:performance (Nx: repository:test:performance)           | informational | node-24           | —                                                  | performance-summary                                               | vitest; include: tests/performance/performance.test.ts                                                                                                                                                                                                                 |
-| `repository-control-plane` | npm run check:control-plane (Nx: repository:check:control-plane)     | blocking      | node-24, node-26  | —                                                  | —                                                                 | control-plane; check: control-plane                                                                                                                                                                                                                                    |
-| `package-boundaries`       | npm run check:boundaries (Nx: repository:check:boundaries)           | blocking      | node-24, node-26  | —                                                  | core-source, hevy-client-source, operations-source, worker-bundle | control-plane; check: boundaries                                                                                                                                                                                                                                       |
-| `package-exports`          | npx nx run repository:check:exports                                  | blocking      | node-24, node-26  | —                                                  | —                                                                 | control-plane; check: exports                                                                                                                                                                                                                                          |
-| `package-publint`          | npx nx run repository:check:publint                                  | blocking      | node-24           | —                                                  | —                                                                 | control-plane; check: publint                                                                                                                                                                                                                                          |
-| `package-changesets`       | npx nx run repository:check:package-changesets                       | blocking      | node-24           | —                                                  | —                                                                 | control-plane; check: changesets                                                                                                                                                                                                                                       |
-| `changeset-status`         | npm run check:changeset (Nx: repository:check:changeset)             | blocking      | node-24           | —                                                  | —                                                                 | changeset-status                                                                                                                                                                                                                                                       |
-| `types`                    | npm run check:types (Nx: repository:check:types)                     | blocking      | node-24, node-26  | —                                                  | core-source, hevy-client-source, operations-source                | typescript; project: tsconfig.json                                                                                                                                                                                                                                     |
-| `check`                    | npx nx run repository:check                                          | blocking      | node-24, node-26  | —                                                  | —                                                                 | repository-check                                                                                                                                                                                                                                                       |
-| `build`                    | npm run build (Nx: repository:build)                                 | blocking      | node-24, node-26  | —                                                  | node-dist                                                         | package-build; workspace: hevy-mcp                                                                                                                                                                                                                                     |
-| `worker-bundle`            | npm run worker:dry-run (Nx: repository:worker:dry-run)               | blocking      | workerd           | —                                                  | worker-bundle                                                     | wrangler-dry-run                                                                                                                                                                                                                                                       |
-| `server-manifest`          | npm run check:server-manifest (Nx: repository:check:server-manifest) | blocking      | node-24, node-26  | —                                                  | server-manifest                                                   | manifest-drift                                                                                                                                                                                                                                                         |
-| `docker`                   | external: docker workflow                                            | blocking      | node-24           | —                                                  | docker-image                                                      | docker-smoke                                                                                                                                                                                                                                                           |
-| `generation`               | npm run check:generated (Nx: repository:check:generated)             | blocking      | node-24, node-26  | —                                                  | generated-client                                                  | generated-output-closure                                                                                                                                                                                                                                               |
-| `integration-live`         | npm run test:live (Nx: repository:test:live)                         | release       | node-24           | HEVY_API_KEY                                       | live-diagnostics                                                  | vitest-live                                                                                                                                                                                                                                                            |
-| `worker-http-live`         | npm run test:worker-http:live (Nx: repository:test:worker-http:live) | release       | workerd           | HEVY_API_KEY, HEVY_RUN_LIVE_WORKER_TESTS           | live-worker-diagnostics                                           | worker-live                                                                                                                                                                                                                                                            |
-| `release-integration`      | npm run test:integration (Nx: repository:test:integration)           | release       | node-24           | HEVY_API_KEY                                       | live-diagnostics                                                  | vitest-integration; include: tests/integration/**                                                                                                                                                                                                                      |
-| `nightly`                  | npm run test:nightly (Nx: repository:test:nightly)                   | nightly       | node-24           | HEVY_API_KEY, HEVY_MCP_COMMAND, HEVY_MCP_ARGS_JSON | nightly-diagnostics                                               | launcher-canary                                                                                                                                                                                                                                                        |
-| `diagnostics`              | npx nx run repository:test:diagnostics                               | blocking      | node-24           | —                                                  | —                                                                 | node-test; include: tests/nightly/diagnostics.test.mjs                                                                                                                                                                                                                 |
+| Lane ID                    | Command / integration                                                 | Gate          | Runtime ownership | Credentials                                        | Artifacts                                                         | Purpose                                                                                                                                                                                                                                                                |
+| -------------------------- | --------------------------------------------------------------------- | ------------- | ----------------- | -------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unit`                     | pnpm run test:unit (Nx: repository:test:unit)                         | blocking      | node-24, node-26  | —                                                  | unit-coverage, unit-junit                                         | vitest; exclude: tests/integration/**, tests/performance/**                                                                                                                                                                                                            |
+| `release-unit`             | pnpm run test:release-unit (Nx: repository:test:release-unit)         | blocking      | node-24, node-26  | —                                                  | —                                                                 | vitest; exclude: tests/integration/**                                                                                                                                                                                                                                  |
+| `mocked-mcp`               | pnpm run test:mcp (Nx: repository:test:mcp)                           | blocking      | node-24, node-26  | —                                                  | mocked-coverage                                                   | vitest; include: tests/integration/mocked/**                                                                                                                                                                                                                           |
+| `contract`                 | pnpm run test:contract (Nx: repository:test:contract)                 | blocking      | node-24           | —                                                  | —                                                                 | vitest; include: packages/node/src/index.test.ts, packages/node/src/utils/config.test.ts, packages/core/src/tools/register.test.ts, packages/core/src/utils/output-schemas.test.ts, tests/unit/server-manifest.test.ts, tests/contract/runtime-contract-matrix.test.ts |
+| `stdio`                    | pnpm run test:stdio (Nx: repository:test:stdio)                       | blocking      | node-24           | —                                                  | stdio-diagnostics                                                 | vitest; include: packages/node/src/index.test.ts, packages/node/src/runtime.test.ts, packages/node/src/utils/stdio-observability.test.ts, packages/node/src/utils/graceful-shutdown.test.ts, packages/node/src/utils/graceful-shutdown.child-process.test.ts           |
+| `worker`                   | pnpm run test:worker (Nx: repository:test:worker)                     | blocking      | workerd           | —                                                  | —                                                                 | vitest-worker-config; config: vitest.workers.config.ts                                                                                                                                                                                                                 |
+| `worker-http`              | pnpm run test:worker-http (Nx: repository:test:worker-http)           | blocking      | workerd           | —                                                  | worker-bundle                                                     | vitest; include: tests/integration/worker-http.integration.test.ts                                                                                                                                                                                                     |
+| `pack`                     | pnpm run test:pack (Nx: repository:test:pack)                         | blocking      | node-24           | —                                                  | node-package-tarball                                              | npm-pack-smoke                                                                                                                                                                                                                                                         |
+| `cli`                      | pnpm run test:cli (Nx: repository:test:cli)                           | blocking      | node-24           | —                                                  | cli-dist                                                          | workspace-test; workspace: @chrisdoc/hevy-cli                                                                                                                                                                                                                          |
+| `pack-cli`                 | pnpm run test:pack:cli (Nx: repository:test:pack:cli)                 | blocking      | node-24           | —                                                  | cli-package-tarball                                               | npm-pack-smoke; workspace: @chrisdoc/hevy-cli                                                                                                                                                                                                                          |
+| `performance`              | pnpm run test:performance (Nx: repository:test:performance)           | informational | node-24           | —                                                  | performance-summary                                               | vitest; include: tests/performance/performance.test.ts                                                                                                                                                                                                                 |
+| `repository-control-plane` | pnpm run check:control-plane (Nx: repository:check:control-plane)     | blocking      | node-24, node-26  | —                                                  | —                                                                 | control-plane; check: control-plane                                                                                                                                                                                                                                    |
+| `package-boundaries`       | pnpm run check:boundaries (Nx: repository:check:boundaries)           | blocking      | node-24, node-26  | —                                                  | core-source, hevy-client-source, operations-source, worker-bundle | control-plane; check: boundaries                                                                                                                                                                                                                                       |
+| `package-exports`          | npx nx run repository:check:exports                                   | blocking      | node-24, node-26  | —                                                  | —                                                                 | control-plane; check: exports                                                                                                                                                                                                                                          |
+| `package-publint`          | npx nx run repository:check:publint                                   | blocking      | node-24           | —                                                  | —                                                                 | control-plane; check: publint                                                                                                                                                                                                                                          |
+| `package-changesets`       | npx nx run repository:check:package-changesets                        | blocking      | node-24           | —                                                  | —                                                                 | control-plane; check: changesets                                                                                                                                                                                                                                       |
+| `changeset-status`         | pnpm run check:changeset (Nx: repository:check:changeset)             | blocking      | node-24           | —                                                  | —                                                                 | changeset-status                                                                                                                                                                                                                                                       |
+| `types`                    | pnpm run check:types (Nx: repository:check:types)                     | blocking      | node-24, node-26  | —                                                  | core-source, hevy-client-source, operations-source                | typescript; project: tsconfig.json                                                                                                                                                                                                                                     |
+| `check`                    | npx nx run repository:check                                           | blocking      | node-24, node-26  | —                                                  | —                                                                 | repository-check                                                                                                                                                                                                                                                       |
+| `build`                    | pnpm run build (Nx: repository:build)                                 | blocking      | node-24, node-26  | —                                                  | node-dist                                                         | package-build; workspace: hevy-mcp                                                                                                                                                                                                                                     |
+| `worker-bundle`            | pnpm run worker:dry-run (Nx: repository:worker:dry-run)               | blocking      | workerd           | —                                                  | worker-bundle                                                     | wrangler-dry-run                                                                                                                                                                                                                                                       |
+| `server-manifest`          | pnpm run check:server-manifest (Nx: repository:check:server-manifest) | blocking      | node-24, node-26  | —                                                  | server-manifest                                                   | manifest-drift                                                                                                                                                                                                                                                         |
+| `docker`                   | external: docker workflow                                             | blocking      | node-24           | —                                                  | docker-image                                                      | docker-smoke                                                                                                                                                                                                                                                           |
+| `generation`               | pnpm run check:generated (Nx: repository:check:generated)             | blocking      | node-24, node-26  | —                                                  | generated-client                                                  | generated-output-closure                                                                                                                                                                                                                                               |
+| `integration-live`         | pnpm run test:live (Nx: repository:test:live)                         | release       | node-24           | HEVY_API_KEY                                       | live-diagnostics                                                  | vitest-live                                                                                                                                                                                                                                                            |
+| `worker-http-live`         | pnpm run test:worker-http:live (Nx: repository:test:worker-http:live) | release       | workerd           | HEVY_API_KEY, HEVY_RUN_LIVE_WORKER_TESTS           | live-worker-diagnostics                                           | worker-live                                                                                                                                                                                                                                                            |
+| `release-integration`      | pnpm run test:integration (Nx: repository:test:integration)           | release       | node-24           | HEVY_API_KEY                                       | live-diagnostics                                                  | vitest-integration; include: tests/integration/**                                                                                                                                                                                                                      |
+| `nightly`                  | pnpm run test:nightly (Nx: repository:test:nightly)                   | nightly       | node-24           | HEVY_API_KEY, HEVY_MCP_COMMAND, HEVY_MCP_ARGS_JSON | nightly-diagnostics                                               | launcher-canary                                                                                                                                                                                                                                                        |
+| `diagnostics`              | npx nx run repository:test:diagnostics                                | blocking      | node-24           | —                                                  | —                                                                 | node-test; include: tests/nightly/diagnostics.test.mjs                                                                                                                                                                                                                 |
 
 | Aggregate ID      | Nx target / command                    | Members                                                                                                                                                                                                                                                                                                  | Count | Mapping  |
 | ----------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
@@ -168,8 +168,8 @@ the full-catalog search against production.
 The normal pull request baseline is:
 
 ```bash
-npm run test:pr
-npm run test:performance
+pnpm run test:pr
+pnpm run test:performance
 ```
 
 Performance timing targets are currently informational. Correctness, fixture,
@@ -181,30 +181,30 @@ report is written to `test-results/performance/summary.json`.
 Run these checks before opening a pull request:
 
 ```bash
-npm run check
-npm run check:types
-npm run build
-npm run test:pr
-npm run test:performance
-npm run check:changeset
+pnpm run check
+pnpm run check:types
+pnpm run build
+pnpm run test:pr
+pnpm run test:performance
+pnpm run check:changeset
 ```
 
 Also run the narrow checks related to your change. In particular:
 
-- Run `npm run test:stdio` after changes to process lifecycle, stdio transport,
+- Run `pnpm run test:stdio` after changes to process lifecycle, stdio transport,
   diagnostics, or the MCP TypeScript SDK.
-- Run `npm run test:pack` after package entry point, binary, manifest, or
+- Run `pnpm run test:pack` after package entry point, binary, manifest, or
   published-file changes.
-- Run `npm run check:server-manifest` after server metadata changes.
-- Run `npm run measure:tokens` when tool descriptions or schemas materially
+- Run `pnpm run check:server-manifest` after server metadata changes.
+- Run `pnpm run measure:tokens` when tool descriptions or schemas materially
   change; see [docs/token-cost-tracking.md](./docs/token-cost-tracking.md).
-- Run `npm run test:live` only when a real Hevy API canary is appropriate and a
+- Run `pnpm run test:live` only when a real Hevy API canary is appropriate and a
   safe credential is available.
 
-`npm run check` runs both oxlint and oxfmt in check mode using the local npm
+`pnpm run check` runs both oxlint and oxfmt in check mode using the local npm
 dependencies. The project uses the Oxc tools for fast, consistent type-aware
 linting and formatting. Fix reported code warnings rather than assuming they
-are harmless. Use `npm run check:fix` for automated fixes, then inspect the
+are harmless. Use `pnpm run check:fix` for automated fixes, then inspect the
 resulting diff. `check:fix` modifies files in the working tree but does not
 stage them; review and stage the changes manually. hk uses the same tools for
 Git hook execution.
@@ -226,18 +226,18 @@ internals are private; consumers use the curated client package barrels.
 To refresh the checked-in OpenAPI specification and generated client:
 
 ```bash
-npm run openapi
-npm run build:client
+pnpm run openapi
+pnpm run build:client
 ```
 
-`npm run openapi` fetches the upstream Hevy specification and can fail with
+`pnpm run openapi` fetches the upstream Hevy specification and can fail with
 `ENOTFOUND api.hevyapp.com` in sandboxed environments. If
 `openapi-spec.json` changes, regenerate the client and review the complete
 generated diff. Do not patch generated TypeScript errors by hand.
 
 Known upstream schema corrections belong in `scripts/openapi-spec.js`, so a
 future refresh reapplies them before the spec is written. Run
-`npm run check:openapi` to verify the repository-owned compatibility invariants
+`pnpm run check:openapi` to verify the repository-owned compatibility invariants
 before committing a refreshed spec.
 
 The Node package, Worker, and CLI ship bundled compositions of the shared core
@@ -265,7 +265,7 @@ both runtimes. `packages/hevy-client` owns the native-fetch Hevy client:
 `packages/node/src/utils/stdio-observability.ts` instruments private MCP SDK
 stdio fields such as `_ondata` and `_readBuffer`. After every
 `MCP TypeScript SDK` upgrade,
-run the complete stdio observability suite (`npm run test:stdio`) and inspect
+run the complete stdio observability suite (`pnpm run test:stdio`) and inspect
 the SDK compatibility assumptions before merging.
 
 ## Cloudflare Worker development
@@ -285,8 +285,8 @@ Use the repository scripts for local development, bundle validation, and
 deployment:
 
 ```bash
-npm run worker:dev
-npm run worker:dry-run
+pnpm run worker:dev
+pnpm run worker:dry-run
 npx nx run repository:worker:deploy
 ```
 
@@ -488,7 +488,7 @@ deploy the Worker; Worker-only private releases still do.
 Validate the branch against `origin/main`:
 
 ```bash
-npm run check:changeset
+pnpm run check:changeset
 ```
 
 CI also checks that every changed workspace directory has a changeset naming
