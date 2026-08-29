@@ -12,7 +12,7 @@
 | **Statefulness**    | Stateless — fresh MCP server and Hevy client per request                                              | Stateful — persistent session for process lifetime     | Stateful — persistent client sessions                                           |
 | **Authentication**  | Bearer header with Hevy API key OR OAuth 2.1                                                          | `HEVY_API_KEY` env var on child process                | `HEVY_API_KEY` env var + optional `HEVY_MCP_HTTP_BEARER_TOKEN` for non-loopback |
 | **OAuth Support**   | Yes (with `OAUTH_KV` binding)                                                                         | No                                                     | No                                                                              |
-| **Cache behavior**  | Fresh cache per request — no cross-key sharing                                                        | Server-scoped in-memory cache (5 min TTL)              | Server-scoped in-memory cache (5 min TTL)                                       |
+| **Cache behavior**  | Successful key validations cached for 15 minutes; exercise-template cache fresh per request           | Server-scoped in-memory cache (5 min TTL)              | Server-scoped in-memory cache (5 min TTL)                                       |
 | **Telemetry**       | No Node telemetry                                                                                     | Enabled by default (`HEVY_MCP_TELEMETRY=0` to disable) | Enabled by default                                                              |
 | **Best for**        | Claude.ai, remote clients, shared/hosted access                                                       | Claude Desktop, Cursor, Codex, local AI tools          | Local network testing, Docker, non-loopback access                              |
 | **Security note**   | Origin allowlist enforced for browser requests                                                        | Key in child process env only                          | Non-loopback binds require separate `HEVY_MCP_HTTP_BEARER_TOKEN`                |
@@ -23,7 +23,7 @@ The production Hevy MCP server runs as a stateless Cloudflare Worker at `https:/
 
 ### How It Works
 
-Each request gets a fresh MCP server instance, Streamable HTTP transport, Hevy client, and exercise-template cache [[4]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L348-L349) [[5]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L282-L293). The Worker validates the supplied Hevy API key with Hevy on each request, does not store it, and forwards it to Hevy only as the required `api-key` header [[6]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L446-L448). There is no shared user session or persisted key [[7]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L349-L350).
+Each request gets a fresh MCP server instance, Streamable HTTP transport, Hevy client, and exercise-template cache [[4]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L348-L349) [[5]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L282-L293). The Worker validates the supplied Hevy API key with Hevy API (with successful validations cached for 15 minutes), does not store it, and forwards it to Hevy only as the required `api-key` header [[6]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L446-L448). There is no shared user session or persisted key [[7]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L349-L350).
 
 The Worker uses stateless **Streamable HTTP** at `POST /mcp` [[8]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L430).
 
@@ -45,7 +45,7 @@ Clients send `Authorization: Bearer <HEVY_API_KEY>` on every request [[9]](https
 ```
 
 > [!IMPORTANT]
-> Treat the bearer value like a password. The Worker validates it with Hevy for each request, does not store it, and forwards it to Hevy only as the required `api-key` header [[6]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L446-L448).
+> Treat the bearer value like a password. The Worker validates it with Hevy API (with successful validations cached for 15 minutes), does not store it, and forwards it to Hevy only as the required `api-key` header [[6]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L446-L448).
 
 **Codex hosted example**:
 
@@ -318,7 +318,7 @@ sequenceDiagram
 ```
 
 > [!IMPORTANT]
-> The Worker validates the key with Hevy on **each request**, does not store it, and forwards it upstream only as Hevy's required `api-key` header [[6]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L446-L448).
+> The Worker validates the key with Hevy API (with successful validations cached for 15 minutes), does not store it, and forwards it upstream only as Hevy's required `api-key` header [[6]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L446-L448).
 
 ### OAuth 2.1 Flow (Hosted Worker only)
 
