@@ -18,8 +18,8 @@
 		"check:types": "tsc --noEmit -p tsconfig.json"
 	},
 	"dependencies": {
-		"@hevy-mcp/hevy-client": "*",
-		"@hevy-mcp/operations": "*",
+		"@hevy-mcp/hevy-client": "workspace:*",
+		"@hevy-mcp/operations": "workspace:*",
 		"@modelcontextprotocol/server": "^2.0.0",
 		"zod": "^4.4.3"
 	},

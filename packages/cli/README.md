@@ -13,7 +13,7 @@ not supported.
 ## Install
 
 ```sh
-npm install -g @chrisdoc/hevy-cli
+pnpm install -g @chrisdoc/hevy-cli
 export HEVY_API_KEY=your-hevy-api-key
 hevy --help
 ```

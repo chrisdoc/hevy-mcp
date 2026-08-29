@@ -94,6 +94,10 @@ jobs:
           test "$(git rev-parse "refs/remotes/origin/${PR_HEAD_REF}")" = "$PR_HEAD_SHA"
           git reset --hard "$PR_HEAD_SHA"
 
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 12.0.0
+
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -101,10 +105,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
 
       - name: Run formatter
-        run: npm run check:fix
+        run: pnpm run check:fix
 
       - name: Create empty Changeset and capture patch
         env:
@@ -153,7 +157,7 @@ jobs:
             echo "Skipping an empty Changeset for release-triggering PR changes."
           fi
 
-          npm run check:changeset
+          pnpm run check:changeset
           git add -A
           git diff --cached --binary --full-index --no-ext-diff "$BASE_SHA" > "$PATCH_PATH"
           test -s "$PATCH_PATH"

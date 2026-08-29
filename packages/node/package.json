@@ -29,7 +29,7 @@
 	},
 	"scripts": {
 		"build": "tsdown -c tsdown.config.ts",
-		"prepack": "node ../../scripts/server-manifest.mjs check && npm run build",
+		"prepack": "node ../../scripts/server-manifest.mjs check && pnpm run build",
 		"check:types": "tsc --noEmit -p tsconfig.json",
 		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown -c tsdown.config.ts"
 	},
@@ -48,8 +48,9 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"@hevy-mcp/core": "*",
-		"@hevy-mcp/hevy-client": "*",
+		"@hevy-mcp/core": "workspace:*",
+		"@hevy-mcp/hevy-client": "workspace:*",
+		"@sentry/core": "^10.71.0",
 		"@types/node": "^26.2.0",
 		"cross-env": "^10.1.0",
 		"tsdown": "^0.22.14",

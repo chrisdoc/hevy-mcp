@@ -50,7 +50,7 @@ Run the dependency rules through the combined boundary lane and exercise the
 representative pack target:
 
 ```sh
-npm run check:boundaries
+ppnpm run check:boundaries
 npx nx run repository:check:boundaries
 npx nx run repository:pack:artifacts --skip-nx-cache
 ```
@@ -76,7 +76,7 @@ Worker and Docker candidate provenance is absent.
   consume its immutable tarballs concurrently.
 - Vitest and token-cost arguments pass through Nx with `npx nx run ... -- ...`;
   no workflow needs to depend on undocumented Nx executor internals.
-- `npm ci`, Docker actions, Wrangler deployment commands, Changesets actions,
+- `pppnpm install --frozen-lockfile`, Docker actions, Wrangler deployment commands, Changesets actions,
   commit verification, secrets, and environment gates remain explicit because
   they are infrastructure or release policy rather than local project graph
   concerns.
