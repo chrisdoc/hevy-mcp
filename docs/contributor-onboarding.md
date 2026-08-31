@@ -30,7 +30,7 @@ mise exec -- pnpm run build
 ```
 
 > [!TIP]
-> `mise install` installs the exact Node.js and npm versions from `mise.toml` (currently Node 24 and pnpm 12). CI tests against Node 24 and 26. [[3]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+> `mise install` installs the exact Node.js and pnpm versions from `mise.toml` (currently Node 24 and pnpm 12). CI tests against Node 24 and 26. [[3]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ### 2. Verify everything works
 
