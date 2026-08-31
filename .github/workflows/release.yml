@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 12.0.0
 
@@ -88,7 +88,7 @@ jobs:
 
       - name: Create Release PR or Publish
         id: changesets
-        uses: changesets/action@2d9f7af6402422be60d377f151c7618011bba45a # v2.0.0-next.4
+        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.0.0-next.4
         with:
           version-script: npx nx run repository:version:changesets
           publish-script: npx nx run repository:release
@@ -186,7 +186,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 12.0.0
 
@@ -258,7 +258,7 @@ jobs:
             exit 1
           fi
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 12.0.0
 
