@@ -335,6 +335,7 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		await expect(client.getWorkout("workout-1")).rejects.toMatchObject({
 			status: 500,
+			outcome: "terminal_failure",
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});

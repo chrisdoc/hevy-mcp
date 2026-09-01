@@ -564,12 +564,12 @@ export function resolveErrorPolicy(
 		error.responseError
 	) {
 		message = `${message} Detail: ${error.responseError}`;
-	} else if (isRetryExhausted(error)) {
-		message = getRetryExhaustedMessage(error);
 	} else if (diagnostic.code === HEVY_REQUEST_ABORTED_ERROR_CODE) {
 		// This code is emitted only for caller cancellation. Keep its explicit
 		// client-facing message instead of falling back to the generic error text.
 		message = "The request was canceled by the client.";
+	} else if (isRetryExhausted(error)) {
+		message = getRetryExhaustedMessage(error);
 	} else if (diagnostic.status === 429) {
 		message = getRateLimitMessage(error);
 	} else if (

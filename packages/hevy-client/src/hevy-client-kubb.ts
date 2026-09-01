@@ -857,10 +857,8 @@ function canRetryAttempt(
 
 function failureMetadataOutcome(
 	failure: ExecutionFailureState,
-	deadlineRetryActive = false,
 ): HevyApiOutcome {
-	if (failure.deadlineExceeded || deadlineRetryActive)
-		return "deadline_exceeded";
+	if (failure.deadlineExceeded) return "deadline_exceeded";
 	if (failure.canceled) return "cancelled";
 	return "terminal_failure";
 }
@@ -1023,7 +1021,7 @@ function transitionAfterAttemptFailure(
 		options.safety,
 		commitState,
 		safeToRetry,
-		failureMetadataOutcome(failure, options.deadlineRetryActive),
+		failureMetadataOutcome(failure),
 	);
 	const expectedReason = expectedGet404Outcome(
 		options.endpoint,
