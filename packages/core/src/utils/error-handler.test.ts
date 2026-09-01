@@ -127,19 +127,24 @@ describe("createErrorResponse", () => {
 		);
 	});
 
-	it("does not expose parsed upstream payloads for unmapped statuses", () => {
-		const secret = "upstream-secret-value";
-		const error = httpError(400, { error: secret });
-		error.message = secret;
-		error.code = secret;
+	it("surfaces only sanitized upstream validation detail", () => {
+		const secret = "Bearer upstream-secret-value";
+		const error = httpError(400, {
+			error: `Routine is invalid; Authorization: ${secret}`,
+		});
+		error.message = "untrusted raw message";
+		error.code = "untrusted-code";
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const result = createErrorResponse(error);
-		expect(result.content[0]?.text).toContain(
-			"The request failed Hevy validation",
-		);
-		expect(JSON.stringify(result)).not.toContain(secret);
-		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
-		stderrSpy.mockRestore();
+		try {
+			const result = createErrorResponse(error);
+			expect(result.content[0]?.text).toContain(
+				"The request failed Hevy validation. Check the field values and try again. Detail: Routine is invalid; Authorization: [REDACTED]",
+			);
+			expect(JSON.stringify(result)).not.toContain(secret);
+			expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		} finally {
+			stderrSpy.mockRestore();
+		}
 	});
 
 	it("omits hostile HTTP metadata from retained debug context", () => {
