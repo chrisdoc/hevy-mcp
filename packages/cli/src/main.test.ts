@@ -204,7 +204,17 @@ describe("CLI mutation process contract", () => {
 				exercises: [],
 			},
 		};
-		const routine = { routine: { title: "Strength", exercises: [] } };
+		const routine = {
+			routine: {
+				title: "Strength",
+				exercises: [
+					{
+						exercise_template_id: "bench-press",
+						sets: [{ weight_kg: 60, reps: 10 }],
+					},
+				],
+			},
+		};
 		const json = (value: JsonObject) => JSON.stringify(value);
 		const commands = [
 			["workouts", "create", "--data", json(workout), "--yes", "--json"],
