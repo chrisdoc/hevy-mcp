@@ -132,26 +132,39 @@ describe("createErrorResponse", () => {
 		const result = createErrorResponse(httpError(status));
 		expect(result.content[0]?.text).toContain(expected);
 		if (status === 409) {
-			expect(result.content[0]?.text).not.toContain("body measurement");
-			expect(result.content[0]?.text).toContain(
-				"use the update tool when appropriate",
+			expect(result.content[0]?.text).toBe(
+				"Error: A conflict occurred because the resource already exists or conflicts with the current server state. Check whether it already exists and use the update tool when appropriate.",
 			);
 		}
 	});
 
-	it("does not expose parsed upstream payloads for unmapped statuses", () => {
-		const secret = "upstream-secret-value";
-		const error = httpError(400, { error: secret });
-		error.message = secret;
-		error.code = secret;
-		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const result = createErrorResponse(error);
-		expect(result.content[0]?.text).toContain(
-			"The request failed Hevy validation",
+	it("gives body measurement create conflicts actionable guidance", () => {
+		const result = createErrorResponse(
+			httpError(409, undefined, undefined, "POST", "/v1/body_measurements"),
 		);
-		expect(JSON.stringify(result)).not.toContain(secret);
-		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
-		stderrSpy.mockRestore();
+		expect(result.content[0]?.text).toBe(
+			"Error: A body measurement already exists for this date. Use the update-body-measurement tool to modify it.",
+		);
+	});
+
+	it("surfaces only sanitized upstream validation detail", () => {
+		const secret = "Bearer upstream-secret-value";
+		const error = httpError(400, {
+			error: `Routine is invalid; Authorization: ${secret}`,
+		});
+		error.message = "untrusted raw message";
+		error.code = "untrusted-code";
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const result = createErrorResponse(error);
+			expect(result.content[0]?.text).toContain(
+				"The request failed Hevy validation. Check the field values and try again. Detail: Routine is invalid; Authorization: [REDACTED]",
+			);
+			expect(JSON.stringify(result)).not.toContain(secret);
+			expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		} finally {
+			stderrSpy.mockRestore();
+		}
 	});
 
 	it("omits hostile HTTP metadata from retained debug context", () => {
