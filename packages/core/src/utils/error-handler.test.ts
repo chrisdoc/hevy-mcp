@@ -112,11 +112,19 @@ describe("createErrorResponse", () => {
 		const result = createErrorResponse(httpError(status));
 		expect(result.content[0]?.text).toContain(expected);
 		if (status === 409) {
-			expect(result.content[0]?.text).not.toContain("body measurement");
-			expect(result.content[0]?.text).toContain(
-				"use the update tool when appropriate",
+			expect(result.content[0]?.text).toBe(
+				"Error: A conflict occurred because the resource already exists or conflicts with the current server state. Check whether it already exists and use the update tool when appropriate.",
 			);
 		}
+	});
+
+	it("gives body measurement create conflicts actionable guidance", () => {
+		const result = createErrorResponse(
+			httpError(409, undefined, undefined, "POST", "/v1/body_measurements"),
+		);
+		expect(result.content[0]?.text).toBe(
+			"Error: A body measurement already exists for this date. Use the update-body-measurement tool to modify it.",
+		);
 	});
 
 	it("does not expose parsed upstream payloads for unmapped statuses", () => {

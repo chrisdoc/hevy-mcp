@@ -278,6 +278,13 @@ export function getStatusErrorMessage(
 		return "The Hevy API key is invalid or has expired. Check HEVY_API_KEY.";
 	}
 	if (status === 404) return "The requested resource was not found in Hevy.";
+	if (
+		status === 409 &&
+		method?.toUpperCase() === "POST" &&
+		endpoint === "/v1/body_measurements"
+	) {
+		return "A body measurement already exists for this date. Use the update-body-measurement tool to modify it.";
+	}
 	if (status === 409) {
 		return "A conflict occurred because the resource already exists or conflicts with the current server state. Check whether it already exists and use the update tool when appropriate.";
 	}
