@@ -160,7 +160,7 @@ export interface HevyClientOptions {
 // request window, especially when returning exercise templates or workouts.
 export const DEFAULT_API_TIMEOUT_MS = 60_000;
 export const MAX_GET_RETRIES = 3;
-export const RETRY_BACKOFF_BASE_MS = 300;
+export { RETRY_BACKOFF_BASE_MS } from "./retry-policy.js";
 export { HEVY_RETRY_EXHAUSTED_ERROR_CODE };
 export { HEVY_REQUEST_ABORTED_ERROR_CODE };
 export { HEVY_DEADLINE_EXCEEDED_ERROR_CODE };

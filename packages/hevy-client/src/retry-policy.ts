@@ -1,6 +1,7 @@
 import type { HevyHttpError } from "./hevy-http-error.js";
 
 export const RETRY_BACKOFF_MAX_MS = 5_000;
+export const RETRY_BACKOFF_BASE_MS = 300;
 
 export interface RetryPolicy {
 	readonly maxRetries: number;
@@ -10,7 +11,7 @@ export interface RetryPolicy {
 
 export const DEFAULT_RETRY_POLICY: RetryPolicy = {
 	maxRetries: 3,
-	baseDelayMs: 300,
+	baseDelayMs: RETRY_BACKOFF_BASE_MS,
 	maxDelayMs: RETRY_BACKOFF_MAX_MS,
 };
 
