@@ -388,6 +388,18 @@ function parseRetryAfterMs(value: string | null): number | undefined {
 		: Math.max(0, dateMillis - Date.now());
 }
 
+function boundedRandomInt(maxExclusive: number): number {
+	if (maxExclusive <= 1) return 0;
+	const random = new Uint32Array(1);
+	const cryptoApi = (
+		globalThis as typeof globalThis & {
+			crypto: { getRandomValues(values: Uint32Array): Uint32Array };
+		}
+	).crypto;
+	cryptoApi.getRandomValues(random);
+	return Math.floor((random[0] / 2 ** 32) * maxExclusive);
+}
+
 function getRetryDelayMs(error: HevyHttpError, retryAttempt: number): number {
 	const exponential = Math.min(
 		RETRY_BACKOFF_MAX_MS,
@@ -397,13 +409,15 @@ function getRetryDelayMs(error: HevyHttpError, retryAttempt: number): number {
 		error.status === 429
 			? parseRetryAfterMs(error.headers?.get("retry-after") ?? null)
 			: undefined;
-	if (retryAfter === undefined) return exponential;
-	// Keep the server's usable lower bound while adding bounded jitter to avoid
-	// a thundering herd when many callers receive the same Retry-After value.
-	const jitter = Math.floor(
-		Math.random() * Math.min(250, Math.max(1, retryAfter * 0.1)),
-	);
-	return Math.max(exponential, retryAfter) + jitter;
+	const lowerBound =
+		retryAfter === undefined ? exponential : Math.max(exponential, retryAfter);
+	// Always add bounded jitter. Keep the server's usable lower bound when it
+	// supplied Retry-After, while avoiding lockstep retries when it did not.
+	const jitterLimit =
+		retryAfter === undefined
+			? 250
+			: Math.min(250, Math.max(1, retryAfter * 0.1));
+	return lowerBound + boundedRandomInt(Math.ceil(jitterLimit));
 }
 
 function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
@@ -621,7 +635,8 @@ interface RequestAttemptExecutionOptions {
 	method: string;
 	endpoint: string;
 	safety: HevyOperationSafety;
-	deadline: number;
+	/** Deadline for this attempt; each retry receives a fresh timeout window. */
+	attemptDeadline: number;
 	executionSignal: AbortSignal;
 	startedAt: number;
 	retryCount: number;
@@ -689,7 +704,7 @@ async function executeRequestAttempt<TData>(
 				phase = "dispatch";
 				const response = await withTimeout(
 					fetchPromise,
-					remainingDeadlineMs(options.deadline),
+					remainingDeadlineMs(options.attemptDeadline),
 					() =>
 						attemptController.abort(
 							new DOMException("Operation timed out", "TimeoutError"),
@@ -700,7 +715,7 @@ async function executeRequestAttempt<TData>(
 				phase = "response-content";
 				const data = await withTimeout(
 					parseResponseData(response),
-					remainingDeadlineMs(options.deadline),
+					remainingDeadlineMs(options.attemptDeadline),
 					() =>
 						attemptController.abort(
 							new DOMException("Operation timed out", "TimeoutError"),
@@ -764,7 +779,10 @@ interface AttemptFailureTransitionOptions {
 	phase: HevyRequestPhase;
 	responseConfirmed: boolean;
 	executionSignal: ReturnType<typeof createExecutionSignal>;
+	/** Overall operation deadline used for cancellation and retry backoff. */
 	deadline: number;
+	/** Deadline of the attempt that just failed. */
+	attemptDeadline: number;
 	retryCount: number;
 	maxGetRetries: number;
 	startedAt: number;
@@ -971,8 +989,9 @@ function transitionAfterAttemptFailure(
 	const failure = classifyExecutionFailure(
 		options.cause,
 		options.executionSignal.signal,
-		options.deadline,
-		options.executionSignal.deadlineTriggered(),
+		options.attemptDeadline,
+		options.executionSignal.deadlineTriggered() ||
+			isDeadlineExceeded(options.attemptDeadline),
 	);
 	const error = createAttemptFailureError(options, failure);
 	const safeToRetry = canRetryAttempt(options, failure, error);
@@ -1041,10 +1060,13 @@ function createNativeClient(
 		const url = buildUrl(baseUrl, normalized);
 		// The HTTP method is authoritative for operation safety and retry policy.
 		const safety = operationSafetyForMethod(method);
-		// `timeoutMs` is the default logical-operation budget. Establish its
-		// absolute deadline once so retries and response-body consumption cannot
-		// each restart a fresh timeout window.
-		const deadline = normalized.hevyDeadline ?? Date.now() + timeoutMs;
+		// The first attempt retains the configured timeout. Retries get their own
+		// attempt window, while the expanded default budget still bounds the
+		// logical operation. An explicit caller deadline remains authoritative.
+		const operationStartedAt = Date.now();
+		const deadline =
+			normalized.hevyDeadline ??
+			operationStartedAt + timeoutMs * (maxGetRetries + 1);
 		const executionSignal = createExecutionSignal({
 			signal: normalized.signal,
 			deadline,
@@ -1053,7 +1075,8 @@ function createNativeClient(
 
 		try {
 			while (true) {
-				const remaining = remainingDeadlineMs(deadline);
+				const attemptDeadline = Math.min(deadline, Date.now() + timeoutMs);
+				const remaining = remainingDeadlineMs(attemptDeadline);
 				if (executionSignal.signal.aborted || remaining <= 0) {
 					const deadlineExceeded = remaining <= 0;
 					const error = createExecutionError({
@@ -1097,7 +1120,7 @@ function createNativeClient(
 					method,
 					endpoint,
 					safety,
-					deadline,
+					attemptDeadline,
 					executionSignal: executionSignal.signal,
 					startedAt,
 					retryCount,
@@ -1117,6 +1140,7 @@ function createNativeClient(
 						responseConfirmed,
 						executionSignal,
 						deadline,
+						attemptDeadline,
 						retryCount,
 						maxGetRetries,
 						startedAt,
