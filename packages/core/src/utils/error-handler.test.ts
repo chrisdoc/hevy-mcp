@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import {
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HevyHttpError,
+} from "@hevy-mcp/hevy-client";
 import { ErrorType } from "./error-policy.js";
 import { createErrorResponse, withErrorHandling } from "./error-handler.js";
 import { SafeUserError } from "./safe-user-error.js";
@@ -66,6 +69,23 @@ describe("createErrorResponse", () => {
 		}
 	});
 
+	it("renders caller cancellation as a client cancellation", () => {
+		const result = createErrorResponse(
+			new HevyHttpError("The request was canceled by the client.", {
+				method: "GET",
+				endpoint: "/v1/user/info",
+				code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+				outcome: "cancelled",
+			}),
+			"get-user",
+		);
+
+		expect(result.content[0]?.text).toBe(
+			"[get-user] Error: The request was canceled by the client.",
+		);
+		expect(result.content[0]?.text).not.toContain("Hevy API request");
+	});
+
 	it("classifies the original error message when the safe message is generic", () => {
 		const result = createErrorResponse(
 			new Error("request validation failed"),
@@ -112,11 +132,19 @@ describe("createErrorResponse", () => {
 		const result = createErrorResponse(httpError(status));
 		expect(result.content[0]?.text).toContain(expected);
 		if (status === 409) {
-			expect(result.content[0]?.text).not.toContain("body measurement");
-			expect(result.content[0]?.text).toContain(
-				"use the update tool when appropriate",
+			expect(result.content[0]?.text).toBe(
+				"Error: A conflict occurred because the resource already exists or conflicts with the current server state. Check whether it already exists and use the update tool when appropriate.",
 			);
 		}
+	});
+
+	it("gives body measurement create conflicts actionable guidance", () => {
+		const result = createErrorResponse(
+			httpError(409, undefined, undefined, "POST", "/v1/body_measurements"),
+		);
+		expect(result.content[0]?.text).toBe(
+			"Error: A body measurement already exists for this date. Use the update-body-measurement tool to modify it.",
+		);
 	});
 
 	it("surfaces only sanitized upstream validation detail", () => {
