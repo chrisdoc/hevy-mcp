@@ -201,7 +201,7 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("times out while consuming a response body", async () => {
-		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const fetchMock = vi.fn(() => Promise.resolve(hangingResponse()));
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
@@ -301,6 +301,44 @@ describe("@hevy-mcp/hevy-client", () => {
 		});
 		expect(fetchMock).toHaveBeenCalledOnce();
 	});
+
+	it("does not extend a caller-supplied deadline with a deadline retry", async () => {
+		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+		const deadline = Date.now() + 10;
+
+		await expect(
+			client.getWorkout("workout-1", { deadline }),
+		).rejects.toMatchObject({
+			code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+			outcome: "deadline_exceeded",
+		});
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("does not misclassify a non-deadline retry failure as deadline exceeded", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementationOnce(() => new Promise<Response>(() => {}))
+			.mockResolvedValueOnce(response({}, 500));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+
+		await expect(client.getWorkout("workout-1")).rejects.toMatchObject({
+			status: 500,
+			outcome: "terminal_failure",
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
 	it("finishes request observations when callers cancel", async () => {
 		const controller = new AbortController();
 		const outcomes: string[] = [];
@@ -333,7 +371,7 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("uses one timeout budget for hanging response bodies", async () => {
-		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const fetchMock = vi.fn(() => Promise.resolve(hangingResponse()));
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
@@ -352,11 +390,11 @@ describe("@hevy-mcp/hevy-client", () => {
 
 	it("cancels response-content consumption through the caller signal", async () => {
 		const controller = new AbortController();
-		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const fetchMock = vi.fn(() => Promise.resolve(hangingResponse()));
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
-			maxGetRetries: 0,
+			maxGetRetries: 3,
 		});
 		const request = client.getRoutineById("routine-1", {
 			signal: controller.signal,
@@ -366,9 +404,11 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		await expect(request).rejects.toMatchObject({
 			code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+			message: "The request was canceled by the client.",
 			phase: "response-content",
 			outcome: "cancelled",
 		});
+		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
 	it("does not restart timeoutMs during retry backoff", async () => {
@@ -465,7 +505,8 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		expect(attempts).toEqual(["start:0", "wait:1", "start:1"]);
 		expect(outcomes).toEqual(["retryable_failure", "success"]);
-		expect(waits).toEqual([300]);
+		expect(waits[0]).toBeGreaterThanOrEqual(300);
+		expect(waits[0]).toBeLessThan(550);
 		expect(scopedRuns).toEqual([0, 0, 1]);
 	});
 
@@ -710,6 +751,30 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
+	it("gives each retry a fresh attempt deadline", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
+				if (fetchMock.mock.calls.length === 1) {
+					return new Promise<Response>((resolve) => {
+						setTimeout(() => resolve(response({}, 429)), 40);
+					});
+				}
+				expect(init?.signal?.aborted).toBe(false);
+				return Promise.resolve(response({ recovered: true }));
+			});
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			timeoutMs: 50,
+			sleep: async () => {},
+		});
+
+		await expect(client.getUserInfo()).resolves.toEqual({ recovered: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	it("never retries a non-idempotent write and marks dispatch uncertainty", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
 		const client = createHevyClient({
@@ -776,6 +841,29 @@ describe("@hevy-mcp/hevy-client", () => {
 			commitState: "unknown",
 			safeToRetry: true,
 		});
+	});
+
+	it("adds bounded jitter when Retry-After is absent", async () => {
+		const waits: number[] = [];
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 429))
+			.mockResolvedValueOnce(response({}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep: (delay) => {
+				waits.push(delay);
+				return Promise.resolve();
+			},
+		});
+
+		await client.getUserInfo();
+
+		expect(waits).toHaveLength(1);
+		expect(waits[0]).toBeGreaterThanOrEqual(300);
+		expect(waits[0]).toBeLessThan(550);
 	});
 
 	it("honors Retry-After while adding bounded jitter", async () => {
@@ -855,7 +943,7 @@ describe("@hevy-mcp/hevy-client", () => {
 
 			const request = client.getUserInfo();
 			await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-			await vi.advanceTimersByTimeAsync(300);
+			await vi.advanceTimersByTimeAsync(550);
 			await expect(request).resolves.toEqual({ recovered: true });
 		} finally {
 			vi.useRealTimers();

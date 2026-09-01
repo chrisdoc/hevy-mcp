@@ -390,6 +390,18 @@ function parseRetryAfterMs(value: string | null): number | undefined {
 		: Math.max(0, dateMillis - Date.now());
 }
 
+function boundedRandomInt(maxExclusive: number): number {
+	if (maxExclusive <= 1) return 0;
+	const random = new Uint32Array(1);
+	const cryptoApi = (
+		globalThis as typeof globalThis & {
+			crypto: { getRandomValues(values: Uint32Array): Uint32Array };
+		}
+	).crypto;
+	cryptoApi.getRandomValues(random);
+	return Math.floor((random[0] / 2 ** 32) * maxExclusive);
+}
+
 function getRetryDelayMs(error: HevyHttpError, retryAttempt: number): number {
 	const exponential = Math.min(
 		RETRY_BACKOFF_MAX_MS,
@@ -399,13 +411,15 @@ function getRetryDelayMs(error: HevyHttpError, retryAttempt: number): number {
 		error.status === 429
 			? parseRetryAfterMs(error.headers?.get("retry-after") ?? null)
 			: undefined;
-	if (retryAfter === undefined) return exponential;
-	// Keep the server's usable lower bound while adding bounded jitter to avoid
-	// a thundering herd when many callers receive the same Retry-After value.
-	const jitter = Math.floor(
-		Math.random() * Math.min(250, Math.max(1, retryAfter * 0.1)),
-	);
-	return Math.max(exponential, retryAfter) + jitter;
+	const lowerBound =
+		retryAfter === undefined ? exponential : Math.max(exponential, retryAfter);
+	// Always add bounded jitter. Keep the server's usable lower bound when it
+	// supplied Retry-After, while avoiding lockstep retries when it did not.
+	const jitterLimit =
+		retryAfter === undefined
+			? 250
+			: Math.min(250, Math.max(1, retryAfter * 0.1));
+	return lowerBound + boundedRandomInt(Math.ceil(jitterLimit));
 }
 
 function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
@@ -491,6 +505,7 @@ interface ExecutionErrorOptions {
 	phase: HevyRequestPhase;
 	deadlineExceeded: boolean;
 	canceled: boolean;
+	callerCanceled?: boolean;
 	responseConfirmed?: boolean;
 	code?: string;
 	cause?: unknown;
@@ -499,6 +514,7 @@ interface ExecutionErrorOptions {
 interface ExecutionFailureState {
 	deadlineExceeded: boolean;
 	canceled: boolean;
+	callerCanceled: boolean;
 	attemptTimedOut: boolean;
 }
 
@@ -515,21 +531,26 @@ function classifyExecutionFailure(
 		(attemptTimedOut &&
 			cause instanceof Error &&
 			cause.name === "TimeoutError");
+
+	const callerCanceled = executionSignal.aborted && !deadlineExceeded;
 	return {
 		deadlineExceeded,
-		canceled: executionSignal.aborted && !deadlineExceeded,
+		canceled: callerCanceled,
+		callerCanceled,
 		attemptTimedOut,
 	};
 }
 
 function createExecutionError(options: ExecutionErrorOptions): HevyHttpError {
-	const { deadlineExceeded, canceled } = options;
+	const { deadlineExceeded, canceled, callerCanceled = false } = options;
 	return new HevyHttpError(
 		deadlineExceeded
 			? "Hevy API request deadline exceeded"
-			: canceled
-				? "Hevy API request was canceled"
-				: "Hevy API network request failed",
+			: callerCanceled
+				? "The request was canceled by the client."
+				: canceled
+					? "Hevy API request was canceled"
+					: "Hevy API network request failed",
 		{
 			method: options.method,
 			endpoint: options.endpoint,
@@ -619,7 +640,8 @@ interface RequestAttemptExecutionOptions {
 	method: string;
 	endpoint: string;
 	safety: HevyOperationSafety;
-	deadline: number;
+	/** Deadline for this attempt; each retry receives a fresh timeout window. */
+	attemptDeadline: number;
 	executionSignal: AbortSignal;
 	startedAt: number;
 	retryCount: number;
@@ -687,7 +709,7 @@ async function executeRequestAttempt<TData>(
 				phase = "dispatch";
 				const response = await withTimeout(
 					fetchPromise,
-					remainingDeadlineMs(options.deadline),
+					remainingDeadlineMs(options.attemptDeadline),
 					() =>
 						attemptController.abort(
 							new DOMException("Operation timed out", "TimeoutError"),
@@ -698,7 +720,7 @@ async function executeRequestAttempt<TData>(
 				phase = "response-content";
 				const data = await withTimeout(
 					parseResponseData(response),
-					remainingDeadlineMs(options.deadline),
+					remainingDeadlineMs(options.attemptDeadline),
 					() =>
 						attemptController.abort(
 							new DOMException("Operation timed out", "TimeoutError"),
@@ -762,7 +784,10 @@ interface AttemptFailureTransitionOptions {
 	phase: HevyRequestPhase;
 	responseConfirmed: boolean;
 	executionSignal: ReturnType<typeof createExecutionSignal>;
+	/** Overall operation deadline used for cancellation and retry backoff. */
 	deadline: number;
+	/** Deadline of the attempt that just failed. */
+	attemptDeadline: number;
 	retryCount: number;
 	maxGetRetries: number;
 	/** True only while executing the one allowed fresh-budget deadline retry. */
@@ -796,9 +821,9 @@ function createAttemptFailureError(
 		endpoint: options.endpoint,
 		safety: options.safety,
 		phase: options.phase,
-		deadlineExceeded:
-			failure.deadlineExceeded || options.deadlineRetryActive === true,
+		deadlineExceeded: failure.deadlineExceeded,
 		canceled: failure.canceled,
+		callerCanceled: failure.callerCanceled,
 		responseConfirmed: options.responseConfirmed,
 		code: failure.attemptTimedOut ? "ETIMEDOUT" : getNetworkCode(options.cause),
 		cause: options.cause,
@@ -832,10 +857,8 @@ function canRetryAttempt(
 
 function failureMetadataOutcome(
 	failure: ExecutionFailureState,
-	deadlineRetryActive = false,
 ): HevyApiOutcome {
-	if (failure.deadlineExceeded || deadlineRetryActive)
-		return "deadline_exceeded";
+	if (failure.deadlineExceeded) return "deadline_exceeded";
 	if (failure.canceled) return "cancelled";
 	return "terminal_failure";
 }
@@ -983,8 +1006,9 @@ function transitionAfterAttemptFailure(
 	const failure = classifyExecutionFailure(
 		options.cause,
 		options.executionSignal.signal,
-		options.deadline,
-		options.executionSignal.deadlineTriggered(),
+		options.attemptDeadline,
+		options.executionSignal.deadlineTriggered() ||
+			isDeadlineExceeded(options.attemptDeadline),
 	);
 	const error = createAttemptFailureError(options, failure);
 	const safeToRetry = canRetryAttempt(options, failure, error);
@@ -997,7 +1021,7 @@ function transitionAfterAttemptFailure(
 		options.safety,
 		commitState,
 		safeToRetry,
-		failureMetadataOutcome(failure, options.deadlineRetryActive),
+		failureMetadataOutcome(failure),
 	);
 	const expectedReason = expectedGet404Outcome(
 		options.endpoint,
@@ -1053,14 +1077,21 @@ function createNativeClient(
 		const url = buildUrl(baseUrl, normalized);
 		// The HTTP method is authoritative for operation safety and retry policy.
 		const safety = operationSafetyForMethod(method);
-		// `timeoutMs` is the default logical-operation budget. A read may get one
-		// fresh attempt budget after timing out, bounded by this overall budget.
+		// `timeoutMs` is the default per-attempt budget. The overall operation
+		// deadline expands to accommodate all retries. A read may get one
+		// fresh attempt budget after timing out, bounded by `operationDeadline`.
+		// An explicit caller deadline remains authoritative — no retry extends
+		// beyond it, so the deadline retry is disabled in that case.
 		const operationTimeoutMs = normalizePositiveInteger(
 			normalized.hevyTimeoutMs,
 			timeoutMs,
 		);
-		let deadline = normalized.hevyDeadline ?? Date.now() + operationTimeoutMs;
-		const operationDeadline = deadline + operationTimeoutMs;
+		const operationStartedAt = Date.now();
+		let deadline =
+			normalized.hevyDeadline ??
+			operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
+		const operationDeadline =
+			normalized.hevyDeadline ?? deadline + operationTimeoutMs;
 		let executionSignal = createExecutionSignal({
 			signal: normalized.signal,
 			deadline,
@@ -1070,7 +1101,11 @@ function createNativeClient(
 
 		try {
 			while (true) {
-				const remaining = remainingDeadlineMs(deadline);
+				const attemptDeadline = Math.min(
+					deadline,
+					Date.now() + operationTimeoutMs,
+				);
+				const remaining = remainingDeadlineMs(attemptDeadline);
 				if (executionSignal.signal.aborted || remaining <= 0) {
 					const deadlineExceeded = remaining <= 0;
 					const error = createExecutionError({
@@ -1080,6 +1115,7 @@ function createNativeClient(
 						phase: "before-dispatch",
 						deadlineExceeded,
 						canceled: !deadlineExceeded,
+						callerCanceled: !deadlineExceeded && executionSignal.signal.aborted,
 					});
 					emitRequestObservation(options.onRequestComplete, {
 						method,
@@ -1113,7 +1149,7 @@ function createNativeClient(
 					method,
 					endpoint,
 					safety,
-					deadline,
+					attemptDeadline,
 					executionSignal: executionSignal.signal,
 					startedAt,
 					retryCount,
@@ -1133,6 +1169,7 @@ function createNativeClient(
 						responseConfirmed,
 						executionSignal,
 						deadline,
+						attemptDeadline,
 						retryCount,
 						maxGetRetries,
 						deadlineRetryActive,
@@ -1143,6 +1180,11 @@ function createNativeClient(
 					if (!transition.retry) throw transition.error;
 					retryCount = transition.retryCount;
 					if (transition.error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE) {
+						// Skip the deadline retry when the caller supplied an
+						// explicit deadline — it is authoritative and no retry
+						// may extend beyond it. In that case operationDeadline
+						// equals deadline, leaving no fresh attempt budget.
+						if (operationDeadline <= deadline) throw transition.error;
 						executionSignal.cleanup();
 						deadline = Math.min(
 							Date.now() + operationTimeoutMs,
@@ -1176,6 +1218,8 @@ function createNativeClient(
 							phase: "backoff",
 							deadlineExceeded: waitDeadlineExceeded,
 							canceled: !waitDeadlineExceeded,
+							callerCanceled:
+								!waitDeadlineExceeded && executionSignal.signal.aborted,
 							cause: waitError,
 						});
 						emitRequestObservation(options.onRequestComplete, {
