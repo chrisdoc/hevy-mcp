@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	createRoutineInputSchema,
 	replaceWorkoutExercisesInputSchema,
+	updateRoutineInputSchema,
 	updateWorkoutInputSchema,
 	workoutInputSchema,
 } from "../mutations.js";
@@ -193,6 +194,39 @@ describe("snake_case mutation schemas", () => {
 				0,
 			]);
 			expect(result.error.issues[0]?.message).toContain("Unrecognized key");
+		}
+	});
+
+	it("requires exercises and sets for both routine mutation paths", () => {
+		for (const schema of [createRoutineInputSchema, updateRoutineInputSchema]) {
+			const emptyExercises = schema.safeParse({
+				routine_id: "routine-1",
+				routine: { title: "Push", exercises: [] },
+			});
+			expect(emptyExercises.success).toBe(false);
+			if (!emptyExercises.success) {
+				expect(emptyExercises.error.issues).toContainEqual(
+					expect.objectContaining({
+						message: "A routine must contain at least one exercise",
+					}),
+				);
+			}
+
+			const emptySets = schema.safeParse({
+				routine_id: "routine-1",
+				routine: {
+					title: "Push",
+					exercises: [{ exercise_template_id: "bench", sets: [] }],
+				},
+			});
+			expect(emptySets.success).toBe(false);
+			if (!emptySets.success) {
+				expect(emptySets.error.issues).toContainEqual(
+					expect.objectContaining({
+						message: "Each routine exercise must contain at least one set",
+					}),
+				);
+			}
 		}
 	});
 

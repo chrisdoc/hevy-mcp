@@ -551,6 +551,12 @@ export function resolveErrorPolicy(
 	}
 	if (isNotInitialized) {
 		message = notInitializedMessage ?? defaultMessage;
+	} else if (
+		diagnostic.status === 400 &&
+		isHevyHttpError(error) &&
+		error.responseError
+	) {
+		message = `${message} Detail: ${error.responseError}`;
 	} else if (isRetryExhausted(error)) {
 		message = getRetryExhaustedMessage(error);
 	} else if (diagnostic.status === 429) {
