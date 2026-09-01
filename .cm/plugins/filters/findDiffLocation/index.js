@@ -1,9 +1,5 @@
-const { z } = require("zod");
-
-const stringSchema = z.string();
-
 function isString(value) {
-	return stringSchema.safeParse(value).success;
+	return Object.prototype.toString.call(value) === "[object String]";
 }
 
 /**
