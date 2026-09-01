@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Effect } from "effect";
 import { createHevyClient } from "./hevy-client.js";
 import {
 	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
@@ -6,7 +7,11 @@ import {
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	HevyHttpError,
 } from "./hevy-http-error.js";
-import { createExecutionSignal, isAbortLike } from "./execution.js";
+import {
+	createExecutionSignal,
+	isAbortLike,
+	withExecutionSignal,
+} from "./execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "./hevy-client-kubb.js";
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
@@ -95,6 +100,26 @@ describe("@hevy-mcp/hevy-client", () => {
 		execution.abort(new DOMException("ignored", "AbortError"));
 		execution.cleanup();
 		expect(execution.signal.reason).toMatchObject({ message: "done" });
+	});
+
+	it("exposes execution controls and aborts them when interrupted", async () => {
+		let execution: ReturnType<typeof createExecutionSignal> | undefined;
+		await Effect.runPromise(
+			Effect.race(
+				withExecutionSignal({}, (currentExecution) => {
+					execution = currentExecution;
+					return Effect.never;
+				}),
+				Effect.succeed("completed"),
+			),
+		);
+
+		expect(execution?.deadlineTriggered()).toBe(false);
+		expect(execution?.signal.aborted).toBe(true);
+		expect(execution?.signal.reason).toMatchObject({
+			name: "AbortError",
+			message: "Execution interrupted",
+		});
 	});
 
 	it.each(["AbortError", "TimeoutError"])(

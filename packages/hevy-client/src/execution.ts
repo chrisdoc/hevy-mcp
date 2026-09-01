@@ -4,7 +4,7 @@
  * The client owns this vocabulary so adapters can only present the same
  * outcome; they cannot accidentally grow incompatible retry/error taxonomies.
  */
-import { Effect } from "effect";
+import { Effect, Exit } from "effect";
 
 export type HevyOperationSafety =
 	| "read"
@@ -156,12 +156,20 @@ export function createExecutionSignal(
  */
 export function withExecutionSignal<A, E, R>(
 	control: HevyExecutionControl,
-	use: (signal: AbortSignal) => Effect.Effect<A, E, R>,
+	use: (execution: HevyExecutionSignal) => Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> {
 	return Effect.acquireUseRelease(
 		Effect.sync(() => createExecutionSignal(control)),
-		(execution) => use(execution.signal),
-		(execution) => Effect.sync(execution.cleanup),
+		use,
+		(execution, exit) =>
+			Effect.sync(() => {
+				if (!Exit.isSuccess(exit) && Exit.hasInterrupts(exit)) {
+					execution.abort(
+						new DOMException("Execution interrupted", "AbortError"),
+					);
+				}
+				execution.cleanup();
+			}),
 	);
 }
 
