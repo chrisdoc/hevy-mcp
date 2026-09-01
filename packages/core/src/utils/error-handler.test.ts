@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import {
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HevyHttpError,
+} from "@hevy-mcp/hevy-client";
 import { ErrorType } from "./error-policy.js";
 import { createErrorResponse, withErrorHandling } from "./error-handler.js";
 import { SafeUserError } from "./safe-user-error.js";
@@ -64,6 +67,23 @@ describe("createErrorResponse", () => {
 		} finally {
 			stderrSpy.mockRestore();
 		}
+	});
+
+	it("renders caller cancellation as a client cancellation", () => {
+		const result = createErrorResponse(
+			new HevyHttpError("The request was canceled by the client.", {
+				method: "GET",
+				endpoint: "/v1/user/info",
+				code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+				outcome: "cancelled",
+			}),
+			"get-user",
+		);
+
+		expect(result.content[0]?.text).toBe(
+			"[get-user] Error: The request was canceled by the client.",
+		);
+		expect(result.content[0]?.text).not.toContain("Hevy API request");
 	});
 
 	it("classifies the original error message when the safe message is generic", () => {

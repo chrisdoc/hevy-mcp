@@ -489,6 +489,7 @@ interface ExecutionErrorOptions {
 	phase: HevyRequestPhase;
 	deadlineExceeded: boolean;
 	canceled: boolean;
+	callerCanceled?: boolean;
 	responseConfirmed?: boolean;
 	code?: string;
 	cause?: unknown;
@@ -497,6 +498,7 @@ interface ExecutionErrorOptions {
 interface ExecutionFailureState {
 	deadlineExceeded: boolean;
 	canceled: boolean;
+	callerCanceled: boolean;
 	attemptTimedOut: boolean;
 }
 
@@ -513,21 +515,25 @@ function classifyExecutionFailure(
 		(attemptTimedOut &&
 			cause instanceof Error &&
 			cause.name === "TimeoutError");
+	const callerCanceled = executionSignal.aborted && !deadlineExceeded;
 	return {
 		deadlineExceeded,
-		canceled: executionSignal.aborted && !deadlineExceeded,
+		canceled: callerCanceled,
+		callerCanceled,
 		attemptTimedOut,
 	};
 }
 
 function createExecutionError(options: ExecutionErrorOptions): HevyHttpError {
-	const { deadlineExceeded, canceled } = options;
+	const { deadlineExceeded, canceled, callerCanceled = false } = options;
 	return new HevyHttpError(
 		deadlineExceeded
 			? "Hevy API request deadline exceeded"
-			: canceled
-				? "Hevy API request was canceled"
-				: "Hevy API network request failed",
+			: callerCanceled
+				? "The request was canceled by the client."
+				: canceled
+					? "Hevy API request was canceled"
+					: "Hevy API network request failed",
 		{
 			method: options.method,
 			endpoint: options.endpoint,
@@ -792,6 +798,7 @@ function createAttemptFailureError(
 		phase: options.phase,
 		deadlineExceeded: failure.deadlineExceeded,
 		canceled: failure.canceled,
+		callerCanceled: failure.callerCanceled,
 		responseConfirmed: options.responseConfirmed,
 		code: failure.attemptTimedOut ? "ETIMEDOUT" : getNetworkCode(options.cause),
 		cause: options.cause,
@@ -1056,6 +1063,7 @@ function createNativeClient(
 						phase: "before-dispatch",
 						deadlineExceeded,
 						canceled: !deadlineExceeded,
+						callerCanceled: !deadlineExceeded && executionSignal.signal.aborted,
 					});
 					emitRequestObservation(options.onRequestComplete, {
 						method,
@@ -1138,6 +1146,8 @@ function createNativeClient(
 							phase: "backoff",
 							deadlineExceeded: waitDeadlineExceeded,
 							canceled: !waitDeadlineExceeded,
+							callerCanceled:
+								!waitDeadlineExceeded && executionSignal.signal.aborted,
 							cause: waitError,
 						});
 						emitRequestObservation(options.onRequestComplete, {

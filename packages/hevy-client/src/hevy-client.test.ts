@@ -286,7 +286,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
-			maxGetRetries: 0,
+			maxGetRetries: 3,
 		});
 		const request = client.getRoutineById("routine-1", {
 			signal: controller.signal,
@@ -296,9 +296,11 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		await expect(request).rejects.toMatchObject({
 			code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+			message: "The request was canceled by the client.",
 			phase: "response-content",
 			outcome: "cancelled",
 		});
+		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
 	it("does not restart timeoutMs during retry backoff", async () => {
