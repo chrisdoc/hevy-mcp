@@ -3,36 +3,27 @@
  * Do not edit manually.
  */
 
-import { bodyMeasurementSchema } from "./bodyMeasurementSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { bodyMeasurementSchema } from "./bodyMeasurementSchema";
 
-export const postV1BodyMeasurementsHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const postV1BodyMeasurementsHeaderApiKeySchema = z.uuid();
+
+export const postV1BodyMeasurementsStatus200Schema = z.unknown();
+
+export const postV1BodyMeasurementsStatus400Schema = z.object({
+  error: z.string().optional(),
 });
 
-/**
- * @description The measurement was successfully created
- */
-export const postV1BodyMeasurements200Schema = z.any();
-
-/**
- * @description Invalid request body
- */
-export const postV1BodyMeasurements400Schema = z.object({
-  error: z.optional(z.string()),
+export const postV1BodyMeasurementsStatus409Schema = z.object({
+  error: z.string().optional(),
 });
 
-/**
- * @description A measurement for this date already exists
- */
-export const postV1BodyMeasurements409Schema = z.object({
-  error: z.optional(z.string()),
-});
+export const postV1BodyMeasurementsResponseSchema =
+  postV1BodyMeasurementsStatus200Schema;
 
-export const postV1BodyMeasurementsMutationRequestSchema = z.lazy(
-  () => bodyMeasurementSchema,
-);
+export const postV1BodyMeasurementsErrorSchema = z.union([
+  postV1BodyMeasurementsStatus400Schema,
+  postV1BodyMeasurementsStatus409Schema,
+]);
 
-export const postV1BodyMeasurementsMutationResponseSchema = z.lazy(
-  () => postV1BodyMeasurements200Schema,
-);
+export const postV1BodyMeasurementsBodySchema = bodyMeasurementSchema;

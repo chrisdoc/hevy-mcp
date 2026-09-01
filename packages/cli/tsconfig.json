@@ -1,6 +1,11 @@
 {
-	"extends": "../../tsconfig.json",
-	"compilerOptions": { "rootDir": "src", "outDir": "dist", "types": ["node"] },
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"rootDir": "src",
+		"outDir": "dist",
+		"types": ["node"]
+	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules", "dist"]
 }

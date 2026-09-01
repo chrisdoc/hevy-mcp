@@ -3,29 +3,36 @@
  * Do not edit manually.
  */
 
-import type { UserInfoResponse } from "./UserInfoResponse.ts";
+import type { UserInfoResponse } from "./UserInfoResponse";
 
-export type GetV1UserInfoHeaderParams = {
+export type GetV1UserInfoHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The authenticated user\'s info
- */
-export type GetV1UserInfo200 = UserInfoResponse;
+export type GetV1UserInfoStatus200 = UserInfoResponse;
 
-/**
- * @description User not found
- */
-export type GetV1UserInfo404 = any;
+export type GetV1UserInfoStatus404 = unknown;
 
-export type GetV1UserInfoQueryResponse = GetV1UserInfo200;
-
-export type GetV1UserInfoQuery = {
-  Response: GetV1UserInfo200;
-  HeaderParams: GetV1UserInfoHeaderParams;
-  Errors: GetV1UserInfo404;
+export type GetV1UserInfoOptions = {
+  body?: never;
+  path?: never;
+  query?: never;
+  headers: GetV1UserInfoHeaders;
 };
+
+export type GetV1UserInfoResponses = {
+  "200": GetV1UserInfoStatus200;
+  "404": GetV1UserInfoStatus404;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1UserInfoResponse =
+  | GetV1UserInfoStatus200
+  | GetV1UserInfoStatus404;

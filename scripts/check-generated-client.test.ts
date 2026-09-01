@@ -65,11 +65,11 @@ describe("generated client closure checks", () => {
 	});
 
 	it("resolves package bins through Node instead of platform shell shims", async () => {
-		const executable = await resolvePackageExecutable("@kubb/cli", "kubb");
+		const executable = await resolvePackageExecutable("kubb", "kubb");
 
 		expect(executable.command).toBe(process.execPath);
 		expect(executable.args).toHaveLength(1);
-		expect(executable.args[0]).toMatch(/[\\/]bin[\\/]kubb\.cjs$/);
+		expect(executable.args[0]).toMatch(/[\\/]bin[\\/]kubb\.(?:c?js)$/);
 	});
 
 	it("reports missing package metadata and executable declarations", async () => {

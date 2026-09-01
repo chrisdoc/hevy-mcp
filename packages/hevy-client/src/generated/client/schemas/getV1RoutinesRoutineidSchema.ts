@@ -3,33 +3,25 @@
  * Do not edit manually.
  */
 
-import { routineSchema } from "./routineSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { routineSchema } from "./routineSchema";
 
-export const getV1RoutinesRoutineidPathParamsSchema = z.object({
-  routineId: z.string().describe("The id of the routine"),
+export const getV1RoutinesRoutineidHeaderApiKeySchema = z.uuid();
+
+export const getV1RoutinesRoutineidPathRoutineIdSchema = z
+  .string()
+  .describe("The id of the routine");
+
+export const getV1RoutinesRoutineidStatus200Schema = z.object({
+  routine: routineSchema.optional(),
 });
 
-export const getV1RoutinesRoutineidHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const getV1RoutinesRoutineidStatus400Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-/**
- * @description The routine with the provided id
- */
-export const getV1RoutinesRoutineid200Schema = z.object({
-  get routine() {
-    return routineSchema.optional();
-  },
-});
+export const getV1RoutinesRoutineidResponseSchema =
+  getV1RoutinesRoutineidStatus200Schema;
 
-/**
- * @description Invalid request body
- */
-export const getV1RoutinesRoutineid400Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
-});
-
-export const getV1RoutinesRoutineidQueryResponseSchema = z.lazy(
-  () => getV1RoutinesRoutineid200Schema,
-);
+export const getV1RoutinesRoutineidErrorSchema =
+  getV1RoutinesRoutineidStatus400Schema;

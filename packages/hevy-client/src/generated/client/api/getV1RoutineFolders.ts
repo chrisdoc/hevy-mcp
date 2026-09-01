@@ -3,45 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1RoutineFoldersQueryResponse,
-  GetV1RoutineFoldersQueryParams,
-  GetV1RoutineFoldersHeaderParams,
-  GetV1RoutineFolders400,
-} from "../types/GetV1RoutineFolders.ts";
-
-function getGetV1RoutineFoldersUrl() {
-  const res = { method: "GET", url: `/v1/routine_folders` as const };
-  return res;
-}
+  GetV1RoutineFoldersOptions,
+  GetV1RoutineFoldersResponses,
+} from "../types/GetV1RoutineFolders";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of routine folders available on the account.
  * {@link /v1/routine_folders}
  */
-export async function getV1RoutineFolders(
-  headers: GetV1RoutineFoldersHeaderParams,
-  params?: GetV1RoutineFoldersQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1RoutineFolders<ThrowOnError extends boolean = true>(
+  options: Options<GetV1RoutineFoldersOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1RoutineFoldersResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1RoutineFoldersQueryResponse,
-    ResponseErrorConfig<GetV1RoutineFolders400>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1RoutineFoldersUrl().url.toString(),
-    params,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/routine_folders",
+    ...config,
+  }) as Promise<RequestResult<GetV1RoutineFoldersResponses, ThrowOnError>>;
 }

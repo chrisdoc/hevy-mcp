@@ -3,27 +3,29 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
-export const muscleGroupSchema = z.enum([
-  "abdominals",
-  "shoulders",
-  "biceps",
-  "triceps",
-  "forearms",
-  "quadriceps",
-  "hamstrings",
-  "calves",
-  "glutes",
-  "abductors",
-  "adductors",
-  "lats",
-  "upper_back",
-  "traps",
-  "lower_back",
-  "chest",
-  "cardio",
-  "neck",
-  "full_body",
-  "other",
-]);
+export const muscleGroupSchema = z
+  .enum([
+    "abdominals",
+    "shoulders",
+    "biceps",
+    "triceps",
+    "forearms",
+    "quadriceps",
+    "hamstrings",
+    "calves",
+    "glutes",
+    "abductors",
+    "adductors",
+    "lats",
+    "upper_back",
+    "traps",
+    "lower_back",
+    "chest",
+    "cardio",
+    "neck",
+    "full_body",
+    "other",
+  ])
+  .meta({ examples: ["chest"] });

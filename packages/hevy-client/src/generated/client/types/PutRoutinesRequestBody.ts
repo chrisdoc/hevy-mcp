@@ -3,26 +3,22 @@
  * Do not edit manually.
  */
 
-import type { PutRoutinesRequestExercise } from "./PutRoutinesRequestExercise.ts";
+import type { PutRoutinesRequestExercise } from "./PutRoutinesRequestExercise";
 
 export type PutRoutinesRequestBody = {
-  /**
-   * @type object | undefined
-   */
   routine?: {
     /**
      * @description The title of the routine.
+     * @example April Leg Day 🔥
      * @type string | undefined
      */
     title?: string;
     /**
      * @description Additional notes for the routine.
-     * @type string
+     * @example Focus on form over weight. Remember to stretch.
+     * @type string | undefined
      */
     notes?: string | null;
-    /**
-     * @type array | undefined
-     */
     exercises?: PutRoutinesRequestExercise[];
   };
 };

@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-export const equipmentCategoryEnum = {
+export const equipmentCategory = {
   none: "none",
   barbell: "barbell",
   dumbbell: "dumbbell",
@@ -15,10 +15,5 @@ export const equipmentCategoryEnum = {
   other: "other",
 } as const;
 
-export type EquipmentCategoryEnumKey =
-  (typeof equipmentCategoryEnum)[keyof typeof equipmentCategoryEnum];
-
-/**
- * @example barbell
- */
-export type EquipmentCategory = EquipmentCategoryEnumKey;
+export type EquipmentCategoryKey =
+  (typeof equipmentCategory)[keyof typeof equipmentCategory];

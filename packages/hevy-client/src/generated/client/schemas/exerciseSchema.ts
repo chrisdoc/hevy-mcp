@@ -3,31 +3,38 @@
  * Do not edit manually.
  */
 
-import { setSchema } from "./setSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { setSchema } from "./setSchema";
 
 export const exerciseSchema = z.object({
-  index: z.optional(
-    z
-      .number()
-      .describe("Index indicating the order of the exercise in the workout."),
-  ),
-  title: z.optional(z.string().describe("Title of the exercise")),
-  notes: z.optional(z.string().describe("Notes on the exercise")),
-  exercise_template_id: z.optional(
-    z
-      .string()
-      .describe(
-        "The id of the exercise template. This can be used to fetch the exercise template.",
-      ),
-  ),
-  supersets_id: z
+  index: z.coerce
     .number()
+    .optional()
+    .describe("Index indicating the order of the exercise in the workout.")
+    .meta({ examples: [0] }),
+  title: z
+    .string()
+    .optional()
+    .describe("Title of the exercise")
+    .meta({ examples: ["Bench Press (Barbell)"] }),
+  notes: z
+    .string()
+    .optional()
+    .describe("Notes on the exercise")
+    .meta({ examples: ["Paid closer attention to form today. Felt great!"] }),
+  exercise_template_id: z
+    .string()
+    .optional()
+    .describe(
+      "The id of the exercise template. This can be used to fetch the exercise template.",
+    )
+    .meta({ examples: ["05293BCA"] }),
+  supersets_id: z.coerce
+    .number()
+    .nullish()
     .describe(
       "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
     )
-    .nullish(),
-  get sets() {
-    return z.array(setSchema).optional();
-  },
+    .meta({ examples: [0] }),
+  sets: z.array(setSchema).optional(),
 });

@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { ExerciseHistoryEntry } from "./ExerciseHistoryEntry.ts";
+import type { ExerciseHistoryEntry } from "./ExerciseHistoryEntry";
 
-export type GetV1ExerciseHistoryExercisetemplateidPathParams = {
+export type GetV1ExerciseHistoryExercisetemplateidPath = {
   /**
    * @description The id of the exercise template
    * @type string
@@ -13,48 +13,53 @@ export type GetV1ExerciseHistoryExercisetemplateidPathParams = {
   exerciseTemplateId: string;
 };
 
-export type GetV1ExerciseHistoryExercisetemplateidQueryParams = {
+export type GetV1ExerciseHistoryExercisetemplateidQuery = {
   /**
    * @description Optional start date for filtering exercise history (ISO 8601 format)
-   * @type string | undefined, date-time
+   *
+   * Format: `date-time`
+   * @type string | undefined
    */
   start_date?: string;
   /**
    * @description Optional end date for filtering exercise history (ISO 8601 format)
-   * @type string | undefined, date-time
+   *
+   * Format: `date-time`
+   * @type string | undefined
    */
   end_date?: string;
 };
 
-export type GetV1ExerciseHistoryExercisetemplateidHeaderParams = {
+export type GetV1ExerciseHistoryExercisetemplateidHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description A list of exercise history entries
- */
-export type GetV1ExerciseHistoryExercisetemplateid200 = {
-  /**
-   * @type array | undefined
-   */
+export type GetV1ExerciseHistoryExercisetemplateidStatus200 = {
   exercise_history?: ExerciseHistoryEntry[];
 };
 
-/**
- * @description Invalid request parameters or date format
- */
-export type GetV1ExerciseHistoryExercisetemplateid400 = any;
+export type GetV1ExerciseHistoryExercisetemplateidStatus400 = unknown;
 
-export type GetV1ExerciseHistoryExercisetemplateidQueryResponse =
-  GetV1ExerciseHistoryExercisetemplateid200;
-
-export type GetV1ExerciseHistoryExercisetemplateidQuery = {
-  Response: GetV1ExerciseHistoryExercisetemplateid200;
-  PathParams: GetV1ExerciseHistoryExercisetemplateidPathParams;
-  QueryParams: GetV1ExerciseHistoryExercisetemplateidQueryParams;
-  HeaderParams: GetV1ExerciseHistoryExercisetemplateidHeaderParams;
-  Errors: GetV1ExerciseHistoryExercisetemplateid400;
+export type GetV1ExerciseHistoryExercisetemplateidOptions = {
+  body?: never;
+  path: GetV1ExerciseHistoryExercisetemplateidPath;
+  query?: GetV1ExerciseHistoryExercisetemplateidQuery;
+  headers: GetV1ExerciseHistoryExercisetemplateidHeaders;
 };
+
+export type GetV1ExerciseHistoryExercisetemplateidResponses = {
+  "200": GetV1ExerciseHistoryExercisetemplateidStatus200;
+  "400": GetV1ExerciseHistoryExercisetemplateidStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1ExerciseHistoryExercisetemplateidResponse =
+  | GetV1ExerciseHistoryExercisetemplateidStatus200
+  | GetV1ExerciseHistoryExercisetemplateidStatus400;

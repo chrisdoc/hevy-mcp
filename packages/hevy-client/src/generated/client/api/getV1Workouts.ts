@@ -3,45 +3,23 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1WorkoutsQueryResponse,
-  GetV1WorkoutsQueryParams,
-  GetV1WorkoutsHeaderParams,
-  GetV1Workouts400,
-} from "../types/GetV1Workouts.ts";
-
-function getGetV1WorkoutsUrl() {
-  const res = { method: "GET", url: `/v1/workouts` as const };
-  return res;
-}
+  GetV1WorkoutsOptions,
+  GetV1WorkoutsResponses,
+} from "../types/GetV1Workouts";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of workouts
  * {@link /v1/workouts}
  */
-export async function getV1Workouts(
-  headers: GetV1WorkoutsHeaderParams,
-  params?: GetV1WorkoutsQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1Workouts<ThrowOnError extends boolean = true>(
+  options: Options<GetV1WorkoutsOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1WorkoutsResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1WorkoutsQueryResponse,
-    ResponseErrorConfig<GetV1Workouts400>,
-    unknown
-  >({
-    method: "GET",
-    url: getGetV1WorkoutsUrl().url.toString(),
-    params,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+  return request({ method: "GET", url: "/v1/workouts", ...config }) as Promise<
+    RequestResult<GetV1WorkoutsResponses, ThrowOnError>
+  >;
 }

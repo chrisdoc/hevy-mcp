@@ -11,26 +11,45 @@ const isString = <T>(value: T): value is T & string =>
 	stringSchema.safeParse(value).success;
 
 import type { RequestConfig, ResponseConfig } from "./fetch.ts";
-import * as api from "./generated/client/api";
+import * as api from "./generated/client/api/index.js";
 import type {
-	GetV1BodyMeasurementsQueryParams,
-	GetV1ExerciseHistoryExercisetemplateidQueryParams,
-	GetV1ExerciseTemplatesQueryParams,
-	GetV1RoutineFoldersQueryParams,
-	GetV1RoutinesQueryParams,
-	GetV1WorkoutsEventsQueryParams,
-	GetV1WorkoutsQueryParams,
-	PostV1BodyMeasurementsMutationRequest,
-	PostV1ExerciseTemplatesMutationRequest,
-	PostV1RoutineFoldersMutationRequest,
-	PostV1Routines201,
-	PostV1RoutinesMutationRequest,
+	BodyMeasurement,
+	CreateCustomExerciseRequestBody,
+	GetV1BodyMeasurementsQuery,
+	GetV1BodyMeasurementsStatus200,
+	GetV1BodyMeasurementsDateStatus200,
+	GetV1ExerciseHistoryExercisetemplateidQuery,
+	GetV1ExerciseHistoryExercisetemplateidStatus200,
+	GetV1ExerciseTemplatesQuery,
+	GetV1ExerciseTemplatesStatus200,
+	GetV1ExerciseTemplatesExercisetemplateidStatus200,
+	GetV1RoutineFoldersQuery,
+	GetV1RoutineFoldersStatus200,
+	GetV1RoutineFoldersFolderidStatus200,
+	GetV1RoutinesQuery,
+	GetV1RoutinesStatus200,
+	GetV1RoutinesRoutineidStatus200,
+	GetV1UserInfoStatus200,
+	GetV1WorkoutsEventsQuery,
+	GetV1WorkoutsEventsStatus200,
+	GetV1WorkoutsQuery,
+	GetV1WorkoutsStatus200,
+	GetV1WorkoutsCountStatus200,
+	GetV1WorkoutsWorkoutidStatus200,
+	PostRoutineFolderRequestBody,
+	PostRoutinesRequestBody,
+	PostWorkoutsRequestBody,
+	PostV1BodyMeasurementsStatus200,
+	PostV1ExerciseTemplatesStatus200,
+	PostV1RoutineFoldersStatus201,
+	PostV1WorkoutsStatus201,
+	PutBodyMeasurement,
+	PutRoutinesRequestBody,
+	PutV1BodyMeasurementsDateStatus200,
+	PutV1RoutinesRoutineidStatus200,
+	PutV1WorkoutsWorkoutidStatus200,
 	Routine,
-	PostV1WorkoutsMutationRequest,
-	PutV1BodyMeasurementsDateMutationRequest,
-	PutV1RoutinesRoutineidMutationRequest,
-	PutV1WorkoutsWorkoutidMutationRequest,
-} from "./generated/client/types";
+} from "./generated/client/types/index.js";
 import {
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
@@ -284,15 +303,14 @@ function getRequestContext(config: {
 	method?: string;
 	url?: string;
 	params?: unknown;
+	query?: unknown;
 }) {
 	const method = (config.method ?? "GET").toUpperCase();
 	const endpoint = canonicalEndpointIdentity(config.url ?? "");
+	const query = config.query ?? config.params;
 	const page =
-		config.params !== null &&
-		isObject(config.params) &&
-		"page" in config.params &&
-		isNumber(config.params.page)
-			? config.params.page
+		query !== null && isObject(query) && "page" in query && isNumber(query.page)
+			? query.page
 			: undefined;
 	return { method, endpoint, page };
 }
@@ -430,9 +448,21 @@ function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
 			code: "HEVY_INVALID_ENDPOINT",
 		});
 	}
-	const url = new URL(config.url, baseUrl);
-	if (config.params && isObject(config.params)) {
-		for (const [key, value] of Object.entries(config.params)) {
+	let resolvedUrl = config.url;
+	if (config.path && isObject(config.path)) {
+		for (const [key, value] of Object.entries(config.path)) {
+			if (value !== undefined) {
+				resolvedUrl = resolvedUrl.replaceAll(
+					`{${key}}`,
+					encodeURIComponent(value === null ? "null" : String(value)),
+				);
+			}
+		}
+	}
+	const url = new URL(resolvedUrl, baseUrl);
+	const query = config.query ?? config.params;
+	if (query && isObject(query)) {
+		for (const [key, value] of Object.entries(query)) {
 			if (value !== undefined) {
 				url.searchParams.append(key, value === null ? "null" : String(value));
 			}
@@ -677,11 +707,9 @@ async function executeRequestAttempt<TData>(
 		const result = await runRequestObservation(
 			options.observationScope,
 			async () => {
+				const payload = options.normalized.body ?? options.normalized.data;
 				const headers = new Headers({ "api-key": options.apiKey });
-				if (
-					options.normalized.data !== undefined &&
-					!(options.normalized.data instanceof FormData)
-				) {
+				if (payload !== undefined && !(payload instanceof FormData)) {
 					headers.set("content-type", "application/json");
 				}
 				const requestInit: RequestInit = {
@@ -689,11 +717,11 @@ async function executeRequestAttempt<TData>(
 					headers,
 					redirect: "manual",
 					body:
-						options.normalized.data instanceof FormData
-							? options.normalized.data
-							: options.normalized.data === undefined
+						payload instanceof FormData
+							? payload
+							: payload === undefined
 								? undefined
-								: JSON.stringify(options.normalized.data),
+								: JSON.stringify(payload),
 					signal: attemptController.signal,
 				};
 				let fetchPromise: Promise<Response>;
@@ -1265,181 +1293,254 @@ export function createClient(
 	const headers = { "api-key": apiKey };
 	const client = createNativeClient(apiKey, baseUrl, options);
 	return {
-		getWorkouts: (
-			params?: GetV1WorkoutsQueryParams,
+		getWorkouts: async (
+			params?: GetV1WorkoutsQuery,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1Workouts> =>
-			api.getV1Workouts(headers, params, requestOptions(options, client)),
-		getWorkout: (
+		): Promise<GetV1WorkoutsStatus200> => {
+			const res = await api.getV1Workouts({
+				headers,
+				query: params,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getWorkout: async (
 			workoutId: string,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1WorkoutsWorkoutid> =>
-			api.getV1WorkoutsWorkoutid(
-				workoutId,
+		): Promise<GetV1WorkoutsWorkoutidStatus200> => {
+			const res = await api.getV1WorkoutsWorkoutid({
 				headers,
-				requestOptions(options, client),
-			),
-		createWorkout: (
-			data: PostV1WorkoutsMutationRequest,
+				path: { workoutId },
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		createWorkout: async (
+			data: PostWorkoutsRequestBody,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.postV1Workouts> =>
-			api.postV1Workouts(data, headers, requestOptions(options, client)),
-		updateWorkout: (
+		): Promise<PostV1WorkoutsStatus201> => {
+			const res = await api.postV1Workouts({
+				headers,
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		updateWorkout: async (
 			workoutId: string,
-			data: PutV1WorkoutsWorkoutidMutationRequest,
+			data: PostWorkoutsRequestBody,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.putV1WorkoutsWorkoutid> =>
-			api.putV1WorkoutsWorkoutid(
-				workoutId,
-				data,
+		): Promise<PutV1WorkoutsWorkoutidStatus200> => {
+			const res = await api.putV1WorkoutsWorkoutid({
 				headers,
-				requestOptions(options, client),
-			),
-		getWorkoutCount: (
+				path: { workoutId },
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getWorkoutCount: async (
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1WorkoutsCount> =>
-			api.getV1WorkoutsCount(headers, requestOptions(options, client)),
-		getWorkoutEvents: (
-			params?: GetV1WorkoutsEventsQueryParams,
+		): Promise<GetV1WorkoutsCountStatus200> => {
+			const res = await api.getV1WorkoutsCount({
+				headers,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getWorkoutEvents: async (
+			params?: GetV1WorkoutsEventsQuery,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1WorkoutsEvents> =>
-			api.getV1WorkoutsEvents(headers, params, requestOptions(options, client)),
-		getRoutines: (
-			params?: GetV1RoutinesQueryParams,
+		): Promise<GetV1WorkoutsEventsStatus200> => {
+			const res = await api.getV1WorkoutsEvents({
+				headers,
+				query: params,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getRoutines: async (
+			params?: GetV1RoutinesQuery,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1Routines> =>
-			api.getV1Routines(headers, params, requestOptions(options, client)),
-		getRoutineById: (
+		): Promise<GetV1RoutinesStatus200> => {
+			const res = await api.getV1Routines({
+				headers,
+				query: params,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getRoutineById: async (
 			routineId: string,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1RoutinesRoutineid> =>
-			api.getV1RoutinesRoutineid(
-				routineId,
+		): Promise<GetV1RoutinesRoutineidStatus200> => {
+			const res = await api.getV1RoutinesRoutineid({
 				headers,
-				requestOptions(options, client),
-			),
+				path: { routineId },
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
 		createRoutine: async (
-			data: PostV1RoutinesMutationRequest,
+			data: PostRoutinesRequestBody,
 			options?: HevyRequestOptions,
 		): Promise<Routine | undefined> => {
-			const response: PostV1Routines201 = await api.postV1Routines(
-				data,
+			const res = await api.postV1Routines({
 				headers,
-				requestOptions(options, client),
-			);
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			const response = res.data;
 			return Object.keys(response).length === 0
 				? undefined
 				: (response as Routine);
 		},
-		updateRoutine: (
+		updateRoutine: async (
 			routineId: string,
-			data: PutV1RoutinesRoutineidMutationRequest,
+			data: PutRoutinesRequestBody,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.putV1RoutinesRoutineid> =>
-			api.putV1RoutinesRoutineid(
-				routineId,
-				data,
+		): Promise<PutV1RoutinesRoutineidStatus200> => {
+			const res = await api.putV1RoutinesRoutineid({
 				headers,
-				requestOptions(options, client),
-			),
-		getExerciseTemplates: (
-			params?: GetV1ExerciseTemplatesQueryParams,
+				path: { routineId },
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getExerciseTemplates: async (
+			params?: GetV1ExerciseTemplatesQuery,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1ExerciseTemplates> =>
-			api.getV1ExerciseTemplates(
+		): Promise<GetV1ExerciseTemplatesStatus200> => {
+			const res = await api.getV1ExerciseTemplates({
 				headers,
-				params,
-				requestOptions(options, client),
-			),
-		getExerciseTemplate: (
+				query: params,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getExerciseTemplate: async (
 			templateId: string,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1ExerciseTemplatesExercisetemplateid> =>
-			api.getV1ExerciseTemplatesExercisetemplateid(
-				templateId,
+		): Promise<GetV1ExerciseTemplatesExercisetemplateidStatus200> => {
+			const res = await api.getV1ExerciseTemplatesExercisetemplateid({
 				headers,
-				requestOptions(options, client),
-			),
-		getExerciseHistory: (
+				path: { exerciseTemplateId: templateId },
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getExerciseHistory: async (
 			exerciseTemplateId: string,
-			params?: GetV1ExerciseHistoryExercisetemplateidQueryParams,
+			params?: GetV1ExerciseHistoryExercisetemplateidQuery,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1ExerciseHistoryExercisetemplateid> =>
-			api.getV1ExerciseHistoryExercisetemplateid(
-				exerciseTemplateId,
+		): Promise<GetV1ExerciseHistoryExercisetemplateidStatus200> => {
+			const res = await api.getV1ExerciseHistoryExercisetemplateid({
 				headers,
-				params,
-				requestOptions(options, client),
-			),
-		createExerciseTemplate: (
-			data: PostV1ExerciseTemplatesMutationRequest,
+				path: { exerciseTemplateId },
+				query: params,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		createExerciseTemplate: async (
+			data: CreateCustomExerciseRequestBody,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.postV1ExerciseTemplates> =>
-			api.postV1ExerciseTemplates(
-				data,
+		): Promise<PostV1ExerciseTemplatesStatus200> => {
+			const res = await api.postV1ExerciseTemplates({
 				headers,
-				requestOptions(options, client),
-			),
-		getRoutineFolders: (
-			params?: GetV1RoutineFoldersQueryParams,
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getRoutineFolders: async (
+			params?: GetV1RoutineFoldersQuery,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1RoutineFolders> =>
-			api.getV1RoutineFolders(headers, params, requestOptions(options, client)),
-		createRoutineFolder: (
-			data: PostV1RoutineFoldersMutationRequest,
+		): Promise<GetV1RoutineFoldersStatus200> => {
+			const res = await api.getV1RoutineFolders({
+				headers,
+				query: params,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		createRoutineFolder: async (
+			data: PostRoutineFolderRequestBody,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.postV1RoutineFolders> =>
-			api.postV1RoutineFolders(data, headers, requestOptions(options, client)),
-		getRoutineFolder: (
+		): Promise<PostV1RoutineFoldersStatus201> => {
+			const res = await api.postV1RoutineFolders({
+				headers,
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getRoutineFolder: async (
 			folderId: string,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1RoutineFoldersFolderid> =>
-			api.getV1RoutineFoldersFolderid(
-				folderId,
+		): Promise<GetV1RoutineFoldersFolderidStatus200> => {
+			const res = await api.getV1RoutineFoldersFolderid({
 				headers,
-				requestOptions(options, client),
-			),
-		getBodyMeasurements: (
-			params?: GetV1BodyMeasurementsQueryParams,
+				path: { folderId },
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getBodyMeasurements: async (
+			params?: GetV1BodyMeasurementsQuery,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1BodyMeasurements> =>
-			api.getV1BodyMeasurements(
+		): Promise<GetV1BodyMeasurementsStatus200> => {
+			const res = await api.getV1BodyMeasurements({
 				headers,
-				params,
-				requestOptions(options, client),
-			),
-		getBodyMeasurement: (
+				query: params,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getBodyMeasurement: async (
 			date: string,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1BodyMeasurementsDate> =>
-			api.getV1BodyMeasurementsDate(
-				date,
+		): Promise<GetV1BodyMeasurementsDateStatus200> => {
+			const res = await api.getV1BodyMeasurementsDate({
 				headers,
-				requestOptions(options, client),
-			),
-		createBodyMeasurement: (
-			data: PostV1BodyMeasurementsMutationRequest,
+				path: { date },
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		createBodyMeasurement: async (
+			data: BodyMeasurement,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.postV1BodyMeasurements> =>
-			api.postV1BodyMeasurements(
-				data,
+		): Promise<PostV1BodyMeasurementsStatus200> => {
+			const res = await api.postV1BodyMeasurements({
 				headers,
-				requestOptions(options, client),
-			),
-		updateBodyMeasurement: (
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		updateBodyMeasurement: async (
 			date: string,
-			data: PutV1BodyMeasurementsDateMutationRequest,
+			data: PutBodyMeasurement,
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.putV1BodyMeasurementsDate> =>
-			api.putV1BodyMeasurementsDate(
-				date,
-				data,
+		): Promise<PutV1BodyMeasurementsDateStatus200> => {
+			const res = await api.putV1BodyMeasurementsDate({
 				headers,
-				requestOptions(options, client),
-			),
-		getUserInfo: (
+				path: { date },
+				body: data,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
+		getUserInfo: async (
 			options?: HevyRequestOptions,
-		): ReturnType<typeof api.getV1UserInfo> =>
-			api.getV1UserInfo(headers, requestOptions(options, client)),
+		): Promise<GetV1UserInfoStatus200> => {
+			const res = await api.getV1UserInfo({
+				headers,
+				...(requestOptions(options, client) as any),
+			});
+			return res.data;
+		},
 	};
 }

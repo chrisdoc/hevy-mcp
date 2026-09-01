@@ -3,47 +3,47 @@
  * Do not edit manually.
  */
 
-import { bodyMeasurementSchema } from "./bodyMeasurementSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { bodyMeasurementSchema } from "./bodyMeasurementSchema";
 
-export const getV1BodyMeasurementsQueryParamsSchema = z.object({
+export const getV1BodyMeasurementsHeaderApiKeySchema = z.uuid();
+
+export const getV1BodyMeasurementsQueryPageSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(1)
+  .describe("Page number (Must be 1 or greater)");
+
+export const getV1BodyMeasurementsQueryPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(10)
+  .describe("Number of items per page (Max 10)");
+
+export const getV1BodyMeasurementsStatus200Schema = z.object({
   page: z.coerce
     .number()
     .int()
-    .default(1)
-    .describe("Page number (Must be 1 or greater)"),
-  pageSize: z.coerce
+    .optional()
+    .meta({ examples: [1] }),
+  page_count: z.coerce
     .number()
     .int()
-    .default(10)
-    .describe("Number of items per page (Max 10)"),
+    .optional()
+    .meta({ examples: [5] }),
+  body_measurements: z.array(bodyMeasurementSchema).optional(),
 });
 
-export const getV1BodyMeasurementsHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1BodyMeasurementsStatus400Schema = z.unknown();
 
-/**
- * @description A paginated list of body measurements
- */
-export const getV1BodyMeasurements200Schema = z.object({
-  page: z.optional(z.int()),
-  page_count: z.optional(z.int()),
-  get body_measurements() {
-    return z.array(bodyMeasurementSchema).optional();
-  },
-});
+export const getV1BodyMeasurementsStatus404Schema = z.unknown();
 
-/**
- * @description Invalid page or pageSize
- */
-export const getV1BodyMeasurements400Schema = z.any();
+export const getV1BodyMeasurementsResponseSchema =
+  getV1BodyMeasurementsStatus200Schema;
 
-/**
- * @description Page not found
- */
-export const getV1BodyMeasurements404Schema = z.any();
-
-export const getV1BodyMeasurementsQueryResponseSchema = z.lazy(
-  () => getV1BodyMeasurements200Schema,
-);
+export const getV1BodyMeasurementsErrorSchema = z.union([
+  getV1BodyMeasurementsStatus400Schema,
+  getV1BodyMeasurementsStatus404Schema,
+]);

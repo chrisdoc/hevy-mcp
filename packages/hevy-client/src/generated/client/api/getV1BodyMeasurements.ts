@@ -3,46 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1BodyMeasurementsQueryResponse,
-  GetV1BodyMeasurementsQueryParams,
-  GetV1BodyMeasurementsHeaderParams,
-  GetV1BodyMeasurements400,
-  GetV1BodyMeasurements404,
-} from "../types/GetV1BodyMeasurements.ts";
-
-function getGetV1BodyMeasurementsUrl() {
-  const res = { method: "GET", url: `/v1/body_measurements` as const };
-  return res;
-}
+  GetV1BodyMeasurementsOptions,
+  GetV1BodyMeasurementsResponses,
+} from "../types/GetV1BodyMeasurements";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of body measurements for the authenticated user
  * {@link /v1/body_measurements}
  */
-export async function getV1BodyMeasurements(
-  headers: GetV1BodyMeasurementsHeaderParams,
-  params?: GetV1BodyMeasurementsQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1BodyMeasurements<ThrowOnError extends boolean = true>(
+  options: Options<GetV1BodyMeasurementsOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1BodyMeasurementsResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1BodyMeasurementsQueryResponse,
-    ResponseErrorConfig<GetV1BodyMeasurements400 | GetV1BodyMeasurements404>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1BodyMeasurementsUrl().url.toString(),
-    params,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/body_measurements",
+    ...config,
+  }) as Promise<RequestResult<GetV1BodyMeasurementsResponses, ThrowOnError>>;
 }

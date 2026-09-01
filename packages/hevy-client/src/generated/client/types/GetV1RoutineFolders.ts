@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { RoutineFolder } from "./RoutineFolder.ts";
+import type { RoutineFolder } from "./RoutineFolder";
 
-export type GetV1RoutineFoldersQueryParams = {
+export type GetV1RoutineFoldersQuery = {
   /**
    * @description Page number (Must be 1 or greater)
    * @default 1
@@ -20,17 +20,16 @@ export type GetV1RoutineFoldersQueryParams = {
   pageSize?: number;
 };
 
-export type GetV1RoutineFoldersHeaderParams = {
+export type GetV1RoutineFoldersHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description A paginated list of routine folders
- */
-export type GetV1RoutineFolders200 = {
+export type GetV1RoutineFoldersStatus200 = {
   /**
    * @description Current page number
    * @default 1
@@ -43,22 +42,26 @@ export type GetV1RoutineFolders200 = {
    * @type integer | undefined
    */
   page_count?: number;
-  /**
-   * @type array | undefined
-   */
   routine_folders?: RoutineFolder[];
 };
 
-/**
- * @description Invalid page size
- */
-export type GetV1RoutineFolders400 = any;
+export type GetV1RoutineFoldersStatus400 = unknown;
 
-export type GetV1RoutineFoldersQueryResponse = GetV1RoutineFolders200;
-
-export type GetV1RoutineFoldersQuery = {
-  Response: GetV1RoutineFolders200;
-  QueryParams: GetV1RoutineFoldersQueryParams;
-  HeaderParams: GetV1RoutineFoldersHeaderParams;
-  Errors: GetV1RoutineFolders400;
+export type GetV1RoutineFoldersOptions = {
+  body?: never;
+  path?: never;
+  query?: GetV1RoutineFoldersQuery;
+  headers: GetV1RoutineFoldersHeaders;
 };
+
+export type GetV1RoutineFoldersResponses = {
+  "200": GetV1RoutineFoldersStatus200;
+  "400": GetV1RoutineFoldersStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1RoutineFoldersResponse =
+  | GetV1RoutineFoldersStatus200
+  | GetV1RoutineFoldersStatus400;

@@ -5,75 +5,95 @@
 
 export type BodyMeasurement = {
   /**
-   * @type string, date
+   * @description
+   * Format: `date`
+   * @example 2024-08-14
+   * @type string
    */
   date: string;
   /**
-   * @type number
+   * @example 80.5
+   * @type number | undefined
    */
   weight_kg?: number | null;
   /**
-   * @type number
+   * @example 65
+   * @type number | undefined
    */
   lean_mass_kg?: number | null;
   /**
-   * @type number
+   * @example 18.5
+   * @type number | undefined
    */
   fat_percent?: number | null;
   /**
-   * @type number
+   * @example 38
+   * @type number | undefined
    */
   neck_cm?: number | null;
   /**
-   * @type number
+   * @example 115
+   * @type number | undefined
    */
   shoulder_cm?: number | null;
   /**
-   * @type number
+   * @example 95
+   * @type number | undefined
    */
   chest_cm?: number | null;
   /**
-   * @type number
+   * @example 35
+   * @type number | undefined
    */
   left_bicep_cm?: number | null;
   /**
-   * @type number
+   * @example 35.5
+   * @type number | undefined
    */
   right_bicep_cm?: number | null;
   /**
-   * @type number
+   * @example 28
+   * @type number | undefined
    */
   left_forearm_cm?: number | null;
   /**
-   * @type number
+   * @example 28.5
+   * @type number | undefined
    */
   right_forearm_cm?: number | null;
   /**
-   * @type number
+   * @example 85
+   * @type number | undefined
    */
   abdomen?: number | null;
   /**
-   * @type number
+   * @example 80
+   * @type number | undefined
    */
   waist?: number | null;
   /**
-   * @type number
+   * @example 95
+   * @type number | undefined
    */
   hips?: number | null;
   /**
-   * @type number
+   * @example 55
+   * @type number | undefined
    */
   left_thigh?: number | null;
   /**
-   * @type number
+   * @example 55.5
+   * @type number | undefined
    */
   right_thigh?: number | null;
   /**
-   * @type number
+   * @example 37
+   * @type number | undefined
    */
   left_calf?: number | null;
   /**
-   * @type number
+   * @example 37.5
+   * @type number | undefined
    */
   right_calf?: number | null;
 };

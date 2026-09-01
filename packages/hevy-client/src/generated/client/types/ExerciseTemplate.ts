@@ -6,21 +6,25 @@
 export type ExerciseTemplate = {
   /**
    * @description The exercise template ID.
+   * @example b459cba5-cd6d-463c-abd6-54f8eafcadcb
    * @type string | undefined
    */
   id?: string;
   /**
    * @description The exercise title.
+   * @example Bench Press (Barbell)
    * @type string | undefined
    */
   title?: string;
   /**
    * @description The exercise type.
+   * @example weight_reps
    * @type string | undefined
    */
   type?: string;
   /**
    * @description The primary muscle group of the exercise.
+   * @example chest
    * @type string | undefined
    */
   primary_muscle_group?: string;
@@ -31,6 +35,7 @@ export type ExerciseTemplate = {
   secondary_muscle_groups?: string[];
   /**
    * @description A boolean indicating whether the exercise is a custom exercise.
+   * @example false
    * @type boolean | undefined
    */
   is_custom?: boolean;

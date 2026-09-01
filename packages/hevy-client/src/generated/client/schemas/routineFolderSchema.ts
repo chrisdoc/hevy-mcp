@@ -3,24 +3,34 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const routineFolderSchema = z.object({
-  id: z.optional(z.number().describe("The routine folder ID.")),
-  index: z.optional(
-    z
-      .number()
-      .describe(
-        "The routine folder index. Describes the order of the folder in the list.",
-      ),
-  ),
-  title: z.optional(z.string().describe("The routine folder title.")),
-  updated_at: z.optional(
-    z
-      .string()
-      .describe("ISO 8601 timestamp of when the folder was last updated."),
-  ),
-  created_at: z.optional(
-    z.string().describe("ISO 8601 timestamp of when the folder was created."),
-  ),
+  id: z.coerce
+    .number()
+    .optional()
+    .describe("The routine folder ID.")
+    .meta({ examples: [42] }),
+  index: z.coerce
+    .number()
+    .optional()
+    .describe(
+      "The routine folder index. Describes the order of the folder in the list.",
+    )
+    .meta({ examples: [1] }),
+  title: z
+    .string()
+    .optional()
+    .describe("The routine folder title.")
+    .meta({ examples: ["Push Pull 🏋️‍♂️"] }),
+  updated_at: z
+    .string()
+    .optional()
+    .describe("ISO 8601 timestamp of when the folder was last updated.")
+    .meta({ examples: ["2021-09-14T12:00:00Z"] }),
+  created_at: z
+    .string()
+    .optional()
+    .describe("ISO 8601 timestamp of when the folder was created.")
+    .meta({ examples: ["2021-09-14T12:00:00Z"] }),
 });

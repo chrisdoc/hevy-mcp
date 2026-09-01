@@ -3,56 +3,27 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  PutV1BodyMeasurementsDateMutationRequest,
-  PutV1BodyMeasurementsDateMutationResponse,
-  PutV1BodyMeasurementsDatePathParams,
-  PutV1BodyMeasurementsDateHeaderParams,
-  PutV1BodyMeasurementsDate400,
-  PutV1BodyMeasurementsDate404,
-} from "../types/PutV1BodyMeasurementsDate.ts";
-
-function getPutV1BodyMeasurementsDateUrl(
-  date: PutV1BodyMeasurementsDatePathParams["date"],
-) {
-  const res = { method: "PUT", url: `/v1/body_measurements/${date}` as const };
-  return res;
-}
+  PutV1BodyMeasurementsDateOptions,
+  PutV1BodyMeasurementsDateResponses,
+} from "../types/PutV1BodyMeasurementsDate";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Update an existing body measurement entry for a given date. All fields are overwritten; omitted fields are set to null.
  * {@link /v1/body_measurements/:date}
  */
-export async function putV1BodyMeasurementsDate(
-  date: PutV1BodyMeasurementsDatePathParams["date"],
-  data: PutV1BodyMeasurementsDateMutationRequest,
-  headers: PutV1BodyMeasurementsDateHeaderParams,
-  config: Partial<RequestConfig<PutV1BodyMeasurementsDateMutationRequest>> & {
-    client?: Client;
-  } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function putV1BodyMeasurementsDate<ThrowOnError extends boolean = true>(
+  options: Options<PutV1BodyMeasurementsDateOptions, ThrowOnError>,
+): Promise<RequestResult<PutV1BodyMeasurementsDateResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const requestData = data;
-
-  const res = await request<
-    PutV1BodyMeasurementsDateMutationResponse,
-    ResponseErrorConfig<
-      PutV1BodyMeasurementsDate400 | PutV1BodyMeasurementsDate404
-    >,
-    PutV1BodyMeasurementsDateMutationRequest
-  >({
+  return request({
     method: "PUT",
-    url: getPutV1BodyMeasurementsDateUrl(date).url.toString(),
-    data: requestData,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/body_measurements/{date}",
+    ...config,
+  }) as Promise<
+    RequestResult<PutV1BodyMeasurementsDateResponses, ThrowOnError>
+  >;
 }

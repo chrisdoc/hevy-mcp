@@ -3,39 +3,51 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const setSchema = z.object({
-  index: z.optional(
-    z
-      .number()
-      .describe("Index indicating the order of the set in the workout."),
-  ),
-  type: z.optional(
-    z
-      .string()
-      .describe(
-        "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
-      ),
-  ),
-  weight_kg: z.number().describe("Weight lifted in kilograms.").nullish(),
-  reps: z.number().describe("Number of reps logged for the set").nullish(),
-  distance_meters: z
+  index: z.coerce
     .number()
+    .optional()
+    .describe("Index indicating the order of the set in the workout.")
+    .meta({ examples: [0] }),
+  type: z
+    .string()
+    .optional()
+    .describe(
+      "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
+    )
+    .meta({ examples: ["normal"] }),
+  weight_kg: z.coerce
+    .number()
+    .nullish()
+    .describe("Weight lifted in kilograms.")
+    .meta({ examples: [100] }),
+  reps: z.coerce
+    .number()
+    .nullish()
+    .describe("Number of reps logged for the set")
+    .meta({ examples: [10] }),
+  distance_meters: z.coerce
+    .number()
+    .nullish()
     .describe("Number of meters logged for the set")
-    .nullish(),
-  duration_seconds: z
+    .meta({ examples: [] }),
+  duration_seconds: z.coerce
     .number()
+    .nullish()
     .describe("Number of seconds logged for the set")
-    .nullish(),
-  rpe: z
+    .meta({ examples: [] }),
+  rpe: z.coerce
     .number()
+    .nullish()
     .describe("RPE (Relative perceived exertion) value logged for the set")
-    .nullish(),
-  custom_metric: z
+    .meta({ examples: [9.5] }),
+  custom_metric: z.coerce
     .number()
+    .nullish()
     .describe(
       "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)",
     )
-    .nullish(),
+    .meta({ examples: [50] }),
 });

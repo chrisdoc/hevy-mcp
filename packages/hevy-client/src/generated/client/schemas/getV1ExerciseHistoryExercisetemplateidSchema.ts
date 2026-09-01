@@ -3,51 +3,38 @@
  * Do not edit manually.
  */
 
-import { exerciseHistoryEntrySchema } from "./exerciseHistoryEntrySchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { exerciseHistoryEntrySchema } from "./exerciseHistoryEntrySchema";
 
-export const getV1ExerciseHistoryExercisetemplateidPathParamsSchema = z.object({
-  exerciseTemplateId: z.string().describe("The id of the exercise template"),
+export const getV1ExerciseHistoryExercisetemplateidHeaderApiKeySchema =
+  z.uuid();
+
+export const getV1ExerciseHistoryExercisetemplateidPathExerciseTemplateIdSchema =
+  z.string().describe("The id of the exercise template");
+
+export const getV1ExerciseHistoryExercisetemplateidQueryStartDateSchema = z.iso
+  .datetime()
+  .optional()
+  .describe(
+    "Optional start date for filtering exercise history (ISO 8601 format)",
+  );
+
+export const getV1ExerciseHistoryExercisetemplateidQueryEndDateSchema = z.iso
+  .datetime()
+  .optional()
+  .describe(
+    "Optional end date for filtering exercise history (ISO 8601 format)",
+  );
+
+export const getV1ExerciseHistoryExercisetemplateidStatus200Schema = z.object({
+  exercise_history: z.array(exerciseHistoryEntrySchema).optional(),
 });
 
-export const getV1ExerciseHistoryExercisetemplateidQueryParamsSchema = z
-  .object({
-    start_date: z.optional(
-      z.iso
-        .datetime()
-        .describe(
-          "Optional start date for filtering exercise history (ISO 8601 format)",
-        ),
-    ),
-    end_date: z.optional(
-      z.iso
-        .datetime()
-        .describe(
-          "Optional end date for filtering exercise history (ISO 8601 format)",
-        ),
-    ),
-  })
-  .optional();
+export const getV1ExerciseHistoryExercisetemplateidStatus400Schema =
+  z.unknown();
 
-export const getV1ExerciseHistoryExercisetemplateidHeaderParamsSchema =
-  z.object({
-    "api-key": z.uuid(),
-  });
+export const getV1ExerciseHistoryExercisetemplateidResponseSchema =
+  getV1ExerciseHistoryExercisetemplateidStatus200Schema;
 
-/**
- * @description A list of exercise history entries
- */
-export const getV1ExerciseHistoryExercisetemplateid200Schema = z.object({
-  get exercise_history() {
-    return z.array(exerciseHistoryEntrySchema).optional();
-  },
-});
-
-/**
- * @description Invalid request parameters or date format
- */
-export const getV1ExerciseHistoryExercisetemplateid400Schema = z.any();
-
-export const getV1ExerciseHistoryExercisetemplateidQueryResponseSchema = z.lazy(
-  () => getV1ExerciseHistoryExercisetemplateid200Schema,
-);
+export const getV1ExerciseHistoryExercisetemplateidErrorSchema =
+  getV1ExerciseHistoryExercisetemplateidStatus400Schema;

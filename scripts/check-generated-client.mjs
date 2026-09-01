@@ -406,7 +406,7 @@ export async function checkGeneratedClient() {
 	let fixture;
 	try {
 		fixture = await createFixtureRepository(normalized);
-		const kubb = await resolvePackageExecutable("@kubb/cli", "kubb");
+		const kubb = await resolvePackageExecutable("kubb", "kubb");
 		const oxfmt = await resolvePackageExecutable("oxfmt", "oxfmt");
 		await runCommand(
 			kubb.command,

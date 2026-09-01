@@ -3,25 +3,36 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const exerciseTemplateSchema = z.object({
-  id: z.optional(z.string().describe("The exercise template ID.")),
-  title: z.optional(z.string().describe("The exercise title.")),
-  type: z.optional(z.string().describe("The exercise type.")),
-  primary_muscle_group: z.optional(
-    z.string().describe("The primary muscle group of the exercise."),
-  ),
-  secondary_muscle_groups: z.optional(
-    z
-      .array(z.string())
-      .describe("The secondary muscle groups of the exercise."),
-  ),
-  is_custom: z.optional(
-    z
-      .boolean()
-      .describe(
-        "A boolean indicating whether the exercise is a custom exercise.",
-      ),
-  ),
+  id: z
+    .string()
+    .optional()
+    .describe("The exercise template ID.")
+    .meta({ examples: ["b459cba5-cd6d-463c-abd6-54f8eafcadcb"] }),
+  title: z
+    .string()
+    .optional()
+    .describe("The exercise title.")
+    .meta({ examples: ["Bench Press (Barbell)"] }),
+  type: z
+    .string()
+    .optional()
+    .describe("The exercise type.")
+    .meta({ examples: ["weight_reps"] }),
+  primary_muscle_group: z
+    .string()
+    .optional()
+    .describe("The primary muscle group of the exercise.")
+    .meta({ examples: ["chest"] }),
+  secondary_muscle_groups: z
+    .array(z.string())
+    .optional()
+    .describe("The secondary muscle groups of the exercise."),
+  is_custom: z
+    .boolean()
+    .optional()
+    .describe("A boolean indicating whether the exercise is a custom exercise.")
+    .meta({ examples: [false] }),
 });

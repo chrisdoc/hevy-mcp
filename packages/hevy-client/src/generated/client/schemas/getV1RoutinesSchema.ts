@@ -3,42 +3,43 @@
  * Do not edit manually.
  */
 
-import { routineSchema } from "./routineSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { routineSchema } from "./routineSchema";
 
-export const getV1RoutinesQueryParamsSchema = z.object({
+export const getV1RoutinesHeaderApiKeySchema = z.uuid();
+
+export const getV1RoutinesQueryPageSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(1)
+  .describe("Page number (Must be 1 or greater)");
+
+export const getV1RoutinesQueryPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(5)
+  .describe("Number of items on the requested page (Max 10)");
+
+export const getV1RoutinesStatus200Schema = z.object({
   page: z.coerce
     .number()
     .int()
-    .default(1)
-    .describe("Page number (Must be 1 or greater)"),
-  pageSize: z.coerce
+    .optional()
+    .describe("Current page number")
+    .meta({ examples: [1] }),
+  page_count: z.coerce
     .number()
     .int()
-    .default(5)
-    .describe("Number of items on the requested page (Max 10)"),
+    .optional()
+    .describe("Total number of pages")
+    .meta({ examples: [5] }),
+  routines: z.array(routineSchema).optional(),
 });
 
-export const getV1RoutinesHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1RoutinesStatus400Schema = z.unknown();
 
-/**
- * @description A paginated list of routines
- */
-export const getV1Routines200Schema = z.object({
-  page: z.optional(z.int().describe("Current page number")),
-  page_count: z.optional(z.int().describe("Total number of pages")),
-  get routines() {
-    return z.array(routineSchema).optional();
-  },
-});
+export const getV1RoutinesResponseSchema = getV1RoutinesStatus200Schema;
 
-/**
- * @description Invalid page size
- */
-export const getV1Routines400Schema = z.any();
-
-export const getV1RoutinesQueryResponseSchema = z.lazy(
-  () => getV1Routines200Schema,
-);
+export const getV1RoutinesErrorSchema = getV1RoutinesStatus400Schema;

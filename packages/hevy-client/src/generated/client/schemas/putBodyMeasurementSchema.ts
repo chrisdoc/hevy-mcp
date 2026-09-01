@@ -3,24 +3,75 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const putBodyMeasurementSchema = z.object({
-  weight_kg: z.number().nullish(),
-  lean_mass_kg: z.number().nullish(),
-  fat_percent: z.number().nullish(),
-  neck_cm: z.number().nullish(),
-  shoulder_cm: z.number().nullish(),
-  chest_cm: z.number().nullish(),
-  left_bicep_cm: z.number().nullish(),
-  right_bicep_cm: z.number().nullish(),
-  left_forearm_cm: z.number().nullish(),
-  right_forearm_cm: z.number().nullish(),
-  abdomen: z.number().nullish(),
-  waist: z.number().nullish(),
-  hips: z.number().nullish(),
-  left_thigh: z.number().nullish(),
-  right_thigh: z.number().nullish(),
-  left_calf: z.number().nullish(),
-  right_calf: z.number().nullish(),
+  weight_kg: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [80.5] }),
+  lean_mass_kg: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [65] }),
+  fat_percent: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [18.5] }),
+  neck_cm: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [38] }),
+  shoulder_cm: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [115] }),
+  chest_cm: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [95] }),
+  left_bicep_cm: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [35] }),
+  right_bicep_cm: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [35.5] }),
+  left_forearm_cm: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [28] }),
+  right_forearm_cm: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [28.5] }),
+  abdomen: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [85] }),
+  waist: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [80] }),
+  hips: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [95] }),
+  left_thigh: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [55] }),
+  right_thigh: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [55.5] }),
+  left_calf: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [37] }),
+  right_calf: z.coerce
+    .number()
+    .nullish()
+    .meta({ examples: [37.5] }),
 });

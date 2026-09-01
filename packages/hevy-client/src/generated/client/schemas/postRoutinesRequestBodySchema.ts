@@ -3,25 +3,32 @@
  * Do not edit manually.
  */
 
-import { postRoutinesRequestExerciseSchema } from "./postRoutinesRequestExerciseSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { postRoutinesRequestExerciseSchema } from "./postRoutinesRequestExerciseSchema";
 
 export const postRoutinesRequestBodySchema = z.object({
-  routine: z.optional(
-    z.object({
-      title: z.optional(z.string().describe("The title of the routine.")),
-      folder_id: z
+  routine: z
+    .object({
+      title: z
+        .string()
+        .optional()
+        .describe("The title of the routine.")
+        .meta({ examples: ["April Leg Day 🔥"] }),
+      folder_id: z.coerce
         .number()
+        .nullish()
         .describe(
           'The folder id the routine should be added to. Pass null to insert the routine into default "My Routines" folder',
         )
-        .nullish(),
-      notes: z.optional(
-        z.string().describe("Additional notes for the routine."),
-      ),
-      get exercises() {
-        return z.array(postRoutinesRequestExerciseSchema).optional();
-      },
-    }),
-  ),
+        .meta({ examples: [] }),
+      notes: z
+        .string()
+        .optional()
+        .describe("Additional notes for the routine.")
+        .meta({
+          examples: ["Focus on form over weight. Remember to stretch."],
+        }),
+      exercises: z.array(postRoutinesRequestExerciseSchema).optional(),
+    })
+    .optional(),
 });

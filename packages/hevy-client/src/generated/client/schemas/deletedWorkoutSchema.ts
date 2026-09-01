@@ -3,14 +3,20 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const deletedWorkoutSchema = z.object({
-  type: z.string().describe("Indicates the type of the event (deleted)"),
-  id: z.string().describe("The unique identifier of the deleted workout"),
-  deleted_at: z.optional(
-    z
-      .string()
-      .describe("A date string indicating when the workout was deleted"),
-  ),
+  type: z
+    .string()
+    .describe("Indicates the type of the event (deleted)")
+    .meta({ examples: ["deleted"] }),
+  id: z
+    .string()
+    .describe("The unique identifier of the deleted workout")
+    .meta({ examples: ["efe6801c-4aee-4959-bcdd-fca3f272821b"] }),
+  deleted_at: z
+    .string()
+    .optional()
+    .describe("A date string indicating when the workout was deleted")
+    .meta({ examples: ["2021-09-13T12:00:00Z"] }),
 });

@@ -3,44 +3,49 @@
  * Do not edit manually.
  */
 
-import type { BodyMeasurement } from "./BodyMeasurement.ts";
+import type { BodyMeasurement } from "./BodyMeasurement";
 
-export type GetV1BodyMeasurementsDatePathParams = {
+export type GetV1BodyMeasurementsDatePath = {
   /**
    * @description The date of the body measurement (YYYY-MM-DD)
-   * @type string, date
+   *
+   * Format: `date`
+   * @example 2024-01-15
+   * @type string
    */
   date: string;
 };
 
-export type GetV1BodyMeasurementsDateHeaderParams = {
+export type GetV1BodyMeasurementsDateHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The body measurement for the given date
- */
-export type GetV1BodyMeasurementsDate200 = BodyMeasurement;
+export type GetV1BodyMeasurementsDateStatus200 = BodyMeasurement;
 
-/**
- * @description Body measurement not found
- */
-export type GetV1BodyMeasurementsDate404 = {
-  /**
-   * @type string | undefined
-   */
+export type GetV1BodyMeasurementsDateStatus404 = {
   error?: string;
 };
 
-export type GetV1BodyMeasurementsDateQueryResponse =
-  GetV1BodyMeasurementsDate200;
-
-export type GetV1BodyMeasurementsDateQuery = {
-  Response: GetV1BodyMeasurementsDate200;
-  PathParams: GetV1BodyMeasurementsDatePathParams;
-  HeaderParams: GetV1BodyMeasurementsDateHeaderParams;
-  Errors: GetV1BodyMeasurementsDate404;
+export type GetV1BodyMeasurementsDateOptions = {
+  body?: never;
+  path: GetV1BodyMeasurementsDatePath;
+  query?: never;
+  headers: GetV1BodyMeasurementsDateHeaders;
 };
+
+export type GetV1BodyMeasurementsDateResponses = {
+  "200": GetV1BodyMeasurementsDateStatus200;
+  "404": GetV1BodyMeasurementsDateStatus404;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1BodyMeasurementsDateResponse =
+  | GetV1BodyMeasurementsDateStatus200
+  | GetV1BodyMeasurementsDateStatus404;

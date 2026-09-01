@@ -3,42 +3,45 @@
  * Do not edit manually.
  */
 
-import { exerciseTemplateSchema } from "./exerciseTemplateSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { exerciseTemplateSchema } from "./exerciseTemplateSchema";
 
-export const getV1ExerciseTemplatesQueryParamsSchema = z.object({
+export const getV1ExerciseTemplatesHeaderApiKeySchema = z.uuid();
+
+export const getV1ExerciseTemplatesQueryPageSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(1)
+  .describe("Page number (Must be 1 or greater)");
+
+export const getV1ExerciseTemplatesQueryPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(5)
+  .describe("Number of items on the requested page (Max 100)");
+
+export const getV1ExerciseTemplatesStatus200Schema = z.object({
   page: z.coerce
     .number()
     .int()
+    .optional()
     .default(1)
-    .describe("Page number (Must be 1 or greater)"),
-  pageSize: z.coerce
+    .describe("Current page number"),
+  page_count: z.coerce
     .number()
     .int()
+    .optional()
     .default(5)
-    .describe("Number of items on the requested page (Max 100)"),
+    .describe("Total number of pages"),
+  exercise_templates: z.array(exerciseTemplateSchema).optional(),
 });
 
-export const getV1ExerciseTemplatesHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1ExerciseTemplatesStatus400Schema = z.unknown();
 
-/**
- * @description A paginated list of exercise templates
- */
-export const getV1ExerciseTemplates200Schema = z.object({
-  page: z.optional(z.int().default(1).describe("Current page number")),
-  page_count: z.optional(z.int().default(5).describe("Total number of pages")),
-  get exercise_templates() {
-    return z.array(exerciseTemplateSchema).optional();
-  },
-});
+export const getV1ExerciseTemplatesResponseSchema =
+  getV1ExerciseTemplatesStatus200Schema;
 
-/**
- * @description Invalid page size
- */
-export const getV1ExerciseTemplates400Schema = z.any();
-
-export const getV1ExerciseTemplatesQueryResponseSchema = z.lazy(
-  () => getV1ExerciseTemplates200Schema,
-);
+export const getV1ExerciseTemplatesErrorSchema =
+  getV1ExerciseTemplatesStatus400Schema;

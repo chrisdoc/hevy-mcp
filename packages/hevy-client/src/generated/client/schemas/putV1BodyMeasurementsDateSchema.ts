@@ -3,42 +3,32 @@
  * Do not edit manually.
  */
 
-import { putBodyMeasurementSchema } from "./putBodyMeasurementSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { putBodyMeasurementSchema } from "./putBodyMeasurementSchema";
 
-export const putV1BodyMeasurementsDatePathParamsSchema = z.object({
-  date: z.iso
-    .date()
-    .describe("The date of the measurement to update (YYYY-MM-DD)"),
+export const putV1BodyMeasurementsDateHeaderApiKeySchema = z.uuid();
+
+export const putV1BodyMeasurementsDatePathDateSchema = z.iso
+  .date()
+  .describe("The date of the measurement to update (YYYY-MM-DD)")
+  .meta({ examples: ["2024-01-15"] });
+
+export const putV1BodyMeasurementsDateStatus200Schema = z.unknown();
+
+export const putV1BodyMeasurementsDateStatus400Schema = z.object({
+  error: z.string().optional(),
 });
 
-export const putV1BodyMeasurementsDateHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const putV1BodyMeasurementsDateStatus404Schema = z.object({
+  error: z.string().optional(),
 });
 
-/**
- * @description The measurement was successfully updated
- */
-export const putV1BodyMeasurementsDate200Schema = z.any();
+export const putV1BodyMeasurementsDateResponseSchema =
+  putV1BodyMeasurementsDateStatus200Schema;
 
-/**
- * @description Invalid request body
- */
-export const putV1BodyMeasurementsDate400Schema = z.object({
-  error: z.optional(z.string()),
-});
+export const putV1BodyMeasurementsDateErrorSchema = z.union([
+  putV1BodyMeasurementsDateStatus400Schema,
+  putV1BodyMeasurementsDateStatus404Schema,
+]);
 
-/**
- * @description No measurement found for the given date
- */
-export const putV1BodyMeasurementsDate404Schema = z.object({
-  error: z.optional(z.string()),
-});
-
-export const putV1BodyMeasurementsDateMutationRequestSchema = z.lazy(
-  () => putBodyMeasurementSchema,
-);
-
-export const putV1BodyMeasurementsDateMutationResponseSchema = z.lazy(
-  () => putV1BodyMeasurementsDate200Schema,
-);
+export const putV1BodyMeasurementsDateBodySchema = putBodyMeasurementSchema;

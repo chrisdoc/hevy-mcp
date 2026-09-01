@@ -3,51 +3,37 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1ExerciseTemplatesExercisetemplateidQueryResponse,
-  GetV1ExerciseTemplatesExercisetemplateidPathParams,
-  GetV1ExerciseTemplatesExercisetemplateidHeaderParams,
-  GetV1ExerciseTemplatesExercisetemplateid404,
-} from "../types/GetV1ExerciseTemplatesExercisetemplateid.ts";
-
-function getGetV1ExerciseTemplatesExercisetemplateidUrl(
-  exerciseTemplateId: GetV1ExerciseTemplatesExercisetemplateidPathParams["exerciseTemplateId"],
-) {
-  const res = {
-    method: "GET",
-    url: `/v1/exercise_templates/${exerciseTemplateId}` as const,
-  };
-  return res;
-}
+  GetV1ExerciseTemplatesExercisetemplateidOptions,
+  GetV1ExerciseTemplatesExercisetemplateidResponses,
+} from "../types/GetV1ExerciseTemplatesExercisetemplateid";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a single exercise template by id.
  * {@link /v1/exercise_templates/:exerciseTemplateId}
  */
-export async function getV1ExerciseTemplatesExercisetemplateid(
-  exerciseTemplateId: GetV1ExerciseTemplatesExercisetemplateidPathParams["exerciseTemplateId"],
-  headers: GetV1ExerciseTemplatesExercisetemplateidHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1ExerciseTemplatesExercisetemplateid<
+  ThrowOnError extends boolean = true,
+>(
+  options: Options<
+    GetV1ExerciseTemplatesExercisetemplateidOptions,
+    ThrowOnError
+  >,
+): Promise<
+  RequestResult<GetV1ExerciseTemplatesExercisetemplateidResponses, ThrowOnError>
+> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1ExerciseTemplatesExercisetemplateidQueryResponse,
-    ResponseErrorConfig<GetV1ExerciseTemplatesExercisetemplateid404>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1ExerciseTemplatesExercisetemplateidUrl(
-      exerciseTemplateId,
-    ).url.toString(),
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/exercise_templates/{exerciseTemplateId}",
+    ...config,
+  }) as Promise<
+    RequestResult<
+      GetV1ExerciseTemplatesExercisetemplateidResponses,
+      ThrowOnError
+    >
+  >;
 }

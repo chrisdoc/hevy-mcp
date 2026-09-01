@@ -4,12 +4,10 @@
  */
 
 export type PostRoutineFolderRequestBody = {
-  /**
-   * @type object | undefined
-   */
   routine_folder?: {
     /**
      * @description The title of the routine folder.
+     * @example Push Pull 🏋️‍♂️
      * @type string | undefined
      */
     title?: string;

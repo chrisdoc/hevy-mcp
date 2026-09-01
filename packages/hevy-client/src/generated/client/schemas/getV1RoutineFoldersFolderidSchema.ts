@@ -3,29 +3,21 @@
  * Do not edit manually.
  */
 
-import { routineFolderSchema } from "./routineFolderSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { routineFolderSchema } from "./routineFolderSchema";
 
-export const getV1RoutineFoldersFolderidPathParamsSchema = z.object({
-  folderId: z.string().describe("The id of the routine folder"),
-});
+export const getV1RoutineFoldersFolderidHeaderApiKeySchema = z.uuid();
 
-export const getV1RoutineFoldersFolderidHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1RoutineFoldersFolderidPathFolderIdSchema = z
+  .string()
+  .describe("The id of the routine folder");
 
-/**
- * @description Success
- */
-export const getV1RoutineFoldersFolderid200Schema = z.lazy(
-  () => routineFolderSchema,
-);
+export const getV1RoutineFoldersFolderidStatus200Schema = routineFolderSchema;
 
-/**
- * @description Routine folder not found
- */
-export const getV1RoutineFoldersFolderid404Schema = z.any();
+export const getV1RoutineFoldersFolderidStatus404Schema = z.unknown();
 
-export const getV1RoutineFoldersFolderidQueryResponseSchema = z.lazy(
-  () => getV1RoutineFoldersFolderid200Schema,
-);
+export const getV1RoutineFoldersFolderidResponseSchema =
+  getV1RoutineFoldersFolderidStatus200Schema;
+
+export const getV1RoutineFoldersFolderidErrorSchema =
+  getV1RoutineFoldersFolderidStatus404Schema;

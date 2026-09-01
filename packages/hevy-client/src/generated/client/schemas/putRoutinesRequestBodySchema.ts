@@ -3,17 +3,25 @@
  * Do not edit manually.
  */
 
-import { putRoutinesRequestExerciseSchema } from "./putRoutinesRequestExerciseSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { putRoutinesRequestExerciseSchema } from "./putRoutinesRequestExerciseSchema";
 
 export const putRoutinesRequestBodySchema = z.object({
-  routine: z.optional(
-    z.object({
-      title: z.optional(z.string().describe("The title of the routine.")),
-      notes: z.string().describe("Additional notes for the routine.").nullish(),
-      get exercises() {
-        return z.array(putRoutinesRequestExerciseSchema).optional();
-      },
-    }),
-  ),
+  routine: z
+    .object({
+      title: z
+        .string()
+        .optional()
+        .describe("The title of the routine.")
+        .meta({ examples: ["April Leg Day 🔥"] }),
+      notes: z
+        .string()
+        .nullish()
+        .describe("Additional notes for the routine.")
+        .meta({
+          examples: ["Focus on form over weight. Remember to stretch."],
+        }),
+      exercises: z.array(putRoutinesRequestExerciseSchema).optional(),
+    })
+    .optional(),
 });

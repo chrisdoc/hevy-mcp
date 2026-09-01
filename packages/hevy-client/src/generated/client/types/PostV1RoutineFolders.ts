@@ -3,25 +3,21 @@
  * Do not edit manually.
  */
 
-import type { PostRoutineFolderRequestBody } from "./PostRoutineFolderRequestBody.ts";
-import type { RoutineFolder } from "./RoutineFolder.ts";
+import type { PostRoutineFolderRequestBody } from "./PostRoutineFolderRequestBody";
+import type { RoutineFolder } from "./RoutineFolder";
 
-export type PostV1RoutineFoldersHeaderParams = {
+export type PostV1RoutineFoldersHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The routine folder was successfully created
- */
-export type PostV1RoutineFolders201 = RoutineFolder;
+export type PostV1RoutineFoldersStatus201 = RoutineFolder;
 
-/**
- * @description Invalid request body
- */
-export type PostV1RoutineFolders400 = {
+export type PostV1RoutineFoldersStatus400 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -29,13 +25,23 @@ export type PostV1RoutineFolders400 = {
   error?: string;
 };
 
-export type PostV1RoutineFoldersMutationRequest = PostRoutineFolderRequestBody;
+export type PostV1RoutineFoldersBody = PostRoutineFolderRequestBody;
 
-export type PostV1RoutineFoldersMutationResponse = PostV1RoutineFolders201;
-
-export type PostV1RoutineFoldersMutation = {
-  Response: PostV1RoutineFolders201;
-  Request: PostV1RoutineFoldersMutationRequest;
-  HeaderParams: PostV1RoutineFoldersHeaderParams;
-  Errors: PostV1RoutineFolders400;
+export type PostV1RoutineFoldersOptions = {
+  body: PostV1RoutineFoldersBody;
+  path?: never;
+  query?: never;
+  headers: PostV1RoutineFoldersHeaders;
 };
+
+export type PostV1RoutineFoldersResponses = {
+  "201": PostV1RoutineFoldersStatus201;
+  "400": PostV1RoutineFoldersStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PostV1RoutineFoldersResponse =
+  | PostV1RoutineFoldersStatus201
+  | PostV1RoutineFoldersStatus400;

@@ -3,49 +3,29 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1RoutineFoldersFolderidQueryResponse,
-  GetV1RoutineFoldersFolderidPathParams,
-  GetV1RoutineFoldersFolderidHeaderParams,
-  GetV1RoutineFoldersFolderid404,
-} from "../types/GetV1RoutineFoldersFolderid.ts";
-
-function getGetV1RoutineFoldersFolderidUrl(
-  folderId: GetV1RoutineFoldersFolderidPathParams["folderId"],
-) {
-  const res = {
-    method: "GET",
-    url: `/v1/routine_folders/${folderId}` as const,
-  };
-  return res;
-}
+  GetV1RoutineFoldersFolderidOptions,
+  GetV1RoutineFoldersFolderidResponses,
+} from "../types/GetV1RoutineFoldersFolderid";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a single routine folder by id.
  * {@link /v1/routine_folders/:folderId}
  */
-export async function getV1RoutineFoldersFolderid(
-  folderId: GetV1RoutineFoldersFolderidPathParams["folderId"],
-  headers: GetV1RoutineFoldersFolderidHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1RoutineFoldersFolderid<
+  ThrowOnError extends boolean = true,
+>(
+  options: Options<GetV1RoutineFoldersFolderidOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1RoutineFoldersFolderidResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1RoutineFoldersFolderidQueryResponse,
-    ResponseErrorConfig<GetV1RoutineFoldersFolderid404>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1RoutineFoldersFolderidUrl(folderId).url.toString(),
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/routine_folders/{folderId}",
+    ...config,
+  }) as Promise<
+    RequestResult<GetV1RoutineFoldersFolderidResponses, ThrowOnError>
+  >;
 }
