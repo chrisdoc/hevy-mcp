@@ -49,6 +49,7 @@ export {
 	isDeadlineExceeded,
 	operationSafetyForMethod,
 	remainingDeadlineMs,
+	withExecutionSignal,
 	type HevyCommitState,
 	type HevyExecutionControl,
 	type HevyExecutionOptions,
