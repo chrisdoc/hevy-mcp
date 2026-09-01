@@ -85,3 +85,8 @@ export {
 	ToolExecutionContextService,
 	ToolObserverService,
 } from "./effect-services.js";
+export {
+	createCoreServiceLayer,
+	createToolObserverLayer,
+	type CoreServiceLayerOptions,
+} from "./effect-layer.js";
