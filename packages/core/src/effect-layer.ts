@@ -31,7 +31,12 @@ export function createCoreServiceLayer({
 	catalog,
 	execution,
 	operations = createOperations(client),
-}: CoreServiceLayerOptions) {
+}: CoreServiceLayerOptions): Layer.Layer<
+	| HevyClientService
+	| HevyOperationsService
+	| ExerciseTemplateCatalogService
+	| ToolExecutionContextService
+> {
 	return Layer.mergeAll(
 		Layer.succeed(HevyClientService, client),
 		Layer.succeed(HevyOperationsService, operations),
@@ -40,6 +45,8 @@ export function createCoreServiceLayer({
 	);
 }
 
-export function createToolObserverLayer(observer: ToolObserver) {
+export function createToolObserverLayer(
+	observer: ToolObserver,
+): Layer.Layer<ToolObserverService> {
 	return Layer.succeed(ToolObserverService, observer);
 }
