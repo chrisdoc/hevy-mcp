@@ -12,25 +12,27 @@ import type { ExerciseTemplateCatalog } from "./utils/exercise-template-catalog.
  * existing Promise-based runtime. Later migrations can provide these services
  * at the adapter boundary while existing ToolRuntime callers remain intact.
  */
-export class HevyClientService extends Context.Tag("HevyClientService")<
+export class HevyClientService extends Context.Service<
 	HevyClientService,
 	HevyClient
->() {}
+>()("hevy-mcp/core/HevyClient") {}
 
-export class HevyOperationsService extends Context.Tag("HevyOperationsService")<
+export class HevyOperationsService extends Context.Service<
 	HevyOperationsService,
 	HevyOperations
->() {}
+>()("hevy-mcp/core/HevyOperations") {}
 
-export class ExerciseTemplateCatalogService extends Context.Tag(
-	"ExerciseTemplateCatalogService",
-)<ExerciseTemplateCatalogService, ExerciseTemplateCatalog>() {}
+export class ExerciseTemplateCatalogService extends Context.Service<
+	ExerciseTemplateCatalogService,
+	ExerciseTemplateCatalog
+>()("hevy-mcp/core/ExerciseTemplateCatalog") {}
 
-export class ToolObserverService extends Context.Tag("ToolObserverService")<
+export class ToolObserverService extends Context.Service<
 	ToolObserverService,
 	ToolObserver
->() {}
+>()("hevy-mcp/core/ToolObserver") {}
 
-export class ToolExecutionContextService extends Context.Tag(
-	"ToolExecutionContextService",
-)<ToolExecutionContextService, ToolExecutionContext>() {}
+export class ToolExecutionContextService extends Context.Service<
+	ToolExecutionContextService,
+	ToolExecutionContext
+>()("hevy-mcp/core/ToolExecutionContext") {}
