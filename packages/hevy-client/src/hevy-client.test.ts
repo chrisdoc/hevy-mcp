@@ -201,7 +201,7 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("times out while consuming a response body", async () => {
-		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const fetchMock = vi.fn(() => Promise.resolve(hangingResponse()));
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
@@ -230,6 +230,113 @@ describe("@hevy-mcp/hevy-client", () => {
 			phase: "dispatch",
 			outcome: "deadline_exceeded",
 		});
+	});
+
+	it("retries a read once with a fresh deadline budget after a deadline", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementationOnce(() => new Promise<Response>(() => {}))
+			.mockResolvedValueOnce(response({ recovered: true }));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+
+		await expect(client.getWorkout("workout-1")).resolves.toEqual({
+			recovered: true,
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("returns the deadline error when the bounded read retry also times out", async () => {
+		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+
+		await expect(client.getWorkout("workout-1")).rejects.toMatchObject({
+			code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+			outcome: "deadline_exceeded",
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("allows a per-operation timeout override", async () => {
+		const fetchMock = vi.fn(
+			() =>
+				new Promise<Response>((resolve) =>
+					setTimeout(() => resolve(response({ recovered: true })), 20),
+				),
+		);
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 5,
+			maxGetRetries: 0,
+		});
+
+		await expect(
+			client.getWorkout("workout-1", { timeoutMs: 50 }),
+		).resolves.toEqual({ recovered: true });
+	});
+
+	it("does not retry writes after a deadline", async () => {
+		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+
+		await expect(
+			client.createWorkout({ workout: {} } as never),
+		).rejects.toMatchObject({
+			code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+		});
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("does not extend a caller-supplied deadline with a deadline retry", async () => {
+		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+		const deadline = Date.now() + 10;
+
+		await expect(
+			client.getWorkout("workout-1", { deadline }),
+		).rejects.toMatchObject({
+			code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+			outcome: "deadline_exceeded",
+		});
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("does not misclassify a non-deadline retry failure as deadline exceeded", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementationOnce(() => new Promise<Response>(() => {}))
+			.mockResolvedValueOnce(response({}, 500));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+
+		await expect(client.getWorkout("workout-1")).rejects.toMatchObject({
+			status: 500,
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 	it("finishes request observations when callers cancel", async () => {
 		const controller = new AbortController();
@@ -263,7 +370,7 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("uses one timeout budget for hanging response bodies", async () => {
-		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const fetchMock = vi.fn(() => Promise.resolve(hangingResponse()));
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
@@ -277,12 +384,12 @@ describe("@hevy-mcp/hevy-client", () => {
 			phase: "response-content",
 			outcome: "deadline_exceeded",
 		});
-		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 
 	it("cancels response-content consumption through the caller signal", async () => {
 		const controller = new AbortController();
-		const fetchMock = vi.fn().mockResolvedValue(hangingResponse());
+		const fetchMock = vi.fn(() => Promise.resolve(hangingResponse()));
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
@@ -633,7 +740,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
-			maxGetRetries: 5,
+			maxGetRetries: 0,
 		});
 
 		await expect(client.getUserInfo({ deadline })).rejects.toMatchObject({
