@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import {
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	HevyHttpError,
+} from "@hevy-mcp/hevy-client";
 import { ErrorType } from "./error-policy.js";
 import { createErrorResponse, withErrorHandling } from "./error-handler.js";
 import { SafeUserError } from "./safe-user-error.js";
@@ -66,6 +69,23 @@ describe("createErrorResponse", () => {
 		}
 	});
 
+	it("renders caller cancellation as a client cancellation", () => {
+		const result = createErrorResponse(
+			new HevyHttpError("The request was canceled by the client.", {
+				method: "GET",
+				endpoint: "/v1/user/info",
+				code: HEVY_REQUEST_ABORTED_ERROR_CODE,
+				outcome: "cancelled",
+			}),
+			"get-user",
+		);
+
+		expect(result.content[0]?.text).toBe(
+			"[get-user] Error: The request was canceled by the client.",
+		);
+		expect(result.content[0]?.text).not.toContain("Hevy API request");
+	});
+
 	it("classifies the original error message when the safe message is generic", () => {
 		const result = createErrorResponse(
 			new Error("request validation failed"),
@@ -127,19 +147,24 @@ describe("createErrorResponse", () => {
 		);
 	});
 
-	it("does not expose parsed upstream payloads for unmapped statuses", () => {
-		const secret = "upstream-secret-value";
-		const error = httpError(400, { error: secret });
-		error.message = secret;
-		error.code = secret;
+	it("surfaces only sanitized upstream validation detail", () => {
+		const secret = "Bearer upstream-secret-value";
+		const error = httpError(400, {
+			error: `Routine is invalid; Authorization: ${secret}`,
+		});
+		error.message = "untrusted raw message";
+		error.code = "untrusted-code";
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const result = createErrorResponse(error);
-		expect(result.content[0]?.text).toContain(
-			"The request failed Hevy validation",
-		);
-		expect(JSON.stringify(result)).not.toContain(secret);
-		expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
-		stderrSpy.mockRestore();
+		try {
+			const result = createErrorResponse(error);
+			expect(result.content[0]?.text).toContain(
+				"The request failed Hevy validation. Check the field values and try again. Detail: Routine is invalid; Authorization: [REDACTED]",
+			);
+			expect(JSON.stringify(result)).not.toContain(secret);
+			expect(JSON.stringify(stderrSpy.mock.calls)).not.toContain(secret);
+		} finally {
+			stderrSpy.mockRestore();
+		}
 	});
 
 	it("omits hostile HTTP metadata from retained debug context", () => {

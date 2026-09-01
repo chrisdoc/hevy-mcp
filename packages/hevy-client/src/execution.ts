@@ -41,11 +41,14 @@ export interface HevyExecutionOutcomeDetails {
 /** Caller-owned control for one logical operation (not one retry attempt). */
 export interface HevyExecutionControl {
 	readonly signal?: AbortSignal;
-	/** Absolute epoch milliseconds. It is never reset for a retry or page. */
+	/** Absolute epoch milliseconds supplied by the caller; never reset. */
 	readonly deadline?: number;
 }
 
-export interface HevyExecutionOptions extends HevyExecutionControl {}
+export interface HevyExecutionOptions extends HevyExecutionControl {
+	/** Per-operation timeout in milliseconds; overrides the client default. */
+	readonly timeoutMs?: number;
+}
 
 /** Request options shared by the curated client and generated adapters. */
 export interface HevyRequestOptions extends HevyExecutionOptions {}
