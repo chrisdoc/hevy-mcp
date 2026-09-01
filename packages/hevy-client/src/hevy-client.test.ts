@@ -395,7 +395,8 @@ describe("@hevy-mcp/hevy-client", () => {
 
 		expect(attempts).toEqual(["start:0", "wait:1", "start:1"]);
 		expect(outcomes).toEqual(["retryable_failure", "success"]);
-		expect(waits).toEqual([300]);
+		expect(waits[0]).toBeGreaterThanOrEqual(300);
+		expect(waits[0]).toBeLessThan(550);
 		expect(scopedRuns).toEqual([0, 0, 1]);
 	});
 
@@ -640,6 +641,30 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
+	it("gives each retry a fresh attempt deadline", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
+				if (fetchMock.mock.calls.length === 1) {
+					return new Promise<Response>((resolve) => {
+						setTimeout(() => resolve(response({}, 429)), 40);
+					});
+				}
+				expect(init?.signal?.aborted).toBe(false);
+				return Promise.resolve(response({ recovered: true }));
+			});
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			timeoutMs: 50,
+			sleep: async () => {},
+		});
+
+		await expect(client.getUserInfo()).resolves.toEqual({ recovered: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	it("never retries a non-idempotent write and marks dispatch uncertainty", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
 		const client = createHevyClient({
@@ -706,6 +731,29 @@ describe("@hevy-mcp/hevy-client", () => {
 			commitState: "unknown",
 			safeToRetry: true,
 		});
+	});
+
+	it("adds bounded jitter when Retry-After is absent", async () => {
+		const waits: number[] = [];
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 429))
+			.mockResolvedValueOnce(response({}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep: (delay) => {
+				waits.push(delay);
+				return Promise.resolve();
+			},
+		});
+
+		await client.getUserInfo();
+
+		expect(waits).toHaveLength(1);
+		expect(waits[0]).toBeGreaterThanOrEqual(300);
+		expect(waits[0]).toBeLessThan(550);
 	});
 
 	it("honors Retry-After while adding bounded jitter", async () => {
@@ -785,7 +833,7 @@ describe("@hevy-mcp/hevy-client", () => {
 
 			const request = client.getUserInfo();
 			await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-			await vi.advanceTimersByTimeAsync(300);
+			await vi.advanceTimersByTimeAsync(550);
 			await expect(request).resolves.toEqual({ recovered: true });
 		} finally {
 			vi.useRealTimers();

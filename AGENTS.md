@@ -238,6 +238,7 @@ generated output is synchronized, the release requirement is satisfied, and
 `git status --short --branch` shows only intended files on the feature branch.
 
 <!-- entire-graph:begin -->
+
 This repo has the entire-graph code graph installed. Before exploring code with
 grep/find/whole-file reads, read .entire/graph-agent.md — resolution-first guidance
 for using graph retrieval, focused source inspection, and verification.
