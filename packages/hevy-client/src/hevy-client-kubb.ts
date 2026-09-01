@@ -82,9 +82,11 @@ type KubbClient = {
 
 type InternalRequestControl = {
 	readonly hevyDeadline?: number;
+	readonly hevyTimeoutMs?: number;
 };
 type MutableRequest = {
 	hevyDeadline?: number;
+	hevyTimeoutMs?: number;
 	client: KubbClient;
 	signal?: AbortSignal;
 };
@@ -503,6 +505,7 @@ interface ExecutionErrorOptions {
 	phase: HevyRequestPhase;
 	deadlineExceeded: boolean;
 	canceled: boolean;
+	callerCanceled?: boolean;
 	responseConfirmed?: boolean;
 	code?: string;
 	cause?: unknown;
@@ -511,6 +514,7 @@ interface ExecutionErrorOptions {
 interface ExecutionFailureState {
 	deadlineExceeded: boolean;
 	canceled: boolean;
+	callerCanceled: boolean;
 	attemptTimedOut: boolean;
 }
 
@@ -527,21 +531,26 @@ function classifyExecutionFailure(
 		(attemptTimedOut &&
 			cause instanceof Error &&
 			cause.name === "TimeoutError");
+
+	const callerCanceled = executionSignal.aborted && !deadlineExceeded;
 	return {
 		deadlineExceeded,
-		canceled: executionSignal.aborted && !deadlineExceeded,
+		canceled: callerCanceled,
+		callerCanceled,
 		attemptTimedOut,
 	};
 }
 
 function createExecutionError(options: ExecutionErrorOptions): HevyHttpError {
-	const { deadlineExceeded, canceled } = options;
+	const { deadlineExceeded, canceled, callerCanceled = false } = options;
 	return new HevyHttpError(
 		deadlineExceeded
 			? "Hevy API request deadline exceeded"
-			: canceled
-				? "Hevy API request was canceled"
-				: "Hevy API network request failed",
+			: callerCanceled
+				? "The request was canceled by the client."
+				: canceled
+					? "Hevy API request was canceled"
+					: "Hevy API network request failed",
 		{
 			method: options.method,
 			endpoint: options.endpoint,
@@ -618,6 +627,8 @@ function requestOptions(
 	const request: MutableRequest = { client };
 	if (options?.signal) request.signal = options.signal;
 	if (options?.deadline !== undefined) request.hevyDeadline = options.deadline;
+	if (options?.timeoutMs !== undefined)
+		request.hevyTimeoutMs = options.timeoutMs;
 	return request;
 }
 
@@ -779,6 +790,8 @@ interface AttemptFailureTransitionOptions {
 	attemptDeadline: number;
 	retryCount: number;
 	maxGetRetries: number;
+	/** True only while executing the one allowed fresh-budget deadline retry. */
+	deadlineRetryActive?: boolean;
 	startedAt: number;
 	observationScope: HevyRequestObservationScope | undefined;
 	clientOptions: HevyClientOptions;
@@ -810,6 +823,7 @@ function createAttemptFailureError(
 		phase: options.phase,
 		deadlineExceeded: failure.deadlineExceeded,
 		canceled: failure.canceled,
+		callerCanceled: failure.callerCanceled,
 		responseConfirmed: options.responseConfirmed,
 		code: failure.attemptTimedOut ? "ETIMEDOUT" : getNetworkCode(options.cause),
 		cause: options.cause,
@@ -821,8 +835,18 @@ function canRetryAttempt(
 	failure: ExecutionFailureState,
 	error: HevyHttpError,
 ): boolean {
+	if (options.deadlineRetryActive) return false;
+	const deadlineRetry =
+		options.safety === "read" &&
+		options.retryCount === 0 &&
+		options.maxGetRetries > 0;
+	if (
+		failure.deadlineExceeded ||
+		error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE
+	) {
+		return deadlineRetry;
+	}
 	return (
-		!failure.deadlineExceeded &&
 		!failure.canceled &&
 		options.safety !== "non-idempotent-write" &&
 		canRetryOperation(options.safety, options.phase) &&
@@ -1053,22 +1077,34 @@ function createNativeClient(
 		const url = buildUrl(baseUrl, normalized);
 		// The HTTP method is authoritative for operation safety and retry policy.
 		const safety = operationSafetyForMethod(method);
-		// The first attempt retains the configured timeout. Retries get their own
-		// attempt window, while the expanded default budget still bounds the
-		// logical operation. An explicit caller deadline remains authoritative.
+		// `timeoutMs` is the default per-attempt budget. The overall operation
+		// deadline expands to accommodate all retries. A read may get one
+		// fresh attempt budget after timing out, bounded by `operationDeadline`.
+		// An explicit caller deadline remains authoritative — no retry extends
+		// beyond it, so the deadline retry is disabled in that case.
+		const operationTimeoutMs = normalizePositiveInteger(
+			normalized.hevyTimeoutMs,
+			timeoutMs,
+		);
 		const operationStartedAt = Date.now();
-		const deadline =
+		let deadline =
 			normalized.hevyDeadline ??
-			operationStartedAt + timeoutMs * (maxGetRetries + 1);
-		const executionSignal = createExecutionSignal({
+			operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
+		const operationDeadline =
+			normalized.hevyDeadline ?? deadline + operationTimeoutMs;
+		let executionSignal = createExecutionSignal({
 			signal: normalized.signal,
 			deadline,
 		});
 		let retryCount = 0;
+		let deadlineRetryActive = false;
 
 		try {
 			while (true) {
-				const attemptDeadline = Math.min(deadline, Date.now() + timeoutMs);
+				const attemptDeadline = Math.min(
+					deadline,
+					Date.now() + operationTimeoutMs,
+				);
 				const remaining = remainingDeadlineMs(attemptDeadline);
 				if (executionSignal.signal.aborted || remaining <= 0) {
 					const deadlineExceeded = remaining <= 0;
@@ -1079,6 +1115,7 @@ function createNativeClient(
 						phase: "before-dispatch",
 						deadlineExceeded,
 						canceled: !deadlineExceeded,
+						callerCanceled: !deadlineExceeded && executionSignal.signal.aborted,
 					});
 					emitRequestObservation(options.onRequestComplete, {
 						method,
@@ -1135,12 +1172,31 @@ function createNativeClient(
 						attemptDeadline,
 						retryCount,
 						maxGetRetries,
+						deadlineRetryActive,
 						startedAt,
 						observationScope,
 						clientOptions: options,
 					});
 					if (!transition.retry) throw transition.error;
 					retryCount = transition.retryCount;
+					if (transition.error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE) {
+						// Skip the deadline retry when the caller supplied an
+						// explicit deadline — it is authoritative and no retry
+						// may extend beyond it. In that case operationDeadline
+						// equals deadline, leaving no fresh attempt budget.
+						if (operationDeadline <= deadline) throw transition.error;
+						executionSignal.cleanup();
+						deadline = Math.min(
+							Date.now() + operationTimeoutMs,
+							operationDeadline,
+						);
+						executionSignal = createExecutionSignal({
+							signal: normalized.signal,
+							deadline,
+						});
+						deadlineRetryActive = true;
+						continue;
+					}
 					const delayMs = transition.delayMs ?? 0;
 					const remaining = remainingDeadlineMs(deadline);
 					try {
@@ -1162,6 +1218,8 @@ function createNativeClient(
 							phase: "backoff",
 							deadlineExceeded: waitDeadlineExceeded,
 							canceled: !waitDeadlineExceeded,
+							callerCanceled:
+								!waitDeadlineExceeded && executionSignal.signal.aborted,
 							cause: waitError,
 						});
 						emitRequestObservation(options.onRequestComplete, {

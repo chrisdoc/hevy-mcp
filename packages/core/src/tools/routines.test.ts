@@ -287,6 +287,69 @@ describe("routine tools", () => {
 		);
 	});
 
+	it("rejects empty routine exercises and sets before invoking the client", () => {
+		const client = createMockHevyClient();
+		const tool = register(client);
+		const invalidCases: Array<[string, JSONObject]> = [
+			["create-routine", { routine: { title: "Push", exercises: [] } }],
+			[
+				"update-routine",
+				{
+					routine_id: "r1",
+					routine: { title: "Push", exercises: [] },
+				},
+			],
+			[
+				"create-routine",
+				{
+					routine: {
+						title: "Push",
+						exercises: [{ exercise_template_id: "bench", sets: [] }],
+					},
+				},
+			],
+			[
+				"update-routine",
+				{
+					routine_id: "r1",
+					routine: {
+						title: "Push",
+						exercises: [{ exercise_template_id: "bench", sets: [] }],
+					},
+				},
+			],
+		];
+		for (const [name, args] of invalidCases) {
+			expect(() => handler(tool, name)(args)).toThrow();
+		}
+		expect(client.createRoutine).not.toHaveBeenCalled();
+		expect(client.updateRoutine).not.toHaveBeenCalled();
+	});
+
+	it("surfaces sanitized API validation detail for routine mutations", async () => {
+		const client = createMockHevyClient();
+		client.createRoutine.mockRejectedValue(
+			new HevyHttpError("request failed", {
+				status: 400,
+				method: "POST",
+				endpoint: "/v1/routines",
+				data: {
+					detail:
+						"Exercise template is invalid; Authorization: Bearer secret-token",
+				},
+			}),
+		);
+		const tool = register(client);
+
+		const response = await handler(tool, "create-routine")(routineInput);
+
+		expect(response).toMatchObject({ isError: true });
+		expect(response.content[0]?.text).toContain(
+			"Exercise template is invalid; Authorization: [REDACTED]",
+		);
+		expect(response.content[0]?.text).not.toContain("secret-token");
+	});
+
 	it("rejects legacy camelCase envelopes before invoking the client", () => {
 		register(null);
 		const definition = routineToolDefinitions.find(

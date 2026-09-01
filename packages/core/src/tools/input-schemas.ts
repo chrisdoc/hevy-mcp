@@ -201,10 +201,20 @@ export const routineExerciseFields = {
 	]: z.ZodTypeAny;
 };
 
-const routineExerciseSchema = z.strictObject(routineExerciseFields);
+const routineExerciseSchema = z.strictObject({
+	...routineExerciseFields,
+	sets: z
+		.array(routineSetSchema)
+		.min(1, "Each routine exercise must contain at least one set"),
+});
 
 const routineExercisesSchema = z
-	.preprocess(parseJsonArray, z.array(routineExerciseSchema))
+	.preprocess(
+		parseJsonArray,
+		z
+			.array(routineExerciseSchema)
+			.min(1, "A routine must contain at least one exercise"),
+	)
 	.nonoptional();
 
 export const routinePayloadFields = {
