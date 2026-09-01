@@ -82,9 +82,11 @@ type KubbClient = {
 
 type InternalRequestControl = {
 	readonly hevyDeadline?: number;
+	readonly hevyTimeoutMs?: number;
 };
 type MutableRequest = {
 	hevyDeadline?: number;
+	hevyTimeoutMs?: number;
 	client: KubbClient;
 	signal?: AbortSignal;
 };
@@ -604,6 +606,8 @@ function requestOptions(
 	const request: MutableRequest = { client };
 	if (options?.signal) request.signal = options.signal;
 	if (options?.deadline !== undefined) request.hevyDeadline = options.deadline;
+	if (options?.timeoutMs !== undefined)
+		request.hevyTimeoutMs = options.timeoutMs;
 	return request;
 }
 
@@ -761,6 +765,8 @@ interface AttemptFailureTransitionOptions {
 	deadline: number;
 	retryCount: number;
 	maxGetRetries: number;
+	/** True only while executing the one allowed fresh-budget deadline retry. */
+	deadlineRetryActive?: boolean;
 	startedAt: number;
 	observationScope: HevyRequestObservationScope | undefined;
 	clientOptions: HevyClientOptions;
@@ -790,7 +796,8 @@ function createAttemptFailureError(
 		endpoint: options.endpoint,
 		safety: options.safety,
 		phase: options.phase,
-		deadlineExceeded: failure.deadlineExceeded,
+		deadlineExceeded:
+			failure.deadlineExceeded || options.deadlineRetryActive === true,
 		canceled: failure.canceled,
 		responseConfirmed: options.responseConfirmed,
 		code: failure.attemptTimedOut ? "ETIMEDOUT" : getNetworkCode(options.cause),
@@ -803,8 +810,18 @@ function canRetryAttempt(
 	failure: ExecutionFailureState,
 	error: HevyHttpError,
 ): boolean {
+	if (options.deadlineRetryActive) return false;
+	const deadlineRetry =
+		options.safety === "read" &&
+		options.retryCount === 0 &&
+		options.maxGetRetries > 0;
+	if (
+		failure.deadlineExceeded ||
+		error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE
+	) {
+		return deadlineRetry;
+	}
 	return (
-		!failure.deadlineExceeded &&
 		!failure.canceled &&
 		options.safety !== "non-idempotent-write" &&
 		canRetryOperation(options.safety, options.phase) &&
@@ -815,8 +832,10 @@ function canRetryAttempt(
 
 function failureMetadataOutcome(
 	failure: ExecutionFailureState,
+	deadlineRetryActive = false,
 ): HevyApiOutcome {
-	if (failure.deadlineExceeded) return "deadline_exceeded";
+	if (failure.deadlineExceeded || deadlineRetryActive)
+		return "deadline_exceeded";
 	if (failure.canceled) return "cancelled";
 	return "terminal_failure";
 }
@@ -978,7 +997,7 @@ function transitionAfterAttemptFailure(
 		options.safety,
 		commitState,
 		safeToRetry,
-		failureMetadataOutcome(failure),
+		failureMetadataOutcome(failure, options.deadlineRetryActive),
 	);
 	const expectedReason = expectedGet404Outcome(
 		options.endpoint,
@@ -1034,15 +1053,20 @@ function createNativeClient(
 		const url = buildUrl(baseUrl, normalized);
 		// The HTTP method is authoritative for operation safety and retry policy.
 		const safety = operationSafetyForMethod(method);
-		// `timeoutMs` is the default logical-operation budget. Establish its
-		// absolute deadline once so retries and response-body consumption cannot
-		// each restart a fresh timeout window.
-		const deadline = normalized.hevyDeadline ?? Date.now() + timeoutMs;
-		const executionSignal = createExecutionSignal({
+		// `timeoutMs` is the default logical-operation budget. A read may get one
+		// fresh attempt budget after timing out, bounded by this overall budget.
+		const operationTimeoutMs = normalizePositiveInteger(
+			normalized.hevyTimeoutMs,
+			timeoutMs,
+		);
+		let deadline = normalized.hevyDeadline ?? Date.now() + operationTimeoutMs;
+		const operationDeadline = deadline + operationTimeoutMs;
+		let executionSignal = createExecutionSignal({
 			signal: normalized.signal,
 			deadline,
 		});
 		let retryCount = 0;
+		let deadlineRetryActive = false;
 
 		try {
 			while (true) {
@@ -1111,12 +1135,26 @@ function createNativeClient(
 						deadline,
 						retryCount,
 						maxGetRetries,
+						deadlineRetryActive,
 						startedAt,
 						observationScope,
 						clientOptions: options,
 					});
 					if (!transition.retry) throw transition.error;
 					retryCount = transition.retryCount;
+					if (transition.error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE) {
+						executionSignal.cleanup();
+						deadline = Math.min(
+							Date.now() + operationTimeoutMs,
+							operationDeadline,
+						);
+						executionSignal = createExecutionSignal({
+							signal: normalized.signal,
+							deadline,
+						});
+						deadlineRetryActive = true;
+						continue;
+					}
 					const delayMs = transition.delayMs ?? 0;
 					const remaining = remainingDeadlineMs(deadline);
 					try {
