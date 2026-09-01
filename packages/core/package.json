@@ -21,6 +21,7 @@
 		"@hevy-mcp/hevy-client": "workspace:*",
 		"@hevy-mcp/operations": "workspace:*",
 		"@modelcontextprotocol/server": "^2.0.0",
+		"effect": "^3.22.1",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
