@@ -221,7 +221,12 @@ export function createToolRuntime({
 					execution: execution ?? {},
 					operations: resolvedOperations,
 				}) as ToolRuntimeServiceLayer)
-			: undefined;
+			: resolvedOperations
+				? (Layer.succeed(
+						HevyOperationsService,
+						resolvedOperations,
+					) as ToolRuntimeServiceLayer)
+				: undefined;
 	const layer = observer
 		? coreLayer
 			? (Layer.merge(

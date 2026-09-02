@@ -18,6 +18,7 @@ import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { workoutToolDefinitions } from "./workouts.js";
 import { workoutInputSchema } from "./input-schemas.js";
+import { HevyOperationsService } from "../effect-services.js";
 type WorkoutToolArgs = Parameters<
 	(typeof workoutToolDefinitions)[number]["execute"]
 >[1];
@@ -34,6 +35,14 @@ function register(
 		execution,
 		catalog: {} as never,
 	});
+	for (const definition of workoutToolDefinitions) {
+		registerToolDefinition(server, runtime, definition);
+	}
+	return tool;
+}
+
+function registerRuntime(runtime: ReturnType<typeof createToolRuntime>) {
+	const { server, registerTool: tool } = createMockMcpServer();
 	for (const definition of workoutToolDefinitions) {
 		registerToolDefinition(server, runtime, definition);
 	}
@@ -158,6 +167,75 @@ describe("workout tools", () => {
 			},
 		});
 		expect(response).toMatchObject({ content: [{ type: "text" }] });
+	});
+
+	it("resolves both read operations from the service layer, not the getter", async () => {
+		const layerWorkoutsGet = vi.fn().mockResolvedValue({
+			workout: { id: "layer-workout", title: "Layer workout" },
+		});
+		const layerWorkoutsList = vi.fn().mockResolvedValue({
+			items: [],
+			page: 1,
+			pageCount: 1,
+		});
+		const layerOperations: HevyOperations = {
+			workouts: {
+				get: {
+					descriptor: workoutsGetDescriptor,
+					execute: layerWorkoutsGet,
+				},
+				list: {
+					descriptor: workoutsListDescriptor,
+					execute: layerWorkoutsList,
+				},
+			},
+			routines: {
+				get: {
+					descriptor: routinesGetDescriptor,
+					execute: vi.fn(),
+				},
+				list: {
+					descriptor: routinesListDescriptor,
+					execute: vi.fn(),
+				},
+			},
+		};
+		const getterOperations: HevyOperations = {
+			...layerOperations,
+			workouts: {
+				get: {
+					...layerOperations.workouts.get,
+					execute: vi.fn().mockRejectedValue(new Error("wrong source")),
+				},
+				list: {
+					...layerOperations.workouts.list,
+					execute: vi.fn().mockRejectedValue(new Error("wrong source")),
+				},
+			},
+		};
+		const runtime = createToolRuntime({
+			client: createMockHevyClient(),
+			operations: layerOperations,
+			catalog: {} as never,
+		});
+		const getOperations = vi
+			.spyOn(runtime, "getOperations")
+			.mockReturnValue(getterOperations);
+		expect(runtime.service(HevyOperationsService)).toBe(layerOperations);
+		const tool = registerRuntime(runtime);
+
+		await toolHandler(tool, "get-workouts")({ page: 1, page_size: 5 });
+		await toolHandler(tool, "get-workout")({ workout_id: "layer-workout" });
+
+		expect(layerWorkoutsList).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 5 },
+			undefined,
+		);
+		expect(layerWorkoutsGet).toHaveBeenCalledWith(
+			{ workoutId: "layer-workout" },
+			undefined,
+		);
+		expect(getOperations).not.toHaveBeenCalled();
 	});
 
 	it("gets before patching metadata and sends the exact built payload", async () => {

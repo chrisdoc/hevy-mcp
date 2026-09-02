@@ -13,6 +13,7 @@ import {
 } from "./input-schemas.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
+import { HevyOperationsService } from "../effect-services.js";
 import {
 	createWorkoutResponse,
 	updateWorkoutResponse,
@@ -71,13 +72,15 @@ export const workoutToolDefinitions = [
 		kind: "read" as const,
 		responseContract: workoutsResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutsParams) => {
-			const data = await runtime.getOperations().workouts.list.execute(
-				{
-					page: args.page,
-					pageSize: args.page_size,
-				},
-				runtime.execution,
-			);
+			const data = await runtime
+				.service(HevyOperationsService)
+				.workouts.list.execute(
+					{
+						page: args.page,
+						pageSize: args.page_size,
+					},
+					runtime.execution,
+				);
 			return data;
 		},
 	},
@@ -94,7 +97,7 @@ export const workoutToolDefinitions = [
 		responseContract: workoutResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutParams) => {
 			const data = await runtime
-				.getOperations()
+				.service(HevyOperationsService)
 				.workouts.get.execute(
 					{ workoutId: args.workout_id },
 					runtime.execution,
