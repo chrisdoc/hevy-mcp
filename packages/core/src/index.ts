@@ -71,3 +71,17 @@ export {
 	MCP_SPAN_CATEGORIES,
 	type McpSpanCategory,
 } from "./utils/tool-taxonomy.js";
+export {
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	ValidationError,
+} from "./effect-errors.js";
+export {
+	ExerciseTemplateCatalogService,
+	HevyClientService,
+	HevyOperationsService,
+	ToolExecutionContextService,
+	ToolObserverService,
+} from "./effect-services.js";
