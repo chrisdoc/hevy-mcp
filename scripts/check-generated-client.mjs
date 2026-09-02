@@ -370,6 +370,14 @@ async function createFixtureRepository(normalizedSpec) {
 			recursive: true,
 			force: true,
 		});
+		// Preserve workspace dependency resolution for the copied package.
+		// The fixture intentionally excludes node_modules from the copy, but
+		// its curated barrel TypeScript check still needs declared dependencies.
+		await symlink(
+			resolve(clientRoot, "node_modules"),
+			resolve(fixtureClient, "node_modules"),
+			"junction",
+		);
 		await cp(
 			resolve(repositoryRoot, "tsconfig.base.json"),
 			resolve(root, "tsconfig.base.json"),
