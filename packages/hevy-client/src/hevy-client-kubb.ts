@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Duration, Effect, Schedule } from "effect";
 
 const objectSchema = z.object({}).passthrough();
 const numberSchema = z.number();
@@ -75,7 +76,8 @@ import {
 	type HevyRequestOptions,
 	type HevyRequestPhase,
 } from "./execution.js";
-import { DEFAULT_RETRY_POLICY, getRetryDelayMs } from "./retry-policy.js";
+import { DEFAULT_RETRY_POLICY } from "./retry-policy.js";
+import { createRetrySchedule } from "./retry-schedule.js";
 export interface HevyClientLogEvent {
 	readonly level: "debug" | "warning" | "error";
 	readonly logger: "hevy-api";
@@ -962,17 +964,17 @@ function emitTerminalFailureLog(
 	});
 }
 
-function createRetryTransition(
+async function createRetryTransition(
 	options: AttemptFailureTransitionOptions,
 	error: HevyHttpError,
-): AttemptFailureTransition {
+	retryDelayStep: (
+		now: number,
+		input: Pick<HevyHttpError, "status" | "headers">,
+	) => Promise<[number, Duration.Duration]>,
+): Promise<AttemptFailureTransition> {
 	const retryCount = options.retryCount + 1;
-	const delayMs = getRetryDelayMs(
-		error,
-		retryCount,
-		DEFAULT_RETRY_POLICY,
-		boundedRandomInt,
-	);
+	const [, delay] = await retryDelayStep(Date.now(), error);
+	const delayMs = Duration.toMillis(delay);
 	emitClientLog(options.clientOptions.onLog, {
 		level: error.status === 429 ? "warning" : "debug",
 		logger: "hevy-api",
@@ -1001,9 +1003,13 @@ function createRetryTransition(
 }
 
 /** Classify an attempt failure, emit its observation, and choose retry/backoff. */
-function transitionAfterAttemptFailure(
+async function transitionAfterAttemptFailure(
 	options: AttemptFailureTransitionOptions,
-): AttemptFailureTransition {
+	retryDelayStep: (
+		now: number,
+		input: Pick<HevyHttpError, "status" | "headers">,
+	) => Promise<[number, Duration.Duration]>,
+): Promise<AttemptFailureTransition> {
 	const failure = classifyExecutionFailure(
 		options.cause,
 		options.executionSignal.signal,
@@ -1050,7 +1056,7 @@ function transitionAfterAttemptFailure(
 			retryCount: options.retryCount,
 		};
 	}
-	return createRetryTransition(options, error);
+	return createRetryTransition(options, error, retryDelayStep);
 }
 
 function createNativeClient(
@@ -1060,6 +1066,19 @@ function createNativeClient(
 ): KubbClient {
 	const fetchImplementation = options.fetch ?? globalThis.fetch;
 	const maxGetRetries = normalizeMaxGetRetries(options.maxGetRetries);
+	const scheduleStep = Effect.runSync(
+		Schedule.toStep(
+			createRetrySchedule(
+				maxGetRetries,
+				DEFAULT_RETRY_POLICY,
+				boundedRandomInt,
+			),
+		),
+	);
+	const retryDelayStep = (
+		now: number,
+		input: Pick<HevyHttpError, "status" | "headers">,
+	) => Effect.runPromise(scheduleStep(now, input));
 	const timeoutMs = normalizePositiveInteger(
 		options.timeoutMs,
 		DEFAULT_API_TIMEOUT_MS,
@@ -1160,24 +1179,27 @@ function createNativeClient(
 				if (attempt.ok) return attempt.result;
 				{
 					const { cause, phase, responseConfirmed } = attempt;
-					const transition = transitionAfterAttemptFailure({
-						cause,
-						method,
-						endpoint,
-						page,
-						safety,
-						phase,
-						responseConfirmed,
-						executionSignal,
-						deadline,
-						attemptDeadline,
-						retryCount,
-						maxGetRetries,
-						deadlineRetryActive,
-						startedAt,
-						observationScope,
-						clientOptions: options,
-					});
+					const transition = await transitionAfterAttemptFailure(
+						{
+							cause,
+							method,
+							endpoint,
+							page,
+							safety,
+							phase,
+							responseConfirmed,
+							executionSignal,
+							deadline,
+							attemptDeadline,
+							retryCount,
+							maxGetRetries,
+							deadlineRetryActive,
+							startedAt,
+							observationScope,
+							clientOptions: options,
+						},
+						retryDelayStep,
+					);
 					if (!transition.retry) throw transition.error;
 					retryCount = transition.retryCount;
 					if (transition.error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE) {

@@ -64,3 +64,14 @@ export {
 	type HevyExecutionMetadata,
 	type HevyHttpErrorOptions,
 } from "./hevy-http-error.js";
+export {
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	ValidationError,
+} from "./effect-errors.js";
+export {
+	createRetrySchedule,
+	type RetryScheduleInput,
+} from "./retry-schedule.js";

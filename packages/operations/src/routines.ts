@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import type {
 	HevyClient,
 	HevyExecutionOptions,
@@ -5,10 +6,9 @@ import type {
 } from "@hevy-mcp/hevy-client";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
 import {
-	canonicalEndpointIdentity,
-	expectedGet404Outcome,
-	isHevyHttpError,
-} from "@hevy-mcp/hevy-client";
+	isExpectedReadEndOfList,
+	isExpectedReadNotFound,
+} from "./operation-errors.js";
 
 export interface RoutinesListInput {
 	readonly page: number;
@@ -71,18 +71,6 @@ export interface RoutinesListOperation {
 	): Promise<RoutinesListOutput>;
 }
 
-type ErrorInput = Error | string;
-
-function isExpectedEndOfList(error: ErrorInput, page: number): boolean {
-	return (
-		page > 1 &&
-		isHevyHttpError(error) &&
-		canonicalEndpointIdentity(error.endpoint) === "/v1/routines" &&
-		expectedGet404Outcome(error.endpoint, error.method, error.status, page) ===
-			"end_of_list"
-	);
-}
-
 function normalizeRoutinesPage(
 	response: GetV1Routines200,
 	input: RoutinesListInput,
@@ -99,40 +87,31 @@ function normalizeRoutinesPage(
 	};
 }
 
-function isExpectedRoutineNotFound(error: ErrorInput): boolean {
-	return (
-		isHevyHttpError(error) &&
-		canonicalEndpointIdentity(error.endpoint) === "/v1/routines/:routineId" &&
-		expectedGet404Outcome(error.endpoint, error.method, error.status) ===
-			"not_found"
-	);
-}
-
 export function createRoutinesGetOperation(
 	adapter: RoutinesGetAdapter,
 ): RoutinesGetOperation {
 	return {
 		descriptor: routinesGetDescriptor,
 		async execute(input, options) {
-			try {
-				const response =
+			const program = Effect.tryPromise({
+				try: () =>
 					options === undefined
-						? await adapter.getRoutineById(input.routineId)
-						: await adapter.getRoutineById(input.routineId, options);
-				return { routine: response.routine ?? null };
-			} catch (error) {
-				if (
-					isExpectedRoutineNotFound(
-						error instanceof Error ? error : String(error),
-					)
-				) {
-					return {
-						routine: null,
-						expected404Outcome: "not_found",
-					};
-				}
-				throw error;
-			}
+						? adapter.getRoutineById(input.routineId)
+						: adapter.getRoutineById(input.routineId, options),
+				catch: (error) =>
+					error instanceof Error ? error : new Error(String(error)),
+			}).pipe(
+				Effect.map((response) => ({ routine: response.routine ?? null })),
+				Effect.catchIf(
+					(error) => isExpectedReadNotFound(error, "/v1/routines"),
+					() =>
+						Effect.succeed({
+							routine: null,
+							expected404Outcome: "not_found" as const,
+						}),
+				),
+			);
+			return Effect.runPromise(program);
 		},
 	};
 }
@@ -143,29 +122,28 @@ export function createRoutinesListOperation(
 	return {
 		descriptor: routinesListDescriptor,
 		async execute(input, options) {
-			try {
-				const params = { page: input.page, pageSize: input.pageSize };
-				const response =
+			const params = { page: input.page, pageSize: input.pageSize };
+			const program = Effect.tryPromise({
+				try: () =>
 					options === undefined
-						? await adapter.getRoutines(params)
-						: await adapter.getRoutines(params, options);
-				return normalizeRoutinesPage(response, input);
-			} catch (error) {
-				if (
-					isExpectedEndOfList(
-						error instanceof Error ? error : String(error),
-						input.page,
-					)
-				) {
-					return {
-						items: [],
-						page: input.page,
-						pageCount: undefined,
-						expected404Outcome: "end_of_list",
-					};
-				}
-				throw error;
-			}
+						? adapter.getRoutines(params)
+						: adapter.getRoutines(params, options),
+				catch: (error) =>
+					error instanceof Error ? error : new Error(String(error)),
+			}).pipe(
+				Effect.map((response) => normalizeRoutinesPage(response, input)),
+				Effect.catchIf(
+					(error) => isExpectedReadEndOfList(error, "/v1/routines", input.page),
+					() =>
+						Effect.succeed({
+							items: [],
+							page: input.page,
+							pageCount: undefined,
+							expected404Outcome: "end_of_list" as const,
+						}),
+				),
+			);
+			return Effect.runPromise(program);
 		},
 	};
 }
