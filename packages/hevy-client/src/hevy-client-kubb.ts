@@ -1066,19 +1066,6 @@ function createNativeClient(
 ): KubbClient {
 	const fetchImplementation = options.fetch ?? globalThis.fetch;
 	const maxGetRetries = normalizeMaxGetRetries(options.maxGetRetries);
-	const scheduleStep = Effect.runSync(
-		Schedule.toStep(
-			createRetrySchedule(
-				maxGetRetries,
-				DEFAULT_RETRY_POLICY,
-				boundedRandomInt,
-			),
-		),
-	);
-	const retryDelayStep = (
-		now: number,
-		input: Pick<HevyHttpError, "status" | "headers">,
-	) => Effect.runPromise(scheduleStep(now, input));
 	const timeoutMs = normalizePositiveInteger(
 		options.timeoutMs,
 		DEFAULT_API_TIMEOUT_MS,
@@ -1112,6 +1099,22 @@ function createNativeClient(
 			operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
 		const operationDeadline =
 			normalized.hevyDeadline ?? deadline + operationTimeoutMs;
+		// Schedule steps are stateful. Construct this one inside each logical
+		// request so sequential and concurrent requests never share retry
+		// indexes or delay state.
+		const scheduleStep = Effect.runSync(
+			Schedule.toStep(
+				createRetrySchedule(
+					maxGetRetries,
+					DEFAULT_RETRY_POLICY,
+					boundedRandomInt,
+				),
+			),
+		);
+		const retryDelayStep = (
+			now: number,
+			input: Pick<HevyHttpError, "status" | "headers">,
+		) => Effect.runPromise(scheduleStep(now, input));
 		let executionSignal = createExecutionSignal({
 			signal: normalized.signal,
 			deadline,
