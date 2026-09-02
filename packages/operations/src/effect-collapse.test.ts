@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Effect } from "effect";
 
 import {
@@ -47,5 +47,22 @@ describe("operations Effect collapse", () => {
 		});
 
 		assertCollapsedExecute(operation.execute.toString());
+	});
+
+	it("passes an Effect-capable read seam directly into execute", async () => {
+		const getWorkout = vi.fn(() => Effect.succeed({ id: "workout-1" }));
+		const operation = createWorkoutsGetOperation({ getWorkout });
+
+		await expect(
+			operation.execute({ workoutId: "workout-1" }),
+		).resolves.toEqual({
+			workout: { id: "workout-1" },
+		});
+
+		const seamResult = getWorkout.mock.results[0]?.value;
+		expect(seamResult).toBeDefined();
+		await expect(Effect.runPromise(seamResult)).resolves.toEqual({
+			id: "workout-1",
+		});
 	});
 });
