@@ -29,4 +29,30 @@ describe("internal production request Effect seam", () => {
 		await Effect.runPromise(Effect.provide(program, TestClock.layer()));
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
+
+	it("projects an interrupted request Effect to a public client error", async () => {
+		const fetchMock = vi.fn(
+			() =>
+				new Promise<Response>(() => {
+					// The request is interrupted by its owning Effect fiber.
+				}),
+		);
+		const client = createNativeClient("test-key", "https://api.hevyapp.com", {
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+
+		const exit = await Effect.runPromise(
+			Effect.gen(function* () {
+				const fiber = yield* client
+					.requestEffect({ method: "GET", url: "/v1/user/info" })
+					.pipe(Effect.forkChild);
+				yield* Effect.yieldNow;
+				yield* Fiber.interrupt(fiber);
+				return yield* Fiber.await(fiber);
+			}),
+		);
+
+		expect(exit._tag).toBe("Failure");
+	});
 });

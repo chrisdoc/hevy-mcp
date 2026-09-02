@@ -127,12 +127,14 @@ export function createExecutionSignal(
 	if (control.deadline !== undefined) {
 		const delay = Math.max(0, control.deadline - Date.now());
 		timer = setTimeout(() => {
+			// Preserve a caller cancellation already observed at this
+			// checkpoint. Otherwise a later deadline callback could
+			// reclassify the request after cancellation won the race.
+			if (controller.signal.aborted) return;
 			deadlineTriggered = true;
-			if (!controller.signal.aborted) {
-				controller.abort(
-					new DOMException("Operation deadline exceeded", "TimeoutError"),
-				);
-			}
+			controller.abort(
+				new DOMException("Operation deadline exceeded", "TimeoutError"),
+			);
 		}, delay);
 	}
 	return {

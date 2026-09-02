@@ -258,6 +258,9 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("retries a read once with a fresh deadline budget after a deadline", async () => {
+		const outcomes: string[] = [];
+		const onLog = vi.fn();
+		let waitCount = 0;
 		const fetchMock = vi
 			.fn()
 			.mockImplementationOnce(() => new Promise<Response>(() => {}))
@@ -267,12 +270,25 @@ describe("@hevy-mcp/hevy-client", () => {
 			fetch: fetchMock,
 			timeoutMs: 10,
 			maxGetRetries: 1,
+			onLog,
+			onRequestComplete: ({ outcome }) => outcomes.push(outcome),
+			onRetryWait: () => {
+				waitCount += 1;
+				return { finish: vi.fn() };
+			},
 		});
 
 		await expect(client.getWorkout("workout-1")).resolves.toEqual({
 			recovered: true,
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(outcomes).toEqual(["deadline_exceeded", "success"]);
+		expect(waitCount).toBe(0);
+		expect(
+			onLog.mock.calls.some(
+				([event]) => event.data.message === "Retrying Hevy API request",
+			),
+		).toBe(false);
 	});
 
 	it("returns the deadline error when the bounded read retry also times out", async () => {
@@ -329,11 +345,23 @@ describe("@hevy-mcp/hevy-client", () => {
 
 	it("does not extend a caller-supplied deadline with a deadline retry", async () => {
 		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+		const onLog = vi.fn();
+		const sleeps: number[] = [];
+		let waitsOpened = 0;
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
 			timeoutMs: 10,
 			maxGetRetries: 1,
+			onLog,
+			sleep: (milliseconds) => {
+				sleeps.push(milliseconds);
+				return Promise.resolve();
+			},
+			onRetryWait: () => {
+				waitsOpened += 1;
+				return { finish: vi.fn() };
+			},
 		});
 		const deadline = Date.now() + 10;
 
@@ -344,6 +372,15 @@ describe("@hevy-mcp/hevy-client", () => {
 			outcome: "deadline_exceeded",
 		});
 		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(onLog).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					message: "Retrying Hevy API request",
+				}),
+			}),
+		);
+		expect(sleeps).toEqual([]);
+		expect(waitsOpened).toBe(0);
 	});
 
 	it("does not misclassify a non-deadline retry failure as deadline exceeded", async () => {
@@ -532,7 +569,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(outcomes).toEqual(["retryable_failure", "success"]);
 		expect(waits[0]).toBeGreaterThanOrEqual(300);
 		expect(waits[0]).toBeLessThan(550);
-		expect(scopedRuns).toEqual([0, 0, 1]);
+		expect(scopedRuns).toEqual([0, 1]);
 	});
 
 	it("does not rerun a request when an observation scope throws after starting", async () => {
