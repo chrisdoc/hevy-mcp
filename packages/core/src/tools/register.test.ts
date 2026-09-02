@@ -11,6 +11,7 @@ import {
 } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
+import type { ToolObserver } from "../observation.js";
 
 type SchemaObject = {
 	readonly type?: string | readonly string[];
@@ -236,6 +237,118 @@ const EXPECTED_TOOL_NAMES = [
 	"search-routines",
 ] as const;
 
+const validRoutine = {
+	title: "Test Routine",
+	exercises: [
+		{
+			exercise_template_id: "template-1",
+			sets: [{ type: "normal" }],
+		},
+	],
+};
+
+const VALID_CALL_ARGUMENTS = {
+	"get-workouts": { page: 1 },
+	"get-workout": { workout_id: "workout-1" },
+	"get-workout-events": { page: 1 },
+	"create-workout": {
+		workout: {
+			title: "Test Workout",
+			start_time: "2026-01-01T00:00:00Z",
+			end_time: "2026-01-01T01:00:00Z",
+			is_private: false,
+			exercises: [],
+		},
+	},
+	"update-workout": {
+		workout_id: "workout-1",
+		workout: { title: "Updated Workout", is_private: false },
+	},
+	"replace-workout-exercises": {
+		workout_id: "workout-1",
+		workout: { is_private: false, exercises: [] },
+	},
+	"get-routines": { page: 1 },
+	"get-routine": { routine_id: "routine-1" },
+	"create-routine": { routine: validRoutine },
+	"update-routine": { routine_id: "routine-1", routine: validRoutine },
+	"get-exercise-template": { exercise_template_id: "template-1" },
+	"get-exercise-history": { exercise_template_id: "template-1" },
+	"create-exercise-template": {
+		exercise: {
+			title: "Test Template",
+			exercise_type: "weight_reps",
+			equipment_category: "none",
+			muscle_group: "chest",
+		},
+	},
+	"search-exercise-templates": { query: "test" },
+	"get-routine-folder": { folder_id: "folder-1" },
+	"create-routine-folder": { routine_folder: { title: "Test Folder" } },
+	"get-body-measurements": { page: 1 },
+	"get-body-measurement": { date: "2026-01-01" },
+	"create-body-measurement": { date: "2026-01-01", weight_kg: 80 },
+	"update-body-measurement": { date: "2026-01-01", weight_kg: 81 },
+	"get-training-summary": {},
+	"search-routines": { query: "test" },
+} as const;
+
+const completeWorkout = {
+	id: "workout-1",
+	title: "Test Workout",
+	start_time: "2026-01-01T00:00:00Z",
+	end_time: "2026-01-01T01:00:00Z",
+	exercises: [],
+};
+
+function configureRegisterCallClient() {
+	const mockClient = createMockHevyClient();
+	mockClient.getWorkouts.mockResolvedValue({
+		page: 1,
+		page_count: 1,
+		workouts: [],
+	});
+	mockClient.getWorkout.mockResolvedValue(completeWorkout);
+	mockClient.getRoutines.mockResolvedValue({
+		page: 1,
+		page_count: 1,
+		routines: [],
+	});
+	mockClient.getRoutineById.mockResolvedValue({
+		routine: {
+			id: "routine-1",
+			title: "Test Routine",
+			exercises: [],
+		},
+	});
+	mockClient.getWorkoutEvents.mockResolvedValue({
+		page: 1,
+		page_count: 1,
+		events: [],
+	});
+	return mockClient;
+}
+
+async function connectToolProtocol(
+	server: McpServer,
+	name: string,
+): Promise<{
+	readonly protocolClient: Client;
+	readonly server: McpServer;
+}> {
+	const protocolClient = new Client({
+		name: `tool-contract-client-${name}`,
+		version: "1.0.0",
+	});
+	const [clientTransport, serverTransport] =
+		InMemoryTransport.createLinkedPair();
+	await Promise.all([
+		server.connect(serverTransport),
+		protocolClient.connect(clientTransport),
+	]);
+	return { protocolClient, server };
+}
+
 describe("registerHevyTools", () => {
 	let client: Client;
 	let server: McpServer;
@@ -267,11 +380,117 @@ describe("registerHevyTools", () => {
 		await Promise.all([client.close(), server.close()]);
 	});
 
-	it("advertises the complete production tool set without an API client", async () => {
+	it("[VAL-MCP-001] advertises exactly 22 production tools without an API client", async () => {
 		const { tools } = await client.listTools();
 
+		expect(EXPECTED_TOOL_NAMES).toHaveLength(22);
 		expect(tools).toHaveLength(EXPECTED_TOOL_NAMES.length);
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
+	});
+
+	it("[VAL-MCP-005] keeps the protocol catalog at 22 tools and excludes get-user-info", async () => {
+		const { tools } = await client.listTools();
+
+		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
+		expect(tools.map(({ name }) => name)).not.toContain("get-user-info");
+	});
+
+	it("[VAL-MCP-006] rejects callTool for the intentionally unregistered get-user-info tool", async () => {
+		await expect(
+			client.callTool({ name: "get-user-info", arguments: {} }),
+		).rejects.toThrow(/unknown|not found/u);
+	});
+
+	it("[VAL-MCP-008] keeps every registered tool callable through the protocol path", async () => {
+		const mockClient = configureRegisterCallClient();
+		const productionServer = new McpServer({
+			name: "all-tool-call-server",
+			version: "1.0.0",
+		});
+		const catalog: ExerciseTemplateCatalog = {
+			get: () => Promise.resolve([]),
+			reset: () => {},
+		};
+		registerHevyTools(
+			productionServer,
+			createToolRuntime({ client: mockClient, catalog }),
+		);
+		const pair = await connectToolProtocol(productionServer, "all");
+
+		try {
+			for (const name of EXPECTED_TOOL_NAMES) {
+				const result = await pair.protocolClient.callTool({
+					name,
+					arguments: VALID_CALL_ARGUMENTS[name],
+				});
+				expect(result, name).not.toMatchObject({ isError: true });
+				expect(result.content, name).toBeDefined();
+				expect(JSON.stringify(result), name).not.toMatch(/Effect|Cause|Layer/u);
+			}
+		} finally {
+			await Promise.all([pair.protocolClient.close(), pair.server.close()]);
+		}
+	});
+
+	it("[VAL-MCP-002/003/007] keeps listTools and callTool JSON unchanged when an observer is configured", async () => {
+		const buildServer = async (
+			name: string,
+			observer?: ToolObserver,
+		): Promise<{
+			readonly protocolClient: Client;
+			readonly server: McpServer;
+		}> => {
+			const mockClient = configureRegisterCallClient();
+			const server = new McpServer({
+				name: `${name}-server`,
+				version: "1.0.0",
+			});
+			const catalog: ExerciseTemplateCatalog = {
+				get: () => Promise.resolve([]),
+				reset: () => {},
+			};
+			registerHevyTools(
+				server,
+				createToolRuntime({ client: mockClient, catalog, observer }),
+			);
+			return connectToolProtocol(server, name);
+		};
+		const observer: ToolObserver = {
+			start: () => ({
+				run: <T>(operation: () => Promise<T>) => operation(),
+				finish: () => {},
+			}),
+		};
+		const withoutObserver = await buildServer("without-observer");
+		const withObserver = await buildServer("with-observer", observer);
+
+		try {
+			const [withoutTools, withTools] = await Promise.all([
+				withoutObserver.protocolClient.listTools(),
+				withObserver.protocolClient.listTools(),
+			]);
+			expect(withTools).toEqual(withoutTools);
+
+			const [withoutResult, withResult] = await Promise.all([
+				withoutObserver.protocolClient.callTool({
+					name: "get-workout",
+					arguments: { workout_id: "workout-1" },
+				}),
+				withObserver.protocolClient.callTool({
+					name: "get-workout",
+					arguments: { workout_id: "workout-1" },
+				}),
+			]);
+			expect(withResult).toEqual(withoutResult);
+			expect(JSON.stringify(withResult)).not.toMatch(/Effect|Cause|Layer/u);
+		} finally {
+			await Promise.all([
+				withoutObserver.protocolClient.close(),
+				withoutObserver.server.close(),
+				withObserver.protocolClient.close(),
+				withObserver.server.close(),
+			]);
+		}
 	});
 
 	it("shares memoized tool schemas across independently built servers", async () => {
