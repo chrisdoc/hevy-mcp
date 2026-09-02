@@ -751,6 +751,19 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(invalid.status).toBe(401);
 		expect(invalid.headers.get("www-authenticate")).toBe("Bearer");
 		expect(unavailable.status).toBe(502);
+		const unavailableBody = await unavailable.json();
+		expect(unavailableBody).toEqual({
+			error: {
+				message: "Unable to validate the Hevy API key",
+				outcome: "terminal_failure",
+				phase: "response-content",
+				operation_safety: "read",
+				commit_state: "not_sent",
+				safe_to_retry: false,
+				code: "HEVY_RETRY_EXHAUSTED",
+				status: 503,
+			},
+		});
 		// A 401 is never retried; a 503 is transient and retried twice (three
 		// attempts total) before the validation client gives up.
 		expect(hevyRequests.map((request) => request.apiKey)).toEqual([
@@ -759,6 +772,9 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 			UPSTREAM_FAILURE_API_KEY,
 			UPSTREAM_FAILURE_API_KEY,
 		]);
+		expect(JSON.stringify(unavailableBody)).not.toMatch(
+			/data|headers|responseError|cause|stack|Effect|secret/i,
+		);
 	});
 
 	it("returns MCP errors for unacceptable, unsupported, and invalid JSON requests", async () => {

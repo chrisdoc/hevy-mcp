@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Duration, Effect, Schedule } from "effect";
+import { Cause, Duration, Effect, Option, Schedule } from "effect";
 import type * as Pull from "effect/Pull";
 
 const objectSchema = z.object({}).passthrough();
@@ -224,6 +224,7 @@ function withTimeout<T>(
 	timeoutMs: number,
 	onTimeout: () => void,
 	signal?: AbortSignal,
+	onAbortOperation = onTimeout,
 ): Promise<T> {
 	const promise = new Promise<T>((resolve, reject) => {
 		let settled = false;
@@ -232,6 +233,7 @@ function withTimeout<T>(
 			settled = true;
 			if (timer !== undefined) clearTimeout(timer);
 			signal?.removeEventListener("abort", onAbort);
+			onAbortOperation();
 			reject(
 				signal?.reason ?? new DOMException("Operation canceled", "AbortError"),
 			);
@@ -341,27 +343,14 @@ function runRequestObservation<T>(
 		return operation();
 	};
 	try {
-		return scope.run(trackedOperation);
+		return Promise.resolve(scope.run(trackedOperation)).catch((error) => {
+			if (started) throw error;
+			return operation();
+		});
 	} catch (error) {
 		if (started) throw error;
 		return operation();
 	}
-}
-
-function startRequestObservationEffect<E>(
-	scope: HevyRequestObservationScope | undefined,
-	operation: Effect.Effect<void, E>,
-): Effect.Effect<void, unknown> {
-	if (!scope?.run) return operation;
-	const run = (trackedOperation: () => Promise<void>) =>
-		scope.run?.(trackedOperation) ?? Promise.resolve();
-	// Observation scopes are Promise-based by contract. Start the scope with a
-	// settled no-op, then keep the actual wait in the surrounding Effect so
-	// there is no nested Effect runtime crossing.
-	return Effect.tryPromise({
-		try: () => run(() => Promise.resolve()),
-		catch: (cause) => cause,
-	}).pipe(Effect.asVoid, Effect.andThen(operation));
 }
 
 function emitRetryWait(
@@ -426,14 +415,25 @@ function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
 	return url;
 }
 
-async function parseResponseData(response: Response): Promise<unknown> {
+async function parseResponseData(
+	response: Response,
+	onFailure?: () => void,
+): Promise<unknown> {
 	if ([204, 205, 304].includes(response.status) || !response.body) return {};
-	const text = await response.text();
-	if (!text) return {};
 	try {
-		return JSON.parse(text) as unknown;
-	} catch {
-		return text;
+		const text = await response.text();
+		if (!text) return {};
+		try {
+			return JSON.parse(text) as unknown;
+		} catch {
+			return text;
+		}
+	} catch (error) {
+		// A stream can be acquired before cancellation, deadline expiry, or
+		// interruption reaches the attempt. Explicitly release it, while
+		// preserving the original classified failure.
+		onFailure?.();
+		throw error;
 	}
 }
 
@@ -601,6 +601,8 @@ interface RequestAttemptExecutionOptions {
 	retryCount: number;
 	observationScope: HevyRequestObservationScope | undefined;
 	onRequestComplete: HevyClientOptions["onRequestComplete"];
+	onAttemptComplete?: (observation: HevyRequestObservation) => void;
+	onEffectInterruption?: () => void;
 	onPhaseChange?: (phase: HevyRequestPhase) => void;
 }
 
@@ -627,8 +629,10 @@ async function executeRequestAttempt<TData>(
 		options.onPhaseChange?.(nextPhase);
 	};
 	const attemptController = new AbortController();
-	const abortAttempt = () =>
+	const abortAttempt = () => {
 		attemptController.abort(options.executionSignal.reason);
+		options.onEffectInterruption?.();
+	};
 	const removeAbortAttempt = finalizeOnce(() =>
 		options.executionSignal.removeEventListener("abort", abortAttempt),
 	);
@@ -678,14 +682,17 @@ async function executeRequestAttempt<TData>(
 				);
 				setPhase("response-headers");
 				setPhase("response-content");
+				const cancelBody = finalizeOnce(() => {
+					const body = response.body;
+					if (!body || body.locked) return;
+					void body.cancel().catch(() => {});
+				});
 				const data = await withTimeout(
-					parseResponseData(response),
+					parseResponseData(response, cancelBody),
 					remainingDeadlineMs(options.attemptDeadline),
-					() =>
-						attemptController.abort(
-							new DOMException("Operation timed out", "TimeoutError"),
-						),
+					cancelBody,
 					attemptController.signal,
+					cancelBody,
 				);
 				if (!response.ok) {
 					throw new HevyHttpError(
@@ -717,8 +724,12 @@ async function executeRequestAttempt<TData>(
 					commitState: "confirmed",
 					safeToRetry: false,
 				};
-				finishRequestObservation(options.observationScope, observation);
-				emitRequestObservation(options.onRequestComplete, observation);
+				if (options.onAttemptComplete) {
+					options.onAttemptComplete(observation);
+				} else {
+					finishRequestObservation(options.observationScope, observation);
+					emitRequestObservation(options.onRequestComplete, observation);
+				}
 				return {
 					data: data as TData,
 					status: response.status,
@@ -752,8 +763,11 @@ interface AttemptFailureTransitionOptions {
 	maxGetRetries: number;
 	/** True only while executing the one allowed fresh-budget deadline retry. */
 	deadlineRetryActive?: boolean;
+	/** Explicit caller deadlines are authoritative and cannot be retried. */
+	allowDeadlineRetry: boolean;
 	startedAt: number;
 	observationScope: HevyRequestObservationScope | undefined;
+	onAttemptComplete: (observation: HevyRequestObservation) => void;
 	clientOptions: HevyClientOptions;
 }
 
@@ -799,7 +813,8 @@ function canRetryAttempt(
 	const deadlineRetry =
 		options.safety === "read" &&
 		options.retryCount === 0 &&
-		options.maxGetRetries > 0;
+		options.maxGetRetries > 0 &&
+		options.allowDeadlineRetry;
 	if (
 		failure.deadlineExceeded ||
 		error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE
@@ -1011,14 +1026,28 @@ function transitionAfterAttemptFailureEffect(
 		retryExhausted,
 		expectedReason,
 	);
-	finishRequestObservation(options.observationScope, observation);
-	emitRequestObservation(options.clientOptions.onRequestComplete, observation);
+	options.onAttemptComplete(observation);
 	if (expectedReason || !safeToRetry || retryExhausted) {
 		emitTerminalFailureLog(options, error);
 		return Effect.succeed({
 			retry: false,
 			error,
 			retryCount: options.retryCount,
+		});
+	}
+	// A client-derived attempt deadline has a single fresh-budget read retry.
+	// It is intentionally not a scheduled retry: do not consume a schedule
+	// step, emit a backoff log, or open a retry-wait scope for this transition.
+	if (
+		error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE &&
+		options.safety === "read" &&
+		options.retryCount === 0 &&
+		options.allowDeadlineRetry
+	) {
+		return Effect.succeed({
+			retry: true,
+			error,
+			retryCount: options.retryCount + 1,
 		});
 	}
 	return createRetryTransitionEffect(options, error, retryDelayStep);
@@ -1057,288 +1086,321 @@ export function createNativeClient(
 			normalized.hevyTimeoutMs,
 			timeoutMs,
 		);
-		const operationStartedAt = Date.now();
-		let deadline =
-			normalized.hevyDeadline ??
-			operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
-		const operationDeadline =
-			normalized.hevyDeadline ?? deadline + operationTimeoutMs;
-		let executionSignal = createExecutionSignal({
-			signal: normalized.signal,
-			deadline,
-		});
-		let retryCount = 0;
-		let deadlineRetryActive = false;
-
-		const requestEffect = Effect.gen(function* () {
-			// Schedule steps are stateful. Construct this one inside each
-			// logical request so sequential and concurrent requests never share
-			// retry indexes or delay state.
-			const scheduleStep = yield* Schedule.toStep(
-				createRetrySchedule(
-					maxGetRetries,
-					DEFAULT_RETRY_POLICY,
-					boundedRandomInt,
-				),
-			);
-			const retryDelayStep: RetryDelayStep = (now, input) =>
-				scheduleStep(now, input);
-			while (true) {
-				const attemptDeadline = Math.min(
-					deadline,
-					Date.now() + operationTimeoutMs,
+		const requestEffect = Effect.suspend(() => {
+			const operationStartedAt = Date.now();
+			let deadline =
+				normalized.hevyDeadline ??
+				operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
+			const operationDeadline =
+				normalized.hevyDeadline ?? deadline + operationTimeoutMs;
+			let executionSignal = createExecutionSignal({
+				signal: normalized.signal,
+				deadline,
+			});
+			let retryCount = 0;
+			let deadlineRetryActive = false;
+			let currentPhase: HevyRequestPhase = "before-dispatch";
+			return Effect.gen(function* () {
+				// Schedule steps are stateful. Construct this one inside each
+				// logical request so sequential and concurrent requests never share
+				// retry indexes or delay state.
+				const scheduleStep = yield* Schedule.toStep(
+					createRetrySchedule(
+						maxGetRetries,
+						DEFAULT_RETRY_POLICY,
+						boundedRandomInt,
+					),
 				);
-				const remaining = remainingDeadlineMs(attemptDeadline);
-				if (executionSignal.signal.aborted || remaining <= 0) {
-					const deadlineExceeded = remaining <= 0;
-					const error = createExecutionError({
+				const retryDelayStep: RetryDelayStep = (now, input) =>
+					scheduleStep(now, input);
+				while (true) {
+					currentPhase = "before-dispatch";
+					const attemptDeadline = Math.min(
+						deadline,
+						Date.now() + operationTimeoutMs,
+					);
+					const remaining = remainingDeadlineMs(attemptDeadline);
+					if (executionSignal.signal.aborted || remaining <= 0) {
+						const deadlineExceeded = remaining <= 0;
+						const error = createExecutionError({
+							method,
+							endpoint,
+							safety,
+							phase: "before-dispatch",
+							deadlineExceeded,
+							canceled: !deadlineExceeded,
+							callerCanceled:
+								!deadlineExceeded && executionSignal.signal.aborted,
+						});
+						emitRequestObservation(options.onRequestComplete, {
+							method,
+							endpoint,
+							status: 0,
+							durationMs: 0,
+							retryCount,
+							outcome: error.outcome ?? "cancelled",
+							phase: error.phase,
+							operationSafety: safety,
+							commitState: error.commitState,
+							safeToRetry: false,
+							error: {
+								code: error.code,
+								category: "NetworkError",
+							},
+						});
+						return yield* Effect.fail(error);
+					}
+					const startedAt = Date.now();
+					currentPhase = "before-dispatch";
+					const observationScope = emitRequestStart(options.onRequestStart, {
 						method,
 						endpoint,
-						safety,
-						phase: "before-dispatch",
-						deadlineExceeded,
-						canceled: !deadlineExceeded,
-						callerCanceled: !deadlineExceeded && executionSignal.signal.aborted,
-					});
-					emitRequestObservation(options.onRequestComplete, {
-						method,
-						endpoint,
-						status: 0,
-						durationMs: 0,
 						retryCount,
-						outcome: error.outcome ?? "cancelled",
-						phase: error.phase,
-						operationSafety: safety,
-						commitState: error.commitState,
-						safeToRetry: false,
-						error: {
-							code: error.code,
-							category: "NetworkError",
-						},
 					});
-					return yield* Effect.fail(error);
-				}
-				const startedAt = Date.now();
-				const observationScope = emitRequestStart(options.onRequestStart, {
-					method,
-					endpoint,
-					retryCount,
-				});
-				let attemptPhase: HevyRequestPhase = "before-dispatch";
-				let attemptCompleted = false;
-				let attemptReturned = false;
-				const completeAttempt = (observation: HevyRequestObservation) => {
-					if (attemptCompleted) return;
-					attemptCompleted = true;
-					emitRequestObservation(options.onRequestComplete, observation);
-				};
-				const attemptClientOptions: HevyClientOptions = {
-					...options,
-					onRequestComplete: completeAttempt,
-				};
-				const attemptEffectProgram = attemptEffect({
-					method,
-					endpoint,
-					phase: "dispatch",
-					operationSafety: safety,
-					commitState: "not_sent",
-					responseConfirmed: false,
-					deadline: attemptDeadline,
-					retryCount,
-					cause: undefined,
-					run: (interruptionSignal) => {
-						const abortOnInterruption = () => {
-							const reason = interruptionSignal.reason;
-							executionSignal.abort(
-								reason instanceof Error || reason instanceof DOMException
-									? reason
-									: undefined,
+					let attemptPhase: HevyRequestPhase = "before-dispatch";
+					let attemptCompleted = false;
+					let attemptReturned = false;
+					const completeAttempt = (observation: HevyRequestObservation) => {
+						if (attemptCompleted) return;
+						attemptCompleted = true;
+						finishRequestObservation(observationScope, observation);
+						emitRequestObservation(options.onRequestComplete, observation);
+					};
+					const attemptEffectProgram = attemptEffect({
+						method,
+						endpoint,
+						phase: "dispatch",
+						operationSafety: safety,
+						commitState: "not_sent",
+						responseConfirmed: false,
+						deadline: attemptDeadline,
+						retryCount,
+						cause: undefined,
+						run: (interruptionSignal) => {
+							const abortOnInterruption = () => {
+								const reason = interruptionSignal.reason;
+								executionSignal.abort(
+									reason instanceof Error || reason instanceof DOMException
+										? reason
+										: undefined,
+								);
+							};
+							const removeInterruption = finalizeOnce(() =>
+								interruptionSignal.removeEventListener(
+									"abort",
+									abortOnInterruption,
+								),
 							);
-						};
-						const removeInterruption = finalizeOnce(() =>
-							interruptionSignal.removeEventListener(
+							interruptionSignal.addEventListener(
 								"abort",
 								abortOnInterruption,
-							),
-						);
-						interruptionSignal.addEventListener("abort", abortOnInterruption, {
-							once: true,
-						});
-						return executeRequestAttempt<TData>({
-							apiKey,
-							fetchImplementation,
-							normalized,
-							url,
-							method,
-							endpoint,
-							safety,
-							attemptDeadline,
-							executionSignal: executionSignal.signal,
-							startedAt,
-							retryCount,
-							observationScope,
-							onRequestComplete: completeAttempt,
-							onPhaseChange: (phase) => {
-								attemptPhase = phase;
-							},
-						}).finally(() => {
-							attemptReturned = true;
-							removeInterruption();
-						});
-					},
-				});
-				const attempt = yield* attemptEffectProgram.pipe(
-					Effect.catchTag("AttemptFailure", (failure) =>
-						Effect.succeed({
-							ok: false as const,
-							cause: failure.cause,
-							phase: failure.phase,
-							responseConfirmed: failure.responseConfirmed,
-						}),
-					),
-					Effect.ensuring(
-						Effect.sync(() => {
-							if (attemptReturned || attemptCompleted) return;
-							const failure = classifyExecutionFailure(
-								undefined,
-								executionSignal.signal,
-								attemptDeadline,
-								executionSignal.deadlineTriggered() ||
-									isDeadlineExceeded(attemptDeadline),
+								{
+									once: true,
+								},
 							);
-							const error = createExecutionError({
+							return executeRequestAttempt<TData>({
+								apiKey,
+								fetchImplementation,
+								normalized,
+								url,
 								method,
 								endpoint,
 								safety,
-								phase: attemptPhase,
-								deadlineExceeded: failure.deadlineExceeded,
-								canceled: failure.canceled,
-								callerCanceled: failure.callerCanceled,
-								responseConfirmed: false,
+								attemptDeadline,
+								executionSignal: executionSignal.signal,
+								startedAt,
+								retryCount,
+								observationScope,
+								onRequestComplete: options.onRequestComplete,
+								onAttemptComplete: completeAttempt,
+								onEffectInterruption: removeInterruption,
+								onPhaseChange: (phase) => {
+									attemptPhase = phase;
+									currentPhase = phase;
+								},
+							}).finally(() => {
+								attemptReturned = true;
+								removeInterruption();
 							});
-							const observation: HevyRequestObservation = {
+						},
+					});
+					const attempt = yield* attemptEffectProgram.pipe(
+						Effect.catchTag("AttemptFailure", (failure) =>
+							Effect.succeed({
+								ok: false as const,
+								cause: failure.cause,
+								phase: failure.phase,
+								responseConfirmed: failure.responseConfirmed,
+							}),
+						),
+						Effect.ensuring(
+							Effect.sync(() => {
+								if (attemptReturned || attemptCompleted) return;
+								const failure = classifyExecutionFailure(
+									undefined,
+									executionSignal.signal,
+									attemptDeadline,
+									executionSignal.deadlineTriggered() ||
+										isDeadlineExceeded(attemptDeadline),
+								);
+								const error = createExecutionError({
+									method,
+									endpoint,
+									safety,
+									phase: attemptPhase,
+									deadlineExceeded: failure.deadlineExceeded,
+									canceled: failure.canceled,
+									callerCanceled: failure.callerCanceled,
+									responseConfirmed: false,
+								});
+								const observation: HevyRequestObservation = {
+									method,
+									endpoint,
+									status: 0,
+									durationMs: Date.now() - startedAt,
+									retryCount,
+									outcome: error.outcome ?? "cancelled",
+									phase: error.phase,
+									operationSafety: safety,
+									commitState: error.commitState,
+									safeToRetry: false,
+									error: {
+										code: error.code,
+										category: "NetworkError",
+									},
+								};
+								completeAttempt(observation);
+							}),
+						),
+					);
+					if (attempt.ok) return attempt.result;
+					{
+						const { cause, phase, responseConfirmed } = attempt;
+						const transition = yield* transitionAfterAttemptFailureEffect(
+							{
+								cause,
 								method,
 								endpoint,
-								status: 0,
-								durationMs: Date.now() - startedAt,
+								page,
+								safety,
+								phase,
+								responseConfirmed,
+								executionSignal,
+								deadline,
+								attemptDeadline,
 								retryCount,
-								outcome: error.outcome ?? "cancelled",
-								phase: error.phase,
-								operationSafety: safety,
-								commitState: error.commitState,
-								safeToRetry: false,
-								error: {
-									code: error.code,
-									category: "NetworkError",
-								},
-							};
-							finishRequestObservation(observationScope, observation);
-							completeAttempt(observation);
-						}),
-					),
-				);
-				if (attempt.ok) return attempt.result;
-				{
-					const { cause, phase, responseConfirmed } = attempt;
-					const transition = yield* transitionAfterAttemptFailureEffect(
-						{
-							cause,
+								maxGetRetries,
+								deadlineRetryActive,
+								allowDeadlineRetry: normalized.hevyDeadline === undefined,
+								startedAt,
+								observationScope,
+								onAttemptComplete: completeAttempt,
+								clientOptions: options,
+							},
+							retryDelayStep,
+						);
+						if (!transition.retry) return yield* Effect.fail(transition.error);
+						retryCount = transition.retryCount;
+						if (transition.error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE) {
+							// Skip the deadline retry when the caller supplied an
+							// explicit deadline — it is authoritative and no retry
+							// may extend beyond it. In that case operationDeadline
+							// equals deadline, leaving no fresh attempt budget.
+							if (operationDeadline <= deadline)
+								return yield* Effect.fail(transition.error);
+							executionSignal.cleanup();
+							deadline = Math.min(
+								Date.now() + operationTimeoutMs,
+								operationDeadline,
+							);
+							executionSignal = createExecutionSignal({
+								signal: normalized.signal,
+								deadline,
+							});
+							deadlineRetryActive = true;
+							continue;
+						}
+						const delayMs = transition.delayMs ?? 0;
+						const remaining = remainingDeadlineMs(deadline);
+						const finishWait = finalizeOnce(() =>
+							finishRetryWait(transition.retryWaitScope),
+						);
+						currentPhase = "backoff";
+						const wait = retryBackoff({
+							delayMs: Math.min(delayMs, Math.max(0, remaining)),
+							signal: executionSignal.signal,
+							sleep: options.sleep,
 							method,
 							endpoint,
-							page,
-							safety,
-							phase,
-							responseConfirmed,
-							executionSignal,
+							phase: "backoff",
+							operationSafety: safety,
 							deadline,
-							attemptDeadline,
-							retryCount,
-							maxGetRetries,
-							deadlineRetryActive,
-							startedAt,
-							observationScope,
-							clientOptions: attemptClientOptions,
-						},
-						retryDelayStep,
-					);
-					if (!transition.retry) return yield* Effect.fail(transition.error);
-					retryCount = transition.retryCount;
-					if (transition.error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE) {
-						// Skip the deadline retry when the caller supplied an
-						// explicit deadline — it is authoritative and no retry
-						// may extend beyond it. In that case operationDeadline
-						// equals deadline, leaving no fresh attempt budget.
-						if (operationDeadline <= deadline)
-							return yield* Effect.fail(transition.error);
-						executionSignal.cleanup();
-						deadline = Math.min(
-							Date.now() + operationTimeoutMs,
-							operationDeadline,
+							cause: transition.error,
+						}).pipe(
+							Effect.mapError((failure: BackoffFailure) => {
+								const waitDeadlineExceeded =
+									executionSignal.deadlineTriggered() ||
+									isDeadlineExceeded(deadline);
+								const waitErrorResponse = createExecutionError({
+									method,
+									endpoint,
+									safety,
+									phase: "backoff",
+									deadlineExceeded: waitDeadlineExceeded,
+									canceled: !waitDeadlineExceeded,
+									callerCanceled:
+										!waitDeadlineExceeded && executionSignal.signal.aborted,
+									cause: failure.cause,
+								});
+								emitRequestObservation(options.onRequestComplete, {
+									method,
+									endpoint,
+									status: 0,
+									durationMs: Date.now() - startedAt,
+									retryCount,
+									outcome: waitErrorResponse.outcome ?? "cancelled",
+									phase: waitErrorResponse.phase,
+									operationSafety: safety,
+									commitState: waitErrorResponse.commitState,
+									safeToRetry: false,
+									error: {
+										code: waitErrorResponse.code,
+										category: "NetworkError",
+									},
+								});
+								return waitErrorResponse;
+							}),
+							Effect.ensuring(Effect.sync(finishWait)),
 						);
-						executionSignal = createExecutionSignal({
-							signal: normalized.signal,
-							deadline,
-						});
-						deadlineRetryActive = true;
-						continue;
+						yield* wait;
 					}
-					const delayMs = transition.delayMs ?? 0;
-					const remaining = remainingDeadlineMs(deadline);
-					const finishWait = finalizeOnce(() =>
-						finishRetryWait(transition.retryWaitScope),
-					);
-					const wait = retryBackoff({
-						delayMs: Math.min(delayMs, Math.max(0, remaining)),
-						signal: executionSignal.signal,
-						sleep: options.sleep,
-						method,
-						endpoint,
-						phase: "backoff",
-						operationSafety: safety,
-						deadline,
-						cause: transition.error,
-					}).pipe(
-						Effect.mapError((failure: BackoffFailure) => {
-							const waitDeadlineExceeded =
-								executionSignal.deadlineTriggered() ||
-								isDeadlineExceeded(deadline);
-							const waitErrorResponse = createExecutionError({
-								method,
-								endpoint,
-								safety,
-								phase: "backoff",
-								deadlineExceeded: waitDeadlineExceeded,
-								canceled: !waitDeadlineExceeded,
-								callerCanceled:
-									!waitDeadlineExceeded && executionSignal.signal.aborted,
-								cause: failure.cause,
-							});
-							emitRequestObservation(options.onRequestComplete, {
-								method,
-								endpoint,
-								status: 0,
-								durationMs: Date.now() - startedAt,
-								retryCount,
-								outcome: waitErrorResponse.outcome ?? "cancelled",
-								phase: waitErrorResponse.phase,
-								operationSafety: safety,
-								commitState: waitErrorResponse.commitState,
-								safeToRetry: false,
-								error: {
-									code: waitErrorResponse.code,
-									category: "NetworkError",
-								},
-							});
-							return waitErrorResponse;
-						}),
-						Effect.ensuring(Effect.sync(finishWait)),
-					);
-					yield* startRequestObservationEffect(observationScope, wait).pipe(
-						Effect.ensuring(Effect.sync(finishWait)),
-					);
 				}
-			}
-		}).pipe(Effect.ensuring(Effect.sync(() => executionSignal.cleanup())));
+			}).pipe(
+				Effect.catchCause((cause) => {
+					const failure = Cause.findErrorOption(cause);
+					if (Option.isSome(failure)) return Effect.fail(failure.value);
+					const interrupted = Cause.hasInterrupts(cause);
+					return Effect.fail(
+						createExecutionError({
+							method,
+							endpoint,
+							safety,
+							phase: currentPhase,
+							deadlineExceeded:
+								!interrupted &&
+								(executionSignal.deadlineTriggered() ||
+									isDeadlineExceeded(deadline)),
+							canceled: interrupted || executionSignal.signal.aborted,
+							callerCanceled: interrupted || executionSignal.signal.aborted,
+							// Never expose an Effect Cause or an internal
+							// interruption value through the Promise API.
+							cause: undefined,
+						}),
+					);
+				}),
+				Effect.ensuring(Effect.sync(() => executionSignal.cleanup())),
+			);
+		});
 		return requestEffect;
 	};
 
