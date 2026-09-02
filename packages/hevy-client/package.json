@@ -1,6 +1,6 @@
 {
 	"name": "@hevy-mcp/hevy-client",
-	"version": "0.2.4",
+	"version": "0.2.5",
 	"private": true,
 	"type": "module",
 	"exports": {
@@ -22,6 +22,7 @@
 		"check:types": "tsc --noEmit -p tsconfig.json"
 	},
 	"dependencies": {
+		"effect": "^4.0.0-rc.112",
 		"zod": "^4.4.3"
 	}
 }

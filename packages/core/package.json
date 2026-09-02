@@ -1,6 +1,6 @@
 {
 	"name": "@hevy-mcp/core",
-	"version": "0.2.7",
+	"version": "0.2.8",
 	"private": true,
 	"type": "module",
 	"exports": {
@@ -21,6 +21,7 @@
 		"@hevy-mcp/hevy-client": "workspace:*",
 		"@hevy-mcp/operations": "workspace:*",
 		"@modelcontextprotocol/server": "^2.0.0",
+		"effect": "^4.0.0-rc.112",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {

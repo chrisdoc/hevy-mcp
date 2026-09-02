@@ -75,6 +75,7 @@ import {
 	type HevyRequestOptions,
 	type HevyRequestPhase,
 } from "./execution.js";
+import { DEFAULT_RETRY_POLICY, getRetryDelayMs } from "./retry-policy.js";
 export interface HevyClientLogEvent {
 	readonly level: "debug" | "warning" | "error";
 	readonly logger: "hevy-api";
@@ -178,12 +179,11 @@ export interface HevyClientOptions {
 // request window, especially when returning exercise templates or workouts.
 export const DEFAULT_API_TIMEOUT_MS = 60_000;
 export const MAX_GET_RETRIES = 3;
-export const RETRY_BACKOFF_BASE_MS = 300;
+export { RETRY_BACKOFF_BASE_MS } from "./retry-policy.js";
 export { HEVY_RETRY_EXHAUSTED_ERROR_CODE };
 export { HEVY_REQUEST_ABORTED_ERROR_CODE };
 export { HEVY_DEADLINE_EXCEEDED_ERROR_CODE };
 
-const RETRY_BACKOFF_MAX_MS = 5_000;
 export const SAFE_OBSERVATION_CODES = new Set([
 	"EAI_AGAIN",
 	"ECONNABORTED",
@@ -396,18 +396,6 @@ function finishRetryWait(scope: HevyRetryWaitScope | undefined): void {
 	}
 }
 
-function parseRetryAfterMs(value: string | null): number | undefined {
-	if (!value) return undefined;
-	const seconds = Number(value);
-	if (Number.isFinite(seconds) && seconds >= 0) {
-		return Math.round(seconds * 1_000);
-	}
-	const dateMillis = Date.parse(value);
-	return Number.isNaN(dateMillis)
-		? undefined
-		: Math.max(0, dateMillis - Date.now());
-}
-
 function boundedRandomInt(maxExclusive: number): number {
 	if (maxExclusive <= 1) return 0;
 	const random = new Uint32Array(1);
@@ -418,26 +406,6 @@ function boundedRandomInt(maxExclusive: number): number {
 	).crypto;
 	cryptoApi.getRandomValues(random);
 	return Math.floor((random[0] / 2 ** 32) * maxExclusive);
-}
-
-function getRetryDelayMs(error: HevyHttpError, retryAttempt: number): number {
-	const exponential = Math.min(
-		RETRY_BACKOFF_MAX_MS,
-		RETRY_BACKOFF_BASE_MS * 2 ** Math.max(0, retryAttempt - 1),
-	);
-	const retryAfter =
-		error.status === 429
-			? parseRetryAfterMs(error.headers?.get("retry-after") ?? null)
-			: undefined;
-	const lowerBound =
-		retryAfter === undefined ? exponential : Math.max(exponential, retryAfter);
-	// Always add bounded jitter. Keep the server's usable lower bound when it
-	// supplied Retry-After, while avoiding lockstep retries when it did not.
-	const jitterLimit =
-		retryAfter === undefined
-			? 250
-			: Math.min(250, Math.max(1, retryAfter * 0.1));
-	return lowerBound + boundedRandomInt(Math.ceil(jitterLimit));
 }
 
 function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
@@ -999,7 +967,12 @@ function createRetryTransition(
 	error: HevyHttpError,
 ): AttemptFailureTransition {
 	const retryCount = options.retryCount + 1;
-	const delayMs = getRetryDelayMs(error, retryCount);
+	const delayMs = getRetryDelayMs(
+		error,
+		retryCount,
+		DEFAULT_RETRY_POLICY,
+		boundedRandomInt,
+	);
 	emitClientLog(options.clientOptions.onLog, {
 		level: error.status === 429 ? "warning" : "debug",
 		logger: "hevy-api",
