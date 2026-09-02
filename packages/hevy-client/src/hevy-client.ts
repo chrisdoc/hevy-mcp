@@ -1,142 +1,138 @@
 import type {
-	GetV1BodyMeasurementsQueryParams,
-	GetV1BodyMeasurementsQueryResponse,
-	GetV1BodyMeasurementsDateQueryResponse,
-	GetV1ExerciseHistoryExercisetemplateidQueryParams,
-	GetV1ExerciseHistoryExercisetemplateidQueryResponse,
-	GetV1ExerciseTemplatesQueryParams,
-	GetV1ExerciseTemplatesQueryResponse,
-	GetV1ExerciseTemplatesExercisetemplateidQueryResponse,
-	GetV1RoutineFoldersQueryParams,
-	GetV1RoutineFoldersQueryResponse,
-	GetV1RoutineFoldersFolderidQueryResponse,
-	GetV1RoutinesQueryParams,
-	GetV1RoutinesQueryResponse,
-	GetV1RoutinesRoutineidQueryResponse,
-	GetV1UserInfoQueryResponse,
-	GetV1WorkoutsEventsQueryParams,
-	GetV1WorkoutsEventsQueryResponse,
-	GetV1WorkoutsQueryParams,
-	GetV1WorkoutsQueryResponse,
-	GetV1WorkoutsCountQueryResponse,
-	GetV1WorkoutsWorkoutidQueryResponse,
-	PostV1BodyMeasurementsMutationRequest,
-	PostV1BodyMeasurementsMutationResponse,
-	PostV1ExerciseTemplatesMutationRequest,
-	PostV1ExerciseTemplatesMutationResponse,
-	PostV1RoutineFoldersMutationRequest,
-	PostV1RoutineFoldersMutationResponse,
-	PostV1RoutinesMutationRequest,
+	BodyMeasurement,
+	CreateCustomExerciseRequestBody,
+	GetV1BodyMeasurementsQuery,
+	GetV1BodyMeasurementsStatus200,
+	GetV1BodyMeasurementsDateStatus200,
+	GetV1ExerciseHistoryExercisetemplateidQuery,
+	GetV1ExerciseHistoryExercisetemplateidStatus200,
+	GetV1ExerciseTemplatesQuery,
+	GetV1ExerciseTemplatesStatus200,
+	GetV1ExerciseTemplatesExercisetemplateidStatus200,
+	GetV1RoutineFoldersQuery,
+	GetV1RoutineFoldersStatus200,
+	GetV1RoutineFoldersFolderidStatus200,
+	GetV1RoutinesQuery,
+	GetV1RoutinesStatus200,
+	GetV1RoutinesRoutineidStatus200,
+	GetV1UserInfoStatus200,
+	GetV1WorkoutsEventsQuery,
+	GetV1WorkoutsEventsStatus200,
+	GetV1WorkoutsQuery,
+	GetV1WorkoutsStatus200,
+	GetV1WorkoutsCountStatus200,
+	GetV1WorkoutsWorkoutidStatus200,
+	PostRoutineFolderRequestBody,
+	PostRoutinesRequestBody,
+	PostWorkoutsRequestBody,
+	PostV1BodyMeasurementsStatus200,
+	PostV1ExerciseTemplatesStatus200,
+	PostV1RoutineFoldersStatus201,
+	PostV1WorkoutsStatus201,
+	PutBodyMeasurement,
+	PutRoutinesRequestBody,
+	PutV1BodyMeasurementsDateStatus200,
+	PutV1RoutinesRoutineidStatus200,
+	PutV1WorkoutsWorkoutidStatus200,
 	Routine,
-	PostV1WorkoutsMutationRequest,
-	PostV1WorkoutsMutationResponse,
-	PutV1BodyMeasurementsDateMutationRequest,
-	PutV1BodyMeasurementsDateMutationResponse,
-	PutV1RoutinesRoutineidMutationRequest,
-	PutV1RoutinesRoutineidMutationResponse,
-	PutV1WorkoutsWorkoutidMutationRequest,
-	PutV1WorkoutsWorkoutidMutationResponse,
-} from "./generated/client/types";
+} from "./generated/client/types/index.js";
 import { createClient as createKubbClient } from "./hevy-client-kubb.js";
 import type { HevyClientOptions } from "./hevy-client-kubb.js";
 import type { HevyRequestOptions } from "./execution.js";
 
 export type { HevyClientOptions };
 export type { HevyRequestOptions } from "./execution.js";
-
 export type { HevyOperationSafety } from "./execution.js";
 
 export interface HevyClient {
 	getWorkouts(
-		params?: GetV1WorkoutsQueryParams,
+		params?: GetV1WorkoutsQuery,
 		options?: HevyRequestOptions,
-	): Promise<GetV1WorkoutsQueryResponse>;
+	): Promise<GetV1WorkoutsStatus200>;
 	getWorkout(
 		workoutId: string,
 		options?: HevyRequestOptions,
-	): Promise<GetV1WorkoutsWorkoutidQueryResponse>;
+	): Promise<GetV1WorkoutsWorkoutidStatus200>;
 	createWorkout(
-		data: PostV1WorkoutsMutationRequest,
+		data: PostWorkoutsRequestBody,
 		options?: HevyRequestOptions,
-	): Promise<PostV1WorkoutsMutationResponse>;
+	): Promise<PostV1WorkoutsStatus201>;
 	updateWorkout(
 		workoutId: string,
-		data: PutV1WorkoutsWorkoutidMutationRequest,
+		data: PostWorkoutsRequestBody,
 		options?: HevyRequestOptions,
-	): Promise<PutV1WorkoutsWorkoutidMutationResponse>;
+	): Promise<PutV1WorkoutsWorkoutidStatus200>;
 	getWorkoutCount(
 		options?: HevyRequestOptions,
-	): Promise<GetV1WorkoutsCountQueryResponse>;
+	): Promise<GetV1WorkoutsCountStatus200>;
 	getWorkoutEvents(
-		params?: GetV1WorkoutsEventsQueryParams,
+		params?: GetV1WorkoutsEventsQuery,
 		options?: HevyRequestOptions,
-	): Promise<GetV1WorkoutsEventsQueryResponse>;
+	): Promise<GetV1WorkoutsEventsStatus200>;
 	getRoutines(
-		params?: GetV1RoutinesQueryParams,
+		params?: GetV1RoutinesQuery,
 		options?: HevyRequestOptions,
-	): Promise<GetV1RoutinesQueryResponse>;
+	): Promise<GetV1RoutinesStatus200>;
 	getRoutineById(
 		routineId: string,
 		options?: HevyRequestOptions,
-	): Promise<GetV1RoutinesRoutineidQueryResponse>;
+	): Promise<GetV1RoutinesRoutineidStatus200>;
 	createRoutine(
-		data: PostV1RoutinesMutationRequest,
+		data: PostRoutinesRequestBody,
 		options?: HevyRequestOptions,
 	): Promise<Routine | undefined>;
 	updateRoutine(
 		routineId: string,
-		data: PutV1RoutinesRoutineidMutationRequest,
+		data: PutRoutinesRequestBody,
 		options?: HevyRequestOptions,
-	): Promise<PutV1RoutinesRoutineidMutationResponse>;
+	): Promise<PutV1RoutinesRoutineidStatus200>;
 	getExerciseTemplates(
-		params?: GetV1ExerciseTemplatesQueryParams,
+		params?: GetV1ExerciseTemplatesQuery,
 		options?: HevyRequestOptions,
-	): Promise<GetV1ExerciseTemplatesQueryResponse>;
+	): Promise<GetV1ExerciseTemplatesStatus200>;
 	getExerciseTemplate(
 		templateId: string,
 		options?: HevyRequestOptions,
-	): Promise<GetV1ExerciseTemplatesExercisetemplateidQueryResponse>;
+	): Promise<GetV1ExerciseTemplatesExercisetemplateidStatus200>;
 	getExerciseHistory(
 		exerciseTemplateId: string,
-		params?: GetV1ExerciseHistoryExercisetemplateidQueryParams,
+		params?: GetV1ExerciseHistoryExercisetemplateidQuery,
 		options?: HevyRequestOptions,
-	): Promise<GetV1ExerciseHistoryExercisetemplateidQueryResponse>;
+	): Promise<GetV1ExerciseHistoryExercisetemplateidStatus200>;
 	createExerciseTemplate(
-		data: PostV1ExerciseTemplatesMutationRequest,
+		data: CreateCustomExerciseRequestBody,
 		options?: HevyRequestOptions,
-	): Promise<PostV1ExerciseTemplatesMutationResponse>;
+	): Promise<PostV1ExerciseTemplatesStatus200>;
 	getRoutineFolders(
-		params?: GetV1RoutineFoldersQueryParams,
+		params?: GetV1RoutineFoldersQuery,
 		options?: HevyRequestOptions,
-	): Promise<GetV1RoutineFoldersQueryResponse>;
+	): Promise<GetV1RoutineFoldersStatus200>;
 	createRoutineFolder(
-		data: PostV1RoutineFoldersMutationRequest,
+		data: PostRoutineFolderRequestBody,
 		options?: HevyRequestOptions,
-	): Promise<PostV1RoutineFoldersMutationResponse>;
+	): Promise<PostV1RoutineFoldersStatus201>;
 	getRoutineFolder(
 		folderId: string,
 		options?: HevyRequestOptions,
-	): Promise<GetV1RoutineFoldersFolderidQueryResponse>;
+	): Promise<GetV1RoutineFoldersFolderidStatus200>;
 	getBodyMeasurements(
-		params?: GetV1BodyMeasurementsQueryParams,
+		params?: GetV1BodyMeasurementsQuery,
 		options?: HevyRequestOptions,
-	): Promise<GetV1BodyMeasurementsQueryResponse>;
+	): Promise<GetV1BodyMeasurementsStatus200>;
 	getBodyMeasurement(
 		date: string,
 		options?: HevyRequestOptions,
-	): Promise<GetV1BodyMeasurementsDateQueryResponse>;
+	): Promise<GetV1BodyMeasurementsDateStatus200>;
 	createBodyMeasurement(
-		data: PostV1BodyMeasurementsMutationRequest,
+		data: BodyMeasurement,
 		options?: HevyRequestOptions,
-	): Promise<PostV1BodyMeasurementsMutationResponse>;
+	): Promise<PostV1BodyMeasurementsStatus200>;
 	updateBodyMeasurement(
 		date: string,
-		data: PutV1BodyMeasurementsDateMutationRequest,
+		data: PutBodyMeasurement,
 		options?: HevyRequestOptions,
-	): Promise<PutV1BodyMeasurementsDateMutationResponse>;
-	getUserInfo(
-		options?: HevyRequestOptions,
-	): Promise<GetV1UserInfoQueryResponse>;
+	): Promise<PutV1BodyMeasurementsDateStatus200>;
+	getUserInfo(options?: HevyRequestOptions): Promise<GetV1UserInfoStatus200>;
 }
 
 export interface CreateHevyClientOptions extends HevyClientOptions {

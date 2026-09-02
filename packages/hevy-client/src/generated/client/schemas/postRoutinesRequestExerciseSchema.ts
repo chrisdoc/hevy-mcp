@@ -3,17 +3,31 @@
  * Do not edit manually.
  */
 
-import { postRoutinesRequestSetSchema } from "./postRoutinesRequestSetSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { postRoutinesRequestSetSchema } from "./postRoutinesRequestSetSchema";
 
 export const postRoutinesRequestExerciseSchema = z.object({
-  exercise_template_id: z.optional(
-    z.string().describe("The ID of the exercise template."),
-  ),
-  superset_id: z.int().describe("The ID of the superset.").nullish(),
-  rest_seconds: z.int().describe("The rest time in seconds.").nullish(),
-  notes: z.string().describe("Additional notes for the exercise.").nullish(),
-  get sets() {
-    return z.array(postRoutinesRequestSetSchema).optional();
-  },
+  exercise_template_id: z
+    .string()
+    .optional()
+    .describe("The ID of the exercise template.")
+    .meta({ examples: ["D04AC939"] }),
+  superset_id: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The ID of the superset.")
+    .meta({ examples: [] }),
+  rest_seconds: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The rest time in seconds.")
+    .meta({ examples: [90] }),
+  notes: z
+    .string()
+    .nullish()
+    .describe("Additional notes for the exercise.")
+    .meta({ examples: ["Stay slow and controlled."] }),
+  sets: z.array(postRoutinesRequestSetSchema).optional(),
 });

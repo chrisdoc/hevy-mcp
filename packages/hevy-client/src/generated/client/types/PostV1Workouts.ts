@@ -3,25 +3,21 @@
  * Do not edit manually.
  */
 
-import type { PostWorkoutsRequestBody } from "./PostWorkoutsRequestBody.ts";
-import type { Workout } from "./Workout.ts";
+import type { PostWorkoutsRequestBody } from "./PostWorkoutsRequestBody";
+import type { Workout } from "./Workout";
 
-export type PostV1WorkoutsHeaderParams = {
+export type PostV1WorkoutsHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The workout was successfully created
- */
-export type PostV1Workouts201 = Workout;
+export type PostV1WorkoutsStatus201 = Workout;
 
-/**
- * @description Invalid request body
- */
-export type PostV1Workouts400 = {
+export type PostV1WorkoutsStatus400 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -29,13 +25,23 @@ export type PostV1Workouts400 = {
   error?: string;
 };
 
-export type PostV1WorkoutsMutationRequest = PostWorkoutsRequestBody;
+export type PostV1WorkoutsBody = PostWorkoutsRequestBody;
 
-export type PostV1WorkoutsMutationResponse = PostV1Workouts201;
-
-export type PostV1WorkoutsMutation = {
-  Response: PostV1Workouts201;
-  Request: PostV1WorkoutsMutationRequest;
-  HeaderParams: PostV1WorkoutsHeaderParams;
-  Errors: PostV1Workouts400;
+export type PostV1WorkoutsOptions = {
+  body: PostV1WorkoutsBody;
+  path?: never;
+  query?: never;
+  headers: PostV1WorkoutsHeaders;
 };
+
+export type PostV1WorkoutsResponses = {
+  "201": PostV1WorkoutsStatus201;
+  "400": PostV1WorkoutsStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PostV1WorkoutsResponse =
+  | PostV1WorkoutsStatus201
+  | PostV1WorkoutsStatus400;

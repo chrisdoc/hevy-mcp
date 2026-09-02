@@ -6,121 +6,136 @@
 export type Routine = {
   /**
    * @description The routine ID.
+   * @example b459cba5-cd6d-463c-abd6-54f8eafcadcb
    * @type string | undefined
    */
   id?: string;
   /**
    * @description The routine title.
+   * @example Upper Body 💪
    * @type string | undefined
    */
   title?: string;
   /**
    * @description The routine folder ID.
-   * @type number
+   * @example 42
+   * @type number | undefined
    */
   folder_id?: number | null;
   /**
    * @description ISO 8601 timestamp of when the routine was last updated.
+   * @example 2021-09-14T12:00:00Z
    * @type string | undefined
    */
   updated_at?: string;
   /**
    * @description ISO 8601 timestamp of when the routine was created.
+   * @example 2021-09-14T12:00:00Z
    * @type string | undefined
    */
   created_at?: string;
-  /**
-   * @type array | undefined
-   */
   exercises?: {
     /**
      * @description Index indicating the order of the exercise in the routine.
+     * @example 0
      * @type number | undefined
      */
     index?: number;
     /**
      * @description Title of the exercise
+     * @example Bench Press (Barbell)
      * @type string | undefined
      */
     title?: string;
     /**
      * @description The rest time in seconds between sets of the exercise
+     * @example 60
      * @type integer | undefined
      */
     rest_seconds?: number;
     /**
      * @description Routine notes on the exercise
+     * @example Focus on form. Go down to 90 degrees.
      * @type string | undefined
      */
     notes?: string;
     /**
      * @description The id of the exercise template. This can be used to fetch the exercise template.
+     * @example 05293BCA
      * @type string | undefined
      */
     exercise_template_id?: string;
     /**
      * @description The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.
-     * @type number
+     * @example 0
+     * @type number | undefined
      */
     supersets_id?: number | null;
-    /**
-     * @type array | undefined
-     */
     sets?: {
       /**
        * @description Index indicating the order of the set in the routine.
+       * @example 0
        * @type number | undefined
        */
       index?: number;
       /**
        * @description The type of set. This can be one of \'normal\', \'warmup\', \'dropset\', \'failure\'
+       * @example normal
        * @type string | undefined
        */
       type?: string;
       /**
        * @description Weight lifted in kilograms.
-       * @type number
+       * @example 100
+       * @type number | undefined
        */
       weight_kg?: number | null;
       /**
        * @description Number of reps logged for the set
-       * @type number
+       * @example 10
+       * @type number | undefined
        */
       reps?: number | null;
       /**
        * @description Range of reps for the set, if applicable
-       * @type object
+       * @type object | undefined
        */
       rep_range?: {
         /**
          * @description Starting rep count for the range
-         * @type number
+         * @example 8
+         * @type number | undefined
          */
         start?: number | null;
         /**
          * @description Ending rep count for the range
-         * @type number
+         * @example 12
+         * @type number | undefined
          */
         end?: number | null;
       } | null;
       /**
        * @description Number of meters logged for the set
-       * @type number
+       * @example null
+       * @type number | undefined
        */
       distance_meters?: number | null;
       /**
        * @description Number of seconds logged for the set
-       * @type number
+       * @example null
+       * @type number | undefined
        */
       duration_seconds?: number | null;
       /**
        * @description RPE (Relative perceived exertion) value logged for the set
-       * @type number
+       * @example 9.5
+       * @type number | undefined
        */
       rpe?: number | null;
       /**
        * @description Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)
-       * @type number
+       * @example 50
+       * @type number | undefined
        */
       custom_metric?: number | null;
     }[];

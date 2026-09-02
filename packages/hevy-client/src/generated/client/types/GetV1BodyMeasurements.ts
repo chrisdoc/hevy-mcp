@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { BodyMeasurement } from "./BodyMeasurement.ts";
+import type { BodyMeasurement } from "./BodyMeasurement";
 
-export type GetV1BodyMeasurementsQueryParams = {
+export type GetV1BodyMeasurementsQuery = {
   /**
    * @description Page number (Must be 1 or greater)
    * @default 1
@@ -20,46 +20,50 @@ export type GetV1BodyMeasurementsQueryParams = {
   pageSize?: number;
 };
 
-export type GetV1BodyMeasurementsHeaderParams = {
+export type GetV1BodyMeasurementsHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description A paginated list of body measurements
- */
-export type GetV1BodyMeasurements200 = {
+export type GetV1BodyMeasurementsStatus200 = {
   /**
+   * @example 1
    * @type integer | undefined
    */
   page?: number;
   /**
+   * @example 5
    * @type integer | undefined
    */
   page_count?: number;
-  /**
-   * @type array | undefined
-   */
   body_measurements?: BodyMeasurement[];
 };
 
-/**
- * @description Invalid page or pageSize
- */
-export type GetV1BodyMeasurements400 = any;
+export type GetV1BodyMeasurementsStatus400 = unknown;
 
-/**
- * @description Page not found
- */
-export type GetV1BodyMeasurements404 = any;
+export type GetV1BodyMeasurementsStatus404 = unknown;
 
-export type GetV1BodyMeasurementsQueryResponse = GetV1BodyMeasurements200;
-
-export type GetV1BodyMeasurementsQuery = {
-  Response: GetV1BodyMeasurements200;
-  QueryParams: GetV1BodyMeasurementsQueryParams;
-  HeaderParams: GetV1BodyMeasurementsHeaderParams;
-  Errors: GetV1BodyMeasurements400 | GetV1BodyMeasurements404;
+export type GetV1BodyMeasurementsOptions = {
+  body?: never;
+  path?: never;
+  query?: GetV1BodyMeasurementsQuery;
+  headers: GetV1BodyMeasurementsHeaders;
 };
+
+export type GetV1BodyMeasurementsResponses = {
+  "200": GetV1BodyMeasurementsStatus200;
+  "400": GetV1BodyMeasurementsStatus400;
+  "404": GetV1BodyMeasurementsStatus404;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1BodyMeasurementsResponse =
+  | GetV1BodyMeasurementsStatus200
+  | GetV1BodyMeasurementsStatus400
+  | GetV1BodyMeasurementsStatus404;

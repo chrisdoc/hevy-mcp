@@ -3,30 +3,23 @@
  * Do not edit manually.
  */
 
-import { postRoutineFolderRequestBodySchema } from "./postRoutineFolderRequestBodySchema.ts";
-import { routineFolderSchema } from "./routineFolderSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { postRoutineFolderRequestBodySchema } from "./postRoutineFolderRequestBodySchema";
+import { routineFolderSchema } from "./routineFolderSchema";
 
-export const postV1RoutineFoldersHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const postV1RoutineFoldersHeaderApiKeySchema = z.uuid();
+
+export const postV1RoutineFoldersStatus201Schema = routineFolderSchema;
+
+export const postV1RoutineFoldersStatus400Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-/**
- * @description The routine folder was successfully created
- */
-export const postV1RoutineFolders201Schema = z.lazy(() => routineFolderSchema);
+export const postV1RoutineFoldersResponseSchema =
+  postV1RoutineFoldersStatus201Schema;
 
-/**
- * @description Invalid request body
- */
-export const postV1RoutineFolders400Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
-});
+export const postV1RoutineFoldersErrorSchema =
+  postV1RoutineFoldersStatus400Schema;
 
-export const postV1RoutineFoldersMutationRequestSchema = z.lazy(
-  () => postRoutineFolderRequestBodySchema,
-);
-
-export const postV1RoutineFoldersMutationResponseSchema = z.lazy(
-  () => postV1RoutineFolders201Schema,
-);
+export const postV1RoutineFoldersBodySchema =
+  postRoutineFolderRequestBodySchema;

@@ -3,41 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1WorkoutsCountQueryResponse,
-  GetV1WorkoutsCountHeaderParams,
-} from "../types/GetV1WorkoutsCount.ts";
-
-function getGetV1WorkoutsCountUrl() {
-  const res = { method: "GET", url: `/v1/workouts/count` as const };
-  return res;
-}
+  GetV1WorkoutsCountOptions,
+  GetV1WorkoutsCountResponses,
+} from "../types/GetV1WorkoutsCount";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get the total number of workouts on the account
  * {@link /v1/workouts/count}
  */
-export async function getV1WorkoutsCount(
-  headers: GetV1WorkoutsCountHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1WorkoutsCount<ThrowOnError extends boolean = true>(
+  options: Options<GetV1WorkoutsCountOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1WorkoutsCountQueryResponse,
-    ResponseErrorConfig<Error>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1WorkoutsCountUrl().url.toString(),
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/workouts/count",
+    ...config,
+  }) as Promise<RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>>;
 }

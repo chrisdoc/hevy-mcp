@@ -3,47 +3,46 @@
  * Do not edit manually.
  */
 
-import type { BodyMeasurement } from "./BodyMeasurement.ts";
+import type { BodyMeasurement } from "./BodyMeasurement";
 
-export type PostV1BodyMeasurementsHeaderParams = {
+export type PostV1BodyMeasurementsHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The measurement was successfully created
- */
-export type PostV1BodyMeasurements200 = any;
+export type PostV1BodyMeasurementsStatus200 = unknown;
 
-/**
- * @description Invalid request body
- */
-export type PostV1BodyMeasurements400 = {
-  /**
-   * @type string | undefined
-   */
+export type PostV1BodyMeasurementsStatus400 = {
   error?: string;
 };
 
-/**
- * @description A measurement for this date already exists
- */
-export type PostV1BodyMeasurements409 = {
-  /**
-   * @type string | undefined
-   */
+export type PostV1BodyMeasurementsStatus409 = {
   error?: string;
 };
 
-export type PostV1BodyMeasurementsMutationRequest = BodyMeasurement;
+export type PostV1BodyMeasurementsBody = BodyMeasurement;
 
-export type PostV1BodyMeasurementsMutationResponse = PostV1BodyMeasurements200;
-
-export type PostV1BodyMeasurementsMutation = {
-  Response: PostV1BodyMeasurements200;
-  Request: PostV1BodyMeasurementsMutationRequest;
-  HeaderParams: PostV1BodyMeasurementsHeaderParams;
-  Errors: PostV1BodyMeasurements400 | PostV1BodyMeasurements409;
+export type PostV1BodyMeasurementsOptions = {
+  body: PostV1BodyMeasurementsBody;
+  path?: never;
+  query?: never;
+  headers: PostV1BodyMeasurementsHeaders;
 };
+
+export type PostV1BodyMeasurementsResponses = {
+  "200": PostV1BodyMeasurementsStatus200;
+  "400": PostV1BodyMeasurementsStatus400;
+  "409": PostV1BodyMeasurementsStatus409;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PostV1BodyMeasurementsResponse =
+  | PostV1BodyMeasurementsStatus200
+  | PostV1BodyMeasurementsStatus400
+  | PostV1BodyMeasurementsStatus409;

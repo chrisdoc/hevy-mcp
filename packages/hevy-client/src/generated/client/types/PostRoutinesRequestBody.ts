@@ -3,31 +3,28 @@
  * Do not edit manually.
  */
 
-import type { PostRoutinesRequestExercise } from "./PostRoutinesRequestExercise.ts";
+import type { PostRoutinesRequestExercise } from "./PostRoutinesRequestExercise";
 
 export type PostRoutinesRequestBody = {
-  /**
-   * @type object | undefined
-   */
   routine?: {
     /**
      * @description The title of the routine.
+     * @example April Leg Day 🔥
      * @type string | undefined
      */
     title?: string;
     /**
      * @description The folder id the routine should be added to. Pass null to insert the routine into default \"My Routines\" folder
-     * @type number
+     * @example null
+     * @type number | undefined
      */
     folder_id?: number | null;
     /**
      * @description Additional notes for the routine.
+     * @example Focus on form over weight. Remember to stretch.
      * @type string | undefined
      */
     notes?: string;
-    /**
-     * @type array | undefined
-     */
     exercises?: PostRoutinesRequestExercise[];
   };
 };

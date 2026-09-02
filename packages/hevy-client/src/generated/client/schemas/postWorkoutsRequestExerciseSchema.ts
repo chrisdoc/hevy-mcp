@@ -3,16 +3,25 @@
  * Do not edit manually.
  */
 
-import { postWorkoutsRequestSetSchema } from "./postWorkoutsRequestSetSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { postWorkoutsRequestSetSchema } from "./postWorkoutsRequestSetSchema";
 
 export const postWorkoutsRequestExerciseSchema = z.object({
-  exercise_template_id: z.optional(
-    z.string().describe("The ID of the exercise template."),
-  ),
-  superset_id: z.int().describe("The ID of the superset.").nullish(),
-  notes: z.string().describe("Additional notes for the exercise.").nullish(),
-  get sets() {
-    return z.array(postWorkoutsRequestSetSchema).optional();
-  },
+  exercise_template_id: z
+    .string()
+    .optional()
+    .describe("The ID of the exercise template.")
+    .meta({ examples: ["D04AC939"] }),
+  superset_id: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The ID of the superset.")
+    .meta({ examples: [] }),
+  notes: z
+    .string()
+    .nullish()
+    .describe("Additional notes for the exercise.")
+    .meta({ examples: ["Felt good today. Form was on point."] }),
+  sets: z.array(postWorkoutsRequestSetSchema).optional(),
 });

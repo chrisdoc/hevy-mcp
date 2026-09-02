@@ -3,46 +3,27 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1BodyMeasurementsDateQueryResponse,
-  GetV1BodyMeasurementsDatePathParams,
-  GetV1BodyMeasurementsDateHeaderParams,
-  GetV1BodyMeasurementsDate404,
-} from "../types/GetV1BodyMeasurementsDate.ts";
-
-function getGetV1BodyMeasurementsDateUrl(
-  date: GetV1BodyMeasurementsDatePathParams["date"],
-) {
-  const res = { method: "GET", url: `/v1/body_measurements/${date}` as const };
-  return res;
-}
+  GetV1BodyMeasurementsDateOptions,
+  GetV1BodyMeasurementsDateResponses,
+} from "../types/GetV1BodyMeasurementsDate";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a single body measurement by date
  * {@link /v1/body_measurements/:date}
  */
-export async function getV1BodyMeasurementsDate(
-  date: GetV1BodyMeasurementsDatePathParams["date"],
-  headers: GetV1BodyMeasurementsDateHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1BodyMeasurementsDate<ThrowOnError extends boolean = true>(
+  options: Options<GetV1BodyMeasurementsDateOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1BodyMeasurementsDateResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1BodyMeasurementsDateQueryResponse,
-    ResponseErrorConfig<GetV1BodyMeasurementsDate404>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1BodyMeasurementsDateUrl(date).url.toString(),
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/body_measurements/{date}",
+    ...config,
+  }) as Promise<
+    RequestResult<GetV1BodyMeasurementsDateResponses, ThrowOnError>
+  >;
 }

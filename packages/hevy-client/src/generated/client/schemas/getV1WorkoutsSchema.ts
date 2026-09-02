@@ -3,42 +3,43 @@
  * Do not edit manually.
  */
 
-import { workoutSchema } from "./workoutSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { workoutSchema } from "./workoutSchema";
 
-export const getV1WorkoutsQueryParamsSchema = z.object({
+export const getV1WorkoutsHeaderApiKeySchema = z.uuid();
+
+export const getV1WorkoutsQueryPageSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(1)
+  .describe("Page number (Must be 1 or greater)");
+
+export const getV1WorkoutsQueryPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(5)
+  .describe("Number of items on the requested page (Max 10)");
+
+export const getV1WorkoutsStatus200Schema = z.object({
   page: z.coerce
     .number()
     .int()
-    .default(1)
-    .describe("Page number (Must be 1 or greater)"),
-  pageSize: z.coerce
+    .optional()
+    .describe("Current page number")
+    .meta({ examples: [1] }),
+  page_count: z.coerce
     .number()
     .int()
-    .default(5)
-    .describe("Number of items on the requested page (Max 10)"),
+    .optional()
+    .describe("Total number of pages")
+    .meta({ examples: [5] }),
+  workouts: z.array(workoutSchema).optional(),
 });
 
-export const getV1WorkoutsHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1WorkoutsStatus400Schema = z.unknown();
 
-/**
- * @description A paginated list of workouts
- */
-export const getV1Workouts200Schema = z.object({
-  page: z.optional(z.int().describe("Current page number")),
-  page_count: z.optional(z.int().describe("Total number of pages")),
-  get workouts() {
-    return z.array(workoutSchema).optional();
-  },
-});
+export const getV1WorkoutsResponseSchema = getV1WorkoutsStatus200Schema;
 
-/**
- * @description Invalid page size
- */
-export const getV1Workouts400Schema = z.any();
-
-export const getV1WorkoutsQueryResponseSchema = z.lazy(
-  () => getV1Workouts200Schema,
-);
+export const getV1WorkoutsErrorSchema = getV1WorkoutsStatus400Schema;

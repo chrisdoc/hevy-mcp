@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { RoutineFolder } from "./RoutineFolder.ts";
+import type { RoutineFolder } from "./RoutineFolder";
 
-export type GetV1RoutineFoldersFolderidPathParams = {
+export type GetV1RoutineFoldersFolderidPath = {
   /**
    * @description The id of the routine folder
    * @type string
@@ -13,29 +13,34 @@ export type GetV1RoutineFoldersFolderidPathParams = {
   folderId: string;
 };
 
-export type GetV1RoutineFoldersFolderidHeaderParams = {
+export type GetV1RoutineFoldersFolderidHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description Success
- */
-export type GetV1RoutineFoldersFolderid200 = RoutineFolder;
+export type GetV1RoutineFoldersFolderidStatus200 = RoutineFolder;
 
-/**
- * @description Routine folder not found
- */
-export type GetV1RoutineFoldersFolderid404 = any;
+export type GetV1RoutineFoldersFolderidStatus404 = unknown;
 
-export type GetV1RoutineFoldersFolderidQueryResponse =
-  GetV1RoutineFoldersFolderid200;
-
-export type GetV1RoutineFoldersFolderidQuery = {
-  Response: GetV1RoutineFoldersFolderid200;
-  PathParams: GetV1RoutineFoldersFolderidPathParams;
-  HeaderParams: GetV1RoutineFoldersFolderidHeaderParams;
-  Errors: GetV1RoutineFoldersFolderid404;
+export type GetV1RoutineFoldersFolderidOptions = {
+  body?: never;
+  path: GetV1RoutineFoldersFolderidPath;
+  query?: never;
+  headers: GetV1RoutineFoldersFolderidHeaders;
 };
+
+export type GetV1RoutineFoldersFolderidResponses = {
+  "200": GetV1RoutineFoldersFolderidStatus200;
+  "404": GetV1RoutineFoldersFolderidStatus404;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1RoutineFoldersFolderidResponse =
+  | GetV1RoutineFoldersFolderidStatus200
+  | GetV1RoutineFoldersFolderidStatus404;

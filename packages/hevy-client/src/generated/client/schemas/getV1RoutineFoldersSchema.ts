@@ -3,42 +3,45 @@
  * Do not edit manually.
  */
 
-import { routineFolderSchema } from "./routineFolderSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { routineFolderSchema } from "./routineFolderSchema";
 
-export const getV1RoutineFoldersQueryParamsSchema = z.object({
+export const getV1RoutineFoldersHeaderApiKeySchema = z.uuid();
+
+export const getV1RoutineFoldersQueryPageSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(1)
+  .describe("Page number (Must be 1 or greater)");
+
+export const getV1RoutineFoldersQueryPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(5)
+  .describe("Number of items on the requested page (Max 10)");
+
+export const getV1RoutineFoldersStatus200Schema = z.object({
   page: z.coerce
     .number()
     .int()
+    .optional()
     .default(1)
-    .describe("Page number (Must be 1 or greater)"),
-  pageSize: z.coerce
+    .describe("Current page number"),
+  page_count: z.coerce
     .number()
     .int()
+    .optional()
     .default(5)
-    .describe("Number of items on the requested page (Max 10)"),
+    .describe("Total number of pages"),
+  routine_folders: z.array(routineFolderSchema).optional(),
 });
 
-export const getV1RoutineFoldersHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1RoutineFoldersStatus400Schema = z.unknown();
 
-/**
- * @description A paginated list of routine folders
- */
-export const getV1RoutineFolders200Schema = z.object({
-  page: z.optional(z.int().default(1).describe("Current page number")),
-  page_count: z.optional(z.int().default(5).describe("Total number of pages")),
-  get routine_folders() {
-    return z.array(routineFolderSchema).optional();
-  },
-});
+export const getV1RoutineFoldersResponseSchema =
+  getV1RoutineFoldersStatus200Schema;
 
-/**
- * @description Invalid page size
- */
-export const getV1RoutineFolders400Schema = z.any();
-
-export const getV1RoutineFoldersQueryResponseSchema = z.lazy(
-  () => getV1RoutineFolders200Schema,
-);
+export const getV1RoutineFoldersErrorSchema =
+  getV1RoutineFoldersStatus400Schema;

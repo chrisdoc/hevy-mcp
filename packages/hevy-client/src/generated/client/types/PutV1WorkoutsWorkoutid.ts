@@ -3,10 +3,10 @@
  * Do not edit manually.
  */
 
-import type { PostWorkoutsRequestBody } from "./PostWorkoutsRequestBody.ts";
-import type { Workout } from "./Workout.ts";
+import type { PostWorkoutsRequestBody } from "./PostWorkoutsRequestBody";
+import type { Workout } from "./Workout";
 
-export type PutV1WorkoutsWorkoutidPathParams = {
+export type PutV1WorkoutsWorkoutidPath = {
   /**
    * @description The id of the workout
    * @type string
@@ -14,22 +14,18 @@ export type PutV1WorkoutsWorkoutidPathParams = {
   workoutId: string;
 };
 
-export type PutV1WorkoutsWorkoutidHeaderParams = {
+export type PutV1WorkoutsWorkoutidHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The workout was successfully updated
- */
-export type PutV1WorkoutsWorkoutid200 = Workout;
+export type PutV1WorkoutsWorkoutidStatus200 = Workout;
 
-/**
- * @description Invalid request body
- */
-export type PutV1WorkoutsWorkoutid400 = {
+export type PutV1WorkoutsWorkoutidStatus400 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -37,14 +33,23 @@ export type PutV1WorkoutsWorkoutid400 = {
   error?: string;
 };
 
-export type PutV1WorkoutsWorkoutidMutationRequest = PostWorkoutsRequestBody;
+export type PutV1WorkoutsWorkoutidBody = PostWorkoutsRequestBody;
 
-export type PutV1WorkoutsWorkoutidMutationResponse = PutV1WorkoutsWorkoutid200;
-
-export type PutV1WorkoutsWorkoutidMutation = {
-  Response: PutV1WorkoutsWorkoutid200;
-  Request: PutV1WorkoutsWorkoutidMutationRequest;
-  PathParams: PutV1WorkoutsWorkoutidPathParams;
-  HeaderParams: PutV1WorkoutsWorkoutidHeaderParams;
-  Errors: PutV1WorkoutsWorkoutid400;
+export type PutV1WorkoutsWorkoutidOptions = {
+  body: PutV1WorkoutsWorkoutidBody;
+  path: PutV1WorkoutsWorkoutidPath;
+  query?: never;
+  headers: PutV1WorkoutsWorkoutidHeaders;
 };
+
+export type PutV1WorkoutsWorkoutidResponses = {
+  "200": PutV1WorkoutsWorkoutidStatus200;
+  "400": PutV1WorkoutsWorkoutidStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PutV1WorkoutsWorkoutidResponse =
+  | PutV1WorkoutsWorkoutidStatus200
+  | PutV1WorkoutsWorkoutidStatus400;

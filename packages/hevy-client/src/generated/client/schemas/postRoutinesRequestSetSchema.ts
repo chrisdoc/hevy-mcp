@@ -3,31 +3,57 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const postRoutinesRequestSetSchema = z.object({
-  type: z.optional(
-    z
-      .enum(["warmup", "normal", "failure", "dropset"])
-      .describe("The type of the set."),
-  ),
-  weight_kg: z.number().describe("The weight in kilograms.").nullish(),
-  reps: z.int().describe("The number of repetitions.").nullish(),
-  distance_meters: z.int().describe("The distance in meters.").nullish(),
-  duration_seconds: z.int().describe("The duration in seconds.").nullish(),
-  custom_metric: z
+  type: z
+    .enum(["warmup", "normal", "failure", "dropset"])
+    .optional()
+    .describe("The type of the set.")
+    .meta({ examples: ["normal"] }),
+  weight_kg: z.coerce
     .number()
+    .nullish()
+    .describe("The weight in kilograms.")
+    .meta({ examples: [100] }),
+  reps: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The number of repetitions.")
+    .meta({ examples: [10] }),
+  distance_meters: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The distance in meters.")
+    .meta({ examples: [] }),
+  duration_seconds: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The duration in seconds.")
+    .meta({ examples: [] }),
+  custom_metric: z.coerce
+    .number()
+    .nullish()
     .describe(
       "A custom metric for the set. Currently used for steps and floors.",
     )
-    .nullish(),
+    .meta({ examples: [] }),
   rep_range: z
     .object({
-      start: z.optional(
-        z.number().describe("Starting rep count for the range"),
-      ),
-      end: z.optional(z.number().describe("Ending rep count for the range")),
+      start: z.coerce
+        .number()
+        .optional()
+        .describe("Starting rep count for the range")
+        .meta({ examples: [8] }),
+      end: z.coerce
+        .number()
+        .optional()
+        .describe("Ending rep count for the range")
+        .meta({ examples: [12] }),
     })
-    .describe("Range of reps for the set, if applicable")
-    .nullish(),
+    .nullish()
+    .describe("Range of reps for the set, if applicable"),
 });

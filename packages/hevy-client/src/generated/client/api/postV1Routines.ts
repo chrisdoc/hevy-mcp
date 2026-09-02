@@ -3,50 +3,23 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  PostV1RoutinesMutationRequest,
-  PostV1RoutinesMutationResponse,
-  PostV1RoutinesHeaderParams,
-  PostV1Routines400,
-  PostV1Routines403,
-} from "../types/PostV1Routines.ts";
-
-function getPostV1RoutinesUrl() {
-  const res = { method: "POST", url: `/v1/routines` as const };
-  return res;
-}
+  PostV1RoutinesOptions,
+  PostV1RoutinesResponses,
+} from "../types/PostV1Routines";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Create a new routine
  * {@link /v1/routines}
  */
-export async function postV1Routines(
-  data: PostV1RoutinesMutationRequest,
-  headers: PostV1RoutinesHeaderParams,
-  config: Partial<RequestConfig<PostV1RoutinesMutationRequest>> & {
-    client?: Client;
-  } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function postV1Routines<ThrowOnError extends boolean = true>(
+  options: Options<PostV1RoutinesOptions, ThrowOnError>,
+): Promise<RequestResult<PostV1RoutinesResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const requestData = data;
-
-  const res = await request<
-    PostV1RoutinesMutationResponse,
-    ResponseErrorConfig<PostV1Routines400 | PostV1Routines403>,
-    PostV1RoutinesMutationRequest
-  >({
-    method: "POST",
-    url: getPostV1RoutinesUrl().url.toString(),
-    data: requestData,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+  return request({ method: "POST", url: "/v1/routines", ...config }) as Promise<
+    RequestResult<PostV1RoutinesResponses, ThrowOnError>
+  >;
 }

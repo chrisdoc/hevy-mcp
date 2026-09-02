@@ -30,37 +30,43 @@ export type PostWorkoutsRequestSetRpeEnumKey =
 export type PostWorkoutsRequestSet = {
   /**
    * @description The type of the set.
+   * @example normal
    * @type string | undefined
    */
   type?: PostWorkoutsRequestSetTypeEnumKey;
   /**
    * @description The weight in kilograms.
-   * @type number
+   * @example 100
+   * @type number | undefined
    */
   weight_kg?: number | null;
   /**
    * @description The number of repetitions.
-   * @type integer
+   * @example 10
+   * @type integer | undefined
    */
   reps?: number | null;
   /**
    * @description The distance in meters.
-   * @type integer
+   * @example null
+   * @type integer | undefined
    */
   distance_meters?: number | null;
   /**
    * @description The duration in seconds.
-   * @type integer
+   * @example null
+   * @type integer | undefined
    */
   duration_seconds?: number | null;
   /**
    * @description A custom metric for the set. Currently used for steps and floors.
-   * @type number
+   * @example null
+   * @type number | undefined
    */
   custom_metric?: number | null;
   /**
    * @description The Rating of Perceived Exertion (RPE).
-   * @type number
+   * @type number | undefined
    */
   rpe?: PostWorkoutsRequestSetRpeEnumKey | null;
 };

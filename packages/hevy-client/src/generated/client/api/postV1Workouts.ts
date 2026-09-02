@@ -3,49 +3,23 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  PostV1WorkoutsMutationRequest,
-  PostV1WorkoutsMutationResponse,
-  PostV1WorkoutsHeaderParams,
-  PostV1Workouts400,
-} from "../types/PostV1Workouts.ts";
-
-function getPostV1WorkoutsUrl() {
-  const res = { method: "POST", url: `/v1/workouts` as const };
-  return res;
-}
+  PostV1WorkoutsOptions,
+  PostV1WorkoutsResponses,
+} from "../types/PostV1Workouts";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Create a new workout
  * {@link /v1/workouts}
  */
-export async function postV1Workouts(
-  data: PostV1WorkoutsMutationRequest,
-  headers: PostV1WorkoutsHeaderParams,
-  config: Partial<RequestConfig<PostV1WorkoutsMutationRequest>> & {
-    client?: Client;
-  } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function postV1Workouts<ThrowOnError extends boolean = true>(
+  options: Options<PostV1WorkoutsOptions, ThrowOnError>,
+): Promise<RequestResult<PostV1WorkoutsResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const requestData = data;
-
-  const res = await request<
-    PostV1WorkoutsMutationResponse,
-    ResponseErrorConfig<PostV1Workouts400>,
-    PostV1WorkoutsMutationRequest
-  >({
-    method: "POST",
-    url: getPostV1WorkoutsUrl().url.toString(),
-    data: requestData,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+  return request({ method: "POST", url: "/v1/workouts", ...config }) as Promise<
+    RequestResult<PostV1WorkoutsResponses, ThrowOnError>
+  >;
 }

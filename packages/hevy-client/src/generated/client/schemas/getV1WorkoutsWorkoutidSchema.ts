@@ -3,27 +3,21 @@
  * Do not edit manually.
  */
 
-import { workoutSchema } from "./workoutSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { workoutSchema } from "./workoutSchema";
 
-export const getV1WorkoutsWorkoutidPathParamsSchema = z.object({
-  workoutId: z.string().describe("The id of the workout"),
-});
+export const getV1WorkoutsWorkoutidHeaderApiKeySchema = z.uuid();
 
-export const getV1WorkoutsWorkoutidHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1WorkoutsWorkoutidPathWorkoutIdSchema = z
+  .string()
+  .describe("The id of the workout");
 
-/**
- * @description Success
- */
-export const getV1WorkoutsWorkoutid200Schema = z.lazy(() => workoutSchema);
+export const getV1WorkoutsWorkoutidStatus200Schema = workoutSchema;
 
-/**
- * @description Workout not found
- */
-export const getV1WorkoutsWorkoutid404Schema = z.any();
+export const getV1WorkoutsWorkoutidStatus404Schema = z.unknown();
 
-export const getV1WorkoutsWorkoutidQueryResponseSchema = z.lazy(
-  () => getV1WorkoutsWorkoutid200Schema,
-);
+export const getV1WorkoutsWorkoutidResponseSchema =
+  getV1WorkoutsWorkoutidStatus200Schema;
+
+export const getV1WorkoutsWorkoutidErrorSchema =
+  getV1WorkoutsWorkoutidStatus404Schema;

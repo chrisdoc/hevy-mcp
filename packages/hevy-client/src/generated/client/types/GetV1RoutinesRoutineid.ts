@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { Routine } from "./Routine.ts";
+import type { Routine } from "./Routine";
 
-export type GetV1RoutinesRoutineidPathParams = {
+export type GetV1RoutinesRoutineidPath = {
   /**
    * @description The id of the routine
    * @type string
@@ -13,27 +13,20 @@ export type GetV1RoutinesRoutineidPathParams = {
   routineId: string;
 };
 
-export type GetV1RoutinesRoutineidHeaderParams = {
+export type GetV1RoutinesRoutineidHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The routine with the provided id
- */
-export type GetV1RoutinesRoutineid200 = {
-  /**
-   * @type object | undefined
-   */
+export type GetV1RoutinesRoutineidStatus200 = {
   routine?: Routine;
 };
 
-/**
- * @description Invalid request body
- */
-export type GetV1RoutinesRoutineid400 = {
+export type GetV1RoutinesRoutineidStatus400 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -41,11 +34,21 @@ export type GetV1RoutinesRoutineid400 = {
   error?: string;
 };
 
-export type GetV1RoutinesRoutineidQueryResponse = GetV1RoutinesRoutineid200;
-
-export type GetV1RoutinesRoutineidQuery = {
-  Response: GetV1RoutinesRoutineid200;
-  PathParams: GetV1RoutinesRoutineidPathParams;
-  HeaderParams: GetV1RoutinesRoutineidHeaderParams;
-  Errors: GetV1RoutinesRoutineid400;
+export type GetV1RoutinesRoutineidOptions = {
+  body?: never;
+  path: GetV1RoutinesRoutineidPath;
+  query?: never;
+  headers: GetV1RoutinesRoutineidHeaders;
 };
+
+export type GetV1RoutinesRoutineidResponses = {
+  "200": GetV1RoutinesRoutineidStatus200;
+  "400": GetV1RoutinesRoutineidStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1RoutinesRoutineidResponse =
+  | GetV1RoutinesRoutineidStatus200
+  | GetV1RoutinesRoutineidStatus400;

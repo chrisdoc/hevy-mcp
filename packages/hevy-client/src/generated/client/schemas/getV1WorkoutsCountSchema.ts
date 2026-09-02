@@ -3,21 +3,18 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
-export const getV1WorkoutsCountHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const getV1WorkoutsCountHeaderApiKeySchema = z.uuid();
+
+export const getV1WorkoutsCountStatus200Schema = z.object({
+  workout_count: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(42)
+    .describe("The total number of workouts"),
 });
 
-/**
- * @description The total count of workouts
- */
-export const getV1WorkoutsCount200Schema = z.object({
-  workout_count: z.optional(
-    z.int().default(42).describe("The total number of workouts"),
-  ),
-});
-
-export const getV1WorkoutsCountQueryResponseSchema = z.lazy(
-  () => getV1WorkoutsCount200Schema,
-);
+export const getV1WorkoutsCountResponseSchema =
+  getV1WorkoutsCountStatus200Schema;

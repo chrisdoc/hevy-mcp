@@ -3,31 +3,24 @@
  * Do not edit manually.
  */
 
-import { bodyMeasurementSchema } from "./bodyMeasurementSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { bodyMeasurementSchema } from "./bodyMeasurementSchema";
 
-export const getV1BodyMeasurementsDatePathParamsSchema = z.object({
-  date: z.iso.date().describe("The date of the body measurement (YYYY-MM-DD)"),
+export const getV1BodyMeasurementsDateHeaderApiKeySchema = z.uuid();
+
+export const getV1BodyMeasurementsDatePathDateSchema = z.iso
+  .date()
+  .describe("The date of the body measurement (YYYY-MM-DD)")
+  .meta({ examples: ["2024-01-15"] });
+
+export const getV1BodyMeasurementsDateStatus200Schema = bodyMeasurementSchema;
+
+export const getV1BodyMeasurementsDateStatus404Schema = z.object({
+  error: z.string().optional(),
 });
 
-export const getV1BodyMeasurementsDateHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1BodyMeasurementsDateResponseSchema =
+  getV1BodyMeasurementsDateStatus200Schema;
 
-/**
- * @description The body measurement for the given date
- */
-export const getV1BodyMeasurementsDate200Schema = z.lazy(
-  () => bodyMeasurementSchema,
-);
-
-/**
- * @description Body measurement not found
- */
-export const getV1BodyMeasurementsDate404Schema = z.object({
-  error: z.optional(z.string()),
-});
-
-export const getV1BodyMeasurementsDateQueryResponseSchema = z.lazy(
-  () => getV1BodyMeasurementsDate200Schema,
-);
+export const getV1BodyMeasurementsDateErrorSchema =
+  getV1BodyMeasurementsDateStatus404Schema;

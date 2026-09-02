@@ -6,61 +6,73 @@
 export type ExerciseHistoryEntry = {
   /**
    * @description The workout ID
+   * @example b459cba5-cd6d-463c-abd6-54f8eafcadcb
    * @type string | undefined
    */
   workout_id?: string;
   /**
    * @description The workout title
+   * @example Morning Workout 💪
    * @type string | undefined
    */
   workout_title?: string;
   /**
    * @description ISO 8601 timestamp of when the workout was recorded to have started.
+   * @example 2024-01-01T12:00:00Z
    * @type string | undefined
    */
   workout_start_time?: string;
   /**
    * @description ISO 8601 timestamp of when the workout was recorded to have ended.
+   * @example 2024-01-01T13:00:00Z
    * @type string | undefined
    */
   workout_end_time?: string;
   /**
    * @description The exercise template ID
+   * @example D04AC939
    * @type string | undefined
    */
   exercise_template_id?: string;
   /**
    * @description The weight in kilograms
-   * @type number
+   * @example 100
+   * @type number | undefined
    */
   weight_kg?: number | null;
   /**
    * @description The number of repetitions
-   * @type integer
+   * @example 10
+   * @type integer | undefined
    */
   reps?: number | null;
   /**
    * @description The distance in meters
-   * @type integer
+   * @example null
+   * @type integer | undefined
    */
   distance_meters?: number | null;
   /**
    * @description The duration in seconds
-   * @type integer
+   * @example null
+   * @type integer | undefined
    */
   duration_seconds?: number | null;
   /**
    * @description The Rating of Perceived Exertion
-   * @type number
+   * @example 8.5
+   * @type number | undefined
    */
   rpe?: number | null;
   /**
    * @description A custom metric for the set
-   * @type number
+   * @example null
+   * @type number | undefined
    */
   custom_metric?: number | null;
   /**
    * @description The type of set (warmup, normal, failure, dropset)
+   * @example normal
    * @type string | undefined
    */
   set_type?: string;

@@ -3,45 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1ExerciseTemplatesQueryResponse,
-  GetV1ExerciseTemplatesQueryParams,
-  GetV1ExerciseTemplatesHeaderParams,
-  GetV1ExerciseTemplates400,
-} from "../types/GetV1ExerciseTemplates.ts";
-
-function getGetV1ExerciseTemplatesUrl() {
-  const res = { method: "GET", url: `/v1/exercise_templates` as const };
-  return res;
-}
+  GetV1ExerciseTemplatesOptions,
+  GetV1ExerciseTemplatesResponses,
+} from "../types/GetV1ExerciseTemplates";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of exercise templates available on the account.
  * {@link /v1/exercise_templates}
  */
-export async function getV1ExerciseTemplates(
-  headers: GetV1ExerciseTemplatesHeaderParams,
-  params?: GetV1ExerciseTemplatesQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1ExerciseTemplates<ThrowOnError extends boolean = true>(
+  options: Options<GetV1ExerciseTemplatesOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1ExerciseTemplatesResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1ExerciseTemplatesQueryResponse,
-    ResponseErrorConfig<GetV1ExerciseTemplates400>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1ExerciseTemplatesUrl().url.toString(),
-    params,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/exercise_templates",
+    ...config,
+  }) as Promise<RequestResult<GetV1ExerciseTemplatesResponses, ThrowOnError>>;
 }

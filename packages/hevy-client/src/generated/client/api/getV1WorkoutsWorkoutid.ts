@@ -3,46 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1WorkoutsWorkoutidQueryResponse,
-  GetV1WorkoutsWorkoutidPathParams,
-  GetV1WorkoutsWorkoutidHeaderParams,
-  GetV1WorkoutsWorkoutid404,
-} from "../types/GetV1WorkoutsWorkoutid.ts";
-
-function getGetV1WorkoutsWorkoutidUrl(
-  workoutId: GetV1WorkoutsWorkoutidPathParams["workoutId"],
-) {
-  const res = { method: "GET", url: `/v1/workouts/${workoutId}` as const };
-  return res;
-}
+  GetV1WorkoutsWorkoutidOptions,
+  GetV1WorkoutsWorkoutidResponses,
+} from "../types/GetV1WorkoutsWorkoutid";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a single workout’s complete details by the workoutId
  * {@link /v1/workouts/:workoutId}
  */
-export async function getV1WorkoutsWorkoutid(
-  workoutId: GetV1WorkoutsWorkoutidPathParams["workoutId"],
-  headers: GetV1WorkoutsWorkoutidHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1WorkoutsWorkoutid<ThrowOnError extends boolean = true>(
+  options: Options<GetV1WorkoutsWorkoutidOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1WorkoutsWorkoutidResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1WorkoutsWorkoutidQueryResponse,
-    ResponseErrorConfig<GetV1WorkoutsWorkoutid404>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1WorkoutsWorkoutidUrl(workoutId).url.toString(),
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/workouts/{workoutId}",
+    ...config,
+  }) as Promise<RequestResult<GetV1WorkoutsWorkoutidResponses, ThrowOnError>>;
 }

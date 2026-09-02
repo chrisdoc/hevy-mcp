@@ -3,54 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  PutV1RoutinesRoutineidMutationRequest,
-  PutV1RoutinesRoutineidMutationResponse,
-  PutV1RoutinesRoutineidPathParams,
-  PutV1RoutinesRoutineidHeaderParams,
-  PutV1RoutinesRoutineid400,
-  PutV1RoutinesRoutineid404,
-} from "../types/PutV1RoutinesRoutineid.ts";
-
-function getPutV1RoutinesRoutineidUrl(
-  routineId: PutV1RoutinesRoutineidPathParams["routineId"],
-) {
-  const res = { method: "PUT", url: `/v1/routines/${routineId}` as const };
-  return res;
-}
+  PutV1RoutinesRoutineidOptions,
+  PutV1RoutinesRoutineidResponses,
+} from "../types/PutV1RoutinesRoutineid";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Update an existing routine
  * {@link /v1/routines/:routineId}
  */
-export async function putV1RoutinesRoutineid(
-  routineId: PutV1RoutinesRoutineidPathParams["routineId"],
-  data: PutV1RoutinesRoutineidMutationRequest,
-  headers: PutV1RoutinesRoutineidHeaderParams,
-  config: Partial<RequestConfig<PutV1RoutinesRoutineidMutationRequest>> & {
-    client?: Client;
-  } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function putV1RoutinesRoutineid<ThrowOnError extends boolean = true>(
+  options: Options<PutV1RoutinesRoutineidOptions, ThrowOnError>,
+): Promise<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const requestData = data;
-
-  const res = await request<
-    PutV1RoutinesRoutineidMutationResponse,
-    ResponseErrorConfig<PutV1RoutinesRoutineid400 | PutV1RoutinesRoutineid404>,
-    PutV1RoutinesRoutineidMutationRequest
-  >({
+  return request({
     method: "PUT",
-    url: getPutV1RoutinesRoutineidUrl(routineId).url.toString(),
-    data: requestData,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/routines/{routineId}",
+    ...config,
+  }) as Promise<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>>;
 }

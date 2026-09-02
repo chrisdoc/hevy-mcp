@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { ExerciseTemplate } from "./ExerciseTemplate.ts";
+import type { ExerciseTemplate } from "./ExerciseTemplate";
 
-export type GetV1ExerciseTemplatesQueryParams = {
+export type GetV1ExerciseTemplatesQuery = {
   /**
    * @description Page number (Must be 1 or greater)
    * @default 1
@@ -20,17 +20,16 @@ export type GetV1ExerciseTemplatesQueryParams = {
   pageSize?: number;
 };
 
-export type GetV1ExerciseTemplatesHeaderParams = {
+export type GetV1ExerciseTemplatesHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description A paginated list of exercise templates
- */
-export type GetV1ExerciseTemplates200 = {
+export type GetV1ExerciseTemplatesStatus200 = {
   /**
    * @description Current page number
    * @default 1
@@ -43,22 +42,26 @@ export type GetV1ExerciseTemplates200 = {
    * @type integer | undefined
    */
   page_count?: number;
-  /**
-   * @type array | undefined
-   */
   exercise_templates?: ExerciseTemplate[];
 };
 
-/**
- * @description Invalid page size
- */
-export type GetV1ExerciseTemplates400 = any;
+export type GetV1ExerciseTemplatesStatus400 = unknown;
 
-export type GetV1ExerciseTemplatesQueryResponse = GetV1ExerciseTemplates200;
-
-export type GetV1ExerciseTemplatesQuery = {
-  Response: GetV1ExerciseTemplates200;
-  QueryParams: GetV1ExerciseTemplatesQueryParams;
-  HeaderParams: GetV1ExerciseTemplatesHeaderParams;
-  Errors: GetV1ExerciseTemplates400;
+export type GetV1ExerciseTemplatesOptions = {
+  body?: never;
+  path?: never;
+  query?: GetV1ExerciseTemplatesQuery;
+  headers: GetV1ExerciseTemplatesHeaders;
 };
+
+export type GetV1ExerciseTemplatesResponses = {
+  "200": GetV1ExerciseTemplatesStatus200;
+  "400": GetV1ExerciseTemplatesStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1ExerciseTemplatesResponse =
+  | GetV1ExerciseTemplatesStatus200
+  | GetV1ExerciseTemplatesStatus400;

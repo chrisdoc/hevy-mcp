@@ -3,30 +3,20 @@
  * Do not edit manually.
  */
 
-import { postWorkoutsRequestBodySchema } from "./postWorkoutsRequestBodySchema.ts";
-import { workoutSchema } from "./workoutSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { postWorkoutsRequestBodySchema } from "./postWorkoutsRequestBodySchema";
+import { workoutSchema } from "./workoutSchema";
 
-export const postV1WorkoutsHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const postV1WorkoutsHeaderApiKeySchema = z.uuid();
+
+export const postV1WorkoutsStatus201Schema = workoutSchema;
+
+export const postV1WorkoutsStatus400Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-/**
- * @description The workout was successfully created
- */
-export const postV1Workouts201Schema = z.lazy(() => workoutSchema);
+export const postV1WorkoutsResponseSchema = postV1WorkoutsStatus201Schema;
 
-/**
- * @description Invalid request body
- */
-export const postV1Workouts400Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
-});
+export const postV1WorkoutsErrorSchema = postV1WorkoutsStatus400Schema;
 
-export const postV1WorkoutsMutationRequestSchema = z.lazy(
-  () => postWorkoutsRequestBodySchema,
-);
-
-export const postV1WorkoutsMutationResponseSchema = z.lazy(
-  () => postV1Workouts201Schema,
-);
+export const postV1WorkoutsBodySchema = postWorkoutsRequestBodySchema;

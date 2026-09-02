@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-export const customExerciseTypeEnum = {
+export const customExerciseType = {
   weight_reps: "weight_reps",
   reps_only: "reps_only",
   bodyweight_reps: "bodyweight_reps",
@@ -14,10 +14,5 @@ export const customExerciseTypeEnum = {
   short_distance_weight: "short_distance_weight",
 } as const;
 
-export type CustomExerciseTypeEnumKey =
-  (typeof customExerciseTypeEnum)[keyof typeof customExerciseTypeEnum];
-
-/**
- * @example weight_reps
- */
-export type CustomExerciseType = CustomExerciseTypeEnumKey;
+export type CustomExerciseTypeKey =
+  (typeof customExerciseType)[keyof typeof customExerciseType];

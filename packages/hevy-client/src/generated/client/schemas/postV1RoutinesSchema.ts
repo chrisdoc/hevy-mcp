@@ -3,40 +3,30 @@
  * Do not edit manually.
  */
 
-import { postRoutinesRequestBodySchema } from "./postRoutinesRequestBodySchema.ts";
-import { routineSchema } from "./routineSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { postRoutinesRequestBodySchema } from "./postRoutinesRequestBodySchema";
+import { routineSchema } from "./routineSchema";
 
-export const postV1RoutinesHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const postV1RoutinesHeaderApiKeySchema = z.uuid();
 
-/**
- * @description The routine was successfully created
- */
-export const postV1Routines201Schema = z.union([
-  z.lazy(() => routineSchema),
-  z.object({}),
+export const postV1RoutinesStatus201Schema = z.union([
+  routineSchema.strict(),
+  z.object({}).strict(),
 ]);
 
-/**
- * @description Invalid request body
- */
-export const postV1Routines400Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
+export const postV1RoutinesStatus400Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-/**
- * @description Routine limit exceeded
- */
-export const postV1Routines403Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
+export const postV1RoutinesStatus403Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-export const postV1RoutinesMutationRequestSchema = z.lazy(
-  () => postRoutinesRequestBodySchema,
-);
+export const postV1RoutinesResponseSchema = postV1RoutinesStatus201Schema;
 
-export const postV1RoutinesMutationResponseSchema = z.lazy(
-  () => postV1Routines201Schema,
-);
+export const postV1RoutinesErrorSchema = z.union([
+  postV1RoutinesStatus400Schema,
+  postV1RoutinesStatus403Schema,
+]);
+
+export const postV1RoutinesBodySchema = postRoutinesRequestBodySchema;

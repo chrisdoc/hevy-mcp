@@ -3,17 +3,16 @@
  * Do not edit manually.
  */
 
-export type GetV1WorkoutsCountHeaderParams = {
+export type GetV1WorkoutsCountHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The total count of workouts
- */
-export type GetV1WorkoutsCount200 = {
+export type GetV1WorkoutsCountStatus200 = {
   /**
    * @description The total number of workouts
    * @default 42
@@ -22,10 +21,18 @@ export type GetV1WorkoutsCount200 = {
   workout_count?: number;
 };
 
-export type GetV1WorkoutsCountQueryResponse = GetV1WorkoutsCount200;
-
-export type GetV1WorkoutsCountQuery = {
-  Response: GetV1WorkoutsCount200;
-  HeaderParams: GetV1WorkoutsCountHeaderParams;
-  Errors: any;
+export type GetV1WorkoutsCountOptions = {
+  body?: never;
+  path?: never;
+  query?: never;
+  headers: GetV1WorkoutsCountHeaders;
 };
+
+export type GetV1WorkoutsCountResponses = {
+  "200": GetV1WorkoutsCountStatus200;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1WorkoutsCountResponse = GetV1WorkoutsCountStatus200;

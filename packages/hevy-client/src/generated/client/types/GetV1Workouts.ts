@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { Workout } from "./Workout.ts";
+import type { Workout } from "./Workout";
 
-export type GetV1WorkoutsQueryParams = {
+export type GetV1WorkoutsQuery = {
   /**
    * @description Page number (Must be 1 or greater)
    * @default 1
@@ -20,43 +20,48 @@ export type GetV1WorkoutsQueryParams = {
   pageSize?: number;
 };
 
-export type GetV1WorkoutsHeaderParams = {
+export type GetV1WorkoutsHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description A paginated list of workouts
- */
-export type GetV1Workouts200 = {
+export type GetV1WorkoutsStatus200 = {
   /**
    * @description Current page number
+   * @example 1
    * @type integer | undefined
    */
   page?: number;
   /**
    * @description Total number of pages
+   * @example 5
    * @type integer | undefined
    */
   page_count?: number;
-  /**
-   * @type array | undefined
-   */
   workouts?: Workout[];
 };
 
-/**
- * @description Invalid page size
- */
-export type GetV1Workouts400 = any;
+export type GetV1WorkoutsStatus400 = unknown;
 
-export type GetV1WorkoutsQueryResponse = GetV1Workouts200;
-
-export type GetV1WorkoutsQuery = {
-  Response: GetV1Workouts200;
-  QueryParams: GetV1WorkoutsQueryParams;
-  HeaderParams: GetV1WorkoutsHeaderParams;
-  Errors: GetV1Workouts400;
+export type GetV1WorkoutsOptions = {
+  body?: never;
+  path?: never;
+  query?: GetV1WorkoutsQuery;
+  headers: GetV1WorkoutsHeaders;
 };
+
+export type GetV1WorkoutsResponses = {
+  "200": GetV1WorkoutsStatus200;
+  "400": GetV1WorkoutsStatus400;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1WorkoutsResponse =
+  | GetV1WorkoutsStatus200
+  | GetV1WorkoutsStatus400;

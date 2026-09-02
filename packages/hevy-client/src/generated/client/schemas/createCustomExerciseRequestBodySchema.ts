@@ -3,36 +3,27 @@
  * Do not edit manually.
  */
 
-import { customExerciseTypeSchema } from "./customExerciseTypeSchema.ts";
-import { equipmentCategorySchema } from "./equipmentCategorySchema.ts";
-import { muscleGroupSchema } from "./muscleGroupSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { customExerciseTypeSchema } from "./customExerciseTypeSchema";
+import { equipmentCategorySchema } from "./equipmentCategorySchema";
+import { muscleGroupSchema } from "./muscleGroupSchema";
 
 export const createCustomExerciseRequestBodySchema = z.object({
   exercise: z.object({
-    title: z.optional(
-      z.string().describe("The title of the exercise template."),
-    ),
-    get exercise_type() {
-      return customExerciseTypeSchema.optional();
-    },
-    get equipment_category() {
-      return equipmentCategorySchema
-        .and(z.any())
-        .describe("The equipment category of the exercise template.")
-        .optional();
-    },
-    get muscle_group() {
-      return muscleGroupSchema
-        .and(z.any())
-        .describe("The muscle group of the exercise template.")
-        .optional();
-    },
-    get other_muscles() {
-      return z
-        .array(muscleGroupSchema)
-        .describe("The other muscles of the exercise template.")
-        .optional();
-    },
+    title: z
+      .string()
+      .optional()
+      .describe("The title of the exercise template.")
+      .meta({ examples: ["Bench Press"] }),
+    exercise_type: customExerciseTypeSchema
+      .optional()
+      .meta({ examples: ["weight_reps"] }),
+    equipment_category: equipmentCategorySchema.and(z.unknown()).optional(),
+    muscle_group: muscleGroupSchema.and(z.unknown()).optional(),
+    other_muscles: z
+      .array(muscleGroupSchema)
+      .optional()
+      .describe("The other muscles of the exercise template.")
+      .meta({ examples: [["biceps", "triceps"]] }),
   }),
 });
