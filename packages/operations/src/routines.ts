@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import type {
 	HevyClient,
 	HevyExecutionOptions,
@@ -92,22 +93,25 @@ export function createRoutinesGetOperation(
 	return {
 		descriptor: routinesGetDescriptor,
 		async execute(input, options) {
-			try {
-				const response =
+			const program = Effect.tryPromise({
+				try: () =>
 					options === undefined
-						? await adapter.getRoutineById(input.routineId)
-						: await adapter.getRoutineById(input.routineId, options);
-				return { routine: response.routine ?? null };
-			} catch (error) {
-				const operationError = error instanceof Error ? error : String(error);
-				if (isExpectedReadNotFound(operationError, "/v1/routines")) {
-					return {
-						routine: null,
-						expected404Outcome: "not_found",
-					};
-				}
-				throw error;
-			}
+						? adapter.getRoutineById(input.routineId)
+						: adapter.getRoutineById(input.routineId, options),
+				catch: (error) =>
+					error instanceof Error ? error : new Error(String(error)),
+			}).pipe(
+				Effect.map((response) => ({ routine: response.routine ?? null })),
+				Effect.catchIf(
+					(error) => isExpectedReadNotFound(error, "/v1/routines"),
+					() =>
+						Effect.succeed({
+							routine: null,
+							expected404Outcome: "not_found" as const,
+						}),
+				),
+			);
+			return Effect.runPromise(program);
 		},
 	};
 }
@@ -118,27 +122,28 @@ export function createRoutinesListOperation(
 	return {
 		descriptor: routinesListDescriptor,
 		async execute(input, options) {
-			try {
-				const params = { page: input.page, pageSize: input.pageSize };
-				const response =
+			const params = { page: input.page, pageSize: input.pageSize };
+			const program = Effect.tryPromise({
+				try: () =>
 					options === undefined
-						? await adapter.getRoutines(params)
-						: await adapter.getRoutines(params, options);
-				return normalizeRoutinesPage(response, input);
-			} catch (error) {
-				const operationError = error instanceof Error ? error : String(error);
-				if (
-					isExpectedReadEndOfList(operationError, "/v1/routines", input.page)
-				) {
-					return {
-						items: [],
-						page: input.page,
-						pageCount: undefined,
-						expected404Outcome: "end_of_list",
-					};
-				}
-				throw error;
-			}
+						? adapter.getRoutines(params)
+						: adapter.getRoutines(params, options),
+				catch: (error) =>
+					error instanceof Error ? error : new Error(String(error)),
+			}).pipe(
+				Effect.map((response) => normalizeRoutinesPage(response, input)),
+				Effect.catchIf(
+					(error) => isExpectedReadEndOfList(error, "/v1/routines", input.page),
+					() =>
+						Effect.succeed({
+							items: [],
+							page: input.page,
+							pageCount: undefined,
+							expected404Outcome: "end_of_list" as const,
+						}),
+				),
+			);
+			return Effect.runPromise(program);
 		},
 	};
 }

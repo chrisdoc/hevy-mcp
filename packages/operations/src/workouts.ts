@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import type {
 	HevyClient,
 	HevyExecutionOptions,
@@ -92,22 +93,25 @@ export function createWorkoutsGetOperation(
 	return {
 		descriptor: workoutsGetDescriptor,
 		async execute(input, options) {
-			try {
-				const response =
+			const program = Effect.tryPromise({
+				try: () =>
 					options === undefined
-						? await adapter.getWorkout(input.workoutId)
-						: await adapter.getWorkout(input.workoutId, options);
-				return { workout: response ?? null };
-			} catch (error) {
-				const operationError = error instanceof Error ? error : String(error);
-				if (isExpectedReadNotFound(operationError, "/v1/workouts")) {
-					return {
-						workout: null,
-						expected404Outcome: "not_found",
-					};
-				}
-				throw error;
-			}
+						? adapter.getWorkout(input.workoutId)
+						: adapter.getWorkout(input.workoutId, options),
+				catch: (error) =>
+					error instanceof Error ? error : new Error(String(error)),
+			}).pipe(
+				Effect.map((response) => ({ workout: response ?? null })),
+				Effect.catchIf(
+					(error) => isExpectedReadNotFound(error, "/v1/workouts"),
+					() =>
+						Effect.succeed({
+							workout: null,
+							expected404Outcome: "not_found" as const,
+						}),
+				),
+			);
+			return Effect.runPromise(program);
 		},
 	};
 }
@@ -118,27 +122,28 @@ export function createWorkoutsListOperation(
 	return {
 		descriptor: workoutsListDescriptor,
 		async execute(input, options) {
-			try {
-				const params = { page: input.page, pageSize: input.pageSize };
-				const response =
+			const params = { page: input.page, pageSize: input.pageSize };
+			const program = Effect.tryPromise({
+				try: () =>
 					options === undefined
-						? await adapter.getWorkouts(params)
-						: await adapter.getWorkouts(params, options);
-				return normalizeWorkoutsPage(response, input);
-			} catch (error) {
-				const operationError = error instanceof Error ? error : String(error);
-				if (
-					isExpectedReadEndOfList(operationError, "/v1/workouts", input.page)
-				) {
-					return {
-						items: [],
-						page: input.page,
-						pageCount: undefined,
-						expected404Outcome: "end_of_list",
-					};
-				}
-				throw error;
-			}
+						? adapter.getWorkouts(params)
+						: adapter.getWorkouts(params, options),
+				catch: (error) =>
+					error instanceof Error ? error : new Error(String(error)),
+			}).pipe(
+				Effect.map((response) => normalizeWorkoutsPage(response, input)),
+				Effect.catchIf(
+					(error) => isExpectedReadEndOfList(error, "/v1/workouts", input.page),
+					() =>
+						Effect.succeed({
+							items: [],
+							page: input.page,
+							pageCount: undefined,
+							expected404Outcome: "end_of_list" as const,
+						}),
+				),
+			);
+			return Effect.runPromise(program);
 		},
 	};
 }
