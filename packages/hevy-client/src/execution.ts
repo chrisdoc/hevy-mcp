@@ -4,6 +4,7 @@
  * The client owns this vocabulary so adapters can only present the same
  * outcome; they cannot accidentally grow incompatible retry/error taxonomies.
  */
+import { Effect, Exit } from "effect";
 
 export type HevyOperationSafety =
 	| "read"
@@ -144,6 +145,32 @@ export function createExecutionSignal(
 		},
 		deadlineTriggered: () => deadlineTriggered,
 	};
+}
+
+/**
+ * Run a Promise-free execution boundary with guaranteed signal cleanup.
+ *
+ * The existing client remains Promise-based for compatibility. New Effect
+ * integrations can use this helper to ensure deadline timers and caller
+ * listeners are released on success, failure, or interruption.
+ */
+export function withExecutionSignal<A, E, R>(
+	control: HevyExecutionControl,
+	use: (execution: HevyExecutionSignal) => Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> {
+	return Effect.acquireUseRelease(
+		Effect.sync(() => createExecutionSignal(control)),
+		use,
+		(execution, exit) =>
+			Effect.sync(() => {
+				if (!Exit.isSuccess(exit) && Exit.hasInterrupts(exit)) {
+					execution.abort(
+						new DOMException("Execution interrupted", "AbortError"),
+					);
+				}
+				execution.cleanup();
+			}),
+	);
 }
 
 export function isAbortLike<T>(error: T): boolean {
