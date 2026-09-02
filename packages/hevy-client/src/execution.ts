@@ -116,6 +116,7 @@ export function createExecutionSignal(
 ): HevyExecutionSignal {
 	const controller = new AbortController();
 	let deadlineTriggered = false;
+	let cleaned = false;
 	const abortFromCaller = () => {
 		if (!controller.signal.aborted) controller.abort(control.signal?.reason);
 	};
@@ -140,6 +141,8 @@ export function createExecutionSignal(
 			if (!controller.signal.aborted) controller.abort(reason);
 		},
 		cleanup: () => {
+			if (cleaned) return;
+			cleaned = true;
 			if (timer !== undefined) clearTimeout(timer);
 			control.signal?.removeEventListener("abort", abortFromCaller);
 		},
