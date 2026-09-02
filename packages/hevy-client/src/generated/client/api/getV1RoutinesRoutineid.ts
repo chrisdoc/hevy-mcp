@@ -3,46 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1RoutinesRoutineidQueryResponse,
-  GetV1RoutinesRoutineidPathParams,
-  GetV1RoutinesRoutineidHeaderParams,
-  GetV1RoutinesRoutineid400,
-} from "../types/GetV1RoutinesRoutineid.ts";
-
-function getGetV1RoutinesRoutineidUrl(
-  routineId: GetV1RoutinesRoutineidPathParams["routineId"],
-) {
-  const res = { method: "GET", url: `/v1/routines/${routineId}` as const };
-  return res;
-}
+  GetV1RoutinesRoutineidOptions,
+  GetV1RoutinesRoutineidResponses,
+} from "../types/GetV1RoutinesRoutineid";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a routine by its Id
  * {@link /v1/routines/:routineId}
  */
-export async function getV1RoutinesRoutineid(
-  routineId: GetV1RoutinesRoutineidPathParams["routineId"],
-  headers: GetV1RoutinesRoutineidHeaderParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1RoutinesRoutineid<ThrowOnError extends boolean = true>(
+  options: Options<GetV1RoutinesRoutineidOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1RoutinesRoutineidResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1RoutinesRoutineidQueryResponse,
-    ResponseErrorConfig<GetV1RoutinesRoutineid400>,
-    unknown
-  >({
+  return request({
     method: "GET",
-    url: getGetV1RoutinesRoutineidUrl(routineId).url.toString(),
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/routines/{routineId}",
+    ...config,
+  }) as Promise<RequestResult<GetV1RoutinesRoutineidResponses, ThrowOnError>>;
 }

@@ -3,25 +3,21 @@
  * Do not edit manually.
  */
 
-import type { PostRoutinesRequestBody } from "./PostRoutinesRequestBody.ts";
-import type { Routine } from "./Routine.ts";
+import type { PostRoutinesRequestBody } from "./PostRoutinesRequestBody";
+import type { Routine } from "./Routine";
 
-export type PostV1RoutinesHeaderParams = {
+export type PostV1RoutinesHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The routine was successfully created
- */
-export type PostV1Routines201 = Routine | object;
+export type PostV1RoutinesStatus201 = Routine | object;
 
-/**
- * @description Invalid request body
- */
-export type PostV1Routines400 = {
+export type PostV1RoutinesStatus400 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -29,10 +25,7 @@ export type PostV1Routines400 = {
   error?: string;
 };
 
-/**
- * @description Routine limit exceeded
- */
-export type PostV1Routines403 = {
+export type PostV1RoutinesStatus403 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -40,13 +33,25 @@ export type PostV1Routines403 = {
   error?: string;
 };
 
-export type PostV1RoutinesMutationRequest = PostRoutinesRequestBody;
+export type PostV1RoutinesBody = PostRoutinesRequestBody;
 
-export type PostV1RoutinesMutationResponse = PostV1Routines201;
-
-export type PostV1RoutinesMutation = {
-  Response: PostV1Routines201;
-  Request: PostV1RoutinesMutationRequest;
-  HeaderParams: PostV1RoutinesHeaderParams;
-  Errors: PostV1Routines400 | PostV1Routines403;
+export type PostV1RoutinesOptions = {
+  body: PostV1RoutinesBody;
+  path?: never;
+  query?: never;
+  headers: PostV1RoutinesHeaders;
 };
+
+export type PostV1RoutinesResponses = {
+  "201": PostV1RoutinesStatus201;
+  "400": PostV1RoutinesStatus400;
+  "403": PostV1RoutinesStatus403;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PostV1RoutinesResponse =
+  | PostV1RoutinesStatus201
+  | PostV1RoutinesStatus400
+  | PostV1RoutinesStatus403;

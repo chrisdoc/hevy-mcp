@@ -3,30 +3,30 @@
  * Do not edit manually.
  */
 
-import type { CustomExerciseType } from "./CustomExerciseType.ts";
-import type { EquipmentCategory } from "./EquipmentCategory.ts";
-import type { MuscleGroup } from "./MuscleGroup.ts";
+import type { CustomExerciseTypeKey } from "./CustomExerciseType";
+import type { EquipmentCategoryKey } from "./EquipmentCategory";
+import type { MuscleGroupKey } from "./MuscleGroup";
 
 export type CreateCustomExerciseRequestBody = {
-  /**
-   * @type object
-   */
   exercise: {
     /**
      * @description The title of the exercise template.
+     * @example Bench Press
      * @type string | undefined
      */
     title?: string;
     /**
+     * @example weight_reps
      * @type string | undefined
      */
-    exercise_type?: CustomExerciseType;
-    equipment_category?: EquipmentCategory & any;
-    muscle_group?: MuscleGroup & any;
+    exercise_type?: CustomExerciseTypeKey;
+    equipment_category?: EquipmentCategoryKey & unknown;
+    muscle_group?: MuscleGroupKey & unknown;
     /**
      * @description The other muscles of the exercise template.
+     * @example ["biceps","triceps"]
      * @type array | undefined
      */
-    other_muscles?: MuscleGroup[];
+    other_muscles?: MuscleGroupKey[];
   };
 };

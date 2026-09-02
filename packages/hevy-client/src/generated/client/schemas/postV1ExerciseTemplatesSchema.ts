@@ -3,41 +3,45 @@
  * Do not edit manually.
  */
 
-import { createCustomExerciseRequestBodySchema } from "./createCustomExerciseRequestBodySchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { createCustomExerciseRequestBodySchema } from "./createCustomExerciseRequestBodySchema";
 
-export const postV1ExerciseTemplatesHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const postV1ExerciseTemplatesHeaderApiKeySchema = z.uuid();
+
+export const postV1ExerciseTemplatesStatus200Schema = z.object({
+  id: z.coerce
+    .number()
+    .int()
+    .optional()
+    .describe("The ID of the exercise template")
+    .meta({ examples: [123] }),
 });
 
-/**
- * @description The exercise template was successfully created
- */
-export const postV1ExerciseTemplates200Schema = z.object({
-  id: z.optional(z.int().describe("The ID of the exercise template")),
+export const postV1ExerciseTemplatesStatus400Schema = z.object({
+  error: z
+    .string()
+    .optional()
+    .describe("Error message")
+    .meta({ examples: ["Invalid request body"] }),
 });
 
-/**
- * @description Invalid request body
- */
-export const postV1ExerciseTemplates400Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
+export const postV1ExerciseTemplatesStatus403Schema = z.object({
+  error: z
+    .string()
+    .optional()
+    .describe("Error message")
+    .meta({ examples: ["exceeds-custom-exercise-limit"] }),
 });
 
-/**
- * @description Exceeds custom exercise limit
- */
-export const postV1ExerciseTemplates403Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
-});
+export const postV1ExerciseTemplatesResponseSchema =
+  postV1ExerciseTemplatesStatus200Schema;
 
-/**
- * @description The exercise template to create.
- */
-export const postV1ExerciseTemplatesMutationRequestSchema = z.lazy(
-  () => createCustomExerciseRequestBodySchema,
-);
+export const postV1ExerciseTemplatesErrorSchema = z.union([
+  postV1ExerciseTemplatesStatus400Schema,
+  postV1ExerciseTemplatesStatus403Schema,
+]);
 
-export const postV1ExerciseTemplatesMutationResponseSchema = z.lazy(
-  () => postV1ExerciseTemplates200Schema,
-);
+export const postV1ExerciseTemplatesBodySchema =
+  createCustomExerciseRequestBodySchema.describe(
+    "The exercise template to create.",
+  );

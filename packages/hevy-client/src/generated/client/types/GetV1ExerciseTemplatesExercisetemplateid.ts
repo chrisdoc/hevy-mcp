@@ -3,9 +3,9 @@
  * Do not edit manually.
  */
 
-import type { ExerciseTemplate } from "./ExerciseTemplate.ts";
+import type { ExerciseTemplate } from "./ExerciseTemplate";
 
-export type GetV1ExerciseTemplatesExercisetemplateidPathParams = {
+export type GetV1ExerciseTemplatesExercisetemplateidPath = {
   /**
    * @description The id of the exercise template
    * @type string
@@ -13,29 +13,35 @@ export type GetV1ExerciseTemplatesExercisetemplateidPathParams = {
   exerciseTemplateId: string;
 };
 
-export type GetV1ExerciseTemplatesExercisetemplateidHeaderParams = {
+export type GetV1ExerciseTemplatesExercisetemplateidHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description Success
- */
-export type GetV1ExerciseTemplatesExercisetemplateid200 = ExerciseTemplate;
+export type GetV1ExerciseTemplatesExercisetemplateidStatus200 =
+  ExerciseTemplate;
 
-/**
- * @description Exercise template not found
- */
-export type GetV1ExerciseTemplatesExercisetemplateid404 = any;
+export type GetV1ExerciseTemplatesExercisetemplateidStatus404 = unknown;
 
-export type GetV1ExerciseTemplatesExercisetemplateidQueryResponse =
-  GetV1ExerciseTemplatesExercisetemplateid200;
-
-export type GetV1ExerciseTemplatesExercisetemplateidQuery = {
-  Response: GetV1ExerciseTemplatesExercisetemplateid200;
-  PathParams: GetV1ExerciseTemplatesExercisetemplateidPathParams;
-  HeaderParams: GetV1ExerciseTemplatesExercisetemplateidHeaderParams;
-  Errors: GetV1ExerciseTemplatesExercisetemplateid404;
+export type GetV1ExerciseTemplatesExercisetemplateidOptions = {
+  body?: never;
+  path: GetV1ExerciseTemplatesExercisetemplateidPath;
+  query?: never;
+  headers: GetV1ExerciseTemplatesExercisetemplateidHeaders;
 };
+
+export type GetV1ExerciseTemplatesExercisetemplateidResponses = {
+  "200": GetV1ExerciseTemplatesExercisetemplateidStatus200;
+  "404": GetV1ExerciseTemplatesExercisetemplateidStatus404;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type GetV1ExerciseTemplatesExercisetemplateidResponse =
+  | GetV1ExerciseTemplatesExercisetemplateidStatus200
+  | GetV1ExerciseTemplatesExercisetemplateidStatus404;

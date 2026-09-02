@@ -6,16 +6,19 @@
 export type DeletedWorkout = {
   /**
    * @description Indicates the type of the event (deleted)
+   * @example deleted
    * @type string
    */
   type: string;
   /**
    * @description The unique identifier of the deleted workout
+   * @example efe6801c-4aee-4959-bcdd-fca3f272821b
    * @type string
    */
   id: string;
   /**
    * @description A date string indicating when the workout was deleted
+   * @example 2021-09-13T12:00:00Z
    * @type string | undefined
    */
   deleted_at?: string;

@@ -3,41 +3,40 @@
  * Do not edit manually.
  */
 
-import type { PostWorkoutsRequestExercise } from "./PostWorkoutsRequestExercise.ts";
+import type { PostWorkoutsRequestExercise } from "./PostWorkoutsRequestExercise";
 
 export type PostWorkoutsRequestBody = {
-  /**
-   * @type object | undefined
-   */
   workout?: {
     /**
      * @description The title of the workout.
+     * @example Friday Leg Day 🔥
      * @type string | undefined
      */
     title?: string;
     /**
      * @description A description for the workout workout.
-     * @type string
+     * @example Medium intensity leg day focusing on quads.
+     * @type string | undefined
      */
     description?: string | null;
     /**
      * @description The time the workout started.
+     * @example 2024-08-14T12:00:00Z
      * @type string | undefined
      */
     start_time?: string;
     /**
      * @description The time the workout ended.
+     * @example 2024-08-14T12:30:00Z
      * @type string | undefined
      */
     end_time?: string;
     /**
      * @description A boolean indicating if the workout is private.
+     * @example false
      * @type boolean | undefined
      */
     is_private?: boolean;
-    /**
-     * @type array | undefined
-     */
     exercises?: PostWorkoutsRequestExercise[];
   };
 };

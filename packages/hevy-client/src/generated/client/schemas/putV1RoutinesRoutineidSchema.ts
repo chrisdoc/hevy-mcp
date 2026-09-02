@@ -3,41 +3,32 @@
  * Do not edit manually.
  */
 
-import { putRoutinesRequestBodySchema } from "./putRoutinesRequestBodySchema.ts";
-import { routineSchema } from "./routineSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { putRoutinesRequestBodySchema } from "./putRoutinesRequestBodySchema";
+import { routineSchema } from "./routineSchema";
 
-export const putV1RoutinesRoutineidPathParamsSchema = z.object({
-  routineId: z.string().describe("The id of the routine"),
+export const putV1RoutinesRoutineidHeaderApiKeySchema = z.uuid();
+
+export const putV1RoutinesRoutineidPathRoutineIdSchema = z
+  .string()
+  .describe("The id of the routine");
+
+export const putV1RoutinesRoutineidStatus200Schema = routineSchema;
+
+export const putV1RoutinesRoutineidStatus400Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-export const putV1RoutinesRoutineidHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
+export const putV1RoutinesRoutineidStatus404Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-/**
- * @description The routine was successfully updated
- */
-export const putV1RoutinesRoutineid200Schema = z.lazy(() => routineSchema);
+export const putV1RoutinesRoutineidResponseSchema =
+  putV1RoutinesRoutineidStatus200Schema;
 
-/**
- * @description Invalid request body
- */
-export const putV1RoutinesRoutineid400Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
-});
+export const putV1RoutinesRoutineidErrorSchema = z.union([
+  putV1RoutinesRoutineidStatus400Schema,
+  putV1RoutinesRoutineidStatus404Schema,
+]);
 
-/**
- * @description Routine doesn\'t exist or doesn\'t belong to the user
- */
-export const putV1RoutinesRoutineid404Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
-});
-
-export const putV1RoutinesRoutineidMutationRequestSchema = z.lazy(
-  () => putRoutinesRequestBodySchema,
-);
-
-export const putV1RoutinesRoutineidMutationResponseSchema = z.lazy(
-  () => putV1RoutinesRoutineid200Schema,
-);
+export const putV1RoutinesRoutineidBodySchema = putRoutinesRequestBodySchema;

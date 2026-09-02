@@ -6,16 +6,19 @@
 export type UserInfo = {
   /**
    * @description The user ID.
+   * @example 9c465af3-de7d-42bc-9c7c-f0170396358b
    * @type string | undefined
    */
   id?: string;
   /**
    * @description The user\'s display name.
+   * @example John doe
    * @type string | undefined
    */
   name?: string;
   /**
    * @description The user\'s public profile URL.
+   * @example https://hevy.com/user/jhon
    * @type string | undefined
    */
   url?: string;

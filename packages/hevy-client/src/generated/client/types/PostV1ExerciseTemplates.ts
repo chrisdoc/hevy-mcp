@@ -3,43 +3,39 @@
  * Do not edit manually.
  */
 
-import type { CreateCustomExerciseRequestBody } from "./CreateCustomExerciseRequestBody.ts";
+import type { CreateCustomExerciseRequestBody } from "./CreateCustomExerciseRequestBody";
 
-export type PostV1ExerciseTemplatesHeaderParams = {
+export type PostV1ExerciseTemplatesHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The exercise template was successfully created
- */
-export type PostV1ExerciseTemplates200 = {
+export type PostV1ExerciseTemplatesStatus200 = {
   /**
    * @description The ID of the exercise template
+   * @example 123
    * @type integer | undefined
    */
   id?: number;
 };
 
-/**
- * @description Invalid request body
- */
-export type PostV1ExerciseTemplates400 = {
+export type PostV1ExerciseTemplatesStatus400 = {
   /**
    * @description Error message
+   * @example Invalid request body
    * @type string | undefined
    */
   error?: string;
 };
 
-/**
- * @description Exceeds custom exercise limit
- */
-export type PostV1ExerciseTemplates403 = {
+export type PostV1ExerciseTemplatesStatus403 = {
   /**
    * @description Error message
+   * @example exceeds-custom-exercise-limit
    * @type string | undefined
    */
   error?: string;
@@ -47,16 +43,27 @@ export type PostV1ExerciseTemplates403 = {
 
 /**
  * @description The exercise template to create.
+ * @type object
  */
-export type PostV1ExerciseTemplatesMutationRequest =
-  CreateCustomExerciseRequestBody;
+export type PostV1ExerciseTemplatesBody = CreateCustomExerciseRequestBody;
 
-export type PostV1ExerciseTemplatesMutationResponse =
-  PostV1ExerciseTemplates200;
-
-export type PostV1ExerciseTemplatesMutation = {
-  Response: PostV1ExerciseTemplates200;
-  Request: PostV1ExerciseTemplatesMutationRequest;
-  HeaderParams: PostV1ExerciseTemplatesHeaderParams;
-  Errors: PostV1ExerciseTemplates400 | PostV1ExerciseTemplates403;
+export type PostV1ExerciseTemplatesOptions = {
+  body: PostV1ExerciseTemplatesBody;
+  path?: never;
+  query?: never;
+  headers: PostV1ExerciseTemplatesHeaders;
 };
+
+export type PostV1ExerciseTemplatesResponses = {
+  "200": PostV1ExerciseTemplatesStatus200;
+  "400": PostV1ExerciseTemplatesStatus400;
+  "403": PostV1ExerciseTemplatesStatus403;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PostV1ExerciseTemplatesResponse =
+  | PostV1ExerciseTemplatesStatus200
+  | PostV1ExerciseTemplatesStatus400
+  | PostV1ExerciseTemplatesStatus403;

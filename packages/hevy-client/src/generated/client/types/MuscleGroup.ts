@@ -3,7 +3,7 @@
  * Do not edit manually.
  */
 
-export const muscleGroupEnum = {
+export const muscleGroup = {
   abdominals: "abdominals",
   shoulders: "shoulders",
   biceps: "biceps",
@@ -26,10 +26,4 @@ export const muscleGroupEnum = {
   other: "other",
 } as const;
 
-export type MuscleGroupEnumKey =
-  (typeof muscleGroupEnum)[keyof typeof muscleGroupEnum];
-
-/**
- * @example chest
- */
-export type MuscleGroup = MuscleGroupEnumKey;
+export type MuscleGroupKey = (typeof muscleGroup)[keyof typeof muscleGroup];

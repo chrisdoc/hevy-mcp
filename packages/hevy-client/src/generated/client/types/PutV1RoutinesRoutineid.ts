@@ -3,10 +3,10 @@
  * Do not edit manually.
  */
 
-import type { PutRoutinesRequestBody } from "./PutRoutinesRequestBody.ts";
-import type { Routine } from "./Routine.ts";
+import type { PutRoutinesRequestBody } from "./PutRoutinesRequestBody";
+import type { Routine } from "./Routine";
 
-export type PutV1RoutinesRoutineidPathParams = {
+export type PutV1RoutinesRoutineidPath = {
   /**
    * @description The id of the routine
    * @type string
@@ -14,22 +14,18 @@ export type PutV1RoutinesRoutineidPathParams = {
   routineId: string;
 };
 
-export type PutV1RoutinesRoutineidHeaderParams = {
+export type PutV1RoutinesRoutineidHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The routine was successfully updated
- */
-export type PutV1RoutinesRoutineid200 = Routine;
+export type PutV1RoutinesRoutineidStatus200 = Routine;
 
-/**
- * @description Invalid request body
- */
-export type PutV1RoutinesRoutineid400 = {
+export type PutV1RoutinesRoutineidStatus400 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -37,10 +33,7 @@ export type PutV1RoutinesRoutineid400 = {
   error?: string;
 };
 
-/**
- * @description Routine doesn\'t exist or doesn\'t belong to the user
- */
-export type PutV1RoutinesRoutineid404 = {
+export type PutV1RoutinesRoutineidStatus404 = {
   /**
    * @description Error message
    * @type string | undefined
@@ -48,14 +41,25 @@ export type PutV1RoutinesRoutineid404 = {
   error?: string;
 };
 
-export type PutV1RoutinesRoutineidMutationRequest = PutRoutinesRequestBody;
+export type PutV1RoutinesRoutineidBody = PutRoutinesRequestBody;
 
-export type PutV1RoutinesRoutineidMutationResponse = PutV1RoutinesRoutineid200;
-
-export type PutV1RoutinesRoutineidMutation = {
-  Response: PutV1RoutinesRoutineid200;
-  Request: PutV1RoutinesRoutineidMutationRequest;
-  PathParams: PutV1RoutinesRoutineidPathParams;
-  HeaderParams: PutV1RoutinesRoutineidHeaderParams;
-  Errors: PutV1RoutinesRoutineid400 | PutV1RoutinesRoutineid404;
+export type PutV1RoutinesRoutineidOptions = {
+  body: PutV1RoutinesRoutineidBody;
+  path: PutV1RoutinesRoutineidPath;
+  query?: never;
+  headers: PutV1RoutinesRoutineidHeaders;
 };
+
+export type PutV1RoutinesRoutineidResponses = {
+  "200": PutV1RoutinesRoutineidStatus200;
+  "400": PutV1RoutinesRoutineidStatus400;
+  "404": PutV1RoutinesRoutineidStatus404;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PutV1RoutinesRoutineidResponse =
+  | PutV1RoutinesRoutineidStatus200
+  | PutV1RoutinesRoutineidStatus400
+  | PutV1RoutinesRoutineidStatus404;

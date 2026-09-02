@@ -1,234 +1,252 @@
-export type { BodyMeasurement } from "./BodyMeasurement.ts";
-export type { CreateCustomExerciseRequestBody } from "./CreateCustomExerciseRequestBody.ts";
+export type { BodyMeasurement } from "./BodyMeasurement";
+export type { CreateCustomExerciseRequestBody } from "./CreateCustomExerciseRequestBody";
+export type { CustomExerciseTypeKey } from "./CustomExerciseType";
+export type { DeletedWorkout } from "./DeletedWorkout";
+export type { EquipmentCategoryKey } from "./EquipmentCategory";
+export type { Exercise } from "./Exercise";
+export type { ExerciseHistoryEntry } from "./ExerciseHistoryEntry";
+export type { ExerciseTemplate } from "./ExerciseTemplate";
 export type {
-  CustomExerciseType,
-  CustomExerciseTypeEnumKey,
-} from "./CustomExerciseType.ts";
-export type { DeletedWorkout } from "./DeletedWorkout.ts";
-export type {
-  EquipmentCategory,
-  EquipmentCategoryEnumKey,
-} from "./EquipmentCategory.ts";
-export type { Exercise } from "./Exercise.ts";
-export type { ExerciseHistoryEntry } from "./ExerciseHistoryEntry.ts";
-export type { ExerciseTemplate } from "./ExerciseTemplate.ts";
-export type {
-  GetV1BodyMeasurements200,
-  GetV1BodyMeasurements400,
-  GetV1BodyMeasurements404,
-  GetV1BodyMeasurementsHeaderParams,
+  GetV1BodyMeasurementsHeaders,
+  GetV1BodyMeasurementsOptions,
   GetV1BodyMeasurementsQuery,
-  GetV1BodyMeasurementsQueryParams,
-  GetV1BodyMeasurementsQueryResponse,
-} from "./GetV1BodyMeasurements.ts";
+  GetV1BodyMeasurementsResponse,
+  GetV1BodyMeasurementsResponses,
+  GetV1BodyMeasurementsStatus200,
+  GetV1BodyMeasurementsStatus400,
+  GetV1BodyMeasurementsStatus404,
+} from "./GetV1BodyMeasurements";
 export type {
-  GetV1BodyMeasurementsDate200,
-  GetV1BodyMeasurementsDate404,
-  GetV1BodyMeasurementsDateHeaderParams,
-  GetV1BodyMeasurementsDatePathParams,
-  GetV1BodyMeasurementsDateQuery,
-  GetV1BodyMeasurementsDateQueryResponse,
-} from "./GetV1BodyMeasurementsDate.ts";
+  GetV1BodyMeasurementsDateHeaders,
+  GetV1BodyMeasurementsDateOptions,
+  GetV1BodyMeasurementsDatePath,
+  GetV1BodyMeasurementsDateResponse,
+  GetV1BodyMeasurementsDateResponses,
+  GetV1BodyMeasurementsDateStatus200,
+  GetV1BodyMeasurementsDateStatus404,
+} from "./GetV1BodyMeasurementsDate";
 export type {
-  GetV1ExerciseHistoryExercisetemplateid200,
-  GetV1ExerciseHistoryExercisetemplateid400,
-  GetV1ExerciseHistoryExercisetemplateidHeaderParams,
-  GetV1ExerciseHistoryExercisetemplateidPathParams,
+  GetV1ExerciseHistoryExercisetemplateidHeaders,
+  GetV1ExerciseHistoryExercisetemplateidOptions,
+  GetV1ExerciseHistoryExercisetemplateidPath,
   GetV1ExerciseHistoryExercisetemplateidQuery,
-  GetV1ExerciseHistoryExercisetemplateidQueryParams,
-  GetV1ExerciseHistoryExercisetemplateidQueryResponse,
-} from "./GetV1ExerciseHistoryExercisetemplateid.ts";
+  GetV1ExerciseHistoryExercisetemplateidResponse,
+  GetV1ExerciseHistoryExercisetemplateidResponses,
+  GetV1ExerciseHistoryExercisetemplateidStatus200,
+  GetV1ExerciseHistoryExercisetemplateidStatus400,
+} from "./GetV1ExerciseHistoryExercisetemplateid";
 export type {
-  GetV1ExerciseTemplates200,
-  GetV1ExerciseTemplates400,
-  GetV1ExerciseTemplatesHeaderParams,
+  GetV1ExerciseTemplatesHeaders,
+  GetV1ExerciseTemplatesOptions,
   GetV1ExerciseTemplatesQuery,
-  GetV1ExerciseTemplatesQueryParams,
-  GetV1ExerciseTemplatesQueryResponse,
-} from "./GetV1ExerciseTemplates.ts";
+  GetV1ExerciseTemplatesResponse,
+  GetV1ExerciseTemplatesResponses,
+  GetV1ExerciseTemplatesStatus200,
+  GetV1ExerciseTemplatesStatus400,
+} from "./GetV1ExerciseTemplates";
 export type {
-  GetV1ExerciseTemplatesExercisetemplateid200,
-  GetV1ExerciseTemplatesExercisetemplateid404,
-  GetV1ExerciseTemplatesExercisetemplateidHeaderParams,
-  GetV1ExerciseTemplatesExercisetemplateidPathParams,
-  GetV1ExerciseTemplatesExercisetemplateidQuery,
-  GetV1ExerciseTemplatesExercisetemplateidQueryResponse,
-} from "./GetV1ExerciseTemplatesExercisetemplateid.ts";
+  GetV1ExerciseTemplatesExercisetemplateidHeaders,
+  GetV1ExerciseTemplatesExercisetemplateidOptions,
+  GetV1ExerciseTemplatesExercisetemplateidPath,
+  GetV1ExerciseTemplatesExercisetemplateidResponse,
+  GetV1ExerciseTemplatesExercisetemplateidResponses,
+  GetV1ExerciseTemplatesExercisetemplateidStatus200,
+  GetV1ExerciseTemplatesExercisetemplateidStatus404,
+} from "./GetV1ExerciseTemplatesExercisetemplateid";
 export type {
-  GetV1RoutineFolders200,
-  GetV1RoutineFolders400,
-  GetV1RoutineFoldersHeaderParams,
+  GetV1RoutineFoldersHeaders,
+  GetV1RoutineFoldersOptions,
   GetV1RoutineFoldersQuery,
-  GetV1RoutineFoldersQueryParams,
-  GetV1RoutineFoldersQueryResponse,
-} from "./GetV1RoutineFolders.ts";
+  GetV1RoutineFoldersResponse,
+  GetV1RoutineFoldersResponses,
+  GetV1RoutineFoldersStatus200,
+  GetV1RoutineFoldersStatus400,
+} from "./GetV1RoutineFolders";
 export type {
-  GetV1RoutineFoldersFolderid200,
-  GetV1RoutineFoldersFolderid404,
-  GetV1RoutineFoldersFolderidHeaderParams,
-  GetV1RoutineFoldersFolderidPathParams,
-  GetV1RoutineFoldersFolderidQuery,
-  GetV1RoutineFoldersFolderidQueryResponse,
-} from "./GetV1RoutineFoldersFolderid.ts";
+  GetV1RoutineFoldersFolderidHeaders,
+  GetV1RoutineFoldersFolderidOptions,
+  GetV1RoutineFoldersFolderidPath,
+  GetV1RoutineFoldersFolderidResponse,
+  GetV1RoutineFoldersFolderidResponses,
+  GetV1RoutineFoldersFolderidStatus200,
+  GetV1RoutineFoldersFolderidStatus404,
+} from "./GetV1RoutineFoldersFolderid";
 export type {
-  GetV1Routines200,
-  GetV1Routines400,
-  GetV1RoutinesHeaderParams,
+  GetV1RoutinesHeaders,
+  GetV1RoutinesOptions,
   GetV1RoutinesQuery,
-  GetV1RoutinesQueryParams,
-  GetV1RoutinesQueryResponse,
-} from "./GetV1Routines.ts";
+  GetV1RoutinesResponse,
+  GetV1RoutinesResponses,
+  GetV1RoutinesStatus200,
+  GetV1RoutinesStatus400,
+} from "./GetV1Routines";
 export type {
-  GetV1RoutinesRoutineid200,
-  GetV1RoutinesRoutineid400,
-  GetV1RoutinesRoutineidHeaderParams,
-  GetV1RoutinesRoutineidPathParams,
-  GetV1RoutinesRoutineidQuery,
-  GetV1RoutinesRoutineidQueryResponse,
-} from "./GetV1RoutinesRoutineid.ts";
+  GetV1RoutinesRoutineidHeaders,
+  GetV1RoutinesRoutineidOptions,
+  GetV1RoutinesRoutineidPath,
+  GetV1RoutinesRoutineidResponse,
+  GetV1RoutinesRoutineidResponses,
+  GetV1RoutinesRoutineidStatus200,
+  GetV1RoutinesRoutineidStatus400,
+} from "./GetV1RoutinesRoutineid";
 export type {
-  GetV1UserInfo200,
-  GetV1UserInfo404,
-  GetV1UserInfoHeaderParams,
-  GetV1UserInfoQuery,
-  GetV1UserInfoQueryResponse,
-} from "./GetV1UserInfo.ts";
+  GetV1UserInfoHeaders,
+  GetV1UserInfoOptions,
+  GetV1UserInfoResponse,
+  GetV1UserInfoResponses,
+  GetV1UserInfoStatus200,
+  GetV1UserInfoStatus404,
+} from "./GetV1UserInfo";
 export type {
-  GetV1Workouts200,
-  GetV1Workouts400,
-  GetV1WorkoutsHeaderParams,
+  GetV1WorkoutsHeaders,
+  GetV1WorkoutsOptions,
   GetV1WorkoutsQuery,
-  GetV1WorkoutsQueryParams,
-  GetV1WorkoutsQueryResponse,
-} from "./GetV1Workouts.ts";
+  GetV1WorkoutsResponse,
+  GetV1WorkoutsResponses,
+  GetV1WorkoutsStatus200,
+  GetV1WorkoutsStatus400,
+} from "./GetV1Workouts";
 export type {
-  GetV1WorkoutsCount200,
-  GetV1WorkoutsCountHeaderParams,
-  GetV1WorkoutsCountQuery,
-  GetV1WorkoutsCountQueryResponse,
-} from "./GetV1WorkoutsCount.ts";
+  GetV1WorkoutsCountHeaders,
+  GetV1WorkoutsCountOptions,
+  GetV1WorkoutsCountResponse,
+  GetV1WorkoutsCountResponses,
+  GetV1WorkoutsCountStatus200,
+} from "./GetV1WorkoutsCount";
 export type {
-  GetV1WorkoutsEvents200,
-  GetV1WorkoutsEvents500,
-  GetV1WorkoutsEventsHeaderParams,
+  GetV1WorkoutsEventsHeaders,
+  GetV1WorkoutsEventsOptions,
   GetV1WorkoutsEventsQuery,
-  GetV1WorkoutsEventsQueryParams,
-  GetV1WorkoutsEventsQueryResponse,
-} from "./GetV1WorkoutsEvents.ts";
+  GetV1WorkoutsEventsResponse,
+  GetV1WorkoutsEventsResponses,
+  GetV1WorkoutsEventsStatus200,
+  GetV1WorkoutsEventsStatus500,
+} from "./GetV1WorkoutsEvents";
 export type {
-  GetV1WorkoutsWorkoutid200,
-  GetV1WorkoutsWorkoutid404,
-  GetV1WorkoutsWorkoutidHeaderParams,
-  GetV1WorkoutsWorkoutidPathParams,
-  GetV1WorkoutsWorkoutidQuery,
-  GetV1WorkoutsWorkoutidQueryResponse,
-} from "./GetV1WorkoutsWorkoutid.ts";
-export type { MuscleGroup, MuscleGroupEnumKey } from "./MuscleGroup.ts";
-export type { PaginatedWorkoutEvents } from "./PaginatedWorkoutEvents.ts";
-export type { PostRoutineFolderRequestBody } from "./PostRoutineFolderRequestBody.ts";
-export type { PostRoutinesRequestBody } from "./PostRoutinesRequestBody.ts";
-export type { PostRoutinesRequestExercise } from "./PostRoutinesRequestExercise.ts";
+  GetV1WorkoutsWorkoutidHeaders,
+  GetV1WorkoutsWorkoutidOptions,
+  GetV1WorkoutsWorkoutidPath,
+  GetV1WorkoutsWorkoutidResponse,
+  GetV1WorkoutsWorkoutidResponses,
+  GetV1WorkoutsWorkoutidStatus200,
+  GetV1WorkoutsWorkoutidStatus404,
+} from "./GetV1WorkoutsWorkoutid";
+export type { MuscleGroupKey } from "./MuscleGroup";
+export type { PaginatedWorkoutEvents } from "./PaginatedWorkoutEvents";
+export type { PostRoutineFolderRequestBody } from "./PostRoutineFolderRequestBody";
+export type { PostRoutinesRequestBody } from "./PostRoutinesRequestBody";
+export type { PostRoutinesRequestExercise } from "./PostRoutinesRequestExercise";
 export type {
   PostRoutinesRequestSet,
   PostRoutinesRequestSetTypeEnumKey,
-} from "./PostRoutinesRequestSet.ts";
+} from "./PostRoutinesRequestSet";
 export type {
-  PostV1BodyMeasurements200,
-  PostV1BodyMeasurements400,
-  PostV1BodyMeasurements409,
-  PostV1BodyMeasurementsHeaderParams,
-  PostV1BodyMeasurementsMutation,
-  PostV1BodyMeasurementsMutationRequest,
-  PostV1BodyMeasurementsMutationResponse,
-} from "./PostV1BodyMeasurements.ts";
+  PostV1BodyMeasurementsBody,
+  PostV1BodyMeasurementsHeaders,
+  PostV1BodyMeasurementsOptions,
+  PostV1BodyMeasurementsResponse,
+  PostV1BodyMeasurementsResponses,
+  PostV1BodyMeasurementsStatus200,
+  PostV1BodyMeasurementsStatus400,
+  PostV1BodyMeasurementsStatus409,
+} from "./PostV1BodyMeasurements";
 export type {
-  PostV1ExerciseTemplates200,
-  PostV1ExerciseTemplates400,
-  PostV1ExerciseTemplates403,
-  PostV1ExerciseTemplatesHeaderParams,
-  PostV1ExerciseTemplatesMutation,
-  PostV1ExerciseTemplatesMutationRequest,
-  PostV1ExerciseTemplatesMutationResponse,
-} from "./PostV1ExerciseTemplates.ts";
+  PostV1ExerciseTemplatesBody,
+  PostV1ExerciseTemplatesHeaders,
+  PostV1ExerciseTemplatesOptions,
+  PostV1ExerciseTemplatesResponse,
+  PostV1ExerciseTemplatesResponses,
+  PostV1ExerciseTemplatesStatus200,
+  PostV1ExerciseTemplatesStatus400,
+  PostV1ExerciseTemplatesStatus403,
+} from "./PostV1ExerciseTemplates";
 export type {
-  PostV1RoutineFolders201,
-  PostV1RoutineFolders400,
-  PostV1RoutineFoldersHeaderParams,
-  PostV1RoutineFoldersMutation,
-  PostV1RoutineFoldersMutationRequest,
-  PostV1RoutineFoldersMutationResponse,
-} from "./PostV1RoutineFolders.ts";
+  PostV1RoutineFoldersBody,
+  PostV1RoutineFoldersHeaders,
+  PostV1RoutineFoldersOptions,
+  PostV1RoutineFoldersResponse,
+  PostV1RoutineFoldersResponses,
+  PostV1RoutineFoldersStatus201,
+  PostV1RoutineFoldersStatus400,
+} from "./PostV1RoutineFolders";
 export type {
-  PostV1Routines201,
-  PostV1Routines400,
-  PostV1Routines403,
-  PostV1RoutinesHeaderParams,
-  PostV1RoutinesMutation,
-  PostV1RoutinesMutationRequest,
-  PostV1RoutinesMutationResponse,
-} from "./PostV1Routines.ts";
+  PostV1RoutinesBody,
+  PostV1RoutinesHeaders,
+  PostV1RoutinesOptions,
+  PostV1RoutinesResponse,
+  PostV1RoutinesResponses,
+  PostV1RoutinesStatus201,
+  PostV1RoutinesStatus400,
+  PostV1RoutinesStatus403,
+} from "./PostV1Routines";
 export type {
-  PostV1Workouts201,
-  PostV1Workouts400,
-  PostV1WorkoutsHeaderParams,
-  PostV1WorkoutsMutation,
-  PostV1WorkoutsMutationRequest,
-  PostV1WorkoutsMutationResponse,
-} from "./PostV1Workouts.ts";
-export type { PostWorkoutsRequestBody } from "./PostWorkoutsRequestBody.ts";
-export type { PostWorkoutsRequestExercise } from "./PostWorkoutsRequestExercise.ts";
+  PostV1WorkoutsBody,
+  PostV1WorkoutsHeaders,
+  PostV1WorkoutsOptions,
+  PostV1WorkoutsResponse,
+  PostV1WorkoutsResponses,
+  PostV1WorkoutsStatus201,
+  PostV1WorkoutsStatus400,
+} from "./PostV1Workouts";
+export type { PostWorkoutsRequestBody } from "./PostWorkoutsRequestBody";
+export type { PostWorkoutsRequestExercise } from "./PostWorkoutsRequestExercise";
 export type {
   PostWorkoutsRequestSet,
   PostWorkoutsRequestSetRpeEnumKey,
   PostWorkoutsRequestSetTypeEnumKey,
-} from "./PostWorkoutsRequestSet.ts";
-export type { PutBodyMeasurement } from "./PutBodyMeasurement.ts";
-export type { PutRoutinesRequestBody } from "./PutRoutinesRequestBody.ts";
-export type { PutRoutinesRequestExercise } from "./PutRoutinesRequestExercise.ts";
+} from "./PostWorkoutsRequestSet";
+export type { PutBodyMeasurement } from "./PutBodyMeasurement";
+export type { PutRoutinesRequestBody } from "./PutRoutinesRequestBody";
+export type { PutRoutinesRequestExercise } from "./PutRoutinesRequestExercise";
 export type {
   PutRoutinesRequestSet,
   PutRoutinesRequestSetTypeEnumKey,
-} from "./PutRoutinesRequestSet.ts";
+} from "./PutRoutinesRequestSet";
 export type {
-  PutV1BodyMeasurementsDate200,
-  PutV1BodyMeasurementsDate400,
-  PutV1BodyMeasurementsDate404,
-  PutV1BodyMeasurementsDateHeaderParams,
-  PutV1BodyMeasurementsDateMutation,
-  PutV1BodyMeasurementsDateMutationRequest,
-  PutV1BodyMeasurementsDateMutationResponse,
-  PutV1BodyMeasurementsDatePathParams,
-} from "./PutV1BodyMeasurementsDate.ts";
+  PutV1BodyMeasurementsDateBody,
+  PutV1BodyMeasurementsDateHeaders,
+  PutV1BodyMeasurementsDateOptions,
+  PutV1BodyMeasurementsDatePath,
+  PutV1BodyMeasurementsDateResponse,
+  PutV1BodyMeasurementsDateResponses,
+  PutV1BodyMeasurementsDateStatus200,
+  PutV1BodyMeasurementsDateStatus400,
+  PutV1BodyMeasurementsDateStatus404,
+} from "./PutV1BodyMeasurementsDate";
 export type {
-  PutV1RoutinesRoutineid200,
-  PutV1RoutinesRoutineid400,
-  PutV1RoutinesRoutineid404,
-  PutV1RoutinesRoutineidHeaderParams,
-  PutV1RoutinesRoutineidMutation,
-  PutV1RoutinesRoutineidMutationRequest,
-  PutV1RoutinesRoutineidMutationResponse,
-  PutV1RoutinesRoutineidPathParams,
-} from "./PutV1RoutinesRoutineid.ts";
+  PutV1RoutinesRoutineidBody,
+  PutV1RoutinesRoutineidHeaders,
+  PutV1RoutinesRoutineidOptions,
+  PutV1RoutinesRoutineidPath,
+  PutV1RoutinesRoutineidResponse,
+  PutV1RoutinesRoutineidResponses,
+  PutV1RoutinesRoutineidStatus200,
+  PutV1RoutinesRoutineidStatus400,
+  PutV1RoutinesRoutineidStatus404,
+} from "./PutV1RoutinesRoutineid";
 export type {
-  PutV1WorkoutsWorkoutid200,
-  PutV1WorkoutsWorkoutid400,
-  PutV1WorkoutsWorkoutidHeaderParams,
-  PutV1WorkoutsWorkoutidMutation,
-  PutV1WorkoutsWorkoutidMutationRequest,
-  PutV1WorkoutsWorkoutidMutationResponse,
-  PutV1WorkoutsWorkoutidPathParams,
-} from "./PutV1WorkoutsWorkoutid.ts";
-export type { Routine } from "./Routine.ts";
-export type { RoutineFolder } from "./RoutineFolder.ts";
-export type { Set } from "./Set.ts";
-export type { UpdatedWorkout } from "./UpdatedWorkout.ts";
-export type { UserInfo } from "./UserInfo.ts";
-export type { UserInfoResponse } from "./UserInfoResponse.ts";
-export type { Workout } from "./Workout.ts";
-export { customExerciseTypeEnum } from "./CustomExerciseType.ts";
-export { equipmentCategoryEnum } from "./EquipmentCategory.ts";
-export { muscleGroupEnum } from "./MuscleGroup.ts";
-export { postRoutinesRequestSetTypeEnum } from "./PostRoutinesRequestSet.ts";
-export { postWorkoutsRequestSetRpeEnum } from "./PostWorkoutsRequestSet.ts";
-export { postWorkoutsRequestSetTypeEnum } from "./PostWorkoutsRequestSet.ts";
-export { putRoutinesRequestSetTypeEnum } from "./PutRoutinesRequestSet.ts";
+  PutV1WorkoutsWorkoutidBody,
+  PutV1WorkoutsWorkoutidHeaders,
+  PutV1WorkoutsWorkoutidOptions,
+  PutV1WorkoutsWorkoutidPath,
+  PutV1WorkoutsWorkoutidResponse,
+  PutV1WorkoutsWorkoutidResponses,
+  PutV1WorkoutsWorkoutidStatus200,
+  PutV1WorkoutsWorkoutidStatus400,
+} from "./PutV1WorkoutsWorkoutid";
+export type { Routine } from "./Routine";
+export type { RoutineFolder } from "./RoutineFolder";
+export type { Set } from "./Set";
+export type { UpdatedWorkout } from "./UpdatedWorkout";
+export type { UserInfo } from "./UserInfo";
+export type { UserInfoResponse } from "./UserInfoResponse";
+export type { Workout } from "./Workout";
+export { customExerciseType } from "./CustomExerciseType";
+export { equipmentCategory } from "./EquipmentCategory";
+export { muscleGroup } from "./MuscleGroup";
+export { postRoutinesRequestSetTypeEnum } from "./PostRoutinesRequestSet";
+export {
+  postWorkoutsRequestSetRpeEnum,
+  postWorkoutsRequestSetTypeEnum,
+} from "./PostWorkoutsRequestSet";
+export { putRoutinesRequestSetTypeEnum } from "./PutRoutinesRequestSet";

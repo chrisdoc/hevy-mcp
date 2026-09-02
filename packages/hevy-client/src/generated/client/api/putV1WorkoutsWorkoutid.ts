@@ -3,53 +3,25 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  PutV1WorkoutsWorkoutidMutationRequest,
-  PutV1WorkoutsWorkoutidMutationResponse,
-  PutV1WorkoutsWorkoutidPathParams,
-  PutV1WorkoutsWorkoutidHeaderParams,
-  PutV1WorkoutsWorkoutid400,
-} from "../types/PutV1WorkoutsWorkoutid.ts";
-
-function getPutV1WorkoutsWorkoutidUrl(
-  workoutId: PutV1WorkoutsWorkoutidPathParams["workoutId"],
-) {
-  const res = { method: "PUT", url: `/v1/workouts/${workoutId}` as const };
-  return res;
-}
+  PutV1WorkoutsWorkoutidOptions,
+  PutV1WorkoutsWorkoutidResponses,
+} from "../types/PutV1WorkoutsWorkoutid";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Update an existing workout
  * {@link /v1/workouts/:workoutId}
  */
-export async function putV1WorkoutsWorkoutid(
-  workoutId: PutV1WorkoutsWorkoutidPathParams["workoutId"],
-  data: PutV1WorkoutsWorkoutidMutationRequest,
-  headers: PutV1WorkoutsWorkoutidHeaderParams,
-  config: Partial<RequestConfig<PutV1WorkoutsWorkoutidMutationRequest>> & {
-    client?: Client;
-  } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function putV1WorkoutsWorkoutid<ThrowOnError extends boolean = true>(
+  options: Options<PutV1WorkoutsWorkoutidOptions, ThrowOnError>,
+): Promise<RequestResult<PutV1WorkoutsWorkoutidResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const requestData = data;
-
-  const res = await request<
-    PutV1WorkoutsWorkoutidMutationResponse,
-    ResponseErrorConfig<PutV1WorkoutsWorkoutid400>,
-    PutV1WorkoutsWorkoutidMutationRequest
-  >({
+  return request({
     method: "PUT",
-    url: getPutV1WorkoutsWorkoutidUrl(workoutId).url.toString(),
-    data: requestData,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+    url: "/v1/workouts/{workoutId}",
+    ...config,
+  }) as Promise<RequestResult<PutV1WorkoutsWorkoutidResponses, ThrowOnError>>;
 }

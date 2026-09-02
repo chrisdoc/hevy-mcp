@@ -3,26 +3,26 @@
  * Do not edit manually.
  */
 
-import type { PostWorkoutsRequestSet } from "./PostWorkoutsRequestSet.ts";
+import type { PostWorkoutsRequestSet } from "./PostWorkoutsRequestSet";
 
 export type PostWorkoutsRequestExercise = {
   /**
    * @description The ID of the exercise template.
+   * @example D04AC939
    * @type string | undefined
    */
   exercise_template_id?: string;
   /**
    * @description The ID of the superset.
-   * @type integer
+   * @example null
+   * @type integer | undefined
    */
   superset_id?: number | null;
   /**
    * @description Additional notes for the exercise.
-   * @type string
+   * @example Felt good today. Form was on point.
+   * @type string | undefined
    */
   notes?: string | null;
-  /**
-   * @type array | undefined
-   */
   sets?: PostWorkoutsRequestSet[];
 };

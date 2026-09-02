@@ -3,11 +3,8 @@
  * Do not edit manually.
  */
 
-import type { UserInfo } from "./UserInfo.ts";
+import type { UserInfo } from "./UserInfo";
 
 export type UserInfoResponse = {
-  /**
-   * @type object | undefined
-   */
   data?: UserInfo;
 };

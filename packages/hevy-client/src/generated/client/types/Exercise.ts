@@ -3,36 +3,38 @@
  * Do not edit manually.
  */
 
-import type { Set } from "./Set.ts";
+import type { Set } from "./Set";
 
 export type Exercise = {
   /**
    * @description Index indicating the order of the exercise in the workout.
+   * @example 0
    * @type number | undefined
    */
   index?: number;
   /**
    * @description Title of the exercise
+   * @example Bench Press (Barbell)
    * @type string | undefined
    */
   title?: string;
   /**
    * @description Notes on the exercise
+   * @example Paid closer attention to form today. Felt great!
    * @type string | undefined
    */
   notes?: string;
   /**
    * @description The id of the exercise template. This can be used to fetch the exercise template.
+   * @example 05293BCA
    * @type string | undefined
    */
   exercise_template_id?: string;
   /**
    * @description The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.
-   * @type number
+   * @example 0
+   * @type number | undefined
    */
   supersets_id?: number | null;
-  /**
-   * @type array | undefined
-   */
   sets?: Set[];
 };

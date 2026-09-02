@@ -3,17 +3,19 @@
  * Do not edit manually.
  */
 
-import type { DeletedWorkout } from "./DeletedWorkout.ts";
-import type { UpdatedWorkout } from "./UpdatedWorkout.ts";
+import type { DeletedWorkout } from "./DeletedWorkout";
+import type { UpdatedWorkout } from "./UpdatedWorkout";
 
 export type PaginatedWorkoutEvents = {
   /**
    * @description The current page number
+   * @example 1
    * @type integer
    */
   page: number;
   /**
    * @description The total number of pages available
+   * @example 5
    * @type integer
    */
   page_count: number;

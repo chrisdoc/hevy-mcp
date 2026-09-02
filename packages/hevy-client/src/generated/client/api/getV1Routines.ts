@@ -3,45 +3,23 @@
  * Do not edit manually.
  */
 
-import fetch from "../../../fetch.ts";
+import type { Options, RequestResult } from "../../.kubb/client";
 import type {
-  Client,
-  RequestConfig,
-  ResponseErrorConfig,
-} from "../../../fetch.ts";
-import type {
-  GetV1RoutinesQueryResponse,
-  GetV1RoutinesQueryParams,
-  GetV1RoutinesHeaderParams,
-  GetV1Routines400,
-} from "../types/GetV1Routines.ts";
-
-function getGetV1RoutinesUrl() {
-  const res = { method: "GET", url: `/v1/routines` as const };
-  return res;
-}
+  GetV1RoutinesOptions,
+  GetV1RoutinesResponses,
+} from "../types/GetV1Routines";
+import { client } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of routines
  * {@link /v1/routines}
  */
-export async function getV1Routines(
-  headers: GetV1RoutinesHeaderParams,
-  params?: GetV1RoutinesQueryParams,
-  config: Partial<RequestConfig> & { client?: Client } = {},
-) {
-  const { client: request = fetch, ...requestConfig } = config;
+export function getV1Routines<ThrowOnError extends boolean = true>(
+  options: Options<GetV1RoutinesOptions, ThrowOnError>,
+): Promise<RequestResult<GetV1RoutinesResponses, ThrowOnError>> {
+  const { client: request = client, ...config } = options;
 
-  const res = await request<
-    GetV1RoutinesQueryResponse,
-    ResponseErrorConfig<GetV1Routines400>,
-    unknown
-  >({
-    method: "GET",
-    url: getGetV1RoutinesUrl().url.toString(),
-    params,
-    ...requestConfig,
-    headers: { ...headers, ...requestConfig.headers },
-  });
-  return res.data;
+  return request({ method: "GET", url: "/v1/routines", ...config }) as Promise<
+    RequestResult<GetV1RoutinesResponses, ThrowOnError>
+  >;
 }

@@ -3,111 +3,144 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const workoutSchema = z.object({
-  id: z.optional(z.string().describe("The workout ID.")),
-  title: z.optional(z.string().describe("The workout title.")),
-  routine_id: z.optional(
-    z.string().describe("The ID of the routine that this workout belongs to."),
-  ),
-  description: z.optional(z.string().describe("The workout description.")),
-  start_time: z.optional(
-    z
-      .string()
-      .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have started.",
-      ),
-  ),
-  end_time: z.optional(
-    z
-      .string()
-      .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have ended.",
-      ),
-  ),
-  updated_at: z.optional(
-    z
-      .string()
-      .describe("ISO 8601 timestamp of when the workout was last updated."),
-  ),
-  created_at: z.optional(
-    z.string().describe("ISO 8601 timestamp of when the workout was created."),
-  ),
-  exercises: z.optional(
-    z.array(
+  id: z
+    .string()
+    .optional()
+    .describe("The workout ID.")
+    .meta({ examples: ["b459cba5-cd6d-463c-abd6-54f8eafcadcb"] }),
+  title: z
+    .string()
+    .optional()
+    .describe("The workout title.")
+    .meta({ examples: ["Morning Workout 💪"] }),
+  routine_id: z
+    .string()
+    .optional()
+    .describe("The ID of the routine that this workout belongs to.")
+    .meta({ examples: ["b459cba5-cd6d-463c-abd6-54f8eafcadcb"] }),
+  description: z
+    .string()
+    .optional()
+    .describe("The workout description.")
+    .meta({ examples: ["Pushed myself to the limit today!"] }),
+  start_time: z
+    .string()
+    .optional()
+    .describe(
+      "ISO 8601 timestamp of when the workout was recorded to have started.",
+    )
+    .meta({ examples: ["2021-09-14T12:00:00Z"] }),
+  end_time: z
+    .string()
+    .optional()
+    .describe(
+      "ISO 8601 timestamp of when the workout was recorded to have ended.",
+    )
+    .meta({ examples: ["2021-09-14T12:00:00Z"] }),
+  updated_at: z
+    .string()
+    .optional()
+    .describe("ISO 8601 timestamp of when the workout was last updated.")
+    .meta({ examples: ["2021-09-14T12:00:00Z"] }),
+  created_at: z
+    .string()
+    .optional()
+    .describe("ISO 8601 timestamp of when the workout was created.")
+    .meta({ examples: ["2021-09-14T12:00:00Z"] }),
+  exercises: z
+    .array(
       z.object({
-        index: z.optional(
-          z
-            .number()
-            .describe(
-              "Index indicating the order of the exercise in the workout.",
-            ),
-        ),
-        title: z.optional(z.string().describe("Title of the exercise")),
-        notes: z.optional(z.string().describe("Notes on the exercise")),
-        exercise_template_id: z.optional(
-          z
-            .string()
-            .describe(
-              "The id of the exercise template. This can be used to fetch the exercise template.",
-            ),
-        ),
-        supersets_id: z
+        index: z.coerce
           .number()
+          .optional()
+          .describe(
+            "Index indicating the order of the exercise in the workout.",
+          )
+          .meta({ examples: [0] }),
+        title: z
+          .string()
+          .optional()
+          .describe("Title of the exercise")
+          .meta({ examples: ["Bench Press (Barbell)"] }),
+        notes: z
+          .string()
+          .optional()
+          .describe("Notes on the exercise")
+          .meta({
+            examples: ["Paid closer attention to form today. Felt great!"],
+          }),
+        exercise_template_id: z
+          .string()
+          .optional()
+          .describe(
+            "The id of the exercise template. This can be used to fetch the exercise template.",
+          )
+          .meta({ examples: ["05293BCA"] }),
+        supersets_id: z.coerce
+          .number()
+          .nullish()
           .describe(
             "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
           )
-          .nullish(),
-        sets: z.optional(
-          z.array(
+          .meta({ examples: [0] }),
+        sets: z
+          .array(
             z.object({
-              index: z.optional(
-                z
-                  .number()
-                  .describe(
-                    "Index indicating the order of the set in the workout.",
-                  ),
-              ),
-              type: z.optional(
-                z
-                  .string()
-                  .describe(
-                    "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
-                  ),
-              ),
-              weight_kg: z
+              index: z.coerce
                 .number()
+                .optional()
+                .describe(
+                  "Index indicating the order of the set in the workout.",
+                )
+                .meta({ examples: [0] }),
+              type: z
+                .string()
+                .optional()
+                .describe(
+                  "The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'",
+                )
+                .meta({ examples: ["normal"] }),
+              weight_kg: z.coerce
+                .number()
+                .nullish()
                 .describe("Weight lifted in kilograms.")
-                .nullish(),
-              reps: z
+                .meta({ examples: [100] }),
+              reps: z.coerce
                 .number()
+                .nullish()
                 .describe("Number of reps logged for the set")
-                .nullish(),
-              distance_meters: z
+                .meta({ examples: [10] }),
+              distance_meters: z.coerce
                 .number()
+                .nullish()
                 .describe("Number of meters logged for the set")
-                .nullish(),
-              duration_seconds: z
+                .meta({ examples: [] }),
+              duration_seconds: z.coerce
                 .number()
+                .nullish()
                 .describe("Number of seconds logged for the set")
-                .nullish(),
-              rpe: z
+                .meta({ examples: [] }),
+              rpe: z.coerce
                 .number()
+                .nullish()
                 .describe(
                   "RPE (Relative perceived exertion) value logged for the set",
                 )
-                .nullish(),
-              custom_metric: z
+                .meta({ examples: [9.5] }),
+              custom_metric: z.coerce
                 .number()
+                .nullish()
                 .describe(
                   "Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)",
                 )
-                .nullish(),
+                .meta({ examples: [50] }),
             }),
-          ),
-        ),
+          )
+          .optional(),
       }),
-    ),
-  ),
+    )
+    .optional(),
 });

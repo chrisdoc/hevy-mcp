@@ -3,11 +3,9 @@
  * Do not edit manually.
  */
 
-import { userInfoSchema } from "./userInfoSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { userInfoSchema } from "./userInfoSchema";
 
 export const userInfoResponseSchema = z.object({
-  get data() {
-    return userInfoSchema.optional();
-  },
+  data: userInfoSchema.optional(),
 });

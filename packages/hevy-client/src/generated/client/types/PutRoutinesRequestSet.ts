@@ -16,47 +16,55 @@ export type PutRoutinesRequestSetTypeEnumKey =
 export type PutRoutinesRequestSet = {
   /**
    * @description The type of the set.
+   * @example normal
    * @type string | undefined
    */
   type?: PutRoutinesRequestSetTypeEnumKey;
   /**
    * @description The weight in kilograms.
-   * @type number
+   * @example 100
+   * @type number | undefined
    */
   weight_kg?: number | null;
   /**
    * @description The number of repetitions.
-   * @type integer
+   * @example 10
+   * @type integer | undefined
    */
   reps?: number | null;
   /**
    * @description The distance in meters.
-   * @type integer
+   * @example null
+   * @type integer | undefined
    */
   distance_meters?: number | null;
   /**
    * @description The duration in seconds.
-   * @type integer
+   * @example null
+   * @type integer | undefined
    */
   duration_seconds?: number | null;
   /**
    * @description A custom metric for the set. Currently used for steps and floors.
-   * @type number
+   * @example null
+   * @type number | undefined
    */
   custom_metric?: number | null;
   /**
    * @description Range of reps for the set, if applicable
-   * @type object
+   * @type object | undefined
    */
   rep_range?: {
     /**
      * @description Starting rep count for the range
-     * @type number
+     * @example 8
+     * @type number | undefined
      */
     start?: number | null;
     /**
      * @description Ending rep count for the range
-     * @type number
+     * @example 12
+     * @type number | undefined
      */
     end?: number | null;
   } | null;

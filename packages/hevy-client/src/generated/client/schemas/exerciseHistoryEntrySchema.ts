@@ -3,35 +3,74 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const exerciseHistoryEntrySchema = z.object({
-  workout_id: z.optional(z.string().describe("The workout ID")),
-  workout_title: z.optional(z.string().describe("The workout title")),
-  workout_start_time: z.optional(
-    z
-      .string()
-      .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have started.",
-      ),
-  ),
-  workout_end_time: z.optional(
-    z
-      .string()
-      .describe(
-        "ISO 8601 timestamp of when the workout was recorded to have ended.",
-      ),
-  ),
-  exercise_template_id: z.optional(
-    z.string().describe("The exercise template ID"),
-  ),
-  weight_kg: z.number().describe("The weight in kilograms").nullish(),
-  reps: z.int().describe("The number of repetitions").nullish(),
-  distance_meters: z.int().describe("The distance in meters").nullish(),
-  duration_seconds: z.int().describe("The duration in seconds").nullish(),
-  rpe: z.number().describe("The Rating of Perceived Exertion").nullish(),
-  custom_metric: z.number().describe("A custom metric for the set").nullish(),
-  set_type: z.optional(
-    z.string().describe("The type of set (warmup, normal, failure, dropset)"),
-  ),
+  workout_id: z
+    .string()
+    .optional()
+    .describe("The workout ID")
+    .meta({ examples: ["b459cba5-cd6d-463c-abd6-54f8eafcadcb"] }),
+  workout_title: z
+    .string()
+    .optional()
+    .describe("The workout title")
+    .meta({ examples: ["Morning Workout 💪"] }),
+  workout_start_time: z
+    .string()
+    .optional()
+    .describe(
+      "ISO 8601 timestamp of when the workout was recorded to have started.",
+    )
+    .meta({ examples: ["2024-01-01T12:00:00Z"] }),
+  workout_end_time: z
+    .string()
+    .optional()
+    .describe(
+      "ISO 8601 timestamp of when the workout was recorded to have ended.",
+    )
+    .meta({ examples: ["2024-01-01T13:00:00Z"] }),
+  exercise_template_id: z
+    .string()
+    .optional()
+    .describe("The exercise template ID")
+    .meta({ examples: ["D04AC939"] }),
+  weight_kg: z.coerce
+    .number()
+    .nullish()
+    .describe("The weight in kilograms")
+    .meta({ examples: [100] }),
+  reps: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The number of repetitions")
+    .meta({ examples: [10] }),
+  distance_meters: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The distance in meters")
+    .meta({ examples: [] }),
+  duration_seconds: z.coerce
+    .number()
+    .int()
+    .nullish()
+    .describe("The duration in seconds")
+    .meta({ examples: [] }),
+  rpe: z.coerce
+    .number()
+    .nullish()
+    .describe("The Rating of Perceived Exertion")
+    .meta({ examples: [8.5] }),
+  custom_metric: z.coerce
+    .number()
+    .nullish()
+    .describe("A custom metric for the set")
+    .meta({ examples: [] }),
+  set_type: z
+    .string()
+    .optional()
+    .describe("The type of set (warmup, normal, failure, dropset)")
+    .meta({ examples: ["normal"] }),
 });

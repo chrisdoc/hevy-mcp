@@ -6,42 +6,50 @@
 export type Set = {
   /**
    * @description Index indicating the order of the set in the workout.
+   * @example 0
    * @type number | undefined
    */
   index?: number;
   /**
    * @description The type of set. This can be one of \'normal\', \'warmup\', \'dropset\', \'failure\'
+   * @example normal
    * @type string | undefined
    */
   type?: string;
   /**
    * @description Weight lifted in kilograms.
-   * @type number
+   * @example 100
+   * @type number | undefined
    */
   weight_kg?: number | null;
   /**
    * @description Number of reps logged for the set
-   * @type number
+   * @example 10
+   * @type number | undefined
    */
   reps?: number | null;
   /**
    * @description Number of meters logged for the set
-   * @type number
+   * @example null
+   * @type number | undefined
    */
   distance_meters?: number | null;
   /**
    * @description Number of seconds logged for the set
-   * @type number
+   * @example null
+   * @type number | undefined
    */
   duration_seconds?: number | null;
   /**
    * @description RPE (Relative perceived exertion) value logged for the set
-   * @type number
+   * @example 9.5
+   * @type number | undefined
    */
   rpe?: number | null;
   /**
    * @description Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)
-   * @type number
+   * @example 50
+   * @type number | undefined
    */
   custom_metric?: number | null;
 };

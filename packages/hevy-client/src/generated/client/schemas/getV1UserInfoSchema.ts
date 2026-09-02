@@ -3,23 +3,15 @@
  * Do not edit manually.
  */
 
-import { userInfoResponseSchema } from "./userInfoResponseSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { userInfoResponseSchema } from "./userInfoResponseSchema";
 
-export const getV1UserInfoHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1UserInfoHeaderApiKeySchema = z.uuid();
 
-/**
- * @description The authenticated user\'s info
- */
-export const getV1UserInfo200Schema = z.lazy(() => userInfoResponseSchema);
+export const getV1UserInfoStatus200Schema = userInfoResponseSchema;
 
-/**
- * @description User not found
- */
-export const getV1UserInfo404Schema = z.any();
+export const getV1UserInfoStatus404Schema = z.unknown();
 
-export const getV1UserInfoQueryResponseSchema = z.lazy(
-  () => getV1UserInfo200Schema,
-);
+export const getV1UserInfoResponseSchema = getV1UserInfoStatus200Schema;
+
+export const getV1UserInfoErrorSchema = getV1UserInfoStatus404Schema;

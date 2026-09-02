@@ -3,8 +3,11 @@ export type RequestConfig<TData = unknown> = {
 	baseURL?: string;
 	url?: string;
 	method?: "GET" | "PUT" | "PATCH" | "POST" | "DELETE" | "OPTIONS" | "HEAD";
+	path?: unknown;
 	params?: unknown;
+	query?: unknown;
 	data?: TData | FormData;
+	body?: TData | FormData;
 	responseType?:
 		| "arraybuffer"
 		| "blob"
@@ -64,24 +67,37 @@ export const fetch = async <TData, _TError = unknown, TVariables = unknown>(
 ): Promise<ResponseConfig<TData>> => {
 	const normalizedParams = new URLSearchParams();
 	const requestConfig = mergeConfig(getConfig(), paramsConfig);
+	const query = requestConfig.query ?? requestConfig.params;
+	const bodyPayload = requestConfig.body ?? requestConfig.data;
+	const pathParams = requestConfig.path;
 
-	Object.entries(requestConfig.params || {}).forEach(([key, value]) => {
+	Object.entries(query || {}).forEach(([key, value]) => {
 		if (value !== undefined) {
 			normalizedParams.append(key, value === null ? "null" : value.toString());
 		}
 	});
 
-	let targetUrl = [requestConfig.baseURL, requestConfig.url]
+	let resolvedPath = requestConfig.url ?? "";
+	Object.entries(pathParams || {}).forEach(([key, value]) => {
+		if (value !== undefined) {
+			resolvedPath = resolvedPath.replaceAll(
+				`{${key}}`,
+				encodeURIComponent(value === null ? "null" : value.toString()),
+			);
+		}
+	});
+
+	let targetUrl = [requestConfig.baseURL, resolvedPath]
 		.filter(Boolean)
 		.join("");
-	if (requestConfig.params) targetUrl += `?${normalizedParams}`;
+	if (query) targetUrl += `?${normalizedParams}`;
 
 	const response = await globalThis.fetch(targetUrl, {
 		method: requestConfig.method?.toUpperCase(),
 		body:
-			requestConfig.data instanceof FormData
-				? requestConfig.data
-				: JSON.stringify(requestConfig.data),
+			bodyPayload instanceof FormData
+				? bodyPayload
+				: JSON.stringify(bodyPayload),
 		signal: requestConfig.signal,
 		headers: requestConfig.headers,
 	});

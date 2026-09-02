@@ -3,57 +3,57 @@
  * Do not edit manually.
  */
 
-import type { PutBodyMeasurement } from "./PutBodyMeasurement.ts";
+import type { PutBodyMeasurement } from "./PutBodyMeasurement";
 
-export type PutV1BodyMeasurementsDatePathParams = {
+export type PutV1BodyMeasurementsDatePath = {
   /**
    * @description The date of the measurement to update (YYYY-MM-DD)
-   * @type string, date
+   *
+   * Format: `date`
+   * @example 2024-01-15
+   * @type string
    */
   date: string;
 };
 
-export type PutV1BodyMeasurementsDateHeaderParams = {
+export type PutV1BodyMeasurementsDateHeaders = {
   /**
-   * @type string, uuid
+   * @description
+   * Format: `uuid`
+   * @type string
    */
   "api-key": string;
 };
 
-/**
- * @description The measurement was successfully updated
- */
-export type PutV1BodyMeasurementsDate200 = any;
+export type PutV1BodyMeasurementsDateStatus200 = unknown;
 
-/**
- * @description Invalid request body
- */
-export type PutV1BodyMeasurementsDate400 = {
-  /**
-   * @type string | undefined
-   */
+export type PutV1BodyMeasurementsDateStatus400 = {
   error?: string;
 };
 
-/**
- * @description No measurement found for the given date
- */
-export type PutV1BodyMeasurementsDate404 = {
-  /**
-   * @type string | undefined
-   */
+export type PutV1BodyMeasurementsDateStatus404 = {
   error?: string;
 };
 
-export type PutV1BodyMeasurementsDateMutationRequest = PutBodyMeasurement;
+export type PutV1BodyMeasurementsDateBody = PutBodyMeasurement;
 
-export type PutV1BodyMeasurementsDateMutationResponse =
-  PutV1BodyMeasurementsDate200;
-
-export type PutV1BodyMeasurementsDateMutation = {
-  Response: PutV1BodyMeasurementsDate200;
-  Request: PutV1BodyMeasurementsDateMutationRequest;
-  PathParams: PutV1BodyMeasurementsDatePathParams;
-  HeaderParams: PutV1BodyMeasurementsDateHeaderParams;
-  Errors: PutV1BodyMeasurementsDate400 | PutV1BodyMeasurementsDate404;
+export type PutV1BodyMeasurementsDateOptions = {
+  body: PutV1BodyMeasurementsDateBody;
+  path: PutV1BodyMeasurementsDatePath;
+  query?: never;
+  headers: PutV1BodyMeasurementsDateHeaders;
 };
+
+export type PutV1BodyMeasurementsDateResponses = {
+  "200": PutV1BodyMeasurementsDateStatus200;
+  "400": PutV1BodyMeasurementsDateStatus400;
+  "404": PutV1BodyMeasurementsDateStatus404;
+};
+
+/**
+ * @description Union of all possible responses
+ */
+export type PutV1BodyMeasurementsDateResponse =
+  | PutV1BodyMeasurementsDateStatus200
+  | PutV1BodyMeasurementsDateStatus400
+  | PutV1BodyMeasurementsDateStatus404;

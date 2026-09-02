@@ -3,16 +3,24 @@
  * Do not edit manually.
  */
 
-import { deletedWorkoutSchema } from "./deletedWorkoutSchema.ts";
-import { updatedWorkoutSchema } from "./updatedWorkoutSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { deletedWorkoutSchema } from "./deletedWorkoutSchema";
+import { updatedWorkoutSchema } from "./updatedWorkoutSchema";
 
 export const paginatedWorkoutEventsSchema = z.object({
-  page: z.int().describe("The current page number"),
-  page_count: z.int().describe("The total number of pages available"),
-  get events() {
-    return z
-      .array(z.union([updatedWorkoutSchema, deletedWorkoutSchema]))
-      .describe("An array of workout events (either updated or deleted)");
-  },
+  page: z.coerce
+    .number()
+    .int()
+    .describe("The current page number")
+    .meta({ examples: [1] }),
+  page_count: z.coerce
+    .number()
+    .int()
+    .describe("The total number of pages available")
+    .meta({ examples: [5] }),
+  events: z
+    .array(
+      z.union([updatedWorkoutSchema.strict(), deletedWorkoutSchema.strict()]),
+    )
+    .describe("An array of workout events (either updated or deleted)"),
 });

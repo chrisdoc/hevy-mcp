@@ -3,39 +3,36 @@
  * Do not edit manually.
  */
 
-import { paginatedWorkoutEventsSchema } from "./paginatedWorkoutEventsSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { paginatedWorkoutEventsSchema } from "./paginatedWorkoutEventsSchema";
 
-export const getV1WorkoutsEventsQueryParamsSchema = z.object({
-  page: z.coerce
-    .number()
-    .int()
-    .default(1)
-    .describe("Page number (Must be 1 or greater)"),
-  pageSize: z.coerce
-    .number()
-    .int()
-    .default(5)
-    .describe("Number of items on the requested page (Max 10)"),
-  since: z.string().default("1970-01-01T00:00:00Z"),
-});
+export const getV1WorkoutsEventsHeaderApiKeySchema = z.uuid();
 
-export const getV1WorkoutsEventsHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const getV1WorkoutsEventsQueryPageSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(1)
+  .describe("Page number (Must be 1 or greater)");
 
-/**
- * @description A paginated list of workout events
- */
-export const getV1WorkoutsEvents200Schema = z.lazy(
-  () => paginatedWorkoutEventsSchema,
-);
+export const getV1WorkoutsEventsQueryPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .optional()
+  .default(5)
+  .describe("Number of items on the requested page (Max 10)");
 
-/**
- * @description Internal Server Error
- */
-export const getV1WorkoutsEvents500Schema = z.any();
+export const getV1WorkoutsEventsQuerySinceSchema = z
+  .string()
+  .optional()
+  .default("1970-01-01T00:00:00Z");
 
-export const getV1WorkoutsEventsQueryResponseSchema = z.lazy(
-  () => getV1WorkoutsEvents200Schema,
-);
+export const getV1WorkoutsEventsStatus200Schema = paginatedWorkoutEventsSchema;
+
+export const getV1WorkoutsEventsStatus500Schema = z.unknown();
+
+export const getV1WorkoutsEventsResponseSchema =
+  getV1WorkoutsEventsStatus200Schema;
+
+export const getV1WorkoutsEventsErrorSchema =
+  getV1WorkoutsEventsStatus500Schema;

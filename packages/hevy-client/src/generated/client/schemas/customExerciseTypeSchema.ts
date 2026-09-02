@@ -3,15 +3,17 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
-export const customExerciseTypeSchema = z.enum([
-  "weight_reps",
-  "reps_only",
-  "bodyweight_reps",
-  "bodyweight_assisted_reps",
-  "duration",
-  "weight_duration",
-  "distance_duration",
-  "short_distance_weight",
-]);
+export const customExerciseTypeSchema = z
+  .enum([
+    "weight_reps",
+    "reps_only",
+    "bodyweight_reps",
+    "bodyweight_assisted_reps",
+    "duration",
+    "weight_duration",
+    "distance_duration",
+    "short_distance_weight",
+  ])
+  .meta({ examples: ["weight_reps"] });

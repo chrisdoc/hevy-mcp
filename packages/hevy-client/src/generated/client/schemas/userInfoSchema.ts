@@ -3,10 +3,22 @@
  * Do not edit manually.
  */
 
-import { z } from "zod/v4";
+import * as z from "zod";
 
 export const userInfoSchema = z.object({
-  id: z.optional(z.string().describe("The user ID.")),
-  name: z.optional(z.string().describe("The user's display name.")),
-  url: z.optional(z.string().describe("The user's public profile URL.")),
+  id: z
+    .string()
+    .optional()
+    .describe("The user ID.")
+    .meta({ examples: ["9c465af3-de7d-42bc-9c7c-f0170396358b"] }),
+  name: z
+    .string()
+    .optional()
+    .describe("The user's display name.")
+    .meta({ examples: ["John doe"] }),
+  url: z
+    .string()
+    .optional()
+    .describe("The user's public profile URL.")
+    .meta({ examples: ["https://hevy.com/user/jhon"] }),
 });

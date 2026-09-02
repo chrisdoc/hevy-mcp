@@ -3,34 +3,26 @@
  * Do not edit manually.
  */
 
-import { postWorkoutsRequestBodySchema } from "./postWorkoutsRequestBodySchema.ts";
-import { workoutSchema } from "./workoutSchema.ts";
-import { z } from "zod/v4";
+import * as z from "zod";
+import { postWorkoutsRequestBodySchema } from "./postWorkoutsRequestBodySchema";
+import { workoutSchema } from "./workoutSchema";
 
-export const putV1WorkoutsWorkoutidPathParamsSchema = z.object({
-  workoutId: z.string().describe("The id of the workout"),
+export const putV1WorkoutsWorkoutidHeaderApiKeySchema = z.uuid();
+
+export const putV1WorkoutsWorkoutidPathWorkoutIdSchema = z
+  .string()
+  .describe("The id of the workout");
+
+export const putV1WorkoutsWorkoutidStatus200Schema = workoutSchema;
+
+export const putV1WorkoutsWorkoutidStatus400Schema = z.object({
+  error: z.string().optional().describe("Error message"),
 });
 
-export const putV1WorkoutsWorkoutidHeaderParamsSchema = z.object({
-  "api-key": z.uuid(),
-});
+export const putV1WorkoutsWorkoutidResponseSchema =
+  putV1WorkoutsWorkoutidStatus200Schema;
 
-/**
- * @description The workout was successfully updated
- */
-export const putV1WorkoutsWorkoutid200Schema = z.lazy(() => workoutSchema);
+export const putV1WorkoutsWorkoutidErrorSchema =
+  putV1WorkoutsWorkoutidStatus400Schema;
 
-/**
- * @description Invalid request body
- */
-export const putV1WorkoutsWorkoutid400Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
-});
-
-export const putV1WorkoutsWorkoutidMutationRequestSchema = z.lazy(
-  () => postWorkoutsRequestBodySchema,
-);
-
-export const putV1WorkoutsWorkoutidMutationResponseSchema = z.lazy(
-  () => putV1WorkoutsWorkoutid200Schema,
-);
+export const putV1WorkoutsWorkoutidBodySchema = postWorkoutsRequestBodySchema;
