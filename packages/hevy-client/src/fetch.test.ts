@@ -40,7 +40,7 @@ describe("setConfig and getConfig", () => {
 		expect(getConfig()).toEqual({ baseURL: "https://staging.hevyapp.com" });
 	});
 
-	it("merges a later setConfig over the earlier one", () => {
+	it("replaces the stored config on a later setConfig", () => {
 		setConfig({ baseURL: "https://staging.hevyapp.com" });
 		setConfig({ headers: { "x-trace": "second" } });
 
