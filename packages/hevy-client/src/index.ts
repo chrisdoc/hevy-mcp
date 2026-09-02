@@ -71,3 +71,7 @@ export {
 	RateLimitError,
 	ValidationError,
 } from "./effect-errors.js";
+export {
+	createRetrySchedule,
+	type RetryScheduleInput,
+} from "./retry-schedule.js";
