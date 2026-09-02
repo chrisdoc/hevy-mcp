@@ -608,13 +608,13 @@ type RequestAttemptOutcome<TData> =
 	| {
 			readonly ok: true;
 			readonly result: ResponseConfig<TData>;
-		}
+	  }
 	| {
 			readonly ok: false;
 			readonly cause: unknown;
 			readonly phase: HevyRequestPhase;
 			readonly responseConfirmed: boolean;
-		};
+	  };
 
 /** Execute one dispatch/response attempt and retain its safe phase state. */
 async function executeRequestAttempt<TData>(
