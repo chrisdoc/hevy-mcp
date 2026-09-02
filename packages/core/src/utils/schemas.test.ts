@@ -63,4 +63,35 @@ describe("shared tool schemas", () => {
 			utcSecondTimestamp.safeParse("2026-07-16T12:00:00+00:00").success,
 		).toBe(false);
 	});
+
+	it("reports exactly one issue for invalid UTC timestamps", () => {
+		const missingSeconds = utcSecondTimestamp.safeParse("2026-07-16T12:00Z");
+		expect(missingSeconds.success).toBe(false);
+		if (!missingSeconds.success) {
+			expect(missingSeconds.error.issues).toHaveLength(1);
+			expect(missingSeconds.error.issues[0]?.code).toBe("invalid_format");
+			expect(missingSeconds.error.issues[0]?.message).toBe(
+				"Must use the UTC format YYYY-MM-DDTHH:mm:ssZ",
+			);
+		}
+
+		const offsetInsteadOfZ = utcSecondTimestamp.safeParse(
+			"2026-07-16T12:00:00+05:30",
+		);
+		expect(offsetInsteadOfZ.success).toBe(false);
+		if (!offsetInsteadOfZ.success) {
+			expect(offsetInsteadOfZ.error.issues).toHaveLength(1);
+		}
+
+		const wellFormedButInvalidCalendarDate = utcSecondTimestamp.safeParse(
+			"2026-02-29T12:00:00Z",
+		);
+		expect(wellFormedButInvalidCalendarDate.success).toBe(false);
+		if (!wellFormedButInvalidCalendarDate.success) {
+			expect(wellFormedButInvalidCalendarDate.error.issues).toHaveLength(1);
+			expect(wellFormedButInvalidCalendarDate.error.issues[0]?.message).toBe(
+				"Must use the UTC format YYYY-MM-DDTHH:mm:ssZ",
+			);
+		}
+	});
 });
