@@ -608,13 +608,13 @@ type RequestAttemptOutcome<TData> =
 	| {
 			readonly ok: true;
 			readonly result: ResponseConfig<TData>;
-	  }
+		}
 	| {
 			readonly ok: false;
 			readonly cause: unknown;
 			readonly phase: HevyRequestPhase;
 			readonly responseConfirmed: boolean;
-	  };
+		};
 
 /** Execute one dispatch/response attempt and retain its safe phase state. */
 async function executeRequestAttempt<TData>(
@@ -1333,7 +1333,9 @@ export function createNativeClient(
 						}),
 						Effect.ensuring(Effect.sync(finishWait)),
 					);
-					yield* startRequestObservationEffect(observationScope, wait);
+					yield* startRequestObservationEffect(observationScope, wait).pipe(
+						Effect.ensuring(Effect.sync(finishWait)),
+					);
 				}
 			}
 		}).pipe(Effect.ensuring(Effect.sync(() => executionSignal.cleanup())));
