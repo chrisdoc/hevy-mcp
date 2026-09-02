@@ -5,10 +5,9 @@ import type {
 } from "@hevy-mcp/hevy-client";
 import type { GetV1Workouts200, Workout } from "@hevy-mcp/hevy-client/types";
 import {
-	canonicalEndpointIdentity,
-	expectedGet404Outcome,
-	isHevyHttpError,
-} from "@hevy-mcp/hevy-client";
+	isExpectedReadEndOfList,
+	isExpectedReadNotFound,
+} from "./operation-errors.js";
 
 export interface WorkoutsListInput {
 	readonly page: number;
@@ -71,27 +70,6 @@ export interface WorkoutsListOperation {
 	): Promise<WorkoutsListOutput>;
 }
 
-type ErrorInput = Error | string;
-
-function isExpectedWorkoutNotFound(error: ErrorInput): boolean {
-	return (
-		isHevyHttpError(error) &&
-		canonicalEndpointIdentity(error.endpoint) === "/v1/workouts/:workoutId" &&
-		expectedGet404Outcome(error.endpoint, error.method, error.status) ===
-			"not_found"
-	);
-}
-
-function isExpectedEndOfList(error: ErrorInput, page: number): boolean {
-	return (
-		page > 1 &&
-		isHevyHttpError(error) &&
-		canonicalEndpointIdentity(error.endpoint) === "/v1/workouts" &&
-		expectedGet404Outcome(error.endpoint, error.method, error.status, page) ===
-			"end_of_list"
-	);
-}
-
 function normalizeWorkoutsPage(
 	response: GetV1Workouts200,
 	input: WorkoutsListInput,
@@ -121,11 +99,8 @@ export function createWorkoutsGetOperation(
 						: await adapter.getWorkout(input.workoutId, options);
 				return { workout: response ?? null };
 			} catch (error) {
-				if (
-					isExpectedWorkoutNotFound(
-						error instanceof Error ? error : String(error),
-					)
-				) {
+				const operationError = error instanceof Error ? error : String(error);
+				if (isExpectedReadNotFound(operationError, "/v1/workouts")) {
 					return {
 						workout: null,
 						expected404Outcome: "not_found",
@@ -151,11 +126,9 @@ export function createWorkoutsListOperation(
 						: await adapter.getWorkouts(params, options);
 				return normalizeWorkoutsPage(response, input);
 			} catch (error) {
+				const operationError = error instanceof Error ? error : String(error);
 				if (
-					isExpectedEndOfList(
-						error instanceof Error ? error : String(error),
-						input.page,
-					)
+					isExpectedReadEndOfList(operationError, "/v1/workouts", input.page)
 				) {
 					return {
 						items: [],

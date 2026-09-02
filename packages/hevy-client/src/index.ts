@@ -64,3 +64,10 @@ export {
 	type HevyExecutionMetadata,
 	type HevyHttpErrorOptions,
 } from "./hevy-http-error.js";
+export {
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	ValidationError,
+} from "./effect-errors.js";

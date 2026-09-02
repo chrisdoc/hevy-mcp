@@ -5,10 +5,9 @@ import type {
 } from "@hevy-mcp/hevy-client";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
 import {
-	canonicalEndpointIdentity,
-	expectedGet404Outcome,
-	isHevyHttpError,
-} from "@hevy-mcp/hevy-client";
+	isExpectedReadEndOfList,
+	isExpectedReadNotFound,
+} from "./operation-errors.js";
 
 export interface RoutinesListInput {
 	readonly page: number;
@@ -71,18 +70,6 @@ export interface RoutinesListOperation {
 	): Promise<RoutinesListOutput>;
 }
 
-type ErrorInput = Error | string;
-
-function isExpectedEndOfList(error: ErrorInput, page: number): boolean {
-	return (
-		page > 1 &&
-		isHevyHttpError(error) &&
-		canonicalEndpointIdentity(error.endpoint) === "/v1/routines" &&
-		expectedGet404Outcome(error.endpoint, error.method, error.status, page) ===
-			"end_of_list"
-	);
-}
-
 function normalizeRoutinesPage(
 	response: GetV1Routines200,
 	input: RoutinesListInput,
@@ -99,15 +86,6 @@ function normalizeRoutinesPage(
 	};
 }
 
-function isExpectedRoutineNotFound(error: ErrorInput): boolean {
-	return (
-		isHevyHttpError(error) &&
-		canonicalEndpointIdentity(error.endpoint) === "/v1/routines/:routineId" &&
-		expectedGet404Outcome(error.endpoint, error.method, error.status) ===
-			"not_found"
-	);
-}
-
 export function createRoutinesGetOperation(
 	adapter: RoutinesGetAdapter,
 ): RoutinesGetOperation {
@@ -121,11 +99,8 @@ export function createRoutinesGetOperation(
 						: await adapter.getRoutineById(input.routineId, options);
 				return { routine: response.routine ?? null };
 			} catch (error) {
-				if (
-					isExpectedRoutineNotFound(
-						error instanceof Error ? error : String(error),
-					)
-				) {
+				const operationError = error instanceof Error ? error : String(error);
+				if (isExpectedReadNotFound(operationError, "/v1/routines")) {
 					return {
 						routine: null,
 						expected404Outcome: "not_found",
@@ -151,11 +126,9 @@ export function createRoutinesListOperation(
 						: await adapter.getRoutines(params, options);
 				return normalizeRoutinesPage(response, input);
 			} catch (error) {
+				const operationError = error instanceof Error ? error : String(error);
 				if (
-					isExpectedEndOfList(
-						error instanceof Error ? error : String(error),
-						input.page,
-					)
+					isExpectedReadEndOfList(operationError, "/v1/routines", input.page)
 				) {
 					return {
 						items: [],
