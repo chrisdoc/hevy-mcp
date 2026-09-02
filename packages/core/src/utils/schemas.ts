@@ -111,13 +111,19 @@ const equipmentCategoryValues = [
 ] as const;
 export const equipmentCategoryEnum = z.enum(equipmentCategoryValues);
 const UTC_TIMESTAMP_MESSAGE = "Must use the UTC format YYYY-MM-DDTHH:mm:ssZ";
-export const utcSecondTimestamp = z
-	.string()
-	.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, UTC_TIMESTAMP_MESSAGE)
-	.refine((value) => {
-		const parsed = new Date(value);
-		return (
-			!Number.isNaN(parsed.getTime()) &&
-			parsed.toISOString().replace(".000Z", "Z") === value
-		);
-	}, UTC_TIMESTAMP_MESSAGE);
+const UTC_TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+export const utcSecondTimestamp = z.string().superRefine((value, ctx) => {
+	if (!UTC_TIMESTAMP_REGEX.test(value)) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, message: UTC_TIMESTAMP_MESSAGE });
+		return;
+	}
+
+	const parsed = new Date(value);
+	const isValid =
+		!Number.isNaN(parsed.getTime()) &&
+		parsed.toISOString().replace(".000Z", "Z") === value;
+
+	if (!isValid) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, message: UTC_TIMESTAMP_MESSAGE });
+	}
+});
