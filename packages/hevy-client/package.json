@@ -15,6 +15,10 @@
 		"./schemas": {
 			"types": "./src/schemas.ts",
 			"import": "./src/schemas.ts"
+		},
+		"./internal": {
+			"types": "./src/internal.ts",
+			"import": "./src/internal.ts"
 		}
 	},
 	"scripts": {

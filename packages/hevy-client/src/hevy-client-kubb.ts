@@ -81,6 +81,7 @@ import { DEFAULT_RETRY_POLICY } from "./retry-policy.js";
 import { createRetrySchedule } from "./retry-schedule.js";
 import { BackoffFailure, retryBackoff } from "./backoff.js";
 import { attemptEffect, finalizeOnce } from "./attempt.js";
+import { NATIVE_REQUEST_EFFECT } from "./internal-request-effect.js";
 export interface HevyClientLogEvent {
 	readonly level: "debug" | "warning" | "error";
 	readonly logger: "hevy-api";
@@ -1425,7 +1426,7 @@ export function createClient(
 ) {
 	const headers = { "api-key": apiKey };
 	const client = createNativeClient(apiKey, baseUrl, options);
-	return {
+	const publicClient = {
 		getWorkouts: async (
 			params?: GetV1WorkoutsQuery,
 			options?: HevyRequestOptions,
@@ -1676,4 +1677,11 @@ export function createClient(
 			return res.data;
 		},
 	};
+	Object.defineProperty(publicClient, NATIVE_REQUEST_EFFECT, {
+		configurable: false,
+		enumerable: false,
+		value: client.requestEffect,
+		writable: false,
+	});
+	return publicClient;
 }
