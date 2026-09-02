@@ -10,6 +10,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import type { CliArgs } from "../arguments.js";
 import { ApiResponseError } from "../errors.js";
+import { createEffectClient } from "../test-fixtures/effect-client.js";
 import { execute } from "./index.js";
 
 const args = (
@@ -20,7 +21,7 @@ const args = (
 ): CliArgs => ({ command, subcommand, positionals: [...positionals], options });
 
 function client(): HevyClient {
-	return {
+	return createEffectClient({
 		getUserInfo: vi.fn().mockResolvedValue({ id: "u1" }),
 		getWorkouts: vi
 			.fn()
@@ -53,7 +54,7 @@ function client(): HevyClient {
 		getRoutineFolder: vi.fn(),
 		createBodyMeasurement: vi.fn(),
 		updateBodyMeasurement: vi.fn(),
-	} as HevyClient;
+	});
 }
 
 const workout = {

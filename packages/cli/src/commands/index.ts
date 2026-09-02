@@ -1,4 +1,4 @@
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyClient, HevyExecutionOptions } from "@hevy-mcp/hevy-client";
 import { z } from "zod";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import {
@@ -114,6 +114,7 @@ type CommandContext = {
 	now: () => Date;
 	readDataSource: DataSourceReader;
 	operations: HevyOperations;
+	execution?: HevyExecutionOptions;
 };
 
 type CommandResult = Promise<unknown>;
@@ -121,9 +122,13 @@ type CommandResult = Promise<unknown>;
 async function executeWorkoutList({
 	args,
 	operations,
+	execution,
 }: CommandContext): Promise<unknown> {
 	const { page, pageSize } = parsePagination(args);
-	const result = await operations.workouts.list.execute({ page, pageSize });
+	const result =
+		execution === undefined
+			? await operations.workouts.list.execute({ page, pageSize })
+			: await operations.workouts.list.execute({ page, pageSize }, execution);
 	if (result.expected404Outcome === "end_of_list")
 		return pageEnvelope(
 			{ page: result.page, page_count: result.pageCount ?? 0 },
@@ -225,12 +230,16 @@ function executeWorkouts(context: CommandContext): CommandResult {
 async function executeRoutineList({
 	args,
 	operations,
+	execution,
 }: CommandContext): Promise<unknown> {
 	const { page, pageSize } = parsePagination(
 		args,
 		getV1RoutinesQueryParamsSchema,
 	);
-	const result = await operations.routines.list.execute({ page, pageSize });
+	const result =
+		execution === undefined
+			? await operations.routines.list.execute({ page, pageSize })
+			: await operations.routines.list.execute({ page, pageSize }, execution);
 	if (result.expected404Outcome === "end_of_list")
 		return pageEnvelope(
 			{ page: result.page, page_count: result.pageCount ?? 0 },
@@ -589,6 +598,7 @@ export async function execute(
 	now = () => new Date(),
 	readDataSource: DataSourceReader = defaultDataSourceReader,
 	operations: HevyOperations = createOperations(client),
+	execution?: HevyExecutionOptions,
 ): Promise<unknown> {
 	const context: CommandContext = {
 		args,
@@ -596,6 +606,7 @@ export async function execute(
 		now,
 		readDataSource,
 		operations,
+		execution,
 	};
 	if (args.command === "user" && !args.subcommand)
 		return { user: await client.getUserInfo() };

@@ -18,6 +18,7 @@ import {
 	parseBearerApiKey,
 } from "./worker.js";
 import worker from "./worker.js";
+import { createEffectClient } from "./test-fixtures/effect-client.js";
 import { resetMemoryValidationCacheForTests } from "./validation-cache.js";
 
 const objectLikeSchema = z.object({}).passthrough();
@@ -56,7 +57,7 @@ function mcpRequest(
 }
 
 function createMockClient(overrides: Partial<HevyClient> = {}): HevyClient {
-	return {
+	return createEffectClient({
 		getUserInfo: vi.fn().mockResolvedValue({ data: { id: "user" } }),
 		getExerciseTemplates: vi.fn().mockResolvedValue({
 			page: 1,
@@ -64,7 +65,7 @@ function createMockClient(overrides: Partial<HevyClient> = {}): HevyClient {
 			exercise_templates: [],
 		}),
 		...overrides,
-	} as HevyClient;
+	});
 }
 
 async function parseMcpResponse(response: Response): Promise<unknown> {

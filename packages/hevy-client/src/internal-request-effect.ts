@@ -14,9 +14,7 @@ import type { RequestConfig, ResponseConfig } from "./fetch.ts";
  * Private attachment used to connect a curated Promise client to its native
  * request interpreter without adding an Effect method to `HevyClient`.
  */
-export const NATIVE_REQUEST_EFFECT = Symbol(
-	"@hevy-mcp/hevy-client/native-request-effect",
-);
+export const NATIVE_REQUEST_EFFECT = Symbol("native-request-effect");
 
 export type NativeRequestEffect = <TData, TVariables = unknown>(
 	config: RequestConfig<TVariables> & {
@@ -72,7 +70,7 @@ type RequestEffectOwner =
 /**
  * Return the request interpreter owned by a curated client.
  *
- * This is intentionally available only from `@hevy-mcp/hevy-client/internal`.
+ * This is intentionally available only from the client's internal subpath.
  * The returned interpreter is the same one used by every Promise method on
  * the client, including its retry, timeout, abort, and error behavior.
  */

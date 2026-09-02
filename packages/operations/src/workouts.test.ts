@@ -4,6 +4,7 @@ import type {
 	GetV1Workouts200,
 	GetV1WorkoutsWorkoutid200,
 } from "@hevy-mcp/hevy-client/types";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import {
 	createWorkoutsGetOperation,
@@ -33,8 +34,8 @@ function createInMemoryAdapter(
 			argumentCounts.push(arguments.length);
 			requests.push({ params, options });
 			const response = responses[responseIndex++] ?? { workouts: [] };
-			if (response instanceof Error) return Promise.reject(response);
-			return Promise.resolve(response);
+			if (response instanceof Error) return Effect.fail(response);
+			return Effect.succeed(response);
 		},
 	};
 }
@@ -67,19 +68,23 @@ interface InMemoryWorkoutsGetAdapter extends WorkoutsGetAdapter {
 function abortable<T>(
 	options: HevyExecutionOptions | undefined,
 	error: Error,
-): Promise<T> {
+): Effect.Effect<T, Error> {
 	const signal = options?.signal;
-	if (signal === undefined) return Promise.reject(error);
-	return new Promise<T>((_resolve, reject) => {
+	if (signal === undefined) return Effect.fail(error);
+	return Effect.callback((resume) => {
 		const rejectOnAbort = () => {
 			signal.removeEventListener("abort", rejectOnAbort);
-			reject(signal.reason ?? error);
+			const reason = signal.reason;
+			resume(Effect.fail(reason instanceof Error ? reason : error));
 		};
 		if (signal.aborted) {
 			rejectOnAbort();
 		} else {
 			signal.addEventListener("abort", rejectOnAbort, { once: true });
 		}
+		return Effect.sync(() =>
+			signal.removeEventListener("abort", rejectOnAbort),
+		);
 	});
 }
 
@@ -100,8 +105,8 @@ function createInMemoryGetAdapter(
 			argumentCounts.push(arguments.length);
 			requests.push({ workoutId, options });
 			const response = responseSequence[responseIndex++];
-			if (response instanceof Error) return Promise.reject(response);
-			return Promise.resolve(response as GetV1WorkoutsWorkoutid200);
+			if (response instanceof Error) return Effect.fail(response);
+			return Effect.succeed(response as GetV1WorkoutsWorkoutid200);
 		},
 	};
 }
@@ -588,8 +593,8 @@ describe("workouts.list operation", () => {
 		const adapter: WorkoutsGetAdapter = {
 			getWorkout(workoutId) {
 				return workoutId === "missing"
-					? Promise.reject(error)
-					: Promise.resolve({ id: workoutId });
+					? Effect.fail(error)
+					: Effect.succeed({ id: workoutId });
 			},
 		};
 		const operation = createWorkoutsGetOperation(adapter);
@@ -611,11 +616,11 @@ describe("workouts.list operation", () => {
 		const adapter: WorkoutsListAdapter = {
 			getWorkouts(params) {
 				if (params === undefined) {
-					return Promise.reject(new Error("params are required"));
+					return Effect.fail(new Error("params are required"));
 				}
 				return params.page === 2
-					? Promise.reject(error)
-					: Promise.resolve({
+					? Effect.fail(error)
+					: Effect.succeed({
 							page: params.page,
 							page_count: 1,
 							workouts: [{ id: "w1" }],

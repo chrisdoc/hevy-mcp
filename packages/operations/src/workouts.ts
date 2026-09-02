@@ -1,9 +1,9 @@
 import { Effect } from "effect";
 import type {
-	HevyClient,
 	HevyExecutionOptions,
 	HevyOperationSafety,
 } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectClient } from "@hevy-mcp/hevy-client/internal";
 import type { GetV1Workouts200, Workout } from "@hevy-mcp/hevy-client/types";
 import {
 	isExpectedReadEndOfList,
@@ -22,7 +22,7 @@ export interface WorkoutsListOutput {
 	readonly expected404Outcome?: "end_of_list";
 }
 
-export type WorkoutsListAdapter = Pick<HevyClient, "getWorkouts">;
+export type WorkoutsListAdapter = Pick<HevyRequestEffectClient, "getWorkouts">;
 
 export interface WorkoutsGetInput {
 	readonly workoutId: string;
@@ -33,7 +33,7 @@ export interface WorkoutsGetOutput {
 	readonly expected404Outcome?: "not_found";
 }
 
-export type WorkoutsGetAdapter = Pick<HevyClient, "getWorkout">;
+export type WorkoutsGetAdapter = Pick<HevyRequestEffectClient, "getWorkout">;
 
 export interface WorkoutsGetDescriptor {
 	readonly id: "workouts.get";
@@ -93,14 +93,11 @@ export function createWorkoutsGetOperation(
 	return {
 		descriptor: workoutsGetDescriptor,
 		async execute(input, options) {
-			const program = Effect.tryPromise({
-				try: () =>
-					options === undefined
-						? adapter.getWorkout(input.workoutId)
-						: adapter.getWorkout(input.workoutId, options),
-				catch: (error) =>
-					error instanceof Error ? error : new Error(String(error)),
-			}).pipe(
+			const program = (
+				options === undefined
+					? adapter.getWorkout(input.workoutId)
+					: adapter.getWorkout(input.workoutId, options)
+			).pipe(
 				Effect.map((response) => ({ workout: response ?? null })),
 				Effect.catchIf(
 					(error) => isExpectedReadNotFound(error, "/v1/workouts"),
@@ -123,14 +120,11 @@ export function createWorkoutsListOperation(
 		descriptor: workoutsListDescriptor,
 		async execute(input, options) {
 			const params = { page: input.page, pageSize: input.pageSize };
-			const program = Effect.tryPromise({
-				try: () =>
-					options === undefined
-						? adapter.getWorkouts(params)
-						: adapter.getWorkouts(params, options),
-				catch: (error) =>
-					error instanceof Error ? error : new Error(String(error)),
-			}).pipe(
+			const program = (
+				options === undefined
+					? adapter.getWorkouts(params)
+					: adapter.getWorkouts(params, options)
+			).pipe(
 				Effect.map((response) => normalizeWorkoutsPage(response, input)),
 				Effect.catchIf(
 					(error) => isExpectedReadEndOfList(error, "/v1/workouts", input.page),
