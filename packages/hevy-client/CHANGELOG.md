@@ -1,5 +1,17 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.6
+
+### Patch Changes
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Extract the Hevy retry policy behind a pure, independently testable seam.
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add an Effect execution boundary that guarantees cancellation-resource cleanup.
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add the initial Effect dependency and typed foundation services for incremental adoption.
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Upgrade Kubb code generation toolchain to v5.
+
 ## 0.2.5
 
 ### Patch Changes

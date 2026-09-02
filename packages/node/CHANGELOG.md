@@ -1,5 +1,23 @@
 # hevy-mcp
 
+## 6.1.10
+
+### Patch Changes
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Extract the Hevy retry policy behind a pure, independently testable seam.
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add an Effect execution boundary that guarantees cancellation-resource cleanup.
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add the initial Effect dependency and typed foundation services for incremental adoption.
+
+- [#1106](https://github.com/chrisdoc/hevy-mcp/pull/1106) [`10c7153`](https://github.com/chrisdoc/hevy-mcp/commit/10c71533fdf80dfc50854fbeab38218c55324cdc) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Document the minimum exercise and set requirements for routine tools.
+
+- [#1100](https://github.com/chrisdoc/hevy-mcp/pull/1100) [`bb36134`](https://github.com/chrisdoc/hevy-mcp/commit/bb361347aef5701c13a3676b0c68458e0105f100) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add a typed Effect service layer for incremental dependency-injection adoption.
+
+- [#1097](https://github.com/chrisdoc/hevy-mcp/pull/1097) [`05ee904`](https://github.com/chrisdoc/hevy-mcp/commit/05ee904e547221b64baacad93c29a19f3fb0e7d1) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Upgrade Kubb code generation toolchain to v5.
+
+- [#1108](https://github.com/chrisdoc/hevy-mcp/pull/1108) [`7a02c8a`](https://github.com/chrisdoc/hevy-mcp/commit/7a02c8a28afa4d9a8fea1f318038f4561ab9dc73) Thanks [@Rahulsharma0810](https://github.com/Rahulsharma0810)! - Fix `utcSecondTimestamp` reporting the same "Must use the UTC format YYYY-MM-DDTHH:mm:ssZ" validation error twice for a single invalid `start_time`/`end_time` value. The format and calendar-validity checks are now chained with `.pipe()` so the round-trip check only runs after the regex check succeeds, producing exactly one issue per invalid field while preserving the original `invalid_format` issue code and JSON Schema `pattern`.
+
 ## 6.1.9
 
 ### Patch Changes
