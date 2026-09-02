@@ -112,18 +112,21 @@ const equipmentCategoryValues = [
 export const equipmentCategoryEnum = z.enum(equipmentCategoryValues);
 const UTC_TIMESTAMP_MESSAGE = "Must use the UTC format YYYY-MM-DDTHH:mm:ssZ";
 const UTC_TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
-export const utcSecondTimestamp = z.string().superRefine((value, ctx) => {
-	if (!UTC_TIMESTAMP_REGEX.test(value)) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: UTC_TIMESTAMP_MESSAGE });
-		return;
-	}
-
-	const parsed = new Date(value);
-	const isValid =
-		!Number.isNaN(parsed.getTime()) &&
-		parsed.toISOString().replace(".000Z", "Z") === value;
-
-	if (!isValid) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: UTC_TIMESTAMP_MESSAGE });
-	}
-});
+// `.pipe()` only evaluates the right-hand schema once the left-hand schema
+// succeeds, so an unparsable string short-circuits before the round-trip
+// check runs. This keeps the original `invalid_format` issue code (and the
+// regex `pattern` in generated JSON Schemas) for malformed input, while still
+// reporting exactly one issue instead of the two duplicate messages produced
+// by the previous `.regex().refine()` chain.
+export const utcSecondTimestamp = z
+	.string()
+	.regex(UTC_TIMESTAMP_REGEX, UTC_TIMESTAMP_MESSAGE)
+	.pipe(
+		z.string().refine((value) => {
+			const parsed = new Date(value);
+			return (
+				!Number.isNaN(parsed.getTime()) &&
+				parsed.toISOString().replace(".000Z", "Z") === value
+			);
+		}, UTC_TIMESTAMP_MESSAGE),
+	);
