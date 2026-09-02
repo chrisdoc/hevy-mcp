@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Effect, Fiber } from "effect";
+import { Cause, Effect, Fiber } from "effect";
 import { TestClock } from "effect/testing";
 
 import { createNativeClient } from "./hevy-client-kubb.js";
@@ -54,5 +54,87 @@ describe("internal production request Effect seam", () => {
 		);
 
 		expect(exit._tag).toBe("Failure");
+		if (exit._tag !== "Failure") return;
+		const error = Cause.findErrorOption(exit.cause);
+		if (error._tag === "Some") {
+			expect(error.value).toMatchObject({
+				code: "HEVY_REQUEST_ABORTED",
+				outcome: "cancelled",
+			});
+		} else {
+			expect(Cause.hasInterrupts(exit.cause)).toBe(true);
+		}
+	});
+
+	it("projects interruption during Effect-clock backoff as cancellation", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response("{}", { status: 503 }));
+		const client = createNativeClient("test-key", "https://api.hevyapp.com", {
+			fetch: fetchMock,
+			maxGetRetries: 1,
+		});
+
+		const exit = await Effect.runPromise(
+			Effect.provide(
+				Effect.gen(function* () {
+					const fiber = yield* client
+						.requestEffect({ method: "GET", url: "/v1/user/info" })
+						.pipe(Effect.forkChild);
+					yield* Effect.yieldNow;
+					expect(fetchMock).toHaveBeenCalledOnce();
+					yield* Fiber.interrupt(fiber);
+					return yield* Fiber.await(fiber);
+				}),
+				TestClock.layer(),
+			),
+		);
+
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag !== "Failure") return;
+		const error = Cause.findErrorOption(exit.cause);
+		if (error._tag === "Some") {
+			expect(error.value).toMatchObject({
+				code: "HEVY_REQUEST_ABORTED",
+				outcome: "cancelled",
+			});
+		} else {
+			expect(Cause.hasInterrupts(exit.cause)).toBe(true);
+		}
+	});
+
+	it("does not cancel a response body after text() has locked the stream", async () => {
+		let cancelled = false;
+		const body = new ReadableStream({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode("{}"));
+				controller.close();
+			},
+			cancel() {
+				cancelled = true;
+			},
+		});
+		const originalCancel = body.cancel.bind(body);
+		body.cancel = async (...args) => {
+			cancelled = true;
+			return originalCancel(...args);
+		};
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(body, {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			}),
+		);
+		const client = createNativeClient("test-key", "https://api.hevyapp.com", {
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+
+		await expect(
+			Effect.runPromise(
+				client.requestEffect({ method: "GET", url: "/v1/user/info" }),
+			),
+		).resolves.toMatchObject({ status: 200 });
+		expect(cancelled).toBe(false);
 	});
 });

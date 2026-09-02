@@ -343,7 +343,10 @@ function runRequestObservation<T>(
 		return operation();
 	};
 	try {
-		return scope.run(trackedOperation);
+		return Promise.resolve(scope.run(trackedOperation)).catch((error) => {
+			if (started) throw error;
+			return operation();
+		});
 	} catch (error) {
 		if (started) throw error;
 		return operation();
@@ -680,7 +683,9 @@ async function executeRequestAttempt<TData>(
 				setPhase("response-headers");
 				setPhase("response-content");
 				const cancelBody = finalizeOnce(() => {
-					void response.body?.cancel().catch(() => {});
+					const body = response.body;
+					if (!body || body.locked) return;
+					void body.cancel().catch(() => {});
 				});
 				const data = await withTimeout(
 					parseResponseData(response, cancelBody),
@@ -1374,6 +1379,7 @@ export function createNativeClient(
 				Effect.catchCause((cause) => {
 					const failure = Cause.findErrorOption(cause);
 					if (Option.isSome(failure)) return Effect.fail(failure.value);
+					const interrupted = Cause.hasInterrupts(cause);
 					return Effect.fail(
 						createExecutionError({
 							method,
@@ -1381,10 +1387,11 @@ export function createNativeClient(
 							safety,
 							phase: currentPhase,
 							deadlineExceeded:
-								executionSignal.deadlineTriggered() ||
-								isDeadlineExceeded(deadline),
-							canceled: executionSignal.signal.aborted,
-							callerCanceled: executionSignal.signal.aborted,
+								!interrupted &&
+								(executionSignal.deadlineTriggered() ||
+									isDeadlineExceeded(deadline)),
+							canceled: interrupted || executionSignal.signal.aborted,
+							callerCanceled: interrupted || executionSignal.signal.aborted,
 							// Never expose an Effect Cause or an internal
 							// interruption value through the Promise API.
 							cause: undefined,
