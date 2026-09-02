@@ -11,6 +11,7 @@ import { isFiniteNumber } from "../utils/type-predicates.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
+import { HevyClientService } from "../effect-services.js";
 
 const routineDiscoverySchema = {
 	query: z.string().min(1).optional(),
@@ -28,7 +29,7 @@ async function discoverRoutines(
 	let page = 1;
 	let pages = 0;
 	let itemsScanned = 0;
-	const client = runtime.getClient();
+	const client = runtime.service(HevyClientService);
 
 	while (routines.length < limit) {
 		const data: GetV1Routines200 = await client.getRoutines({

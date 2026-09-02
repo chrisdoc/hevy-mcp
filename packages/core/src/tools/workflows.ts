@@ -15,6 +15,7 @@ import { isFiniteNumber } from "../utils/type-predicates.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
+import { HevyClientService } from "../effect-services.js";
 
 const trainingSummarySchema = {
 	weeks: z.coerce.number().int().min(1).max(12).default(4),
@@ -144,7 +145,7 @@ export async function getTrainingSummary(
 	runtime: ToolRuntime,
 	weeks: number,
 ): Promise<TrainingSummaryResult> {
-	const client = runtime.getClient();
+	const client = runtime.service(HevyClientService);
 	const period = getPeriod(weeks);
 	// Hevy caps pageSize at 10 and orders pages by creation time, so a full
 	// sequential scan is the only correct option; parallelize or cache if latency bites.

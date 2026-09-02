@@ -28,6 +28,7 @@ import {
 	isExpectedListPageNotFound,
 	isExpectedReadNotFound,
 } from "../utils/hevy-error-policy.js";
+import { HevyClientService } from "../effect-services.js";
 const getBodyMeasurementsSchema = {
 	...paginationFields({ defaultPageSize: 10, maxPageSize: 10 }),
 } as const;
@@ -58,10 +59,12 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 	responseContract: bodyMeasurementsResponse,
 	execute: async (runtime: ToolRuntime, args) => {
 		const { page, page_size } = args;
+		const client = runtime.service(HevyClientService);
 		try {
-			const data: GetV1BodyMeasurements200 = await runtime
-				.getClient()
-				.getBodyMeasurements({ page, pageSize: page_size });
+			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
+				page,
+				pageSize: page_size,
+			});
 			return {
 				items: data?.body_measurements ?? [],
 				page,
@@ -95,10 +98,10 @@ const getBodyMeasurementDefinition: ToolDefinition<
 	responseContract: bodyMeasurementResponse,
 	execute: async (runtime: ToolRuntime, args) => {
 		const { date } = args;
+		const client = runtime.service(HevyClientService);
 		try {
-			const data: GetV1BodyMeasurementsDate200 = await runtime
-				.getClient()
-				.getBodyMeasurement(date);
+			const data: GetV1BodyMeasurementsDate200 =
+				await client.getBodyMeasurement(date);
 			return { body_measurement: data, date };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
@@ -128,7 +131,8 @@ const createBodyMeasurementDefinition: ToolDefinition<
 	responseContract: createBodyMeasurementResponse,
 	execute: async (runtime: ToolRuntime, args) => {
 		const { date, ...fields } = args;
-		await runtime.getClient().createBodyMeasurement({
+		const client = runtime.service(HevyClientService);
+		await client.createBodyMeasurement({
 			date,
 			...buildMeasurementPayload(fields),
 		});
@@ -151,13 +155,14 @@ const updateBodyMeasurementDefinition: ToolDefinition<
 	responseContract: updateBodyMeasurementResponse,
 	execute: async (runtime: ToolRuntime, args) => {
 		const { date, ...fields } = args;
+		const client = runtime.service(HevyClientService);
 		const payload = buildMeasurementPayload(fields);
 		if (Object.keys(payload).length === 0) {
 			throw new Error(
 				"No measurement fields provided. Include at least one numeric measurement field (e.g. weight_kg) to update.",
 			);
 		}
-		await runtime.getClient().updateBodyMeasurement(date, payload);
+		await client.updateBodyMeasurement(date, payload);
 		return date;
 	},
 };

@@ -13,6 +13,7 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
+import { HevyClientService } from "../effect-services.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { nonEmptyId, routineFolderInputFields } from "./input-schemas.js";
@@ -46,10 +47,10 @@ const getRoutineFolderDefinition = {
 		expected404Outcome?: "not_found";
 	}> => {
 		const { folder_id } = args;
+		const client = runtime.service(HevyClientService);
 		try {
-			const data: GetV1RoutineFoldersFolderid200 | null = await runtime
-				.getClient()
-				.getRoutineFolder(folder_id);
+			const data: GetV1RoutineFoldersFolderid200 | null =
+				await client.getRoutineFolder(folder_id);
 			return { routine_folder: data, folder_id };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
@@ -85,7 +86,7 @@ const createRoutineFolderDefinition = {
 		runtime: ToolRuntime,
 		args: CreateRoutineFolderParams,
 	): Promise<PostV1RoutineFolders201 | null | undefined> => {
-		return runtime.getClient().createRoutineFolder(args);
+		return runtime.service(HevyClientService).createRoutineFolder(args);
 	},
 } satisfies ToolDefinition<
 	typeof createRoutineFolderSchema,
