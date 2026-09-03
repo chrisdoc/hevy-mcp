@@ -1,13 +1,30 @@
 import {
 	canonicalEndpointIdentity,
-	expectedGet404Outcome,
+	type HevyEndpointTemplate,
 	isHevyHttpError,
 	NotFoundError,
 } from "@hevy-mcp/hevy-client";
 import { Schema } from "effect";
 
 export type ExpectedReadError = "not_found" | "end_of_list";
-export type ReadCollectionEndpoint = "/v1/routines" | "/v1/workouts";
+export type ReadCollectionEndpoint = Extract<
+	HevyEndpointTemplate,
+	| "/v1/body_measurements"
+	| "/v1/exercise_templates"
+	| "/v1/routine_folders"
+	| "/v1/routines"
+	| "/v1/workouts"
+	| "/v1/workouts/events"
+>;
+export type ReadMemberEndpoint = Extract<
+	HevyEndpointTemplate,
+	| "/v1/body_measurements/:date"
+	| "/v1/exercise_templates/:exerciseTemplateId"
+	| "/v1/routine_folders/:folderId"
+	| "/v1/routines/:routineId"
+	| "/v1/workouts/:workoutId"
+>;
+export type ReadEndpoint = HevyEndpointTemplate;
 export type ReadOperationError = Error;
 
 export class PaginationMismatchError extends Schema.TaggedError<PaginationMismatchError>()(
@@ -20,44 +37,94 @@ export class PaginationMismatchError extends Schema.TaggedError<PaginationMismat
 	},
 ) {}
 
+const collectionMemberEndpoints = {
+	"/v1/body_measurements": "/v1/body_measurements/:date",
+	"/v1/exercise_templates": "/v1/exercise_templates/:exerciseTemplateId",
+	"/v1/routine_folders": "/v1/routine_folders/:folderId",
+	"/v1/routines": "/v1/routines/:routineId",
+	"/v1/workouts": "/v1/workouts/:workoutId",
+	"/v1/workouts/events": undefined,
+} as const satisfies Record<
+	ReadCollectionEndpoint,
+	ReadMemberEndpoint | undefined
+>;
+
+function errorIdentity(error: ReadOperationError):
+	| {
+			readonly status?: number;
+			readonly method: string;
+			readonly endpoint: string;
+	  }
+	| undefined {
+	if (isHevyHttpError(error) || error instanceof NotFoundError) {
+		return {
+			status: error.status,
+			method: error.method,
+			endpoint: error.endpoint,
+		};
+	}
+	return undefined;
+}
+
 /**
  * Classify only the documented read-side 404 cases.
  *
- * This function is deliberately pure. It does not inspect mutable client
- * state, perform I/O, or convert the error, so Effect programs can use it as
- * their error-channel boundary while Promise callers retain the original
- * error object.
+ * Matching is based on the tagged error's HTTP identity and the operation's
+ * endpoint identity. It deliberately does not inspect messages or mutable
+ * request state, so unexpected errors remain in the Effect channel.
  */
 export function classifyReadError(
 	error: ReadOperationError,
-	endpoint: ReadCollectionEndpoint,
+	endpoint: ReadEndpoint,
 	page?: number,
 ): ExpectedReadError | undefined {
-	const httpError = isHevyHttpError(error)
-		? error
-		: error instanceof NotFoundError
-			? error
-			: undefined;
-	if (!httpError) return undefined;
-	const canonical = canonicalEndpointIdentity(httpError.endpoint);
-	if (canonical !== endpoint && !canonical.startsWith(`${endpoint}/`)) {
+	const identity = errorIdentity(error);
+	if (
+		identity === undefined ||
+		identity.status !== 404 ||
+		identity.method.toUpperCase() !== "GET"
+	) {
 		return undefined;
 	}
 
-	const expected = expectedGet404Outcome(
-		httpError.endpoint,
-		httpError.method,
-		httpError.status,
-		page,
-	);
-	if (expected === "not_found") return "not_found";
-	if (expected === "end_of_list") return "end_of_list";
+	const canonicalError = canonicalEndpointIdentity(identity.endpoint);
+	const canonicalOperation = canonicalEndpointIdentity(endpoint);
+	if (page !== undefined) {
+		if (
+			page > 1 &&
+			canonicalOperation in collectionMemberEndpoints &&
+			canonicalError === canonicalOperation
+		) {
+			return "end_of_list";
+		}
+		return undefined;
+	}
+
+	if (
+		canonicalOperation in collectionMemberEndpoints &&
+		canonicalError ===
+			collectionMemberEndpoints[canonicalOperation as ReadCollectionEndpoint]
+	) {
+		return "not_found";
+	}
+	if (canonicalOperation === canonicalError) {
+		const memberEndpoint = canonicalOperation as ReadMemberEndpoint;
+		if (
+			memberEndpoint === "/v1/body_measurements/:date" ||
+			memberEndpoint === "/v1/exercise_templates/:exerciseTemplateId" ||
+			memberEndpoint === "/v1/routine_folders/:folderId" ||
+			memberEndpoint === "/v1/routines/:routineId" ||
+			memberEndpoint === "/v1/workouts/:workoutId"
+		) {
+			return "not_found";
+		}
+	}
 	return undefined;
 }
 
 export function isExpectedReadNotFound(
 	error: ReadOperationError,
-	endpoint: ReadCollectionEndpoint,
+	endpoint: ReadEndpoint,
 ): boolean {
 	return classifyReadError(error, endpoint) === "not_found";
 }

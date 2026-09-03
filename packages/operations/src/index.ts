@@ -10,8 +10,14 @@ import {
 	type RoutinesListOperation,
 } from "./routines.js";
 import {
+	createBodyMeasurementsListOperation,
+	type BodyMeasurementsListOperation,
+} from "./body-measurements.js";
+import {
+	createWorkoutsEventsOperation,
 	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
+	type WorkoutsEventsOperation,
 	type WorkoutsGetOperation,
 	type WorkoutsListOperation,
 } from "./workouts.js";
@@ -35,12 +41,30 @@ export type {
 	RoutinesListOutput,
 } from "./routines.js";
 export {
+	createBodyMeasurementsListOperation,
+	bodyMeasurementsListDescriptor,
+} from "./body-measurements.js";
+export type {
+	BodyMeasurementsListAdapter,
+	BodyMeasurementsListDescriptor,
+	BodyMeasurementsListInput,
+	BodyMeasurementsListOperation,
+	BodyMeasurementsListOutput,
+} from "./body-measurements.js";
+export {
+	createWorkoutsEventsOperation,
 	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
+	workoutsEventsDescriptor,
 	workoutsGetDescriptor,
 	workoutsListDescriptor,
 } from "./workouts.js";
 export type {
+	WorkoutsEventsAdapter,
+	WorkoutsEventsDescriptor,
+	WorkoutsEventsInput,
+	WorkoutsEventsOperation,
+	WorkoutsEventsOutput,
 	WorkoutsGetAdapter,
 	WorkoutsGetDescriptor,
 	WorkoutsGetInput,
@@ -55,6 +79,9 @@ export type {
 export { PaginationMismatchError } from "./operation-errors.js";
 export type {
 	ExpectedReadError,
+	ReadCollectionEndpoint,
+	ReadEndpoint,
+	ReadMemberEndpoint,
 	ReadOperationError,
 } from "./operation-errors.js";
 
@@ -64,14 +91,23 @@ export interface HevyOperations {
 		readonly list: RoutinesListOperation;
 	};
 	readonly workouts: {
+		readonly events?: WorkoutsEventsOperation;
 		readonly get: WorkoutsGetOperation;
 		readonly list: WorkoutsListOperation;
+	};
+	readonly bodyMeasurements?: {
+		readonly list: BodyMeasurementsListOperation;
 	};
 }
 
 type ExistingRequestEffectClient = Pick<
 	HevyRequestEffectClient,
-	"getWorkouts" | "getWorkout" | "getRoutines" | "getRoutineById"
+	| "getBodyMeasurements"
+	| "getWorkoutEvents"
+	| "getWorkouts"
+	| "getWorkout"
+	| "getRoutines"
+	| "getRoutineById"
 >;
 
 export function createOperations(client: HevyClient): HevyOperations {
@@ -81,6 +117,10 @@ export function createOperations(client: HevyClient): HevyOperations {
 		return requestEffectClient;
 	};
 	const lazyRequestEffectClient: ExistingRequestEffectClient = {
+		getBodyMeasurements: (...args) =>
+			getRequestEffectClientOnce().getBodyMeasurements(...args),
+		getWorkoutEvents: (...args) =>
+			getRequestEffectClientOnce().getWorkoutEvents(...args),
 		getWorkouts: (...args) => getRequestEffectClientOnce().getWorkouts(...args),
 		getWorkout: (...args) => getRequestEffectClientOnce().getWorkout(...args),
 		getRoutines: (...args) => getRequestEffectClientOnce().getRoutines(...args),
@@ -93,8 +133,12 @@ export function createOperations(client: HevyClient): HevyOperations {
 			list: createRoutinesListOperation(lazyRequestEffectClient),
 		},
 		workouts: {
+			events: createWorkoutsEventsOperation(lazyRequestEffectClient),
 			get: createWorkoutsGetOperation(lazyRequestEffectClient),
 			list: createWorkoutsListOperation(lazyRequestEffectClient),
+		},
+		bodyMeasurements: {
+			list: createBodyMeasurementsListOperation(lazyRequestEffectClient),
 		},
 	};
 }

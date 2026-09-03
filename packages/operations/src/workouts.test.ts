@@ -12,6 +12,7 @@ import {
 	type WorkoutsGetAdapter,
 	type WorkoutsListAdapter,
 } from "./workouts.js";
+import { PaginationMismatchError } from "./operation-errors.js";
 
 interface InMemoryWorkoutsAdapter extends WorkoutsListAdapter {
 	readonly requests: Array<{
@@ -413,9 +414,12 @@ describe("workouts.list operation", () => {
 		const operation = createWorkoutsListOperation(adapter);
 
 		await expect(
-			operation.execute({ page: 2, pageSize: 10 }),
+			Effect.runPromise(operation.effect({ page: 2, pageSize: 10 })),
 		).rejects.toMatchObject({
-			message: "Workouts page mismatch: requested page 2 but received page 3",
+			_tag: "PaginationMismatchError",
+			requested: 2,
+			received: 3,
+			collection: "workouts",
 		});
 	});
 
@@ -511,9 +515,9 @@ describe("workouts.list operation", () => {
 			]),
 		);
 
-		await expect(operation.execute(input, options)).rejects.toMatchObject({
-			message: "Workouts page mismatch: requested page 2 but received page 3",
-		});
+		await expect(
+			Effect.runPromise(operation.effect(input, options)),
+		).rejects.toBeInstanceOf(PaginationMismatchError);
 
 		expect(input).toEqual(inputBefore);
 		expect(options).toEqual(optionsBefore);

@@ -7,7 +7,11 @@ import type {
 	HevyRequestEffectClient,
 	HevyRequestEffectError,
 } from "@hevy-mcp/hevy-client/internal";
-import type { GetV1Workouts200, Workout } from "@hevy-mcp/hevy-client/types";
+import type {
+	GetV1Workouts200,
+	GetV1WorkoutsEvents200,
+	Workout,
+} from "@hevy-mcp/hevy-client/types";
 import {
 	isExpectedReadEndOfList,
 	isExpectedReadNotFound,
@@ -27,6 +31,50 @@ export interface WorkoutsListOutput {
 }
 
 export type WorkoutsListAdapter = Pick<HevyRequestEffectClient, "getWorkouts">;
+
+export interface WorkoutsEventsInput {
+	readonly page: number;
+	readonly pageSize: number;
+	readonly since?: string;
+}
+
+export interface WorkoutsEventsOutput {
+	readonly events: GetV1WorkoutsEvents200["events"];
+	readonly page: number;
+	readonly pageCount?: number;
+	readonly since?: string;
+	readonly expected404Outcome?: "end_of_list";
+}
+
+export type WorkoutsEventsAdapter = Pick<
+	HevyRequestEffectClient,
+	"getWorkoutEvents"
+>;
+
+export interface WorkoutsEventsDescriptor {
+	readonly id: "workouts.events";
+	readonly safety: Extract<HevyOperationSafety, "read">;
+}
+
+export const workoutsEventsDescriptor: WorkoutsEventsDescriptor = {
+	id: "workouts.events",
+	safety: "read",
+};
+
+export interface WorkoutsEventsOperation {
+	readonly descriptor: WorkoutsEventsDescriptor;
+	readonly effect: (
+		input: WorkoutsEventsInput,
+		options?: HevyExecutionOptions,
+	) => Effect.Effect<
+		WorkoutsEventsOutput,
+		HevyRequestEffectError | PaginationMismatchError
+	>;
+	execute(
+		input: WorkoutsEventsInput,
+		options?: HevyExecutionOptions,
+	): Promise<WorkoutsEventsOutput>;
+}
 
 export interface WorkoutsGetInput {
 	readonly workoutId: string;
@@ -86,6 +134,69 @@ export interface WorkoutsListOperation {
 	): Promise<WorkoutsListOutput>;
 }
 
+export function createWorkoutsEventsOperation(
+	adapter: WorkoutsEventsAdapter,
+): WorkoutsEventsOperation {
+	const effect = Effect.fn("operations.workouts.events")(function* (
+		input: WorkoutsEventsInput,
+		options?: HevyExecutionOptions,
+	) {
+		const params =
+			input.since === undefined
+				? { page: input.page, pageSize: input.pageSize }
+				: {
+						page: input.page,
+						pageSize: input.pageSize,
+						since: input.since,
+					};
+		const request =
+			options === undefined
+				? adapter.getWorkoutEvents(params)
+				: adapter.getWorkoutEvents(params, options);
+		return yield* request.pipe(
+			Effect.flatMap((response: GetV1WorkoutsEvents200) => {
+				if (response?.page !== undefined && response.page !== input.page) {
+					return Effect.fail(
+						new PaginationMismatchError({
+							requested: input.page,
+							received: response.page,
+							collection: "workoutEvents",
+							message: `Workout events page mismatch: requested page ${input.page} but received page ${response.page}`,
+						}),
+					);
+				}
+				return Effect.succeed({
+					events: response?.events ?? [],
+					page: response?.page ?? input.page,
+					pageCount: response?.page_count,
+					since: input.since,
+				});
+			}),
+			Effect.catchIf(
+				(error) =>
+					isExpectedReadEndOfList(error, "/v1/workouts/events", input.page),
+				() =>
+					Effect.succeed({
+						events: [],
+						page: input.page,
+						pageCount: undefined,
+						since: input.since,
+						expected404Outcome: "end_of_list" as const,
+					}),
+			),
+		);
+	});
+
+	const operation: WorkoutsEventsOperation = {
+		descriptor: workoutsEventsDescriptor,
+		effect,
+		execute(input, options) {
+			return Effect.runPromise(operation.effect(input, options));
+		},
+	};
+	return operation;
+}
+
 export function createWorkoutsGetOperation(
 	adapter: WorkoutsGetAdapter,
 ): WorkoutsGetOperation {
@@ -134,7 +245,7 @@ export function createWorkoutsListOperation(
 				: adapter.getWorkouts(params, options);
 		return yield* request.pipe(
 			Effect.flatMap((response: GetV1Workouts200) => {
-				if (response.page !== undefined && response.page !== input.page) {
+				if (response?.page !== undefined && response.page !== input.page) {
 					return Effect.fail(
 						new PaginationMismatchError({
 							requested: input.page,
@@ -145,9 +256,9 @@ export function createWorkoutsListOperation(
 					);
 				}
 				return Effect.succeed({
-					items: response.workouts ?? [],
-					page: response.page ?? input.page,
-					pageCount: response.page_count,
+					items: response?.workouts ?? [],
+					page: response?.page ?? input.page,
+					pageCount: response?.page_count,
 				});
 			}),
 			Effect.catchIf(

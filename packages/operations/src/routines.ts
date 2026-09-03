@@ -101,7 +101,7 @@ export function createRoutinesGetOperation(
 				? adapter.getRoutineById(input.routineId)
 				: adapter.getRoutineById(input.routineId, options);
 		return yield* request.pipe(
-			Effect.map((response) => ({ routine: response.routine ?? null })),
+			Effect.map((response) => ({ routine: response?.routine ?? null })),
 			Effect.catchIf(
 				(error) => isExpectedReadNotFound(error, "/v1/routines"),
 				() =>
