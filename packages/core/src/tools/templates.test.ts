@@ -15,6 +15,7 @@ import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { templateToolDefinitions } from "./templates.js";
+import type { HevyOperations } from "@hevy-mcp/operations";
 
 function register(client: ReturnType<typeof createMockHevyClient> | null) {
 	const { server, registerTool: tool } = createMockMcpServer();
@@ -169,5 +170,37 @@ describe("exercise template tools", () => {
 		expect(layerCatalog.effect).toHaveBeenCalledOnce();
 		expect(layerCatalog.get).not.toHaveBeenCalled();
 		expect(getterCatalog.get).not.toHaveBeenCalled();
+	});
+
+	it("provides the catalog service for operations-only runtimes", async () => {
+		const catalog: ExerciseTemplateCatalog = {
+			effect: vi.fn(() =>
+				Effect.succeed([{ id: "template-1", title: "Bench Press" }]),
+			),
+			get: vi.fn(),
+			reset: vi.fn(),
+		};
+		const runtime = createToolRuntime({
+			client: null,
+			operations: {} as HevyOperations,
+			catalog,
+		});
+		const { server, registerTool: tool } = createMockMcpServer();
+		registerToolDefinition(server, runtime, templateToolDefinitions[3]);
+
+		const result = await handler(
+			tool,
+			"search-exercise-templates",
+		)({
+			query: "bench",
+			refresh: false,
+		});
+
+		expect(result).toMatchObject({
+			structuredContent: {
+				exercise_templates: [{ id: "template-1", title: "Bench Press" }],
+			},
+		});
+		expect(catalog.effect).toHaveBeenCalledOnce();
 	});
 });

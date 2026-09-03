@@ -8,6 +8,7 @@ import {
 	type CoreServiceIdentifiers,
 } from "../effect-layer.js";
 import {
+	ExerciseTemplateCatalogService,
 	HevyClientService,
 	HevyOperationsService,
 	ToolObserverService,
@@ -248,11 +249,14 @@ export function createToolRuntime({
 					operations: resolvedOperations,
 				}) as ToolRuntimeServiceLayer)
 			: resolvedOperations
-				? (Layer.succeed(
-						HevyOperationsService,
-						resolvedOperations,
+				? (Layer.mergeAll(
+						Layer.succeed(HevyOperationsService, resolvedOperations),
+						Layer.succeed(ExerciseTemplateCatalogService, effectiveCatalog),
 					) as ToolRuntimeServiceLayer)
-				: undefined;
+				: (Layer.succeed(
+						ExerciseTemplateCatalogService,
+						effectiveCatalog,
+					) as ToolRuntimeServiceLayer);
 	const layer = observer
 		? coreLayer
 			? (Layer.merge(

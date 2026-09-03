@@ -22,7 +22,7 @@ import {
 	readOnlyAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-import { WORKOUT_PUT_REQUIRES_IS_PRIVATE } from "./hevy-quirks.js";
+import { WORKOUT_PUT_REQUIRES_IS_PRIVATE } from "@hevy-mcp/operations";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { operationEffect, requireOperation } from "./operation-helpers.js";
