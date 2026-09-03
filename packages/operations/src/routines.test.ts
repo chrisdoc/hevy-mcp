@@ -106,7 +106,7 @@ function createInMemoryGetAdapter(
 			requests.push({ routineId, options });
 			const response = responseSequence[responseIndex++];
 			if (response instanceof Error) return Effect.fail(response);
-			return Effect.succeed(response);
+			return Effect.succeed(response ?? {});
 		},
 	};
 }

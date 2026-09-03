@@ -119,6 +119,14 @@ type CommandContext = {
 
 type CommandResult = Promise<unknown>;
 
+function executeRead<T>(
+	execution: HevyExecutionOptions | undefined,
+	request: () => Promise<T>,
+	requestWithExecution: (execution: HevyExecutionOptions) => Promise<T>,
+): Promise<T> {
+	return execution === undefined ? request() : requestWithExecution(execution);
+}
+
 async function executeWorkoutList({
 	args,
 	operations,
@@ -147,9 +155,15 @@ async function executeWorkoutList({
 	);
 }
 
-async function executeWorkoutGet({ args, client }: CommandContext) {
+async function executeWorkoutGet({ args, client, execution }: CommandContext) {
 	const workoutId = parseWorkoutId(args.positionals[0]);
-	return { workout: await client.getWorkout(workoutId) };
+	return {
+		workout: await executeRead(
+			execution,
+			() => client.getWorkout(workoutId),
+			(options) => client.getWorkout(workoutId, options),
+		),
+	};
 }
 
 async function executeWorkoutCreate({
@@ -186,20 +200,37 @@ async function executeWorkoutUpdate({
 	return { workout_id: workoutId, workout: response };
 }
 
-async function executeWorkoutCount({ client }: CommandContext) {
-	const count = z
-		.number()
-		.safeParse(body(await client.getWorkoutCount()).workout_count).data;
+async function executeWorkoutCount({ client, execution }: CommandContext) {
+	const count = z.number().safeParse(
+		body(
+			await executeRead(
+				execution,
+				() => client.getWorkoutCount(),
+				(options) => client.getWorkoutCount(options),
+			),
+		).workout_count,
+	).data;
 	if (count === undefined || !Number.isInteger(count) || count < 0)
 		throw new ApiResponseError("The API returned an invalid workout count");
 	return { workout_count: count };
 }
 
-async function executeWorkoutEvents({ args, client }: CommandContext) {
+async function executeWorkoutEvents({
+	args,
+	client,
+	execution,
+}: CommandContext) {
 	const options = parseWorkoutEventsOptions(args);
 	return {
 		...list(
-			body(await client.getWorkoutEvents(options)),
+			body(
+				await executeRead(
+					execution,
+					() => client.getWorkoutEvents(options),
+					(executionOptions) =>
+						client.getWorkoutEvents(options, executionOptions),
+				),
+			),
 			"events",
 			"events",
 			options.page,
@@ -258,9 +289,15 @@ async function executeRoutineList({
 	);
 }
 
-async function executeRoutineGet({ args, client }: CommandContext) {
+async function executeRoutineGet({ args, client, execution }: CommandContext) {
 	const routineId = parseRoutineId(args.positionals[0]);
-	return { routine: await client.getRoutineById(routineId) };
+	return {
+		routine: await executeRead(
+			execution,
+			() => client.getRoutineById(routineId),
+			(options) => client.getRoutineById(routineId, options),
+		),
+	};
 }
 
 async function executeRoutineCreate({
@@ -339,23 +376,43 @@ async function executeExerciseCreate({
 	return { exercise_template: await client.createExerciseTemplate(input) };
 }
 
-async function executeExerciseGet({ args, client }: CommandContext) {
+async function executeExerciseGet({ args, client, execution }: CommandContext) {
 	const exerciseId = parseExerciseId(args.positionals[0]);
-	return { exercise_template: await client.getExerciseTemplate(exerciseId) };
+	return {
+		exercise_template: await executeRead(
+			execution,
+			() => client.getExerciseTemplate(exerciseId),
+			(options) => client.getExerciseTemplate(exerciseId, options),
+		),
+	};
 }
 
-async function executeExerciseHistory({ args, client }: CommandContext) {
+async function executeExerciseHistory({
+	args,
+	client,
+	execution,
+}: CommandContext) {
 	const exerciseId = parseExerciseHistoryId(args.positionals[0]);
 	const options = parseExerciseHistoryOptions(args);
 	return {
 		exercise_template_id: exerciseId,
 		exercise_history:
-			(await client.getExerciseHistory(exerciseId, options)).exercise_history ??
-			[],
+			(
+				await executeRead(
+					execution,
+					() => client.getExerciseHistory(exerciseId, options),
+					(executionOptions) =>
+						client.getExerciseHistory(exerciseId, options, executionOptions),
+				)
+			).exercise_history ?? [],
 	};
 }
 
-async function executeExerciseSearch({ args, client }: CommandContext) {
+async function executeExerciseSearch({
+	args,
+	client,
+	execution,
+}: CommandContext) {
 	const query = parseSearchQuery(args.positionals[0]);
 	const maxPages = parseSearchMaxPages(args);
 	const matches: unknown[] = [];
@@ -363,8 +420,14 @@ async function executeExerciseSearch({ args, client }: CommandContext) {
 	let page_count = 1;
 	while (pages_scanned < page_count && pages_scanned < maxPages) {
 		const requestedPage = pages_scanned + 1;
+		const params = { page: requestedPage, pageSize: 100 };
 		const result = body(
-			await client.getExerciseTemplates({ page: requestedPage, pageSize: 100 }),
+			await executeRead(
+				execution,
+				() => client.getExerciseTemplates(params),
+				(executionOptions) =>
+					client.getExerciseTemplates(params, executionOptions),
+			),
 		);
 		page_count = result.page_count as number;
 		if (
@@ -410,22 +473,39 @@ function executeExercises(context: CommandContext): CommandResult {
 async function executeMeasurementList({
 	args,
 	client,
+	execution,
 }: CommandContext): Promise<unknown> {
 	const { page, pageSize } = parsePagination(
 		args,
 		getV1BodyMeasurementsQueryParamsSchema,
 	);
 	return list(
-		body(await client.getBodyMeasurements({ page, pageSize })),
+		body(
+			await executeRead(
+				execution,
+				() => client.getBodyMeasurements({ page, pageSize }),
+				(options) => client.getBodyMeasurements({ page, pageSize }, options),
+			),
+		),
 		"body_measurements",
 		"body_measurements",
 		page,
 	);
 }
 
-async function executeMeasurementGet({ args, client }: CommandContext) {
+async function executeMeasurementGet({
+	args,
+	client,
+	execution,
+}: CommandContext) {
 	const date = parseMeasurementDate(args.positionals[0]);
-	return { body_measurement: await client.getBodyMeasurement(date) };
+	return {
+		body_measurement: await executeRead(
+			execution,
+			() => client.getBodyMeasurement(date),
+			(options) => client.getBodyMeasurement(date, options),
+		),
+	};
 }
 
 async function executeMeasurementCreate({
@@ -452,6 +532,7 @@ async function executeMeasurementUpdate({
 	args,
 	client,
 	readDataSource,
+	execution,
 }: CommandContext) {
 	requireMutationConfirmation(args);
 	const input = await loadMutationInput(
@@ -463,7 +544,11 @@ async function executeMeasurementUpdate({
 	if (input.date !== date)
 		throw new UsageError("Measurement date does not match --data.date");
 	const parsed = existingBodyMeasurementSchema.safeParse(
-		await client.getBodyMeasurement(date),
+		await executeRead(
+			execution,
+			() => client.getBodyMeasurement(date),
+			(options) => client.getBodyMeasurement(date, options),
+		),
 	);
 	if (!parsed.success || parsed.data.date !== date)
 		throw new ApiResponseError("The API returned an invalid body measurement");
@@ -509,14 +594,20 @@ async function collectSummaryWorkouts(
 	client: HevyClient,
 	from: Date,
 	to: Date,
+	execution?: HevyExecutionOptions,
 ) {
 	let pageNumber = 1;
 	let pageCount = 1;
 	let pagesScanned = 0;
 	const workouts: Body[] = [];
 	while (pageNumber <= pageCount) {
+		const params = { page: pageNumber, pageSize: 10 };
 		const result = body(
-			await client.getWorkouts({ page: pageNumber, pageSize: 10 }),
+			await executeRead(
+				execution,
+				() => client.getWorkouts(params),
+				(options) => client.getWorkouts(params, options),
+			),
 		);
 		pageCount = result.page_count as number;
 		if (
@@ -572,11 +663,16 @@ function summarizeWorkouts(workouts: readonly Body[]) {
 	return { exerciseCount, setCount, totalVolumeKg, totalDurationSeconds };
 }
 
-async function executeSummary({ args, client, now }: CommandContext) {
+async function executeSummary({
+	args,
+	client,
+	now,
+	execution,
+}: CommandContext) {
 	const weeks = parseWeeks(args);
 	const to = now();
 	const from = new Date(to.getTime() - weeks * 7 * 24 * 60 * 60 * 1000);
-	const collection = await collectSummaryWorkouts(client, from, to);
+	const collection = await collectSummaryWorkouts(client, from, to, execution);
 	const totals = summarizeWorkouts(collection.workouts);
 	return {
 		weeks,
@@ -609,7 +705,13 @@ export async function execute(
 		execution,
 	};
 	if (args.command === "user" && !args.subcommand)
-		return { user: await client.getUserInfo() };
+		return {
+			user: await executeRead(
+				context.execution,
+				() => client.getUserInfo(),
+				(options) => client.getUserInfo(options),
+			),
+		};
 	if (args.command === "workouts") return executeWorkouts(context);
 	if (args.command === "routines") return executeRoutines(context);
 	if (args.command === "exercises") return executeExercises(context);

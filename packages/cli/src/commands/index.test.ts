@@ -163,6 +163,181 @@ describe("execute command/API mappings", () => {
 		},
 	);
 
+	it("[VAL-CLI-001] forwards execution options to every CLI read route", async () => {
+		const api = client();
+		const execution = {
+			signal: new AbortController().signal,
+			deadline: Date.now() + 1_000,
+			timeoutMs: 321,
+		};
+		const executeWorkoutsList = vi.fn().mockResolvedValue({
+			items: [],
+			page: 1,
+			pageCount: 1,
+		});
+		const executeRoutinesList = vi.fn().mockResolvedValue({
+			items: [],
+			page: 1,
+			pageCount: 1,
+		});
+		const operations = {
+			routines: {
+				get: { descriptor: routinesGetDescriptor, execute: vi.fn() },
+				list: {
+					descriptor: routinesListDescriptor,
+					execute: executeRoutinesList,
+				},
+			},
+			workouts: {
+				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
+				list: {
+					descriptor: workoutsListDescriptor,
+					execute: executeWorkoutsList,
+				},
+			},
+		} satisfies HevyOperations;
+
+		await execute(
+			args("user"),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("workouts", "list"),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("workouts", "get", ["w1"]),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("workouts", "count"),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("workouts", "events"),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("routines", "list"),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("routines", "get", ["r1"]),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("exercises", "get", ["e1"]),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("exercises", "history", ["e1"]),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("exercises", "search", ["bench"]),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("measurements", "list"),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("measurements", "get", ["2024-01-01"]),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+		await execute(
+			args("summary"),
+			api,
+			undefined,
+			undefined,
+			operations,
+			execution,
+		);
+
+		expect(api.getUserInfo).toHaveBeenCalledWith(execution);
+		expect(executeWorkoutsList).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 5 },
+			execution,
+		);
+		expect(api.getWorkout).toHaveBeenCalledWith("w1", execution);
+		expect(api.getWorkoutCount).toHaveBeenCalledWith(execution);
+		expect(api.getWorkoutEvents).toHaveBeenCalledWith(
+			expect.objectContaining({ page: 1, pageSize: 5 }),
+			execution,
+		);
+		expect(executeRoutinesList).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 5 },
+			execution,
+		);
+		expect(api.getRoutineById).toHaveBeenCalledWith("r1", execution);
+		expect(api.getExerciseTemplate).toHaveBeenCalledWith("e1", execution);
+		expect(api.getExerciseHistory).toHaveBeenCalledWith("e1", {}, execution);
+		expect(api.getExerciseTemplates).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 100 },
+			execution,
+		);
+		expect(api.getBodyMeasurements).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 5 },
+			execution,
+		);
+		expect(api.getBodyMeasurement).toHaveBeenCalledWith(
+			"2024-01-01",
+			execution,
+		);
+		expect(api.getWorkouts).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 10 },
+			execution,
+		);
+	});
+
 	it.each([undefined, -1, 1.5, "4"])(
 		"rejects an invalid workout count %p",
 		async (workoutCount) => {
