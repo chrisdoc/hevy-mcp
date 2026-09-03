@@ -53,7 +53,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 				? bindClientExecution(createdClient, options.execution)
 				: createdClient;
 			context.client = client;
-			context.operations = createOperations(createdClient, {
+			context.operations = createOperations(client, {
 				trainingSummaryMaxWeeks: 520,
 				trainingSummaryStrictPagination: true,
 			});

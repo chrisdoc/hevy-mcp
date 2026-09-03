@@ -4,6 +4,17 @@ import { describe, expect, it, vi } from "vitest";
 import { runCli } from "./main.js";
 import { createEffectClient } from "./test-fixtures/effect-client.js";
 
+vi.mock("@hevy-mcp/operations", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@hevy-mcp/operations")>();
+	return {
+		...actual,
+		createOperations: vi.fn(actual.createOperations),
+	};
+});
+
+const createOperationsSpy = async () =>
+	vi.mocked((await import("@hevy-mcp/operations")).createOperations);
+
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 type JsonObject = { readonly [key: string]: JsonValue };
 
@@ -262,6 +273,59 @@ describe("CLI process contract", () => {
 			commit_state: "unknown",
 			safe_to_retry: false,
 		});
+	});
+
+	it("builds operations from the execution-bound client proxy", async () => {
+		const io = streams();
+		const signal = new AbortController().signal;
+		const deadline = Date.now() + 1_000;
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			workouts: [],
+		});
+		const rawClient = mockClient(getWorkouts);
+		const spy = await createOperationsSpy();
+		spy.mockClear();
+		const code = await runCli({
+			argv: ["workouts", "list"],
+			env: { HEVY_API_KEY: "key" },
+			clientFactory: () => rawClient,
+			execution: { signal, deadline },
+			streams: io.streams,
+		});
+		expect(code).toBe(0);
+		expect(spy).toHaveBeenCalledTimes(1);
+		const [operationsClient] = spy.mock.calls[0];
+		expect(operationsClient).not.toBe(rawClient);
+		getWorkouts.mockClear();
+		await operationsClient.getWorkouts({ page: 1, pageSize: 5 });
+		expect(getWorkouts).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 5 },
+			expect.objectContaining({ signal, deadline }),
+		);
+	});
+
+	it("keeps operations on the raw client without execution", async () => {
+		const io = streams();
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			workouts: [],
+		});
+		const rawClient = mockClient(getWorkouts);
+		const spy = await createOperationsSpy();
+		spy.mockClear();
+		const code = await runCli({
+			argv: ["workouts", "list"],
+			env: { HEVY_API_KEY: "key" },
+			clientFactory: () => rawClient,
+			streams: io.streams,
+		});
+		expect(code).toBe(0);
+		expect(spy).toHaveBeenCalledTimes(1);
+		const [operationsClient] = spy.mock.calls[0];
+		expect(operationsClient).toBe(rawClient);
 	});
 });
 
