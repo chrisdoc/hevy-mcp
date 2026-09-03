@@ -811,11 +811,56 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 		expect(error).toMatchObject({
 			_tag: "NetworkError",
 			code: "HEVY_RETRY_EXHAUSTED",
+			method: "GET",
+			endpoint: "/v1/workouts/:workoutId",
 			retryCount: 1,
 			retryExhausted: true,
 		});
 		expect(effectFetch).toHaveBeenCalledTimes(promiseFetch.mock.calls.length);
 		expect(effectFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it("keeps sanitized request identity on NetworkError for statusless fetch failures", async () => {
+		const getClient = () =>
+			createHevyClient({
+				apiKey: "test-key",
+				fetch: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
+				maxGetRetries: 0,
+			});
+
+		const getError = await runFailure(
+			getRequestEffectClient(getClient()).getWorkout("workout-1"),
+		);
+
+		expect(getError).toBeInstanceOf(NetworkError);
+		expect(getError).toMatchObject({
+			_tag: "NetworkError",
+			method: "GET",
+			endpoint: "/v1/workouts/:workoutId",
+			retryExhausted: true,
+		});
+
+		const postError = await runFailure(
+			getRequestEffectClient(getClient()).createWorkout({
+				workout: {
+					title: "Push",
+					start_time: "2026-07-16T10:00:00Z",
+					end_time: "2026-07-16T11:00:00Z",
+					exercises: [],
+				},
+			}),
+		);
+
+		expect(postError).toBeInstanceOf(NetworkError);
+		expect(postError).toMatchObject({
+			_tag: "NetworkError",
+			method: "POST",
+			endpoint: "/v1/workouts",
+		});
+
+		const serialized = JSON.stringify([getError, postError]);
+		expect(serialized).not.toContain("api.hevyapp.com");
+		expect(serialized).not.toContain("test-key");
 	});
 
 	it("preserves tagged errors for Effect.catchTag", async () => {

@@ -78,6 +78,8 @@ export class NetworkError extends Schema.TaggedError<NetworkError>()(
 	"NetworkError",
 	{
 		code: Schema.String,
+		endpoint: Schema.optional(Schema.String),
+		method: Schema.optional(Schema.String),
 		...executionFields,
 		retryCount: Schema.optional(Schema.Number),
 		retryExhausted: Schema.Boolean,

@@ -291,10 +291,12 @@ function executionMetadata(error: HevyHttpError) {
 	};
 }
 
-function networkError(cause: unknown): NetworkError {
+function networkError(cause: unknown, identity: RequestIdentity): NetworkError {
 	const httpError = cause instanceof HevyHttpError ? cause : undefined;
 	return new NetworkError({
 		code: httpError?.code ?? "ERR_NETWORK",
+		endpoint: identity.endpoint,
+		method: identity.method,
 		phase: httpError?.phase,
 		operationSafety: httpError?.operationSafety,
 		commitState: httpError?.commitState,
@@ -311,7 +313,7 @@ function mapRequestError(
 ): HevyRequestEffectError {
 	const identity = requestIdentity(config, cause);
 	if (!(cause instanceof HevyHttpError) || cause.status === undefined) {
-		return networkError(cause);
+		return networkError(cause, identity);
 	}
 	const { status } = cause;
 	if (status === 404) {
