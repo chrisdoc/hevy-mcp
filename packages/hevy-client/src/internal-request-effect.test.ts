@@ -8,20 +8,36 @@ import {
 	type HevyRequestEffectClient,
 } from "./internal.ts";
 import * as publicClientExports from "./index.ts";
-import { createHevyClient, HevyHttpError, type HevyClient } from "./index.ts";
+import {
+	HEVY_REQUEST_ABORTED_ERROR_CODE,
+	createHevyClient,
+	HevyHttpError,
+	type HevyClient,
+} from "./index.ts";
+import type { HevyRequestOptions } from "./execution.js";
 
 type ReadErrorCase = {
 	readonly name: string;
-	readonly invokePromise: (client: HevyClient) => Promise<unknown>;
-	readonly invokeEffect: (client: HevyClient) => Effect.Effect<unknown, Error>;
+	readonly invokePromise: (
+		client: HevyClient,
+		options?: HevyRequestOptions,
+	) => Promise<unknown>;
+	readonly invokeEffect: (
+		client: HevyClient,
+	) => Effect.Effect<unknown, unknown>;
 	readonly endpoint: string;
 };
 
 type ReadSuccessCase = {
 	readonly name: string;
 	readonly payload: JsonObject;
-	readonly invokePromise: (client: HevyClient) => Promise<unknown>;
-	readonly invokeEffect: (client: HevyClient) => Effect.Effect<unknown, Error>;
+	readonly invokePromise: (
+		client: HevyClient,
+		options?: HevyRequestOptions,
+	) => Promise<unknown>;
+	readonly invokeEffect: (
+		client: HevyClient,
+	) => Effect.Effect<unknown, unknown>;
 };
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
@@ -107,150 +123,194 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 
 	type MethodCase = {
 		readonly name: keyof HevyRequestEffectClient;
-		readonly invokePromise: (client: HevyClient) => Promise<unknown>;
+		readonly invokePromise: (
+			client: HevyClient,
+			options?: HevyRequestOptions,
+		) => Promise<unknown>;
 		readonly invokeEffect: (
 			client: HevyRequestEffectClient,
-		) => Effect.Effect<unknown, Error>;
+			options?: HevyRequestOptions,
+		) => Effect.Effect<unknown, unknown>;
 	};
 
 	const methodCases: MethodCase[] = [
 		{
 			name: "getWorkouts",
-			invokePromise: (client) => client.getWorkouts({ page: 2, pageSize: 7 }),
-			invokeEffect: (client) => client.getWorkouts({ page: 2, pageSize: 7 }),
+			invokePromise: (client, options) =>
+				client.getWorkouts({ page: 2, pageSize: 7 }, options),
+			invokeEffect: (client, options) =>
+				client.getWorkouts({ page: 2, pageSize: 7 }, options),
 		},
 		{
 			name: "getWorkout",
-			invokePromise: (client) => client.getWorkout("workout/id"),
-			invokeEffect: (client) => client.getWorkout("workout/id"),
+			invokePromise: (client, options) =>
+				client.getWorkout("workout/id", options),
+			invokeEffect: (client, options) =>
+				client.getWorkout("workout/id", options),
 		},
 		{
 			name: "createWorkout",
-			invokePromise: (client) => client.createWorkout({} as never),
-			invokeEffect: (client) => client.createWorkout({} as never),
+			invokePromise: (client, options) =>
+				client.createWorkout({} as never, options),
+			invokeEffect: (client, options) =>
+				client.createWorkout({} as never, options),
 		},
 		{
 			name: "updateWorkout",
-			invokePromise: (client) =>
-				client.updateWorkout("workout/id", {} as never),
-			invokeEffect: (client) => client.updateWorkout("workout/id", {} as never),
+			invokePromise: (client, options) =>
+				client.updateWorkout("workout/id", {} as never, options),
+			invokeEffect: (client, options) =>
+				client.updateWorkout("workout/id", {} as never, options),
 		},
 		{
 			name: "getWorkoutEvents",
-			invokePromise: (client) =>
-				client.getWorkoutEvents({
-					since: "2025-01-01T00:00:00.000Z",
-					page: 2,
-					pageSize: 7,
-				}),
-			invokeEffect: (client) =>
-				client.getWorkoutEvents({
-					since: "2025-01-01T00:00:00.000Z",
-					page: 2,
-					pageSize: 7,
-				}),
+			invokePromise: (client, options) =>
+				client.getWorkoutEvents(
+					{
+						since: "2025-01-01T00:00:00.000Z",
+						page: 2,
+						pageSize: 7,
+					},
+					options,
+				),
+			invokeEffect: (client, options) =>
+				client.getWorkoutEvents(
+					{
+						since: "2025-01-01T00:00:00.000Z",
+						page: 2,
+						pageSize: 7,
+					},
+					options,
+				),
 		},
 		{
 			name: "getWorkoutCount",
-			invokePromise: (client) => client.getWorkoutCount(),
-			invokeEffect: (client) => client.getWorkoutCount(),
+			invokePromise: (client, options) => client.getWorkoutCount(options),
+			invokeEffect: (client, options) => client.getWorkoutCount(options),
 		},
 		{
 			name: "getRoutines",
-			invokePromise: (client) => client.getRoutines({ page: 2, pageSize: 7 }),
-			invokeEffect: (client) => client.getRoutines({ page: 2, pageSize: 7 }),
+			invokePromise: (client, options) =>
+				client.getRoutines({ page: 2, pageSize: 7 }, options),
+			invokeEffect: (client, options) =>
+				client.getRoutines({ page: 2, pageSize: 7 }, options),
 		},
 		{
 			name: "getRoutineById",
-			invokePromise: (client) => client.getRoutineById("routine/id"),
-			invokeEffect: (client) => client.getRoutineById("routine/id"),
+			invokePromise: (client, options) =>
+				client.getRoutineById("routine/id", options),
+			invokeEffect: (client, options) =>
+				client.getRoutineById("routine/id", options),
 		},
 		{
 			name: "createRoutine",
-			invokePromise: (client) => client.createRoutine({} as never),
-			invokeEffect: (client) => client.createRoutine({} as never),
+			invokePromise: (client, options) =>
+				client.createRoutine({} as never, options),
+			invokeEffect: (client, options) =>
+				client.createRoutine({} as never, options),
 		},
 		{
 			name: "updateRoutine",
-			invokePromise: (client) =>
-				client.updateRoutine("routine/id", {} as never),
-			invokeEffect: (client) => client.updateRoutine("routine/id", {} as never),
+			invokePromise: (client, options) =>
+				client.updateRoutine("routine/id", {} as never, options),
+			invokeEffect: (client, options) =>
+				client.updateRoutine("routine/id", {} as never, options),
 		},
 		{
 			name: "getExerciseTemplates",
-			invokePromise: (client) =>
-				client.getExerciseTemplates({ page: 2, pageSize: 7 }),
-			invokeEffect: (client) =>
-				client.getExerciseTemplates({ page: 2, pageSize: 7 }),
+			invokePromise: (client, options) =>
+				client.getExerciseTemplates({ page: 2, pageSize: 7 }, options),
+			invokeEffect: (client, options) =>
+				client.getExerciseTemplates({ page: 2, pageSize: 7 }, options),
 		},
 		{
 			name: "getExerciseTemplate",
-			invokePromise: (client) => client.getExerciseTemplate("template/id"),
-			invokeEffect: (client) => client.getExerciseTemplate("template/id"),
+			invokePromise: (client, options) =>
+				client.getExerciseTemplate("template/id", options),
+			invokeEffect: (client, options) =>
+				client.getExerciseTemplate("template/id", options),
 		},
 		{
 			name: "getExerciseHistory",
-			invokePromise: (client) =>
-				client.getExerciseHistory("template/id", {
-					start_date: "2025-01-01T00:00:00.000Z",
-					end_date: "2025-02-01T00:00:00.000Z",
-				}),
-			invokeEffect: (client) =>
-				client.getExerciseHistory("template/id", {
-					start_date: "2025-01-01T00:00:00.000Z",
-					end_date: "2025-02-01T00:00:00.000Z",
-				}),
+			invokePromise: (client, options) =>
+				client.getExerciseHistory(
+					"template/id",
+					{
+						start_date: "2025-01-01T00:00:00.000Z",
+						end_date: "2025-02-01T00:00:00.000Z",
+					},
+					options,
+				),
+			invokeEffect: (client, options) =>
+				client.getExerciseHistory(
+					"template/id",
+					{
+						start_date: "2025-01-01T00:00:00.000Z",
+						end_date: "2025-02-01T00:00:00.000Z",
+					},
+					options,
+				),
 		},
 		{
 			name: "createExerciseTemplate",
-			invokePromise: (client) => client.createExerciseTemplate({} as never),
-			invokeEffect: (client) => client.createExerciseTemplate({} as never),
+			invokePromise: (client, options) =>
+				client.createExerciseTemplate({} as never, options),
+			invokeEffect: (client, options) =>
+				client.createExerciseTemplate({} as never, options),
 		},
 		{
 			name: "getRoutineFolders",
-			invokePromise: (client) =>
-				client.getRoutineFolders({ page: 2, pageSize: 7 }),
-			invokeEffect: (client) =>
-				client.getRoutineFolders({ page: 2, pageSize: 7 }),
+			invokePromise: (client, options) =>
+				client.getRoutineFolders({ page: 2, pageSize: 7 }, options),
+			invokeEffect: (client, options) =>
+				client.getRoutineFolders({ page: 2, pageSize: 7 }, options),
 		},
 		{
 			name: "getRoutineFolder",
-			invokePromise: (client) => client.getRoutineFolder("folder/id"),
-			invokeEffect: (client) => client.getRoutineFolder("folder/id"),
+			invokePromise: (client, options) =>
+				client.getRoutineFolder("folder/id", options),
+			invokeEffect: (client, options) =>
+				client.getRoutineFolder("folder/id", options),
 		},
 		{
 			name: "createRoutineFolder",
-			invokePromise: (client) => client.createRoutineFolder({} as never),
-			invokeEffect: (client) => client.createRoutineFolder({} as never),
+			invokePromise: (client, options) =>
+				client.createRoutineFolder({} as never, options),
+			invokeEffect: (client, options) =>
+				client.createRoutineFolder({} as never, options),
 		},
 		{
 			name: "getBodyMeasurements",
-			invokePromise: (client) =>
-				client.getBodyMeasurements({ page: 2, pageSize: 7 }),
-			invokeEffect: (client) =>
-				client.getBodyMeasurements({ page: 2, pageSize: 7 }),
+			invokePromise: (client, options) =>
+				client.getBodyMeasurements({ page: 2, pageSize: 7 }, options),
+			invokeEffect: (client, options) =>
+				client.getBodyMeasurements({ page: 2, pageSize: 7 }, options),
 		},
 		{
 			name: "getBodyMeasurement",
-			invokePromise: (client) => client.getBodyMeasurement("2025-01-02"),
-			invokeEffect: (client) => client.getBodyMeasurement("2025-01-02"),
+			invokePromise: (client, options) =>
+				client.getBodyMeasurement("2025-01-02", options),
+			invokeEffect: (client, options) =>
+				client.getBodyMeasurement("2025-01-02", options),
 		},
 		{
 			name: "createBodyMeasurement",
-			invokePromise: (client) => client.createBodyMeasurement({} as never),
-			invokeEffect: (client) => client.createBodyMeasurement({} as never),
+			invokePromise: (client, options) =>
+				client.createBodyMeasurement({} as never, options),
+			invokeEffect: (client, options) =>
+				client.createBodyMeasurement({} as never, options),
 		},
 		{
 			name: "updateBodyMeasurement",
-			invokePromise: (client) =>
-				client.updateBodyMeasurement("2025-01-02", {} as never),
-			invokeEffect: (client) =>
-				client.updateBodyMeasurement("2025-01-02", {} as never),
+			invokePromise: (client, options) =>
+				client.updateBodyMeasurement("2025-01-02", {} as never, options),
+			invokeEffect: (client, options) =>
+				client.updateBodyMeasurement("2025-01-02", {} as never, options),
 		},
 		{
 			name: "getUserInfo",
-			invokePromise: (client) => client.getUserInfo(),
-			invokeEffect: (client) => client.getUserInfo(),
+			invokePromise: (client, options) => client.getUserInfo(options),
+			invokeEffect: (client, options) => client.getUserInfo(options),
 		},
 	];
 
@@ -583,5 +643,287 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 		expect(promiseError).toBeInstanceOf(HevyHttpError);
 		expect(effectError).toBeInstanceOf(HevyHttpError);
 		expect(effectError).toMatchObject(promiseError);
+	});
+
+	it("uses the same fetch, api key, and retry configuration for a new GET", async () => {
+		const params = {
+			since: "2025-01-01T00:00:00.000Z",
+			page: 2,
+			pageSize: 5,
+		};
+		const payload = {
+			page: 2,
+			page_count: 2,
+			events: [{ id: "event-1" }],
+		};
+		const promiseFetch = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 503))
+			.mockResolvedValueOnce(response(payload));
+		const promiseClient = createHevyClient({
+			apiKey: "test-key",
+			baseUrl: "https://example.test",
+			fetch: promiseFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		const promiseValue = await promiseClient.getWorkoutEvents(params);
+
+		const effectFetch = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 503))
+			.mockResolvedValueOnce(response(payload));
+		const effectClient = createHevyClient({
+			apiKey: "test-key",
+			baseUrl: "https://example.test",
+			fetch: effectFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		const effectValue = await Effect.runPromise(
+			getRequestEffectClient(effectClient).getWorkoutEvents(params),
+		);
+
+		expect(effectValue).toEqual(promiseValue);
+		expect(promiseFetch).toHaveBeenCalledTimes(2);
+		expect(effectFetch).toHaveBeenCalledTimes(2);
+		expect(requestDetails(effectFetch)).toEqual(requestDetails(promiseFetch));
+		expect(requestDetails(effectFetch).headers["api-key"]).toBe("test-key");
+	});
+
+	it("matches Promise retry exhaustion for a new GET", async () => {
+		const promiseFetch = vi.fn().mockResolvedValue(response({}, 503));
+		const promiseClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: promiseFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		await expect(
+			promiseClient.getWorkoutEvents({ page: 1, pageSize: 5 }),
+		).rejects.toBeDefined();
+
+		const effectFetch = vi.fn().mockResolvedValue(response({}, 503));
+		const effectClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: effectFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		await expect(
+			Effect.runPromise(
+				getRequestEffectClient(effectClient).getWorkoutEvents({
+					page: 1,
+					pageSize: 5,
+				}),
+			),
+		).rejects.toBeDefined();
+
+		expect(promiseFetch).toHaveBeenCalledTimes(2);
+		expect(effectFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not retry POST mutations and keeps PUT attempts in parity", async () => {
+		const promisePostFetch = vi.fn().mockResolvedValue(response({}, 503));
+		const promisePostClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: promisePostFetch,
+			maxGetRetries: 3,
+		});
+		await expect(
+			promisePostClient.createWorkout({} as never),
+		).rejects.toBeDefined();
+
+		const effectPostFetch = vi.fn().mockResolvedValue(response({}, 503));
+		const effectPostClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: effectPostFetch,
+			maxGetRetries: 3,
+		});
+		await expect(
+			Effect.runPromise(
+				getRequestEffectClient(effectPostClient).createWorkout({} as never),
+			),
+		).rejects.toBeDefined();
+
+		const promisePutFetch = vi.fn().mockResolvedValue(response({}, 503));
+		const promisePutClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: promisePutFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		await expect(
+			promisePutClient.updateWorkout("workout-1", {} as never),
+		).rejects.toBeDefined();
+
+		const effectPutFetch = vi.fn().mockResolvedValue(response({}, 503));
+		const effectPutClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: effectPutFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		await expect(
+			Effect.runPromise(
+				getRequestEffectClient(effectPutClient).updateWorkout(
+					"workout-1",
+					{} as never,
+				),
+			),
+		).rejects.toBeDefined();
+
+		expect(promisePostFetch).toHaveBeenCalledOnce();
+		expect(effectPostFetch).toHaveBeenCalledOnce();
+		expect(promisePutFetch).toHaveBeenCalledTimes(2);
+		expect(effectPutFetch).toHaveBeenCalledTimes(
+			promisePutFetch.mock.calls.length,
+		);
+	});
+
+	it.each([400, 404])(
+		"does not retry GET or POST for HTTP %s",
+		async (status) => {
+			const promiseGetFetch = vi.fn().mockResolvedValue(response({}, status));
+			const promiseGetClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: promiseGetFetch,
+				maxGetRetries: 3,
+			});
+			await expect(
+				promiseGetClient.getWorkout("workout-1"),
+			).rejects.toBeDefined();
+
+			const effectGetFetch = vi.fn().mockResolvedValue(response({}, status));
+			const effectGetClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: effectGetFetch,
+				maxGetRetries: 3,
+			});
+			await expect(
+				Effect.runPromise(
+					getRequestEffectClient(effectGetClient).getWorkout("workout-1"),
+				),
+			).rejects.toBeDefined();
+
+			const promisePostFetch = vi.fn().mockResolvedValue(response({}, status));
+			const promisePostClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: promisePostFetch,
+				maxGetRetries: 3,
+			});
+			await expect(
+				promisePostClient.createWorkout({} as never),
+			).rejects.toBeDefined();
+
+			const effectPostFetch = vi.fn().mockResolvedValue(response({}, status));
+			const effectPostClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: effectPostFetch,
+				maxGetRetries: 3,
+			});
+			await expect(
+				Effect.runPromise(
+					getRequestEffectClient(effectPostClient).createWorkout({} as never),
+				),
+			).rejects.toBeDefined();
+
+			expect(promiseGetFetch).toHaveBeenCalledOnce();
+			expect(effectGetFetch).toHaveBeenCalledOnce();
+			expect(promisePostFetch).toHaveBeenCalledOnce();
+			expect(effectPostFetch).toHaveBeenCalledOnce();
+		},
+	);
+
+	it("forwards an already-aborted signal to every Effect method", async () => {
+		const controller = new AbortController();
+		controller.abort(new DOMException("caller canceled", "AbortError"));
+		const options: HevyRequestOptions = { signal: controller.signal };
+
+		for (const testCase of methodCases) {
+			const promiseFetch = vi.fn();
+			const promiseClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: promiseFetch,
+				maxGetRetries: 0,
+			});
+			await expect(
+				testCase.invokePromise(promiseClient, options),
+			).rejects.toMatchObject({ code: HEVY_REQUEST_ABORTED_ERROR_CODE });
+
+			const effectFetch = vi.fn();
+			const effectClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: effectFetch,
+				maxGetRetries: 0,
+			});
+			await expect(
+				Effect.runPromise(
+					testCase.invokeEffect(getRequestEffectClient(effectClient), options),
+				),
+			).rejects.toMatchObject({ code: HEVY_REQUEST_ABORTED_ERROR_CODE });
+
+			expect(promiseFetch).not.toHaveBeenCalled();
+			expect(effectFetch).not.toHaveBeenCalled();
+		}
+	});
+
+	it("keeps deadline and timeout failures aligned with Promise methods", async () => {
+		const promiseDeadlineFetch = vi.fn();
+		const promiseDeadlineClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: promiseDeadlineFetch,
+			maxGetRetries: 0,
+		});
+		await expect(
+			promiseDeadlineClient.getUserInfo({ deadline: 0 }),
+		).rejects.toMatchObject({
+			code: "HEVY_DEADLINE_EXCEEDED",
+		});
+
+		const effectDeadlineFetch = vi.fn();
+		const effectDeadlineClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: effectDeadlineFetch,
+			maxGetRetries: 0,
+		});
+		await expect(
+			Effect.runPromise(
+				getRequestEffectClient(effectDeadlineClient).getUserInfo({
+					deadline: 0,
+				}),
+			),
+		).rejects.toMatchObject({
+			code: "HEVY_DEADLINE_EXCEEDED",
+		});
+
+		const promiseTimeoutClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: () => new Promise<Response>(() => {}),
+			maxGetRetries: 0,
+		});
+		await expect(
+			promiseTimeoutClient.getWorkout("workout-1", { timeoutMs: 1 }),
+		).rejects.toMatchObject({
+			code: "HEVY_DEADLINE_EXCEEDED",
+		});
+
+		const effectTimeoutClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: () => new Promise<Response>(() => {}),
+			maxGetRetries: 0,
+		});
+		await expect(
+			Effect.runPromise(
+				getRequestEffectClient(effectTimeoutClient).getWorkout("workout-1", {
+					timeoutMs: 1,
+				}),
+			),
+		).rejects.toMatchObject({
+			code: "HEVY_DEADLINE_EXCEEDED",
+		});
+
+		expect(promiseDeadlineFetch).not.toHaveBeenCalled();
+		expect(effectDeadlineFetch).not.toHaveBeenCalled();
 	});
 });
