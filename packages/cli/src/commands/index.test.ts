@@ -99,12 +99,28 @@ describe("execute command/API mappings", () => {
 		});
 		const operations = {
 			routines: {
-				get: { descriptor: routinesGetDescriptor, execute: vi.fn() },
-				list: { descriptor: routinesListDescriptor, execute: executeList },
+				get: {
+					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
+				list: {
+					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
+					execute: executeList,
+				},
 			},
 			workouts: {
-				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
-				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
+				list: {
+					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
 			},
 		} satisfies HevyOperations;
 
@@ -182,16 +198,26 @@ describe("execute command/API mappings", () => {
 		});
 		const operations = {
 			routines: {
-				get: { descriptor: routinesGetDescriptor, execute: vi.fn() },
+				get: {
+					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
 					execute: executeRoutinesList,
 				},
 			},
 			workouts: {
-				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
 				list: {
 					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
 					execute: executeWorkoutsList,
 				},
 			},

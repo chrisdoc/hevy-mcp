@@ -115,12 +115,28 @@ describe("routine tools", () => {
 		});
 		const operations = {
 			routines: {
-				get: { descriptor: routinesGetDescriptor, execute: vi.fn() },
-				list: { descriptor: routinesListDescriptor, execute },
+				get: {
+					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
+				list: {
+					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
+					execute,
+				},
 			},
 			workouts: {
-				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
-				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
+				list: {
+					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
 			},
 		} satisfies HevyOperations;
 		const execution: ToolExecutionContext = {
@@ -153,12 +169,28 @@ describe("routine tools", () => {
 		});
 		const operations = {
 			routines: {
-				get: { descriptor: routinesGetDescriptor, execute },
-				list: { descriptor: routinesListDescriptor, execute: vi.fn() },
+				get: {
+					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
+					execute,
+				},
+				list: {
+					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
 			},
 			workouts: {
-				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
-				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
+				list: {
+					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
 			},
 		} satisfies HevyOperations;
 		const execution: ToolExecutionContext = {
@@ -191,16 +223,26 @@ describe("routine tools", () => {
 		});
 		const layerOperations: HevyOperations = {
 			workouts: {
-				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
-				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
+				list: {
+					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
 			},
 			routines: {
 				get: {
 					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
 					execute: layerRoutinesGet,
 				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
 					execute: layerRoutinesList,
 				},
 			},

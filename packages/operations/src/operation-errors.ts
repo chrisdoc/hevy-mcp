@@ -4,10 +4,21 @@ import {
 	isHevyHttpError,
 	NotFoundError,
 } from "@hevy-mcp/hevy-client";
+import { Schema } from "effect";
 
 export type ExpectedReadError = "not_found" | "end_of_list";
 export type ReadCollectionEndpoint = "/v1/routines" | "/v1/workouts";
-export type ReadOperationError = Error | string;
+export type ReadOperationError = Error;
+
+export class PaginationMismatchError extends Schema.TaggedError<PaginationMismatchError>()(
+	"PaginationMismatchError",
+	{
+		requested: Schema.Number,
+		received: Schema.Number,
+		collection: Schema.String,
+		message: Schema.String,
+	},
+) {}
 
 /**
  * Classify only the documented read-side 404 cases.

@@ -126,20 +126,24 @@ describe("workout tools", () => {
 			workouts: {
 				get: {
 					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
 					execute: workoutsGetExecute,
 				},
 				list: {
 					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
 					execute: workoutsListExecute,
 				},
 			},
 			routines: {
 				get: {
 					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
 					execute: routinesGetExecute,
 				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
 					execute: routinesListExecute,
 				},
 			},
@@ -182,20 +186,24 @@ describe("workout tools", () => {
 			workouts: {
 				get: {
 					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
 					execute: layerWorkoutsGet,
 				},
 				list: {
 					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
 					execute: layerWorkoutsList,
 				},
 			},
 			routines: {
 				get: {
 					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},

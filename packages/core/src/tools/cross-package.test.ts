@@ -61,12 +61,28 @@ function createSoft404Operations() {
 
 	const operations = {
 		workouts: {
-			get: { descriptor: workoutsGetDescriptor, execute: workoutsGet },
-			list: { descriptor: workoutsListDescriptor, execute: workoutsList },
+			get: {
+				descriptor: workoutsGetDescriptor,
+				effect: vi.fn(),
+				execute: workoutsGet,
+			},
+			list: {
+				descriptor: workoutsListDescriptor,
+				effect: vi.fn(),
+				execute: workoutsList,
+			},
 		},
 		routines: {
-			get: { descriptor: routinesGetDescriptor, execute: routinesGet },
-			list: { descriptor: routinesListDescriptor, execute: routinesList },
+			get: {
+				descriptor: routinesGetDescriptor,
+				effect: vi.fn(),
+				execute: routinesGet,
+			},
+			list: {
+				descriptor: routinesListDescriptor,
+				effect: vi.fn(),
+				execute: routinesList,
+			},
 		},
 	} satisfies HevyOperations;
 
@@ -178,19 +194,26 @@ describe("cross-package core invariants", () => {
 			.mockRejectedValue(new Error("wrong source"));
 		const layerOperations: HevyOperations = {
 			workouts: {
-				get: { descriptor: workoutsGetDescriptor, execute: layerExecute },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
+					execute: layerExecute,
+				},
 				list: {
 					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},
 			routines: {
 				get: {
 					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},
@@ -240,22 +263,26 @@ describe("cross-package core invariants", () => {
 			workouts: {
 				get: {
 					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn().mockResolvedValue({
 						workout: { id: "workout-1", title: "Layer workout" },
 					}),
 				},
 				list: {
 					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},
 			routines: {
 				get: {
 					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},
