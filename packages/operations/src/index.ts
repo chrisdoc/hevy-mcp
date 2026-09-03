@@ -45,6 +45,10 @@ import {
 } from "./templates.js";
 import { createUserGetOperation, type UserGetOperation } from "./user.js";
 import {
+	createWorkflowsTrainingSummaryOperation,
+	type WorkflowsTrainingSummaryOperation,
+} from "./workflows.js";
+import {
 	createWorkoutsCountOperation,
 	createWorkoutsCreateOperation,
 	createWorkoutsEventsOperation,
@@ -188,6 +192,28 @@ export type {
 	UserGetOperation,
 } from "./user.js";
 export {
+	createTrainingSummaryOperation,
+	createWorkflowsTrainingSummaryOperation,
+	trainingSummaryDescriptor,
+	workflowsTrainingSummaryDescriptor,
+} from "./workflows.js";
+export type {
+	TrainingSummaryAdapter,
+	TrainingSummaryInput,
+	TrainingSummaryMeasurement,
+	TrainingSummaryOperation,
+	TrainingSummaryOperations,
+	TrainingSummaryPage,
+	TrainingSummaryPageLoader,
+	TrainingSummaryPeriod,
+	TrainingSummaryResult,
+	TrainingSummaryScanResult,
+	TrainingSummarySession,
+	WorkflowsTrainingSummaryDescriptor,
+	WorkflowsTrainingSummaryOperation,
+	WorkflowsTrainingSummaryOperations,
+} from "./workflows.js";
+export {
 	createWorkoutsCountOperation,
 	createWorkoutsCreateOperation,
 	createWorkoutsEventsOperation,
@@ -238,6 +264,7 @@ export type {
 export { PaginationMismatchError } from "./operation-errors.js";
 export {
 	EmptyMeasurementUpdateError,
+	TrainingSummaryValidationError,
 	WorkoutPayloadError,
 	WorkoutPrivacyError,
 } from "./operation-errors.js";
@@ -310,6 +337,9 @@ export interface HevyOperations {
 	};
 	readonly user?: {
 		readonly get: UserGetOperation;
+	};
+	readonly workflows?: {
+		readonly trainingSummary: WorkflowsTrainingSummaryOperation;
 	};
 }
 
@@ -387,6 +417,10 @@ export function createOperations(client: HevyClient): HevyOperations {
 		updateWorkout: (...args) =>
 			getRequestEffectClientOnce().updateWorkout(...args),
 	};
+	const workoutsList = createWorkoutsListOperation(lazyRequestEffectClient);
+	const bodyMeasurementsList = createBodyMeasurementsListOperation(
+		lazyRequestEffectClient,
+	);
 	return {
 		routines: {
 			create: createRoutinesCreateOperation(lazyRequestEffectClient),
@@ -400,7 +434,7 @@ export function createOperations(client: HevyClient): HevyOperations {
 			create: createWorkoutsCreateOperation(lazyRequestEffectClient),
 			events: createWorkoutsEventsOperation(lazyRequestEffectClient),
 			get: createWorkoutsGetOperation(lazyRequestEffectClient),
-			list: createWorkoutsListOperation(lazyRequestEffectClient),
+			list: workoutsList,
 			replaceExercises: createWorkoutsReplaceExercisesOperation(
 				lazyRequestEffectClient,
 			),
@@ -409,7 +443,7 @@ export function createOperations(client: HevyClient): HevyOperations {
 		bodyMeasurements: {
 			create: createBodyMeasurementsCreateOperation(lazyRequestEffectClient),
 			get: createBodyMeasurementsGetOperation(lazyRequestEffectClient),
-			list: createBodyMeasurementsListOperation(lazyRequestEffectClient),
+			list: bodyMeasurementsList,
 			update: createBodyMeasurementsUpdateOperation(lazyRequestEffectClient),
 		},
 		folders: {
@@ -425,6 +459,16 @@ export function createOperations(client: HevyClient): HevyOperations {
 		},
 		user: {
 			get: createUserGetOperation(lazyRequestEffectClient),
+		},
+		workflows: {
+			trainingSummary: createWorkflowsTrainingSummaryOperation({
+				workouts: {
+					list: workoutsList,
+				},
+				bodyMeasurements: {
+					list: bodyMeasurementsList,
+				},
+			}),
 		},
 	};
 }

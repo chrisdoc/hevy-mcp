@@ -36,6 +36,7 @@ import {
 	createWorkoutsListOperation,
 } from "./workouts.js";
 import { PaginationMismatchError } from "./operation-errors.js";
+import { createWorkflowsTrainingSummaryOperation } from "./workflows.js";
 
 function assertEffectProgram(program: Effect.Effect<unknown, unknown>): void {
 	expect(program).not.toBeInstanceOf(Promise);
@@ -154,6 +155,14 @@ describe("operations Effect collapse", () => {
 			}),
 			createUserGetOperation({
 				getUserInfo: () => Effect.succeed({}),
+			}),
+			createWorkflowsTrainingSummaryOperation({
+				workouts: createWorkoutsListOperation({
+					getWorkouts: () => Effect.succeed({ workouts: [] }),
+				}),
+				bodyMeasurements: createBodyMeasurementsListOperation({
+					getBodyMeasurements: () => Effect.succeed({}),
+				}),
 			}),
 		];
 

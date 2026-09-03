@@ -58,6 +58,14 @@ export class EmptyMeasurementUpdateError extends Schema.TaggedError<EmptyMeasure
 	},
 ) {}
 
+export class TrainingSummaryValidationError extends Schema.TaggedError<TrainingSummaryValidationError>()(
+	"TrainingSummaryValidationError",
+	{
+		weeks: Schema.Number,
+		message: Schema.String,
+	},
+) {}
+
 const collectionMemberEndpoints = {
 	"/v1/body_measurements": "/v1/body_measurements/:date",
 	"/v1/exercise_templates": "/v1/exercise_templates/:exerciseTemplateId",
