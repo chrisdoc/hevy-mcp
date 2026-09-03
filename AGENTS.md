@@ -4,6 +4,16 @@ Read this file before changing the repository. Keep this file focused on
 agent-only rules; use the linked documents and repository configuration as the
 source of truth for detailed commands and changing facts.
 
+# Learning more about Effect
+
+This repository uses the Effect Typescript library.
+
+Before writing any Effect code, first read `node_modules/effect/AGENTS.md`
+**completely**, and follow the links in the file when required.
+
+If you need to learn more about particular Effect apis and concepts that the
+guide doesn't cover, search through the source code in `node_modules/effect/src`.
+
 ## Start in a fresh worktree
 
 1. Inspect the checkout before touching it:
