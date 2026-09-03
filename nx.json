@@ -8,8 +8,8 @@
 			"{workspaceRoot}/pnpm-lock.yaml",
 			"{workspaceRoot}/tsconfig*.json",
 			"{workspaceRoot}/vitest*.config.*",
-			"{workspaceRoot}/.oxlintrc.json",
-			"{workspaceRoot}/.oxfmtrc.json"
+			"{workspaceRoot}/oxlint.config.ts",
+			"{workspaceRoot}/oxfmt.config.ts"
 		],
 		"controlPlaneInputs": [
 			"{workspaceRoot}/.nvmrc",

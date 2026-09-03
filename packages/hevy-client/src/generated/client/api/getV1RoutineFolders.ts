@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1RoutineFoldersOptions,
   GetV1RoutineFoldersResponses,
 } from "../types/GetV1RoutineFolders";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of routine folders available on the account.
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function getV1RoutineFolders<ThrowOnError extends boolean = true>(
   options: Options<GetV1RoutineFoldersOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1RoutineFoldersResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1RoutineFoldersResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/routine_folders",
-    ...config,
-  }) as Promise<RequestResult<GetV1RoutineFoldersResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/routine_folders",
+      ...config,
+    }) as Promise<RequestResult<GetV1RoutineFoldersResponses, ThrowOnError>>,
+  );
 }

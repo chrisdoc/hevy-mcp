@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1WorkoutsWorkoutidOptions,
   GetV1WorkoutsWorkoutidResponses,
 } from "../types/GetV1WorkoutsWorkoutid";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a single workout’s complete details by the workoutId
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function getV1WorkoutsWorkoutid<ThrowOnError extends boolean = true>(
   options: Options<GetV1WorkoutsWorkoutidOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1WorkoutsWorkoutidResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1WorkoutsWorkoutidResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/workouts/{workoutId}",
-    ...config,
-  }) as Promise<RequestResult<GetV1WorkoutsWorkoutidResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/workouts/{workoutId}",
+      ...config,
+    }) as Promise<RequestResult<GetV1WorkoutsWorkoutidResponses, ThrowOnError>>,
+  );
 }

@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PostV1WorkoutsOptions,
   PostV1WorkoutsResponses,
 } from "../types/PostV1Workouts";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Create a new workout
@@ -16,10 +16,12 @@ import { client } from "../../.kubb/client";
  */
 export function postV1Workouts<ThrowOnError extends boolean = true>(
   options: Options<PostV1WorkoutsOptions, ThrowOnError>,
-): Promise<RequestResult<PostV1WorkoutsResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<PostV1WorkoutsResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({ method: "POST", url: "/v1/workouts", ...config }) as Promise<
-    RequestResult<PostV1WorkoutsResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({ method: "POST", url: "/v1/workouts", ...config }) as Promise<
+      RequestResult<PostV1WorkoutsResponses, ThrowOnError>
+    >,
+  );
 }

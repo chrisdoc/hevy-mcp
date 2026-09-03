@@ -383,8 +383,8 @@ async function createFixtureRepository(normalizedSpec) {
 			resolve(root, "tsconfig.base.json"),
 		);
 		await cp(
-			resolve(repositoryRoot, ".oxfmtrc.json"),
-			resolve(root, ".oxfmtrc.json"),
+			resolve(repositoryRoot, "oxfmt.config.ts"),
+			resolve(root, "oxfmt.config.ts"),
 		);
 		// Kubb loads the copied config from the temporary tree, so expose the
 		// repository dependencies there without copying the entire installation.

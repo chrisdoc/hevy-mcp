@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1WorkoutsOptions,
   GetV1WorkoutsResponses,
 } from "../types/GetV1Workouts";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of workouts
@@ -16,10 +16,12 @@ import { client } from "../../.kubb/client";
  */
 export function getV1Workouts<ThrowOnError extends boolean = true>(
   options: Options<GetV1WorkoutsOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1WorkoutsResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1WorkoutsResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({ method: "GET", url: "/v1/workouts", ...config }) as Promise<
-    RequestResult<GetV1WorkoutsResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({ method: "GET", url: "/v1/workouts", ...config }) as Promise<
+      RequestResult<GetV1WorkoutsResponses, ThrowOnError>
+    >,
+  );
 }

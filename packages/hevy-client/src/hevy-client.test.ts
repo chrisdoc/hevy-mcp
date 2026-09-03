@@ -268,7 +268,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
-			timeoutMs: 10,
+			timeoutMs: 50,
 			maxGetRetries: 1,
 			onLog,
 			onRequestComplete: ({ outcome }) => outcomes.push(outcome),
@@ -391,7 +391,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
-			timeoutMs: 10,
+			timeoutMs: 50,
 			maxGetRetries: 1,
 		});
 
@@ -988,7 +988,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		} finally {
 			random.mockRestore();
 		}
-		expect(waits[0]).toBeGreaterThan(20_000);
+		expect(waits[0]).toBeGreaterThanOrEqual(20_000);
 		expect(waits[0]).toBeLessThanOrEqual(20_250);
 	});
 

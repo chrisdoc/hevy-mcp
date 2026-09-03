@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1ExerciseHistoryExercisetemplateidOptions,
   GetV1ExerciseHistoryExercisetemplateidResponses,
 } from "../types/GetV1ExerciseHistoryExercisetemplateid";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get exercise history for a specific exercise template
@@ -18,16 +18,21 @@ export function getV1ExerciseHistoryExercisetemplateid<
   ThrowOnError extends boolean = true,
 >(
   options: Options<GetV1ExerciseHistoryExercisetemplateidOptions, ThrowOnError>,
-): Promise<
+): Unwrappable<
   RequestResult<GetV1ExerciseHistoryExercisetemplateidResponses, ThrowOnError>
 > {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/exercise_history/{exerciseTemplateId}",
-    ...config,
-  }) as Promise<
-    RequestResult<GetV1ExerciseHistoryExercisetemplateidResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/exercise_history/{exerciseTemplateId}",
+      ...config,
+    }) as Promise<
+      RequestResult<
+        GetV1ExerciseHistoryExercisetemplateidResponses,
+        ThrowOnError
+      >
+    >,
+  );
 }

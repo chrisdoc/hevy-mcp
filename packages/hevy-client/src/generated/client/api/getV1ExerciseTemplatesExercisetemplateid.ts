@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1ExerciseTemplatesExercisetemplateidOptions,
   GetV1ExerciseTemplatesExercisetemplateidResponses,
 } from "../types/GetV1ExerciseTemplatesExercisetemplateid";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a single exercise template by id.
@@ -21,19 +21,21 @@ export function getV1ExerciseTemplatesExercisetemplateid<
     GetV1ExerciseTemplatesExercisetemplateidOptions,
     ThrowOnError
   >,
-): Promise<
+): Unwrappable<
   RequestResult<GetV1ExerciseTemplatesExercisetemplateidResponses, ThrowOnError>
 > {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/exercise_templates/{exerciseTemplateId}",
-    ...config,
-  }) as Promise<
-    RequestResult<
-      GetV1ExerciseTemplatesExercisetemplateidResponses,
-      ThrowOnError
-    >
-  >;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/exercise_templates/{exerciseTemplateId}",
+      ...config,
+    }) as Promise<
+      RequestResult<
+        GetV1ExerciseTemplatesExercisetemplateidResponses,
+        ThrowOnError
+      >
+    >,
+  );
 }

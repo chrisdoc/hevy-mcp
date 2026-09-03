@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1RoutinesOptions,
   GetV1RoutinesResponses,
 } from "../types/GetV1Routines";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of routines
@@ -16,10 +16,12 @@ import { client } from "../../.kubb/client";
  */
 export function getV1Routines<ThrowOnError extends boolean = true>(
   options: Options<GetV1RoutinesOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1RoutinesResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1RoutinesResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({ method: "GET", url: "/v1/routines", ...config }) as Promise<
-    RequestResult<GetV1RoutinesResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({ method: "GET", url: "/v1/routines", ...config }) as Promise<
+      RequestResult<GetV1RoutinesResponses, ThrowOnError>
+    >,
+  );
 }
