@@ -23,7 +23,10 @@ import {
 	type WorkoutsReplaceExercisesInput,
 	type WorkoutsUpdateAdapter,
 } from "./workouts.js";
-import { PaginationMismatchError } from "./operation-errors.js";
+import {
+	PaginationMismatchError,
+	WorkoutPayloadError,
+} from "./operation-errors.js";
 import { NotFoundError } from "@hevy-mcp/hevy-client";
 
 interface InMemoryWorkoutsAdapter extends WorkoutsListAdapter {
@@ -849,7 +852,7 @@ describe("workouts write operations", () => {
 				}),
 			),
 		).resolves.toEqual(currentWorkoutForMutation);
-		expect(adapter.calls).toEqual(["update:w1"]);
+		expect(adapter.calls).toEqual(["get:w1", "update:w1"]);
 		expect(adapter.updateRequests[0]?.data.workout).toMatchObject({
 			title: "Replaced",
 			description: null,
@@ -858,7 +861,7 @@ describe("workouts write operations", () => {
 		});
 	});
 
-	it("preserves omitted description in a full replacement update", async () => {
+	it("inherits the fetched description in a full replacement update", async () => {
 		const adapter = createInMemoryWorkoutMutationAdapter({
 			current: currentWorkoutForMutation,
 		});
@@ -877,9 +880,118 @@ describe("workouts write operations", () => {
 			}),
 		);
 
-		expect(adapter.updateRequests[0]?.data.workout).not.toHaveProperty(
+		expect(adapter.updateRequests[0]?.data.workout).toHaveProperty(
 			"description",
+			"Keep",
 		);
+	});
+
+	it("[VAL-OPS-040] merges fetched metadata into a replacement patch that omits it", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					workout: {
+						is_private: true,
+						exercises: [
+							{
+								exercise_template_id: "new",
+								sets: [{ type: "normal", reps: 5 }],
+							},
+						],
+					},
+				}),
+			),
+		).resolves.toEqual(currentWorkoutForMutation);
+
+		expect(adapter.calls).toEqual(["get:w1", "update:w1"]);
+		expect(adapter.updateRequests[0]?.data.workout).toMatchObject({
+			title: "Original",
+			description: "Keep",
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+			is_private: true,
+			exercises: [
+				{
+					exercise_template_id: "new",
+					sets: [{ type: "normal", reps: 5 }],
+				},
+			],
+		});
+	});
+
+	it("[VAL-OPS-039] sends description null on replacement when neither patch nor fetched workout has one", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: { ...currentWorkoutForMutation, description: undefined },
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await Effect.runPromise(
+			operation.effect({
+				workoutId: "w1",
+				workout: {
+					is_private: true,
+					exercises: [],
+				},
+			}),
+		);
+
+		expect(adapter.updateRequests[0]?.data.workout).toHaveProperty(
+			"description",
+			null,
+		);
+	});
+
+	it("[VAL-OPS-040] fails replacement update on GET 404 without issuing PUT", async () => {
+		const error = new NotFoundError({
+			status: 404,
+			method: "GET",
+			endpoint: "/v1/workouts/w1",
+			expected: true,
+		});
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			getError: error,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					workout: { is_private: true, exercises: [] },
+				}),
+			),
+		).rejects.toBe(error);
+		expect(adapter.calls).toEqual(["get:w1"]);
+		expect(adapter.updateRequests).toHaveLength(0);
+	});
+
+	it("[VAL-OPS-040] fails replacement update on malformed fetched timestamps", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: {
+				...currentWorkoutForMutation,
+				start_time: "2026-02-30T08:00:00Z",
+			},
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		const error = await Effect.runPromise(
+			Effect.flip(
+				operation.effect({
+					workoutId: "w1",
+					workout: { is_private: true, exercises: [] },
+				}),
+			),
+		);
+
+		expect(error).toBeInstanceOf(WorkoutPayloadError);
+		expect(adapter.updateRequests).toHaveLength(0);
 	});
 
 	it("[VAL-OPS-012] fails update on GET 404 without issuing PUT", async () => {

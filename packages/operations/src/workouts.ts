@@ -415,17 +415,9 @@ export function createWorkoutsUpdateOperation(
 		const replacementExercises = isWorkoutReplacementPatch(patch)
 			? patch.exercises
 			: undefined;
-		const current =
-			replacementExercises === undefined
-				? yield* options === undefined
-						? adapter.getWorkout(input.workoutId)
-						: adapter.getWorkout(input.workoutId, options)
-				: {
-						title: patch.title,
-						description: patch.description ?? undefined,
-						start_time: patch.start_time,
-						end_time: patch.end_time,
-					};
+		const current = yield* options === undefined
+			? adapter.getWorkout(input.workoutId)
+			: adapter.getWorkout(input.workoutId, options);
 		const payload = yield* workoutPayloadEffect(
 			current,
 			patch,
