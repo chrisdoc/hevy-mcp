@@ -30,13 +30,18 @@ export interface HevyOperations {
 	};
 }
 
+type ExistingRequestEffectClient = Pick<
+	HevyRequestEffectClient,
+	"getWorkouts" | "getWorkout" | "getRoutines" | "getRoutineById"
+>;
+
 export function createOperations(client: HevyClient): HevyOperations {
 	let requestEffectClient: HevyRequestEffectClient | undefined;
 	const getRequestEffectClientOnce = (): HevyRequestEffectClient => {
 		requestEffectClient ??= getRequestEffectClient(client);
 		return requestEffectClient;
 	};
-	const lazyRequestEffectClient: HevyRequestEffectClient = {
+	const lazyRequestEffectClient: ExistingRequestEffectClient = {
 		getWorkouts: (...args) => getRequestEffectClientOnce().getWorkouts(...args),
 		getWorkout: (...args) => getRequestEffectClientOnce().getWorkout(...args),
 		getRoutines: (...args) => getRequestEffectClientOnce().getRoutines(...args),

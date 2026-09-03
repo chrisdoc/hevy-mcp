@@ -1,7 +1,12 @@
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
-import { getNativeRequestEffect, getRequestEffectClient } from "./internal.ts";
+import {
+	getNativeRequestEffect,
+	getRequestEffectClient,
+	NATIVE_REQUEST_EFFECT,
+	type HevyRequestEffectClient,
+} from "./internal.ts";
 import * as publicClientExports from "./index.ts";
 import { createHevyClient, HevyHttpError, type HevyClient } from "./index.ts";
 
@@ -86,6 +91,207 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 		expect(getRequestEffectClient(client).getWorkout("workout-1")).not.toBe(
 			undefined,
 		);
+		expect(Object.keys(client)).not.toContain("requestEffect");
+		expect(
+			Object.getOwnPropertyDescriptor(client, NATIVE_REQUEST_EFFECT),
+		).toMatchObject({ enumerable: false });
+	});
+
+	it("throws a TypeError when a client has no native request Effect seam", () => {
+		expect(() => getNativeRequestEffect({} as never)).toThrowError(
+			new TypeError(
+				"Expected a Hevy client with the internal request Effect seam",
+			),
+		);
+	});
+
+	type MethodCase = {
+		readonly name: keyof HevyRequestEffectClient;
+		readonly invokePromise: (client: HevyClient) => Promise<unknown>;
+		readonly invokeEffect: (
+			client: HevyRequestEffectClient,
+		) => Effect.Effect<unknown, Error>;
+	};
+
+	const methodCases: MethodCase[] = [
+		{
+			name: "getWorkouts",
+			invokePromise: (client) => client.getWorkouts({ page: 2, pageSize: 7 }),
+			invokeEffect: (client) => client.getWorkouts({ page: 2, pageSize: 7 }),
+		},
+		{
+			name: "getWorkout",
+			invokePromise: (client) => client.getWorkout("workout/id"),
+			invokeEffect: (client) => client.getWorkout("workout/id"),
+		},
+		{
+			name: "createWorkout",
+			invokePromise: (client) => client.createWorkout({} as never),
+			invokeEffect: (client) => client.createWorkout({} as never),
+		},
+		{
+			name: "updateWorkout",
+			invokePromise: (client) =>
+				client.updateWorkout("workout/id", {} as never),
+			invokeEffect: (client) => client.updateWorkout("workout/id", {} as never),
+		},
+		{
+			name: "getWorkoutEvents",
+			invokePromise: (client) =>
+				client.getWorkoutEvents({
+					since: "2025-01-01T00:00:00.000Z",
+					page: 2,
+					pageSize: 7,
+				}),
+			invokeEffect: (client) =>
+				client.getWorkoutEvents({
+					since: "2025-01-01T00:00:00.000Z",
+					page: 2,
+					pageSize: 7,
+				}),
+		},
+		{
+			name: "getWorkoutCount",
+			invokePromise: (client) => client.getWorkoutCount(),
+			invokeEffect: (client) => client.getWorkoutCount(),
+		},
+		{
+			name: "getRoutines",
+			invokePromise: (client) => client.getRoutines({ page: 2, pageSize: 7 }),
+			invokeEffect: (client) => client.getRoutines({ page: 2, pageSize: 7 }),
+		},
+		{
+			name: "getRoutineById",
+			invokePromise: (client) => client.getRoutineById("routine/id"),
+			invokeEffect: (client) => client.getRoutineById("routine/id"),
+		},
+		{
+			name: "createRoutine",
+			invokePromise: (client) => client.createRoutine({} as never),
+			invokeEffect: (client) => client.createRoutine({} as never),
+		},
+		{
+			name: "updateRoutine",
+			invokePromise: (client) =>
+				client.updateRoutine("routine/id", {} as never),
+			invokeEffect: (client) => client.updateRoutine("routine/id", {} as never),
+		},
+		{
+			name: "getExerciseTemplates",
+			invokePromise: (client) =>
+				client.getExerciseTemplates({ page: 2, pageSize: 7 }),
+			invokeEffect: (client) =>
+				client.getExerciseTemplates({ page: 2, pageSize: 7 }),
+		},
+		{
+			name: "getExerciseTemplate",
+			invokePromise: (client) => client.getExerciseTemplate("template/id"),
+			invokeEffect: (client) => client.getExerciseTemplate("template/id"),
+		},
+		{
+			name: "getExerciseHistory",
+			invokePromise: (client) =>
+				client.getExerciseHistory("template/id", {
+					start_date: "2025-01-01T00:00:00.000Z",
+					end_date: "2025-02-01T00:00:00.000Z",
+				}),
+			invokeEffect: (client) =>
+				client.getExerciseHistory("template/id", {
+					start_date: "2025-01-01T00:00:00.000Z",
+					end_date: "2025-02-01T00:00:00.000Z",
+				}),
+		},
+		{
+			name: "createExerciseTemplate",
+			invokePromise: (client) => client.createExerciseTemplate({} as never),
+			invokeEffect: (client) => client.createExerciseTemplate({} as never),
+		},
+		{
+			name: "getRoutineFolders",
+			invokePromise: (client) =>
+				client.getRoutineFolders({ page: 2, pageSize: 7 }),
+			invokeEffect: (client) =>
+				client.getRoutineFolders({ page: 2, pageSize: 7 }),
+		},
+		{
+			name: "getRoutineFolder",
+			invokePromise: (client) => client.getRoutineFolder("folder/id"),
+			invokeEffect: (client) => client.getRoutineFolder("folder/id"),
+		},
+		{
+			name: "createRoutineFolder",
+			invokePromise: (client) => client.createRoutineFolder({} as never),
+			invokeEffect: (client) => client.createRoutineFolder({} as never),
+		},
+		{
+			name: "getBodyMeasurements",
+			invokePromise: (client) =>
+				client.getBodyMeasurements({ page: 2, pageSize: 7 }),
+			invokeEffect: (client) =>
+				client.getBodyMeasurements({ page: 2, pageSize: 7 }),
+		},
+		{
+			name: "getBodyMeasurement",
+			invokePromise: (client) => client.getBodyMeasurement("2025-01-02"),
+			invokeEffect: (client) => client.getBodyMeasurement("2025-01-02"),
+		},
+		{
+			name: "createBodyMeasurement",
+			invokePromise: (client) => client.createBodyMeasurement({} as never),
+			invokeEffect: (client) => client.createBodyMeasurement({} as never),
+		},
+		{
+			name: "updateBodyMeasurement",
+			invokePromise: (client) =>
+				client.updateBodyMeasurement("2025-01-02", {} as never),
+			invokeEffect: (client) =>
+				client.updateBodyMeasurement("2025-01-02", {} as never),
+		},
+		{
+			name: "getUserInfo",
+			invokePromise: (client) => client.getUserInfo(),
+			invokeEffect: (client) => client.getUserInfo(),
+		},
+	];
+
+	it("exposes exactly the 22 public methods as native Effects", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementation(() => Promise.resolve(response({})));
+		const client = createHevyClient({
+			apiKey: "test-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+		const effectClient = getRequestEffectClient(client);
+		const expectedMethods = methodCases.map(({ name }) => name).sort();
+
+		expect(Object.keys(effectClient).sort()).toEqual(expectedMethods);
+		for (const testCase of methodCases) {
+			const program = testCase.invokeEffect(effectClient);
+			expect(program).not.toBeInstanceOf(Promise);
+			await expect(Effect.runPromise(program)).resolves.toEqual({});
+		}
+	});
+
+	it("keeps all public methods Promise-shaped at runtime", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementation(() => Promise.resolve(response({})));
+		const client = createHevyClient({
+			apiKey: "test-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+
+		const requests = methodCases.map(({ invokePromise }) =>
+			invokePromise(client),
+		);
+		for (const request of requests) {
+			expect(request).toBeInstanceOf(Promise);
+		}
+		await Promise.all(requests);
+		expect(fetchMock).toHaveBeenCalledTimes(methodCases.length);
 	});
 
 	const readSuccessCases: ReadSuccessCase[] = [
@@ -162,6 +368,83 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 			expect(requestDetails(effectFetch)).toEqual(requestDetails(promiseFetch));
 		},
 	);
+
+	it.each(methodCases)(
+		"$name has the same native request as its Promise twin",
+		async (testCase) => {
+			const payload = { ok: true, method: testCase.name };
+			const promiseFetch = vi.fn().mockResolvedValue(response(payload));
+			const promiseClient = createHevyClient({
+				apiKey: "test-key",
+				baseUrl: "https://example.test",
+				fetch: promiseFetch,
+				maxGetRetries: 0,
+			});
+			const promiseValue = await testCase.invokePromise(promiseClient);
+
+			const effectFetch = vi.fn().mockResolvedValue(response(payload));
+			const effectClient = createHevyClient({
+				apiKey: "test-key",
+				baseUrl: "https://example.test",
+				fetch: effectFetch,
+				maxGetRetries: 0,
+			});
+			const effectValue = await Effect.runPromise(
+				testCase.invokeEffect(getRequestEffectClient(effectClient)),
+			);
+
+			expect(effectValue).toEqual(promiseValue);
+			expect(requestDetails(effectFetch)).toEqual(requestDetails(promiseFetch));
+		},
+	);
+
+	it("keeps Promise createRoutine's empty response quirk off the Effect surface", async () => {
+		const promiseClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn().mockResolvedValue(response({})),
+			maxGetRetries: 0,
+		});
+		await expect(
+			promiseClient.createRoutine({} as never),
+		).resolves.toBeUndefined();
+
+		const effectFetch = vi.fn().mockResolvedValue(response({}));
+		const effectClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: effectFetch,
+			maxGetRetries: 0,
+		});
+		const promiseMethod = vi.spyOn(effectClient, "createRoutine");
+		await expect(
+			Effect.runPromise(
+				getRequestEffectClient(effectClient).createRoutine({} as never),
+			),
+		).resolves.toEqual({});
+		expect(promiseMethod).not.toHaveBeenCalled();
+		expect(effectFetch).toHaveBeenCalledOnce();
+	});
+
+	it("runs Effect and Promise twins as independent interpreter requests", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockImplementation(() => Promise.resolve(response({ id: "workout-1" })));
+		const client = createHevyClient({
+			apiKey: "test-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+		const effectClient = getRequestEffectClient(client);
+		const program = effectClient.getWorkout("workout-1");
+		expect(program).not.toBeInstanceOf(Promise);
+
+		const [effectValue, promiseValue] = await Promise.all([
+			Effect.runPromise(program),
+			client.getWorkout("workout-1"),
+		]);
+
+		expect(effectValue).toEqual(promiseValue);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
 
 	const readErrorCases: ReadErrorCase[] = [
 		{
