@@ -386,13 +386,13 @@ export function buildWorkoutUpdatePayload(
 		title,
 		start_time: startTime,
 		end_time: endTime,
-		exercises:
-			replacementExercises === undefined
-				? preserveWorkoutExercises(current)
-				: replacementExercises,
 	};
 	if (description !== undefined) payload.description = description;
 	if (patch.is_private !== undefined) payload.is_private = patch.is_private;
+	payload.exercises =
+		replacementExercises === undefined
+			? preserveWorkoutExercises(current)
+			: replacementExercises;
 	return payload;
 }
 

@@ -192,7 +192,7 @@ function updateMeasurement(
 		operations.bodyMeasurements?.update,
 		"bodyMeasurements.update",
 	);
-	const effect = Effect.gen(function* () {
+	const effect = Effect.fn("cli.measurements.update")(function* () {
 		const existing =
 			execution === undefined
 				? yield* getOperation.effect({ date })
@@ -210,7 +210,7 @@ function updateMeasurement(
 		else yield* updateOperation.effect(measurement, execution);
 		return measurement;
 	});
-	return collapse(effect);
+	return collapse(effect());
 }
 
 async function executeWorkoutList({
