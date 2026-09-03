@@ -1,5 +1,9 @@
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import {
+	getRequestEffectClient,
+	type HevyRequestEffectClient,
+} from "@hevy-mcp/hevy-client/internal";
+import {
 	createRoutinesGetOperation,
 	createRoutinesListOperation,
 	type RoutinesGetOperation,
@@ -27,14 +31,26 @@ export interface HevyOperations {
 }
 
 export function createOperations(client: HevyClient): HevyOperations {
+	let requestEffectClient: HevyRequestEffectClient | undefined;
+	const getRequestEffectClientOnce = (): HevyRequestEffectClient => {
+		requestEffectClient ??= getRequestEffectClient(client);
+		return requestEffectClient;
+	};
+	const lazyRequestEffectClient: HevyRequestEffectClient = {
+		getWorkouts: (...args) => getRequestEffectClientOnce().getWorkouts(...args),
+		getWorkout: (...args) => getRequestEffectClientOnce().getWorkout(...args),
+		getRoutines: (...args) => getRequestEffectClientOnce().getRoutines(...args),
+		getRoutineById: (...args) =>
+			getRequestEffectClientOnce().getRoutineById(...args),
+	};
 	return {
 		routines: {
-			get: createRoutinesGetOperation(client),
-			list: createRoutinesListOperation(client),
+			get: createRoutinesGetOperation(lazyRequestEffectClient),
+			list: createRoutinesListOperation(lazyRequestEffectClient),
 		},
 		workouts: {
-			get: createWorkoutsGetOperation(client),
-			list: createWorkoutsListOperation(client),
+			get: createWorkoutsGetOperation(lazyRequestEffectClient),
+			list: createWorkoutsListOperation(lazyRequestEffectClient),
 		},
 	};
 }

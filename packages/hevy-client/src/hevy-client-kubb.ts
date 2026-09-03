@@ -1425,7 +1425,7 @@ export function createClient(
 ) {
 	const headers = { "api-key": apiKey };
 	const client = createNativeClient(apiKey, baseUrl, options);
-	return {
+	const publicClient = {
 		getWorkouts: async (
 			params?: GetV1WorkoutsQuery,
 			options?: HevyRequestOptions,
@@ -1676,4 +1676,5 @@ export function createClient(
 			return res.data;
 		},
 	};
+	return { client: publicClient, requestEffect: client.requestEffect };
 }

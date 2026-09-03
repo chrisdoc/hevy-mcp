@@ -21,6 +21,10 @@ import { type InferToolParams } from "../utils/tool-helpers.js";
 import { exerciseTemplateInputFields, nonEmptyId } from "./input-schemas.js";
 import { muscleGroupEnum } from "../utils/schemas.js";
 import { isExpectedReadNotFound } from "../utils/hevy-error-policy.js";
+import {
+	ExerciseTemplateCatalogService,
+	HevyClientService,
+} from "../effect-services.js";
 
 const getExerciseTemplateSchema = {
 	exercise_template_id: nonEmptyId,
@@ -67,10 +71,10 @@ const getExerciseTemplateDefinition = {
 		args: InferToolParams<typeof getExerciseTemplateSchema>,
 	) => {
 		const { exercise_template_id } = args;
+		const client = runtime.service(HevyClientService);
 		try {
-			const data: GetV1ExerciseTemplatesExercisetemplateid200 = await runtime
-				.getClient()
-				.getExerciseTemplate(exercise_template_id);
+			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
+				await client.getExerciseTemplate(exercise_template_id);
 			return { exercise_template: data, exercise_template_id };
 		} catch (error) {
 			if (isExpectedReadNotFound(error)) {
@@ -101,12 +105,12 @@ const getExerciseHistoryDefinition = {
 		args: InferToolParams<typeof getExerciseHistorySchema>,
 	) => {
 		const { exercise_template_id, start_date, end_date } = args;
+		const client = runtime.service(HevyClientService);
 		const query: ExerciseHistoryQuery = {};
 		if (start_date) query.start_date = start_date;
 		if (end_date) query.end_date = end_date;
-		const data: GetV1ExerciseHistoryExercisetemplateid200 = await runtime
-			.getClient()
-			.getExerciseHistory(exercise_template_id, query);
+		const data: GetV1ExerciseHistoryExercisetemplateid200 =
+			await client.getExerciseHistory(exercise_template_id, query);
 		return {
 			exercise_history: data?.exercise_history,
 			exercise_template_id,
@@ -128,7 +132,7 @@ const createExerciseTemplateDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof createExerciseTemplateSchema>,
 	) => {
-		return runtime.getClient().createExerciseTemplate(args);
+		return runtime.service(HevyClientService).createExerciseTemplate(args);
 	},
 };
 
@@ -147,9 +151,10 @@ const searchExerciseTemplatesDefinition = {
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof searchExerciseTemplatesSchema>,
 	) => {
-		const _client = runtime.getClient();
+		runtime.service(HevyClientService);
+		const catalog = runtime.service(ExerciseTemplateCatalogService);
 		const { query, primary_muscle_group, refresh } = args;
-		const templates = await runtime.catalog.get({
+		const templates = await catalog.get({
 			refresh,
 			onRefreshed: (refreshedCatalog, reason) => {
 				try {

@@ -13,7 +13,7 @@
 			"private": true,
 			"publishable": false,
 			"runtime": "neutral",
-			"exports": [".", "./types", "./schemas"],
+			"exports": [".", "./types", "./schemas", "./internal"],
 			"dependencies": [],
 			"boundary": {
 				"allowed": {},
@@ -40,7 +40,7 @@
 			"dependencies": ["hevy-client"],
 			"boundary": {
 				"allowed": {
-					"@hevy-mcp/hevy-client": ["", "types"]
+					"@hevy-mcp/hevy-client": ["", "types", "internal"]
 				},
 				"forbidden": [
 					"@cloudflare/",

@@ -793,13 +793,15 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("uses one absolute deadline across retries and response consumption", async () => {
+		let fetchStartedAt = 0;
 		const fetchMock = vi.fn().mockImplementation(
 			() =>
 				new Promise<Response>((resolve) => {
-					setTimeout(() => resolve(response({})), 50);
+					fetchStartedAt = Date.now();
+					setTimeout(() => resolve(response({})), 200);
 				}),
 		);
-		const deadline = Date.now() + 10;
+		const deadline = Date.now() + 100;
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
@@ -811,6 +813,7 @@ describe("@hevy-mcp/hevy-client", () => {
 			outcome: "deadline_exceeded",
 		});
 		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(fetchStartedAt).toBeLessThan(deadline);
 	});
 
 	it("gives each retry a fresh attempt deadline", async () => {

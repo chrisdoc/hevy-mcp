@@ -46,9 +46,18 @@ API requests.
 
 The repository is organized as a private workspace with explicit runtime
 boundaries: `@hevy-mcp/hevy-client` owns the web-safe Hevy client,
+`@hevy-mcp/operations` owns reusable Hevy domain operations,
 `@hevy-mcp/core` owns MCP tools and server construction, `hevy-mcp` is the
-published Node.js stdio adapter, and `@hevy-mcp/worker` is the private
-Cloudflare HTTP/OAuth adapter. Only the Node workspace is publishable.
+published Node.js stdio adapter, `@hevy-mcp/worker` is the private Cloudflare
+HTTP/OAuth adapter, and `@chrisdoc/hevy-cli` is the standalone CLI. Node and
+CLI are the public packages.
+
+Public client and operation APIs stay Promise-based. Request execution inside
+`@hevy-mcp/hevy-client` is an internal Effect seam; workout and routine
+list/get operations compose that seam and still expose a single Promise
+`execute()`. MCP tools in `@hevy-mcp/core` receive a request-local
+`HevyClientService` or `HevyOperationsService` from `createCoreServiceLayer`.
+The MCP catalog remains 22 tools.
 
 > A Hevy API key, available with **Hevy PRO**, is required.
 
@@ -673,6 +682,15 @@ If you find a bug or have a feature request, [open an issue](https://github.com/
 Contributions are welcome. Developer setup, testing lanes, generated-client
 workflows, Cloudflare Worker deployment, and pull request rules are documented
 in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+Use mise for the pinned Node.js and pnpm versions, then run the deterministic
+unit lane. It does not need a live Hevy API key:
+
+```bash
+mise install
+mise exec -- pnpm install
+mise exec -- pnpm run test:unit
+```
 
 ## License and acknowledgements
 

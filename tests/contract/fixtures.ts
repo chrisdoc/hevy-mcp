@@ -1,4 +1,4 @@
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import { createHevyClient, type HevyClient } from "@hevy-mcp/hevy-client";
 import type { GetV1Workouts200 } from "@hevy-mcp/hevy-client/types";
 import { getWorkoutsCapabilityDescriptor } from "@hevy-mcp/core";
 
@@ -36,6 +36,20 @@ export const validGetWorkoutsOutput =
 		has_next_page: false,
 	});
 
+type RequestConfig = {
+	readonly url?: string;
+	readonly query?: RequestQuery;
+	readonly signal?: AbortSignal;
+	readonly hevyDeadline?: number;
+	readonly hevyTimeoutMs?: number;
+};
+
+type RequestQuery = {
+	readonly [key: string]: string | number | boolean | null | undefined;
+};
+
+type RequestEffect = (config: RequestConfig) => unknown;
+
 /** Deterministic client shared by every adapter case in the initial matrix. */
 export function createDeterministicHevyClient(): HevyClient {
 	const getWorkouts: HevyClient["getWorkouts"] = (params) =>
@@ -49,5 +63,50 @@ export function createDeterministicHevyClient(): HevyClient {
 		});
 	const getUserInfo: HevyClient["getUserInfo"] = () =>
 		Promise.resolve({ data: { id: "contract-user" } });
-	return { getWorkouts, getUserInfo } as HevyClient;
+	const native = createHevyClient({
+		apiKey: "contract-test-key",
+		maxGetRetries: 0,
+		fetch: async (input) => {
+			const request = input instanceof Request ? input : new Request(input);
+			const url = new URL(request.url);
+			const query =
+				url.search.length === 0
+					? undefined
+					: {
+							page: Number(url.searchParams.get("page")),
+							pageSize: Number(url.searchParams.get("pageSize")),
+						};
+			const result =
+				url.pathname === "/v1/workouts" && query === undefined
+					? await getWorkouts()
+					: url.pathname === "/v1/workouts"
+						? await getWorkouts(query)
+						: {};
+			return new Response(JSON.stringify(result), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			});
+		},
+	});
+	const seam = Object.getOwnPropertySymbols(native).find((symbol) =>
+		symbol.description?.includes("native-request-effect"),
+	);
+	if (seam === undefined) {
+		throw new Error("Missing native request Effect seam in contract fixture");
+	}
+	const nativeRequestEffect = Reflect.get(native, seam) as RequestEffect;
+	const client = Object.assign(
+		Object.create(Object.getPrototypeOf(native)),
+		native,
+		{ getWorkouts, getUserInfo },
+	) as HevyClient;
+	Object.defineProperty(client, seam, {
+		configurable: false,
+		enumerable: false,
+		value: ((config: RequestConfig) => {
+			return nativeRequestEffect(config);
+		}) satisfies RequestEffect,
+		writable: false,
+	});
+	return client;
 }

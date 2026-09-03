@@ -14,6 +14,10 @@ import {
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
+	HevyClientService,
+	HevyOperationsService,
+} from "../effect-services.js";
+import {
 	createWorkoutResponse,
 	updateWorkoutResponse,
 	workoutEventsResponse,
@@ -71,13 +75,15 @@ export const workoutToolDefinitions = [
 		kind: "read" as const,
 		responseContract: workoutsResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutsParams) => {
-			const data = await runtime.getOperations().workouts.list.execute(
-				{
-					page: args.page,
-					pageSize: args.page_size,
-				},
-				runtime.execution,
-			);
+			const data = await runtime
+				.service(HevyOperationsService)
+				.workouts.list.execute(
+					{
+						page: args.page,
+						pageSize: args.page_size,
+					},
+					runtime.execution,
+				);
 			return data;
 		},
 	},
@@ -94,7 +100,7 @@ export const workoutToolDefinitions = [
 		responseContract: workoutResponse,
 		execute: async (runtime: ToolRuntime, args: GetWorkoutParams) => {
 			const data = await runtime
-				.getOperations()
+				.service(HevyOperationsService)
 				.workouts.get.execute(
 					{ workoutId: args.workout_id },
 					runtime.execution,
@@ -116,7 +122,7 @@ export const workoutToolDefinitions = [
 		execute: async (runtime: ToolRuntime, args: GetWorkoutEventsParams) => {
 			try {
 				const data: GetV1WorkoutsEvents200 = await runtime
-					.getClient()
+					.service(HevyClientService)
 					.getWorkoutEvents({
 						page: args.page,
 						pageSize: args.page_size,
@@ -152,9 +158,11 @@ export const workoutToolDefinitions = [
 		kind: "write" as const,
 		responseContract: createWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: CreateWorkoutParams) => {
-			const data: PostV1Workouts201 = await runtime.getClient().createWorkout({
-				workout: args.workout,
-			});
+			const data: PostV1Workouts201 = await runtime
+				.service(HevyClientService)
+				.createWorkout({
+					workout: args.workout,
+				});
 			return data;
 		},
 	},
@@ -171,7 +179,7 @@ export const workoutToolDefinitions = [
 		kind: "write" as const,
 		responseContract: updateWorkoutResponse,
 		execute: async (runtime: ToolRuntime, args: UpdateWorkoutParams) => {
-			const client = runtime.getClient();
+			const client = runtime.service(HevyClientService);
 			const current = await client.getWorkout(args.workout_id);
 			const payload = buildWorkoutUpdatePayload(current, args.workout);
 			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
@@ -197,7 +205,7 @@ export const workoutToolDefinitions = [
 			runtime: ToolRuntime,
 			args: ReplaceWorkoutExercisesParams,
 		) => {
-			const client = runtime.getClient();
+			const client = runtime.service(HevyClientService);
 			const current = await client.getWorkout(args.workout_id);
 			const payload = buildWorkoutUpdatePayload(
 				current,

@@ -19,24 +19,27 @@ export interface CoreServiceLayerOptions {
 	readonly operations?: HevyOperations;
 }
 
+export type CoreServiceIdentifiers =
+	| HevyClientService
+	| HevyOperationsService
+	| ExerciseTemplateCatalogService
+	| ToolExecutionContextService;
+
+export type CoreServiceLayer = Layer.Layer<CoreServiceIdentifiers>;
+
 /**
  * Build the runtime-neutral dependency graph for an Effect program.
  *
- * This is deliberately additive: current MCP registration still uses
- * ToolRuntime, while new code can request these services without constructing
- * a parallel container or binding client argument positions through a Proxy.
+ * The returned layer is intentionally request-local. ToolRuntime builds it
+ * for each runtime or execution scope rather than installing a process-wide
+ * Effect runtime.
  */
 export function createCoreServiceLayer({
 	client,
 	catalog,
 	execution,
 	operations = createOperations(client),
-}: CoreServiceLayerOptions): Layer.Layer<
-	| HevyClientService
-	| HevyOperationsService
-	| ExerciseTemplateCatalogService
-	| ToolExecutionContextService
-> {
+}: CoreServiceLayerOptions): CoreServiceLayer {
 	return Layer.mergeAll(
 		Layer.succeed(HevyClientService, client),
 		Layer.succeed(HevyOperationsService, operations),

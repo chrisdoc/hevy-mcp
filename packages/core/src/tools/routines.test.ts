@@ -21,6 +21,7 @@ import { getResultTelemetry } from "../utils/result-telemetry.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { routineToolDefinitions } from "./routines.js";
+import { HevyOperationsService } from "../effect-services.js";
 
 function register(
 	client: HevyClient | null,
@@ -45,6 +46,14 @@ function handler(tool: { mock: { calls: unknown[][] } }, name: string) {
 	);
 	if (!call) throw new Error(`Tool ${name} was not registered`);
 	return call.at(-1) as (args: JSONObject) => Promise<McpToolResponse>;
+}
+
+function registerRuntime(runtime: ReturnType<typeof createToolRuntime>) {
+	const { server, registerTool: tool } = createMockMcpServer();
+	for (const definition of routineToolDefinitions) {
+		registerToolDefinition(server, runtime, definition);
+	}
+	return tool;
 }
 
 const routineInput = {
@@ -169,6 +178,69 @@ describe("routine tools", () => {
 		expect(response).toMatchObject({
 			structuredContent: { routine: { id: "r1", title: "Push" } },
 		});
+	});
+
+	it("resolves both read operations from the service layer, not the getter", async () => {
+		const layerRoutinesGet = vi.fn().mockResolvedValue({
+			routine: { id: "layer-routine", title: "Layer routine", exercises: [] },
+		});
+		const layerRoutinesList = vi.fn().mockResolvedValue({
+			items: [{ id: "layer-routine", title: "Layer routine", exercises: [] }],
+			page: 1,
+			pageCount: 1,
+		});
+		const layerOperations: HevyOperations = {
+			workouts: {
+				get: { descriptor: workoutsGetDescriptor, execute: vi.fn() },
+				list: { descriptor: workoutsListDescriptor, execute: vi.fn() },
+			},
+			routines: {
+				get: {
+					descriptor: routinesGetDescriptor,
+					execute: layerRoutinesGet,
+				},
+				list: {
+					descriptor: routinesListDescriptor,
+					execute: layerRoutinesList,
+				},
+			},
+		};
+		const getterOperations: HevyOperations = {
+			...layerOperations,
+			routines: {
+				get: {
+					...layerOperations.routines.get,
+					execute: vi.fn().mockRejectedValue(new Error("wrong source")),
+				},
+				list: {
+					...layerOperations.routines.list,
+					execute: vi.fn().mockRejectedValue(new Error("wrong source")),
+				},
+			},
+		};
+		const runtime = createToolRuntime({
+			client: createMockHevyClient(),
+			operations: layerOperations,
+			catalog: {} as never,
+		});
+		const getOperations = vi
+			.spyOn(runtime, "getOperations")
+			.mockReturnValue(getterOperations);
+		expect(runtime.service(HevyOperationsService)).toBe(layerOperations);
+		const tool = registerRuntime(runtime);
+
+		await handler(tool, "get-routines")({ page: 1, page_size: 5 });
+		await handler(tool, "get-routine")({ routine_id: "layer-routine" });
+
+		expect(layerRoutinesList).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 5 },
+			undefined,
+		);
+		expect(layerRoutinesGet).toHaveBeenCalledWith(
+			{ routineId: "layer-routine" },
+			undefined,
+		);
+		expect(getOperations).not.toHaveBeenCalled();
 	});
 
 	it("parses a routine whose exercise rest_seconds is an integer", async () => {

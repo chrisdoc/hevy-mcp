@@ -89,4 +89,6 @@ export {
 	createCoreServiceLayer,
 	createToolObserverLayer,
 	type CoreServiceLayerOptions,
+	type CoreServiceIdentifiers,
+	type CoreServiceLayer,
 } from "./effect-layer.js";

@@ -1,9 +1,9 @@
 import { Effect } from "effect";
 import type {
-	HevyClient,
 	HevyExecutionOptions,
 	HevyOperationSafety,
 } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectClient } from "@hevy-mcp/hevy-client/internal";
 import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
 import {
 	isExpectedReadEndOfList,
@@ -22,7 +22,7 @@ export interface RoutinesListOutput {
 	readonly expected404Outcome?: "end_of_list";
 }
 
-export type RoutinesListAdapter = Pick<HevyClient, "getRoutines">;
+export type RoutinesListAdapter = Pick<HevyRequestEffectClient, "getRoutines">;
 
 export interface RoutinesGetInput {
 	readonly routineId: string;
@@ -33,7 +33,10 @@ export interface RoutinesGetOutput {
 	readonly expected404Outcome?: "not_found";
 }
 
-export type RoutinesGetAdapter = Pick<HevyClient, "getRoutineById">;
+export type RoutinesGetAdapter = Pick<
+	HevyRequestEffectClient,
+	"getRoutineById"
+>;
 
 export interface RoutinesGetDescriptor {
 	readonly id: "routines.get";
@@ -93,14 +96,11 @@ export function createRoutinesGetOperation(
 	return {
 		descriptor: routinesGetDescriptor,
 		async execute(input, options) {
-			const program = Effect.tryPromise({
-				try: () =>
-					options === undefined
-						? adapter.getRoutineById(input.routineId)
-						: adapter.getRoutineById(input.routineId, options),
-				catch: (error) =>
-					error instanceof Error ? error : new Error(String(error)),
-			}).pipe(
+			const program = (
+				options === undefined
+					? adapter.getRoutineById(input.routineId)
+					: adapter.getRoutineById(input.routineId, options)
+			).pipe(
 				Effect.map((response) => ({ routine: response.routine ?? null })),
 				Effect.catchIf(
 					(error) => isExpectedReadNotFound(error, "/v1/routines"),
@@ -123,14 +123,11 @@ export function createRoutinesListOperation(
 		descriptor: routinesListDescriptor,
 		async execute(input, options) {
 			const params = { page: input.page, pageSize: input.pageSize };
-			const program = Effect.tryPromise({
-				try: () =>
-					options === undefined
-						? adapter.getRoutines(params)
-						: adapter.getRoutines(params, options),
-				catch: (error) =>
-					error instanceof Error ? error : new Error(String(error)),
-			}).pipe(
+			const program = (
+				options === undefined
+					? adapter.getRoutines(params)
+					: adapter.getRoutines(params, options)
+			).pipe(
 				Effect.map((response) => normalizeRoutinesPage(response, input)),
 				Effect.catchIf(
 					(error) => isExpectedReadEndOfList(error, "/v1/routines", input.page),

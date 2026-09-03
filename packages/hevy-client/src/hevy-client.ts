@@ -39,6 +39,7 @@ import type {
 import { createClient as createKubbClient } from "./hevy-client-kubb.js";
 import type { HevyClientOptions } from "./hevy-client-kubb.js";
 import type { HevyRequestOptions } from "./execution.js";
+import { NATIVE_REQUEST_EFFECT } from "./internal-request-effect.js";
 
 export type { HevyClientOptions };
 export type { HevyRequestOptions } from "./execution.js";
@@ -145,5 +146,12 @@ export function createHevyClient({
 	baseUrl,
 	...options
 }: CreateHevyClientOptions): HevyClient {
-	return createKubbClient(apiKey, baseUrl, options);
+	const { client, requestEffect } = createKubbClient(apiKey, baseUrl, options);
+	Object.defineProperty(client, NATIVE_REQUEST_EFFECT, {
+		configurable: false,
+		enumerable: false,
+		value: requestEffect,
+		writable: false,
+	});
+	return client;
 }

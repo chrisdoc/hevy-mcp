@@ -25,6 +25,10 @@ import { buildRoutinePayload } from "./mutation-semantics.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import type { PaginatedToolResult } from "../utils/response-contracts.js";
+import {
+	HevyClientService,
+	HevyOperationsService,
+} from "../effect-services.js";
 
 const getRoutinesSchema = paginationFields({
 	defaultPageSize: 5,
@@ -48,7 +52,7 @@ const getRoutinesDefinition: ToolDefinition<
 	responseContract: routinesResponse,
 	execute: (runtime: ToolRuntime, { page, page_size }) =>
 		runtime
-			.getOperations()
+			.service(HevyOperationsService)
 			.routines.list.execute({ page, pageSize: page_size }, runtime.execution),
 };
 
@@ -75,7 +79,7 @@ const getRoutineDefinition: ToolDefinition<
 	responseContract: routineResponse,
 	execute: async (runtime, { routine_id }) => {
 		const data = await runtime
-			.getOperations()
+			.service(HevyOperationsService)
 			.routines.get.execute({ routineId: routine_id }, runtime.execution);
 		return { ...data, routine_id };
 	},
@@ -107,7 +111,7 @@ const createRoutineDefinition: ToolDefinition<
 			"create",
 		);
 		const data: Routine | undefined = await runtime
-			.getClient()
+			.service(HevyClientService)
 			.createRoutine({ routine: payload });
 		return { routine: data, usesRepRanges };
 	},
@@ -140,7 +144,7 @@ const updateRoutineDefinition: ToolDefinition<
 			"update",
 		);
 		const data: PutV1RoutinesRoutineid200 = await runtime
-			.getClient()
+			.service(HevyClientService)
 			.updateRoutine(routine_id, { routine: payload });
 		return { routine: data, routine_id, usesRepRanges };
 	},

@@ -1,6 +1,17 @@
+import { Context, Effect, Layer, Scope } from "effect";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
+import {
+	createCoreServiceLayer,
+	createToolObserverLayer,
+	type CoreServiceIdentifiers,
+} from "../effect-layer.js";
+import {
+	HevyClientService,
+	HevyOperationsService,
+	ToolObserverService,
+} from "../effect-services.js";
 import {
 	HEVY_CLIENT_NOT_INITIALIZED_ERROR,
 	requireClient,
@@ -67,6 +78,22 @@ const structuralArgumentKeys = Object.keys(
 	STRUCTURAL_ARGUMENT_KEYS,
 ) as SafeToolArgumentKey[];
 
+type ToolRuntimeServiceIdentifiers =
+	| CoreServiceIdentifiers
+	| ToolObserverService;
+type ToolRuntimeServiceLayer = Layer.Layer<ToolRuntimeServiceIdentifiers>;
+type ToolRuntimeServiceContext = Context.Context<ToolRuntimeServiceIdentifiers>;
+
+function buildServiceContext(
+	layer: ToolRuntimeServiceLayer,
+): ToolRuntimeServiceContext {
+	// Build the layer against a scope that outlives this call. `Effect.scoped`
+	// would close the scope immediately, releasing any scoped resources
+	// before the returned context is ever used by request handlers.
+	const scope = Effect.runSync(Scope.make());
+	return Effect.runSync(Scope.provide(scope)(Layer.build(layer)));
+}
+
 function createSafeInvocation<TArgs extends object>(
 	name: string,
 	args: TArgs,
@@ -122,6 +149,10 @@ export type ToolHandlerFactory = <TParams extends object>(
 export interface ToolRuntime {
 	readonly client: HevyClient | null;
 	readonly catalog: ExerciseTemplateCatalog;
+	/** The request-local dependency graph used by Effect-backed tool code. */
+	readonly layer?: ToolRuntimeServiceLayer;
+	/** The context built from `layer`, kept request-local with the runtime. */
+	readonly services?: ToolRuntimeServiceContext;
 	readonly logger?: McpClientLogger;
 	readonly execution?: ToolExecutionContext;
 	readonly executionTimeoutMs: number;
@@ -129,6 +160,9 @@ export interface ToolRuntime {
 	readonly lifecycleSignal?: AbortSignal;
 	readonly operations: HevyOperations | null;
 	readonly createHandler: ToolHandlerFactory;
+	service<I extends ToolRuntimeServiceIdentifiers, S>(
+		service: Context.Key<I, S>,
+	): S;
 	getClient(): HevyClient;
 	getOperations(): HevyOperations;
 	forExecution(context?: ToolExecutionContext): ToolRuntime;
@@ -173,6 +207,50 @@ export function createToolRuntime({
 	const resolvedOperations =
 		operations ?? (rawClient ? createOperations(rawClient) : null);
 	const effectiveExecutionDeadline = executionDeadline ?? execution?.deadline;
+	const effectiveClient =
+		execution && rawClient
+			? bindClientExecution(requireClient(rawClient), execution)
+			: client;
+	const effectiveCatalog = execution
+		? {
+				get: (options = {}) => catalog.get({ ...options, execution }),
+				reset: () => catalog.reset(),
+			}
+		: catalog;
+	const coreLayer =
+		effectiveClient && resolvedOperations
+			? (createCoreServiceLayer({
+					client: effectiveClient,
+					catalog: effectiveCatalog,
+					execution: execution ?? {},
+					operations: resolvedOperations,
+				}) as ToolRuntimeServiceLayer)
+			: resolvedOperations
+				? (Layer.succeed(
+						HevyOperationsService,
+						resolvedOperations,
+					) as ToolRuntimeServiceLayer)
+				: undefined;
+	const layer = observer
+		? coreLayer
+			? (Layer.merge(
+					coreLayer,
+					createToolObserverLayer(observer),
+				) as ToolRuntimeServiceLayer)
+			: (createToolObserverLayer(observer) as ToolRuntimeServiceLayer)
+		: coreLayer;
+	const services = layer ? buildServiceContext(layer) : undefined;
+	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
+		service: Context.Key<I, S>,
+	): S => {
+		if (service.key === HevyClientService.key) {
+			requireClient(effectiveClient);
+		}
+		if (!services) {
+			throw new Error("Core service layer is unavailable");
+		}
+		return Context.get(services, service);
+	};
 	const createObservedHandler: ToolHandlerFactory = <TParams extends object>(
 		fn: ToolHandler<TParams>,
 		context: string,
@@ -239,13 +317,10 @@ export function createToolRuntime({
 		? createObservedHandler
 		: createHandler;
 	const runtime: ToolRuntime = {
-		client,
-		catalog: execution
-			? {
-					get: (options) => catalog.get({ ...options, execution }),
-					reset: () => catalog.reset(),
-				}
-			: catalog,
+		client: effectiveClient,
+		catalog: effectiveCatalog,
+		layer,
+		services,
 		logger,
 		execution,
 		executionTimeoutMs,
@@ -253,9 +328,16 @@ export function createToolRuntime({
 		lifecycleSignal,
 		operations: resolvedOperations,
 		createHandler: observedHandlerFactory,
-		getClient: () => requireClient(client),
+		service: getService,
+		getClient: () =>
+			effectiveClient && services
+				? getService(HevyClientService)
+				: requireClient(effectiveClient),
 		getOperations: () =>
-			resolvedOperations ?? createOperations(requireClient(client)),
+			resolvedOperations && services
+				? getService(HevyOperationsService)
+				: (resolvedOperations ??
+					createOperations(requireClient(effectiveClient))),
 		forExecution: (nextExecution) =>
 			createToolRuntime({
 				client: rawClient,
@@ -288,12 +370,6 @@ export function createToolRuntime({
 				lifecycleSignal,
 			}),
 	};
-	if (execution && client) {
-		Object.assign(runtime, {
-			client: bindClientExecution(requireClient(rawClient), execution),
-			getClient: () => bindClientExecution(requireClient(rawClient), execution),
-		});
-	}
 	return runtime;
 }
 

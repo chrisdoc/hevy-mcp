@@ -1,6 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
+import { Context, Effect, Layer, Option } from "effect";
+import {
+	ExerciseTemplateCatalogService,
+	HevyClientService,
+	HevyOperationsService,
+	ToolExecutionContextService,
+	ToolObserverService,
+} from "../effect-services.js";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
-import { createToolRuntime } from "./tool-runtime.js";
+import {
+	createToolRuntime,
+	HEVY_CLIENT_NOT_INITIALIZED_ERROR,
+} from "./tool-runtime.js";
+import { createOperations } from "@hevy-mcp/operations";
 
 const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>
 	operation();
@@ -9,6 +21,115 @@ const catalog = {
 	get: () => Promise.resolve([]),
 	reset: () => undefined,
 };
+
+function resolveRuntimeServices(runtime: ReturnType<typeof createToolRuntime>) {
+	if (!runtime.layer) {
+		throw new Error("Expected runtime to provide a service layer");
+	}
+	return Effect.runSync(Effect.scoped(Layer.build(runtime.layer)));
+}
+
+describe("createToolRuntime service layer", () => {
+	it("throws the canonical not-initialized error for client service lookup without a client", () => {
+		const runtime = createToolRuntime({
+			client: null,
+			operations: createOperations(createMockHevyClient()),
+			catalog,
+		});
+
+		expect(() => runtime.service(HevyClientService)).toThrowError(
+			HEVY_CLIENT_NOT_INITIALIZED_ERROR,
+		);
+		expect(() => runtime.getClient()).toThrowError(
+			HEVY_CLIENT_NOT_INITIALIZED_ERROR,
+		);
+	});
+
+	it("provides core services from the objects passed to the runtime", () => {
+		const client = createMockHevyClient();
+		const operations = createOperations(client);
+		const execution = {
+			requestId: "request-1",
+			deadline: 123,
+		};
+		const runtime = createToolRuntime({
+			client,
+			operations,
+			catalog,
+			execution,
+		});
+		const services = resolveRuntimeServices(runtime);
+
+		expect(Context.get(services, HevyClientService)).toBe(runtime.getClient());
+		expect(Context.get(services, HevyOperationsService)).toBe(operations);
+		expect(Context.get(services, ExerciseTemplateCatalogService)).toBe(
+			runtime.catalog,
+		);
+		expect(Context.get(services, ToolExecutionContextService)).toBe(execution);
+		expect(runtime.getClient()).toBe(Context.get(services, HevyClientService));
+		expect(runtime.service(HevyClientService)).toBe(runtime.getClient());
+		expect(runtime.getOperations()).toBe(
+			Context.get(services, HevyOperationsService),
+		);
+		expect(runtime.service(HevyOperationsService)).toBe(
+			runtime.getOperations(),
+		);
+	});
+
+	it("composes the observer service only when an observer is configured", () => {
+		const withObserver = { start: vi.fn() };
+		const observedRuntime = createToolRuntime({
+			client: createMockHevyClient(),
+			catalog,
+			observer: withObserver,
+		});
+		const observedServices = resolveRuntimeServices(observedRuntime);
+		expect(Context.get(observedServices, ToolObserverService)).toBe(
+			withObserver,
+		);
+
+		const unobservedRuntime = createToolRuntime({
+			client: createMockHevyClient(),
+			catalog,
+		});
+		const unobservedServices = resolveRuntimeServices(unobservedRuntime);
+		expect(Context.getOption(unobservedServices, ToolObserverService)).toBe(
+			Option.none(),
+		);
+	});
+
+	it("rebinds execution-scoped client, catalog, and context without rebinding operations", () => {
+		const client = createMockHevyClient();
+		const operations = createOperations(client);
+		const runtime = createToolRuntime({
+			client,
+			operations,
+			catalog,
+		});
+		const signal = new AbortController().signal;
+		const scoped = runtime.forExecution({ signal, deadline: 456 });
+		const parentServices = resolveRuntimeServices(runtime);
+		const scopedServices = resolveRuntimeServices(scoped);
+
+		expect(Context.get(parentServices, HevyClientService)).toBe(client);
+		expect(Context.get(scopedServices, HevyClientService)).toBe(
+			scoped.getClient(),
+		);
+		expect(Context.get(scopedServices, HevyClientService)).not.toBe(client);
+		expect(Context.get(scopedServices, ExerciseTemplateCatalogService)).toBe(
+			scoped.catalog,
+		);
+		expect(scoped.catalog).not.toBe(catalog);
+		expect(Context.get(scopedServices, ToolExecutionContextService)).toBe(
+			scoped.execution,
+		);
+		expect(Context.get(scopedServices, HevyOperationsService)).toBe(operations);
+		expect(Context.get(parentServices, ExerciseTemplateCatalogService)).toBe(
+			catalog,
+		);
+		expect(Context.get(parentServices, HevyOperationsService)).toBe(operations);
+	});
+});
 
 describe("createToolRuntime observation scope", () => {
 	it("does not execute a write handler twice when run instrumentation fails", async () => {

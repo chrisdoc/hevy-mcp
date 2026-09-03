@@ -2,14 +2,13 @@
 import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "./main.js";
+import { createEffectClient } from "./test-fixtures/effect-client.js";
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 type JsonObject = { readonly [key: string]: JsonValue };
 
 const mockClient = (getWorkouts: HevyClient["getWorkouts"]): HevyClient => {
-	const client = Object.create(null) as HevyClient;
-	client.getWorkouts = getWorkouts;
-	return client;
+	return createEffectClient({ getWorkouts });
 };
 
 const streams = () => {

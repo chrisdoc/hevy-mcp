@@ -30,6 +30,7 @@
 		"@hevy-mcp/hevy-client": "workspace:*",
 		"@hevy-mcp/operations": "workspace:*",
 		"@stricli/core": "^1.3.0",
+		"effect": "^4.0.0-rc.112",
 		"zod": "^4.4.3"
 	},
 	"engines": {

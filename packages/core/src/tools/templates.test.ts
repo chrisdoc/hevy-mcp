@@ -1,11 +1,16 @@
 /* oxlint-disable typescript/unbound-method */
 import type { JSONObject } from "@modelcontextprotocol/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
 	createMockHevyClient,
 	createMockMcpServer,
 } from "../../test-fixtures/mock-hevy.js";
+import {
+	ExerciseTemplateCatalogService,
+	HevyClientService,
+} from "../effect-services.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { templateToolDefinitions } from "./templates.js";
@@ -99,5 +104,62 @@ describe("exercise template tools", () => {
 				primaryMuscleGroup: "chest",
 			}),
 		).toThrow();
+	});
+
+	it("uses layer client and catalog services when getter facades disagree", async () => {
+		const layerClient = createMockHevyClient();
+		const getterClient = createMockHevyClient();
+		layerClient.getExerciseTemplate.mockResolvedValue({
+			id: "layer-template",
+			title: "Layer Template",
+		});
+		getterClient.getExerciseTemplate.mockRejectedValue(
+			new Error("wrong client source"),
+		);
+		const layerCatalog: ExerciseTemplateCatalog = {
+			get: vi
+				.fn()
+				.mockResolvedValue([{ id: "layer-template", title: "Layer Template" }]),
+			reset: vi.fn(),
+		};
+		const getterCatalog: ExerciseTemplateCatalog = {
+			get: vi.fn().mockRejectedValue(new Error("wrong catalog source")),
+			reset: vi.fn(),
+		};
+		const runtime = createToolRuntime({
+			client: layerClient,
+			catalog: layerCatalog,
+		});
+		vi.spyOn(runtime, "getClient").mockReturnValue(getterClient);
+		Object.assign(runtime, { catalog: getterCatalog });
+
+		await expect(
+			templateToolDefinitions[0].execute(runtime, {
+				exercise_template_id: "layer-template",
+			}),
+		).resolves.toEqual({
+			exercise_template: {
+				id: "layer-template",
+				title: "Layer Template",
+			},
+			exercise_template_id: "layer-template",
+		});
+		await expect(
+			templateToolDefinitions[3].execute(runtime, {
+				query: "layer",
+				refresh: false,
+			}),
+		).resolves.toMatchObject({
+			results: [{ id: "layer-template", title: "Layer Template" }],
+		});
+
+		expect(runtime.service(HevyClientService)).toBe(layerClient);
+		expect(runtime.service(ExerciseTemplateCatalogService)).toBe(layerCatalog);
+		expect(layerClient.getExerciseTemplate).toHaveBeenCalledWith(
+			"layer-template",
+		);
+		expect(getterClient.getExerciseTemplate).not.toHaveBeenCalled();
+		expect(layerCatalog.get).toHaveBeenCalledOnce();
+		expect(getterCatalog.get).not.toHaveBeenCalled();
 	});
 });
