@@ -1,4 +1,5 @@
 /* oxlint-disable typescript/unbound-method */
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
@@ -20,6 +21,7 @@ function registerUserDefinition(
 	client: HevyClient | null,
 ) {
 	const catalog: ExerciseTemplateCatalog = {
+		effect: () => Effect.succeed([]),
 		get: vi.fn(),
 		reset: vi.fn(),
 	};

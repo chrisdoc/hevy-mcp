@@ -1,6 +1,7 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import type { Tool } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
+import { Effect } from "../packages/core/node_modules/effect/dist/index.js";
 import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { get_encoding } from "tiktoken";
@@ -298,6 +299,7 @@ export async function listRegisteredTools(): Promise<Tool[]> {
 		createToolRuntime({
 			client: null,
 			catalog: {
+				effect: () => Effect.succeed([]),
 				get: () => Promise.resolve([]),
 				reset: () => {},
 			} satisfies ExerciseTemplateCatalog,

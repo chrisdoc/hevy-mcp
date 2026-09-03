@@ -167,11 +167,15 @@ export interface TemplatesListAllOperation {
 	readonly effect: (
 		options?: HevyExecutionOptions,
 	) => Effect.Effect<
-		ExerciseTemplate[],
+		TemplatesListAllResult,
 		HevyRequestEffectError | PaginationMismatchError
 	>;
 	execute(options?: HevyExecutionOptions): Promise<ExerciseTemplate[]>;
 }
+
+export type TemplatesListAllResult = ExerciseTemplate[] & {
+	readonly pageCount?: number;
+};
 
 const TEMPLATES_PAGE_SIZE = 100;
 
@@ -337,7 +341,16 @@ export function createTemplatesListAllOperation(
 			);
 		});
 		const pages = yield* Stream.runCollect(pageStream);
-		return pages.flatMap((page) => page.templates);
+		const templates = pages.flatMap(
+			(page) => page.templates,
+		) as TemplatesListAllResult;
+		Object.defineProperty(templates, "pageCount", {
+			configurable: false,
+			enumerable: false,
+			value: pages.length,
+			writable: false,
+		});
+		return templates;
 	});
 
 	const operation: TemplatesListAllOperation = {

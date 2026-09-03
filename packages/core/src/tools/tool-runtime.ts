@@ -213,6 +213,7 @@ export function createToolRuntime({
 			: client;
 	const effectiveCatalog = execution
 		? {
+				effect: (options = {}) => catalog.effect({ ...options, execution }),
 				get: (options = {}) => catalog.get({ ...options, execution }),
 				reset: () => catalog.reset(),
 			}

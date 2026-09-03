@@ -13,8 +13,8 @@ import {
 } from "vitest";
 import { registerHevyTools } from "../../../packages/core/src/tools/register.js";
 import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
-import { createExerciseTemplateCatalog } from "../../../packages/core/src/utils/exercise-template-catalog.js";
 import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
+import { createIntegrationCatalog } from "../catalog-fixture.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const MOCK_HEVY_API_KEY = "mock-hevy-api-key";
@@ -68,7 +68,7 @@ describe("Hevy MCP workout detail endpoints mocked tests", () => {
 		});
 		const runtime = createToolRuntime({
 			client: hevyClient,
-			catalog: createExerciseTemplateCatalog(hevyClient),
+			catalog: createIntegrationCatalog(hevyClient),
 		});
 		registerHevyTools(server, runtime);
 

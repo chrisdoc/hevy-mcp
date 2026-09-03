@@ -18,6 +18,7 @@ const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>
 	operation();
 
 const catalog = {
+	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
 	reset: () => undefined,
 };

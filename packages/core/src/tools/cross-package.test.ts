@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import {
 	routinesGetDescriptor,
@@ -21,6 +22,7 @@ import { templateToolDefinitions } from "./templates.js";
 import { workoutToolDefinitions } from "./workouts.js";
 
 const catalog: ExerciseTemplateCatalog = {
+	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
 	reset: () => undefined,
 };

@@ -184,6 +184,7 @@ export type {
 	TemplatesListAllAdapter,
 	TemplatesListAllDescriptor,
 	TemplatesListAllOperation,
+	TemplatesListAllResult,
 } from "./templates.js";
 export { createUserGetOperation, userGetDescriptor } from "./user.js";
 export type {

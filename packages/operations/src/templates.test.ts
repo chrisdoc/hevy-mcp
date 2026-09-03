@@ -216,9 +216,13 @@ describe("templates.listAll operation", () => {
 			getExerciseTemplates,
 		});
 
-		await expect(Effect.runPromise(operation.effect(options))).resolves.toEqual(
-			[{ id: "template-1" }, { id: "template-2" }, { id: "template-3" }],
-		);
+		const templates = await Effect.runPromise(operation.effect(options));
+		expect(templates).toEqual([
+			{ id: "template-1" },
+			{ id: "template-2" },
+			{ id: "template-3" },
+		]);
+		expect(templates.pageCount).toBe(3);
 		expect(requests).toEqual([
 			{ params: { page: 1, pageSize: 100 }, options },
 			{ params: { page: 2, pageSize: 100 }, options },

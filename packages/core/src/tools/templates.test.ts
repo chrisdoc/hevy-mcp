@@ -1,5 +1,6 @@
 /* oxlint-disable typescript/unbound-method */
 import type { JSONObject } from "@modelcontextprotocol/server";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
@@ -117,12 +118,14 @@ describe("exercise template tools", () => {
 			new Error("wrong client source"),
 		);
 		const layerCatalog: ExerciseTemplateCatalog = {
+			effect: () => Effect.succeed([]),
 			get: vi
 				.fn()
 				.mockResolvedValue([{ id: "layer-template", title: "Layer Template" }]),
 			reset: vi.fn(),
 		};
 		const getterCatalog: ExerciseTemplateCatalog = {
+			effect: () => Effect.succeed([]),
 			get: vi.fn().mockRejectedValue(new Error("wrong catalog source")),
 			reset: vi.fn(),
 		};
