@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { z } from "zod";
 import type {
 	GetV1Routines200,
 	GetV1RoutinesRoutineid200,
@@ -67,6 +68,14 @@ type RequestEffectOwner =
 	| NativeRequestEffectOwner
 	| CuratedClientWithNativeRequestEffect;
 
+const functionSchema = z.function();
+
+function isNativeRequestEffect(
+	value: NativeRequestEffect | undefined,
+): value is NativeRequestEffect {
+	return functionSchema.safeParse(value).success;
+}
+
 /**
  * Return the request interpreter owned by a curated client.
  *
@@ -77,9 +86,11 @@ type RequestEffectOwner =
 export function getNativeRequestEffect(
 	client: RequestEffectOwner,
 ): NativeRequestEffect {
-	if ("requestEffect" in client) return client.requestEffect;
-	const requestEffect = client[NATIVE_REQUEST_EFFECT];
-	if (requestEffect === undefined) {
+	const requestEffect =
+		"requestEffect" in client
+			? client.requestEffect
+			: client[NATIVE_REQUEST_EFFECT];
+	if (!isNativeRequestEffect(requestEffect)) {
 		throw new TypeError(
 			"Expected a Hevy client with the internal request Effect seam",
 		);
