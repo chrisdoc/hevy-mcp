@@ -1,22 +1,19 @@
-{
-	"$schema": "./node_modules/oxlint/configuration_schema.json",
-	"plugins": ["typescript", "unicorn", "oxc"],
-	"jsPlugins": [
-		"@e18e/eslint-plugin",
-		{
-			"name": "anti-slop",
-			"specifier": "./tools/oxlint/anti-slop/index.ts"
-		}
-	],
-	"options": {
-		"typeAware": true
+import { defineConfig } from "oxlint";
+import core from "ultracite/oxlint/core";
+
+export default defineConfig({
+	plugins: ["typescript", "unicorn", "oxc"],
+	categories: {
+		correctness: "error",
 	},
-	"ignorePatterns": [
-		"**/node_modules",
-		"**/dist",
+	options: {
+		typeAware: true,
+	},
+	ignorePatterns: [
+		...(core.ignorePatterns ?? []),
 		"**/*.d.ts",
+		"**/*.d.mts",
 		"**/src/generated",
-		"**/coverage",
 		"**/.agents",
 		"**/.entire",
 		"**/.factory",
@@ -24,12 +21,15 @@
 		"**/.omp",
 		"**/.opencode",
 		"**/.pi",
-		"tests/fixtures/generated-client/stale/**"
+		"tests/fixtures/generated-client/stale/**",
 	],
-	"categories": {
-		"correctness": "error"
-	},
-	"rules": {
+	jsPlugins: [
+		{
+			name: "anti-slop",
+			specifier: "./tools/oxlint/anti-slop/index.ts",
+		},
+	],
+	rules: {
 		"typescript/no-non-null-assertion": "error",
 		"no-param-reassign": "error",
 		"@typescript-eslint/consistent-type-assertions": "error",
@@ -38,10 +38,10 @@
 		"typescript/no-restricted-types": [
 			"error",
 			{
-				"types": {
-					"Record<string, unknown>": "Use a more specific object type."
-				}
-			}
+				types: {
+					"Record<string, unknown>": "Use a more specific object type.",
+				},
+			},
 		],
 		"typescript/require-await": "error",
 		"unicorn/no-useless-fallback-in-spread": "off",
@@ -49,22 +49,13 @@
 		"no-unused-vars": [
 			"error",
 			{
-				"argsIgnorePattern": "^_",
-				"varsIgnorePattern": "^_",
-				"caughtErrorsIgnorePattern": "^_"
-			}
+				argsIgnorePattern: "^_",
+				varsIgnorePattern: "^_",
+				caughtErrorsIgnorePattern: "^_",
+			},
 		],
 		"await-thenable": "error",
 		"no-floating-promises": "error",
-		"e18e/prefer-array-at": "error",
-		"e18e/prefer-includes": "error",
-		"e18e/prefer-array-to-reversed": "error",
-		"e18e/prefer-array-to-spliced": "error",
-		"e18e/prefer-url-canparse": "error",
-		"e18e/prefer-date-now": "error",
-		"e18e/prefer-regex-test": "error",
-		"e18e/prefer-array-from-map": "error",
-		"e18e/prefer-object-has-own": "error",
 		"anti-slop/no-chained-type-assertions": "error",
 		"anti-slop/no-conditional-empty-object-spread": "error",
 		"anti-slop/no-known-value-widening": "error",
@@ -74,9 +65,6 @@
 		"anti-slop/no-unknown-parameters": "error",
 		"anti-slop/no-unknown-type-aliases": "error",
 		"anti-slop/no-unsafe-dictionary-type": "error",
-		"anti-slop/no-widen-then-assert": "error"
+		"anti-slop/no-widen-then-assert": "error",
 	},
-	"env": {
-		"builtin": true
-	}
-}
+});

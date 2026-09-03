@@ -74,7 +74,8 @@
 		"check:server-manifest": "node scripts/server-manifest.mjs check",
 		"version": "node scripts/server-manifest.mjs sync && git add server.json packages/node/server.json",
 		"worker:dev": "wrangler dev --x-new-config",
-		"worker:dry-run": "wrangler deploy --x-new-config --dry-run --outdir .wrangler/dry-run && node scripts/check-worker-bundle.mjs"
+		"worker:dry-run": "wrangler deploy --x-new-config --dry-run --outdir .wrangler/dry-run && node scripts/check-worker-bundle.mjs",
+		"fix": "oxlint --fix . --type-aware --type-check && oxfmt . --write"
 	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^1.0.0",
@@ -105,13 +106,14 @@
 		"abstract-syntax-tree": "^2.24.0",
 		"cross-env": "^10.1.0",
 		"dependency-cruiser": "^18.2.0",
+		"eslint-plugin-sonarjs": "^4.2.0",
 		"js-yaml": "^5.3.0",
 		"knip": "^6.32.2",
 		"kubb": "^5.0.5",
 		"nock": "^14.0.17",
 		"nx": "^23.1.1",
-		"oxfmt": "^0.63.0",
-		"oxlint": "^1.78.0",
+		"oxfmt": "^0.66.0",
+		"oxlint": "^1.81.0",
 		"oxlint-tsgolint": "^7.0.2001",
 		"publint": "^0.3.23",
 		"semver": "^7.8.5",
@@ -119,6 +121,7 @@
 		"tsdown": "^0.22.14",
 		"tsx": "^4.23.12",
 		"typescript": "^7.0.2",
+		"ultracite": "7.10.7",
 		"vitest": "^4.1.10",
 		"wrangler": "^4.119.0",
 		"zod": "^4.4.3"
