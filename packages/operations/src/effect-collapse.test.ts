@@ -10,6 +10,18 @@ import {
 	createRoutinesUpdateOperation,
 } from "./routines.js";
 import {
+	createFoldersCreateOperation,
+	createFoldersGetOperation,
+	createFoldersListAllOperation,
+} from "./folders.js";
+import {
+	createTemplatesCreateOperation,
+	createTemplatesGetOperation,
+	createTemplatesHistoryOperation,
+	createTemplatesListAllOperation,
+} from "./templates.js";
+import { createUserGetOperation } from "./user.js";
+import {
 	createWorkoutsCountOperation,
 	createWorkoutsCreateOperation,
 	createWorkoutsReplaceExercisesOperation,
@@ -100,6 +112,30 @@ describe("operations Effect collapse", () => {
 			}),
 			createRoutinesSearchOperation({
 				getRoutines: () => Effect.succeed({ routines: [] }),
+			}),
+			createTemplatesGetOperation({
+				getExerciseTemplate: () => Effect.succeed({}),
+			}),
+			createTemplatesHistoryOperation({
+				getExerciseHistory: () => Effect.succeed({}),
+			}),
+			createTemplatesCreateOperation({
+				createExerciseTemplate: () => Effect.succeed({}),
+			}),
+			createTemplatesListAllOperation({
+				getExerciseTemplates: () => Effect.succeed({}),
+			}),
+			createFoldersGetOperation({
+				getRoutineFolder: () => Effect.succeed({}),
+			}),
+			createFoldersCreateOperation({
+				createRoutineFolder: () => Effect.succeed({}),
+			}),
+			createFoldersListAllOperation({
+				getRoutineFolders: () => Effect.succeed({}),
+			}),
+			createUserGetOperation({
+				getUserInfo: () => Effect.succeed({}),
 			}),
 		];
 

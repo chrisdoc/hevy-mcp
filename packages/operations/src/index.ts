@@ -20,6 +20,25 @@ import {
 	type BodyMeasurementsListOperation,
 } from "./body-measurements.js";
 import {
+	createFoldersCreateOperation,
+	createFoldersGetOperation,
+	createFoldersListAllOperation,
+	type FoldersCreateOperation,
+	type FoldersGetOperation,
+	type FoldersListAllOperation,
+} from "./folders.js";
+import {
+	createTemplatesCreateOperation,
+	createTemplatesGetOperation,
+	createTemplatesHistoryOperation,
+	createTemplatesListAllOperation,
+	type TemplatesCreateOperation,
+	type TemplatesGetOperation,
+	type TemplatesHistoryOperation,
+	type TemplatesListAllOperation,
+} from "./templates.js";
+import { createUserGetOperation, type UserGetOperation } from "./user.js";
+import {
 	createWorkoutsCountOperation,
 	createWorkoutsCreateOperation,
 	createWorkoutsEventsOperation,
@@ -86,6 +105,63 @@ export type {
 	BodyMeasurementsListOperation,
 	BodyMeasurementsListOutput,
 } from "./body-measurements.js";
+export {
+	createFoldersCreateOperation,
+	createFoldersGetOperation,
+	createFoldersListAllOperation,
+	foldersCreateDescriptor,
+	foldersGetDescriptor,
+	foldersListAllDescriptor,
+} from "./folders.js";
+export type {
+	FoldersCreateAdapter,
+	FoldersCreateDescriptor,
+	FoldersCreateInput,
+	FoldersCreateOperation,
+	FoldersGetAdapter,
+	FoldersGetDescriptor,
+	FoldersGetInput,
+	FoldersGetOperation,
+	FoldersGetOutput,
+	FoldersListAllAdapter,
+	FoldersListAllDescriptor,
+	FoldersListAllOperation,
+} from "./folders.js";
+export {
+	createTemplatesCreateOperation,
+	createTemplatesGetOperation,
+	createTemplatesHistoryOperation,
+	createTemplatesListAllOperation,
+	templatesCreateDescriptor,
+	templatesGetDescriptor,
+	templatesHistoryDescriptor,
+	templatesListAllDescriptor,
+} from "./templates.js";
+export type {
+	TemplatesCreateAdapter,
+	TemplatesCreateDescriptor,
+	TemplatesCreateInput,
+	TemplatesCreateOperation,
+	TemplatesGetAdapter,
+	TemplatesGetDescriptor,
+	TemplatesGetInput,
+	TemplatesGetOperation,
+	TemplatesGetOutput,
+	TemplatesHistoryAdapter,
+	TemplatesHistoryDescriptor,
+	TemplatesHistoryInput,
+	TemplatesHistoryOperation,
+	TemplatesHistoryOutput,
+	TemplatesListAllAdapter,
+	TemplatesListAllDescriptor,
+	TemplatesListAllOperation,
+} from "./templates.js";
+export { createUserGetOperation, userGetDescriptor } from "./user.js";
+export type {
+	UserGetAdapter,
+	UserGetDescriptor,
+	UserGetOperation,
+} from "./user.js";
 export {
 	createWorkoutsCountOperation,
 	createWorkoutsCreateOperation,
@@ -193,11 +269,33 @@ export interface HevyOperations {
 	readonly bodyMeasurements?: {
 		readonly list: BodyMeasurementsListOperation;
 	};
+	readonly folders?: {
+		readonly create?: FoldersCreateOperation;
+		readonly get: FoldersGetOperation;
+		readonly listAll: FoldersListAllOperation;
+	};
+	readonly templates?: {
+		readonly create?: TemplatesCreateOperation;
+		readonly get: TemplatesGetOperation;
+		readonly history: TemplatesHistoryOperation;
+		readonly listAll: TemplatesListAllOperation;
+	};
+	readonly user?: {
+		readonly get: UserGetOperation;
+	};
 }
 
 type ExistingRequestEffectClient = Pick<
 	HevyRequestEffectClient,
 	| "getBodyMeasurements"
+	| "getExerciseTemplate"
+	| "getExerciseHistory"
+	| "createExerciseTemplate"
+	| "getExerciseTemplates"
+	| "getRoutineFolder"
+	| "createRoutineFolder"
+	| "getRoutineFolders"
+	| "getUserInfo"
 	| "createWorkout"
 	| "getWorkoutCount"
 	| "updateWorkout"
@@ -221,6 +319,21 @@ export function createOperations(client: HevyClient): HevyOperations {
 			getRequestEffectClientOnce().createWorkout(...args),
 		getBodyMeasurements: (...args) =>
 			getRequestEffectClientOnce().getBodyMeasurements(...args),
+		getExerciseTemplate: (...args) =>
+			getRequestEffectClientOnce().getExerciseTemplate(...args),
+		getExerciseHistory: (...args) =>
+			getRequestEffectClientOnce().getExerciseHistory(...args),
+		createExerciseTemplate: (...args) =>
+			getRequestEffectClientOnce().createExerciseTemplate(...args),
+		getExerciseTemplates: (...args) =>
+			getRequestEffectClientOnce().getExerciseTemplates(...args),
+		getRoutineFolder: (...args) =>
+			getRequestEffectClientOnce().getRoutineFolder(...args),
+		createRoutineFolder: (...args) =>
+			getRequestEffectClientOnce().createRoutineFolder(...args),
+		getRoutineFolders: (...args) =>
+			getRequestEffectClientOnce().getRoutineFolders(...args),
+		getUserInfo: (...args) => getRequestEffectClientOnce().getUserInfo(...args),
 		getWorkoutEvents: (...args) =>
 			getRequestEffectClientOnce().getWorkoutEvents(...args),
 		getWorkouts: (...args) => getRequestEffectClientOnce().getWorkouts(...args),
@@ -258,6 +371,20 @@ export function createOperations(client: HevyClient): HevyOperations {
 		},
 		bodyMeasurements: {
 			list: createBodyMeasurementsListOperation(lazyRequestEffectClient),
+		},
+		folders: {
+			create: createFoldersCreateOperation(lazyRequestEffectClient),
+			get: createFoldersGetOperation(lazyRequestEffectClient),
+			listAll: createFoldersListAllOperation(lazyRequestEffectClient),
+		},
+		templates: {
+			create: createTemplatesCreateOperation(lazyRequestEffectClient),
+			get: createTemplatesGetOperation(lazyRequestEffectClient),
+			history: createTemplatesHistoryOperation(lazyRequestEffectClient),
+			listAll: createTemplatesListAllOperation(lazyRequestEffectClient),
+		},
+		user: {
+			get: createUserGetOperation(lazyRequestEffectClient),
 		},
 	};
 }
