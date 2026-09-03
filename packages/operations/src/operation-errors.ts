@@ -37,6 +37,27 @@ export class PaginationMismatchError extends Schema.TaggedError<PaginationMismat
 	},
 ) {}
 
+export class WorkoutPrivacyError extends Schema.TaggedError<WorkoutPrivacyError>()(
+	"WorkoutPrivacyError",
+	{
+		message: Schema.String,
+	},
+) {}
+
+export class WorkoutPayloadError extends Schema.TaggedError<WorkoutPayloadError>()(
+	"WorkoutPayloadError",
+	{
+		message: Schema.String,
+	},
+) {}
+
+export class EmptyMeasurementUpdateError extends Schema.TaggedError<EmptyMeasurementUpdateError>()(
+	"EmptyMeasurementUpdateError",
+	{
+		message: Schema.String,
+	},
+) {}
+
 const collectionMemberEndpoints = {
 	"/v1/body_measurements": "/v1/body_measurements/:date",
 	"/v1/exercise_templates": "/v1/exercise_templates/:exerciseTemplateId",

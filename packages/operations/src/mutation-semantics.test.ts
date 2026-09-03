@@ -8,7 +8,11 @@ import {
 import type {
 	RoutinePayloadInput,
 	WorkoutExerciseInput,
-} from "./input-schemas.js";
+} from "./mutation-semantics.js";
+import {
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
+} from "./operation-errors.js";
 
 describe("mutation semantics", () => {
 	it("normalizes routine rep ranges without changing API casing", () => {
@@ -241,6 +245,33 @@ describe("mutation semantics", () => {
 		expect(current).toEqual(snapshot);
 	});
 
+	it("reports the missing privacy requirement as an operations error", () => {
+		expect(() =>
+			buildWorkoutUpdatePayload(
+				{
+					title: "Original",
+					start_time: "2026-07-29T08:00:00Z",
+					end_time: "2026-07-29T09:00:00Z",
+					exercises: [],
+				},
+				{ title: "Renamed" },
+			),
+		).toThrow(WorkoutPrivacyError);
+		expect(() =>
+			buildWorkoutUpdatePayload(
+				{
+					title: "Original",
+					start_time: "2026-07-29T08:00:00Z",
+					end_time: "2026-07-29T09:00:00Z",
+					exercises: [],
+				},
+				{ title: "Renamed" },
+			),
+		).toThrow(
+			"The Hevy API does not return the current privacy setting on GET",
+		);
+	});
+
 	it("uses fetched metadata for omitted patch fields and omits privacy", () => {
 		const current = {
 			title: "Original",
@@ -309,7 +340,7 @@ describe("mutation semantics", () => {
 					},
 					{ title: "Renamed", is_private: false },
 				),
-			).toThrow();
+			).toThrow(WorkoutPayloadError);
 		}
 	});
 

@@ -77,6 +77,11 @@ export type {
 	WorkoutsListOutput,
 } from "./workouts.js";
 export { PaginationMismatchError } from "./operation-errors.js";
+export {
+	EmptyMeasurementUpdateError,
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
+} from "./operation-errors.js";
 export type {
 	ExpectedReadError,
 	ReadCollectionEndpoint,
@@ -84,6 +89,31 @@ export type {
 	ReadMemberEndpoint,
 	ReadOperationError,
 } from "./operation-errors.js";
+export { WORKOUT_PUT_REQUIRES_IS_PRIVATE } from "./hevy-quirks.js";
+export {
+	buildMeasurementPayload,
+	buildRoutinePayload,
+	buildWorkoutUpdatePayload,
+	measurementKeys,
+	mergeMeasurementPayload,
+} from "./mutation-semantics.js";
+export type {
+	MeasurementFields,
+	MeasurementKey,
+	MeasurementMergeResult,
+	MeasurementPayload,
+	RoutineCreatePayload,
+	RoutineExerciseInput,
+	RoutinePayloadInput,
+	RoutinePayloadResult,
+	RoutineRepRangeInput,
+	RoutineSetInput,
+	RoutineUpdatePayload,
+	WorkoutExerciseInput,
+	WorkoutMetadataPatchInput,
+	WorkoutSetInput,
+	WorkoutUpdatePayload,
+} from "./mutation-semantics.js";
 
 export interface HevyOperations {
 	readonly routines: {
