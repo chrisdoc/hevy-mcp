@@ -14,8 +14,13 @@ import type {
 import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
 import {
 	createOperations,
+	foldersListAllDescriptor,
 	type TemplatesListAllOperation,
+	templatesListAllDescriptor,
+	userGetDescriptor,
+	workoutsCountDescriptor,
 } from "@hevy-mcp/operations";
+import type { HevyOperations } from "@hevy-mcp/operations";
 import { projectRoutineFolder } from "../utils/formatters.js";
 import {
 	createExerciseTemplateCatalog,
@@ -36,8 +41,10 @@ import {
 function createTestRuntime(
 	client: HevyClient | null,
 	catalog?: ExerciseTemplateCatalog,
+	operationsOverride?: HevyOperations,
 ) {
-	const operations = client ? createOperations(client) : undefined;
+	const operations =
+		operationsOverride ?? (client ? createOperations(client) : undefined);
 	const listAll: TemplatesListAllOperation = {
 		descriptor: {
 			id: "templates.listAll",
@@ -225,6 +232,108 @@ describe("registerHevyResources", () => {
 			createTestContext(2),
 		);
 		expect(parseJsonContent(countResult).data).toEqual({ workout_count: 42 });
+	});
+
+	it("dispatches every resource through the operations layer", async () => {
+		const { registerResource, server } = createMockServer();
+		const hevyClient = createMockHevyClient();
+		const baseOperations = createOperations(hevyClient);
+		const baseTemplates = baseOperations.templates;
+		const baseFolders = baseOperations.folders;
+		if (!baseTemplates || !baseFolders) {
+			throw new Error("Expected template and folder operations");
+		}
+		const user = {
+			id: "user-1",
+			name: "Operations User",
+			url: "https://hevy.com/user/operations",
+		};
+		const folders: RoutineFolder[] = [{ id: 1, title: "Operations Folder" }];
+		const templates: ExerciseTemplate[] = [
+			{ id: "template-1", title: "Operations Template" },
+		];
+		const userGet = vi.fn(() => Effect.succeed(user));
+		const workoutCount = vi.fn(() => Effect.succeed(7));
+		const templateListAll = vi.fn(() => Effect.succeed(templates));
+		const folderListAll = vi.fn(() => Effect.succeed(folders));
+		const operations: HevyOperations = {
+			...baseOperations,
+			user: {
+				get: {
+					descriptor: userGetDescriptor,
+					effect: userGet,
+					execute: vi.fn(),
+				},
+			},
+			workouts: {
+				...baseOperations.workouts,
+				count: {
+					descriptor: workoutsCountDescriptor,
+					effect: workoutCount,
+					execute: vi.fn(),
+				},
+			},
+			templates: {
+				...baseTemplates,
+				listAll: {
+					descriptor: templatesListAllDescriptor,
+					effect: templateListAll,
+					execute: vi.fn(),
+				},
+			},
+			folders: {
+				...baseFolders,
+				listAll: {
+					descriptor: foldersListAllDescriptor,
+					effect: folderListAll,
+					execute: vi.fn(),
+				},
+			},
+		};
+		const cache: ExerciseTemplateCatalogCache = Effect.runSync(
+			Cache.make<
+				string,
+				ExerciseTemplate[],
+				Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
+			>({
+				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+				timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+				lookup: (_key: string) => templateListAll(),
+			}),
+		);
+		const catalog = createExerciseTemplateCatalog(operations, cache);
+		registerHevyResources(
+			server,
+			createTestRuntime(hevyClient, catalog, operations),
+		);
+
+		const invoke = async (name: string) => {
+			const registration = getResourceRegistration(registerResource, name);
+			return registration.handler(
+				new URL(registration.uri),
+				createTestContext(9),
+			);
+		};
+
+		expect(parseJsonContent(await invoke("user-profile")).data).toEqual(user);
+		expect(parseJsonContent(await invoke("workout-count")).data).toEqual({
+			workout_count: 7,
+		});
+		expect(parseJsonContent(await invoke("exercise-templates")).data).toEqual(
+			templates,
+		);
+		expect(parseJsonContent(await invoke("routine-folders")).data).toEqual([
+			{ id: 1, title: "Operations Folder" },
+		]);
+
+		expect(userGet).toHaveBeenCalledOnce();
+		expect(workoutCount).toHaveBeenCalledOnce();
+		expect(templateListAll).toHaveBeenCalledOnce();
+		expect(folderListAll).toHaveBeenCalledOnce();
+		expect(hevyClient.getUserInfo).not.toHaveBeenCalled();
+		expect(hevyClient.getWorkoutCount).not.toHaveBeenCalled();
+		expect(hevyClient.getExerciseTemplates).not.toHaveBeenCalled();
+		expect(hevyClient.getRoutineFolders).not.toHaveBeenCalled();
 	});
 
 	it("fetches and formats all routine folder pages", async () => {
