@@ -10,11 +10,21 @@ import type {
 import type {
 	GetV1Workouts200,
 	GetV1WorkoutsEvents200,
+	PostV1Workouts201,
+	PostWorkoutsRequestBody,
+	PutV1WorkoutsWorkoutid200,
 	Workout,
 } from "@hevy-mcp/hevy-client/types";
 import {
+	buildWorkoutUpdatePayload,
+	type WorkoutMetadataPatchInput,
+	type WorkoutExerciseInput,
+} from "./mutation-semantics.js";
+import {
 	isExpectedReadEndOfList,
 	isExpectedReadNotFound,
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
 	PaginationMismatchError,
 } from "./operation-errors.js";
 
@@ -76,6 +86,37 @@ export interface WorkoutsEventsOperation {
 	): Promise<WorkoutsEventsOutput>;
 }
 
+export type WorkoutsCreateInput = {
+	readonly workout: NonNullable<PostWorkoutsRequestBody["workout"]>;
+};
+
+export type WorkoutsCreateAdapter = Pick<
+	HevyRequestEffectClient,
+	"createWorkout"
+>;
+
+export interface WorkoutsCreateDescriptor {
+	readonly id: "workouts.create";
+	readonly safety: Extract<HevyOperationSafety, "non-idempotent-write">;
+}
+
+export const workoutsCreateDescriptor: WorkoutsCreateDescriptor = {
+	id: "workouts.create",
+	safety: "non-idempotent-write",
+};
+
+export interface WorkoutsCreateOperation {
+	readonly descriptor: WorkoutsCreateDescriptor;
+	readonly effect: (
+		input: WorkoutsCreateInput,
+		options?: HevyExecutionOptions,
+	) => Effect.Effect<PostV1Workouts201, HevyRequestEffectError>;
+	execute(
+		input: WorkoutsCreateInput,
+		options?: HevyExecutionOptions,
+	): Promise<PostV1Workouts201>;
+}
+
 export interface WorkoutsGetInput {
 	readonly workoutId: string;
 }
@@ -132,6 +173,151 @@ export interface WorkoutsListOperation {
 		input: WorkoutsListInput,
 		options?: HevyExecutionOptions,
 	): Promise<WorkoutsListOutput>;
+}
+
+export type WorkoutsUpdateInput =
+	| {
+			readonly workoutId: string;
+			readonly patch: WorkoutMetadataPatchInput;
+	  }
+	| {
+			readonly workoutId: string;
+			readonly workout: WorkoutMetadataPatchInput;
+	  };
+
+export type WorkoutsUpdateAdapter = Pick<
+	HevyRequestEffectClient,
+	"getWorkout" | "updateWorkout"
+>;
+
+export interface WorkoutsUpdateDescriptor {
+	readonly id: "workouts.update";
+	readonly safety: Extract<HevyOperationSafety, "idempotent-write">;
+}
+
+export const workoutsUpdateDescriptor: WorkoutsUpdateDescriptor = {
+	id: "workouts.update",
+	safety: "idempotent-write",
+};
+
+export interface WorkoutsUpdateOperation {
+	readonly descriptor: WorkoutsUpdateDescriptor;
+	readonly effect: (
+		input: WorkoutsUpdateInput,
+		options?: HevyExecutionOptions,
+	) => Effect.Effect<
+		PutV1WorkoutsWorkoutid200,
+		HevyRequestEffectError | WorkoutPrivacyError | WorkoutPayloadError
+	>;
+	execute(
+		input: WorkoutsUpdateInput,
+		options?: HevyExecutionOptions,
+	): Promise<PutV1WorkoutsWorkoutid200>;
+}
+
+export type WorkoutsReplaceExercisesInput = {
+	readonly workoutId: string;
+	readonly is_private: boolean;
+	readonly exercises: WorkoutExerciseInput[];
+};
+
+export type WorkoutsReplaceExercisesAdapter = WorkoutsUpdateAdapter;
+
+export interface WorkoutsReplaceExercisesDescriptor {
+	readonly id: "workouts.replaceExercises";
+	readonly safety: Extract<HevyOperationSafety, "idempotent-write">;
+}
+
+export const workoutsReplaceExercisesDescriptor: WorkoutsReplaceExercisesDescriptor =
+	{
+		id: "workouts.replaceExercises",
+		safety: "idempotent-write",
+	};
+
+export interface WorkoutsReplaceExercisesOperation {
+	readonly descriptor: WorkoutsReplaceExercisesDescriptor;
+	readonly effect: (
+		input: WorkoutsReplaceExercisesInput,
+		options?: HevyExecutionOptions,
+	) => Effect.Effect<
+		PutV1WorkoutsWorkoutid200,
+		HevyRequestEffectError | WorkoutPrivacyError | WorkoutPayloadError
+	>;
+	execute(
+		input: WorkoutsReplaceExercisesInput,
+		options?: HevyExecutionOptions,
+	): Promise<PutV1WorkoutsWorkoutid200>;
+}
+
+export type WorkoutsCountAdapter = Pick<
+	HevyRequestEffectClient,
+	"getWorkoutCount"
+>;
+
+export interface WorkoutsCountDescriptor {
+	readonly id: "workouts.count";
+	readonly safety: Extract<HevyOperationSafety, "read">;
+}
+
+export const workoutsCountDescriptor: WorkoutsCountDescriptor = {
+	id: "workouts.count",
+	safety: "read",
+};
+
+export interface WorkoutsCountOperation {
+	readonly descriptor: WorkoutsCountDescriptor;
+	readonly effect: (
+		options?: HevyExecutionOptions,
+	) => Effect.Effect<number, HevyRequestEffectError>;
+	execute(options?: HevyExecutionOptions): Promise<number>;
+}
+
+function workoutPayloadEffect(
+	current: Workout,
+	patch: WorkoutMetadataPatchInput,
+	replacementExercises?: WorkoutExerciseInput[],
+): Effect.Effect<
+	ReturnType<typeof buildWorkoutUpdatePayload>,
+	WorkoutPrivacyError | WorkoutPayloadError
+> {
+	return Effect.try({
+		try: () => buildWorkoutUpdatePayload(current, patch, replacementExercises),
+		catch: (error) => {
+			if (
+				error instanceof WorkoutPrivacyError ||
+				error instanceof WorkoutPayloadError
+			) {
+				return error;
+			}
+			return new WorkoutPayloadError({
+				message: "The workout metadata is invalid for an update",
+			});
+		},
+	});
+}
+
+export function createWorkoutsCreateOperation(
+	adapter: WorkoutsCreateAdapter,
+): WorkoutsCreateOperation {
+	const effect = Effect.fn("operations.workouts.create")(function* (
+		input: WorkoutsCreateInput,
+		options?: HevyExecutionOptions,
+	) {
+		const request =
+			options === undefined
+				? adapter.createWorkout({ workout: input.workout })
+				: adapter.createWorkout({ workout: input.workout }, options);
+		return yield* request;
+	});
+
+	const operation: WorkoutsCreateOperation = {
+		descriptor: workoutsCreateDescriptor,
+		effect,
+		execute(input, options) {
+			return Effect.runPromise(operation.effect(input, options));
+		},
+	};
+	return operation;
 }
 
 export function createWorkoutsEventsOperation(
@@ -192,6 +378,95 @@ export function createWorkoutsEventsOperation(
 		effect,
 		execute(input, options) {
 			return Effect.runPromise(operation.effect(input, options));
+		},
+	};
+	return operation;
+}
+
+export function createWorkoutsUpdateOperation(
+	adapter: WorkoutsUpdateAdapter,
+): WorkoutsUpdateOperation {
+	const effect = Effect.fn("operations.workouts.update")(function* (
+		input: WorkoutsUpdateInput,
+		options?: HevyExecutionOptions,
+	) {
+		const getRequest =
+			options === undefined
+				? adapter.getWorkout(input.workoutId)
+				: adapter.getWorkout(input.workoutId, options);
+		const current = yield* getRequest;
+		const patch = "patch" in input ? input.patch : input.workout;
+		const payload = yield* workoutPayloadEffect(current, patch);
+		const updateRequest =
+			options === undefined
+				? adapter.updateWorkout(input.workoutId, { workout: payload })
+				: adapter.updateWorkout(input.workoutId, { workout: payload }, options);
+		return yield* updateRequest;
+	});
+
+	const operation: WorkoutsUpdateOperation = {
+		descriptor: workoutsUpdateDescriptor,
+		effect,
+		execute(input, options) {
+			return Effect.runPromise(operation.effect(input, options));
+		},
+	};
+	return operation;
+}
+
+export function createWorkoutsReplaceExercisesOperation(
+	adapter: WorkoutsReplaceExercisesAdapter,
+): WorkoutsReplaceExercisesOperation {
+	const effect = Effect.fn("operations.workouts.replaceExercises")(function* (
+		input: WorkoutsReplaceExercisesInput,
+		options?: HevyExecutionOptions,
+	) {
+		const getRequest =
+			options === undefined
+				? adapter.getWorkout(input.workoutId)
+				: adapter.getWorkout(input.workoutId, options);
+		const current = yield* getRequest;
+		const payload = yield* workoutPayloadEffect(
+			current,
+			{ is_private: input.is_private },
+			input.exercises,
+		);
+		const updateRequest =
+			options === undefined
+				? adapter.updateWorkout(input.workoutId, { workout: payload })
+				: adapter.updateWorkout(input.workoutId, { workout: payload }, options);
+		return yield* updateRequest;
+	});
+
+	const operation: WorkoutsReplaceExercisesOperation = {
+		descriptor: workoutsReplaceExercisesDescriptor,
+		effect,
+		execute(input, options) {
+			return Effect.runPromise(operation.effect(input, options));
+		},
+	};
+	return operation;
+}
+
+export function createWorkoutsCountOperation(
+	adapter: WorkoutsCountAdapter,
+): WorkoutsCountOperation {
+	const effect = Effect.fn("operations.workouts.count")(function* (
+		options?: HevyExecutionOptions,
+	) {
+		const request =
+			options === undefined
+				? adapter.getWorkoutCount()
+				: adapter.getWorkoutCount(options);
+		const response = yield* request;
+		return response?.workout_count ?? 0;
+	});
+
+	const operation: WorkoutsCountOperation = {
+		descriptor: workoutsCountDescriptor,
+		effect,
+		execute(options) {
+			return Effect.runPromise(operation.effect(options));
 		},
 	};
 	return operation;

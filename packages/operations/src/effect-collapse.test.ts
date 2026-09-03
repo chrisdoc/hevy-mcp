@@ -7,6 +7,10 @@ import {
 	createRoutinesListOperation,
 } from "./routines.js";
 import {
+	createWorkoutsCountOperation,
+	createWorkoutsCreateOperation,
+	createWorkoutsReplaceExercisesOperation,
+	createWorkoutsUpdateOperation,
 	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
 } from "./workouts.js";
@@ -59,6 +63,20 @@ describe("operations Effect collapse", () => {
 
 	it("keeps execute as a single Promise collapse of the Effect program", () => {
 		const operations = [
+			createWorkoutsCreateOperation({
+				createWorkout: () => Effect.succeed({}),
+			}),
+			createWorkoutsUpdateOperation({
+				getWorkout: () => Effect.succeed({}),
+				updateWorkout: () => Effect.succeed({}),
+			}),
+			createWorkoutsReplaceExercisesOperation({
+				getWorkout: () => Effect.succeed({}),
+				updateWorkout: () => Effect.succeed({}),
+			}),
+			createWorkoutsCountOperation({
+				getWorkoutCount: () => Effect.succeed({}),
+			}),
 			createWorkoutsGetOperation({
 				getWorkout: () => Effect.succeed({}),
 			}),

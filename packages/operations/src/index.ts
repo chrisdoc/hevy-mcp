@@ -14,12 +14,20 @@ import {
 	type BodyMeasurementsListOperation,
 } from "./body-measurements.js";
 import {
+	createWorkoutsCountOperation,
+	createWorkoutsCreateOperation,
 	createWorkoutsEventsOperation,
 	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
+	createWorkoutsReplaceExercisesOperation,
+	createWorkoutsUpdateOperation,
+	type WorkoutsCountOperation,
+	type WorkoutsCreateOperation,
 	type WorkoutsEventsOperation,
 	type WorkoutsGetOperation,
 	type WorkoutsListOperation,
+	type WorkoutsReplaceExercisesOperation,
+	type WorkoutsUpdateOperation,
 } from "./workouts.js";
 
 export {
@@ -52,14 +60,29 @@ export type {
 	BodyMeasurementsListOutput,
 } from "./body-measurements.js";
 export {
+	createWorkoutsCountOperation,
+	createWorkoutsCreateOperation,
 	createWorkoutsEventsOperation,
 	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
+	createWorkoutsReplaceExercisesOperation,
+	createWorkoutsUpdateOperation,
+	workoutsCountDescriptor,
+	workoutsCreateDescriptor,
 	workoutsEventsDescriptor,
 	workoutsGetDescriptor,
 	workoutsListDescriptor,
+	workoutsReplaceExercisesDescriptor,
+	workoutsUpdateDescriptor,
 } from "./workouts.js";
 export type {
+	WorkoutsCountAdapter,
+	WorkoutsCountDescriptor,
+	WorkoutsCountOperation,
+	WorkoutsCreateAdapter,
+	WorkoutsCreateDescriptor,
+	WorkoutsCreateInput,
+	WorkoutsCreateOperation,
 	WorkoutsEventsAdapter,
 	WorkoutsEventsDescriptor,
 	WorkoutsEventsInput,
@@ -75,6 +98,14 @@ export type {
 	WorkoutsListInput,
 	WorkoutsListOperation,
 	WorkoutsListOutput,
+	WorkoutsReplaceExercisesAdapter,
+	WorkoutsReplaceExercisesDescriptor,
+	WorkoutsReplaceExercisesInput,
+	WorkoutsReplaceExercisesOperation,
+	WorkoutsUpdateAdapter,
+	WorkoutsUpdateDescriptor,
+	WorkoutsUpdateInput,
+	WorkoutsUpdateOperation,
 } from "./workouts.js";
 export { PaginationMismatchError } from "./operation-errors.js";
 export {
@@ -121,9 +152,13 @@ export interface HevyOperations {
 		readonly list: RoutinesListOperation;
 	};
 	readonly workouts: {
+		readonly count?: WorkoutsCountOperation;
+		readonly create?: WorkoutsCreateOperation;
 		readonly events?: WorkoutsEventsOperation;
 		readonly get: WorkoutsGetOperation;
 		readonly list: WorkoutsListOperation;
+		readonly replaceExercises?: WorkoutsReplaceExercisesOperation;
+		readonly update?: WorkoutsUpdateOperation;
 	};
 	readonly bodyMeasurements?: {
 		readonly list: BodyMeasurementsListOperation;
@@ -133,6 +168,9 @@ export interface HevyOperations {
 type ExistingRequestEffectClient = Pick<
 	HevyRequestEffectClient,
 	| "getBodyMeasurements"
+	| "createWorkout"
+	| "getWorkoutCount"
+	| "updateWorkout"
 	| "getWorkoutEvents"
 	| "getWorkouts"
 	| "getWorkout"
@@ -147,15 +185,21 @@ export function createOperations(client: HevyClient): HevyOperations {
 		return requestEffectClient;
 	};
 	const lazyRequestEffectClient: ExistingRequestEffectClient = {
+		createWorkout: (...args) =>
+			getRequestEffectClientOnce().createWorkout(...args),
 		getBodyMeasurements: (...args) =>
 			getRequestEffectClientOnce().getBodyMeasurements(...args),
 		getWorkoutEvents: (...args) =>
 			getRequestEffectClientOnce().getWorkoutEvents(...args),
 		getWorkouts: (...args) => getRequestEffectClientOnce().getWorkouts(...args),
 		getWorkout: (...args) => getRequestEffectClientOnce().getWorkout(...args),
+		getWorkoutCount: (...args) =>
+			getRequestEffectClientOnce().getWorkoutCount(...args),
 		getRoutines: (...args) => getRequestEffectClientOnce().getRoutines(...args),
 		getRoutineById: (...args) =>
 			getRequestEffectClientOnce().getRoutineById(...args),
+		updateWorkout: (...args) =>
+			getRequestEffectClientOnce().updateWorkout(...args),
 	};
 	return {
 		routines: {
@@ -163,9 +207,15 @@ export function createOperations(client: HevyClient): HevyOperations {
 			list: createRoutinesListOperation(lazyRequestEffectClient),
 		},
 		workouts: {
+			count: createWorkoutsCountOperation(lazyRequestEffectClient),
+			create: createWorkoutsCreateOperation(lazyRequestEffectClient),
 			events: createWorkoutsEventsOperation(lazyRequestEffectClient),
 			get: createWorkoutsGetOperation(lazyRequestEffectClient),
 			list: createWorkoutsListOperation(lazyRequestEffectClient),
+			replaceExercises: createWorkoutsReplaceExercisesOperation(
+				lazyRequestEffectClient,
+			),
+			update: createWorkoutsUpdateOperation(lazyRequestEffectClient),
 		},
 		bodyMeasurements: {
 			list: createBodyMeasurementsListOperation(lazyRequestEffectClient),
