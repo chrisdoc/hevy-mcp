@@ -292,8 +292,19 @@ export function createToolRuntime({
 		fn: ToolEffectHandler<TParams>,
 		context: string,
 		metadata?: ToolTelemetryMetadata,
-	) =>
-		withErrorHandling(
+	) => {
+		// Compose observation around the resolved handler factory so a
+		// caller-supplied `createHandler` stays in the path when an observer is
+		// configured; without one, the raw effect runner preserves the default
+		// withErrorHandling observation semantics.
+		const resolvedHandler: (
+			args: TParams,
+			requestContext?: ToolExecutionContext,
+		) => Promise<McpToolResponse> = createHandler
+			? createHandler(fn, context, metadata)
+			: (args, requestContext) =>
+					runToolEffect(fn, args, requestContext, services);
+		return withErrorHandling(
 			async (args: TParams, requestContext?: ToolExecutionContext) => {
 				let scope;
 				try {
@@ -306,7 +317,7 @@ export function createToolRuntime({
 				const startedAt = Date.now();
 				let handlerPromise: Promise<McpToolResponse> | undefined;
 				const invokeHandler = () => {
-					handlerPromise ??= runToolEffect(fn, args, requestContext, services);
+					handlerPromise ??= resolvedHandler(args, requestContext);
 					return handlerPromise;
 				};
 				try {
@@ -347,6 +358,7 @@ export function createToolRuntime({
 			},
 			context,
 		) as ToolHandler;
+	};
 	const observedHandlerFactory = observer
 		? createObservedHandler
 		: effectHandlerFactory;
