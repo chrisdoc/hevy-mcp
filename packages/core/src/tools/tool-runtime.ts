@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Scope } from "effect";
 import type { McpClientLogger } from "../utils/mcp-client-logger.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
@@ -87,7 +87,11 @@ type ToolRuntimeServiceContext = Context.Context<ToolRuntimeServiceIdentifiers>;
 function buildServiceContext(
 	layer: ToolRuntimeServiceLayer,
 ): ToolRuntimeServiceContext {
-	return Effect.runSync(Effect.scoped(Layer.build(layer)));
+	// Build the layer against a scope that outlives this call. `Effect.scoped`
+	// would close the scope immediately, releasing any scoped resources
+	// before the returned context is ever used by request handlers.
+	const scope = Effect.runSync(Scope.make());
+	return Effect.runSync(Scope.provide(scope)(Layer.build(layer)));
 }
 
 function createSafeInvocation<TArgs extends object>(
