@@ -247,6 +247,59 @@ function hasNextTemplatesPage(
 	);
 }
 
+type ValidatedTemplatesPage = {
+	readonly pageCount: number;
+	readonly templates: ExerciseTemplate[];
+	readonly hasNextPage: boolean;
+};
+
+/**
+ * Shared pagination policy for both templates list operations: validates the
+ * `page` echo and `page_count` metadata of a GetV1ExerciseTemplates response.
+ * Missing or invalid `page_count` is rejected instead of being silently
+ * treated as end-of-list, which would truncate results.
+ */
+function readTemplatesPage(
+	response: GetV1ExerciseTemplates200,
+	requestedPage: number,
+): Effect.Effect<ValidatedTemplatesPage, PaginationMismatchError> {
+	if (response?.page !== undefined && response.page !== requestedPage) {
+		return Effect.fail(
+			new PaginationMismatchError({
+				requested: requestedPage,
+				received: response.page,
+				collection: "exerciseTemplates",
+				message: `Exercise templates page mismatch: requested page ${requestedPage} but received page ${response.page}`,
+			}),
+		);
+	}
+
+	const pageCount = response?.page_count;
+	const templates = response?.exercise_templates ?? [];
+	if (
+		!Predicate.isNumber(pageCount) ||
+		!Number.isSafeInteger(pageCount) ||
+		pageCount < 0 ||
+		(pageCount === 0 && templates.length > 0) ||
+		(pageCount > 0 && pageCount < requestedPage)
+	) {
+		return Effect.fail(
+			new PaginationMismatchError({
+				requested: requestedPage,
+				received: Predicate.isNumber(pageCount) ? pageCount : -1,
+				collection: "exerciseTemplates",
+				message: "The API returned invalid pagination metadata",
+			}),
+		);
+	}
+
+	return Effect.succeed({
+		pageCount,
+		templates,
+		hasNextPage: hasNextTemplatesPage(pageCount, requestedPage, templates),
+	});
+}
+
 export function createTemplatesGetOperation(
 	adapter: TemplatesGetAdapter,
 ): TemplatesGetOperation {
@@ -367,26 +420,19 @@ export function createTemplatesListAllOperation(
 					? adapter.getExerciseTemplates(params)
 					: adapter.getExerciseTemplates(params, options);
 			return request.pipe(
-				Effect.flatMap((response: GetV1ExerciseTemplates200) => {
-					if (response?.page !== undefined && response.page !== cursor.page) {
-						return Effect.fail(
-							new PaginationMismatchError({
-								requested: cursor.page,
-								received: response.page,
-								collection: "exerciseTemplates",
-								message: `Exercise templates page mismatch: requested page ${cursor.page} but received page ${response.page}`,
-							}),
-						);
-					}
-
-					const templates = response?.exercise_templates ?? [];
-					return Effect.succeed([
-						[{ templates }],
-						hasNextTemplatesPage(response?.page_count, cursor.page, templates)
-							? Option.some({ page: cursor.page + 1 })
-							: Option.none(),
-					] as const);
-				}),
+				Effect.flatMap((response: GetV1ExerciseTemplates200) =>
+					readTemplatesPage(response, cursor.page).pipe(
+						Effect.map(
+							({ templates, hasNextPage }) =>
+								[
+									[{ templates }],
+									hasNextPage
+										? Option.some({ page: cursor.page + 1 })
+										: Option.none(),
+								] as const,
+						),
+					),
+				),
 				Effect.catchIf(
 					(error) =>
 						isExpectedReadEndOfList(
@@ -448,53 +494,24 @@ export function createTemplatesSearchOperation(
 					? adapter.getExerciseTemplates(params)
 					: adapter.getExerciseTemplates(params, options);
 			return request.pipe(
-				Effect.flatMap((response: GetV1ExerciseTemplates200) => {
-					if (response?.page !== undefined && response.page !== cursor.page) {
-						return Effect.fail(
-							new PaginationMismatchError({
-								requested: cursor.page,
-								received: response.page,
-								collection: "exerciseTemplates",
-								message: `Exercise templates page mismatch: requested page ${cursor.page} but received page ${response.page}`,
-							}),
-						);
-					}
-
-					const pageCount = response?.page_count;
-					const templates = response?.exercise_templates ?? [];
-					if (
-						!Predicate.isNumber(pageCount) ||
-						!Number.isSafeInteger(pageCount) ||
-						pageCount < 0 ||
-						(pageCount === 0 && templates.length > 0) ||
-						(pageCount > 0 && pageCount < cursor.page)
-					) {
-						return Effect.fail(
-							new PaginationMismatchError({
-								requested: cursor.page,
-								received: Predicate.isNumber(pageCount) ? pageCount : -1,
-								collection: "exerciseTemplates",
-								message: "The API returned invalid pagination metadata",
-							}),
-						);
-					}
-					const hasNextPage = hasNextTemplatesPage(
-						pageCount,
-						cursor.page,
-						templates,
-					);
-					return Effect.succeed([
-						[
-							{
-								templates,
-								hasNextPage,
-							},
-						],
-						hasNextPage && cursor.page < maxPages
-							? Option.some({ page: cursor.page + 1 })
-							: Option.none(),
-					] as const);
-				}),
+				Effect.flatMap((response: GetV1ExerciseTemplates200) =>
+					readTemplatesPage(response, cursor.page).pipe(
+						Effect.map(
+							({ templates, hasNextPage }) =>
+								[
+									[
+										{
+											templates,
+											hasNextPage,
+										},
+									],
+									hasNextPage && cursor.page < maxPages
+										? Option.some({ page: cursor.page + 1 })
+										: Option.none(),
+								] as const,
+						),
+					),
+				),
 				Effect.catchIf(
 					(error) =>
 						isExpectedReadEndOfList(

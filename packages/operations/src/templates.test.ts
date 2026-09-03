@@ -290,6 +290,63 @@ describe("templates.listAll operation", () => {
 		);
 	});
 
+	it.each([{ page_count: undefined }, { page_count: 1.5 }] as const)(
+		"rejects malformed pagination metadata like search: %#",
+		async (response) => {
+			const getExerciseTemplates = vi.fn(() =>
+				Effect.succeed({
+					page: 1,
+					page_count: response.page_count,
+					exercise_templates: [],
+				}),
+			);
+			const operation = createTemplatesListAllOperation({
+				getExerciseTemplates,
+			});
+
+			await expect(Effect.runPromise(operation.effect())).rejects.toMatchObject(
+				{
+					_tag: "PaginationMismatchError",
+					message: "The API returned invalid pagination metadata",
+				},
+			);
+		},
+	);
+
+	it("rejects a page count smaller than the requested page", async () => {
+		const getExerciseTemplates = vi.fn((params) =>
+			Effect.succeed({
+				page: params?.page,
+				page_count: params?.page === 1 ? 2 : 1,
+				exercise_templates: [{ id: `template-${params?.page}` }],
+			}),
+		);
+		const operation = createTemplatesListAllOperation({
+			getExerciseTemplates,
+		});
+
+		await expect(Effect.runPromise(operation.effect())).rejects.toMatchObject({
+			_tag: "PaginationMismatchError",
+			message: "The API returned invalid pagination metadata",
+		});
+	});
+
+	it("rejects zero page count when a page contains templates", async () => {
+		const operation = createTemplatesListAllOperation({
+			getExerciseTemplates: () =>
+				Effect.succeed({
+					page: 1,
+					page_count: 0,
+					exercise_templates: [{ id: "template-1", title: "Bench" }],
+				}),
+		});
+
+		await expect(Effect.runPromise(operation.effect())).rejects.toMatchObject({
+			_tag: "PaginationMismatchError",
+			message: "The API returned invalid pagination metadata",
+		});
+	});
+
 	it("does not recover a member-path 404 while listing", async () => {
 		const error = new HevyHttpError("not found", {
 			status: 404,
