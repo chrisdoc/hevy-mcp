@@ -3,15 +3,15 @@ import type {
 	ReadResourceResult,
 	ServerContext,
 } from "@modelcontextprotocol/server";
-import type {
-	GetV1WorkoutsCount200,
-	RoutineFolder,
-	UserInfoResponse,
-} from "@hevy-mcp/hevy-client/types";
+import { Effect } from "effect";
 import type { ToolRuntime } from "../tools/tool-runtime.js";
-import { fetchAllPages } from "../utils/pagination.js";
+import {
+	ExerciseTemplateCatalogService,
+	HevyOperationsService,
+} from "../effect-services.js";
 import { projectRoutineFolder } from "../utils/formatters.js";
 import { createExecutionErrorProjection } from "../utils/error-handler.js";
+import { requireOperation } from "../tools/operation-helpers.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
 
 const JSON_MIME_TYPE = "application/json";
@@ -42,26 +42,13 @@ function createResourceErrorResult(
 
 async function readResource(
 	uri: URL,
-	read: () => Promise<ReadResourceResult>,
+	read: () => Effect.Effect<ReadResourceResult, unknown, never>,
 ): Promise<ReadResourceResult> {
 	try {
-		return await read();
+		return await Effect.runPromise(Effect.suspend(read));
 	} catch (error) {
 		return createResourceErrorResult(uri, error);
 	}
-}
-
-async function fetchAllRoutineFolders(
-	runtime: ToolRuntime,
-): Promise<RoutineFolder[]> {
-	const client = runtime.getClient();
-	return fetchAllPages<RoutineFolder>(async (page, pageSize) => {
-		const data = await client.getRoutineFolders({ page, pageSize });
-		return {
-			items: data?.routine_folders ?? [],
-			pageCount: data?.page_count,
-		};
-	}, 10);
 }
 
 export function registerHevyResources(
@@ -76,10 +63,18 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, async () => {
-				const scoped = runtime.forExecution({ signal: context.mcpReq.signal });
-				const data: UserInfoResponse = await scoped.getClient().getUserInfo();
-				return createJsonResourceResult(uri, data?.data ?? null);
+			readResource(uri, () => {
+				const scoped = runtime.forExecution({
+					signal: context.mcpReq.signal,
+				});
+				return requireOperation(
+					scoped.service(HevyOperationsService).user?.get,
+					"user.get",
+				)
+					.effect(scoped.execution)
+					.pipe(
+						Effect.map((user) => createJsonResourceResult(uri, user ?? null)),
+					);
 			}),
 	);
 
@@ -91,14 +86,22 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, async () => {
-				const scoped = runtime.forExecution({ signal: context.mcpReq.signal });
-				const data: GetV1WorkoutsCount200 = await scoped
-					.getClient()
-					.getWorkoutCount();
-				return createJsonResourceResult(uri, {
-					workout_count: data?.workout_count ?? 0,
+			readResource(uri, () => {
+				const scoped = runtime.forExecution({
+					signal: context.mcpReq.signal,
 				});
+				return requireOperation(
+					scoped.service(HevyOperationsService).workouts.count,
+					"workouts.count",
+				)
+					.effect(scoped.execution)
+					.pipe(
+						Effect.map((workoutCount) =>
+							createJsonResourceResult(uri, {
+								workout_count: workoutCount,
+							}),
+						),
+					);
 			}),
 	);
 
@@ -110,10 +113,16 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, async () => {
-				const scoped = runtime.forExecution({ signal: context.mcpReq.signal });
-				const templates = await scoped.catalog.get();
-				return createJsonResourceResult(uri, templates);
+			readResource(uri, () => {
+				const scoped = runtime.forExecution({
+					signal: context.mcpReq.signal,
+				});
+				return scoped
+					.service(ExerciseTemplateCatalogService)
+					.effect()
+					.pipe(
+						Effect.map((templates) => createJsonResourceResult(uri, templates)),
+					);
 			}),
 	);
 
@@ -125,11 +134,20 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, async () => {
-				const folders = await fetchAllRoutineFolders(
-					runtime.forExecution({ signal: context.mcpReq.signal }),
-				);
-				return createJsonResourceResult(uri, folders.map(projectRoutineFolder));
+			readResource(uri, () => {
+				const scoped = runtime.forExecution({
+					signal: context.mcpReq.signal,
+				});
+				return requireOperation(
+					scoped.service(HevyOperationsService).folders?.listAll,
+					"folders.listAll",
+				)
+					.effect(scoped.execution)
+					.pipe(
+						Effect.map((folders) =>
+							createJsonResourceResult(uri, folders.map(projectRoutineFolder)),
+						),
+					);
 			}),
 	);
 }

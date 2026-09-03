@@ -150,7 +150,7 @@ describe("createToolRuntime observation scope", () => {
 		});
 		const handler = runtime.createHandler(() => {
 			executions += 1;
-			return Promise.resolve({ content: [{ type: "text", text: "ok" }] });
+			return Effect.succeed({ content: [{ type: "text", text: "ok" }] });
 		}, "create-workout");
 
 		await expect(handler({ id: "workout-id" })).resolves.toMatchObject({
@@ -164,7 +164,7 @@ describe("createToolRuntime observation scope", () => {
 		let active = false;
 		const handler = vi.fn(() => {
 			expect(active).toBe(true);
-			return Promise.resolve({
+			return Effect.succeed({
 				content: [{ type: "text" as const, text: "ok" }],
 			});
 		});
@@ -192,7 +192,9 @@ describe("createToolRuntime observation scope", () => {
 	it("reuses the handler result when run fails after invoking it", async () => {
 		const handler = vi
 			.fn()
-			.mockResolvedValue({ content: [{ type: "text", text: "ok" }] });
+			.mockReturnValue(
+				Effect.succeed({ content: [{ type: "text", text: "ok" }] }),
+			);
 		const runtime = createToolRuntime({
 			client: null,
 			catalog,
@@ -225,7 +227,7 @@ describe("createToolRuntime observation scope", () => {
 		});
 		const secret = "private-routine-title-sentinel";
 		const handler = runtime.createHandler(
-			() => Promise.resolve({ content: [] }),
+			() => Effect.succeed({ content: [] }),
 			"list-routines",
 			{ feature: "routines", kind: "read", operation: "list" },
 		);
@@ -279,7 +281,7 @@ describe("createToolRuntime observation scope", () => {
 		}));
 
 		await runtime.createHandler(
-			() => Promise.resolve({ content }),
+			() => Effect.succeed({ content }),
 			"list-workouts",
 		)({});
 
@@ -309,7 +311,7 @@ describe("createToolRuntime observation scope", () => {
 		const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		const result = await runtime.createHandler(
-			() => Promise.reject(new Error(secret)),
+			() => Effect.fail(new Error(secret)),
 			"get-workouts",
 		)({});
 

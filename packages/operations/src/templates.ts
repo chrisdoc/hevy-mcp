@@ -213,7 +213,9 @@ export function createTemplatesGetOperation(
 				: adapter.getExerciseTemplate(input.exerciseTemplateId, options);
 		return yield* request.pipe(
 			Effect.map((exerciseTemplate) => ({
-				exerciseTemplate: exerciseTemplate ?? null,
+				exerciseTemplate: isEmptyResponse(exerciseTemplate)
+					? null
+					: (exerciseTemplate ?? null),
 				exerciseTemplateId: input.exerciseTemplateId,
 			})),
 			Effect.catchIf(
@@ -236,6 +238,16 @@ export function createTemplatesGetOperation(
 		},
 	};
 	return operation;
+}
+
+function isEmptyResponse<T extends object>(
+	response: T | null | undefined,
+): response is T & Record<never, never> {
+	return (
+		response !== null &&
+		response !== undefined &&
+		Object.keys(response).length === 0
+	);
 }
 
 export function createTemplatesHistoryOperation(

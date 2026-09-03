@@ -1,19 +1,17 @@
-import type {
-	GetV1BodyMeasurements200,
-	GetV1BodyMeasurementsDate200,
-} from "@hevy-mcp/hevy-client/types";
+import { Effect } from "effect";
+import type { BodyMeasurement } from "@hevy-mcp/hevy-client/types";
 import {
 	bodyMeasurementResponse,
 	bodyMeasurementsResponse,
 	createBodyMeasurementResponse,
 	updateBodyMeasurementResponse,
+	type PaginatedToolResult,
 } from "../utils/response-contracts.js";
 import {
 	readOnlyAnnotations,
 	createAnnotations,
 	updateAnnotations,
 } from "../utils/tool-annotations.js";
-
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
@@ -22,19 +20,13 @@ import {
 	paginationFields,
 	updateBodyMeasurementInputFields,
 } from "./input-schemas.js";
-import { buildMeasurementPayload } from "./mutation-semantics.js";
-import type { PaginatedToolResult } from "../utils/response-contracts.js";
-import {
-	isExpectedListPageNotFound,
-	isExpectedReadNotFound,
-} from "../utils/hevy-error-policy.js";
-import { HevyClientService } from "../effect-services.js";
+import { HevyOperationsService } from "../effect-services.js";
+import { operationEffect, requireOperation } from "./operation-helpers.js";
+
 const getBodyMeasurementsSchema = {
 	...paginationFields({ defaultPageSize: 10, maxPageSize: 10 }),
 } as const;
-type GetBodyMeasurementsResult = PaginatedToolResult<
-	NonNullable<GetV1BodyMeasurements200["body_measurements"]>[number]
->;
+type GetBodyMeasurementsResult = PaginatedToolResult<BodyMeasurement>;
 
 const getBodyMeasurementSchema = {
 	date: calendarDate,
@@ -57,33 +49,25 @@ const getBodyMeasurementsDefinition: ToolDefinition<
 	annotations: readOnlyAnnotations("Get Body Measurements"),
 	kind: "read",
 	responseContract: bodyMeasurementsResponse,
-	execute: async (runtime: ToolRuntime, args) => {
+	execute: (runtime: ToolRuntime, args) => {
 		const { page, page_size } = args;
-		const client = runtime.service(HevyClientService);
-		try {
-			const data: GetV1BodyMeasurements200 = await client.getBodyMeasurements({
-				page,
-				pageSize: page_size,
-			});
-			return {
-				items: data?.body_measurements ?? [],
-				page,
-				pageCount: data?.page_count,
-			};
-		} catch (error) {
-			if (isExpectedListPageNotFound(error, page)) {
-				return { items: [], page, expected404Outcome: "end_of_list" };
-			}
-			throw error;
-		}
+		return operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).bodyMeasurements?.list,
+				"bodyMeasurements.list",
+			),
+			{ page, pageSize: page_size },
+			runtime.execution,
+		);
 	},
 };
 
 const getBodyMeasurementDefinition: ToolDefinition<
 	typeof getBodyMeasurementSchema,
 	{
-		body_measurement: GetV1BodyMeasurementsDate200 | null | undefined;
+		body_measurement: BodyMeasurement | null | undefined;
 		date: string;
+		expected404Outcome?: "not_found";
 	}
 > = {
 	name: "get-body-measurement",
@@ -96,23 +80,24 @@ const getBodyMeasurementDefinition: ToolDefinition<
 	annotations: readOnlyAnnotations("Get Body Measurement"),
 	kind: "read",
 	responseContract: bodyMeasurementResponse,
-	execute: async (runtime: ToolRuntime, args) => {
+	execute: (runtime: ToolRuntime, args) => {
 		const { date } = args;
-		const client = runtime.service(HevyClientService);
-		try {
-			const data: GetV1BodyMeasurementsDate200 =
-				await client.getBodyMeasurement(date);
-			return { body_measurement: data, date };
-		} catch (error) {
-			if (isExpectedReadNotFound(error)) {
-				return {
-					body_measurement: null,
-					date,
-					expected404Outcome: "not_found",
-				};
-			}
-			throw error;
-		}
+		return operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).bodyMeasurements?.get,
+				"bodyMeasurements.get",
+			),
+			{ date },
+			runtime.execution,
+		).pipe(
+			Effect.map(
+				({ bodyMeasurement, date: resultDate, expected404Outcome }) => ({
+					body_measurement: bodyMeasurement,
+					date: resultDate,
+					expected404Outcome,
+				}),
+			),
+		);
 	},
 };
 
@@ -129,15 +114,15 @@ const createBodyMeasurementDefinition: ToolDefinition<
 	annotations: createAnnotations("Create Body Measurement"),
 	kind: "write",
 	responseContract: createBodyMeasurementResponse,
-	execute: async (runtime: ToolRuntime, args) => {
-		const { date, ...fields } = args;
-		const client = runtime.service(HevyClientService);
-		await client.createBodyMeasurement({
-			date,
-			...buildMeasurementPayload(fields),
-		});
-		return date;
-	},
+	execute: (runtime, args) =>
+		operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).bodyMeasurements?.create,
+				"bodyMeasurements.create",
+			),
+			args,
+			runtime.execution,
+		),
 };
 
 const updateBodyMeasurementDefinition: ToolDefinition<
@@ -153,18 +138,15 @@ const updateBodyMeasurementDefinition: ToolDefinition<
 	annotations: updateAnnotations("Update Body Measurement"),
 	kind: "write",
 	responseContract: updateBodyMeasurementResponse,
-	execute: async (runtime: ToolRuntime, args) => {
-		const { date, ...fields } = args;
-		const client = runtime.service(HevyClientService);
-		const payload = buildMeasurementPayload(fields);
-		if (Object.keys(payload).length === 0) {
-			throw new Error(
-				"No measurement fields provided. Include at least one numeric measurement field (e.g. weight_kg) to update.",
-			);
-		}
-		await client.updateBodyMeasurement(date, payload);
-		return date;
-	},
+	execute: (runtime, args) =>
+		operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).bodyMeasurements?.update,
+				"bodyMeasurements.update",
+			),
+			args,
+			runtime.execution,
+		),
 };
 
 export const bodyMeasurementToolDefinitions = [

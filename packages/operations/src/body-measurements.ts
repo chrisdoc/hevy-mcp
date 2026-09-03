@@ -237,7 +237,9 @@ export function createBodyMeasurementsGetOperation(
 				: adapter.getBodyMeasurement(input.date, options);
 		return yield* request.pipe(
 			Effect.map((bodyMeasurement) => ({
-				bodyMeasurement: bodyMeasurement ?? null,
+				bodyMeasurement: isEmptyResponse(bodyMeasurement)
+					? null
+					: (bodyMeasurement ?? null),
 				date: input.date,
 			})),
 			Effect.catchIf(
@@ -260,6 +262,16 @@ export function createBodyMeasurementsGetOperation(
 		},
 	};
 	return operation;
+}
+
+function isEmptyResponse<T extends object>(
+	response: T | null | undefined,
+): response is T & Record<never, Record<string, never>> {
+	return (
+		response !== null &&
+		response !== undefined &&
+		Object.keys(response).length === 0
+	);
 }
 
 export function createBodyMeasurementsCreateOperation(

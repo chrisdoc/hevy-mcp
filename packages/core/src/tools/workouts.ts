@@ -1,9 +1,5 @@
 import { z } from "zod";
-import type {
-	GetV1WorkoutsEvents200,
-	PostV1Workouts201,
-	PutV1WorkoutsWorkoutid200,
-} from "@hevy-mcp/hevy-client/types";
+import { Effect } from "effect";
 import {
 	paginationFields,
 	nonEmptyId,
@@ -13,10 +9,7 @@ import {
 } from "./input-schemas.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import {
-	HevyClientService,
-	HevyOperationsService,
-} from "../effect-services.js";
+import { HevyOperationsService } from "../effect-services.js";
 import {
 	createWorkoutResponse,
 	updateWorkoutResponse,
@@ -32,8 +25,7 @@ import {
 import { WORKOUT_PUT_REQUIRES_IS_PRIVATE } from "./hevy-quirks.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
-import { buildWorkoutUpdatePayload } from "./mutation-semantics.js";
-import { isExpectedListPageNotFound } from "../utils/hevy-error-policy.js";
+import { operationEffect, requireOperation } from "./operation-helpers.js";
 
 const getWorkoutsSchema = paginationFields({
 	defaultPageSize: 5,
@@ -74,18 +66,18 @@ export const workoutToolDefinitions = [
 		annotations: readOnlyAnnotations("Get Workouts"),
 		kind: "read" as const,
 		responseContract: workoutsResponse,
-		execute: async (runtime: ToolRuntime, args: GetWorkoutsParams) => {
-			const data = await runtime
-				.service(HevyOperationsService)
-				.workouts.list.execute(
-					{
-						page: args.page,
-						pageSize: args.page_size,
-					},
-					runtime.execution,
-				);
-			return data;
-		},
+		execute: (runtime: ToolRuntime, args: GetWorkoutsParams) =>
+			operationEffect(
+				requireOperation(
+					runtime.service(HevyOperationsService).workouts.list,
+					"workouts.list",
+				),
+				{
+					page: args.page,
+					pageSize: args.page_size,
+				},
+				runtime.execution,
+			),
 	},
 	{
 		name: "get-workout",
@@ -98,15 +90,20 @@ export const workoutToolDefinitions = [
 		annotations: readOnlyAnnotations("Get Workout"),
 		kind: "read" as const,
 		responseContract: workoutResponse,
-		execute: async (runtime: ToolRuntime, args: GetWorkoutParams) => {
-			const data = await runtime
-				.service(HevyOperationsService)
-				.workouts.get.execute(
-					{ workoutId: args.workout_id },
-					runtime.execution,
-				);
-			return { ...data, workout_id: args.workout_id };
-		},
+		execute: (runtime: ToolRuntime, args: GetWorkoutParams) =>
+			operationEffect(
+				requireOperation(
+					runtime.service(HevyOperationsService).workouts.get,
+					"workouts.get",
+				),
+				{ workoutId: args.workout_id },
+				runtime.execution,
+			).pipe(
+				Effect.map((data) => ({
+					...data,
+					workout_id: args.workout_id,
+				})),
+			),
 	},
 	{
 		name: "get-workout-events",
@@ -119,33 +116,19 @@ export const workoutToolDefinitions = [
 		annotations: readOnlyAnnotations("Get Workout Events"),
 		kind: "read" as const,
 		responseContract: workoutEventsResponse,
-		execute: async (runtime: ToolRuntime, args: GetWorkoutEventsParams) => {
-			try {
-				const data: GetV1WorkoutsEvents200 = await runtime
-					.service(HevyClientService)
-					.getWorkoutEvents({
-						page: args.page,
-						pageSize: args.page_size,
-						since: args.since,
-					});
-				return {
-					events: data?.events,
-					since: args.since,
+		execute: (runtime: ToolRuntime, args: GetWorkoutEventsParams) =>
+			operationEffect(
+				requireOperation(
+					runtime.service(HevyOperationsService).workouts.events,
+					"workouts.events",
+				),
+				{
 					page: args.page,
-					pageCount: data?.page_count,
-				};
-			} catch (error) {
-				if (isExpectedListPageNotFound(error, args.page)) {
-					return {
-						events: [],
-						since: args.since,
-						page: args.page,
-						expected404Outcome: "end_of_list",
-					};
-				}
-				throw error;
-			}
-		},
+					pageSize: args.page_size,
+					since: args.since,
+				},
+				runtime.execution,
+			),
 	},
 	{
 		name: "create-workout",
@@ -157,14 +140,15 @@ export const workoutToolDefinitions = [
 		annotations: createAnnotations("Create Workout"),
 		kind: "write" as const,
 		responseContract: createWorkoutResponse,
-		execute: async (runtime: ToolRuntime, args: CreateWorkoutParams) => {
-			const data: PostV1Workouts201 = await runtime
-				.service(HevyClientService)
-				.createWorkout({
-					workout: args.workout,
-				});
-			return data;
-		},
+		execute: (runtime: ToolRuntime, args: CreateWorkoutParams) =>
+			operationEffect(
+				requireOperation(
+					runtime.service(HevyOperationsService).workouts.create,
+					"workouts.create",
+				),
+				{ workout: args.workout },
+				runtime.execution,
+			),
 	},
 	{
 		name: "update-workout",
@@ -178,16 +162,23 @@ export const workoutToolDefinitions = [
 		annotations: updateAnnotations("Update Workout"),
 		kind: "write" as const,
 		responseContract: updateWorkoutResponse,
-		execute: async (runtime: ToolRuntime, args: UpdateWorkoutParams) => {
-			const client = runtime.service(HevyClientService);
-			const current = await client.getWorkout(args.workout_id);
-			const payload = buildWorkoutUpdatePayload(current, args.workout);
-			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
-				args.workout_id,
-				{ workout: payload },
-			);
-			return { workout: data, workout_id: args.workout_id };
-		},
+		execute: (runtime: ToolRuntime, args: UpdateWorkoutParams) =>
+			operationEffect(
+				requireOperation(
+					runtime.service(HevyOperationsService).workouts.update,
+					"workouts.update",
+				),
+				{
+					workoutId: args.workout_id,
+					workout: args.workout,
+				},
+				runtime.execution,
+			).pipe(
+				Effect.map((workout) => ({
+					workout,
+					workout_id: args.workout_id,
+				})),
+			),
 	},
 	{
 		name: "replace-workout-exercises",
@@ -201,22 +192,23 @@ export const workoutToolDefinitions = [
 		annotations: updateAnnotations("Replace Workout Exercises"),
 		kind: "write" as const,
 		responseContract: updateWorkoutResponse,
-		execute: async (
-			runtime: ToolRuntime,
-			args: ReplaceWorkoutExercisesParams,
-		) => {
-			const client = runtime.service(HevyClientService);
-			const current = await client.getWorkout(args.workout_id);
-			const payload = buildWorkoutUpdatePayload(
-				current,
-				{ is_private: args.workout.is_private },
-				args.workout.exercises,
-			);
-			const data: PutV1WorkoutsWorkoutid200 = await client.updateWorkout(
-				args.workout_id,
-				{ workout: payload },
-			);
-			return { workout: data, workout_id: args.workout_id };
-		},
+		execute: (runtime: ToolRuntime, args: ReplaceWorkoutExercisesParams) =>
+			operationEffect(
+				requireOperation(
+					runtime.service(HevyOperationsService).workouts.replaceExercises,
+					"workouts.replaceExercises",
+				),
+				{
+					workoutId: args.workout_id,
+					exercises: args.workout.exercises,
+					is_private: args.workout.is_private,
+				},
+				runtime.execution,
+			).pipe(
+				Effect.map((workout) => ({
+					workout,
+					workout_id: args.workout_id,
+				})),
+			),
 	},
 ] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];

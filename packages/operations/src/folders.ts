@@ -78,11 +78,14 @@ export interface FoldersCreateOperation {
 	readonly effect: (
 		input: FoldersCreateInput,
 		options?: HevyExecutionOptions,
-	) => Effect.Effect<PostV1RoutineFolders201, HevyRequestEffectError>;
+	) => Effect.Effect<
+		PostV1RoutineFolders201 | undefined,
+		HevyRequestEffectError
+	>;
 	execute(
 		input: FoldersCreateInput,
 		options?: HevyExecutionOptions,
-	): Promise<PostV1RoutineFolders201>;
+	): Promise<PostV1RoutineFolders201 | undefined>;
 }
 
 export type FoldersListAllAdapter = Pick<
@@ -147,7 +150,9 @@ export function createFoldersGetOperation(
 				: adapter.getRoutineFolder(input.folderId, options);
 		return yield* request.pipe(
 			Effect.map((routineFolder) => ({
-				routineFolder: routineFolder ?? null,
+				routineFolder: isEmptyResponse(routineFolder)
+					? null
+					: (routineFolder ?? null),
 				folderId: input.folderId,
 			})),
 			Effect.catchIf(
@@ -183,7 +188,8 @@ export function createFoldersCreateOperation(
 			options === undefined
 				? adapter.createRoutineFolder(input)
 				: adapter.createRoutineFolder(input, options);
-		return yield* request;
+		const response = yield* request;
+		return isEmptyResponse(response) ? undefined : response;
 	});
 
 	const operation: FoldersCreateOperation = {
@@ -194,6 +200,16 @@ export function createFoldersCreateOperation(
 		},
 	};
 	return operation;
+}
+
+function isEmptyResponse<T extends object>(
+	response: T | null | undefined,
+): response is T & Record<never, never> {
+	return (
+		response !== null &&
+		response !== undefined &&
+		Object.keys(response).length === 0
+	);
 }
 
 export function createFoldersListAllOperation(

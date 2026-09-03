@@ -1,9 +1,6 @@
+import { Effect } from "effect";
 import { z } from "zod";
-// Import types from generated client
-import type {
-	GetV1ExerciseHistoryExercisetemplateid200,
-	GetV1ExerciseTemplatesExercisetemplateid200,
-} from "@hevy-mcp/hevy-client/types";
+import type { TemplatesHistoryInput } from "@hevy-mcp/operations";
 import type { ToolRuntime } from "./tool-runtime.js";
 import {
 	createExerciseTemplateResponse,
@@ -16,15 +13,14 @@ import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
-
-import { type InferToolParams } from "../utils/tool-helpers.js";
+import type { InferToolParams } from "../utils/tool-helpers.js";
 import { exerciseTemplateInputFields, nonEmptyId } from "./input-schemas.js";
 import { muscleGroupEnum } from "../utils/schemas.js";
-import { isExpectedReadNotFound } from "../utils/hevy-error-policy.js";
 import {
 	ExerciseTemplateCatalogService,
-	HevyClientService,
+	HevyOperationsService,
 } from "../effect-services.js";
+import { operationEffect, requireOperation } from "./operation-helpers.js";
 
 const getExerciseTemplateSchema = {
 	exercise_template_id: nonEmptyId,
@@ -38,11 +34,6 @@ const isoDateTimeWithOffset = z
 	)
 	.meta({ format: "date-time" });
 
-type ExerciseHistoryQuery = {
-	start_date?: string;
-	end_date?: string;
-};
-
 const getExerciseHistorySchema = {
 	exercise_template_id: nonEmptyId,
 	start_date: isoDateTimeWithOffset.optional(),
@@ -55,6 +46,19 @@ const searchExerciseTemplatesSchema = {
 	refresh: z.boolean().optional().default(false),
 } as const;
 
+function createHistoryInput(
+	args: InferToolParams<typeof getExerciseHistorySchema>,
+): TemplatesHistoryInput {
+	let input = { exerciseTemplateId: args.exercise_template_id };
+	if (args.start_date !== undefined) {
+		input = Object.assign(input, { startDate: args.start_date });
+	}
+	if (args.end_date !== undefined) {
+		input = Object.assign(input, { endDate: args.end_date });
+	}
+	return input;
+}
+
 const getExerciseTemplateDefinition = {
 	name: "get-exercise-template",
 	feature: "templates" as const,
@@ -66,27 +70,26 @@ const getExerciseTemplateDefinition = {
 	annotations: readOnlyAnnotations("Get Exercise Template"),
 	kind: "read" as const,
 	responseContract: exerciseTemplateResponse,
-	execute: async (
+	execute: (
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof getExerciseTemplateSchema>,
-	) => {
-		const { exercise_template_id } = args;
-		const client = runtime.service(HevyClientService);
-		try {
-			const data: GetV1ExerciseTemplatesExercisetemplateid200 =
-				await client.getExerciseTemplate(exercise_template_id);
-			return { exercise_template: data, exercise_template_id };
-		} catch (error) {
-			if (isExpectedReadNotFound(error)) {
-				return {
-					exercise_template: null,
-					exercise_template_id,
-					expected404Outcome: "not_found",
-				};
-			}
-			throw error;
-		}
-	},
+	) =>
+		operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).templates?.get,
+				"templates.get",
+			),
+			{ exerciseTemplateId: args.exercise_template_id },
+			runtime.execution,
+		).pipe(
+			Effect.map(
+				({ exerciseTemplate, exerciseTemplateId, expected404Outcome }) => ({
+					exercise_template: exerciseTemplate,
+					exercise_template_id: exerciseTemplateId,
+					expected404Outcome,
+				}),
+			),
+		),
 };
 
 const getExerciseHistoryDefinition = {
@@ -100,21 +103,24 @@ const getExerciseHistoryDefinition = {
 	annotations: readOnlyAnnotations("Get Exercise History"),
 	kind: "read" as const,
 	responseContract: exerciseHistoryResponse,
-	execute: async (
+	execute: (
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof getExerciseHistorySchema>,
 	) => {
-		const { exercise_template_id, start_date, end_date } = args;
-		const client = runtime.service(HevyClientService);
-		const query: ExerciseHistoryQuery = {};
-		if (start_date) query.start_date = start_date;
-		if (end_date) query.end_date = end_date;
-		const data: GetV1ExerciseHistoryExercisetemplateid200 =
-			await client.getExerciseHistory(exercise_template_id, query);
-		return {
-			exercise_history: data?.exercise_history,
-			exercise_template_id,
-		};
+		const input = createHistoryInput(args);
+		return operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).templates?.history,
+				"templates.history",
+			),
+			input,
+			runtime.execution,
+		).pipe(
+			Effect.map(({ exerciseHistory, exerciseTemplateId }) => ({
+				exercise_history: exerciseHistory,
+				exercise_template_id: exerciseTemplateId,
+			})),
+		);
 	},
 };
 
@@ -128,12 +134,18 @@ const createExerciseTemplateDefinition = {
 	annotations: createAnnotations("Create Exercise Template"),
 	kind: "write" as const,
 	responseContract: createExerciseTemplateResponse,
-	execute: async (
+	execute: (
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof createExerciseTemplateSchema>,
-	) => {
-		return runtime.service(HevyClientService).createExerciseTemplate(args);
-	},
+	) =>
+		operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).templates?.create,
+				"templates.create",
+			),
+			args,
+			runtime.execution,
+		),
 };
 
 const searchExerciseTemplatesDefinition = {
@@ -147,15 +159,14 @@ const searchExerciseTemplatesDefinition = {
 	annotations: readOnlyAnnotations("Search Exercise Templates"),
 	kind: "read" as const,
 	responseContract: searchExerciseTemplatesResponse,
-	execute: async (
+	execute: (
 		runtime: ToolRuntime,
 		args: InferToolParams<typeof searchExerciseTemplatesSchema>,
 	) => {
-		runtime.service(HevyClientService);
 		const catalog = runtime.service(ExerciseTemplateCatalogService);
-		const { query, primary_muscle_group, refresh } = args;
-		const templates = await catalog.get({
-			refresh,
+		const templates = catalog.effect({
+			refresh: args.refresh,
+			execution: runtime.execution,
 			onRefreshed: (refreshedCatalog, reason) => {
 				try {
 					runtime.logger?.({
@@ -176,21 +187,25 @@ const searchExerciseTemplatesDefinition = {
 			},
 		});
 
-		const queryLower = query.toLowerCase();
-		let results = templates.filter((t) =>
-			(t.title ?? "").toLowerCase().includes(queryLower),
+		return templates.pipe(
+			Effect.map((catalogTemplates) => {
+				const queryLower = args.query.toLowerCase();
+				let results = catalogTemplates.filter((template) =>
+					(template.title ?? "").toLowerCase().includes(queryLower),
+				);
+				if (args.primary_muscle_group !== undefined) {
+					results = results.filter(
+						(template) =>
+							template.primary_muscle_group === args.primary_muscle_group,
+					);
+				}
+				return {
+					results,
+					query: args.query,
+					primary_muscle_group: args.primary_muscle_group,
+				};
+			}),
 		);
-		if (primary_muscle_group !== undefined) {
-			results = results.filter(
-				(t) => t.primary_muscle_group === primary_muscle_group,
-			);
-		}
-
-		return {
-			results,
-			query,
-			primary_muscle_group,
-		};
 	},
 };
 

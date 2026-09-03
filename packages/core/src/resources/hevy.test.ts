@@ -266,22 +266,14 @@ describe("registerHevyResources", () => {
 			createTestContext(3),
 		);
 
-		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(
-			1,
-			{ page: 1, pageSize: 10 },
-			expect.objectContaining({
-				signal: expect.any(AbortSignal),
-				deadline: expect.any(Number),
-			}),
-		);
-		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(
-			2,
-			{ page: 2, pageSize: 10 },
-			expect.objectContaining({
-				signal: expect.any(AbortSignal),
-				deadline: expect.any(Number),
-			}),
-		);
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(1, {
+			page: 1,
+			pageSize: 10,
+		});
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(2, {
+			page: 2,
+			pageSize: 10,
+		});
 		const serializedFolders = parseJsonContent(result).data;
 		expect(serializedFolders).toEqual([
 			projectRoutineFolder(firstFolder),
@@ -455,7 +447,7 @@ describe("registerHevyResources", () => {
 			error: {
 				status: 503,
 				outcome: "terminal_failure",
-				phase: "response-content",
+				phase: "dispatch",
 				operation_safety: "read",
 				commit_state: "not_sent",
 				safe_to_retry: false,

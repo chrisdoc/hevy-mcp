@@ -118,14 +118,14 @@ describe("exercise template tools", () => {
 			new Error("wrong client source"),
 		);
 		const layerCatalog: ExerciseTemplateCatalog = {
-			effect: () => Effect.succeed([]),
-			get: vi
-				.fn()
-				.mockResolvedValue([{ id: "layer-template", title: "Layer Template" }]),
+			effect: vi.fn(() =>
+				Effect.succeed([{ id: "layer-template", title: "Layer Template" }]),
+			),
+			get: vi.fn(),
 			reset: vi.fn(),
 		};
 		const getterCatalog: ExerciseTemplateCatalog = {
-			effect: () => Effect.succeed([]),
+			effect: vi.fn(() => Effect.succeed([])),
 			get: vi.fn().mockRejectedValue(new Error("wrong catalog source")),
 			reset: vi.fn(),
 		};
@@ -137,9 +137,11 @@ describe("exercise template tools", () => {
 		Object.assign(runtime, { catalog: getterCatalog });
 
 		await expect(
-			templateToolDefinitions[0].execute(runtime, {
-				exercise_template_id: "layer-template",
-			}),
+			Effect.runPromise(
+				templateToolDefinitions[0].execute(runtime, {
+					exercise_template_id: "layer-template",
+				}),
+			),
 		).resolves.toEqual({
 			exercise_template: {
 				id: "layer-template",
@@ -148,10 +150,12 @@ describe("exercise template tools", () => {
 			exercise_template_id: "layer-template",
 		});
 		await expect(
-			templateToolDefinitions[3].execute(runtime, {
-				query: "layer",
-				refresh: false,
-			}),
+			Effect.runPromise(
+				templateToolDefinitions[3].execute(runtime, {
+					query: "layer",
+					refresh: false,
+				}),
+			),
 		).resolves.toMatchObject({
 			results: [{ id: "layer-template", title: "Layer Template" }],
 		});
@@ -162,7 +166,8 @@ describe("exercise template tools", () => {
 			"layer-template",
 		);
 		expect(getterClient.getExerciseTemplate).not.toHaveBeenCalled();
-		expect(layerCatalog.get).toHaveBeenCalledOnce();
+		expect(layerCatalog.effect).toHaveBeenCalledOnce();
+		expect(layerCatalog.get).not.toHaveBeenCalled();
 		expect(getterCatalog.get).not.toHaveBeenCalled();
 	});
 });

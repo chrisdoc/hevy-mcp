@@ -58,6 +58,7 @@ export class ValidationError extends Schema.TaggedError<ValidationError>()(
 		status: Schema.Number,
 		endpoint: Schema.String,
 		method: Schema.String,
+		responseError: Schema.optional(Schema.String),
 		...executionFields,
 	},
 ) {}

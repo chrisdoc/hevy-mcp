@@ -334,6 +334,7 @@ function mapRequestError(
 			status,
 			method: identity.method,
 			endpoint: identity.endpoint,
+			responseError: cause.responseError,
 			...executionMetadata(cause),
 		});
 	}

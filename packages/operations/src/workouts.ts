@@ -110,11 +110,11 @@ export interface WorkoutsCreateOperation {
 	readonly effect: (
 		input: WorkoutsCreateInput,
 		options?: HevyExecutionOptions,
-	) => Effect.Effect<PostV1Workouts201, HevyRequestEffectError>;
+	) => Effect.Effect<PostV1Workouts201 | undefined, HevyRequestEffectError>;
 	execute(
 		input: WorkoutsCreateInput,
 		options?: HevyExecutionOptions,
-	): Promise<PostV1Workouts201>;
+	): Promise<PostV1Workouts201 | undefined>;
 }
 
 export interface WorkoutsGetInput {
@@ -206,13 +206,13 @@ export interface WorkoutsUpdateOperation {
 		input: WorkoutsUpdateInput,
 		options?: HevyExecutionOptions,
 	) => Effect.Effect<
-		PutV1WorkoutsWorkoutid200,
+		PutV1WorkoutsWorkoutid200 | undefined,
 		HevyRequestEffectError | WorkoutPrivacyError | WorkoutPayloadError
 	>;
 	execute(
 		input: WorkoutsUpdateInput,
 		options?: HevyExecutionOptions,
-	): Promise<PutV1WorkoutsWorkoutid200>;
+	): Promise<PutV1WorkoutsWorkoutid200 | undefined>;
 }
 
 export type WorkoutsReplaceExercisesInput = {
@@ -240,13 +240,13 @@ export interface WorkoutsReplaceExercisesOperation {
 		input: WorkoutsReplaceExercisesInput,
 		options?: HevyExecutionOptions,
 	) => Effect.Effect<
-		PutV1WorkoutsWorkoutid200,
+		PutV1WorkoutsWorkoutid200 | undefined,
 		HevyRequestEffectError | WorkoutPrivacyError | WorkoutPayloadError
 	>;
 	execute(
 		input: WorkoutsReplaceExercisesInput,
 		options?: HevyExecutionOptions,
-	): Promise<PutV1WorkoutsWorkoutid200>;
+	): Promise<PutV1WorkoutsWorkoutid200 | undefined>;
 }
 
 export type WorkoutsCountAdapter = Pick<
@@ -296,6 +296,16 @@ function workoutPayloadEffect(
 	});
 }
 
+function isEmptyResponse<T extends object>(
+	response: T | null | undefined,
+): response is T & Record<never, never> {
+	return (
+		response !== null &&
+		response !== undefined &&
+		Object.keys(response).length === 0
+	);
+}
+
 export function createWorkoutsCreateOperation(
 	adapter: WorkoutsCreateAdapter,
 ): WorkoutsCreateOperation {
@@ -307,7 +317,8 @@ export function createWorkoutsCreateOperation(
 			options === undefined
 				? adapter.createWorkout({ workout: input.workout })
 				: adapter.createWorkout({ workout: input.workout }, options);
-		return yield* request;
+		const response = yield* request;
+		return isEmptyResponse(response) ? undefined : response;
 	});
 
 	const operation: WorkoutsCreateOperation = {
@@ -401,7 +412,8 @@ export function createWorkoutsUpdateOperation(
 			options === undefined
 				? adapter.updateWorkout(input.workoutId, { workout: payload })
 				: adapter.updateWorkout(input.workoutId, { workout: payload }, options);
-		return yield* updateRequest;
+		const response = yield* updateRequest;
+		return isEmptyResponse(response) ? undefined : response;
 	});
 
 	const operation: WorkoutsUpdateOperation = {
@@ -435,7 +447,8 @@ export function createWorkoutsReplaceExercisesOperation(
 			options === undefined
 				? adapter.updateWorkout(input.workoutId, { workout: payload })
 				: adapter.updateWorkout(input.workoutId, { workout: payload }, options);
-		return yield* updateRequest;
+		const response = yield* updateRequest;
+		return isEmptyResponse(response) ? undefined : response;
 	});
 
 	const operation: WorkoutsReplaceExercisesOperation = {
@@ -484,7 +497,9 @@ export function createWorkoutsGetOperation(
 				? adapter.getWorkout(input.workoutId)
 				: adapter.getWorkout(input.workoutId, options);
 		return yield* request.pipe(
-			Effect.map((response) => ({ workout: response ?? null })),
+			Effect.map((response) => ({
+				workout: isEmptyResponse(response) ? null : (response ?? null),
+			})),
 			Effect.catchIf(
 				(error) => isExpectedReadNotFound(error, "/v1/workouts"),
 				() =>

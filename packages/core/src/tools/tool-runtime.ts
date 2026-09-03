@@ -141,8 +141,13 @@ export type ToolHandler<TParams extends object = object> = (
 	context?: ToolExecutionContext,
 ) => Promise<McpToolResponse>;
 
+export type ToolEffectHandler<TParams extends object = object> = (
+	args: TParams,
+	context?: ToolExecutionContext,
+) => Effect.Effect<McpToolResponse, unknown, never>;
+
 export type ToolHandlerFactory = <TParams extends object>(
-	fn: ToolHandler<TParams>,
+	fn: ToolEffectHandler<TParams>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
 ) => ToolHandler;
@@ -183,12 +188,28 @@ export interface CreateToolRuntimeOptions {
 	lifecycleSignal?: AbortSignal;
 }
 
+function runToolEffect<TParams extends object>(
+	fn: ToolEffectHandler<TParams>,
+	args: TParams,
+	requestContext: ToolExecutionContext | undefined,
+	services: ToolRuntimeServiceContext | undefined,
+): Promise<McpToolResponse> {
+	const program = Effect.suspend(() => fn(args, requestContext));
+	const provided = services ? Effect.provide(program, services) : program;
+	return Effect.runPromise(provided);
+}
+
 export const defaultHandlerFactory: ToolHandlerFactory = <
 	TParams extends object,
 >(
-	fn: ToolHandler<TParams>,
+	fn: ToolEffectHandler<TParams>,
 	context: string,
-) => withErrorHandling(fn, context) as ToolHandler;
+) =>
+	withErrorHandling(
+		(args: TParams, requestContext?: ToolExecutionContext) =>
+			runToolEffect(fn, args, requestContext, undefined),
+		context,
+	) as ToolHandler;
 
 export function createToolRuntime({
 	client,
@@ -196,7 +217,7 @@ export function createToolRuntime({
 	operations,
 	catalog,
 	logger,
-	createHandler = defaultHandlerFactory,
+	createHandler,
 	observer,
 	execution,
 	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
@@ -241,6 +262,17 @@ export function createToolRuntime({
 			: (createToolObserverLayer(observer) as ToolRuntimeServiceLayer)
 		: coreLayer;
 	const services = layer ? buildServiceContext(layer) : undefined;
+	const effectHandlerFactory: ToolHandlerFactory =
+		createHandler ??
+		(<TParams extends object>(
+			fn: ToolEffectHandler<TParams>,
+			context: string,
+		) =>
+			withErrorHandling(
+				(args: TParams, requestContext?: ToolExecutionContext) =>
+					runToolEffect(fn, args, requestContext, services),
+				context,
+			) as ToolHandler);
 	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
 		service: Context.Key<I, S>,
 	): S => {
@@ -253,11 +285,11 @@ export function createToolRuntime({
 		return Context.get(services, service);
 	};
 	const createObservedHandler: ToolHandlerFactory = <TParams extends object>(
-		fn: ToolHandler<TParams>,
+		fn: ToolEffectHandler<TParams>,
 		context: string,
 		metadata?: ToolTelemetryMetadata,
 	) =>
-		createHandler<TParams>(
+		withErrorHandling(
 			async (args: TParams, requestContext?: ToolExecutionContext) => {
 				let scope;
 				try {
@@ -270,9 +302,7 @@ export function createToolRuntime({
 				const startedAt = Date.now();
 				let handlerPromise: Promise<McpToolResponse> | undefined;
 				const invokeHandler = () => {
-					handlerPromise ??= Promise.resolve().then(() =>
-						fn(args, requestContext),
-					);
+					handlerPromise ??= runToolEffect(fn, args, requestContext, services);
 					return handlerPromise;
 				};
 				try {
@@ -312,11 +342,10 @@ export function createToolRuntime({
 				}
 			},
 			context,
-			metadata,
-		);
+		) as ToolHandler;
 	const observedHandlerFactory = observer
 		? createObservedHandler
-		: createHandler;
+		: effectHandlerFactory;
 	const runtime: ToolRuntime = {
 		client: effectiveClient,
 		catalog: effectiveCatalog,
