@@ -4,10 +4,16 @@ import {
 	type HevyRequestEffectClient,
 } from "@hevy-mcp/hevy-client/internal";
 import {
+	createRoutinesCreateOperation,
 	createRoutinesGetOperation,
 	createRoutinesListOperation,
+	createRoutinesSearchOperation,
+	createRoutinesUpdateOperation,
+	type RoutinesCreateOperation,
 	type RoutinesGetOperation,
 	type RoutinesListOperation,
+	type RoutinesSearchOperation,
+	type RoutinesUpdateOperation,
 } from "./routines.js";
 import {
 	createBodyMeasurementsListOperation,
@@ -31,12 +37,23 @@ import {
 } from "./workouts.js";
 
 export {
+	createRoutinesCreateOperation,
 	createRoutinesGetOperation,
 	createRoutinesListOperation,
+	createRoutinesSearchOperation,
+	createRoutinesUpdateOperation,
+	routinesCreateDescriptor,
 	routinesGetDescriptor,
 	routinesListDescriptor,
+	routinesSearchDescriptor,
+	routinesUpdateDescriptor,
 } from "./routines.js";
 export type {
+	RoutinesCreateAdapter,
+	RoutinesCreateDescriptor,
+	RoutinesCreateInput,
+	RoutinesCreateOperation,
+	RoutinesCreateOutput,
 	RoutinesGetAdapter,
 	RoutinesGetDescriptor,
 	RoutinesGetInput,
@@ -47,6 +64,16 @@ export type {
 	RoutinesListInput,
 	RoutinesListOperation,
 	RoutinesListOutput,
+	RoutinesSearchAdapter,
+	RoutinesSearchDescriptor,
+	RoutinesSearchInput,
+	RoutinesSearchOperation,
+	RoutinesSearchOutput,
+	RoutinesUpdateAdapter,
+	RoutinesUpdateDescriptor,
+	RoutinesUpdateInput,
+	RoutinesUpdateOperation,
+	RoutinesUpdateOutput,
 } from "./routines.js";
 export {
 	createBodyMeasurementsListOperation,
@@ -148,8 +175,11 @@ export type {
 
 export interface HevyOperations {
 	readonly routines: {
+		readonly create?: RoutinesCreateOperation;
 		readonly get: RoutinesGetOperation;
 		readonly list: RoutinesListOperation;
+		readonly search?: RoutinesSearchOperation;
+		readonly update?: RoutinesUpdateOperation;
 	};
 	readonly workouts: {
 		readonly count?: WorkoutsCountOperation;
@@ -176,6 +206,8 @@ type ExistingRequestEffectClient = Pick<
 	| "getWorkout"
 	| "getRoutines"
 	| "getRoutineById"
+	| "createRoutine"
+	| "updateRoutine"
 >;
 
 export function createOperations(client: HevyClient): HevyOperations {
@@ -198,13 +230,20 @@ export function createOperations(client: HevyClient): HevyOperations {
 		getRoutines: (...args) => getRequestEffectClientOnce().getRoutines(...args),
 		getRoutineById: (...args) =>
 			getRequestEffectClientOnce().getRoutineById(...args),
+		createRoutine: (...args) =>
+			getRequestEffectClientOnce().createRoutine(...args),
+		updateRoutine: (...args) =>
+			getRequestEffectClientOnce().updateRoutine(...args),
 		updateWorkout: (...args) =>
 			getRequestEffectClientOnce().updateWorkout(...args),
 	};
 	return {
 		routines: {
+			create: createRoutinesCreateOperation(lazyRequestEffectClient),
 			get: createRoutinesGetOperation(lazyRequestEffectClient),
 			list: createRoutinesListOperation(lazyRequestEffectClient),
+			search: createRoutinesSearchOperation(lazyRequestEffectClient),
+			update: createRoutinesUpdateOperation(lazyRequestEffectClient),
 		},
 		workouts: {
 			count: createWorkoutsCountOperation(lazyRequestEffectClient),

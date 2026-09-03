@@ -3,8 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { NotFoundError } from "@hevy-mcp/hevy-client";
 
 import {
+	createRoutinesCreateOperation,
 	createRoutinesGetOperation,
 	createRoutinesListOperation,
+	createRoutinesSearchOperation,
+	createRoutinesUpdateOperation,
 } from "./routines.js";
 import {
 	createWorkoutsCountOperation,
@@ -87,6 +90,15 @@ describe("operations Effect collapse", () => {
 				getRoutineById: () => Effect.succeed({}),
 			}),
 			createRoutinesListOperation({
+				getRoutines: () => Effect.succeed({ routines: [] }),
+			}),
+			createRoutinesCreateOperation({
+				createRoutine: () => Effect.succeed({}),
+			}),
+			createRoutinesUpdateOperation({
+				updateRoutine: () => Effect.succeed({}),
+			}),
+			createRoutinesSearchOperation({
 				getRoutines: () => Effect.succeed({ routines: [] }),
 			}),
 		];

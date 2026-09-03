@@ -3,14 +3,22 @@ import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import type {
 	GetV1Routines200,
 	GetV1RoutinesRoutineid200,
+	PostV1Routines201,
+	PutV1RoutinesRoutineid200,
 } from "@hevy-mcp/hevy-client/types";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+	createRoutinesCreateOperation,
 	createRoutinesGetOperation,
 	createRoutinesListOperation,
+	createRoutinesSearchOperation,
+	createRoutinesUpdateOperation,
+	type RoutinesCreateAdapter,
 	type RoutinesGetAdapter,
 	type RoutinesListAdapter,
+	type RoutinesSearchAdapter,
+	type RoutinesUpdateAdapter,
 } from "./routines.js";
 import { PaginationMismatchError } from "./operation-errors.js";
 
@@ -140,6 +148,43 @@ function createAbortAwareListAdapter(error: Error): InMemoryRoutinesAdapter {
 	};
 }
 
+function createRoutineWriteAdapter(
+	response: PostV1Routines201 | PutV1RoutinesRoutineid200 = {
+		id: "routine-1",
+		title: "Push",
+		exercises: [],
+	},
+): RoutinesCreateAdapter & RoutinesUpdateAdapter {
+	return {
+		createRoutine: vi.fn(() => Effect.succeed(response)),
+		updateRoutine: vi.fn(() => Effect.succeed(response)),
+	};
+}
+
+function createSearchAdapter(
+	responses: readonly (GetV1Routines200 | Error)[],
+): RoutinesSearchAdapter & {
+	readonly requests: Array<{
+		readonly params: Parameters<HevyClient["getRoutines"]>[0];
+		readonly options: Parameters<HevyClient["getRoutines"]>[1];
+	}>;
+} {
+	let responseIndex = 0;
+	const requests: Array<{
+		readonly params: Parameters<HevyClient["getRoutines"]>[0];
+		readonly options: Parameters<HevyClient["getRoutines"]>[1];
+	}> = [];
+	return {
+		requests,
+		getRoutines(params, options) {
+			requests.push({ params, options });
+			const response = responses[responseIndex++] ?? { routines: [] };
+			if (response instanceof Error) return Effect.fail(response);
+			return Effect.succeed(response);
+		},
+	};
+}
+
 describe("routines.get operation", () => {
 	it("[VAL-OPS-002] succeeds with the routine entity and preserves the read descriptor", async () => {
 		const adapter = createInMemoryGetAdapter({
@@ -228,6 +273,313 @@ describe("routines.get operation", () => {
 			routine: { id: "r1" },
 		});
 		expect(adapter.argumentCounts).toEqual([1]);
+	});
+});
+
+describe("routines.create operation", () => {
+	it("[VAL-OPS-017] builds create-mode payloads and returns rep-range evidence", async () => {
+		const adapter = createRoutineWriteAdapter();
+		const operation = createRoutinesCreateOperation(adapter);
+		const options: HevyExecutionOptions = {
+			signal: new AbortController().signal,
+			deadline: Date.now() + 5_000,
+		};
+		const routine = {
+			title: "Push",
+			folder_id: 7,
+			exercises: [
+				{
+					exercise_template_id: "bench",
+					sets: [
+						{ type: "normal" as const },
+						{
+							type: "normal" as const,
+							reps: null,
+							rep_range: { start: 8, end: 8 },
+						},
+						{
+							type: "normal" as const,
+							reps: null,
+							rep_range: { start: 8, end: 12 },
+						},
+					],
+				},
+			],
+		};
+
+		await expect(
+			Effect.runPromise(operation.effect({ routine }, options)),
+		).resolves.toEqual({
+			routine: { id: "routine-1", title: "Push", exercises: [] },
+			usesRepRanges: true,
+		});
+		expect(adapter.createRoutine).toHaveBeenCalledWith(
+			{
+				routine: {
+					title: "Push",
+					folder_id: 7,
+					notes: "",
+					exercises: [
+						{
+							exercise_template_id: "bench",
+							superset_id: null,
+							rest_seconds: null,
+							notes: null,
+							sets: [
+								{
+									type: "normal",
+									weight_kg: null,
+									reps: null,
+									distance_meters: null,
+									duration_seconds: null,
+									custom_metric: null,
+									rep_range: null,
+								},
+								{
+									type: "normal",
+									weight_kg: null,
+									reps: 8,
+									distance_meters: null,
+									duration_seconds: null,
+									custom_metric: null,
+									rep_range: { start: 8, end: 8 },
+								},
+								{
+									type: "normal",
+									weight_kg: null,
+									reps: null,
+									distance_meters: null,
+									duration_seconds: null,
+									custom_metric: null,
+									rep_range: { start: 8, end: 12 },
+								},
+							],
+						},
+					],
+				},
+			},
+			options,
+		);
+		expect(operation.descriptor).toEqual({
+			id: "routines.create",
+			safety: "non-idempotent-write",
+		});
+	});
+});
+
+describe("routines.update operation", () => {
+	it("[VAL-OPS-018] uses direct PUT with update-mode payloads and no GET", async () => {
+		const adapter = {
+			...createRoutineWriteAdapter(),
+			getRoutineById: vi.fn(() =>
+				Effect.fail(new Error("update must not read first")),
+			),
+		};
+		const operation = createRoutinesUpdateOperation(adapter);
+		const options: HevyExecutionOptions = {
+			signal: new AbortController().signal,
+		};
+		const routine = {
+			title: "Push",
+			folder_id: 7,
+			exercises: [
+				{
+					exercise_template_id: "bench",
+					sets: [{ type: "normal" as const }],
+				},
+			],
+		};
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({ routineId: "routine-1", routine }, options),
+			),
+		).resolves.toEqual({
+			routine: { id: "routine-1", title: "Push", exercises: [] },
+			usesRepRanges: false,
+		});
+		expect(adapter.getRoutineById).not.toHaveBeenCalled();
+		expect(adapter.updateRoutine).toHaveBeenCalledWith(
+			"routine-1",
+			{
+				routine: {
+					title: "Push",
+					notes: null,
+					exercises: [
+						{
+							exercise_template_id: "bench",
+							superset_id: null,
+							rest_seconds: null,
+							notes: null,
+							sets: [
+								{
+									type: "normal",
+									weight_kg: null,
+									reps: null,
+									distance_meters: null,
+									duration_seconds: null,
+									custom_metric: null,
+								},
+							],
+						},
+					],
+				},
+			},
+			options,
+		);
+		expect(operation.descriptor).toEqual({
+			id: "routines.update",
+			safety: "idempotent-write",
+		});
+	});
+});
+
+describe("routines.search operation", () => {
+	it("[VAL-OPS-019] filters titles case-insensitively and stops after the limit", async () => {
+		const adapter = createSearchAdapter([
+			{
+				page: 1,
+				page_count: 3,
+				routines: [
+					{ id: "r1", title: "Push A" },
+					{ id: "r2", title: "Pull" },
+				],
+			},
+			{
+				page: 2,
+				page_count: 3,
+				routines: [
+					{ id: "r3", title: "push B" },
+					{ id: "r4", title: "Push C" },
+				],
+			},
+			{
+				page: 3,
+				page_count: 3,
+				routines: [{ id: "r5", title: "Push D" }],
+			},
+		]);
+		const operation = createRoutinesSearchOperation(adapter);
+		const options: HevyExecutionOptions = {
+			signal: new AbortController().signal,
+		};
+
+		await expect(
+			Effect.runPromise(operation.effect({ query: "PUSH", limit: 2 }, options)),
+		).resolves.toEqual({
+			routines: [
+				{ id: "r1", title: "Push A" },
+				{ id: "r3", title: "push B" },
+			],
+			pages: 2,
+			itemsScanned: 4,
+		});
+		expect(adapter.requests).toEqual([
+			{ params: { page: 1, pageSize: 10 }, options },
+			{ params: { page: 2, pageSize: 10 }, options },
+		]);
+	});
+
+	it("[VAL-OPS-019] respects the maximum limit and stops on an empty page", async () => {
+		const routines = Array.from({ length: 20 }, (_, index) => ({
+			id: `routine-${index}`,
+			title: `Routine ${index}`,
+		}));
+		const adapter = createSearchAdapter([
+			{ page: 1, page_count: 5, routines },
+			{ page: 2, page_count: 5, routines: [] },
+			{ page: 3, page_count: 5, routines: [{ id: "unexpected" }] },
+		]);
+		const operation = createRoutinesSearchOperation(adapter);
+
+		await expect(
+			Effect.runPromise(operation.effect({ limit: 100 })),
+		).resolves.toMatchObject({
+			routines,
+			pages: 2,
+			itemsScanned: 20,
+		});
+		expect(adapter.requests).toHaveLength(2);
+	});
+
+	it("[VAL-OPS-019] defaults the search limit to twenty", async () => {
+		const routines = Array.from({ length: 25 }, (_, index) => ({
+			id: `routine-${index}`,
+			title: `Routine ${index}`,
+		}));
+		const adapter = createSearchAdapter([
+			{ page: 1, page_count: 3, routines },
+			{ page: 2, page_count: 3, routines: [{ id: "unexpected" }] },
+		]);
+		const operation = createRoutinesSearchOperation(adapter);
+
+		await expect(Effect.runPromise(operation.effect({}))).resolves.toEqual({
+			routines: routines.slice(0, 20),
+			pages: 1,
+			itemsScanned: 25,
+		});
+		expect(adapter.requests).toHaveLength(1);
+	});
+
+	it("[VAL-OPS-019] stops when page count is missing or exhausted", async () => {
+		const missingCountAdapter = createSearchAdapter([
+			{ page: 1, routines: [{ id: "r1", title: "One" }] },
+			{ page: 2, routines: [{ id: "unexpected" }] },
+		]);
+		const missingCountOperation =
+			createRoutinesSearchOperation(missingCountAdapter);
+		await expect(
+			Effect.runPromise(missingCountOperation.effect({ limit: 100 })),
+		).resolves.toEqual({
+			routines: [{ id: "r1", title: "One" }],
+			pages: 1,
+			itemsScanned: 1,
+		});
+		expect(missingCountAdapter.requests).toHaveLength(1);
+
+		const lastPageAdapter = createSearchAdapter([
+			{ page: 1, page_count: 1, routines: [{ id: "r1", title: "One" }] },
+			{ page: 2, page_count: 1, routines: [{ id: "unexpected" }] },
+		]);
+		const lastPageOperation = createRoutinesSearchOperation(lastPageAdapter);
+		await expect(
+			Effect.runPromise(lastPageOperation.effect({ limit: 100 })),
+		).resolves.toEqual({
+			routines: [{ id: "r1", title: "One" }],
+			pages: 1,
+			itemsScanned: 1,
+		});
+		expect(lastPageAdapter.requests).toHaveLength(1);
+	});
+
+	it("[VAL-OPS-019] ends a later-page 404 scan and fails a first-page 404", async () => {
+		const laterPageError = notFound("/v1/routines");
+		const laterPageAdapter = createSearchAdapter([
+			{
+				page: 1,
+				page_count: 3,
+				routines: [{ id: "r1", title: "One" }],
+			},
+			laterPageError,
+		]);
+		const laterPageOperation = createRoutinesSearchOperation(laterPageAdapter);
+
+		await expect(
+			Effect.runPromise(laterPageOperation.effect({ limit: 100 })),
+		).resolves.toEqual({
+			routines: [{ id: "r1", title: "One" }],
+			pages: 1,
+			itemsScanned: 1,
+		});
+		expect(laterPageAdapter.requests).toHaveLength(2);
+
+		const firstPageError = notFound("/v1/routines");
+		const firstPageAdapter = createSearchAdapter([firstPageError]);
+		const firstPageOperation = createRoutinesSearchOperation(firstPageAdapter);
+
+		await expect(
+			Effect.runPromise(firstPageOperation.effect({ limit: 20 })),
+		).rejects.toBe(firstPageError);
 	});
 });
 
