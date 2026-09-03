@@ -2,6 +2,7 @@ import {
 	canonicalEndpointIdentity,
 	expectedGet404Outcome,
 	isHevyHttpError,
+	NotFoundError,
 } from "@hevy-mcp/hevy-client";
 
 export type ExpectedReadError = "not_found" | "end_of_list";
@@ -21,16 +22,21 @@ export function classifyReadError(
 	endpoint: ReadCollectionEndpoint,
 	page?: number,
 ): ExpectedReadError | undefined {
-	if (!isHevyHttpError(error)) return undefined;
-	const canonical = canonicalEndpointIdentity(error.endpoint);
+	const httpError = isHevyHttpError(error)
+		? error
+		: error instanceof NotFoundError
+			? error
+			: undefined;
+	if (!httpError) return undefined;
+	const canonical = canonicalEndpointIdentity(httpError.endpoint);
 	if (canonical !== endpoint && !canonical.startsWith(`${endpoint}/`)) {
 		return undefined;
 	}
 
 	const expected = expectedGet404Outcome(
-		error.endpoint,
-		error.method,
-		error.status,
+		httpError.endpoint,
+		httpError.method,
+		httpError.status,
 		page,
 	);
 	if (expected === "not_found") return "not_found";

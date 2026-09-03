@@ -4,6 +4,11 @@ import {
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	isHevyHttpError,
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	ValidationError,
 } from "@hevy-mcp/hevy-client";
 import {
 	isBoolean,
@@ -95,7 +100,35 @@ export const SAFE_ERROR_CATEGORIES: ReadonlySet<SafeErrorCategory> =
 type RetryAwareError = {
 	hevyRetryCount?: number;
 	hevyRetryExhausted?: boolean;
+	retryCount?: number;
+	retryExhausted?: boolean;
 };
+
+type TaggedHttpError =
+	| ApiError
+	| NotFoundError
+	| RateLimitError
+	| ValidationError;
+type TaggedClientError = TaggedHttpError | NetworkError;
+
+function isTaggedClientError(error: RuntimeValue): error is TaggedClientError {
+	return (
+		error instanceof ApiError ||
+		error instanceof NetworkError ||
+		error instanceof NotFoundError ||
+		error instanceof RateLimitError ||
+		error instanceof ValidationError
+	);
+}
+
+function isTaggedHttpError(error: RuntimeValue): error is TaggedHttpError {
+	return (
+		error instanceof ApiError ||
+		error instanceof NotFoundError ||
+		error instanceof RateLimitError ||
+		error instanceof ValidationError
+	);
+}
 
 const ABORT_TIMEOUT_METADATA = {
 	AbortError: {
@@ -212,12 +245,16 @@ function getHeaderValue(
 /** Extract a valid HTTP status without retaining untrusted error metadata. */
 export function extractErrorStatus(error: RuntimeValue): number | undefined {
 	try {
-		if (!isHevyHttpError(error)) return undefined;
-		return error.status !== undefined &&
-			Number.isInteger(error.status) &&
-			error.status >= 100 &&
-			error.status <= 599
+		const status = isHevyHttpError(error)
 			? error.status
+			: isTaggedHttpError(error)
+				? error.status
+				: undefined;
+		return status !== undefined &&
+			Number.isInteger(status) &&
+			status >= 100 &&
+			status <= 599
+			? status
 			: undefined;
 	} catch {
 		return undefined;
@@ -230,7 +267,8 @@ export function isRetryExhausted(error: RuntimeValue): boolean {
 		return (
 			!!error &&
 			isObject(error) &&
-			(error as RetryAwareError).hevyRetryExhausted === true
+			((error as RetryAwareError).hevyRetryExhausted === true ||
+				(error as RetryAwareError).retryExhausted === true)
 		);
 	} catch {
 		return false;
@@ -243,6 +281,7 @@ export function getRetryAfterSeconds(
 	now = Date.now(),
 ): number | undefined {
 	try {
+		if (error instanceof RateLimitError) return error.retryAfterSeconds;
 		if (!isHevyHttpError(error)) return undefined;
 		const retryAfterHeader = getHeaderValue(error.headers, "retry-after");
 		if (!retryAfterHeader) return undefined;
@@ -313,7 +352,8 @@ function getRetryExhaustedMessage(error: RuntimeValue): string {
 	let retryCount: unknown;
 	try {
 		retryCount = isObject(error)
-			? (error as RetryAwareError).hevyRetryCount
+			? ((error as RetryAwareError).hevyRetryCount ??
+				(error as RetryAwareError).retryCount)
 			: undefined;
 	} catch {
 		retryCount = undefined;
@@ -332,6 +372,11 @@ export function determineErrorType(
 	error: RuntimeValue,
 	message: string,
 ): ErrorType {
+	if (error instanceof RateLimitError) return ErrorType.RATE_LIMIT;
+	if (error instanceof ValidationError) return ErrorType.VALIDATION_ERROR;
+	if (error instanceof NotFoundError) return ErrorType.NOT_FOUND;
+	if (error instanceof ApiError) return ErrorType.API_ERROR;
+	if (error instanceof NetworkError) return ErrorType.NETWORK_ERROR;
 	if (isRetryExhausted(error)) return ErrorType.NETWORK_ERROR;
 	if (extractErrorStatus(error) === 429) return ErrorType.RATE_LIMIT;
 
@@ -409,13 +454,17 @@ function getSafeCode(error: RuntimeValue): string | undefined {
 }
 
 function getSafeMethod(error: RuntimeValue): string | undefined {
-	if (!isHevyHttpError(error)) return undefined;
+	if (!isHevyHttpError(error) && !isTaggedHttpError(error)) return undefined;
+	if (!isObject(error) || !("method" in error) || !isString(error.method))
+		return undefined;
 	const method = error.method.toUpperCase();
 	return SAFE_HTTP_METHODS.has(method) ? method : undefined;
 }
 
 function getSafeEndpoint(error: RuntimeValue): string | undefined {
-	if (!isHevyHttpError(error)) return undefined;
+	if (!isHevyHttpError(error) && !isTaggedHttpError(error)) return undefined;
+	if (!isObject(error) || !("endpoint" in error) || !isString(error.endpoint))
+		return undefined;
 	return diagnosticEndpointIdentity(error.endpoint);
 }
 
@@ -425,7 +474,7 @@ function getExecutionFields(
 	SafeErrorDiagnostic,
 	"phase" | "operation_safety" | "commit_state" | "safe_to_retry" | "outcome"
 > {
-	if (!isHevyHttpError(error)) {
+	if (!isHevyHttpError(error) && !isTaggedClientError(error)) {
 		const abortTimeout = getAbortTimeoutErrorMetadata(error);
 		if (abortTimeout) {
 			return {
@@ -436,6 +485,16 @@ function getExecutionFields(
 		}
 		return {};
 	}
+	if (isTaggedClientError(error)) {
+		return {
+			phase: error.phase,
+			operation_safety: error.operationSafety,
+			commit_state: error.commitState,
+			safe_to_retry: error.safeToRetry,
+			outcome: error.outcome,
+		};
+	}
+	if (!isHevyHttpError(error)) return {};
 	const fields: Partial<
 		Pick<
 			SafeErrorDiagnostic,

@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Predicate } from "effect";
 import { z } from "zod";
 import type {
 	BodyMeasurement,
@@ -40,6 +40,18 @@ import type {
 } from "./types.js";
 import type { HevyRequestOptions } from "./execution.js";
 import type { RequestConfig, ResponseConfig } from "./fetch.ts";
+import {
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	ValidationError,
+} from "./effect-errors.js";
+import {
+	canonicalEndpointIdentity,
+	expectedGet404Outcome,
+} from "./endpoint-policy.js";
+import { HevyHttpError } from "./hevy-http-error.js";
 
 /**
  * Private attachment used to connect a curated Promise client to its native
@@ -54,97 +66,111 @@ export type NativeRequestEffect = <TData, TVariables = unknown>(
 	},
 ) => Effect.Effect<ResponseConfig<TData>, unknown>;
 
+export type HevyRequestEffectError =
+	| NotFoundError
+	| ValidationError
+	| RateLimitError
+	| ApiError
+	| NetworkError
+	| Error;
+
 export interface HevyRequestEffectClient {
 	getWorkouts(
 		params?: GetV1WorkoutsQuery,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1Workouts200, Error>;
+	): Effect.Effect<GetV1Workouts200, HevyRequestEffectError>;
 	getWorkout(
 		workoutId: string,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1WorkoutsWorkoutid200, Error>;
+	): Effect.Effect<GetV1WorkoutsWorkoutid200, HevyRequestEffectError>;
 	createWorkout(
 		data: PostWorkoutsRequestBody,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PostV1Workouts201, Error>;
+	): Effect.Effect<PostV1Workouts201, HevyRequestEffectError>;
 	updateWorkout(
 		workoutId: string,
 		data: PostWorkoutsRequestBody,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PutV1WorkoutsWorkoutid200, Error>;
+	): Effect.Effect<PutV1WorkoutsWorkoutid200, HevyRequestEffectError>;
 	getWorkoutEvents(
 		params?: GetV1WorkoutsEventsQuery,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1WorkoutsEvents200, Error>;
+	): Effect.Effect<GetV1WorkoutsEvents200, HevyRequestEffectError>;
 	getWorkoutCount(
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1WorkoutsCount200, Error>;
+	): Effect.Effect<GetV1WorkoutsCount200, HevyRequestEffectError>;
 	getRoutines(
 		params?: GetV1RoutinesQuery,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1Routines200, Error>;
+	): Effect.Effect<GetV1Routines200, HevyRequestEffectError>;
 	getRoutineById(
 		routineId: string,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1RoutinesRoutineid200, Error>;
+	): Effect.Effect<GetV1RoutinesRoutineid200, HevyRequestEffectError>;
 	createRoutine(
 		data: PostRoutinesRequestBody,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PostV1Routines201, Error>;
+	): Effect.Effect<PostV1Routines201, HevyRequestEffectError>;
 	updateRoutine(
 		routineId: string,
 		data: PutRoutinesRequestBody,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PutV1RoutinesRoutineid200, Error>;
+	): Effect.Effect<PutV1RoutinesRoutineid200, HevyRequestEffectError>;
 	getExerciseTemplates(
 		params?: GetV1ExerciseTemplatesQuery,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1ExerciseTemplates200, Error>;
+	): Effect.Effect<GetV1ExerciseTemplates200, HevyRequestEffectError>;
 	getExerciseTemplate(
 		templateId: string,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1ExerciseTemplatesExercisetemplateid200, Error>;
+	): Effect.Effect<
+		GetV1ExerciseTemplatesExercisetemplateid200,
+		HevyRequestEffectError
+	>;
 	getExerciseHistory(
 		exerciseTemplateId: string,
 		params?: GetV1ExerciseHistoryExercisetemplateidQuery,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1ExerciseHistoryExercisetemplateid200, Error>;
+	): Effect.Effect<
+		GetV1ExerciseHistoryExercisetemplateid200,
+		HevyRequestEffectError
+	>;
 	createExerciseTemplate(
 		data: CreateCustomExerciseRequestBody,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PostV1ExerciseTemplates200, Error>;
+	): Effect.Effect<PostV1ExerciseTemplates200, HevyRequestEffectError>;
 	getRoutineFolders(
 		params?: GetV1RoutineFoldersQuery,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1RoutineFolders200, Error>;
+	): Effect.Effect<GetV1RoutineFolders200, HevyRequestEffectError>;
 	getRoutineFolder(
 		folderId: string,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1RoutineFoldersFolderid200, Error>;
+	): Effect.Effect<GetV1RoutineFoldersFolderid200, HevyRequestEffectError>;
 	createRoutineFolder(
 		data: PostRoutineFolderRequestBody,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PostV1RoutineFolders201, Error>;
+	): Effect.Effect<PostV1RoutineFolders201, HevyRequestEffectError>;
 	getBodyMeasurements(
 		params?: GetV1BodyMeasurementsQuery,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1BodyMeasurements200, Error>;
+	): Effect.Effect<GetV1BodyMeasurements200, HevyRequestEffectError>;
 	getBodyMeasurement(
 		date: string,
 		options?: HevyRequestOptions,
-	): Effect.Effect<GetV1BodyMeasurementsDate200, Error>;
+	): Effect.Effect<GetV1BodyMeasurementsDate200, HevyRequestEffectError>;
 	createBodyMeasurement(
 		data: BodyMeasurement,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PostV1BodyMeasurements200, Error>;
+	): Effect.Effect<PostV1BodyMeasurements200, HevyRequestEffectError>;
 	updateBodyMeasurement(
 		date: string,
 		data: PutBodyMeasurement,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PutV1BodyMeasurementsDateStatus200, Error>;
+	): Effect.Effect<PutV1BodyMeasurementsDateStatus200, HevyRequestEffectError>;
 	getUserInfo(
 		options?: HevyRequestOptions,
-	): Effect.Effect<UserInfoResponse, Error>;
+	): Effect.Effect<UserInfoResponse, HevyRequestEffectError>;
 }
 
 type RequestExecutionControl = {
@@ -216,20 +242,134 @@ function executionControl(
 	return control;
 }
 
+function retryAfterSeconds(error: HevyHttpError): number | undefined {
+	const value = error.headers?.get("retry-after");
+	if (value === null || value === undefined || value.length === 0) {
+		return undefined;
+	}
+	const seconds = Number(value);
+	return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+}
+
+function requestPage(config: RequestConfig<unknown>): number | undefined {
+	const query = config.query ?? config.params;
+	return Predicate.isObject(query) && Predicate.isNumber(query.page)
+		? query.page
+		: undefined;
+}
+
+type RequestIdentity = {
+	readonly method: string;
+	readonly endpoint: string;
+	readonly page?: number;
+};
+
+function requestIdentity(
+	config: RequestConfig<unknown>,
+	cause: unknown,
+): RequestIdentity {
+	const method = (
+		config.method ?? (cause instanceof HevyHttpError ? cause.method : "GET")
+	).toUpperCase();
+	const endpoint = canonicalEndpointIdentity(
+		config.url ?? (cause instanceof HevyHttpError ? cause.endpoint : ""),
+	);
+	return {
+		method,
+		endpoint,
+		page: requestPage(config),
+	} satisfies RequestIdentity;
+}
+
+function executionMetadata(error: HevyHttpError) {
+	return {
+		phase: error.phase,
+		operationSafety: error.operationSafety,
+		commitState: error.commitState,
+		safeToRetry: error.safeToRetry,
+		outcome: error.outcome,
+	};
+}
+
+function networkError(cause: unknown): NetworkError {
+	const httpError = cause instanceof HevyHttpError ? cause : undefined;
+	return new NetworkError({
+		code: httpError?.code ?? "ERR_NETWORK",
+		phase: httpError?.phase,
+		operationSafety: httpError?.operationSafety,
+		commitState: httpError?.commitState,
+		safeToRetry: httpError?.safeToRetry,
+		outcome: httpError?.outcome,
+		retryCount: httpError?.hevyRetryCount,
+		retryExhausted: httpError?.hevyRetryExhausted === true,
+	});
+}
+
+function mapRequestError(
+	cause: unknown,
+	config: RequestConfig<unknown>,
+): HevyRequestEffectError {
+	const identity = requestIdentity(config, cause);
+	if (!(cause instanceof HevyHttpError) || cause.status === undefined) {
+		return networkError(cause);
+	}
+	const { status } = cause;
+	if (status === 404) {
+		return new NotFoundError({
+			status,
+			method: identity.method,
+			endpoint: identity.endpoint,
+			expected:
+				expectedGet404Outcome(
+					identity.endpoint,
+					identity.method,
+					status,
+					identity.page,
+				) !== undefined,
+			...executionMetadata(cause),
+		});
+	}
+	if (status === 400) {
+		return new ValidationError({
+			status,
+			method: identity.method,
+			endpoint: identity.endpoint,
+			...executionMetadata(cause),
+		});
+	}
+	if (status === 429) {
+		return new RateLimitError({
+			status,
+			method: identity.method,
+			endpoint: identity.endpoint,
+			retryAfterSeconds: retryAfterSeconds(cause),
+			...executionMetadata(cause),
+			retryCount: cause.hevyRetryCount,
+			retryExhausted: cause.hevyRetryExhausted,
+		});
+	}
+	return new ApiError({
+		status,
+		method: identity.method,
+		endpoint: identity.endpoint,
+		...executionMetadata(cause),
+	});
+}
+
 function requestDataEffect<TData, TVariables = unknown>(
 	requestEffect: NativeRequestEffect,
 	config: RequestConfig<TVariables>,
 	options?: HevyRequestOptions,
-): Effect.Effect<TData, Error> {
+): Effect.Effect<TData, HevyRequestEffectError> {
 	return requestEffect({
 		...config,
 		...executionControl(options),
 	}).pipe(
 		Effect.map((response) => response.data as TData),
 		Effect.mapError((cause) =>
-			cause instanceof Error ? cause : new Error(String(cause)),
+			mapRequestError(cause, config as RequestConfig<unknown>),
 		),
-	) as Effect.Effect<TData, Error>;
+	);
 }
 
 /**

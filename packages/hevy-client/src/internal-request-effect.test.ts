@@ -15,6 +15,13 @@ import {
 	type HevyClient,
 } from "./index.ts";
 import type { HevyRequestOptions } from "./execution.js";
+import {
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	ValidationError,
+} from "./effect-errors.js";
 
 type ReadErrorCase = {
 	readonly name: string;
@@ -67,6 +74,10 @@ function requestDetails(fetchMock: ReturnType<typeof vi.fn>) {
 		headers: Object.fromEntries(new Headers(init?.headers)),
 		body: init?.body,
 	};
+}
+
+function runFailure<E>(program: Effect.Effect<unknown, E>): Promise<E> {
+	return Effect.runPromise(Effect.flip(program));
 }
 
 describe("@hevy-mcp/hevy-client/internal", () => {
@@ -538,7 +549,7 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 	];
 
 	it.each(readErrorCases)(
-		"$name projects the same HevyHttpError",
+		"$name keeps Promise HevyHttpError and maps Effect failure to ApiError",
 		async (testCase) => {
 			const promiseClient = createHevyClient({
 				apiKey: "test-key",
@@ -565,15 +576,327 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 			);
 
 			expect(promiseError).toBeInstanceOf(HevyHttpError);
-			expect(effectError).toBeInstanceOf(HevyHttpError);
+			expect(effectError).toBeInstanceOf(ApiError);
 			expect(promiseError).toMatchObject({
 				method: "GET",
 				endpoint: testCase.endpoint,
 				status: 500,
 			});
-			expect(effectError).toMatchObject(promiseError);
+			expect(effectError).toMatchObject({
+				_tag: "ApiError",
+				method: "GET",
+				endpoint: testCase.endpoint,
+				status: 500,
+			});
 		},
 	);
+
+	const notFoundCases = [
+		{
+			name: "getWorkout",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.getWorkout("workout-1"),
+			endpoint: "/v1/workouts/:workoutId",
+		},
+		{
+			name: "getRoutineById",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.getRoutineById("routine-1"),
+			endpoint: "/v1/routines/:routineId",
+		},
+		{
+			name: "getExerciseTemplate",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.getExerciseTemplate("template-1"),
+			endpoint: "/v1/exercise_templates/:exerciseTemplateId",
+		},
+		{
+			name: "getRoutineFolder",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.getRoutineFolder("folder-1"),
+			endpoint: "/v1/routine_folders/:folderId",
+		},
+		{
+			name: "getBodyMeasurement",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.getBodyMeasurement("2025-01-02"),
+			endpoint: "/v1/body_measurements/:date",
+		},
+		{
+			name: "getUserInfo",
+			invoke: (client: HevyRequestEffectClient) => client.getUserInfo(),
+			endpoint: "/v1/user/info",
+		},
+	] as const;
+
+	it.each(notFoundCases)(
+		"$name maps HTTP 404 to NotFoundError",
+		async ({ invoke, endpoint }) => {
+			const client = createHevyClient({
+				apiKey: "test-key",
+				fetch: vi.fn().mockResolvedValue(response({}, 404)),
+				maxGetRetries: 0,
+			});
+
+			const error = await runFailure(invoke(getRequestEffectClient(client)));
+
+			expect(error).toBeInstanceOf(NotFoundError);
+			expect(error).toMatchObject({
+				_tag: "NotFoundError",
+				status: 404,
+				method: "GET",
+				endpoint,
+				expected: endpoint !== "/v1/user/info",
+			});
+		},
+	);
+
+	const validationCases = [
+		{
+			name: "getWorkouts",
+			invoke: (client: HevyRequestEffectClient) => client.getWorkouts(),
+			method: "GET",
+			endpoint: "/v1/workouts",
+		},
+		{
+			name: "createWorkout",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.createWorkout({} as never),
+			method: "POST",
+			endpoint: "/v1/workouts",
+		},
+		{
+			name: "updateWorkout",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.updateWorkout("workout-1", {} as never),
+			method: "PUT",
+			endpoint: "/v1/workouts/:workoutId",
+		},
+		{
+			name: "createRoutine",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.createRoutine({} as never),
+			method: "POST",
+			endpoint: "/v1/routines",
+		},
+		{
+			name: "createExerciseTemplate",
+			invoke: (client: HevyRequestEffectClient) =>
+				client.createExerciseTemplate({} as never),
+			method: "POST",
+			endpoint: "/v1/exercise_templates",
+		},
+	] as const;
+
+	it.each(validationCases)(
+		"$name maps HTTP 400 to ValidationError",
+		async ({ invoke, method, endpoint }) => {
+			const client = createHevyClient({
+				apiKey: "test-key",
+				fetch: vi.fn().mockResolvedValue(response({}, 400)),
+				maxGetRetries: 0,
+			});
+
+			const error = await runFailure(invoke(getRequestEffectClient(client)));
+
+			expect(error).toBeInstanceOf(ValidationError);
+			expect(error).toMatchObject({
+				_tag: "ValidationError",
+				status: 400,
+				method,
+				endpoint,
+			});
+		},
+	);
+
+	it("maps HTTP 429 to RateLimitError and preserves retry parity", async () => {
+		const promiseFetch = vi.fn().mockImplementation(
+			() =>
+				new Response("{}", {
+					status: 429,
+					headers: { "Retry-After": "2" },
+				}),
+		);
+		const promiseClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: promiseFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		await expect(promiseClient.getWorkout("workout-1")).rejects.toBeInstanceOf(
+			HevyHttpError,
+		);
+
+		const effectFetch = vi.fn().mockImplementation(
+			() =>
+				new Response("{}", {
+					status: 429,
+					headers: { "Retry-After": "2" },
+				}),
+		);
+		const effectClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: effectFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		const error = await Effect.runPromise(
+			getRequestEffectClient(effectClient)
+				.getWorkout("workout-1")
+				.pipe(Effect.flip),
+		);
+
+		expect(error).toBeInstanceOf(RateLimitError);
+		expect(error).toMatchObject({
+			_tag: "RateLimitError",
+			status: 429,
+			method: "GET",
+			endpoint: "/v1/workouts/:workoutId",
+			retryAfterSeconds: 2,
+		});
+		expect(effectFetch).toHaveBeenCalledTimes(promiseFetch.mock.calls.length);
+		expect(effectFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it.each([401, 403, 409, 500])("maps HTTP %s to ApiError", async (status) => {
+		const client = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn().mockResolvedValue(response({}, status)),
+			maxGetRetries: 0,
+		});
+
+		const error = await Effect.runPromise(
+			getRequestEffectClient(client).getWorkout("workout-1").pipe(Effect.flip),
+		);
+
+		expect(error).toBeInstanceOf(ApiError);
+		expect(error).toMatchObject({
+			_tag: "ApiError",
+			status,
+			method: "GET",
+			endpoint: "/v1/workouts/:workoutId",
+		});
+	});
+
+	it("maps fetch rejection to NetworkError with retry exhaustion metadata", async () => {
+		const promiseFetch = vi
+			.fn()
+			.mockRejectedValue(new TypeError("fetch failed"));
+		const promiseClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: promiseFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		await expect(promiseClient.getWorkout("workout-1")).rejects.toBeInstanceOf(
+			HevyHttpError,
+		);
+
+		const effectFetch = vi
+			.fn()
+			.mockRejectedValue(new TypeError("fetch failed"));
+		const effectClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: effectFetch,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+		const error = await Effect.runPromise(
+			getRequestEffectClient(effectClient)
+				.getWorkout("workout-1")
+				.pipe(Effect.flip),
+		);
+
+		expect(error).toBeInstanceOf(NetworkError);
+		expect(error).toMatchObject({
+			_tag: "NetworkError",
+			code: "HEVY_RETRY_EXHAUSTED",
+			retryCount: 1,
+			retryExhausted: true,
+		});
+		expect(effectFetch).toHaveBeenCalledTimes(promiseFetch.mock.calls.length);
+		expect(effectFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it("preserves tagged errors for Effect.catchTag", async () => {
+		const notFoundClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn().mockResolvedValue(response({}, 404)),
+			maxGetRetries: 0,
+		});
+		const notFoundResult = getRequestEffectClient(notFoundClient)
+			.getWorkout("workout-1")
+			.pipe(
+				Effect.catchTag("NotFoundError", (error) =>
+					Effect.succeed(`${error._tag}:${error.endpoint}`),
+				),
+			);
+		await expect(Effect.runPromise(notFoundResult)).resolves.toBe(
+			"NotFoundError:/v1/workouts/:workoutId",
+		);
+
+		const validationClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn().mockResolvedValue(response({}, 400)),
+			maxGetRetries: 0,
+		});
+		const validationResult = getRequestEffectClient(validationClient)
+			.getWorkouts()
+			.pipe(
+				Effect.catchTag("ValidationError", (error) =>
+					Effect.succeed(`${error._tag}:${error.status}`),
+				),
+			);
+		await expect(Effect.runPromise(validationResult)).resolves.toBe(
+			"ValidationError:400",
+		);
+
+		const rateLimitClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn().mockResolvedValue(response({}, 429)),
+			maxGetRetries: 0,
+		});
+		const rateLimitResult = getRequestEffectClient(rateLimitClient)
+			.getWorkout("workout-1")
+			.pipe(
+				Effect.catchTag("RateLimitError", (error) =>
+					Effect.succeed(`${error._tag}:${error.status}`),
+				),
+			);
+		await expect(Effect.runPromise(rateLimitResult)).resolves.toBe(
+			"RateLimitError:429",
+		);
+
+		const apiClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn().mockResolvedValue(response({}, 500)),
+			maxGetRetries: 0,
+		});
+		const apiResult = getRequestEffectClient(apiClient)
+			.getWorkout("workout-1")
+			.pipe(
+				Effect.catchTag("ApiError", (error) =>
+					Effect.succeed(`${error._tag}:${error.status}`),
+				),
+			);
+		await expect(Effect.runPromise(apiResult)).resolves.toBe("ApiError:500");
+
+		const networkClient = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
+			maxGetRetries: 0,
+		});
+		const networkResult = getRequestEffectClient(networkClient)
+			.getWorkout("workout-1")
+			.pipe(
+				Effect.catchTag("NetworkError", (error) =>
+					Effect.succeed(`${error._tag}:${error.retryExhausted}`),
+				),
+			);
+		await expect(Effect.runPromise(networkResult)).resolves.toBe(
+			"NetworkError:true",
+		);
+	});
 
 	it("shares retry-then-success behavior between Promise and Effect reads", async () => {
 		const promiseFetch = vi
@@ -607,8 +930,8 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 		expect(effectFetch).toHaveBeenCalledTimes(2);
 	});
 
-	it("shares retry-exhausted HevyHttpError between Promise and Effect reads", async () => {
-		const promiseFetch = vi.fn().mockResolvedValue(response({}, 503));
+	it("shares retry exhaustion between Promise and Effect reads", async () => {
+		const promiseFetch = vi.fn().mockImplementation(() => response({}, 503));
 		const promiseClient = createHevyClient({
 			apiKey: "test-key",
 			fetch: promiseFetch,
@@ -625,7 +948,7 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 			},
 		);
 
-		const effectFetch = vi.fn().mockResolvedValue(response({}, 503));
+		const effectFetch = vi.fn().mockImplementation(() => response({}, 503));
 		const effectClient = createHevyClient({
 			apiKey: "test-key",
 			fetch: effectFetch,
@@ -641,8 +964,13 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 		expect(promiseFetch).toHaveBeenCalledTimes(2);
 		expect(effectFetch).toHaveBeenCalledTimes(2);
 		expect(promiseError).toBeInstanceOf(HevyHttpError);
-		expect(effectError).toBeInstanceOf(HevyHttpError);
-		expect(effectError).toMatchObject(promiseError);
+		expect(effectError).toBeInstanceOf(ApiError);
+		expect(effectError).toMatchObject({
+			_tag: "ApiError",
+			status: 503,
+			method: "GET",
+			endpoint: "/v1/workouts/:workoutId",
+		});
 	});
 
 	it("uses the same fetch, api key, and retry configuration for a new GET", async () => {
