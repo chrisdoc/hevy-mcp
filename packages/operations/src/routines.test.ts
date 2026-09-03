@@ -186,7 +186,7 @@ function createSearchAdapter(
 }
 
 describe("routines.get operation", () => {
-	it("[VAL-OPS-002] succeeds with the routine entity and preserves the read descriptor", async () => {
+	it("[VAL-OPS-016] succeeds with the routine entity and preserves the read descriptor", async () => {
 		const adapter = createInMemoryGetAdapter({
 			routine: { id: "r1", title: "Push", exercises: [] },
 		});
@@ -210,7 +210,7 @@ describe("routines.get operation", () => {
 		expect(adapter.requests[0]?.options).toBe(options);
 	});
 
-	it("[VAL-OPS-006] normalizes a missing routine field to null without a soft-404 outcome", async () => {
+	it("[VAL-OPS-016] normalizes a missing routine field to null without a soft-404 outcome", async () => {
 		const operation = createRoutinesGetOperation(createInMemoryGetAdapter({}));
 
 		await expect(operation.execute({ routineId: "missing" })).resolves.toEqual({
@@ -218,7 +218,7 @@ describe("routines.get operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-010] returns not_found only for the canonical routine resource 404", async () => {
+	it("[VAL-OPS-016] returns not_found only for the canonical routine resource 404", async () => {
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(notFound("/v1/routines/r1")),
 		);
@@ -229,7 +229,7 @@ describe("routines.get operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-016] rejects an unrelated GET 404 with the original error", async () => {
+	it("[VAL-OPS-005] rejects an unrelated GET 404 with the original error", async () => {
 		const error = notFound("/v1/workouts/w1");
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(error),
@@ -238,7 +238,7 @@ describe("routines.get operation", () => {
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-020] rejects a mutation 404 with the original error", async () => {
+	it("[VAL-OPS-005] rejects a mutation 404 with the original error", async () => {
 		const error = notFound("/v1/routines/r1", "POST");
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(error),
@@ -247,7 +247,7 @@ describe("routines.get operation", () => {
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-028] preserves non-404 error identity for routines.get", async () => {
+	it("[VAL-OPS-005] preserves non-404 error identity for routines.get", async () => {
 		const error = httpError(401, "GET", "/v1/routines/r1", "unauthorized");
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(error),
@@ -256,7 +256,7 @@ describe("routines.get operation", () => {
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-029] rejects a collection-path GET 404 for routines.get", async () => {
+	it("[VAL-OPS-016] rejects a collection-path GET 404 for routines.get", async () => {
 		const error = notFound("/v1/routines");
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(error),
@@ -265,7 +265,7 @@ describe("routines.get operation", () => {
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-025] omits the options argument when routines.get options are absent", async () => {
+	it("[VAL-OPS-008] omits the options argument when routines.get options are absent", async () => {
 		const adapter = createInMemoryGetAdapter({ routine: { id: "r1" } });
 		const operation = createRoutinesGetOperation(adapter);
 
@@ -584,7 +584,7 @@ describe("routines.search operation", () => {
 });
 
 describe("routines.list operation", () => {
-	it("[VAL-OPS-004] succeeds with the requested page and preserves the read descriptor", async () => {
+	it("[VAL-OPS-009] succeeds with the requested page and preserves the read descriptor", async () => {
 		const adapter = createInMemoryAdapter([
 			{
 				page: 2,
@@ -619,7 +619,7 @@ describe("routines.list operation", () => {
 		expect(adapter.requests[0]?.options).toBe(options);
 	});
 
-	it("[VAL-OPS-008] normalizes a missing routines field to an empty list without a soft-404 outcome", async () => {
+	it("[VAL-OPS-009] normalizes a missing routines field to an empty list without a soft-404 outcome", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([{ page: 1, page_count: 1 }]),
 		);
@@ -631,7 +631,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-012] treats a later-page collection 404 as the end of the list", async () => {
+	it("[VAL-OPS-004] treats a later-page collection 404 as the end of the list", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([notFound()]),
 		);
@@ -644,7 +644,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-014] rejects a first-page collection 404", async () => {
+	it("[VAL-OPS-004] rejects a first-page collection 404", async () => {
 		const error = notFound();
 		const firstPageOperation = createRoutinesListOperation(
 			createInMemoryAdapter([error]),
@@ -654,7 +654,7 @@ describe("routines.list operation", () => {
 		).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-018] rejects an unrelated collection 404 with the original error", async () => {
+	it("[VAL-OPS-004] rejects an unrelated collection 404 with the original error", async () => {
 		const error = notFound("/v1/workouts");
 		const unrelatedOperation = createRoutinesListOperation(
 			createInMemoryAdapter([error]),
@@ -664,7 +664,7 @@ describe("routines.list operation", () => {
 		).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-024] rejects when response page differs from requested page", async () => {
+	it("[VAL-OPS-003] rejects when response page differs from requested page", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([
 				{
@@ -685,7 +685,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-022] rejects a mutation 404 for routines.list with the original error", async () => {
+	it("[VAL-OPS-004] rejects a mutation 404 for routines.list with the original error", async () => {
 		const error = notFound("/v1/routines", "POST");
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([error]),
@@ -696,7 +696,7 @@ describe("routines.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-030] rejects a member-path GET 404 for routines.list", async () => {
+	it("[VAL-OPS-004] rejects a member-path GET 404 for routines.list", async () => {
 		const error = notFound("/v1/routines/r1");
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([error]),
@@ -707,7 +707,7 @@ describe("routines.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-031] rejects a same-prefix sibling collection 404 for routines.list", async () => {
+	it("[VAL-OPS-004] rejects a same-prefix sibling collection 404 for routines.list", async () => {
 		const error = notFound("/v1/routines/count");
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([error]),
@@ -718,7 +718,7 @@ describe("routines.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-032] keeps an empty 200 routines list distinct from end_of_list", async () => {
+	it("[VAL-OPS-009] keeps an empty 200 routines list distinct from end_of_list", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([
 				{
@@ -736,7 +736,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-033] allows routines list responses to omit page_count", async () => {
+	it("[VAL-OPS-009] allows routines list responses to omit page_count", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([{ page: 2, routines: [{ id: "r1" }] }]),
 		);
@@ -748,7 +748,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-026] uses the requested page when routines response.page is omitted", async () => {
+	it("[VAL-OPS-009] uses the requested page when routines response.page is omitted", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([{ page_count: 4, routines: [{ id: "r1" }] }]),
 		);
@@ -760,7 +760,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-025] omits the options argument when routines.list options are absent", async () => {
+	it("[VAL-OPS-008] omits the options argument when routines.list options are absent", async () => {
 		const adapter = createInMemoryAdapter([{ page: 1, routines: [] }]);
 		const operation = createRoutinesListOperation(adapter);
 
@@ -772,7 +772,7 @@ describe("routines.list operation", () => {
 		expect(adapter.argumentCounts).toEqual([1]);
 	});
 
-	it("[VAL-OPS-027] exposes routines.get as a native Promise, not an Effect", async () => {
+	it("[VAL-OPS-002] exposes routines.get as a native Promise, not an Effect", async () => {
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter({ routine: { id: "r1" } }),
 		);
@@ -786,7 +786,7 @@ describe("routines.list operation", () => {
 		await expect(result).resolves.toEqual({ routine: { id: "r1" } });
 	});
 
-	it("[VAL-OPS-027] exposes routines.list as a native Promise, not an Effect", async () => {
+	it("[VAL-OPS-002] exposes routines.list as a native Promise, not an Effect", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([{ page: 1, routines: [] }]),
 		);
@@ -804,7 +804,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-028] preserves a plain network error for routines.get", async () => {
+	it("[VAL-OPS-005] preserves a plain network error for routines.get", async () => {
 		const error = new Error("network failure");
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(error),
@@ -813,7 +813,7 @@ describe("routines.list operation", () => {
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-028] preserves a non-404 HTTP error for routines.list", async () => {
+	it("[VAL-OPS-005] preserves a non-404 HTTP error for routines.list", async () => {
 		const error = httpError(503, "GET", "/v1/routines", "upstream failure");
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([error]),
@@ -824,7 +824,7 @@ describe("routines.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-034] does not mutate routines.get input or options on success", async () => {
+	it("[VAL-OPS-008] does not mutate routines.get input or options on success", async () => {
 		const input = { routineId: "r1" };
 		const signal = new AbortController().signal;
 		const options: HevyExecutionOptions = {
@@ -847,7 +847,7 @@ describe("routines.list operation", () => {
 		expect(options.signal).toBe(signal);
 	});
 
-	it("[VAL-OPS-034] does not mutate routines.list input or options on rejection", async () => {
+	it("[VAL-OPS-008] does not mutate routines.list input or options on rejection", async () => {
 		const input = { page: 2, pageSize: 5 };
 		const signal = new AbortController().signal;
 		const options: HevyExecutionOptions = {
@@ -875,7 +875,7 @@ describe("routines.list operation", () => {
 		expect(options.signal).toBe(signal);
 	});
 
-	it("[VAL-OPS-036] rejects an already-aborted routines.get without a soft outcome", async () => {
+	it("[VAL-OPS-008] rejects an already-aborted routines.get without a soft outcome", async () => {
 		const controller = new AbortController();
 		const abortError = new Error("cancelled");
 		abortError.name = "AbortError";
@@ -889,7 +889,7 @@ describe("routines.list operation", () => {
 		).rejects.toBe(abortError);
 	});
 
-	it("[VAL-OPS-036] rejects a then-aborted routines.list without a soft outcome", async () => {
+	it("[VAL-OPS-008] rejects a then-aborted routines.list without a soft outcome", async () => {
 		const controller = new AbortController();
 		const abortError = new Error("cancelled");
 		abortError.name = "AbortError";
@@ -905,7 +905,7 @@ describe("routines.list operation", () => {
 		await expect(result).rejects.toBe(abortError);
 	});
 
-	it("[VAL-OPS-035] keeps sequential routines.get outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps sequential routines.get outcomes request-local", async () => {
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter([
 				notFound("/v1/routines/missing"),
@@ -922,7 +922,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-035] keeps sequential routines.list outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps sequential routines.list outcomes request-local", async () => {
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([
 				notFound(),
@@ -943,7 +943,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-037] keeps concurrent routines.get outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps concurrent routines.get outcomes request-local", async () => {
 		const error = notFound("/v1/routines/missing");
 		const adapter: RoutinesGetAdapter = {
 			getRoutineById(routineId) {
@@ -966,7 +966,7 @@ describe("routines.list operation", () => {
 		expect(found).toEqual({ routine: { id: "r2" } });
 	});
 
-	it("[VAL-OPS-037] keeps concurrent routines.list outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps concurrent routines.list outcomes request-local", async () => {
 		const error = notFound();
 		const adapter: RoutinesListAdapter = {
 			getRoutines(params) {
