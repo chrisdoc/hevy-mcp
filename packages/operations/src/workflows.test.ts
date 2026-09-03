@@ -124,7 +124,7 @@ describe("workflows.trainingSummary operation", () => {
 			exercises: [
 				{
 					exercise_template_id: "bench",
-					sets: [{}, {}],
+					sets: [{ weight_kg: 50, reps: 5 }, {}],
 				},
 				{
 					exercise_template_id: "",
@@ -195,6 +195,7 @@ describe("workflows.trainingSummary operation", () => {
 				total_duration_seconds: 3_600,
 				exercise_count: 2,
 				set_count: 3,
+				total_volume_kg: 250,
 				unique_exercise_template_ids: ["bench"],
 				sessions: [
 					{
@@ -269,6 +270,23 @@ describe("workflows.trainingSummary operation", () => {
 		expect(getBodyMeasurements).not.toHaveBeenCalled();
 	});
 
+	it("can reject malformed pagination metadata for strict callers", async () => {
+		const { operations } = createListOperations(
+			[{ page: 1, workouts: [] }],
+			[{ page: 1, page_count: 1, body_measurements: [] }],
+		);
+		const operation = createWorkflowsTrainingSummaryOperation(operations, {
+			strictPagination: true,
+		});
+
+		await expect(
+			runAtFixedTime(operation.effect({ weeks: 1 })),
+		).rejects.toMatchObject({
+			_tag: "PaginationMismatchError",
+			message: "The API returned invalid pagination metadata",
+		});
+	});
+
 	it("ends a loader on a later-page 404 but fails a first-page 404", async () => {
 		const laterPage = createListOperations(
 			[
@@ -339,5 +357,29 @@ describe("workflows.trainingSummary operation", () => {
 			itemsScanned: 0,
 		});
 		expect(loader).not.toHaveBeenCalled();
+	});
+
+	it("fails when a scanned item has an invalid date", async () => {
+		const loader = vi.fn(() =>
+			Effect.succeed({
+				items: [{ id: "malformed", date: "not-a-date" }],
+				pageCount: 1,
+			}),
+		);
+
+		await expect(
+			Effect.runPromise(
+				scanPagesInWindow(
+					loader,
+					10,
+					"2026-07-01",
+					"2026-07-16",
+					(item: { date: string }) => item.date,
+				),
+			),
+		).rejects.toMatchObject({
+			_tag: "TrainingSummaryDataError",
+			message: "The API returned an item with an invalid date",
+		});
 	});
 });

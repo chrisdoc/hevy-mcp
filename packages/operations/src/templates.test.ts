@@ -14,6 +14,7 @@ import {
 	createTemplatesGetOperation,
 	createTemplatesHistoryOperation,
 	createTemplatesListAllOperation,
+	createTemplatesSearchOperation,
 	type TemplatesGetAdapter,
 	type TemplatesListAllAdapter,
 } from "./templates.js";
@@ -302,5 +303,107 @@ describe("templates.listAll operation", () => {
 		});
 
 		await expect(Effect.runPromise(operation.effect())).rejects.toBe(error);
+	});
+});
+
+describe("templates.search operation", () => {
+	it("honors the page limit while filtering titles and forwarding options", async () => {
+		const requests: Array<{
+			readonly page: number;
+			readonly pageSize: number;
+			readonly options: { readonly timeoutMs: number } | undefined;
+		}> = [];
+		const getExerciseTemplates = vi.fn((params, options) => {
+			const page = params?.page ?? 1;
+			requests.push({ page, pageSize: params?.pageSize ?? 0, options });
+			return Effect.succeed({
+				page,
+				page_count: 3,
+				exercise_templates: [{ id: `template-${page}`, title: "Bench Press" }],
+			});
+		});
+		const operation = createTemplatesSearchOperation({
+			getExerciseTemplates,
+		});
+		const options = { timeoutMs: 1_000 };
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({ query: "BENCH", maxPages: 2 }, options),
+			),
+		).resolves.toEqual({
+			matches: [
+				{ id: "template-1", title: "Bench Press" },
+				{ id: "template-2", title: "Bench Press" },
+			],
+			pages: 2,
+			itemsScanned: 2,
+			complete: false,
+		});
+		expect(requests).toEqual([
+			{ page: 1, pageSize: 100, options },
+			{ page: 2, pageSize: 100, options },
+		]);
+	});
+
+	it.each([{ page_count: undefined }, { page_count: 1.5 }] as const)(
+		"rejects malformed pagination metadata: %#",
+		async (response) => {
+			const getExerciseTemplates = vi.fn(() =>
+				Effect.succeed({
+					page: 1,
+					page_count: response.page_count,
+					exercise_templates: [],
+				}),
+			);
+			const operation = createTemplatesSearchOperation({
+				getExerciseTemplates,
+			});
+
+			await expect(
+				Effect.runPromise(operation.effect({ query: "bench", maxPages: 10 })),
+			).rejects.toMatchObject({
+				_tag: "PaginationMismatchError",
+				message: "The API returned invalid pagination metadata",
+			});
+		},
+	);
+
+	it("rejects a page count smaller than the requested page", async () => {
+		const getExerciseTemplates = vi.fn((params) =>
+			Effect.succeed({
+				page: params?.page,
+				page_count: params?.page === 1 ? 2 : 1,
+				exercise_templates: [{ id: `template-${params?.page}` }],
+			}),
+		);
+		const operation = createTemplatesSearchOperation({
+			getExerciseTemplates,
+		});
+
+		await expect(
+			Effect.runPromise(operation.effect({ query: "bench", maxPages: 10 })),
+		).rejects.toMatchObject({
+			_tag: "PaginationMismatchError",
+			message: "The API returned invalid pagination metadata",
+		});
+	});
+
+	it("rejects zero page count when a page contains templates", async () => {
+		const operation = createTemplatesSearchOperation({
+			getExerciseTemplates: () =>
+				Effect.succeed({
+					page: 1,
+					page_count: 0,
+					exercise_templates: [{ id: "template-1", title: "Bench" }],
+				}),
+		});
+
+		await expect(
+			Effect.runPromise(operation.effect({ query: "bench", maxPages: 10 })),
+		).rejects.toMatchObject({
+			_tag: "PaginationMismatchError",
+			message: "The API returned invalid pagination metadata",
+		});
 	});
 });

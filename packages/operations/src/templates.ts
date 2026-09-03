@@ -177,6 +177,43 @@ export type TemplatesListAllResult = ExerciseTemplate[] & {
 	readonly pageCount?: number;
 };
 
+export interface TemplatesSearchInput {
+	readonly query: string;
+	readonly maxPages: number;
+}
+
+export interface TemplatesSearchOutput {
+	readonly matches: ExerciseTemplate[];
+	readonly pages: number;
+	readonly itemsScanned: number;
+	readonly complete: boolean;
+}
+
+export interface TemplatesSearchDescriptor {
+	readonly id: "templates.search";
+	readonly safety: Extract<HevyOperationSafety, "read">;
+}
+
+export const templatesSearchDescriptor: TemplatesSearchDescriptor = {
+	id: "templates.search",
+	safety: "read",
+};
+
+export interface TemplatesSearchOperation {
+	readonly descriptor: TemplatesSearchDescriptor;
+	readonly effect: (
+		input: TemplatesSearchInput,
+		options?: HevyExecutionOptions,
+	) => Effect.Effect<
+		TemplatesSearchOutput,
+		HevyRequestEffectError | PaginationMismatchError
+	>;
+	execute(
+		input: TemplatesSearchInput,
+		options?: HevyExecutionOptions,
+	): Promise<TemplatesSearchOutput>;
+}
+
 const TEMPLATES_PAGE_SIZE = 100;
 
 type TemplatesListCursor = {
@@ -185,6 +222,16 @@ type TemplatesListCursor = {
 
 type TemplatesListPage = {
 	readonly templates: ExerciseTemplate[];
+};
+
+type TemplatesSearchCursor = {
+	readonly page: number;
+};
+
+type TemplatesSearchPage = {
+	readonly templates: ExerciseTemplate[];
+	readonly hasNextPage: boolean;
+	readonly endOfList?: boolean;
 };
 
 function hasNextTemplatesPage(
@@ -370,6 +417,129 @@ export function createTemplatesListAllOperation(
 		effect,
 		execute(options) {
 			return Effect.runPromise(operation.effect(options));
+		},
+	};
+	return operation;
+}
+
+export function createTemplatesSearchOperation(
+	adapter: TemplatesListAllAdapter,
+): TemplatesSearchOperation {
+	const effect = Effect.fn("operations.templates.search")(function* (
+		input: TemplatesSearchInput,
+		options?: HevyExecutionOptions,
+	) {
+		const maxPages = Math.max(0, Math.min(input.maxPages, 100));
+		const query = input.query.toLowerCase();
+		const pageStream = Stream.paginate<
+			TemplatesSearchCursor,
+			TemplatesSearchPage,
+			HevyRequestEffectError | PaginationMismatchError
+		>({ page: 1 }, (cursor) => {
+			if (cursor.page > maxPages) {
+				return Effect.succeed([
+					[] as ReadonlyArray<TemplatesSearchPage>,
+					Option.none<TemplatesSearchCursor>(),
+				] as const);
+			}
+			const params = { page: cursor.page, pageSize: TEMPLATES_PAGE_SIZE };
+			const request =
+				options === undefined
+					? adapter.getExerciseTemplates(params)
+					: adapter.getExerciseTemplates(params, options);
+			return request.pipe(
+				Effect.flatMap((response: GetV1ExerciseTemplates200) => {
+					if (response?.page !== undefined && response.page !== cursor.page) {
+						return Effect.fail(
+							new PaginationMismatchError({
+								requested: cursor.page,
+								received: response.page,
+								collection: "exerciseTemplates",
+								message: `Exercise templates page mismatch: requested page ${cursor.page} but received page ${response.page}`,
+							}),
+						);
+					}
+
+					const pageCount = response?.page_count;
+					const templates = response?.exercise_templates ?? [];
+					if (
+						!Predicate.isNumber(pageCount) ||
+						!Number.isSafeInteger(pageCount) ||
+						pageCount < 0 ||
+						(pageCount === 0 && templates.length > 0) ||
+						(pageCount > 0 && pageCount < cursor.page)
+					) {
+						return Effect.fail(
+							new PaginationMismatchError({
+								requested: cursor.page,
+								received: Predicate.isNumber(pageCount) ? pageCount : -1,
+								collection: "exerciseTemplates",
+								message: "The API returned invalid pagination metadata",
+							}),
+						);
+					}
+					const hasNextPage = hasNextTemplatesPage(
+						pageCount,
+						cursor.page,
+						templates,
+					);
+					return Effect.succeed([
+						[
+							{
+								templates,
+								hasNextPage,
+							},
+						],
+						hasNextPage && cursor.page < maxPages
+							? Option.some({ page: cursor.page + 1 })
+							: Option.none(),
+					] as const);
+				}),
+				Effect.catchIf(
+					(error) =>
+						isExpectedReadEndOfList(
+							error,
+							"/v1/exercise_templates",
+							cursor.page,
+						),
+					() =>
+						Effect.succeed([
+							[
+								{
+									templates: [] as ExerciseTemplate[],
+									hasNextPage: false,
+									endOfList: true,
+								},
+							],
+							Option.none<TemplatesSearchCursor>(),
+						] as const),
+				),
+			);
+		});
+		const pages = yield* Stream.runCollect(pageStream);
+		const scannedPages = pages.filter((page) => !page.endOfList);
+		const matches = scannedPages.flatMap((page) =>
+			page.templates.filter((template) =>
+				template.title?.toLowerCase().includes(query),
+			),
+		);
+		return {
+			matches,
+			pages: scannedPages.length,
+			itemsScanned: scannedPages.reduce(
+				(total, page) => total + page.templates.length,
+				0,
+			),
+			complete:
+				pages.at(-1)?.endOfList === true || pages.at(-1)?.hasNextPage !== true,
+		};
+	});
+
+	const operation: TemplatesSearchOperation = {
+		descriptor: templatesSearchDescriptor,
+		effect,
+		execute(input, options) {
+			return Effect.runPromise(operation.effect(input, options));
 		},
 	};
 	return operation;

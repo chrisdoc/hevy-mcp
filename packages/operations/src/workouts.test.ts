@@ -828,6 +828,60 @@ describe("workouts write operations", () => {
 		]);
 	});
 
+	it("[VAL-OPS-013] keeps full replacement exercises on the update operation", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					workout: {
+						title: "Replaced",
+						description: null,
+						start_time: "2026-07-29T08:00:00Z",
+						end_time: "2026-07-29T09:00:00Z",
+						is_private: true,
+						exercises: [],
+					},
+				}),
+			),
+		).resolves.toEqual(currentWorkoutForMutation);
+		expect(adapter.calls).toEqual(["update:w1"]);
+		expect(adapter.updateRequests[0]?.data.workout).toMatchObject({
+			title: "Replaced",
+			description: null,
+			is_private: true,
+			exercises: [],
+		});
+	});
+
+	it("preserves omitted description in a full replacement update", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await Effect.runPromise(
+			operation.effect({
+				workoutId: "w1",
+				workout: {
+					title: "Replaced",
+					start_time: "2026-07-29T08:00:00Z",
+					end_time: "2026-07-29T09:00:00Z",
+					is_private: true,
+					exercises: [],
+				},
+			}),
+		);
+
+		expect(adapter.updateRequests[0]?.data.workout).not.toHaveProperty(
+			"description",
+		);
+	});
+
 	it("[VAL-OPS-012] fails update on GET 404 without issuing PUT", async () => {
 		const error = new NotFoundError({
 			status: 404,

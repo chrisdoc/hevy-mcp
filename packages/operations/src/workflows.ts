@@ -7,6 +7,7 @@ import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
 import type { BodyMeasurement, Workout } from "@hevy-mcp/hevy-client/types";
 import {
 	PaginationMismatchError,
+	TrainingSummaryDataError,
 	TrainingSummaryValidationError,
 	isExpectedReadEndOfList,
 } from "./operation-errors.js";
@@ -23,6 +24,11 @@ const SCAN_CONCURRENCY = 2;
 
 export interface TrainingSummaryInput {
 	readonly weeks: number;
+}
+
+export interface TrainingSummaryOperationOptions {
+	readonly maxWeeks?: number;
+	readonly strictPagination?: boolean;
 }
 
 export interface TrainingSummaryPeriod {
@@ -79,6 +85,7 @@ export interface TrainingSummaryResult {
 		readonly total_duration_seconds: number;
 		readonly exercise_count: number;
 		readonly set_count: number;
+		readonly total_volume_kg?: number;
 		readonly unique_exercise_template_ids: string[];
 		readonly sessions: TrainingSummarySession[];
 	};
@@ -133,6 +140,7 @@ export interface WorkflowsTrainingSummaryOperation {
 		TrainingSummaryResult,
 		| HevyRequestEffectError
 		| PaginationMismatchError
+		| TrainingSummaryDataError
 		| TrainingSummaryValidationError
 	>;
 	execute(
@@ -180,6 +188,20 @@ function hasNextPage(pageCount: number | undefined, page: number): boolean {
 	);
 }
 
+function hasInvalidPageCount(
+	pageCount: number | undefined,
+	page: number,
+	hasItems: boolean,
+): boolean {
+	return (
+		!Predicate.isNumber(pageCount) ||
+		!Number.isSafeInteger(pageCount) ||
+		pageCount < 0 ||
+		(pageCount === 0 && (page > 1 || hasItems)) ||
+		(pageCount > 0 && pageCount < page)
+	);
+}
+
 /**
  * Collect pages while retaining only items in the requested UTC window.
  *
@@ -196,9 +218,10 @@ export const scanPagesInWindow = Effect.fn(
 	endDate: string,
 	getDate: (item: T) => string | undefined,
 	options?: HevyExecutionOptions,
+	strictPagination = false,
 ): Effect.fn.Return<
 	TrainingSummaryScanResult<T>,
-	HevyRequestEffectError | PaginationMismatchError
+	HevyRequestEffectError | PaginationMismatchError | TrainingSummaryDataError
 > {
 	const start = parseUtcDate(startDate);
 	const end = parseUtcDate(endDate);
@@ -227,7 +250,8 @@ export const scanPagesInWindow = Effect.fn(
 					readonly [
 						ReadonlyArray<TrainingSummaryPage<T>>,
 						Option.Option<{ readonly page: number }>,
-					]
+					],
+					HevyRequestEffectError | PaginationMismatchError
 				> => {
 					if (pageResult.endOfList === true) {
 						return Effect.succeed([
@@ -236,14 +260,33 @@ export const scanPagesInWindow = Effect.fn(
 						] as const);
 					}
 
-					const nextCursor =
+					if (
+						strictPagination &&
+						hasInvalidPageCount(
+							pageResult.pageCount,
+							cursor.page,
+							pageResult.items.length > 0,
+						)
+					) {
+						return Effect.fail(
+							new PaginationMismatchError({
+								requested: cursor.page,
+								received: Predicate.isNumber(pageResult.pageCount)
+									? pageResult.pageCount
+									: -1,
+								collection: "training-summary",
+								message: "The API returned invalid pagination metadata",
+							}),
+						);
+					}
+					const nextPage =
 						pageResult.items.length > 0 &&
 						hasNextPage(pageResult.pageCount, cursor.page)
 							? Option.some({ page: cursor.page + 1 })
 							: Option.none<{ readonly page: number }>();
 					return Effect.succeed([
 						[pageResult] as ReadonlyArray<TrainingSummaryPage<T>>,
-						nextCursor,
+						nextPage,
 					] as const);
 				},
 			),
@@ -256,7 +299,12 @@ export const scanPagesInWindow = Effect.fn(
 		itemsScanned += page.items.length;
 		for (const item of page.items) {
 			const date = parseUtcDate(getDate(item));
-			if (date === undefined) continue;
+			if (date === undefined) {
+				return yield* new TrainingSummaryDataError({
+					collection: "training-summary",
+					message: "The API returned an item with an invalid date",
+				});
+			}
 			const timestamp = DateTime.toEpochMillis(date);
 			if (timestamp >= startMillis && timestamp < endExclusiveMillis) {
 				items.push(item);
@@ -295,6 +343,23 @@ function compactSession(workout: Workout): TrainingSummarySession {
 	if (workout.end_time) session.end_time = workout.end_time;
 	if (durationSeconds !== undefined) session.duration_seconds = durationSeconds;
 	return session;
+}
+
+function workoutVolume(workout: Workout): number {
+	let total = 0;
+	for (const exercise of workout.exercises ?? []) {
+		for (const set of exercise.sets ?? []) {
+			if (
+				Predicate.isNumber(set.weight_kg) &&
+				Number.isFinite(set.weight_kg) &&
+				Predicate.isNumber(set.reps) &&
+				Number.isFinite(set.reps)
+			) {
+				total += set.weight_kg * set.reps;
+			}
+		}
+	}
+	return total;
 }
 
 function compactMeasurement(
@@ -374,7 +439,10 @@ function loadMeasurementsPage(
 
 export function createWorkflowsTrainingSummaryOperation(
 	operations: WorkflowsTrainingSummaryOperations,
+	options: TrainingSummaryOperationOptions = {},
 ): WorkflowsTrainingSummaryOperation {
+	const maxWeeks = options.maxWeeks ?? MAX_TRAINING_SUMMARY_WEEKS;
+	const strictPagination = options.strictPagination ?? false;
 	const effect = Effect.fn("operations.workflows.trainingSummary")(function* (
 		input: TrainingSummaryInput,
 		options?: HevyExecutionOptions,
@@ -382,16 +450,17 @@ export function createWorkflowsTrainingSummaryOperation(
 		TrainingSummaryResult,
 		| HevyRequestEffectError
 		| PaginationMismatchError
+		| TrainingSummaryDataError
 		| TrainingSummaryValidationError
 	> {
 		if (
 			!Number.isInteger(input.weeks) ||
 			input.weeks < MIN_TRAINING_SUMMARY_WEEKS ||
-			input.weeks > MAX_TRAINING_SUMMARY_WEEKS
+			input.weeks > maxWeeks
 		) {
 			return yield* new TrainingSummaryValidationError({
 				weeks: input.weeks,
-				message: `Training summary weeks must be an integer from ${MIN_TRAINING_SUMMARY_WEEKS} through ${MAX_TRAINING_SUMMARY_WEEKS}`,
+				message: `Training summary weeks must be an integer from ${MIN_TRAINING_SUMMARY_WEEKS} through ${maxWeeks}`,
 			});
 		}
 
@@ -416,6 +485,7 @@ export function createWorkflowsTrainingSummaryOperation(
 					period.end_date,
 					(workout) => workout.start_time,
 					options,
+					strictPagination,
 				),
 				scanPagesInWindow(
 					measurementLoader,
@@ -424,6 +494,7 @@ export function createWorkflowsTrainingSummaryOperation(
 					period.end_date,
 					(measurement) => measurement.date,
 					options,
+					strictPagination,
 				),
 			],
 			{ concurrency: SCAN_CONCURRENCY },
@@ -479,6 +550,10 @@ export function createWorkflowsTrainingSummaryOperation(
 				),
 				set_count: sessions.reduce(
 					(total, session) => total + session.set_count,
+					0,
+				),
+				total_volume_kg: workouts.reduce(
+					(total, workout) => total + workoutVolume(workout),
 					0,
 				),
 				unique_exercise_template_ids: uniqueExerciseTemplateIds,

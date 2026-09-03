@@ -38,10 +38,12 @@ import {
 	createTemplatesGetOperation,
 	createTemplatesHistoryOperation,
 	createTemplatesListAllOperation,
+	createTemplatesSearchOperation,
 	type TemplatesCreateOperation,
 	type TemplatesGetOperation,
 	type TemplatesHistoryOperation,
 	type TemplatesListAllOperation,
+	type TemplatesSearchOperation,
 } from "./templates.js";
 import { createUserGetOperation, type UserGetOperation } from "./user.js";
 import {
@@ -161,10 +163,12 @@ export {
 	createTemplatesGetOperation,
 	createTemplatesHistoryOperation,
 	createTemplatesListAllOperation,
+	createTemplatesSearchOperation,
 	templatesCreateDescriptor,
 	templatesGetDescriptor,
 	templatesHistoryDescriptor,
 	templatesListAllDescriptor,
+	templatesSearchDescriptor,
 } from "./templates.js";
 export type {
 	TemplatesCreateAdapter,
@@ -185,6 +189,10 @@ export type {
 	TemplatesListAllDescriptor,
 	TemplatesListAllOperation,
 	TemplatesListAllResult,
+	TemplatesSearchDescriptor,
+	TemplatesSearchInput,
+	TemplatesSearchOperation,
+	TemplatesSearchOutput,
 } from "./templates.js";
 export { createUserGetOperation, userGetDescriptor } from "./user.js";
 export type {
@@ -210,6 +218,7 @@ export type {
 	TrainingSummaryResult,
 	TrainingSummaryScanResult,
 	TrainingSummarySession,
+	TrainingSummaryOperationOptions,
 	WorkflowsTrainingSummaryDescriptor,
 	WorkflowsTrainingSummaryOperation,
 	WorkflowsTrainingSummaryOperations,
@@ -265,6 +274,7 @@ export type {
 export { PaginationMismatchError } from "./operation-errors.js";
 export {
 	EmptyMeasurementUpdateError,
+	TrainingSummaryDataError,
 	TrainingSummaryValidationError,
 	WorkoutPayloadError,
 	WorkoutPrivacyError,
@@ -335,6 +345,7 @@ export interface HevyOperations {
 		readonly get: TemplatesGetOperation;
 		readonly history: TemplatesHistoryOperation;
 		readonly listAll: TemplatesListAllOperation;
+		readonly search?: TemplatesSearchOperation;
 	};
 	readonly user?: {
 		readonly get: UserGetOperation;
@@ -370,7 +381,15 @@ type ExistingRequestEffectClient = Pick<
 	| "updateRoutine"
 >;
 
-export function createOperations(client: HevyClient): HevyOperations {
+export interface CreateOperationsOptions {
+	readonly trainingSummaryMaxWeeks?: number;
+	readonly trainingSummaryStrictPagination?: boolean;
+}
+
+export function createOperations(
+	client: HevyClient,
+	options: CreateOperationsOptions = {},
+): HevyOperations {
 	let requestEffectClient: HevyRequestEffectClient | undefined;
 	const getRequestEffectClientOnce = (): HevyRequestEffectClient => {
 		requestEffectClient ??= getRequestEffectClient(client);
@@ -457,19 +476,26 @@ export function createOperations(client: HevyClient): HevyOperations {
 			get: createTemplatesGetOperation(lazyRequestEffectClient),
 			history: createTemplatesHistoryOperation(lazyRequestEffectClient),
 			listAll: createTemplatesListAllOperation(lazyRequestEffectClient),
+			search: createTemplatesSearchOperation(lazyRequestEffectClient),
 		},
 		user: {
 			get: createUserGetOperation(lazyRequestEffectClient),
 		},
 		workflows: {
-			trainingSummary: createWorkflowsTrainingSummaryOperation({
-				workouts: {
-					list: workoutsList,
+			trainingSummary: createWorkflowsTrainingSummaryOperation(
+				{
+					workouts: {
+						list: workoutsList,
+					},
+					bodyMeasurements: {
+						list: bodyMeasurementsList,
+					},
 				},
-				bodyMeasurements: {
-					list: bodyMeasurementsList,
+				{
+					maxWeeks: options.trainingSummaryMaxWeeks,
+					strictPagination: options.trainingSummaryStrictPagination,
 				},
-			}),
+			),
 		},
 	};
 }

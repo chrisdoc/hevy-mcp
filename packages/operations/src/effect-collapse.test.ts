@@ -25,6 +25,7 @@ import {
 	createTemplatesGetOperation,
 	createTemplatesHistoryOperation,
 	createTemplatesListAllOperation,
+	createTemplatesSearchOperation,
 } from "./templates.js";
 import { createUserGetOperation } from "./user.js";
 import {
@@ -142,6 +143,9 @@ describe("operations Effect collapse", () => {
 				createExerciseTemplate: () => Effect.succeed({}),
 			}),
 			createTemplatesListAllOperation({
+				getExerciseTemplates: () => Effect.succeed({}),
+			}),
+			createTemplatesSearchOperation({
 				getExerciseTemplates: () => Effect.succeed({}),
 			}),
 			createFoldersGetOperation({

@@ -8,6 +8,14 @@ import {
 	RateLimitError,
 	ValidationError,
 } from "@hevy-mcp/hevy-client";
+import {
+	EmptyMeasurementUpdateError,
+	PaginationMismatchError,
+	TrainingSummaryDataError,
+	TrainingSummaryValidationError,
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
+} from "@hevy-mcp/operations";
 import { ConfigurationError, UsageError } from "./arguments.js";
 
 export class ApiResponseError extends Error {}
@@ -31,6 +39,14 @@ type TaggedClientError =
 	| RateLimitError
 	| ValidationError;
 
+type OperationDomainError =
+	| EmptyMeasurementUpdateError
+	| PaginationMismatchError
+	| TrainingSummaryDataError
+	| TrainingSummaryValidationError
+	| WorkoutPayloadError
+	| WorkoutPrivacyError;
+
 function isTaggedClientError(
 	error: Error | string,
 ): error is TaggedClientError {
@@ -40,6 +56,19 @@ function isTaggedClientError(
 		error instanceof NotFoundError ||
 		error instanceof RateLimitError ||
 		error instanceof ValidationError
+	);
+}
+
+function isOperationDomainError(
+	error: Error | string,
+): error is OperationDomainError {
+	return (
+		error instanceof EmptyMeasurementUpdateError ||
+		error instanceof TrainingSummaryDataError ||
+		error instanceof PaginationMismatchError ||
+		error instanceof TrainingSummaryValidationError ||
+		error instanceof WorkoutPayloadError ||
+		error instanceof WorkoutPrivacyError
 	);
 }
 
@@ -64,6 +93,22 @@ export function diagnostic(error: Error | string): CliDiagnostic {
 			message: error.message.replace(/https?:\/\/\S+/gi, "[redacted]"),
 			...executionFields(error),
 		};
+	if (isOperationDomainError(error)) {
+		if (
+			error instanceof PaginationMismatchError ||
+			error instanceof WorkoutPayloadError ||
+			error instanceof TrainingSummaryDataError
+		) {
+			return {
+				code: EXIT.api,
+				message:
+					error instanceof PaginationMismatchError
+						? "The API returned invalid pagination metadata"
+						: error.message,
+			};
+		}
+		return { code: EXIT.usage, message: error.message };
+	}
 	if (
 		error instanceof HevyHttpError ||
 		isHevyHttpError(error) ||

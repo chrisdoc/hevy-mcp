@@ -175,6 +175,16 @@ export interface WorkoutsListOperation {
 	): Promise<WorkoutsListOutput>;
 }
 
+type WorkoutReplacementPatch = WorkoutMetadataPatchInput & {
+	readonly exercises: WorkoutExerciseInput[];
+};
+
+function isWorkoutReplacementPatch(
+	patch: WorkoutMetadataPatchInput | WorkoutReplacementPatch,
+): patch is WorkoutReplacementPatch {
+	return "exercises" in patch;
+}
+
 export type WorkoutsUpdateInput =
 	| {
 			readonly workoutId: string;
@@ -182,7 +192,7 @@ export type WorkoutsUpdateInput =
 	  }
 	| {
 			readonly workoutId: string;
-			readonly workout: WorkoutMetadataPatchInput;
+			readonly workout: WorkoutMetadataPatchInput | WorkoutReplacementPatch;
 	  };
 
 export type WorkoutsUpdateAdapter = Pick<
@@ -401,13 +411,26 @@ export function createWorkoutsUpdateOperation(
 		input: WorkoutsUpdateInput,
 		options?: HevyExecutionOptions,
 	) {
-		const getRequest =
-			options === undefined
-				? adapter.getWorkout(input.workoutId)
-				: adapter.getWorkout(input.workoutId, options);
-		const current = yield* getRequest;
 		const patch = "patch" in input ? input.patch : input.workout;
-		const payload = yield* workoutPayloadEffect(current, patch);
+		const replacementExercises = isWorkoutReplacementPatch(patch)
+			? patch.exercises
+			: undefined;
+		const current =
+			replacementExercises === undefined
+				? yield* options === undefined
+						? adapter.getWorkout(input.workoutId)
+						: adapter.getWorkout(input.workoutId, options)
+				: {
+						title: patch.title,
+						description: patch.description ?? undefined,
+						start_time: patch.start_time,
+						end_time: patch.end_time,
+					};
+		const payload = yield* workoutPayloadEffect(
+			current,
+			patch,
+			replacementExercises,
+		);
 		const updateRequest =
 			options === undefined
 				? adapter.updateWorkout(input.workoutId, { workout: payload })

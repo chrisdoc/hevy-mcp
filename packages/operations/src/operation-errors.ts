@@ -66,6 +66,14 @@ export class TrainingSummaryValidationError extends Schema.TaggedError<TrainingS
 	},
 ) {}
 
+export class TrainingSummaryDataError extends Schema.TaggedError<TrainingSummaryDataError>()(
+	"TrainingSummaryDataError",
+	{
+		collection: Schema.String,
+		message: Schema.String,
+	},
+) {}
+
 const collectionMemberEndpoints = {
 	"/v1/body_measurements": "/v1/body_measurements/:date",
 	"/v1/exercise_templates": "/v1/exercise_templates/:exerciseTemplateId",

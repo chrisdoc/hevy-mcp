@@ -365,14 +365,14 @@ export function buildWorkoutUpdatePayload(
 			? patch.end_time
 			: normalizeFetchedWorkoutTimestamp(current.end_time);
 	const description =
-		patch.description !== undefined
-			? patch.description
-			: (current.description ?? null);
+		patch.description !== undefined ? patch.description : current.description;
 
 	if (
 		!Predicate.isString(title) ||
 		title.length < 1 ||
-		(description !== null && !Predicate.isString(description)) ||
+		(description !== undefined &&
+			description !== null &&
+			!Predicate.isString(description)) ||
 		!isStrictUtcTimestamp(startTime) ||
 		!isStrictUtcTimestamp(endTime) ||
 		(patch.is_private !== undefined && !Predicate.isBoolean(patch.is_private))
@@ -384,7 +384,6 @@ export function buildWorkoutUpdatePayload(
 
 	const payload: WorkoutUpdatePayload = {
 		title,
-		description,
 		start_time: startTime,
 		end_time: endTime,
 		exercises:
@@ -392,6 +391,7 @@ export function buildWorkoutUpdatePayload(
 				? preserveWorkoutExercises(current)
 				: replacementExercises,
 	};
+	if (description !== undefined) payload.description = description;
 	if (patch.is_private !== undefined) payload.is_private = patch.is_private;
 	return payload;
 }

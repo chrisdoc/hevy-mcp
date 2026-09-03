@@ -47,6 +47,22 @@ describe("CLI process contract", () => {
 		expect(io.out.slice(outBeforeVersion.length)).toBe("0.0.0\n");
 	});
 
+	it("keeps help and version aliases credential-free", async () => {
+		for (const argv of [["-h"], ["-v"]] as const) {
+			const io = streams();
+			const clientFactory = vi.fn(() => mockClient(vi.fn()));
+			const code = await runCli({
+				argv: [...argv],
+				env: {},
+				clientFactory,
+				streams: io.streams,
+			});
+			expect(code).toBe(0);
+			expect(clientFactory).not.toHaveBeenCalled();
+			expect(io.err).toBe("");
+		}
+	});
+
 	it("keeps missing credentials on stderr", async () => {
 		const io = streams();
 		const code = await runCli({ argv: ["user"], env: {}, streams: io.streams });
@@ -88,6 +104,39 @@ describe("CLI process contract", () => {
 		expect(io.err).toBe("The API returned invalid pagination metadata\n");
 	});
 
+	it("rejects missing pagination metadata as an API failure", async () => {
+		const io = streams();
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 1,
+			workouts: [],
+		});
+		const code = await runCli({
+			argv: ["workouts", "list"],
+			env: { HEVY_API_KEY: "key" },
+			streams: io.streams,
+			clientFactory: () => mockClient(getWorkouts),
+		});
+		expect(code).toBe(3);
+		expect(io.err).toBe("The API returned invalid pagination metadata\n");
+	});
+
+	it("preserves operation pagination failures as API failures", async () => {
+		const io = streams();
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 2,
+			page_count: 2,
+			workouts: [],
+		});
+		const code = await runCli({
+			argv: ["workouts", "list"],
+			env: { HEVY_API_KEY: "key" },
+			streams: io.streams,
+			clientFactory: () => mockClient(getWorkouts),
+		});
+		expect(code).toBe(3);
+		expect(io.err).toBe("The API returned invalid pagination metadata\n");
+	});
+
 	it("passes coerced API-shaped values to the client", async () => {
 		const io = streams();
 		const getWorkouts = vi.fn().mockResolvedValue({
@@ -104,6 +153,78 @@ describe("CLI process contract", () => {
 		expect(code).toBe(0);
 		expect(getWorkouts).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
 		expect(io.err).toBe("");
+	});
+
+	it("keeps the legacy summary week range", async () => {
+		const io = streams();
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			workouts: [],
+		});
+		const getBodyMeasurements = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			body_measurements: [],
+		});
+		const code = await runCli({
+			argv: ["summary", "--weeks", "13", "--json"],
+			env: { HEVY_API_KEY: "key" },
+			streams: io.streams,
+			clientFactory: () =>
+				createEffectClient({ getWorkouts, getBodyMeasurements }),
+		});
+		expect(code).toBe(0);
+		expect(JSON.parse(io.out)).toMatchObject({ weeks: 13 });
+	});
+
+	it("classifies invalid summary dates as API failures", async () => {
+		const io = streams();
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			workouts: [{ id: "w1", start_time: "not-a-date" }],
+		});
+		const getBodyMeasurements = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			body_measurements: [],
+		});
+		const code = await runCli({
+			argv: ["summary", "--json"],
+			env: { HEVY_API_KEY: "key" },
+			streams: io.streams,
+			clientFactory: () =>
+				createEffectClient({ getWorkouts, getBodyMeasurements }),
+		});
+		expect(code).toBe(3);
+		expect(JSON.parse(io.err)).toMatchObject({
+			message: "The API returned an item with an invalid date",
+		});
+	});
+
+	it("classifies malformed summary pagination as an API failure", async () => {
+		const io = streams();
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 1,
+			workouts: [],
+		});
+		const getBodyMeasurements = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			body_measurements: [],
+		});
+		const code = await runCli({
+			argv: ["summary", "--json"],
+			env: { HEVY_API_KEY: "key" },
+			streams: io.streams,
+			clientFactory: () =>
+				createEffectClient({ getWorkouts, getBodyMeasurements }),
+		});
+		expect(code).toBe(3);
+		expect(JSON.parse(io.err)).toMatchObject({
+			message: "The API returned invalid pagination metadata",
+		});
 	});
 
 	it("binds invocation control and projects execution fields in JSON errors", async () => {
@@ -145,26 +266,34 @@ describe("CLI process contract", () => {
 });
 
 function mutationClient(): HevyClient {
-	const client = Object.create(null) as HevyClient;
-	client.createWorkout = vi.fn().mockResolvedValue({ id: "workout-1" });
-	client.updateWorkout = vi.fn().mockResolvedValue({ id: "workout-1" });
-	client.createRoutine = vi.fn().mockResolvedValue({ id: "routine-1" });
-	client.updateRoutine = vi.fn().mockResolvedValue({ id: "routine-1" });
-	client.createExerciseTemplate = vi.fn().mockResolvedValue({ id: 2 });
-	client.createRoutineFolder = vi.fn().mockResolvedValue({ id: 3 });
-	client.createBodyMeasurement = vi.fn().mockResolvedValue({
-		date: "2024-01-02",
-		weight_kg: 80,
+	return createEffectClient({
+		getWorkout: vi.fn().mockResolvedValue({
+			id: "workout-1",
+			title: "Push",
+			description: null,
+			start_time: "2024-01-01T10:00:00Z",
+			end_time: "2024-01-01T11:00:00Z",
+			exercises: [],
+		}),
+		createWorkout: vi.fn().mockResolvedValue({ id: "workout-1" }),
+		updateWorkout: vi.fn().mockResolvedValue({ id: "workout-1" }),
+		createRoutine: vi.fn().mockResolvedValue({ id: "routine-1" }),
+		updateRoutine: vi.fn().mockResolvedValue({ id: "routine-1" }),
+		createExerciseTemplate: vi.fn().mockResolvedValue({ id: 2 }),
+		createRoutineFolder: vi.fn().mockResolvedValue({ id: 3 }),
+		createBodyMeasurement: vi.fn().mockResolvedValue({
+			date: "2024-01-02",
+			weight_kg: 80,
+		}),
+		getBodyMeasurement: vi.fn().mockResolvedValue({
+			date: "2024-01-02",
+			weight_kg: 80,
+		}),
+		updateBodyMeasurement: vi.fn().mockResolvedValue({
+			date: "2024-01-02",
+			weight_kg: 81,
+		}),
 	});
-	client.getBodyMeasurement = vi.fn().mockResolvedValue({
-		date: "2024-01-02",
-		weight_kg: 80,
-	});
-	client.updateBodyMeasurement = vi.fn().mockResolvedValue({
-		date: "2024-01-02",
-		weight_kg: 81,
-	});
-	return client;
 }
 
 describe("CLI mutation process contract", () => {
