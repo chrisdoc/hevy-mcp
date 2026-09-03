@@ -1,11 +1,19 @@
 import { NotFoundError } from "@hevy-mcp/hevy-client";
-import type { GetV1BodyMeasurements200 } from "@hevy-mcp/hevy-client/types";
+import type {
+	BodyMeasurement,
+	GetV1BodyMeasurements200,
+	PutBodyMeasurement,
+} from "@hevy-mcp/hevy-client/types";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+	createBodyMeasurementsCreateOperation,
+	createBodyMeasurementsGetOperation,
 	createBodyMeasurementsListOperation,
+	createBodyMeasurementsUpdateOperation,
 	type BodyMeasurementsListAdapter,
 } from "./body-measurements.js";
+import { EmptyMeasurementUpdateError } from "./operation-errors.js";
 
 function notFound(endpoint = "/v1/body_measurements") {
 	return new NotFoundError({
@@ -120,5 +128,146 @@ describe("bodyMeasurements.list operation", () => {
 			received: 3,
 			collection: "bodyMeasurements",
 		});
+	});
+});
+
+describe("bodyMeasurements.get operation", () => {
+	it("returns the measurement and date with a read descriptor", async () => {
+		const bodyMeasurement: BodyMeasurement = {
+			date: "2025-01-01",
+			weight_kg: 80,
+		};
+		const getBodyMeasurement = vi.fn(() => Effect.succeed(bodyMeasurement));
+		const operation = createBodyMeasurementsGetOperation({
+			getBodyMeasurement,
+		});
+		const options = { timeoutMs: 1_000 };
+
+		await expect(
+			Effect.runPromise(operation.effect({ date: "2025-01-01" }, options)),
+		).resolves.toEqual({
+			bodyMeasurement,
+			date: "2025-01-01",
+		});
+		expect(operation.descriptor).toEqual({
+			id: "bodyMeasurements.get",
+			safety: "read",
+		});
+		expect(getBodyMeasurement).toHaveBeenCalledWith("2025-01-01", options);
+	});
+
+	it("recovers only a member 404 as not_found", async () => {
+		const date = "2025-01-01";
+		const memberError = notFound(`/v1/body_measurements/${date}`);
+		const memberOperation = createBodyMeasurementsGetOperation({
+			getBodyMeasurement: vi.fn(() => Effect.fail(memberError)),
+		});
+
+		await expect(
+			Effect.runPromise(memberOperation.effect({ date })),
+		).resolves.toEqual({
+			bodyMeasurement: null,
+			date,
+			expected404Outcome: "not_found",
+		});
+
+		const collectionError = notFound("/v1/body_measurements");
+		const collectionOperation = createBodyMeasurementsGetOperation({
+			getBodyMeasurement: vi.fn(() => Effect.fail(collectionError)),
+		});
+		await expect(
+			Effect.runPromise(collectionOperation.effect({ date })),
+		).rejects.toBe(collectionError);
+	});
+});
+
+describe("bodyMeasurements.create operation", () => {
+	it("omits nullish fields before calling the Effect adapter", async () => {
+		const createBodyMeasurement = vi.fn(
+			(data: BodyMeasurement, _options?: { timeoutMs?: number }) =>
+				Effect.succeed(data),
+		);
+		const operation = createBodyMeasurementsCreateOperation({
+			createBodyMeasurement,
+		});
+		const options = { timeoutMs: 1_000 };
+
+		await expect(
+			Effect.runPromise(
+				operation.effect(
+					{
+						date: "2025-01-01",
+						weight_kg: 80,
+						lean_mass_kg: null,
+						fat_percent: undefined,
+					},
+					options,
+				),
+			),
+		).resolves.toBe("2025-01-01");
+		expect(createBodyMeasurement).toHaveBeenCalledWith(
+			{ date: "2025-01-01", weight_kg: 80 },
+			options,
+		);
+	});
+});
+
+describe("bodyMeasurements.update operation", () => {
+	it("omits nullish fields before calling the Effect adapter", async () => {
+		const updateBodyMeasurement = vi.fn(
+			(
+				_date: string,
+				data: PutBodyMeasurement,
+				_options?: { timeoutMs?: number },
+			) => Effect.succeed(data),
+		);
+		const operation = createBodyMeasurementsUpdateOperation({
+			updateBodyMeasurement,
+		});
+		const options = { timeoutMs: 1_000 };
+
+		await expect(
+			Effect.runPromise(
+				operation.effect(
+					{
+						date: "2025-01-01",
+						weight_kg: 81,
+						fat_percent: null,
+					},
+					options,
+				),
+			),
+		).resolves.toBe("2025-01-01");
+		expect(updateBodyMeasurement).toHaveBeenCalledWith(
+			"2025-01-01",
+			{ weight_kg: 81 },
+			options,
+		);
+	});
+
+	it("fails an empty numeric payload through a tagged domain error", async () => {
+		const updateBodyMeasurement = vi.fn(
+			(_date: string, _data: PutBodyMeasurement) => Effect.succeed(undefined),
+		);
+		const operation = createBodyMeasurementsUpdateOperation({
+			updateBodyMeasurement,
+		});
+
+		const error = await Effect.runPromise(
+			Effect.flip(
+				operation.effect({
+					date: "2025-01-01",
+					weight_kg: null,
+					fat_percent: undefined,
+				}),
+			),
+		);
+
+		expect(error).toBeInstanceOf(EmptyMeasurementUpdateError);
+		expect(error).toMatchObject({
+			_tag: "EmptyMeasurementUpdateError",
+			message: expect.stringContaining("No measurement fields provided"),
+		});
+		expect(updateBodyMeasurement).not.toHaveBeenCalled();
 	});
 });

@@ -16,8 +16,14 @@ import {
 	type RoutinesUpdateOperation,
 } from "./routines.js";
 import {
+	createBodyMeasurementsCreateOperation,
+	createBodyMeasurementsGetOperation,
 	createBodyMeasurementsListOperation,
+	createBodyMeasurementsUpdateOperation,
+	type BodyMeasurementsCreateOperation,
+	type BodyMeasurementsGetOperation,
 	type BodyMeasurementsListOperation,
+	type BodyMeasurementsUpdateOperation,
 } from "./body-measurements.js";
 import {
 	createFoldersCreateOperation,
@@ -95,15 +101,34 @@ export type {
 	RoutinesUpdateOutput,
 } from "./routines.js";
 export {
+	createBodyMeasurementsCreateOperation,
+	createBodyMeasurementsGetOperation,
 	createBodyMeasurementsListOperation,
+	createBodyMeasurementsUpdateOperation,
+	bodyMeasurementsCreateDescriptor,
+	bodyMeasurementsGetDescriptor,
 	bodyMeasurementsListDescriptor,
+	bodyMeasurementsUpdateDescriptor,
 } from "./body-measurements.js";
 export type {
+	BodyMeasurementsCreateAdapter,
+	BodyMeasurementsCreateDescriptor,
+	BodyMeasurementsCreateInput,
+	BodyMeasurementsCreateOperation,
+	BodyMeasurementsGetAdapter,
+	BodyMeasurementsGetDescriptor,
+	BodyMeasurementsGetInput,
+	BodyMeasurementsGetOperation,
+	BodyMeasurementsGetOutput,
 	BodyMeasurementsListAdapter,
 	BodyMeasurementsListDescriptor,
 	BodyMeasurementsListInput,
 	BodyMeasurementsListOperation,
 	BodyMeasurementsListOutput,
+	BodyMeasurementsUpdateAdapter,
+	BodyMeasurementsUpdateDescriptor,
+	BodyMeasurementsUpdateInput,
+	BodyMeasurementsUpdateOperation,
 } from "./body-measurements.js";
 export {
 	createFoldersCreateOperation,
@@ -267,7 +292,10 @@ export interface HevyOperations {
 		readonly update?: WorkoutsUpdateOperation;
 	};
 	readonly bodyMeasurements?: {
+		readonly create: BodyMeasurementsCreateOperation;
+		readonly get: BodyMeasurementsGetOperation;
 		readonly list: BodyMeasurementsListOperation;
+		readonly update: BodyMeasurementsUpdateOperation;
 	};
 	readonly folders?: {
 		readonly create?: FoldersCreateOperation;
@@ -288,6 +316,9 @@ export interface HevyOperations {
 type ExistingRequestEffectClient = Pick<
 	HevyRequestEffectClient,
 	| "getBodyMeasurements"
+	| "getBodyMeasurement"
+	| "createBodyMeasurement"
+	| "updateBodyMeasurement"
 	| "getExerciseTemplate"
 	| "getExerciseHistory"
 	| "createExerciseTemplate"
@@ -319,6 +350,12 @@ export function createOperations(client: HevyClient): HevyOperations {
 			getRequestEffectClientOnce().createWorkout(...args),
 		getBodyMeasurements: (...args) =>
 			getRequestEffectClientOnce().getBodyMeasurements(...args),
+		getBodyMeasurement: (...args) =>
+			getRequestEffectClientOnce().getBodyMeasurement(...args),
+		createBodyMeasurement: (...args) =>
+			getRequestEffectClientOnce().createBodyMeasurement(...args),
+		updateBodyMeasurement: (...args) =>
+			getRequestEffectClientOnce().updateBodyMeasurement(...args),
 		getExerciseTemplate: (...args) =>
 			getRequestEffectClientOnce().getExerciseTemplate(...args),
 		getExerciseHistory: (...args) =>
@@ -370,7 +407,10 @@ export function createOperations(client: HevyClient): HevyOperations {
 			update: createWorkoutsUpdateOperation(lazyRequestEffectClient),
 		},
 		bodyMeasurements: {
+			create: createBodyMeasurementsCreateOperation(lazyRequestEffectClient),
+			get: createBodyMeasurementsGetOperation(lazyRequestEffectClient),
 			list: createBodyMeasurementsListOperation(lazyRequestEffectClient),
+			update: createBodyMeasurementsUpdateOperation(lazyRequestEffectClient),
 		},
 		folders: {
 			create: createFoldersCreateOperation(lazyRequestEffectClient),

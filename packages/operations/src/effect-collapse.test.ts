@@ -10,6 +10,12 @@ import {
 	createRoutinesUpdateOperation,
 } from "./routines.js";
 import {
+	createBodyMeasurementsCreateOperation,
+	createBodyMeasurementsGetOperation,
+	createBodyMeasurementsListOperation,
+	createBodyMeasurementsUpdateOperation,
+} from "./body-measurements.js";
+import {
 	createFoldersCreateOperation,
 	createFoldersGetOperation,
 	createFoldersListAllOperation,
@@ -78,6 +84,18 @@ describe("operations Effect collapse", () => {
 
 	it("keeps execute as a single Promise collapse of the Effect program", () => {
 		const operations = [
+			createBodyMeasurementsCreateOperation({
+				createBodyMeasurement: () => Effect.succeed({}),
+			}),
+			createBodyMeasurementsGetOperation({
+				getBodyMeasurement: () => Effect.succeed({ date: "2025-01-01" }),
+			}),
+			createBodyMeasurementsListOperation({
+				getBodyMeasurements: () => Effect.succeed({}),
+			}),
+			createBodyMeasurementsUpdateOperation({
+				updateBodyMeasurement: () => Effect.succeed(undefined),
+			}),
 			createWorkoutsCreateOperation({
 				createWorkout: () => Effect.succeed({}),
 			}),
