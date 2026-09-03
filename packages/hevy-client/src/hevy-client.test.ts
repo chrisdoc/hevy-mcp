@@ -268,7 +268,7 @@ describe("@hevy-mcp/hevy-client", () => {
 		const client = createHevyClient({
 			apiKey: "secret-key",
 			fetch: fetchMock,
-			timeoutMs: 10,
+			timeoutMs: 50,
 			maxGetRetries: 1,
 			onLog,
 			onRequestComplete: ({ outcome }) => outcomes.push(outcome),

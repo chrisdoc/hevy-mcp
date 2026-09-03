@@ -9,6 +9,9 @@ export default defineConfig({
 	options: {
 		typeAware: true,
 	},
+	env: {
+		builtin: true,
+	},
 	ignorePatterns: [
 		...(core.ignorePatterns ?? []),
 		"**/*.d.ts",
@@ -24,6 +27,7 @@ export default defineConfig({
 		"tests/fixtures/generated-client/stale/**",
 	],
 	jsPlugins: [
+		"@e18e/eslint-plugin",
 		{
 			name: "anti-slop",
 			specifier: "./tools/oxlint/anti-slop/index.ts",
@@ -56,6 +60,15 @@ export default defineConfig({
 		],
 		"await-thenable": "error",
 		"no-floating-promises": "error",
+		"e18e/prefer-array-at": "error",
+		"e18e/prefer-includes": "error",
+		"e18e/prefer-array-to-reversed": "error",
+		"e18e/prefer-array-to-spliced": "error",
+		"e18e/prefer-url-canparse": "error",
+		"e18e/prefer-date-now": "error",
+		"e18e/prefer-regex-test": "error",
+		"e18e/prefer-array-from-map": "error",
+		"e18e/prefer-object-has-own": "error",
 		"anti-slop/no-chained-type-assertions": "error",
 		"anti-slop/no-conditional-empty-object-spread": "error",
 		"anti-slop/no-known-value-widening": "error",
