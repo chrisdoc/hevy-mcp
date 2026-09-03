@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1WorkoutsCountOptions,
   GetV1WorkoutsCountResponses,
 } from "../types/GetV1WorkoutsCount";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get the total number of workouts on the account
@@ -16,12 +16,12 @@ import { client } from "../../.kubb/client";
  */
 export function getV1WorkoutsCount<ThrowOnError extends boolean = true>(
   options: Options<GetV1WorkoutsCountOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/workouts/count",
-    ...config,
-  }) as Promise<RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({ method: "GET", url: "/v1/workouts/count", ...config }) as Promise<
+      RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>
+    >,
+  );
 }

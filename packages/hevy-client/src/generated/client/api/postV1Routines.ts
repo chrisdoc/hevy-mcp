@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PostV1RoutinesOptions,
   PostV1RoutinesResponses,
 } from "../types/PostV1Routines";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Create a new routine
@@ -16,10 +16,12 @@ import { client } from "../../.kubb/client";
  */
 export function postV1Routines<ThrowOnError extends boolean = true>(
   options: Options<PostV1RoutinesOptions, ThrowOnError>,
-): Promise<RequestResult<PostV1RoutinesResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<PostV1RoutinesResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({ method: "POST", url: "/v1/routines", ...config }) as Promise<
-    RequestResult<PostV1RoutinesResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({ method: "POST", url: "/v1/routines", ...config }) as Promise<
+      RequestResult<PostV1RoutinesResponses, ThrowOnError>
+    >,
+  );
 }

@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1BodyMeasurementsOptions,
   GetV1BodyMeasurementsResponses,
 } from "../types/GetV1BodyMeasurements";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a paginated list of body measurements for the authenticated user
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function getV1BodyMeasurements<ThrowOnError extends boolean = true>(
   options: Options<GetV1BodyMeasurementsOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1BodyMeasurementsResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1BodyMeasurementsResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/body_measurements",
-    ...config,
-  }) as Promise<RequestResult<GetV1BodyMeasurementsResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/body_measurements",
+      ...config,
+    }) as Promise<RequestResult<GetV1BodyMeasurementsResponses, ThrowOnError>>,
+  );
 }

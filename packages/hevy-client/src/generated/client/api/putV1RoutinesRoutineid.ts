@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PutV1RoutinesRoutineidOptions,
   PutV1RoutinesRoutineidResponses,
 } from "../types/PutV1RoutinesRoutineid";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Update an existing routine
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function putV1RoutinesRoutineid<ThrowOnError extends boolean = true>(
   options: Options<PutV1RoutinesRoutineidOptions, ThrowOnError>,
-): Promise<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "PUT",
-    url: "/v1/routines/{routineId}",
-    ...config,
-  }) as Promise<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "PUT",
+      url: "/v1/routines/{routineId}",
+      ...config,
+    }) as Promise<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>>,
+  );
 }

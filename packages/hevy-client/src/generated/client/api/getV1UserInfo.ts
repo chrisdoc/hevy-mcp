@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1UserInfoOptions,
   GetV1UserInfoResponses,
 } from "../types/GetV1UserInfo";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get user info
@@ -16,10 +16,12 @@ import { client } from "../../.kubb/client";
  */
 export function getV1UserInfo<ThrowOnError extends boolean = true>(
   options: Options<GetV1UserInfoOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1UserInfoResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1UserInfoResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({ method: "GET", url: "/v1/user/info", ...config }) as Promise<
-    RequestResult<GetV1UserInfoResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({ method: "GET", url: "/v1/user/info", ...config }) as Promise<
+      RequestResult<GetV1UserInfoResponses, ThrowOnError>
+    >,
+  );
 }

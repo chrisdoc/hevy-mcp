@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1RoutineFoldersFolderidOptions,
   GetV1RoutineFoldersFolderidResponses,
 } from "../types/GetV1RoutineFoldersFolderid";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a single routine folder by id.
@@ -18,14 +18,18 @@ export function getV1RoutineFoldersFolderid<
   ThrowOnError extends boolean = true,
 >(
   options: Options<GetV1RoutineFoldersFolderidOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1RoutineFoldersFolderidResponses, ThrowOnError>> {
+): Unwrappable<
+  RequestResult<GetV1RoutineFoldersFolderidResponses, ThrowOnError>
+> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/routine_folders/{folderId}",
-    ...config,
-  }) as Promise<
-    RequestResult<GetV1RoutineFoldersFolderidResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/routine_folders/{folderId}",
+      ...config,
+    }) as Promise<
+      RequestResult<GetV1RoutineFoldersFolderidResponses, ThrowOnError>
+    >,
+  );
 }

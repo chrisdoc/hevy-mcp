@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PostV1RoutineFoldersOptions,
   PostV1RoutineFoldersResponses,
 } from "../types/PostV1RoutineFolders";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Create a new routine folder. The folder will be created at index 0, and all other folders will have their indexes incremented.
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function postV1RoutineFolders<ThrowOnError extends boolean = true>(
   options: Options<PostV1RoutineFoldersOptions, ThrowOnError>,
-): Promise<RequestResult<PostV1RoutineFoldersResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<PostV1RoutineFoldersResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "POST",
-    url: "/v1/routine_folders",
-    ...config,
-  }) as Promise<RequestResult<PostV1RoutineFoldersResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "POST",
+      url: "/v1/routine_folders",
+      ...config,
+    }) as Promise<RequestResult<PostV1RoutineFoldersResponses, ThrowOnError>>,
+  );
 }

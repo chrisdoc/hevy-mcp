@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1RoutinesRoutineidOptions,
   GetV1RoutinesRoutineidResponses,
 } from "../types/GetV1RoutinesRoutineid";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a routine by its Id
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function getV1RoutinesRoutineid<ThrowOnError extends boolean = true>(
   options: Options<GetV1RoutinesRoutineidOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1RoutinesRoutineidResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<GetV1RoutinesRoutineidResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/routines/{routineId}",
-    ...config,
-  }) as Promise<RequestResult<GetV1RoutinesRoutineidResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/routines/{routineId}",
+      ...config,
+    }) as Promise<RequestResult<GetV1RoutinesRoutineidResponses, ThrowOnError>>,
+  );
 }

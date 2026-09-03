@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   GetV1BodyMeasurementsDateOptions,
   GetV1BodyMeasurementsDateResponses,
 } from "../types/GetV1BodyMeasurementsDate";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Get a single body measurement by date
@@ -16,14 +16,18 @@ import { client } from "../../.kubb/client";
  */
 export function getV1BodyMeasurementsDate<ThrowOnError extends boolean = true>(
   options: Options<GetV1BodyMeasurementsDateOptions, ThrowOnError>,
-): Promise<RequestResult<GetV1BodyMeasurementsDateResponses, ThrowOnError>> {
+): Unwrappable<
+  RequestResult<GetV1BodyMeasurementsDateResponses, ThrowOnError>
+> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "GET",
-    url: "/v1/body_measurements/{date}",
-    ...config,
-  }) as Promise<
-    RequestResult<GetV1BodyMeasurementsDateResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({
+      method: "GET",
+      url: "/v1/body_measurements/{date}",
+      ...config,
+    }) as Promise<
+      RequestResult<GetV1BodyMeasurementsDateResponses, ThrowOnError>
+    >,
+  );
 }

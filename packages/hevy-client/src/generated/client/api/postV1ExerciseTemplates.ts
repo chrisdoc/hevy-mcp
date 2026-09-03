@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PostV1ExerciseTemplatesOptions,
   PostV1ExerciseTemplatesResponses,
 } from "../types/PostV1ExerciseTemplates";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Create a new custom exercise template.
@@ -16,12 +16,16 @@ import { client } from "../../.kubb/client";
  */
 export function postV1ExerciseTemplates<ThrowOnError extends boolean = true>(
   options: Options<PostV1ExerciseTemplatesOptions, ThrowOnError>,
-): Promise<RequestResult<PostV1ExerciseTemplatesResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<PostV1ExerciseTemplatesResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "POST",
-    url: "/v1/exercise_templates",
-    ...config,
-  }) as Promise<RequestResult<PostV1ExerciseTemplatesResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "POST",
+      url: "/v1/exercise_templates",
+      ...config,
+    }) as Promise<
+      RequestResult<PostV1ExerciseTemplatesResponses, ThrowOnError>
+    >,
+  );
 }

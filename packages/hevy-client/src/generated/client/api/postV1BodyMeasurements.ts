@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PostV1BodyMeasurementsOptions,
   PostV1BodyMeasurementsResponses,
 } from "../types/PostV1BodyMeasurements";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Create a body measurement entry for a given date. Returns 409 if an entry already exists for that date.
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function postV1BodyMeasurements<ThrowOnError extends boolean = true>(
   options: Options<PostV1BodyMeasurementsOptions, ThrowOnError>,
-): Promise<RequestResult<PostV1BodyMeasurementsResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<PostV1BodyMeasurementsResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "POST",
-    url: "/v1/body_measurements",
-    ...config,
-  }) as Promise<RequestResult<PostV1BodyMeasurementsResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "POST",
+      url: "/v1/body_measurements",
+      ...config,
+    }) as Promise<RequestResult<PostV1BodyMeasurementsResponses, ThrowOnError>>,
+  );
 }

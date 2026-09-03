@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PutV1BodyMeasurementsDateOptions,
   PutV1BodyMeasurementsDateResponses,
 } from "../types/PutV1BodyMeasurementsDate";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Update an existing body measurement entry for a given date. All fields are overwritten; omitted fields are set to null.
@@ -16,14 +16,18 @@ import { client } from "../../.kubb/client";
  */
 export function putV1BodyMeasurementsDate<ThrowOnError extends boolean = true>(
   options: Options<PutV1BodyMeasurementsDateOptions, ThrowOnError>,
-): Promise<RequestResult<PutV1BodyMeasurementsDateResponses, ThrowOnError>> {
+): Unwrappable<
+  RequestResult<PutV1BodyMeasurementsDateResponses, ThrowOnError>
+> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "PUT",
-    url: "/v1/body_measurements/{date}",
-    ...config,
-  }) as Promise<
-    RequestResult<PutV1BodyMeasurementsDateResponses, ThrowOnError>
-  >;
+  return withUnwrap(
+    request({
+      method: "PUT",
+      url: "/v1/body_measurements/{date}",
+      ...config,
+    }) as Promise<
+      RequestResult<PutV1BodyMeasurementsDateResponses, ThrowOnError>
+    >,
+  );
 }

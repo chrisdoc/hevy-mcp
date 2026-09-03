@@ -3,12 +3,12 @@
  * Do not edit manually.
  */
 
-import type { Options, RequestResult } from "../../.kubb/client";
+import type { Options, Unwrappable, RequestResult } from "../../.kubb/client";
 import type {
   PutV1WorkoutsWorkoutidOptions,
   PutV1WorkoutsWorkoutidResponses,
 } from "../types/PutV1WorkoutsWorkoutid";
-import { client } from "../../.kubb/client";
+import { client, withUnwrap } from "../../.kubb/client";
 
 /**
  * @summary Update an existing workout
@@ -16,12 +16,14 @@ import { client } from "../../.kubb/client";
  */
 export function putV1WorkoutsWorkoutid<ThrowOnError extends boolean = true>(
   options: Options<PutV1WorkoutsWorkoutidOptions, ThrowOnError>,
-): Promise<RequestResult<PutV1WorkoutsWorkoutidResponses, ThrowOnError>> {
+): Unwrappable<RequestResult<PutV1WorkoutsWorkoutidResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options;
 
-  return request({
-    method: "PUT",
-    url: "/v1/workouts/{workoutId}",
-    ...config,
-  }) as Promise<RequestResult<PutV1WorkoutsWorkoutidResponses, ThrowOnError>>;
+  return withUnwrap(
+    request({
+      method: "PUT",
+      url: "/v1/workouts/{workoutId}",
+      ...config,
+    }) as Promise<RequestResult<PutV1WorkoutsWorkoutidResponses, ThrowOnError>>,
+  );
 }
