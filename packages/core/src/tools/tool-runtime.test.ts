@@ -8,7 +8,10 @@ import {
 	ToolObserverService,
 } from "../effect-services.js";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
-import { createToolRuntime } from "./tool-runtime.js";
+import {
+	createToolRuntime,
+	HEVY_CLIENT_NOT_INITIALIZED_ERROR,
+} from "./tool-runtime.js";
 import { createOperations } from "@hevy-mcp/operations";
 
 const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>
@@ -27,6 +30,21 @@ function resolveRuntimeServices(runtime: ReturnType<typeof createToolRuntime>) {
 }
 
 describe("createToolRuntime service layer", () => {
+	it("throws the canonical not-initialized error for client service lookup without a client", () => {
+		const runtime = createToolRuntime({
+			client: null,
+			operations: createOperations(createMockHevyClient()),
+			catalog,
+		});
+
+		expect(() => runtime.service(HevyClientService)).toThrowError(
+			HEVY_CLIENT_NOT_INITIALIZED_ERROR,
+		);
+		expect(() => runtime.getClient()).toThrowError(
+			HEVY_CLIENT_NOT_INITIALIZED_ERROR,
+		);
+	});
+
 	it("provides core services from the objects passed to the runtime", () => {
 		const client = createMockHevyClient();
 		const operations = createOperations(client);

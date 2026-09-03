@@ -239,6 +239,9 @@ export function createToolRuntime({
 	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
 		service: Context.Key<I, S>,
 	): S => {
+		if (service.key === HevyClientService.key) {
+			requireClient(effectiveClient);
+		}
 		if (!services) {
 			throw new Error("Core service layer is unavailable");
 		}
