@@ -105,15 +105,23 @@ describe("@hevy-mcp/hevy-client", () => {
 
 	it("sanitizes caller-supplied HevyHttpError endpoint identities", async () => {
 		const observations: string[] = [];
+		const apiKey = "fixture-api-key";
+		const responseSecret = "fixture-response-secret";
 		const fetchMock = vi.fn().mockRejectedValue(
-			new HevyHttpError("request failed", {
+			new HevyHttpError(`Authorization: Bearer ${responseSecret}`, {
 				status: 400,
 				method: "GET",
 				endpoint: "/v1/workouts/raw-workout-id",
+				data: { message: `token: ${responseSecret}` },
+				headers: new Headers({
+					authorization: `Bearer ${responseSecret}`,
+					"retry-after": "2",
+				}),
+				code: responseSecret,
 			}),
 		);
 		const client = createHevyClient({
-			apiKey: "secret-key",
+			apiKey,
 			fetch: fetchMock,
 			maxGetRetries: 0,
 			onRequestComplete: ({ endpoint }) => observations.push(endpoint),
@@ -126,6 +134,15 @@ describe("@hevy-mcp/hevy-client", () => {
 			},
 		);
 		expect(observations).toEqual(["/v1/workouts/:workoutId"]);
+		const error = await client
+			.getWorkout("request-workout-id")
+			.catch((cause) => cause);
+		expect(error).toBeInstanceOf(HevyHttpError);
+		if (!(error instanceof HevyHttpError)) return;
+		expect(String(error)).not.toContain(responseSecret);
+		expect(JSON.stringify(error)).not.toContain(responseSecret);
+		expect(error.data).toBeUndefined();
+		expect(error.headers?.get("authorization")).toBeNull();
 	});
 
 	it.each(["AbortError", "TimeoutError"])(
@@ -229,6 +246,37 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(observationText).not.toContain("jane@example.com");
 		expect(observationText).not.toContain("response-secret");
 		expect(observationText).not.toContain("body-secret");
+	});
+
+	it("does not retain raw response secrets on rejected errors", async () => {
+		const apiKey = "fixture-api-key";
+		const responseSecret = "fixture-response-secret";
+		const fetchMock = vi.fn().mockResolvedValue(
+			response(
+				{
+					message: `Authorization: Bearer ${responseSecret}`,
+					apiKey,
+					nested: { cookie: responseSecret },
+				},
+				500,
+			),
+		);
+		const client = createHevyClient({
+			apiKey,
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+
+		const error = await client.getUserInfo().catch((cause) => cause);
+		expect(error).toBeInstanceOf(HevyHttpError);
+		if (!(error instanceof HevyHttpError)) return;
+
+		expect(error.data).toBeUndefined();
+		expect(error.headers?.get("authorization")).toBeUndefined();
+		expect(JSON.stringify(error)).not.toContain(apiKey);
+		expect(JSON.stringify(error)).not.toContain(responseSecret);
+		expect(String(error)).not.toContain(responseSecret);
+		expect(error.code).not.toBe(responseSecret);
 	});
 
 	it("times out while consuming a response body", async () => {
@@ -693,6 +741,25 @@ describe("@hevy-mcp/hevy-client", () => {
 			{ outcome: "expected", expectedReason: "end_of_list" },
 		]);
 		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("does not retry expected or unexpected GET 404s", async () => {
+		const fetchMock = vi.fn().mockImplementation(() => response({}, 404));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 3,
+			sleep: vi.fn(),
+		});
+
+		await expect(client.getWorkouts({ page: 1 })).rejects.toMatchObject({
+			status: 404,
+		});
+		await expect(client.getWorkouts({ page: 2 })).rejects.toMatchObject({
+			status: 404,
+		});
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 	it("reports exhausted retries as terminal failures", async () => {
 		const observations: Array<{

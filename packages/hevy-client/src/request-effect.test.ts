@@ -4,9 +4,34 @@ import { TestClock } from "effect/testing";
 
 import { createNativeClient } from "./hevy-client-kubb.js";
 import { createHevyClient } from "./hevy-client.js";
-import { getRequestEffectClient } from "./internal-request-effect.js";
+import {
+	getNativeRequestEffect,
+	getRequestEffectClient,
+} from "./internal-request-effect.js";
 
 describe("internal production request Effect seam", () => {
+	it("represents invalid non-v1 endpoints as Effect failures", async () => {
+		const client = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn(),
+			maxGetRetries: 0,
+		});
+		const requestEffect = getNativeRequestEffect(client);
+
+		const program = requestEffect({
+			method: "GET",
+			url: "https://api.hevyapp.com/private",
+		});
+		const error = await Effect.runPromise(Effect.flip(program));
+
+		expect(error).toMatchObject({
+			code: "HEVY_INVALID_ENDPOINT",
+			endpoint: "unknown",
+		});
+		expect(JSON.stringify(error)).not.toContain("api.hevyapp.com");
+		expect(JSON.stringify(error)).not.toContain("test-key");
+	});
+
 	it("routes facade GET retry delays through TestClock", async () => {
 		const fetchMock = vi
 			.fn()

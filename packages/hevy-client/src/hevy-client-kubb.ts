@@ -379,6 +379,22 @@ function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
 	return url;
 }
 
+function buildUrlResult(
+	baseUrl: string,
+	config: RequestConfig<unknown>,
+): URL | HevyHttpError {
+	try {
+		return buildUrl(baseUrl, config);
+	} catch (cause) {
+		if (isHevyHttpError(cause)) return cause;
+		return new HevyHttpError("Invalid Hevy API endpoint", {
+			method: config.method ?? "GET",
+			endpoint: "unknown",
+			code: "HEVY_INVALID_ENDPOINT",
+		});
+	}
+}
+
 async function parseResponseData(
 	response: Response,
 	onFailure?: () => void,
@@ -510,6 +526,7 @@ function normalizeHevyHttpError(
 	error: HevyHttpError,
 	method: string,
 	endpoint: string,
+	apiKey?: string,
 ): HevyHttpError {
 	const normalized = new HevyHttpError(error.message, {
 		status: error.status,
@@ -520,6 +537,8 @@ function normalizeHevyHttpError(
 		endpoint,
 		code: error.code,
 		cause: error.cause,
+		redact: apiKey ? [apiKey] : undefined,
+		responseError: error.responseError,
 		phase: error.phase,
 		operationSafety: error.operationSafety,
 		commitState: error.commitState,
@@ -643,6 +662,7 @@ async function executeRequestAttempt<TData>(
 							headers: response.headers,
 							method: options.method,
 							endpoint: options.endpoint,
+							redact: [options.apiKey],
 							phase,
 							operationSafety: options.safety,
 							commitState: commitStateFor(options.safety, phase, false),
@@ -685,6 +705,7 @@ async function executeRequestAttempt<TData>(
 
 interface AttemptFailureTransitionOptions {
 	cause: unknown;
+	apiKey: string;
 	method: string;
 	endpoint: string;
 	page: number | undefined;
@@ -717,6 +738,7 @@ function createAttemptFailureError(
 			options.cause,
 			options.method,
 			options.endpoint,
+			options.apiKey,
 		);
 	}
 	return createExecutionError({
@@ -784,6 +806,7 @@ function applyRetryExhaustion(
 		error,
 		options.method,
 		options.endpoint,
+		options.apiKey,
 	);
 	exhausted.hevyRetryExhausted = true;
 	exhausted.hevyRetryCount = options.retryCount;
@@ -903,7 +926,9 @@ export function createNativeClient(
 			...config,
 		} as RequestConfig<unknown> & InternalRequestControl;
 		const { method, endpoint, page } = getRequestContext(normalized);
-		const url = buildUrl(baseUrl, normalized);
+		const urlResult = buildUrlResult(baseUrl, normalized);
+		if (isHevyHttpError(urlResult)) return Effect.fail(urlResult);
+		const url = urlResult;
 		// Composed operations may provide their descriptor safety. Raw generated
 		// calls intentionally fall back to the HTTP method mapping.
 		const safety = normalized.hevySafety ?? operationSafetyForMethod(method);
@@ -1130,6 +1155,7 @@ export function createNativeClient(
 						);
 						const transition = {
 							cause: failure.cause,
+							apiKey,
 							method,
 							endpoint,
 							page,
@@ -1351,7 +1377,12 @@ export function createNativeClient(
 						error.outcome !== "deadline_exceeded" &&
 						retryCount >= maxGetRetries
 					) {
-						const exhausted = normalizeHevyHttpError(error, method, endpoint);
+						const exhausted = normalizeHevyHttpError(
+							error,
+							method,
+							endpoint,
+							apiKey,
+						);
 						exhausted.hevyRetryCount = retryCount;
 						exhausted.hevyRetryExhausted = true;
 						exhausted.code = HEVY_RETRY_EXHAUSTED_ERROR_CODE;
