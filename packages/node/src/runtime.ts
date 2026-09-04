@@ -224,7 +224,7 @@ function buildServer(
 					cacheObserver: createNodeCacheObserver(),
 				});
 				installSdkErrorTracking(server, transport);
-				console.error("Hevy client initialized with API key");
+				console.error("Hevy client initialized");
 
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;
