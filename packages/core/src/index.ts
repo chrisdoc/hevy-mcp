@@ -19,6 +19,8 @@ export {
 
 export {
 	createHevyMcpServer,
+	createHevyMcpServerEffect,
+	HevyMcpServerConstructionError,
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
 } from "./server.js";

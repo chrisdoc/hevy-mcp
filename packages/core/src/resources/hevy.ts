@@ -119,7 +119,7 @@ export function registerHevyResources(
 				});
 				return scoped
 					.service(ExerciseTemplateCatalogService)
-					.effect()
+					.effect({ execution: scoped.execution })
 					.pipe(
 						Effect.map((templates) => createJsonResourceResult(uri, templates)),
 					);
