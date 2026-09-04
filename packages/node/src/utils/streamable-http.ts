@@ -11,6 +11,7 @@ import {
 	createExecutionProjection,
 	createSafeErrorDiagnostic,
 } from "@hevy-mcp/core";
+import { Effect, Semaphore } from "effect";
 import type { NodeCliOptions } from "./arguments.js";
 import { httpAdmissionRejections, httpSessionEvictions } from "./metrics.js";
 import {
@@ -264,80 +265,107 @@ function readBody(
 	timeoutMs: number,
 	signal?: AbortSignal,
 ): Promise<unknown> {
-	return new Promise((resolve, reject) => {
-		let size = 0;
-		let settled = false;
-		const chunks: Buffer[] = [];
-		const handlers: ReadBodyHandlers = {
-			onData: () => {},
-			onError: () => {},
-			onAbort: () => {},
-			onEnd: () => {},
-			onTimeout: () => {},
-		};
-		const timer = setTimeout(() => handlers.onTimeout(), timeoutMs);
-		const removeErrorListenerAfterDrain = () => {
-			request.removeListener("error", handlers.onError);
-		};
-		const cleanup = (retainErrorListener = false) => {
-			clearTimeout(timer);
-			request.removeListener("data", handlers.onData);
-			request.removeListener("end", handlers.onEnd);
-			if (retainErrorListener) {
-				request.once("close", removeErrorListenerAfterDrain);
-			} else {
+	const read = Effect.callback<unknown, HttpRequestError>(
+		(resume, interruptionSignal) => {
+			let size = 0;
+			const chunks: Buffer[] = [];
+			let settled = false;
+			const handlers: ReadBodyHandlers = {
+				onData: () => {},
+				onError: () => {},
+				onAbort: () => {},
+				onEnd: () => {},
+				onTimeout: () => {},
+			};
+			const cleanup = () => {
+				request.removeListener("data", handlers.onData);
+				request.removeListener("end", handlers.onEnd);
 				request.removeListener("error", handlers.onError);
-			}
-			signal?.removeEventListener("abort", handlers.onAbort);
-		};
-		const settle = (callback: () => void, retainErrorListener = false) => {
-			if (settled) return;
-			settled = true;
-			cleanup(retainErrorListener);
-			callback();
-		};
-		const rejectAndDrain = (error: HttpRequestError) => {
-			if (settled) return;
-			settled = true;
-			cleanup(true);
-			request.resume();
-			reject(error);
-		};
-		handlers.onData = (chunk: Buffer | string) => {
-			const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-			size += buffer.byteLength;
-			if (size > MAX_BODY_BYTES) {
-				rejectAndDrain(new HttpRequestError(413, "Request body is too large."));
-				return;
-			}
-			if (!settled) chunks.push(buffer);
-		};
-		handlers.onError = (error: Error) => settle(() => reject(error));
-		handlers.onAbort = () =>
-			rejectAndDrain(
-				new HttpRequestError(
-					503,
-					"HTTP server is shutting down. Retry shortly.",
-				),
-			);
-		handlers.onEnd = () =>
-			settle(() => {
+				signal?.removeEventListener("abort", handlers.onAbort);
+				interruptionSignal.removeEventListener("abort", handlers.onAbort);
+			};
+			const settle = (
+				effect:
+					| ReturnType<typeof Effect.succeed<unknown>>
+					| ReturnType<typeof Effect.fail<HttpRequestError>>,
+			) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				resume(effect);
+			};
+			const rejectAndDrain = (error: HttpRequestError) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				request.resume();
+				resume(Effect.fail(error));
+			};
+			handlers.onData = (chunk: Buffer | string) => {
+				const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+				size += buffer.byteLength;
+				if (size > MAX_BODY_BYTES) {
+					rejectAndDrain(
+						new HttpRequestError(413, "Request body is too large."),
+					);
+					return;
+				}
+				if (!settled) chunks.push(buffer);
+			};
+			handlers.onError = (_error: Error) =>
+				settle(
+					Effect.fail(
+						new HttpRequestError(500, "Request body could not be read."),
+					),
+				);
+			handlers.onAbort = () =>
+				rejectAndDrain(
+					new HttpRequestError(
+						503,
+						"HTTP server is shutting down. Retry shortly.",
+					),
+				);
+			handlers.onEnd = () => {
 				try {
 					const raw = Buffer.concat(chunks).toString("utf8");
-					resolve(raw.length === 0 ? undefined : JSON.parse(raw));
+					settle(
+						Effect.succeed(raw.length === 0 ? undefined : JSON.parse(raw)),
+					);
 				} catch {
-					reject(new HttpRequestError(400, "Request body must be valid JSON."));
+					settle(
+						Effect.fail(
+							new HttpRequestError(400, "Request body must be valid JSON."),
+						),
+					);
 				}
+			};
+			handlers.onTimeout = () =>
+				rejectAndDrain(new HttpRequestError(408, "Request body timed out."));
+			request.on("data", handlers.onData);
+			request.once("error", handlers.onError);
+			request.once("end", handlers.onEnd);
+			signal?.addEventListener("abort", handlers.onAbort, { once: true });
+			interruptionSignal.addEventListener("abort", handlers.onAbort, {
+				once: true,
 			});
-		handlers.onTimeout = () =>
-			rejectAndDrain(new HttpRequestError(408, "Request body timed out."));
-		request.on("data", handlers.onData);
-		request.once("error", handlers.onError);
-		request.once("end", handlers.onEnd);
-		signal?.addEventListener("abort", handlers.onAbort, { once: true });
-		timer.unref?.();
-		if (signal?.aborted) handlers.onAbort();
-	});
+			if (signal?.aborted || interruptionSignal.aborted) {
+				handlers.onAbort();
+			}
+			return Effect.sync(() => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				request.resume();
+			});
+		},
+	).pipe(
+		Effect.timeoutOrElse({
+			duration: timeoutMs,
+			orElse: () =>
+				Effect.fail(new HttpRequestError(408, "Request body timed out.")),
+		}),
+	);
+	return Effect.runPromise(read);
 }
 
 function isInitializeRequest<T>(body: T): boolean {
@@ -449,6 +477,7 @@ export async function startStreamableHttpServer(
 	const pendingSessions = new Set<HttpSession>();
 	const initializationControllers = new Set<AbortController>();
 	const initializationPromises = new Set<Promise<void>>();
+	const initializingSemaphore = Semaphore.makeUnsafe(config.maxInitializing);
 	const cleanupErrors: unknown[] = [];
 	let shuttingDown = false;
 	const server = createServer((request, response) => {
@@ -634,17 +663,6 @@ export async function startStreamableHttpServer(
 			);
 			return null;
 		}
-		if (initializationControllers.size >= config.maxInitializing) {
-			recordHttpAdmissionRejection("initializing_capacity");
-			rejectBeforeBody(
-				request,
-				response,
-				503,
-				"MCP server is busy initializing sessions. Retry shortly.",
-				config.bodyTimeoutMs,
-			);
-			return null;
-		}
 		if (sessions.size + initializationControllers.size >= config.maxSessions) {
 			recordHttpAdmissionRejection("session_capacity");
 			rejectBeforeBody(
@@ -657,6 +675,20 @@ export async function startStreamableHttpServer(
 			return null;
 		}
 
+		const permitAcquired = Effect.runSync(
+			initializingSemaphore.takeIfAvailable(1),
+		);
+		if (!permitAcquired) {
+			recordHttpAdmissionRejection("initializing_capacity");
+			rejectBeforeBody(
+				request,
+				response,
+				503,
+				"MCP server is busy initializing sessions. Retry shortly.",
+				config.bodyTimeoutMs,
+			);
+			return null;
+		}
 		const controller = new AbortController();
 		initializationControllers.add(controller);
 		let resolveInitialization!: () => void;
@@ -681,6 +713,7 @@ export async function startStreamableHttpServer(
 				response.removeListener("close", onResponseClose);
 				initializationControllers.delete(controller);
 				initializationPromises.delete(initializationComplete);
+				Effect.runSync(initializingSemaphore.release(1));
 				resolveInitialization();
 			},
 		};
