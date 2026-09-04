@@ -1,6 +1,11 @@
 {
 	"$schema": "./node_modules/nx/schemas/nx-schema.json",
 	"namedInputs": {
+		"nodeMajor": [
+			{
+				"runtime": "node -e 'process.stdout.write(process.versions.node.split(\".\")[0])'"
+			}
+		],
 		"repositoryConfig": [
 			"{workspaceRoot}/nx.json",
 			"{workspaceRoot}/project.json",
@@ -20,13 +25,10 @@
 			"{workspaceRoot}/packages/*/package.json",
 			"{workspaceRoot}/.github/workflows/build-and-test.yml",
 			"{workspaceRoot}/.github/workflows/release.yml",
-			"{workspaceRoot}/CONTRIBUTING.md",
-			"{workspaceRoot}/docs/test-lanes.md",
 			"{workspaceRoot}/scripts/**/*.mjs",
 			"{workspaceRoot}/scripts/**/*.cjs",
 			"{workspaceRoot}/.dependency-cruiser.cjs",
-			"controlPlaneModels",
-			"{workspaceRoot}/.changeset/**/*.md"
+			"controlPlaneModels"
 		],
 		"packageManifestInputs": [
 			"{workspaceRoot}/package.json",
@@ -78,6 +80,7 @@
 			"{workspaceRoot}/packages/node/README.md"
 		],
 		"unitTests": [
+			"nodeMajor",
 			"repositoryConfig",
 			"packageConfigs",
 			"runtimeSources",
@@ -88,6 +91,7 @@
 			"unitSpecialInputs"
 		],
 		"releaseUnitTests": [
+			"nodeMajor",
 			"repositoryConfig",
 			"packageConfigs",
 			"runtimeSources",
@@ -112,6 +116,7 @@
 			"{workspaceRoot}/packages/hevy-client/src/schemas.ts"
 		],
 		"mockedTests": [
+			"nodeMajor",
 			"repositoryConfig",
 			"packageConfigs",
 			"runtimeSources",
@@ -119,32 +124,37 @@
 			"{workspaceRoot}/tests/integration/mocked/**/*"
 		],
 		"contractTests": [
+			"nodeMajor",
 			"repositoryConfig",
 			"packageConfigs",
-			"runtimeSources",
 			"testFixtures",
 			"manifestInputs",
-			"{workspaceRoot}/packages/node/src/index.test.ts",
-			"{workspaceRoot}/packages/node/src/utils/config.test.ts",
-			"{workspaceRoot}/packages/core/src/tools/register.test.ts",
-			"{workspaceRoot}/packages/core/src/utils/output-schemas.test.ts",
+			"{workspaceRoot}/packages/node/src/**/*",
+			"{workspaceRoot}/packages/core/src/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/**/*",
+			"{workspaceRoot}/packages/operations/src/**/*",
 			"{workspaceRoot}/tests/unit/server-manifest.test.ts"
 		],
 		"stdioTests": [
+			"nodeMajor",
 			"repositoryConfig",
 			"packageConfigs",
 			"compilerConfigs",
-			"runtimeSources",
 			"{workspaceRoot}/packages/node/src/**/*",
+			"{workspaceRoot}/packages/core/src/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/**/*",
+			"{workspaceRoot}/packages/operations/src/**/*",
 			"{workspaceRoot}/tests/fixtures/graceful-shutdown-child.ts"
 		],
 		"cliTests": [
+			"nodeMajor",
 			"repositoryConfig",
 			"packageConfigs",
-			"runtimeSources",
-			"{workspaceRoot}/packages/cli/src/**/*"
+			"{workspaceRoot}/packages/cli/src/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/**/*"
 		],
 		"repositoryTypeCheckInputs": [
+			"nodeMajor",
 			"compilerConfigs",
 			"packageManifestInputs",
 			"runtimeSources",
@@ -205,7 +215,13 @@
 			"{workspaceRoot}/scripts/control-plane-validation.mjs"
 		],
 		"workerTests": [
-			"validationInputs",
+			"nodeMajor",
+			"repositoryConfig",
+			"packageConfigs",
+			"{workspaceRoot}/packages/worker/src/**/*",
+			"{workspaceRoot}/packages/core/src/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/**/*",
+			"{workspaceRoot}/packages/operations/src/**/*",
 			"{workspaceRoot}/tests/cloudflare/**/*",
 			"{workspaceRoot}/wrangler.test.jsonc"
 		]

@@ -206,7 +206,7 @@ importers:
         specifier: ^14.0.17
         version: 14.0.17
       nx:
-        specifier: ^23.2.0
+        specifier: 23.2.0
         version: 23.2.0(@swc/core@1.16.1)
       oxfmt:
         specifier: ^0.66.0

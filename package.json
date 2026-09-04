@@ -110,7 +110,7 @@
 		"knip": "^6.34.0",
 		"kubb": "^5.0.6",
 		"nock": "^14.0.17",
-		"nx": "^23.2.0",
+		"nx": "23.2.0",
 		"oxfmt": "^0.66.0",
 		"oxlint": "^1.81.0",
 		"oxlint-tsgolint": "^7.0.2001",
@@ -134,8 +134,8 @@
 		"es5-ext@0.10.64": true,
 		"esbuild@0.28.1": true,
 		"fsevents@2.3.3": true,
-		"@swc/core@1.15.47": true,
-		"nx@23.1.1": true,
+		"@swc/core@1.16.1": true,
+		"nx@23.2.0": true,
 		"workerd@1.20260801.1": true
 	},
 	"mcpName": "io.github.chrisdoc/hevy-mcp"
