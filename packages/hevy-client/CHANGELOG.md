@@ -1,5 +1,22 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.7
+
+### Patch Changes
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use Effect scheduling as the typed retry timing seam for the Hevy client.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Isolate Effect retry schedule state so concurrent and sequential requests keep independent retry indexes.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose the Hevy request Effect through a curated internal client subpath while
+  keeping the public client Promise-only.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Move typed Effect HTTP errors to the client package and centralize pure read-error classification.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Complete the request-local Effect retry interpreter while preserving client and adapter behavior.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Upgrade workspace dependencies and regenerate client with Kubb.
+
 ## 0.2.6
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@hevy-mcp/hevy-client",
-	"version": "0.2.6",
+	"version": "0.2.7",
 	"private": true,
 	"type": "module",
 	"exports": {
