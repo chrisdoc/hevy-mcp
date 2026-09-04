@@ -343,6 +343,58 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
+	it("does not grant idempotent PUT writes a free deadline retry", async () => {
+		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			timeoutMs: 10,
+			maxGetRetries: 1,
+		});
+
+		await expect(
+			client.updateWorkout("workout-1", {} as never),
+		).rejects.toMatchObject({
+			code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+			outcome: "deadline_exceeded",
+		});
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("uses one attempt when maxGetRetries is zero", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			sleep: vi.fn(),
+		});
+
+		await expect(client.getUserInfo()).rejects.toMatchObject({
+			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+			status: 503,
+		});
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("shares the retry budget between transient PUT attempts", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 503))
+			.mockResolvedValueOnce(response({ updated: true }));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep: async () => {},
+		});
+
+		await expect(
+			client.updateWorkout("workout-1", {} as never),
+		).resolves.toEqual({ updated: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	it("does not extend a caller-supplied deadline with a deadline retry", async () => {
 		const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
 		const onLog = vi.fn();

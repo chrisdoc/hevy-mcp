@@ -38,7 +38,7 @@ import type {
 	PutV1RoutinesRoutineid200,
 	PutV1WorkoutsWorkoutid200,
 } from "./types.js";
-import type { HevyRequestOptions } from "./execution.js";
+import type { HevyOperationSafety, HevyRequestOptions } from "./execution.js";
 import type { RequestConfig, ResponseConfig } from "./fetch.ts";
 import {
 	ApiError,
@@ -63,6 +63,7 @@ export type NativeRequestEffect = <TData, TVariables = unknown>(
 	config: RequestConfig<TVariables> & {
 		readonly hevyDeadline?: number;
 		readonly hevyTimeoutMs?: number;
+		readonly hevySafety?: HevyOperationSafety;
 	},
 ) => Effect.Effect<ResponseConfig<TData>, unknown>;
 
@@ -384,8 +385,14 @@ function requestDataEffect<TData, TVariables = unknown>(
  */
 export function getRequestEffectClient(
 	client: RequestEffectOwner,
+	safety?: HevyOperationSafety,
 ): HevyRequestEffectClient {
-	const requestEffect = getNativeRequestEffect(client);
+	const nativeRequestEffect: NativeRequestEffect = (config) =>
+		getNativeRequestEffect(client)(config);
+	const requestEffect: NativeRequestEffect =
+		safety === undefined
+			? nativeRequestEffect
+			: (config) => nativeRequestEffect({ ...config, hevySafety: safety });
 	return {
 		getWorkouts: (params, options) =>
 			requestDataEffect<GetV1Workouts200>(
