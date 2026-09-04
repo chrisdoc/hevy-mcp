@@ -100,18 +100,20 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 			timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
 			lookup: (_key: string) => templateListAll.effect(),
 		});
+		const catalog = createExerciseTemplateCatalog(
+			operations,
+			cache,
+			options.cacheObserver,
+		);
 		yield* Effect.addFinalizer(() => {
 			shutdown.abort(new DOMException("Server closed", "AbortError"));
+			catalog.close?.();
 			return Cache.invalidateAll(cache);
 		});
 		const runtime = createToolRuntime({
 			client,
 			operations,
-			catalog: createExerciseTemplateCatalog(
-				operations,
-				cache,
-				options.cacheObserver,
-			),
+			catalog,
 			logger: mcpLogger,
 			observer: options.observer,
 			executionTimeoutMs: options.executionTimeoutMs,
