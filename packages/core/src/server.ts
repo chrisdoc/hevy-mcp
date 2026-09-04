@@ -135,9 +135,16 @@ export function createHevyMcpServer(
 		Scope.provide(scope)(createHevyMcpServerEffect(options)),
 	);
 	const close = server.close.bind(server);
+	let closePromise: Promise<void> | undefined;
 	server.close = async () => {
-		await close();
-		await Effect.runPromise(Scope.close(scope, Exit.succeed(undefined)));
+		closePromise ??= (async () => {
+			try {
+				await close();
+			} finally {
+				await Effect.runPromise(Scope.close(scope, Exit.succeed(undefined)));
+			}
+		})();
+		await closePromise;
 	};
 	return server;
 }
