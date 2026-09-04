@@ -263,14 +263,16 @@ export function createExerciseTemplateCatalog(
 function checkExecution(execution: HevyRequestOptions) {
 	return Effect.gen(function* () {
 		if (execution.signal?.aborted) {
-			throw (
+			return yield* Effect.fail(
 				execution.signal.reason ??
-				new DOMException("Operation canceled", "AbortError")
+					new DOMException("Operation canceled", "AbortError"),
 			);
 		}
 		const now = yield* Clock.currentTimeMillis;
 		if (execution.deadline !== undefined && now >= execution.deadline) {
-			throw new DOMException("Operation deadline exceeded", "TimeoutError");
+			return yield* Effect.fail(
+				new DOMException("Operation deadline exceeded", "TimeoutError"),
+			);
 		}
 	});
 }

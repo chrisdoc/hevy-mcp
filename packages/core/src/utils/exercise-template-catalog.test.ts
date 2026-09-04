@@ -204,4 +204,34 @@ describe("exercise template catalog", () => {
 		expect(pending[0]?.signal).toBeUndefined();
 		expect(listAll).toHaveBeenCalledTimes(1);
 	});
+
+	it("fails a past execution deadline as a typed timeout", async () => {
+		const listAll = vi
+			.fn<ListAll["effect"]>()
+			.mockReturnValue(Effect.succeed([{ id: "unused" }]));
+		const catalog = createCatalog(operation(listAll));
+
+		await expect(
+			catalog.get({ execution: { deadline: Date.now() - 1 } }),
+		).rejects.toMatchObject({
+			name: "TimeoutError",
+		});
+		expect(listAll).not.toHaveBeenCalled();
+	});
+
+	it("fails an aborted execution as a typed cancellation", async () => {
+		const controller = new AbortController();
+		controller.abort(new DOMException("cancelled", "AbortError"));
+		const listAll = vi
+			.fn<ListAll["effect"]>()
+			.mockReturnValue(Effect.succeed([{ id: "unused" }]));
+		const catalog = createCatalog(operation(listAll));
+
+		await expect(
+			catalog.get({ execution: { signal: controller.signal } }),
+		).rejects.toMatchObject({
+			name: "AbortError",
+		});
+		expect(listAll).not.toHaveBeenCalled();
+	});
 });
