@@ -135,6 +135,48 @@ describe("internal production request Effect seam", () => {
 		}
 	});
 
+	it("drives attempt deadlines from the Effect clock", async () => {
+		let requestSignal: AbortSignal | undefined;
+		const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+			requestSignal = init?.signal ?? undefined;
+			return new Promise<Response>(() => {
+				// TestClock, rather than a wall-clock timer, ends the attempt.
+			});
+		});
+		const client = createNativeClient("test-key", "https://api.hevyapp.com", {
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			timeoutMs: 60_000,
+		});
+
+		const exit = await Effect.runPromise(
+			Effect.provide(
+				Effect.gen(function* () {
+					const fiber = yield* client
+						.requestEffect({ method: "GET", url: "/v1/user/info" })
+						.pipe(Effect.forkChild);
+					yield* Effect.yieldNow;
+					expect(fetchMock).toHaveBeenCalledOnce();
+					yield* TestClock.adjust("60 seconds");
+					return yield* Fiber.await(fiber);
+				}),
+				TestClock.layer(),
+			),
+		);
+
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag !== "Failure") return;
+		const error = Cause.findErrorOption(exit.cause);
+		expect(error._tag).toBe("Some");
+		if (error._tag !== "Some") return;
+		expect(error.value).toMatchObject({
+			code: "HEVY_DEADLINE_EXCEEDED",
+			phase: "dispatch",
+			outcome: "deadline_exceeded",
+		});
+		expect(requestSignal?.aborted).toBe(true);
+	});
+
 	it("does not cancel a response body after text() has locked the stream", async () => {
 		let cancelled = false;
 		const body = new ReadableStream({

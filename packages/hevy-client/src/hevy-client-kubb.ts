@@ -66,7 +66,6 @@ import {
 import {
 	canRetryOperation,
 	commitStateFor,
-	createExecutionSignal,
 	isAbortLike,
 	isDeadlineExceeded,
 	operationSafetyForMethod,
@@ -80,6 +79,23 @@ import { DEFAULT_RETRY_POLICY } from "./retry-policy.js";
 import { createRetrySchedule } from "./retry-schedule.js";
 import { BackoffFailure, retryBackoff } from "./backoff.js";
 import { AttemptFailure, attemptEffect, finalizeOnce } from "./attempt.js";
+
+const NEVER_ABORT_SIGNAL = new AbortController().signal;
+
+function interruptOnAbortSignal(signal: AbortSignal): Effect.Effect<never> {
+	return Effect.callback<never, never>((resume, interruptionSignal) => {
+		const cleanup = () => {
+			signal.removeEventListener("abort", onAbort);
+			interruptionSignal.removeEventListener("abort", cleanup);
+		};
+		const onAbort = () => resume(Effect.interrupt);
+		if (signal.aborted) onAbort();
+		else signal.addEventListener("abort", onAbort, { once: true });
+		interruptionSignal.addEventListener("abort", cleanup, { once: true });
+		return Effect.sync(cleanup);
+	}).pipe(Effect.interruptible);
+}
+
 export interface HevyClientLogEvent {
 	readonly level: "debug" | "warning" | "error";
 	readonly logger: "hevy-api";
@@ -218,59 +234,6 @@ function normalizeMaxGetRetries(value: number | undefined) {
 	return value === undefined || !Number.isFinite(value) || value < 0
 		? MAX_GET_RETRIES
 		: Math.floor(value);
-}
-
-function withTimeout<T>(
-	operation: Promise<T>,
-	timeoutMs: number,
-	onTimeout: () => void,
-	signal?: AbortSignal,
-	onAbortOperation = onTimeout,
-): Promise<T> {
-	const promise = new Promise<T>((resolve, reject) => {
-		let settled = false;
-		const onAbort = () => {
-			if (settled) return;
-			settled = true;
-			if (timer !== undefined) clearTimeout(timer);
-			signal?.removeEventListener("abort", onAbort);
-			onAbortOperation();
-			reject(
-				signal?.reason ?? new DOMException("Operation canceled", "AbortError"),
-			);
-		};
-		const timer = Number.isFinite(timeoutMs)
-			? setTimeout(
-					() => {
-						if (settled) return;
-						settled = true;
-						signal?.removeEventListener("abort", onAbort);
-						onTimeout();
-						reject(new DOMException("Operation timed out", "TimeoutError"));
-					},
-					Math.max(0, timeoutMs),
-				)
-			: undefined;
-		operation.then(
-			(value) => {
-				if (settled) return;
-				settled = true;
-				if (timer !== undefined) clearTimeout(timer);
-				signal?.removeEventListener("abort", onAbort);
-				resolve(value);
-			},
-			<T>(error: T) => {
-				if (settled) return;
-				settled = true;
-				if (timer !== undefined) clearTimeout(timer);
-				signal?.removeEventListener("abort", onAbort);
-				reject(error);
-			},
-		);
-		if (signal?.aborted) onAbort();
-		else signal?.addEventListener("abort", onAbort, { once: true });
-	});
-	return promise;
 }
 
 function getRequestContext(config: {
@@ -470,19 +433,17 @@ interface ExecutionFailureState {
 
 function classifyExecutionFailure(
 	cause: unknown,
-	executionSignal: AbortSignal,
+	callerSignal: AbortSignal | undefined,
 	deadline: number,
 	deadlineTriggered = false,
 ): ExecutionFailureState {
-	const attemptTimedOut = isAbortLike(cause) && !executionSignal.aborted;
+	const attemptTimedOut =
+		Cause.isTimeoutError(cause) ||
+		(isAbortLike(cause) && callerSignal?.aborted !== true);
 	const deadlineExceeded =
-		deadlineTriggered ||
-		isDeadlineExceeded(deadline) ||
-		(attemptTimedOut &&
-			cause instanceof Error &&
-			cause.name === "TimeoutError");
+		deadlineTriggered || isDeadlineExceeded(deadline) || attemptTimedOut;
 
-	const callerCanceled = executionSignal.aborted && !deadlineExceeded;
+	const callerCanceled = callerSignal?.aborted === true && !deadlineExceeded;
 	return {
 		deadlineExceeded,
 		canceled: callerCanceled,
@@ -592,13 +553,14 @@ interface RequestAttemptExecutionOptions {
 	safety: HevyOperationSafety;
 	/** Deadline for this attempt; each retry receives a fresh timeout window. */
 	attemptDeadline: number;
-	executionSignal: AbortSignal;
+	interruptionSignal: AbortSignal;
+	callerSignal?: AbortSignal;
 	startedAt: number;
 	retryCount: number;
 	observationScope: HevyRequestObservationScope | undefined;
 	onRequestComplete: HevyClientOptions["onRequestComplete"];
 	onAttemptComplete?: (observation: HevyRequestObservation) => void;
-	onEffectInterruption?: () => void;
+	onBodyFailure?: (cancelBody: () => void) => void;
 	onPhaseChange?: (phase: HevyRequestPhase) => void;
 }
 
@@ -624,17 +586,6 @@ async function executeRequestAttempt<TData>(
 		phase = nextPhase;
 		options.onPhaseChange?.(nextPhase);
 	};
-	const attemptController = new AbortController();
-	const abortAttempt = () => {
-		attemptController.abort(options.executionSignal.reason);
-		options.onEffectInterruption?.();
-	};
-	const removeAbortAttempt = finalizeOnce(() =>
-		options.executionSignal.removeEventListener("abort", abortAttempt),
-	);
-	options.executionSignal.addEventListener("abort", abortAttempt, {
-		once: true,
-	});
 	try {
 		const result = await runRequestObservation(
 			options.observationScope,
@@ -654,7 +605,12 @@ async function executeRequestAttempt<TData>(
 							: payload === undefined
 								? undefined
 								: JSON.stringify(payload),
-					signal: attemptController.signal,
+					signal: options.callerSignal
+						? AbortSignal.any([
+								options.interruptionSignal,
+								options.callerSignal,
+							])
+						: options.interruptionSignal,
 				};
 				let fetchPromise: Promise<Response>;
 				try {
@@ -667,15 +623,7 @@ async function executeRequestAttempt<TData>(
 					throw error;
 				}
 				setPhase("dispatch");
-				const response = await withTimeout(
-					fetchPromise,
-					remainingDeadlineMs(options.attemptDeadline),
-					() =>
-						attemptController.abort(
-							new DOMException("Operation timed out", "TimeoutError"),
-						),
-					attemptController.signal,
-				);
+				const response = await fetchPromise;
 				setPhase("response-headers");
 				setPhase("response-content");
 				const cancelBody = finalizeOnce(() => {
@@ -683,13 +631,8 @@ async function executeRequestAttempt<TData>(
 					if (!body || body.locked) return;
 					void body.cancel().catch(() => {});
 				});
-				const data = await withTimeout(
-					parseResponseData(response, cancelBody),
-					remainingDeadlineMs(options.attemptDeadline),
-					cancelBody,
-					attemptController.signal,
-					cancelBody,
-				);
+				options.onBodyFailure?.(cancelBody);
+				const data = await parseResponseData(response, cancelBody);
 				if (!response.ok) {
 					throw new HevyHttpError(
 						`Hevy API request failed (HTTP ${response.status})`,
@@ -737,8 +680,6 @@ async function executeRequestAttempt<TData>(
 		return { ok: true, result };
 	} catch (cause) {
 		return { ok: false, cause, phase, responseConfirmed };
-	} finally {
-		removeAbortAttempt();
 	}
 }
 
@@ -750,7 +691,7 @@ interface AttemptFailureTransitionOptions {
 	safety: HevyOperationSafety;
 	phase: HevyRequestPhase;
 	responseConfirmed: boolean;
-	executionSignal: ReturnType<typeof createExecutionSignal>;
+	callerSignal: AbortSignal | undefined;
 	/** Overall operation deadline used for cancellation and retry backoff. */
 	deadline: number;
 	/** Deadline of the attempt that just failed. */
@@ -975,17 +916,13 @@ export function createNativeClient(
 			normalized.hevyTimeoutMs,
 			timeoutMs,
 		);
+		let currentPhase: HevyRequestPhase = "before-dispatch";
 		const requestEffect = Effect.suspend(() => {
 			const operationStartedAt = Date.now();
 			const deadline =
 				normalized.hevyDeadline ??
 				operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
-			const executionSignal = createExecutionSignal({
-				signal: normalized.signal,
-				deadline,
-			});
 			let retryCount = 0;
-			let currentPhase: HevyRequestPhase = "before-dispatch";
 			let lastAttemptStartedAt = operationStartedAt;
 			let freeDeadlineRetryUsed = false;
 
@@ -996,7 +933,7 @@ export function createNativeClient(
 					Date.now() + operationTimeoutMs,
 				);
 				const remaining = remainingDeadlineMs(attemptDeadline);
-				if (executionSignal.signal.aborted || remaining <= 0) {
+				if (normalized.signal?.aborted || remaining <= 0) {
 					const deadlineExceeded = remaining <= 0;
 					const phase =
 						retryCount > 0 && deadlineExceeded
@@ -1010,7 +947,7 @@ export function createNativeClient(
 						phase,
 						deadlineExceeded,
 						canceled: !deadlineExceeded,
-						callerCanceled: !deadlineExceeded && executionSignal.signal.aborted,
+						callerCanceled: !deadlineExceeded && normalized.signal?.aborted,
 					});
 					emitRequestObservation(options.onRequestComplete, {
 						method,
@@ -1047,7 +984,10 @@ export function createNativeClient(
 					finishRequestObservation(observationScope, observation);
 					emitRequestObservation(options.onRequestComplete, observation);
 				};
-				const attemptProgram = attemptEffect({
+				let cancelBody: (() => void) | undefined;
+				let timedOut = false;
+				let attemptInterrupted = false;
+				const attemptEffectProgram = attemptEffect({
 					method,
 					endpoint,
 					phase: "dispatch",
@@ -1058,21 +998,10 @@ export function createNativeClient(
 					retryCount,
 					cause: undefined,
 					run: (interruptionSignal) => {
-						const abortOnInterruption = () => {
-							const reason = interruptionSignal.reason;
-							executionSignal.abort(
-								reason instanceof Error || reason instanceof DOMException
-									? reason
-									: undefined,
-							);
+						const markInterrupted = () => {
+							attemptInterrupted = true;
 						};
-						const removeInterruption = finalizeOnce(() =>
-							interruptionSignal.removeEventListener(
-								"abort",
-								abortOnInterruption,
-							),
-						);
-						interruptionSignal.addEventListener("abort", abortOnInterruption, {
+						interruptionSignal.addEventListener("abort", markInterrupted, {
 							once: true,
 						});
 						return executeRequestAttempt<TData>({
@@ -1084,20 +1013,23 @@ export function createNativeClient(
 							endpoint,
 							safety,
 							attemptDeadline,
-							executionSignal: executionSignal.signal,
+							interruptionSignal,
+							callerSignal: normalized.signal,
 							startedAt,
 							retryCount,
 							observationScope,
 							onRequestComplete: options.onRequestComplete,
 							onAttemptComplete: completeAttempt,
-							onEffectInterruption: removeInterruption,
+							onBodyFailure: (cancel) => {
+								cancelBody = cancel;
+							},
 							onPhaseChange: (phase) => {
 								attemptPhase = phase;
 								currentPhase = phase;
 							},
 						}).finally(() => {
 							attemptReturned = true;
-							removeInterruption();
+							interruptionSignal.removeEventListener("abort", markInterrupted);
 						});
 					},
 				}).pipe(
@@ -1122,15 +1054,44 @@ export function createNativeClient(
 									}),
 								),
 					),
+				);
+				const timedAttempt = Number.isFinite(remaining)
+					? Effect.timeoutOrElse(attemptEffectProgram, {
+							duration: Math.max(0, remaining),
+							orElse: () => {
+								timedOut = true;
+								cancelBody?.();
+								return Effect.fail(
+									new AttemptFailure({
+										cause: new Cause.TimeoutError(
+											"Hevy API request attempt timed out",
+										),
+										method,
+										endpoint,
+										phase: attemptPhase,
+										operationSafety: safety,
+										commitState: commitStateFor(safety, attemptPhase, false),
+										responseConfirmed: false,
+										deadline: attemptDeadline,
+										retryCount,
+									}),
+								);
+							},
+						})
+					: attemptEffectProgram;
+				return timedAttempt.pipe(
 					Effect.ensuring(
 						Effect.sync(() => {
 							if (attemptReturned || attemptCompleted) return;
 							const failure = classifyExecutionFailure(
-								undefined,
-								executionSignal.signal,
+								timedOut
+									? new Cause.TimeoutError()
+									: attemptInterrupted
+										? new DOMException("Effect interrupted", "AbortError")
+										: undefined,
+								normalized.signal,
 								attemptDeadline,
-								executionSignal.deadlineTriggered() ||
-									isDeadlineExceeded(attemptDeadline),
+								timedOut || isDeadlineExceeded(attemptDeadline),
 							);
 							const error = createExecutionError({
 								method,
@@ -1160,61 +1121,39 @@ export function createNativeClient(
 							});
 						}),
 					),
-				);
-
-				return attemptProgram.pipe(
 					Effect.catchTag("AttemptFailure", (failure) => {
 						const executionFailure = classifyExecutionFailure(
 							failure.cause,
-							executionSignal.signal,
+							normalized.signal,
 							attemptDeadline,
-							executionSignal.deadlineTriggered() ||
-								isDeadlineExceeded(attemptDeadline),
+							timedOut || isDeadlineExceeded(attemptDeadline),
 						);
+						const transition = {
+							cause: failure.cause,
+							method,
+							endpoint,
+							page,
+							safety,
+							phase: failure.phase,
+							responseConfirmed: failure.responseConfirmed,
+							callerSignal: normalized.signal,
+							deadline,
+							attemptDeadline,
+							retryCount,
+							maxGetRetries,
+							deadlineRetryActive: freeDeadlineRetryUsed,
+							allowDeadlineRetry: normalized.hevyDeadline === undefined,
+							startedAt,
+							observationScope,
+							onAttemptComplete: completeAttempt,
+							clientOptions: options,
+						} satisfies AttemptFailureTransitionOptions;
 						const error = createAttemptFailureError(
-							{
-								cause: failure.cause,
-								method,
-								endpoint,
-								page,
-								safety,
-								phase: failure.phase,
-								responseConfirmed: failure.responseConfirmed,
-								executionSignal,
-								deadline,
-								attemptDeadline,
-								retryCount,
-								maxGetRetries,
-								deadlineRetryActive: freeDeadlineRetryUsed,
-								allowDeadlineRetry: normalized.hevyDeadline === undefined,
-								startedAt,
-								observationScope,
-								onAttemptComplete: completeAttempt,
-								clientOptions: options,
-							},
+							transition,
 							executionFailure,
 						);
 						const safeToRetry = canRetryAttempt(
-							{
-								cause: failure.cause,
-								method,
-								endpoint,
-								page,
-								safety,
-								phase: failure.phase,
-								responseConfirmed: failure.responseConfirmed,
-								executionSignal,
-								deadline,
-								attemptDeadline,
-								retryCount,
-								maxGetRetries,
-								deadlineRetryActive: freeDeadlineRetryUsed,
-								allowDeadlineRetry: normalized.hevyDeadline === undefined,
-								startedAt,
-								observationScope,
-								onAttemptComplete: completeAttempt,
-								clientOptions: options,
-							},
+							transition,
 							executionFailure,
 							error,
 						);
@@ -1237,81 +1176,23 @@ export function createNativeClient(
 						);
 						const exhausted = applyRetryExhaustion(
 							error,
-							{
-								cause: failure.cause,
-								method,
-								endpoint,
-								page,
-								safety,
-								phase: failure.phase,
-								responseConfirmed: failure.responseConfirmed,
-								executionSignal,
-								deadline,
-								attemptDeadline,
-								retryCount,
-								maxGetRetries,
-								deadlineRetryActive: freeDeadlineRetryUsed,
-								allowDeadlineRetry: normalized.hevyDeadline === undefined,
-								startedAt,
-								observationScope,
-								onAttemptComplete: completeAttempt,
-								clientOptions: options,
-							},
+							transition,
 							safeToRetry,
 						);
-						const observation = createFailureObservation(
-							{
-								cause: failure.cause,
-								method,
-								endpoint,
-								page,
-								safety,
-								phase: failure.phase,
-								responseConfirmed: failure.responseConfirmed,
-								executionSignal,
-								deadline,
-								attemptDeadline,
-								retryCount,
-								maxGetRetries,
-								deadlineRetryActive: freeDeadlineRetryUsed,
-								allowDeadlineRetry: normalized.hevyDeadline === undefined,
-								startedAt,
-								observationScope,
-								onAttemptComplete: completeAttempt,
-								clientOptions: options,
-							},
-							executionFailure,
-							exhausted.error,
-							commitState,
-							safeToRetry,
-							exhausted.exhausted,
-							expectedReason,
-						);
-						completeAttempt(observation);
-						if (expectedReason || !safeToRetry || exhausted.exhausted) {
-							emitTerminalFailureLog(
-								{
-									cause: failure.cause,
-									method,
-									endpoint,
-									page,
-									safety,
-									phase: failure.phase,
-									responseConfirmed: failure.responseConfirmed,
-									executionSignal,
-									deadline,
-									attemptDeadline,
-									retryCount,
-									maxGetRetries,
-									deadlineRetryActive: freeDeadlineRetryUsed,
-									allowDeadlineRetry: normalized.hevyDeadline === undefined,
-									startedAt,
-									observationScope,
-									onAttemptComplete: completeAttempt,
-									clientOptions: options,
-								},
+						if (safeToRetry) currentPhase = "backoff";
+						completeAttempt(
+							createFailureObservation(
+								transition,
+								executionFailure,
 								exhausted.error,
-							);
+								commitState,
+								safeToRetry,
+								exhausted.exhausted,
+								expectedReason,
+							),
+						);
+						if (expectedReason || !safeToRetry || exhausted.exhausted) {
+							emitTerminalFailureLog(transition, exhausted.error);
 						}
 						return Effect.fail(exhausted.error);
 					}),
@@ -1354,9 +1235,8 @@ export function createNativeClient(
 						const isFreeDeadlineRetry =
 							error.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE ||
 							error.outcome === "deadline_exceeded";
-						if (isFreeDeadlineRetry) {
-							return Effect.succeed(Duration.millis(-delayMs));
-						}
+						if (isFreeDeadlineRetry) return Effect.succeed(Duration.zero);
+
 						const remaining = remainingDeadlineMs(deadline);
 						if (remaining <= 0) {
 							return Effect.fail(
@@ -1391,9 +1271,9 @@ export function createNativeClient(
 							retryCount: attempt,
 							delayMs: boundedDelayMs,
 						});
-						return retryBackoff({
+						const wait = retryBackoff({
 							delayMs: boundedDelayMs,
-							signal: executionSignal.signal,
+							signal: normalized.signal ?? NEVER_ABORT_SIGNAL,
 							sleep: options.sleep,
 							method,
 							endpoint,
@@ -1401,10 +1281,27 @@ export function createNativeClient(
 							operationSafety: safety,
 							deadline,
 							cause: error,
-						}).pipe(
+						});
+						const boundedWait = Effect.timeoutOrElse(wait, {
+							duration: boundedDelayMs,
+							orElse: () =>
+								Effect.fail(
+									new BackoffFailure({
+										cause: new Cause.TimeoutError(
+											"Hevy API retry backoff timed out",
+										),
+										method,
+										endpoint,
+										phase: "backoff",
+										operationSafety: safety,
+										deadline,
+									}),
+								),
+						});
+						return boundedWait.pipe(
 							Effect.mapError((failure: BackoffFailure) => {
 								const waitDeadlineExceeded =
-									executionSignal.deadlineTriggered() ||
+									Cause.isTimeoutError(failure.cause) ||
 									isDeadlineExceeded(deadline);
 								const waitError = createExecutionError({
 									method,
@@ -1414,7 +1311,7 @@ export function createNativeClient(
 									deadlineExceeded: waitDeadlineExceeded,
 									canceled: !waitDeadlineExceeded,
 									callerCanceled:
-										!waitDeadlineExceeded && executionSignal.signal.aborted,
+										!waitDeadlineExceeded && normalized.signal?.aborted,
 									cause: failure.cause,
 								});
 								emitRequestObservation(options.onRequestComplete, {
@@ -1438,7 +1335,7 @@ export function createNativeClient(
 							Effect.ensuring(
 								Effect.sync(() => finishRetryWait(retryWaitScope)),
 							),
-							Effect.as(Duration.millis(-delayMs)),
+							Effect.as(Duration.zero),
 						);
 					},
 				},
@@ -1480,20 +1377,43 @@ export function createNativeClient(
 							endpoint,
 							safety,
 							phase: currentPhase,
-							deadlineExceeded:
-								!interrupted &&
-								(executionSignal.deadlineTriggered() ||
-									isDeadlineExceeded(deadline)),
-							canceled: interrupted || executionSignal.signal.aborted,
-							callerCanceled: interrupted || executionSignal.signal.aborted,
+							deadlineExceeded: !interrupted && isDeadlineExceeded(deadline),
+							canceled: interrupted || normalized.signal?.aborted === true,
+							callerCanceled:
+								interrupted || normalized.signal?.aborted === true,
 							cause: undefined,
 						}),
 					);
 				}),
-				Effect.ensuring(Effect.sync(() => executionSignal.cleanup())),
 			);
 		});
-		return requestEffect;
+		const requestWithCancellation = normalized.signal
+			? Effect.raceFirst(
+					requestEffect,
+					interruptOnAbortSignal(normalized.signal),
+				)
+			: requestEffect;
+		return requestWithCancellation.pipe(
+			Effect.catchCause((cause) => {
+				const failure = Cause.findErrorOption(cause);
+				if (Option.isSome(failure) && !normalized.signal?.aborted) {
+					return Effect.fail(failure.value);
+				}
+				const interrupted = Cause.hasInterrupts(cause);
+				return Effect.fail(
+					createExecutionError({
+						method,
+						endpoint,
+						safety,
+						phase: currentPhase,
+						deadlineExceeded: false,
+						canceled: interrupted || normalized.signal?.aborted === true,
+						callerCanceled: interrupted || normalized.signal?.aborted === true,
+						cause: undefined,
+					}),
+				);
+			}),
+		);
 	};
 
 	const client = (<TData, _TError = unknown, TVariables = unknown>(

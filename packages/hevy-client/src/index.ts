@@ -44,12 +44,10 @@ export {
 export {
 	canRetryOperation,
 	commitStateFor,
-	createExecutionSignal,
 	isAbortLike,
 	isDeadlineExceeded,
 	operationSafetyForMethod,
 	remainingDeadlineMs,
-	withExecutionSignal,
 	type HevyCommitState,
 	type HevyExecutionControl,
 	type HevyExecutionOptions,

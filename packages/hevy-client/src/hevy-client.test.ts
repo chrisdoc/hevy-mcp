@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { Effect } from "effect";
 import { createHevyClient } from "./hevy-client.js";
 import {
 	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
@@ -7,11 +6,7 @@ import {
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	HevyHttpError,
 } from "./hevy-http-error.js";
-import {
-	createExecutionSignal,
-	isAbortLike,
-	withExecutionSignal,
-} from "./execution.js";
+import { isAbortLike } from "./execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "./hevy-client-kubb.js";
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
@@ -38,6 +33,45 @@ function hangingResponse(): Response {
 describe("@hevy-mcp/hevy-client", () => {
 	it("allows slow collection endpoints a one-minute default deadline", () => {
 		expect(DEFAULT_API_TIMEOUT_MS).toBe(60_000);
+	});
+
+	it("uses the per-call timeout before the constructor timeout", async () => {
+		vi.useFakeTimers();
+		try {
+			let requestSignal: AbortSignal | undefined;
+			const fetchMock = vi.fn(
+				(_input: RequestInfo | URL, init?: RequestInit) =>
+					new Promise<Response>((_resolve, reject) => {
+						requestSignal = init?.signal ?? undefined;
+						init?.signal?.addEventListener(
+							"abort",
+							() => reject(init.signal?.reason),
+							{ once: true },
+						);
+					}),
+			);
+			const client = createHevyClient({
+				apiKey: "secret-key",
+				fetch: fetchMock,
+				timeoutMs: 5_000,
+				maxGetRetries: 0,
+			});
+
+			const request = client.getUserInfo({ timeoutMs: 25 });
+			const rejected = expect(request).rejects.toMatchObject({
+				code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+				phase: "dispatch",
+				outcome: "deadline_exceeded",
+			});
+			await vi.advanceTimersByTimeAsync(24);
+			expect(requestSignal?.aborted).toBe(false);
+			await vi.advanceTimersByTimeAsync(1);
+
+			await rejected;
+			expect(requestSignal?.aborted).toBe(true);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("uses object-form options and safely encodes requests", async () => {
@@ -92,34 +126,6 @@ describe("@hevy-mcp/hevy-client", () => {
 			},
 		);
 		expect(observations).toEqual(["/v1/workouts/:workoutId"]);
-	});
-
-	it("does not abort an execution signal twice", () => {
-		const execution = createExecutionSignal({});
-		execution.abort(new DOMException("done", "AbortError"));
-		execution.abort(new DOMException("ignored", "AbortError"));
-		execution.cleanup();
-		expect(execution.signal.reason).toMatchObject({ message: "done" });
-	});
-
-	it("exposes execution controls and aborts them when interrupted", async () => {
-		let execution: ReturnType<typeof createExecutionSignal> | undefined;
-		await Effect.runPromise(
-			Effect.race(
-				withExecutionSignal({}, (currentExecution) => {
-					execution = currentExecution;
-					return Effect.never;
-				}),
-				Effect.succeed("completed"),
-			),
-		);
-
-		expect(execution?.deadlineTriggered()).toBe(false);
-		expect(execution?.signal.aborted).toBe(true);
-		expect(execution?.signal.reason).toMatchObject({
-			name: "AbortError",
-			message: "Execution interrupted",
-		});
 	});
 
 	it.each(["AbortError", "TimeoutError"])(
