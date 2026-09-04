@@ -7,6 +7,7 @@ import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import type { ToolExecutionContext } from "../execution.js";
+import { ToolInputValidationError } from "../effect-errors.js";
 
 type ToolDefinitionBase<
 	TSchema extends Record<string, z.ZodTypeAny>,
@@ -110,15 +111,29 @@ export function registerToolDefinition(
 	});
 
 	const config = getRegisteredToolConfig(definition);
-	server.registerTool(definition.name, config, (args, context) =>
-		handler(
-			z.strictObject(definition.inputSchema).parse(args),
+	server.registerTool(definition.name, config, (args, context) => {
+		let parsed: InferToolParams<typeof definition.inputSchema>;
+		try {
+			parsed = z
+				.strictObject(definition.inputSchema)
+				.parse(args ?? {}) as InferToolParams<typeof definition.inputSchema>;
+		} catch (error) {
+			const path =
+				error instanceof z.ZodError
+					? error.issues[0]?.path
+							?.map((segment) => String(segment))
+							.join(".") || "arguments"
+					: "arguments";
+			throw new ToolInputValidationError({ path });
+		}
+		return handler(
+			parsed,
 			context
 				? {
 						signal: context.mcpReq.signal,
 						requestId: String(context.mcpReq.id),
 					}
 				: undefined,
-		),
-	);
+		);
+	});
 }

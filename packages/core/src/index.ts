@@ -75,9 +75,12 @@ export {
 } from "./utils/tool-taxonomy.js";
 export {
 	ApiError,
+	ClientNotInitializedError,
 	NetworkError,
 	NotFoundError,
+	OperationUnavailableError,
 	RateLimitError,
+	ToolInputValidationError,
 	ValidationError,
 } from "./effect-errors.js";
 export {
