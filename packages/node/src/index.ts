@@ -1,14 +1,7 @@
 import { createHevyMcpServer } from "@hevy-mcp/core";
 import { createHevyClient } from "@hevy-mcp/hevy-client";
-import { z } from "zod";
 import type { NodeTransport } from "./utils/arguments.js";
-
-const serverConfigSchema = z.object({
-	apiKey: z
-		.string()
-		.min(1, "Hevy API key is required")
-		.describe("Your Hevy API key (available in the Hevy app settings)."),
-});
+import { assertApiKey } from "./utils/config.js";
 
 /**
  * Create an unconnected MCP server for embedding in a Node application.
@@ -24,12 +17,12 @@ export function createNodeMcpServer(
 	lifecycleSignal?: AbortSignal,
 ) {
 	try {
-		const { apiKey: validatedApiKey } = serverConfigSchema.parse({ apiKey });
+		assertApiKey(apiKey);
 		return Promise.resolve(
 			createHevyMcpServer({
 				createClient: ({ onLog }) =>
 					createHevyClient({
-						apiKey: validatedApiKey,
+						apiKey,
 						onLog,
 					}),
 				lifecycleSignal,
