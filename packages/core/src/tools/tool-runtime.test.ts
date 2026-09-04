@@ -136,6 +136,22 @@ describe("createToolRuntime service layer", () => {
 });
 
 describe("createToolRuntime handler factory composition", () => {
+	it("interrupts an in-flight effect when the request signal aborts", async () => {
+		const controller = new AbortController();
+		const runtime = createToolRuntime({
+			client: null,
+			catalog,
+		});
+		const handler = runtime.createHandler(() => Effect.never, "get-workout");
+
+		const result = handler({}, { signal: controller.signal });
+		controller.abort();
+
+		await expect(result).resolves.toMatchObject({
+			isError: true,
+		});
+	});
+
 	it("invokes the caller-supplied createHandler when an observer is configured", async () => {
 		const finish = vi.fn();
 		const start = vi.fn(() => ({ run: runImmediately, finish }));

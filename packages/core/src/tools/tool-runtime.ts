@@ -194,10 +194,17 @@ function runToolEffect<TParams extends object>(
 	args: TParams,
 	requestContext: ToolExecutionContext | undefined,
 	services: ToolRuntimeServiceContext | undefined,
+	lifecycleSignal?: AbortSignal,
 ): Promise<McpToolResponse> {
 	const program = Effect.suspend(() => fn(args, requestContext));
 	const provided = services ? Effect.provide(program, services) : program;
-	return Effect.runPromise(provided);
+	// Pass the MCP request signal to the Effect runtime as well as binding it
+	// to the Hevy client. This interrupts the fiber while it is waiting on
+	// non-fetch work (for example a retry delay or a cache lookup), and the
+	// client bridge then aborts native fetch at its edge.
+	return Effect.runPromise(provided, {
+		signal: mergeAbortSignals(lifecycleSignal, requestContext?.signal),
+	});
 }
 
 export const defaultHandlerFactory: ToolHandlerFactory = <
@@ -274,7 +281,7 @@ export function createToolRuntime({
 		) =>
 			withErrorHandling(
 				(args: TParams, requestContext?: ToolExecutionContext) =>
-					runToolEffect(fn, args, requestContext, services),
+					runToolEffect(fn, args, requestContext, services, lifecycleSignal),
 				context,
 			) as ToolHandler);
 	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
@@ -303,7 +310,7 @@ export function createToolRuntime({
 		) => Promise<McpToolResponse> = createHandler
 			? createHandler(fn, context, metadata)
 			: (args, requestContext) =>
-					runToolEffect(fn, args, requestContext, services);
+					runToolEffect(fn, args, requestContext, services, lifecycleSignal);
 		return withErrorHandling(
 			async (args: TParams, requestContext?: ToolExecutionContext) => {
 				let scope;
