@@ -1,4 +1,5 @@
 import { SpanStatusCode, type Span } from "@opentelemetry/api";
+import { Effect, Exit, Scope } from "effect";
 import {
 	serviceName,
 	serviceVersion,
@@ -172,7 +173,16 @@ export async function runNodeLifecycle({
 	start,
 	onFailure,
 }: RunNodeLifecycleOptions): Promise<void> {
-	const cleanupProcessExceptionTracking = installProcessExceptionTracking();
+	const processScope = await Effect.runPromise(Scope.make());
+	const cleanupProcessExceptionTracking = async (): Promise<void> => {
+		await Effect.runPromise(Scope.close(processScope, Exit.succeed(undefined)));
+	};
+	await Effect.runPromise(
+		Effect.acquireRelease(
+			Effect.sync(installProcessExceptionTracking),
+			(cleanup) => Effect.sync(cleanup),
+		).pipe(Effect.provideService(Scope.Scope, processScope)),
+	);
 	const lifecycleController = new AbortController();
 	const state = createOutcomeState(transport);
 	const context: NodeLifecycleContext = {
@@ -205,7 +215,7 @@ export async function runNodeLifecycle({
 						try {
 							await result.onShutdown?.(succeeded);
 						} finally {
-							cleanupProcessExceptionTracking();
+							await cleanupProcessExceptionTracking();
 							await flushTelemetry();
 						}
 					},
@@ -226,7 +236,7 @@ export async function runNodeLifecycle({
 				}
 				onFailure?.(reason, outcome);
 				span.setStatus({ code: SpanStatusCode.ERROR });
-				cleanupProcessExceptionTracking();
+				await cleanupProcessExceptionTracking();
 				throw error;
 			} finally {
 				span.end();

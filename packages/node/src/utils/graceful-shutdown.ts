@@ -1,3 +1,5 @@
+import { Duration, Effect } from "effect";
+
 export type ShutdownSignal = "SIGINT" | "SIGTERM";
 
 interface CloseTarget {
@@ -15,15 +17,6 @@ interface FlushableStdout {
 	write(chunk: string, callback: (error?: Error | null) => void): boolean;
 }
 
-interface ForcedExitTimer {
-	unref(): void;
-}
-
-type ScheduleForcedExit = (
-	callback: () => void,
-	timeoutMs: number,
-) => ForcedExitTimer;
-
 interface GracefulShutdownOptions {
 	target: CloseTarget;
 	process?: ProcessLike;
@@ -31,7 +24,6 @@ interface GracefulShutdownOptions {
 	flush?: () => Promise<void>;
 	forcedExitTimeoutMs?: number;
 	onComplete?: (succeeded: boolean) => void | Promise<void>;
-	scheduleForcedExit?: ScheduleForcedExit;
 	cancel?: AbortController;
 }
 
@@ -71,7 +63,6 @@ export function installGracefulShutdown({
 	logError = console.error,
 	flush = flushStdout,
 	forcedExitTimeoutMs = FORCED_EXIT_TIMEOUT_MS,
-	scheduleForcedExit = setTimeout,
 	cancel,
 	onComplete,
 }: GracefulShutdownOptions): GracefulShutdownController {
@@ -122,48 +113,49 @@ export function installGracefulShutdown({
 			new DOMException(`Shutdown requested by ${signal}`, "AbortError"),
 		);
 
-		const forcedExitTimer = scheduleForcedExit(() => {
-			void reportCompletion(false);
-			processLike.exit(shutdownSettled ? (processLike.exitCode ?? 0) : 1);
-		}, forcedExitTimeoutMs);
-		// This fallback must survive successful shutdown so it can terminate a
-		// process held open by unrelated handles, without keeping the process alive
-		// when the event loop drains normally.
-		forcedExitTimer.unref();
-
 		shutdownPromise = (async () => {
 			logError(`Shutting down gracefully after ${signal}`);
-			let shutdownFailed = false;
-			let shutdownError: unknown;
-
-			try {
-				await target.close();
-			} catch (error) {
-				shutdownFailed = true;
-				shutdownError = error;
+			const shutdown = Effect.tryPromise({
+				try: async () => {
+					let shutdownError: unknown;
+					try {
+						await target.close();
+					} catch (error) {
+						shutdownError = error;
+					}
+					try {
+						await flush();
+					} catch (error) {
+						shutdownError ??= error;
+					}
+					return { succeeded: shutdownError === undefined, shutdownError };
+				},
+				catch: (error) => ({ succeeded: false, shutdownError: error }),
+			});
+			const timed = Effect.race(
+				shutdown,
+				Effect.sleep(Duration.millis(forcedExitTimeoutMs)).pipe(
+					Effect.as({ succeeded: false, timedOut: true as const }),
+				),
+			);
+			const result = await Effect.runPromise(timed);
+			if ("timedOut" in result) {
+				await reportCompletion(false);
+				processLike.exit(1);
+				return;
 			}
 
-			try {
-				await flush();
-			} catch (error) {
-				if (!shutdownFailed) {
-					shutdownError = error;
-				}
-				shutdownFailed = true;
+			if (!result.succeeded) {
+				const message =
+					result.shutdownError instanceof Error
+						? result.shutdownError.message
+						: "Unknown shutdown error";
+				logError(`Graceful shutdown failed: ${message}`);
+				processLike.exitCode = 1;
 			}
-
 			try {
-				if (shutdownFailed) {
-					const message =
-						shutdownError instanceof Error
-							? shutdownError.message
-							: "Unknown shutdown error";
-					logError(`Graceful shutdown failed: ${message}`);
-					processLike.exitCode = 1;
-					return;
-				}
+				await reportCompletion(result.succeeded);
 			} finally {
-				await reportCompletion(!shutdownFailed);
 				shutdownSettled = true;
 				cleanup();
 			}

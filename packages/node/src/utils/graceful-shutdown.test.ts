@@ -31,6 +31,29 @@ class FakeProcess {
 }
 
 describe("package-local graceful shutdown", () => {
+	it("forces exit 1 when close does not settle within the deadline", async () => {
+		vi.useFakeTimers();
+		try {
+			const process = new FakeProcess();
+			const controller = installGracefulShutdown({
+				target: { close: () => new Promise<void>(() => {}) },
+				process,
+				flush: vi.fn().mockResolvedValue(undefined),
+			});
+
+			process.emit("SIGTERM");
+			await vi.advanceTimersByTimeAsync(4_999);
+			expect(process.exit).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(1);
+			await controller.getShutdownPromise();
+
+			expect(process.exit).toHaveBeenCalledWith(1);
+			expect(process.listenerCount("SIGTERM")).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("closes, flushes, and removes signal listeners in order", async () => {
 		const process = new FakeProcess();
 		const events: string[] = [];

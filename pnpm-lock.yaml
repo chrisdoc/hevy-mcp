@@ -332,6 +332,9 @@ importers:
       '@sentry/node':
         specifier: ^10.73.0
         version: 10.73.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.222.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
+      effect:
+        specifier: ^4.0.0-rc.112
+        version: 4.0.0-rc.112
       semver:
         specifier: ^7.8.5
         version: 7.8.5
