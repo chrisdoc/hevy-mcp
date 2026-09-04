@@ -163,8 +163,7 @@
 		},
 		"worker:dry-run": {
 			"cache": false,
-			"inputs": ["validationInputs"],
-			"outputs": ["{workspaceRoot}/.wrangler/dry-run"]
+			"inputs": ["validationInputs"]
 		},
 		"build": {
 			"cache": false,
