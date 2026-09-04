@@ -11,6 +11,7 @@
 
 import { randomBytes, randomUUID as nodeRandomUUID } from "node:crypto";
 import { z } from "zod";
+import { Effect, Layer } from "effect";
 import * as Sentry from "@sentry/node";
 import { metrics, trace } from "@opentelemetry/api";
 
@@ -167,8 +168,11 @@ const resource = resourceFromAttributes({
 
 let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
+let telemetryInitialized = false;
 
-if (telemetryEnabled) {
+function initializeTelemetry(): void {
+	if (telemetryInitialized || !telemetryEnabled) return;
+	telemetryInitialized = true;
 	const rawDsn = process.env.SENTRY_DSN ?? DEFAULT_SENTRY_DSN;
 	const isValidDsn =
 		z.string().safeParse(rawDsn).success &&
@@ -241,15 +245,39 @@ if (telemetryEnabled) {
 	trace.setGlobalTracerProvider(tracerProvider);
 }
 
+/**
+ * Process-scoped telemetry. Importing this module only creates inert OTel
+ * handles; provider registration and Sentry initialization happen when the
+ * lifecycle acquires this layer.
+ */
+export const initializeTelemetryEffect = Effect.try({
+	try: initializeTelemetry,
+	catch: () => undefined,
+});
+
+export const telemetryLayer = Layer.effectDiscard(
+	initializeTelemetryEffect.pipe(
+		Effect.andThen(
+			Effect.addFinalizer(() =>
+				Effect.promise(() => flushTelemetry().catch(() => undefined)),
+			),
+		),
+	),
+);
+
 export async function flushTelemetry(timeoutMs = 1_000): Promise<void> {
 	if (!telemetryEnabled) {
 		return;
 	}
 
 	const flushPromise = Promise.allSettled([
-		...(tracerProvider ? [tracerProvider.forceFlush()] : []),
-		...(meterProvider ? [meterProvider.forceFlush()] : []),
-		Sentry.flush(timeoutMs),
+		...(tracerProvider
+			? [Promise.resolve().then(() => tracerProvider?.forceFlush())]
+			: []),
+		...(meterProvider
+			? [Promise.resolve().then(() => meterProvider?.forceFlush())]
+			: []),
+		Promise.resolve().then(() => Sentry.flush(timeoutMs)),
 	]);
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	const timeoutPromise = new Promise<void>((resolve) => {

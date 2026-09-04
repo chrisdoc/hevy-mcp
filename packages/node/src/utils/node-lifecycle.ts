@@ -1,5 +1,5 @@
 import { SpanStatusCode, type Span } from "@opentelemetry/api";
-import { Effect, Exit, Scope } from "effect";
+import { Effect, Exit, Layer, Scope } from "effect";
 import {
 	serviceName,
 	serviceVersion,
@@ -7,6 +7,7 @@ import {
 	captureFailure,
 	flushTelemetry,
 	installProcessExceptionTracking,
+	telemetryLayer,
 } from "./telemetry.js";
 import { serverStartups } from "./metrics.js";
 import { installGracefulShutdown } from "./graceful-shutdown.js";
@@ -174,8 +175,14 @@ export async function runNodeLifecycle({
 	onFailure,
 }: RunNodeLifecycleOptions): Promise<void> {
 	const processScope = await Effect.runPromise(Scope.make());
+	if (telemetryLayer) {
+		await Effect.runPromise(Layer.buildWithScope(telemetryLayer, processScope));
+	}
 	const cleanupProcessExceptionTracking = async (): Promise<void> => {
 		await Effect.runPromise(Scope.close(processScope, Exit.succeed(undefined)));
+		// Keep compatibility with test doubles and alternate telemetry
+		// implementations that do not provide a Layer.
+		if (!telemetryLayer) await flushTelemetry();
 	};
 	await Effect.runPromise(
 		Effect.acquireRelease(
@@ -216,7 +223,6 @@ export async function runNodeLifecycle({
 							await result.onShutdown?.(succeeded);
 						} finally {
 							await cleanupProcessExceptionTracking();
-							await flushTelemetry();
 						}
 					},
 				});

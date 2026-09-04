@@ -1,5 +1,6 @@
 import type { Scope } from "@sentry/core";
 import type { SpanOptions } from "@opentelemetry/api";
+import { Effect } from "effect";
 import type { MeterProviderOptions } from "@opentelemetry/sdk-metrics";
 import type { TracerConfig } from "@opentelemetry/sdk-trace-base";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -150,6 +151,12 @@ function setTelemetryEnvironment(
 }
 
 describe("telemetry initialization", () => {
+	async function loadTelemetry() {
+		const mod = await import("./telemetry.js");
+		await Effect.runPromise(mod.initializeTelemetryEffect);
+		return mod;
+	}
+
 	beforeEach(() => {
 		setTelemetryEnvironment();
 		testDoubles.nodeTracerProviderOptions = undefined;
@@ -162,9 +169,18 @@ describe("telemetry initialization", () => {
 		vi.clearAllMocks();
 	});
 
-	it("initializes Sentry independently from OTel tracing", async () => {
+	it("does not initialize providers when imported before the lifecycle layer", async () => {
 		vi.resetModules();
 		await import("./telemetry.js");
+
+		expect(testDoubles.sentryInit).not.toHaveBeenCalled();
+		expect(testDoubles.nodeTracerProvider).not.toHaveBeenCalled();
+		expect(testDoubles.setGlobalTracerProvider).not.toHaveBeenCalled();
+	});
+
+	it("initializes Sentry independently from OTel tracing", async () => {
+		vi.resetModules();
+		await loadTelemetry();
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -189,7 +205,7 @@ describe("telemetry initialization", () => {
 		});
 		vi.resetModules();
 
-		await import("./telemetry.js");
+		await loadTelemetry();
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -201,7 +217,7 @@ describe("telemetry initialization", () => {
 
 	it("removes Sentry process handlers to prevent duplicate failures", async () => {
 		vi.resetModules();
-		await import("./telemetry.js");
+		await loadTelemetry();
 
 		const firstCall = testDoubles.sentryInit.mock.calls[0] as
 			| unknown[]
@@ -232,7 +248,7 @@ describe("telemetry initialization", () => {
 		setTelemetryEnvironment(setting);
 		vi.resetModules();
 
-		await import("./telemetry.js");
+		await loadTelemetry();
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledOnce();
 		expect(testDoubles.nodeTracerProvider).toHaveBeenCalledOnce();
@@ -242,7 +258,7 @@ describe("telemetry initialization", () => {
 
 	it("uses an independent OTel sampler without Sentry tracing setup", async () => {
 		vi.resetModules();
-		await import("./telemetry.js");
+		await loadTelemetry();
 
 		expect(testDoubles.alwaysOnSampler).toHaveBeenCalledOnce();
 		expect(testDoubles.register).toHaveBeenCalledWith();
@@ -257,7 +273,7 @@ describe("telemetry initialization", () => {
 
 	it("records process failures with native exception diagnostics", async () => {
 		vi.resetModules();
-		const mod = await import("./telemetry.js");
+		const mod = await loadTelemetry();
 		const listeners = new Map<string, (error: Error | string) => void>();
 		const processLike = {
 			on: vi.fn((event: string, listener: (error: Error | string) => void) => {
@@ -301,7 +317,7 @@ describe("telemetry initialization", () => {
 
 	it("registers the global tracer provider", async () => {
 		vi.resetModules();
-		await import("./telemetry.js");
+		await loadTelemetry();
 
 		expect(testDoubles.setGlobalTracerProvider).toHaveBeenCalled();
 	});
@@ -312,7 +328,7 @@ describe("telemetry initialization", () => {
 			OTEL_COLLECTOR_TOKEN: "test-collector-token",
 		});
 
-		const mod = await import("./telemetry.js");
+		const mod = await loadTelemetry();
 
 		expect(testDoubles.otlpTraceExporter).toHaveBeenCalledWith({
 			url: "https://otel.chrisdoc.dev/v1/traces",
@@ -351,7 +367,7 @@ describe("telemetry initialization", () => {
 		});
 		vi.resetModules();
 
-		await import("./telemetry.js");
+		await loadTelemetry();
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
 			expect.objectContaining({ dsn: undefined }),
@@ -367,7 +383,7 @@ describe("telemetry initialization", () => {
 		});
 		vi.resetModules();
 
-		const mod = await import("./telemetry.js");
+		const mod = await loadTelemetry();
 
 		expect(testDoubles.sentryInit).not.toHaveBeenCalled();
 		expect(testDoubles.nodeTracerProvider).not.toHaveBeenCalled();
@@ -385,9 +401,19 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.sentryFlush).not.toHaveBeenCalled();
 	});
 
+	it("swallows synchronous flush failures", async () => {
+		vi.resetModules();
+		const mod = await loadTelemetry();
+		testDoubles.sentryFlush.mockImplementationOnce(() => {
+			throw new Error("sentry unavailable");
+		});
+
+		await expect(mod.flushTelemetry()).resolves.toBeUndefined();
+	});
+
 	it("exports shared telemetry instances", async () => {
 		vi.resetModules();
-		const mod = await import("./telemetry.js");
+		const mod = await loadTelemetry();
 		expect(mod.tracer).toBeDefined();
 		expect(mod.meter).toBeDefined();
 		expect(mod.captureFailure).toBeDefined();
@@ -397,7 +423,7 @@ describe("telemetry initialization", () => {
 
 	it("passes through valid service-instance IDs from provider", async () => {
 		vi.resetModules();
-		const mod = await import("./telemetry.js");
+		const mod = await loadTelemetry();
 		expect(mod.createServiceInstanceId(() => "process-one")).toBe(
 			"process-one",
 		);
@@ -409,7 +435,7 @@ describe("telemetry initialization", () => {
 
 	it("falls back to a random opaque ID for invalid generators", async () => {
 		vi.resetModules();
-		const mod = await import("./telemetry.js");
+		const mod = await loadTelemetry();
 		const fallback = "ab".repeat(16);
 
 		expect(mod.createServiceInstanceId(() => "")).toBe(fallback);

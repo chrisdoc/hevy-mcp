@@ -20,6 +20,7 @@ vi.mock("./telemetry.js", () => ({
 	captureFailure: doubles.capture,
 	flushTelemetry: doubles.flush,
 	installProcessExceptionTracking: vi.fn(() => doubles.cleanup),
+	telemetryLayer: undefined,
 	serviceName: "hevy-mcp",
 	serviceVersion: "test-version",
 	tracer: {

@@ -88,6 +88,7 @@ vi.mock("./utils/telemetry.js", () => ({
 	},
 	serviceName: "hevy-mcp",
 	serviceVersion: "3.4.1",
+	telemetryLayer: undefined,
 	installProcessExceptionTracking: testDoubles.installProcessExceptionTracking,
 }));
 
