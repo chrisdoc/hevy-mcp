@@ -13,6 +13,7 @@ import {
 } from "../execution.js";
 import { createSafeErrorDiagnostic } from "./error-policy.js";
 import type { RuntimeValue } from "./type-predicates.js";
+import { logCoreError } from "./core-logger.js";
 
 export { ErrorType } from "./error-policy.js";
 export type { StructuredExecutionError } from "../execution.js";
@@ -146,7 +147,7 @@ export function createErrorResponse(
 	};
 	const contextPrefix = context ? `[${context}] ` : "";
 	const formattedMessage = `${contextPrefix}Error: ${policy.message}`;
-	console.error(
+	logCoreError(
 		JSON.stringify(
 			createMcpToolFailureEvent(context || "unknown", policy.type, {
 				...diagnostic,
@@ -194,8 +195,8 @@ export function withErrorHandling<TParams extends object>(
 			try {
 				onError?.(error, context, Object.keys(normalizedArgs).length);
 			} catch {
-				console.error("MCP error observer failure", {
-					category: "ObserverError",
+				logCoreError("MCP error observer failure", {
+					category: "Error",
 				});
 			}
 

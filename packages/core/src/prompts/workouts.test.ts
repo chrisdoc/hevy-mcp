@@ -177,4 +177,27 @@ describe("workout prompts", () => {
 			}),
 		);
 	});
+
+	it("returns prompt text when the observer rejects after running it", async () => {
+		const finish = vi.fn();
+		vi.mocked(promptStart).mockReturnValue({
+			run: async <T>(operation: () => Promise<T>) => {
+				const result = await operation();
+				throw new Error(`observer rejected after prompt: ${String(result)}`);
+			},
+			finish,
+		});
+
+		const result = await client.getPrompt({
+			name: "analyze-workout-progress",
+			arguments: {},
+		});
+
+		expect(result.messages[0]?.content).toEqual(
+			expect.objectContaining({
+				text: expect.stringContaining("last 4 weeks"),
+			}),
+		);
+		expect(finish).toHaveBeenCalledOnce();
+	});
 });

@@ -9,6 +9,7 @@ import {
 	searchExerciseTemplatesResponse,
 } from "../utils/response-contracts.js";
 import { createSafeErrorDiagnostic } from "../utils/error-policy.js";
+import { logCoreError } from "../utils/core-logger.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
@@ -179,7 +180,7 @@ const searchExerciseTemplatesDefinition = {
 						},
 					});
 				} catch (error) {
-					console.error(
+					logCoreError(
 						"Failed to emit structured exercise template cache log",
 						createSafeErrorDiagnostic(error),
 					);

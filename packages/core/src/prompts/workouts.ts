@@ -5,6 +5,7 @@ import { memoizeObservationScope, type ToolObserver } from "../observation.js";
 import { bucketCount } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
 import { isString } from "../utils/type-predicates.js";
+import { logCoreError } from "../utils/core-logger.js";
 
 type PromptResult = {
 	messages: Array<{
@@ -43,8 +44,20 @@ function withPromptObservation<TArgs extends object>(
 		}
 
 		try {
-			const invoke = () => Promise.resolve(handler(args));
-			const result = await (scope ? scope.run(invoke) : invoke());
+			let handlerPromise: Promise<PromptResult> | undefined;
+			const invoke = () => {
+				handlerPromise ??= Promise.resolve(handler(args));
+				return handlerPromise;
+			};
+			let result: PromptResult;
+			try {
+				result = await (scope ? scope.run(invoke) : invoke());
+			} catch (observerError) {
+				// A scope may reject after invoking the handler. Reuse the
+				// memoized handler promise rather than executing a prompt twice.
+				if (!handlerPromise) throw observerError;
+				result = await handlerPromise;
+			}
 			void scope?.finish({
 				outcome: "success",
 				durationMs: Date.now() - startedAt,
@@ -63,7 +76,7 @@ function withPromptObservation<TArgs extends object>(
 				errorType: policy.type,
 				error: policy.diagnostic,
 			});
-			console.error("MCP prompt failure", policy.diagnostic);
+			logCoreError("MCP prompt failure", policy.diagnostic);
 			throw error;
 		}
 	};
