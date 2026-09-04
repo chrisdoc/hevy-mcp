@@ -176,7 +176,11 @@ export async function runNodeLifecycle({
 }: RunNodeLifecycleOptions): Promise<void> {
 	const processScope = await Effect.runPromise(Scope.make());
 	if (telemetryLayer) {
-		await Effect.runPromise(Layer.buildWithScope(telemetryLayer, processScope));
+		await Effect.runPromise(
+			Layer.buildWithScope(telemetryLayer, processScope).pipe(
+				Effect.catch(() => Effect.void),
+			),
+		);
 	}
 	const cleanupProcessExceptionTracking = async (): Promise<void> => {
 		await Effect.runPromise(Scope.close(processScope, Exit.succeed(undefined)));

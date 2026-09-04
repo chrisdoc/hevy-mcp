@@ -1,6 +1,6 @@
 import type { Scope } from "@sentry/core";
 import type { SpanOptions } from "@opentelemetry/api";
-import { Effect } from "effect";
+import { Effect, Exit, Layer, Scope as EffectScope } from "effect";
 import type { MeterProviderOptions } from "@opentelemetry/sdk-metrics";
 import type { TracerConfig } from "@opentelemetry/sdk-trace-base";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -176,6 +176,30 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.sentryInit).not.toHaveBeenCalled();
 		expect(testDoubles.nodeTracerProvider).not.toHaveBeenCalled();
 		expect(testDoubles.setGlobalTracerProvider).not.toHaveBeenCalled();
+	});
+
+	it("keeps a provider initialization throw out of the lifecycle layer", async () => {
+		vi.resetModules();
+		testDoubles.sentryInit.mockImplementationOnce(() => {
+			throw new Error("telemetry init failed");
+		});
+		const mod = await import("./telemetry.js");
+		const processScope = await Effect.runPromise(EffectScope.make());
+
+		await expect(
+			Effect.runPromise(Layer.buildWithScope(mod.telemetryLayer, processScope)),
+		).resolves.toBeDefined();
+
+		testDoubles.sentryInit.mockImplementation(() => ({
+			_isSentryClient: true,
+		}));
+		await expect(
+			Effect.runPromise(mod.initializeTelemetryEffect),
+		).resolves.toBeUndefined();
+		await Effect.runPromise(
+			EffectScope.close(processScope, Exit.succeed(undefined)),
+		);
+		expect(testDoubles.sentryInit).toHaveBeenCalledTimes(2);
 	});
 
 	it("initializes Sentry independently from OTel tracing", async () => {

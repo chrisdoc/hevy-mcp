@@ -1,7 +1,6 @@
 /**
  * Centralized telemetry initialization.
  *
- * This module MUST be imported before any other application code.
  * It sets up independent telemetry paths: Sentry error events and an OTel
  * Collector (traces + metrics to Honeycomb).
  *
@@ -172,77 +171,84 @@ let telemetryInitialized = false;
 
 function initializeTelemetry(): void {
 	if (telemetryInitialized || !telemetryEnabled) return;
-	telemetryInitialized = true;
-	const rawDsn = process.env.SENTRY_DSN ?? DEFAULT_SENTRY_DSN;
-	const isValidDsn =
-		z.string().safeParse(rawDsn).success &&
-		rawDsn.length > 0 &&
-		!rawDsn.startsWith("*");
+	try {
+		const rawDsn = process.env.SENTRY_DSN ?? DEFAULT_SENTRY_DSN;
+		const isValidDsn =
+			z.string().safeParse(rawDsn).success &&
+			rawDsn.length > 0 &&
+			!rawDsn.startsWith("*");
 
-	// --- Sentry error monitoring ---
-	Sentry.init({
-		dsn: isValidDsn ? rawDsn : undefined,
-		release: sentryRelease,
-		tracesSampleRate: 0.0,
-		sendClientReports: false,
-		sendDefaultPii: false,
-		beforeSend: sanitizeSentryEvent,
-		integrations: (integrations) =>
-			integrations.filter(
-				(integration) =>
-					integration.name !== "OnUncaughtException" &&
-					integration.name !== "OnUnhandledRejection",
-			),
-		skipOpenTelemetrySetup: true,
-		registerEsmLoaderHooks: false,
-		ignoreErrors: ["EPIPE", "broken pipe"],
-	});
+		// --- Sentry error monitoring ---
+		Sentry.init({
+			dsn: isValidDsn ? rawDsn : undefined,
+			release: sentryRelease,
+			tracesSampleRate: 0.0,
+			sendClientReports: false,
+			sendDefaultPii: false,
+			beforeSend: sanitizeSentryEvent,
+			integrations: (integrations) =>
+				integrations.filter(
+					(integration) =>
+						integration.name !== "OnUncaughtException" &&
+						integration.name !== "OnUnhandledRejection",
+				),
+			skipOpenTelemetrySetup: true,
+			registerEsmLoaderHooks: false,
+			ignoreErrors: ["EPIPE", "broken pipe"],
+		});
 
-	const spanProcessors: SpanProcessor[] = [];
+		const spanProcessors: SpanProcessor[] = [];
 
-	// OTel Collector → Honeycomb traces — only if token is available
-	if (collectorToken) {
-		spanProcessors.push(
-			new BatchSpanProcessor(
-				new OTLPTraceExporter({
-					url: `${COLLECTOR_ENDPOINT}/traces`,
-					headers: {
-						Authorization: `Bearer ${collectorToken}`,
-					},
-				}),
-			),
-		);
-	}
-
-	tracerProvider = new NodeTracerProvider({
-		resource,
-		sampler: new AlwaysOnSampler(),
-		spanProcessors,
-	});
-
-	tracerProvider.register();
-
-	// --- OpenTelemetry meter provider (→ Collector → Honeycomb metrics) ---
-	if (collectorToken) {
-		meterProvider = new MeterProvider({
-			resource,
-			readers: [
-				new PeriodicExportingMetricReader({
-					exporter: new OTLPMetricExporter({
-						url: `${COLLECTOR_ENDPOINT}/metrics`,
+		// OTel Collector → Honeycomb traces — only if token is available
+		if (collectorToken) {
+			spanProcessors.push(
+				new BatchSpanProcessor(
+					new OTLPTraceExporter({
+						url: `${COLLECTOR_ENDPOINT}/traces`,
 						headers: {
 							Authorization: `Bearer ${collectorToken}`,
 						},
-						temporalityPreference: AggregationTemporalityPreference.DELTA,
 					}),
-					exportIntervalMillis: 30_000,
-				}),
-			],
-		});
-		metrics.setGlobalMeterProvider(meterProvider);
-	}
+				),
+			);
+		}
 
-	trace.setGlobalTracerProvider(tracerProvider);
+		tracerProvider = new NodeTracerProvider({
+			resource,
+			sampler: new AlwaysOnSampler(),
+			spanProcessors,
+		});
+
+		tracerProvider.register();
+
+		// --- OpenTelemetry meter provider (→ Collector → Honeycomb metrics) ---
+		if (collectorToken) {
+			meterProvider = new MeterProvider({
+				resource,
+				readers: [
+					new PeriodicExportingMetricReader({
+						exporter: new OTLPMetricExporter({
+							url: `${COLLECTOR_ENDPOINT}/metrics`,
+							headers: {
+								Authorization: `Bearer ${collectorToken}`,
+							},
+							temporalityPreference: AggregationTemporalityPreference.DELTA,
+						}),
+						exportIntervalMillis: 30_000,
+					}),
+				],
+			});
+			metrics.setGlobalMeterProvider(meterProvider);
+		}
+
+		trace.setGlobalTracerProvider(tracerProvider);
+		telemetryInitialized = true;
+	} catch (error) {
+		telemetryInitialized = false;
+		tracerProvider = undefined;
+		meterProvider = undefined;
+		throw error;
+	}
 }
 
 /**
@@ -252,11 +258,12 @@ function initializeTelemetry(): void {
  */
 export const initializeTelemetryEffect = Effect.try({
 	try: initializeTelemetry,
-	catch: () => undefined,
+	catch: (error) => error,
 });
 
 export const telemetryLayer = Layer.effectDiscard(
 	initializeTelemetryEffect.pipe(
+		Effect.catch(() => Effect.void),
 		Effect.andThen(
 			Effect.addFinalizer(() =>
 				Effect.promise(() => flushTelemetry().catch(() => undefined)),
