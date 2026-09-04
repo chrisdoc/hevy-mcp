@@ -13,7 +13,11 @@ import { projectRoutineFolder } from "../utils/formatters.js";
 import { createExecutionErrorProjection } from "../utils/error-handler.js";
 import { requireOperation } from "../tools/operation-helpers.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
-import { mergeAbortSignals } from "../execution.js";
+import {
+	mergeAbortSignals,
+	runBoundedExecution,
+	type ToolExecutionContext,
+} from "../execution.js";
 
 const JSON_MIME_TYPE = "application/json";
 
@@ -44,10 +48,17 @@ function createResourceErrorResult(
 async function readResource(
 	uri: URL,
 	signal: AbortSignal | undefined,
+	execution: ToolExecutionContext | undefined,
+	executionTimeoutMs: number,
+	executionDeadline: number | undefined,
 	read: () => Effect.Effect<ReadResourceResult, unknown, never>,
 ): Promise<ReadResourceResult> {
 	try {
-		return await Effect.runPromise(Effect.suspend(read), { signal });
+		return await runBoundedExecution(Effect.suspend(read), {
+			signal,
+			timeoutMs: executionTimeoutMs,
+			deadline: execution?.deadline ?? executionDeadline,
+		});
 	} catch (error) {
 		return createResourceErrorResult(uri, error);
 	}
@@ -68,6 +79,9 @@ export function registerHevyResources(
 			readResource(
 				uri,
 				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
 				() => {
 					const scoped = runtime.forExecution({
 						signal: context.mcpReq.signal,
@@ -95,6 +109,9 @@ export function registerHevyResources(
 			readResource(
 				uri,
 				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
 				() => {
 					const scoped = runtime.forExecution({
 						signal: context.mcpReq.signal,
@@ -126,6 +143,9 @@ export function registerHevyResources(
 			readResource(
 				uri,
 				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
 				() => {
 					const scoped = runtime.forExecution({
 						signal: context.mcpReq.signal,
@@ -153,6 +173,9 @@ export function registerHevyResources(
 			readResource(
 				uri,
 				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
 				() => {
 					const scoped = runtime.forExecution({
 						signal: context.mcpReq.signal,

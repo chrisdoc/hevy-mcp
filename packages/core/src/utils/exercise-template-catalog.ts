@@ -1,4 +1,4 @@
-import { Cache, Deferred, Effect, Fiber, Option } from "effect";
+import { Cache, Clock, Deferred, Effect, Fiber, Option } from "effect";
 import type { HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
 import type { TemplatesListAllOperation } from "@hevy-mcp/operations";
@@ -255,14 +255,15 @@ export function createExerciseTemplateCatalog(
 }
 
 function checkExecution(execution: HevyRequestOptions) {
-	return Effect.sync(() => {
+	return Effect.gen(function* () {
 		if (execution.signal?.aborted) {
 			throw (
 				execution.signal.reason ??
 				new DOMException("Operation canceled", "AbortError")
 			);
 		}
-		if (execution.deadline !== undefined && Date.now() >= execution.deadline) {
+		const now = yield* Clock.currentTimeMillis;
+		if (execution.deadline !== undefined && now >= execution.deadline) {
 			throw new DOMException("Operation deadline exceeded", "TimeoutError");
 		}
 	});

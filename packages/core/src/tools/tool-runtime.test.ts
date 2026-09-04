@@ -149,6 +149,29 @@ describe("createToolRuntime handler factory composition", () => {
 
 		await expect(result).resolves.toMatchObject({
 			isError: true,
+			content: [
+				{ text: expect.stringContaining("request was canceled by the client") },
+			],
+		});
+	});
+
+	it("bounds handlers by an expired constructor deadline even without forExecution", async () => {
+		const runtime = createToolRuntime({
+			client: null,
+			catalog,
+			executionDeadline: Date.now() - 1,
+		});
+		const result = await runtime.createHandler(
+			() => Effect.never,
+			"get-workout",
+		)({});
+
+		expect(result).toMatchObject({
+			isError: true,
+			errorOutcome: expect.objectContaining({
+				code: "HEVY_DEADLINE_EXCEEDED",
+				outcome: "deadline_exceeded",
+			}),
 		});
 	});
 

@@ -32,6 +32,7 @@ import { resolveErrorPolicy } from "../utils/error-policy.js";
 import {
 	bindClientExecution,
 	mergeAbortSignals,
+	runBoundedExecution,
 	type ToolExecutionContext,
 } from "../execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
@@ -195,6 +196,8 @@ function runToolEffect<TParams extends object>(
 	requestContext: ToolExecutionContext | undefined,
 	services: ToolRuntimeServiceContext | undefined,
 	lifecycleSignal?: AbortSignal,
+	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
+	executionDeadline?: number,
 ): Promise<McpToolResponse> {
 	const program = Effect.suspend(() => fn(args, requestContext));
 	const provided = services ? Effect.provide(program, services) : program;
@@ -202,8 +205,10 @@ function runToolEffect<TParams extends object>(
 	// to the Hevy client. This interrupts the fiber while it is waiting on
 	// non-fetch work (for example a retry delay or a cache lookup), and the
 	// client bridge then aborts native fetch at its edge.
-	return Effect.runPromise(provided, {
+	return runBoundedExecution(provided, {
 		signal: mergeAbortSignals(lifecycleSignal, requestContext?.signal),
+		timeoutMs: executionTimeoutMs,
+		deadline: requestContext?.deadline ?? executionDeadline,
 	});
 }
 
@@ -281,7 +286,15 @@ export function createToolRuntime({
 		) =>
 			withErrorHandling(
 				(args: TParams, requestContext?: ToolExecutionContext) =>
-					runToolEffect(fn, args, requestContext, services, lifecycleSignal),
+					runToolEffect(
+						fn,
+						args,
+						requestContext,
+						services,
+						lifecycleSignal,
+						executionTimeoutMs,
+						effectiveExecutionDeadline,
+					),
 				context,
 			) as ToolHandler);
 	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
@@ -310,7 +323,15 @@ export function createToolRuntime({
 		) => Promise<McpToolResponse> = createHandler
 			? createHandler(fn, context, metadata)
 			: (args, requestContext) =>
-					runToolEffect(fn, args, requestContext, services, lifecycleSignal);
+					runToolEffect(
+						fn,
+						args,
+						requestContext,
+						services,
+						lifecycleSignal,
+						executionTimeoutMs,
+						effectiveExecutionDeadline,
+					);
 		return withErrorHandling(
 			async (args: TParams, requestContext?: ToolExecutionContext) => {
 				let scope;
@@ -412,9 +433,7 @@ export function createToolRuntime({
 						nextExecution?.signal,
 					);
 					nested.deadline =
-						nextExecution?.deadline ??
-						effectiveExecutionDeadline ??
-						Date.now() + executionTimeoutMs;
+						nextExecution?.deadline ?? effectiveExecutionDeadline;
 					return nested as ToolExecutionContext;
 				})(),
 				executionTimeoutMs,
