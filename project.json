@@ -50,13 +50,8 @@
 			"inputs": ["repositoryTypeCheckInputs"]
 		},
 		"check": {
-			"cache": true,
-			"inputs": [
-				"nodeMajor",
-				"validationInputs",
-				"{workspaceRoot}/oxlint.config.ts",
-				"{workspaceRoot}/oxfmt.config.ts"
-			]
+			"cache": false,
+			"inputs": ["validationInputs"]
 		},
 		"check:server-manifest": {
 			"cache": true,
@@ -167,13 +162,8 @@
 			"inputs": ["validationInputs"]
 		},
 		"worker:dry-run": {
-			"cache": true,
-			"inputs": [
-				"workerTests",
-				"{workspaceRoot}/scripts/check-worker-bundle.mjs",
-				"{workspaceRoot}/wrangler.jsonc"
-			],
-			"outputs": ["{workspaceRoot}/.wrangler/dry-run"]
+			"cache": false,
+			"inputs": ["validationInputs"]
 		},
 		"build": {
 			"cache": false,

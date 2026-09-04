@@ -133,6 +133,7 @@
 			"{workspaceRoot}/packages/core/src/**/*",
 			"{workspaceRoot}/packages/hevy-client/src/**/*",
 			"{workspaceRoot}/packages/operations/src/**/*",
+			"{workspaceRoot}/tests/contract/**/*",
 			"{workspaceRoot}/tests/unit/server-manifest.test.ts"
 		],
 		"stdioTests": [
@@ -151,7 +152,9 @@
 			"repositoryConfig",
 			"packageConfigs",
 			"{workspaceRoot}/packages/cli/src/**/*",
-			"{workspaceRoot}/packages/hevy-client/src/**/*"
+			"{workspaceRoot}/packages/core/src/**/*",
+			"{workspaceRoot}/packages/hevy-client/src/**/*",
+			"{workspaceRoot}/packages/operations/src/**/*"
 		],
 		"repositoryTypeCheckInputs": [
 			"nodeMajor",
