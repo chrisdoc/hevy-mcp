@@ -1,10 +1,15 @@
-import type { LoggingMessageNotification } from "@modelcontextprotocol/server";
 import { createSafeErrorDiagnostic } from "./error-policy.js";
 import { logCoreError } from "./core-logger.js";
 import type { RuntimeValue } from "./type-predicates.js";
 
-export type McpClientLogMessage = LoggingMessageNotification["params"];
-export type McpClientLogger = (message: McpClientLogMessage) => void;
+import type {
+	McpClientLogMessage,
+	McpClientLogger,
+} from "./mcp-client-logger-types.js";
+export type {
+	McpClientLogMessage,
+	McpClientLogger,
+} from "./mcp-client-logger-types.js";
 
 interface LoggingServer {
 	isConnected(): boolean;

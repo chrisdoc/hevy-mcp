@@ -14,6 +14,7 @@ import {
 import { createSafeErrorDiagnostic } from "./error-policy.js";
 import type { RuntimeValue } from "./type-predicates.js";
 import { logCoreError } from "./core-logger.js";
+import type { McpClientLogger } from "./mcp-client-logger-types.js";
 
 export { ErrorType } from "./error-policy.js";
 export type { StructuredExecutionError } from "../execution.js";
@@ -119,6 +120,7 @@ export interface ErrorDebugContext {
 export function createErrorResponse(
 	error: RuntimeValue,
 	context?: string,
+	logger?: McpClientLogger,
 ): McpToolResponse {
 	const policy = resolveErrorPolicy(
 		error,
@@ -154,6 +156,8 @@ export function createErrorResponse(
 				execution,
 			}),
 		),
+		undefined,
+		logger,
 	);
 
 	return {
@@ -183,6 +187,7 @@ export function withErrorHandling<TParams extends object>(
 		context: string,
 		argumentKeyCount: number,
 	) => void,
+	logger?: McpClientLogger,
 ): (
 	args: JSONObject,
 	context?: ToolExecutionContext,
@@ -200,7 +205,7 @@ export function withErrorHandling<TParams extends object>(
 				});
 			}
 
-			return createErrorResponse(error, context);
+			return createErrorResponse(error, context, logger);
 		}
 	};
 }

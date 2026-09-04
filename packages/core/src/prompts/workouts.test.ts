@@ -200,4 +200,26 @@ describe("workout prompts", () => {
 		);
 		expect(finish).toHaveBeenCalledOnce();
 	});
+
+	it("runs the prompt when the observer rejects before invoking it", async () => {
+		const finish = vi.fn();
+		vi.mocked(promptStart).mockReturnValue({
+			run: vi
+				.fn()
+				.mockRejectedValue(new Error("observer rejected before prompt")),
+			finish,
+		});
+
+		const result = await client.getPrompt({
+			name: "analyze-workout-progress",
+			arguments: {},
+		});
+
+		expect(result.messages[0]?.content).toEqual(
+			expect.objectContaining({
+				text: expect.stringContaining("last 4 weeks"),
+			}),
+		);
+		expect(finish).toHaveBeenCalledOnce();
+	});
 });

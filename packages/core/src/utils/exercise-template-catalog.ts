@@ -78,7 +78,13 @@ function notifyRefreshed(
 	reason: ExerciseTemplateCatalogRefreshReason,
 ): void {
 	try {
-		options.onRefreshed?.(catalog, reason);
+		const callback = options.onRefreshed;
+		if (!callback) return;
+		// Refresh notifications are telemetry. Defer invocation so both
+		// synchronous throws and rejected promises are contained here.
+		void Promise.resolve()
+			.then(() => callback(catalog, reason))
+			.catch(() => undefined);
 	} catch {
 		// Callbacks are best effort.
 	}

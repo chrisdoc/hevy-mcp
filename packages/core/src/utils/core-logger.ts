@@ -2,7 +2,7 @@ import { Effect, Logger, LogLevel } from "effect";
 import type {
 	McpClientLogMessage,
 	McpClientLogger,
-} from "./mcp-client-logger.js";
+} from "./mcp-client-logger-types.js";
 import type { SafeErrorDiagnostic } from "./error-policy.js";
 
 const levelForMcp = (

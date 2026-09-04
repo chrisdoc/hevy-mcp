@@ -123,7 +123,7 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 		const counting = createCountingServer(server);
 		registerHevyTools(counting.server, runtime);
 		options.onToolsRegistered?.(counting.getCount());
-		registerWorkoutPrompts(server, options.observer);
+		registerWorkoutPrompts(server, options.observer, mcpLogger);
 		registerHevyResources(server, runtime);
 		return server;
 	},

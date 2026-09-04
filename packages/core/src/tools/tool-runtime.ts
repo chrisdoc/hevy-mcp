@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Scope } from "effect";
-import type { McpClientLogger } from "../utils/mcp-client-logger.js";
+import type { McpClientLogger } from "../utils/mcp-client-logger-types.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import {
@@ -29,6 +29,7 @@ import {
 } from "../observation.js";
 import { bucketCount, getResultTelemetry } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
+import { logCoreError } from "../utils/core-logger.js";
 import {
 	bindClientExecution,
 	mergeAbortSignals,
@@ -222,6 +223,8 @@ export const defaultHandlerFactory: ToolHandlerFactory = <
 		(args: TParams, requestContext?: ToolExecutionContext) =>
 			runToolEffect(fn, args, requestContext, undefined),
 		context,
+		undefined,
+		undefined,
 	) as ToolHandler;
 
 export function createToolRuntime({
@@ -296,6 +299,8 @@ export function createToolRuntime({
 						effectiveExecutionDeadline,
 					),
 				context,
+				undefined,
+				logger,
 			) as ToolHandler);
 	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
 		service: Context.Key<I, S>,
@@ -353,13 +358,25 @@ export function createToolRuntime({
 					if (scope) {
 						try {
 							runPromise = scope.run(invokeHandler);
-						} catch {
+						} catch (observerError) {
+							logCoreError(
+								"MCP tool observer failure",
+								resolveErrorPolicy(observerError, "").diagnostic,
+								logger,
+							);
 							runPromise = invokeHandler();
 						}
 					} else {
 						runPromise = invokeHandler();
 					}
-					const result = await runPromise.catch(invokeHandler);
+					const result = await runPromise.catch((observerError) => {
+						logCoreError(
+							"MCP tool observer failure",
+							resolveErrorPolicy(observerError, "").diagnostic,
+							logger,
+						);
+						return invokeHandler();
+					});
 					const telemetry = {
 						outcome: result.isError ? "returned_error" : "success",
 						durationMs: Date.now() - startedAt,
@@ -385,6 +402,8 @@ export function createToolRuntime({
 				}
 			},
 			context,
+			undefined,
+			logger,
 		) as ToolHandler;
 	};
 	const observedHandlerFactory = observer
