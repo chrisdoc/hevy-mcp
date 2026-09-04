@@ -20,9 +20,8 @@ export interface RetryScheduleOptions<ScheduleError = never> {
 		attempt: number,
 	) => boolean | Effect.Effect<boolean, never>;
 	/**
-	 * Optional adapter for callers that provide their own interruptible wait.
-	 * Returning `Duration.zero` lets the adapter own the actual wait while the
-	 * Schedule still owns recurrence and delay calculation.
+	 * Optional adapter for callers that need to observe or bound a calculated
+	 * delay. The returned duration is the wait that Schedule will own.
 	 */
 	readonly delay?: (
 		input: RetryScheduleInput,
@@ -35,8 +34,8 @@ export interface RetryScheduleOptions<ScheduleError = never> {
  * Builds the Effect schedule used by retrying client programs.
  *
  * The schedule owns retry timing, recurrence, and the input predicate. The
- * client supplies the safety predicate and optional interruptible wait bridge
- * for its request-local execution signal.
+ * client supplies the safety predicate and optional delay adapter for
+ * observation or deadline bounding.
  */
 export function createRetrySchedule<ScheduleError = never>(
 	maxRetries: number,

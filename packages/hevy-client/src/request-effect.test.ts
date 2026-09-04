@@ -87,6 +87,41 @@ describe("internal production request Effect seam", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 
+	it("lets Schedule own the retry wait instead of invoking custom sleep", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response("{}", { status: 503 }))
+			.mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }));
+		const sleep = vi
+			.fn()
+			.mockRejectedValue(new Error("custom sleep must not be used"));
+		const client = createNativeClient("test-key", "https://api.hevyapp.com", {
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep,
+		});
+
+		const program = Effect.gen(function* () {
+			const fiber = yield* client
+				.requestEffect({ method: "GET", url: "/v1/user/info" })
+				.pipe(Effect.forkChild);
+			yield* Effect.yieldNow;
+			expect(fetchMock).toHaveBeenCalledOnce();
+			expect(sleep).not.toHaveBeenCalled();
+			yield* TestClock.adjust("299 millis");
+			yield* Effect.yieldNow;
+			expect(fetchMock).toHaveBeenCalledOnce();
+			yield* TestClock.adjust("251 millis");
+			return yield* Fiber.join(fiber);
+		});
+
+		await expect(
+			Effect.runPromise(Effect.provide(program, TestClock.layer())),
+		).resolves.toMatchObject({ data: { ok: true } });
+		expect(sleep).not.toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	it("projects an interrupted request Effect to a public client error", async () => {
 		const fetchMock = vi.fn(
 			() =>

@@ -234,8 +234,9 @@ describe("validateHevyApiKeyResilient", () => {
 			env,
 		);
 
-		await vi.advanceTimersByTimeAsync(0);
+		await vi.waitFor(() => expect(validate).toHaveBeenCalledOnce());
 		await vi.advanceTimersByTimeAsync(300);
+		await vi.advanceTimersByTimeAsync(0);
 		await expect(pending).resolves.toBe("valid");
 		expect(validate).toHaveBeenCalledTimes(2);
 		vi.useRealTimers();
@@ -260,8 +261,10 @@ describe("validateHevyApiKeyResilient", () => {
 		);
 		void pending.catch(() => undefined);
 
+		await vi.waitFor(() => expect(validate).toHaveBeenCalledOnce());
+		await vi.advanceTimersByTimeAsync(300);
 		await vi.advanceTimersByTimeAsync(0);
-		await vi.advanceTimersByTimeAsync(900);
+		await vi.advanceTimersByTimeAsync(600);
 		await expect(pending).rejects.toBe(error);
 		expect(validate).toHaveBeenCalledTimes(3);
 		await expect(
@@ -282,7 +285,7 @@ describe("validateHevyApiKeyResilient", () => {
 			env,
 		);
 
-		await vi.advanceTimersByTimeAsync(0);
+		await vi.waitFor(() => expect(validate).toHaveBeenCalledOnce());
 		await vi.advanceTimersByTimeAsync(300);
 		await expect(pending).resolves.toBe("valid");
 

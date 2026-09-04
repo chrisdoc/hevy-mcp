@@ -77,10 +77,7 @@ import {
 } from "./execution.js";
 import { DEFAULT_RETRY_POLICY } from "./retry-policy.js";
 import { createRetrySchedule } from "./retry-schedule.js";
-import { BackoffFailure, retryBackoff } from "./backoff.js";
 import { AttemptFailure, attemptEffect, finalizeOnce } from "./attempt.js";
-
-const NEVER_ABORT_SIGNAL = new AbortController().signal;
 
 function interruptOnAbortSignal(signal: AbortSignal): Effect.Effect<never> {
 	return Effect.callback<never, never>((resume, interruptionSignal) => {
@@ -948,10 +945,16 @@ export function createNativeClient(
 				normalized.hevyDeadline ??
 				operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
 			let retryCount = 0;
-			let lastAttemptStartedAt = operationStartedAt;
 			let freeDeadlineRetryUsed = false;
+			let activeRetryWaitScope: HevyRetryWaitScope | undefined;
+			const finishActiveRetryWait = () => {
+				const scope = activeRetryWaitScope;
+				activeRetryWaitScope = undefined;
+				finishRetryWait(scope);
+			};
 
 			const requestAttempt = Effect.suspend(() => {
+				finishActiveRetryWait();
 				currentPhase = "before-dispatch";
 				const attemptDeadline = Math.min(
 					deadline,
@@ -994,7 +997,6 @@ export function createNativeClient(
 				}
 
 				const startedAt = Date.now();
-				lastAttemptStartedAt = startedAt;
 				const observationScope = emitRequestStart(options.onRequestStart, {
 					method,
 					endpoint,
@@ -1297,72 +1299,8 @@ export function createNativeClient(
 							retryCount: attempt,
 							delayMs: boundedDelayMs,
 						});
-						const wait = retryBackoff({
-							delayMs: boundedDelayMs,
-							signal: normalized.signal ?? NEVER_ABORT_SIGNAL,
-							sleep: options.sleep,
-							method,
-							endpoint,
-							phase: "backoff",
-							operationSafety: safety,
-							deadline,
-							cause: error,
-						});
-						const boundedWait = Effect.timeoutOrElse(wait, {
-							duration: boundedDelayMs,
-							orElse: () =>
-								Effect.fail(
-									new BackoffFailure({
-										cause: new Cause.TimeoutError(
-											"Hevy API retry backoff timed out",
-										),
-										method,
-										endpoint,
-										phase: "backoff",
-										operationSafety: safety,
-										deadline,
-									}),
-								),
-						});
-						return boundedWait.pipe(
-							Effect.mapError((failure: BackoffFailure) => {
-								const waitDeadlineExceeded =
-									Cause.isTimeoutError(failure.cause) ||
-									isDeadlineExceeded(deadline);
-								const waitError = createExecutionError({
-									method,
-									endpoint,
-									safety,
-									phase: "backoff",
-									deadlineExceeded: waitDeadlineExceeded,
-									canceled: !waitDeadlineExceeded,
-									callerCanceled:
-										!waitDeadlineExceeded && normalized.signal?.aborted,
-									cause: failure.cause,
-								});
-								emitRequestObservation(options.onRequestComplete, {
-									method,
-									endpoint,
-									status: 0,
-									durationMs: Date.now() - lastAttemptStartedAt,
-									retryCount: attempt,
-									outcome: waitError.outcome ?? "cancelled",
-									phase: waitError.phase,
-									operationSafety: safety,
-									commitState: waitError.commitState,
-									safeToRetry: false,
-									error: {
-										code: waitError.code,
-										category: "NetworkError",
-									},
-								});
-								return waitError;
-							}),
-							Effect.ensuring(
-								Effect.sync(() => finishRetryWait(retryWaitScope)),
-							),
-							Effect.as(Duration.zero),
-						);
+						activeRetryWaitScope = retryWaitScope;
+						return Effect.succeed(Duration.millis(boundedDelayMs));
 					},
 				},
 			);
@@ -1398,6 +1336,7 @@ export function createNativeClient(
 					return Effect.fail(error);
 				},
 			).pipe(
+				Effect.ensuring(Effect.sync(finishActiveRetryWait)),
 				Effect.catchCause((cause) => {
 					const failure = Cause.findErrorOption(cause);
 					if (Option.isSome(failure)) return Effect.fail(failure.value);
