@@ -15,10 +15,8 @@ export function requireOperation<T>(operation: T | undefined, id: string): T {
 export function operationEffect<TArgs extends readonly unknown[], TResult>(
 	operation: EffectOperation<TArgs, TResult>,
 	...args: TArgs
-): Effect.Effect<TResult, Error, never> {
-	return Effect.suspend(() => operation.effect(...args)).pipe(
-		Effect.mapError((error) =>
-			error instanceof Error ? error : new Error("Operation failed."),
-		),
-	);
+): Effect.Effect<TResult, unknown, never> {
+	// Keep the operation's tagged failure intact until the MCP boundary. Mapping
+	// every failure to Error here loses the _tag used by the core error policy.
+	return Effect.suspend(() => operation.effect(...args));
 }

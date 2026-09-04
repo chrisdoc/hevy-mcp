@@ -54,7 +54,11 @@ async function readResource(
 	read: () => Effect.Effect<ReadResourceResult, unknown, never>,
 ): Promise<ReadResourceResult> {
 	try {
-		return await runBoundedExecution(Effect.suspend(read), {
+		const program = Effect.try({
+			try: read,
+			catch: (error) => error,
+		}).pipe(Effect.flatten);
+		return await runBoundedExecution(program, {
 			signal,
 			timeoutMs: executionTimeoutMs,
 			deadline: execution?.deadline ?? executionDeadline,

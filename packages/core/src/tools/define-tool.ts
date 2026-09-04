@@ -1,6 +1,8 @@
 import type { McpServer, ToolAnnotations } from "@modelcontextprotocol/server";
 import { Effect } from "effect";
 import { z } from "zod";
+import { ClientNotInitializedError } from "../effect-errors.js";
+import { HevyOperationsService } from "../effect-services.js";
 import { respond, type ResponseContract } from "../utils/response-contracts.js";
 import { compactJsonSchema } from "../utils/compact-json-schema.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
@@ -100,9 +102,24 @@ export function registerToolDefinition(
 			const scopedRuntime = requestContext
 				? runtime.forExecution(requestContext)
 				: runtime;
-			return definition
-				.execute(scopedRuntime, args)
-				.pipe(Effect.map((data) => respond(definition.responseContract, data)));
+			// Fail inside the Effect so the tagged initialization error reaches
+			// the collapse boundary instead of becoming an untyped defect.
+			if (!scopedRuntime.client) {
+				try {
+					scopedRuntime.service(HevyOperationsService);
+				} catch {
+					return Effect.fail(new ClientNotInitializedError());
+				}
+			}
+			return Effect.try({
+				try: () =>
+					definition
+						.execute(scopedRuntime, args)
+						.pipe(
+							Effect.map((data) => respond(definition.responseContract, data)),
+						),
+				catch: (error) => error,
+			}).pipe(Effect.flatten);
 		});
 	const handler = runtime.createHandler(directHandler, definition.name, {
 		feature: definition.feature,
