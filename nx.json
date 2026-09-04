@@ -3,7 +3,7 @@
 	"namedInputs": {
 		"nodeMajor": [
 			{
-				"runtime": "node -e 'process.stdout.write(process.versions.node.split(\".\")[0])'"
+				"runtime": "node -e \"process.stdout.write(process.versions.node.split('.')[0])\""
 			}
 		],
 		"repositoryConfig": [
