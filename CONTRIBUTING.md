@@ -182,6 +182,7 @@ The normal pull request baseline is:
 ```bash
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:boundaries
 ```
 
 Performance timing targets are currently informational. Correctness, fixture,
@@ -199,6 +200,7 @@ MISE_AUTO_INSTALL=false mise exec -- pnpm run build
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
 MISE_AUTO_INSTALL=false mise exec -- pnpm run check:changeset
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:boundaries
 ```
 
 Also run the narrow checks related to your change. In particular:

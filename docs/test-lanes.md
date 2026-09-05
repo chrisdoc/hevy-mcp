@@ -95,6 +95,7 @@ Run the pull-request baseline with:
 ```sh
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:boundaries
 ```
 
 The aggregate table identifies the current Nx targets and direct members. Nx
