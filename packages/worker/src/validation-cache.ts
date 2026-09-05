@@ -7,6 +7,7 @@ import {
 	type HevyClient,
 	type HevyRequestOptions,
 } from "@hevy-mcp/hevy-client";
+import { interruptOnAbortSignal } from "@hevy-mcp/hevy-client/internal";
 import { isOAuthEnabled, type HevyApiKeyValidation } from "./worker-oauth.js";
 
 /** How long a successful Hevy key validation is trusted before re-checking upstream. */
@@ -182,20 +183,6 @@ export interface WaitUntilHandle {
 	waitUntil(promise: Promise<unknown>): void;
 }
 
-function interruptOnAbortSignal(signal: AbortSignal): Effect.Effect<never> {
-	return Effect.callback<never, never>((resume, interruptionSignal) => {
-		const cleanup = () => {
-			signal.removeEventListener("abort", onAbort);
-			interruptionSignal.removeEventListener("abort", cleanup);
-		};
-		const onAbort = () => resume(Effect.interrupt);
-		if (signal.aborted) onAbort();
-		else signal.addEventListener("abort", onAbort, { once: true });
-		interruptionSignal.addEventListener("abort", cleanup, { once: true });
-		return Effect.sync(cleanup);
-	}).pipe(Effect.interruptible);
-}
-
 function validationRetrySchedule(
 	options: HevyRequestOptions | undefined,
 ): Schedule.Schedule<number, unknown, never> {
@@ -251,6 +238,12 @@ export async function validateHevyApiKeyResilient(
 	options?: HevyRequestOptions,
 	executionContext?: WaitUntilHandle,
 ): Promise<HevyApiKeyValidation> {
+	if (options?.signal?.aborted) {
+		throw (
+			options.signal.reason ??
+			new DOMException("Validation request canceled", "AbortError")
+		);
+	}
 	if (await hasCachedValidation(apiKey, env)) return "valid";
 
 	const validationProgram = Effect.retry(

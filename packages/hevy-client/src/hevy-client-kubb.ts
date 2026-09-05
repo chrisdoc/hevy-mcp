@@ -78,20 +78,7 @@ import {
 import { DEFAULT_RETRY_POLICY } from "./retry-policy.js";
 import { createRetrySchedule } from "./retry-schedule.js";
 import { AttemptFailure, attemptEffect, finalizeOnce } from "./attempt.js";
-
-function interruptOnAbortSignal(signal: AbortSignal): Effect.Effect<never> {
-	return Effect.callback<never, never>((resume, interruptionSignal) => {
-		const cleanup = () => {
-			signal.removeEventListener("abort", onAbort);
-			interruptionSignal.removeEventListener("abort", cleanup);
-		};
-		const onAbort = () => resume(Effect.interrupt);
-		if (signal.aborted) onAbort();
-		else signal.addEventListener("abort", onAbort, { once: true });
-		interruptionSignal.addEventListener("abort", cleanup, { once: true });
-		return Effect.sync(cleanup);
-	}).pipe(Effect.interruptible);
-}
+import { interruptOnAbortSignal } from "./abort-signal.js";
 
 export interface HevyClientLogEvent {
 	readonly level: "debug" | "warning" | "error";
