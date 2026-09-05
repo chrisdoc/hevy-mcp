@@ -2,6 +2,7 @@ import { Context, Effect, Layer, Option } from "effect";
 import type { McpClientLogger } from "../utils/mcp-client-logger-types.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
+import type { CoreToolError } from "../effect-errors.js";
 import {
 	createCoreServiceLayer,
 	createToolObserverLayer,
@@ -140,7 +141,7 @@ export type ToolHandler<TParams extends object = object> = (
 export type ToolEffectHandler<TParams extends object = object> = (
 	args: TParams,
 	context?: ToolExecutionContext,
-) => Effect.Effect<McpToolResponse, unknown, never>;
+) => Effect.Effect<McpToolResponse, CoreToolError, never>;
 
 export type ToolHandlerFactory = <TParams extends object>(
 	fn: ToolEffectHandler<TParams>,

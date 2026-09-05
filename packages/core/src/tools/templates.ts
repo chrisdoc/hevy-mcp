@@ -21,7 +21,11 @@ import {
 	ExerciseTemplateCatalogService,
 	HevyOperationsService,
 } from "../effect-services.js";
-import { operationEffect, requireOperation } from "./operation-helpers.js";
+import {
+	normalizeCoreEffect,
+	operationEffect,
+	requireOperation,
+} from "./operation-helpers.js";
 
 const getExerciseTemplateSchema = {
 	exercise_template_id: nonEmptyId,
@@ -165,28 +169,30 @@ const searchExerciseTemplatesDefinition = {
 		args: InferToolParams<typeof searchExerciseTemplatesSchema>,
 	) => {
 		const catalog = runtime.service(ExerciseTemplateCatalogService);
-		const templates = catalog.effect({
-			refresh: args.refresh,
-			execution: runtime.execution,
-			onRefreshed: (refreshedCatalog, reason) => {
-				try {
-					runtime.logger?.({
-						level: "info",
-						logger: "hevy-cache",
-						data: {
-							message: "Exercise template catalog refreshed",
-							count: refreshedCatalog.length,
-							reason,
-						},
-					});
-				} catch (error) {
-					logCoreError(
-						"Failed to emit structured exercise template cache log",
-						createSafeErrorDiagnostic(error),
-					);
-				}
-			},
-		});
+		const templates = normalizeCoreEffect(
+			catalog.effect({
+				refresh: args.refresh,
+				execution: runtime.execution,
+				onRefreshed: (refreshedCatalog, reason) => {
+					try {
+						runtime.logger?.({
+							level: "info",
+							logger: "hevy-cache",
+							data: {
+								message: "Exercise template catalog refreshed",
+								count: refreshedCatalog.length,
+								reason,
+							},
+						});
+					} catch (error) {
+						logCoreError(
+							"Failed to emit structured exercise template cache log",
+							createSafeErrorDiagnostic(error),
+						);
+					}
+				},
+			}),
+		);
 
 		return templates.pipe(
 			Effect.map((catalogTemplates) => {

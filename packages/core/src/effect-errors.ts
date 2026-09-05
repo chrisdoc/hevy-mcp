@@ -1,4 +1,11 @@
 import { Schema } from "effect";
+import {
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	ValidationError,
+} from "@hevy-mcp/hevy-client";
 
 /** Errors raised by core before an operation reaches the Hevy client. */
 export class ToolInputValidationError extends Schema.TaggedError<ToolInputValidationError>()(
@@ -30,4 +37,15 @@ export {
 	NotFoundError,
 	RateLimitError,
 	ValidationError,
-} from "@hevy-mcp/hevy-client";
+};
+
+/** The complete recoverable error vocabulary exposed by core tool handlers. */
+export type CoreToolError =
+	| ToolInputValidationError
+	| ClientNotInitializedError
+	| OperationUnavailableError
+	| ApiError
+	| NetworkError
+	| NotFoundError
+	| RateLimitError
+	| ValidationError;

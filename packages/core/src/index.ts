@@ -83,6 +83,8 @@ export {
 	ToolInputValidationError,
 	ValidationError,
 } from "./effect-errors.js";
+export type { CoreToolError } from "./effect-errors.js";
+export type { ToolEffectHandler } from "./tools/tool-runtime.js";
 export {
 	ExerciseTemplateCatalogService,
 	HevyClientService,

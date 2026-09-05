@@ -434,7 +434,7 @@ describe("createToolRuntime observation scope", () => {
 		const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		const result = await runtime.createHandler(
-			() => Effect.fail(new Error(secret)),
+			() => Effect.die(new Error(secret)),
 			"get-workouts",
 		)({});
 
