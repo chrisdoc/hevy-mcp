@@ -69,10 +69,14 @@ export function installGracefulShutdown({
 	cancel,
 	onComplete,
 }: GracefulShutdownOptions): GracefulShutdownController {
-	let listenersInstalled = true;
 	let shutdownSettled = false;
 	let shutdownPromise: Promise<void> | undefined;
 	let completionReported = false;
+	let listenersCleaned = false;
+	const installedListeners: Array<{
+		signal: ShutdownSignal;
+		listener: () => void;
+	}> = [];
 
 	const reportCompletion = (succeeded: boolean): Promise<void> | undefined => {
 		if (completionReported) return undefined;
@@ -91,15 +95,16 @@ export function installGracefulShutdown({
 	};
 
 	const cleanup = () => {
-		if (!listenersInstalled || (shutdownPromise && !shutdownSettled)) {
+		if (listenersCleaned || (shutdownPromise && !shutdownSettled)) {
 			return;
 		}
 
-		listenersInstalled = false;
-		for (const signal of shutdownSignals) {
-			const listener = signalListeners.get(signal);
-			if (listener) {
+		listenersCleaned = true;
+		for (const { signal, listener } of installedListeners.toReversed()) {
+			try {
 				processLike.removeListener(signal, listener);
+			} catch {
+				// Cleanup must not replace the shutdown or registration error.
 			}
 		}
 	};
@@ -198,11 +203,17 @@ export function installGracefulShutdown({
 		shutdownSignals.map((signal) => [signal, () => handleSignal(signal)]),
 	);
 
-	for (const signal of shutdownSignals) {
-		const listener = signalListeners.get(signal);
-		if (listener) {
-			processLike.on(signal, listener);
+	try {
+		for (const signal of shutdownSignals) {
+			const listener = signalListeners.get(signal);
+			if (listener) {
+				processLike.on(signal, listener);
+				installedListeners.push({ signal, listener });
+			}
 		}
+	} catch (error) {
+		cleanup();
+		throw error;
 	}
 
 	return {

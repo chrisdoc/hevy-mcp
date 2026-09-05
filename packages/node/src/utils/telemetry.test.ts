@@ -339,6 +339,48 @@ describe("telemetry initialization", () => {
 		expect(processLike.removeListener).toHaveBeenCalledTimes(2);
 	});
 
+	it("rolls back exception listeners transactionally and preserves baselines", async () => {
+		vi.resetModules();
+		const mod = await loadTelemetry();
+		const baselineUncaught = () => undefined;
+		const baselineRejection = () => undefined;
+		let shouldFailRegistration = false;
+		const registrationError = new Error(
+			"unhandledRejection registration failed",
+		);
+		const listeners = new Map<string, Set<(error: Error | string) => void>>();
+		const processLike = {
+			on: vi.fn((event: string, listener: (error: Error | string) => void) => {
+				if (shouldFailRegistration && event === "unhandledRejection") {
+					throw registrationError;
+				}
+				if (event === "uncaughtExceptionMonitor") {
+					const existing = listeners.get(event) ?? new Set();
+					existing.add(listener);
+					listeners.set(event, existing);
+					return;
+				}
+				const existing = listeners.get(event) ?? new Set();
+				existing.add(listener);
+				listeners.set(event, existing);
+			}),
+			removeListener: vi.fn(
+				(event: string, listener: (error: Error | string) => void) => {
+					listeners.get(event)?.delete(listener);
+				},
+			),
+		};
+		processLike.on("uncaughtExceptionMonitor", baselineUncaught);
+		processLike.on("unhandledRejection", baselineRejection);
+		shouldFailRegistration = true;
+		expect(() => mod.installProcessExceptionTracking(processLike)).toThrow(
+			registrationError,
+		);
+		expect(listeners.get("uncaughtExceptionMonitor")).toHaveLength(1);
+		expect(listeners.get("unhandledRejection")).toHaveLength(1);
+		expect(processLike.removeListener).toHaveBeenCalledTimes(1);
+	});
+
 	it("registers the global tracer provider", async () => {
 		vi.resetModules();
 		await loadTelemetry();

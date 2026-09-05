@@ -8,8 +8,14 @@ class FakeProcess {
 	exitCode: number | string | null | undefined;
 	readonly exit = vi.fn((_code?: number | string | null) => undefined as never);
 	readonly listeners = new Map<ShutdownSignal, Set<() => void>>();
+	failOnSignal: ShutdownSignal | undefined;
+	failOnRemovalSignal: ShutdownSignal | undefined;
+	readonly removeCalls: ShutdownSignal[] = [];
 
 	on(signal: ShutdownSignal, listener: () => void) {
+		if (signal === this.failOnSignal) {
+			throw new Error(`failed to install ${signal}`);
+		}
 		const listeners = this.listeners.get(signal) ?? new Set();
 		listeners.add(listener);
 		this.listeners.set(signal, listeners);
@@ -17,6 +23,10 @@ class FakeProcess {
 	}
 
 	removeListener(signal: ShutdownSignal, listener: () => void) {
+		this.removeCalls.push(signal);
+		if (signal === this.failOnRemovalSignal) {
+			throw new Error(`failed to remove ${signal}`);
+		}
 		this.listeners.get(signal)?.delete(listener);
 		return this;
 	}
@@ -186,5 +196,38 @@ describe("package-local graceful shutdown", () => {
 
 		expect(activeSettled).toBe(true);
 		expect(close).toHaveBeenCalledOnce();
+	});
+
+	it("rolls back only newly installed listeners when a later registration fails", () => {
+		const process = new FakeProcess();
+		const baseline = () => undefined;
+		process.on("SIGINT", baseline);
+		process.failOnSignal = "SIGTERM";
+		expect(() =>
+			installGracefulShutdown({
+				target: { close: vi.fn().mockResolvedValue(undefined) },
+				process,
+			}),
+		).toThrow("failed to install SIGTERM");
+
+		expect(process.listenerCount("SIGINT")).toBe(1);
+		expect(process.listenerCount("SIGTERM")).toBe(0);
+		expect(process.removeCalls).toEqual(["SIGINT"]);
+	});
+
+	it("preserves the registration error when rollback removal fails", () => {
+		const process = new FakeProcess();
+		const baseline = () => undefined;
+		process.on("SIGINT", baseline);
+		process.failOnSignal = "SIGTERM";
+		process.failOnRemovalSignal = "SIGINT";
+
+		expect(() =>
+			installGracefulShutdown({
+				target: { close: vi.fn().mockResolvedValue(undefined) },
+				process,
+			}),
+		).toThrow("failed to install SIGTERM");
+		expect(process.listenerCount("SIGINT")).toBe(2);
 	});
 });

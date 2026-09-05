@@ -84,14 +84,39 @@ export function installProcessExceptionTracking(
 		recordProcessException("uncaughtException", error);
 	const unhandledRejection = (error: Error | string) =>
 		recordProcessException("unhandledRejection", error);
-	processLike.on("uncaughtExceptionMonitor", uncaughtException);
-	processLike.on("unhandledRejection", unhandledRejection);
 	let cleaned = false;
-	return () => {
+	const installedListeners: Array<{
+		event: "uncaughtExceptionMonitor" | "unhandledRejection";
+		listener: (error: Error | string) => void;
+	}> = [];
+	const removeInstalledListeners = () => {
 		if (cleaned) return;
 		cleaned = true;
-		processLike.removeListener("uncaughtExceptionMonitor", uncaughtException);
-		processLike.removeListener("unhandledRejection", unhandledRejection);
+		for (const { event, listener } of installedListeners.toReversed()) {
+			try {
+				processLike.removeListener(event, listener);
+			} catch {
+				// Listener cleanup must not replace the original acquisition error.
+			}
+		}
+	};
+
+	try {
+		const listeners = [
+			["uncaughtExceptionMonitor", uncaughtException],
+			["unhandledRejection", unhandledRejection],
+		] as const;
+		for (const [event, listener] of listeners) {
+			processLike.on(event, listener);
+			installedListeners.push({ event, listener });
+		}
+	} catch (error) {
+		removeInstalledListeners();
+		throw error;
+	}
+
+	return () => {
+		removeInstalledListeners();
 	};
 }
 
