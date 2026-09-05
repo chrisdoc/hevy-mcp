@@ -115,6 +115,7 @@ export function createExerciseTemplateCatalog(
 				deferred: Deferred.Deferred<ExerciseTemplate[], TemplateListAllError>;
 				fiber: Fiber.Fiber<boolean, never>;
 				waiters: number;
+				refresh: boolean;
 		  }
 		| undefined;
 
@@ -174,7 +175,8 @@ export function createExerciseTemplateCatalog(
 			hasLoadedValue = true;
 			return catalog;
 		});
-		let shared = inFlight;
+		let shared =
+			inFlight && (!refresh || inFlight.refresh) ? inFlight : undefined;
 		if (!shared) {
 			const deferred = yield* Deferred.make<
 				ExerciseTemplate[],
@@ -190,7 +192,7 @@ export function createExerciseTemplateCatalog(
 					}),
 				),
 			);
-			shared = { deferred, fiber, waiters: 0 };
+			shared = { deferred, fiber, waiters: 0, refresh };
 			inFlight = shared;
 		}
 		const loaded = Effect.gen(function* () {
