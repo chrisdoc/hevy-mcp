@@ -531,7 +531,7 @@ export async function startStreamableHttpServer(
 		session.idleGeneration += 1;
 		const generation = session.idleGeneration;
 		if (session.idleFiber) {
-			Effect.runSync(Fiber.interrupt(session.idleFiber));
+			Effect.runFork(Fiber.interrupt(session.idleFiber));
 		}
 		const idle = Effect.sleep(Duration.millis(config.idleTimeoutMs)).pipe(
 			Effect.andThen(
@@ -884,6 +884,9 @@ export async function startStreamableHttpServer(
 				}
 			} catch (cleanupFailure) {
 				cleanupError = cleanupFailure;
+				if (!session) {
+					recordMcpSessionTermination("startup_failure", context);
+				}
 			}
 			if (cleanupError) {
 				console.error(`HTTP cleanup failed: ${safeDiagnostic(cleanupError)}`);

@@ -161,6 +161,8 @@ export function installGracefulShutdown({
 					processLike.exit(1);
 					return;
 				}
+				shutdownSettled = true;
+				cleanup();
 				if (rejectOnFailure) {
 					throw new Error("Graceful shutdown timed out.");
 				}
