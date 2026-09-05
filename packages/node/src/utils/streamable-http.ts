@@ -11,7 +11,7 @@ import {
 	createExecutionProjection,
 	createSafeErrorDiagnostic,
 } from "@hevy-mcp/core";
-import { Effect, Semaphore } from "effect";
+import { Effect, Exit, Fiber, Scope, Semaphore, Duration } from "effect";
 import type { NodeCliOptions } from "./arguments.js";
 import { httpAdmissionRejections, httpSessionEvictions } from "./metrics.js";
 import {
@@ -137,11 +137,18 @@ export type McpServerFactory = (params: {
 
 interface HttpSession {
 	transport: HttpTransport;
-	server: OwnedMcpServer;
+	server?: OwnedMcpServer;
 	context: McpSessionContext;
 	lifecycleController: AbortController;
 	responses: Set<ServerResponse>;
-	idleTimer?: ReturnType<typeof setTimeout>;
+	scope: Scope.Closeable;
+	id?: string;
+	idleFiber?: Fiber.Fiber<void, never>;
+	idleGeneration: number;
+	closePromise?: Promise<void>;
+	finalizationErrors: unknown[];
+	terminationCategory?: "connect_failure" | "startup_failure" | "unknown";
+	terminationRecorded: boolean;
 	closed: boolean;
 }
 
@@ -487,6 +494,19 @@ export async function startStreamableHttpServer(
 	const initializationPromises = new Set<Promise<void>>();
 	const initializingSemaphore = Semaphore.makeUnsafe(config.maxInitializing);
 	const cleanupErrors: unknown[] = [];
+	const httpScope = await Effect.runPromise(Scope.make("parallel"));
+	await Effect.runPromise(
+		Scope.addFinalizer(
+			httpScope,
+			Effect.sync(() => {
+				for (const controller of initializationControllers) {
+					controller.abort(
+						new DOMException("HTTP server scope closed", "AbortError"),
+					);
+				}
+			}),
+		),
+	);
 	let shuttingDown = false;
 	// Keep the assigned ephemeral port after server.close() starts so a request
 	// already admitted during shutdown still passes Host validation.
@@ -506,81 +526,61 @@ export async function startStreamableHttpServer(
 		});
 	});
 
-	function armIdleTimer(session: HttpSession): void {
+	function armIdleEviction(session: HttpSession): void {
 		if (session.closed) return;
-		if (session.idleTimer) clearTimeout(session.idleTimer);
-		session.idleTimer = setTimeout(() => {
-			const hasActiveResponse = [...session.responses].some(
-				(response) => !response.writableEnded,
-			);
-			if (hasActiveResponse) {
-				armIdleTimer(session);
-				return;
-			}
-			recordHttpSessionEviction();
-			closeSession(session).catch((error) => {
-				cleanupErrors.push(error);
-			});
-		}, config.idleTimeoutMs);
-		session.idleTimer.unref?.();
+		session.idleGeneration += 1;
+		const generation = session.idleGeneration;
+		if (session.idleFiber) {
+			Effect.runSync(Fiber.interrupt(session.idleFiber));
+		}
+		const idle = Effect.sleep(Duration.millis(config.idleTimeoutMs)).pipe(
+			Effect.andThen(
+				Effect.sync(() => {
+					if (session.closed || session.idleGeneration !== generation) {
+						return;
+					}
+					const hasActiveResponse = [...session.responses].some(
+						(response) => !response.writableEnded,
+					);
+					if (hasActiveResponse) {
+						queueMicrotask(() => armIdleEviction(session));
+						return;
+					}
+					recordHttpSessionEviction();
+					queueMicrotask(() => {
+						void closeSession(session).catch((error) => {
+							cleanupErrors.push(error);
+						});
+					});
+				}),
+			),
+		);
+		session.idleFiber = Effect.runSync(
+			Effect.forkIn(idle, session.scope, { startImmediately: true }),
+		);
 	}
 
 	async function closeSession(
 		session: HttpSession,
 		failureCategory?: "connect_failure" | "startup_failure" | "unknown",
 	): Promise<void> {
-		if (session.closed) return;
+		if (failureCategory && !session.terminationCategory) {
+			session.terminationCategory = failureCategory;
+		}
+		if (session.closePromise) return session.closePromise;
 		session.closed = true;
-		if (session.idleTimer) {
-			clearTimeout(session.idleTimer);
-			session.idleTimer = undefined;
-		}
-		pendingSessions.delete(session);
-		for (const [id, current] of sessions) {
-			if (current === session) sessions.delete(id);
-		}
-		for (const response of session.responses) {
-			if (!response.writableEnded) response.destroy();
-		}
-		// The SDK transport closes response streams, but its stateful close path
-		// does not abort the request signal already handed to MCP handlers. Abort
-		// the session-owned lifecycle signal first so active Hevy calls stop too.
-		session.lifecycleController.abort(
-			new DOMException("MCP session closed", "AbortError"),
-		);
-
-		const results = await Promise.allSettled([
-			Promise.resolve().then(() => session.transport.close()),
-			Promise.resolve().then(() => session.server.close()),
-		]);
-		const errors = results.flatMap((result) =>
-			result.status === "rejected" ? [result.reason] : [],
-		);
-		const succeeded = errors.length === 0;
-		recordMcpSessionTermination(
-			failureCategory && succeeded
-				? failureCategory
-				: resolveSessionTerminationCategory(succeeded, session.context),
-			session.context,
-		);
-		if (errors.length > 0) {
-			throw aggregateErrors(errors, "MCP session cleanup failed.");
-		}
-	}
-
-	async function closeUnregistered(
-		transport: HttpTransport,
-		mcpServer: OwnedMcpServer | undefined,
-	): Promise<void> {
-		const results = await Promise.allSettled([
-			Promise.resolve().then(() => transport.close()),
-			...(mcpServer ? [Promise.resolve().then(() => mcpServer.close())] : []),
-		]);
-		const errors = results.flatMap((result) =>
-			result.status === "rejected" ? [result.reason] : [],
-		);
-		if (errors.length > 0) throw aggregateErrors(errors, "MCP cleanup failed.");
-		return;
+		session.closePromise = (async () => {
+			// The registry only indexes sessions. Ownership and cleanup live in
+			// the child Scope finalizer below.
+			await Effect.runPromise(Scope.close(session.scope, Exit.void));
+			if (session.finalizationErrors.length > 0) {
+				throw aggregateErrors(
+					session.finalizationErrors,
+					"MCP session cleanup failed.",
+				);
+			}
+		})();
+		return session.closePromise;
 	}
 
 	function trackSessionResponse(
@@ -595,11 +595,11 @@ export async function startStreamableHttpServer(
 			// for this transport, so evict and close the whole session rather than
 			// leaving an aborted session reusable or poisoning future requests.
 			if (!response.writableEnded && !session.closed) {
-				closeSession(session).catch((error) => {
+				void closeSession(session).catch((error) => {
 					cleanupErrors.push(error);
 				});
 			} else if (!session.closed) {
-				armIdleTimer(session);
+				armIdleEviction(session);
 			}
 		});
 	}
@@ -747,50 +747,110 @@ export async function startStreamableHttpServer(
 			onsessioninitialized: (id) => {
 				if (!session) return;
 				if (shuttingDown || lifecycleController.signal.aborted) {
-					closeSession(session).catch((error) => {
+					void closeSession(session, "startup_failure").catch((error) => {
 						cleanupErrors.push(error);
 					});
 					return;
 				}
+				session.id = id;
 				sessions.set(id, session);
 				pendingSessions.delete(session);
 				initializationControllers.delete(lifecycleController);
-				armIdleTimer(session);
+				armIdleEviction(session);
 			},
 		});
 		transport.onclose = () => {
 			if (session) {
-				closeSession(session).catch((error) => {
+				void closeSession(session).catch((error) => {
 					cleanupErrors.push(error);
 				});
 			}
 		};
 		try {
+			const scope = await Effect.runPromise(Scope.fork(httpScope));
+			session = {
+				transport,
+				context,
+				lifecycleController,
+				scope,
+				responses: new Set(),
+				idleGeneration: 0,
+				finalizationErrors: [],
+				terminationRecorded: false,
+				closed: false,
+			};
+			// Initialization is owned by the server scope from the moment its
+			// child scope exists, not only after the SDK assigns a session id.
+			pendingSessions.add(session);
+			await Effect.runPromise(
+				Scope.addFinalizer(
+					scope,
+					Effect.promise(async () => {
+						const currentSession = session;
+						if (!currentSession) return;
+						pendingSessions.delete(currentSession);
+						if (currentSession.id) sessions.delete(currentSession.id);
+						currentSession.lifecycleController.abort(
+							new DOMException("MCP session closed", "AbortError"),
+						);
+						for (const response of currentSession.responses) {
+							if (!response.writableEnded) response.destroy();
+						}
+						const results = await Promise.allSettled([
+							Promise.resolve().then(() => currentSession.transport.close()),
+							...(currentSession.server
+								? [Promise.resolve().then(() => currentSession.server?.close())]
+								: []),
+						]);
+						currentSession.finalizationErrors.push(
+							...results.flatMap((result) =>
+								result.status === "rejected" ? [result.reason] : [],
+							),
+						);
+						if (!currentSession.terminationRecorded) {
+							currentSession.terminationRecorded = true;
+							const succeeded = currentSession.finalizationErrors.length === 0;
+							recordMcpSessionTermination(
+								currentSession.terminationCategory && succeeded
+									? currentSession.terminationCategory
+									: resolveSessionTerminationCategory(
+											succeeded,
+											currentSession.context,
+										),
+								currentSession.context,
+							);
+						}
+					}),
+				),
+			);
 			mcpServer = await createMcpServer({
 				apiKey,
 				lifecycleSignal: lifecycleController.signal,
 			});
-			if (shuttingDown || lifecycleController.signal.aborted) {
-				await closeUnregistered(transport, mcpServer);
-				recordMcpSessionTermination("startup_failure", context);
+			const currentSession = session;
+			if (!currentSession) {
+				await mcpServer.close();
 				return;
 			}
-			session = {
-				transport,
-				server: mcpServer,
-				context,
-				lifecycleController,
-				responses: new Set(),
-				closed: false,
-			};
-			pendingSessions.add(session);
+			if (currentSession.closed) {
+				await mcpServer.close().catch((error) => {
+					currentSession.finalizationErrors.push(error);
+				});
+				return;
+			}
+			if (shuttingDown || lifecycleController.signal.aborted) {
+				currentSession.server = mcpServer;
+				await closeSession(currentSession, "startup_failure");
+				return;
+			}
+			currentSession.server = mcpServer;
 			await mcpServer.connect(transport);
 			connected = true;
 			if (shuttingDown || lifecycleController.signal.aborted) {
-				await closeSession(session);
+				await closeSession(currentSession, "startup_failure");
 				return;
 			}
-			trackSessionResponse(session, response);
+			trackSessionResponse(currentSession, response);
 			await runWithMcpSessionContext(context, () =>
 				transport.handleRequest(request, response, body),
 			);
@@ -807,12 +867,23 @@ export async function startStreamableHttpServer(
 						connected ? "unknown" : "connect_failure",
 					);
 				} else {
-					await closeUnregistered(transport, mcpServer);
+					const ownedServer = mcpServer;
+					const results = await Promise.allSettled([
+						Promise.resolve().then(() => transport.close()),
+						...(ownedServer
+							? [Promise.resolve().then(() => ownedServer.close())]
+							: []),
+					]);
+					const errors = results.flatMap((result) =>
+						result.status === "rejected" ? [result.reason] : [],
+					);
+					if (errors.length > 0) {
+						throw aggregateErrors(errors, "MCP cleanup failed.");
+					}
 					recordMcpSessionTermination("startup_failure", context);
 				}
 			} catch (cleanupFailure) {
 				cleanupError = cleanupFailure;
-				if (!session) recordMcpSessionTermination("unknown", context);
 			}
 			if (cleanupError) {
 				console.error(`HTTP cleanup failed: ${safeDiagnostic(cleanupError)}`);
@@ -867,7 +938,7 @@ export async function startStreamableHttpServer(
 			writeJson(response, 404, "Unknown Mcp-Session-Id.");
 			return;
 		}
-		armIdleTimer(session);
+		armIdleEviction(session);
 		if (request.method !== "DELETE" && !trackedExistingResponse) {
 			trackSessionResponse(session, response);
 		}
@@ -948,6 +1019,9 @@ export async function startStreamableHttpServer(
 		});
 	} catch (error) {
 		await closeServer(server).catch(() => undefined);
+		await Effect.runPromise(Scope.close(httpScope, Exit.void)).catch(
+			() => undefined,
+		);
 		throw error;
 	}
 	listeningPort = expectedPort(options, server);
@@ -985,6 +1059,9 @@ export async function startStreamableHttpServer(
 						result.status === "rejected" ? [result.reason] : [],
 					),
 				];
+				await Effect.runPromise(Scope.close(httpScope, Exit.void)).catch(
+					(error) => errors.push(error),
+				);
 				if (errors.length > 0) {
 					throw aggregateErrors(errors, "HTTP server cleanup failed.");
 				}
