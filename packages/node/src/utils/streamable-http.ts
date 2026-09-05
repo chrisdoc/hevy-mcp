@@ -384,9 +384,17 @@ function closeServer(server: Server): Promise<void> {
 			resolve();
 			return;
 		}
-		server.close((error) => (error ? reject(error) : resolve()));
-		server.closeIdleConnections();
-		server.closeAllConnections();
+		setImmediate(() => {
+			server.close((error) => (error ? reject(error) : resolve()));
+			// Let the current request turn write a bounded shutdown response
+			// before closing connections. Closing idle or active connections in
+			// the same turn as `shuttingDown = true` can reset a request admitted
+			// just before close() before its 503 reaches the client.
+			setImmediate(() => {
+				server.closeIdleConnections();
+				server.closeAllConnections();
+			});
+		});
 	});
 }
 
@@ -480,6 +488,9 @@ export async function startStreamableHttpServer(
 	const initializingSemaphore = Semaphore.makeUnsafe(config.maxInitializing);
 	const cleanupErrors: unknown[] = [];
 	let shuttingDown = false;
+	// Keep the assigned ephemeral port after server.close() starts so a request
+	// already admitted during shutdown still passes Host validation.
+	let listeningPort = options.port;
 	const server = createServer((request, response) => {
 		void handleRequest(request, response).catch((error) => {
 			if (response.headersSent || response.destroyed) {
@@ -611,7 +622,7 @@ export async function startStreamableHttpServer(
 			!validateHostHeader(
 				request,
 				hostNamesFor(options),
-				expectedPort(options, server),
+				listeningPort,
 				wildcard,
 			)
 		) {
@@ -934,6 +945,7 @@ export async function startStreamableHttpServer(
 			resolve();
 		});
 	});
+	listeningPort = expectedPort(options, server);
 
 	let closePromise: Promise<void> | undefined;
 	return {

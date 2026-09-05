@@ -292,6 +292,54 @@ describe("Streamable HTTP server", () => {
 		await first.catch(() => undefined);
 	});
 
+	it("drains a shutdown admission response before force-closing connections", async () => {
+		const { handle, port } = await startTestServer();
+		let clientReady!: () => void;
+		const clientReadyPromise = new Promise<void>((resolve) => {
+			clientReady = resolve;
+		});
+		const response = new Promise<HttpResult>((resolve, reject) => {
+			const client = request(
+				{
+					host: "127.0.0.1",
+					port,
+					path: "/mcp",
+					method: "POST",
+					headers: {
+						"Content-Length": "0",
+						Connection: "close",
+					},
+				},
+				(response) => {
+					const chunks: Buffer[] = [];
+					response.on("data", (chunk: Buffer) => chunks.push(chunk));
+					response.once("end", () =>
+						resolve({
+							statusCode: response.statusCode,
+							headers: response.headers,
+							body: Buffer.concat(chunks).toString("utf8"),
+						}),
+					);
+				},
+			);
+			client.once("error", reject);
+			client.once("socket", (socket) => {
+				if (socket.connecting) socket.once("connect", clientReady);
+				else clientReady();
+			});
+			void clientReadyPromise.then(() => client.end());
+		});
+		await clientReadyPromise;
+		const closePromise = handle.close();
+
+		await expect(response).resolves.toMatchObject({
+			statusCode: 503,
+			body: '{"error":"HTTP server is shutting down. Retry shortly."}',
+		});
+		await expect(closePromise).resolves.toBeUndefined();
+		expect(handle.server.listening).toBe(false);
+	});
+
 	it("recovers capacity after DELETE and idle eviction", async () => {
 		const handle = await startStreamableHttpServer(
 			{ transport: "http", host: "127.0.0.1", port: 0 },
