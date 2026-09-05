@@ -8,6 +8,7 @@ import {
 	type CoreServiceIdentifiers,
 } from "../effect-layer.js";
 import {
+	ExerciseTemplateCatalogService,
 	HevyClientService,
 	HevyOperationsService,
 	ToolObserverService,
@@ -141,8 +142,13 @@ export type ToolHandler<TParams extends object = object> = (
 	context?: ToolExecutionContext,
 ) => Promise<McpToolResponse>;
 
+export type ToolEffectHandler<TParams extends object = object> = (
+	args: TParams,
+	context?: ToolExecutionContext,
+) => Effect.Effect<McpToolResponse, unknown, never>;
+
 export type ToolHandlerFactory = <TParams extends object>(
-	fn: ToolHandler<TParams>,
+	fn: ToolEffectHandler<TParams>,
 	context: string,
 	metadata?: ToolTelemetryMetadata,
 ) => ToolHandler;
@@ -183,12 +189,28 @@ export interface CreateToolRuntimeOptions {
 	lifecycleSignal?: AbortSignal;
 }
 
+function runToolEffect<TParams extends object>(
+	fn: ToolEffectHandler<TParams>,
+	args: TParams,
+	requestContext: ToolExecutionContext | undefined,
+	services: ToolRuntimeServiceContext | undefined,
+): Promise<McpToolResponse> {
+	const program = Effect.suspend(() => fn(args, requestContext));
+	const provided = services ? Effect.provide(program, services) : program;
+	return Effect.runPromise(provided);
+}
+
 export const defaultHandlerFactory: ToolHandlerFactory = <
 	TParams extends object,
 >(
-	fn: ToolHandler<TParams>,
+	fn: ToolEffectHandler<TParams>,
 	context: string,
-) => withErrorHandling(fn, context) as ToolHandler;
+) =>
+	withErrorHandling(
+		(args: TParams, requestContext?: ToolExecutionContext) =>
+			runToolEffect(fn, args, requestContext, undefined),
+		context,
+	) as ToolHandler;
 
 export function createToolRuntime({
 	client,
@@ -196,7 +218,7 @@ export function createToolRuntime({
 	operations,
 	catalog,
 	logger,
-	createHandler = defaultHandlerFactory,
+	createHandler,
 	observer,
 	execution,
 	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
@@ -213,6 +235,7 @@ export function createToolRuntime({
 			: client;
 	const effectiveCatalog = execution
 		? {
+				effect: (options = {}) => catalog.effect({ ...options, execution }),
 				get: (options = {}) => catalog.get({ ...options, execution }),
 				reset: () => catalog.reset(),
 			}
@@ -226,11 +249,14 @@ export function createToolRuntime({
 					operations: resolvedOperations,
 				}) as ToolRuntimeServiceLayer)
 			: resolvedOperations
-				? (Layer.succeed(
-						HevyOperationsService,
-						resolvedOperations,
+				? (Layer.mergeAll(
+						Layer.succeed(HevyOperationsService, resolvedOperations),
+						Layer.succeed(ExerciseTemplateCatalogService, effectiveCatalog),
 					) as ToolRuntimeServiceLayer)
-				: undefined;
+				: (Layer.succeed(
+						ExerciseTemplateCatalogService,
+						effectiveCatalog,
+					) as ToolRuntimeServiceLayer);
 	const layer = observer
 		? coreLayer
 			? (Layer.merge(
@@ -240,6 +266,17 @@ export function createToolRuntime({
 			: (createToolObserverLayer(observer) as ToolRuntimeServiceLayer)
 		: coreLayer;
 	const services = layer ? buildServiceContext(layer) : undefined;
+	const effectHandlerFactory: ToolHandlerFactory =
+		createHandler ??
+		(<TParams extends object>(
+			fn: ToolEffectHandler<TParams>,
+			context: string,
+		) =>
+			withErrorHandling(
+				(args: TParams, requestContext?: ToolExecutionContext) =>
+					runToolEffect(fn, args, requestContext, services),
+				context,
+			) as ToolHandler);
 	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
 		service: Context.Key<I, S>,
 	): S => {
@@ -252,11 +289,22 @@ export function createToolRuntime({
 		return Context.get(services, service);
 	};
 	const createObservedHandler: ToolHandlerFactory = <TParams extends object>(
-		fn: ToolHandler<TParams>,
+		fn: ToolEffectHandler<TParams>,
 		context: string,
 		metadata?: ToolTelemetryMetadata,
-	) =>
-		createHandler<TParams>(
+	) => {
+		// Compose observation around the resolved handler factory so a
+		// caller-supplied `createHandler` stays in the path when an observer is
+		// configured; without one, the raw effect runner preserves the default
+		// withErrorHandling observation semantics.
+		const resolvedHandler: (
+			args: TParams,
+			requestContext?: ToolExecutionContext,
+		) => Promise<McpToolResponse> = createHandler
+			? createHandler(fn, context, metadata)
+			: (args, requestContext) =>
+					runToolEffect(fn, args, requestContext, services);
+		return withErrorHandling(
 			async (args: TParams, requestContext?: ToolExecutionContext) => {
 				let scope;
 				try {
@@ -269,9 +317,7 @@ export function createToolRuntime({
 				const startedAt = Date.now();
 				let handlerPromise: Promise<McpToolResponse> | undefined;
 				const invokeHandler = () => {
-					handlerPromise ??= Promise.resolve().then(() =>
-						fn(args, requestContext),
-					);
+					handlerPromise ??= resolvedHandler(args, requestContext);
 					return handlerPromise;
 				};
 				try {
@@ -311,11 +357,11 @@ export function createToolRuntime({
 				}
 			},
 			context,
-			metadata,
-		);
+		) as ToolHandler;
+	};
 	const observedHandlerFactory = observer
 		? createObservedHandler
-		: createHandler;
+		: effectHandlerFactory;
 	const runtime: ToolRuntime = {
 		client: effectiveClient,
 		catalog: effectiveCatalog,

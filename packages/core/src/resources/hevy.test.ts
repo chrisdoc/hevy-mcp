@@ -5,16 +5,29 @@ import type {
 } from "@modelcontextprotocol/server";
 
 /* oxlint-disable typescript/unbound-method */
+import { Cache, Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import type {
 	ExerciseTemplate,
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
+import {
+	createOperations,
+	foldersListAllDescriptor,
+	type TemplatesListAllOperation,
+	templatesListAllDescriptor,
+	userGetDescriptor,
+	workoutsCountDescriptor,
+} from "@hevy-mcp/operations";
+import type { HevyOperations } from "@hevy-mcp/operations";
 import { projectRoutineFolder } from "../utils/formatters.js";
 import {
 	createExerciseTemplateCatalog,
 	type ExerciseTemplateCatalog,
+	type ExerciseTemplateCatalogCache,
+	EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+	EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
 } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime, type ToolRuntime } from "../tools/tool-runtime.js";
 import { registerToolDefinition } from "../tools/define-tool.js";
@@ -28,13 +41,32 @@ import {
 function createTestRuntime(
 	client: HevyClient | null,
 	catalog?: ExerciseTemplateCatalog,
+	operationsOverride?: HevyOperations,
 ) {
+	const operations =
+		operationsOverride ?? (client ? createOperations(client) : undefined);
+	const listAll: TemplatesListAllOperation = {
+		descriptor: {
+			id: "templates.listAll",
+			safety: "read",
+		},
+		effect: () => Effect.succeed([]),
+		execute: () => Promise.resolve([]),
+	};
+	const cache: ExerciseTemplateCatalogCache = Effect.runSync(
+		Cache.make({
+			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+			timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+			lookup: (_key: string) => listAll.effect(),
+		}),
+	);
 	return createToolRuntime({
 		client,
+		operations,
 		catalog:
 			catalog ??
 			(client
-				? createExerciseTemplateCatalog(client)
+				? createExerciseTemplateCatalog({ templates: { listAll } }, cache)
 				: ({} as ExerciseTemplateCatalog)),
 	});
 }
@@ -202,6 +234,108 @@ describe("registerHevyResources", () => {
 		expect(parseJsonContent(countResult).data).toEqual({ workout_count: 42 });
 	});
 
+	it("dispatches every resource through the operations layer", async () => {
+		const { registerResource, server } = createMockServer();
+		const hevyClient = createMockHevyClient();
+		const baseOperations = createOperations(hevyClient);
+		const baseTemplates = baseOperations.templates;
+		const baseFolders = baseOperations.folders;
+		if (!baseTemplates || !baseFolders) {
+			throw new Error("Expected template and folder operations");
+		}
+		const user = {
+			id: "user-1",
+			name: "Operations User",
+			url: "https://hevy.com/user/operations",
+		};
+		const folders: RoutineFolder[] = [{ id: 1, title: "Operations Folder" }];
+		const templates: ExerciseTemplate[] = [
+			{ id: "template-1", title: "Operations Template" },
+		];
+		const userGet = vi.fn(() => Effect.succeed(user));
+		const workoutCount = vi.fn(() => Effect.succeed(7));
+		const templateListAll = vi.fn(() => Effect.succeed(templates));
+		const folderListAll = vi.fn(() => Effect.succeed(folders));
+		const operations: HevyOperations = {
+			...baseOperations,
+			user: {
+				get: {
+					descriptor: userGetDescriptor,
+					effect: userGet,
+					execute: vi.fn(),
+				},
+			},
+			workouts: {
+				...baseOperations.workouts,
+				count: {
+					descriptor: workoutsCountDescriptor,
+					effect: workoutCount,
+					execute: vi.fn(),
+				},
+			},
+			templates: {
+				...baseTemplates,
+				listAll: {
+					descriptor: templatesListAllDescriptor,
+					effect: templateListAll,
+					execute: vi.fn(),
+				},
+			},
+			folders: {
+				...baseFolders,
+				listAll: {
+					descriptor: foldersListAllDescriptor,
+					effect: folderListAll,
+					execute: vi.fn(),
+				},
+			},
+		};
+		const cache: ExerciseTemplateCatalogCache = Effect.runSync(
+			Cache.make<
+				string,
+				ExerciseTemplate[],
+				Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
+			>({
+				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+				timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+				lookup: (_key: string) => templateListAll(),
+			}),
+		);
+		const catalog = createExerciseTemplateCatalog(operations, cache);
+		registerHevyResources(
+			server,
+			createTestRuntime(hevyClient, catalog, operations),
+		);
+
+		const invoke = async (name: string) => {
+			const registration = getResourceRegistration(registerResource, name);
+			return registration.handler(
+				new URL(registration.uri),
+				createTestContext(9),
+			);
+		};
+
+		expect(parseJsonContent(await invoke("user-profile")).data).toEqual(user);
+		expect(parseJsonContent(await invoke("workout-count")).data).toEqual({
+			workout_count: 7,
+		});
+		expect(parseJsonContent(await invoke("exercise-templates")).data).toEqual(
+			templates,
+		);
+		expect(parseJsonContent(await invoke("routine-folders")).data).toEqual([
+			{ id: 1, title: "Operations Folder" },
+		]);
+
+		expect(userGet).toHaveBeenCalledOnce();
+		expect(workoutCount).toHaveBeenCalledOnce();
+		expect(templateListAll).toHaveBeenCalledOnce();
+		expect(folderListAll).toHaveBeenCalledOnce();
+		expect(hevyClient.getUserInfo).not.toHaveBeenCalled();
+		expect(hevyClient.getWorkoutCount).not.toHaveBeenCalled();
+		expect(hevyClient.getExerciseTemplates).not.toHaveBeenCalled();
+		expect(hevyClient.getRoutineFolders).not.toHaveBeenCalled();
+	});
+
 	it("fetches and formats all routine folder pages", async () => {
 		const firstFolder: RoutineFolder = {
 			id: 1,
@@ -241,22 +375,14 @@ describe("registerHevyResources", () => {
 			createTestContext(3),
 		);
 
-		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(
-			1,
-			{ page: 1, pageSize: 10 },
-			expect.objectContaining({
-				signal: expect.any(AbortSignal),
-				deadline: expect.any(Number),
-			}),
-		);
-		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(
-			2,
-			{ page: 2, pageSize: 10 },
-			expect.objectContaining({
-				signal: expect.any(AbortSignal),
-				deadline: expect.any(Number),
-			}),
-		);
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(1, {
+			page: 1,
+			pageSize: 10,
+		});
+		expect(vi.mocked(hevyClient.getRoutineFolders)).toHaveBeenNthCalledWith(2, {
+			page: 2,
+			pageSize: 10,
+		});
 		const serializedFolders = parseJsonContent(result).data;
 		expect(serializedFolders).toEqual([
 			projectRoutineFolder(firstFolder),
@@ -319,21 +445,35 @@ describe("registerHevyResources", () => {
 
 	it("shares completed catalog values while isolating controlled in-flight calls", async () => {
 		const { registerResource, server, tool } = createMockServer();
-		let resolveCatalog!: (value: {
-			page: number;
-			page_count: number;
-			exercise_templates: ExerciseTemplate[];
-		}) => void;
-		const pendingCatalog = new Promise<{
-			page: number;
-			page_count: number;
-			exercise_templates: ExerciseTemplate[];
-		}>((resolve) => {
-			resolveCatalog = resolve;
-		});
 		const hevyClient = createMockHevyClient();
-		hevyClient.getExerciseTemplates.mockReturnValue(pendingCatalog);
-		const catalog = createExerciseTemplateCatalog(hevyClient);
+		const pendingLookups: Array<(value: ExerciseTemplate[]) => void> = [];
+		const listAll = vi
+			.fn<TemplatesListAllOperation["effect"]>()
+			.mockImplementation(() =>
+				Effect.callback<ExerciseTemplate[]>((resume) => {
+					pendingLookups.push((value) => resume(Effect.succeed(value)));
+				}),
+			);
+		const operations = {
+			templates: {
+				listAll: {
+					descriptor: {
+						id: "templates.listAll" as const,
+						safety: "read" as const,
+					},
+					effect: listAll,
+					execute: () => Promise.resolve([]),
+				},
+			},
+		};
+		const cache = Effect.runSync(
+			Cache.make({
+				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+				timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+				lookup: (_key: string) => listAll(),
+			}),
+		);
+		const catalog = createExerciseTemplateCatalog(operations, cache);
 		const runtime = createTestRuntime(hevyClient, catalog);
 		registerHevyResources(server, runtime);
 		registerTemplateDefinitions(server, runtime);
@@ -354,12 +494,10 @@ describe("registerHevyResources", () => {
 			refresh: false,
 		});
 
-		expect(vi.mocked(hevyClient.getExerciseTemplates)).toHaveBeenCalledTimes(2);
-		resolveCatalog({
-			page: 1,
-			page_count: 1,
-			exercise_templates: [benchTemplate],
-		});
+		expect(listAll).toHaveBeenCalledTimes(2);
+		for (const resolveCatalog of pendingLookups) {
+			resolveCatalog([benchTemplate]);
+		}
 
 		const [resourceResult, searchResult] = await Promise.all([
 			resourcePromise,
@@ -418,7 +556,7 @@ describe("registerHevyResources", () => {
 			error: {
 				status: 503,
 				outcome: "terminal_failure",
-				phase: "response-content",
+				phase: "dispatch",
 				operation_safety: "read",
 				commit_state: "not_sent",
 				safe_to_retry: false,

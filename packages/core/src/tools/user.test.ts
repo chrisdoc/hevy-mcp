@@ -1,15 +1,13 @@
 /* oxlint-disable typescript/unbound-method */
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
+import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { registerToolDefinition, type ToolRegistrar } from "./define-tool.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { userToolDefinitions } from "./user.js";
-
-function mockOf<T>(value: Partial<T>): T {
-	return value as T;
-}
 
 type UserToolArgs = InferToolParams<
 	(typeof userToolDefinitions)[number]["inputSchema"]
@@ -20,6 +18,7 @@ function registerUserDefinition(
 	client: HevyClient | null,
 ) {
 	const catalog: ExerciseTemplateCatalog = {
+		effect: () => Effect.succeed([]),
 		get: vi.fn(),
 		reset: vi.fn(),
 	};
@@ -62,9 +61,7 @@ describe("userToolDefinitions", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining(
-						"API client not initialized. Please provide HEVY_API_KEY.",
-					),
+					text: expect.stringContaining("request failed unexpectedly"),
 				},
 			],
 		});
@@ -72,22 +69,23 @@ describe("userToolDefinitions", () => {
 
 	it("get-user-info returns an error response when the client rejects", async () => {
 		const { server, tool } = createMockServer();
-		const hevyClient = mockOf<HevyClient>({
-			getUserInfo: vi.fn().mockRejectedValue(new Error("User API timeout")),
-		});
+		const hevyClient = createMockHevyClient();
+		hevyClient.getUserInfo.mockRejectedValue(new Error("User API timeout"));
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
 
 		const response = await handler({});
 
-		expect(vi.mocked(hevyClient.getUserInfo)).toHaveBeenCalledTimes(1);
+		expect(hevyClient.getUserInfo).toHaveBeenCalledTimes(1);
 		expect(response).toMatchObject({
 			isError: true,
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("The request failed unexpectedly"),
+					text: expect.stringContaining(
+						"Unable to complete the request after 1 attempts",
+					),
 				},
 			],
 		});
@@ -100,16 +98,15 @@ describe("userToolDefinitions", () => {
 			name: "Chris",
 			url: "https://hevy.com/user/chris",
 		};
-		const hevyClient = mockOf<HevyClient>({
-			getUserInfo: vi.fn().mockResolvedValue({ data: userInfo }),
-		});
+		const hevyClient = createMockHevyClient();
+		hevyClient.getUserInfo.mockResolvedValue({ data: userInfo });
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");
 
 		const response = await handler({});
 
-		expect(vi.mocked(hevyClient.getUserInfo)).toHaveBeenCalled();
+		expect(hevyClient.getUserInfo).toHaveBeenCalled();
 		const parsed = JSON.parse(response.content[0].text) as unknown;
 		expect(parsed).toEqual(userInfo);
 		expect(response.structuredContent).toEqual({ user: userInfo });
@@ -117,9 +114,8 @@ describe("userToolDefinitions", () => {
 
 	it("get-user-info returns empty response when no user info is found", async () => {
 		const { server, tool } = createMockServer();
-		const hevyClient = mockOf<HevyClient>({
-			getUserInfo: vi.fn().mockResolvedValue({}),
-		});
+		const hevyClient = createMockHevyClient();
+		hevyClient.getUserInfo.mockResolvedValue({});
 
 		registerUserDefinition(server, hevyClient);
 		const { handler } = getToolRegistration(tool, "get-user-info");

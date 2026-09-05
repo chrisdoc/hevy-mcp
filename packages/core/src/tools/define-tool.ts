@@ -1,13 +1,12 @@
 import type { McpServer, ToolAnnotations } from "@modelcontextprotocol/server";
+import { Effect } from "effect";
 import { z } from "zod";
 import { respond, type ResponseContract } from "../utils/response-contracts.js";
 import { compactJsonSchema } from "../utils/compact-json-schema.js";
-import {
-	createTypedToolHandler,
-	type InferToolParams,
-} from "../utils/tool-helpers.js";
+import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 import type { ToolRuntime } from "./tool-runtime.js";
+import type { ToolExecutionContext } from "../execution.js";
 
 type ToolDefinitionBase<
 	TSchema extends Record<string, z.ZodTypeAny>,
@@ -21,7 +20,7 @@ type ToolDefinitionBase<
 	execute(
 		runtime: ToolRuntime,
 		args: InferToolParams<TSchema>,
-	): Promise<TResult>;
+	): Effect.Effect<TResult, unknown, never>;
 };
 
 type RegisteredToolConfig = {
@@ -92,17 +91,18 @@ export function registerToolDefinition(
 	runtime: ToolRuntime,
 	definition: AnyToolDefinition,
 ): void {
-	const directHandler = createTypedToolHandler(
-		definition.inputSchema,
-		async (args, requestContext) =>
-			respond(
-				definition.responseContract,
-				await definition.execute(
-					requestContext ? runtime.forExecution(requestContext) : runtime,
-					args,
-				),
-			),
-	);
+	const directHandler = (
+		args: InferToolParams<typeof definition.inputSchema>,
+		requestContext?: ToolExecutionContext,
+	) =>
+		Effect.suspend(() => {
+			const scopedRuntime = requestContext
+				? runtime.forExecution(requestContext)
+				: runtime;
+			return definition
+				.execute(scopedRuntime, args)
+				.pipe(Effect.map((data) => respond(definition.responseContract, data)));
+		});
 	const handler = runtime.createHandler(directHandler, definition.name, {
 		feature: definition.feature,
 		kind: definition.kind,

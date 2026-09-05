@@ -1,11 +1,9 @@
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
-import {
-	discoverRoutines,
-	routineDiscoveryToolDefinitions,
-} from "./routine-discovery.js";
+import { routineDiscoveryToolDefinitions } from "./routine-discovery.js";
 
 describe("search-routines", () => {
 	it("filters routine titles and returns snake_case compact metadata", async () => {
@@ -30,7 +28,12 @@ describe("search-routines", () => {
 		});
 
 		await expect(
-			discoverRoutines(runtime, { query: "push", limit: 20 }),
+			Effect.runPromise(
+				routineDiscoveryToolDefinitions[0].execute(runtime, {
+					query: "push",
+					limit: 20,
+				}),
+			),
 		).resolves.toEqual({
 			routines: [
 				{
@@ -77,10 +80,12 @@ describe("search-routines", () => {
 			client,
 			catalog: {} as ExerciseTemplateCatalog,
 		});
-		const result = await discoverRoutines(runtime, {
-			query: undefined,
-			limit: 3,
-		});
+		const result = await Effect.runPromise(
+			routineDiscoveryToolDefinitions[0].execute(runtime, {
+				query: undefined,
+				limit: 3,
+			}),
+		);
 		expect(result.routines).toEqual([
 			{ title: "Push Day", exercise_count: 1, set_count: 1 },
 			{ exercise_count: 0, set_count: 0 },
@@ -104,10 +109,12 @@ describe("search-routines", () => {
 			catalog: {} as ExerciseTemplateCatalog,
 		});
 		await expect(
-			routineDiscoveryToolDefinitions[0].execute(runtime, {
-				query: "push",
-				limit: 1,
-			}),
+			Effect.runPromise(
+				routineDiscoveryToolDefinitions[0].execute(runtime, {
+					query: "push",
+					limit: 1,
+				}),
+			),
 		).resolves.toMatchObject({ routines: [] });
 	});
 });

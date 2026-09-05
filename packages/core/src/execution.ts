@@ -151,6 +151,20 @@ export function bindClientExecution<TClient extends HevyClient>(
 		get(target, property, receiver) {
 			const value = Reflect.get(target, property, receiver);
 			if (!isFunction(value)) return value;
+			// Proxy invariant: a non-configurable, non-writable own data
+			// property must be reported verbatim. The hidden native request
+			// Effect seam is defined exactly that way; returning a bound or
+			// options-binding copy would fabricate a new function value and
+			// throw a TypeError when operations recover the seam through
+			// this proxy.
+			const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
+			if (
+				descriptor !== undefined &&
+				descriptor.configurable === false &&
+				descriptor.writable === false
+			) {
+				return value;
+			}
 			const optionIndex =
 				property in HEVY_CLIENT_OPTION_INDEXES
 					? HEVY_CLIENT_OPTION_INDEXES[property as ClientMethod]

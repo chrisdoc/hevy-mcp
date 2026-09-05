@@ -1,14 +1,16 @@
-import type { UserInfoResponse } from "@hevy-mcp/hevy-client/types";
+import type { UserInfo } from "@hevy-mcp/hevy-client/types";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import { userResponse } from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
+import { HevyOperationsService } from "../effect-services.js";
+import { operationEffect, requireOperation } from "./operation-helpers.js";
 
 const getUserInfoSchema = {} as const;
 
 const getUserInfoDefinition: ToolDefinition<
 	typeof getUserInfoSchema,
-	UserInfoResponse["data"]
+	UserInfo | undefined
 > = {
 	name: "get-user-info",
 	feature: "profile",
@@ -20,10 +22,14 @@ const getUserInfoDefinition: ToolDefinition<
 	outputSchema: userResponse.outputSchema,
 	annotations: readOnlyAnnotations("Get User Info"),
 	responseContract: userResponse,
-	execute: async (runtime: ToolRuntime) => {
-		const data: UserInfoResponse = await runtime.getClient().getUserInfo();
-		return data?.data;
-	},
+	execute: (runtime: ToolRuntime) =>
+		operationEffect(
+			requireOperation(
+				runtime.service(HevyOperationsService).user?.get,
+				"user.get",
+			),
+			runtime.execution,
+		),
 };
 
 export const userToolDefinitions = [getUserInfoDefinition] as const;

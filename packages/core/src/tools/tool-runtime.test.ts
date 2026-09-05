@@ -11,13 +11,17 @@ import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import {
 	createToolRuntime,
 	HEVY_CLIENT_NOT_INITIALIZED_ERROR,
+	type ToolHandler,
+	type ToolHandlerFactory,
 } from "./tool-runtime.js";
+import type { McpToolResponse } from "../utils/response-contracts.js";
 import { createOperations } from "@hevy-mcp/operations";
 
 const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>
 	operation();
 
 const catalog = {
+	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
 	reset: () => undefined,
 };
@@ -131,6 +135,87 @@ describe("createToolRuntime service layer", () => {
 	});
 });
 
+describe("createToolRuntime handler factory composition", () => {
+	it("invokes the caller-supplied createHandler when an observer is configured", async () => {
+		const finish = vi.fn();
+		const start = vi.fn(() => ({ run: runImmediately, finish }));
+		const customHandler: ToolHandler = () =>
+			Promise.resolve({ content: [{ type: "text", text: "custom" }] });
+		const createHandler: ToolHandlerFactory = vi.fn(() => customHandler);
+		const runtime = createToolRuntime({
+			client: null,
+			catalog,
+			createHandler,
+			observer: { start },
+		});
+
+		const handler = runtime.createHandler(
+			() => Effect.succeed({ content: [{ type: "text", text: "default" }] }),
+			"get-workout",
+		);
+
+		await expect(handler({})).resolves.toMatchObject({
+			content: [{ text: "custom" }],
+		});
+		expect(createHandler).toHaveBeenCalledOnce();
+		expect(createHandler).toHaveBeenCalledWith(
+			expect.any(Function),
+			"get-workout",
+			undefined,
+		);
+		expect(start).toHaveBeenCalledOnce();
+		expect(finish).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: "success" }),
+		);
+	});
+
+	it("observes and wraps errors thrown by a custom createHandler handler", async () => {
+		const finish = vi.fn();
+		const start = vi.fn(() => ({ run: runImmediately, finish }));
+		const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+		const runtime = createToolRuntime({
+			client: null,
+			catalog,
+			createHandler: () => (): Promise<McpToolResponse> =>
+				Promise.reject(new Error("custom failure sentinel")),
+			observer: { start },
+		});
+
+		const result = await runtime.createHandler(
+			() => Effect.succeed({ content: [] }),
+			"get-workout",
+		)({});
+
+		expect(result).toMatchObject({ isError: true });
+		expect(finish).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: "thrown_error" }),
+		);
+		stderr.mockRestore();
+	});
+
+	it("keeps the caller-supplied createHandler when no observer is configured", async () => {
+		const start = vi.fn();
+		const customHandler: ToolHandler = () =>
+			Promise.resolve({ content: [{ type: "text", text: "custom" }] });
+		const createHandler: ToolHandlerFactory = vi.fn(() => customHandler);
+		const runtime = createToolRuntime({
+			client: null,
+			catalog,
+			createHandler,
+			observer: undefined,
+		});
+
+		await expect(
+			runtime.createHandler(
+				() => Effect.succeed({ content: [{ type: "text", text: "default" }] }),
+				"get-workout",
+			)({}),
+		).resolves.toMatchObject({ content: [{ text: "custom" }] });
+		expect(createHandler).toHaveBeenCalledOnce();
+		expect(start).not.toHaveBeenCalled();
+	});
+});
+
 describe("createToolRuntime observation scope", () => {
 	it("does not execute a write handler twice when run instrumentation fails", async () => {
 		let executions = 0;
@@ -149,7 +234,7 @@ describe("createToolRuntime observation scope", () => {
 		});
 		const handler = runtime.createHandler(() => {
 			executions += 1;
-			return Promise.resolve({ content: [{ type: "text", text: "ok" }] });
+			return Effect.succeed({ content: [{ type: "text", text: "ok" }] });
 		}, "create-workout");
 
 		await expect(handler({ id: "workout-id" })).resolves.toMatchObject({
@@ -163,7 +248,7 @@ describe("createToolRuntime observation scope", () => {
 		let active = false;
 		const handler = vi.fn(() => {
 			expect(active).toBe(true);
-			return Promise.resolve({
+			return Effect.succeed({
 				content: [{ type: "text" as const, text: "ok" }],
 			});
 		});
@@ -191,7 +276,9 @@ describe("createToolRuntime observation scope", () => {
 	it("reuses the handler result when run fails after invoking it", async () => {
 		const handler = vi
 			.fn()
-			.mockResolvedValue({ content: [{ type: "text", text: "ok" }] });
+			.mockReturnValue(
+				Effect.succeed({ content: [{ type: "text", text: "ok" }] }),
+			);
 		const runtime = createToolRuntime({
 			client: null,
 			catalog,
@@ -224,7 +311,7 @@ describe("createToolRuntime observation scope", () => {
 		});
 		const secret = "private-routine-title-sentinel";
 		const handler = runtime.createHandler(
-			() => Promise.resolve({ content: [] }),
+			() => Effect.succeed({ content: [] }),
 			"list-routines",
 			{ feature: "routines", kind: "read", operation: "list" },
 		);
@@ -278,7 +365,7 @@ describe("createToolRuntime observation scope", () => {
 		}));
 
 		await runtime.createHandler(
-			() => Promise.resolve({ content }),
+			() => Effect.succeed({ content }),
 			"list-workouts",
 		)({});
 
@@ -308,7 +395,7 @@ describe("createToolRuntime observation scope", () => {
 		const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		const result = await runtime.createHandler(
-			() => Promise.reject(new Error(secret)),
+			() => Effect.fail(new Error(secret)),
 			"get-workouts",
 		)({});
 

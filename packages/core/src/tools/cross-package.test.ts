@@ -1,12 +1,17 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
+import type { HevyExecutionOptions } from "@hevy-mcp/hevy-client";
 import {
 	routinesGetDescriptor,
 	routinesListDescriptor,
 	type HevyOperations,
 	workoutsGetDescriptor,
 	workoutsListDescriptor,
+	templatesGetDescriptor,
+	templatesHistoryDescriptor,
+	templatesListAllDescriptor,
 } from "@hevy-mcp/operations";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import {
@@ -21,6 +26,7 @@ import { templateToolDefinitions } from "./templates.js";
 import { workoutToolDefinitions } from "./workouts.js";
 
 const catalog: ExerciseTemplateCatalog = {
+	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
 	reset: () => undefined,
 };
@@ -28,45 +34,73 @@ const catalog: ExerciseTemplateCatalog = {
 function createSoft404Operations() {
 	const workoutsGet = vi
 		.fn()
-		.mockResolvedValueOnce({
-			workout: null,
-			expected404Outcome: "not_found" as const,
-		})
-		.mockResolvedValueOnce({ workout: null });
+		.mockReturnValueOnce(
+			Effect.succeed({
+				workout: null,
+				expected404Outcome: "not_found" as const,
+			}),
+		)
+		.mockReturnValueOnce(Effect.succeed({ workout: null }));
 	const workoutsList = vi
 		.fn()
-		.mockResolvedValueOnce({
-			items: [],
-			page: 2,
-			pageCount: undefined,
-			expected404Outcome: "end_of_list" as const,
-		})
-		.mockResolvedValueOnce({ items: [], page: 2, pageCount: undefined });
+		.mockReturnValueOnce(
+			Effect.succeed({
+				items: [],
+				page: 2,
+				pageCount: undefined,
+				expected404Outcome: "end_of_list" as const,
+			}),
+		)
+		.mockReturnValueOnce(
+			Effect.succeed({ items: [], page: 2, pageCount: undefined }),
+		);
 	const routinesGet = vi
 		.fn()
-		.mockResolvedValueOnce({
-			routine: null,
-			expected404Outcome: "not_found" as const,
-		})
-		.mockResolvedValueOnce({ routine: null });
+		.mockReturnValueOnce(
+			Effect.succeed({
+				routine: null,
+				expected404Outcome: "not_found" as const,
+			}),
+		)
+		.mockReturnValueOnce(Effect.succeed({ routine: null }));
 	const routinesList = vi
 		.fn()
-		.mockResolvedValueOnce({
-			items: [],
-			page: 2,
-			pageCount: undefined,
-			expected404Outcome: "end_of_list" as const,
-		})
-		.mockResolvedValueOnce({ items: [], page: 2, pageCount: undefined });
+		.mockReturnValueOnce(
+			Effect.succeed({
+				items: [],
+				page: 2,
+				pageCount: undefined,
+				expected404Outcome: "end_of_list" as const,
+			}),
+		)
+		.mockReturnValueOnce(
+			Effect.succeed({ items: [], page: 2, pageCount: undefined }),
+		);
 
 	const operations = {
 		workouts: {
-			get: { descriptor: workoutsGetDescriptor, execute: workoutsGet },
-			list: { descriptor: workoutsListDescriptor, execute: workoutsList },
+			get: {
+				descriptor: workoutsGetDescriptor,
+				effect: workoutsGet,
+				execute: vi.fn(),
+			},
+			list: {
+				descriptor: workoutsListDescriptor,
+				effect: workoutsList,
+				execute: vi.fn(),
+			},
 		},
 		routines: {
-			get: { descriptor: routinesGetDescriptor, execute: routinesGet },
-			list: { descriptor: routinesListDescriptor, execute: routinesList },
+			get: {
+				descriptor: routinesGetDescriptor,
+				effect: routinesGet,
+				execute: vi.fn(),
+			},
+			list: {
+				descriptor: routinesListDescriptor,
+				effect: routinesList,
+				execute: vi.fn(),
+			},
 		},
 	} satisfies HevyOperations;
 
@@ -119,30 +153,30 @@ describe("cross-package core invariants", () => {
 				{
 					name: "get-workout",
 					arguments: { workout_id: "missing-workout" },
-					execute: workoutsGet,
+					effect: workoutsGet,
 					notFoundText: "Workout with ID missing-workout not found",
 				},
 				{
 					name: "get-workouts",
 					arguments: { page: 2 },
-					execute: workoutsList,
+					effect: workoutsList,
 					notFoundText: "No workouts found for the specified parameters",
 				},
 				{
 					name: "get-routine",
 					arguments: { routine_id: "missing-routine" },
-					execute: routinesGet,
+					effect: routinesGet,
 					notFoundText: "Routine with ID missing-routine not found",
 				},
 				{
 					name: "get-routines",
 					arguments: { page: 2 },
-					execute: routinesList,
+					effect: routinesList,
 					notFoundText: "No routines found for the specified parameters",
 				},
 			] as const;
 
-			for (const { name, arguments: args, execute, notFoundText } of cases) {
+			for (const { name, arguments: args, effect, notFoundText } of cases) {
 				const soft404 = await client.callTool({ name, arguments: args });
 				const missingBody = await client.callTool({ name, arguments: args });
 
@@ -162,7 +196,7 @@ describe("cross-package core invariants", () => {
 				expect(JSON.stringify(soft404)).not.toMatch(
 					/expected404Outcome|Effect|Cause|Layer/u,
 				);
-				expect(execute).toHaveBeenCalledTimes(2);
+				expect(effect).toHaveBeenCalledTimes(2);
 			}
 		} finally {
 			await Promise.all([client.close(), server.close()]);
@@ -170,27 +204,33 @@ describe("cross-package core invariants", () => {
 	});
 
 	it("uses the layer-backed operations on the first callTool when getters diverge", async () => {
-		const layerExecute = vi.fn().mockResolvedValue({
-			workout: { id: "layer-workout", title: "Layer workout" },
-		});
-		const wrongGetterExecute = vi
-			.fn()
-			.mockRejectedValue(new Error("wrong source"));
+		const layerEffect = vi.fn(() =>
+			Effect.succeed({
+				workout: { id: "layer-workout", title: "Layer workout" },
+			}),
+		);
 		const layerOperations: HevyOperations = {
 			workouts: {
-				get: { descriptor: workoutsGetDescriptor, execute: layerExecute },
+				get: {
+					descriptor: workoutsGetDescriptor,
+					effect: layerEffect,
+					execute: vi.fn(),
+				},
 				list: {
 					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},
 			routines: {
 				get: {
 					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},
@@ -201,7 +241,7 @@ describe("cross-package core invariants", () => {
 				...layerOperations.workouts,
 				get: {
 					...layerOperations.workouts.get,
-					execute: wrongGetterExecute,
+					effect: vi.fn(() => Effect.fail(new Error("wrong source"))),
 				},
 			},
 		};
@@ -220,11 +260,11 @@ describe("cross-package core invariants", () => {
 					workout: { id: "layer-workout", title: "Layer workout" },
 				},
 			});
-			expect(layerExecute).toHaveBeenCalledWith(
+			expect(layerEffect).toHaveBeenCalledWith(
 				{ workoutId: "layer-workout" },
 				undefined,
 			);
-			expect(wrongGetterExecute).not.toHaveBeenCalled();
+			expect(getterOperations.workouts.get.effect).not.toHaveBeenCalled();
 		} finally {
 			await Promise.all([client.close(), server.close()]);
 		}
@@ -232,30 +272,65 @@ describe("cross-package core invariants", () => {
 
 	it("rebinds client tools for execution while keeping operations on the parent layer", async () => {
 		const client = createMockHevyClient();
-		client.getExerciseTemplate.mockResolvedValue({
-			id: "template-1",
-			title: "Layer template",
-		});
+		const templateEffect = vi.fn(
+			(
+				_input: { exerciseTemplateId: string },
+				_options?: HevyExecutionOptions,
+			) =>
+				Effect.succeed({
+					exerciseTemplate: {
+						id: "template-1",
+						title: "Layer template",
+					},
+					exerciseTemplateId: "template-1",
+				}),
+		);
 		const operations: HevyOperations = {
 			workouts: {
 				get: {
 					descriptor: workoutsGetDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn().mockResolvedValue({
 						workout: { id: "workout-1", title: "Layer workout" },
 					}),
 				},
 				list: {
 					descriptor: workoutsListDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 			},
 			routines: {
 				get: {
 					descriptor: routinesGetDescriptor,
+					effect: vi.fn(),
 					execute: vi.fn(),
 				},
 				list: {
 					descriptor: routinesListDescriptor,
+					effect: vi.fn(),
+					execute: vi.fn(),
+				},
+			},
+			templates: {
+				get: {
+					descriptor: templatesGetDescriptor,
+					effect: templateEffect,
+					execute: vi.fn(),
+				},
+				history: {
+					descriptor: templatesHistoryDescriptor,
+					effect: vi.fn(() =>
+						Effect.succeed({
+							exerciseHistory: [],
+							exerciseTemplateId: "template-1",
+						}),
+					),
+					execute: vi.fn(),
+				},
+				listAll: {
+					descriptor: templatesListAllDescriptor,
+					effect: vi.fn(() => Effect.succeed([])),
 					execute: vi.fn(),
 				},
 			},
@@ -269,19 +344,18 @@ describe("cross-package core invariants", () => {
 		const scoped = runtime.forExecution(execution);
 
 		await expect(
-			templateToolDefinitions[0].execute(scoped, {
-				exercise_template_id: "template-1",
-			}),
+			Effect.runPromise(
+				templateToolDefinitions[0].execute(scoped, {
+					exercise_template_id: "template-1",
+				}),
+			),
 		).resolves.toMatchObject({
 			exercise_template: { id: "template-1" },
 		});
 
-		expect(client.getExerciseTemplate).toHaveBeenCalledWith(
-			"template-1",
-			expect.objectContaining({
-				signal: execution.signal,
-				deadline: execution.deadline,
-			}),
+		expect(templateEffect).toHaveBeenCalledWith(
+			{ exerciseTemplateId: "template-1" },
+			execution,
 		);
 		expect(runtime.service(HevyOperationsService)).toBe(operations);
 		expect(scoped.service(HevyOperationsService)).toBe(operations);
