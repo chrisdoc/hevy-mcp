@@ -93,8 +93,8 @@ the later handoff needed to make the validated and published tarballs identical.
 Run the pull-request baseline with:
 
 ```sh
-pnpm run test:pr
-pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
 ```
 
 The aggregate table identifies the current Nx targets and direct members. Nx
@@ -107,12 +107,18 @@ npx nx show project repository --json
 npx nx graph --file=.nx/project-graph.html
 ```
 
+The repository `test:unit` target is marked exclusive in `project.json`.
+This keeps its spawned CLI startup tests from competing with other
+CPU-intensive PR lanes on small local runners; the documented `test:pr`
+command remains parallel where safe and needs no manual `--parallel=1`
+override.
+
 CI selects its reporters and coverage outputs through the same lane wrappers,
 so selectors do not drift between local and hosted runs:
 
 ```sh
-HEVY_TEST_REPORT_MODE=ci pnpm run test:unit
-HEVY_TEST_REPORT_MODE=ci pnpm run test:mcp
+MISE_AUTO_INSTALL=false mise exec -- env HEVY_TEST_REPORT_MODE=ci pnpm run test:unit
+MISE_AUTO_INSTALL=false mise exec -- env HEVY_TEST_REPORT_MODE=ci pnpm run test:mcp
 ```
 
 The build workflow invokes mapped targets per Node runtime with Nx `run-many`:

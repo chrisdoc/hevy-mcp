@@ -118,8 +118,8 @@ targets instead of copying raw Vitest selectors into automation.
 Produce the two coverage reports without a wrapper alias:
 
 ```bash
-pnpm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
-pnpm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
 ```
 
 The lane and aggregate registry below mirrors
@@ -178,8 +178,8 @@ the full-catalog search against production.
 The normal pull request baseline is:
 
 ```bash
-pnpm run test:pr
-pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
 ```
 
 Performance timing targets are currently informational. Correctness, fixture,
@@ -191,12 +191,12 @@ report is written to `test-results/performance/summary.json`.
 Run these checks before opening a pull request:
 
 ```bash
-pnpm run check
-pnpm run check:types
-pnpm run build
-pnpm run test:pr
-pnpm run test:performance
-pnpm run check:changeset
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:types
+MISE_AUTO_INSTALL=false mise exec -- pnpm run build
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:changeset
 ```
 
 Also run the narrow checks related to your change. In particular:
