@@ -554,6 +554,7 @@ describe("registerHevyResources", () => {
 		);
 		expect(parseJsonContent(apiFailureResult).data).toEqual({
 			error: {
+				code: "HEVY_RETRY_EXHAUSTED",
 				status: 503,
 				outcome: "terminal_failure",
 				phase: "dispatch",

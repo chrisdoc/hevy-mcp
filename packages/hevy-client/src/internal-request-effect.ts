@@ -322,6 +322,7 @@ function mapRequestError(
 			status,
 			method: identity.method,
 			endpoint: identity.endpoint,
+			code: cause.code,
 			expected:
 				expectedGet404Outcome(
 					identity.endpoint,
@@ -337,6 +338,7 @@ function mapRequestError(
 			status,
 			method: identity.method,
 			endpoint: identity.endpoint,
+			code: cause.code,
 			responseError: cause.responseError,
 			...executionMetadata(cause),
 		});
@@ -346,6 +348,7 @@ function mapRequestError(
 			status,
 			method: identity.method,
 			endpoint: identity.endpoint,
+			code: cause.code,
 			retryAfterSeconds: retryAfterSeconds(cause),
 			...executionMetadata(cause),
 			retryCount: cause.hevyRetryCount,
@@ -356,6 +359,7 @@ function mapRequestError(
 		status,
 		method: identity.method,
 		endpoint: identity.endpoint,
+		code: cause.code,
 		...executionMetadata(cause),
 	});
 }

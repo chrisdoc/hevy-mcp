@@ -520,4 +520,40 @@ describe("CLI mutation process contract", () => {
 		expect(io.out).toBe("");
 		expect(io.err).toBe(`${message}\n`);
 	});
+
+	it.each([
+		["HEVY_REQUEST_ABORTED", undefined, 4],
+		["HEVY_DEADLINE_EXCEEDED", undefined, 4],
+		["HEVY_RETRY_EXHAUSTED", 503, 3],
+	] as const)(
+		"preserves %s in JSON diagnostics after Effect collapse",
+		async (errorCode, status, expectedExitCode) => {
+			const io = streams();
+			const getWorkouts = vi.fn().mockRejectedValue(
+				new HevyHttpError("request failed", {
+					status,
+					method: "GET",
+					endpoint: "/v1/workouts",
+					code: errorCode,
+					outcome:
+						errorCode === "HEVY_REQUEST_ABORTED"
+							? "cancelled"
+							: errorCode === "HEVY_DEADLINE_EXCEEDED"
+								? "deadline_exceeded"
+								: "terminal_failure",
+				}),
+			);
+			const code = await runCli({
+				argv: ["workouts", "list", "--json"],
+				env: { HEVY_API_KEY: "key" },
+				clientFactory: () => mockClient(getWorkouts),
+				streams: io.streams,
+			});
+
+			expect(code).toBe(expectedExitCode);
+			expect(JSON.parse(io.err)).toMatchObject({
+				error_code: errorCode,
+			});
+		},
+	);
 });
