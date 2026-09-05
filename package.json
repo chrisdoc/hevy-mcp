@@ -42,7 +42,7 @@
 		"test:unit": "mise exec -- node scripts/run-vitest-lane.mjs unit",
 		"test:release-unit": "mise exec -- vitest run --exclude 'tests/integration/**'",
 		"test:mcp": "mise exec -- node scripts/run-vitest-lane.mjs mocked",
-		"test:integration": "mise exec -- vitest run tests/integration",
+		"test:integration": "mise exec -- node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run tests/integration",
 		"test:diagnostics": "mise exec -- node --test tests/nightly/diagnostics.test.mjs",
 		"test:contract": "mise exec -- vitest run packages/node/src/index.test.ts packages/node/src/utils/config.test.ts packages/core/src/tools/register.test.ts packages/core/src/utils/output-schemas.test.ts tests/unit/server-manifest.test.ts tests/contract/runtime-contract-matrix.test.ts",
 		"test:stdio": "mise exec -- vitest run packages/node/src/index.test.ts packages/node/src/runtime.test.ts packages/node/src/utils/stdio-observability.test.ts packages/node/src/utils/graceful-shutdown.test.ts packages/node/src/utils/graceful-shutdown.child-process.test.ts",
