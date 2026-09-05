@@ -19,7 +19,10 @@ hevy --help
 ```
 
 The CLI reads credentials only from `HEVY_API_KEY`. It does not accept API keys
-in command arguments, JSON payloads, or URLs.
+in command arguments, JSON payloads, or URLs. The published `hevy` command is a
+Promise-based adapter, so callers use commands such as `hevy workouts list`
+without constructing Effect programs. Its internal Effect request and
+operation programs collapse once at the CLI boundary.
 
 ## Examples
 

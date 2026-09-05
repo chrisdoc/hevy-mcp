@@ -1,5 +1,5 @@
-// Telemetry must be initialized before any other imports so that
-// OpenTelemetry and Sentry are ready before application code runs.
+// Telemetry is acquired by the scoped Node lifecycle Layer; imports stay
+// side-effect-free for embedders.
 import { tracer, serviceName, serviceVersion } from "./utils/telemetry.js";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { SpanStatusCode } from "@opentelemetry/api";
@@ -22,10 +22,11 @@ import {
 } from "./utils/mcp-session-observability.js";
 import { installSdkErrorTracking } from "./utils/sdk-observability.js";
 import {
-	INVALID_API_KEY_MESSAGE,
 	recordLifecycleFailure,
 	runNodeLifecycle,
+	type NodeLifecycleHandle,
 } from "./utils/node-lifecycle.js";
+import { InvalidHevyApiKeyError } from "./utils/startup-errors.js";
 
 const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
@@ -179,7 +180,7 @@ async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 		if (signal?.aborted) throw error;
 		const status = getHttpStatus(error);
 		if (status === 401 || status === 403) {
-			throw new Error(INVALID_API_KEY_MESSAGE);
+			throw new InvalidHevyApiKeyError();
 		}
 
 		const diagnostic = getSafeValidationDiagnostic(error);
@@ -224,7 +225,7 @@ function buildServer(
 					cacheObserver: createNodeCacheObserver(),
 				});
 				installSdkErrorTracking(server, transport);
-				console.error("Hevy client initialized with API key");
+				console.error("Hevy client initialized");
 
 				span.setStatus({ code: SpanStatusCode.OK });
 				return server;
@@ -251,7 +252,9 @@ export async function createNodeMcpServer(
 	return buildServer(validatedApiKey, transport, lifecycleSignal);
 }
 
-export async function runStdioServer() {
+export async function runStdioServer(): Promise<
+	NodeLifecycleHandle | undefined
+> {
 	const args = process.argv.slice(2);
 	const cliAction = getCliAction(args);
 
@@ -264,7 +267,7 @@ export async function runStdioServer() {
 		return;
 	}
 
-	await runNodeLifecycle({
+	return runNodeLifecycle({
 		transport: "stdio",
 		start: async (context) => {
 			const { signal } = context;
@@ -272,40 +275,48 @@ export async function runStdioServer() {
 			const apiKey = cfg.apiKey;
 			assertApiKey(apiKey);
 			const server = await createNodeMcpServer({ apiKey }, "stdio", signal);
+			const ownedServer = context.adoptTarget(server);
 			console.error("Starting MCP server in stdio mode");
 			const transport = createInstrumentedStdioTransport(
 				new StdioServerTransport(),
 			);
 			context.markConnectAttempted();
-			await tracer.startActiveSpan(
-				"mcp.server.connect",
-				{
-					attributes: {
-						"mcp.span.category": "session",
-						"mcp.transport": "stdio",
+			try {
+				await tracer.startActiveSpan(
+					"mcp.server.connect",
+					{
+						attributes: {
+							"mcp.span.category": "session",
+							"mcp.transport": "stdio",
+						},
 					},
-				},
-				async (connectSpan) => {
-					try {
-						await server.connect(transport);
-						context.markConnectSucceeded();
-						connectSpan.setStatus({ code: SpanStatusCode.OK });
-					} catch (caughtError) {
-						const error =
-							caughtError instanceof Error ? caughtError : String(caughtError);
-						recordLifecycleFailure(
-							connectSpan,
-							error,
-							"connect",
-							"connect_failure",
-						);
-						connectSpan.setStatus({ code: SpanStatusCode.ERROR });
-						throw error;
-					} finally {
-						connectSpan.end();
-					}
-				},
-			);
+					async (connectSpan) => {
+						try {
+							await server.connect(transport);
+							context.markConnectSucceeded();
+							connectSpan.setStatus({ code: SpanStatusCode.OK });
+						} catch (caughtError) {
+							const error =
+								caughtError instanceof Error
+									? caughtError
+									: String(caughtError);
+							recordLifecycleFailure(
+								connectSpan,
+								error,
+								"connect",
+								"connect_failure",
+							);
+							connectSpan.setStatus({ code: SpanStatusCode.ERROR });
+							throw error;
+						} finally {
+							connectSpan.end();
+						}
+					},
+				);
+			} catch (error) {
+				await ownedServer.close().catch(() => undefined);
+				throw error;
+			}
 			return {
 				target: server,
 				onShutdown: (succeeded) =>
@@ -322,7 +333,7 @@ export async function runStdioServer() {
 	});
 }
 
-export async function runServer(): Promise<void> {
+export async function runServer(): Promise<NodeLifecycleHandle | undefined> {
 	const args = process.argv.slice(2);
 	const cliAction = getCliAction(args);
 	if (cliAction === "version") {
@@ -336,11 +347,10 @@ export async function runServer(): Promise<void> {
 
 	const options = parseNodeCliOptions(args);
 	if (options.transport === "stdio") {
-		await runStdioServer();
-		return;
+		return runStdioServer();
 	}
 
-	await runNodeLifecycle({
+	return runNodeLifecycle({
 		transport: "http",
 		start: async (context) => {
 			const { signal } = context;

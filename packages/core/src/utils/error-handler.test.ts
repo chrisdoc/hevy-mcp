@@ -86,13 +86,13 @@ describe("createErrorResponse", () => {
 		expect(result.content[0]?.text).not.toContain("Hevy API request");
 	});
 
-	it("classifies the original error message when the safe message is generic", () => {
+	it("does not classify ordinary error text as a protocol category", () => {
 		const result = createErrorResponse(
 			new Error("request validation failed"),
 			"test-tool",
 		);
 		expect(result.errorContext).toMatchObject({
-			errorType: ErrorType.VALIDATION_ERROR,
+			errorType: ErrorType.UNKNOWN_ERROR,
 		});
 	});
 

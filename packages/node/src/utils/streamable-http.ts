@@ -11,6 +11,7 @@ import {
 	createExecutionProjection,
 	createSafeErrorDiagnostic,
 } from "@hevy-mcp/core";
+import { Effect, Exit, Fiber, Scope, Semaphore, Duration } from "effect";
 import type { NodeCliOptions } from "./arguments.js";
 import { httpAdmissionRejections, httpSessionEvictions } from "./metrics.js";
 import {
@@ -136,11 +137,18 @@ export type McpServerFactory = (params: {
 
 interface HttpSession {
 	transport: HttpTransport;
-	server: OwnedMcpServer;
+	server?: OwnedMcpServer;
 	context: McpSessionContext;
 	lifecycleController: AbortController;
 	responses: Set<ServerResponse>;
-	idleTimer?: ReturnType<typeof setTimeout>;
+	scope: Scope.Closeable;
+	id?: string;
+	idleFiber?: Fiber.Fiber<void, never>;
+	idleGeneration: number;
+	closePromise?: Promise<void>;
+	finalizationErrors: unknown[];
+	terminationCategory?: "connect_failure" | "startup_failure" | "unknown";
+	terminationRecorded: boolean;
 	closed: boolean;
 }
 
@@ -264,80 +272,107 @@ function readBody(
 	timeoutMs: number,
 	signal?: AbortSignal,
 ): Promise<unknown> {
-	return new Promise((resolve, reject) => {
-		let size = 0;
-		let settled = false;
-		const chunks: Buffer[] = [];
-		const handlers: ReadBodyHandlers = {
-			onData: () => {},
-			onError: () => {},
-			onAbort: () => {},
-			onEnd: () => {},
-			onTimeout: () => {},
-		};
-		const timer = setTimeout(() => handlers.onTimeout(), timeoutMs);
-		const removeErrorListenerAfterDrain = () => {
-			request.removeListener("error", handlers.onError);
-		};
-		const cleanup = (retainErrorListener = false) => {
-			clearTimeout(timer);
-			request.removeListener("data", handlers.onData);
-			request.removeListener("end", handlers.onEnd);
-			if (retainErrorListener) {
-				request.once("close", removeErrorListenerAfterDrain);
-			} else {
+	const read = Effect.callback<unknown, HttpRequestError>(
+		(resume, interruptionSignal) => {
+			let size = 0;
+			const chunks: Buffer[] = [];
+			let settled = false;
+			const handlers: ReadBodyHandlers = {
+				onData: () => {},
+				onError: () => {},
+				onAbort: () => {},
+				onEnd: () => {},
+				onTimeout: () => {},
+			};
+			const cleanup = () => {
+				request.removeListener("data", handlers.onData);
+				request.removeListener("end", handlers.onEnd);
 				request.removeListener("error", handlers.onError);
-			}
-			signal?.removeEventListener("abort", handlers.onAbort);
-		};
-		const settle = (callback: () => void, retainErrorListener = false) => {
-			if (settled) return;
-			settled = true;
-			cleanup(retainErrorListener);
-			callback();
-		};
-		const rejectAndDrain = (error: HttpRequestError) => {
-			if (settled) return;
-			settled = true;
-			cleanup(true);
-			request.resume();
-			reject(error);
-		};
-		handlers.onData = (chunk: Buffer | string) => {
-			const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-			size += buffer.byteLength;
-			if (size > MAX_BODY_BYTES) {
-				rejectAndDrain(new HttpRequestError(413, "Request body is too large."));
-				return;
-			}
-			if (!settled) chunks.push(buffer);
-		};
-		handlers.onError = (error: Error) => settle(() => reject(error));
-		handlers.onAbort = () =>
-			rejectAndDrain(
-				new HttpRequestError(
-					503,
-					"HTTP server is shutting down. Retry shortly.",
-				),
-			);
-		handlers.onEnd = () =>
-			settle(() => {
+				signal?.removeEventListener("abort", handlers.onAbort);
+				interruptionSignal.removeEventListener("abort", handlers.onAbort);
+			};
+			const settle = (
+				effect:
+					| ReturnType<typeof Effect.succeed<unknown>>
+					| ReturnType<typeof Effect.fail<HttpRequestError>>,
+			) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				resume(effect);
+			};
+			const rejectAndDrain = (error: HttpRequestError) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				request.resume();
+				resume(Effect.fail(error));
+			};
+			handlers.onData = (chunk: Buffer | string) => {
+				const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+				size += buffer.byteLength;
+				if (size > MAX_BODY_BYTES) {
+					rejectAndDrain(
+						new HttpRequestError(413, "Request body is too large."),
+					);
+					return;
+				}
+				if (!settled) chunks.push(buffer);
+			};
+			handlers.onError = (_error: Error) =>
+				settle(
+					Effect.fail(
+						new HttpRequestError(500, "Request body could not be read."),
+					),
+				);
+			handlers.onAbort = () =>
+				rejectAndDrain(
+					new HttpRequestError(
+						503,
+						"HTTP server is shutting down. Retry shortly.",
+					),
+				);
+			handlers.onEnd = () => {
 				try {
 					const raw = Buffer.concat(chunks).toString("utf8");
-					resolve(raw.length === 0 ? undefined : JSON.parse(raw));
+					settle(
+						Effect.succeed(raw.length === 0 ? undefined : JSON.parse(raw)),
+					);
 				} catch {
-					reject(new HttpRequestError(400, "Request body must be valid JSON."));
+					settle(
+						Effect.fail(
+							new HttpRequestError(400, "Request body must be valid JSON."),
+						),
+					);
 				}
+			};
+			handlers.onTimeout = () =>
+				rejectAndDrain(new HttpRequestError(408, "Request body timed out."));
+			request.on("data", handlers.onData);
+			request.once("error", handlers.onError);
+			request.once("end", handlers.onEnd);
+			signal?.addEventListener("abort", handlers.onAbort, { once: true });
+			interruptionSignal.addEventListener("abort", handlers.onAbort, {
+				once: true,
 			});
-		handlers.onTimeout = () =>
-			rejectAndDrain(new HttpRequestError(408, "Request body timed out."));
-		request.on("data", handlers.onData);
-		request.once("error", handlers.onError);
-		request.once("end", handlers.onEnd);
-		signal?.addEventListener("abort", handlers.onAbort, { once: true });
-		timer.unref?.();
-		if (signal?.aborted) handlers.onAbort();
-	});
+			if (signal?.aborted || interruptionSignal.aborted) {
+				handlers.onAbort();
+			}
+			return Effect.sync(() => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				request.resume();
+			});
+		},
+	).pipe(
+		Effect.timeoutOrElse({
+			duration: timeoutMs,
+			orElse: () =>
+				Effect.fail(new HttpRequestError(408, "Request body timed out.")),
+		}),
+	);
+	return Effect.runPromise(read);
 }
 
 function isInitializeRequest<T>(body: T): boolean {
@@ -356,9 +391,17 @@ function closeServer(server: Server): Promise<void> {
 			resolve();
 			return;
 		}
-		server.close((error) => (error ? reject(error) : resolve()));
-		server.closeIdleConnections();
-		server.closeAllConnections();
+		setImmediate(() => {
+			server.close((error) => (error ? reject(error) : resolve()));
+			// Let the current request turn write a bounded shutdown response
+			// before closing connections. Closing idle or active connections in
+			// the same turn as `shuttingDown = true` can reset a request admitted
+			// just before close() before its 503 reaches the client.
+			setImmediate(() => {
+				server.closeIdleConnections();
+				server.closeAllConnections();
+			});
+		});
 	});
 }
 
@@ -449,8 +492,25 @@ export async function startStreamableHttpServer(
 	const pendingSessions = new Set<HttpSession>();
 	const initializationControllers = new Set<AbortController>();
 	const initializationPromises = new Set<Promise<void>>();
+	const initializingSemaphore = Semaphore.makeUnsafe(config.maxInitializing);
 	const cleanupErrors: unknown[] = [];
+	const httpScope = await Effect.runPromise(Scope.make("parallel"));
+	await Effect.runPromise(
+		Scope.addFinalizer(
+			httpScope,
+			Effect.sync(() => {
+				for (const controller of initializationControllers) {
+					controller.abort(
+						new DOMException("HTTP server scope closed", "AbortError"),
+					);
+				}
+			}),
+		),
+	);
 	let shuttingDown = false;
+	// Keep the assigned ephemeral port after server.close() starts so a request
+	// already admitted during shutdown still passes Host validation.
+	let listeningPort = options.port;
 	const server = createServer((request, response) => {
 		void handleRequest(request, response).catch((error) => {
 			if (response.headersSent || response.destroyed) {
@@ -466,81 +526,61 @@ export async function startStreamableHttpServer(
 		});
 	});
 
-	function armIdleTimer(session: HttpSession): void {
+	function armIdleEviction(session: HttpSession): void {
 		if (session.closed) return;
-		if (session.idleTimer) clearTimeout(session.idleTimer);
-		session.idleTimer = setTimeout(() => {
-			const hasActiveResponse = [...session.responses].some(
-				(response) => !response.writableEnded,
-			);
-			if (hasActiveResponse) {
-				armIdleTimer(session);
-				return;
-			}
-			recordHttpSessionEviction();
-			closeSession(session).catch((error) => {
-				cleanupErrors.push(error);
-			});
-		}, config.idleTimeoutMs);
-		session.idleTimer.unref?.();
+		session.idleGeneration += 1;
+		const generation = session.idleGeneration;
+		if (session.idleFiber) {
+			Effect.runFork(Fiber.interrupt(session.idleFiber));
+		}
+		const idle = Effect.sleep(Duration.millis(config.idleTimeoutMs)).pipe(
+			Effect.andThen(
+				Effect.sync(() => {
+					if (session.closed || session.idleGeneration !== generation) {
+						return;
+					}
+					const hasActiveResponse = [...session.responses].some(
+						(response) => !response.writableEnded,
+					);
+					if (hasActiveResponse) {
+						queueMicrotask(() => armIdleEviction(session));
+						return;
+					}
+					recordHttpSessionEviction();
+					queueMicrotask(() => {
+						void closeSession(session).catch((error) => {
+							cleanupErrors.push(error);
+						});
+					});
+				}),
+			),
+		);
+		session.idleFiber = Effect.runSync(
+			Effect.forkIn(idle, session.scope, { startImmediately: true }),
+		);
 	}
 
 	async function closeSession(
 		session: HttpSession,
 		failureCategory?: "connect_failure" | "startup_failure" | "unknown",
 	): Promise<void> {
-		if (session.closed) return;
+		if (failureCategory && !session.terminationCategory) {
+			session.terminationCategory = failureCategory;
+		}
+		if (session.closePromise) return session.closePromise;
 		session.closed = true;
-		if (session.idleTimer) {
-			clearTimeout(session.idleTimer);
-			session.idleTimer = undefined;
-		}
-		pendingSessions.delete(session);
-		for (const [id, current] of sessions) {
-			if (current === session) sessions.delete(id);
-		}
-		for (const response of session.responses) {
-			if (!response.writableEnded) response.destroy();
-		}
-		// The SDK transport closes response streams, but its stateful close path
-		// does not abort the request signal already handed to MCP handlers. Abort
-		// the session-owned lifecycle signal first so active Hevy calls stop too.
-		session.lifecycleController.abort(
-			new DOMException("MCP session closed", "AbortError"),
-		);
-
-		const results = await Promise.allSettled([
-			Promise.resolve().then(() => session.transport.close()),
-			Promise.resolve().then(() => session.server.close()),
-		]);
-		const errors = results.flatMap((result) =>
-			result.status === "rejected" ? [result.reason] : [],
-		);
-		const succeeded = errors.length === 0;
-		recordMcpSessionTermination(
-			failureCategory && succeeded
-				? failureCategory
-				: resolveSessionTerminationCategory(succeeded, session.context),
-			session.context,
-		);
-		if (errors.length > 0) {
-			throw aggregateErrors(errors, "MCP session cleanup failed.");
-		}
-	}
-
-	async function closeUnregistered(
-		transport: HttpTransport,
-		mcpServer: OwnedMcpServer | undefined,
-	): Promise<void> {
-		const results = await Promise.allSettled([
-			Promise.resolve().then(() => transport.close()),
-			...(mcpServer ? [Promise.resolve().then(() => mcpServer.close())] : []),
-		]);
-		const errors = results.flatMap((result) =>
-			result.status === "rejected" ? [result.reason] : [],
-		);
-		if (errors.length > 0) throw aggregateErrors(errors, "MCP cleanup failed.");
-		return;
+		session.closePromise = (async () => {
+			// The registry only indexes sessions. Ownership and cleanup live in
+			// the child Scope finalizer below.
+			await Effect.runPromise(Scope.close(session.scope, Exit.void));
+			if (session.finalizationErrors.length > 0) {
+				throw aggregateErrors(
+					session.finalizationErrors,
+					"MCP session cleanup failed.",
+				);
+			}
+		})();
+		return session.closePromise;
 	}
 
 	function trackSessionResponse(
@@ -555,11 +595,11 @@ export async function startStreamableHttpServer(
 			// for this transport, so evict and close the whole session rather than
 			// leaving an aborted session reusable or poisoning future requests.
 			if (!response.writableEnded && !session.closed) {
-				closeSession(session).catch((error) => {
+				void closeSession(session).catch((error) => {
 					cleanupErrors.push(error);
 				});
 			} else if (!session.closed) {
-				armIdleTimer(session);
+				armIdleEviction(session);
 			}
 		});
 	}
@@ -582,7 +622,7 @@ export async function startStreamableHttpServer(
 			!validateHostHeader(
 				request,
 				hostNamesFor(options),
-				expectedPort(options, server),
+				listeningPort,
 				wildcard,
 			)
 		) {
@@ -634,17 +674,6 @@ export async function startStreamableHttpServer(
 			);
 			return null;
 		}
-		if (initializationControllers.size >= config.maxInitializing) {
-			recordHttpAdmissionRejection("initializing_capacity");
-			rejectBeforeBody(
-				request,
-				response,
-				503,
-				"MCP server is busy initializing sessions. Retry shortly.",
-				config.bodyTimeoutMs,
-			);
-			return null;
-		}
 		if (sessions.size + initializationControllers.size >= config.maxSessions) {
 			recordHttpAdmissionRejection("session_capacity");
 			rejectBeforeBody(
@@ -657,6 +686,20 @@ export async function startStreamableHttpServer(
 			return null;
 		}
 
+		const permitAcquired = Effect.runSync(
+			initializingSemaphore.takeIfAvailable(1),
+		);
+		if (!permitAcquired) {
+			recordHttpAdmissionRejection("initializing_capacity");
+			rejectBeforeBody(
+				request,
+				response,
+				503,
+				"MCP server is busy initializing sessions. Retry shortly.",
+				config.bodyTimeoutMs,
+			);
+			return null;
+		}
 		const controller = new AbortController();
 		initializationControllers.add(controller);
 		let resolveInitialization!: () => void;
@@ -681,6 +724,7 @@ export async function startStreamableHttpServer(
 				response.removeListener("close", onResponseClose);
 				initializationControllers.delete(controller);
 				initializationPromises.delete(initializationComplete);
+				Effect.runSync(initializingSemaphore.release(1));
 				resolveInitialization();
 			},
 		};
@@ -703,50 +747,110 @@ export async function startStreamableHttpServer(
 			onsessioninitialized: (id) => {
 				if (!session) return;
 				if (shuttingDown || lifecycleController.signal.aborted) {
-					closeSession(session).catch((error) => {
+					void closeSession(session, "startup_failure").catch((error) => {
 						cleanupErrors.push(error);
 					});
 					return;
 				}
+				session.id = id;
 				sessions.set(id, session);
 				pendingSessions.delete(session);
 				initializationControllers.delete(lifecycleController);
-				armIdleTimer(session);
+				armIdleEviction(session);
 			},
 		});
 		transport.onclose = () => {
 			if (session) {
-				closeSession(session).catch((error) => {
+				void closeSession(session).catch((error) => {
 					cleanupErrors.push(error);
 				});
 			}
 		};
 		try {
+			const scope = await Effect.runPromise(Scope.fork(httpScope));
+			session = {
+				transport,
+				context,
+				lifecycleController,
+				scope,
+				responses: new Set(),
+				idleGeneration: 0,
+				finalizationErrors: [],
+				terminationRecorded: false,
+				closed: false,
+			};
+			// Initialization is owned by the server scope from the moment its
+			// child scope exists, not only after the SDK assigns a session id.
+			pendingSessions.add(session);
+			await Effect.runPromise(
+				Scope.addFinalizer(
+					scope,
+					Effect.promise(async () => {
+						const currentSession = session;
+						if (!currentSession) return;
+						pendingSessions.delete(currentSession);
+						if (currentSession.id) sessions.delete(currentSession.id);
+						currentSession.lifecycleController.abort(
+							new DOMException("MCP session closed", "AbortError"),
+						);
+						for (const response of currentSession.responses) {
+							if (!response.writableEnded) response.destroy();
+						}
+						const results = await Promise.allSettled([
+							Promise.resolve().then(() => currentSession.transport.close()),
+							...(currentSession.server
+								? [Promise.resolve().then(() => currentSession.server?.close())]
+								: []),
+						]);
+						currentSession.finalizationErrors.push(
+							...results.flatMap((result) =>
+								result.status === "rejected" ? [result.reason] : [],
+							),
+						);
+						if (!currentSession.terminationRecorded) {
+							currentSession.terminationRecorded = true;
+							const succeeded = currentSession.finalizationErrors.length === 0;
+							recordMcpSessionTermination(
+								currentSession.terminationCategory && succeeded
+									? currentSession.terminationCategory
+									: resolveSessionTerminationCategory(
+											succeeded,
+											currentSession.context,
+										),
+								currentSession.context,
+							);
+						}
+					}),
+				),
+			);
 			mcpServer = await createMcpServer({
 				apiKey,
 				lifecycleSignal: lifecycleController.signal,
 			});
-			if (shuttingDown || lifecycleController.signal.aborted) {
-				await closeUnregistered(transport, mcpServer);
-				recordMcpSessionTermination("startup_failure", context);
+			const currentSession = session;
+			if (!currentSession) {
+				await mcpServer.close();
 				return;
 			}
-			session = {
-				transport,
-				server: mcpServer,
-				context,
-				lifecycleController,
-				responses: new Set(),
-				closed: false,
-			};
-			pendingSessions.add(session);
+			if (currentSession.closed) {
+				await mcpServer.close().catch((error) => {
+					currentSession.finalizationErrors.push(error);
+				});
+				return;
+			}
+			if (shuttingDown || lifecycleController.signal.aborted) {
+				currentSession.server = mcpServer;
+				await closeSession(currentSession, "startup_failure");
+				return;
+			}
+			currentSession.server = mcpServer;
 			await mcpServer.connect(transport);
 			connected = true;
 			if (shuttingDown || lifecycleController.signal.aborted) {
-				await closeSession(session);
+				await closeSession(currentSession, "startup_failure");
 				return;
 			}
-			trackSessionResponse(session, response);
+			trackSessionResponse(currentSession, response);
 			await runWithMcpSessionContext(context, () =>
 				transport.handleRequest(request, response, body),
 			);
@@ -763,12 +867,26 @@ export async function startStreamableHttpServer(
 						connected ? "unknown" : "connect_failure",
 					);
 				} else {
-					await closeUnregistered(transport, mcpServer);
+					const ownedServer = mcpServer;
+					const results = await Promise.allSettled([
+						Promise.resolve().then(() => transport.close()),
+						...(ownedServer
+							? [Promise.resolve().then(() => ownedServer.close())]
+							: []),
+					]);
+					const errors = results.flatMap((result) =>
+						result.status === "rejected" ? [result.reason] : [],
+					);
+					if (errors.length > 0) {
+						throw aggregateErrors(errors, "MCP cleanup failed.");
+					}
 					recordMcpSessionTermination("startup_failure", context);
 				}
 			} catch (cleanupFailure) {
 				cleanupError = cleanupFailure;
-				if (!session) recordMcpSessionTermination("unknown", context);
+				if (!session) {
+					recordMcpSessionTermination("startup_failure", context);
+				}
 			}
 			if (cleanupError) {
 				console.error(`HTTP cleanup failed: ${safeDiagnostic(cleanupError)}`);
@@ -823,7 +941,7 @@ export async function startStreamableHttpServer(
 			writeJson(response, 404, "Unknown Mcp-Session-Id.");
 			return;
 		}
-		armIdleTimer(session);
+		armIdleEviction(session);
 		if (request.method !== "DELETE" && !trackedExistingResponse) {
 			trackSessionResponse(session, response);
 		}
@@ -894,13 +1012,22 @@ export async function startStreamableHttpServer(
 		}
 	}
 
-	await new Promise<void>((resolve, reject) => {
-		server.once("error", reject);
-		server.listen(options.port, options.host, () => {
-			server.removeListener("error", reject);
-			resolve();
+	try {
+		await new Promise<void>((resolve, reject) => {
+			server.once("error", reject);
+			server.listen(options.port, options.host, () => {
+				server.removeListener("error", reject);
+				resolve();
+			});
 		});
-	});
+	} catch (error) {
+		await closeServer(server).catch(() => undefined);
+		await Effect.runPromise(Scope.close(httpScope, Exit.void)).catch(
+			() => undefined,
+		);
+		throw error;
+	}
+	listeningPort = expectedPort(options, server);
 
 	let closePromise: Promise<void> | undefined;
 	return {
@@ -935,6 +1062,9 @@ export async function startStreamableHttpServer(
 						result.status === "rejected" ? [result.reason] : [],
 					),
 				];
+				await Effect.runPromise(Scope.close(httpScope, Exit.void)).catch(
+					(error) => errors.push(error),
+				);
 				if (errors.length > 0) {
 					throw aggregateErrors(errors, "HTTP server cleanup failed.");
 				}

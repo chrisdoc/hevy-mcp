@@ -43,7 +43,7 @@ const getRoutineFolderDefinition = {
 			folder_id: string;
 			expected404Outcome?: "not_found";
 		},
-		unknown,
+		import("../effect-errors.js").CoreToolError,
 		never
 	> =>
 		operationEffect(

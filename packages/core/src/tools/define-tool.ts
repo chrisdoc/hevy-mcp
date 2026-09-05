@@ -1,12 +1,19 @@
 import type { McpServer, ToolAnnotations } from "@modelcontextprotocol/server";
 import { Effect } from "effect";
 import { z } from "zod";
+import { ClientNotInitializedError } from "../effect-errors.js";
+import { HevyOperationsService } from "../effect-services.js";
 import { respond, type ResponseContract } from "../utils/response-contracts.js";
 import { compactJsonSchema } from "../utils/compact-json-schema.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import type { ToolExecutionContext } from "../execution.js";
+import {
+	ToolInputValidationError,
+	type CoreToolError,
+} from "../effect-errors.js";
+import { normalizeCoreCause } from "./operation-helpers.js";
 
 type ToolDefinitionBase<
 	TSchema extends Record<string, z.ZodTypeAny>,
@@ -20,7 +27,7 @@ type ToolDefinitionBase<
 	execute(
 		runtime: ToolRuntime,
 		args: InferToolParams<TSchema>,
-	): Effect.Effect<TResult, unknown, never>;
+	): Effect.Effect<TResult, CoreToolError, never>;
 };
 
 type RegisteredToolConfig = {
@@ -47,7 +54,24 @@ export type ToolDefinition<
 		  }
 	);
 
-type AnyToolDefinition = ToolDefinition<Record<string, z.ZodTypeAny>, unknown>;
+type ToolDefinitionMetadata = {
+	readonly name: string;
+	readonly description: string;
+	readonly inputSchema: Record<string, z.ZodTypeAny>;
+	readonly annotations: ToolAnnotations;
+	readonly outputSchema?: z.ZodRawShape;
+};
+type RegistrationArgs = z.output<z.ZodObject<Record<string, z.ZodTypeAny>>>;
+
+type UntypedToolDefinition = ToolDefinitionMetadata &
+	Pick<ToolTelemetryMetadata, "feature" | "operation"> & {
+		readonly kind: "read" | "write";
+		readonly responseContract: ResponseContract<unknown>;
+		execute(
+			runtime: ToolRuntime,
+			args: RegistrationArgs,
+		): Effect.Effect<unknown, CoreToolError, never>;
+	};
 
 /**
  * One-time-per-isolate registration metadata for each tool definition.
@@ -65,12 +89,12 @@ type AnyToolDefinition = ToolDefinition<Record<string, z.ZodTypeAny>, unknown>;
  * moved into module-scope (outside request CPU) call `preloadHevyToolSchemas`.
  */
 const registeredToolConfigCache = new WeakMap<
-	AnyToolDefinition,
+	ToolDefinitionMetadata,
 	RegisteredToolConfig
 >();
 
 export function getRegisteredToolConfig(
-	definition: AnyToolDefinition,
+	definition: ToolDefinitionMetadata,
 ): RegisteredToolConfig {
 	const cached = registeredToolConfigCache.get(definition);
 	if (cached) return cached;
@@ -86,39 +110,98 @@ export function getRegisteredToolConfig(
 	return config;
 }
 
+export function registerToolDefinition<
+	TSchema extends Record<string, z.ZodTypeAny>,
+	TResult,
+>(
+	server: ToolRegistrar,
+	runtime: ToolRuntime,
+	definition: ToolDefinition<TSchema, TResult>,
+): void;
 export function registerToolDefinition(
 	server: ToolRegistrar,
 	runtime: ToolRuntime,
-	definition: AnyToolDefinition,
+	definition: UntypedToolDefinition,
+): void;
+export function registerToolDefinition(
+	server: ToolRegistrar,
+	runtime: ToolRuntime,
+	definition: UntypedToolDefinition,
 ): void {
 	const directHandler = (
-		args: InferToolParams<typeof definition.inputSchema>,
+		args: RegistrationArgs,
 		requestContext?: ToolExecutionContext,
 	) =>
 		Effect.suspend(() => {
 			const scopedRuntime = requestContext
 				? runtime.forExecution(requestContext)
 				: runtime;
-			return definition
-				.execute(scopedRuntime, args)
-				.pipe(Effect.map((data) => respond(definition.responseContract, data)));
+			// Fail inside the Effect so the tagged initialization error reaches
+			// the collapse boundary instead of becoming an untyped defect.
+			if (!scopedRuntime.client) {
+				try {
+					scopedRuntime.service(HevyOperationsService);
+				} catch {
+					return Effect.fail(new ClientNotInitializedError());
+				}
+			}
+			return Effect.catchCause(
+				Effect.suspend(() =>
+					definition
+						.execute(scopedRuntime, args)
+						.pipe(
+							Effect.map((data) => respond(definition.responseContract, data)),
+						),
+				),
+				(cause) => Effect.failCause(normalizeCoreCause(cause)),
+			);
 		});
 	const handler = runtime.createHandler(directHandler, definition.name, {
 		feature: definition.feature,
 		kind: definition.kind,
 		operation: definition.operation,
 	});
+	const invalidInputHandler = runtime.createHandler(
+		(args: { path: string }) =>
+			Effect.fail(new ToolInputValidationError({ path: args.path })),
+		definition.name,
+		{
+			feature: definition.feature,
+			kind: definition.kind,
+			operation: definition.operation,
+		},
+	);
 
 	const config = getRegisteredToolConfig(definition);
-	server.registerTool(definition.name, config, (args, context) =>
-		handler(
-			z.strictObject(definition.inputSchema).parse(args),
-			context
-				? {
+	server.registerTool(definition.name, config, (args, context) => {
+		try {
+			const parsed = z.strictObject(definition.inputSchema).parse(args ?? {});
+			return handler(
+				parsed,
+				context
+					? {
+							signal: context.mcpReq.signal,
+							requestId: String(context.mcpReq.id),
+						}
+					: undefined,
+			);
+		} catch (error) {
+			const path =
+				error instanceof z.ZodError
+					? error.issues[0]?.path
+							?.map((segment) => String(segment))
+							.join(".") || "arguments"
+					: "arguments";
+			if (context) {
+				return invalidInputHandler(
+					{ path },
+					{
 						signal: context.mcpReq.signal,
 						requestId: String(context.mcpReq.id),
-					}
-				: undefined,
-		),
-	);
+					},
+				);
+			}
+			throw new ToolInputValidationError({ path });
+		}
+	});
 }

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
-import { Cache, Effect } from "effect";
+import { Cache, Effect, Exit, Layer, Schema, Scope } from "effect";
 import { createOperations } from "@hevy-mcp/operations";
 import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
 import type { TemplatesListAllOperation } from "@hevy-mcp/operations";
@@ -21,6 +21,12 @@ import {
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import type { CacheObserver } from "./utils/cache.js";
 import type { ToolObserver } from "./observation.js";
+import { mergeAbortSignals } from "./execution.js";
+import {
+	createCoreServiceLayer,
+	createToolObserverLayer,
+	type CoreServiceLayer,
+} from "./effect-layer.js";
 export interface HevyClientFactoryContext {
 	readonly onLog: (event: HevyClientLogEvent) => void;
 }
@@ -36,7 +42,18 @@ export interface CreateHevyMcpServerOptions {
 	/** Absolute deadline shared by validation and every tool call in one invocation. */
 	readonly executionDeadline?: number;
 	readonly lifecycleSignal?: AbortSignal;
+	/**
+	 * Optional additional server-owned services. The layer is built in the
+	 * construction Scope and can replace the default service implementations.
+	 */
+	readonly serviceLayer?: CoreServiceLayer;
 }
+
+/** A safe construction failure raised before an MCP server is exposed. */
+export class HevyMcpServerConstructionError extends Schema.TaggedError<HevyMcpServerConstructionError>()(
+	"HevyMcpServerConstructionError",
+	{ message: Schema.String },
+) {}
 
 function createCountingServer(server: McpServer) {
 	let count = 0;
@@ -56,23 +73,35 @@ function createCountingServer(server: McpServer) {
 	return { server: countingServer, getCount: () => count };
 }
 
-export function createHevyMcpServer(
-	options: CreateHevyMcpServerOptions,
-): McpServer {
-	const baseServer = new McpServer(
-		{ name: SERVER_NAME, version: SERVER_VERSION },
-		{ capabilities: { logging: {} }, instructions: SERVER_INSTRUCTIONS },
-	);
-	const server = options.decorateServer?.(baseServer) ?? baseServer;
-	const mcpLogger = createMcpClientLogger(server);
-	const client = options.createClient({ onLog: (event) => mcpLogger(event) });
-	const operations = createOperations(client);
-	const templateListAll = operations.templates?.listAll;
-	if (!templateListAll) {
-		throw new Error("Exercise template list operation is unavailable.");
-	}
-	const cache = Effect.runSync(
-		Cache.make<
+/**
+ * Construct a server in a caller-owned Scope.
+ *
+ * Keeping this as an Effect makes the lifetime of the catalog explicit. The
+ * Promise façade below opens a Scope and attaches its release to `close()`.
+ */
+export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
+	function* (
+		options: CreateHevyMcpServerOptions,
+	): Effect.fn.Return<McpServer, HevyMcpServerConstructionError, Scope.Scope> {
+		const baseServer = new McpServer(
+			{ name: SERVER_NAME, version: SERVER_VERSION },
+			{ capabilities: { logging: {} }, instructions: SERVER_INSTRUCTIONS },
+		);
+		const server = options.decorateServer?.(baseServer) ?? baseServer;
+		const mcpLogger = createMcpClientLogger(server);
+		const client = options.createClient({ onLog: (event) => mcpLogger(event) });
+		const operations = createOperations(client);
+		const templateListAll = operations.templates?.listAll;
+		if (!templateListAll) {
+			return yield* new HevyMcpServerConstructionError({
+				message: "Exercise template list operation is unavailable.",
+			});
+		}
+		const shutdown = new AbortController();
+		const lifecycleSignal = options.lifecycleSignal
+			? mergeAbortSignals(options.lifecycleSignal, shutdown.signal)
+			: shutdown.signal;
+		const cache = yield* Cache.make<
 			string,
 			ExerciseTemplate[],
 			Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
@@ -80,26 +109,84 @@ export function createHevyMcpServer(
 			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 			timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
 			lookup: (_key: string) => templateListAll.effect(),
-		}),
-	);
-	const runtime = createToolRuntime({
-		client,
-		operations,
-		catalog: createExerciseTemplateCatalog(
+		});
+		const catalog = createExerciseTemplateCatalog(
 			operations,
 			cache,
 			options.cacheObserver,
-		),
-		logger: mcpLogger,
-		observer: options.observer,
-		executionTimeoutMs: options.executionTimeoutMs,
-		executionDeadline: options.executionDeadline,
-		lifecycleSignal: options.lifecycleSignal,
-	});
-	const counting = createCountingServer(server);
-	registerHevyTools(counting.server, runtime);
-	options.onToolsRegistered?.(counting.getCount());
-	registerWorkoutPrompts(server, options.observer);
-	registerHevyResources(server, runtime);
+		);
+		const defaultServiceLayer = createCoreServiceLayer({
+			client,
+			catalog,
+			execution: {},
+			operations,
+		});
+		let serviceLayer: CoreServiceLayer = defaultServiceLayer;
+		if (options.observer) {
+			serviceLayer = Layer.merge(
+				serviceLayer,
+				createToolObserverLayer(options.observer),
+			) as CoreServiceLayer;
+		}
+		if (options.serviceLayer) {
+			serviceLayer = Layer.merge(
+				serviceLayer,
+				options.serviceLayer,
+			) as CoreServiceLayer;
+		}
+		const services = yield* Layer.build(serviceLayer);
+		yield* Effect.addFinalizer(() => {
+			shutdown.abort(new DOMException("Server closed", "AbortError"));
+			catalog.close?.();
+			return Cache.invalidateAll(cache);
+		});
+		const runtime = createToolRuntime({
+			client,
+			operations,
+			catalog,
+			logger: mcpLogger,
+			observer: options.observer,
+			executionTimeoutMs: options.executionTimeoutMs,
+			executionDeadline: options.executionDeadline,
+			lifecycleSignal,
+			services,
+		});
+		const counting = createCountingServer(server);
+		registerHevyTools(counting.server, runtime);
+		options.onToolsRegistered?.(counting.getCount());
+		registerWorkoutPrompts(server, options.observer, mcpLogger);
+		registerHevyResources(server, runtime);
+		return server;
+	},
+);
+
+export function createHevyMcpServer(
+	options: CreateHevyMcpServerOptions,
+): McpServer {
+	const scope = Effect.runSync(Scope.make());
+	let server: McpServer;
+	try {
+		server = Effect.runSync(
+			Scope.provide(scope)(createHevyMcpServerEffect(options)),
+		);
+	} catch (error) {
+		// Construction can acquire several scoped services before a later
+		// registration/decorator fails. Close the caller-owned Scope before
+		// exposing the failure so every partial acquisition is released once.
+		Effect.runSync(Scope.close(scope, Exit.fail(error)));
+		throw error;
+	}
+	const close = server.close.bind(server);
+	let closePromise: Promise<void> | undefined;
+	server.close = async () => {
+		closePromise ??= (async () => {
+			try {
+				await close();
+			} finally {
+				await Effect.runPromise(Scope.close(scope, Exit.succeed(undefined)));
+			}
+		})();
+		await closePromise;
+	};
 	return server;
 }

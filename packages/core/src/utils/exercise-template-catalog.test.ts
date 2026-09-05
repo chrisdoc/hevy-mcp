@@ -61,7 +61,7 @@ describe("exercise template catalog", () => {
 
 		const first = Effect.runPromise(catalog.effect());
 		const second = Effect.runPromise(catalog.effect());
-		await Promise.resolve();
+		await vi.waitFor(() => expect(listAll).toHaveBeenCalledOnce());
 		expect(listAll).toHaveBeenCalledOnce();
 
 		resolveLookup?.([{ id: "shared", title: "Shared" }]);
@@ -71,7 +71,26 @@ describe("exercise template catalog", () => {
 		]);
 	});
 
-	it("does not share controlled calls between independently cancellable callers", async () => {
+	it("cancels the shared load when its only waiter aborts", async () => {
+		const controller = new AbortController();
+		let cancelled = false;
+		const listAll = vi.fn<ListAll["effect"]>().mockImplementation(() =>
+			Effect.callback<ExerciseTemplate[], ListAllError>(() => {
+				return Effect.sync(() => {
+					cancelled = true;
+				});
+			}),
+		);
+		const catalog = createCatalog(operation(listAll));
+		const pending = catalog.get({ execution: { signal: controller.signal } });
+		await vi.waitFor(() => expect(listAll).toHaveBeenCalledOnce());
+		controller.abort(new DOMException("cancelled", "AbortError"));
+		await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+		await vi.waitFor(() => expect(cancelled).toBe(true));
+		expect(listAll).toHaveBeenCalledOnce();
+	});
+
+	it("keeps the shared load when one controlled waiter aborts", async () => {
 		const firstController = new AbortController();
 		const secondController = new AbortController();
 		const listAll = vi
@@ -86,11 +105,10 @@ describe("exercise template catalog", () => {
 					const onAbort = () =>
 						resume(Effect.fail(signal?.reason ?? new Error("aborted")));
 					signal?.addEventListener("abort", onAbort, { once: true });
-					const template =
-						signal === firstController.signal ? "first" : "second";
+					const template = "shared";
 					const timer = setTimeout(
 						() => resume(Effect.succeed([{ id: template }])),
-						template === "first" ? 100 : 20,
+						20,
 					);
 					return Effect.sync(() => {
 						clearTimeout(timer);
@@ -109,8 +127,8 @@ describe("exercise template catalog", () => {
 		firstController.abort(new DOMException("first canceled", "AbortError"));
 
 		await expect(first).rejects.toMatchObject({ name: "AbortError" });
-		await expect(second).resolves.toMatchObject([{ id: "second" }]);
-		expect(listAll).toHaveBeenCalledTimes(2);
+		await expect(second).resolves.toMatchObject([{ id: "shared" }]);
+		expect(listAll).toHaveBeenCalledTimes(1);
 	});
 
 	it("uses templates.listAll rather than a Promise client for lookup", async () => {
@@ -162,9 +180,7 @@ describe("exercise template catalog", () => {
 		expect(listAll).toHaveBeenCalledTimes(2);
 	});
 
-	it("does not let an older controlled load replace a newer result", async () => {
-		const firstController = new AbortController();
-		const secondController = new AbortController();
+	it("shares one load between controlled callers", async () => {
 		const pending: Array<{
 			signal: AbortSignal | undefined;
 			resume: (effect: Effect.Effect<ExerciseTemplate[]>) => void;
@@ -178,23 +194,44 @@ describe("exercise template catalog", () => {
 			);
 		const catalog = createCatalog(operation(listAll));
 
-		const first = catalog.get({
-			execution: { signal: firstController.signal },
-		});
-		const second = catalog.get({
-			execution: { signal: secondController.signal },
-		});
-		await vi.waitFor(() => expect(pending).toHaveLength(2));
+		const first = catalog.get();
+		const second = catalog.get({ execution: {} });
+		await vi.waitFor(() => expect(pending).toHaveLength(1));
 
-		pending[1]?.resume(Effect.succeed([{ id: "newer" }]));
-		await expect(second).resolves.toMatchObject([{ id: "newer" }]);
-		pending[0]?.resume(Effect.succeed([{ id: "older" }]));
-		await expect(first).resolves.toMatchObject([{ id: "older" }]);
-		await expect(catalog.get()).resolves.toMatchObject([{ id: "newer" }]);
-		expect(pending.map(({ signal }) => signal)).toEqual([
-			firstController.signal,
-			secondController.signal,
-		]);
-		expect(listAll).toHaveBeenCalledTimes(2);
+		pending[0]?.resume(Effect.succeed([{ id: "shared" }]));
+		await expect(first).resolves.toMatchObject([{ id: "shared" }]);
+		await expect(second).resolves.toMatchObject([{ id: "shared" }]);
+		expect(pending[0]?.signal).toBeUndefined();
+		expect(listAll).toHaveBeenCalledTimes(1);
+	});
+
+	it("fails a past execution deadline as a typed timeout", async () => {
+		const listAll = vi
+			.fn<ListAll["effect"]>()
+			.mockReturnValue(Effect.succeed([{ id: "unused" }]));
+		const catalog = createCatalog(operation(listAll));
+
+		await expect(
+			catalog.get({ execution: { deadline: Date.now() - 1 } }),
+		).rejects.toMatchObject({
+			name: "TimeoutError",
+		});
+		expect(listAll).not.toHaveBeenCalled();
+	});
+
+	it("fails an aborted execution as a typed cancellation", async () => {
+		const controller = new AbortController();
+		controller.abort(new DOMException("cancelled", "AbortError"));
+		const listAll = vi
+			.fn<ListAll["effect"]>()
+			.mockReturnValue(Effect.succeed([{ id: "unused" }]));
+		const catalog = createCatalog(operation(listAll));
+
+		await expect(
+			catalog.get({ execution: { signal: controller.signal } }),
+		).rejects.toMatchObject({
+			name: "AbortError",
+		});
+		expect(listAll).not.toHaveBeenCalled();
 	});
 });

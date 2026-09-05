@@ -110,23 +110,42 @@ type TaggedHttpError =
 	| RateLimitError
 	| ValidationError;
 type TaggedClientError = TaggedHttpError | NetworkError;
+type ErrorTag =
+	| "ApiError"
+	| "NetworkError"
+	| "NotFoundError"
+	| "RateLimitError"
+	| "ValidationError"
+	| "ToolInputValidationError"
+	| "ClientNotInitializedError"
+	| "OperationUnavailableError";
+type TaggedValue = {
+	readonly _tag?: ErrorTag;
+	readonly path?: unknown;
+};
+
+function taggedValue(error: RuntimeValue): TaggedValue | undefined {
+	return isObject(error) ? (error as TaggedValue) : undefined;
+}
 
 function isTaggedClientError(error: RuntimeValue): error is TaggedClientError {
+	const tag = taggedValue(error)?._tag;
 	return (
-		error instanceof ApiError ||
-		error instanceof NetworkError ||
-		error instanceof NotFoundError ||
-		error instanceof RateLimitError ||
-		error instanceof ValidationError
+		tag === "ApiError" ||
+		tag === "NetworkError" ||
+		tag === "NotFoundError" ||
+		tag === "RateLimitError" ||
+		tag === "ValidationError"
 	);
 }
 
 function isTaggedHttpError(error: RuntimeValue): error is TaggedHttpError {
+	const tag = taggedValue(error)?._tag;
 	return (
-		error instanceof ApiError ||
-		error instanceof NotFoundError ||
-		error instanceof RateLimitError ||
-		error instanceof ValidationError
+		tag === "ApiError" ||
+		tag === "NotFoundError" ||
+		tag === "RateLimitError" ||
+		tag === "ValidationError"
 	);
 }
 
@@ -368,67 +387,29 @@ function getRetryExhaustedMessage(error: RuntimeValue): string {
 const MAX_SAFE_USER_ERROR_LENGTH = 512;
 
 /** Classify an error using bounded status, names, and supplied text. */
-export function determineErrorType(
-	error: RuntimeValue,
-	message: string,
-): ErrorType {
-	if (error instanceof RateLimitError) return ErrorType.RATE_LIMIT;
-	if (error instanceof ValidationError) return ErrorType.VALIDATION_ERROR;
-	if (error instanceof NotFoundError) return ErrorType.NOT_FOUND;
-	if (error instanceof ApiError) return ErrorType.API_ERROR;
-	if (error instanceof NetworkError) return ErrorType.NETWORK_ERROR;
+export function determineErrorType(error: RuntimeValue): ErrorType {
+	const tag = taggedValue(error)?._tag;
+	if (tag === "RateLimitError") return ErrorType.RATE_LIMIT;
+	if (tag === "ValidationError") return ErrorType.VALIDATION_ERROR;
+	if (tag === "NotFoundError") return ErrorType.NOT_FOUND;
+	if (tag === "ApiError") return ErrorType.API_ERROR;
+	if (tag === "NetworkError") return ErrorType.NETWORK_ERROR;
+	if (tag === "ToolInputValidationError") return ErrorType.VALIDATION_ERROR;
 	if (isRetryExhausted(error)) return ErrorType.NETWORK_ERROR;
-	if (extractErrorStatus(error) === 429) return ErrorType.RATE_LIMIT;
-
-	let originalMessage = "";
-	let nameLower = "";
-	try {
-		if (error instanceof Error) {
-			originalMessage = error.message.slice(0, 512);
-			nameLower = error.name.toLowerCase();
-		}
-	} catch {
-		originalMessage = "";
-		nameLower = "";
-	}
-	const classificationText = `${message}\n${originalMessage}`.toLowerCase();
-
-	if (
-		nameLower.includes("network") ||
-		classificationText.includes("network") ||
-		classificationText.includes("fetch") ||
-		classificationText.includes("timeout")
-	) {
-		return ErrorType.NETWORK_ERROR;
-	}
-	if (
-		nameLower.includes("validation") ||
-		classificationText.includes("validation") ||
-		classificationText.includes("invalid") ||
-		classificationText.includes("required")
-	) {
-		return ErrorType.VALIDATION_ERROR;
-	}
-	if (
-		classificationText.includes("not found") ||
-		classificationText.includes("404") ||
-		classificationText.includes("does not exist")
-	) {
-		return ErrorType.NOT_FOUND;
-	}
-	if (
-		nameLower.includes("api") ||
-		classificationText.includes("api") ||
-		classificationText.includes("server error") ||
-		classificationText.includes("500")
-	) {
+	const status = extractErrorStatus(error);
+	if (status === 429) return ErrorType.RATE_LIMIT;
+	if (status === 404) return ErrorType.NOT_FOUND;
+	if (status === 400 || status === 422) return ErrorType.VALIDATION_ERROR;
+	if (status !== undefined && status >= 500 && status <= 599)
 		return ErrorType.API_ERROR;
-	}
+	// Legacy callers may still provide an explicit validation failure before
+	// the Effect boundary. Typed core errors take precedence above.
 	return ErrorType.UNKNOWN_ERROR;
 }
 
 function classifyError(error: RuntimeValue): SafeErrorCategory {
 	if (isHevyHttpError(error)) return "HevyHttpError";
+	if (isTaggedClientError(error)) return "HevyHttpError";
 	if (error instanceof TypeError) return "TypeError";
 	if (error instanceof RangeError) return "RangeError";
 	if (error instanceof ReferenceError) return "ReferenceError";
@@ -606,6 +587,20 @@ export function resolveErrorPolicy(
 		(diagnostic.status !== undefined
 			? `Hevy API request failed (HTTP ${diagnostic.status}).`
 			: defaultMessage);
+	const tag = taggedValue(error)?._tag;
+	if (tag === "ToolInputValidationError") {
+		const path = taggedValue(error)?.path;
+		message = `Invalid tool arguments. Check ${isString(path) ? path : "arguments"}.`;
+	}
+	if (
+		tag === "ClientNotInitializedError" ||
+		tag === "OperationUnavailableError"
+	) {
+		message =
+			tag === "ClientNotInitializedError"
+				? "API client not initialized. Please provide HEVY_API_KEY."
+				: "The requested Hevy operation is unavailable.";
+	}
 	let isNotInitialized = false;
 	try {
 		isNotInitialized =
@@ -640,5 +635,5 @@ export function resolveErrorPolicy(
 	) {
 		message = error.message.slice(0, MAX_SAFE_USER_ERROR_LENGTH);
 	}
-	return { type: determineErrorType(error, message), message, diagnostic };
+	return { type: determineErrorType(error), message, diagnostic };
 }

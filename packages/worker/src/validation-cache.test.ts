@@ -30,6 +30,7 @@ function createFakeKv() {
 }
 
 afterEach(() => {
+	vi.useRealTimers();
 	resetMemoryValidationCacheForTests();
 });
 
@@ -221,10 +222,11 @@ describe("validateHevyApiKeyResilient", () => {
 	});
 
 	it("retries a transient (non-429) failure and returns the eventual success", async () => {
+		vi.useFakeTimers();
 		const env = {};
 		const validate = rejectingValidator(503, 1);
 
-		const result = await validateHevyApiKeyResilient(
+		const pending = validateHevyApiKeyResilient(
 			"resilient-retry-key",
 			"https://api.hevyapp.com",
 			createValidationClient,
@@ -232,8 +234,73 @@ describe("validateHevyApiKeyResilient", () => {
 			env,
 		);
 
-		expect(result).toBe("valid");
+		await vi.waitFor(() => expect(validate).toHaveBeenCalledOnce());
+		await vi.advanceTimersByTimeAsync(300);
+		await vi.advanceTimersByTimeAsync(0);
+		await expect(pending).resolves.toBe("valid");
 		expect(validate).toHaveBeenCalledTimes(2);
+		vi.useRealTimers();
+	});
+
+	it("stops after three transient attempts and does not cache the failure", async () => {
+		vi.useFakeTimers();
+		const env = {};
+		const error = new HevyHttpError("HTTP 503", {
+			status: 503,
+			method: "GET",
+			endpoint: "/v1/user/info",
+		});
+		const validate: HevyKeyValidator = vi.fn().mockRejectedValue(error);
+
+		const pending = validateHevyApiKeyResilient(
+			"resilient-exhausted-key",
+			"https://api.hevyapp.com",
+			createValidationClient,
+			validate,
+			env,
+		);
+		void pending.catch(() => undefined);
+
+		await vi.waitFor(() => expect(validate).toHaveBeenCalledOnce());
+		await vi.advanceTimersByTimeAsync(300);
+		await vi.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(600);
+		await expect(pending).rejects.toBe(error);
+		expect(validate).toHaveBeenCalledTimes(3);
+		await expect(
+			hasCachedValidation("resilient-exhausted-key", env),
+		).resolves.toBe(false);
+		vi.useRealTimers();
+	});
+
+	it("caches a valid verdict reached after a transient retry", async () => {
+		vi.useFakeTimers();
+		const env = {};
+		const validate = rejectingValidator(503, 1);
+		const pending = validateHevyApiKeyResilient(
+			"resilient-retried-cache-key",
+			"https://api.hevyapp.com",
+			createValidationClient,
+			validate,
+			env,
+		);
+
+		await vi.waitFor(() => expect(validate).toHaveBeenCalledOnce());
+		await vi.advanceTimersByTimeAsync(300);
+		await expect(pending).resolves.toBe("valid");
+
+		const cacheHitValidator: HevyKeyValidator = vi.fn();
+		await expect(
+			validateHevyApiKeyResilient(
+				"resilient-retried-cache-key",
+				"https://api.hevyapp.com",
+				createValidationClient,
+				cacheHitValidator,
+				env,
+			),
+		).resolves.toBe("valid");
+		expect(cacheHitValidator).not.toHaveBeenCalled();
+		vi.useRealTimers();
 	});
 
 	it("never retries a 429", async () => {
@@ -257,10 +324,42 @@ describe("validateHevyApiKeyResilient", () => {
 		expect(validate).toHaveBeenCalledTimes(1);
 	});
 
+	it("does not wait when the next retry would reach the deadline", async () => {
+		const env = {};
+		const error = new HevyHttpError("HTTP 503", {
+			status: 503,
+			method: "GET",
+			endpoint: "/v1/user/info",
+		});
+		const validate: HevyKeyValidator = vi.fn().mockRejectedValue(error);
+
+		await expect(
+			validateHevyApiKeyResilient(
+				"resilient-deadline-key",
+				"https://api.hevyapp.com",
+				createValidationClient,
+				validate,
+				env,
+				{ deadline: Date.now() + 300 },
+			),
+		).rejects.toBe(error);
+		expect(validate).toHaveBeenCalledTimes(1);
+	});
+
 	it("stops retrying when aborted during backoff, without another attempt", async () => {
+		vi.useFakeTimers();
 		const env = {};
 		const controller = new AbortController();
-		const validate = rejectingValidator(503, 1);
+		const reason = new DOMException("worker caller canceled", "AbortError");
+		const error = new HevyHttpError("HTTP 503", {
+			status: 503,
+			method: "GET",
+			endpoint: "/v1/user/info",
+		});
+		const validate: HevyKeyValidator = vi
+			.fn()
+			.mockRejectedValueOnce(error)
+			.mockResolvedValue("valid");
 
 		const pending = validateHevyApiKeyResilient(
 			"resilient-abort-key",
@@ -271,10 +370,32 @@ describe("validateHevyApiKeyResilient", () => {
 			{ signal: controller.signal },
 		);
 		// Abort while the wrapper is sleeping between attempt 1 and attempt 2.
-		setTimeout(() => controller.abort(), 10);
+		await vi.advanceTimersByTimeAsync(10);
+		controller.abort(reason);
 
-		await expect(pending).rejects.toBeInstanceOf(HevyHttpError);
+		await expect(pending).rejects.toBe(reason);
 		expect(validate).toHaveBeenCalledTimes(1);
+		vi.useRealTimers();
+	});
+
+	it("preserves an already-aborted reason without starting validation", async () => {
+		const env = {};
+		const controller = new AbortController();
+		const reason = new DOMException("already canceled", "AbortError");
+		controller.abort(reason);
+		const validate: HevyKeyValidator = vi.fn();
+
+		const pending = validateHevyApiKeyResilient(
+			"resilient-already-aborted-key",
+			"https://api.hevyapp.com",
+			createValidationClient,
+			validate,
+			env,
+			{ signal: controller.signal },
+		);
+
+		await expect(pending).rejects.toBe(reason);
+		expect(validate).not.toHaveBeenCalled();
 	});
 
 	it("defers the cache write via waitUntil when given an execution context", async () => {

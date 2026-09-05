@@ -54,13 +54,32 @@ CLI are the public packages.
 
 The public `HevyClient` remains Promise-based, while
 `@hevy-mcp/operations` provides Effect-first domain programs for reads,
-mutations, and composite workflows. MCP tools and CLI commands run those
-programs and collapse each invocation once at their Promise adapter boundary.
-The internal request Effect seam is not part of the public Node or CLI API:
-`hevy-mcp` stays a Promise-based Node adapter, and
-`@chrisdoc/hevy-cli` remains a bin-oriented Promise adapter. Core MCP tools
-receive a request-local `HevyOperationsService` from
-`createCoreServiceLayer`. The MCP catalog remains 22 tools.
+mutations, and composite workflows. Effect is also the control structure for
+the request runtime: `@hevy-mcp/hevy-client` owns retry schedules, per-attempt
+timeouts, and interruption, rather than using Effect only as a delay
+calculator. MCP tools and CLI commands collapse each invocation once at their
+Promise adapter boundary. The MCP catalog remains 22 tools.
+
+The runtime has three nested scopes:
+
+1. **Process Scope:** the Node lifecycle owns telemetry, signal handlers, and
+   transport shutdown.
+2. **Server Scope:** core owns the MCP runtime and the exercise-template cache,
+   including finalization when the server closes.
+3. **Request Scope:** each tool or resource invocation carries its deadline and
+   MCP request signal, so fiber interruption reaches the Hevy request.
+
+These scopes do not change the supported Promise façades. Public
+`HevyClient` methods, `createHevyMcpServer`, `createNodeMcpServer`,
+`runStdioServer` / `runServer`, operation `.execute()`, and CLI
+`execute` / `runCli` remain usable without requiring callers to construct
+Effect programs.
+
+The Worker adapter is not Effect-wide: its OAuth, bindings, and request
+handling remain platform-specific Promise code; only the validation-cache
+retry is Effect-controlled. Tool input and response contracts remain Zod
+contracts, environment and CLI parsing remain throwing parsers, and generated
+Kubb API functions and `.kubb` internals are not public API.
 
 > A Hevy API key, available with **Hevy PRO**, is required.
 
@@ -567,7 +586,7 @@ self-hosted Streamable HTTP.
 | `HEVY_MCP_HTTP_MAX_INITIALIZING` | `10`                             | Local HTTP                    | Maximum concurrent session initializations; excess requests receive `503` and are not queued.                  |
 | `HEVY_MCP_HTTP_IDLE_TIMEOUT_MS`  | `1800000` ms                     | Local HTTP                    | Idle sessions are evicted after 30 minutes; each session request resets the timer.                             |
 | `HEVY_MCP_HTTP_BODY_TIMEOUT_MS`  | `30000` ms                       | Local HTTP                    | Stalled request bodies receive `408`; values are bounded to five minutes.                                      |
-| `HEVY_MCP_TELEMETRY`             | Enabled                          | Local Node                    | Set to exactly `0` before startup/import to disable Sentry and OTLP traces/metrics.                            |
+| `HEVY_MCP_TELEMETRY`             | Enabled                          | Local Node                    | Set to exactly `0` before launching Node; the scoped lifecycle Layer reads it. Imports stay side-effect-free.  |
 | `HEVY_MCP_TELEMETRY_DIAGNOSTICS` | Enabled                          | Local Node                    | Set to exactly `0` to keep structural telemetry while suppressing exception messages and stacks.               |
 | `XDG_CACHE_HOME`                 | `~/.cache`                       | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                               |
 | `SENTRY_DSN`                     | Packaged Sentry SaaS project DSN | Optional local Node telemetry | Sentry project DSN override. An empty value disables Sentry export. The Worker does not import Node telemetry. |
@@ -610,14 +629,15 @@ server-scoped in-memory catalog cache:
 
 The local Node package enables project telemetry by default. It is local Node
 behavior only; the Cloudflare Worker does not import Node telemetry. Set
-`HEVY_MCP_TELEMETRY=0` before startup or import to disable all project
-telemetry. Only the literal value `0` opts out: an unset value, an empty value,
-`1`, `false`, and every other value remain enabled. The master setting takes
-precedence over `SENTRY_DSN` and packaged or runtime `OTEL_COLLECTOR_TOKEN`
-credentials, so the disabled path creates no telemetry exporters or periodic
-metric readers and makes no telemetry network requests. `SENTRY_DSN` remains a
-Sentry-only setting; when telemetry is enabled, an empty value disables only
-Sentry export.
+`HEVY_MCP_TELEMETRY=0` before launching the Node process to disable all project
+telemetry. The scoped Node lifecycle Layer reads this process-launch setting;
+importing the package remains side-effect-free. Only the literal value `0` opts
+out: an unset value, an empty value, `1`, `false`, and every other value remain
+enabled. The master setting takes precedence over `SENTRY_DSN` and packaged or
+runtime `OTEL_COLLECTOR_TOKEN` credentials, so the disabled path creates no
+telemetry exporters or periodic metric readers and makes no telemetry network
+requests. `SENTRY_DSN` remains a Sentry-only setting; when telemetry is enabled,
+an empty value disables only Sentry export.
 
 When enabled, actionable errors are sent to the Sentry project configured by
 `SENTRY_DSN`; Sentry performance tracing is disabled. Exception messages and
@@ -690,9 +710,9 @@ Use mise for the pinned Node.js and pnpm versions, then run the deterministic
 unit lane. It does not need a live Hevy API key:
 
 ```bash
-mise install
-mise exec -- pnpm install
-mise exec -- pnpm run test:unit
+MISE_AUTO_INSTALL=false mise install
+MISE_AUTO_INSTALL=false mise exec -- pnpm install
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit
 ```
 
 ## License and acknowledgements

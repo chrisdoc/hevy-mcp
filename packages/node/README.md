@@ -202,10 +202,32 @@ import { runStdioServer } from "hevy-mcp";
 await runStdioServer();
 ```
 
+The runtime-owned runners resolve after startup while the transport remains
+active. They return a lifecycle handle with an idempotent `close()` method for
+embedding callers that need to initiate shutdown directly.
+
 `createNodeMcpServer` is the side-effect-free embedding entry: it validates the
 supplied key locally, but never reads environment variables, probes Hevy,
 connects a transport, initializes telemetry, or installs process lifecycle
 handlers. The CLI-only `runStdioServer` function owns those concerns.
+
+## Runtime model
+
+The Node adapter owns the process Scope. Its scoped lifecycle acquires
+telemetry, signal handlers, and the selected transport, then finalizes them on
+shutdown. Core owns a nested server Scope for the MCP runtime and shared
+exercise-template cache. Each tool or resource invocation gets a request Scope
+whose deadline and MCP request signal interrupt the underlying Effect request.
+
+These internals do not replace the Promise embedding API. `createNodeMcpServer`
+and `runStdioServer` remain Promise entry points; Effect-typed variants, where
+provided, are additive. Importing `hevy-mcp` remains side-effect-free.
+
+Retry, timeout, and interruption decisions for Hevy requests are Effect-owned
+in the shared client. The hosted Worker is not Effect-wide: its OAuth,
+bindings, and request handling remain Promise-based. Tool contracts continue
+to use Zod, CLI/environment parsing remains throwing parser code, and Kubb
+generated internals are not part of the public package API.
 
 <details>
 <summary><strong>Use bunx instead</strong></summary>
@@ -459,7 +481,7 @@ self-hosted Streamable HTTP.
 | `HEVY_MCP_HTTP_MAX_INITIALIZING` | `10`                             | Local HTTP                    | Maximum concurrent session initializations; excess requests receive `503` and are not queued. Invalid values use the default; capped at 1,000.                                                                     |
 | `HEVY_MCP_HTTP_IDLE_TIMEOUT_MS`  | `1800000` ms                     | Local HTTP                    | Idle established sessions are evicted after 30 minutes; each session request resets the timer. Invalid values use the default; capped at 24 hours.                                                                 |
 | `HEVY_MCP_HTTP_BODY_TIMEOUT_MS`  | `30000` ms                       | Local HTTP                    | Application deadline for reading a request body. Stalled bodies receive `408`; invalid values use the default; capped at 5 minutes.                                                                                |
-| `HEVY_MCP_TELEMETRY`             | Enabled                          | Local Node                    | Set to exactly `0` before startup/import to disable Sentry and OTLP telemetry. Takes precedence over packaged/runtime collector credentials.                                                                       |
+| `HEVY_MCP_TELEMETRY`             | Enabled                          | Local Node                    | Set to exactly `0` before launching Node; the scoped lifecycle Layer reads it. Imports stay side-effect-free.                                                                                                      |
 | `HEVY_MCP_TELEMETRY_DIAGNOSTICS` | Enabled                          | Local Node                    | Set to exactly `0` to keep structural telemetry while suppressing exception messages and stacks.                                                                                                                   |
 | `XDG_CACHE_HOME`                 | `~/.cache`                       | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                                                                                                                                   |
 | `SENTRY_DSN`                     | Packaged Sentry SaaS project DSN | Optional local Node telemetry | Sentry project DSN override. An empty value disables Sentry export. The Worker does not import Node telemetry.                                                                                                     |
@@ -503,14 +525,15 @@ server-scoped in-memory catalog cache:
 
 The local Node package enables project telemetry by default. It is local Node
 behavior only; the Cloudflare Worker does not import Node telemetry. Set
-`HEVY_MCP_TELEMETRY=0` before startup or import to disable all project
-telemetry. Only the literal value `0` opts out: an unset value, an empty value,
-`1`, `false`, and every other value remain enabled. The master setting takes
-precedence over `SENTRY_DSN` and packaged or runtime `OTEL_COLLECTOR_TOKEN`
-credentials, so the disabled path creates no telemetry exporters or periodic
-metric readers and makes no telemetry network requests. `SENTRY_DSN` remains a
-Sentry-only setting; when telemetry is enabled, an empty value disables only
-Sentry export.
+`HEVY_MCP_TELEMETRY=0` before launching the Node process to disable all project
+telemetry. The scoped Node lifecycle Layer reads this process-launch setting;
+importing the package remains side-effect-free. Only the literal value `0` opts
+out: an unset value, an empty value, `1`, `false`, and every other value remain
+enabled. The master setting takes precedence over `SENTRY_DSN` and packaged or
+runtime `OTEL_COLLECTOR_TOKEN` credentials, so the disabled path creates no
+telemetry exporters or periodic metric readers and makes no telemetry network
+requests. `SENTRY_DSN` remains a Sentry-only setting; when telemetry is enabled,
+an empty value disables only Sentry export.
 
 When enabled, actionable errors are sent to the Sentry project configured by
 `SENTRY_DSN`; Sentry performance tracing is disabled. Exception messages and

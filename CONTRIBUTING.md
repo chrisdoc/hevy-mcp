@@ -23,12 +23,14 @@ The repository currently has a deliberate Node policy difference:
 Use mise for development:
 
 ```bash
-mise install
-mise exec -- node --version
-mise exec -- pnpm install
+MISE_AUTO_INSTALL=false mise install
+MISE_AUTO_INSTALL=false mise exec -- node --version
+MISE_AUTO_INSTALL=false mise exec -- pnpm install
 ```
 
 Do not silently change the published Node policy as part of unrelated work.
+On this linux/arm64 environment, keep `MISE_AUTO_INSTALL=false` on every
+`mise` command because the pinned `kiota` tool has no linux/arm64 build.
 
 ## Hevy API key and local environment
 
@@ -52,6 +54,14 @@ HEVY_API_KEY=your-hevy-api-key
 - `pnpm run test:live` requires `HEVY_API_KEY` and fails its preflight when the
   key is absent.
 
+Live and pull-request credentials are intentionally separate. `test:pr` and
+its deterministic lanes use fake credentials and do not contact Hevy, while
+`test:live` and the live cases in `test:integration` use a real key from
+`.env` or the process environment. The `test:live` preflight fails before
+Vitest when the key is absent; it is not a skipped success. Neither command
+sets or requires `HEVY_RUN_LIVE_WORKER_TESTS=1`; the Worker live HTTP lane is
+separate and optional.
+
 ## Local development
 
 Install, build, and start the production stdio executable:
@@ -68,9 +78,13 @@ For watch mode:
 pnpm run dev
 ```
 
-Both commands load `.env` and require `HEVY_API_KEY`. The Node entry point
-uses stdio by default: it writes MCP JSON-RPC to stdout and diagnostics to
-stderr. It also supports local Streamable HTTP when invoked with
+The `start` and `dev` commands load `.env`. The `test:integration` and
+`test:live` runners load `.env` when present, preserve explicit process
+environment values, and fail closed for malformed or unreadable files. The
+integration live suite skips when `HEVY_API_KEY` is unavailable, while
+`test:live` fails before Vitest in that case. The Node entry point uses stdio by default: it
+writes MCP JSON-RPC to stdout and diagnostics to stderr. It also supports local
+Streamable HTTP when invoked with
 `--transport http`, `--host`, and `--port`; HTTP clients connect to `/mcp`.
 Use an MCP client or the inspector rather than typing protocol requests directly
 into the terminal.
@@ -108,8 +122,8 @@ targets instead of copying raw Vitest selectors into automation.
 Produce the two coverage reports without a wrapper alias:
 
 ```bash
-pnpm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
-pnpm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
 ```
 
 The lane and aggregate registry below mirrors
@@ -168,8 +182,9 @@ the full-catalog search against production.
 The normal pull request baseline is:
 
 ```bash
-pnpm run test:pr
-pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:boundaries
 ```
 
 Performance timing targets are currently informational. Correctness, fixture,
@@ -181,12 +196,13 @@ report is written to `test-results/performance/summary.json`.
 Run these checks before opening a pull request:
 
 ```bash
-pnpm run check
-pnpm run check:types
-pnpm run build
-pnpm run test:pr
-pnpm run test:performance
-pnpm run check:changeset
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:types
+MISE_AUTO_INSTALL=false mise exec -- pnpm run build
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:changeset
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:boundaries
 ```
 
 Also run the narrow checks related to your change. In particular:
@@ -268,6 +284,29 @@ stdio fields such as `_ondata` and `_readBuffer`. After every
 run the complete stdio observability suite (`pnpm run test:stdio`) and inspect
 the SDK compatibility assumptions before merging.
 
+### Effect control structure
+
+Effect owns retry schedules, timeout budgets, and interruption in the shared
+Hevy client. Runtime resources follow three nested scopes:
+
+```text
+process Scope → server Scope → request Scope
+```
+
+The Node process Scope owns telemetry, signal handlers, and transport
+shutdown. Core's server Scope owns the MCP runtime and shared template cache.
+Each tool or resource request gets its own deadline and MCP request signal,
+which interrupts the underlying request Effect. Existing Promise façades remain
+the supported API, including `createHevyMcpServer`, `createNodeMcpServer`,
+`runStdioServer` / `runServer`, `HevyClient` methods, operation `.execute()`,
+and CLI `execute` / `runCli`.
+
+This does not make every adapter Effect-wide. Worker OAuth, bindings, and
+request handling remain Promise-based apart from the validation-cache retry.
+Zod remains the MCP input/output contract, `config.ts` and `arguments.ts`
+remain throwing parsers, and generated Kubb API functions and `.kubb`
+internals are private.
+
 ## Cloudflare Worker development
 
 The Worker exposes stateless Streamable HTTP at `POST /mcp`. It accepts the
@@ -285,9 +324,9 @@ Use the repository scripts for local development, bundle validation, and
 deployment:
 
 ```bash
-pnpm run worker:dev
-pnpm run worker:dry-run
-npx nx run repository:worker:deploy
+MISE_AUTO_INSTALL=false mise exec -- pnpm run worker:dev
+MISE_AUTO_INSTALL=false mise exec -- pnpm run worker:dry-run
+MISE_AUTO_INSTALL=false mise exec -- npx nx run repository:worker:deploy
 ```
 
 `worker:deploy` requires an authenticated Wrangler/Cloudflare environment and

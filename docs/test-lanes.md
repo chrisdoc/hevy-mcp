@@ -4,6 +4,15 @@ This document owns the stable public commands introduced by testing-strategy
 ticket TS-06. Contributors and CI should use these names instead of copying raw
 Vitest selectors.
 
+Use the pinned Node.js and pnpm versions through mise. On this linux/arm64
+environment, set `MISE_AUTO_INSTALL=false` on every `mise` invocation because
+the pinned `kiota` tool has no linux/arm64 build:
+
+```sh
+MISE_AUTO_INSTALL=false mise install
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit
+```
+
 The lane and aggregate registry below mirrors
 [`repository/validation-lanes.json`](../repository/validation-lanes.json). The
 canonical model is validated by `pnpm run check:control-plane`; use the named
@@ -84,8 +93,9 @@ the later handoff needed to make the validated and published tarballs identical.
 Run the pull-request baseline with:
 
 ```sh
-pnpm run test:pr
-pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
+MISE_AUTO_INSTALL=false mise exec -- pnpm run check:boundaries
 ```
 
 The aggregate table identifies the current Nx targets and direct members. Nx
@@ -98,12 +108,18 @@ npx nx show project repository --json
 npx nx graph --file=.nx/project-graph.html
 ```
 
+The repository `test:unit` target is marked exclusive in `project.json`.
+This keeps its spawned CLI startup tests from competing with other
+CPU-intensive PR lanes on small local runners; the documented `test:pr`
+command remains parallel where safe and needs no manual `--parallel=1`
+override.
+
 CI selects its reporters and coverage outputs through the same lane wrappers,
 so selectors do not drift between local and hosted runs:
 
 ```sh
-HEVY_TEST_REPORT_MODE=ci pnpm run test:unit
-HEVY_TEST_REPORT_MODE=ci pnpm run test:mcp
+MISE_AUTO_INSTALL=false mise exec -- env HEVY_TEST_REPORT_MODE=ci pnpm run test:unit
+MISE_AUTO_INSTALL=false mise exec -- env HEVY_TEST_REPORT_MODE=ci pnpm run test:mcp
 ```
 
 The build workflow invokes mapped targets per Node runtime with Nx `run-many`:
@@ -113,20 +129,34 @@ workflow does the same for its deterministic candidate-validation subset. Nx
 owns dependency ordering and concurrency, while the control-plane projection
 still checks every individual lane and runtime against the canonical aggregate.
 
-Explicit live commands are separate and credential-gated:
+Explicit live commands are separate and credential-gated. Keep the key in
+`.env` or the process environment, never in command arguments, URLs, logs, or
+fixtures:
 
 ```sh
-pnpm run test:live
-HEVY_RUN_LIVE_WORKER_TESTS=1 pnpm run test:worker-http:live
-HEVY_MCP_COMMAND=node \
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:live
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:integration
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:worker-http:live
+MISE_AUTO_INSTALL=false mise exec -- env HEVY_MCP_COMMAND=node \
 	HEVY_MCP_ARGS_JSON='["dist/cli.mjs"]' \
 	pnpm run test:nightly
 ```
 
+`test:live` requires `HEVY_API_KEY` and fails before Vitest starts when the key
+is absent. `test:integration` is also credential-gated for its live cases; when
+the key is absent, its live describe is skipped and it does not contact Hevy.
+Both runners load an optional `.env` in the current working directory,
+preserve explicit process environment values, and fail closed for malformed or
+unreadable files. A key stored only in the worktree `.env` is available to
+those cases without being placed in command arguments or logs.
+Neither command sets or requires `HEVY_RUN_LIVE_WORKER_TESTS=1`. The separate
+`test:worker-http:live` lane is optional and is not required for this milestone
+or for the normal PR baseline.
+
 None of the live commands belong in deterministic pull-request jobs. The live
-Worker lane starts `wrangler dev --local`, sends the API key only through the
-MCP client's bearer header, and uses the default production Hevy API endpoint.
-Its production calls are bounded representative reads;
+Worker lane, when explicitly run, starts `wrangler dev --local`, sends the API
+key only through the MCP client's bearer header, and uses the default
+production Hevy API endpoint. Its production calls are bounded representative reads;
 `search-exercise-templates` is checked through `tools/list` only because calling
 it would load the full exercise catalog.
 
