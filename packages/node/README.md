@@ -202,6 +202,10 @@ import { runStdioServer } from "hevy-mcp";
 await runStdioServer();
 ```
 
+The runtime-owned runners resolve after startup while the transport remains
+active. They return a lifecycle handle with an idempotent `close()` method for
+embedding callers that need to initiate shutdown directly.
+
 `createNodeMcpServer` is the side-effect-free embedding entry: it validates the
 supplied key locally, but never reads environment variables, probes Hevy,
 connects a transport, initializes telemetry, or installs process lifecycle

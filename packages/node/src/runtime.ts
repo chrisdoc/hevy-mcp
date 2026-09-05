@@ -24,6 +24,7 @@ import { installSdkErrorTracking } from "./utils/sdk-observability.js";
 import {
 	recordLifecycleFailure,
 	runNodeLifecycle,
+	type NodeLifecycleHandle,
 } from "./utils/node-lifecycle.js";
 import { InvalidHevyApiKeyError } from "./utils/startup-errors.js";
 
@@ -251,7 +252,9 @@ export async function createNodeMcpServer(
 	return buildServer(validatedApiKey, transport, lifecycleSignal);
 }
 
-export async function runStdioServer() {
+export async function runStdioServer(): Promise<
+	NodeLifecycleHandle | undefined
+> {
 	const args = process.argv.slice(2);
 	const cliAction = getCliAction(args);
 
@@ -264,7 +267,7 @@ export async function runStdioServer() {
 		return;
 	}
 
-	await runNodeLifecycle({
+	return runNodeLifecycle({
 		transport: "stdio",
 		start: async (context) => {
 			const { signal } = context;
@@ -272,40 +275,48 @@ export async function runStdioServer() {
 			const apiKey = cfg.apiKey;
 			assertApiKey(apiKey);
 			const server = await createNodeMcpServer({ apiKey }, "stdio", signal);
+			const ownedServer = context.adoptTarget(server);
 			console.error("Starting MCP server in stdio mode");
 			const transport = createInstrumentedStdioTransport(
 				new StdioServerTransport(),
 			);
 			context.markConnectAttempted();
-			await tracer.startActiveSpan(
-				"mcp.server.connect",
-				{
-					attributes: {
-						"mcp.span.category": "session",
-						"mcp.transport": "stdio",
+			try {
+				await tracer.startActiveSpan(
+					"mcp.server.connect",
+					{
+						attributes: {
+							"mcp.span.category": "session",
+							"mcp.transport": "stdio",
+						},
 					},
-				},
-				async (connectSpan) => {
-					try {
-						await server.connect(transport);
-						context.markConnectSucceeded();
-						connectSpan.setStatus({ code: SpanStatusCode.OK });
-					} catch (caughtError) {
-						const error =
-							caughtError instanceof Error ? caughtError : String(caughtError);
-						recordLifecycleFailure(
-							connectSpan,
-							error,
-							"connect",
-							"connect_failure",
-						);
-						connectSpan.setStatus({ code: SpanStatusCode.ERROR });
-						throw error;
-					} finally {
-						connectSpan.end();
-					}
-				},
-			);
+					async (connectSpan) => {
+						try {
+							await server.connect(transport);
+							context.markConnectSucceeded();
+							connectSpan.setStatus({ code: SpanStatusCode.OK });
+						} catch (caughtError) {
+							const error =
+								caughtError instanceof Error
+									? caughtError
+									: String(caughtError);
+							recordLifecycleFailure(
+								connectSpan,
+								error,
+								"connect",
+								"connect_failure",
+							);
+							connectSpan.setStatus({ code: SpanStatusCode.ERROR });
+							throw error;
+						} finally {
+							connectSpan.end();
+						}
+					},
+				);
+			} catch (error) {
+				await ownedServer.close().catch(() => undefined);
+				throw error;
+			}
 			return {
 				target: server,
 				onShutdown: (succeeded) =>
@@ -322,7 +333,7 @@ export async function runStdioServer() {
 	});
 }
 
-export async function runServer(): Promise<void> {
+export async function runServer(): Promise<NodeLifecycleHandle | undefined> {
 	const args = process.argv.slice(2);
 	const cliAction = getCliAction(args);
 	if (cliAction === "version") {
@@ -336,11 +347,10 @@ export async function runServer(): Promise<void> {
 
 	const options = parseNodeCliOptions(args);
 	if (options.transport === "stdio") {
-		await runStdioServer();
-		return;
+		return runStdioServer();
 	}
 
-	await runNodeLifecycle({
+	return runNodeLifecycle({
 		transport: "http",
 		start: async (context) => {
 			const { signal } = context;

@@ -100,6 +100,45 @@ describe("package-local graceful shutdown", () => {
 		expect(close).toHaveBeenCalledOnce();
 	});
 
+	it("shares direct close with later signals and aborts active work", async () => {
+		const process = new FakeProcess();
+		const cancel = new AbortController();
+		const close = vi.fn().mockResolvedValue(undefined);
+		const controller = installGracefulShutdown({
+			target: { close },
+			process,
+			cancel,
+			flush: vi.fn().mockResolvedValue(undefined),
+		});
+
+		const directClose = controller.close();
+		process.emit("SIGTERM");
+		await directClose;
+		await controller.getShutdownPromise();
+
+		expect(cancel.signal.aborted).toBe(true);
+		expect(close).toHaveBeenCalledOnce();
+		expect(process.listenerCount("SIGINT")).toBe(0);
+		expect(process.listenerCount("SIGTERM")).toBe(0);
+	});
+
+	it("preserves a rejecting direct close as the shared completion", async () => {
+		const process = new FakeProcess();
+		const failure = new Error("close failed");
+		const close = vi.fn().mockRejectedValue(failure);
+		const controller = installGracefulShutdown({
+			target: { close },
+			process,
+			flush: vi.fn().mockResolvedValue(undefined),
+		});
+
+		const completion = controller.close();
+		process.emit("SIGINT");
+		await expect(completion).rejects.toBe(failure);
+		await expect(controller.getShutdownPromise()).rejects.toBe(failure);
+		expect(close).toHaveBeenCalledOnce();
+	});
+
 	it("aborts active execution before closing the server", async () => {
 		const process = new FakeProcess();
 		const cancel = new AbortController();

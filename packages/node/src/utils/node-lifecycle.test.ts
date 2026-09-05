@@ -97,6 +97,23 @@ describe("Node lifecycle runner", () => {
 		expect(doubles.cleanup).toHaveBeenCalledOnce();
 	});
 
+	it("closes a partially adopted target when startup fails", async () => {
+		const partial = { close: vi.fn().mockResolvedValue(undefined) };
+		const error = new Error("listen failed");
+
+		await expect(
+			runNodeLifecycle({
+				transport: "http",
+				start: (context) => {
+					context.adoptTarget(partial);
+					return Promise.reject(error);
+				},
+			}),
+		).rejects.toBe(error);
+
+		expect(partial.close).toHaveBeenCalledOnce();
+	});
+
 	it("classifies a runtime failure after HTTP listening", async () => {
 		const onFailure = vi.fn();
 

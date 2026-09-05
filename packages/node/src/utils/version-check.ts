@@ -45,6 +45,7 @@ interface VersionCheckDependencies {
 
 interface SchedulerDependencies {
 	setImmediate: (callback: () => void) => ImmediateHandle;
+	clearImmediate?: (handle: ImmediateHandle) => void;
 	checkForUpdate: (
 		options: UpdateCheckOptions,
 		dependencies?: Partial<VersionCheckDependencies>,
@@ -68,6 +69,7 @@ const defaultDependencies: VersionCheckDependencies = {
 
 const defaultSchedulerDependencies: SchedulerDependencies = {
 	setImmediate,
+	clearImmediate: (handle) => clearImmediate(handle as NodeJS.Immediate),
 	checkForUpdate,
 };
 
@@ -261,10 +263,16 @@ export async function checkForUpdate(
 export function scheduleUpdateCheck(
 	options: UpdateCheckOptions,
 	overrides: Partial<SchedulerDependencies> = {},
-): void {
+): () => void {
 	const dependencies = { ...defaultSchedulerDependencies, ...overrides };
 	const immediate = dependencies.setImmediate(() => {
 		void dependencies.checkForUpdate(options).catch(() => undefined);
 	});
 	immediate.unref();
+	let cancelled = false;
+	return () => {
+		if (cancelled) return;
+		cancelled = true;
+		dependencies.clearImmediate?.(immediate);
+	};
 }

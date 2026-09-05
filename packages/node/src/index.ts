@@ -2,6 +2,7 @@ import { createHevyMcpServer } from "@hevy-mcp/core";
 import { createHevyClient } from "@hevy-mcp/hevy-client";
 import type { NodeTransport } from "./utils/arguments.js";
 import { assertApiKey } from "./utils/config.js";
+import type { NodeLifecycleHandle } from "./utils/node-lifecycle.js";
 
 /**
  * Create an unconnected MCP server for embedding in a Node application.
@@ -37,7 +38,9 @@ export function createNodeMcpServer(
  * Compatibility wrapper for the executable runtime. Importing this module
  * does not evaluate the runtime bootstrap; it is loaded only when invoked.
  */
-export async function runStdioServer(): Promise<void> {
+export async function runStdioServer(): Promise<
+	NodeLifecycleHandle | undefined
+> {
 	const { runStdioServer: run } = await import("./runtime.js");
 	return run();
 }
@@ -46,7 +49,7 @@ export async function runStdioServer(): Promise<void> {
  * Compatibility wrapper for the executable runtime. Importing this module
  * does not evaluate the runtime bootstrap; it is loaded only when invoked.
  */
-export async function runServer(): Promise<void> {
+export async function runServer(): Promise<NodeLifecycleHandle | undefined> {
 	const { runServer: run } = await import("./runtime.js");
 	return run();
 }

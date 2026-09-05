@@ -19,6 +19,7 @@ interface FlushableStdout {
 
 interface GracefulShutdownOptions {
 	target: CloseTarget;
+	closeTarget?: () => Promise<void>;
 	process?: ProcessLike;
 	logError?: (message: string) => void;
 	flush?: () => Promise<void>;
@@ -29,6 +30,7 @@ interface GracefulShutdownOptions {
 
 export interface GracefulShutdownController {
 	cleanup(): void;
+	close(): Promise<void>;
 	getShutdownPromise(): Promise<void> | undefined;
 }
 
@@ -62,6 +64,7 @@ export function installGracefulShutdown({
 	process: processLike = process,
 	logError = console.error,
 	flush = flushStdout,
+	closeTarget,
 	forcedExitTimeoutMs = FORCED_EXIT_TIMEOUT_MS,
 	cancel,
 	onComplete,
@@ -101,47 +104,61 @@ export function installGracefulShutdown({
 		}
 	};
 
-	const handleSignal = (signal: ShutdownSignal) => {
-		if (shutdownPromise) {
-			return;
+	const runShutdown = (
+		signal: ShutdownSignal | "close",
+		rejectOnFailure: boolean,
+	): Promise<void> => {
+		if (signal !== "close") {
+			if (processLike.exitCode == null) {
+				processLike.exitCode = 0;
+			}
+			cancel?.abort(
+				new DOMException(`Shutdown requested by ${signal}`, "AbortError"),
+			);
+		} else {
+			cancel?.abort(
+				new DOMException("Shutdown requested by close", "AbortError"),
+			);
 		}
 
-		if (processLike.exitCode == null) {
-			processLike.exitCode = 0;
+		if (signal !== "close") {
+			logError(`Shutting down gracefully after ${signal}`);
 		}
-		cancel?.abort(
-			new DOMException(`Shutdown requested by ${signal}`, "AbortError"),
+
+		const shutdown = Effect.tryPromise({
+			try: async () => {
+				let shutdownError: unknown;
+				try {
+					await (closeTarget ? closeTarget() : target.close());
+				} catch (error) {
+					shutdownError = error;
+				}
+				try {
+					await flush();
+				} catch (error) {
+					shutdownError ??= error;
+				}
+				return { succeeded: shutdownError === undefined, shutdownError };
+			},
+			catch: (error) => ({ succeeded: false, shutdownError: error }),
+		});
+		const timed = Effect.race(
+			shutdown,
+			Effect.sleep(Duration.millis(forcedExitTimeoutMs)).pipe(
+				Effect.as({ succeeded: false, timedOut: true as const }),
+			),
 		);
 
-		shutdownPromise = (async () => {
-			logError(`Shutting down gracefully after ${signal}`);
-			const shutdown = Effect.tryPromise({
-				try: async () => {
-					let shutdownError: unknown;
-					try {
-						await target.close();
-					} catch (error) {
-						shutdownError = error;
-					}
-					try {
-						await flush();
-					} catch (error) {
-						shutdownError ??= error;
-					}
-					return { succeeded: shutdownError === undefined, shutdownError };
-				},
-				catch: (error) => ({ succeeded: false, shutdownError: error }),
-			});
-			const timed = Effect.race(
-				shutdown,
-				Effect.sleep(Duration.millis(forcedExitTimeoutMs)).pipe(
-					Effect.as({ succeeded: false, timedOut: true as const }),
-				),
-			);
-			const result = await Effect.runPromise(timed);
+		return Effect.runPromise(timed).then(async (result) => {
 			if ("timedOut" in result) {
 				await reportCompletion(false);
-				processLike.exit(1);
+				if (signal !== "close") {
+					processLike.exit(1);
+					return;
+				}
+				if (rejectOnFailure) {
+					throw new Error("Graceful shutdown timed out.");
+				}
 				return;
 			}
 
@@ -151,7 +168,9 @@ export function installGracefulShutdown({
 						? result.shutdownError.message
 						: "Unknown shutdown error";
 				logError(`Graceful shutdown failed: ${message}`);
-				processLike.exitCode = 1;
+				if (signal !== "close") {
+					processLike.exitCode = 1;
+				}
 			}
 			try {
 				await reportCompletion(result.succeeded);
@@ -159,7 +178,20 @@ export function installGracefulShutdown({
 				shutdownSettled = true;
 				cleanup();
 			}
-		})();
+			if (!result.succeeded && rejectOnFailure) {
+				throw result.shutdownError instanceof Error
+					? result.shutdownError
+					: new Error("Graceful shutdown failed.");
+			}
+		});
+	};
+
+	const handleSignal = (signal: ShutdownSignal) => {
+		if (shutdownPromise) {
+			return;
+		}
+
+		shutdownPromise = runShutdown(signal, false).catch(() => undefined);
 	};
 
 	const signalListeners = new Map<ShutdownSignal, () => void>(
@@ -175,6 +207,11 @@ export function installGracefulShutdown({
 
 	return {
 		cleanup,
+		close: () => {
+			if (shutdownPromise) return shutdownPromise;
+			shutdownPromise = runShutdown("close", true);
+			return shutdownPromise;
+		},
 		getShutdownPromise: () => shutdownPromise,
 	};
 }

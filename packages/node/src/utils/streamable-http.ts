@@ -938,13 +938,18 @@ export async function startStreamableHttpServer(
 		}
 	}
 
-	await new Promise<void>((resolve, reject) => {
-		server.once("error", reject);
-		server.listen(options.port, options.host, () => {
-			server.removeListener("error", reject);
-			resolve();
+	try {
+		await new Promise<void>((resolve, reject) => {
+			server.once("error", reject);
+			server.listen(options.port, options.host, () => {
+				server.removeListener("error", reject);
+				resolve();
+			});
 		});
-	});
+	} catch (error) {
+		await closeServer(server).catch(() => undefined);
+		throw error;
+	}
 	listeningPort = expectedPort(options, server);
 
 	let closePromise: Promise<void> | undefined;
