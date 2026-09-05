@@ -1,5 +1,14 @@
 /* oxlint-disable typescript/unbound-method */
-import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
+import {
+	ApiError,
+	HevyHttpError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+	type HevyClient,
+	ValidationError,
+} from "@hevy-mcp/hevy-client";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "./main.js";
 import { createEffectClient } from "./test-fixtures/effect-client.js";
@@ -554,6 +563,175 @@ describe("CLI mutation process contract", () => {
 			expect(JSON.parse(io.err)).toMatchObject({
 				error_code: errorCode,
 			});
+		},
+	);
+});
+
+describe("CLI JSON error_code compatibility", () => {
+	const errorCases = [
+		[
+			"ApiError",
+			new ApiError({
+				status: 500,
+				endpoint: "/v1/workouts",
+				method: "GET",
+				code: "HEVY_RETRY_EXHAUSTED",
+			}),
+			"HEVY_RETRY_EXHAUSTED",
+			3,
+		],
+		[
+			"NetworkError",
+			new NetworkError({
+				code: "ERR_NETWORK",
+				endpoint: "/v1/workouts",
+				method: "GET",
+				retryExhausted: false,
+			}),
+			"ERR_NETWORK",
+			4,
+		],
+		[
+			"NotFoundError",
+			new NotFoundError({
+				status: 404,
+				endpoint: "/v1/workouts/:workoutId",
+				method: "GET",
+				expected: false,
+			}),
+			undefined,
+			3,
+		],
+		[
+			"RateLimitError",
+			new RateLimitError({
+				status: 429,
+				endpoint: "/v1/workouts",
+				method: "GET",
+			}),
+			undefined,
+			3,
+		],
+		[
+			"ValidationError",
+			new ValidationError({
+				status: 400,
+				endpoint: "/v1/workouts",
+				method: "GET",
+			}),
+			undefined,
+			3,
+		],
+		[
+			"HevyHttpError",
+			new HevyHttpError("request failed", {
+				status: 503,
+				method: "GET",
+				endpoint: "/v1/workouts",
+				code: "HEVY_RETRY_EXHAUSTED",
+			}),
+			"HEVY_RETRY_EXHAUSTED",
+			3,
+		],
+		[
+			"execution cancellation",
+			new HevyHttpError("request canceled", {
+				method: "GET",
+				endpoint: "/v1/workouts",
+				code: "HEVY_REQUEST_ABORTED",
+				outcome: "cancelled",
+			}),
+			"HEVY_REQUEST_ABORTED",
+			4,
+		],
+		[
+			"execution deadline",
+			new HevyHttpError("request deadline exceeded", {
+				method: "GET",
+				endpoint: "/v1/workouts",
+				code: "HEVY_DEADLINE_EXCEEDED",
+				outcome: "deadline_exceeded",
+			}),
+			"HEVY_DEADLINE_EXCEEDED",
+			4,
+		],
+		["generic", new Error("ordinary failure"), undefined, 2],
+		["string", "ordinary string failure", undefined, 2],
+		[
+			"hostile",
+			new Error(
+				"hostile-fake-secret Authorization Bearer fake-token should be redacted",
+			),
+			undefined,
+			2,
+		],
+	] as const;
+
+	it("omits error_code from successful JSON", async () => {
+		const io = streams();
+		const code = await runCli({
+			argv: ["workouts", "list", "--json"],
+			env: { HEVY_API_KEY: "fake-key" },
+			clientFactory: () =>
+				mockClient(
+					vi.fn().mockResolvedValue({
+						page: 1,
+						page_count: 1,
+						workouts: [],
+					}),
+				),
+			streams: io.streams,
+		});
+
+		expect(code).toBe(0);
+		expect(JSON.parse(io.out)).not.toHaveProperty("error_code");
+		expect(io.err).toBe("");
+	});
+
+	it.each(errorCases)(
+		"keeps the accepted error_code and exit family for %s",
+		async (_name, error, expectedErrorCode, expectedExitCode) => {
+			const io = streams();
+			const createOperations = await createOperationsSpy();
+			const actualCreateOperations = createOperations.getMockImplementation();
+			if (actualCreateOperations === undefined) {
+				throw new Error("Missing createOperations test implementation");
+			}
+			const baseline = actualCreateOperations(mockClient(vi.fn()));
+			createOperations.mockImplementationOnce(() => ({
+				...baseline,
+				workouts: {
+					...baseline.workouts,
+					list: {
+						...baseline.workouts.list,
+						effect: () => Effect.fail(error as never),
+					},
+				},
+			}));
+			const code = await runCli({
+				argv: ["workouts", "list", "--json"],
+				env: { HEVY_API_KEY: "fake-key" },
+				clientFactory: () => mockClient(vi.fn()),
+				streams: io.streams,
+			});
+			const diagnostic = JSON.parse(io.err) as {
+				readonly error_code?: string;
+			};
+
+			expect(code).toBe(expectedExitCode);
+			if (expectedErrorCode === undefined) {
+				expect(diagnostic).not.toHaveProperty("error_code");
+			} else {
+				expect(diagnostic).toHaveProperty("error_code", expectedErrorCode);
+			}
+			expect(io.out).toBe("");
+			expect(io.err).not.toContain("Effect");
+			expect(io.err).not.toContain("Cause");
+			expect(io.err).not.toContain("Fiber");
+			if (_name === "hostile") {
+				expect(io.err).not.toContain("hostile-fake-secret");
+				expect(io.err).not.toContain("fake-token");
+			}
 		},
 	);
 });

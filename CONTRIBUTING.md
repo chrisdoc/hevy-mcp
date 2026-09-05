@@ -78,9 +78,11 @@ For watch mode:
 pnpm run dev
 ```
 
-The `start` and `dev` commands load `.env`. The `test:integration` command also
-loads `.env` when present, while its live suite skips when
-`HEVY_API_KEY` is unavailable. The Node entry point uses stdio by default: it
+The `start` and `dev` commands load `.env`. The `test:integration` and
+`test:live` runners load `.env` when present, preserve explicit process
+environment values, and fail closed for malformed or unreadable files. The
+integration live suite skips when `HEVY_API_KEY` is unavailable, while
+`test:live` fails before Vitest in that case. The Node entry point uses stdio by default: it
 writes MCP JSON-RPC to stdout and diagnostics to stderr. It also supports local
 Streamable HTTP when invoked with
 `--transport http`, `--host`, and `--port`; HTTP clients connect to `/mcp`.

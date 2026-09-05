@@ -145,9 +145,10 @@ MISE_AUTO_INSTALL=false mise exec -- env HEVY_MCP_COMMAND=node \
 `test:live` requires `HEVY_API_KEY` and fails before Vitest starts when the key
 is absent. `test:integration` is also credential-gated for its live cases; when
 the key is absent, its live describe is skipped and it does not contact Hevy.
-The integration command uses Node's optional `--env-file-if-exists=.env` loader,
-so a key stored only in the worktree `.env` is available to those cases without
-being placed in command arguments or logs.
+Both runners load an optional `.env` in the current working directory,
+preserve explicit process environment values, and fail closed for malformed or
+unreadable files. A key stored only in the worktree `.env` is available to
+those cases without being placed in command arguments or logs.
 Neither command sets or requires `HEVY_RUN_LIVE_WORKER_TESTS=1`. The separate
 `test:worker-http:live` lane is optional and is not required for this milestone
 or for the normal PR baseline.

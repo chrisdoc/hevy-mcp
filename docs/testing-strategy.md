@@ -295,7 +295,7 @@ these names rather than duplicating selectors:
 	"test:contract": "vitest run <current contract baseline>",
 	"test:stdio": "vitest run <current stdio/process baseline>",
 	"test:pack": "nx run repository:test:pack",
-	"test:live": "node --env-file-if-exists=.env scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
+	"test:live": "node scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
 	"test:performance": "nx run repository:test:performance",
 	"test:pr": "nx run repository:test:pr"
