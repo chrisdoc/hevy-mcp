@@ -160,6 +160,7 @@ vi.mock("./utils/version-check.js", () => ({
 }));
 
 import { createNodeMcpServer, runServer, runStdioServer } from "./runtime.js";
+import { InvalidHevyApiKeyError } from "./utils/startup-errors.js";
 
 const originalArgv = [...process.argv];
 const originalApiKey = process.env.HEVY_API_KEY;
@@ -611,7 +612,7 @@ describe("Node package entrypoint", () => {
 
 			await expect(
 				createNodeMcpServer({ apiKey: "invalid-key" }),
-			).rejects.toThrow("HEVY_API_KEY is invalid or expired");
+			).rejects.toBeInstanceOf(InvalidHevyApiKeyError);
 			expect(testDoubles.createHevyMcpServer).not.toHaveBeenCalled();
 		},
 	);

@@ -14,8 +14,11 @@ import { installGracefulShutdown } from "./graceful-shutdown.js";
 import { scheduleUpdateCheck } from "./version-check.js";
 import { MissingHevyApiKeyError } from "./config.js";
 import type { FailureContext } from "./failure-reporter.js";
-export const INVALID_API_KEY_MESSAGE =
-	"HEVY_API_KEY is invalid or expired. Please check your API key in the Hevy app under Settings > API Key.";
+import {
+	INVALID_API_KEY_MESSAGE,
+	InvalidHevyApiKeyError,
+} from "./startup-errors.js";
+export { INVALID_API_KEY_MESSAGE } from "./startup-errors.js";
 
 type LifecycleFailurePhase =
 	| "config"
@@ -58,6 +61,7 @@ const LIFECYCLE_FAILURE_TAXONOMY = {
 function isExpectedLifecycleFailure(error: Error | string): boolean {
 	return (
 		error instanceof MissingHevyApiKeyError ||
+		error instanceof InvalidHevyApiKeyError ||
 		(error instanceof Error && error.message === INVALID_API_KEY_MESSAGE)
 	);
 }

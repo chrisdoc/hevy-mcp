@@ -22,10 +22,10 @@ import {
 } from "./utils/mcp-session-observability.js";
 import { installSdkErrorTracking } from "./utils/sdk-observability.js";
 import {
-	INVALID_API_KEY_MESSAGE,
 	recordLifecycleFailure,
 	runNodeLifecycle,
 } from "./utils/node-lifecycle.js";
+import { InvalidHevyApiKeyError } from "./utils/startup-errors.js";
 
 const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
@@ -179,7 +179,7 @@ async function validateApiKey(apiKey: string, signal?: AbortSignal) {
 		if (signal?.aborted) throw error;
 		const status = getHttpStatus(error);
 		if (status === 401 || status === 403) {
-			throw new Error(INVALID_API_KEY_MESSAGE);
+			throw new InvalidHevyApiKeyError();
 		}
 
 		const diagnostic = getSafeValidationDiagnostic(error);
