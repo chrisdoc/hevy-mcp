@@ -54,13 +54,32 @@ CLI are the public packages.
 
 The public `HevyClient` remains Promise-based, while
 `@hevy-mcp/operations` provides Effect-first domain programs for reads,
-mutations, and composite workflows. MCP tools and CLI commands run those
-programs and collapse each invocation once at their Promise adapter boundary.
-The internal request Effect seam is not part of the public Node or CLI API:
-`hevy-mcp` stays a Promise-based Node adapter, and
-`@chrisdoc/hevy-cli` remains a bin-oriented Promise adapter. Core MCP tools
-receive a request-local `HevyOperationsService` from
-`createCoreServiceLayer`. The MCP catalog remains 22 tools.
+mutations, and composite workflows. Effect is also the control structure for
+the request runtime: `@hevy-mcp/hevy-client` owns retry schedules, per-attempt
+timeouts, and interruption, rather than using Effect only as a delay
+calculator. MCP tools and CLI commands collapse each invocation once at their
+Promise adapter boundary. The MCP catalog remains 22 tools.
+
+The runtime has three nested scopes:
+
+1. **Process Scope:** the Node lifecycle owns telemetry, signal handlers, and
+   transport shutdown.
+2. **Server Scope:** core owns the MCP runtime and the exercise-template cache,
+   including finalization when the server closes.
+3. **Request Scope:** each tool or resource invocation carries its deadline and
+   MCP request signal, so fiber interruption reaches the Hevy request.
+
+These scopes do not change the supported Promise façades. Public
+`HevyClient` methods, `createHevyMcpServer`, `createNodeMcpServer`,
+`runStdioServer` / `runServer`, operation `.execute()`, and CLI
+`execute` / `runCli` remain usable without requiring callers to construct
+Effect programs.
+
+The Worker adapter is not Effect-wide: its OAuth, bindings, and request
+handling remain platform-specific Promise code; only the validation-cache
+retry is Effect-controlled. Tool input and response contracts remain Zod
+contracts, environment and CLI parsing remain throwing parsers, and generated
+Kubb API functions and `.kubb` internals are not public API.
 
 > A Hevy API key, available with **Hevy PRO**, is required.
 
@@ -690,9 +709,9 @@ Use mise for the pinned Node.js and pnpm versions, then run the deterministic
 unit lane. It does not need a live Hevy API key:
 
 ```bash
-mise install
-mise exec -- pnpm install
-mise exec -- pnpm run test:unit
+MISE_AUTO_INSTALL=false mise install
+MISE_AUTO_INSTALL=false mise exec -- pnpm install
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit
 ```
 
 ## License and acknowledgements

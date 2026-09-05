@@ -23,12 +23,14 @@ The repository currently has a deliberate Node policy difference:
 Use mise for development:
 
 ```bash
-mise install
-mise exec -- node --version
-mise exec -- pnpm install
+MISE_AUTO_INSTALL=false mise install
+MISE_AUTO_INSTALL=false mise exec -- node --version
+MISE_AUTO_INSTALL=false mise exec -- pnpm install
 ```
 
 Do not silently change the published Node policy as part of unrelated work.
+On this linux/arm64 environment, keep `MISE_AUTO_INSTALL=false` on every
+`mise` command because the pinned `kiota` tool has no linux/arm64 build.
 
 ## Hevy API key and local environment
 
@@ -51,6 +53,14 @@ HEVY_API_KEY=your-hevy-api-key
   lanes do not need a live key.
 - `pnpm run test:live` requires `HEVY_API_KEY` and fails its preflight when the
   key is absent.
+
+Live and pull-request credentials are intentionally separate. `test:pr` and
+its deterministic lanes use fake credentials and do not contact Hevy, while
+`test:live` and the live cases in `test:integration` use a real key from
+`.env` or the process environment. The `test:live` preflight fails before
+Vitest when the key is absent; it is not a skipped success. Neither command
+sets or requires `HEVY_RUN_LIVE_WORKER_TESTS=1`; the Worker live HTTP lane is
+separate and optional.
 
 ## Local development
 
@@ -268,6 +278,29 @@ stdio fields such as `_ondata` and `_readBuffer`. After every
 run the complete stdio observability suite (`pnpm run test:stdio`) and inspect
 the SDK compatibility assumptions before merging.
 
+### Effect control structure
+
+Effect owns retry schedules, timeout budgets, and interruption in the shared
+Hevy client. Runtime resources follow three nested scopes:
+
+```text
+process Scope → server Scope → request Scope
+```
+
+The Node process Scope owns telemetry, signal handlers, and transport
+shutdown. Core's server Scope owns the MCP runtime and shared template cache.
+Each tool or resource request gets its own deadline and MCP request signal,
+which interrupts the underlying request Effect. Existing Promise façades remain
+the supported API, including `createHevyMcpServer`, `createNodeMcpServer`,
+`runStdioServer` / `runServer`, `HevyClient` methods, operation `.execute()`,
+and CLI `execute` / `runCli`.
+
+This does not make every adapter Effect-wide. Worker OAuth, bindings, and
+request handling remain Promise-based apart from the validation-cache retry.
+Zod remains the MCP input/output contract, `config.ts` and `arguments.ts`
+remain throwing parsers, and generated Kubb API functions and `.kubb`
+internals are private.
+
 ## Cloudflare Worker development
 
 The Worker exposes stateless Streamable HTTP at `POST /mcp`. It accepts the
@@ -285,9 +318,9 @@ Use the repository scripts for local development, bundle validation, and
 deployment:
 
 ```bash
-pnpm run worker:dev
-pnpm run worker:dry-run
-npx nx run repository:worker:deploy
+MISE_AUTO_INSTALL=false mise exec -- pnpm run worker:dev
+MISE_AUTO_INSTALL=false mise exec -- pnpm run worker:dry-run
+MISE_AUTO_INSTALL=false mise exec -- npx nx run repository:worker:deploy
 ```
 
 `worker:deploy` requires an authenticated Wrangler/Cloudflare environment and

@@ -1,5 +1,5 @@
-// Telemetry must be initialized before any other imports so that
-// OpenTelemetry and Sentry are ready before application code runs.
+// Telemetry is acquired by the scoped Node lifecycle Layer; imports stay
+// side-effect-free for embedders.
 import { tracer, serviceName, serviceVersion } from "./utils/telemetry.js";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { SpanStatusCode } from "@opentelemetry/api";
