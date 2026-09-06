@@ -1,0 +1,1 @@
+is there a need to keep the control plane tests? seems britle too, lets rethink all those tests inside scripts
