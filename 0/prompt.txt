@@ -1,0 +1,38 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Inspect local Effect branch stack
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only investigation. Do not modify anything. Return findings inline, including filepaths of any notes you would have written (none — inline only).
+
+GOAL: Determine whether the Effect retry-interpreter work is stacked as PRs or only local.
+
+Check in BOTH:
+- /root/hevy-mcp-effect-retry-interpreter
+- /root/hevy-mcp
+
+For each repo:
+1. git status --short --branch
+2. git log --oneline -12
+3. git remote -v
+4. git branch -vv
+5. Whether feat/effect-retry-interpreter tracks a remote
+6. git log --oneline origin/main..HEAD if that range exists
+7. Any worktrees: git worktree list
+
+Also report SHAs for:
+- 4c50934, 13454e0, d6b481b, 1073abb, e2cc2a6, fa3fc92, 1c976a1 if they exist in either repo
+
+OUTPUT:
+- Per-repo: branch, HEAD, tracking, ahead/behind, dirty
+- Whether feat/effect-retry-interpreter has been pushed
+- Local commit range that is not on origin
+- Any related local branches (feat/effect-pure-operations, test/request-local-retry-state, test/fetch-config-merge, feat/effect-retry-interpreter)
+---END TASK FROM PARENT AGENT---
