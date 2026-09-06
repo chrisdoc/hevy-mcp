@@ -1,0 +1,42 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Validate tools-via-operations assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "core-runtime".
+
+Assigned assertions: VAL-CORE-002, VAL-CORE-003, VAL-CORE-004, VAL-CORE-005, VAL-CORE-006, VAL-CORE-007, VAL-CORE-008, VAL-CORE-027
+
+Your isolation context:
+- Mission worktree (the ONLY directory you may work in): /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer. Dependencies are installed; do not run pnpm install.
+- Never modify /root/hevy-mcp (original checkout, has a staged changeset) or any other worktree.
+- Read-only over source: run vitest and capture terminal output as evidence. Do not modify production or test source files.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest via mise (pnpm exec vitest run <files>). Run each of these test files in the mission worktree, one command per file, capturing output:
+  mise exec -- pnpm exec vitest run packages/core/src/tools/workouts.test.ts packages/core/src/tools/routines.test.ts packages/core/src/tools/templates.test.ts packages/core/src/tools/folders.test.ts packages/core/src/tools/body-measurements.test.ts packages/core/src/tools/workflows.test.ts packages/core/src/tools/routine-discovery.test.ts packages/core/src/tools/cross-package.test.ts
+Scope: only the files listed above. Do not run the whole unit suite.
+
+Evidence to collect per assertion:
+- VAL-CORE-002: for each of the 22 registered tool names, the execute path reads runtime.service(HevyOperationsService) (or yield*s it) and does not call HevyClientService, runtime.getClient(), or a raw HevyClient method; a stubbed HevyOperations is invoked; the mock Promise client is not; search-exercise-templates may resolve templates through ExerciseTemplateCatalogService only if that catalog lookup is operations templates.listAll or equivalent. Evidence: workouts.test.ts, routines.test.ts, templates.test.ts, folders.test.ts, body-measurements.test.ts, workflows.test.ts, routine-discovery.test.ts, cross-package.test.ts output.
+- VAL-CORE-003: workout tools map to workouts.* Effect programs including replaceExercises; stub HevyOperations (not the Promise client); runtime.execution forwarded as the operations options bag; snake_case public inputs stay (page, page_size, workout_id, since); update-workout still requires non-empty workout object and explicit is_private on the public schema; tools must not call isExpectedListPageNotFound or buildWorkoutUpdatePayload. Evidence: workouts.test.ts output.
+- VAL-CORE-004: routine tools map to routines.*; create/update output schema unchanged (serialized create-routine output { created: true, commit_state: "confirmed", routine_id } plus uses_rep_ranges additional-text warning); when operations are stubbed the mock client is not called. Evidence: routines.test.ts + register.test.ts output.
+- VAL-CORE-005: template tools map to templates.* + catalog; search-exercise-templates does not use the Promise client; get-exercise-template expected get 404 yields { exercise_template: null, expected404Outcome: "not_found" } from operations, not isExpectedReadNotFound in the tool; get-exercise-history forwards only provided optional start_date/end_date ISO-8601 offsets (absent dates are not sent as undefined query noise); create-exercise-template uses snake_case exercise envelope unchanged. Evidence: templates.test.ts output.
+- VAL-CORE-006: folder and body-measurement tools map to folders.* / bodyMeasurements.* (measurements.*): get-routine-folder { folderId: folder_id } with get 404 -> expected404Outcome "not_found"; create-routine-folder { routine_folder: { title } } envelope; get-body-measurements { page, pageSize: page_size } with page>1 404 -> end_of_list; get-body-measurement { date } with 404 -> not_found; create-body-measurement omit-nulls/numeric payload in operations; update-body-measurement empty numeric payload still fails with the current "No measurement fields provided..." MCP text. No HevyClientService and no tool-local isExpectedReadNotFound / isExpectedListPageNotFound / buildMeasurementPayload. Evidence: folders.test.ts + body-measurements.test.ts output.
+- VAL-CORE-007: get-training-summary is a thin wrapper over workflows.trainingSummary (MCP projection only); packages/core/src/tools/workflows.ts contains no while(true), new Date(), Date.parse, setUTCDate, or Promise.all; execute is read HevyOperationsService -> workflows.trainingSummary with { weeks } and runtime.execution; core tests stub that composite and assert the MCP projection still matches trainingSummaryResponse: period.{start_date,end_date,weeks}; workouts.{count,total_duration_seconds,exercise_count,set_count,unique_exercise_template_ids,sessions}; body_measurements.{count,latest?,earliest?,weight_change_kg?}; scan derived from workflow.pagination / itemsScanned; empty both collections -> text "No workouts or body measurements found for the specified period"; workflow.cacheStatus remains "not-used". Evidence: workflows.test.ts output.
+- VAL-CORE-008: search-routines is a thin wrapper over routines.search; packages/core/src/tools/routine-discovery.ts contains no while pagination loop and no client.getRoutines; execute is HevyOperationsService -> routines.search with { query?, limit } (default 20, max 100) and runtime.execution; preserve compactRoutinesResponse (snake_case compact rows id, title, folder_id, updated_at, exercise_count, set_count; scan from workflow pagination); empty-state text "No routines found matching the query"; workflow.name === "routine-discovery". Evidence: routine-discovery.test.ts output.
+- VAL-CORE-027: after wiring, packages/core/src/tools/workouts.ts does not call buildWorkoutUpdatePayload or client.getWorkout + client.updateWorkout; routines.ts does not call buildRoutinePayload; body-measurements.ts does not call buildMeasurementPayload; workflows.ts has none of scanPagesInWindow / getPeriod / Promise.all / UTC Date arithmetic; routine-discovery.ts has no discoverRoutines pagination. Tools remain taxonomy + schema + respond; quirk correctness is VAL-OPS-033-036. Evidence: workouts.test.ts, routines.test.ts, body-measurements.test.ts, workflows.test.ts, routine-discovery.test.ts output.
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you.
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/user-testing/flows/core-tools-via-operations.json
+Save evidence files to this directory: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/core-runtime/core-tools-via-operations/
+
+Flow validator guidance section: "Flow Validator Guidance: core-runtime"
+---END TASK FROM PARENT AGENT---
