@@ -1,0 +1,36 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Verify catalog waiter findings
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are verifying scrutiny findings against CURRENT code in /home/ubuntu/hevy-mcp-effect-deepening (HEAD should be around the core-runtime commits including 4597bc3 feat(core): scope server catalog lifecycle).
+
+Mission context:
+- Architecture requires: Exercise-template Cache lives in server Scope. Dual waiter policy: only waiter cancels the shared load; one of several waiters is interrupted without cancelling a still-needed load. Independently cancellable callers must not share a fetch they can cancel out from under each other.
+- VAL-CORE-018/019, VAL-CROSS-007.
+
+Scrutiny claimed (blocking):
+"Request-bearing concurrent catalog misses start separate loads instead of reference-counting one shared load, so neither required sole-waiter cancellation nor multi-waiter retention is implemented."
+
+Please investigate packages/core catalog/cache/server code thoroughly:
+- packages/core/src/server.ts
+- packages/core/src/utils/exercise-template-catalog.ts (and tests)
+- packages/core/src/resources/hevy.ts
+- related cache lookup / execution context wiring
+
+Answer:
+1. Is the finding still true on HEAD? Quote the relevant code (file + line numbers).
+2. How many Hevy list-all loads start on concurrent cache misses today?
+3. What happens if the only waiter is aborted? If one of several waiters is aborted?
+4. What tests exist for waiter policy? Name the test files/cases.
+5. Recommended fix approach that satisfies BOTH: shared load for concurrent misses AND only-waiter cancellation without cancelling a still-needed load. Be concrete about Effect Cache vs a custom refcount.
+
+Do NOT edit files. Return filepaths of anything you would have written (none). Write analysis inline.
+---END TASK FROM PARENT AGENT---
