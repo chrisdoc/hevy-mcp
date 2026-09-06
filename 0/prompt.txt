@@ -1,0 +1,1 @@
+can you validate and identify this issue https://github.com/chrisdoc/hevy-mcp/issues/1039
