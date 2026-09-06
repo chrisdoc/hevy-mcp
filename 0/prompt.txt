@@ -1,0 +1,19 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "ops-routine-writes-search",
+  "description": "Add routines.create, routines.update (direct PUT, no RMW), and routines.search using Stream.paginate, title filter, limit, and later-page 404 end-of-scan.",
+  "skillName": "operations-worker",
+  "milestone": "ops-complete",
+  "preconditions": [
+    "Effect client has createRoutine and updateRoutine",
+    "Routine payload builders live in operations"
+  ],
+  "expectedBehavior": [
+    "routines.create applies create-mode payload quirks then Effect createRoutine; returns { routine, usesRepRanges }",
+    "routines.update calls Effect updateRoutine directly (no GET); update-mode payload quirks; { routine, usesRepRanges }",
+    "routines.search uses Stream.paginate (not paginateEffect / while true); case-insensitive title filter; limit default 20 max 100; stops on last/empty/missing pageCount; later-page 404 ends scan; domain result, no MCP text"
+  ]
+}
+```
