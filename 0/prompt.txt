@@ -1,0 +1,1 @@
+still not working https://github.com/chrisdoc/hevy-mcp/actions/runs/31312599387/job/93242610688?pr=943
