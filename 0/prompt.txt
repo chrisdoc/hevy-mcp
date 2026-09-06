@@ -1,0 +1,19 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "user-testing-validator-cli-hygiene",
+  "description": "User testing validation for milestone \"cli-hygiene\". Determines testable assertions from features' fulfills field, sets up environment, spawns flow validator subagents, synthesizes results. Always returns to orchestrator.\n\nOrchestrator note after scrutiny round 1: Validate only in /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer. Do not use origin/main or /root/hevy-mcp. Evidence map is in library/user-testing.md (cli-hygiene section). VAL-CLI-005 evidence is the durable static collapse-once assertion added by cli-collapse-once-test plus pnpm run test:cli. VAL-CROSS-008 is already satisfied by open PR https://github.com/chrisdoc/hevy-mcp/pull/1120 — run `gh pr view 1120 --repo chrisdoc/hevy-mcp` read-only; do not create another PR or push. Do not re-run test:pr. Missing entire CLI is not a product defect. The tool-runtime.ts runPromise.catch fallback is known pre-existing and is not a VAL-CROSS-006 failure.",
+  "skillName": "user-testing-validator",
+  "milestone": "cli-hygiene",
+  "preconditions": [
+    "All implementation features for milestone \"cli-hygiene\" are complete"
+  ],
+  "expectedBehavior": [
+    "Testable assertions determined from fulfills mapping",
+    "Environment set up (services started, data seeded)",
+    "Flow validator subagents spawned and completed",
+    "Results synthesized, validation-state.json updated"
+  ]
+}
+```
