@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task complexity: heavy
+Task description: Validate final CLI migration diff
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the current uncommitted full feature diff in /root/hevy-mcp-effect-ops-layer against VAL-CLI-001, 002, 003, 004, 007, and 009, including fixes since b2ba0e8. Check that prior blockers are now resolved: CLI --weeks 13-520 compatibility, missing/malformed pagination metadata, strict existing measurement validation, invalid summary timestamps, summary volume, measurement merge, envelopes, search max-pages, operation error diagnostics. Also verify no new regressions, especially operations public API and one collapse per handler. Do not modify files. Return pass or concrete blockers with file/line references.
+---END TASK FROM PARENT AGENT---
