@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Review lifecycle contract coverage
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review, do not write files. Review full mission.md, architecture.md, and validation-contract.md in the mission directory plus relevant code/tests. Focus on Lifecycle and Timing: deadlines, cancellation, TestClock, custom sleep, interruption, finalization, and races. Identify missing flows or untestable/implementation-derived assertions and provide exact contract edits with proposed IDs. Return analysis and filepaths inspected.
+---END TASK FROM PARENT AGENT---
