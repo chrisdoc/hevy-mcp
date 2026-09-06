@@ -1,0 +1,10 @@
+<system>
+You ended your turn without calling end_feature_run, so the mission has no record of what you did and the orchestrator will treat this session as failed.
+
+Call end_feature_run NOW with an honest handoff:
+- successState: "success" only if all validators passed; otherwise "partial" or "failure"
+- handoff.salientSummary: 1-4 sentences describing what actually happened
+- handoff.whatWasLeftUndone / handoff.discoveredIssues: report anything incomplete
+
+Do not do any other work first. This is your final turn.
+</system>
