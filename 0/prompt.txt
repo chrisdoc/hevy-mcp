@@ -1,0 +1,19 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "user-testing-validator-pr-review-fixes",
+  "description": "User testing validation for milestone \"pr-review-fixes\". Determines testable assertions from features' fulfills field, sets up environment, spawns flow validator subagents, synthesizes results. Always returns to orchestrator.",
+  "skillName": "user-testing-validator",
+  "milestone": "pr-review-fixes",
+  "preconditions": [
+    "All implementation features for milestone \"pr-review-fixes\" are complete"
+  ],
+  "expectedBehavior": [
+    "Testable assertions determined from fulfills mapping",
+    "Environment set up (services started, data seeded)",
+    "Flow validator subagents spawned and completed",
+    "Results synthesized, validation-state.json updated"
+  ]
+}
+```
