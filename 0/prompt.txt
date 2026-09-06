@@ -1,0 +1,30 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Map operations Effect seams
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Investigate /root/hevy-mcp-effect-retry-interpreter OR origin/main equivalent. Prefer reading from git show origin/main if needed; the canonical merged tip is origin/main afb18b0. The dirty checkout /root/hevy-mcp is NOT origin/main.
+
+Goal: map the current operations package Effect/Promise nesting so an architect can plan collapsing nested runPromise.
+
+Find and report:
+1. packages/operations public execute() API and whether it returns Promise.
+2. Every runPromise / tryPromise / Effect.runPromise in packages/operations (file + brief what it wraps).
+3. The four read operations that currently nest Effect (names, files).
+4. How 404/not-found and other errors are classified and returned to callers (throw vs Result).
+5. Existing characterization/unit tests for operations execute and error mapping (file paths + what they cover).
+6. Whether operations currently import hevy-client Promise APIs only, or any Effect APIs.
+
+Return a concise structured report. Do not write files. Return file paths of anything you inspected in the final response.
+
+Working tree hint: /root/hevy-mcp-effect-retry-interpreter is at 50fea79 which should include the merged retry stack. You may also git show afb18b0:packages/operations/...
+
+Read-only.
+---END TASK FROM PARENT AGENT---
