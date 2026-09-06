@@ -1,0 +1,24 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "client-tagged-errors",
+  "description": "Map Effect HTTP/transport failures to Schema.TaggedError classes (NotFoundError, ValidationError, RateLimitError, ApiError, NetworkError) that catchTag can discriminate. Keep public Promise methods rejecting HevyHttpError. Do not hand-edit generated client files.",
+  "skillName": "effect-client-worker",
+  "milestone": "client-seam",
+  "preconditions": [
+    "packages/hevy-client/src/effect-errors.ts already defines the tagged error classes",
+    "Effect methods share the native interpreter"
+  ],
+  "expectedBehavior": [
+    "Effect 404 fails as NotFoundError with _tag, status, method, canonical endpoint, expected",
+    "Effect 400 fails as ValidationError on reads and writes",
+    "Effect 429 fails as RateLimitError with attempt count matching Promise and retryAfterSeconds when Retry-After is numeric seconds",
+    "401/403/409/500 fail as ApiError with matching status",
+    "fetch rejection fails as NetworkError with retryExhausted",
+    "Effect.catchTag discriminates the five tags; _tag is not erased",
+    "Public Promise methods still reject HevyHttpError, not tagged Effect errors",
+    "No edits under packages/hevy-client/src/generated/"
+  ]
+}
+```
