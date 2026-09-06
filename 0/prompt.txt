@@ -1,0 +1,1 @@
+what about using https://github.com/gajus/zod-compiler
