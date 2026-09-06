@@ -1,0 +1,26 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review fix-network-error-identity-and-push
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "fix-network-error-identity-and-push" for milestone "pr-review-fixes".
+
+Feature details:
+- ID: fix-network-error-identity-and-push
+- Description: PR #1120 review fix (Qodo), plus branch publication: NetworkError drops request identity. packages/hevy-client/src/effect-errors.ts NetworkError schema lacks method/endpoint, and mapRequestError (packages/hevy-client/src/internal-request-effect.ts ~267-315) does not pass the computed request identity into networkError(). Add optional method/endpoint fields to NetworkError and pass the sanitized identity through so statusless HevyHttpError failures keep the failing request's method and canonical endpoint in safe diagnostics. TDD in packages/hevy-client/src/internal-request-effect.test.ts (and request-effect.test.ts if needed). After commit, push ONLY the feature branch (git push origin feat/effect-ops-layer) so PR #1120 updates; never push main.
+- Worker sessions: cdd2c03c-a082-4dcb-ba19-c9bca1621387, c168b5c1-6044-409c-ad70-c3d6224dbc75
+
+IMPORTANT: All implementation lives in the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer. Do NOT review against /root/hevy-mcp or origin/main.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+The fix commit is: b9952ca fix(hevy-client): keep request identity on network errors. Verify the branch was pushed and PR #1120 includes the commits (read-only git/gh checks; do not push or create PRs).
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/pr-review-fixes/scrutiny/reviews/fix-network-error-identity-and-push.json
+---END TASK FROM PARENT AGENT---
