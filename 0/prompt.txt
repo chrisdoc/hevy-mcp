@@ -1,0 +1,1 @@
+check sentry cli for new issue for 6.1.0
