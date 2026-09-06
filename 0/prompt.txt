@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Analyze live scrutiny failures
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only analysis only. Do not write or modify any files. Review the full handoff at /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/handoffs/REDACTED.json and the synthesis/review reports under /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation/live-e2e/scrutiny/. Inspect relevant repository files only as needed in /home/ubuntu/hevy-mcp-effect-deepening. Confirm root causes and recommend focused fix feature(s), including tests and validation commands. Decide whether the check:boundaries documentation omission should be bundled with the stale telemetry wording fix. Do not expose or inspect HEVY_API_KEY values. Return analysis inline and explicitly state that no files were written, with an empty filepath list.
+---END TASK FROM PARENT AGENT---
