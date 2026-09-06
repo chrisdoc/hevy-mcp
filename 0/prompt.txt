@@ -1,0 +1,51 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Test assertions VAL-CLIENT-025, VAL-CORE-029, VAL-CLI-010
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "pr-review-fixes".
+
+Assigned assertions: VAL-CLIENT-025, VAL-CORE-029, VAL-CLI-010
+
+Your isolation context:
+- Mission worktree: /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer. Work ONLY here. Never modify /root/hevy-mcp (original checkout with a staged changeset) or any other worktree.
+- Validation is read-only over source: run vitest and capture terminal output as evidence. Do NOT modify any source or test files. No git commit, push, checkout, or stash. The worktree has committed work that must stay intact (git status should stay clean).
+- Run node/pnpm through mise: `mise exec -- pnpm exec vitest run <files>`. Dependencies are pre-installed; do not run pnpm install.
+- No services to start. No live Hevy API. No HEVY_API_KEY. Fake keys only. No browser, no tuistory.
+- Scope vitest runs to your assigned test files only; do not run full `test:unit` or `test:pr`.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest (file-scoped)
+
+Read the full assertion definitions in {missionDir}/validation-contract.md (Area: Client Seam, Area: Core Runtime, Area: CLI). The assertions:
+
+- VAL-CLIENT-025: NetworkError preserves sanitized request identity. When a statusless HevyHttpError (DNS/connection failure such as TypeError("fetch failed")) maps to NetworkError, the error carries the sanitized HTTP method and canonical endpoint (the same identity fields used by the other tagged errors: `method`, `endpoint`), so safe diagnostics identify the failing request. No real URLs beyond canonical endpoints; no keys. Fail if NetworkError is raised with no method/endpoint identity, or if the projection leaks raw URLs or credentials.
+  Evidence: `packages/hevy-client/src/request-effect.test.ts`, `packages/hevy-client/src/internal-request-effect.test.ts`, and `packages/core/src/utils/error-policy.ts` behavior. Relevant fix commit: b9952ca "fix(hevy-client): keep request identity on network errors".
+
+- VAL-CORE-029: Observer composes with custom handler factories. When both `observer` and `createHandler` are provided to `createToolRuntime`, the observer wraps the handler produced by the caller-supplied `createHandler` factory; the factory IS invoked and its instrumentation/wrapping behavior is visible. Adding an observer must not silently bypass custom handler wrapping. Fail if providing `observer` skips `createHandler`, or if the factory's wrapping behavior is absent from the resulting handler.
+  Evidence: `packages/core/src/tools/tool-runtime.test.ts`
+
+- VAL-CLI-010: CLI operations receive the execution-bound client. When CLI startup configures an execution bag (signal/deadline binding), the `HevyOperations` instance passed into command context is built from the execution-bound client proxy (the same client exposed as `context.client`), not the raw unbound client. Test via `packages/cli` tests asserting `createOperations` receives the proxied client when `options.execution` is set. Fail if `createOperations` gets the raw unbound client or a different instance than `context.client`.
+  Evidence: `packages/cli/src/main.test.ts`
+
+Method (read the contract text carefully and judge behavior, not just test titles):
+1. Run file-scoped vitest over the evidence files: e.g. `cd /root/hevy-mcp-effect-ops-layer && mise exec -- pnpm exec vitest run packages/hevy-client/src/request-effect.test.ts packages/hevy-client/src/internal-request-effect.test.ts packages/core/src/tools/tool-runtime.test.ts packages/cli/src/main.test.ts` (you may split into batches; do not run the full unit suite).
+2. For each assertion, confirm passing test cases exist that genuinely exercise the contract behavior (check test titles and, where needed, read test bodies/implementation to confirm: NetworkError carries method+endpoint identity without leaking raw URLs or keys; observer wraps the createHandler-produced handler and the factory's wrapping is visible; createOperations receives the execution-proxied client identical to context.client when options.execution is set). Match assertions by behavior, not title prefixes.
+3. Record exact vitest output (pass/fail counts per file) as evidence.
+
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/pr-review-fixes/user-testing/flows/client-core-cli-fixes.json
+Create the directory if needed. Report JSON shape: { "group": "client-core-cli-fixes", "milestone": "pr-review-fixes", "assertions": [ { "id": "VAL-CLIENT-025", "status": "pass|fail|blocked", "evidence": "...", "notes": "..." }, ... ], "frictions": [], "blockers": [], "toolsUsed": ["vitest"] }
+
+Save evidence files to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/pr-review-fixes/client-core-cli-fixes/
+
+Flow validator guidance section: "Flow Validator Guidance: pr-review-fixes" in {missionDir}/library/user-testing.md
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you.
+---END TASK FROM PARENT AGENT---
