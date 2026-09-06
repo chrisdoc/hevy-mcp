@@ -1,0 +1,38 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Draft cross-area contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You write a VALIDATION CONTRACT DRAFT only. Do not implement product code.
+
+Write file:
+/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/cross-area.md
+
+Read architecture.md and mission.md in /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/
+
+## Your area: Cross-area flows and repo invariants
+
+Assertions spanning packages:
+- Topology: hevy-client → operations → core; adapters don't import each other
+- One runPromise per public Promise boundary across client + operations + tools
+- 404 soft outcomes still surface through MCP tools get-workout / get-routine / list tools the same way
+- Changeset cascade when release-trigger packages change
+- No HEVY_API_KEY required for validation
+- Git: work not on main; generated/ not edited
+- Getters and layer agree during migration
+- First-visit/reachability analog: tools still reachable via register path, not only direct execute()
+
+IDs: VAL-CROSS-001, ...
+
+Tool: vitest, pnpm run check:boundaries, check:changeset as appropriate
+Evidence: terminal output
+
+Return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
