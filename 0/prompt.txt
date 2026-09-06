@@ -1,0 +1,1 @@
+fix the merge conflicts with main https://github.com/chrisdoc/hevy-mcp/pull/971
