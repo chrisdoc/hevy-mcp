@@ -1,0 +1,20 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "core-resources-via-operations",
+  "description": "Route MCP resources hevy://user, hevy://workout-count, hevy://exercise-templates, and hevy://routine-folders through operations (and the server-scoped catalog for templates). Keep the four URIs unchanged. get-user-info tool stays unregistered while hevy://user works.",
+  "skillName": "core-runtime-worker",
+  "milestone": "core-runtime",
+  "preconditions": [
+    "user.get, workouts.count, templates.listAll, folders.listAll exist",
+    "Server-scoped Effect Cache exists"
+  ],
+  "expectedBehavior": [
+    "hevy://user reads user.get; get-user-info tool stays unregistered",
+    "hevy://workout-count reads workouts.count",
+    "hevy://exercise-templates uses the server-scoped catalog",
+    "hevy://routine-folders reads folders.listAll; four resource URIs unchanged"
+  ]
+}
+```
