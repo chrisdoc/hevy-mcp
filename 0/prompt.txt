@@ -1,0 +1,52 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature ops-read-policy
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "ops-read-policy" for milestone "ops-foundation".
+
+Feature details:
+- ID: ops-read-policy
+- Description: Replace thrown page-mismatch defects with PaginationMismatchError. Implement the soft-404 policy matrix for every collection operations will handle. Normalize paginated list envelopes for workouts.list, routines.list, bodyMeasurements.list, and workouts.events. Deepen workouts.get and routines.get with tagged NotFoundError recovery.
+- Worker session: 1cd96667-6f7c-48e3-91f3-623c52ecd717
+- Status: completed
+- Milestone: ops-foundation
+- Fulfills assertions: VAL-OPS-003, VAL-OPS-004, VAL-OPS-005, VAL-OPS-009, VAL-OPS-010, VAL-OPS-016
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Implementation evidence (all in the feature worktree /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer):
+- Commit 2ebb7bc "feat(operations): enforce tagged read pagination policy" is the implementation commit of this feature (inspect with: git -C /root/hevy-mcp-effect-ops-layer show 2ebb7bc, and --stat for the file list).
+- Worker transcript skeleton: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/worker-transcripts.jsonl (JSONL; locate entries whose sessionId == 1cd96667-6f7c-48e3-91f3-623c52ecd717).
+- Validators already passed for this milestone: mise exec -- pnpm install (exit 0), mise exec -- pnpm run check:types (exit 0), mise exec -- pnpm run test:unit (exit 0, 97 files / 1046 passed / 1 skipped). Lint command is the no-op "true" placeholder per services.yaml.
+
+Your review must verify:
+1. PaginationMismatchError is a Schema.TaggedError with fields requested, received, collection; never throw new Error; never a soft-404 success (VAL-OPS-003).
+2. The soft-404 policy matrix: later-page list/events/listAll/search/trainingSummary loader 404 → end_of_list or end-of-scan; first-page 404 fails; member GET 404 → not_found where tools already do that; history 404 fails; writes never soft-404; sibling/unrelated 404s fail (VAL-OPS-004).
+3. Recovery matches tagged NotFoundError / endpoint-scoped helpers, not string heuristics; unexpected HTTP stays tagged client errors (VAL-OPS-005).
+4. List normalize: requested page, pageCount, omitted items → [], empty 200 ≠ end_of_list, omitted page_count / response.page (VAL-OPS-009).
+5. workouts.get entity envelope; empty body → { workout: null } without soft-404; member 404 → not_found; collection-path 404 fails (VAL-OPS-010).
+6. routines.get nested routine entity; empty → { routine: null } without soft-404; member 404 → not_found; collection-path 404 fails (VAL-OPS-016).
+7. Whether the feature adequately satisfies the assertions it claims to fulfill (VAL-OPS-003, VAL-OPS-004, VAL-OPS-005, VAL-OPS-009, VAL-OPS-010, VAL-OPS-016) - read those assertion definitions in /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation-contract.md.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-foundation/scrutiny/reviews/ops-read-policy.json
+
+Report JSON shape (write it yourself when done):
+{
+  "featureId": "ops-read-policy",
+  "milestone": "ops-foundation",
+  "workerSessionId": "1cd96667-6f7c-48e3-91f3-623c52ecd717",
+  "verdict": "pass" | "fail",
+  "blockingIssues": [ { "severity": "blocking"|"non_blocking", "description": "...", "evidence": "..." } ],
+  "assertionFindings": [ { "assertionId": "VAL-OPS-003", "satisfied": true|false, "evidence": "..." }, ... for each fulfills id ],
+  "boundaryFindings": { "runtimeNeutral": true|false, "forbiddenImportsFound": ["..."], "notes": "..." },
+  "commitsReviewed": ["2ebb7bc"],
+  "notes": "free-form review notes"
+}
+---END TASK FROM PARENT AGENT---
