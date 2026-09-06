@@ -1,0 +1,41 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Create PR for test/request-local-retry-state
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Create the pull request for the already-pushed branch `test/request-local-retry-state` in the repository /root/hevy-mcp (remote: https://github.com/chrisdoc/hevy-mcp.git).
+
+STEPS
+1. cd /root/hevy-mcp
+2. Verify state (read-only): `git status --short --branch` should show `## test/request-local-retry-state...origin/test/request-local-retry-state` with a clean tree (only untracked .pi-subagents/ and .worktrees/ user state allowed). Confirm the branch is pushed: `git rev-parse --verify origin/test/request-local-retry-state`.
+3. Do NOT modify, add, stage, or commit any files. Do NOT create or edit any changeset files. Do NOT push. Only create the PR.
+4. Create the PR with gh:
+   gh pr create --base main --head test/request-local-retry-state --title "feat(hevy-client): add request-local retry schedule module" --body-file - <<'EOF'
+## Summary
+- add `packages/hevy-client/src/retry-schedule.ts` exporting `createRetrySchedule`, copied byte-for-byte from the validated pure-operations worktree where its focused suite passed 3/3
+- add `retry-schedule.test.ts` covering schedule independence: distinct schedules per logical request, no attempt-state leakage between sequential requests, and default policy normalization (`maxRetries: 3`, `baseDelayMs: 300`, `maxDelayMs: 5000`)
+- add `request-local-retry-state.test.ts` characterizing request-local schedule state for the retry interpreter migration
+- include empty changeset `.changeset/loud-olives-smoke.md` per the test-only/no-release-trigger convention (`npx changeset --empty`)
+
+## Validation
+- `mise exec -- pnpm exec vitest run packages/hevy-client/src/retry-schedule.test.ts packages/hevy-client/src/request-local-retry-state.test.ts` — 2 files, 6 tests, 0 failures
+- `mise exec -- pnpm run check:types` and `mise exec -- pnpm run check` — clean
+- commit `fa3fc92` on `test/request-local-retry-state`, working tree clean, tracking origin
+
+## Note for reviewers
+The pre-push changeset check previously rejected this branch because the change touches `packages/hevy-client` while carrying only an empty changeset. If CI's `repository:check:changeset` fails on this PR, maintainers may need either a test-only carve-out in the check or a non-empty changeset for `@hevy-mcp/hevy-client`. No further changes are included here beyond what is described.
+EOF
+5. Report the PR URL, its number, base/head, and mergeability (`gh pr view --json url,number,baseRefName,headRefName,mergeable,state`). If gh reports an error (auth, branch missing, or a PR already existing for this head), report the exact error text and stop — do not retry with modified titles, do not create branches, do not push.
+
+BOUNDARIES
+- Read-only with respect to files and git: no commits, no staging, no pushes, no changeset creation or modification.
+- Exactly one gh pr create invocation. If it fails, stop and report.
+- Keep any tokens/credentials out of command output and the report.
+---END TASK FROM PARENT AGENT---
