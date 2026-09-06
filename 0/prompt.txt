@@ -1,0 +1,26 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Map operations Effect wrappers
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. Investigate packages/operations and how they wrap the Hevy client after the Effect retry interpreter landed on main.
+
+Preferred checkout: /root/hevy-mcp-effect-retry-interpreter if it can fetch origin/main; also check /root/hevy-mcp. Use git fetch and git log origin/main -8. Prefer files as they exist on origin/main (git show origin/main:path if local branch is dirty/behind).
+
+Find and report:
+1. All files under packages/operations/src that call Effect, tryPromise, runPromise
+2. Public execute() signatures and return types
+3. How 404 / empty-list / expected errors are classified today
+4. Tests for operations (paths, what they assert)
+5. package.json of operations: effect dependency version, exports
+6. Who imports operations (core, cli, node, worker) and whether they need Promises
+
+Return concrete file:line evidence. Inline only. Do not modify.
+---END TASK FROM PARENT AGENT---
