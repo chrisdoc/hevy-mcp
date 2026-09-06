@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Review PR against mission spec
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review. Do not write or modify files. Repository: /home/ubuntu/hevy-mcp-effect-deepening. Review PR #1123 using `git diff origin/feat/effect-ops-layer...HEAD`; fixed point resolves to 494b8db639dab3879dcb7b0a89ee2d177be8ad85 and HEAD to 0711798504d0b19dd127c50b51ba32e976ff23f7. Commit list is the 30 commits returned by `git log origin/feat/effect-ops-layer..HEAD --oneline`, from b87c0f5 through 0711798. Originating spec sources are /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md and /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md. Use validation-contract.md only to clarify behavioral acceptance if needed. Report: (a) requirements the spec asked for that are missing or partial; (b) behavior in the diff that was not asked for (scope creep); (c) requirements that look implemented but where implementation looks wrong. Quote the spec line/section for each finding and cite the relevant changed file/hunk. Under 400 words. Do not treat explicitly approved Effect public exports or flagged correctness improvements as scope creep. Return the report inline. Explicitly state no files were written and return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
