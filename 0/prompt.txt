@@ -1,0 +1,33 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature open-github-pr
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "open-github-pr" for milestone "cli-hygiene".
+
+Feature details:
+- ID: open-github-pr
+- Description: Open a GitHub pull request against main from feat/effect-ops-layer using gh. Never push to main. Leave /root/hevy-mcp original checkout untouched.
+- Worker session: 148bd7b0-948f-4c17-8b61-ec9badeead9e
+- repoPath: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, HEAD 70e139b)
+- Feature commit from handoff: 70e139b5d9ac84b52e106bf3114b2bcdb54ea9f3 (the pushed HEAD)
+- Fulfills assertion: VAL-CROSS-008
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/cli-hygiene/scrutiny/reviews/open-github-pr.json
+
+Context you should know:
+- Read the feature entry, handoff, transcript skeleton, worker skill, architecture doc, and validation-contract.md per your standard procedure. The relevant contract assertion is VAL-CROSS-008 (the only non-deterministic assertion in the contract): a GitHub PR targets main from a feature branch based on origin/main (type/topic branch, not main); Conventional Commits; hooks enabled; never pushed to main; original checkout /root/hevy-mcp remains on main with only the pre-existing staged .changeset/amber-rivers-heal.md.
+- The handoff claims PR https://github.com/chrisdoc/hevy-mcp/pull/1120 was created from feat/effect-ops-layer into main. VERIFY this with read-only gh commands (e.g., `gh pr view 1120 --repo chrisdoc/hevy-mcp --json number,state,baseRefName,headRefName,title,url` and `gh pr list --repo chrisdoc/hevy-mcp --head feat/effect-ops-layer --state open`). This gh verification is the core evidence for this feature — it is not a "validator re-run"; do run it.
+- Also verify locally with read-only git: /root/hevy-mcp is still on main with only the staged amber-rivers-heal changeset (`git -C /root/hevy-mcp status --short --branch`), the feature branch contains Conventional Commits (`git -C /root/hevy-mcp-effect-ops-layer log --oneline origin/main..HEAD`), and the branch was based on origin/main (first parent ancestry vs a750250).
+- Do NOT re-run test suites, typecheck, or lint — the scrutiny validator already ran them all green. Do not push, merge, comment on, or modify the PR or any remote state; read-only gh/git only.
+
+Stay in scope: review only this feature, write the report, and complete.
+---END TASK FROM PARENT AGENT---
