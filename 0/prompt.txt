@@ -1,0 +1,70 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Contract: operations layer
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting validation-contract assertions for ONE area of a hevy-mcp Effect adoption mission.
+
+Write your output to this exact file:
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/operations.md
+
+Read first:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+
+AREA: Domain operations (`packages/operations`) — Effect-first API, all domains, mutations, composites.
+
+Enumerate ALL testable behaviors covering:
+
+FOUNDATION:
+- Operations return Effect programs via Effect.fn (not const f = () => Effect.gen)
+- Domain map/catch/quirk logic lives in the Effect program, not inside runPromise
+- If execute() Promise wrapper exists, it is a trivial runPromise of effect(); collapse test no longer requires runPromise inside domain ops
+- PaginationMismatchError is Schema.TaggedError, never throw new Error for page mismatch
+- Soft-404 end_of_list and not_found success payloads preserved for workouts/routines list/get
+- 404 helpers cover every collection, not only /v1/workouts and /v1/routines
+- HevyOperations composable shape for all domains
+
+COMPLETE DOMAINS (each resource needs list/get/create/update as applicable):
+Workouts: list, get, create, update, replaceExercises (RMW), events, count
+Routines: list, get, create, update, search (multi-page filter)
+Templates: get, history, create, listAll
+Folders: get, create, listAll
+Body measurements: list, get, create, update
+User: get
+Workflows: trainingSummary (dual window scan + aggregation)
+
+MUTATION QUIRKS moved from core mutation-semantics.ts:
+- workout RMW / timestamp normalize / is_private
+- routine rep_range create vs update
+- measurement omit-nulls
+Tools and CLI must share this implementation (assert operations own it).
+
+COMPOSITES:
+- Stream.paginate for multi-page (NOT Stream.paginateEffect)
+- DateTime for UTC windows; TestClock deterministic
+- Effect.all bounded concurrency, not Promise.all
+- No while(true) pagination in operations
+
+Do not leak Node/CF APIs. operations may import hevy-client/internal.
+
+Format each assertion:
+
+### VAL-OPS-NNN: <short title>
+<Behavioral description with clear pass/fail.>
+Tool: vitest
+Evidence: terminal output of the named test file(s)
+
+Use VAL-OPS-001...
+
+Be exhaustive. Deterministic/mocked only. No live Hevy.
+
+In your final response, return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
