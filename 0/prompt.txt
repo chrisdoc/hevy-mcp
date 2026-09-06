@@ -1,0 +1,1 @@
+We recommend you generate types for your Worker by running wrangler types. Cloudflare also publishes type definitions to GitHub ↗ and npm ↗ (npm install -D @cloudflare/workers-types).
