@@ -1,0 +1,1 @@
+go with option A but also fetch the latest version from upstream
