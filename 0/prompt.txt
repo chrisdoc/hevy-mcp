@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Analyze remote branch divergence
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only Git analysis only; do not modify files, refs, worktree, or remote. Repository: /home/ubuntu/hevy-mcp-effect-deepening. Local HEAD f0136b6 has seven remediation commits after prior local 0711798. origin/feat/effect-deepening was force-updated to 9b69474 and now divergence reports ahead 62/behind 58. Determine whether the remote branch contains patch-equivalent rebased versions of the original 30 PR commits, identify remote-only commits, and give the safest exact plan to replay only the seven new remediation commits onto current origin/feat/effect-deepening without overwriting remote work. Check for likely conflicts, especially core catalog and mission remediation changes. You may use read-only git log/range-diff/cherry/diff commands. Return exact commit ranges and commands, with abort/recovery path. Do not write files. Return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
