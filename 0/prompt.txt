@@ -1,0 +1,41 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Create non-empty changeset via changeset CLI
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Create a non-empty Changeset in the repository at /root/hevy-mcp using the changesets CLI.
+
+CONTEXT
+This repo is adopting Effect v4 in the Hevy client retry path (PR stack #1104 `feat/effect-pure-operations` → #1105 → #1109). A previous push attempt was correctly rejected by the pre-push hook because the staged changeset (`.changeset/loud-olives-smoke.md`) was empty. Your job is to replace that empty changeset with a valid, non-empty one so the stack pushes re-run normally.
+
+HARD REQUIREMENTS
+1. All Node/pnpm/npx commands MUST run through mise, per /root/hevy-mcp/AGENTS.md. Use `mise exec -- npx changeset ...` and `mise exec -- pnpm run check:changeset`. Never invoke bare `npx` or `pnpm` directly.
+2. The changeset must be NON-EMPTY. Its frontmatter must declare a **minor** bump for every package in the release cascade defined in `repository/topology.json`, in this exact set:
+   - "@hevy-mcp/hevy-client": minor
+   - "@hevy-mcp/operations": minor
+   - "@hevy-mcp/core": minor
+   - "hevy-mcp": minor
+   - "@hevy-mcp/worker": minor
+   - "@chrisdoc/hevy-cli": minor
+3. The markdown body must summarize the change, e.g.:
+   "feat: adopt Effect v4 request-local retry schedules in the Hevy client retry path. Client retries are now interpreted through Effect with request-local schedule locality; fetch config merge behavior is locked down by characterization tests; pure read error classification is centralized. One Effect runtime boundary; no parallel policy logic."
+4. Let the changeset CLI generate the file name (its random adjective-noun convention). If you author the file by hand instead, use a fresh random `<adjective>-<noun>.md` name in `.changeset/` — do NOT reuse `loud-olives-smoke.md`.
+5. Git safety: never push, never commit to `main`, never bypass hooks (no `--no-verify`). If a hook rejects something, fix the underlying cause rather than bypassing. Stage the changeset file with `git add .changeset/<name>.md` but do NOT commit it — commit placement is decided by the orchestrator afterward.
+6. If `.changeset/loud-olives-smoke.md` still exists and is empty, delete it first so only the new non-empty changeset remains.
+
+VERIFICATION (must pass before you report back)
+- `mise exec -- npx changeset status` reports the new changeset as pending and non-empty.
+- `mise exec -- pnpm run check:changeset` passes (exit 0) with the non-empty changeset present.
+- `git status --short` shows the new changeset file staged and the old empty one gone.
+- No commits were made and nothing was pushed.
+
+OUTPUT (required in your final response)
+Report back the exact absolute filepath of the changeset file you created (e.g. `/root/hevy-mcp/.changeset/<name>.md`), plus the verification command outputs. The filepath is mandatory — the orchestrator needs it to sequence the follow-up work.
+---END TASK FROM PARENT AGENT---
