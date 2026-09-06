@@ -1,0 +1,1 @@
+lets review all scripts in side scripts and remove everything that searches through the yaml etc and is not strictly required
