@@ -1,0 +1,44 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review fix feature core-resources-via-operations
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "core-resources-via-operations" for milestone "core-runtime".
+
+THIS IS A RE-RUN REVIEWING A FIX FOR A PRIOR FAILURE (round 2).
+
+Feature details:
+- ID: core-resources-via-operations
+- Description: Route MCP resources hevy://user, hevy://workout-count, hevy://exercise-templates, and hevy://routine-folders through operations (and the server-scoped catalog for templates). Keep the four URIs unchanged. get-user-info tool stays unregistered while hevy://user works.
+- Skill name: core-runtime-worker
+- Worker session: dd365f7a-e49e-4ce2-9ef5-312ab0b04f08
+
+Prior failure context (from the round-1 synthesis at /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/scrutiny/synthesis.json):
+- Round 1 verdict was fail for one reason only: no runtime evidence existed in the worker transcript. Round 1's validators had been pointed at the wrong checkout (/root/hevy-mcp on main, which does not contain this mission's Effect operations work), so the four resource URIs were never exercised at runtime. The only verification attempt in that round failed (the 'entire' code-graph CLI referenced by /root/hevy-mcp/.entire/graph-agent.md is not installed; exit 127, command not found). Missing 'entire' CLI is a tooling gap, not a product defect.
+- The fix: validation now runs against the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer, where the runtime evidence already exists.
+
+New runtime evidence to examine (all verified in this round, on the worktree):
+- Commit 93af7ba "test(core): cover operation-backed resource reads" (+110 lines) in packages/core/src/resources/hevy.test.ts. It contains 8 passing assertions covering: all four static hevy:// resources registered (hevy://user, hevy://workout-count, hevy://exercise-templates, hevy://routine-folders) with application/json mime type; user-profile payload served by operations user.get (asserting hevyClient.getUserInfo is NOT called and get-user-info stays unregistered); workout-count payload served by operations workouts.count (hevyClient.getWorkoutCount NOT called); exercise-templates served by the server-scoped catalog templates.listAll; routine-folders served by operations folders.listAll including multi-page fetch, page-count derivation, and safe stop on malformed pagination metadata; empty resource when the API omits the page; and shared catalog values with isolated in-flight lookups.
+- Milestone gate validators, run in /root/hevy-mcp-effect-ops-layer this round, all exit 0:
+  - typecheck: mise exec -- pnpm run check:types (all 7 workspace projects)
+  - test: mise exec -- pnpm run test:unit (101 test files, 1091 passed, 1 skipped, ~16s)
+  - lint: "true" per services.yaml (no-op by design, exit 0)
+- The dispatch test explicitly asserts no Promise client resource methods are used: getUserInfo, getWorkoutCount, getExerciseTemplates, getRoutineFolders are all expected not to have been called; reads flow through the operations layer.
+
+Your tasks:
+1. Examine BOTH the original failed feature and this fix feature's diffs to determine whether the fix adequately addresses the round-1 failure. The original failure was "missing runtime evidence"; the fix feature's diff (commit 93af7ba) plus the passing validator runs in the worktree now supply that evidence.
+2. Write your review report to exactly this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/scrutiny/reviews/core-resources-via-operations.json
+   Structure it as JSON with at least: featureId, milestone, round (2), verdict ("pass" or "fail"), addressesPriorFailure (boolean), evidence (list of the commit hash, file path, test counts, and validator exit codes above), sharedStateObservations (empty array if none), and a short rationale.
+3. In your rationale, state plainly whether the round-1 blocking issue (missing runtime evidence for the four hevy:// resource URIs) is resolved.
+
+Constraints:
+- Read-only over repository source: do not modify, stage, commit, or revert any file in /root/hevy-mcp or /root/hevy-mcp-effect-ops-layer.
+- Do not run additional full test:unit lanes; the validator output above is sufficient evidence.
+- Report what you observed, not assumptions; if you cannot verify an item, mark it unverified rather than guessing.
+---END TASK FROM PARENT AGENT---
