@@ -1,0 +1,18 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "scrutiny-validator-core-runtime",
+  "description": "Scrutiny validation for milestone \"core-runtime\". Runs test suite, typecheck, and lint. Spawns review subagents for each completed feature. Synthesizes findings. Always returns to orchestrator. Orchestrator note after round 1: Run ALL validators in /root/hevy-mcp-effect-ops-layer (feat/effect-ops-layer), NOT /root/hevy-mcp. Round 1 ran test:unit on the original checkout (979 tests) and failed core-resources-via-operations for missing runtime evidence. That evidence already exists: packages/core/src/resources/hevy.test.ts on the worktree (commit 93af7ba, 8 passing) asserts hevy://user -> user.get, hevy://workout-count -> workouts.count, hevy://exercise-templates catalog/templates.listAll, hevy://routine-folders -> folders.listAll, four URIs, and no Promise client resource methods. Missing 'entire' CLI is not a product defect. Reread library/user-testing.md and AGENTS.md. Re-review core-resources-via-operations against the worktree.",
+  "skillName": "scrutiny-validator",
+  "milestone": "core-runtime",
+  "preconditions": [
+    "All implementation features for milestone \"core-runtime\" are complete"
+  ],
+  "expectedBehavior": [
+    "Validators pass (test, typecheck, lint)",
+    "Review subagents spawned for each feature",
+    "Findings synthesized into scrutiny report"
+  ]
+}
+```
