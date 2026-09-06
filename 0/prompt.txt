@@ -1,0 +1,16 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft retry state assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write only `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/retry-state.md`. Read `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/mission.md` and `architecture.md`, then inspect relevant code/tests in `/root/hevy-mcp-effect-retry-interpreter`. Enumerate exhaustive black-box behavioral assertions for retry state, schedule independence, retry counts, exponential delay/jitter, Retry-After, exhaustion, read/PUT/POST safety, and sequential/concurrent requests. Use this exact markdown schema for every assertion:
+`### VAL-RETRY-001: Title\nBehavioral pass/fail description.\nTool: vitest\nEvidence: terminal(command + passing test identifier), assertions(attempts/delays/result)`
+Use stable sequential IDs with prefix `VAL-RETRY-`. Do not edit any other file or repository code. Return the filepath written and a concise list of IDs in your final response.
+---END TASK FROM PARENT AGENT---
