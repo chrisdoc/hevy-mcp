@@ -1,0 +1,64 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Contract: CLI and cross-area
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting validation-contract assertions for CLI + cross-area flows of a hevy-mcp Effect adoption mission.
+
+Write TWO files:
+
+1. /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/cli.md
+2. /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/cross-area.md
+
+Read first:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+
+## CLI file (VAL-CLI-NNN)
+Assertions for `@chrisdoc/hevy-cli`:
+- Remaining commands use operations: user, workouts get/create/update/count/events, routines get/create/update, exercises create/get/history/search, measurements list/get/create/update, folders create, summary
+- Existing workouts list / routines list stay on operations
+- Effect collapsed once per command handler
+- Public package does NOT export Effect types
+- CLI flags and stdout/stderr behavior stay compatible
+- CLI may import operations; must not import node/worker
+Tool: vitest (pnpm run test:cli)
+Evidence: terminal output
+
+## Cross-area file (VAL-CROSS-NNN)
+Flows spanning packages:
+- Tool and CLI share the same operations implementation for a mutation (e.g. create-routine rep_range quirk)
+- Tool and resource share catalog/cache path for exercise templates
+- Public hevy-mcp and @chrisdoc/hevy-cli do not export Effect types (check:exports / publint / type tests)
+- Topology: node/worker still cannot import operations or hevy-client/internal; core cannot import internal; operations can
+- check:boundaries passes
+- One Effect→Promise collapse per user invocation across MCP tool, resource, CLI
+- Changeset cascade: hevy-client → operations → core → hevy-mcp → worker → cli when those packages change
+- GitHub PR opened against main from a feature branch (not main); never push to main
+- No live Hevy; fake keys only
+- Generated client not hand-edited
+- Original checkout /root/hevy-mcp left untouched; work happens in worktree
+
+Also first-visit / reachability if relevant (CLI --help still works; MCP tools still registered via register.ts).
+
+Format each:
+
+### VAL-CLI-NNN: title
+behavior
+Tool: ...
+Evidence: ...
+
+### VAL-CROSS-NNN: title
+...
+
+Deterministic except VAL for PR creation which can use `gh` once at the end.
+
+In your final response, return both filepaths you wrote.
+---END TASK FROM PARENT AGENT---
