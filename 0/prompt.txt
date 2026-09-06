@@ -1,0 +1,44 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Draft core layer 22-tool contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You write a VALIDATION CONTRACT DRAFT only. Do not implement product code.
+
+Write file:
+/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/core-layer.md
+
+Read architecture.md and mission.md in /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/
+
+## Your area: createCoreServiceLayer wired for all 22 tools
+
+Assertions:
+- createHevyMcpServer / ToolRuntime provides createCoreServiceLayer
+- Observer layer where applicable
+- forExecution rebinds client/catalog on the layer (same instance semantics as today)
+- Getters if present are facades over the layer, not a second source of truth
+- 4 ops tools use HevyOperationsService: get-workouts, get-workout, get-routines, get-routine
+- 18 client tools use HevyClientService (list them)
+- search-exercise-templates also uses catalog service
+- get-user-info is NOT registered
+- EXPECTED_TOOL_NAMES count 22, order preserved
+- MCP JSON: names, descriptions, annotations, input schemas, output schemas, callTool results unchanged
+- Tool execute remains Promise
+
+IDs: VAL-LAYER-001, VAL-TOOLS-001, VAL-MCP-001 as you organize. Prefer:
+- VAL-LAYER-* for DI/runtime
+- VAL-TOOLS-* for per-tool or group tool dependency source
+- VAL-MCP-* for wire/catalog compatibility
+
+Tool: vitest
+Evidence: terminal output
+
+Return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
