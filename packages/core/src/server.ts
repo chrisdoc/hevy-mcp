@@ -160,9 +160,9 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 	},
 );
 
-export function createHevyMcpServer(
+export async function createHevyMcpServer(
 	options: CreateHevyMcpServerOptions,
-): McpServer {
+): Promise<McpServer> {
 	const scope = Effect.runSync(Scope.make());
 	let server: McpServer;
 	try {
@@ -173,7 +173,7 @@ export function createHevyMcpServer(
 		// Construction can acquire several scoped services before a later
 		// registration/decorator fails. Close the caller-owned Scope before
 		// exposing the failure so every partial acquisition is released once.
-		Effect.runSync(Scope.close(scope, Exit.fail(error)));
+		await Effect.runPromiseExit(Scope.close(scope, Exit.fail(error)));
 		throw error;
 	}
 	const close = server.close.bind(server);

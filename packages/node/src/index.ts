@@ -12,26 +12,20 @@ import type { NodeLifecycleHandle } from "./utils/node-lifecycle.js";
  * telemetry, or connect a transport. The embedding application owns those
  * concerns and the transport lifecycle.
  */
-export function createNodeMcpServer(
+export async function createNodeMcpServer(
 	{ apiKey }: { apiKey: string },
 	_transport: NodeTransport = "stdio",
 	lifecycleSignal?: AbortSignal,
 ) {
-	try {
-		assertApiKey(apiKey);
-		return Promise.resolve(
-			createHevyMcpServer({
-				createClient: ({ onLog }) =>
-					createHevyClient({
-						apiKey,
-						onLog,
-					}),
-				lifecycleSignal,
+	assertApiKey(apiKey);
+	return await createHevyMcpServer({
+		createClient: ({ onLog }) =>
+			createHevyClient({
+				apiKey,
+				onLog,
 			}),
-		);
-	} catch (error) {
-		return Promise.reject(error);
-	}
+		lifecycleSignal,
+	});
 }
 
 /**

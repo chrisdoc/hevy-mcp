@@ -137,7 +137,7 @@ describe("initial runtime contract matrix", () => {
 	});
 
 	it("runs the descriptor case through Core in-memory", async () => {
-		inMemoryServer = createHevyMcpServer({
+		inMemoryServer = await createHevyMcpServer({
 			createClient: () => createDeterministicHevyClient(),
 		});
 		inMemoryClient = new Client({
@@ -171,12 +171,10 @@ describe("initial runtime contract matrix", () => {
 		const handle = await startStreamableHttpServer(
 			{ transport: "http", host: "127.0.0.1", port: 0 },
 			"contract-test-key",
-			() =>
-				Promise.resolve(
-					createHevyMcpServer({
-						createClient: () => createDeterministicHevyClient(),
-					}),
-				),
+			async () =>
+				await createHevyMcpServer({
+					createClient: () => createDeterministicHevyClient(),
+				}),
 		);
 		try {
 			const address = handle.server.address();
@@ -225,8 +223,8 @@ describe("initial runtime contract matrix", () => {
 
 	it("runs the descriptor case through the stateless Worker handler", async () => {
 		const createServer = vi.fn(
-			(createClient: CreateHevyMcpServerOptions["createClient"]) =>
-				createHevyMcpServer({ createClient }),
+			async (createClient: CreateHevyMcpServerOptions["createClient"]) =>
+				await createHevyMcpServer({ createClient }),
 		);
 		const handler = createWorkerHandler({
 			createValidationClient: () => createDeterministicHevyClient(),

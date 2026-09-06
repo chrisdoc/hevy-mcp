@@ -174,17 +174,9 @@ export function registerToolDefinition(
 
 	const config = getRegisteredToolConfig(definition);
 	server.registerTool(definition.name, config, (args, context) => {
+		let parsed: RegistrationArgs;
 		try {
-			const parsed = z.strictObject(definition.inputSchema).parse(args ?? {});
-			return handler(
-				parsed,
-				context
-					? {
-							signal: context.mcpReq.signal,
-							requestId: String(context.mcpReq.id),
-						}
-					: undefined,
-			);
+			parsed = z.strictObject(definition.inputSchema).parse(args ?? {});
 		} catch (error) {
 			const path =
 				error instanceof z.ZodError
@@ -203,5 +195,14 @@ export function registerToolDefinition(
 			}
 			throw new ToolInputValidationError({ path });
 		}
+		return handler(
+			parsed,
+			context
+				? {
+						signal: context.mcpReq.signal,
+						requestId: String(context.mcpReq.id),
+					}
+				: undefined,
+		);
 	});
 }

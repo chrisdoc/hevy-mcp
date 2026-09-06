@@ -23,7 +23,7 @@ describe("createHevyMcpServer", () => {
 	});
 
 	it("keeps the Promise-compatible close façade idempotent", async () => {
-		const server = createHevyMcpServer({
+		const server = await createHevyMcpServer({
 			createClient: () => createMockHevyClient(),
 		});
 		servers.push(server);
@@ -68,7 +68,7 @@ describe("createHevyMcpServer", () => {
 			scoped(ExerciseTemplateCatalogService, catalog, "catalog"),
 			scoped(ToolObserverService, observer, "observer"),
 		) as CoreServiceLayer;
-		const server = createHevyMcpServer({
+		const server = await createHevyMcpServer({
 			createClient: () => client,
 			serviceLayer,
 		});
@@ -96,7 +96,7 @@ describe("createHevyMcpServer", () => {
 		});
 	});
 
-	it("releases partially acquired services when construction fails", () => {
+	it("releases partially acquired services when construction fails", async () => {
 		const acquired = { client: 0, operations: 0, catalog: 0, observer: 0 };
 		const released = { client: 0, operations: 0, catalog: 0, observer: 0 };
 		const client = createMockHevyClient();
@@ -130,7 +130,7 @@ describe("createHevyMcpServer", () => {
 			scoped(ExerciseTemplateCatalogService, catalog, "catalog"),
 		) as CoreServiceLayer;
 
-		expect(() =>
+		await expect(
 			createHevyMcpServer({
 				createClient: () => client,
 				serviceLayer,
@@ -138,7 +138,7 @@ describe("createHevyMcpServer", () => {
 					throw new Error("registration failed");
 				},
 			}),
-		).toThrow("registration failed");
+		).rejects.toThrow("registration failed");
 		expect(acquired).toEqual({
 			client: 1,
 			operations: 1,
@@ -151,5 +151,29 @@ describe("createHevyMcpServer", () => {
 			catalog: 1,
 			observer: 0,
 		});
+	});
+
+	it("preserves the construction error when asynchronous cleanup fails", async () => {
+		const constructionError = new Error("registration failed");
+		const cleanupError = new Error("cleanup failed");
+		const client = createMockHevyClient();
+		const serviceLayer = Layer.effect(
+			HevyClientService,
+			Effect.acquireRelease(Effect.succeed(client), () =>
+				Effect.promise(() => Promise.resolve()).pipe(
+					Effect.andThen(Effect.die(cleanupError)),
+				),
+			),
+		) as CoreServiceLayer;
+
+		await expect(
+			createHevyMcpServer({
+				createClient: () => client,
+				serviceLayer,
+				onToolsRegistered: () => {
+					throw constructionError;
+				},
+			}),
+		).rejects.toBe(constructionError);
 	});
 });

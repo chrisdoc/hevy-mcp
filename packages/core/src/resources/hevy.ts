@@ -93,11 +93,10 @@ export function registerHevyResources(
 					return requireOperation(
 						scoped.service(HevyOperationsService).user?.get,
 						"user.get",
-					)
-						.effect(scoped.execution)
-						.pipe(
-							Effect.map((user) => createJsonResourceResult(uri, user ?? null)),
-						);
+					).pipe(
+						Effect.flatMap((operation) => operation.effect(scoped.execution)),
+						Effect.map((user) => createJsonResourceResult(uri, user ?? null)),
+					);
 				},
 			),
 	);
@@ -123,15 +122,14 @@ export function registerHevyResources(
 					return requireOperation(
 						scoped.service(HevyOperationsService).workouts.count,
 						"workouts.count",
-					)
-						.effect(scoped.execution)
-						.pipe(
-							Effect.map((workoutCount) =>
-								createJsonResourceResult(uri, {
-									workout_count: workoutCount,
-								}),
-							),
-						);
+					).pipe(
+						Effect.flatMap((operation) => operation.effect(scoped.execution)),
+						Effect.map((workoutCount) =>
+							createJsonResourceResult(uri, {
+								workout_count: workoutCount,
+							}),
+						),
+					);
 				},
 			),
 	);
@@ -187,16 +185,12 @@ export function registerHevyResources(
 					return requireOperation(
 						scoped.service(HevyOperationsService).folders?.listAll,
 						"folders.listAll",
-					)
-						.effect(scoped.execution)
-						.pipe(
-							Effect.map((folders) =>
-								createJsonResourceResult(
-									uri,
-									folders.map(projectRoutineFolder),
-								),
-							),
-						);
+					).pipe(
+						Effect.flatMap((operation) => operation.effect(scoped.execution)),
+						Effect.map((folders) =>
+							createJsonResourceResult(uri, folders.map(projectRoutineFolder)),
+						),
+					);
 				},
 			),
 	);

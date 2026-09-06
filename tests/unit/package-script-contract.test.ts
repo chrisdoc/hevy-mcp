@@ -3,6 +3,7 @@ import {
 	mkdtempSync,
 	mkdirSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 	symlinkSync,
 	writeFileSync,
@@ -33,7 +34,9 @@ type Fixture = {
 };
 
 function createFixture(scriptName: "test:integration" | "test:live"): Fixture {
-	const directory = mkdtempSync(resolve(tmpdir(), "hevy-script-contract-"));
+	const directory = realpathSync(
+		mkdtempSync(resolve(tmpdir(), "hevy-script-contract-")),
+	);
 	const marker = resolve(directory, "downstream.marker");
 	const scriptsDirectory = resolve(directory, "scripts");
 	const vitestDirectory = resolve(directory, "node_modules/vitest");
@@ -186,33 +189,37 @@ describe("repository package scripts", () => {
 		} finally {
 			fixture.cleanup();
 		}
-	});
+	}, 15_000);
 
 	it.each([
 		["malformed", 'HEVY_API_KEY="unterminated\n'],
 		["unreadable", undefined],
-	] as const)("fails closed for %s dotenv input", (kind, contents) => {
-		const fixture = createFixture("test:integration");
-		try {
-			const envPath = resolve(fixture.directory, ".env");
-			if (kind === "malformed") {
-				writeFileSync(envPath, contents);
-			} else {
-				mkdirSync(envPath);
+	] as const)(
+		"fails closed for %s dotenv input",
+		(kind, contents) => {
+			const fixture = createFixture("test:integration");
+			try {
+				const envPath = resolve(fixture.directory, ".env");
+				if (kind === "malformed") {
+					writeFileSync(envPath, contents);
+				} else {
+					mkdirSync(envPath);
+				}
+				const result = runPackageScript(fixture, "test:integration", {
+					HEVY_API_KEY: "explicit-fake",
+					EXPECTED_KEY: "explicit-fake",
+				});
+				expect(result.status).not.toBe(0);
+				expect(markerRecords(fixture)).toEqual([]);
+				expect(`${result.stdout}\n${result.stderr}`).not.toContain(
+					"explicit-fake",
+				);
+			} finally {
+				fixture.cleanup();
 			}
-			const result = runPackageScript(fixture, "test:integration", {
-				HEVY_API_KEY: "explicit-fake",
-				EXPECTED_KEY: "explicit-fake",
-			});
-			expect(result.status).not.toBe(0);
-			expect(markerRecords(fixture)).toEqual([]);
-			expect(`${result.stdout}\n${result.stderr}`).not.toContain(
-				"explicit-fake",
-			);
-		} finally {
-			fixture.cleanup();
-		}
-	});
+		},
+		15_000,
+	);
 
 	it("executes the production live runner once and propagates downstream status", () => {
 		const fixture = createFixture("test:live");

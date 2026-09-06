@@ -376,8 +376,8 @@ describe("telemetry initialization", () => {
 		expect(() => mod.installProcessExceptionTracking(processLike)).toThrow(
 			registrationError,
 		);
-		expect(listeners.get("uncaughtExceptionMonitor")).toHaveLength(1);
-		expect(listeners.get("unhandledRejection")).toHaveLength(1);
+		expect(listeners.get("uncaughtExceptionMonitor")?.size).toBe(1);
+		expect(listeners.get("unhandledRejection")?.size).toBe(1);
 		expect(processLike.removeListener).toHaveBeenCalledTimes(1);
 	});
 

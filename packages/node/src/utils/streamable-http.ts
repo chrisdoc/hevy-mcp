@@ -391,17 +391,17 @@ function closeServer(server: Server): Promise<void> {
 			resolve();
 			return;
 		}
-		setImmediate(() => {
+		setTimeout(() => {
 			server.close((error) => (error ? reject(error) : resolve()));
 			// Let the current request turn write a bounded shutdown response
 			// before closing connections. Closing idle or active connections in
 			// the same turn as `shuttingDown = true` can reset a request admitted
 			// just before close() before its 503 reaches the client.
-			setImmediate(() => {
+			setTimeout(() => {
 				server.closeIdleConnections();
 				server.closeAllConnections();
-			});
-		});
+			}, 20).unref?.();
+		}, 20).unref?.();
 	});
 }
 

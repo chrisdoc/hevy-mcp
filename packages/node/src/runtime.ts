@@ -207,9 +207,9 @@ function buildServer(
 				"mcp.transport": transport,
 			},
 		},
-		(span) => {
+		async (span) => {
 			try {
-				const server = createHevyMcpServer({
+				const server = await createHevyMcpServer({
 					createClient: ({ onLog }) =>
 						createHevyClient({
 							apiKey,
@@ -361,12 +361,10 @@ export async function runServer(): Promise<NodeLifecycleHandle | undefined> {
 				options,
 				cfg.apiKey,
 				(params) =>
-					Promise.resolve(
-						buildServer(
-							params.apiKey,
-							"http",
-							mergeAbortSignals(signal, params.lifecycleSignal),
-						),
+					buildServer(
+						params.apiKey,
+						"http",
+						mergeAbortSignals(signal, params.lifecycleSignal),
 					),
 			);
 			context.markListening();
