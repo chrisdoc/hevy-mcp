@@ -1,0 +1,5 @@
+then fix  No case asserts a thing against itself, and we added zero new assertions in either commit (formatting + a skip). The one borderline pattern repo-wide is
+ toBeTruthy()/toBeDefined() used as shorthand where the real invariant is a schema shape — weak-ish but not tautological.
+
+ One thing worth flagging while I'm here: check-package-changesets.test.ts sets GIT_AUTHOR_*/GIT_COMMITTER_* fixture identities, which the repo's AGENTS.md explicitly forbids
+ in tests. Pre-existing, not from our changes — want me to look at it?
