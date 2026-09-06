@@ -1,5 +1,6 @@
 /* oxlint-disable typescript/unbound-method */
 import type { JSONObject } from "@modelcontextprotocol/server";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
@@ -14,6 +15,7 @@ import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { templateToolDefinitions } from "./templates.js";
+import type { HevyOperations } from "@hevy-mcp/operations";
 
 function register(client: ReturnType<typeof createMockHevyClient> | null) {
 	const { server, registerTool: tool } = createMockMcpServer();
@@ -117,12 +119,14 @@ describe("exercise template tools", () => {
 			new Error("wrong client source"),
 		);
 		const layerCatalog: ExerciseTemplateCatalog = {
-			get: vi
-				.fn()
-				.mockResolvedValue([{ id: "layer-template", title: "Layer Template" }]),
+			effect: vi.fn(() =>
+				Effect.succeed([{ id: "layer-template", title: "Layer Template" }]),
+			),
+			get: vi.fn(),
 			reset: vi.fn(),
 		};
 		const getterCatalog: ExerciseTemplateCatalog = {
+			effect: vi.fn(() => Effect.succeed([])),
 			get: vi.fn().mockRejectedValue(new Error("wrong catalog source")),
 			reset: vi.fn(),
 		};
@@ -134,9 +138,11 @@ describe("exercise template tools", () => {
 		Object.assign(runtime, { catalog: getterCatalog });
 
 		await expect(
-			templateToolDefinitions[0].execute(runtime, {
-				exercise_template_id: "layer-template",
-			}),
+			Effect.runPromise(
+				templateToolDefinitions[0].execute(runtime, {
+					exercise_template_id: "layer-template",
+				}),
+			),
 		).resolves.toEqual({
 			exercise_template: {
 				id: "layer-template",
@@ -145,10 +151,12 @@ describe("exercise template tools", () => {
 			exercise_template_id: "layer-template",
 		});
 		await expect(
-			templateToolDefinitions[3].execute(runtime, {
-				query: "layer",
-				refresh: false,
-			}),
+			Effect.runPromise(
+				templateToolDefinitions[3].execute(runtime, {
+					query: "layer",
+					refresh: false,
+				}),
+			),
 		).resolves.toMatchObject({
 			results: [{ id: "layer-template", title: "Layer Template" }],
 		});
@@ -159,7 +167,40 @@ describe("exercise template tools", () => {
 			"layer-template",
 		);
 		expect(getterClient.getExerciseTemplate).not.toHaveBeenCalled();
-		expect(layerCatalog.get).toHaveBeenCalledOnce();
+		expect(layerCatalog.effect).toHaveBeenCalledOnce();
+		expect(layerCatalog.get).not.toHaveBeenCalled();
 		expect(getterCatalog.get).not.toHaveBeenCalled();
+	});
+
+	it("provides the catalog service for operations-only runtimes", async () => {
+		const catalog: ExerciseTemplateCatalog = {
+			effect: vi.fn(() =>
+				Effect.succeed([{ id: "template-1", title: "Bench Press" }]),
+			),
+			get: vi.fn(),
+			reset: vi.fn(),
+		};
+		const runtime = createToolRuntime({
+			client: null,
+			operations: {} as HevyOperations,
+			catalog,
+		});
+		const { server, registerTool: tool } = createMockMcpServer();
+		registerToolDefinition(server, runtime, templateToolDefinitions[3]);
+
+		const result = await handler(
+			tool,
+			"search-exercise-templates",
+		)({
+			query: "bench",
+			refresh: false,
+		});
+
+		expect(result).toMatchObject({
+			structuredContent: {
+				exercise_templates: [{ id: "template-1", title: "Bench Press" }],
+			},
+		});
+		expect(catalog.effect).toHaveBeenCalledOnce();
 	});
 });

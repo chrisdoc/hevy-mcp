@@ -2,16 +2,32 @@ import type { HevyClient, HevyExecutionOptions } from "@hevy-mcp/hevy-client";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import type {
 	GetV1Workouts200,
+	GetV1WorkoutsCountStatus200,
 	GetV1WorkoutsWorkoutid200,
+	PostV1WorkoutsStatus201,
+	PutV1WorkoutsWorkoutidStatus200,
 } from "@hevy-mcp/hevy-client/types";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import {
+	createWorkoutsCountOperation,
+	createWorkoutsCreateOperation,
 	createWorkoutsGetOperation,
 	createWorkoutsListOperation,
+	createWorkoutsReplaceExercisesOperation,
+	createWorkoutsUpdateOperation,
+	type WorkoutsCountAdapter,
+	type WorkoutsCreateAdapter,
 	type WorkoutsGetAdapter,
 	type WorkoutsListAdapter,
+	type WorkoutsReplaceExercisesInput,
+	type WorkoutsUpdateAdapter,
 } from "./workouts.js";
+import {
+	PaginationMismatchError,
+	WorkoutPayloadError,
+} from "./operation-errors.js";
+import { NotFoundError } from "@hevy-mcp/hevy-client";
 
 interface InMemoryWorkoutsAdapter extends WorkoutsListAdapter {
 	readonly requests: Array<{
@@ -160,7 +176,7 @@ describe("workouts.get operation", () => {
 		expect(adapter.requests[0]?.options).toBe(options);
 	});
 
-	it("[VAL-OPS-005] normalizes a missing workout response to null without a soft-404 outcome", async () => {
+	it("[VAL-OPS-010] normalizes a missing workout response to null without a soft-404 outcome", async () => {
 		const operation = createWorkoutsGetOperation(createInMemoryGetAdapter());
 
 		await expect(operation.execute({ workoutId: "missing" })).resolves.toEqual({
@@ -168,7 +184,7 @@ describe("workouts.get operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-009] returns not_found only for the canonical workout resource 404", async () => {
+	it("[VAL-OPS-010] returns not_found only for the canonical workout resource 404", async () => {
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(notFound("/v1/workouts/w1")),
 		);
@@ -179,7 +195,7 @@ describe("workouts.get operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-015] rejects an unrelated GET 404 with the original error", async () => {
+	it("rejects an unrelated GET 404 with the original error", async () => {
 		const error = notFound("/v1/routines/r1");
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(error),
@@ -188,7 +204,7 @@ describe("workouts.get operation", () => {
 		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-019] rejects a mutation 404 with the original error", async () => {
+	it("[VAL-OPS-005] rejects a mutation 404 with the original error", async () => {
 		const error = notFound("/v1/workouts/w1", "POST");
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(error),
@@ -197,7 +213,7 @@ describe("workouts.get operation", () => {
 		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-028] preserves non-404 error identity for workouts.get", async () => {
+	it("[VAL-OPS-005] preserves non-404 error identity for workouts.get", async () => {
 		const error = httpError(503, "GET", "/v1/workouts/w1", "upstream failure");
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(error),
@@ -206,7 +222,7 @@ describe("workouts.get operation", () => {
 		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-029] rejects a collection-path GET 404 for workouts.get", async () => {
+	it("[VAL-OPS-010] rejects a collection-path GET 404 for workouts.get", async () => {
 		const error = notFound("/v1/workouts");
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(error),
@@ -215,7 +231,7 @@ describe("workouts.get operation", () => {
 		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-025] omits the options argument when workouts.get options are absent", async () => {
+	it("[VAL-OPS-008] omits the options argument when workouts.get options are absent", async () => {
 		const adapter = createInMemoryGetAdapter({ id: "w1" });
 		const operation = createWorkoutsGetOperation(adapter);
 
@@ -227,7 +243,7 @@ describe("workouts.get operation", () => {
 });
 
 describe("workouts.list operation", () => {
-	it("[VAL-OPS-003] succeeds with the requested page and preserves the read descriptor", async () => {
+	it("[VAL-OPS-009] succeeds with the requested page and preserves the read descriptor", async () => {
 		const adapter = createInMemoryAdapter([
 			{
 				page: 2,
@@ -262,7 +278,7 @@ describe("workouts.list operation", () => {
 		expect(adapter.requests[0]?.options).toBe(options);
 	});
 
-	it("[VAL-OPS-011] treats a later-page collection 404 as the end of the list", async () => {
+	it("[VAL-OPS-004] treats a later-page collection 404 as the end of the list", async () => {
 		const adapter = createInMemoryAdapter([notFound()]);
 		const operation = createWorkoutsListOperation(adapter);
 
@@ -274,7 +290,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-013] rejects a first-page collection 404", async () => {
+	it("[VAL-OPS-004] rejects a first-page collection 404", async () => {
 		const error = notFound();
 		const firstPageAdapter = createInMemoryAdapter([error]);
 		const firstPageOperation = createWorkoutsListOperation(firstPageAdapter);
@@ -283,7 +299,7 @@ describe("workouts.list operation", () => {
 		).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-017] rejects an unrelated collection 404 with the original error", async () => {
+	it("[VAL-OPS-004] rejects an unrelated collection 404 with the original error", async () => {
 		const error = notFound("/v1/routines");
 		const unrelatedAdapter = createInMemoryAdapter([error]);
 		const unrelatedOperation = createWorkoutsListOperation(unrelatedAdapter);
@@ -292,7 +308,7 @@ describe("workouts.list operation", () => {
 		).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-021] rejects a mutation 404 for workouts.list with the original error", async () => {
+	it("[VAL-OPS-004] rejects a mutation 404 for workouts.list with the original error", async () => {
 		const error = notFound("/v1/workouts", "POST");
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([error]),
@@ -303,7 +319,7 @@ describe("workouts.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-028] preserves non-404 error identity for workouts.list", async () => {
+	it("[VAL-OPS-005] preserves non-404 error identity for workouts.list", async () => {
 		const error = new Error("network failure");
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([error]),
@@ -314,7 +330,7 @@ describe("workouts.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-030] rejects a member-path GET 404 for workouts.list", async () => {
+	it("[VAL-OPS-004] rejects a member-path GET 404 for workouts.list", async () => {
 		const error = notFound("/v1/workouts/w1");
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([error]),
@@ -325,7 +341,7 @@ describe("workouts.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-031] rejects a same-prefix sibling collection 404 for workouts.list", async () => {
+	it("[VAL-OPS-004] rejects a same-prefix sibling collection 404 for workouts.list", async () => {
 		const error = notFound("/v1/workouts/count");
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([error]),
@@ -336,7 +352,7 @@ describe("workouts.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-032] keeps an empty 200 workouts list distinct from end_of_list", async () => {
+	it("[VAL-OPS-009] keeps an empty 200 workouts list distinct from end_of_list", async () => {
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([
 				{
@@ -354,7 +370,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-007] normalizes an omitted workouts field to an empty list without a soft-404 outcome", async () => {
+	it("[VAL-OPS-009] normalizes an omitted workouts field to an empty list without a soft-404 outcome", async () => {
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([{ page: 2, page_count: 4 }]),
 		);
@@ -366,7 +382,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-033] allows workouts list responses to omit page_count", async () => {
+	it("[VAL-OPS-009] allows workouts list responses to omit page_count", async () => {
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([{ page: 2, workouts: [{ id: "w1" }] }]),
 		);
@@ -378,7 +394,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-026] uses the requested page when workouts response.page is omitted", async () => {
+	it("[VAL-OPS-009] uses the requested page when workouts response.page is omitted", async () => {
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([{ page_count: 4, workouts: [{ id: "w1" }] }]),
 		);
@@ -390,7 +406,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-025] omits the options argument when workouts.list options are absent", async () => {
+	it("[VAL-OPS-008] omits the options argument when workouts.list options are absent", async () => {
 		const adapter = createInMemoryAdapter([{ page: 1, workouts: [] }]);
 		const operation = createWorkoutsListOperation(adapter);
 
@@ -402,7 +418,7 @@ describe("workouts.list operation", () => {
 		expect(adapter.argumentCounts).toEqual([1]);
 	});
 
-	it("[VAL-OPS-023] rejects when response page differs from requested page", async () => {
+	it("[VAL-OPS-003] rejects when response page differs from requested page", async () => {
 		const adapter = createInMemoryAdapter([
 			{
 				page: 3,
@@ -413,13 +429,16 @@ describe("workouts.list operation", () => {
 		const operation = createWorkoutsListOperation(adapter);
 
 		await expect(
-			operation.execute({ page: 2, pageSize: 10 }),
+			Effect.runPromise(operation.effect({ page: 2, pageSize: 10 })),
 		).rejects.toMatchObject({
-			message: "Workouts page mismatch: requested page 2 but received page 3",
+			_tag: "PaginationMismatchError",
+			requested: 2,
+			received: 3,
+			collection: "workouts",
 		});
 	});
 
-	it("[VAL-OPS-027] exposes workouts.get as a native Promise, not an Effect", async () => {
+	it("[VAL-OPS-002] exposes workouts.get as a native Promise, not an Effect", async () => {
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter({ id: "w1" }),
 		);
@@ -433,7 +452,7 @@ describe("workouts.list operation", () => {
 		await expect(result).resolves.toEqual({ workout: { id: "w1" } });
 	});
 
-	it("[VAL-OPS-027] exposes workouts.list as a native Promise, not an Effect", async () => {
+	it("[VAL-OPS-002] exposes workouts.list as a native Promise, not an Effect", async () => {
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([{ page: 1, workouts: [] }]),
 		);
@@ -451,7 +470,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-028] preserves a plain network error for workouts.get", async () => {
+	it("[VAL-OPS-005] preserves a plain network error for workouts.get", async () => {
 		const error = new Error("network failure");
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(error),
@@ -460,7 +479,7 @@ describe("workouts.list operation", () => {
 		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-028] preserves a non-404 HTTP error for workouts.list", async () => {
+	it("[VAL-OPS-005] preserves a non-404 HTTP error for workouts.list", async () => {
 		const error = httpError(429, "GET", "/v1/workouts", "rate limited");
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([error]),
@@ -471,7 +490,7 @@ describe("workouts.list operation", () => {
 		);
 	});
 
-	it("[VAL-OPS-034] does not mutate workouts.get input or options on success", async () => {
+	it("[VAL-OPS-008] does not mutate workouts.get input or options on success", async () => {
 		const input = { workoutId: "w1" };
 		const signal = new AbortController().signal;
 		const options: HevyExecutionOptions = {
@@ -492,7 +511,7 @@ describe("workouts.list operation", () => {
 		expect(options.signal).toBe(signal);
 	});
 
-	it("[VAL-OPS-034] does not mutate workouts.list input or options on rejection", async () => {
+	it("[VAL-OPS-008] does not mutate workouts.list input or options on rejection", async () => {
 		const input = { page: 2, pageSize: 5 };
 		const signal = new AbortController().signal;
 		const options: HevyExecutionOptions = {
@@ -511,16 +530,16 @@ describe("workouts.list operation", () => {
 			]),
 		);
 
-		await expect(operation.execute(input, options)).rejects.toMatchObject({
-			message: "Workouts page mismatch: requested page 2 but received page 3",
-		});
+		await expect(
+			Effect.runPromise(operation.effect(input, options)),
+		).rejects.toBeInstanceOf(PaginationMismatchError);
 
 		expect(input).toEqual(inputBefore);
 		expect(options).toEqual(optionsBefore);
 		expect(options.signal).toBe(signal);
 	});
 
-	it("[VAL-OPS-036] rejects an already-aborted workouts.get without a soft outcome", async () => {
+	it("[VAL-OPS-008] rejects an already-aborted workouts.get without a soft outcome", async () => {
 		const controller = new AbortController();
 		const abortError = new Error("cancelled");
 		abortError.name = "AbortError";
@@ -534,7 +553,7 @@ describe("workouts.list operation", () => {
 		).rejects.toBe(abortError);
 	});
 
-	it("[VAL-OPS-036] rejects a then-aborted workouts.list without a soft outcome", async () => {
+	it("[VAL-OPS-008] rejects a then-aborted workouts.list without a soft outcome", async () => {
 		const controller = new AbortController();
 		const abortError = new Error("cancelled");
 		abortError.name = "AbortError";
@@ -550,7 +569,7 @@ describe("workouts.list operation", () => {
 		await expect(result).rejects.toBe(abortError);
 	});
 
-	it("[VAL-OPS-035] keeps sequential workouts.get outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps sequential workouts.get outcomes request-local", async () => {
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter([
 				notFound("/v1/workouts/missing"),
@@ -567,7 +586,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-035] keeps sequential workouts.list outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps sequential workouts.list outcomes request-local", async () => {
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([
 				notFound(),
@@ -588,7 +607,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-037] keeps concurrent workouts.get outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps concurrent workouts.get outcomes request-local", async () => {
 		const error = notFound("/v1/workouts/missing");
 		const adapter: WorkoutsGetAdapter = {
 			getWorkout(workoutId) {
@@ -611,7 +630,7 @@ describe("workouts.list operation", () => {
 		expect(found).toEqual({ workout: { id: "w2" } });
 	});
 
-	it("[VAL-OPS-037] keeps concurrent workouts.list outcomes request-local", async () => {
+	it("[VAL-OPS-008] keeps concurrent workouts.list outcomes request-local", async () => {
 		const error = notFound();
 		const adapter: WorkoutsListAdapter = {
 			getWorkouts(params) {
@@ -645,5 +664,459 @@ describe("workouts.list operation", () => {
 			page: 1,
 			pageCount: 1,
 		});
+	});
+});
+
+type WorkoutMutationCurrent = GetV1WorkoutsWorkoutid200;
+
+interface InMemoryWorkoutMutationAdapter
+	extends WorkoutsCreateAdapter, WorkoutsUpdateAdapter, WorkoutsCountAdapter {
+	readonly calls: string[];
+	readonly createRequests: Array<{
+		readonly data: Parameters<WorkoutsCreateAdapter["createWorkout"]>[0];
+		readonly options: Parameters<WorkoutsCreateAdapter["createWorkout"]>[1];
+	}>;
+	readonly updateRequests: Array<{
+		readonly workoutId: Parameters<WorkoutsUpdateAdapter["updateWorkout"]>[0];
+		readonly data: Parameters<WorkoutsUpdateAdapter["updateWorkout"]>[1];
+		readonly options: Parameters<WorkoutsUpdateAdapter["updateWorkout"]>[2];
+	}>;
+	readonly countRequests: Array<
+		Parameters<WorkoutsCountAdapter["getWorkoutCount"]>[0]
+	>;
+}
+
+function createInMemoryWorkoutMutationAdapter({
+	current,
+	created = current,
+	updated = current,
+	count = { workout_count: 0 },
+	getError,
+}: {
+	readonly current: WorkoutMutationCurrent;
+	readonly created?: PostV1WorkoutsStatus201;
+	readonly updated?: PutV1WorkoutsWorkoutidStatus200;
+	readonly count?: GetV1WorkoutsCountStatus200;
+	readonly getError?: Error;
+}): InMemoryWorkoutMutationAdapter {
+	const calls: string[] = [];
+	const createRequests: InMemoryWorkoutMutationAdapter["createRequests"] = [];
+	const updateRequests: InMemoryWorkoutMutationAdapter["updateRequests"] = [];
+	const countRequests: InMemoryWorkoutMutationAdapter["countRequests"] = [];
+	return {
+		calls,
+		createRequests,
+		updateRequests,
+		countRequests,
+		createWorkout(data, options) {
+			calls.push("create");
+			createRequests.push({ data, options });
+			return Effect.succeed(created);
+		},
+		getWorkout(workoutId, _options) {
+			calls.push(`get:${workoutId}`);
+			if (getError !== undefined) return Effect.fail(getError);
+			return Effect.succeed(current);
+		},
+		updateWorkout(workoutId, data, options) {
+			calls.push(`update:${workoutId}`);
+			updateRequests.push({ workoutId, data, options });
+			return Effect.succeed(updated);
+		},
+		getWorkoutCount(options) {
+			countRequests.push(options);
+			return Effect.succeed(count);
+		},
+	};
+}
+
+const currentWorkoutForMutation: WorkoutMutationCurrent = {
+	id: "w1",
+	title: "Original",
+	description: "Keep",
+	start_time: "2026-07-29T08:00:00Z",
+	end_time: "2026-07-29T09:00:00Z",
+	exercises: [
+		{
+			exercise_template_id: "bench",
+			supersets_id: 4,
+			notes: "Existing",
+			sets: [{ type: "normal", reps: 8, weight_kg: 50, rpe: null }],
+		},
+	],
+};
+
+describe("workouts write operations", () => {
+	it("[VAL-OPS-011] creates with the caller body through Effect without a read", async () => {
+		const workout = {
+			title: "New workout",
+			description: null,
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+			exercises: [],
+		};
+		const created = { id: "created" };
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			created,
+		});
+		const operation = createWorkoutsCreateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(operation.effect({ workout })),
+		).resolves.toEqual(created);
+
+		expect(adapter.calls).toEqual(["create"]);
+		expect(adapter.createRequests).toEqual([
+			{ data: { workout }, options: undefined },
+		]);
+	});
+
+	it("[VAL-OPS-012] updates with GET-then-PUT payload semantics", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			updated: { id: "w1", title: "Renamed" },
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+		const options: HevyExecutionOptions = {
+			signal: new AbortController().signal,
+			timeoutMs: 1_000,
+		};
+
+		await expect(
+			Effect.runPromise(
+				operation.effect(
+					{
+						workoutId: "w1",
+						patch: { title: "Renamed", is_private: false },
+					},
+					options,
+				),
+			),
+		).resolves.toEqual({ id: "w1", title: "Renamed" });
+
+		expect(adapter.calls).toEqual(["get:w1", "update:w1"]);
+		expect(adapter.updateRequests).toEqual([
+			{
+				workoutId: "w1",
+				data: {
+					workout: {
+						title: "Renamed",
+						description: "Keep",
+						start_time: "2026-07-29T08:00:00Z",
+						end_time: "2026-07-29T09:00:00Z",
+						is_private: false,
+						exercises: [
+							{
+								exercise_template_id: "bench",
+								superset_id: 4,
+								notes: "Existing",
+								sets: [
+									{
+										type: "normal",
+										weight_kg: 50,
+										reps: 8,
+										distance_meters: null,
+										duration_seconds: null,
+										rpe: null,
+										custom_metric: null,
+									},
+								],
+							},
+						],
+					},
+				},
+				options,
+			},
+		]);
+	});
+
+	it("keeps full replacement exercises on the update operation", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					workout: {
+						title: "Replaced",
+						description: null,
+						start_time: "2026-07-29T08:00:00Z",
+						end_time: "2026-07-29T09:00:00Z",
+						is_private: true,
+						exercises: [],
+					},
+				}),
+			),
+		).resolves.toEqual(currentWorkoutForMutation);
+		expect(adapter.calls).toEqual(["get:w1", "update:w1"]);
+		expect(adapter.updateRequests[0]?.data.workout).toMatchObject({
+			title: "Replaced",
+			description: null,
+			is_private: true,
+			exercises: [],
+		});
+	});
+
+	it("inherits the fetched description in a full replacement update", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await Effect.runPromise(
+			operation.effect({
+				workoutId: "w1",
+				workout: {
+					title: "Replaced",
+					start_time: "2026-07-29T08:00:00Z",
+					end_time: "2026-07-29T09:00:00Z",
+					is_private: true,
+					exercises: [],
+				},
+			}),
+		);
+
+		expect(adapter.updateRequests[0]?.data.workout).toHaveProperty(
+			"description",
+			"Keep",
+		);
+	});
+
+	it("[VAL-OPS-040] merges fetched metadata into a replacement patch that omits it", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					workout: {
+						is_private: true,
+						exercises: [
+							{
+								exercise_template_id: "new",
+								sets: [{ type: "normal", reps: 5 }],
+							},
+						],
+					},
+				}),
+			),
+		).resolves.toEqual(currentWorkoutForMutation);
+
+		expect(adapter.calls).toEqual(["get:w1", "update:w1"]);
+		expect(adapter.updateRequests[0]?.data.workout).toMatchObject({
+			title: "Original",
+			description: "Keep",
+			start_time: "2026-07-29T08:00:00Z",
+			end_time: "2026-07-29T09:00:00Z",
+			is_private: true,
+			exercises: [
+				{
+					exercise_template_id: "new",
+					sets: [{ type: "normal", reps: 5 }],
+				},
+			],
+		});
+	});
+
+	it("[VAL-OPS-039] sends description null on replacement when neither patch nor fetched workout has one", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: { ...currentWorkoutForMutation, description: undefined },
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await Effect.runPromise(
+			operation.effect({
+				workoutId: "w1",
+				workout: {
+					is_private: true,
+					exercises: [],
+				},
+			}),
+		);
+
+		expect(adapter.updateRequests[0]?.data.workout).toHaveProperty(
+			"description",
+			null,
+		);
+	});
+
+	it("[VAL-OPS-040] fails replacement update on GET 404 without issuing PUT", async () => {
+		const error = new NotFoundError({
+			status: 404,
+			method: "GET",
+			endpoint: "/v1/workouts/w1",
+			expected: true,
+		});
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			getError: error,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					workout: { is_private: true, exercises: [] },
+				}),
+			),
+		).rejects.toBe(error);
+		expect(adapter.calls).toEqual(["get:w1"]);
+		expect(adapter.updateRequests).toHaveLength(0);
+	});
+
+	it("[VAL-OPS-040] fails replacement update on malformed fetched timestamps", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: {
+				...currentWorkoutForMutation,
+				start_time: "2026-02-30T08:00:00Z",
+			},
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		const error = await Effect.runPromise(
+			Effect.flip(
+				operation.effect({
+					workoutId: "w1",
+					workout: { is_private: true, exercises: [] },
+				}),
+			),
+		);
+
+		expect(error).toBeInstanceOf(WorkoutPayloadError);
+		expect(adapter.updateRequests).toHaveLength(0);
+	});
+
+	it("[VAL-OPS-012] fails update on GET 404 without issuing PUT", async () => {
+		const error = new NotFoundError({
+			status: 404,
+			method: "GET",
+			endpoint: "/v1/workouts/w1",
+			expected: true,
+		});
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			getError: error,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					patch: { title: "Renamed", is_private: false },
+				}),
+			),
+		).rejects.toBe(error);
+		expect(adapter.calls).toEqual(["get:w1"]);
+		expect(adapter.updateRequests).toHaveLength(0);
+	});
+
+	it("[VAL-OPS-037] reports a missing update privacy value in the Effect channel", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsUpdateOperation(adapter);
+
+		const error = await Effect.runPromise(
+			Effect.flip(
+				operation.effect({
+					workoutId: "w1",
+					patch: { title: "Renamed" },
+				}),
+			),
+		);
+
+		expect(error).toMatchObject({
+			_tag: "WorkoutPrivacyError",
+			message: expect.stringContaining(
+				"The Hevy API does not return the current privacy setting on GET",
+			),
+		});
+		expect(adapter.calls).toEqual(["get:w1"]);
+		expect(adapter.updateRequests).toHaveLength(0);
+	});
+
+	it("[VAL-OPS-013] replaces exercises with an explicit empty array and privacy", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+		});
+		const operation = createWorkoutsReplaceExercisesOperation(adapter);
+		const input: WorkoutsReplaceExercisesInput = {
+			workoutId: "w1",
+			is_private: true,
+			exercises: [],
+		};
+
+		await expect(Effect.runPromise(operation.effect(input))).resolves.toEqual(
+			currentWorkoutForMutation,
+		);
+		expect(adapter.calls).toEqual(["get:w1", "update:w1"]);
+		expect(adapter.updateRequests[0]?.data).toEqual({
+			workout: {
+				title: "Original",
+				description: "Keep",
+				start_time: "2026-07-29T08:00:00Z",
+				end_time: "2026-07-29T09:00:00Z",
+				is_private: true,
+				exercises: [],
+			},
+		});
+	});
+
+	it("[VAL-OPS-013] fails exercise replacement on GET 404 without issuing PUT", async () => {
+		const error = new NotFoundError({
+			status: 404,
+			method: "GET",
+			endpoint: "/v1/workouts/w1",
+			expected: true,
+		});
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			getError: error,
+		});
+		const operation = createWorkoutsReplaceExercisesOperation(adapter);
+
+		await expect(
+			Effect.runPromise(
+				operation.effect({
+					workoutId: "w1",
+					is_private: false,
+					exercises: [],
+				}),
+			),
+		).rejects.toBe(error);
+		expect(adapter.calls).toEqual(["get:w1"]);
+		expect(adapter.updateRequests).toHaveLength(0);
+	});
+
+	it("[VAL-OPS-015] reads the numeric workout count without paginating workouts", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			count: { workout_count: 7 },
+		});
+		const operation = createWorkoutsCountOperation(adapter);
+
+		await expect(Effect.runPromise(operation.effect())).resolves.toBe(7);
+		expect(adapter.countRequests).toEqual([undefined]);
+		expect(adapter.calls).toEqual([]);
+	});
+
+	it("[VAL-OPS-015] normalizes a missing workout count to zero", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			count: {},
+		});
+		const operation = createWorkoutsCountOperation(adapter);
+
+		await expect(Effect.runPromise(operation.effect())).resolves.toBe(0);
+		expect(adapter.countRequests).toEqual([undefined]);
 	});
 });

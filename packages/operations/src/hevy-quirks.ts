@@ -1,8 +1,7 @@
 /**
- * Hevy API behaviors the generated client cannot express. One home per
- * resource quirk: the runtime rule (enforced in mutation-semantics), the
- * user-facing error, and the tool-description clauses derive from these
- * constants so wording and enforcement cannot drift apart.
+ * Hevy API behaviors that the generated client cannot express. Keep these
+ * constants beside the operations that enforce them so adapters can share
+ * the same wording without maintaining a second rule set.
  */
 
 /**
@@ -10,7 +9,7 @@
  * never returns the current value — callers must state it explicitly.
  */
 export const WORKOUT_PUT_REQUIRES_IS_PRIVATE = {
-	/** Error thrown when metadata-only updates omit is_private. */
+	/** Error returned when metadata-only updates omit is_private. */
 	error:
 		"is_private is required when updating workout metadata. " +
 		"The Hevy API does not return the current privacy setting on GET, " +

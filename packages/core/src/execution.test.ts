@@ -49,6 +49,45 @@ const baseArgs = {
 } satisfies ClientMethodArguments;
 
 describe("bindClientExecution", () => {
+	it("reports frozen non-configurable properties verbatim through the proxy", () => {
+		const seam = Symbol("native-request-effect");
+		const nativeRequestEffect = vi.fn();
+		const client = {
+			getWorkouts: vi.fn(),
+			getWorkout: vi.fn(),
+			createWorkout: vi.fn(),
+			updateWorkout: vi.fn(),
+			getWorkoutCount: vi.fn(),
+			getWorkoutEvents: vi.fn(),
+			getRoutines: vi.fn(),
+			getRoutineById: vi.fn(),
+			createRoutine: vi.fn(),
+			updateRoutine: vi.fn(),
+			getExerciseTemplates: vi.fn(),
+			getExerciseTemplate: vi.fn(),
+			getExerciseHistory: vi.fn(),
+			createExerciseTemplate: vi.fn(),
+			getRoutineFolders: vi.fn(),
+			createRoutineFolder: vi.fn(),
+			getRoutineFolder: vi.fn(),
+			getBodyMeasurements: vi.fn(),
+			getBodyMeasurement: vi.fn(),
+			createBodyMeasurement: vi.fn(),
+			updateBodyMeasurement: vi.fn(),
+			getUserInfo: vi.fn(),
+		} satisfies HevyClient;
+		Object.defineProperty(client, seam, {
+			configurable: false,
+			enumerable: false,
+			value: nativeRequestEffect,
+			writable: false,
+		});
+
+		const bound = bindClientExecution(client, { deadline: 123 });
+
+		expect(Reflect.get(bound, seam)).toBe(nativeRequestEffect);
+	});
+
 	it("binds unknown function properties without injecting options", () => {
 		const extra = vi.fn(function (this: HevyClient) {
 			return this;

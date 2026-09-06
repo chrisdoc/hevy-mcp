@@ -1,17 +1,14 @@
 import { z } from "zod";
-import type { GetV1Routines200, Routine } from "@hevy-mcp/hevy-client/types";
-import {
-	compactRoutinesResponse,
-	type CompactRoutinesResult,
-} from "../utils/response-contracts.js";
+import { Effect } from "effect";
+import { compactRoutinesResponse } from "../utils/response-contracts.js";
 import { summarizeRoutine } from "../utils/formatters.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
-import { isFiniteNumber } from "../utils/type-predicates.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import { HevyClientService } from "../effect-services.js";
+import { HevyOperationsService } from "../effect-services.js";
+import { operationEffect, requireOperation } from "./operation-helpers.js";
 
 const routineDiscoverySchema = {
 	query: z.string().min(1).optional(),
@@ -19,58 +16,6 @@ const routineDiscoverySchema = {
 } as const;
 
 type RoutineDiscoveryParams = InferToolParams<typeof routineDiscoverySchema>;
-
-async function discoverRoutines(
-	runtime: ToolRuntime,
-	{ query, limit }: RoutineDiscoveryParams,
-): Promise<CompactRoutinesResult> {
-	const normalizedQuery = query?.toLocaleLowerCase();
-	const routines: Routine[] = [];
-	let page = 1;
-	let pages = 0;
-	let itemsScanned = 0;
-	const client = runtime.service(HevyClientService);
-
-	while (routines.length < limit) {
-		const data: GetV1Routines200 = await client.getRoutines({
-			page,
-			pageSize: 10,
-		});
-		pages = page;
-		const pageItems = data?.routines ?? [];
-		itemsScanned += pageItems.length;
-		for (const routine of pageItems) {
-			if (
-				normalizedQuery &&
-				!routine.title?.toLocaleLowerCase().includes(normalizedQuery)
-			) {
-				continue;
-			}
-			routines.push(routine);
-			if (routines.length >= limit) break;
-		}
-
-		const pageCount = data?.page_count;
-		if (
-			!isFiniteNumber(pageCount) ||
-			!Number.isSafeInteger(pageCount) ||
-			pageCount <= page
-		) {
-			break;
-		}
-		page += 1;
-	}
-
-	return {
-		routines: routines.slice(0, limit).map(summarizeRoutine),
-		workflow: {
-			name: "routine-discovery",
-			pagination: { routines: pages },
-			cacheStatus: "not-used",
-			itemsScanned,
-		},
-	};
-}
 
 export const routineDiscoveryToolDefinitions = [
 	{
@@ -84,9 +29,24 @@ export const routineDiscoveryToolDefinitions = [
 		annotations: readOnlyAnnotations("Search Routines"),
 		kind: "read" as const,
 		responseContract: compactRoutinesResponse,
-		execute: async (runtime: ToolRuntime, args: RoutineDiscoveryParams) =>
-			discoverRoutines(runtime, args),
+		execute: (runtime: ToolRuntime, args: RoutineDiscoveryParams) =>
+			operationEffect(
+				requireOperation(
+					runtime.service(HevyOperationsService).routines?.search,
+					"routines.search",
+				),
+				{ query: args.query, limit: args.limit },
+				runtime.execution,
+			).pipe(
+				Effect.map(({ routines, pages, itemsScanned }) => ({
+					routines: routines.map(summarizeRoutine),
+					workflow: {
+						name: "routine-discovery" as const,
+						pagination: { routines: pages },
+						cacheStatus: "not-used" as const,
+						itemsScanned,
+					},
+				})),
+			),
 	},
 ] satisfies readonly ToolDefinition<Record<string, z.ZodTypeAny>, unknown>[];
-
-export { discoverRoutines };

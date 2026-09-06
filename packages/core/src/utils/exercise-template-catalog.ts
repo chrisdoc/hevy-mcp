@@ -1,16 +1,19 @@
+import { Cache, Effect, Option } from "effect";
+import type { HevyRequestOptions } from "@hevy-mcp/hevy-client";
+import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
+import type { TemplatesListAllOperation } from "@hevy-mcp/operations";
 import type {
-	ExerciseTemplate,
-	GetV1ExerciseTemplates200,
-} from "@hevy-mcp/hevy-client/types";
-import type { HevyClient, HevyRequestOptions } from "@hevy-mcp/hevy-client";
-import { AsyncTtlCache } from "./cache.js";
-import type { CacheObservationMetadata, CacheObserver } from "./cache.js";
-import { fetchAllPages } from "./pagination.js";
+	CacheObservationMetadata,
+	CacheObservationScope,
+	CacheObservationState,
+	CacheObserver,
+} from "./cache.js";
 import { bucketCount } from "./result-telemetry.js";
 
-const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
-const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
-const EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE = 1;
+export const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
+export const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+export const EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE = 1;
+const EXERCISE_TEMPLATE_CATALOG_PAGE_SIZE = 100;
 
 export type ExerciseTemplateCatalogRefreshReason =
 	| "explicit-refresh"
@@ -26,70 +29,240 @@ export interface ExerciseTemplateCatalogOptions {
 	) => void;
 }
 
+type TemplateListAllError = Effect.Error<
+	ReturnType<TemplatesListAllOperation["effect"]>
+>;
+
+export type ExerciseTemplateCatalogCache = Cache.Cache<
+	string,
+	ExerciseTemplate[],
+	TemplateListAllError
+>;
+
 export interface ExerciseTemplateCatalog {
+	/**
+	 * Effect-first catalog access for MCP resource and tool handlers.
+	 *
+	 * The server owns the cache passed to this catalog. Keeping this program
+	 * Effect-valued lets the request handler decide where the one Promise
+	 * collapse belongs.
+	 */
+	effect(
+		options?: ExerciseTemplateCatalogOptions,
+	): Effect.Effect<ExerciseTemplate[], TemplateListAllError>;
+	/**
+	 * Promise compatibility for callers that have not moved to the handler
+	 * Effect boundary yet.
+	 */
 	get(options?: ExerciseTemplateCatalogOptions): Promise<ExerciseTemplate[]>;
 	reset(): void;
 }
 
+type CatalogOperations = {
+	readonly templates?: {
+		readonly listAll?: Pick<TemplatesListAllOperation, "effect">;
+	};
+};
+
+function startObservation(
+	observer: CacheObserver | undefined,
+	state: CacheObservationState,
+) {
+	try {
+		return observer?.start({ state });
+	} catch {
+		return undefined;
+	}
+}
+
+function finishObservation(
+	scope: CacheObservationScope | void,
+	metadata?: CacheObservationMetadata,
+): void {
+	try {
+		scope?.finish(metadata);
+	} catch {
+		// Cache observation is best-effort and cannot affect cache behavior.
+	}
+}
+
+function notifyRefreshed(
+	options: ExerciseTemplateCatalogOptions,
+	catalog: ExerciseTemplate[],
+	reason: ExerciseTemplateCatalogRefreshReason,
+): void {
+	try {
+		options.onRefreshed?.(catalog, reason);
+	} catch {
+		// Cache callbacks are best-effort and cannot affect catalog behavior.
+	}
+}
+
+function catalogPageCount(catalog: readonly ExerciseTemplate[]): number {
+	const pages = (
+		catalog as ExerciseTemplate[] & {
+			readonly pageCount?: number;
+		}
+	).pageCount;
+	if (pages !== undefined) return pages;
+	return Math.max(
+		1,
+		Math.ceil(catalog.length / EXERCISE_TEMPLATE_CATALOG_PAGE_SIZE),
+	);
+}
+
+/**
+ * Build the catalog facade around one server-owned Effect Cache.
+ *
+ * `cache` is deliberately supplied by the server rather than constructed
+ * here. This keeps cache lifetime at server/process scope instead of making it
+ * request-local in `createToolRuntime` or `forExecution`.
+ */
 export function createExerciseTemplateCatalog(
-	hevyClient: Pick<HevyClient, "getExerciseTemplates">,
+	operations: CatalogOperations,
+	cache: ExerciseTemplateCatalogCache,
 	cacheObserver?: CacheObserver,
 ): ExerciseTemplateCatalog {
-	const cache = new AsyncTtlCache<string, ExerciseTemplate[]>({
-		ttlMs: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-		maxSize: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
-		observer: cacheObserver,
+	const listAll = operations.templates?.listAll;
+	if (!listAll) {
+		throw new Error("Exercise template list operation is unavailable.");
+	}
+	let hasLoadedValue = false;
+	let requestGeneration = 0;
+
+	const getCacheState = Effect.fn("core.exerciseTemplateCatalog.cacheState")(
+		function* () {
+			const successful = yield* Cache.getSuccess(
+				cache,
+				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
+			);
+			if (Option.isSome(successful)) {
+				return "hit" as const;
+			}
+			const present = yield* Cache.has(
+				cache,
+				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
+			);
+			return present
+				? ("inflight_wait" as const)
+				: hasLoadedValue
+					? ("expired" as const)
+					: ("miss" as const);
+		},
+	);
+
+	const effect = Effect.fn("core.exerciseTemplateCatalog.get")(function* (
+		options: ExerciseTemplateCatalogOptions = {},
+	) {
+		const refresh = options.refresh === true;
+		const execution = options.execution;
+		const observedState = refresh ? "refresh" : yield* getCacheState();
+		const state =
+			execution !== undefined && observedState === "inflight_wait"
+				? "miss"
+				: observedState;
+		const observationScope = startObservation(cacheObserver, state);
+		const reason: ExerciseTemplateCatalogRefreshReason =
+			state === "refresh"
+				? "explicit-refresh"
+				: state === "expired"
+					? "ttl-expired"
+					: "initial-load";
+		const sharedCacheLoad = state === "hit" || state === "inflight_wait";
+		const bypassCache = refresh || (execution !== undefined && state !== "hit");
+		const replaceSharedCacheLoad =
+			observedState === "inflight_wait" && (refresh || execution !== undefined);
+		const generation = sharedCacheLoad
+			? requestGeneration
+			: ++requestGeneration;
+		const load = bypassCache
+			? replaceSharedCacheLoad
+				? Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY).pipe(
+						Effect.flatMap(() =>
+							execution === undefined
+								? listAll.effect()
+								: listAll.effect(execution),
+						),
+					)
+				: execution === undefined
+					? listAll.effect()
+					: listAll.effect(execution)
+			: Cache.get(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY);
+		const shouldNotify = !sharedCacheLoad;
+		let observationMetadata: CacheObservationMetadata | undefined;
+
+		const observedLoad = load.pipe(
+			Effect.tap((catalog) =>
+				Effect.gen(function* () {
+					if (!sharedCacheLoad && generation === requestGeneration) {
+						hasLoadedValue = true;
+					}
+					if (bypassCache && generation === requestGeneration) {
+						yield* Cache.set(
+							cache,
+							EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
+							catalog,
+						);
+					}
+					if (!sharedCacheLoad) {
+						observationMetadata = {
+							refreshReason: reason,
+							pageCountBucket: bucketCount(catalogPageCount(catalog)),
+							itemCountBucket: bucketCount(catalog.length),
+						};
+					}
+					if (shouldNotify) {
+						notifyRefreshed(options, catalog, reason);
+					}
+				}),
+			),
+			Effect.catch((error) =>
+				Effect.flatMap(
+					generation === requestGeneration
+						? Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY)
+						: Effect.void,
+					() => Effect.fail(error),
+				),
+			),
+		);
+
+		const controlledLoad = execution
+			? checkExecution(execution).pipe(Effect.flatMap(() => observedLoad))
+			: observedLoad;
+
+		return yield* Effect.ensuring(
+			controlledLoad,
+			Effect.sync(() => {
+				finishObservation(observationScope, observationMetadata);
+			}),
+		);
 	});
 
 	return {
-		get(options = {}) {
-			const reason = options.refresh
-				? "explicit-refresh"
-				: cache.size === 0
-					? "initial-load"
-					: "ttl-expired";
-			let observationMetadata: CacheObservationMetadata | undefined;
-			let pagesLoaded = 0;
-			return cache.getOrFetch(
-				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
-				async () => {
-					const catalog = await fetchAllPages<ExerciseTemplate>(
-						async (page, pageSize) => {
-							pagesLoaded = page;
-							const data: GetV1ExerciseTemplates200 =
-								await hevyClient.getExerciseTemplates(
-									{
-										page,
-										pageSize,
-									},
-									options.execution,
-								);
-							return {
-								items: data?.exercise_templates ?? [],
-								pageCount: data?.page_count,
-							};
-						},
-						100,
-					);
-					observationMetadata = {
-						refreshReason: reason,
-						pageCountBucket: bucketCount(pagesLoaded),
-						itemCountBucket: bucketCount(catalog.length),
-					};
-					options.onRefreshed?.(catalog, reason);
-					return catalog;
-				},
-				{
-					refresh: options.refresh,
-					shareInFlight: options.execution === undefined,
-					signal: options.execution?.signal,
-					deadline: options.execution?.deadline,
-					getObservationMetadata: () => observationMetadata,
-				},
-			);
+		effect,
+		get(options) {
+			return Effect.runPromise(effect(options));
 		},
 		reset() {
-			cache.clear();
+			hasLoadedValue = false;
+			requestGeneration += 1;
+			Effect.runSync(
+				Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY),
+			);
 		},
 	};
+}
+
+function checkExecution(execution: HevyRequestOptions) {
+	return Effect.sync(() => {
+		if (execution.signal?.aborted) {
+			throw (
+				execution.signal.reason ??
+				new DOMException("Operation canceled", "AbortError")
+			);
+		}
+		if (execution.deadline !== undefined && Date.now() >= execution.deadline) {
+			throw new DOMException("Operation deadline exceeded", "TimeoutError");
+		}
+	});
 }

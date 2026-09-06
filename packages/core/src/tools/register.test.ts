@@ -1,5 +1,6 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
+import { Effect } from "effect";
 import type { Routine } from "@hevy-mcp/hevy-client/types";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -356,6 +357,7 @@ describe("registerHevyTools", () => {
 	beforeEach(async () => {
 		server = new McpServer({ name: "tool-list-test", version: "1.0.0" });
 		const catalog: ExerciseTemplateCatalog = {
+			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
 			reset: () => {},
 		};
@@ -408,6 +410,7 @@ describe("registerHevyTools", () => {
 			version: "1.0.0",
 		});
 		const catalog: ExerciseTemplateCatalog = {
+			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
 			reset: () => {},
 		};
@@ -446,6 +449,7 @@ describe("registerHevyTools", () => {
 				version: "1.0.0",
 			});
 			const catalog: ExerciseTemplateCatalog = {
+				effect: () => Effect.succeed([]),
 				get: () => Promise.resolve([]),
 				reset: () => {},
 			};
@@ -499,6 +503,7 @@ describe("registerHevyTools", () => {
 		const { tools: firstTools } = await client.listTools();
 
 		const catalog: ExerciseTemplateCatalog = {
+			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
 			reset: () => {},
 		};
@@ -569,6 +574,7 @@ describe("registerHevyTools", () => {
 			version: "1.0.0",
 		});
 		const catalog: ExerciseTemplateCatalog = {
+			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
 			reset: () => {},
 		};

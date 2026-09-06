@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createHevyClient } from "@hevy-mcp/hevy-client";
+import { Effect } from "effect";
 import { createOperations } from "./index.js";
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
@@ -59,26 +60,34 @@ describe("createOperations public client injection", () => {
 		);
 
 		await expect(
-			operations.workouts.list.execute({ page: 1, pageSize: 5 }),
+			Effect.runPromise(
+				operations.workouts.list.effect({ page: 1, pageSize: 5 }),
+			),
 		).resolves.toEqual({
 			items: [{ id: "workout-1" }],
 			page: 1,
 			pageCount: 1,
 		});
 		await expect(
-			operations.workouts.get.execute({ workoutId: "workout-1" }),
+			Effect.runPromise(
+				operations.workouts.get.effect({ workoutId: "workout-1" }),
+			),
 		).resolves.toEqual({
 			workout: { id: "workout-1" },
 		});
 		await expect(
-			operations.routines.list.execute({ page: 1, pageSize: 5 }),
+			Effect.runPromise(
+				operations.routines.list.effect({ page: 1, pageSize: 5 }),
+			),
 		).resolves.toEqual({
 			items: [{ id: "routine-1" }],
 			page: 1,
 			pageCount: 1,
 		});
 		await expect(
-			operations.routines.get.execute({ routineId: "routine-1" }),
+			Effect.runPromise(
+				operations.routines.get.effect({ routineId: "routine-1" }),
+			),
 		).resolves.toEqual({
 			routine: { id: "routine-1" },
 		});
@@ -98,7 +107,9 @@ describe("createOperations public client injection", () => {
 		const operations = createOperations(client as never);
 
 		await expect(
-			operations.workouts.get.execute({ workoutId: "workout-1" }),
+			Effect.runPromise(
+				operations.workouts.get.effect({ workoutId: "workout-1" }),
+			),
 		).rejects.toThrow("internal request Effect seam");
 	});
 
@@ -112,7 +123,9 @@ describe("createOperations public client injection", () => {
 		} as never);
 
 		await expect(
-			operations.workouts.get.execute({ workoutId: "workout-1" }),
+			Effect.runPromise(
+				operations.workouts.get.effect({ workoutId: "workout-1" }),
+			),
 		).rejects.toThrow("internal request Effect seam");
 	});
 });

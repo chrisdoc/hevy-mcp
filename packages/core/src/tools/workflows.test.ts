@@ -1,12 +1,9 @@
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
-import {
-	scanPagesInWindow,
-	getTrainingSummary,
-	workflowToolDefinitions,
-} from "./workflows.js";
+import { workflowToolDefinitions } from "./workflows.js";
 
 describe("get-training-summary", () => {
 	it("scans all bounded pages for in-window compact evidence", async () => {
@@ -57,7 +54,9 @@ describe("get-training-summary", () => {
 				client,
 				catalog: {} as ExerciseTemplateCatalog,
 			});
-			const summary = await getTrainingSummary(runtime, 4);
+			const summary = await Effect.runPromise(
+				workflowToolDefinitions[0].execute(runtime, { weeks: 4 }),
+			);
 			expect(summary.workouts).toMatchObject({
 				count: 1,
 				total_duration_seconds: 90000,
@@ -80,36 +79,6 @@ describe("get-training-summary", () => {
 		}
 	});
 
-	it("scans older pages but stops at a valid page_count", async () => {
-		type Item = { date?: string; id: string };
-		const loader = vi
-			.fn()
-			.mockResolvedValueOnce({
-				items: [{ id: "old", date: "2026-06-01" }],
-				pageCount: 2,
-			})
-			.mockResolvedValueOnce({
-				items: [{ id: "recent", date: "2026-07-15" }],
-				pageCount: 2,
-			});
-		await expect(
-			scanPagesInWindow<Item>(
-				loader,
-				10,
-				"2026-07-01",
-				"2026-07-16",
-				(item) => item.date,
-			),
-		).resolves.toEqual({
-			items: [{ id: "recent", date: "2026-07-15" }],
-			pages: 2,
-			itemsScanned: 2,
-		});
-		expect(loader).toHaveBeenNthCalledWith(1, 1, 10);
-		expect(loader).toHaveBeenNthCalledWith(2, 2, 10);
-		expect(loader).toHaveBeenCalledTimes(2);
-	});
-
 	it("keeps sparse collection results safe", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-07-16T12:00:00Z"));
@@ -122,7 +91,9 @@ describe("get-training-summary", () => {
 				catalog: {} as ExerciseTemplateCatalog,
 			});
 			await expect(
-				workflowToolDefinitions[0].execute(runtime, { weeks: 1 }),
+				Effect.runPromise(
+					workflowToolDefinitions[0].execute(runtime, { weeks: 1 }),
+				),
 			).resolves.toMatchObject({
 				workouts: {
 					count: 0,

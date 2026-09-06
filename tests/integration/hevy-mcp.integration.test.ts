@@ -6,9 +6,9 @@ import { Client } from "@modelcontextprotocol/client";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createHevyClient } from "../../packages/hevy-client/src/hevy-client.js";
-import { createExerciseTemplateCatalog } from "../../packages/core/src/utils/exercise-template-catalog.js";
 import { createToolRuntime } from "../../packages/core/src/tools/tool-runtime.js";
 import { registerHevyTools } from "../../packages/core/src/tools/register.js";
+import { createIntegrationCatalog } from "./catalog-fixture.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";
 const hevyApiKey = process.env.HEVY_API_KEY || "";
@@ -83,7 +83,7 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 		});
 		const runtime = createToolRuntime({
 			client: hevyClient,
-			catalog: createExerciseTemplateCatalog(hevyClient),
+			catalog: createIntegrationCatalog(hevyClient),
 		});
 
 		registerHevyTools(server, runtime);

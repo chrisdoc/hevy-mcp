@@ -3,8 +3,10 @@ import { createHevyClient, type HevyClient } from "@hevy-mcp/hevy-client";
 
 type RequestConfig = {
 	readonly url?: string;
+	readonly method?: string;
 	readonly path?: RequestPath;
 	readonly query?: RequestQuery;
+	readonly body?: unknown;
 	readonly signal?: AbortSignal;
 	readonly hevyDeadline?: number;
 	readonly hevyTimeoutMs?: number;
@@ -13,11 +15,17 @@ type RequestConfig = {
 type RequestPath = {
 	readonly workoutId?: string;
 	readonly routineId?: string;
+	readonly exerciseTemplateId?: string;
+	readonly folderId?: string;
+	readonly date?: string;
 };
 
 type RequestQuery = {
 	readonly page?: number;
 	readonly pageSize?: number;
+	readonly since?: string;
+	readonly start_date?: string;
+	readonly end_date?: string;
 };
 
 type RequestOptions = {
@@ -83,17 +91,27 @@ async function dispatch(
 	const options = requestOptions(config);
 	switch (config.url) {
 		case "/v1/workouts": {
+			if (config.method === "POST") {
+				const method = methods.createWorkout;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(config.body as never)
+					: method(config.body as never, options);
+			}
 			const method = methods.getWorkouts;
 			if (method === undefined) return {};
-			return config.query === undefined
-				? options === undefined
-					? method()
-					: method(undefined, options)
-				: options === undefined
-					? method(config.query)
-					: method(config.query, options);
+			return options === undefined
+				? method(config.query)
+				: method(config.query, options);
 		}
 		case "/v1/routines": {
+			if (config.method === "POST") {
+				const method = methods.createRoutine;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(config.body as never)
+					: method(config.body as never, options);
+			}
 			const method = methods.getRoutines;
 			if (method === undefined) return {};
 			return config.query === undefined
@@ -105,20 +123,135 @@ async function dispatch(
 					: method(config.query, options);
 		}
 		case "/v1/workouts/{workoutId}": {
-			const method = methods.getWorkout;
 			const workoutId = config.path?.workoutId;
-			if (method === undefined || workoutId === undefined) return {};
+			if (workoutId === undefined) return {};
+			if (config.method === "PUT") {
+				const method = methods.updateWorkout;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(workoutId, config.body as never)
+					: method(workoutId, config.body as never, options);
+			}
+			const method = methods.getWorkout;
+			if (method === undefined) return {};
 			return options === undefined
 				? method(workoutId)
 				: method(workoutId, options);
 		}
 		case "/v1/routines/{routineId}": {
-			const method = methods.getRoutineById;
 			const routineId = config.path?.routineId;
-			if (method === undefined || routineId === undefined) return {};
+			if (routineId === undefined) return {};
+			if (config.method === "PUT") {
+				const method = methods.updateRoutine;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(routineId, config.body as never)
+					: method(routineId, config.body as never, options);
+			}
+			const method = methods.getRoutineById;
+			if (method === undefined) return {};
 			return options === undefined
 				? method(routineId)
 				: method(routineId, options);
+		}
+		case "/v1/workouts/events": {
+			const method = methods.getWorkoutEvents;
+			if (method === undefined) return {};
+			return options === undefined
+				? method(config.query)
+				: method(config.query, options);
+		}
+		case "/v1/workouts/count": {
+			const method = methods.getWorkoutCount;
+			if (method === undefined) return {};
+			return options === undefined ? method() : method(options);
+		}
+		case "/v1/exercise_templates": {
+			if (config.method === "POST") {
+				const method = methods.createExerciseTemplate;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(config.body as never)
+					: method(config.body as never, options);
+			}
+			const method = methods.getExerciseTemplates;
+			if (method === undefined) return {};
+			return options === undefined
+				? method(config.query)
+				: method(config.query, options);
+		}
+		case "/v1/exercise_templates/{exerciseTemplateId}": {
+			const method = methods.getExerciseTemplate;
+			const exerciseTemplateId = config.path?.exerciseTemplateId;
+			if (method === undefined || exerciseTemplateId === undefined) return {};
+			return options === undefined
+				? method(exerciseTemplateId)
+				: method(exerciseTemplateId, options);
+		}
+		case "/v1/exercise_history/{exerciseTemplateId}": {
+			const method = methods.getExerciseHistory;
+			const exerciseTemplateId = config.path?.exerciseTemplateId;
+			if (method === undefined || exerciseTemplateId === undefined) return {};
+			return options === undefined
+				? method(exerciseTemplateId, config.query)
+				: method(exerciseTemplateId, config.query, options);
+		}
+		case "/v1/routine_folders": {
+			if (config.method === "POST") {
+				const method = methods.createRoutineFolder;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(config.body as never)
+					: method(config.body as never, options);
+			}
+			const method = methods.getRoutineFolders;
+			if (method === undefined) return {};
+			return options === undefined
+				? method(config.query)
+				: method(config.query, options);
+		}
+		case "/v1/routine_folders/{folderId}": {
+			const method = methods.getRoutineFolder;
+			const folderId = config.path?.folderId;
+			if (method === undefined || folderId === undefined) return {};
+			return options === undefined
+				? method(folderId)
+				: method(folderId, options);
+		}
+		case "/v1/body_measurements": {
+			if (config.method === "POST") {
+				const method = methods.createBodyMeasurement;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(config.body as never)
+					: method(config.body as never, options);
+			}
+			const method = methods.getBodyMeasurements;
+			if (method === undefined) return {};
+			return options === undefined
+				? method(config.query)
+				: method(config.query, options);
+		}
+		case "/v1/body_measurements/{date}": {
+			const date = config.path?.date;
+			if (date === undefined) return {};
+			if (config.method === "PUT") {
+				const method = methods.updateBodyMeasurement;
+				if (method === undefined) return {};
+				return options === undefined
+					? method(date, config.body as never)
+					: method(date, config.body as never, options);
+			}
+			const method = methods.getBodyMeasurement;
+			if (method === undefined) return {};
+			return options === undefined ? method(date) : method(date, options);
+		}
+		case "/v1/user/info": {
+			const method = methods.getUserInfo;
+			if (method === undefined) return {};
+			const data =
+				options === undefined ? await method() : await method(options);
+			return { data };
 		}
 		default:
 			return {};

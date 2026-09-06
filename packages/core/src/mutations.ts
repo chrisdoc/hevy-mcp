@@ -17,7 +17,7 @@ import {
 	buildMeasurementPayload,
 	buildRoutinePayload,
 	mergeMeasurementPayload,
-} from "./tools/mutation-semantics.js";
+} from "@hevy-mcp/operations";
 
 export {
 	createBodyMeasurementInputSchema,

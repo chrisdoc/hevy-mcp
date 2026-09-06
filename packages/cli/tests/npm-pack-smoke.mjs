@@ -80,9 +80,20 @@ globalThis.fetch = async (input, init = {}) => {
 	const response =
 		request.method === "POST" && pathname === "/v1/routine_folders"
 			? { status: 201, body: { id: 3 } }
-			: request.method === "PUT" && pathname === "/v1/workouts/workout-1"
-				? { status: 200, body: { id: "workout-1" } }
-				: { status: 404, body: { error: "unexpected request" } };
+			: request.method === "GET" && pathname === "/v1/workouts/workout-1"
+				? {
+						status: 200,
+						body: {
+							id: "workout-1",
+							title: "Push",
+							start_time: "2024-01-01T10:00:00Z",
+							end_time: "2024-01-01T11:00:00Z",
+							exercises: [],
+						},
+					}
+				: request.method === "PUT" && pathname === "/v1/workouts/workout-1"
+					? { status: 200, body: { id: "workout-1" } }
+					: { status: 404, body: { error: "unexpected request" } };
 	return new Response(JSON.stringify(response.body), {
 		status: response.status,
 		headers: { "content-type": "application/json" },
@@ -158,8 +169,8 @@ globalThis.fetch = async (input, init = {}) => {
 		.trim()
 		.split("\n")
 		.map((line) => JSON.parse(line));
-	if (requests.length !== 2) throw new Error("Unexpected packed request count");
-	const [folderRequest, workoutRequest] = requests;
+	if (requests.length !== 3) throw new Error("Unexpected packed request count");
+	const [folderRequest, currentWorkoutRequest, workoutRequest] = requests;
 	if (
 		folderRequest.method !== "POST" ||
 		new URL(folderRequest.url).pathname !== "/v1/routine_folders" ||
@@ -168,6 +179,12 @@ globalThis.fetch = async (input, init = {}) => {
 			JSON.stringify({ routine_folder: { title: "Strength" } })
 	)
 		throw new Error("Packed folder request contract is incorrect");
+	if (
+		currentWorkoutRequest.method !== "GET" ||
+		new URL(currentWorkoutRequest.url).pathname !== "/v1/workouts/workout-1" ||
+		currentWorkoutRequest.headers["api-key"] !== key
+	)
+		throw new Error("Packed workout read-back contract is incorrect");
 	if (
 		workoutRequest.method !== "PUT" ||
 		new URL(workoutRequest.url).pathname !== "/v1/workouts/workout-1" ||
@@ -178,6 +195,7 @@ globalThis.fetch = async (input, init = {}) => {
 					title: "Push",
 					start_time: "2024-01-01T10:00:00Z",
 					end_time: "2024-01-01T11:00:00Z",
+					description: null,
 					is_private: false,
 					exercises: [
 						{

@@ -18,9 +18,9 @@ import {
 import { registerHevyResources } from "../../../packages/core/src/resources/hevy.js";
 import { registerHevyTools } from "../../../packages/core/src/tools/register.js";
 import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
-import { createExerciseTemplateCatalog } from "../../../packages/core/src/utils/exercise-template-catalog.js";
 import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
 import { z } from "zod";
+import { createIntegrationCatalog } from "../catalog-fixture.js";
 
 const stringSchema = z.string();
 
@@ -87,7 +87,7 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 		});
 		const runtime = createToolRuntime({
 			client: hevyClient,
-			catalog: createExerciseTemplateCatalog(hevyClient),
+			catalog: createIntegrationCatalog(hevyClient),
 		});
 
 		registerHevyTools(server, runtime);

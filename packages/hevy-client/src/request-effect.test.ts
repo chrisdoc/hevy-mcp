@@ -3,8 +3,40 @@ import { Cause, Effect, Fiber } from "effect";
 import { TestClock } from "effect/testing";
 
 import { createNativeClient } from "./hevy-client-kubb.js";
+import { createHevyClient } from "./hevy-client.js";
+import { getRequestEffectClient } from "./internal-request-effect.js";
 
 describe("internal production request Effect seam", () => {
+	it("routes facade GET retry delays through TestClock", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response("{}", { status: 503 }))
+			.mockResolvedValueOnce(
+				new Response('{"id":"workout-1"}', { status: 200 }),
+			);
+		const client = createHevyClient({
+			apiKey: "test-key",
+			baseUrl: "https://api.hevyapp.com",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+		});
+		const effectClient = getRequestEffectClient(client);
+
+		const program = Effect.gen(function* () {
+			const fiber = yield* effectClient
+				.getWorkout("workout-1")
+				.pipe(Effect.forkChild);
+			yield* Effect.yieldNow;
+			expect(fetchMock).toHaveBeenCalledOnce();
+			yield* TestClock.adjust("1 second");
+			const result = yield* Fiber.join(fiber);
+			expect(result).toEqual({ id: "workout-1" });
+		});
+
+		await Effect.runPromise(Effect.provide(program, TestClock.layer()));
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	it("routes default client backoff through TestClock", async () => {
 		const fetchMock = vi
 			.fn()

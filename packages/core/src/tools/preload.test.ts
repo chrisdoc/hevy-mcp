@@ -1,5 +1,6 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { getCompactJsonSchemaConversionCount } from "../utils/compact-json-schema.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
@@ -11,6 +12,7 @@ import {
 } from "./register.js";
 
 const catalog: ExerciseTemplateCatalog = {
+	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
 	reset: () => {},
 };

@@ -1,5 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
+import { Cache, Effect } from "effect";
+import { createOperations } from "@hevy-mcp/operations";
+import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
+import type { TemplatesListAllOperation } from "@hevy-mcp/operations";
 import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerHevyResources } from "./resources/hevy.js";
 import {
@@ -9,7 +13,11 @@ import {
 } from "./server-metadata.js";
 import { registerHevyTools } from "./tools/register.js";
 import { createToolRuntime } from "./tools/tool-runtime.js";
-import { createExerciseTemplateCatalog } from "./utils/exercise-template-catalog.js";
+import {
+	createExerciseTemplateCatalog,
+	EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+	EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+} from "./utils/exercise-template-catalog.js";
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import type { CacheObserver } from "./utils/cache.js";
 import type { ToolObserver } from "./observation.js";
@@ -58,9 +66,30 @@ export function createHevyMcpServer(
 	const server = options.decorateServer?.(baseServer) ?? baseServer;
 	const mcpLogger = createMcpClientLogger(server);
 	const client = options.createClient({ onLog: (event) => mcpLogger(event) });
+	const operations = createOperations(client);
+	const templateListAll = operations.templates?.listAll;
+	if (!templateListAll) {
+		throw new Error("Exercise template list operation is unavailable.");
+	}
+	const cache = Effect.runSync(
+		Cache.make<
+			string,
+			ExerciseTemplate[],
+			Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
+		>({
+			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+			timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+			lookup: (_key: string) => templateListAll.effect(),
+		}),
+	);
 	const runtime = createToolRuntime({
 		client,
-		catalog: createExerciseTemplateCatalog(client, options.cacheObserver),
+		operations,
+		catalog: createExerciseTemplateCatalog(
+			operations,
+			cache,
+			options.cacheObserver,
+		),
 		logger: mcpLogger,
 		observer: options.observer,
 		executionTimeoutMs: options.executionTimeoutMs,

@@ -106,6 +106,15 @@ async function dispatch(
 			options,
 		);
 	}
+	if (url.pathname === "/v1/exercise_templates") {
+		const query = paginationQuery(url);
+		const method = methods.getExerciseTemplates;
+		if (method === undefined) return {};
+		if (query === undefined) {
+			return options === undefined ? method() : method(undefined, options);
+		}
+		return options === undefined ? method(query) : method(query, options);
+	}
 	if (url.pathname === "/v1/routines") {
 		const query = paginationQuery(url);
 		const method = methods.getRoutines;

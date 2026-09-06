@@ -1,4 +1,4 @@
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import { HevyHttpError, NotFoundError } from "@hevy-mcp/hevy-client";
 import { describe, expect, it } from "vitest";
 import {
 	classifyReadError,
@@ -42,5 +42,57 @@ describe("classifyReadError", () => {
 		expect(
 			classifyReadError(new Error("network failure"), "/v1/workouts", 2),
 		).toBeUndefined();
+	});
+
+	it("classifies tagged collection 404s only for their matching endpoint", () => {
+		const endpoints = [
+			"/v1/body_measurements",
+			"/v1/exercise_templates",
+			"/v1/routine_folders",
+			"/v1/routines",
+			"/v1/workouts",
+			"/v1/workouts/events",
+		] as const;
+
+		for (const endpoint of endpoints) {
+			const error = new NotFoundError({
+				status: 404,
+				method: "GET",
+				endpoint,
+				expected: true,
+			});
+
+			expect(classifyReadError(error, endpoint, 2)).toBe("end_of_list");
+			expect(classifyReadError(error, endpoint, 1)).toBeUndefined();
+		}
+	});
+
+	it("does not classify a sibling endpoint through a collection prefix", () => {
+		const error = new NotFoundError({
+			status: 404,
+			method: "GET",
+			endpoint: "/v1/workouts/count",
+			expected: true,
+		});
+
+		expect(classifyReadError(error, "/v1/workouts", 2)).toBeUndefined();
+	});
+
+	it("does not classify history, count, or user 404s as expected reads", () => {
+		for (const endpoint of [
+			"/v1/exercise_history/:exerciseTemplateId",
+			"/v1/workouts/count",
+			"/v1/user/info",
+		] as const) {
+			const error = new NotFoundError({
+				status: 404,
+				method: "GET",
+				endpoint,
+				expected: false,
+			});
+
+			expect(classifyReadError(error, endpoint)).toBeUndefined();
+			expect(classifyReadError(error, endpoint, 2)).toBeUndefined();
+		}
 	});
 });

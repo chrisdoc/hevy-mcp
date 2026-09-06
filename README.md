@@ -52,12 +52,15 @@ published Node.js stdio adapter, `@hevy-mcp/worker` is the private Cloudflare
 HTTP/OAuth adapter, and `@chrisdoc/hevy-cli` is the standalone CLI. Node and
 CLI are the public packages.
 
-Public client and operation APIs stay Promise-based. Request execution inside
-`@hevy-mcp/hevy-client` is an internal Effect seam; workout and routine
-list/get operations compose that seam and still expose a single Promise
-`execute()`. MCP tools in `@hevy-mcp/core` receive a request-local
-`HevyClientService` or `HevyOperationsService` from `createCoreServiceLayer`.
-The MCP catalog remains 22 tools.
+The public `HevyClient` remains Promise-based, while
+`@hevy-mcp/operations` provides Effect-first domain programs for reads,
+mutations, and composite workflows. MCP tools and CLI commands run those
+programs and collapse each invocation once at their Promise adapter boundary.
+The internal request Effect seam is not part of the public Node or CLI API:
+`hevy-mcp` stays a Promise-based Node adapter, and
+`@chrisdoc/hevy-cli` remains a bin-oriented Promise adapter. Core MCP tools
+receive a request-local `HevyOperationsService` from
+`createCoreServiceLayer`. The MCP catalog remains 22 tools.
 
 > A Hevy API key, available with **Hevy PRO**, is required.
 
