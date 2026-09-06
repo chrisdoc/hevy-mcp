@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Review retry contract coverage
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review, do not write files. Review full mission.md, architecture.md, and validation-contract.md in `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4`, plus relevant client code/tests in `/root/hevy-mcp-effect-retry-interpreter`. Focus on Retry State and Policy. Identify missing user-observable flows, ambiguous pass/fail criteria, duplicate assertions, incorrect tools/evidence, and requirements not captured. Return precise recommended additions/modifications/removals with proposed stable IDs and list all filepaths inspected.
+---END TASK FROM PARENT AGENT---
