@@ -278,4 +278,38 @@ describe("runBoundedExecution", () => {
 			runBoundedExecution(Effect.die("string defect"), { timeoutMs: 1000 }),
 		).rejects.toThrow("string defect");
 	});
+
+	it("treats Effect.die(undefined) as a present defect, not a missing one", async () => {
+		await expect(
+			runBoundedExecution(Effect.die(undefined), { timeoutMs: 1000 }),
+		).rejects.toThrow("Unknown defect");
+	});
+
+	it("falls back to Unknown defect for non-serializable defects", async () => {
+		await expect(
+			runBoundedExecution(Effect.die(Symbol("x")), { timeoutMs: 1000 }),
+		).rejects.toThrow("Unknown defect");
+		await expect(
+			runBoundedExecution(
+				Effect.die(() => "secret"),
+				{ timeoutMs: 1000 },
+			),
+		).rejects.toThrow("Unknown defect");
+	});
+
+	it("does not leak the raw defect message into logs", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			await runBoundedExecution(
+				Effect.die(new Error("credential-bearing defect")),
+				{ timeoutMs: 1000 },
+			);
+		} catch {
+			// Expected throw; the assertion below is the real check.
+		}
+		const logged = errorSpy.mock.calls.map((call) => call.join(" ")).join("\n");
+		expect(logged).toContain("Unexpected execution defect");
+		expect(logged).not.toContain("credential-bearing defect");
+		errorSpy.mockRestore();
+	});
 });

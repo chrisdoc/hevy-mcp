@@ -12,6 +12,8 @@ import {
 	isString,
 	type RuntimeValue,
 } from "./utils/type-predicates.js";
+import { logCoreError } from "./utils/core-logger.js";
+import { createSafeErrorDiagnostic } from "./utils/error-policy.js";
 
 /** Per-request control supplied by MCP, HTTP, CLI, or a lifecycle owner. */
 export interface ToolExecutionContext extends HevyRequestOptions {
@@ -118,7 +120,7 @@ function defectMessage(defect: RuntimeValue): string {
 		return defect;
 	}
 	try {
-		return JSON.stringify(defect);
+		return JSON.stringify(defect) ?? "Unknown defect";
 	} catch {
 		return "Unknown defect";
 	}
@@ -157,12 +159,17 @@ export async function runBoundedExecution<A, E>(
 			"AbortError",
 		);
 	}
-	const defect = exit.cause.reasons.find(Cause.isDieReason)?.defect;
-	if (defect !== undefined) {
-		const message = defectMessage(defect);
-		Effect.runSync(Effect.logError(`Unexpected execution defect: ${message}`));
-		if (defect instanceof Error) {
-			throw defect;
+	const dieReason = exit.cause.reasons.find(Cause.isDieReason);
+	if (dieReason !== undefined) {
+		const message = defectMessage(dieReason.defect);
+		// Bounded diagnostic (category/status/frames only), never the raw defect
+		// message, matching the core logging policy for tool errors.
+		logCoreError(
+			"Unexpected execution defect",
+			createSafeErrorDiagnostic(dieReason.defect),
+		);
+		if (dieReason.defect instanceof Error) {
+			throw dieReason.defect;
 		}
 		throw new Error(message);
 	}
