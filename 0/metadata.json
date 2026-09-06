@@ -1,0 +1,22 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "da9ed700e482",
+  "session_id": "7fccfa78-13dd-44ec-bb87-0c1880770100",
+  "strategy": "import",
+  "created_at": "2026-09-05T17:25:17.358298745Z",
+  "checkpoints_count": 1,
+  "files_touched": null,
+  "agent": "Factory AI Droid",
+  "model": "gpt-5.6-sol",
+  "checkpoint_transcript_start": 2,
+  "transcript_lines_at_start": 2,
+  "compact_transcript_start": 1,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "kind": "imported"
+}

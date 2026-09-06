@@ -1,0 +1,22 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Extend remediation validation contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write contract files only, no repository implementation changes and no commits. Mission directory: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0. Read updated mission.md, architecture.md, AGENTS.md, existing validation-contract.md, validation-state.json, and features.json (features read-only for context). Add a new `Review Remediation` area plus cross-area assertions as needed for these confirmed requirements: (1) long-lived core service context is acquired once in server Scope, finalized exactly once on close, request overlays do not allocate unmanaged scopes, sibling servers isolated; (2) core ToolEffectHandler/tool definitions have a declared tagged union after normalizing the unknown operation seam, preserving all supported tags, abort/deadline, and bounded unexpected failures; (3) tool Zod parsing preserves strict behavior without a manual assertion (validate behavior and typecheck evidence, not implementation text alone); (4) Node lifecycle has one scoped owner whose finalizers run once on startup failure, signal shutdown, and direct target close while Promise startup still resolves after start and existing failure projections remain; (5) HTTP sessions finalize exactly once across DELETE/disconnect/idle/SDK close/startup failure/server close, idle work is interruptible/no leaked timers or fibers, sibling/admission/SSE/status contracts preserved; (6) shared AbortSignal interruption behavior works in both client and Worker without dependency-boundary regression; (7) package-script tests behaviorally prove optional dotenv loading and fail-closed live preflight without real credentials/network or literal-only assertions; (8) CLI error_code remains unchanged. Assertions must be black-box and behavior-based with stable new IDs following existing conventions, each with Tool and Evidence. Do not add assertions merely requiring source text except where typecheck/boundary evidence is essential alongside behavior.
+
+Update exactly:
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-state.json
+
+For every new assertion, add `{ "status": "pending" }` to validation-state.json. Preserve all 162 existing assertion statuses unchanged. Do not edit features.json. Return a summary listing assertions added with IDs, assertions removed, assertions modified/reset, ambiguities, and every filepath written. Required validation: JSON parse validation and extraction confirming contract/state ID consistency. Expected markdown assertion format:
+`### VAL-REMEDIATION-001: Title\nBehavior...\nTool: ...\nEvidence: ...`
+Expected state format remains `{ "assertions": { "VAL-...": { "status": "pending|passed", ... } } }`.
+---END TASK FROM PARENT AGENT---
