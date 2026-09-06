@@ -1,0 +1,40 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Review ops contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the draft validation contract for OPERATIONS. 140 assertions is too many; we need a black-box behavioral contract that still covers every domain.
+
+Read:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/operations.md
+- Skim core-runtime.md and cli.md so you don't duplicate tool/CLI wiring (that's CORE/CLI).
+
+Write review to:
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/review-ops.md
+
+Include:
+## Missing
+## Over-granular (merge)
+## Keep
+## Recommended merged ID list VAL-OPS-* with one-line titles. Target 35-50 assertions that still cover:
+- Effect-first API + collapse boundary
+- PaginationMismatchError
+- soft-404 policy for all collections
+- every domain method (workouts, routines, templates, folders, measurements, user, workflows)
+- mutation quirks (workout RMW/is_private/timestamps, routine rep_range, measurement omit-nulls)
+- Stream.paginate + DateTime + bounded concurrency for composites
+- no Node/CF, may import internal
+
+Do not drop a domain method; group related edge cases.
+
+Return filepath.
+---END TASK FROM PARENT AGENT---
