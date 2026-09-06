@@ -1,0 +1,1 @@
+Your standard model budget is exhausted. You have been switched to kimi-k3 (Droid Core) to continue this session as per your overage preference. To set your preferences, run the `/limits` slash command.
