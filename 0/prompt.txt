@@ -1,0 +1,36 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Draft collapse contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You write a VALIDATION CONTRACT DRAFT only. Do not implement product code.
+
+Write file:
+/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/ops-collapse.md
+
+Read architecture.md and mission.md in /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/
+
+## Your area: Nested runPromise collapse
+
+Assertions covering the production control-flow change (still black-box/behavior as much as possible, plus source-level checks that are the only way to observe "one runPromise"):
+- Each of the four execute() implementations has exactly one Effect.runPromise
+- Production path does not Effect.tryPromise a Promise client.getX()
+- Operations compose the internal requestEffect / read Effect instead
+- classifyReadError remains the pure catch predicate; soft 404 outcomes still work after collapse
+- Callers still receive Promise, not Effect
+- No extra process-wide Effect runtime
+
+IDs: VAL-COLLAPSE-001, ...
+
+Tool: vitest (and rg/source characterization tests if needed)
+Evidence: terminal output
+
+Return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
