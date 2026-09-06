@@ -1,0 +1,1 @@
+only focus on hevy-mcp version 6 and up
