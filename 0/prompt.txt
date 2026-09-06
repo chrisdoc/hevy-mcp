@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task complexity: heavy
+Task description: Review CLI operations migration
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the completed mission feature cli-commands-via-operations in /root/hevy-mcp-effect-ops-layer at commit b2ba0e8. Inspect the diff from origin/main for correctness against VAL-CLI-001, 002, 003, 004, 007, and 009 and the cli-worker procedure. Focus on hidden-test risks: every listed CLI command must invoke the matching operation.effect, no direct HevyClient domain calls, exactly one Effect collapse per command, credential-free meta aliases, preserved output/flags/error behavior, and execution options forwarding. Read relevant source/tests and report concrete blocking or non-blocking findings with file/line references. Do not modify files or run external services.
+---END TASK FROM PARENT AGENT---
