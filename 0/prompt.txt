@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Analyze lifecycle listener leaks
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only analysis only; do not modify files. Review the full scrutiny handoff /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/handoffs/REDACTED.json, synthesis and relevant feature review under validation/review-remediation/scrutiny/, plus current files in /home/ubuntu/hevy-mcp-effect-deepening. Confirm both partial listener acquisition leaks, recommend one focused fix feature with exact tests (including injected second-registration throw and listener baseline), and identify whether existing VAL-REMEDIATION-004 already covers the behavior or needs contract modification. Return analysis inline, no writes, `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
