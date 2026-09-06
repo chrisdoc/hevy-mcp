@@ -1,0 +1,23 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "client-shared-interpreter",
+  "description": "Prove Effect methods share createHevyClient config and the native retry/abort/deadline interpreter with Promise methods. Cover GET retry-then-success and exhaustion (existing read plus a new GET), POST no-retry, PUT attempt parity, single-fetch 400/404, HevyRequestOptions on every Effect method, and TestClock-driven GET retry delays.",
+  "skillName": "effect-client-worker",
+  "milestone": "client-seam",
+  "preconditions": [
+    "HevyRequestEffectClient already exposes all 22 Effect methods",
+    "Existing request-effect tests and TestClock usage in hevy-client"
+  ],
+  "expectedBehavior": [
+    "Custom fetch, apiKey, and maxGetRetries apply equally to Effect methods",
+    "GET 503 then 200: two fetches and same payload on Promise and Effect, including one new GET (events, count, or list)",
+    "All-503 GET exhaustion: same attempt count as Promise then failure",
+    "POST mutations fetch once on 503; PUT attempt count matches Promise",
+    "400 and 404 produce a single fetch on both surfaces",
+    "Every Effect method accepts HevyRequestOptions; aborted signal / past deadline / timeoutMs fail in the same family as Promise",
+    "Effect GET retry delays advance under TestClock.layer() without wall-clock sleep"
+  ]
+}
+```
