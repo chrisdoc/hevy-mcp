@@ -1,0 +1,44 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Triage PR 1120 review findings
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Triage GitHub PR review findings for repo chrisdoc/hevy-mcp. Work READ-ONLY in the mission worktree /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer). Do NOT modify /root/hevy-mcp or any files. Use Grep/Read; run no long test suites (you may run file-scoped reads only). The `entire` CLI is not on PATH; use Grep/Read.
+
+For EACH finding below, verify against the current code and classify as: REAL (bug/gap confirmed, brief why), FALSE POSITIVE (with evidence), or VALID-NIT (style/consistency). Give a one-line recommended fix for each REAL/VALID-NIT item.
+
+FINDINGS:
+
+1. gitstream: packages/cli/src/main.ts:59 — `context.operations = createOperations(createdClient, ...)` allegedly passes `createdClient` instead of `client` (execution proxy), bypassing the proxy for both Promise methods and the native request effect seam. Verify what `client` vs `createdClient` are in main.ts and whether operations gets the proxied or raw client. Does the effect seam still work through the raw client (the seam is recovered via getNativeRequestEffect on the client object)?
+
+2. gitstream: scripts/measure-token-cost.ts:4 — imports `Effect` from a deep node_modules path like `../packages/core/node_modules/effect/dist/index.js`. Verify the import line. Note repo context: root package does NOT depend on effect (workspace constraint, documented in mission library) — so a bare `import "effect"` may fail from scripts/. Assess whether the deep import is a deliberate workaround or a real hazard (e.g., breaks under hoisting, duplicate module instance).
+
+3. qodo: packages/core/src/tools/tool-runtime.ts ~269-296 — when both `observer` and `createHandler` are configured, createToolRuntime selects createObservedHandler which calls withErrorHandling directly and never calls the caller-supplied createHandler factory. Verify.
+
+4. qodo: packages/hevy-client/src/internal-request-effect.ts ~267-315 + effect-errors.ts ~77-85 — networkError converts a statusless HevyHttpError into NetworkError without preserving HTTP method / canonical endpoint, so safe diagnostics lose request identity. Verify NetworkError schema fields and what mapRequestError passes.
+
+5. coderabbit: packages/operations/src/templates.ts ~465-480 — createTemplatesSearchOperation rejects omitted page_count with PaginationMismatchError, while createTemplatesListAllOperation treats omitted page_count as end-of-list (potential silent truncation). Verify both behaviors.
+
+6. coderabbit+gitar: packages/operations/src/mutation-semantics.ts ~368-390 / workouts.ts ~418-428 — (a) buildWorkoutUpdatePayload now omits `description` when undefined (previously defaulted to null via current.description ?? null?) — check what origin/main did (you can `git show origin/main:packages/core/src/tools/... or the old builder location`) and whether omitted-vs-null could change Hevy API behavior; (b) WorkoutReplacementPatch allows missing title/start_time/end_time but createWorkoutsUpdateOperation's replacement branch passes missing fields to buildWorkoutUpdatePayload where normalizeFetchedWorkoutTimestamp would throw on missing timestamps. Verify whether missing metadata actually reaches the builder as undefined and throws.
+
+7. gitar: packages/cli/src/commands/index.ts:105-112 — `measurementResult` helper is dead code (never called). Verify with grep.
+
+8. gitar: packages/cli/src/commands/index.ts ~260 — executeRoutineGet re-wraps to `{ routine: { routine } }` (double nesting) while executeWorkoutGet returns `{ workout: <entity>, expected404Outcome? }`. Verify both shapes and whether they match the pre-PR CLI stdout contract (packed smoke test packages/cli/tests/npm-pack-smoke.mjs may pin expected shapes). If both match pre-PR behavior, classify as pre-existing/consistent-with-main, not a regression.
+
+9. coderabbit: packages/cli/src/commands/effect-collapse.test.ts:10-13 — assertions are raw substring counts; Effect.runPromiseExit would satisfy the runPromise count; comments/strings could satisfy collapse counts. Verify what the test actually asserts.
+
+10. coderabbit: packages/operations/src/workouts.test.ts:195 — test title "rejects an unrelated GET 404" lacks the [VAL-OPS-005] identifier used by neighboring tests. Verify and note it's a labeling nit only.
+
+11. DeepSource minor: packages/core/src/resources/hevy.ts lines ~78/105/126/151 and hevy.test.ts:316 — "async function without any await expressions". Verify whether these are the resource readers (which return promises wrapping runPromise) and whether removing async or awaits matters. Likely VALID-NIT.
+
+12. Codecov: patch coverage 79.45% (217 lines uncovered), bundle size +137.85kB (19.51%, exceeds 5% threshold). Just note; no verification needed beyond confirming codecov config threshold exists.
+
+OUTPUT: A numbered list matching the findings, each with classification (REAL / FALSE POSITIVE / VALID-NIT / PRE-EXISTING), 1-3 lines of evidence (file:line), and a recommended fix one-liner. At the end, give a suggested priority order for fixes (must-fix before merge vs optional). Return the report inline; do not write files. List any files you read for evidence.
+---END TASK FROM PARENT AGENT---
