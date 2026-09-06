@@ -1,0 +1,22 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "ops-read-policy",
+  "description": "Replace thrown page-mismatch defects with PaginationMismatchError. Implement the soft-404 policy matrix for every collection operations will handle. Normalize paginated list envelopes for workouts.list, routines.list, bodyMeasurements.list, and workouts.events. Deepen workouts.get and routines.get with tagged NotFoundError recovery.",
+  "skillName": "operations-worker",
+  "milestone": "ops-foundation",
+  "preconditions": [
+    "Operations expose effect() programs",
+    "Client seam maps 404 to NotFoundError"
+  ],
+  "expectedBehavior": [
+    "Page mismatch fails as PaginationMismatchError with requested, received, collection; never throw new Error; never expected404Outcome success",
+    "Soft-404 matrix: later-page list/events/listAll/search/trainingSummary loader 404 → end_of_list or end-of-scan; first-page 404 fails; member GET 404 → not_found where tools already do that; history 404 fails; writes never soft-404; sibling/unrelated 404s fail",
+    "Recovery uses tagged NotFoundError / endpoint-scoped helpers covering every collection, not string heuristics; unexpected HTTP stays tagged client errors",
+    "List normalize: requested page, pageCount, omitted items → [], empty 200 ≠ end_of_list, omitted page_count / response.page",
+    "workouts.get returns entity envelope; empty body → { workout: null } without soft-404; member 404 → not_found; collection-path 404 fails",
+    "routines.get returns nested routine; empty → { routine: null } without soft-404; member 404 → not_found; collection-path 404 fails"
+  ]
+}
+```
