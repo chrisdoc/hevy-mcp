@@ -1,0 +1,1 @@
+or a bit smaller @hackylabs/deep-redact@4.0.2
