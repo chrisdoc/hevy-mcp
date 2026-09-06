@@ -1,0 +1,1 @@
+since we switched and moved away from glitchtip to sentry, can we forward glitchtip to sentry?
