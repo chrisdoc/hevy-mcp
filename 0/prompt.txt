@@ -1,0 +1,49 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Verify mission dependencies
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are running the Mission Dependency Readiness check for a hevy-mcp Effect TS adoption mission.
+
+Working directory: /root/hevy-mcp
+
+MISSION CONTEXT:
+- Internal Effect adoption across hevy-client, operations, core, and CLI.
+- No new services/ports. No live Hevy API. Deterministic tests only.
+- Stack already in repo: Node 24 + pnpm 12 via mise, effect@^4.0.0-rc.112, Vitest, TypeScript, oxlint/oxfmt, changesets, dependency-cruiser.
+- Effect APIs this mission will use: Effect.fn, Stream.paginate, Cache.make, DateTime, Schema.TaggedError, Context.Service, Layer, TestClock from effect/testing.
+- Workers will implement in git worktrees from origin/main, not on this checkout.
+
+INVENTORY TO VERIFY (orchestrator-owned list):
+1. Tools: mise, node (24), pnpm (12), git, npx
+2. Packages already in workspace: effect, vitest, typescript, oxlint, oxfmt, @changesets/cli, dependency-cruiser
+3. Effect 4 RC APIs actually importable from the installed effect package: Effect.fn, Stream.paginate, Cache.make, DateTime.now, Schema.TaggedError, Context.Service, Layer.succeed, TestClock from "effect/testing"
+4. Workspace packages exist and can be imported: @hevy-mcp/hevy-client, @hevy-mcp/hevy-client/internal, @hevy-mcp/operations, @hevy-mcp/core
+5. Git worktree capability (git worktree is available)
+6. HEVY_API_KEY is NOT required; confirm we are not blocked by its absence
+
+VERIFY PROCEDURE:
+- Run real commands. Do not assume from package.json alone.
+- Use mise-wrapped node/pnpm: `mise exec -- ...`
+- For packages: actually import them with node (e.g. `mise exec -- node -e "import('effect').then(m => console.log(Object.keys(m).slice(0,20)))"` and targeted imports for Cache, Stream, DateTime, Schema, Context, Layer, Effect).
+- For TestClock: `import('effect/testing')`.
+- Confirm effect version from node_modules.
+- If pnpm install is needed because imports fail, run `mise exec -- pnpm install` in /root/hevy-mcp (bounded to this project). Do NOT start servers, do NOT touch git commits, do NOT modify source.
+- Do NOT write files into the repo. You may write a report under /tmp if needed, but return the full report inline.
+
+REPORT STRUCTURE (required):
+- every inventoried dependency and status: available / installed / blocked
+- for packages exercised: how imported, version, any API surprises
+- for tools: version confirmed
+- blockers with concrete options
+- surprises/constraints that affect the plan (especially Effect API names vs Effect 3)
+
+Return the report in your final response. Do not modify the hevy-mcp repository.
+---END TASK FROM PARENT AGENT---
