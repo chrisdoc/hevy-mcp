@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature client-shared-interpreter
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "client-shared-interpreter" for milestone "client-seam".
+
+Feature details:
+- ID: client-shared-interpreter
+- Description: Prove Effect methods share createHevyClient config and the native retry/abort/deadline interpreter with Promise methods. Cover GET retry-then-success and exhaustion (existing read plus a new GET), POST no-retry, PUT attempt parity, single-fetch 400/404, HevyRequestOptions on every Effect method, and TestClock-driven GET retry delays.
+- Worker session: c771904b-223f-4dc6-839f-2a7c0bcc7cec
+- Commit: 352380c (repo: /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer, commit message "test(hevy-client): cover Effect request parity")
+- Worker handoff: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/handoffs/2026-09-03T10-21-30-733Z__client-shared-interpreter__c771904b-223f-4dc6-839f-2a7c0bcc7cec.json
+
+Repo root for the implementation diff: /root/hevy-mcp-effect-ops-layer (worktree of /root/hevy-mcp). Review the diff of this feature's commit (352380c) against its parent.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Relevant validation contract assertions for this milestone are in /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation-contract.md, area "Client Seam" (VAL-CLIENT-001 through VAL-CLIENT-024; especially VAL-CLIENT-009 through VAL-CLIENT-015 for this feature). Programmatic validators (typecheck, test:unit) already pass: tsc clean, 95 test files / 1032 tests passed.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/client-seam/scrutiny/reviews/client-shared-interpreter.json
+---END TASK FROM PARENT AGENT---
