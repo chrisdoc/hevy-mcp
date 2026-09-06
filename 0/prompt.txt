@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Verify pushed retry-loop work against real seam
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only verification in the repository at /root/hevy-mcp. Do not modify anything.
+
+CONTEXT: The Effect v4 retry-schedule adoption has landed and been pushed. Commit e2cc2a6 "feat: schedule client retries with Effect" is on `feat/effect-pure-operations` (PR #1104, in sync with origin), with a non-empty changeset at `.changeset/amber-rivers-heal.md` declaring minor bumps for all six packages in the `repository/topology.json` release cascade. The stack #1104 → #1105 → #1109 is pushed and in sync. However, a previous mission instance designed the retry-loop task against wrong file paths, wrong package names, and wrong test lanes. Your job is to confirm the PUSHED work matches the real seam, not the flawed design.
+
+VERIFY THESE FOUR THINGS (report pass/fail for each, with file:line evidence):
+
+1. **topology.json cascade matches the changeset**: Read `repository/topology.json` and confirm its release cascade lists exactly the six packages named in `.changeset/amber-rivers-heal.md` (`@chrisdoc/hevy-cli`, `@hevy-mcp/core`, `@hevy-mcp/hevy-client`, `@hevy-mcp/operations`, `@hevy-mcp/worker`, `hevy-mcp`) with the same dependency direction (`hevy-client -> operations -> core`; adapters consume, never each other). Flag any package in the changeset that is absent from topology.json or vice versa.
+
+2. **retry-schedule module lives where topology says**: Confirm the retry-schedule module and its interpreter logic actually reside in the package topology assigns them to (expected under `packages/hevy-client/src/` or `packages/operations/src/` — NOT in an adapter like `packages/node` or `packages/worker`, and NOT duplicated across packages). Report the actual paths of `retry-schedule.ts`, its test file, and the Effect interpreter.
+
+3. **test lanes are real aliases, not invented ones**: Read `docs/test-lanes.md` and `package.json` scripts. Confirm every test lane referenced by the retry-schedule work maps to a real `pnpm run test:*` alias defined there (e.g. `test:unit`, `test:stdio`, `test:worker`, `test:pr`). Specifically check whether any task design referenced lanes like `test:effect` or `test:retry` that do NOT exist — if so, that is a residual defect from the flawed design; report which real lane should have been used instead (expected: `test:unit` for the pure retry-schedule logic).
+
+4. **one Effect runtime boundary, no parallel policy logic**: Inspect the retry interpreter wiring. Confirm there is exactly one Effect runtime boundary (a single place where the client retry path enters Effect), and no duplicated/parallel retry policy logic (e.g. two schedule interpreters, or retry policy duplicated in both `hevy-client` and `operations`).
+
+OUTPUT: A short report with a PASS/FAIL line per item, each with concrete file paths and line numbers as evidence, plus a one-line overall verdict. Do not write any files; return everything inline in your final response.
+---END TASK FROM PARENT AGENT---
