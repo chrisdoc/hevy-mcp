@@ -1,0 +1,26 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review fix-templates-pagination-unify
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "fix-templates-pagination-unify" for milestone "pr-review-fixes".
+
+Feature details:
+- ID: fix-templates-pagination-unify
+- Description: PR #1120 review fix (CodeRabbit): createTemplatesListAllOperation treats an omitted/invalid page_count as end-of-list (silent truncation) while createTemplatesSearchOperation rejects it with PaginationMismatchError; both read the same GetV1ExerciseTemplates response shape (packages/operations/src/templates.ts ~355-365 vs ~465-480). Share one pagination-validation policy so listAll validates page_count the same way as search on non-final pages. TDD in packages/operations/src/templates.test.ts.
+- Worker session: 65e558a0-97b3-4691-b6c5-f997986eb8be
+
+IMPORTANT: All implementation lives in the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer. Do NOT review against /root/hevy-mcp or origin/main.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+The fix commit is: 1d9341e fix(operations): unify templates pagination validation.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/pr-review-fixes/scrutiny/reviews/fix-templates-pagination-unify.json
+---END TASK FROM PARENT AGENT---
