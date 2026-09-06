@@ -1,0 +1,27 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Discover ops and test infrastructure
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are investigating the repository at /home/ubuntu/hevy-mcp-effect-deepening (a git worktree on branch feat/effect-deepening, based on PR #1120). pnpm monorepo, Node 24 + pnpm 12 pinned in mise.toml, managed via mise.
+
+Your task: operational discovery for running and validating this repo. Read CONTRIBUTING.md, docs/test-lanes.md, package.json (root + relevant packages), mise.toml, and repository/topology.json. Then report inline (do not write files):
+
+1. Exact setup commands: mise install, pnpm install flow. Run `mise --version` to check mise exists; if node_modules exists in the worktree, note it; if not, note that install is needed (do NOT run pnpm install).
+2. The named test lanes (pnpm run test:*) and what each covers: unit, integration, live, stdio, worker, performance, pack, etc. Which are deterministic/credential-free vs credential-gated (HEVY_API_KEY). Recommend the right lane set for validating changes to packages/node, packages/core, packages/operations, packages/hevy-client.
+3. The full validation baseline from CONTRIBUTING.md (check, check:types, build, test:pr, test:performance, check:changeset, check:boundaries, check:server-manifest) — what each command actually runs.
+4. How to run a focused subset (vitest selectors per package), and roughly how long the unit suite takes if you can tell.
+5. Changeset requirements for changes in packages/node, packages/core, packages/operations (which packages must be bumped, the cascade from repository/topology.json).
+6. The `pnpm run inspect` command and any MCP inspector tooling — what it does and its caveats.
+7. Any services/ports this repo needs locally (it appears to be a library/CLI with no daemons — confirm; check for dev servers, local HTTP transport defaults, port usage in tests).
+8. Git hooks (hk) setup: what runs on commit, and whether `mise exec hk -- hk install --mise` has been run in this worktree (check for .git/hooks or hk config).
+
+Be precise with command strings. Flag anything that will not work in a sandboxed environment (network access to api.hevyapp.com etc.).
+---END TASK FROM PARENT AGENT---
