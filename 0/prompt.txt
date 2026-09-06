@@ -1,0 +1,5 @@
+Some branches in this stack have diverged and must be rebased
+Rebase this stack to restore a linear commit history across its branches.
+
+Unable to merge as a stack
+Some of the pull requests in this stack cannot be merged.
