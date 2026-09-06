@@ -1,0 +1,25 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "core-tool-runtime-collapse",
+  "description": "Make ToolRuntime.createHandler the single Effect.runPromise/runPromiseExit per tool call, and each resource reader collapse once. Preserve MCP first-visit (22 tools, get-user-info unregistered), define-tool taxonomy, response contracts, expected404Outcome telemetry, telemetry-safe args, forExecution abort/deadline, and first callTool using the layer-backed operations instance.",
+  "skillName": "core-runtime-worker",
+  "milestone": "core-runtime",
+  "preconditions": [
+    "HevyOperations is Effect-first",
+    "Existing ToolRuntime builds request-local layers"
+  ],
+  "expectedBehavior": [
+    "listTools still advertises exactly the 22 registered tools; get-user-info stays unregistered; callTool still returns non-error MCP content without serializing Effect/Cause/Layer",
+    "createHandler is the single runPromise per tool invocation",
+    "Each resource reader collapses Effect once",
+    "define-tool taxonomy, annotations, snake_case inputs unchanged",
+    "Response contracts, empty-state text, and output schemas stay",
+    "MCP soft-404 success path unchanged; expected404Outcome telemetry-only",
+    "Telemetry-safe argument keys unchanged",
+    "forExecution abort/deadline still binds the operations invocation",
+    "First callTool uses the layer-backed operations instance"
+  ]
+}
+```
