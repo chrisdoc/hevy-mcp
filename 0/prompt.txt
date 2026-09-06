@@ -1,0 +1,40 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Validate effect-cache assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "core-runtime".
+
+Assigned assertions: VAL-CORE-013, VAL-CORE-014, VAL-CORE-015, VAL-CORE-016, VAL-CORE-017, VAL-CROSS-002
+
+Your isolation context:
+- Mission worktree (the ONLY directory you may work in): /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer. Dependencies are installed; do not run pnpm install.
+- Never modify /root/hevy-mcp (original checkout, has a staged changeset) or any other worktree.
+- Read-only over source: run vitest and capture terminal output as evidence. Do not modify production or test source files.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest via mise (pnpm exec vitest run <files>). Run each of these test files in the mission worktree, one command per file, capturing output:
+  mise exec -- pnpm exec vitest run packages/core/src/utils/cache.test.ts packages/core/src/tools/tool-runtime.test.ts packages/core/src/utils/exercise-template-catalog.test.ts packages/core/src/resources/hevy.test.ts
+Scope: only the files listed above. Do not run the whole unit suite.
+
+Evidence to collect per assertion:
+- VAL-CORE-013: Cache.make (from effect/Cache) constructed exactly once in createHevyMcpServer next to createExerciseTemplateCatalog — never inside createToolRuntime, createCoreServiceLayer, forExecution, or a resource/tool handler; capacity 1 for the exercise-template catalog; TTL 5*60*1000 ms; cacheObserver observes hit/miss/refresh/expired/inflight_wait; AsyncTtlCache must not remain as catalog implementation. Evidence: cache.test.ts + tool-runtime.test.ts output.
+- VAL-CORE-014: createCoreServiceLayer stays request-local and Layer.succeeds the given instances (client, operations, catalog, execution); never Cache.make or createExerciseTemplateCatalog per request; ToolRuntime.forExecution may wrap catalog get with abort/deadline but must not allocate a new Cache; parent and scoped runtimes share HevyOperationsService and the same underlying catalog cache; Context.get(scoped, ExerciseTemplateCatalogService) wraps the same cache createHevyMcpServer built; two forExecution calls do not double Cache.make. Evidence: tool-runtime.test.ts output.
+- VAL-CORE-015: a single createHevyMcpServer (Node long-lived server) reuses catalog TTL hits across sequential tool invocations (search-exercise-templates then hevy://exercise-templates, or two searches without refresh); templates.listAll lookup runs once until TTL expiry or refresh: true; Worker per-request lifetime stays acceptable; do not require cross-request catalog on Worker; do not make Node catalog request-local. catalog.reset() still forces a fresh lookup. Evidence: exercise-template-catalog.test.ts + resources/hevy.test.ts output.
+- VAL-CORE-016: createExerciseTemplateCatalog lookup is an Effect program over HevyOperations templates.listAll (or equivalent); must not import fetchAllPages or call Promise hevyClient.getExerciseTemplates; observation metadata (refreshReason, pageCountBucket, itemCountBucket) and onRefreshed logging remain; shareInFlight is false when a per-call execution signal is present so one aborted MCP request cannot cancel another catalog load. Evidence: exercise-template-catalog.test.ts output.
+- VAL-CORE-017: Effect Cache preserves: second get before TTL does not re-run lookup; after TTL lookup runs again; refresh: true bypasses TTL and stores the new value; concurrent misses for same key share one lookup; failed lookup does not poison the next call; older unshared/aborted fetch must not commit over a newer generation; observer start/finish cannot change cache behavior if it throws. Use fake time / TestClock.layer(); do not hit the network. Evidence: cache.test.ts output.
+- VAL-CROSS-002: on one Node createHevyMcpServer, hevy://exercise-templates and template tools needing the catalog resolve through the same operations + server-scoped Effect Cache instance; a cache hit in a tool call is visible to the resource reader on that server (Worker per-request lifetime acceptable). Evidence: resources/hevy.test.ts + exercise-template-catalog.test.ts output.
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you.
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/user-testing/flows/core-effect-cache.json
+Save evidence files to this directory: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/core-runtime/core-effect-cache/
+
+Flow validator guidance section: "Flow Validator Guidance: core-runtime"
+---END TASK FROM PARENT AGENT---
