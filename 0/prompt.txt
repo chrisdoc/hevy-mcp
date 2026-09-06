@@ -1,0 +1,1 @@
+resolve conflicts https://github.com/chrisdoc/hevy-mcp/pull/1111
