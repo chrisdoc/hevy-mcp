@@ -1,0 +1,87 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Continue Effect adoption: retry loop to Effect
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Continue Effect adoption in /root/hevy-mcp (Hevy MCP monorepo, remote https://github.com/chrisdoc/hevy-mcp.git) by converting the last remaining imperative retry loop to Effect, stacked on top of the existing open PR stack.
+
+CONTEXT — current stack (bottom → top), all OPEN:
+- #1104 head `feat/effect-pure-operations` (base main) — Effect foundation, typed errors, pure classification, Effect-wrapped read ops, Effect Schedule retry timing (commits 05ee904 → 9b75e2d → e9ce8d8 → 580b0ac → 1073abb)
+- #1105 head `test/request-local-retry-state` at `fa3fc92` (base feat/effect-pure-operations) — request-local schedule characterization
+- #1109 head `test/fetch-config-merge` at `1c976a1` (base test/request-local-retry-state) — fetch config merge tests
+
+The remaining imperative code is the client retry wait/retry loop inside `packages/hevy-client/src/hevy-client-kubb.ts` (roughly lines 1074–1244 in createNativeClient): a `while (true)` loop that on attempt failure classifies the cause, computes a delay via `getRetryDelayMs` (pure policy in `retry-policy.ts`), advances a manually-driven `Schedule.toStep(createRetrySchedule(...))` step, sleeps natively via `waitForRetry` → `sleep`/`defaultSleep`, and either retries or throws. Everything around it (typed errors, schedule construction, observation scopes, finalizers) is already Effect-based.
+
+YOUR BRANCH
+- Create branch `feat/effect-retry-loop` from `origin/test/fetch-config-merge` (the current top of the stack):
+  cd /root/hevy-mcp && git fetch origin && git switch -c feat/effect-retry-loop origin/test/fetch-config-merge
+
+IMPLEMENTATION (smallest safe seam; behavior-preserving):
+1. Replace ONLY the imperative wait/retry decision loop with an Effect program. Keep every existing semantic:
+   - retry limits (maxGetRetries, normalized via normalizeMaxGetRetries / MAX_GET_RETRIES)
+   - exponential backoff + bounded jitter and Retry-After handling (pure `getRetryDelayMs` in retry-policy.ts stays the single source of delay truth)
+   - absolute operation deadline vs per-attempt deadline (remainingDeadlineMs / isDeadlineExceeded in execution.ts)
+   - caller cancellation via the existing AbortSignal wiring (createExecutionSignal)
+   - non-idempotent write safety: POST/patch-like operations must never be retried (operationSafetyForMethod / canRetryOperation)
+   - commit-state metadata and safeToRetry/safe_to_retry flags
+   - observation callbacks: onRequestStart/onRequestComplete ordering and exactly-once emission (createFailureObservation, emitClientLog)
+   - retry exhaustion diagnostics: HEVY_RETRY_EXHAUSTED_ERROR_CODE, hevyRetryExhausted/hevyRetryCount fields, applyRetryExhaustion
+2. Preferred shape: a small recursive Effect interpreter per logical request, e.g.
+   const runAttempt = (state: RetryState): Effect.Effect<AttemptResult, HevyHttpError> => ...
+   using Effect.gen, Effect.tryPromise (with its AbortSignal mapped to the operation signal), Effect.sleep (driven by the computed delayMs — this makes the real client path TestClock-controllable), Effect.catchIf for the retryable classification, and Effect.ensuring for scope/finalizer cleanup (executionSignal.cleanup, finishRequestObservation, finishRetryWait). The Schedule stays instantiated PER REQUEST via Schedule.toStep(createRetrySchedule(maxGetRetries, DEFAULT_RETRY_POLICY, boundedRandomInt)) — never shared across requests, never created on the client object.
+   Keep the public KubbClient Promise signature and every public type/export in index.ts unchanged. Do not modify anything under packages/hevy-client/src/generated/.
+3. The custom sleep hook (`sleep` option, defaultSleep) must keep working: adapt it through Effect.tryPromise with an explicit catch that maps rejection to the established public backoff HevyHttpError (code HEVY_DEADLINE_EXCEEDED / outcome deadline_exceeded for deadline, cancellation semantics preserved). Never let an Effect Cause, fiber, or internal tagged error escape the Promise boundary.
+
+TESTS (TDD — write these FIRST, watch them fail, then implement):
+Add to packages/hevy-client/src/hevy-client.test.ts (or a new retry-loop.test.ts next to it):
+- "retries a transient 503 then succeeds with Effect-scheduled backoff": two fetch attempts, TestClock-driven — assert fetch call count 2, delay sequence matches getRetryDelayMs, outcome success, observation events emitted exactly once each
+- "stops after maxGetRetries and reports exhaustion": always-503 fetch, assert final rejection is HevyHttpError with code HEVY_RETRY_EXHAUSTED_ERROR_CODE, hevyRetryExhausted true, hevyRetryCount === maxGetRetries, safeToRetry false, outcome terminal_failure
+- "does not retry non-idempotent writes": POST → fetch called exactly once, no sleep invoked, immediate terminal failure with phase before-dispatch or dispatch as appropriate
+- "honors absolute deadline across retries": caller deadline set, backoff would exceed it → deadline error, no further fetch
+- "caller cancellation during backoff prevents next attempt": abort during Effect.sleep → rejection with HEVY_REQUEST_ABORTED_ERROR_CODE, wait scope finalized once, no further fetch
+- "preserves Retry-After lower bound and jitter bounds": 429 with Retry-After: 2 → delay ≥ 2000ms and < 2000+jitter cap; with no Retry-After → exponential sequence [300,600,1200,...] capped at 5000
+Use Effect TestClock (import { TestClock } from "effect/testing") with TestClock.layer() provided to the program so delays are virtual; advance with TestClock.adjust. For fetch, use the existing local vi.fn mocking pattern already in hevy-client.test.ts. Deterministic only — no real sleeps, no real network, no live HEVY_API_KEY.
+
+CHANGESET (required — this diff is release-triggering):
+Create .changeset/effect-retry-loop.md with EXACTLY this frontmatter and a one-paragraph summary:
+---
+"@hevy-mcp/hevy-client": patch
+"@hevy-mcp/operations": patch
+"@hevy-mcp/core": patch
+hevy-mcp: patch
+"@hevy-mcp/worker": patch
+"@chrisdoc/hevy-cli": patch
+---
+Convert the client retry wait/retry loop to an Effect-scheduled interpreter with request-local schedule state; all retry limits, backoff/jitter, Retry-After, deadline, cancellation, write-safety, metadata, and observation semantics are preserved.
+
+VALIDATION (all must exit 0 before you commit — fix failures, never bypass hooks):
+- cd /root/hevy-mcp && mise exec -- pnpm exec vitest run packages/hevy-client/src/retry-schedule.test.ts packages/hevy-client/src/hevy-client.test.ts
+- mise exec -- pnpm run test:unit
+- mise exec -- pnpm run check:types
+- mise exec -- pnpm run check            (lint + format check)
+- mise exec -- pnpm run check:changeset
+- mise exec -- pnpm run build
+- Only if runtime/bundle paths changed: mise exec -- pnpm run test:worker && mise exec -- pnpm run test:worker-http && mise exec -- pnpm run worker:dry-run
+If a hook failure is a genuine pre-existing flake (e.g. the known "retries a read once with a fresh deadline budget" timing flake under load), re-run that single focused test in isolation to confirm, and say so in the report — do not weaken any assertion and do not skip a gate.
+
+COMMIT & PUSH
+- Conventional Commit: `feat(hevy-client): run client retry loop through Effect`
+- Required trailer: Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>
+- git push -u origin feat/effect-retry-loop
+- Open the PR with gh: base `test/fetch-config-merge` (it will auto-retarget when the stack merges), title "feat(hevy-client): run client retry loop through Effect", body summarizing the change, the preserved-semantics list, test evidence (command + counts), and the changeset. Do NOT push to main. Do NOT modify existing branches or PRs #1104/#1105/#1109/#1102/#1096.
+
+BOUNDARIES
+- Generated files under packages/hevy-client/src/generated/ are off-limits.
+- Do not touch the side worktrees /root/hevy-mcp-effect-retry-interpreter or /root/hevy-mcp-effect-pure-operations.
+- Do not rebase, force-push, or otherwise modify any branch other than your own feat/effect-retry-loop.
+- Keep HEVY_API_KEY (and any credential) out of all commands, test fixtures, logs, and output; all tests run with it explicitly unset.
+
+REPORT BACK (inline): branch + head SHA, files changed, test commands with pass/fail counts, changeset path, PR URL/number/state, and every filepath created or modified.
+---END TASK FROM PARENT AGENT---
