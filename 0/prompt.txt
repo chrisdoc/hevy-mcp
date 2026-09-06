@@ -1,0 +1,1 @@
+/new fix PRs https://github.com/chrisdoc/hevy-mcp/pulls
