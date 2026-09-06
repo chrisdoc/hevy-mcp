@@ -1,0 +1,35 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Coverage gate + features.json pre-flight audit
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Pre-flight audit in /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4. Read-only analysis; do NOT modify any files. Return findings inline in your final response — do not write report files.
+
+CONTEXT: A mission run is about to start. The runner's hard gate requires: (a) every assertion ID defined in `validation-contract.md` is claimed by exactly one feature's `fulfills` array in `features.json` — no duplicates, no orphans; (b) `validation-state.json` contains a `"pending"` entry for every assertion ID in the contract — no missing, no extra; (c) `features.json` is a valid JSON object with a top-level `features` array, each feature having the fields `id` (string), `description` (string), `skillName` (string matching a directory under `skills/`), `milestone` (string), `preconditions` (array of strings), `expectedBehavior` (array of strings), `fulfills` (array of assertion-ID strings), `status` (one of "pending", "in_progress", "completed", "cancelled", "failed", "blocked").
+
+YOUR TASKS:
+
+1. Extract all assertion IDs from `validation-contract.md` (IDs look like VAL-RETRY-001, VAL-LIFE-001, VAL-OBS-001, VAL-COMPAT-001, VAL-CROSS-001 and similar VAL-<AREA>-<NNN> patterns). Build the complete set.
+
+2. Extract all assertion IDs referenced across every feature's `fulfills` array in `features.json`. Build that set.
+
+3. Cross-reference: report any contract assertion ID not claimed by any `fulfills` (orphans), any `fulfills` reference pointing to an ID not in the contract (dangling refs), and any ID claimed by more than one feature (duplicates). Also check `validation-state.json` for entries whose IDs don't exist in the contract or are missing from it.
+
+4. Validate the `features.json` schema per the field rules above. For each feature, report: field presence and types, whether `skillName` matches an actual directory under `skills/`, whether `status` is one of the allowed values, and whether `preconditions`, `expectedBehavior`, and `fulfills` are arrays of strings. List every violation with the feature id and field name. Also report the total feature count and the count per `milestone`.
+
+5. Sanity-check ordering: features are executed in array order; confirm the foundational features (those with no `preconditions` or empty ones) appear before features that depend on them. Flag any feature whose `preconditions` reference a feature id that appears LATER in the array (dependency inversion), if such references exist.
+
+OUTPUT FORMAT (inline in your final response, no files):
+- Section "Coverage": counts of contract assertions and fulfills references, then three lists — ORPHANS (in contract, unclaimed), DANGLING (referenced, not in contract), DUPLICATES (claimed 2+ times). If a list is empty, write "none".
+- Section "Schema violations": a list of per-feature violations (feature id, field, problem), or "none".
+- Section "Ordering": any dependency inversions found, or "none".
+- Section "Milestones": feature count per milestone value.
+- Section "Verdict": one line — either "GATE PASS: coverage complete, schema valid, ordering sound, ready to start mission run" or "GATE FAIL: <one-line reason listing the blocking problems>".
+---END TASK FROM PARENT AGENT---
