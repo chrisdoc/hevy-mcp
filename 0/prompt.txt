@@ -1,0 +1,52 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Verify validation path
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are running the Mission Validation Readiness check for a hevy-mcp Effect TS adoption mission.
+
+Working directory: /root/hevy-mcp
+
+MISSION CONTEXT:
+- Internal Effect adoption: hevy-client Effect seam, operations Effect-first API, core tools/resources/workflows/cache via operations, CLI consumer.
+- Deterministic only. No live HEVY_API_KEY. No browser. No new services/ports.
+- User-approved programmatic gate: types + unit at each milestone; full `check` + `test:pr` at the last milestone.
+- User-testing surface: MCP tool/resource unit tests + CLI tests (no agent-browser).
+- Workers implement in git worktrees from origin/main.
+- New requirement: the mission must create a GitHub PR at the end.
+
+VALIDATION INVENTORY TO VERIFY:
+1. Toolchain: `mise exec -- pnpm run test:unit` actually runs (may be long — if full unit is too heavy, run a focused representative subset that proves Vitest works for operations/core/hevy-client, AND still attempt or time-box the named lane).
+2. `mise exec -- pnpm run check:types` — if too slow, at least prove `tsc --noEmit` or package-level check:types for operations/core/hevy-client can start/succeed.
+3. Confirm named lanes exist and are invocable: test:unit, test:pr, check, check:types, check:boundaries, check:changeset
+4. Confirm mock fixtures exist: packages/core/test-fixtures/mock-hevy.ts, operations in-memory Effect adapters
+5. Confirm CLI test command: `pnpm --filter @chrisdoc/hevy-cli run test` or `pnpm run test:cli`
+6. Confirm GitHub CLI or GitHub MCP is available enough to open a PR later (run `gh --version` and `gh auth status`; do NOT create a PR now)
+7. Measure resources: nproc, free -h, memory/CPU/process count before and after exercising tests. Classify max concurrent validators for this unit-test surface using 70% of available headroom. Machine has 8 CPUs and ~31Gi RAM (~11Gi available earlier).
+
+VERIFY PROCEDURE:
+- Execute real commands. Do not assume.
+- Prefer mise-wrapped pnpm.
+- Do NOT modify source, do NOT commit, do NOT start long-running servers, do NOT use live Hevy.
+- If a full suite is too long, run a representative Vitest subset for packages/operations, packages/hevy-client Effect tests, and packages/core tool tests, then report whether the full named lane was completed or time-boxed.
+- Time-box individual heavy commands around 4 minutes if needed; report partial results honestly.
+- Kill any watch-mode processes you start.
+
+REPORT (required):
+- each validation tool and status
+- each validation surface: what was tested, whether it worked, setup steps
+- resource measurements before/after
+- max concurrent validators recommendation with numbers
+- blockers and options
+- any prerequisites you installed
+- confirmation that GitHub PR creation is feasible later (gh auth / token)
+
+Return the full report inline. Do not modify the hevy-mcp repository.
+---END TASK FROM PARENT AGENT---
