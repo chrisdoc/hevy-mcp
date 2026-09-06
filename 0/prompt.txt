@@ -1,0 +1,16 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft observation assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write only `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/observations.md`. Read mission.md and architecture.md, then inspect relevant code/tests in `/root/hevy-mcp-effect-retry-interpreter`. Enumerate black-box assertions for Promise compatibility, public HevyHttpError metadata, expected outcomes, request/retry-wait observation ordering and exactly-once completion, logger behavior, observer failure isolation, and the approved explicit-deadline retry-wait lifecycle correction. Schema:
+`### VAL-OBS-001: Title\nBehavioral pass/fail description.\nTool: vitest\nEvidence: terminal(command + passing test identifier), assertions(events/error/result)`
+Use sequential `VAL-OBS-` IDs. Do not edit any other file. Return filepath and IDs.
+---END TASK FROM PARENT AGENT---
