@@ -1,0 +1,22 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Finalize contract and state
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Edit only these exact files:
+1. `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-contract.md`
+2. `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-state.json`
+
+Apply final review: add one finite repository gate assertion covering exact commands `mise exec -- pnpm run test:unit`, `check`, `check:types`, `build`, `test:pr`, `test:performance`; add one README accuracy-review assertion permitting no README diff when existing guidance remains accurate; remove duplicate assertions VAL-OBS-003 and VAL-OBS-004 while folding any unique public alias/sanitization details into VAL-OBS-015; remove 'externally induced request interruption' wording from VAL-LIFE-020 because VAL-LIFE-021 owns it. Use new IDs after current maxima, likely VAL-COMPAT-010 and VAL-COMPAT-011, without renumbering others.
+
+Then initialize validation-state.json with this exact schema and every final contract assertion ID exactly once, all pending:
+`{"assertions":{"VAL-...":{"status":"pending"}}}`
+Pretty-print valid JSON with tabs or two spaces. Validate ID uniqueness and exact contract/state set equality. Do not edit any other file. Return both filepaths, final assertion count, IDs added/removed/modified, and equality verification.
+---END TASK FROM PARENT AGENT---
