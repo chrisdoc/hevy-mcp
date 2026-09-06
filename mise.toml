@@ -1,6 +1,9 @@
+[settings]
+lockfile = true
+
 [tools]
 node = "24"
-pnpm = "12"
+pnpm = "12.0.0"
 hk = "latest"
 pinact = "latest"
 actionlint = "latest"
