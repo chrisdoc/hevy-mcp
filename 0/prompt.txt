@@ -1,0 +1,53 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Test assertions VAL-CROSS group
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "cli-hygiene".
+
+Assigned assertions: VAL-CROSS-001, VAL-CROSS-003, VAL-CROSS-004, VAL-CROSS-006, VAL-CROSS-007, VAL-CROSS-008, VAL-CROSS-009, VAL-CROSS-013
+
+Your isolation context:
+- Work ONLY inside the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer (verify with `git -C /root/hevy-mcp-effect-ops-layer status --short --branch`). NEVER validate against /root/hevy-mcp (original checkout with a staged changeset) or origin/main — the Effect operations work is not merged there.
+- Validation is READ-ONLY over source: run vitest / named pnpm checks / greps, capture terminal output as evidence. Do NOT modify any production or test source file. No git commit, push, checkout, stash, or any git mutation.
+- Run node/pnpm through mise: `mise exec -- pnpm ...`. Use FILE-SCOPED vitest (`mise exec -- pnpm exec vitest run <specific .test.ts files>`) and the cheap named checks listed below. Do NOT run test:pr (already green on this HEAD — do not re-run), do NOT run full test:unit, do NOT run `pnpm run test:cli` (another validator owns that lane concurrently). Do NOT start dev servers, MCP inspector, or wrangler. No HEVY_API_KEY; fake keys only.
+- Do not use the `entire` code-graph CLI (not on PATH; missing `entire` binary is NOT a product defect) — use Grep/Read instead.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tools: file-scoped vitest, pnpm named checks, `gh pr view` (read-only). The full contract text is in {missionDir}/validation-contract.md — read the "## Cross-Area Flows" section. Testing knowledge: {missionDir}/library/user-testing.md, section "Flow Validator Guidance: cli-hygiene".
+
+What each assertion requires (distilled; the contract text is authoritative):
+
+- VAL-CROSS-001: MCP tools and CLI share ONE operations implementation for mutations. Representative quirk: create/update routine rep_range handling (fixed-rep promotion, usesRepRanges / wire payload) implemented once in @hevy-mcp/operations, consumed by both core tools (packages/core/src/tools/routines.ts via HevyOperationsService) and CLI (hevy routines create/update). Core mutation-semantics.ts / hevy-quirks.ts must no longer be a second source of truth. Feeding the same routine input through tool handler and CLI command produces the same operations call; neither path calls HevyClient.createRoutine/updateRoutine directly. Evidence: file-scoped vitest on packages/core/src/tools/routines.test.ts; for the CLI half, source inspection of packages/cli/src/commands (the CLI lane itself is owned by the concurrent cli-lane validator — cite statically, do not run test:cli).
+- VAL-CROSS-003: Public surfaces stay Promise-shaped: hevy-mcp main export does not re-export Effect / tagged Effect errors / HevyRequestEffectClient / @hevy-mcp/hevy-client/internal; @chrisdoc/hevy-cli stays bin-only with no public Effect export map. Run `mise exec -- pnpm run repository:check:exports` and `mise exec -- pnpm run repository:check:publint` (if those script names differ, find the right ones in root package.json) and `mise exec -- pnpm run check:types`. All must exit 0.
+- VAL-CROSS-004: Topology import edges hold: `mise exec -- pnpm run check:boundaries` exits 0 on the worktree (operations may import hevy-client + internal; core must not import hevy-client/internal; cli may import hevy-client/operations/core but not node/worker; node and worker must not import operations or hevy-client/internal; adapters do not import one another).
+- VAL-CROSS-006: ONE Effect→Promise collapse per user invocation across MCP tool handler (ToolRuntime.createHandler), MCP resource readers (hevy://user, hevy://workout-count, hevy://exercise-templates, hevy://routine-folders), and CLI command execute. Operations programs, catalog lookups, Stream.paginate folds, and Cache lookups stay Effects until that edge; nested collapses inside operations map/catch, tool helpers, or CLI pagination loops fail. Evidence: file-scoped vitest on packages/operations/src/effect-collapse.test.ts and packages/core/src/tools/tool-runtime.test.ts + packages/core/src/resources/hevy.test.ts; CLI half: the durable static assertion packages/cli/src/commands/effect-collapse.test.ts (commit 9a41b49) — you may run that single file with file-scoped vitest. KNOWN PRE-EXISTING, NOT A FAILURE: the `runPromise.catch(invokeHandler)` fallback in packages/core/src/tools/tool-runtime.ts (dead defensive code flagged in scrutiny; VAL-CROSS-006 still holds — exactly one Effect.runPromise per handler).
+- VAL-CROSS-007: Non-empty Changeset names the full cascade from repository/topology.json: @hevy-mcp/hevy-client → @hevy-mcp/hevy-client, @hevy-mcp/operations, @hevy-mcp/core, hevy-mcp, @hevy-mcp/worker, @chrisdoc/hevy-cli. `mise exec -- pnpm run check:changeset` passes on the worktree. The original checkout's staged .changeset/amber-rivers-heal.md must not be reused or edited (verify the worktree's changesets are its own).
+- VAL-CROSS-009: No live Hevy; fake keys only. All tests use fake credentials (HEVY_API_KEY unset or fixture keys like "test-key"). No test, fixture, log, or error message contains a real key. Credential-gated lanes (test:live, test:nightly) are out of scope. Evidence: grep CLI/core/operations fixtures for key handling; confirm your runs never needed a real key.
+- VAL-CROSS-013: Node stdio and Worker HTTP/OAuth are NOT rewritten in Effect: packages/node and packages/worker contain no Effect.runPromise and no imports of @hevy-mcp/operations or @hevy-mcp/hevy-client/internal; adapters stay Promise bridges. Prefer source Grep plus the existing cross-package test (packages/core/src/tools/cross-package.test.ts, file-scoped vitest). A patch changeset for node/worker is acceptable only if core's Promise surface they consume changed — note which changesets touch node/worker.
+- VAL-CROSS-008: GitHub PR opened against main from a feature branch. STRICTLY READ-ONLY: run exactly `gh pr view 1120 --repo chrisdoc/hevy-mcp --json state,baseRefName,headRefName,url,title` (plus `gh pr view 1120 --repo chrisdoc/hevy-mcp` for detail if useful). Confirm: state OPEN, baseRefName main, headRefName feat/effect-ops-layer. Do NOT create any PR, do NOT push, do NOT comment, do NOT re-run test:pr. This assertion is already satisfied by the existing open PR #1120; your job is only to verify it read-only and record the PR URL.
+
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/cli-hygiene/user-testing/flows/cross-area.json
+Save evidence files (command outputs you capture) to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/cli-hygiene/cross-area/
+
+Report JSON shape:
+{
+  "groupId": "cross-area",
+  "milestone": "cli-hygiene",
+  "assertions": [ { "id": "VAL-CROSS-001", "status": "pass|fail|blocked", "evidence": "<commands run + key output excerpts / file:line citations>", "notes": "<anything material>" }, ... one entry per assigned assertion ... ],
+  "frictions": [ "<testing frictions observed>" ],
+  "blockers": [ "<prerequisites broken; empty if none>" ],
+  "toolsUsed": [ "vitest", "pnpm", "gh", ... ]
+}
+
+Status meanings: pass = behavior confirmed; fail = behavior does not match the contract; blocked = prerequisite broken or functionality absent. Judge by behavior captured in command output, not by test titles alone (some titles carry stale [VAL-OPS-NNN]-style prefixes; match by behavior and note drifted titles).
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you. Another validator is running concurrently in the same worktree — keep vitest invocations file-scoped, avoid heavy full-suite lanes, and never write outside your assigned report/evidence paths.
+---END TASK FROM PARENT AGENT---
