@@ -1,0 +1,33 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Review client contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the draft validation contract for the CLIENT SEAM area of a hevy-mcp Effect adoption mission.
+
+Read:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/client-seam.md
+- Optionally skim operations.md / core-runtime.md / cross-area.md for overlap.
+
+Your job: find MISSING user-facing/testable behaviors, duplicates, and assertions that are too implementation-microscopic (source greps for Effect.fn names, DateTime.now() call style) vs true black-box behavior.
+
+Write a review to:
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/review-client.md
+
+Include:
+## Missing (must add)
+## Overlap / duplicates (can drop or merge)
+## Keep as-is (highest value)
+## Recommended merged ID list for final contract (VAL-CLIENT-*) with one-line titles — aim for ~20-25 assertions covering the full Effect client surface without losing resource coverage.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
