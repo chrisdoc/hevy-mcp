@@ -1,0 +1,1 @@
+can you draft that and aslso a response to our own issue https://github.com/chrisdoc/hevy-mcp/issues/1039
