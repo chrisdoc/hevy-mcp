@@ -1,0 +1,74 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Fix stack PR review comments
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Address bot review comments on GitHub stack #1113 in chrisdoc/hevy-mcp. Work in /root/hevy-mcp-effect-retry-interpreter. Do not dirty /root/hevy-mcp user state.
+
+STACK (bottom → top), GitHub stack #1113:
+1. #1104 feat/effect-pure-operations → main
+2. #1110 test/isolate-client-retry-schedule
+3. #1111 feat/effect-request-primitives
+4. #1112 feat/effect-retry-interpreter
+5. #1114 test/fetch-config-merge-stack
+
+USER ASKED TO FIX REVIEW COMMENTS. Publish with gh stack (already installed: github/gh-stack v0.1.0). Never push main. Never --no-verify. gh stack push --force-with-lease on these stack branches is allowed.
+
+MISSION CONSTRAINTS
+- mise for node/pnpm
+- Conventional Commits + Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com> on NEW commits
+- Non-empty changeset for runtime hevy-client changes, full cascade from repository/topology.json
+- Do not edit packages/hevy-client/src/generated/
+- HEVY_API_KEY unset; mocked lanes only
+- Prefer putting each fix on the PR layer that introduced the bug so the stack stays reviewable. If a later PR already fixed it, do not duplicate; reply is not required (do not post GitHub comments unless needed to close a thread — skip posting if TTY/auth is awkward; code+push is enough)
+- After code changes: focused tests, then mise exec -- pnpm run test:unit and check:types (and worker lanes if interpreter/HTTP projection changed)
+
+FIX LIST (from review synthesis)
+
+#1110 (must):
+- Add non-empty bump Changeset for @hevy-mcp/hevy-client AND the full documented cascade (operations, core, hevy-mcp, worker, @chrisdoc/hevy-cli). Runtime-visible isolation of schedule state is a client change.
+- Strengthen request-local tests if they only assert object identity (first !== second). They should prove independent retry indexes/budgets/delays like packages/hevy-client/src/request-local-retry-state.test.ts on this stack already may — if already strong, skip.
+
+#1111 (must, unless already fixed in #1112 — verify in hevy-client-kubb.ts at HEAD of 1112 first):
+- Lazy request Effect: create deadline signal + mutable retry state inside Effect.suspend / when the Effect runs, not at createRequestEffect() call time.
+- Observer failures must be best-effort: startRequestObservationEffect / scope.run throw must NOT abort retry or skip backoff.
+- If scope.run rejects, backoff wait + finalizers must still run (no retryWaitScope leak).
+
+#1112 (must):
+- Do not call response.body.cancel() after response.text() has locked the stream; drain/abandon without throwing cancel-on-locked-body.
+- Interrupting requestEffect during Effect-clock backoff must project HEVY_REQUEST_ABORTED / cancelled, not ERR_NETWORK / terminal_failure. Abort executionSignal or classify Cause.interrupt correctly.
+- Effect.ensuring completeAttempt vs transitionAfterAttempt race: completed attempt observations must not duplicate; finish exactly once.
+
+#1114 (optional but do if cheap):
+- Rename test that says “merges” if setConfig replaces whole config.
+- If cheap, assert async fetch export beyond reference equality.
+
+#1104:
+- Shared Schedule.toStep is the #1110 fix — do not rewrite 1104 unless the leak is still on 1104 AND not fixed in 1110. Prefer leave 1104 as foundation.
+- Effect.tryPromise catch replacing non-Error rejections: fix on the layer that owns those catch handlers (likely 1104 operations files routines.ts/workouts.ts OR later). Preserve adapter rejection identity.
+
+#1109 leftover: Schedule.addDelay vs Schedule.addDelayEffect — if any remaining call passes an Effect to addDelay, switch to addDelayEffect.
+
+PROCESS
+1. gh stack checkout 1113 (or checkout top). Inspect current files vs comments so you don't re-fix already-landed work.
+2. Implement on the correct layer. If you need to edit a lower branch, checkout that branch, commit, then `gh stack rebase` / `gh stack push` so upstack replays.
+3. Use `npx changeset` or author a proper .changeset/*.md via changeset CLI if adding a bump. All node via mise.
+4. `gh stack submit --auto --open` or `gh stack push` after rebase. Non-interactive flags only. No TUI hang.
+5. Run tests.
+
+OUTPUT
+- What you changed per PR
+- Commits SHAs per branch
+- Tests run + exit codes
+- Whether gh stack push succeeded
+- Anything left unfixed and why
+
+Do not merge. Do not close PRs.
+---END TASK FROM PARENT AGENT---
