@@ -1,0 +1,39 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Fetch PR review comments
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. Use `gh` from /root/hevy-mcp-effect-retry-interpreter. Do not modify git, do not reply on GitHub.
+
+Collect ALL reviewer comments on these open (and recently closed if relevant) PRs in chrisdoc/hevy-mcp:
+- 1104, 1110, 1111, 1112, 1114
+Also check 1105 and 1109 only if they have comments that still apply.
+
+For each PR run:
+```
+gh pr view N --json number,title,url,state,reviews,comments,latestReviews
+gh api repos/chrisdoc/hevy-mcp/pulls/N/comments
+gh api repos/chrisdoc/hevy-mcp/issues/N/comments
+```
+
+Also list review threads if possible:
+```
+gh api graphql -f query='...' 
+```
+or `gh pr view N --comments`
+
+OUTPUT inline, organized by PR number:
+- PR title, url, state
+- For each comment: author, date, file:line if inline, body (summarize long bodies but keep requested changes verbatim), whether it is a review request-changes / comment / approval
+- Count of unresolved vs resolved review threads if available
+- One-line "action needed?" per PR
+
+Do not write files. Do not post replies.
+---END TASK FROM PARENT AGENT---
