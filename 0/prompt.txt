@@ -1,0 +1,1 @@
+do we have any other tests that do not strictly test the hevy-mcp server?
