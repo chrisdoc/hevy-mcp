@@ -1,0 +1,41 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Verify dependency readiness in worktree
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are verifying mission dependency readiness in the git worktree at /home/ubuntu/hevy-mcp-effect-deepening (branch feat/effect-deepening, based on origin/feat/effect-ops-layer). pnpm monorepo; Node 24 and pnpm 12 pinned via mise.toml; mise is installed (2026.9.1, linux-arm64).
+
+KNOWN SANDBOX CONSTRAINT: plain `mise exec -- <cmd>` FAILS on this machine because mise.toml includes `kiota` which cannot install on linux/arm64. Use the scoped form instead: `mise exec node@24 pnpm@12 -- <cmd>`, which is verified to work. Direct binaries also exist under ~/.local/share/mise/installs/node/24.20.0/bin/.
+
+Your tasks, in order:
+
+1. Install dependencies: run `cd /home/ubuntu/hevy-mcp-effect-deepening && mise exec node@24 pnpm@12 -- pnpm install` (use a long timeout, e.g. 600s). Report success/failure and any install warnings. Do NOT modify mise.toml or any repo config to work around kiota — the scoped exec form is the approved workaround.
+
+2. Verify the Effect guidance file now exists: read /home/ubuntu/hevy-mcp-effect-deepening/node_modules/effect/AGENTS.md and confirm its presence plus the effect version installed (check node_modules/effect/package.json version, and what packages/core/package.json requests).
+
+3. Verify the toolchain end-to-end with fast checks only (do NOT run the full test suite):
+   - `mise exec node@24 pnpm@12 -- pnpm run check:types` (report pass/fail; this may take a few minutes — allow 600s)
+   - A smoke unit test on ONE small package, e.g. `mise exec node@24 pnpm@12 -- pnpm run test:unit -- packages/operations/src/user.test.ts` (report pass/fail and duration)
+   - `mise exec node@24 pnpm@12 -- pnpm run check` (oxlint + oxfmt check; report pass/fail). Note: check includes check:openapi and check:generated — if check:openapi needs network to api.hevyapp.com and fails with ENOTFOUND, report that separately as an expected sandbox limitation, and try `mise exec node@24 pnpm@12 -- npx oxlint . --type-aware --type-check` plus `mise exec node@24 pnpm@12 -- npx oxfmt . --check` individually to isolate lint/format status.
+
+4. Inventory verification: confirm these are usable in the environment:
+   - node 24 (mise exec node@24 -- node --version)
+   - pnpm 12
+   - vitest (via the smoke test above)
+   - oxlint/oxfmt (via step 3)
+   - changesets CLI: `mise exec node@24 pnpm@12 -- pnpm run check:changeset` — report whether it passes on this branch (it compares --since origin/main; if it fails because the base branch differs, capture the exact error)
+   - hk hooks: check whether git hooks are installed for the worktree (git config core.hooksPath, and ls of the worktree gitdir hooks at /home/ubuntu/hevy-mcp/.git/worktrees/hevy-mcp-effect-deepening/hooks). Do NOT install hooks; just report status.
+
+5. Network probes (read-only, quick):
+   - Can we reach registry.npmjs.org? (the pnpm install result answers this)
+   - Can we reach api.hevyapp.com? Try `mise exec node@24 -- node -e "fetch('https://api.hevyapp.com/v1/user', {signal: AbortSignal.timeout(8000)}).then(r=>console.log('status',r.status)).catch(e=>console.log('ERR',e.message))"` — report reachable/unreachable. This determines whether credential-gated live lanes can run at all in this sandbox.
+
+Return an inline structured report (do not write files): dependency inventory with verification status for each item, exact commands that passed/failed, the effect version, hooks status, network reachability results, and any blockers with concrete options.
+---END TASK FROM PARENT AGENT---
