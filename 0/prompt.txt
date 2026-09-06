@@ -1,0 +1,80 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft cross-area contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting the CROSS-AREA FLOWS section of a mission validation contract. Black-box, behavior-based. Investigate how client, core, node, worker-validation-cache, and CLI compose.
+
+WRITE a file. Do not only return analysis.
+
+Write to this exact path:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/cross-area.md
+
+In your FINAL RESPONSE, return that filepath and a short summary of assertion IDs.
+
+## Mission context
+
+Repo (read-only): /home/ubuntu/hevy-mcp-effect-deepening
+Architecture: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+Mission: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+Scope hierarchy: process Scope (node) → server Scope (core cache/runtime) → request Scope (tool, wired to mcpReq.signal) → hevy-client request Effect (retry/timeout, AbortSignal at fetch edge only).
+
+Public Promise APIs remain. Effect types may appear in public exports (additive).
+
+Out of scope: Worker adapter beyond validation-cache, Zod→Schema, Effect Config, generated client.
+
+## What to investigate
+
+Trace at least these flows by reading code (do not implement):
+1. MCP stdio tool call → core runToolEffect → operations .effect() → hevy-client fetch. Cancellation at MCP should abort fetch.
+2. MCP HTTP session close / process SIGTERM should finalize telemetry, interrupt server scope (cache), close HTTP sessions.
+3. CLI command execute still Promise-typed, still talks through operations/client.
+4. Package boundaries: core/client/operations have no node: or cloudflare imports; node does not import worker.
+5. Changeset cascade / public pack still works after Effect types in node/core/client exports.
+6. First-visit: import hevy-mcp, create server, list tools, call a read tool against mock — full path.
+7. Write tool (non-idempotent) through MCP never retries at client.
+8. Worker validation-cache retry policy must NOT silently inherit client 429-retry.
+9. Token/measure: no catalog/tool description changes expected; if they happen, measure:tokens.
+10. Characterization: existing test:pr lanes stay green unless a flagged behavior improvement.
+
+## Output format
+
+```markdown
+# Cross-Area Flows
+
+## Surface
+...
+
+## Interactions enumerated
+- ...
+
+## Assertions
+
+### VAL-CROSS-001: Short title
+Behavioral description, unambiguous pass/fail.
+Tool: vitest | pnpm (test:pr / test:mcp / test:stdio / check:boundaries / test:pack) | node
+Evidence: ...
+```
+
+IDs VAL-CROSS-001+.
+
+Include:
+- First-visit / navigability of the MCP surface (not just unit-level)
+- Consistency: same error classes from client through MCP error policy
+- Consequential: shutdown actually stops in-flight Hevy work
+- Boundary and embedding contracts
+- PR baseline remains green
+- No secret leakage across layers
+
+12–25 assertions, exhaustive not padded.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
