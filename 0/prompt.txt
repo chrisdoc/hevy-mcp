@@ -1,0 +1,41 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Verify mission dependencies
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are the mission dependency-readiness checker for a Hevy MCP “operations collapse” mission. Do NOT modify the dirty checkout at /root/hevy-mcp. Prefer verifying against origin/main (afb18b01fb9390585d6284f8f1446707adcbb2a1) using /root/hevy-mcp-effect-retry-interpreter if it contains that commit, or git show / a throwaway worktree from origin/main.
+
+## Inventory (verify each)
+
+1. **mise** — Node 24 and pnpm 12 per /root/hevy-mcp/mise.toml. Run `mise --version` and `mise exec -- node --version` and `mise exec -- pnpm --version`.
+2. **effect** — already a dependency of hevy-client/operations/core. Prove it can be imported: from a package that already depends on it, run a one-liner `mise exec -- node --input-type=module -e "import { Effect } from 'effect'; console.log('effect-ok', typeof Effect.runPromise)"` with cwd in packages/operations or packages/hevy-client. Do NOT npm install in a temp dir if the workspace already has node_modules. If node_modules missing, `mise exec -- pnpm install` in the worktree that tracks origin/main (NOT /root/hevy-mcp if that would mutate the dirty tree).
+3. **vitest** — `mise exec -- pnpm exec vitest --version`
+4. **typescript / tsc** — `mise exec -- pnpm exec tsc --version`
+5. **changesets** — `mise exec -- pnpm exec changeset --version`
+6. **gh** and **gh stack** (github/gh-stack). Run `gh --version`, `gh auth status`, and `gh stack --help` (or `gh stack -h`). Report whether gh-stack extension is installed.
+7. **git** — `git --version`; confirm origin/main is afb18b0.
+8. **hk / git hooks** — optional: `mise exec hk -- hk --version` if present.
+9. **HEVY_API_KEY** — do NOT require it. User opted out of live Hevy. Confirm we are NOT depending on it. Do not print any secrets if present in env.
+10. **No new services/ports.** Confirm no extra package install is required beyond the repo lockfile.
+
+## Report format (return inline, do not write files)
+
+For each inventory item: status (available / installed / blocked), command run, result.
+
+Also:
+- effect package version from packages/operations/package.json and packages/hevy-client/package.json
+- whether `client.requestEffect` is already a public HevyClient method or only on the kubb impl (quick type/export check)
+- blockers
+- surprises
+
+Do not commit, do not push, do not edit /root/hevy-mcp. If you need a clean install, use /root/hevy-mcp-effect-retry-interpreter only if its HEAD contains origin/main; otherwise create /tmp/hevy-mcp-ops-collapse-readiness from origin/main and install there.
+
+Return filepaths of any files you inspected.
+---END TASK FROM PARENT AGENT---
