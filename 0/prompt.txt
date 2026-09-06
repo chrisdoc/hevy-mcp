@@ -1,0 +1,41 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Re-review core-tool-runtime-collapse report
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "core-tool-runtime-collapse" for milestone "core-runtime".
+
+Feature details:
+- ID: core-tool-runtime-collapse
+- Description: Make ToolRuntime.createHandler the single Effect.runPromise/runPromiseExit per tool call, and each resource reader collapse once. Preserve MCP first-visit (22 tools, get-user-info unregistered), define-tool taxonomy, response contracts, expected404Outcome telemetry, telemetry-safe args, forExecution abort/deadline, and first callTool using the layer-backed operations instance.
+- Milestone: core-runtime
+- Worker session: 49a52639-54d2-4cba-b845-ae8e83cdddde
+- Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+A previous review of this feature returned a prose PASS verdict but wrote a malformed report file (verdict was null, findings array empty). Re-do the review and write a VALID report.
+
+Transcript evidence: the worker's transcript skeleton is the JSONL line whose "featureId" equals "core-tool-runtime-collapse" in /tmp/core-transcripts.jsonl. Extract it yourself:
+  jq -r 'select(.featureId == "core-tool-runtime-collapse")' /tmp/core-transcripts.jsonl
+
+STRICT REPORT REQUIREMENTS:
+1. Review the transcript against the feature's expectedBehavior. Assess: (a) does the transcript show the claimed behavior was implemented and verified; (b) code review findings with severity ("blocking", "non_blocking", or "suggestion"); (c) sharedStateObservations other workers must know; (d) whether any blocking issue must be fixed before user testing.
+2. Write the report as JSON to EXACTLY this path (create parent dirs if needed):
+   /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/scrutiny/reviews/core-tool-runtime-collapse.json
+3. The report MUST satisfy all of the following or your review does not count:
+   - "verdict" is the literal string "pass" or "fail" — NEVER null, NEVER empty.
+   - "findings" is a JSON array (use [] if none). Every finding object has "severity" ("blocking"|"non_blocking"|"suggestion") and "description".
+   - "blockingIssues" is a JSON array (use [] if none).
+   - "sharedStateObservations" is a JSON array (use [] if none).
+   - "recommendedGuidanceUpdates" is a JSON array (use [] if none).
+4. Validate before finishing:
+   jq -e '.verdict == "pass" or .verdict == "fail"' <report-path>
+   If jq exits non-zero, fix the file and re-validate until it passes.
+
+Then return a short summary stating your verdict and the report path.
+---END TASK FROM PARENT AGENT---
