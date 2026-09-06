@@ -1,0 +1,96 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Link PRs with gh stack
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Use GitHub's `gh stack` extension (https://github.com/github/gh-stack) so the Effect PRs appear as a real GitHub stacked-PR object, not just PRs with chained bases.
+
+WORK FROM: /root/hevy-mcp-effect-retry-interpreter (or a fresh worktree). Do NOT dirty /root/hevy-mcp user state (.pi-subagents, staged changeset).
+
+INSTALL
+```
+gh extension install github/gh-stack
+gh stack --help
+```
+If already installed, skip. Requires gh auth.
+
+CURRENT OPEN PRs (chrisdoc/hevy-mcp)
+Linear chain already using PR bases (but NOT a GitHub stack object, which is why the user cannot "see the stack"):
+- #1104 feat/effect-pure-operations → main
+- #1110 test/isolate-client-retry-schedule → feat/effect-pure-operations
+- #1111 feat/effect-request-primitives → test/isolate-client-retry-schedule
+- #1112 feat/effect-retry-interpreter → feat/effect-request-primitives
+
+Still parallel on main (user asked to fix these):
+- #1105 test/request-local-retry-state → main  (same tip 1c976a1 as #1109)
+- #1109 test/fetch-config-merge → main (same tip)
+
+INVESTIGATION ALREADY DONE
+1105 and 1109 are THE SAME two commits: fa3fc92 (retry-schedule extract + small request-local tests) and 1c976a1 (fetch.test.ts config-merge characterization + lucky-pens-take changeset).
+- retry-schedule.ts content is already on #1104/#1110/#1112
+- 1110 has a BETTER/larger request-local-retry-state.test.ts and the real kubb isolation change
+- UNIQUE leftover: packages/hevy-client/src/fetch.test.ts from 1c976a1
+- Do NOT cherry-pick fa3fc92 onto 1112 (would collide with 1110 tests)
+- Changeset lucky-pens-take.md may conflict; use a stack-appropriate non-empty changeset only if fetch.test.ts is a release trigger. Fetch characterization tests are often test-only; if check:changeset allows empty for test-only, do not add a bump. Follow repo AGENTS.md: test-only may use empty changeset ONLY if no packages/* runtime change. fetch.test.ts is tests — likely no bump needed.
+
+WHAT TO DO
+
+1. Install gh-stack. Run non-interactively wherever possible (`--auto`, `--open`, `--yes`). Do not hang on TUIs. If a command requires a TTY, use `gh stack link` which is designed for non-interactive linking of existing PRs.
+
+2. Create the GitHub stack object for the Effect chain:
+   ```
+   gh stack link --open 1104 1110 1111 1112
+   ```
+   or equivalently by branch names in bottom-to-top order:
+   ```
+   gh stack link --open feat/effect-pure-operations test/isolate-client-retry-schedule feat/effect-request-primitives feat/effect-retry-interpreter
+   ```
+   Docs: gh stack link takes args bottom-to-top; creates/updates the GitHub stack; pushes branches; corrects PR bases; does not require local stack tracking.
+
+3. Fix 1105: close it as superseded by #1110 (request-local characterization on the Effect stack). Use:
+   `gh pr close 1105 --comment "..."`
+   Do not delete the remote branch unless needed.
+
+4. Fix 1109: keep the UNIQUE fetch.test.ts work.
+   - Cherry-pick ONLY the fetch.test.ts change onto a NEW branch based on origin/feat/effect-retry-interpreter (top of stack). Do not include fa3fc92.
+   - If cherry-pick of 1c976a1 is messy, extract just packages/hevy-client/src/fetch.test.ts.
+   - Commit with Conventional Commit, Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com> if you make a new commit.
+   - Push the new branch (never main, no --no-verify).
+   - Append it to the GitHub stack:
+     `gh stack link --open <existing-stack-number-or-1104> test/fetch-config-merge`
+     OR `gh stack link --open 1104 1110 1111 1112 <new-branch>`
+   - Then close the old #1109 if it still points at the duplicate 1c976a1 tip, OR retarget it if you reused the same branch name after rewriting. Prefer a NEW branch name like `test/fetch-config-merge-stack` to avoid force-pushing origin/test/fetch-config-merge.
+   - If you must update origin/test/fetch-config-merge, do NOT force-push unless the branch would otherwise stay a parallel PR into main. Prefer new branch + close 1109.
+
+5. After linking, verify the stack is visible:
+   ```
+   gh stack view
+   gh pr list
+   ```
+   Also try GraphQL or `gh api` if needed to print the stack number and PR order.
+   Open PR pages should show stacked-PR UI (stack number).
+
+HARD RULES
+- Never push to main. Never --no-verify.
+- Avoid force-push of #1104/#1110/#1111/#1112.
+- Avoid force-push of origin/test/fetch-config-merge and origin/test/request-local-retry-state if a new branch will do.
+- Do not merge anything.
+- All node/pnpm through mise if you run tests. Run focused fetch tests if you add fetch.test.ts.
+
+OUTPUT (mandatory)
+- gh-stack version / install result
+- GitHub stack number if any
+- Final PR order head→base with URLs
+- What happened to 1105 and 1109
+- Any force-push (branch + why)
+- Commands that failed and how you worked around TTY
+
+Do not write extra markdown files into the repo.
+---END TASK FROM PARENT AGENT---
