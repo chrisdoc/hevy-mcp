@@ -1,0 +1,32 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Explore hevy-mcp error handling
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Explore the hevy-mcp repository at /root/hevy-mcp to understand its current error handling, concurrency, resource management, observability, and dependency injection patterns. I need a detailed report covering:
+
+1. **Error handling**: Find `withErrorHandling`, `ToolRuntime`, error types, error policies, and how errors are currently typed and propagated. Look in packages/core/src/ especially. Show key code patterns.
+
+2. **Concurrency**: How does the codebase handle parallel operations, retries, timeouts, and backoff? Search for Promise.all, retry logic, timeout patterns, AbortController usage.
+
+3. **Resource management**: How are resources (HTTP clients, caches, connections) acquired and released? Look for cleanup patterns, disposable patterns, cache implementations.
+
+4. **Observability/telemetry**: What tracing, logging, metrics, and diagnostics infrastructure exists? Look in packages/node/src/ for telemetry, stdio-observability, and packages/core for diagnostics.
+
+5. **Configuration**: How is configuration loaded and validated? Look for env var handling, config validation, schema-based config.
+
+6. **Dependency injection**: How are dependencies (like the Hevy client) provided to tool handlers? Is there a DI pattern or is it passed manually?
+
+7. **Schema validation**: How is Zod used for input validation? What's the relationship between Zod schemas and types?
+
+8. **Streaming**: Is there any streaming support? How are large responses handled?
+
+For each area, provide the file paths, key code snippets, and a summary of the current approach. Be thorough - read the actual source files.
+---END TASK FROM PARENT AGENT---
