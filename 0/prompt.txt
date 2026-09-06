@@ -1,0 +1,89 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft client-runtime contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting the CLIENT RUNTIME section of a mission validation contract. This is black-box, behavior-based TDD for a mission that deepens Effect adoption in hevy-mcp. You investigate current behavior, then enumerate EVERY user-facing / consumer-facing interaction for this area.
+
+WRITE a file. Do not only return analysis.
+
+Write to this exact path:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/client-runtime.md
+
+In your FINAL RESPONSE, return that filepath and a short summary of assertion IDs.
+
+## Mission context
+
+Repo (work only here, read-only for you): /home/ubuntu/hevy-mcp-effect-deepening
+Branch: feat/effect-deepening stacked on PR #1120 (feat/effect-ops-layer)
+Architecture (authoritative): /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+Mission: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+This area is Track 1 — Client runtime:
+- packages/hevy-client retry/timeout/interruption via Effect.retry + Schedule + Effect.timeout* + fiber interruption
+- packages/worker/src/validation-cache.ts retry loop only (not Worker request handling/OAuth/bindings)
+
+Out of scope: Worker adapter beyond validation-cache, Zod→Schema, Effect Config, generated Kubb files.
+
+## What to investigate (read the code)
+
+Investigate these files thoroughly (and their tests):
+- packages/hevy-client/src/hevy-client-kubb.ts (retry interpreter, while(true), deadline free-retry)
+- packages/hevy-client/src/execution.ts (withExecutionSignal, unused)
+- packages/hevy-client/src/retry-policy.ts, retry-schedule.ts, backoff.ts, attempt.ts
+- packages/hevy-client/src/effect-errors.ts, response-error.ts, hevy-http-error.ts
+- packages/hevy-client/src/hevy-client.ts, index.ts (public Promise API)
+- packages/hevy-client/src/*.test.ts especially retry-schedule.test.ts, request-effect.test.ts, hevy-client.test.ts, internal-request-effect.test.ts
+- packages/worker/src/validation-cache.ts and its tests
+- packages/operations descriptor.safety usage if relevant to retry
+
+Enumerate:
+- What a HevyClient consumer can DO (methods, options: deadline, signal, retries, timeout)
+- Retry policy today: which errors retry, max retries, backoff, Retry-After, jitter, writes vs reads, 429
+- Timeout/deadline/abort behavior and error codes (HEVY_RETRY_EXHAUSTED, HEVY_DEADLINE_EXCEEDED, HEVY_REQUEST_ABORTED, tagged classes ApiError, NetworkError, NotFoundError, RateLimitError, ValidationError)
+- The "one free read retry after deadline" branch
+- Worker validation-cache: delays [300,600], 429 exclusion, abort-during-delay currently RESOLVES (bug to fix)
+- Promise boundary compatibility
+- Secrets: HEVY_API_KEY never in errors/logs
+
+## Output format (strict)
+
+Markdown with this structure. Use IDs VAL-CLIENT-001, VAL-CLIENT-002, ... sequential. Also VAL-WORKER-001+ for validation-cache.
+
+```markdown
+# Area: Client Runtime
+
+## Surface
+Who consumes this: ...
+How it is tested: vitest in packages/hevy-client, packages/worker; TestClock; nock/mocked fetch. Tool: vitest (pnpm run test:unit scoped) and, for live later, pnpm run test:live.
+
+## Interactions enumerated
+- ...
+
+## Assertions
+
+### VAL-CLIENT-001: Short title
+Behavioral description with unambiguous pass/fail.
+Tool: vitest
+Evidence: test names, terminal output of the focused suite, no HEVY_API_KEY in logs
+```
+
+Rules:
+- Black-box / behavioral. Do not assert "uses Effect.retry". Assert observable retry/timeout/abort/error-class behavior.
+- Cover happy path, retries, exhaustion, 429+Retry-After, non-idempotent writes never retried, abort mid-request, abort during delay, per-attempt timeout, overall deadline, free read retry after deadline (or the intended replacement if architecture folds it into schedule), Promise API compatibility, error class discriminability, no mutation of error.code in place if that's the improvement, no secret leakage.
+- Worker validation-cache: abort during delay MUST fail (not resolve-then-recheck). 429 exclusion documented. Deadline intersection.
+- Include assumed/consequential behaviors users would take for granted.
+- Each assertion: Tool + Evidence requirements.
+- Be exhaustive for this area. Aim for 15–30 assertions if the topology warrants it; do not pad.
+
+Do not invent APIs. Ground every assertion in current public/consumer-visible behavior or in the architecture's intended replacement of that behavior.
+
+Return the filepath of the file you wrote.
+---END TASK FROM PARENT AGENT---
