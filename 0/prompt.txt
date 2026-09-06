@@ -1,0 +1,16 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft lifecycle assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write only `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/lifecycle.md`. Read mission.md and architecture.md in the mission directory, then inspect relevant code/tests in `/root/hevy-mcp-effect-retry-interpreter`. Enumerate exhaustive black-box assertions for caller cancellation, implicit/explicit deadlines, fresh read deadline retry, backoff cancellation, cancellation/deadline races, Effect interruption where observable, default TestClock-controlled backoff, custom sleep compatibility, and cleanup of timers/listeners/signals/fibers. Schema:
+`### VAL-LIFE-001: Title\nBehavioral pass/fail description.\nTool: vitest\nEvidence: terminal(command + passing test identifier), assertions(error/phase/attempts/cleanup)`
+Use sequential `VAL-LIFE-` IDs. Do not edit any other file. Return the filepath and IDs written.
+---END TASK FROM PARENT AGENT---
