@@ -1,0 +1,21 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "fix-observer-handler-compose",
+  "description": "PR #1120 review fix (Qodo): createToolRuntime silently discards the caller-supplied createHandler factory when an observer is configured (createObservedHandler calls withErrorHandling directly, packages/core/src/tools/tool-runtime.ts ~269-296). Compose observation around the resolved handler factory so createHandler IS invoked when both observer and createHandler are set, and observation still wraps everything. TDD in packages/core/src/tools/tool-runtime.test.ts. Work only in /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer. Conventional Commit. Run scoped vitest + check:types; run check:changeset and add/adjust a changeset only if it fails. Do not touch /root/hevy-mcp; do not push.",
+  "skillName": "core-runtime-worker",
+  "milestone": "pr-review-fixes",
+  "preconditions": [
+    "Mission worktree /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer is clean",
+    "tool-runtime.ts currently selects createObservedHandler over effectHandlerFactory when observer is set"
+  ],
+  "expectedBehavior": [
+    "When both observer and createHandler are provided, the caller factory is invoked and the observer wraps its handler",
+    "When only observer is provided, default withErrorHandling behavior is preserved and observed",
+    "When no observer is provided, existing createHandler behavior is unchanged",
+    "mise exec -- pnpm exec vitest run packages/core/src/tools/tool-runtime.test.ts exits 0",
+    "mise exec -- pnpm --filter @hevy-mcp/core run check:types exits 0"
+  ]
+}
+```
