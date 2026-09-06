@@ -1,0 +1,1 @@
+what about the review comments? are they valid https://github.com/chrisdoc/hevy-mcp/pull/961
