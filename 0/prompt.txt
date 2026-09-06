@@ -1,0 +1,26 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review fix-workout-update-payload-fidelity
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "fix-workout-update-payload-fidelity" for milestone "pr-review-fixes".
+
+Feature details:
+- ID: fix-workout-update-payload-fidelity
+- Description: PR #1120 review fixes (CodeRabbit + gitar), two related regressions vs origin/main in workout updates: (a) packages/operations/src/mutation-semantics.ts buildWorkoutUpdatePayload omits `description` when neither patch nor fetched workout has one; origin/main sent `description: null`. Restore the null default. (b) packages/operations/src/workouts.ts ~418-431 replacement-exercises branch builds metadata from the patch without fetching the current workout, so a replacement patch missing title/start_time/end_time throws WorkoutPayloadError; origin/main always fetched the workout and merged. Restore fetch-and-merge for the replacement branch. TDD in packages/operations/src/mutation-semantics.test.ts and workouts.test.ts.
+- Worker session: 6e7c174b-e71c-4a6a-9ebf-dc10ade6a08d
+
+IMPORTANT: All implementation lives in the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer. Do NOT review against /root/hevy-mcp or origin/main.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+The fix commit is: 9a51602 fix(operations): preserve workout update payload fidelity.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/pr-review-fixes/scrutiny/reviews/fix-workout-update-payload-fidelity.json
+---END TASK FROM PARENT AGENT---
