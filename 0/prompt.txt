@@ -1,0 +1,16 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft compatibility assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write only `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/compatibility-cross.md`. Read mission.md and architecture.md, then inspect relevant repository validation configuration and Worker/client integration tests. Enumerate black-box assertions for Node Promise API compatibility, Cloudflare Workerd execution, Worker HTTP retry projection, package/runtime boundaries, generated output stability, changeset coverage, and cross-area flows connecting retry, cancellation, observations, and adapter error projection. Use `VAL-COMPAT-` IDs for compatibility and `VAL-CROSS-` IDs for cross-area. Schema:
+`### VAL-COMPAT-001: Title\nBehavioral pass/fail description.\nTool: named repository command or vitest\nEvidence: terminal(command + result), assertions(...)`
+Do not edit any other file. Return filepath and IDs.
+---END TASK FROM PARENT AGENT---
