@@ -1,0 +1,51 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Test assertions VAL-OPS-039/040/041
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "pr-review-fixes".
+
+Assigned assertions: VAL-OPS-039, VAL-OPS-040, VAL-OPS-041
+
+Your isolation context:
+- Mission worktree: /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer. Work ONLY here. Never modify /root/hevy-mcp (original checkout with a staged changeset) or any other worktree.
+- Validation is read-only over source: run vitest and capture terminal output as evidence. Do NOT modify any source or test files. No git commit, push, checkout, or stash. The worktree has committed work that must stay intact (git status should stay clean).
+- Run node/pnpm through mise: `mise exec -- pnpm exec vitest run <files>`. Dependencies are pre-installed; do not run pnpm install.
+- No services to start. No live Hevy API. No HEVY_API_KEY. Fake keys only. No browser, no tuistory.
+- Scope vitest runs to your assigned test files only; do not run full `test:unit` or `test:pr`.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest (file-scoped)
+
+Read the full assertion definitions in {missionDir}/validation-contract.md (Area: Operations). The assertions:
+
+- VAL-OPS-039: Workout update PUT preserves explicit-null description semantics. `buildWorkoutUpdatePayload`, when neither the patch nor the fetched workout provides a description, emits `description: null` in the PUT payload (matching origin/main behavior), rather than omitting the field. Patched description values are used when present. Fail if the payload omits `description` entirely in the both-absent case, or if a patched description is dropped.
+  Evidence: `packages/operations/src/mutation-semantics.test.ts` (or `packages/operations/src/workouts.test.ts`)
+
+- VAL-OPS-040: Replacement workout patches preserve fetched metadata. The replacement-exercises branch obtains current workout metadata (title, start_time, end_time, description) the same way origin/main did — fetch the existing workout and merge patch values over it — so a replacement patch omitting metadata does not throw WorkoutPayloadError and does not send undefined metadata. Missing workout ID or genuinely invalid fetched values still fail loudly. Fail if a metadata-omitting replacement patch throws WorkoutPayloadError, sends undefined metadata, or if missing-ID/invalid-value cases are silently recovered.
+  Evidence: `packages/operations/src/workouts.test.ts` / `packages/operations/src/mutation-semantics.test.ts`
+
+- VAL-OPS-041: Template pagination policy is uniform. `createTemplatesListAllOperation` applies the same `page_count` validation policy as `createTemplatesSearchOperation` for the exercise-templates endpoint: an omitted/invalid `page_count` in a non-final page response is rejected with `PaginationMismatchError` (or a shared validated helper), never silently treated as end-of-list (which would truncate results). Valid present `page_count` values keep working in both operations. Fail if `templates.listAll` still ends the scan on missing/invalid `page_count`, or if valid `page_count` pages break either operation.
+  Evidence: `packages/operations/src/templates.test.ts`
+
+Method (read the contract text carefully and judge behavior, not just test titles):
+1. Run file-scoped vitest over the evidence files: e.g. `cd /root/hevy-mcp-effect-ops-layer && mise exec -- pnpm exec vitest run packages/operations/src/mutation-semantics.test.ts packages/operations/src/workouts.test.ts packages/operations/src/templates.test.ts`
+2. For each assertion, confirm the passing test cases exist and actually exercise the contract behavior (check test titles and, where needed, read the test bodies or the implementation to confirm the described behavior is genuinely asserted — e.g. `description: null` present in payload, fetched metadata merged for replacement patches, PaginationMismatchError on missing page_count in listAll). Match assertions by behavior, not title prefixes.
+3. Record exact vitest output (pass/fail counts per file) as evidence.
+
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/pr-review-fixes/user-testing/flows/operations-fidelity.json
+Create the directory if needed. Report JSON shape: { "group": "operations-fidelity", "milestone": "pr-review-fixes", "assertions": [ { "id": "VAL-OPS-039", "status": "pass|fail|blocked", "evidence": "...", "notes": "..." }, ... ], "frictions": [], "blockers": [], "toolsUsed": ["vitest"] }
+
+Save evidence files to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/pr-review-fixes/operations-fidelity/
+
+Flow validator guidance section: "Flow Validator Guidance: pr-review-fixes" in {missionDir}/library/user-testing.md
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you.
+---END TASK FROM PARENT AGENT---
