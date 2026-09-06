@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Analyze Node validation failures
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only analysis only, do not write files. Review the handoff at /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/handoffs/REDACTED.json, the validation synthesis under /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation/node-adapter/user-testing/, and current code in /home/ubuntu/hevy-mcp-effect-deepening/packages/node/src/cli.ts plus relevant error/config/argument tests. Verify the root cause for VAL-NODE-008 and VAL-NODE-009, recommend one tightly scoped repair feature with exact expected behavior and test targets, and assess whether the VAL-CROSS-006 caveat needs tracking under the current assertion. Return analysis inline and cite all relevant absolute file paths. Do not write any file; therefore there are no filepaths to return as written outputs.
+---END TASK FROM PARENT AGENT---
