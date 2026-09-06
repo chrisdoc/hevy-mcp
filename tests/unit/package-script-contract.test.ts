@@ -17,6 +17,9 @@ const miseConfig = resolve(repositoryRoot, "mise.toml");
 const miseDataDir =
 	process.env.MISE_DATA_DIR ??
 	resolve(process.env.HOME ?? "/tmp", ".local/share/mise");
+const corepackHome =
+	process.env.COREPACK_HOME ??
+	resolve(process.env.HOME ?? "/tmp", ".cache/node/corepack");
 const pnpmPath = spawnSync("mise", ["which", "pnpm"], {
 	env: { ...process.env, MISE_AUTO_INSTALL: "false" },
 	encoding: "utf8",
@@ -108,6 +111,10 @@ function runPackageScript(
 		...process.env,
 		...env,
 		MISE_AUTO_INSTALL: "false",
+		MISE_OFFLINE: "true",
+		MISE_QUIET: "true",
+		COREPACK_HOME: corepackHome,
+		COREPACK_ENABLE_NETWORK: "0",
 		MISE_CONFIG_FILE: miseConfig,
 		MISE_DATA_DIR: miseDataDir,
 		npm_config_update_notifier: "false",
@@ -139,6 +146,8 @@ function runIntegrationRunner(
 		...process.env,
 		...env,
 		MISE_AUTO_INSTALL: "false",
+		MISE_OFFLINE: "true",
+		MISE_QUIET: "true",
 		HOME: fixture.directory,
 		DOWNSTREAM_MARKER: fixture.marker,
 		FIXTURE_CWD: fixture.directory,
@@ -163,6 +172,8 @@ function runLiveRunner(
 		...process.env,
 		...env,
 		MISE_AUTO_INSTALL: "false",
+		MISE_OFFLINE: "true",
+		MISE_QUIET: "true",
 		HOME: fixture.directory,
 		DOWNSTREAM_MARKER: fixture.marker,
 		FIXTURE_CWD: fixture.directory,

@@ -345,7 +345,7 @@ describe("Streamable HTTP server", () => {
 			{ transport: "http", host: "127.0.0.1", port: 0 },
 			"test-key",
 			createMcpServer,
-			{ maxSessions: 1, idleTimeoutMs: 200 },
+			{ maxSessions: 1, idleTimeoutMs: 25 },
 		);
 		handles.push(handle);
 		const port = serverPort(handle);
