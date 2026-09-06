@@ -1,0 +1,76 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Test operations domain behavior assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "ops-foundation" of the hevy-mcp Effect-adoption mission.
+
+Assigned assertions (8):
+- VAL-OPS-003: PaginationMismatchError is Schema.TaggedError with requested, received, collection; never throw new Error; never a soft-404 success
+- VAL-OPS-004: Soft-404 policy matrix for every collection
+- VAL-OPS-005: Recovery matches tagged NotFoundError / endpoint-scoped helpers; unexpected HTTP stays tagged client errors
+- VAL-OPS-008: HevyExecutionOptions identity, omitted when absent, inputs immutable, abort != soft-404, sequential/concurrent request-local, options forwarded to every composite page
+- VAL-OPS-009: Paginated list normalize for workouts.list, routines.list, bodyMeasurements.list, and workouts.events
+- VAL-OPS-010: workouts.get: entity envelope; empty body -> { workout: null } without soft-404; member 404 -> not_found; collection-path 404 fails
+- VAL-OPS-016: routines.get: nested routine entity (not envelope); empty -> { routine: null } without soft-404; member 404 -> not_found; collection-path 404 fails
+- VAL-OPS-038: Unit tests: in-memory Effect.succeed / Effect.fail (or mocked fetch); no live Hevy; no HEVY_API_KEY; no Git
+
+Your isolation context:
+- Implementation worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer). Work ONLY here.
+- Package under test: packages/operations (source in packages/operations/src/)
+- Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+- Relevant source files: packages/operations/src/ (index.ts, workouts.ts, routines.ts, templates.ts or similar, folders.ts, body-measurements.ts, user.ts, operation-errors.ts, effect-collapse.test.ts, hevy-operations.test.ts, mutation-semantics.test.ts, public-client-injection.test.ts)
+
+Soft-404 policy matrix rows to verify (from validation-contract.md VAL-OPS-004):
+| workouts.list page > 1 on /v1/workouts | GET 404 | success { items: [], page, pageCount: undefined, expected404Outcome: "end_of_list" } |
+| workouts.list page === 1 | GET 404 | fail tagged (not end_of_list) |
+| workouts.events page > 1 on /v1/workouts/events | GET 404 | success events: [], expected404Outcome: "end_of_list" |
+| workouts.events page === 1 | GET 404 | fail |
+| workouts.get member /v1/workouts/:workoutId | GET 404 | success { workout: null, expected404Outcome: "not_found" } |
+| workouts.get collection /v1/workouts | GET 404 | fail (not not_found) |
+| routines.list page > 1 on /v1/routines | GET 404 | success { items: [], page, pageCount: undefined, expected404Outcome: "end_of_list" } |
+| routines.list page === 1 | GET 404 | fail |
+| routines.get member /v1/routines/:routineId | GET 404 | success { routine: null, expected404Outcome: "not_found" } |
+| routines.get collection /v1/routines | GET 404 | fail |
+| templates.get member /v1/exercise_templates/:id | GET 404 | success null template + expected404Outcome: "not_found" |
+| templates.history | GET 404 | fail (not soft-success) |
+| templates.listAll page > 1 | GET 404 | complete with items already collected |
+| templates.listAll page 1 | GET 404 | fail (not [] success) |
+| folders.get member /v1/routine_folders/:folderId | GET 404 | success null folder + expected404Outcome: "not_found" |
+| folders.get collection /v1/routine_folders | GET 404 | fail |
+| folders.listAll page > 1 | GET 404 | end of list with items so far |
+| folders.listAll page 1 | GET 404 | fail |
+| bodyMeasurements.list page > 1 on /v1/body_measurements | GET 404 | success { items: [], expected404Outcome: "end_of_list" } |
+| bodyMeasurements.list page === 1 | GET 404 | fail |
+| bodyMeasurements.get member /v1/body_measurements/:date | GET 404 | success null measurement + expected404Outcome: "not_found" |
+| any create/update/replace POST/PUT | 404 | fail tagged; never not_found / end_of_list |
+
+Testing procedure:
+1. cd /root/hevy-mcp-effect-ops-layer
+2. Run vitest scoped to the relevant operations test files, e.g.:
+   mise exec -- pnpm vitest run packages/operations/src/workouts.test.ts packages/operations/src/routines.test.ts packages/operations/src/body-measurements.test.ts packages/operations/src/workout-events.test.ts packages/operations/src/templates.test.ts packages/operations/src/folders.test.ts
+   (adjust file names to what exists in the worktree)
+3. For each assigned assertion, decide pass/fail/blocked based on both the tests that exist (do they actually assert this behavior?) and their outcomes. If a required behavior has NO test coverage, mark the assertion blocked or fail with that reason.
+4. Record per-assertion verdict with evidence (command + key output lines).
+
+Write your test report to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-foundation/user-testing/flows/group-b-domain-behavior.json
+Save evidence files to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-foundation/group-b-domain-behavior/
+
+Report JSON shape:
+{
+  "group": "group-b-domain-behavior",
+  "milestone": "ops-foundation",
+  "assertions": [
+    { "id": "VAL-OPS-003", "status": "pass|fail|blocked", "reason": "...", "evidence": "commands run + key output" }
+  ],
+  "notes": "optional frictions/blockers observed"
+}
+
+IMPORTANT: Stay within your isolation boundary (packages/operations in this worktree). Do not modify any source files. Do not run git write operations.
+---END TASK FROM PARENT AGENT---
