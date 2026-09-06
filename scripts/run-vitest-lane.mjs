@@ -26,18 +26,19 @@ if (lane === "unit") {
 }
 if (process.env.HEVY_TEST_REPORT_MODE === "ci") {
 	const nodeMajor = Number.parseInt(process.versions.node, 10);
-	if (lane === "unit") {
-		args.push("--coverage", "--coverage.reportsDirectory=coverage/unit");
-		if (nodeMajor === 24) {
+	if (nodeMajor === 24) {
+		if (lane === "unit") {
 			args.push(
+				"--coverage",
+				"--coverage.reportsDirectory=coverage/unit",
 				"--reporter=default",
 				"--reporter=junit",
 				"--outputFile.junit=test-results/unit-tests.xml",
 			);
 		}
-	}
-	if (lane === "mocked" && nodeMajor === 24) {
-		args.push("--coverage", "--coverage.reportsDirectory=coverage/mocked");
+		if (lane === "mocked") {
+			args.push("--coverage", "--coverage.reportsDirectory=coverage/mocked");
+		}
 	}
 }
 args.push(...forwardedArgs);

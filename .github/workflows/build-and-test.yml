@@ -103,14 +103,14 @@ jobs:
           HEVY_API_KEY: ""
           HEVY_TEST_REPORT_MODE: ci
         run: >-
-          npx nx run-many --projects=repository --targets=check:control-plane,check:exports,check:boundaries,check:types,check,worker:dry-run,test:contract,test:cli,test:worker,test:worker-http,test:mcp,test:unit --parallel=3 --outputStyle=stream --excludeTaskDependencies
+          npx nx run-many --projects=repository --targets=test:unit,check:types,check,worker:dry-run,test:worker-http,test:contract,test:cli,test:worker,test:mcp,check:control-plane,check:exports,check:boundaries --parallel=4 --outputStyle=stream --excludeTaskDependencies
 
       - name: Run Node 26 validation graph
         if: ${{ !cancelled() && matrix.node-version == '26.x' }}
         env:
           HEVY_TEST_REPORT_MODE: ci
         run: >-
-          npx nx run-many --projects=repository --targets=check:control-plane,check:boundaries,check:exports,check:types,check:server-manifest,check,test:mcp,test:unit --parallel=3 --outputStyle=stream
+          npx nx run-many --projects=repository --targets=test:unit,check:types,check,check:server-manifest,test:mcp,check:control-plane,check:boundaries,check:exports --parallel=4 --outputStyle=stream
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
