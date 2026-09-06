@@ -1,0 +1,41 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task complexity: medium
+Task description: Validate VAL-OPS-001..008, 011..015, 017..019
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are a user-testing flow validator for milestone "ops-complete" of the hevy-mcp mission.
+
+MISSION DIR: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+IMPLEMENTATION WORKTREE: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer — the ONLY place validation runs; never touch /root/hevy-mcp or any other worktree)
+
+ASSIGNED ASSERTIONS (16): VAL-OPS-001, VAL-OPS-002, VAL-OPS-003, VAL-OPS-004, VAL-OPS-005, VAL-OPS-006, VAL-OPS-007, VAL-OPS-008, VAL-OPS-011, VAL-OPS-012, VAL-OPS-013, VAL-OPS-014, VAL-OPS-015, VAL-OPS-017, VAL-OPS-018, VAL-OPS-019
+(VAL-OPS-016, VAL-OPS-037, VAL-OPS-038 already passed at milestone ops-foundation — do not re-test them.)
+
+YOUR FILE OWNERSHIP (do not run files owned by the other validator): packages/operations/src/workouts.test.ts, routines.test.ts, mutation-semantics.test.ts, effect-collapse.test.ts, operation-errors.test.ts, public-client-injection.test.ts, workout-events.test.ts
+
+ENVIRONMENT / ISOLATION RULES:
+- Work ONLY inside /root/hevy-mcp-effect-ops-layer. Run node/pnpm through mise: `cd /root/hevy-mcp-effect-ops-layer && mise exec -- pnpm exec vitest run packages/operations/src/<file>.test.ts`.
+- Dependencies are already installed (Node v24.19.0, pnpm 12.0.0). Do NOT run pnpm install again.
+- No dev servers, no MCP inspector, no wrangler, no browser, no live Hevy API. Unit tests use in-memory Effect adapters / mocked fetch with fake API keys only. No HEVY_API_KEY is needed or allowed.
+- Validation is read-only over source: run vitest and capture terminal output as evidence. Do NOT modify, create, or delete any production or test source file. Do NOT run git commands that mutate state (no commit, no push, no checkout, no stash).
+- Do not write outside your assigned report/evidence paths.
+
+TESTING METHOD:
+- Prefer file-scoped Vitest over the whole-directory unit lane: run each owned test file separately for per-assertion signal, e.g. `mise exec -- pnpm exec vitest run packages/operations/src/workouts.test.ts`.
+- For VAL-OPS-033..036 (canonical builders) you do NOT own mutation-semantics.test.ts (the other validator runs it). Instead verify the single-implementation claim with a read-only source check: confirm `packages/operations/src/index.ts` re-exports buildWorkoutUpdatePayload, buildRoutinePayload, buildMeasurementPayload, and mergeMeasurementPayload from one canonical module, and record that as source-grep evidence.
+
+REPORTING:
+- Write your flow report to EXACTLY this path (create parent dirs): /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/ops-writes-routines.json
+- Save raw terminal evidence (vitest output per file) to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/ops-writes-routines/
+- In the report, record for each assertion: id, status (pass/fail/blocked), test file, evidence path, and a one-line observation. If a named evidence file (e.g. hevy-operations.test.ts) does not exist but an existing file covers the same cases (e.g. workouts.test.ts [VAL-OPS-001] tests), note that mapping and treat the existing file as the evidence.
+- Frictions/blockers: record anything that reveals useful testing knowledge (working seed/setup commands, timing, quirks) — the synthesizer will fold it into library/user-testing.md.
+
+IMPORTANT: Stay within your isolation boundary. Never modify /root/hevy-mcp, never push, never write outside the mission dir paths above.
+---END TASK FROM PARENT AGENT---
