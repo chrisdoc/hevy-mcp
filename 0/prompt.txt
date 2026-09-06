@@ -1,0 +1,26 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review fix-cli-execution-proxy
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "fix-cli-execution-proxy" for milestone "pr-review-fixes".
+
+Feature details:
+- ID: fix-cli-execution-proxy
+- Description: PR #1120 review fix (gitStream): packages/cli/src/main.ts:55-63 passes createdClient (raw) instead of the execution-bound proxy `client` to createOperations, so operations calls lose bound execution defaults (signal, deadline). Change createOperations to receive the proxied client when options.execution is set. TDD in packages/cli/src/main.test.ts.
+- Worker session: 28286c2a-4b53-47a9-b3c0-3b58de9929e2
+
+IMPORTANT: All implementation lives in the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer. Do NOT review against /root/hevy-mcp or origin/main.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+The fix commit is: 6cb69e0 fix(cli): pass execution-bound client to operations.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/pr-review-fixes/scrutiny/reviews/fix-cli-execution-proxy.json
+---END TASK FROM PARENT AGENT---
