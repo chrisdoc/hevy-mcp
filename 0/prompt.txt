@@ -1,0 +1,1 @@
+is there an oxlint rule for it?
