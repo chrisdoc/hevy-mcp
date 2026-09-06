@@ -6,6 +6,14 @@ import {
 	RateLimitError,
 	ValidationError,
 } from "@hevy-mcp/hevy-client";
+import {
+	EmptyMeasurementUpdateError,
+	PaginationMismatchError,
+	TrainingSummaryDataError,
+	TrainingSummaryValidationError,
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
+} from "@hevy-mcp/operations";
 
 /** Errors raised by core before an operation reaches the Hevy client. */
 export class ToolInputValidationError extends Schema.TaggedError<ToolInputValidationError>()(
@@ -37,7 +45,21 @@ export {
 	NotFoundError,
 	RateLimitError,
 	ValidationError,
+	EmptyMeasurementUpdateError,
+	PaginationMismatchError,
+	TrainingSummaryDataError,
+	TrainingSummaryValidationError,
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
 };
+
+export type OperationDomainError =
+	| EmptyMeasurementUpdateError
+	| PaginationMismatchError
+	| TrainingSummaryDataError
+	| TrainingSummaryValidationError
+	| WorkoutPayloadError
+	| WorkoutPrivacyError;
 
 /** The complete recoverable error vocabulary exposed by core tool handlers. */
 export type CoreToolError =
@@ -48,4 +70,5 @@ export type CoreToolError =
 	| NetworkError
 	| NotFoundError
 	| RateLimitError
-	| ValidationError;
+	| ValidationError
+	| OperationDomainError;

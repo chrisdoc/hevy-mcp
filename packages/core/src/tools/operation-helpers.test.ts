@@ -1,6 +1,15 @@
 import { Cause, Context, Effect, Exit } from "effect";
 import { describe, expect, it } from "vitest";
-import { ApiError, OperationUnavailableError } from "../effect-errors.js";
+import {
+	ApiError,
+	EmptyMeasurementUpdateError,
+	OperationUnavailableError,
+	PaginationMismatchError,
+	TrainingSummaryDataError,
+	TrainingSummaryValidationError,
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
+} from "../effect-errors.js";
 import {
 	normalizeCoreCause,
 	operationEffect,
@@ -70,6 +79,45 @@ describe("operation error normalization", () => {
 		if (Exit.isFailure(exit)) {
 			expect(Cause.hasDies(exit.cause)).toBe(true);
 			expect(JSON.stringify(exit.cause)).toContain("never-render-this");
+		}
+	});
+
+	it("preserves operation domain errors in failure channel", async () => {
+		const domainErrors = [
+			new WorkoutPrivacyError({
+				message: "Workout is private and cannot be updated.",
+			}),
+			new WorkoutPayloadError({ message: "Invalid exercises payload." }),
+			new PaginationMismatchError({
+				requested: 10,
+				received: 5,
+				collection: "workouts",
+				message: "Pagination count mismatch.",
+			}),
+			new EmptyMeasurementUpdateError({
+				message: "Measurement update payload is empty.",
+			}),
+			new TrainingSummaryValidationError({
+				weeks: 0,
+				message: "Weeks must be positive.",
+			}),
+			new TrainingSummaryDataError({
+				collection: "workouts",
+				message: "Corrupted workout data in summary.",
+			}),
+		];
+
+		for (const error of domainErrors) {
+			const operation = {
+				effect: () => Effect.fail(error),
+			};
+
+			const result = await Effect.runPromise(
+				Effect.flip(operationEffect(Effect.succeed(operation))),
+			);
+
+			expect(result).toBe(error);
+			expect(result._tag).toBe(error._tag);
 		}
 	});
 });

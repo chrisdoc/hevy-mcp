@@ -7,7 +7,11 @@ import type {
 	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
 import { Cause, Clock, Effect, Exit } from "effect";
-import { isFunction } from "./utils/type-predicates.js";
+import {
+	isFunction,
+	isString,
+	type RuntimeValue,
+} from "./utils/type-predicates.js";
 
 /** Per-request control supplied by MCP, HTTP, CLI, or a lifecycle owner. */
 export interface ToolExecutionContext extends HevyRequestOptions {
@@ -106,6 +110,20 @@ export function mergeAbortSignals(
 	return composed.signal;
 }
 
+function defectMessage(defect: RuntimeValue): string {
+	if (defect instanceof Error) {
+		return defect.message;
+	}
+	if (isString(defect)) {
+		return defect;
+	}
+	try {
+		return JSON.stringify(defect);
+	} catch {
+		return "Unknown defect";
+	}
+}
+
 /**
  * Run one MCP operation with the request's remaining budget.
  *
@@ -138,6 +156,15 @@ export async function runBoundedExecution<A, E>(
 			"The request was canceled by the client.",
 			"AbortError",
 		);
+	}
+	const defect = exit.cause.reasons.find(Cause.isDieReason)?.defect;
+	if (defect !== undefined) {
+		const message = defectMessage(defect);
+		Effect.runSync(Effect.logError(`Unexpected execution defect: ${message}`));
+		if (defect instanceof Error) {
+			throw defect;
+		}
+		throw new Error(message);
 	}
 	throw new Error("The request failed unexpectedly.");
 }
