@@ -1,0 +1,63 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Create stacked PR 2: fetch config tests
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Create stacked PR 2 in the repository /root/hevy-mcp (Hevy MCP monorepo). This PR stacks on top of branch `test/request-local-retry-state`, which carries PR #1105 (commit `fa3fc92`, already pushed to origin).
+
+CONTEXT — actual exports of packages/hevy-client/src/fetch.ts (read it first, do not assume):
+- `export type RequestConfig<TData = unknown>` — object with optional `baseURL?: string` and `headers?: Record<string, string>`
+- `export type ResponseConfig<TData = unknown>` — wraps a `Response`-like body with parsed `data: TData`
+- `export type ResponseErrorConfig<TError = unknown>` — error envelope with optional `cause`
+- `export type Client = <TData, _TError = unknown, TVariables = unknown>(config: RequestConfig<TVariables>) => Promise<ResponseConfig<TData>>`
+- `export const getConfig = () => config` / `export const setConfig = (nextConfig: Partial<RequestConfig>) => {...}` — module-level ambient config
+- `export const mergeConfig = <T extends RequestConfig>(base: T, next: Partial<RequestConfig>): T` — must return a NEW object; it must NOT mutate `base`
+- `export const fetch = async <TData, _TError = unknown, TVariables = unknown>(...)` — default request entrypoint
+- IMPORTANT: there is NO `createConfig` export in this module. An earlier draft test (packages/hevy-client/src/fetch.test.ts, currently untracked and red in the side worktree /root/hevy-mcp-effect-retry-interpreter) was written against a nonexistent `createConfig()`/`createConfig({...})` API. Do NOT resurrect that API.
+
+TASK — TDD, characterization of existing correct behavior:
+1. cd /root/hevy-mcp and confirm you are on branch `test/request-local-retry-state` (commit `fa3fc92`). If not, stop and report.
+2. Create branch `test/fetch-config-merge` from it: `git switch -c test/fetch-config-merge`
+3. REWRITE packages/hevy-client/src/fetch.test.ts from scratch. Delete the old red content entirely. Write tests ONLY against the real exports listed above:
+   - `mergeConfig` returns a new config object and does not mutate its `base` argument (assert `base.headers` stays undefined when `next` adds headers; assert `next.baseURL` is applied)
+   - `mergeConfig` with an empty `next` returns a value equal to `base` (deep-equal, not same reference)
+   - `setConfig` stores the partial config and `getConfig` returns it; a later `setConfig` merges over the earlier one
+   - `fetch` is exported as an async function (typeof check) — do not invoke live network I/O; mock it if the existing suite pattern does
+   Follow the existing test style in the repo (vitest, `describe`/`it`, tabs, oxlint/oxfmt conventions).
+4. Run the new test file and require green:
+   `mise exec -- pnpm exec vitest run packages/hevy-client/src/fetch.test.ts`
+   If any test fails, fix the TEST (never the implementation) and re-run until green. Do not modify fetch.ts or any source file.
+5. Full pre-commit validation, all must exit 0:
+   `mise exec -- pnpm run check:types`
+   `mise exec -- pnpm run check`
+6. Stage ONLY the test file: `git add packages/hevy-client/src/fetch.test.ts` (never `git add -A`, never stage unrelated or generated paths). Verify with `git status --short` and `git diff --cached --stat` that the staged set is exactly that one file.
+7. Commit (Conventional Commit + required trailer):
+   `git commit -m "test(hevy-client): characterize fetch config merging" -m "Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>"`
+   Hooks are hk-managed; if the pre-commit hook reformats, re-stage the reformatted file and amend so the commit is self-consistent.
+8. Push the branch: `git push -u origin test/fetch-config-merge`
+9. Open the pull request against main:
+   `gh pr create --base main --head test/fetch-config-merge --title "test(hevy-client): characterize fetch config merging" --body-file -` with a body noting: stacks on #1105; test-only change (no runtime/API/behavior changes); tests cover mergeConfig immutability, setConfig/getConfig ambient config, and the fetch entrypoint signature; validated via `pnpm exec vitest run packages/hevy-client/src/fetch.test.ts`, `pnpm run check:types`, `pnpm run check`. If #1105 has not merged yet, note in the body that this PR should be retargeted to main after #1105 merges (GitHub may show the base as main with extra commits until then).
+
+BOUNDARIES (never violate)
+- Do NOT modify packages/hevy-client/src/fetch.ts or any other source/implementation file. Test file only.
+- Do NOT edit anything under packages/hevy-client/src/generated/.
+- Do NOT push to main; do not force-push; do not modify existing branches or PRs #1104/#1105/#1102/#1096.
+- Do NOT touch the side worktrees /root/hevy-mcp-effect-retry-interpreter or /root/hevy-mcp-effect-pure-operations.
+- Do NOT create or edit any changeset file (test-only change; the empty-changeset convention applies; run `mise exec -- pnpm run check:changeset` only if the hook demands it and keep it empty).
+- Never commit a red test: all commands above must pass before committing.
+- Keep secrets/credentials out of all commands, output, and files.
+
+REPORT BACK (inline)
+- branch name and commit hash
+- test command results (files, tests passed/failed, exact failure text if any)
+- check:types / check / check:changeset exit statuses
+- PR URL and number, base/head, and whether the base was main or needed retargeting after #1105
+- every filepath created or modified
+---END TASK FROM PARENT AGENT---
