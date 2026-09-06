@@ -1,0 +1,1 @@
+add remote cache to https://github.com/chrisdoc/hevy-mcp/pull/943 with NX_REMOTE_CACHE_TOKEN set in github secrets and NX_REMOTE_CACHE_SERVER url set too, only use remote cache of those are available
