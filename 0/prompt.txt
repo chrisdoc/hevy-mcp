@@ -1,0 +1,1 @@
+we have some clients that have not yet updated that still send to glitchtip and we want to relay their traffic to sentry, the historic data is not important
