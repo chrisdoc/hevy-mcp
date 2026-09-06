@@ -1,0 +1,10 @@
+what can we do about the longest task?
+  Run duration:      45.2s
+  Cache:             2/11 hit (18%)
+  Critical path:     40.0s (1 task)
+  Recoverable time:  5.2s (12% of the run)
+
+  Recommendations:
+    - Speed up or split the longest tasks on the critical path:
+        repository:test:unit    40.0s
+Error: Process completed with exit code 1.
