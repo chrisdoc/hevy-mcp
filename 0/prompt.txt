@@ -1,0 +1,1 @@
+use sentry cli ` sentry issue list` to look at the issues of the last 7 days and see if they are relevant and can be fixed
