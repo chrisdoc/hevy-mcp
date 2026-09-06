@@ -9,8 +9,13 @@ pre-commit:
       glob: "**/*.{js,ts,cjs,mjs,cts,mts,d.cts,d.mts,jsx,tsx}"
       run: mise exec -- npx oxlint --type-aware --type-check .
     oxfmt:
+      # lefthook ignores `exclude` when computing the implicit file list, so filter
+      # the generated .pi extension here; exit 0 when nothing formatable remains.
       glob: "**/*.{js,ts,cjs,mjs,cts,mts,d.cts,d.mts,jsx,tsx,json,jsonc,md}"
-      run: mise exec -- npx oxfmt --write {staged_files}
+      run: |
+        staged=$(echo "{staged_files}" | tr ' ' '\n' | grep -v '^\.pi/' || true)
+        [ -z "$staged" ] && exit 0
+        mise exec -- npx oxfmt --write $staged
       stage_fixed: true
     actionlint:
       glob:
