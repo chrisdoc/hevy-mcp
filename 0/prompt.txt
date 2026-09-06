@@ -1,0 +1,34 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Verify generated client untouched
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Verify VAL-CROSS-010 for the hevy-mcp Effect ops mission. Work read-only.
+
+Assertion: No hand edits under packages/hevy-client/src/generated/. pnpm run check:generated remains green if regeneration is not part of the diff.
+
+Repo/worktree: /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer (mission implementation). Original checkout /root/hevy-mcp must remain untouched — do not modify it.
+
+Please:
+1. Confirm current branch and HEAD in /root/hevy-mcp-effect-ops-layer.
+2. `git diff --stat origin/main -- packages/hevy-client/src/generated/` in the worktree. Report whether any generated files changed vs origin/main.
+3. If any generated files appear in the mission's commits vs origin/main, list them and whether they look like regeneration vs hand-edit.
+4. Optionally note whether check:generated already passed (do NOT run a long check unless needed; you may inspect existing evidence under /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ and evidence/).
+5. Confirm /root/hevy-mcp git status is still main with only pre-existing staged .changeset/amber-rivers-heal.md.
+
+Return a concise report:
+- generated files changed vs origin/main? yes/no
+- if yes, regeneration or hand-edit?
+- VAL-CROSS-010 should pass or fail, with evidence paths
+- README.md at worktree root: does it already document Effect-first operations internally and Promise public adapters? Quote the relevant 3-8 lines and say if a README update is still needed.
+- PR #1120 still OPEN? (gh pr view 1120 --repo chrisdoc/hevy-mcp --json state,url,headRefName,baseRefName if gh is available)
+
+Do not write files. Return filepaths you inspected.
+---END TASK FROM PARENT AGENT---
