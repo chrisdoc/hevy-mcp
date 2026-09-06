@@ -1,0 +1,18 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "scrutiny-validator-cli-hygiene",
+  "description": "Scrutiny validation for milestone \"cli-hygiene\". Runs test suite, typecheck, and lint. Spawns review subagents for each completed feature. Synthesizes findings. Always returns to orchestrator.",
+  "skillName": "scrutiny-validator",
+  "milestone": "cli-hygiene",
+  "preconditions": [
+    "All implementation features for milestone \"cli-hygiene\" are complete"
+  ],
+  "expectedBehavior": [
+    "Validators pass (test, typecheck, lint)",
+    "Review subagents spawned for each feature",
+    "Findings synthesized into scrutiny report"
+  ]
+}
+```
