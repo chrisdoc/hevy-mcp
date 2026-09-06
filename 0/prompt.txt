@@ -1,0 +1,68 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Contract: core tools cache
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting validation-contract assertions for TWO related areas of a hevy-mcp Effect adoption mission.
+
+Write your output to this exact file:
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/core-runtime.md
+
+Read first:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+
+AREAS:
+1. MCP tools in packages/core/src/tools — all 22 registered tools must go through HevyOperationsService
+2. MCP resources in packages/core/src/resources/hevy.ts
+3. Effect Cache replacing AsyncTtlCache
+4. ToolRuntime Promise collapse once
+5. Preserve response contracts, error policy, define-tool taxonomy
+
+Registered tools (must each be asserted, can group tightly if unambiguous):
+get-workouts, get-workout, get-workout-events, create-workout, update-workout, replace-workout-exercises,
+get-routines, get-routine, create-routine, update-routine,
+get-exercise-template, get-exercise-history, create-exercise-template, search-exercise-templates,
+get-routine-folder, create-routine-folder,
+get-body-measurements, get-body-measurement, create-body-measurement, update-body-measurement,
+get-training-summary, search-routines
+
+Resources:
+hevy://user, hevy://workout-count, hevy://exercise-templates, hevy://routine-folders
+
+Cache:
+- Cache.make, constructed ONCE in createHevyMcpServer
+- request-local Layer.succeed of that instance (not new cache per request)
+- Node process keeps TTL hits across tool calls
+- Catalog lookup uses operations, not fetchAllPages+Promise client
+- In-flight dedupe / TTL behavior
+
+Handlers:
+- ToolRuntime.createHandler is the single Effect.runPromise (or runPromiseExit) per invocation
+- MCP SDK / Node / Worker stay Promise bridges
+- core must not import hevy-client/internal
+
+Preserve existing MCP output schemas, empty-state text, expected404Outcome, telemetry-safe args.
+
+get-training-summary and search-routines become thin wrappers over operations composites (no while(true), no Date arithmetic, no Promise.all in tools).
+
+Format:
+
+### VAL-CORE-NNN: <short title>
+...
+Tool: vitest
+Evidence: terminal output of named test file(s)
+
+Use VAL-CORE-001...
+
+Deterministic/mocked only. No browser. No live Hevy.
+
+In your final response, return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
