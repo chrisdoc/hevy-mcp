@@ -1,0 +1,23 @@
+Background task completed.
+task_id: 612283c5-21ad-4f3a-bd52-ccfb59fe694d
+type: user-testing-flow-validator
+reason: completed
+description: Validate VAL-OPS-020..026, 027..030, 031..032, 033..036
+output: Validation complete. All 17 assigned assertions passed.
+
+**Report:** `/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/ops-templates-folders-user-measurements.json`
+
+**Evidence:** `/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/ops-templates-folders-user-measurements/`
+- `templates.test.txt` — 11/11 passed (VAL-OPS-020..023)
+- `folders-user-measurements-workflows.test.txt` — folders 8/8, user 3/3, body-measurements 9/9, workflows 4/4 passed (VAL-OPS-024..032, 036)
+- `test-name-map.txt` — test-name-to-assertion mapping
+- `canonical-builders-grep.txt` — VAL-OPS-033..036 source check
+
+**Key findings:**
+- All 35 tests across my 5 owned files pass on `feat/effect-ops-layer` in `/root/hevy-mcp-effect-ops-layer`, run file-scoped via `mise exec -- pnpm exec vitest run` (no mutations, no git state changes).
+- VAL-OPS-031: source confirms `TestClock.layer()` + `TestClock.setTime(FIXED_NOW)` in workflows.test.ts, `Stream.paginate` (workflows.ts:213), `yield* DateTime.now` as Effect value (line 398), and `Effect.all` dual scan (line 410) — no wall-clock fallback.
+- VAL-OPS-033..036: `packages/operations/src/index.ts` re-exports all four builders (`buildWorkoutUpdatePayload`, `buildRoutinePayload`, `buildMeasurementPayload`, `mergeMeasurementPayload`) from `./mutation-semantics.js`; operations writers call them directly; `packages/core/src/tools/mutation-semantics.ts` is only a compatibility shim importing from `@hevy-mcp/operations` — no duplicate fork.
+- One friction recorded: a raw node import probe of `@hevy-mcp/operations` fails because hevy-client dist isn't built; source grep + vitest (which transforms TS on the fly) is the reliable check without running a build.
+- No blockers. Mutation-semantics.test.ts and effect-collapse.test.ts were not run (other validator's ownership); behavioral quirk matrices for 034/035 were confirmed via single-implementation source checks plus passing evidence in the shared body-measurements lane.
+
+Background task "Validate VAL-OPS-020..026, 027..030, 031..032, 033..036" (612283c5-21ad-4f3a-bd52-ccfb59fe694d) just completed. This is a new asynchronous completion event, not a repeat of the launch request. Do not repeat the earlier launch acknowledgement. Briefly report this task's terminal outcome or use its result for any necessary follow-up.
