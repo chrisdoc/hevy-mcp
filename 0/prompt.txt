@@ -1,0 +1,22 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "core-effect-cache",
+  "description": "Replace AsyncTtlCache with effect Cache.make constructed once in createHevyMcpServer. Provide the same instance via request-local Layer.succeed. Catalog lookup uses operations.templates.listAll. Preserve Node TTL hits across tool calls, in-flight dedupe, refresh, and failed-lookup isolation. Public cache observer types stay stable.",
+  "skillName": "core-runtime-worker",
+  "milestone": "core-runtime",
+  "preconditions": [
+    "templates.listAll Effect operation exists",
+    "createHevyMcpServer currently constructs createExerciseTemplateCatalog with AsyncTtlCache"
+  ],
+  "expectedBehavior": [
+    "Cache.make is constructed once in createHevyMcpServer; public observer types unchanged",
+    "Request-local layers Layer.succeed the same cache/catalog instance (no Cache.make per request)",
+    "Node process keeps catalog TTL hits across sequential tool calls; Worker per-request server lifetime remains acceptable",
+    "Catalog lookup uses operations.templates.listAll, not fetchAllPages + Promise getExerciseTemplates",
+    "In-flight dedupe, TTL eviction, refresh, and failed-lookup isolation match Cache.make semantics",
+    "MCP template tool and hevy://exercise-templates share the same Node catalog/cache instance"
+  ]
+}
+```
