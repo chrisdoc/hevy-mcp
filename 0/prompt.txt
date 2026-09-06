@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: light
+Task description: Create stacked retry worktree
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Create only the local stacked feature worktree, do not edit implementation files. Source repository: /root/hevy-mcp. Base commit: 1073abb13825918abbc25add2985ce8a0c5f3fc4, the head of open PR #1104. Create branch `feat/effect-retry-interpreter` and worktree at exact absolute path `/root/hevy-mcp-effect-retry-interpreter`. First verify the destination path and branch do not already exist and that this will not overwrite user work. Run git status in both source and new worktree. Do not commit or push. Return the exact worktree path, branch, base commit, final git status, and every path created. This task writes only the new git worktree directory `/root/hevy-mcp-effect-retry-interpreter` and associated git worktree metadata; return those paths in the final response.
+---END TASK FROM PARENT AGENT---
