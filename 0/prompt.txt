@@ -1,0 +1,35 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Verify interruptible execution findings
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are verifying scrutiny findings against CURRENT code in /home/ubuntu/hevy-mcp-effect-deepening.
+
+Scrutiny blocking claims for core-interruptible-execution:
+1. ExecutionTimeoutMs is converted with Date.now() and no Clock-driven timeout bounds every tool/resource effect (VAL-CORE-025/038).
+2. Root fiber interruption from MCP/lifecycle abort is collapsed as a generic error instead of the required cancelled execution result (VAL-CORE-014/024).
+
+Investigate:
+- packages/core/src/tools/tool-runtime.ts
+- packages/core/src/resources/hevy.ts
+- packages/core/src/server.ts
+- any execution deadline / Clock usage
+- error collapse on interruption
+
+Answer:
+1. Are both findings still true on HEAD? Quote file+lines.
+2. How are mcpReq.signal and lifecycleSignal wired today?
+3. How are executionDeadline / executionTimeoutMs applied? Date.now vs Effect Clock vs Effect.timeout*?
+4. What happens when the fiber is interrupted — what MCP result is returned (isError cancelled vs generic)?
+5. What tests exist? Name cases.
+6. Concrete recommended fix that does NOT reintroduce createExecutionSignal. Deadline arithmetic must use Effect Clock; abort should produce cancelled outcome.
+
+Do NOT edit files. Analysis only.
+---END TASK FROM PARENT AGENT---
