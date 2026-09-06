@@ -1,0 +1,42 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature core-tool-runtime-collapse
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "core-tool-runtime-collapse" for milestone "core-runtime".
+
+Feature details:
+- ID: core-tool-runtime-collapse
+- Description: Make ToolRuntime.createHandler the single Effect.runPromise/runPromiseExit per tool call, and each resource reader collapse once. Preserve MCP first-visit (22 tools, get-user-info unregistered), define-tool taxonomy, response contracts, expected404Outcome telemetry, telemetry-safe args, forExecution abort/deadline, and first callTool using the layer-backed operations instance.
+- Milestone: core-runtime
+- Worker session: 49a52639-54d2-4cba-b845-ae8e83cdddde
+- Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Transcript evidence: the worker's transcript skeleton for this feature is the JSONL line whose "featureId" equals "core-tool-runtime-collapse" in /tmp/core-transcripts.jsonl. Extract it yourself, e.g.:
+  jq -r 'select(.featureId == "core-tool-runtime-collapse")' /tmp/core-transcripts.jsonl
+
+Review that transcript skeleton against the feature's expectedBehavior above. Assess: (1) does the worker transcript show the claimed behavior was actually implemented and verified; (2) any code review findings, with severity (blocking / non_blocking / suggestion); (3) sharedStateObservations: facts about shared state (files, caches, services, env) other workers must know; (4) whether any blocking issue must be fixed before user testing.
+
+Write your review report as JSON to this exact path (create parent dirs if needed):
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/scrutiny/reviews/core-tool-runtime-collapse.json
+
+Report shape:
+{
+  "featureId": "core-tool-runtime-collapse",
+  "milestone": "core-runtime",
+  "workerSessionId": "49a52639-54d2-4cba-b845-ae8e83cdddde",
+  "verdict": "pass" | "fail",
+  "findings": [{ "severity": "blocking|non_blocking|suggestion", "description": "..." }],
+  "blockingIssues": ["..."],
+  "sharedStateObservations": ["..."],
+  "recommendedGuidanceUpdates": ["..."]
+}
+
+Then return a short summary of your verdict and findings.
+---END TASK FROM PARENT AGENT---
