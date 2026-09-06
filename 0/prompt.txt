@@ -1,0 +1,93 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Create PR 1: request-local retry state tests
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Create stacked PR 1 in the repository at /root/hevy-mcp (Hevy MCP monorepo).
+
+GOAL
+Add a green, test-only characterization suite for request-local retry schedule state in packages/hevy-client, on its own branch, with its own pull request. No source/implementation changes.
+
+STEPS
+1. cd /root/hevy-mcp. Inspect state first: `git status --short --branch` and `git log --oneline -3`. The checkout may be on a detached HEAD — that is expected; do not rebase onto main and do not modify any existing branches or PRs (including PR #1104).
+2. Create a new branch from the current origin/main:
+   git fetch origin main
+   git switch -c test/request-local-retry-state origin/main
+3. Create the file `packages/hevy-client/src/request-local-retry-state.test.ts` with EXACTLY this content (do not alter it):
+
+import { describe, expect, it } from "vitest";
+import { Effect } from "effect";
+
+import { createRetrySchedule } from "./retry-schedule.js";
+import { DEFAULT_RETRY_POLICY } from "./retry-policy.js";
+
+/**
+ * Characterization: request-local schedule state.
+ *
+ * Two logical requests that start from the same policy must never share a
+ * mutable schedule. Each call to `createRetrySchedule` owns its own state so
+ * sequential and concurrent callers cannot observe each other's attempt
+ * counters, budgets, or delays.
+ */
+describe("request-local retry schedule state", () => {
+	it("creates an independent schedule per logical request", () => {
+		const first = createRetrySchedule(1, undefined, () => 0);
+		const second = createRetrySchedule(1, undefined, () => 0);
+		expect(first).not.toBe(second);
+	});
+
+	it("does not leak attempt state between sequential requests", async () => {
+		const first = await Effect.runPromise(
+			Effect.sync(() => createRetrySchedule(1, undefined, () => 0)),
+		);
+		const second = await Effect.runPromise(
+			Effect.sync(() => createRetrySchedule(1, undefined, () => 0)),
+		);
+		expect(first).not.toBe(second);
+	});
+
+	it("normalizes the default policy for every new request", () => {
+		expect(DEFAULT_RETRY_POLICY).toMatchObject({
+			maxRetries: 3,
+			baseDelayMs: 300,
+			maxDelayMs: 5_000,
+		});
+	});
+});
+
+4. Run the new test file and require it to pass:
+   mise exec -- pnpm exec vitest run packages/hevy-client/src/request-local-retry-state.test.ts
+   If it fails, stop and report the failure; do not commit a red test.
+5. Changeset: run `mise exec -- pnpm run check:changeset`. If it passes without a new changeset, proceed. If it fails because coverage is required for this path, create an EMPTY changeset (no release trigger — this is a test-only change):
+   cd /root/hevy-mcp && env -u GIT_DIR -u GIT_WORK_TREE npx changeset --empty
+   and accept the default (empty) bump file. Name it `request-local-retry-state-tests.md` if prompted for a name. Never add a versioned bump for a test-only change.
+6. Stage only the files you created/modified (the new test file, plus the empty changeset if one was created). Never `git add -A` and never stage unrelated work. Verify with `git status --short` and `git diff --cached --stat` that the staged set contains exactly your files.
+7. Commit with a Conventional Commit message and the required trailer:
+   git commit -m "test(hevy-client): characterize request-local retry schedule state" -m "Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>"
+8. Push the branch and open the pull request against main:
+   git push -u origin test/request-local-retry-state
+   gh pr create --base main --head test/request-local-retry-state --title "test(hevy-client): characterize request-local retry schedule state" --body "## Summary
+- add a green, test-only characterization suite proving retry schedule state is request-local (independent schedules per logical request, no leaked attempt state between sequential requests, default policy normalization)
+- test-only change: no runtime, API, or behavior changes
+
+## Validation
+- mise exec -- pnpm exec vitest run packages/hevy-client/src/request-local-retry-state.test.ts
+- mise exec -- pnpm run check:changeset"
+   Do NOT push to main. Do not modify PR #1104.
+
+BOUNDARIES
+- Generated files under packages/hevy-client/src/generated/ are off-limits.
+- Do not touch the worktree at /root/hevy-mcp-effect-retry-interpreter or its untracked files.
+- Do not push to main, do not force-push, and do not modify existing remote branches.
+- Keep secrets and credentials out of commands, output, and files.
+
+OUTPUT
+Report inline: the branch name, commit hash, PR URL, the test command and its result (pass/fail with test counts), whether an empty changeset was needed, and every filepath you created or modified. Do not write any files other than the ones specified above.
+---END TASK FROM PARENT AGENT---
