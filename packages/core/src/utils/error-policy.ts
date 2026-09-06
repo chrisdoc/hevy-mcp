@@ -118,7 +118,13 @@ type ErrorTag =
 	| "ValidationError"
 	| "ToolInputValidationError"
 	| "ClientNotInitializedError"
-	| "OperationUnavailableError";
+	| "OperationUnavailableError"
+	| "WorkoutPrivacyError"
+	| "WorkoutPayloadError"
+	| "PaginationMismatchError"
+	| "EmptyMeasurementUpdateError"
+	| "TrainingSummaryValidationError"
+	| "TrainingSummaryDataError";
 type TaggedValue = {
 	readonly _tag?: ErrorTag;
 	readonly path?: unknown;
@@ -395,6 +401,17 @@ export function determineErrorType(error: RuntimeValue): ErrorType {
 	if (tag === "ApiError") return ErrorType.API_ERROR;
 	if (tag === "NetworkError") return ErrorType.NETWORK_ERROR;
 	if (tag === "ToolInputValidationError") return ErrorType.VALIDATION_ERROR;
+	if (
+		tag === "WorkoutPrivacyError" ||
+		tag === "WorkoutPayloadError" ||
+		tag === "EmptyMeasurementUpdateError" ||
+		tag === "TrainingSummaryValidationError"
+	) {
+		return ErrorType.VALIDATION_ERROR;
+	}
+	if (tag === "PaginationMismatchError" || tag === "TrainingSummaryDataError") {
+		return ErrorType.API_ERROR;
+	}
 	if (isRetryExhausted(error)) return ErrorType.NETWORK_ERROR;
 	const status = extractErrorStatus(error);
 	if (status === 429) return ErrorType.RATE_LIMIT;
@@ -600,6 +617,18 @@ export function resolveErrorPolicy(
 			tag === "ClientNotInitializedError"
 				? "API client not initialized. Please provide HEVY_API_KEY."
 				: "The requested Hevy operation is unavailable.";
+	}
+	if (
+		tag === "WorkoutPrivacyError" ||
+		tag === "WorkoutPayloadError" ||
+		tag === "PaginationMismatchError" ||
+		tag === "EmptyMeasurementUpdateError" ||
+		tag === "TrainingSummaryValidationError" ||
+		tag === "TrainingSummaryDataError"
+	) {
+		if (error instanceof Error && error.message) {
+			message = error.message;
+		}
 	}
 	let isNotInitialized = false;
 	try {

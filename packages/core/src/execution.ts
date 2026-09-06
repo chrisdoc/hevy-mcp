@@ -7,7 +7,13 @@ import type {
 	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
 import { Cause, Clock, Effect, Exit } from "effect";
-import { isFunction } from "./utils/type-predicates.js";
+import {
+	isFunction,
+	isString,
+	type RuntimeValue,
+} from "./utils/type-predicates.js";
+import { logCoreError } from "./utils/core-logger.js";
+import { createSafeErrorDiagnostic } from "./utils/error-policy.js";
 
 /** Per-request control supplied by MCP, HTTP, CLI, or a lifecycle owner. */
 export interface ToolExecutionContext extends HevyRequestOptions {
@@ -106,6 +112,20 @@ export function mergeAbortSignals(
 	return composed.signal;
 }
 
+function defectMessage(defect: RuntimeValue): string {
+	if (defect instanceof Error) {
+		return defect.message;
+	}
+	if (isString(defect)) {
+		return defect;
+	}
+	try {
+		return JSON.stringify(defect) ?? "Unknown defect";
+	} catch {
+		return "Unknown defect";
+	}
+}
+
 /**
  * Run one MCP operation with the request's remaining budget.
  *
@@ -138,6 +158,20 @@ export async function runBoundedExecution<A, E>(
 			"The request was canceled by the client.",
 			"AbortError",
 		);
+	}
+	const dieReason = exit.cause.reasons.find(Cause.isDieReason);
+	if (dieReason !== undefined) {
+		const message = defectMessage(dieReason.defect);
+		// Bounded diagnostic (category/status/frames only), never the raw defect
+		// message, matching the core logging policy for tool errors.
+		logCoreError(
+			"Unexpected execution defect",
+			createSafeErrorDiagnostic(dieReason.defect),
+		);
+		if (dieReason.defect instanceof Error) {
+			throw dieReason.defect;
+		}
+		throw new Error(message);
 	}
 	throw new Error("The request failed unexpectedly.");
 }

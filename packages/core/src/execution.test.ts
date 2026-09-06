@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { Effect } from "effect";
 import type { HevyClient, HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import {
 	bindClientExecution,
 	createExecutionProjection,
 	HEVY_CLIENT_OPTION_INDEXES,
 	mergeAbortSignals,
+	runBoundedExecution,
 } from "./execution.js";
 
 type ClientTestArgument =
@@ -246,5 +248,68 @@ describe("mergeAbortSignals", () => {
 		expect(composed?.aborted).toBe(false);
 		second.abort();
 		expect(composed?.aborted).toBe(true);
+	});
+});
+
+describe("runBoundedExecution", () => {
+	it("returns value on success", async () => {
+		const result = await runBoundedExecution(Effect.succeed("hello"), {
+			timeoutMs: 1000,
+		});
+		expect(result).toBe("hello");
+	});
+
+	it("re-throws typed failures directly", async () => {
+		const error = new Error("typed failure");
+		await expect(
+			runBoundedExecution(Effect.fail(error), { timeoutMs: 1000 }),
+		).rejects.toThrow("typed failure");
+	});
+
+	it("extracts and throws unexpected defects instead of a generic message", async () => {
+		const defect = new Error("internal defect details");
+		await expect(
+			runBoundedExecution(Effect.die(defect), { timeoutMs: 1000 }),
+		).rejects.toThrow("internal defect details");
+	});
+
+	it("converts non-Error defects to Error with string representation", async () => {
+		await expect(
+			runBoundedExecution(Effect.die("string defect"), { timeoutMs: 1000 }),
+		).rejects.toThrow("string defect");
+	});
+
+	it("treats Effect.die(undefined) as a present defect, not a missing one", async () => {
+		await expect(
+			runBoundedExecution(Effect.die(undefined), { timeoutMs: 1000 }),
+		).rejects.toThrow("Unknown defect");
+	});
+
+	it("falls back to Unknown defect for non-serializable defects", async () => {
+		await expect(
+			runBoundedExecution(Effect.die(Symbol("x")), { timeoutMs: 1000 }),
+		).rejects.toThrow("Unknown defect");
+		await expect(
+			runBoundedExecution(
+				Effect.die(() => "secret"),
+				{ timeoutMs: 1000 },
+			),
+		).rejects.toThrow("Unknown defect");
+	});
+
+	it("does not leak the raw defect message into logs", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			await runBoundedExecution(
+				Effect.die(new Error("credential-bearing defect")),
+				{ timeoutMs: 1000 },
+			);
+		} catch {
+			// Expected throw; the assertion below is the real check.
+		}
+		const logged = errorSpy.mock.calls.map((call) => call.join(" ")).join("\n");
+		expect(logged).toContain("Unexpected execution defect");
+		expect(logged).not.toContain("credential-bearing defect");
+		errorSpy.mockRestore();
 	});
 });

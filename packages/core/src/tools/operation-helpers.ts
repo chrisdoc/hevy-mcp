@@ -2,12 +2,18 @@ import { Cause, Context, Effect } from "effect";
 import {
 	ApiError,
 	ClientNotInitializedError,
+	EmptyMeasurementUpdateError,
 	NetworkError,
 	NotFoundError,
 	OperationUnavailableError,
+	PaginationMismatchError,
 	RateLimitError,
 	ToolInputValidationError,
+	TrainingSummaryDataError,
+	TrainingSummaryValidationError,
 	ValidationError,
+	WorkoutPayloadError,
+	WorkoutPrivacyError,
 	type CoreToolError,
 } from "../effect-errors.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
@@ -42,7 +48,13 @@ function isCoreToolError(error: RuntimeValue): error is CoreToolError {
 		error instanceof NetworkError ||
 		error instanceof NotFoundError ||
 		error instanceof RateLimitError ||
-		error instanceof ValidationError
+		error instanceof ValidationError ||
+		error instanceof EmptyMeasurementUpdateError ||
+		error instanceof PaginationMismatchError ||
+		error instanceof TrainingSummaryDataError ||
+		error instanceof TrainingSummaryValidationError ||
+		error instanceof WorkoutPayloadError ||
+		error instanceof WorkoutPrivacyError
 	);
 }
 
