@@ -1,0 +1,30 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Map client Effect seam and core layer
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. Investigate the internal Effect request seam in hevy-client and the unused Effect layer in core, as of origin/main.
+
+Checkouts: /root/hevy-mcp-effect-retry-interpreter and/or /root/hevy-mcp. Prefer origin/main versions of files.
+
+Find and report:
+1. packages/hevy-client: createRequestEffect / requestEffect / createNativeClient — is there an internal Effect export or only Promise Kubb wrappers? Curated package.json exports.
+2. packages/core/src/effect-layer.ts and effect-services.ts — what they define, who imports them (grep). Are they dead?
+3. packages/core/src/tools/tool-runtime.ts and utils/error-handler.ts — Promise ToolHandler, withErrorHandling
+4. How many tools call operations vs hevy-client directly
+5. topology.json cascade if operations or core change
+6. Existing tests for core tools / operations
+
+Return file:line evidence, public vs internal APIs, and the smallest seams for:
+- exposing an internal client Effect without changing Kubb public Promise
+- wiring HevyOperationsService into handlers without changing MCP tool JSON
+
+Inline only.
+---END TASK FROM PARENT AGENT---
