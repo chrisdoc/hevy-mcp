@@ -1,0 +1,22 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Second-pass LAYER+MCP+CROSS review
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Second review pass of /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-contract.md AFTER first-pass additions (VAL-TOOLS-006, VAL-MCP-005..008, VAL-CROSS-007..009).
+
+Also read architecture.md and mission.md in the same missionDir.
+
+Focus: VAL-COLLAPSE, VAL-LAYER, VAL-TOOLS, VAL-MCP, VAL-CROSS.
+
+Are there still missing MCP-user or cross-package flows? Ignore duplicate restatements.
+
+Return: remaining material gaps OR "no material gaps". Do not write files.
+---END TASK FROM PARENT AGENT---
