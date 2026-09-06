@@ -1,0 +1,43 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Validate tool-runtime-collapse assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "core-runtime".
+
+Assigned assertions: VAL-CORE-001, VAL-CORE-018, VAL-CORE-019, VAL-CORE-022, VAL-CORE-023, VAL-CORE-024, VAL-CORE-025, VAL-CORE-026, VAL-CORE-028
+
+Your isolation context:
+- Mission worktree (the ONLY directory you may work in): /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer. Dependencies are installed; do not run pnpm install.
+- Never modify /root/hevy-mcp (original checkout, has a staged changeset) or any other worktree.
+- Read-only over source: run vitest and capture terminal output as evidence. Do not modify production or test source files.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest via mise (pnpm exec vitest run <files>). Run each of these test files in the mission worktree, one command per file, capturing output:
+  mise exec -- pnpm exec vitest run packages/core/src/tools/tool-runtime.test.ts packages/core/src/tools/register.test.ts packages/core/src/tools/cross-package.test.ts packages/core/src/tools/annotations.test.ts packages/core/src/utils/telemetry-contract.test.ts
+Scope: only the files listed above. Do not run the whole unit suite.
+
+Evidence to collect per assertion:
+- VAL-CORE-001: listTools advertises exactly the 22 registered tools; get-user-info unregistered; callTool returns MCP content, not Effect objects. Evidence: tool-runtime.test.ts + register.test.ts output.
+- VAL-CORE-018: createHandler is the single Effect.runPromise/runPromiseExit per tool call; tool execute functions are Effect programs that do not call operation.execute or Effect.runPromise themselves. Evidence: tool-runtime.test.ts output.
+- VAL-CORE-019: each of the four resource readers in packages/core/src/resources/hevy.ts collapses Effect exactly once (covered with resources tests in the effect-cache group; note the cross-reference in your report). Evidence: cross-package.test.ts output.
+- VAL-CORE-022: define-tool taxonomy (feature in workouts|routines|templates|measurements|folders|profile|workflows, kind in read|write, operation in list|get|search|create|update|count|sync), read tools advertise outputSchema, registerToolDefinition passes {feature,kind,operation} into createHandler. Evidence: register.test.ts + annotations.test.ts output.
+- VAL-CORE-023: response contracts and empty-state text stay; respond(definition.responseContract, data); structured output keys snake_case; expected404Outcome never in MCP JSON. Evidence: tool-runtime.test.ts + cross-package.test.ts output.
+- VAL-CORE-024: MCP soft-404 success path unchanged; expected404Outcome telemetry-only. Evidence: telemetry-contract.test.ts output.
+- VAL-CORE-025: TELEMETRY_ARGUMENT_KEYS frozen snake_case allowlist; presence keys since, workout_id, routine_id, folder_id, exercise_template_id, date, start_date, end_date, updated_since, query, primary_muscle_group; numeric page, page_size, limit, offset; boolean include_custom, refresh; values never in observer payloads. Evidence: telemetry-contract.test.ts output.
+- VAL-CORE-026: forExecution merges lifecycle signal, sets deadline, passes options bag into operations; nested forExecution newest-scope-wins; HevyOperationsService identity stays parent instance. Evidence: tool-runtime.test.ts output.
+- VAL-CORE-028: first callTool uses the layer-backed operations instance (runtime.getOperations spy returns divergent object; tools keep operations on parent layer and pass runtime.execution into the Effect program). Evidence: cross-package.test.ts output.
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you.
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/user-testing/flows/core-tool-runtime-collapse.json
+Save evidence files to this directory: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/core-runtime/core-tool-runtime-collapse/
+
+Flow validator guidance section: "Flow Validator Guidance: core-runtime"
+---END TASK FROM PARENT AGENT---
