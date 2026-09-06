@@ -1,0 +1,54 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Test assertions VAL-CLI-001..009
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "cli-hygiene".
+
+Assigned assertions: VAL-CLI-001, VAL-CLI-002, VAL-CLI-003, VAL-CLI-004, VAL-CLI-005, VAL-CLI-006, VAL-CLI-007, VAL-CLI-008, VAL-CLI-009
+
+Your isolation context:
+- Work ONLY inside the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer (verify with `git -C /root/hevy-mcp-effect-ops-layer status --short --branch`). NEVER validate against /root/hevy-mcp (original checkout with a staged changeset) or origin/main — the Effect operations work is not merged there.
+- Validation is READ-ONLY over source: run vitest lanes / greps, capture terminal output as evidence. Do NOT modify any production or test source file. No git commit, push, checkout, stash, or any git mutation.
+- Run node/pnpm through mise: `mise exec -- pnpm ...`. Your assigned lane is `mise exec -- pnpm run test:cli` (fast, ~1-2s) plus file-scoped vitest if needed (`mise exec -- pnpm exec vitest run packages/cli/src/<file>.test.ts`). Do NOT run test:pr, test:unit, or any full-suite lane. Do NOT start dev servers, MCP inspector, or wrangler. No HEVY_API_KEY is needed; fake keys only.
+- Do not use the `entire` code-graph CLI (not on PATH; a missing `entire` binary is NOT a product defect) — use Grep/Read instead.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest CLI lane (`pnpm run test:cli`) plus static source inspection. The full contract text for each assertion is in {missionDir}/validation-contract.md under "## Area: CLI" — read it. Testing knowledge is in {missionDir}/library/user-testing.md, section "Flow Validator Guidance: cli-hygiene" — read it.
+
+What each assertion requires (distilled; the contract text is authoritative):
+
+- VAL-CLI-001: `hevy --help` / `--version` (and `-h` / `-v`) exit 0 without reading HEVY_API_KEY, without constructing a HevyClient, without collapsing an Effect. Help text lists command families: user, workouts, routines, exercises, measurements, folders, summary. Version prints to stdout; stderr stays empty. Evidence: packages/cli/src/main.test.ts + `pnpm run test:cli` output.
+- VAL-CLI-002: `hevy workouts list` calls operations.workouts.list (Effect program collapsed once in the command handler), NOT client.getWorkouts directly. Page envelope, --page / --page-size, and expected404Outcome "end_of_list" → empty page envelope stay compatible. Evidence: packages/cli/src/commands/index.test.ts.
+- VAL-CLI-003: `hevy routines list` calls operations.routines.list, NOT client.getRoutines directly. Page envelope, pagination flags, end-of-list 404 mapping compatible. Evidence: packages/cli/src/commands/index.test.ts.
+- VAL-CLI-004: EVERY remaining domain command goes through HevyOperations, not ad-hoc HevyClient: user→user.get; workouts get→workouts.get, create→workouts.create, update→workouts.update, count→workouts.count, events→workouts.events; routines get→routines.get, create→routines.create, update→routines.update; exercises create→templates.create, get→templates.get, history→templates.history, search→operations composite (not a local while + client.getExerciseTemplates loop); measurements list→bodyMeasurements.list, get→bodyMeasurements.get, create→bodyMeasurements.create, update→bodyMeasurements.update; folders create→folders.create; summary→workflows.trainingSummary (not collectSummaryWorkouts over client.getWorkouts). Injected operations stubs are invoked and the matching client.* method is NOT called. Evidence: packages/cli/src/commands/index.test.ts (fixture: packages/cli/src/test-fixtures/effect-client.ts).
+- VAL-CLI-005: each CLI command execute path performs exactly ONE Effect.runPromise/runPromiseExit per user invocation. DURABLE EVIDENCE (added by commit 9a41b49): the static single-collapse assertion in packages/cli/src/commands/effect-collapse.test.ts — run it and confirm it passes. Supplement with source inspection: the single collapse() helper in packages/cli/src/commands/index.ts should be the only Effect.runPromise in CLI src. Command handlers may call operation.effect(...) and collapse at the handler; no nested runPromise in argument mapping, pagination loops, or stdout formatting; if operation.execute exists it is a trivial one-liner adapter NOT used as a second collapse. Do NOT fail merely because some temporary 'collapses each command' test was reverted — the durable static assertion plus test:cli is the evidence of record.
+- VAL-CLI-006: @chrisdoc/hevy-cli package.json is bin-only (`hevy` → `dist/cli.mjs`): no public `exports` map re-exporting Effect / HevyOperations Effect programs / @hevy-mcp/hevy-client/internal; no .d.ts entry points mentioning effect; effect may be an internal dependency only. Consumers get only the `hevy` binary. Evidence: inspect packages/cli/package.json + `pnpm run test:cli`/check:exports if cheap.
+- VAL-CLI-007: flags/stdout/stderr/exit-code compatibility: --json writes machine-readable JSON to stdout on success and JSON diagnostics to stderr on failure; human mode unchanged; --page, --page-size, --since, --start-date, --end-date, --max-pages, --weeks, --data, --yes keep names/parsing/usage errors (e.g. `--page must be a positive integer` on stderr, exit 2, no ZodError leak); mutations require --yes; missing --data is a usage error; missing HEVY_API_KEY exits non-zero with stderr mentioning HEVY_API_KEY and nothing on stdout; API/pagination failures classify as ApiResponseError, not untyped defects; no real API keys anywhere (fake keys only). Evidence: packages/cli/src/main.test.ts, packages/cli/src/arguments.test.ts, packages/cli/src/commands/index.test.ts.
+- VAL-CLI-008: packages/cli may import @hevy-mcp/operations, @hevy-mcp/hevy-client ("" / schemas), @hevy-mcp/core ("" / mutations), and effect internally; must NOT import hevy-mcp/packages/node, @hevy-mcp/worker/packages/worker, or @hevy-mcp/hevy-client/internal — in source AND test files under packages/cli. Evidence: Grep for forbidden imports + `mise exec -- pnpm run check:boundaries` (cheap, safe to run once).
+- VAL-CLI-009: CLI command handlers forward abort/deadline execution options into operation.effect (one collapse at the handler). Fail if a command invokes operations without the execution bag, or if abort/deadline applies only to a leftover Promise HevyClient call. Evidence: packages/cli/src/commands/index.test.ts.
+
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/cli-hygiene/user-testing/flows/cli-lane.json
+Save evidence files (command outputs you capture) to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/cli-hygiene/cli-lane/
+
+Report JSON shape:
+{
+  "groupId": "cli-lane",
+  "milestone": "cli-hygiene",
+  "assertions": [ { "id": "VAL-CLI-001", "status": "pass|fail|blocked", "evidence": "<commands run + key output excerpts / file:line citations>", "notes": "<anything material>" }, ... one entry per assigned assertion ... ],
+  "frictions": [ "<testing frictions observed>" ],
+  "blockers": [ "<prerequisites broken; empty if none>" ],
+  "toolsUsed": [ "vitest", ... ]
+}
+
+Status meanings: pass = behavior confirmed; fail = behavior does not match the contract; blocked = prerequisite broken or functionality absent. Judge by behavior captured in test output, not by test titles alone (some titles carry stale [VAL-OPS-NNN]-style prefixes; match by behavior and note drifted titles).
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you. Another validator is running concurrently in the same worktree — do not run `pnpm run test:cli` more than needed (once), do not run any other full vitest suites, and never write outside your assigned report/evidence paths.
+---END TASK FROM PARENT AGENT---
