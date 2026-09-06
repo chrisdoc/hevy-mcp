@@ -1,0 +1,32 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Root-cause why workers exit without handoff
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Diagnose a systematic worker failure in the mission at /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4. Read-only investigation; do NOT modify any files. Return your full analysis inline in your final response — no report files.
+
+FAILURE SIGNATURE: Five consecutive worker attempts on feature `characterize-request-local-retry-state` all ended with `worker_exited_without_handoff` — each worker finished its turn and exited cleanly (exitCode 0) but never called `end_feature_run`, so no handoff was submitted. This happened across two different models (claude-opus-4-8 at 08:30, then glm-5.3-flash at 08:32, 08:34, and 12:51), so it is NOT model-specific. The runner paused the mission with `feature_retry_limit_exceeded` after the 5th attempt. The feature is still pending.
+
+INVESTIGATE THESE HYPOTHESES, IN ORDER, AND REPORT EVIDENCE FOR OR AGAINST EACH:
+
+1. **Handoff protocol not documented where workers read it.** Check whether `end_feature_run` is documented in the files workers actually read at session start: `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/AGENTS.md`, the worker skill at `skills/effect-client-worker/SKILL.md` (in the mission dir), and `library/` topic files. If the only mention is buried in validation-contract.md or architecture.md, workers have no actionable instruction to submit a handoff. Report exactly where `end_feature_run` IS and IS NOT mentioned across AGENTS.md, SKILL.md, library/, features.json, and services.yaml.
+
+2. **Feature scope too broad for one turn.** The feature description bundles ~10 coverage areas (request-local schedule state, sequential/concurrent isolation, retry option normalization, exact attempt/wait indexes, safety policy, Retry-After/backoff policy, fresh attempt budgets, cancellation isolation, public error/observation baselines) PLUS a code fix (the Schedule.toStep lifetime defect at the smallest safe seam). Check the feature entry in features.json: if a single worker turn is expected to write tests for all of those AND land a production code fix, workers plausibly run out of turn before reaching the handoff call. Report the description length and structure, and whether splitting it into smaller features (e.g., separate the characterization feature from the toStep defect-fix feature) is feasible given the fulfills coverage constraint (all 54 VAL-* assertion IDs are currently claimed by this one feature — check whether splitting requires re-splitting the fulfills array and whether validation-state.json would then need assertion redistribution).
+
+3. **Model capability floor.** glm-5.3-flash failed 3x while claude-opus-4-8 failed 1x. Check the model settings (`model-settings.json`, `runtime-custom-models.json` in the mission dir) for what model selection is configured for this feature's skillName, and whether pinning the feature's worker model to a stronger tier is configurable (and where).
+
+4. **Worker skill gap.** Read `skills/effect-client-worker/SKILL.md` fully: does its procedure ever instruct the worker to call `end_feature_run` at the end of its work? Compare with any other skill under the mission dir `skills/` directory. If the base worker skill omits the handoff step, that alone explains all five failures regardless of model. Quote the relevant procedure lines.
+
+RECOMMENDED OUTPUT STRUCTURE (inline in final response):
+- **Root cause**: single most-supported explanation, with file/line evidence.
+- **Evidence for/against each hypothesis**: brief, per hypothesis 1-4.
+- **Fix options**: rank by invasiveness — (a) resume as-is (fresh budget, likely repeats), (b) edit SKILL.md/AGENTS.md to document end_feature_run at turn end, (c) split the feature into 2-3 smaller features with redistributed fulfills assertions, (d) pin worker model for this feature. For each: what artifacts change (AGENTS.md, SKILL.md, features.json, validation-state.json, validation-contract.md), and whether it can be done by a worker or needs orchestrator/user action.
+- **Recommendation**: one option, with the concrete next step you would take as a worker if assigned.
+---END TASK FROM PARENT AGENT---
