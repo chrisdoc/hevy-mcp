@@ -1,0 +1,1 @@
+I wanna build on top of https://github.com/chrisdoc/hevy-mcp/pull/1120 to see if we can introduce more effect behaviour, to make the code easier to reason and operations safer
