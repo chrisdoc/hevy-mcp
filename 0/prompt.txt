@@ -1,0 +1,26 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review fix-observer-handler-compose
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "fix-observer-handler-compose" for milestone "pr-review-fixes".
+
+Feature details:
+- ID: fix-observer-handler-compose
+- Description: PR #1120 review fix (Qodo): createToolRuntime silently discards the caller-supplied createHandler factory when an observer is configured (createObservedHandler calls withErrorHandling directly, packages/core/src/tools/tool-runtime.ts ~269-296). Compose observation around the resolved handler factory so createHandler IS invoked when both observer and createHandler are set, and observation still wraps everything. TDD in packages/core/src/tools/tool-runtime.test.ts.
+- Worker session: 180a9866-9936-4c0e-9582-e3fb07153362
+
+IMPORTANT: All implementation lives in the mission worktree /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer. Do NOT review against /root/hevy-mcp or origin/main.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+The fix commits are (most recent first): 173ef84 fix(core): compose observer around caller-supplied createHandler. Relevant prior commit: 70e139b chore: finalize Effect release hygiene.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/pr-review-fixes/scrutiny/reviews/fix-observer-handler-compose.json
+---END TASK FROM PARENT AGENT---
