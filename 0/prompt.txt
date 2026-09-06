@@ -1,0 +1,33 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Check resource tests in worktree
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. Compare whether MCP resource tests exist and pass on the mission worktree vs original checkout.
+
+Worktree: /root/hevy-mcp-effect-ops-layer (feat/effect-ops-layer)
+Original: /root/hevy-mcp (main)
+
+1. Does packages/core/src/resources/hevy.test.ts exist in both? Summarize whether it asserts:
+   - hevy://user -> user.get
+   - hevy://workout-count -> workouts.count
+   - hevy://exercise-templates uses catalog / templates.listAll
+   - hevy://routine-folders -> folders.listAll
+   - four URIs unchanged
+   - no Promise HevyClient resource methods called
+
+2. git -C /root/hevy-mcp-effect-ops-layer log --oneline origin/main..HEAD | head -20
+3. Confirm latest commits include core-resources-via-operations / core-tool-runtime-collapse
+4. Count test files roughly if easy: ls packages/core/src/resources/ packages/core/src/tools/*.test.ts in worktree
+
+Return a concise report with file paths and whether the scrutiny blocking issue (no runtime evidence for resources) is true ON THE WORKTREE or only true if you look at origin/main.
+
+Do not modify files.
+---END TASK FROM PARENT AGENT---
