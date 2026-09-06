@@ -1,0 +1,7 @@
+You can query the list of available models at any time using the /v1/models endpoint:
+
+curl -s https://inference.hetzner.com/api/v1/models \
+  -H "Authorization: Bearer <YOUR_TOKEN>"
+Model	Type	Context Length	Modalities
+DeepSeek-V4-Flash-0731	MoE, 304B total / 13B active	512.000 tokens	Text
+GLM-5.2-NVFP4	MoE, 744B total / 40B active	512.000 tokens	Text
