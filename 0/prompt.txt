@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Audit remediation mission artifacts
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only audit only; do not modify files. Mission dir: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0. Verify: (1) every assertion ID in validation-contract.md is present in validation-state.json and claimed by exactly one features.json fulfills; no duplicate/orphan claims; specifically report all VAL-REMEDIATION mappings. (2) new review-remediation features have valid schema, existing skillName files, correct dependency order, and no manually created validator feature. (3) mission.md, architecture.md, AGENTS.md, library/effect-patterns.md, and worker skills consistently state the new truth: server-owned core context; unknown only at operation seam; scoped lifecycle owner preserving startup resolution; HTTP child scopes; shared internal abort helper; behavioral script tests; keep CLI error_code. Identify contradictions or stale claims. (4) all 162 old assertions remain passed and 12 new ones pending. Return pass/fail with exact corrections needed. Do not write files. Return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
