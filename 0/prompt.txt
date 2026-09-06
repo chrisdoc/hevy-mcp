@@ -1,0 +1,30 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Review core-runtime contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing the CORE RUNTIME section of a mission validation contract for gaps.
+
+READ:
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md (Area: Core Runtime, VAL-CORE-*)
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+Optionally inspect packages/core in /home/ubuntu/hevy-mcp-effect-deepening.
+
+WRITE your review to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review-core.md
+
+Focus: missing user flows (tools, resources, prompts, cancellation, catalog waiters, server close, typed errors, telemetry isolation), implementation-shaped assertions, ambiguous pass/fail.
+
+Propose concrete new VAL-CORE-XXX assertions only for real gaps. If complete, say so.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
