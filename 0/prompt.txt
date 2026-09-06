@@ -1,0 +1,36 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Research Effect 4 patterns
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Research current Effect TS v4 (effect@^4.0.0-rc) patterns relevant to hevy-mcp Effect adoption. The repo has effect at node_modules/effect and AGENTS.md guidance at node_modules/effect/AGENTS.md.
+
+Goals: document idiomatic patterns workers should follow for:
+1. Effect.fn for traced operations
+2. Stream.paginate / paginateEffect for API page loops
+3. effect/Cache or cachedWithTTL for TTL + in-flight dedupe
+4. DateTime for UTC date windows / testability with TestClock
+5. Schema.TaggedError vs failing with generic Error
+6. Layer/Context service patterns (already partially used)
+7. Bridging Effect programs to Promise at adapter boundaries (runPromise, exit handling)
+8. Any breaking RC notes that differ from Effect 3 mental model
+
+Sources to prefer in order:
+- /root/hevy-mcp/node_modules/effect/AGENTS.md (read fully if present)
+- Local type definitions / exports under node_modules/effect for Cache, Stream, DateTime, Effect.fn
+- Official docs via WebSearch/FetchUrl if needed (effect.website)
+
+Write a distilled worker-facing guide to:
+/root/hevy-mcp is the repo but you do NOT have a missionDir yet. Return the full guide INLINE in your final response (do not write files unless under /tmp). Include concrete import paths and short code sketches matching Effect 4 RC APIs actually present in this install.
+
+Also note which APIs are NOT available or differ from Effect 3.
+
+Do not modify the hevy-mcp repo.
+---END TASK FROM PARENT AGENT---
