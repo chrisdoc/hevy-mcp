@@ -1,0 +1,39 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Review core CLI cross
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review draft validation contracts for CORE, CLI, and CROSS-AREA.
+
+Read:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/core-runtime.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/cli.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/cross-area.md
+
+Find missing flows:
+- MCP first-visit / listTools / callTool still works
+- abort/deadline
+- cache TTL across Node tool calls
+- CLI --help
+- PR creation
+- public export leak
+- worktree / generated client
+- get-user-info remains unregistered but hevy://user works
+- Node/Worker not rewritten
+
+Write:
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/review-core-cli-cross.md
+
+Sections: Missing, Overlap with OPS/CLIENT (leave those to other areas), Recommended keep lists for VAL-CORE, VAL-CLI, VAL-CROSS with one-line titles. CORE can stay ~25-30. CLI ~8-12. CROSS ~10-14.
+
+Return filepath.
+---END TASK FROM PARENT AGENT---
