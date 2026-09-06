@@ -1,0 +1,1 @@
+crete a plan for https://github.com/chrisdoc/hevy-mcp/issues/981 and implement it
