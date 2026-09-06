@@ -1,0 +1,1 @@
+loop over all github issues for hevy-mcp, then spawn a triage background agent for each and use their findings to create a FIX PR
