@@ -1,0 +1,22 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "fix-network-error-identity-and-push",
+  "description": "PR #1120 review fix (Qodo), plus branch publication: NetworkError drops request identity. packages/hevy-client/src/effect-errors.ts NetworkError schema lacks method/endpoint, and mapRequestError (packages/hevy-client/src/internal-request-effect.ts ~267-315) does not pass the computed request identity into networkError(). Add optional method/endpoint fields to NetworkError and pass the sanitized identity through so statusless HevyHttpError failures keep the failing request's method and canonical endpoint in safe diagnostics. TDD in packages/hevy-client/src/internal-request-effect.test.ts (and request-effect.test.ts if needed). After commit and green scoped vitest + check:types + check:changeset, push ONLY the feature branch (git push origin feat/effect-ops-layer) so PR #1120 updates; never push main; do not touch /root/hevy-mcp.",
+  "skillName": "effect-client-worker",
+  "milestone": "pr-review-fixes",
+  "preconditions": [
+    "Mission worktree /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer is clean",
+    "All other pr-review-fixes features are complete and committed",
+    "mapRequestError already computes request identity (method/endpoint/page) for other tagged errors"
+  ],
+  "expectedBehavior": [
+    "NetworkError carries optional method and endpoint fields",
+    "A statusless fetch failure (e.g. TypeError fetch failed) maps to NetworkError with the sanitized method and canonical endpoint set",
+    "Existing tagged-error discrimination (catchTag) still works; public Promise client still rejects HevyHttpError",
+    "mise exec -- pnpm exec vitest run packages/hevy-client/src/internal-request-effect.test.ts exits 0",
+    "Branch feat/effect-ops-layer is pushed to origin; PR #1120 shows the new commits; remote main is unchanged"
+  ]
+}
+```
