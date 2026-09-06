@@ -1,0 +1,1 @@
+why do we need scripts/control-plane-config.test.ts
