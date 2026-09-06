@@ -1,0 +1,9 @@
+Background task error.
+task_id: 11235107-6758-4c30-8b2e-2121a2e85d37
+type: worker
+reason: model_usage_exhausted
+description: Verify dependency readiness in worktree
+failure: Usage is exhausted for the model request.
+output: No output available
+
+Background task "Verify dependency readiness in worktree" (11235107-6758-4c30-8b2e-2121a2e85d37) just error. This is a new asynchronous completion event, not a repeat of the launch request. Do not repeat the earlier launch acknowledgement. Briefly report this task's terminal outcome or use its result for any necessary follow-up.
