@@ -1,0 +1,1 @@
+can we remove scripts/release-outputs.test.ts this test is very brittle, we should not have any tests for the github workflows
