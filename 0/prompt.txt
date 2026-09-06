@@ -1,0 +1,48 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Contract: client seam
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting validation-contract assertions for ONE area of a hevy-mcp Effect adoption mission.
+
+Write your output to this exact file:
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/client-seam.md
+
+Read first:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+
+AREA: Internal HevyRequestEffectClient seam (`packages/hevy-client`)
+
+User-facing for this area means: the internal Effect client that operations will consume, AND the public Promise HevyClient that must stay stable.
+
+Enumerate ALL testable behaviors:
+- Public HevyClient remains Promise-only (no Effect types on main/types/schemas exports)
+- HevyRequestEffectClient covers ALL remaining resources: exercise templates (list/get/history/create), routine folders (list/get/create), body measurements (list/get/create/update), workout events, workout count, user info, workout create/update, routine create/update
+- Effect methods share the same native request interpreter (retry, abort, deadline) as Promise methods
+- HTTP failures map to Schema.TaggedError: NotFoundError, ValidationError, NetworkError, ApiError, RateLimitError — not throw new Error
+- Mutations are real Effect methods, not Effect.tryPromise wrappers around Promise client
+- Internal export path stays `@hevy-mcp/hevy-client/internal`
+
+For each assertion use this exact markdown format:
+
+### VAL-<AREA>-NNN: <short title>
+<Behavioral description with clear pass/fail.>
+Tool: vitest
+Evidence: terminal output of the named test file(s)
+
+Use prefix VAL-CLIENT-001, VAL-CLIENT-002, ...
+
+Be exhaustive on the Effect client method surface (one assertion can group a resource if pass/fail is still unambiguous). Include negative cases: public API must not leak Effect; generated/ internals stay private.
+
+Do NOT invent live Hevy tests. Deterministic/mocked only.
+
+In your final response, return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
