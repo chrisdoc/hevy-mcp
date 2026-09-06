@@ -795,40 +795,46 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 	it("reports exhausted retries as terminal failures", async () => {
-		const observations: Array<{
-			outcome: string;
-			code?: string;
-		}> = [];
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(response({}, 503))
-			.mockResolvedValueOnce(response({}, 503));
-		const client = createHevyClient({
-			apiKey: "secret-key",
-			fetch: fetchMock,
-			maxGetRetries: 1,
-			sleep: async () => {},
-			onRequestComplete: ({ outcome, error }) => {
-				observations.push({ outcome, code: error?.code });
-			},
-		});
+		vi.useFakeTimers();
+		try {
+			const observations: Array<{
+				outcome: string;
+				code?: string;
+			}> = [];
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValueOnce(response({}, 503))
+				.mockResolvedValueOnce(response({}, 503));
+			const client = createHevyClient({
+				apiKey: "secret-key",
+				fetch: fetchMock,
+				maxGetRetries: 1,
+				onRequestComplete: ({ outcome, error }) => {
+					observations.push({ outcome, code: error?.code });
+				},
+			});
 
-		const thrown = await client
-			.getUserInfo()
-			.catch((error: Error | string) => error);
-		expect(thrown).toMatchObject({
-			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
-			safeToRetry: false,
-			safe_to_retry: false,
-			outcome: "terminal_failure",
-		});
-		expect(observations).toEqual([
-			{ outcome: "retryable_failure", code: undefined },
-			{
-				outcome: "terminal_failure",
+			const thrownPromise = client
+				.getUserInfo()
+				.catch((error: Error | string) => error);
+			await vi.runAllTimersAsync();
+			const thrown = await thrownPromise;
+			expect(thrown).toMatchObject({
 				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
-			},
-		]);
+				safeToRetry: false,
+				safe_to_retry: false,
+				outcome: "terminal_failure",
+			});
+			expect(observations).toEqual([
+				{ outcome: "retryable_failure", code: undefined },
+				{
+					outcome: "terminal_failure",
+					code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+				},
+			]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("classifies network failures separately from HTTP failures", async () => {
@@ -1043,33 +1049,37 @@ describe("@hevy-mcp/hevy-client", () => {
 	});
 
 	it("retries idempotent PUT updates with an unknown commit state", async () => {
-		const observations: Array<{
-			operationSafety?: string;
-			commitState?: string;
-			safeToRetry?: boolean;
-		}> = [];
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(response({}, 503))
-			.mockResolvedValueOnce(response({ id: "workout-1" }));
-		const client = createHevyClient({
-			apiKey: "secret-key",
-			fetch: fetchMock,
-			maxGetRetries: 1,
-			sleep: async () => {},
-			onRequestComplete: ({ operationSafety, commitState, safeToRetry }) =>
-				observations.push({ operationSafety, commitState, safeToRetry }),
-		});
+		vi.useFakeTimers();
+		try {
+			const observations: Array<{
+				operationSafety?: string;
+				commitState?: string;
+				safeToRetry?: boolean;
+			}> = [];
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValueOnce(response({}, 503))
+				.mockResolvedValueOnce(response({ id: "workout-1" }));
+			const client = createHevyClient({
+				apiKey: "secret-key",
+				fetch: fetchMock,
+				maxGetRetries: 1,
+				onRequestComplete: ({ operationSafety, commitState, safeToRetry }) =>
+					observations.push({ operationSafety, commitState, safeToRetry }),
+			});
 
-		await expect(
-			client.updateWorkout("workout-1", {} as never),
-		).resolves.toEqual({ id: "workout-1" });
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(observations[0]).toMatchObject({
-			operationSafety: "idempotent-write",
-			commitState: "unknown",
-			safeToRetry: true,
-		});
+			const request = client.updateWorkout("workout-1", {} as never);
+			await vi.runAllTimersAsync();
+			await expect(request).resolves.toEqual({ id: "workout-1" });
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(observations[0]).toMatchObject({
+				operationSafety: "idempotent-write",
+				commitState: "unknown",
+				safeToRetry: true,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("adds bounded jitter when Retry-After is absent", async () => {
