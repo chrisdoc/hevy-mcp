@@ -1,0 +1,48 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task complexity: medium
+Task description: Test client surface assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are a user-testing flow validator for mission milestone "client-seam" (hevy-mcp repository, Effect TS adoption mission).
+
+Assigned assertions (test ALL of them):
+- VAL-CLIENT-001: createHevyClient(...) returns an object whose 22 public methods (getWorkouts, getWorkout, createWorkout, updateWorkout, getWorkoutCount, getWorkoutEvents, getRoutines, getRoutineById, getExerciseTemplates, getExerciseTemplate, getExerciseHistory, createExerciseTemplate, getRoutineFolders, getRoutineFolder, createRoutineFolder, getBodyMeasurements, getBodyMeasurement, createBodyMeasurement, updateBodyMeasurement, getUserInfo) each return a thenable Promise when invoked. Exported HevyClient types every method as Promise<...>. Fail if any public method returns an Effect (_op / pipe / not a thenable), if "requestEffect" in client is true, if client.requestEffect is defined, or if any method is typed as Effect.Effect<...>.
+- VAL-CLIENT-002: import * as pub from "@hevy-mcp/hevy-client" must not contain requestEffect, createRequestEffect, getNativeRequestEffect, NATIVE_REQUEST_EFFECT, HevyRequestEffectClient, or NativeRequestEffect. import * as types from "@hevy-mcp/hevy-client/types" and import * as schemas from "@hevy-mcp/hevy-client/schemas" must not export any Effect type, Effect client factory, or Effect.Effect value. Also types.ts / schemas.ts must not import effect.
+- VAL-CLIENT-003: package.json exports continues to expose "./internal" → ./src/internal.ts, and import { getRequestEffectClient, getNativeRequestEffect, createRequestEffect, NATIVE_REQUEST_EFFECT, type HevyRequestEffectClient, type NativeRequestEffect } from "@hevy-mcp/hevy-client/internal" succeeds.
+- VAL-CLIENT-023: Encoding parity for path/query/body/api-key: for a representative matrix, Effect vs Promise intercepted requests are deep-equal (query page/pageSize/since/start_date/end_date, path keys workoutId/routineId/exerciseTemplateId/folderId/date, JSON bodies for workout/routine/template/folder/measurement create and update, header api-key present using fake "test-key" only).
+- VAL-CROSS-011: (covered by the same suites) no Effect symbols leak through the public entry points.
+
+Isolation context:
+- All testing happens in the feature worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer). Run all commands from there.
+- Relevant test files: packages/hevy-client/src/internal-request-effect.test.ts, packages/hevy-client/src/hevy-client.test.ts, tests/unit/hevy-client-internal-export.test.ts. You may also inspect source files under packages/hevy-client/src (NEVER modify any file).
+- Test command pattern: cd /root/hevy-mcp-effect-ops-layer && mise exec -- pnpm vitest run <file-or-glob>
+- Useful targeted evidence: run vitest with a reporter that shows test names, e.g. mise exec -- pnpm vitest run packages/hevy-client/src/internal-request-effect.test.ts --reporter=verbose 2>&1 | tail -80. You may also write a small read-only probe script under /tmp (never inside the repo) and run it with mise exec -- npx tsx /tmp/probe.ts to check runtime thenables/exports, importing from the worktree via absolute paths.
+
+STRICT BOUNDARIES:
+- Never run git commands. Never modify, create, or delete any file inside /root/hevy-mcp-effect-ops-layer. Never make network calls to api.hevyapp.com or anything remote; everything must be mocked/local.
+- Do not touch the original checkout /root/hevy-mcp.
+
+For each assigned assertion ID, determine status: "pass" (behavior confirmed by terminal evidence), "fail" (behavior contradicts the contract), or "blocked" (prerequisite broken, cannot test).
+
+Write your flow report as JSON to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/client-seam/user-testing/flows/client-surface.json
+Save raw evidence (terminal excerpts you relied on) to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/client-seam/client-surface/
+
+Report JSON schema:
+{
+  "groupId": "client-surface",
+  "milestone": "client-seam",
+  "assertions": [ { "id": "VAL-CLIENT-001", "status": "pass|fail|blocked", "evidence": "concise terminal-evidence summary", "notes": "optional" } ],
+  "toolsUsed": ["vitest", "..."],
+  "frictions": [ { "description": "...", "rootCause": "..." } ],
+  "blockers": [ { "assertionId": "...", "reason": "..." } ]
+}
+
+Then reply with a compact summary: per-assertion statuses and any systemic issues found.
+---END TASK FROM PARENT AGENT---
