@@ -1,0 +1,31 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Land staged changeset and re-run blocked stack pushes
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+The non-empty changeset is now in place at `/root/hevy-mcp/.changeset/amber-rivers-heal.md` (staged, not committed; verified with `mise exec -- npx changeset status` and `mise exec -- pnpm run check:changeset`, both exit 0). This was the sole blocker for the PR stack pushes.
+
+Your job in the repo at /root/hevy-mcp:
+
+1. Commit the staged changeset file onto `feat/effect-pure-operations` (the base of the stack, PR #1104) with a Conventional Commit message, e.g.:
+   `chore: add changeset for Effect v4 retry-schedule adoption`
+   Include the Co-authored-by trailer `Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>`.
+2. Push `feat/effect-pure-operations` to origin. This unblocks the stack: #1104 → #1105 → #1109.
+3. Then push the previously blocked stack branches in order: `test/fetch-config-merge` (#1105), then the #1109 branch. These were blocked solely on the empty changeset; with it landed, the pre-push hook will pass.
+4. Do NOT push to `main` under any circumstances. Hooks stay enabled; if any hook fails, report the failure back rather than bypassing it.
+5. Verify after pushing: `mise exec -- pnpm run check:changeset` still passes, and `git log --oneline -3` on each pushed branch shows the expected stack order.
+
+Constraints from AGENTS.md that remain in force:
+- All node/pnpm/npx commands through mise (`mise exec -- ...`).
+- Never write tests that invoke git or mutate git config.
+- Use Conventional Commits.
+
+Report back in your final response: the commit SHA of the changeset commit, the branches successfully pushed, and the confirmation that `check:changeset` passes on the pushed state.
+---END TASK FROM PARENT AGENT---
