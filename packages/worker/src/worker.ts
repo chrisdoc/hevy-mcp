@@ -128,6 +128,9 @@ export interface WorkerEnv {
 	// exposes OAuth 2.1 endpoints for remote MCP clients such as Claude.ai.
 	// When absent, behavior is identical to the pre-OAuth Worker.
 	OAUTH_KV?: unknown;
+	// Optional comma-separated retry delay sequence (ms) for validation backoff.
+	// Defaults to 300,600.
+	HEVY_VALIDATION_RETRY_DELAYS_MS?: string;
 }
 
 interface WorkerDependencies {
