@@ -1,0 +1,42 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task complexity: medium
+Task description: Validate VAL-OPS-020..026, 027..030, 031..032, 033..036
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are a user-testing flow validator for milestone "ops-complete" of the hevy-mcp mission.
+
+MISSION DIR: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+IMPLEMENTATION WORKTREE: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer — the ONLY place validation runs; never touch /root/hevy-mcp or any other worktree)
+
+ASSIGNED ASSERTIONS (17): VAL-OPS-020, VAL-OPS-021, VAL-OPS-022, VAL-OPS-023, VAL-OPS-024, VAL-OPS-025, VAL-OPS-026, VAL-OPS-027, VAL-OPS-028, VAL-OPS-029, VAL-OPS-030, VAL-OPS-031, VAL-OPS-032, VAL-OPS-033, VAL-OPS-034, VAL-OPS-035, VAL-OPS-036
+(VAL-OPS-016, VAL-OPS-037, VAL-OPS-038 already passed at milestone ops-foundation — do not re-test them. VAL-OPS-009 and VAL-OPS-010 are partially covered by the other validator's files; the workouts/routines halves of 009/010 belong to them.)
+
+YOUR FILE OWNERSHIP (do not run files owned by the other validator): packages/operations/src/templates.test.ts, folders.test.ts, user.test.ts, workflows.test.ts, body-measurements.test.ts
+
+ENVIRONMENT / ISOLATION RULES:
+- Work ONLY inside /root/hevy-mcp-effect-ops-layer. Run node/pnpm through mise: `cd /root/hevy-mcp-effect-ops-layer && mise exec -- pnpm exec vitest run packages/operations/src/<file>.test.ts`.
+- Dependencies are already installed (Node v24.19.0, pnpm 12.0.0). Do NOT run pnpm install again.
+- No dev servers, no MCP inspector, no wrangler, no browser, no live Hevy API. Unit tests use in-memory Effect adapters / mocked fetch with fake API keys only. No HEVY_API_KEY is needed or allowed.
+- Validation is read-only over source: run vitest and capture terminal output as evidence. Do NOT modify, create, or delete any production or test source file. Do NOT run git commands that mutate state (no commit, no push, no checkout, no stash).
+- Do not write outside your assigned report/evidence paths. Do not run mutation-semantics.test.ts or effect-collapse.test.ts — the other validator owns them.
+
+TESTING METHOD:
+- Prefer file-scoped Vitest over the whole-directory unit lane: run each owned test file separately, e.g. `mise exec -- pnpm exec vitest run packages/operations/src/templates.test.ts`.
+- For VAL-OPS-031..032 (trainingSummary composite) run workflows.test.ts and check the TestClock.layer() determinism requirements described in the contract: frozen instant yields exact UTC dates, no wall-clock dependence, unparseable window → empty loader.
+- For VAL-OPS-033..036 (canonical builders single implementation) do a read-only source check that packages/operations/src/index.ts re-exports buildWorkoutUpdatePayload, buildRoutinePayload, buildMeasurementPayload, mergeMeasurementPayload from one canonical module (mutation-semantics.ts). Record the grep output as evidence; do not run the test file.
+
+REPORTING:
+- Write your flow report to EXACTLY this path (create parent dirs): /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/ops-templates-folders-user-measurements.json
+- Save raw terminal evidence (vitest output per file, grep output) to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/ops-templates-folders-user-measurements/
+- In the report, record for each assertion: id, status (pass/fail/blocked), test file, evidence path, and a one-line observation.
+- Frictions/blockers: record anything that reveals useful testing knowledge (working seed/setup commands, timing, quirks) — the synthesizer will fold it into library/user-testing.md.
+
+IMPORTANT: Stay within your isolation boundary. Never modify /root/hevy-mcp, never push, never write outside the mission dir paths above.
+---END TASK FROM PARENT AGENT---
