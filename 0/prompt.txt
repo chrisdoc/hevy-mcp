@@ -1,0 +1,58 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Stack open Effect PRs linearly via gh CLI
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Reorganize the three open Effect-related PRs in /root/hevy-mcp (remote: https://github.com/chrisdoc/hevy-mcp.git) into one linear stack using the gh CLI. Work in the local checkout /root/hevy-mcp.
+
+CURRENT STATE (verify each item before acting on it; do not assume):
+- PR #1104 "feat: adopt Effect for pure operations and retries" — head branch `feat/effect-pure-operations`, base `main`, state OPEN. Branch commits (oldest first): `05ee904` feat: add Effect foundation types, `9b75e2d` refactor: isolate Hevy retry policy, `e9ce8d8` feat: centralize pure read error classification, `580b0ac` feat: run read operations through Effect, `1073abb` feat: schedule client retries with Effect. This PR is the BOTTOM of the stack; its base stays `main`.
+- PR #1105 "feat(hevy-client): add request-local retry schedule module" — head branch `test/request-local-retry-state`, head commit `fa3fc92`, base currently `main`. This PR must become the MIDDLE of the stack: its base must be changed to `feat/effect-pure-operations`.
+- PR #1109 "test(hevy-client): characterize fetch config merging" — head branch `test/fetch-config-merge`, head commit `1c976a1` (created from `test/request-local-retry-state`), base currently `main`. This PR must become the TOP of the stack: its base must be changed to `test/request-local-retry-state`.
+
+TASK (in this exact order):
+1. Fetch and inspect:
+   cd /root/hevy-mcp && git fetch origin --prune
+   git log --oneline -8 origin/feat/effect-pure-operations
+   git log --oneline -3 origin/test/request-local-retry-state
+   git log --oneline -3 origin/test/fetch-config-merge
+   Verify ancestry: `git merge-base --is-ancestor origin/feat/effect-pure-operations origin/test/request-local-retry-state; echo $?` — if this exits non-zero, the rebase in step 2 is required; if it exits 0, skip step 2's rebase for that pair and go straight to the base edits.
+2. Rebase the two upper branches so the stack is truly linear (bottom → top: feat/effect-pure-operations → test/request-local-retry-state → test/fetch-config-merge):
+   a. git switch test/request-local-retry-state
+      git rebase feat/effect-pure-operations
+      If rebase reports conflicts in files you did not author in this task (e.g. .changeset/*, packages/hevy-client/src/generated/**), STOP, run `git rebase --abort`, and report the conflicting paths — do not hand-resolve.
+      On success: git push --force-with-lease origin test/request-local-retry-state
+   b. git switch test/fetch-config-merge
+      git rebase test/request-local-retry-state
+      Same conflict rule: abort and report rather than hand-resolve.
+      On success: git push --force-with-lease origin test/fetch-config-merge
+   NEVER force-push to main. `--force-with-lease` is permitted ONLY on these two feature branches. Never modify, rebase, or push `main` itself.
+3. Update the PR bases with gh (the only gh mutations in this task):
+   gh pr edit 1105 --base feat/effect-pure-operations
+   gh pr edit 1109 --base test/request-local-retry-state
+   Verify with: gh pr view 1104 --json number,baseRefName,headRefName,state ; gh pr view 1105 --json number,baseRefName,headRefName,state ; gh pr view 1109 --json number,baseRefName,headRefName,state
+   Expected: 1104 base=main, 1105 base=feat/effect-pure-operations, 1109 base=test/request-local-retry-state, all state=OPEN.
+4. Verify each PR's diff contains only its own changes:
+   gh pr diff 1104 --name-only
+   gh pr diff 1105 --name-only
+   gh pr diff 1109 --name-only
+   #1104 should list only its five source commits' files (packages/hevy-client/src/effect-errors.ts, index.ts, retry-schedule.ts, retry-policy.ts, hevy-client-kubb.ts, packages/core/src/effect-errors.ts, packages/operations/src/*, .changeset/pure-effect-errors.md). #1105 should show only packages/hevy-client/src/retry-schedule.test.ts, request-local-retry-state.test.ts and .changeset/loud-olives-smoke.md. #1109 should show only packages/hevy-client/src/fetch.test.ts and .changeset/lucky-pens-take.md. If any PR shows files from another PR, the rebase in step 2 was incomplete — fix that branch (rebase again onto its correct parent) and re-verify before reporting.
+5. Confirm mergeability bottom-up and report the final table:
+   gh pr view 1104,1105,1109 --json number,headRefName,baseRefName,mergeable,state
+
+BOUNDARIES (never violate):
+- Do NOT merge any PR. Do NOT edit any PR title or body. The ONLY gh mutations allowed are the two `gh pr edit --base` commands in step 3.
+- Do NOT push to `main`; no push at all except the two `--force-with-lease` pushes in step 2 on the named feature branches.
+- Do NOT create, edit, or delete any changeset file. (Note: `.changeset/loud-olives-smoke.md` is an EMPTY changeset that must NOT accompany these release-triggering branches; if it appears in any branch tree after rebase, report it — the maintainer-side fix per AGENTS.md is a proper non-empty changeset, not silently keeping the empty one. Do not delete it yourself; just report its presence per branch.)
+- Do NOT touch anything under packages/hevy-client/src/generated/.
+- Keep tokens/credentials out of all command output and your report.
+
+REPORT BACK (inline): ancestry findings (was feat/effect-pure-operations already an ancestor of test/request-local-retry-state?), rebases performed with before/after head SHAs, gh pr edit results, the three per-PR file lists, and the final base/head/mergeable/state table for 1104/1105/1109.
+---END TASK FROM PARENT AGENT---
