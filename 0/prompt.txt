@@ -1,0 +1,39 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review ops-workout-writes
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "ops-workout-writes" for milestone "ops-complete".
+
+Feature details:
+- ID: ops-workout-writes
+- Description: Add workouts.create, workouts.update (RMW), workouts.replaceExercises, workouts.events, and workouts.count Effect operations using the Effect client and operations-owned mutation semantics.
+- Worker session: af1a1e1a-a2aa-45a9-a045-4b9e3bc37ea8
+
+Expected behavior:
+- workouts.create posts caller body through Effect createWorkout; no GET/RMW; is_private not required
+- workouts.update is GET-then-PUT RMW; GET 404 fails (not update success)
+- workouts.replaceExercises RMW PUTs replacement array including [] with explicit request is_private; GET 404 fails
+- workouts.events forwards page/pageSize/since; page>1 404 → end_of_list; page 1 404 fails; mismatch is PaginationMismatchError
+- workouts.count uses Effect getWorkoutCount; numeric workoutCount (missing → 0); does not paginate workouts
+- While touching packages/operations/src/workouts.test.ts, rename any leftover '[VAL-OPS-015]' labels so they match the assertion they actually exercise
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+Implementation worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, 11 commits ahead of origin/main)
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/scrutiny/reviews/ops-workout-writes.json
+
+Your report must be valid JSON with this shape:
+{
+  "featureId": "ops-workout-writes",
+  "status": "pass" | "fail",
+  "issues": [{ "severity": "blocking" | "non_blocking", "description": "..." }],
+  "notes": "..."
+}
+---END TASK FROM PARENT AGENT---
