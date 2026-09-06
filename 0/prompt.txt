@@ -1,0 +1,1 @@
+i mean why do we have to define WorkerTraceSpan ourselves, can't we use it from worker ?
