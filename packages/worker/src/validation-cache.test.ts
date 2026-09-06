@@ -451,9 +451,26 @@ describe("parseValidationRetryDelays", () => {
 		expect(parseValidationRetryDelays("abc")).toBe(
 			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
 		);
+		expect(parseValidationRetryDelays("300, -1, 600")).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
+		expect(parseValidationRetryDelays("300, 1.5, 600")).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
+		expect(parseValidationRetryDelays("300, 100ms, 600")).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
+		expect(parseValidationRetryDelays("10, , 20")).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
+		expect(parseValidationRetryDelays("10,")).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
 	});
 
-	it("parses valid comma-separated positive integer delays", () => {
+	it("parses valid comma-separated positive and zero integer delays", () => {
 		expect(parseValidationRetryDelays("10, 20, 30")).toEqual([10, 20, 30]);
+		expect(parseValidationRetryDelays("0, 0")).toEqual([0, 0]);
+		expect(parseValidationRetryDelays(" 50 , 100 ")).toEqual([50, 100]);
 	});
 });

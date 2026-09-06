@@ -140,25 +140,33 @@ export const DEFAULT_VALIDATION_RETRY_DELAYS_MS = [300, 600] as const;
 
 export function parseValidationRetryDelays(raw?: string): readonly number[] {
 	if (!raw) return DEFAULT_VALIDATION_RETRY_DELAYS_MS;
-	const parsed = raw
-		.split(",")
-		.map((s) => Number.parseInt(s.trim(), 10))
-		.filter((n) => Number.isFinite(n) && n >= 0);
+	const tokens = raw.split(",");
+	const parsed: number[] = [];
+	for (const token of tokens) {
+		const trimmed = token.trim();
+		if (trimmed === "") return DEFAULT_VALIDATION_RETRY_DELAYS_MS;
+		const n = Number(trimmed);
+		if (!Number.isInteger(n) || n < 0) {
+			return DEFAULT_VALIDATION_RETRY_DELAYS_MS;
+		}
+		parsed.push(n);
+	}
 	return parsed.length > 0 ? parsed : DEFAULT_VALIDATION_RETRY_DELAYS_MS;
 }
-
-declare const process:
-	| {
-			readonly env?: Record<string, string | undefined>;
-	  }
-	| undefined;
 
 function resolveValidationRetryDelays(
 	env?: ValidationCacheEnv,
 ): readonly number[] {
+	const globalProcess = (
+		globalThis as {
+			readonly process?: {
+				readonly env?: Record<string, string | undefined>;
+			};
+		}
+	).process;
 	const raw =
 		env?.HEVY_VALIDATION_RETRY_DELAYS_MS ??
-		process?.env?.HEVY_VALIDATION_RETRY_DELAYS_MS;
+		globalProcess?.env?.HEVY_VALIDATION_RETRY_DELAYS_MS;
 	return parseValidationRetryDelays(raw);
 }
 
