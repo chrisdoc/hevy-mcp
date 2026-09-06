@@ -1,0 +1,1 @@
+create a follow up PR to remove all other scripts tests that verify gitub workflows
