@@ -1,0 +1,1 @@
+we have a failure in the release https://github.com/chrisdoc/hevy-mcp/actions/runs/31421696882/job/93563720280
