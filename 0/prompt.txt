@@ -1,0 +1,55 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Unblock PR 1: land retry-schedule.ts
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Unblock stacked PR 1 in the repository at /root/hevy-mcp (Hevy MCP monorepo). The characterization test `packages/hevy-client/src/request-local-retry-state.test.ts` currently fails to import because `packages/hevy-client/src/retry-schedule.ts` does not exist in this checkout.
+
+CONTEXT
+- The main checkout is /root/hevy-mcp on branch feat/effect-retry-interpreter; its HEAD is 1073abb (base of PR #1104). There are ZERO commits of feature work on this branch yet — only two untracked test files exist:
+  - packages/hevy-client/src/request-local-retry-state.test.ts (untracked, currently red due to the missing import)
+  - packages/hevy-client/src/fetch.test.ts (untracked, currently red for an unrelated reason — it calls a nonexistent createConfig export; do NOT fix fetch.test.ts in this task, it belongs to stacked PR 2)
+- A validated implementation of retry-schedule.ts already exists at:
+  /root/hevy-mcp-effect-pure-operations/packages/hevy-client/src/retry-schedule.ts
+  Its focused tests passed in that worktree (retry-schedule.test.ts: 3 passed) — this is proven, tested code, not new work.
+
+TASK
+1. Copy the file EXACTLY as-is:
+   cp /root/hevy-mcp-effect-pure-operations/packages/hevy-client/src/retry-schedule.ts /root/hevy-mcp/packages/hevy-client/src/retry-schedule.ts
+   Do not modify, reformat, or rewrite its contents. If the source file is missing or differs from what the test expects (a named export `createRetrySchedule`), STOP and report instead of improvising a new implementation.
+2. Also copy its test file so the module ships with coverage:
+   cp /root/hevy-mcp-effect-pure-operations/packages/hevy-client/src/retry-schedule.test.ts /root/hevy-mcp/packages/hevy-client/src/retry-schedule.test.ts
+3. Verify green in the main checkout:
+   cd /root/hevy-mcp && mise exec -- pnpm exec vitest run packages/hevy-client/src/retry-schedule.test.ts packages/hevy-client/src/request-local-retry-state.test.ts
+   Both must pass with 0 failures. If anything fails, STOP — do not commit, do not fix the test by editing it, and report the exact failure output.
+4. If and only if verification is green, stage exactly these four paths (never git add -A):
+   git add packages/hevy-client/src/retry-schedule.ts packages/hevy-client/src/retry-schedule.test.ts packages/hevy-client/src/request-local-retry-state.test.ts
+   Also run `mise exec -- pnpm run check:changeset`; if it requires a changeset entry for this path, create an EMPTY changeset (test-only change, no release trigger — use `env -u GIT_DIR -u GIT_WORK_TREE npx changeset --empty` and accept the empty bump) and stage it too.
+5. Commit on the CURRENT branch (feat/effect-retry-interpreter) with:
+   git commit -m "feat(hevy-client): add request-local retry schedule module" -m "Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>"
+6. Push the branch and open PR 1 against main:
+   git push -u origin feat/effect-retry-interpreter
+   gh pr create --base main --title "feat(hevy-client): add request-local retry schedule module" --body "..." (summaries: adds retry-schedule.ts + tests; unblocks request-local-retry-state characterization; test-only prerequisite for stacked PR 2)
+   Do NOT push to main directly; the PR is the delivery vehicle.
+
+BOUNDARIES
+- Do NOT touch packages/hevy-client/src/fetch.ts or fetch.test.ts (PR 2 scope).
+- Do NOT edit generated files under packages/hevy-client/src/generated/.
+- Do NOT rebase onto main, force-push, or modify PR #1104 or any existing branch/PR.
+- Keep credentials/secrets out of all commands, output, and files.
+
+REPORT BACK (inline)
+- cp results for both files (exit status)
+- vitest output summary: files run, tests passed/failed, exact failure text if any
+- whether the empty changeset was required and created
+- staged file list (git status --short) and commit hash
+- PR URL, or the precise reason no PR was opened
+- every filepath created or modified
+---END TASK FROM PARENT AGENT---
