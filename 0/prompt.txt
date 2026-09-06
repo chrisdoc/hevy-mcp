@@ -1,0 +1,1 @@
+can we also utilize the best parts of this config https://github.com/emdash-cms/emdash/blob/main/.oxlintrc.json
