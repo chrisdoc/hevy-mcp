@@ -1,0 +1,42 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature core-resources-via-operations
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "core-resources-via-operations" for milestone "core-runtime".
+
+Feature details:
+- ID: core-resources-via-operations
+- Description: Route MCP resources hevy://user, hevy://workout-count, hevy://exercise-templates, and hevy://routine-folders through operations (and the server-scoped catalog for templates). Keep the four URIs unchanged. get-user-info tool stays unregistered while hevy://user works.
+- Milestone: core-runtime
+- Worker session: dd365f7a-e49e-4ce2-9ef5-312ab0b04f08
+- Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Transcript evidence: the worker's transcript skeleton for this feature is the JSONL line whose "featureId" equals "core-resources-via-operations" in /tmp/core-transcripts.jsonl. Extract it yourself, e.g.:
+  jq -r 'select(.featureId == "core-resources-via-operations")' /tmp/core-transcripts.jsonl
+
+Review that transcript skeleton against the feature's expectedBehavior above. Assess: (1) does the worker transcript show the claimed behavior was actually implemented and verified; (2) any code review findings, with severity (blocking / non_blocking / suggestion); (3) sharedStateObservations: facts about shared state (files, caches, services, env) other workers must know; (4) whether any blocking issue must be fixed before user testing.
+
+Write your review report as JSON to this exact path (create parent dirs if needed):
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/scrutiny/reviews/core-resources-via-operations.json
+
+Report shape:
+{
+  "featureId": "core-resources-via-operations",
+  "milestone": "core-runtime",
+  "workerSessionId": "dd365f7a-e49e-4ce2-9ef5-312ab0b04f08",
+  "verdict": "pass" | "fail",
+  "findings": [{ "severity": "blocking|non_blocking|suggestion", "description": "..." }],
+  "blockingIssues": ["..."],
+  "sharedStateObservations": ["..."],
+  "recommendedGuidanceUpdates": ["..."]
+}
+
+Then return a short summary of your verdict and findings.
+---END TASK FROM PARENT AGENT---
