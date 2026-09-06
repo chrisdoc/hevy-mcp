@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Review observation contract coverage
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review, do not write files. Review full mission.md, architecture.md, and validation-contract.md plus relevant client code/tests. Focus on Observations and Public Errors: Promise compatibility, HevyHttpError projection, order, exactly-once completion, logger and observer failures, explicit-deadline fix. Report precise missing or flawed assertions and proposed edits/IDs. Return analysis and filepaths inspected.
+---END TASK FROM PARENT AGENT---
