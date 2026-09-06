@@ -1,0 +1,25 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Second-pass live and cross review
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Second review pass of LIVE/CLI/DOCS (VAL-LIVE/CLI/DOCS) AND CROSS-AREA (VAL-CROSS-*) AFTER first-pass additions: VAL-LIVE-009, VAL-DOCS-005, VAL-CROSS-023/024/025, loosened VAL-LIVE-003, folded VAL-CROSS-018.
+
+READ the full updated contract:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md
+and architecture.md + mission.md in the same missionDir /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/
+
+WRITE to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review2-live-cross.md
+
+Find remaining missing composed/live/docs flows. Propose full new assertions only for real gaps that are not already covered. If none, say "no further IDs".
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
