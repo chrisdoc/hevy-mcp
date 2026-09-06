@@ -1,0 +1,1 @@
+why does git log have     Co-authored-by: Hook Test <hook-test@example.com>
