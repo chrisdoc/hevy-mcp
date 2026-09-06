@@ -221,15 +221,14 @@ Also run the narrow checks related to your change. In particular:
 dependencies. The project uses the Oxc tools for fast, consistent type-aware
 linting and formatting. Fix reported code warnings rather than assuming they
 are harmless. Use `pnpm run check:fix` for automated fixes, then inspect the
-resulting diff. `check:fix` modifies files in the working tree but does not
-stage them; review and stage the changes manually. hk uses the same tools for
-Git hook execution.
+resulting diff. Git hooks run the same tools for pre-commit validation.
 
-Git hooks are managed by hk, replacing the former Lefthook setup. The
-`hk.pkl` configuration runs formatting and unit tests on pre-commit, commit
-message linting on commit-msg, and changeset plus PR validation checks on
-pre-push. hk is installed through mise. After `mise install`, enable the
-repository's hooks once per clone with `mise exec hk -- hk install --mise`.
+Git hooks are managed by [Lefthook](https://lefthook.dev), replacing the former
+hk setup. The `lefthook.yml` configuration runs formatting and unit tests on
+pre-commit, commit message linting on commit-msg, and changeset plus PR
+validation checks on pre-push. Lefthook is installed through mise. After
+`mise install`, enable the repository's hooks once per clone with
+`mise exec -- lefthook install`.
 CI runs the npm validation scripts directly.
 
 ## Generated API client

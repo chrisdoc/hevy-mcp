@@ -45,11 +45,11 @@ You should see all unit tests pass in about 1–2 seconds. [[2]](https://app.dos
 
 ### 3. Set up Git hooks
 
-Git hooks are managed by [hk](https://github.com/nicholasgasior/hk) via [mise](https://mise.jdx.dev/). Run this once per clone to enable pre-commit, commit-msg, and pre-push hooks:
+Git hooks are managed by [Lefthook](https://lefthook.dev) via [mise](https://mise.jdx.dev/). Run this once per clone to enable pre-commit, commit-msg, and pre-push hooks:
 
 ```bash
 mise install
-mise exec hk -- hk install --mise
+mise exec -- lefthook install
 ```
 
 > [!NOTE]
@@ -457,14 +457,14 @@ This is **expected in sandboxed environments**. The command fetches the live Hev
 
 ### "Git hook failures on commit or push"
 
-If your Git hooks aren't running or are failing with unexpected errors, make sure mise is installed and re-install the hk hooks:
+If your Git hooks aren't running or are failing with unexpected errors, make sure mise is installed and re-install the Lefthook hooks:
 
 ```bash
 mise install
-mise exec hk -- hk install --mise
+mise exec -- lefthook install
 ```
 
-This installs the hk-managed hooks for formatting, unit tests, commit message linting, and pre-push validation without requiring mise to be activated in your shell. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
+This installs the Lefthook-managed hooks for formatting, unit tests, commit message linting, and pre-push validation without requiring mise to be activated in your shell. [[1]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
 ---
 

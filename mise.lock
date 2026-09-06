@@ -95,43 +95,52 @@ checksum = "sha256:153d9edd4cf026a69d18b8a256adc72c306a7311fb3a3819ea8c1a620a5d9
 url = "https://github.com/entireio/cli/releases/download/v0.10.5/entire_windows_amd64.zip"
 url_api = "https://api.github.com/repos/entireio/cli/releases/assets/543189190"
 
-[[tools.hk]]
-version = "1.57.0"
-backend = "aqua:jdx/hk"
-specifiers = [
-    "1.57.0",
-    "latest",
-]
+[[tools.lefthook]]
+version = "2.1.12"
+backend = "aqua:evilmartians/lefthook"
+specifiers = ["latest"]
 
-[tools.hk."platforms.linux-arm64"]
-checksum = "sha256:af6768ba1e3041a988b6518bf8b6e8900dc6a2001208b3f548545fe7de4e6f22"
-url = "https://github.com/jdx/hk/releases/download/v1.57.0/hk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/536864258"
+[tools.lefthook."platforms.linux-arm64"]
+checksum = "sha256:d96ac16753f6d3d69b92098621c2a2427522a9c2c3e78cd7c9b4a9790b0b8f17"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.12/lefthook_2.1.12_Linux_aarch64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/533627819"
+provenance = "github-attestations"
 
-[tools.hk."platforms.linux-arm64-musl"]
-checksum = "sha256:969feeff543c2bd30281fdce43139fd0913cbf44385387b94b9411a72775c960"
-url = "https://github.com/jdx/hk/releases/download/v1.57.0/hk-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/536864262"
+[tools.lefthook."platforms.linux-arm64-musl"]
+checksum = "sha256:d96ac16753f6d3d69b92098621c2a2427522a9c2c3e78cd7c9b4a9790b0b8f17"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.12/lefthook_2.1.12_Linux_aarch64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/533627819"
+provenance = "github-attestations"
 
-[tools.hk."platforms.linux-x64"]
-checksum = "sha256:71449da0187a957233e1cf08565ed3c85fe67cd8d5942a15bc231579e1c7e380"
-url = "https://github.com/jdx/hk/releases/download/v1.57.0/hk-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/536864279"
+[tools.lefthook."platforms.linux-x64"]
+checksum = "sha256:dad908593c859d139b886c14913a44401d95288aa7642d9bdf6f3bd36bd788ff"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.12/lefthook_2.1.12_Linux_x86_64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/533627780"
+provenance = "github-attestations"
 
-[tools.hk."platforms.linux-x64-musl"]
-checksum = "sha256:e67b730e82e04e3e9b513f9063573a3fc29377ef3b61aa04cce7c9b9f4782b1e"
-url = "https://github.com/jdx/hk/releases/download/v1.57.0/hk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/536864280"
+[tools.lefthook."platforms.linux-x64-musl"]
+checksum = "sha256:dad908593c859d139b886c14913a44401d95288aa7642d9bdf6f3bd36bd788ff"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.12/lefthook_2.1.12_Linux_x86_64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/533627780"
+provenance = "github-attestations"
 
-[tools.hk."platforms.macos-arm64"]
-checksum = "sha256:7b10c00e1f1b51d3e43cd5e738cc5fd93bf3ec0b777505744ac37c8b1e171188"
-url = "https://github.com/jdx/hk/releases/download/v1.57.0/hk-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/536864261"
+[tools.lefthook."platforms.macos-arm64"]
+checksum = "sha256:f23eac328ca50c7b775dc24dc275cdeacb65e16cf8bd1745d18e3c563f704f94"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.12/lefthook_2.1.12_MacOS_arm64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/533627758"
+provenance = "github-attestations"
 
-[tools.hk."platforms.windows-x64"]
-checksum = "sha256:b5c4de9ec9e83790642564370c572b559f2b4ea38147ee8ea1f5b415967dab3f"
-url = "https://github.com/jdx/hk/releases/download/v1.57.0/hk-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/536864259"
+[tools.lefthook."platforms.macos-x64"]
+checksum = "sha256:83c8591d338b1b789944480d9effe2807adc903cf27e4a16ab013e39d7723c31"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.12/lefthook_2.1.12_MacOS_x86_64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/533627775"
+provenance = "github-attestations"
+
+[tools.lefthook."platforms.windows-x64"]
+checksum = "sha256:c642d9ad8818faff1379e1b72321b4baddd0d6f20ffd7303f59386bb6abfd6e9"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.12/lefthook_2.1.12_Windows_x86_64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/533627801"
+provenance = "github-attestations"
 
 [[tools.node]]
 version = "24.20.0"
