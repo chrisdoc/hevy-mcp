@@ -24,80 +24,102 @@ function response(data: JsonObject, status = 200): Response {
 
 describe("request-local retry state", () => {
 	it("resets retry indexes for sequential logical requests", async () => {
-		const starts: number[] = [];
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(response({}, 503))
-			.mockResolvedValueOnce(response({ request: 1 }))
-			.mockResolvedValueOnce(response({}, 503))
-			.mockResolvedValueOnce(response({ request: 2 }));
-		const client = createHevyClient({
-			apiKey: "test-key",
-			fetch: fetchMock,
-			maxGetRetries: 1,
-			sleep: async () => {},
-			onRequestStart: ({ retryCount }) => {
-				starts.push(retryCount);
-			},
-		});
+		vi.useFakeTimers();
+		try {
+			const starts: number[] = [];
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValueOnce(response({}, 503))
+				.mockResolvedValueOnce(response({ request: 1 }))
+				.mockResolvedValueOnce(response({}, 503))
+				.mockResolvedValueOnce(response({ request: 2 }));
+			const client = createHevyClient({
+				apiKey: "test-key",
+				fetch: fetchMock,
+				maxGetRetries: 1,
+				sleep: async () => {},
+				onRequestStart: ({ retryCount }) => {
+					starts.push(retryCount);
+				},
+			});
 
-		await expect(client.getUserInfo()).resolves.toEqual({ request: 1 });
-		await expect(client.getUserInfo()).resolves.toEqual({ request: 2 });
+			const p1 = client.getUserInfo();
+			await vi.runAllTimersAsync();
+			await expect(p1).resolves.toEqual({ request: 1 });
 
-		expect(fetchMock).toHaveBeenCalledTimes(4);
-		expect(starts).toEqual([0, 1, 0, 1]);
+			const p2 = client.getUserInfo();
+			await vi.runAllTimersAsync();
+			await expect(p2).resolves.toEqual({ request: 2 });
+
+			expect(fetchMock).toHaveBeenCalledTimes(4);
+			expect(starts).toEqual([0, 1, 0, 1]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("keeps retry indexes and budgets isolated for concurrent requests", async () => {
-		const starts: Array<{ endpoint: string; retryCount: number }> = [];
-		const attemptsByEndpoint = new Map<string, number>();
-		const fetchMock = vi.fn((input: RequestInfo | URL) => {
-			const endpoint = new URL(requestUrl(input)).pathname;
-			const attempt = (attemptsByEndpoint.get(endpoint) ?? 0) + 1;
-			attemptsByEndpoint.set(endpoint, attempt);
-			return Promise.resolve(
-				attempt === 1 ? response({}, 503) : response({ endpoint }),
-			);
-		});
-		const client = createHevyClient({
-			apiKey: "test-key",
-			fetch: fetchMock,
-			maxGetRetries: 1,
-			sleep: async () => {},
-			onRequestStart: ({ endpoint, retryCount }) => {
-				starts.push({ endpoint, retryCount });
-			},
-		});
+		vi.useFakeTimers();
+		try {
+			const starts: Array<{ endpoint: string; retryCount: number }> = [];
+			const attemptsByEndpoint = new Map<string, number>();
+			const fetchMock = vi.fn((input: RequestInfo | URL) => {
+				const endpoint = new URL(requestUrl(input)).pathname;
+				const attempt = (attemptsByEndpoint.get(endpoint) ?? 0) + 1;
+				attemptsByEndpoint.set(endpoint, attempt);
+				return Promise.resolve(
+					attempt === 1 ? response({}, 503) : response({ endpoint }),
+				);
+			});
+			const client = createHevyClient({
+				apiKey: "test-key",
+				fetch: fetchMock,
+				maxGetRetries: 1,
+				sleep: async () => {},
+				onRequestStart: ({ endpoint, retryCount }) => {
+					starts.push({ endpoint, retryCount });
+				},
+			});
 
-		const [workouts, routines] = await Promise.all([
-			client.getWorkouts(),
-			client.getRoutines(),
-		]);
+			const promise = Promise.all([client.getWorkouts(), client.getRoutines()]);
+			await vi.runAllTimersAsync();
+			const [workouts, routines] = await promise;
 
-		expect(workouts).toEqual({ endpoint: "/v1/workouts" });
-		expect(routines).toEqual({ endpoint: "/v1/routines" });
-		expect(fetchMock).toHaveBeenCalledTimes(4);
-		expect(
-			starts.map(({ retryCount }) => retryCount).sort((a, b) => a - b),
-		).toEqual([0, 0, 1, 1]);
+			expect(workouts).toEqual({ endpoint: "/v1/workouts" });
+			expect(routines).toEqual({ endpoint: "/v1/routines" });
+			expect(fetchMock).toHaveBeenCalledTimes(4);
+			expect(
+				starts.map(({ retryCount }) => retryCount).sort((a, b) => a - b),
+			).toEqual([0, 0, 1, 1]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it.each([
 		["fractional values floor to zero", 0.9, 1],
 		["negative values use the default", -1, 4],
 	])("normalizes retry option: %s", async (_label, maxGetRetries, calls) => {
-		const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
-		const client = createHevyClient({
-			apiKey: "test-key",
-			fetch: fetchMock,
-			maxGetRetries,
-			sleep: async () => {},
-		});
+		vi.useFakeTimers();
+		try {
+			const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
+			const client = createHevyClient({
+				apiKey: "test-key",
+				fetch: fetchMock,
+				maxGetRetries,
+				sleep: async () => {},
+			});
 
-		await expect(client.getUserInfo()).rejects.toMatchObject({
-			code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
-		});
-		expect(fetchMock).toHaveBeenCalledTimes(calls);
+			const promise = client.getUserInfo();
+			const result = expect(promise).rejects.toMatchObject({
+				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
+			});
+			await vi.runAllTimersAsync();
+			await result;
+			expect(fetchMock).toHaveBeenCalledTimes(calls);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("does not let cancellation of one request cancel a concurrent request", async () => {

@@ -15,7 +15,7 @@ const childFixture = path.join(
 );
 
 describe("graceful stdio shutdown regression", () => {
-	it.each(["SIGTERM", "SIGINT"] satisfies ShutdownSignal[])(
+	it.concurrent.each(["SIGTERM", "SIGINT"] satisfies ShutdownSignal[])(
 		"flushes backpressured JSON-RPC frames before exiting on %s",
 		async (signal) => {
 			const child = spawn(process.execPath, [tsxCli, childFixture], {

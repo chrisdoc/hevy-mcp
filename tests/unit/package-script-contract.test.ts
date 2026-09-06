@@ -89,11 +89,8 @@ function runPackageScript(
 	delete childEnv.HEVY_API_KEY;
 	if (env.HEVY_API_KEY !== undefined) childEnv.HEVY_API_KEY = env.HEVY_API_KEY;
 	return spawnSync(
-		"mise",
+		pnpmPath,
 		[
-			"exec",
-			"--",
-			pnpmPath,
 			"--ignore-workspace",
 			"--dir",
 			fixture.directory,
@@ -102,6 +99,30 @@ function runPackageScript(
 			scriptName,
 		],
 		{ cwd: repositoryRoot, env: childEnv, encoding: "utf8" },
+	);
+}
+
+function runIntegrationRunner(
+	fixture: Fixture,
+	env: Record<string, string | undefined> = {},
+) {
+	const childEnv = {
+		...process.env,
+		...env,
+		MISE_AUTO_INSTALL: "false",
+		HOME: fixture.directory,
+		DOWNSTREAM_MARKER: fixture.marker,
+		FIXTURE_CWD: fixture.directory,
+	};
+	delete childEnv.HEVY_API_KEY;
+	if (env.HEVY_API_KEY !== undefined) childEnv.HEVY_API_KEY = env.HEVY_API_KEY;
+	return spawnSync(
+		process.execPath,
+		[
+			resolve(repositoryRoot, "scripts/run-integration-vitest.mjs"),
+			"fixture.test.mjs",
+		],
+		{ cwd: fixture.directory, env: childEnv, encoding: "utf8" },
 	);
 }
 
@@ -162,7 +183,7 @@ describe("repository package scripts", () => {
 				resolve(fixture.directory, ".env"),
 				"HEVY_API_KEY=dotenv-fake\n",
 			);
-			const dotenvOnly = runPackageScript(fixture, "test:integration", {
+			const dotenvOnly = runIntegrationRunner(fixture, {
 				EXPECTED_KEY: "dotenv-fake",
 			});
 			expect(dotenvOnly.status).toBe(0);
@@ -174,7 +195,7 @@ describe("repository package scripts", () => {
 				homeIsFixture: true,
 			});
 
-			const explicitWins = runPackageScript(fixture, "test:integration", {
+			const explicitWins = runIntegrationRunner(fixture, {
 				HEVY_API_KEY: "explicit-fake",
 				EXPECTED_KEY: "explicit-fake",
 			});
@@ -205,7 +226,7 @@ describe("repository package scripts", () => {
 				} else {
 					mkdirSync(envPath);
 				}
-				const result = runPackageScript(fixture, "test:integration", {
+				const result = runIntegrationRunner(fixture, {
 					HEVY_API_KEY: "explicit-fake",
 					EXPECTED_KEY: "explicit-fake",
 				});

@@ -122,12 +122,12 @@ describe("generated client closure checks", () => {
 
 			await expect(
 				runCommand(process.execPath, [script], root, {
-					timeout: 1_000,
+					timeout: 100,
 					killSignal: "SIGTERM",
 				}),
 			).rejects.toMatchObject({
 				message: expect.stringMatching(
-					/failed: timed out after 1000ms; sent SIGTERM[\s\S]*command started/,
+					/failed: timed out after 100ms; sent SIGTERM[\s\S]*command started/,
 				),
 			});
 		} finally {
@@ -152,12 +152,12 @@ describe("generated client closure checks", () => {
 
 			await expect(
 				runCommand(process.execPath, [script], root, {
-					timeout: 1_000,
+					timeout: 100,
 					killSignal: "SIGTERM",
 				}),
 			).rejects.toMatchObject({
 				message: expect.stringMatching(
-					/failed: timed out after 1000ms; sent SIGTERM[\s\S]*process started/,
+					/failed: timed out after 100ms; sent SIGTERM[\s\S]*process started/,
 				),
 			});
 		} finally {
@@ -184,12 +184,13 @@ describe("generated client closure checks", () => {
 
 			await expect(
 				runCommand(process.execPath, [script], root, {
-					timeout: 1_000,
+					timeout: 100,
 					killSignal: "SIGTERM",
+					gracePeriodMs: 100,
 				}),
 			).rejects.toMatchObject({
 				message: expect.stringMatching(
-					/failed: timed out after 1000ms; sent SIGTERM[\s\S]*process started/,
+					/failed: timed out after 100ms; sent SIGTERM[\s\S]*process started/,
 				),
 			});
 		} finally {
@@ -207,10 +208,10 @@ describe("generated client closure checks", () => {
 
 			await expect(
 				runCommand(process.execPath, [script], root, {
-					timeout: 1_000,
+					timeout: 100,
 					killSignal: "SIGKILL",
 				}),
-			).rejects.toThrow(/failed: timed out after 1000ms; sent SIGKILL/);
+			).rejects.toThrow(/failed: timed out after 100ms; sent SIGKILL/);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

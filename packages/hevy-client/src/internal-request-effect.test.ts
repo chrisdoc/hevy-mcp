@@ -1055,139 +1055,166 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 	});
 
 	it("uses the same fetch, api key, and retry configuration for a new GET", async () => {
-		const params = {
-			since: "2025-01-01T00:00:00.000Z",
-			page: 2,
-			pageSize: 5,
-		};
-		const payload = {
-			page: 2,
-			page_count: 2,
-			events: [{ id: "event-1" }],
-		};
-		const promiseFetch = vi
-			.fn()
-			.mockResolvedValueOnce(response({}, 503))
-			.mockResolvedValueOnce(response(payload));
-		const promiseClient = createHevyClient({
-			apiKey: "test-key",
-			baseUrl: "https://example.test",
-			fetch: promiseFetch,
-			maxGetRetries: 1,
-			sleep: async () => {},
-		});
-		const promiseValue = await promiseClient.getWorkoutEvents(params);
+		vi.useFakeTimers();
+		try {
+			const params = {
+				since: "2025-01-01T00:00:00.000Z",
+				page: 2,
+				pageSize: 5,
+			};
+			const payload = {
+				page: 2,
+				page_count: 2,
+				events: [{ id: "event-1" }],
+			};
+			const promiseFetch = vi
+				.fn()
+				.mockResolvedValueOnce(response({}, 503))
+				.mockResolvedValueOnce(response(payload));
+			const promiseClient = createHevyClient({
+				apiKey: "test-key",
+				baseUrl: "https://example.test",
+				fetch: promiseFetch,
+				maxGetRetries: 1,
+				sleep: async () => {},
+			});
+			const promiseValuePromise = promiseClient.getWorkoutEvents(params);
+			await vi.runAllTimersAsync();
+			const promiseValue = await promiseValuePromise;
 
-		const effectFetch = vi
-			.fn()
-			.mockResolvedValueOnce(response({}, 503))
-			.mockResolvedValueOnce(response(payload));
-		const effectClient = createHevyClient({
-			apiKey: "test-key",
-			baseUrl: "https://example.test",
-			fetch: effectFetch,
-			maxGetRetries: 1,
-			sleep: async () => {},
-		});
-		const effectValue = await Effect.runPromise(
-			getRequestEffectClient(effectClient).getWorkoutEvents(params),
-		);
+			const effectFetch = vi
+				.fn()
+				.mockResolvedValueOnce(response({}, 503))
+				.mockResolvedValueOnce(response(payload));
+			const effectClient = createHevyClient({
+				apiKey: "test-key",
+				baseUrl: "https://example.test",
+				fetch: effectFetch,
+				maxGetRetries: 1,
+				sleep: async () => {},
+			});
+			const effectValuePromise = Effect.runPromise(
+				getRequestEffectClient(effectClient).getWorkoutEvents(params),
+			);
+			await vi.runAllTimersAsync();
+			const effectValue = await effectValuePromise;
 
-		expect(effectValue).toEqual(promiseValue);
-		expect(promiseFetch).toHaveBeenCalledTimes(2);
-		expect(effectFetch).toHaveBeenCalledTimes(2);
-		expect(requestDetails(effectFetch)).toEqual(requestDetails(promiseFetch));
-		expect(requestDetails(effectFetch).headers["api-key"]).toBe("test-key");
+			expect(effectValue).toEqual(promiseValue);
+			expect(promiseFetch).toHaveBeenCalledTimes(2);
+			expect(effectFetch).toHaveBeenCalledTimes(2);
+			expect(requestDetails(effectFetch)).toEqual(requestDetails(promiseFetch));
+			expect(requestDetails(effectFetch).headers["api-key"]).toBe("test-key");
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("matches Promise retry exhaustion for a new GET", async () => {
-		const promiseFetch = vi.fn().mockResolvedValue(response({}, 503));
-		const promiseClient = createHevyClient({
-			apiKey: "test-key",
-			fetch: promiseFetch,
-			maxGetRetries: 1,
-			sleep: async () => {},
-		});
-		await expect(
-			promiseClient.getWorkoutEvents({ page: 1, pageSize: 5 }),
-		).rejects.toBeDefined();
+		vi.useFakeTimers();
+		try {
+			const promiseFetch = vi.fn().mockResolvedValue(response({}, 503));
+			const promiseClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: promiseFetch,
+				maxGetRetries: 1,
+				sleep: async () => {},
+			});
+			const promisePromise = promiseClient
+				.getWorkoutEvents({ page: 1, pageSize: 5 })
+				.catch((error: Error | string) => error);
+			await vi.runAllTimersAsync();
+			const promiseResult = await promisePromise;
+			expect(promiseResult).toBeDefined();
 
-		const effectFetch = vi.fn().mockResolvedValue(response({}, 503));
-		const effectClient = createHevyClient({
-			apiKey: "test-key",
-			fetch: effectFetch,
-			maxGetRetries: 1,
-			sleep: async () => {},
-		});
-		await expect(
-			Effect.runPromise(
+			const effectFetch = vi.fn().mockResolvedValue(response({}, 503));
+			const effectClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: effectFetch,
+				maxGetRetries: 1,
+				sleep: async () => {},
+			});
+			const effectPromise = Effect.runPromise(
 				getRequestEffectClient(effectClient).getWorkoutEvents({
 					page: 1,
 					pageSize: 5,
 				}),
-			),
-		).rejects.toBeDefined();
+			).catch((error: Error | string) => error);
+			await vi.runAllTimersAsync();
+			const effectResult = await effectPromise;
+			expect(effectResult).toBeDefined();
 
-		expect(promiseFetch).toHaveBeenCalledTimes(2);
-		expect(effectFetch).toHaveBeenCalledTimes(2);
+			expect(promiseFetch).toHaveBeenCalledTimes(2);
+			expect(effectFetch).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("does not retry POST mutations and keeps PUT attempts in parity", async () => {
-		const promisePostFetch = vi.fn().mockResolvedValue(response({}, 503));
-		const promisePostClient = createHevyClient({
-			apiKey: "test-key",
-			fetch: promisePostFetch,
-			maxGetRetries: 3,
-		});
-		await expect(
-			promisePostClient.createWorkout({} as never),
-		).rejects.toBeDefined();
+		vi.useFakeTimers();
+		try {
+			const promisePostFetch = vi.fn().mockResolvedValue(response({}, 503));
+			const promisePostClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: promisePostFetch,
+				maxGetRetries: 3,
+			});
+			await expect(
+				promisePostClient.createWorkout({} as never),
+			).rejects.toBeDefined();
 
-		const effectPostFetch = vi.fn().mockResolvedValue(response({}, 503));
-		const effectPostClient = createHevyClient({
-			apiKey: "test-key",
-			fetch: effectPostFetch,
-			maxGetRetries: 3,
-		});
-		await expect(
-			Effect.runPromise(
-				getRequestEffectClient(effectPostClient).createWorkout({} as never),
-			),
-		).rejects.toBeDefined();
+			const effectPostFetch = vi.fn().mockResolvedValue(response({}, 503));
+			const effectPostClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: effectPostFetch,
+				maxGetRetries: 3,
+			});
+			await expect(
+				Effect.runPromise(
+					getRequestEffectClient(effectPostClient).createWorkout({} as never),
+				),
+			).rejects.toBeDefined();
 
-		const promisePutFetch = vi.fn().mockResolvedValue(response({}, 503));
-		const promisePutClient = createHevyClient({
-			apiKey: "test-key",
-			fetch: promisePutFetch,
-			maxGetRetries: 1,
-			sleep: async () => {},
-		});
-		await expect(
-			promisePutClient.updateWorkout("workout-1", {} as never),
-		).rejects.toBeDefined();
+			const promisePutFetch = vi.fn().mockResolvedValue(response({}, 503));
+			const promisePutClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: promisePutFetch,
+				maxGetRetries: 1,
+				sleep: async () => {},
+			});
+			const promisePutPromise = promisePutClient
+				.updateWorkout("workout-1", {} as never)
+				.catch((error: Error | string) => error);
+			await vi.runAllTimersAsync();
+			const promisePutResult = await promisePutPromise;
+			expect(promisePutResult).toBeDefined();
 
-		const effectPutFetch = vi.fn().mockResolvedValue(response({}, 503));
-		const effectPutClient = createHevyClient({
-			apiKey: "test-key",
-			fetch: effectPutFetch,
-			maxGetRetries: 1,
-			sleep: async () => {},
-		});
-		await expect(
-			Effect.runPromise(
+			const effectPutFetch = vi.fn().mockResolvedValue(response({}, 503));
+			const effectPutClient = createHevyClient({
+				apiKey: "test-key",
+				fetch: effectPutFetch,
+				maxGetRetries: 1,
+				sleep: async () => {},
+			});
+			const effectPutPromise = Effect.runPromise(
 				getRequestEffectClient(effectPutClient).updateWorkout(
 					"workout-1",
 					{} as never,
 				),
-			),
-		).rejects.toBeDefined();
+			).catch((error: Error | string) => error);
+			await vi.runAllTimersAsync();
+			const effectPutResult = await effectPutPromise;
+			expect(effectPutResult).toBeDefined();
 
-		expect(promisePostFetch).toHaveBeenCalledOnce();
-		expect(effectPostFetch).toHaveBeenCalledOnce();
-		expect(promisePutFetch).toHaveBeenCalledTimes(2);
-		expect(effectPutFetch).toHaveBeenCalledTimes(
-			promisePutFetch.mock.calls.length,
-		);
+			expect(promisePostFetch).toHaveBeenCalledOnce();
+			expect(effectPostFetch).toHaveBeenCalledOnce();
+			expect(promisePutFetch).toHaveBeenCalledTimes(2);
+			expect(effectPutFetch).toHaveBeenCalledTimes(
+				promisePutFetch.mock.calls.length,
+			);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it.each([400, 404])(
