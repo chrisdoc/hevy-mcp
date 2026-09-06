@@ -1,0 +1,20 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "ops-measurements",
+  "description": "Add bodyMeasurements.get/create/update Effect operations using omit-nulls builders. List envelope already covered by ops-read-policy.",
+  "skillName": "operations-worker",
+  "milestone": "ops-complete",
+  "preconditions": [
+    "Effect client has body measurement methods",
+    "Measurement payload builders live in operations",
+    "bodyMeasurements.list normalize already implemented"
+  ],
+  "expectedBehavior": [
+    "bodyMeasurements.get returns { bodyMeasurement, date }; member 404 → not_found; collection-path 404 fails",
+    "bodyMeasurements.create omits nullish fields then Effect createBodyMeasurement",
+    "bodyMeasurements.update omits nullish fields then Effect updateBodyMeasurement; empty numeric payload → tagged domain error (no PUT {})"
+  ]
+}
+```
