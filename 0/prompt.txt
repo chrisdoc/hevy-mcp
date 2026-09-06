@@ -1,0 +1,1 @@
+can you verify for me → skipped: deleting tools/oxlint/anti-slop/ folder, remove once you verify Ultracite's built-in anti-slop is running cleanly.
