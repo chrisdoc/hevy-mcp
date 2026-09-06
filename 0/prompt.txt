@@ -1,0 +1,1 @@
+can you fix ~/AGENTS.md and say that dotfiles need to be edited with chezmoi and secrets are encrypted
