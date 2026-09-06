@@ -1,0 +1,20 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Apply contract review findings
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Edit only `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-contract.md`. Read the full contract, mission.md, architecture.md, and use these synthesized decisions from reviewer pass 1:
+
+Incorporate: retry option normalization; per-request schedule independence; fresh attempt budgets; exact retry safety/status matrix; actual production request Effect seam under TestClock; non-cooperative custom sleep; retired signal cleanup; deterministic cancellation/deadline arbitration; Effect interruption across phases; response-body cleanup where observable; synchronous and async sleep failure; exact Promise/HevyHttpError projection; exactly-once request and retry-wait observation scopes; attempt scopes must not own backoff; late observer-scope failures must not duplicate dispatch/completion; explicit authoritative deadlines must never advance schedule/open waits/log impossible retries; immediate implicit fresh-deadline retry must not consume schedule or open a wait/sleep (a legitimate retry log may remain); generated-path diff check; collective changeset cascade wording; exact Worker HTTP sanitized projection.
+
+Do not expand scope into a new Node 20 lane, new CLI/Node adapter smoke infrastructure, core pagination changes, or a full live-style Worker MCP success-retry fixture. Existing package/Worker/bundle validation is sufficient for this mission.
+
+Maintain black-box behavioral language; static source rules are acceptable only for the one Effect runtime boundary/request-local schedule architectural invariant. Ensure every assertion has stable unique ID, Tool, and Evidence. Exact future test selectors are allowed as acceptance targets. You may add IDs after current maxima without renumbering existing IDs. Remove duplicate wording where reviewers identified ownership overlap. Return filepath, IDs added/modified/removed, final count, and any unresolved ambiguity. Do not edit any other file.
+---END TASK FROM PARENT AGENT---
