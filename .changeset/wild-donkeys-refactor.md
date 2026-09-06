@@ -1,10 +1,4 @@
 ---
-"@hevy-mcp/hevy-client": patch
-"@hevy-mcp/operations": patch
-"@hevy-mcp/core": patch
-"hevy-mcp": patch
-"@hevy-mcp/worker": patch
-"@chrisdoc/hevy-cli": patch
 ---
 
-Migrate git hook management from hk to Lefthook
+chore: migrate git hooks from hk to lefthook

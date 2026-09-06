@@ -1,21 +1,22 @@
 # Git hooks managed by lefthook. Enable once per clone: `mise exec -- lefthook install`
 # Entire's git hooks are chained as steps here, so never run `entire enable --force`
 # (it would overwrite these .git/hooks scripts; re-run `mise exec -- lefthook install` instead).
+# All tools resolve through `mise exec --` so hooks work without mise activated in the shell.
 pre-commit:
   parallel: false
   commands:
     oxlint:
-      glob: "**/*.{js,ts,cjs,mjs,d.cts,d.mjs,jsx,tsx}"
-      run: npx oxlint --type-aware --type-check .
+      glob: "**/*.{js,ts,cjs,mjs,cts,mts,d.cts,d.mts,jsx,tsx}"
+      run: mise exec -- npx oxlint --type-aware --type-check .
     oxfmt:
-      glob: "**/*.{js,ts,cjs,mjs,d.cts,d.mjs,jsx,tsx,json,jsonc,md}"
-      run: npx oxfmt --write {staged_files}
+      glob: "**/*.{js,ts,cjs,mjs,cts,mts,d.cts,d.mts,jsx,tsx,json,jsonc,md}"
+      run: mise exec -- npx oxfmt --write {staged_files}
       stage_fixed: true
     actionlint:
       glob:
         - ".github/workflows/**/*.yml"
         - ".github/workflows/**/*.yaml"
-      run: actionlint
+      run: mise exec -- actionlint
     zizmor:
       glob:
         - ".github/dependabot.yml"
@@ -23,31 +24,31 @@ pre-commit:
         - ".github/workflows/**/*.yaml"
         - "**/action.yml"
         - "**/action.yaml"
-      run: zizmor --offline --strict-collection --collect=default --format=plain {staged_files}
+      run: mise exec -- zizmor --offline --strict-collection --collect=default --format=plain {staged_files}
     tests:
-      run: npm run test:unit
+      run: mise exec -- npm run test:unit
 
 prepare-commit-msg:
   commands:
     entire:
-      run: command -v entire >/dev/null 2>&1 && entire hooks git prepare-commit-msg {1} || true
+      run: mise exec -- entire hooks git prepare-commit-msg {1} || true
 
 commit-msg:
   commands:
     entire:
-      run: command -v entire >/dev/null 2>&1 && entire hooks git commit-msg {1} || true
+      run: mise exec -- entire hooks git commit-msg {1} || true
     commitlint:
-      run: npx commitlint --edit {1}
+      run: mise exec -- npx commitlint --edit {1}
 
 post-commit:
   commands:
     entire:
-      run: command -v entire >/dev/null 2>&1 && entire hooks git post-commit || true
+      run: mise exec -- entire hooks git post-commit || true
 
 post-rewrite:
   commands:
     entire:
-      run: command -v entire >/dev/null 2>&1 && entire hooks git post-rewrite {0} || true
+      run: mise exec -- entire hooks git post-rewrite {1} || true
 
 pre-push:
   scripts:
