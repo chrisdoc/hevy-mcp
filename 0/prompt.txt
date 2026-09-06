@@ -1,0 +1,18 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "scrutiny-validator-ops-foundation",
+  "description": "Scrutiny validation for milestone \"ops-foundation\". Runs test suite, typecheck, and lint. Spawns review subagents for each completed feature. Synthesizes findings. Always returns to orchestrator.",
+  "skillName": "scrutiny-validator",
+  "milestone": "ops-foundation",
+  "preconditions": [
+    "All implementation features for milestone \"ops-foundation\" are complete"
+  ],
+  "expectedBehavior": [
+    "Validators pass (test, typecheck, lint)",
+    "Review subagents spawned for each feature",
+    "Findings synthesized into scrutiny report"
+  ]
+}
+```
