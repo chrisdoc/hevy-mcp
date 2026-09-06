@@ -1,0 +1,1 @@
+should we move kubb dependencies into hevy-client? and keep the dependencies in the root package.json very minimal?
