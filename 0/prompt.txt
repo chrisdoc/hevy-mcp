@@ -1,0 +1,33 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature cli-collapse-and-exports
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "cli-collapse-and-exports" for milestone "cli-hygiene".
+
+Feature details:
+- ID: cli-collapse-and-exports
+- Description: Collapse Effect once per CLI command handler. Keep @chrisdoc/hevy-cli from exporting Effect types. CLI may import operations; must not import node, worker, or hevy-client/internal.
+- Worker session: 9bd10842-b2f7-44c4-a06f-c8b24b814c27
+- repoPath: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, HEAD 70e139b)
+- Feature commit from handoff: 8c744a5 ("fix(cli): collapse measurement update effect once")
+- Fulfills assertions: VAL-CLI-005, VAL-CLI-006, VAL-CLI-008
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/cli-hygiene/scrutiny/reviews/cli-collapse-and-exports.json
+
+Context you should know:
+- Read the feature entry, handoff, transcript skeleton, worker skill, architecture doc, and validation-contract.md per your standard procedure. The relevant contract area is "Area: CLI" (VAL-CLI-005 collapse-once, VAL-CLI-006 no Effect exports, VAL-CLI-008 import boundaries) plus VAL-CROSS-006 for context.
+- The full CLI migration commit is 27510e1 (already reviewed and passed by a prior reviewer — see validation/cli-hygiene/scrutiny/reviews/cli-commands-via-operations.json). Your feature's commit 8c744a5 builds on it: focus your review on what 8c744a5 changed (CLI measurement update Effect.fn program collapsed once with Effect.runPromise, shared workout update payload field reordering, package export verification), but verify the end state at HEAD 70e139b satisfies the three fulfills assertions (e.g., packages/cli/package.json has no exports map / no .d.ts entry points; packages/cli sources do not import hevy-mcp/@hevy-mcp/worker/@hevy-mcp/hevy-client/internal; handlers collapse once).
+- Do NOT re-run validators (test suites, typecheck, lint) — the scrutiny validator already ran them all green on this exact commit. You may read files and use read-only git commands.
+- Note the repo AGENTS.md exists at the repoPath root if you need repo conventions.
+
+Stay in scope: review only this feature, write the report, and complete.
+---END TASK FROM PARENT AGENT---
