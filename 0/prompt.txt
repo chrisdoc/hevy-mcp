@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Audit feature assertion coverage
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only audit, do not write files. In mission directory `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4`, extract every assertion ID from validation-contract.md and cross-reference all `fulfills` arrays in features.json and IDs in validation-state.json. Verify every contract ID is claimed exactly once, no fulfills ID is orphaned, no duplicates exist, all state IDs match exactly and are pending, every feature has required schema fields/status, every skillName resolves to an existing SKILL.md, and no manual validator features exist. Also inspect architecture/mission/features for major contradictions. Return counts, gaps, duplicates, or exact corrections needed, plus filepaths inspected. Analysis inline only.
+---END TASK FROM PARENT AGENT---
