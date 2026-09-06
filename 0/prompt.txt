@@ -1,0 +1,1 @@
+also read https://github.com/chrisdoc/hevy-mcp/issues/941
