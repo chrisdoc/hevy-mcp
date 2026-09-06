@@ -1,0 +1,39 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Map remaining Effect adoption seams
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only exploration of hevy-mcp for the NEXT Effect v4 adoption mission. Do not modify files.
+
+Check both /root/hevy-mcp-effect-retry-interpreter AND /root/hevy-mcp. Prefer the worktree that is on origin/main or most recently merged (git fetch; git log origin/main -5). If interpreter worktree is behind main, still search packages for Effect usage.
+
+GOAL: After merging the Effect retry-interpreter stack into main, what is the highest-leverage next Effect adoption?
+
+Investigate:
+1. git log origin/main --oneline -15 in both checkouts if possible
+2. Where `from "effect"` / `from 'effect'` is imported today (packages/*)
+3. Remaining imperative retry, HTTP, or lifecycle loops in packages/hevy-client, operations, core, node, worker, cli
+4. packages/operations — are read/write operations still Promise-only wrappers, or already Effect?
+5. packages/core — MCP tool handlers, withErrorHandling, ToolRuntime — still Promise?
+6. Nested Effect.runPromise crossings remaining
+7. Any TODOs/comments about Effect migration
+8. library/architecture notes if present in mission dir /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/architecture.md (read for intended next phases)
+
+Return a ranked list of 4-6 candidate next missions:
+- Title
+- Package(s)
+- Why Effect helps here (typed errors, interruption, TestClock, resource safety)
+- Rough size (S/M/L)
+- Risk to public Promise/MCP API
+- Dependencies on the just-merged interpreter
+- What NOT to do (don't swallow Node/Worker adapters into Effect if that violates topology)
+
+Be concrete with file paths. Inline only.
+---END TASK FROM PARENT AGENT---
