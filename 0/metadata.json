@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "7fb0b32cfab5",
+  "session_id": "7fed2e69-d00a-4df4-a749-8c4015f54935",
+  "strategy": "import",
+  "created_at": "2026-09-03T12:32:53.867331764Z",
+  "commit_sha": "abbb38575160386d841f52c89414ac215ee668ef",
+  "checkpoints_count": 1,
+  "files_touched": null,
+  "agent": "Factory AI Droid",
+  "model": "gpt-5.6-luna",
+  "checkpoint_transcript_start": 140,
+  "transcript_lines_at_start": 140,
+  "compact_transcript_start": 70,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "kind": "imported"
+}
