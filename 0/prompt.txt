@@ -1,0 +1,1 @@
+i have stored NX_REMOTE_CACHE_SERVER and NX_REMOTE_CACHE_TOKEN .env for the NX build cache, how can we use it locally?
