@@ -1,0 +1,1 @@
+use this skill for the bug hunt npx skills add https://github.com/mattpocock/skills --skill diagnosing-bugs
