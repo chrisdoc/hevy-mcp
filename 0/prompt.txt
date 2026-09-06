@@ -1,0 +1,31 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Inspect PR 1111 conflicts
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. Do not modify git. From /root/hevy-mcp-effect-retry-interpreter, inspect why https://github.com/chrisdoc/hevy-mcp/pull/1111 has conflicts.
+
+Run:
+- gh pr view 1111 --json number,title,url,state,mergeable,mergeStateStatus,baseRefName,headRefName,commits
+- gh pr view 1110 --json mergeable,mergeStateStatus,baseRefName,headRefName
+- gh pr view 1112 --json mergeable,mergeStateStatus,baseRefName,headRefName
+- git fetch origin
+- git log --oneline origin/test/isolate-client-retry-schedule..origin/feat/effect-request-primitives
+- git merge-tree $(git merge-base origin/test/isolate-client-retry-schedule origin/feat/effect-request-primitives) origin/test/isolate-client-retry-schedule origin/feat/effect-request-primitives  (or git merge-tree -z if available) to see conflicting files
+- Also check stack #1113: gh stack view if possible
+
+Report:
+- mergeable status of 1110, 1111, 1112, 1114
+- which files conflict
+- whether 1110 was updated (changeset 476d5d5) and 1111 was not replayed
+- recommended fix: gh stack rebase from 1110 then gh stack push
+
+Inline only.
+---END TASK FROM PARENT AGENT---
