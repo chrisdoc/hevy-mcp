@@ -1,0 +1,3 @@
+help me setup a new provider on litellm 
+
+[https://inference.hetzner.com/api/v1](https://inference.hetzner.com/api/v1) and the api key is stored in 1password "op://hermes/Hermes Secrets/HETZNER_INFERENCE"
