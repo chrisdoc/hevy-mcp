@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task complexity: heavy
+Task description: Review committed CLI migration
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review committed feature cli-commands-via-operations at commit 27510e1bc0650e67b38c999c65e17a5b74c3e708 in /root/hevy-mcp-effect-ops-layer against VAL-CLI-001, 002, 003, 004, 007, and 009. Confirm all previous blockers are resolved: legacy weeks 13-520 in both runCli and execute, strict list/search/summary pagination including zero-with-items, strict existing measurement validation and merge, invalid summary dates as API exit 3, full workout replacement exercise/omitted-description semantics, summary volume, envelopes, max-pages, operations routing, and one collapse/options forwarding. Do not modify files. Report pass or concrete remaining issues. The feature worktree is clean; ignore missing prior transcript metadata if code passes.
+---END TASK FROM PARENT AGENT---
