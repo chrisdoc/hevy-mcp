@@ -1,0 +1,22 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "45bca5ce5955",
+  "session_id": "01e1795e-4c8c-41f1-83a1-fa1e9ce60a68",
+  "strategy": "import",
+  "created_at": "2026-09-04T09:40:03.759811301Z",
+  "checkpoints_count": 1,
+  "files_touched": null,
+  "agent": "Factory AI Droid",
+  "model": "grok-4.6",
+  "checkpoint_transcript_start": 2,
+  "transcript_lines_at_start": 2,
+  "compact_transcript_start": 1,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "kind": "imported"
+}

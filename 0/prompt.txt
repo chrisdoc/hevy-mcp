@@ -1,0 +1,29 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Second-pass client contract review
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Second review pass of the CLIENT RUNTIME + WORKER sections of the validation contract AFTER first-pass additions.
+
+READ the full updated contract:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md
+
+Also architecture:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+
+First-pass already added VAL-CLIENT-031, VAL-CLIENT-032, VAL-WORKER-009 and tightened 003/010/014/023/028/004/005.
+
+WRITE to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review2-client.md
+
+Your job: think of remaining MISSING user/consumer flows that the first pass still missed. It is very likely some remain. Propose full new assertion text only for real remaining gaps. If none, say "no further IDs" and list only residual nits.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
