@@ -1,0 +1,63 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "01M1W1AXFV4AEZJ0EDA48E3ZE9",
+  "session_id": "01a077d0-f954-707b-a5b6-29ba3817f749",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-06T18:57:49.345487Z",
+  "branch": "chore/migrate-hk-to-lefthook",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lefthook.yml"
+  ],
+  "agent": "Pi",
+  "model": "hermes-merge-glm-5-3-flash",
+  "turn_id": "19525184274b",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 6054110,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 22951,
+    "api_call_count": 137
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-06T18:57:49.31797Z",
+    "agent_lines": 6,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 6,
+    "total_lines_changed": 6,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 267,
+      "user_lines_removed": 162,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".lefthook/pre-push/control-plane.sh": 2,
+        ".lefthook/pre-push/entire.sh": 5,
+        ".pi/extensions/entire/index.ts": 147,
+        "AGENTS.md": 2,
+        "CONTRIBUTING.md": 7,
+        "docs/contributor-onboarding.md": 5,
+        "lefthook.yml": 58,
+        "mise.lock": 40,
+        "mise.toml": 1
+      },
+      "user_removed_per_file": {
+        "AGENTS.md": 2,
+        "CONTRIBUTING.md": 8,
+        "docs/contributor-onboarding.md": 5,
+        "hk.pkl": 115,
+        "mise.lock": 31,
+        "mise.toml": 1
+      }
+    }
+  ]
+}
