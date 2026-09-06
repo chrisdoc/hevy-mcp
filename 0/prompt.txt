@@ -1,0 +1,38 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Validate adapter-boundaries assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "core-runtime".
+
+Assigned assertions: VAL-CORE-020, VAL-CORE-021, VAL-CROSS-011
+
+Your isolation context:
+- Mission worktree (the ONLY directory you may work in): /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer. Dependencies are installed; do not run pnpm install.
+- Never modify /root/hevy-mcp (original checkout, has a staged changeset) or any other worktree.
+- Read-only over source: run vitest and capture terminal output as evidence. Do not modify production or test source files.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest via mise for VAL-CORE-020/021; read-only git inspection for VAL-CROSS-011. Run each of these in order, capturing output:
+  1. mise exec -- pnpm exec vitest run packages/core/src/tools/cross-package.test.ts
+  2. mise exec -- pnpm run check:boundaries
+Scope: only the checks listed above. Do not run the whole unit suite.
+
+Evidence to collect per assertion:
+- VAL-CORE-020: packages/node and packages/worker do not gain Effect.runPromise or imports of @hevy-mcp/operations / @hevy-mcp/hevy-client/internal; registerHevyTools / createHevyMcpServer still return an MCP McpServer whose tools are async (args) => CallToolResult; protocol JSON from callTool / readResource must not match /Effect|Cause|Layer/; prefer zero adapter source changes; fail if Node stdio or Worker HTTP/OAuth are rewritten in Effect. Evidence: cross-package.test.ts output plus a static grep of packages/node/src and packages/worker/src for "Effect.runPromise", "@hevy-mcp/operations", "@hevy-mcp/hevy-client/internal" (expect zero matches).
+- VAL-CORE-021: packages/core does not import @hevy-mcp/hevy-client/internal, Node built-ins, or Cloudflare bindings; may import @hevy-mcp/hevy-client main/types/schemas, @hevy-mcp/operations, and effect; createOperations is called from core with a public HevyClient; the internal seam stays behind operations. Evidence: cross-package.test.ts output plus static grep of packages/core/src for "@hevy-mcp/hevy-client/internal", "node:", "fs", "path", "process", "child_process", "cloudflare:" in import positions (expect zero matches).
+- VAL-CROSS-011: implementation, tests, Changeset, and PR commits live in the feature worktree, not /root/hevy-mcp; git status --short --branch in /root/hevy-mcp still shows only the pre-existing staged .changeset/amber-rivers-heal.md on main; git status in the mission worktree shows the feature branch clean-ahead state; never push, commit, checkout, or stash in either checkout. Evidence: read-only git status output from both checkouts saved as evidence files.
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you.
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/user-testing/flows/core-adapter-boundaries.json
+Save evidence files to this directory: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/core-runtime/core-adapter-boundaries/
+
+Flow validator guidance section: "Flow Validator Guidance: core-runtime"
+---END TASK FROM PARENT AGENT---
