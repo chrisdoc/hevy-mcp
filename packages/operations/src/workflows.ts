@@ -226,7 +226,10 @@ export const scanPagesInWindow = Effect.fn(
 	const start = parseUtcDate(startDate);
 	const end = parseUtcDate(endDate);
 	if (start === undefined || end === undefined) {
-		return { items: [], pages: 0, itemsScanned: 0 };
+		return yield* new TrainingSummaryDataError({
+			collection: "training-summary",
+			message: "The training summary window contains an invalid date",
+		});
 	}
 
 	const startMillis = DateTime.toEpochMillis(start);

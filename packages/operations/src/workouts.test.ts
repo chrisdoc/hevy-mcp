@@ -1,5 +1,6 @@
 import type { HevyClient, HevyExecutionOptions } from "@hevy-mcp/hevy-client";
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
+import { ApiError, NetworkError, RateLimitError } from "@hevy-mcp/hevy-client";
 import type {
 	GetV1Workouts200,
 	GetV1WorkoutsCountStatus200,
@@ -38,7 +39,7 @@ interface InMemoryWorkoutsAdapter extends WorkoutsListAdapter {
 }
 
 function createInMemoryAdapter(
-	responses: readonly (GetV1Workouts200 | Error)[],
+	responses: readonly (GetV1Workouts200 | HevyRequestEffectError)[],
 ): InMemoryWorkoutsAdapter {
 	let responseIndex = 0;
 	const requests: InMemoryWorkoutsAdapter["requests"] = [];
@@ -50,27 +51,24 @@ function createInMemoryAdapter(
 			argumentCounts.push(arguments.length);
 			requests.push({ params, options });
 			const response = responses[responseIndex++] ?? { workouts: [] };
-			if (response instanceof Error) return Effect.fail(response);
+			if ("_tag" in response) return Effect.fail(response);
 			return Effect.succeed(response);
 		},
 	};
 }
 
-function httpError(
-	status: number,
-	method: string,
-	endpoint: string,
-	message = "request failed",
-) {
-	return new HevyHttpError(message, {
-		status,
-		method,
-		endpoint,
-	});
+function httpError(status: number, method: string, endpoint: string) {
+	if (status === 404) {
+		return new NotFoundError({ status, method, endpoint, expected: true });
+	}
+	if (status === 429) {
+		return new RateLimitError({ status, method, endpoint });
+	}
+	return new ApiError({ status, method, endpoint });
 }
 
 function notFound(endpoint = "/v1/workouts", method = "GET") {
-	return httpError(404, method, endpoint, "not found");
+	return httpError(404, method, endpoint);
 }
 
 interface InMemoryWorkoutsGetAdapter extends WorkoutsGetAdapter {
@@ -84,14 +82,14 @@ interface InMemoryWorkoutsGetAdapter extends WorkoutsGetAdapter {
 function abortable<T>(
 	options: HevyExecutionOptions | undefined,
 	error: Error,
-): Effect.Effect<T, Error> {
+): Effect.Effect<T> {
 	const signal = options?.signal;
-	if (signal === undefined) return Effect.fail(error);
+	if (signal === undefined) return Effect.die(error);
 	return Effect.callback((resume) => {
 		const rejectOnAbort = () => {
 			signal.removeEventListener("abort", rejectOnAbort);
 			const reason = signal.reason;
-			resume(Effect.fail(reason instanceof Error ? reason : error));
+			resume(Effect.die(reason instanceof Error ? reason : error));
 		};
 		if (signal.aborted) {
 			rejectOnAbort();
@@ -107,8 +105,12 @@ function abortable<T>(
 function createInMemoryGetAdapter(
 	responses?:
 		| GetV1WorkoutsWorkoutid200
-		| Error
-		| readonly (GetV1WorkoutsWorkoutid200 | Error | undefined)[],
+		| HevyRequestEffectError
+		| readonly (
+				| GetV1WorkoutsWorkoutid200
+				| HevyRequestEffectError
+				| undefined
+		  )[],
 ): InMemoryWorkoutsGetAdapter {
 	const requests: InMemoryWorkoutsGetAdapter["requests"] = [];
 	const argumentCounts: InMemoryWorkoutsGetAdapter["argumentCounts"] = [];
@@ -121,7 +123,8 @@ function createInMemoryGetAdapter(
 			argumentCounts.push(arguments.length);
 			requests.push({ workoutId, options });
 			const response = responseSequence[responseIndex++];
-			if (response instanceof Error) return Effect.fail(response);
+			if (response !== undefined && "_tag" in response)
+				return Effect.fail(response);
 			return Effect.succeed(response as GetV1WorkoutsWorkoutid200);
 		},
 	};
@@ -214,7 +217,7 @@ describe("workouts.get operation", () => {
 	});
 
 	it("[VAL-OPS-005] preserves non-404 error identity for workouts.get", async () => {
-		const error = httpError(503, "GET", "/v1/workouts/w1", "upstream failure");
+		const error = httpError(503, "GET", "/v1/workouts/w1");
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(error),
 		);
@@ -320,7 +323,12 @@ describe("workouts.list operation", () => {
 	});
 
 	it("[VAL-OPS-005] preserves non-404 error identity for workouts.list", async () => {
-		const error = new Error("network failure");
+		const error = new NetworkError({
+			code: "ERR_NETWORK",
+			endpoint: "/v1/workouts",
+			method: "GET",
+			retryExhausted: false,
+		});
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([error]),
 		);
@@ -471,7 +479,12 @@ describe("workouts.list operation", () => {
 	});
 
 	it("[VAL-OPS-005] preserves a plain network error for workouts.get", async () => {
-		const error = new Error("network failure");
+		const error = new NetworkError({
+			code: "ERR_NETWORK",
+			endpoint: "/v1/workouts/w1",
+			method: "GET",
+			retryExhausted: false,
+		});
 		const operation = createWorkoutsGetOperation(
 			createInMemoryGetAdapter(error),
 		);
@@ -480,7 +493,7 @@ describe("workouts.list operation", () => {
 	});
 
 	it("[VAL-OPS-005] preserves a non-404 HTTP error for workouts.list", async () => {
-		const error = httpError(429, "GET", "/v1/workouts", "rate limited");
+		const error = httpError(429, "GET", "/v1/workouts");
 		const operation = createWorkoutsListOperation(
 			createInMemoryAdapter([error]),
 		);
@@ -635,7 +648,7 @@ describe("workouts.list operation", () => {
 		const adapter: WorkoutsListAdapter = {
 			getWorkouts(params) {
 				if (params === undefined) {
-					return Effect.fail(new Error("params are required"));
+					return Effect.die(new Error("params are required"));
 				}
 				return params.page === 2
 					? Effect.fail(error)
@@ -697,7 +710,7 @@ function createInMemoryWorkoutMutationAdapter({
 	readonly created?: PostV1WorkoutsStatus201;
 	readonly updated?: PutV1WorkoutsWorkoutidStatus200;
 	readonly count?: GetV1WorkoutsCountStatus200;
-	readonly getError?: Error;
+	readonly getError?: HevyRequestEffectError;
 }): InMemoryWorkoutMutationAdapter {
 	const calls: string[] = [];
 	const createRequests: InMemoryWorkoutMutationAdapter["createRequests"] = [];

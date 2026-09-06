@@ -1,7 +1,10 @@
 import { Cache, Clock, Deferred, Effect, Fiber, Option } from "effect";
 import type { HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
-import type { TemplatesListAllOperation } from "@hevy-mcp/operations";
+import type {
+	TemplatesListAllOperation,
+	TemplatesListAllResult,
+} from "@hevy-mcp/operations";
 import type {
 	CacheObservationMetadata,
 	CacheObservationScope,
@@ -90,12 +93,9 @@ function notifyRefreshed(
 	}
 }
 function catalogPageCount(catalog: readonly ExerciseTemplate[]): number {
-	const pages = (
-		catalog as ExerciseTemplate[] & { readonly pageCount?: number }
-	).pageCount;
-	return (
-		pages ??
-		Math.max(1, Math.ceil(catalog.length / EXERCISE_TEMPLATE_CATALOG_PAGE_SIZE))
+	return Math.max(
+		1,
+		Math.ceil(catalog.length / EXERCISE_TEMPLATE_CATALOG_PAGE_SIZE),
 	);
 }
 
@@ -112,7 +112,10 @@ export function createExerciseTemplateCatalog(
 	let generation = 0;
 	let inFlight:
 		| {
-				deferred: Deferred.Deferred<ExerciseTemplate[], TemplateListAllError>;
+				deferred: Deferred.Deferred<
+					TemplatesListAllResult,
+					TemplateListAllError
+				>;
 				fiber: Fiber.Fiber<boolean, never>;
 				waiters: number;
 				refresh: boolean;
@@ -167,19 +170,28 @@ export function createExerciseTemplateCatalog(
 		let metadata: CacheObservationMetadata | undefined;
 		const currentGeneration = ++generation;
 		const load = Effect.gen(function* () {
-			const catalog = yield* refresh
-				? listAll.effect()
-				: Cache.get(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY);
-			if (refresh)
-				yield* Cache.set(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY, catalog);
+			if (refresh) {
+				const result = yield* listAll.effect();
+				yield* Cache.set(
+					cache,
+					EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
+					result.items,
+				);
+				hasLoadedValue = true;
+				return result;
+			}
+			const catalog = yield* Cache.get(
+				cache,
+				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
+			);
 			hasLoadedValue = true;
-			return catalog;
+			return { items: catalog, pageCount: catalogPageCount(catalog) };
 		});
 		let shared =
 			inFlight && (!refresh || inFlight.refresh) ? inFlight : undefined;
 		if (!shared) {
 			const deferred = yield* Deferred.make<
-				ExerciseTemplate[],
+				TemplatesListAllResult,
 				TemplateListAllError
 			>();
 			const fiber = yield* Effect.forkDetach(
@@ -219,12 +231,12 @@ export function createExerciseTemplateCatalog(
 			: loaded;
 		return yield* Effect.ensuring(
 			controlled.pipe(
-				Effect.tap((catalog) =>
+				Effect.tap(({ items: catalog, pageCount }) =>
 					Effect.sync(() => {
 						if (currentGeneration === generation && state !== "hit") {
 							metadata = {
 								refreshReason: reason,
-								pageCountBucket: bucketCount(catalogPageCount(catalog)),
+								pageCountBucket: bucketCount(pageCount),
 								itemCountBucket: bucketCount(catalog.length),
 							};
 							if (state !== "inflight_wait")
@@ -238,6 +250,7 @@ export function createExerciseTemplateCatalog(
 						() => Effect.fail(error),
 					),
 				),
+				Effect.map((result) => result.items),
 			),
 			Effect.sync(() => finishObservation(observationScope, metadata)),
 		);

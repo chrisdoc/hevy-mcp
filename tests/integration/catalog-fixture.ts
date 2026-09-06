@@ -26,7 +26,8 @@ export function createIntegrationCatalog(hevyClient: HevyClient) {
 		>({
 			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 			timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-			lookup: (_key: string) => listAll.effect(),
+			lookup: (_key: string) =>
+				Effect.map(listAll.effect(), (result) => result.items),
 		}),
 	);
 	return createExerciseTemplateCatalog(operations, cache);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Effect } from "effect";
+import { Cause, Effect } from "effect";
 import type { HevyClient, HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import {
 	bindClientExecution,
@@ -295,6 +295,18 @@ describe("runBoundedExecution", () => {
 				{ timeoutMs: 1000 },
 			),
 		).rejects.toThrow("Unknown defect");
+	});
+
+	it("surfaces bounded timeouts as typed TimeoutError failures", async () => {
+		const failure = await runBoundedExecution(Effect.never, {
+			timeoutMs: 10,
+		}).then(
+			() => {
+				throw new Error("expected the bounded execution to time out");
+			},
+			(error) => error,
+		);
+		expect(Cause.isTimeoutError(failure)).toBe(true);
 	});
 
 	it("does not leak the raw defect message into logs", async () => {

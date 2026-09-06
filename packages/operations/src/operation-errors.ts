@@ -25,7 +25,6 @@ export type ReadMemberEndpoint = Extract<
 	| "/v1/workouts/:workoutId"
 >;
 export type ReadEndpoint = HevyEndpointTemplate;
-export type ReadOperationError = Error;
 
 export class PaginationMismatchError extends Schema.TaggedError<PaginationMismatchError>()(
 	"PaginationMismatchError",
@@ -74,6 +73,14 @@ export class TrainingSummaryDataError extends Schema.TaggedError<TrainingSummary
 	},
 ) {}
 
+export class TemplatesSearchValidationError extends Schema.TaggedError<TemplatesSearchValidationError>()(
+	"TemplatesSearchValidationError",
+	{
+		maxPages: Schema.Number,
+		message: Schema.String,
+	},
+) {}
+
 const collectionMemberEndpoints = {
 	"/v1/body_measurements": "/v1/body_measurements/:date",
 	"/v1/exercise_templates": "/v1/exercise_templates/:exerciseTemplateId",
@@ -86,18 +93,18 @@ const collectionMemberEndpoints = {
 	ReadMemberEndpoint | undefined
 >;
 
-function errorIdentity(error: ReadOperationError):
+function errorIdentity(cause: unknown):
 	| {
 			readonly status?: number;
 			readonly method: string;
 			readonly endpoint: string;
 	  }
 	| undefined {
-	if (isHevyHttpError(error) || error instanceof NotFoundError) {
+	if (isHevyHttpError(cause) || cause instanceof NotFoundError) {
 		return {
-			status: error.status,
-			method: error.method,
-			endpoint: error.endpoint,
+			status: cause.status,
+			method: cause.method,
+			endpoint: cause.endpoint,
 		};
 	}
 	return undefined;
@@ -111,11 +118,11 @@ function errorIdentity(error: ReadOperationError):
  * request state, so unexpected errors remain in the Effect channel.
  */
 export function classifyReadError(
-	error: ReadOperationError,
+	cause: unknown,
 	endpoint: ReadEndpoint,
 	page?: number,
 ): ExpectedReadError | undefined {
-	const identity = errorIdentity(error);
+	const identity = errorIdentity(cause);
 	if (
 		identity === undefined ||
 		identity.status !== 404 ||
@@ -160,16 +167,16 @@ export function classifyReadError(
 }
 
 export function isExpectedReadNotFound(
-	error: ReadOperationError,
+	cause: unknown,
 	endpoint: ReadEndpoint,
 ): boolean {
-	return classifyReadError(error, endpoint) === "not_found";
+	return classifyReadError(cause, endpoint) === "not_found";
 }
 
 export function isExpectedReadEndOfList(
-	error: ReadOperationError,
+	cause: unknown,
 	endpoint: ReadCollectionEndpoint,
 	page: number,
 ): boolean {
-	return page > 1 && classifyReadError(error, endpoint, page) === "end_of_list";
+	return page > 1 && classifyReadError(cause, endpoint, page) === "end_of_list";
 }

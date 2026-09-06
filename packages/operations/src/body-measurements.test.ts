@@ -1,4 +1,5 @@
 import { NotFoundError } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
 import type {
 	BodyMeasurement,
 	GetV1BodyMeasurements200,
@@ -25,7 +26,7 @@ function notFound(endpoint = "/v1/body_measurements") {
 }
 
 function createAdapter(
-	responses: readonly (GetV1BodyMeasurements200 | Error)[],
+	responses: readonly (GetV1BodyMeasurements200 | HevyRequestEffectError)[],
 ) {
 	let responseIndex = 0;
 	const requests: Array<{
@@ -44,7 +45,7 @@ function createAdapter(
 			const response = responses[responseIndex++] ?? {
 				body_measurements: [],
 			};
-			return response instanceof Error
+			return "_tag" in response
 				? Effect.fail(response)
 				: Effect.succeed(response);
 		},

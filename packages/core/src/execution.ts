@@ -6,7 +6,7 @@ import type {
 	HevyRequestOptions,
 	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
-import { Cause, Clock, Effect, Exit } from "effect";
+import { Cause, Clock, Effect, Exit, Option } from "effect";
 import {
 	isFunction,
 	isString,
@@ -151,8 +151,8 @@ export async function runBoundedExecution<A, E>(
 		signal: options.signal,
 	});
 	if (Exit.isSuccess(exit)) return exit.value;
-	const failure = exit.cause.reasons.find(Cause.isFailReason)?.error;
-	if (failure !== undefined) throw failure;
+	const failure = Cause.findErrorOption(exit.cause);
+	if (Option.isSome(failure)) throw failure.value;
 	if (Cause.hasInterruptsOnly(exit.cause)) {
 		throw new DOMException(
 			"The request was canceled by the client.",

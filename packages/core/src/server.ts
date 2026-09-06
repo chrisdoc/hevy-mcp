@@ -108,7 +108,8 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 		>({
 			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 			timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-			lookup: (_key: string) => templateListAll.effect(),
+			lookup: (_key: string) =>
+				Effect.map(templateListAll.effect(), (result) => result.items),
 		});
 		const catalog = createExerciseTemplateCatalog(
 			operations,

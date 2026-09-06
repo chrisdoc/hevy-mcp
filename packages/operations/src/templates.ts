@@ -18,6 +18,7 @@ import {
 	isExpectedReadEndOfList,
 	isExpectedReadNotFound,
 	PaginationMismatchError,
+	TemplatesSearchValidationError,
 } from "./operation-errors.js";
 
 export interface TemplatesGetInput {
@@ -170,12 +171,13 @@ export interface TemplatesListAllOperation {
 		TemplatesListAllResult,
 		HevyRequestEffectError | PaginationMismatchError
 	>;
-	execute(options?: HevyExecutionOptions): Promise<ExerciseTemplate[]>;
+	execute(options?: HevyExecutionOptions): Promise<TemplatesListAllResult>;
 }
 
-export type TemplatesListAllResult = ExerciseTemplate[] & {
-	readonly pageCount?: number;
-};
+export interface TemplatesListAllResult {
+	readonly items: ExerciseTemplate[];
+	readonly pageCount: number;
+}
 
 export interface TemplatesSearchInput {
 	readonly query: string;
@@ -206,7 +208,9 @@ export interface TemplatesSearchOperation {
 		options?: HevyExecutionOptions,
 	) => Effect.Effect<
 		TemplatesSearchOutput,
-		HevyRequestEffectError | PaginationMismatchError
+		| HevyRequestEffectError
+		| PaginationMismatchError
+		| TemplatesSearchValidationError
 	>;
 	execute(
 		input: TemplatesSearchInput,
@@ -215,6 +219,8 @@ export interface TemplatesSearchOperation {
 }
 
 const TEMPLATES_PAGE_SIZE = 100;
+const TEMPLATES_SEARCH_MIN_PAGES = 1;
+const TEMPLATES_SEARCH_MAX_PAGES = 100;
 
 type TemplatesListCursor = {
 	readonly page: number;
@@ -446,16 +452,10 @@ export function createTemplatesListAllOperation(
 			);
 		});
 		const pages = yield* Stream.runCollect(pageStream);
-		const templates = pages.flatMap(
-			(page) => page.templates,
-		) as TemplatesListAllResult;
-		Object.defineProperty(templates, "pageCount", {
-			configurable: false,
-			enumerable: false,
-			value: pages.length,
-			writable: false,
-		});
-		return templates;
+		return {
+			items: pages.flatMap((page) => page.templates),
+			pageCount: pages.length,
+		};
 	});
 
 	const operation: TemplatesListAllOperation = {
@@ -475,7 +475,17 @@ export function createTemplatesSearchOperation(
 		input: TemplatesSearchInput,
 		options?: HevyExecutionOptions,
 	) {
-		const maxPages = Math.max(0, Math.min(input.maxPages, 100));
+		if (
+			!Number.isInteger(input.maxPages) ||
+			input.maxPages < TEMPLATES_SEARCH_MIN_PAGES ||
+			input.maxPages > TEMPLATES_SEARCH_MAX_PAGES
+		) {
+			return yield* new TemplatesSearchValidationError({
+				maxPages: input.maxPages,
+				message: `Templates search maxPages must be an integer from ${TEMPLATES_SEARCH_MIN_PAGES} through ${TEMPLATES_SEARCH_MAX_PAGES}`,
+			});
+		}
+		const maxPages = input.maxPages;
 		const query = input.query.toLowerCase();
 		const pageStream = Stream.paginate<
 			TemplatesSearchCursor,
