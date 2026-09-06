@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Audit retry validation coverage
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only analysis only, do not write files. In /root/hevy-mcp-effect-pure-operations, audit tests for client retries, deadlines, cancellation, observations, and Effect TestClock. Determine which behaviors are already characterized, where coverage is missing for a full Effect retry interpreter migration, and the exact repository commands needed for worker and milestone validation. Also assess whether live HEVY_API_KEY testing is necessary for this refactor or deterministic mocked/unit/PR lanes are sufficient. Return a proposed black-box validation assertion list, resource/parallelism considerations, and every filepath inspected. Return analysis inline only.
+---END TASK FROM PARENT AGENT---
