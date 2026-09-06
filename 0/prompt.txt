@@ -1,0 +1,1 @@
+fix the release https://github.com/chrisdoc/hevy-mcp/actions/runs/31321308044
