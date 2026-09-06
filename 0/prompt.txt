@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task complexity: heavy
+Task description: Review effect cache feature
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the current implementation for feature core-effect-cache in /root/hevy-mcp-effect-ops-layer on branch feat/effect-ops-layer. Focus on validation assertions VAL-CORE-013 through VAL-CORE-017 and VAL-CROSS-002: one Cache.make in createHevyMcpServer, Layer.succeed identity, server-scoped TTL sharing across template tool/resource, operations.templates.listAll lookup, observer metadata and callback safety, controlled in-flight isolation, refresh/failure/stale-generation semantics. Inspect the working diff and relevant source/tests read-only. Do not modify files or run live services. Return concrete findings ranked by severity, or say none.
+---END TASK FROM PARENT AGENT---
