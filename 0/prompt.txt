@@ -1,0 +1,1 @@
+read here https://kubb.dev/docs/5.x/migration
