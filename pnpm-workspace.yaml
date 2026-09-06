@@ -2,7 +2,7 @@ packages:
   - "packages/*"
 
 # Multiple hevy-mcp worktrees share one virtual store (<store-path>/links/)
-enableGlobalVirtualStore: true
+virtualStoreType: global
 
 # pnpm 12's release-age gate would block fresh dependency releases in CI;
 # npm never gated on this, so disable it.
