@@ -1,0 +1,31 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Map Effect adoption state
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Investigate the hevy-mcp repository at /root/hevy-mcp for current Effect TS adoption. Be thorough and return a structured report.
+
+Focus areas:
+1. packages/hevy-client - especially internal-request-effect.ts, effect-errors.ts, HevyRequestEffectClient, what methods are Effect-backed vs Promise-only
+2. packages/operations - what operations exist, their API shape (execute vs effect), error handling patterns, missing domains
+3. packages/core - effect-services.ts, effect-layer.ts, how tools use (or bypass) HevyOperationsService; workflows.ts; routine-discovery.ts; cache.ts; exercise-template-catalog.ts
+4. Which tools still call client directly vs operations
+5. Existing tests covering Effect paths
+6. package.json scripts for check/test/build relevant to this work
+7. Any docs about Effect migration or operations layer
+
+Also note:
+- effect package version
+- Whether Effect.fn, Stream, Cache, DateTime are already used anywhere
+- Public export boundaries that must stay stable
+- Workspace topology / dependency direction
+
+Return file paths, key type/function names, and concrete gaps. Do NOT modify files. Return analysis only in your final response.
+---END TASK FROM PARENT AGENT---
