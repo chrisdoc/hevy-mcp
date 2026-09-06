@@ -1,0 +1,30 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Review PR standards compliance
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review. Do not write or modify files. Repository: /home/ubuntu/hevy-mcp-effect-deepening. Review PR #1123 using `git diff origin/feat/effect-ops-layer...HEAD`; fixed point resolves to 494b8db639dab3879dcb7b0a89ee2d177be8ad85 and HEAD to 0711798504d0b19dd127c50b51ba32e976ff23f7. Commit list is the 30 commits returned by `git log origin/feat/effect-ops-layer..HEAD --oneline`, from b87c0f5 through 0711798. Standards sources: /home/ubuntu/hevy-mcp-effect-deepening/AGENTS.md, CODING_STANDARDS.md, CONTRIBUTING.md, REVIEW_RULES.md, plus any more-specific AGENTS.md files governing changed paths. Report, per file/hunk where relevant: (a) every place the diff violates a documented standard, citing the standard file and rule; and (b) any baseline smell you spot, naming it and quoting the hunk. Distinguish hard violations from judgement calls. Documented-standard breaches can be hard; baseline smells are always judgement calls; repo standards override the baseline. Skip anything tooling enforces. Under 400 words.
+
+Smell baseline (Fowler heuristics):
+- Mysterious Name: a function, variable, or type whose name doesn't reveal what it does or holds. Fix: rename it; if no honest name comes, the design is murky.
+- Duplicated Code: the same logic shape appears in more than one hunk or file. Fix: extract the shared shape and call it from both.
+- Feature Envy: a method reaches into another object's data more than its own. Fix: move it onto the data it envies.
+- Data Clumps: the same few fields or params keep travelling together. Fix: bundle them into one type.
+- Primitive Obsession: a primitive/string stands in for a domain concept deserving its own type. Fix: give it a small type.
+- Repeated Switches: the same switch/if cascade on the same type recurs. Fix: replace with polymorphism or one shared map.
+- Shotgun Surgery: one logical change forces scattered edits across many files. Fix: gather what changes together into one module.
+- Divergent Change: one file/module is edited for several unrelated reasons. Fix: split so each module changes for one reason.
+- Speculative Generality: abstractions/parameters/hooks added for needs the spec does not have. Fix: delete or inline until needed.
+- Message Chains: long a.b().c().d() navigation the caller should not depend on. Fix: hide it behind one method on the first object.
+- Middle Man: a class/function mostly delegates onward. Fix: remove it and call the real target directly.
+- Refused Bequest: a subclass/implementer ignores or overrides most inherited behavior. Fix: drop inheritance and use composition.
+
+Return the report inline. Explicitly state no files were written and return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
