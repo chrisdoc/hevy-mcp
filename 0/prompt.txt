@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Review node cross remediation contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review; write no files. Read the full mission.md, architecture.md, and validation-contract.md in /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0, focusing on new VAL-REMEDIATION assertions for Node lifecycle owner, HTTP session scopes/idle cleanup, shared AbortSignal bridge, package-script behavioral tests, and CLI error_code preservation. Inspect current repository integration points in /home/ubuntu/hevy-mcp-effect-deepening as needed. Identify missing interactions, races, closure triggers, compatibility checks, or evidence requirements. Ensure assertions are black-box/behavior-based and catch the review defects without implementation-only checks. Return concrete additions/modifications by assertion ID, or state complete. Do not write files. Return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
