@@ -1,0 +1,19 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "fix-templates-pagination-unify",
+  "description": "PR #1120 review fix (CodeRabbit): createTemplatesListAllOperation treats an omitted/invalid page_count as end-of-list (silent truncation) while createTemplatesSearchOperation rejects it with PaginationMismatchError; both read the same GetV1ExerciseTemplates response shape (packages/operations/src/templates.ts ~355-365 vs ~465-480). Share one pagination-validation policy so listAll validates page_count the same way as search on non-final pages. TDD in packages/operations/src/templates.test.ts. Work only in /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer. Conventional Commit. Run scoped vitest + check:types; run check:changeset and add/adjust a changeset only if it fails. Do not touch /root/hevy-mcp; do not push.",
+  "skillName": "operations-worker",
+  "milestone": "pr-review-fixes",
+  "preconditions": [
+    "Mission worktree /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer is clean",
+    "Templates search and listAll operations exist with divergent page_count handling"
+  ],
+  "expectedBehavior": [
+    "listAll rejects an omitted/invalid page_count in a non-final page response with PaginationMismatchError (same policy as search)",
+    "Valid page_count pagination behavior in both operations is unchanged",
+    "mise exec -- pnpm exec vitest run packages/operations/src/templates.test.ts exits 0"
+  ]
+}
+```
