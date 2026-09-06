@@ -1,0 +1,24 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "ops-templates-folders-user",
+  "description": "Add templates.get/history/create/listAll, folders.get/create/listAll, and user.get Effect operations with the shared 404 policy. listAll uses Stream.paginate.",
+  "skillName": "operations-worker",
+  "milestone": "ops-complete",
+  "preconditions": [
+    "Effect client covers templates, folders, and user methods",
+    "Soft-404 policy matrix exists in operations"
+  ],
+  "expectedBehavior": [
+    "templates.get: entity + id; member 404 → not_found; collection/unrelated 404 fail",
+    "templates.history: forwards only provided date bounds + id; 404 is not soft-success",
+    "templates.create: Effect createExerciseTemplate with create body",
+    "templates.listAll: Stream.paginate pageSize 100; concatenates until empty/pageCount; later-page 404 ends; page 1 404 fails",
+    "folders.get: entity + id; member 404 → not_found; collection-path 404 fails",
+    "folders.create: Effect createRoutineFolder",
+    "folders.listAll: Stream.paginate pageSize 10; later-page 404 ends; page 1 404 fails",
+    "user.get: Effect getUserInfo profile data; 404 is tagged failure not null-profile success"
+  ]
+}
+```
