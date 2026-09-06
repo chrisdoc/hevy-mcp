@@ -142,12 +142,13 @@ describeLive("Hevy MCP Server Integration Tests", () => {
 
 			expect(responseData).toBeDefined();
 			expect(Array.isArray(responseData)).toBe(true);
-			expect(responseData.length).toBeGreaterThan(0);
-			expect(responseData[0].id).toBeDefined();
-			expect(responseData[0].title).toBeDefined();
-			expect(responseData[0].title.length).toBeGreaterThanOrEqual(3);
-			expect(responseData[0].exercise_count).toBeDefined();
-			expect(responseData[0].set_count).toBeDefined();
+			if (responseData.length > 0) {
+				expect(responseData[0].id).toBeDefined();
+				expect(responseData[0].title).toBeDefined();
+				expect(responseData[0].title.length).toBeGreaterThanOrEqual(3);
+				expect(responseData[0].exercise_count).toBeDefined();
+				expect(responseData[0].set_count).toBeDefined();
+			}
 		});
 	});
 

@@ -136,6 +136,45 @@ describe("createToolRuntime service layer", () => {
 });
 
 describe("createToolRuntime handler factory composition", () => {
+	it("interrupts an in-flight effect when the request signal aborts", async () => {
+		const controller = new AbortController();
+		const runtime = createToolRuntime({
+			client: null,
+			catalog,
+		});
+		const handler = runtime.createHandler(() => Effect.never, "get-workout");
+
+		const result = handler({}, { signal: controller.signal });
+		controller.abort();
+
+		await expect(result).resolves.toMatchObject({
+			isError: true,
+			content: [
+				{ text: expect.stringContaining("request was canceled by the client") },
+			],
+		});
+	});
+
+	it("bounds handlers by an expired constructor deadline even without forExecution", async () => {
+		const runtime = createToolRuntime({
+			client: null,
+			catalog,
+			executionDeadline: Date.now() - 1,
+		});
+		const result = await runtime.createHandler(
+			() => Effect.never,
+			"get-workout",
+		)({});
+
+		expect(result).toMatchObject({
+			isError: true,
+			errorOutcome: expect.objectContaining({
+				code: "HEVY_DEADLINE_EXCEEDED",
+				outcome: "deadline_exceeded",
+			}),
+		});
+	});
+
 	it("invokes the caller-supplied createHandler when an observer is configured", async () => {
 		const finish = vi.fn();
 		const start = vi.fn(() => ({ run: runImmediately, finish }));
@@ -395,7 +434,7 @@ describe("createToolRuntime observation scope", () => {
 		const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		const result = await runtime.createHandler(
-			() => Effect.fail(new Error(secret)),
+			() => Effect.die(new Error(secret)),
 			"get-workouts",
 		)({});
 

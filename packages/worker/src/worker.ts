@@ -142,7 +142,7 @@ interface WorkerDependencies {
 		lifecycleSignal?: AbortSignal,
 		executionDeadline?: number,
 		observer?: CreateHevyMcpServerOptions["observer"],
-	) => McpServer;
+	) => Promise<McpServer>;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
 	createObserver?: (
 		options: WorkerToolObserverOptions,
@@ -302,13 +302,13 @@ function createDefaultRequestClient(
 	return createHevyClient({ apiKey, baseUrl, onLog });
 }
 
-function createDefaultServer(
+async function createDefaultServer(
 	createClient: CreateHevyMcpServerOptions["createClient"],
 	lifecycleSignal?: AbortSignal,
 	executionDeadline?: number,
 	observer?: CreateHevyMcpServerOptions["observer"],
-): McpServer {
-	return createHevyMcpServer({
+): Promise<McpServer> {
+	return await createHevyMcpServer({
 		createClient,
 		observer,
 		lifecycleSignal,
@@ -418,7 +418,7 @@ async function serveMcpRequest(
 			geoLocalityRegion: geography.localityRegion,
 			geoCountryCode: geography.countryCode,
 		});
-		const server = dependencies.createServer(
+		const server = await dependencies.createServer(
 			({ onLog }) =>
 				dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),
 			request.signal,

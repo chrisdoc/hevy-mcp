@@ -76,31 +76,40 @@ function truncate(value: string): string {
 		: value;
 }
 
-function sanitizeResponseErrorText(value: string): string {
+export function sanitizeResponseErrorText(
+	value: string,
+	secrets: readonly string[] = [],
+): string {
 	const bounded = removeControlCharacters(
 		value.slice(0, MAX_RESPONSE_ERROR_INPUT_LENGTH),
 	);
-	return truncate(
-		bounded
-			.replace(COOKIE_ASSIGNMENT, "$1[REDACTED]")
-			.replace(SECRET_ASSIGNMENT, "$1[REDACTED]")
-			.replace(BEARER_TOKEN, "Bearer [REDACTED]")
-			.replace(JSON_WEB_TOKEN, "[JWT_REDACTED]")
-			.replace(SECRET_QUERY_PARAMETER, "$1[REDACTED]")
-			.replace(HTTP_URL, "[URL_REDACTED]")
-			.replace(EMAIL, "[EMAIL_REDACTED]")
-			.replace(UUID, "[ID_REDACTED]")
-			.replace(/\s+/g, " ")
-			.trim(),
-	);
+	let sanitized = bounded
+		.replace(COOKIE_ASSIGNMENT, "$1[REDACTED]")
+		.replace(SECRET_ASSIGNMENT, "$1[REDACTED]")
+		.replace(BEARER_TOKEN, "Bearer [REDACTED]")
+		.replace(JSON_WEB_TOKEN, "[JWT_REDACTED]")
+		.replace(SECRET_QUERY_PARAMETER, "$1[REDACTED]")
+		.replace(HTTP_URL, "[URL_REDACTED]")
+		.replace(EMAIL, "[EMAIL_REDACTED]")
+		.replace(UUID, "[ID_REDACTED]")
+		.replace(/\s+/g, " ")
+		.trim();
+	for (const secret of secrets) {
+		if (secret.length > 0)
+			sanitized = sanitized.split(secret).join("[REDACTED]");
+	}
+	return truncate(sanitized);
 }
 
 /** Extract one bounded, sanitized diagnostic string from an upstream error body. */
-export function extractSafeResponseError<T>(data: T): string | undefined {
+export function extractSafeResponseError<T>(
+	data: T,
+	secrets: readonly string[] = [],
+): string | undefined {
 	try {
 		const text = responseErrorText(data);
 		if (!text) return undefined;
-		const sanitized = sanitizeResponseErrorText(text);
+		const sanitized = sanitizeResponseErrorText(text, secrets);
 		return sanitized || undefined;
 	} catch {
 		return undefined;

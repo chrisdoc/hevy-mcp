@@ -4,9 +4,34 @@ import { TestClock } from "effect/testing";
 
 import { createNativeClient } from "./hevy-client-kubb.js";
 import { createHevyClient } from "./hevy-client.js";
-import { getRequestEffectClient } from "./internal-request-effect.js";
+import {
+	getNativeRequestEffect,
+	getRequestEffectClient,
+} from "./internal-request-effect.js";
 
 describe("internal production request Effect seam", () => {
+	it("represents invalid non-v1 endpoints as Effect failures", async () => {
+		const client = createHevyClient({
+			apiKey: "test-key",
+			fetch: vi.fn(),
+			maxGetRetries: 0,
+		});
+		const requestEffect = getNativeRequestEffect(client);
+
+		const program = requestEffect({
+			method: "GET",
+			url: "https://api.hevyapp.com/private",
+		});
+		const error = await Effect.runPromise(Effect.flip(program));
+
+		expect(error).toMatchObject({
+			code: "HEVY_INVALID_ENDPOINT",
+			endpoint: "unknown",
+		});
+		expect(JSON.stringify(error)).not.toContain("api.hevyapp.com");
+		expect(JSON.stringify(error)).not.toContain("test-key");
+	});
+
 	it("routes facade GET retry delays through TestClock", async () => {
 		const fetchMock = vi
 			.fn()
@@ -59,6 +84,41 @@ describe("internal production request Effect seam", () => {
 		});
 
 		await Effect.runPromise(Effect.provide(program, TestClock.layer()));
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("lets Schedule own the retry wait instead of invoking custom sleep", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response("{}", { status: 503 }))
+			.mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }));
+		const sleep = vi
+			.fn()
+			.mockRejectedValue(new Error("custom sleep must not be used"));
+		const client = createNativeClient("test-key", "https://api.hevyapp.com", {
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep,
+		});
+
+		const program = Effect.gen(function* () {
+			const fiber = yield* client
+				.requestEffect({ method: "GET", url: "/v1/user/info" })
+				.pipe(Effect.forkChild);
+			yield* Effect.yieldNow;
+			expect(fetchMock).toHaveBeenCalledOnce();
+			expect(sleep).not.toHaveBeenCalled();
+			yield* TestClock.adjust("299 millis");
+			yield* Effect.yieldNow;
+			expect(fetchMock).toHaveBeenCalledOnce();
+			yield* TestClock.adjust("251 millis");
+			return yield* Fiber.join(fiber);
+		});
+
+		await expect(
+			Effect.runPromise(Effect.provide(program, TestClock.layer())),
+		).resolves.toMatchObject({ data: { ok: true } });
+		expect(sleep).not.toHaveBeenCalled();
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 
@@ -133,6 +193,48 @@ describe("internal production request Effect seam", () => {
 		} else {
 			expect(Cause.hasInterrupts(exit.cause)).toBe(true);
 		}
+	});
+
+	it("drives attempt deadlines from the Effect clock", async () => {
+		let requestSignal: AbortSignal | undefined;
+		const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+			requestSignal = init?.signal ?? undefined;
+			return new Promise<Response>(() => {
+				// TestClock, rather than a wall-clock timer, ends the attempt.
+			});
+		});
+		const client = createNativeClient("test-key", "https://api.hevyapp.com", {
+			fetch: fetchMock,
+			maxGetRetries: 0,
+			timeoutMs: 60_000,
+		});
+
+		const exit = await Effect.runPromise(
+			Effect.provide(
+				Effect.gen(function* () {
+					const fiber = yield* client
+						.requestEffect({ method: "GET", url: "/v1/user/info" })
+						.pipe(Effect.forkChild);
+					yield* Effect.yieldNow;
+					expect(fetchMock).toHaveBeenCalledOnce();
+					yield* TestClock.adjust("60 seconds");
+					return yield* Fiber.await(fiber);
+				}),
+				TestClock.layer(),
+			),
+		);
+
+		expect(exit._tag).toBe("Failure");
+		if (exit._tag !== "Failure") return;
+		const error = Cause.findErrorOption(exit.cause);
+		expect(error._tag).toBe("Some");
+		if (error._tag !== "Some") return;
+		expect(error.value).toMatchObject({
+			code: "HEVY_DEADLINE_EXCEEDED",
+			phase: "dispatch",
+			outcome: "deadline_exceeded",
+		});
+		expect(requestSignal?.aborted).toBe(true);
 	});
 
 	it("does not cancel a response body after text() has locked the stream", async () => {

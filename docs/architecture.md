@@ -104,7 +104,7 @@ The `package-boundaries` lane (blocking, runs on Node 24 and 26) uses dependency
 
 ### One tool contract, two runtimes
 
-The primary motivation is to expose the same 26 MCP tools to users regardless of whether they run the server locally via npm or connect to the hosted Cloudflare endpoint. Splitting implementation into runtime-neutral packages and thin adapters is the only way to achieve this without duplicating logic [[13]](https://app.dosu.dev/documents/86385d8b-fd28-42af-bebd-e017cd533d92).
+The primary motivation is to expose the same 22 MCP tools to users regardless of whether they run the server locally via npm or connect to the hosted Cloudflare endpoint. Splitting implementation into runtime-neutral packages and thin adapters is the only way to achieve this without duplicating logic [[13]](https://app.dosu.dev/documents/86385d8b-fd28-42af-bebd-e017cd533d92).
 
 ### Preventing invalid bundles
 
@@ -194,6 +194,39 @@ CI runs `pnpm run check:changeset` (`npx changeset status --since=origin/<base_b
 
 ## Key Design Decisions
 
+## Effect control structure and scopes
+
+Effect is the runtime control structure for the shared request path, not just a
+wrapper around Promise code. The Hevy client uses Effect schedules for retry
+decisions and delays, Effect timeout operators for attempt and operation
+budgets, and fiber interruption for cancellation. Abort signals are bridged at
+the native `fetch` edge so callers still get normal web-platform cancellation.
+
+The scopes form one ownership hierarchy:
+
+```text
+process Scope (Node lifecycle, telemetry, signals, transport)
+  └─ server Scope (core MCP runtime, shared services, template cache)
+       └─ request Scope (tool/resource invocation, deadline, MCP signal)
+            └─ Hevy request Effect (retry, timeout, interruption)
+```
+
+The process Scope finalizes telemetry and transport resources. The server Scope
+finalizes the shared MCP runtime and cache. A request Scope is created for each
+tool or resource invocation and wires `mcpReq.signal` to fiber interruption.
+Promise façades remain the supported integration surface:
+`HevyClient`, `createHevyMcpServer`, `createNodeMcpServer`,
+`runStdioServer` / `runServer`, operation `.execute()`, and CLI
+`execute` / `runCli`.
+
+This adoption is intentionally bounded. The Worker OAuth, bindings, and
+request-handling adapter remain Promise-based; only its validation-cache retry
+uses the Effect control structure. MCP input and output contracts remain Zod
+schemas, and `config.ts` / `arguments.ts` remain throwing parsers rather than
+Effect Config. Kubb generates internal client artifacts, but generated API
+functions and `.kubb` paths are private; consumers use curated package
+exports.
+
 ### Generated API client via Kubb
 
 The Hevy API client, TypeScript types, and Zod schemas under `packages/hevy-client/src/generated/` are produced by [Kubb](https://kubb.dev/) from the Hevy OpenAPI specification [[22]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae). The generation pipeline is:
@@ -206,7 +239,7 @@ pnpm run build:client  # run Kubb → packages/hevy-client/src/generated/
 > [!WARNING]
 > **Never edit files in `packages/hevy-client/src/generated/` by hand.** All generated TypeScript errors in that directory are expected and should be ignored. Fixes belong in `scripts/openapi-spec.js` (applied before spec write) so they survive future regenerations [[23]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
 
-Only the curated package barrels (`@hevy-mcp/hevy-client/types` and `@hevy-mcp/hevy-client/schemas`) are the public API of the client package. Generated API functions and `.kubb` internals are private [[24]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
+Only the curated package barrels (`@hevy-mcp/hevy-client/types` and `@hevy-mcp/hevy-client/schemas`) are the public API of the client package. Kubb itself, generated API functions, and `.kubb` internals are not public API [[24]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
 
 ### Zod schema inference for type-safe tool parameters
 

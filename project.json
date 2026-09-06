@@ -79,6 +79,7 @@
 		},
 		"test:unit": {
 			"cache": true,
+			"parallelism": false,
 			"inputs": ["unitTests", { "env": "HEVY_TEST_REPORT_MODE" }],
 			"outputs": [
 				"{workspaceRoot}/coverage/unit",

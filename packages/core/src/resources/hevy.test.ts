@@ -443,7 +443,7 @@ describe("registerHevyResources", () => {
 		expect(parseJsonContent(result).data).toEqual([]);
 	});
 
-	it("shares completed catalog values while isolating controlled in-flight calls", async () => {
+	it("shares completed and controlled in-flight catalog values", async () => {
 		const { registerResource, server, tool } = createMockServer();
 		const hevyClient = createMockHevyClient();
 		const pendingLookups: Array<(value: ExerciseTemplate[]) => void> = [];
@@ -494,7 +494,7 @@ describe("registerHevyResources", () => {
 			refresh: false,
 		});
 
-		expect(listAll).toHaveBeenCalledTimes(2);
+		await vi.waitFor(() => expect(listAll).toHaveBeenCalledOnce());
 		for (const resolveCatalog of pendingLookups) {
 			resolveCatalog([benchTemplate]);
 		}
@@ -554,6 +554,7 @@ describe("registerHevyResources", () => {
 		);
 		expect(parseJsonContent(apiFailureResult).data).toEqual({
 			error: {
+				code: "HEVY_RETRY_EXHAUSTED",
 				status: 503,
 				outcome: "terminal_failure",
 				phase: "dispatch",

@@ -19,6 +19,8 @@ export {
 
 export {
 	createHevyMcpServer,
+	createHevyMcpServerEffect,
+	HevyMcpServerConstructionError,
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
 } from "./server.js";
@@ -73,11 +75,16 @@ export {
 } from "./utils/tool-taxonomy.js";
 export {
 	ApiError,
+	ClientNotInitializedError,
 	NetworkError,
 	NotFoundError,
+	OperationUnavailableError,
 	RateLimitError,
+	ToolInputValidationError,
 	ValidationError,
 } from "./effect-errors.js";
+export type { CoreToolError } from "./effect-errors.js";
+export type { ToolEffectHandler } from "./tools/tool-runtime.js";
 export {
 	ExerciseTemplateCatalogService,
 	HevyClientService,

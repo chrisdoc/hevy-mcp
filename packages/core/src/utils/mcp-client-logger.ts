@@ -1,9 +1,15 @@
-import type { LoggingMessageNotification } from "@modelcontextprotocol/server";
 import { createSafeErrorDiagnostic } from "./error-policy.js";
+import { logCoreError } from "./core-logger.js";
 import type { RuntimeValue } from "./type-predicates.js";
 
-export type McpClientLogMessage = LoggingMessageNotification["params"];
-export type McpClientLogger = (message: McpClientLogMessage) => void;
+import type {
+	McpClientLogMessage,
+	McpClientLogger,
+} from "./mcp-client-logger-types.js";
+export type {
+	McpClientLogMessage,
+	McpClientLogger,
+} from "./mcp-client-logger-types.js";
 
 interface LoggingServer {
 	isConnected(): boolean;
@@ -23,15 +29,15 @@ export function createMcpClientLogger(server: LoggingServer): McpClientLogger {
 	return (message) => {
 		try {
 			if (!server.isConnected()) {
-				console.error(DISCONNECTED_MESSAGE);
+				logCoreError(DISCONNECTED_MESSAGE);
 				return;
 			}
 
 			void server.sendLoggingMessage(message).catch((error: RuntimeValue) => {
-				console.error(SEND_FAILURE_MESSAGE, createSafeErrorDiagnostic(error));
+				logCoreError(SEND_FAILURE_MESSAGE, createSafeErrorDiagnostic(error));
 			});
 		} catch (error) {
-			console.error(SEND_FAILURE_MESSAGE, createSafeErrorDiagnostic(error));
+			logCoreError(SEND_FAILURE_MESSAGE, createSafeErrorDiagnostic(error));
 		}
 	};
 }

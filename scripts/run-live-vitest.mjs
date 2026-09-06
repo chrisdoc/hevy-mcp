@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { loadOptionalEnvFile } from "./load-optional-env.mjs";
 
 const [requirementsArg, testFile, ...vitestArgs] = process.argv.slice(2);
 if (!requirementsArg || !testFile) {
@@ -7,9 +8,19 @@ if (!requirementsArg || !testFile) {
 	);
 }
 
+try {
+	loadOptionalEnvFile();
+} catch (error) {
+	console.error(
+		error instanceof Error ? error.message : "Unable to load .env.",
+	);
+	process.exit(1);
+}
+
 for (const requirement of requirementsArg.split(",")) {
 	const [name, expected] = requirement.split("=", 2);
-	if (!process.env[name] || (expected && process.env[name] !== expected)) {
+	const actual = process.env[name];
+	if (!actual?.trim() || (expected !== undefined && actual !== expected)) {
 		console.error(
 			`${name}${expected ? `=${expected}` : ""} is required for ${testFile}; no live tests were started.`,
 		);

@@ -5,6 +5,7 @@
 import { z } from "zod";
 import type { McpToolResponse } from "./response-contracts.js";
 import type { ToolExecutionContext } from "../execution.js";
+import { ClientNotInitializedError } from "../effect-errors.js";
 
 export const HEVY_CLIENT_NOT_INITIALIZED_ERROR =
 	"API client not initialized. Please provide HEVY_API_KEY.";
@@ -14,7 +15,7 @@ export const HEVY_CLIENT_NOT_INITIALIZED_ERROR =
  */
 export function requireClient<TClient>(client: TClient | null): TClient {
 	if (!client) {
-		throw new Error(HEVY_CLIENT_NOT_INITIALIZED_ERROR);
+		throw new ClientNotInitializedError();
 	}
 
 	return client;

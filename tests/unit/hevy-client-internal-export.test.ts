@@ -11,5 +11,7 @@ describe("@hevy-mcp/hevy-client package exports", () => {
 		expect("getRequestEffectClient" in publicClientExports).toBe(false);
 		expect(internalClientExports.getNativeRequestEffect).toBeTypeOf("function");
 		expect(internalClientExports.getRequestEffectClient).toBeTypeOf("function");
+		expect(internalClientExports.interruptOnAbortSignal).toBeTypeOf("function");
+		expect("interruptOnAbortSignal" in publicClientExports).toBe(false);
 	});
 });

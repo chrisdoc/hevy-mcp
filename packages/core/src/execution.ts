@@ -6,6 +6,7 @@ import type {
 	HevyRequestOptions,
 	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
+import { Cause, Clock, Effect, Exit } from "effect";
 import { isFunction } from "./utils/type-predicates.js";
 
 /** Per-request control supplied by MCP, HTTP, CLI, or a lifecycle owner. */
@@ -103,6 +104,42 @@ export function mergeAbortSignals(
 		signal.addEventListener("abort", onAbort, { once: true });
 	}
 	return composed.signal;
+}
+
+/**
+ * Run one MCP operation with the request's remaining budget.
+ *
+ * The timeout is deliberately calculated inside the Effect runtime so tests
+ * can provide TestClock and callers cannot bypass an absolute deadline by
+ * omitting `forExecution` from a handler.
+ */
+export async function runBoundedExecution<A, E>(
+	effect: Effect.Effect<A, E>,
+	options: {
+		readonly signal?: AbortSignal;
+		readonly timeoutMs: number;
+		readonly deadline?: number;
+	},
+): Promise<A> {
+	const bounded = Effect.gen(function* () {
+		const now = yield* Clock.currentTimeMillis;
+		const deadline = options.deadline ?? now + options.timeoutMs;
+		const remaining = Math.max(0, deadline - now);
+		return yield* Effect.timeout(effect, remaining);
+	});
+	const exit = await Effect.runPromiseExit(bounded, {
+		signal: options.signal,
+	});
+	if (Exit.isSuccess(exit)) return exit.value;
+	const failure = exit.cause.reasons.find(Cause.isFailReason)?.error;
+	if (failure !== undefined) throw failure;
+	if (Cause.hasInterruptsOnly(exit.cause)) {
+		throw new DOMException(
+			"The request was canceled by the client.",
+			"AbortError",
+		);
+	}
+	throw new Error("The request failed unexpectedly.");
 }
 
 type ClientMethod = keyof HevyClient;

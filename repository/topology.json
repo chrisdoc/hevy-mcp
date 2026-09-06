@@ -113,7 +113,7 @@
 			"boundary": {
 				"allowed": {
 					"@hevy-mcp/core": [""],
-					"@hevy-mcp/hevy-client": [""]
+					"@hevy-mcp/hevy-client": ["", "internal"]
 				},
 				"forbidden": ["@sentry/", "@opentelemetry/"],
 				"rejectBuiltins": true,

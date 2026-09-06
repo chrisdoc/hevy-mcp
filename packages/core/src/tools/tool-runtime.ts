@@ -1,10 +1,13 @@
-import { Context, Effect, Layer, Scope } from "effect";
-import type { McpClientLogger } from "../utils/mcp-client-logger.js";
+import { Context, Effect, Layer, Option } from "effect";
+import type { McpClientLogger } from "../utils/mcp-client-logger-types.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
+import type { CoreToolError } from "../effect-errors.js";
 import {
 	createCoreServiceLayer,
 	createToolObserverLayer,
+	createCoreServiceContext,
+	overlayCoreServiceContext,
 	type CoreServiceIdentifiers,
 } from "../effect-layer.js";
 import {
@@ -29,9 +32,11 @@ import {
 } from "../observation.js";
 import { bucketCount, getResultTelemetry } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
+import { logCoreError } from "../utils/core-logger.js";
 import {
 	bindClientExecution,
 	mergeAbortSignals,
+	runBoundedExecution,
 	type ToolExecutionContext,
 } from "../execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
@@ -83,17 +88,8 @@ type ToolRuntimeServiceIdentifiers =
 	| CoreServiceIdentifiers
 	| ToolObserverService;
 type ToolRuntimeServiceLayer = Layer.Layer<ToolRuntimeServiceIdentifiers>;
-type ToolRuntimeServiceContext = Context.Context<ToolRuntimeServiceIdentifiers>;
-
-function buildServiceContext(
-	layer: ToolRuntimeServiceLayer,
-): ToolRuntimeServiceContext {
-	// Build the layer against a scope that outlives this call. `Effect.scoped`
-	// would close the scope immediately, releasing any scoped resources
-	// before the returned context is ever used by request handlers.
-	const scope = Effect.runSync(Scope.make());
-	return Effect.runSync(Scope.provide(scope)(Layer.build(layer)));
-}
+export type ToolRuntimeServiceContext =
+	Context.Context<ToolRuntimeServiceIdentifiers>;
 
 function createSafeInvocation<TArgs extends object>(
 	name: string,
@@ -145,7 +141,7 @@ export type ToolHandler<TParams extends object = object> = (
 export type ToolEffectHandler<TParams extends object = object> = (
 	args: TParams,
 	context?: ToolExecutionContext,
-) => Effect.Effect<McpToolResponse, unknown, never>;
+) => Effect.Effect<McpToolResponse, CoreToolError, never>;
 
 export type ToolHandlerFactory = <TParams extends object>(
 	fn: ToolEffectHandler<TParams>,
@@ -183,6 +179,8 @@ export interface CreateToolRuntimeOptions {
 	logger?: McpClientLogger;
 	createHandler?: ToolHandlerFactory;
 	observer?: ToolObserver;
+	/** A context acquired by the caller-owned server Scope. */
+	services?: ToolRuntimeServiceContext;
 	execution?: ToolExecutionContext;
 	executionTimeoutMs?: number;
 	executionDeadline?: number;
@@ -194,10 +192,21 @@ function runToolEffect<TParams extends object>(
 	args: TParams,
 	requestContext: ToolExecutionContext | undefined,
 	services: ToolRuntimeServiceContext | undefined,
+	lifecycleSignal?: AbortSignal,
+	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
+	executionDeadline?: number,
 ): Promise<McpToolResponse> {
 	const program = Effect.suspend(() => fn(args, requestContext));
 	const provided = services ? Effect.provide(program, services) : program;
-	return Effect.runPromise(provided);
+	// Pass the MCP request signal to the Effect runtime as well as binding it
+	// to the Hevy client. This interrupts the fiber while it is waiting on
+	// non-fetch work (for example a retry delay or a cache lookup), and the
+	// client bridge then aborts native fetch at its edge.
+	return runBoundedExecution(provided, {
+		signal: mergeAbortSignals(lifecycleSignal, requestContext?.signal),
+		timeoutMs: executionTimeoutMs,
+		deadline: requestContext?.deadline ?? executionDeadline,
+	});
 }
 
 export const defaultHandlerFactory: ToolHandlerFactory = <
@@ -210,6 +219,8 @@ export const defaultHandlerFactory: ToolHandlerFactory = <
 		(args: TParams, requestContext?: ToolExecutionContext) =>
 			runToolEffect(fn, args, requestContext, undefined),
 		context,
+		undefined,
+		undefined,
 	) as ToolHandler;
 
 export function createToolRuntime({
@@ -220,26 +231,48 @@ export function createToolRuntime({
 	logger,
 	createHandler,
 	observer,
+	services: providedServices,
 	execution,
 	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
 	executionDeadline,
 	lifecycleSignal,
 }: CreateToolRuntimeOptions): ToolRuntime {
-	const rawClient = baseClient ?? client;
-	const resolvedOperations =
-		operations ?? (rawClient ? createOperations(rawClient) : null);
+	const providedClient = providedServices
+		? Context.getOption(providedServices, HevyClientService)
+		: Option.none();
+	const providedOperations = providedServices
+		? Context.getOption(providedServices, HevyOperationsService)
+		: Option.none();
+	const providedCatalog = providedServices
+		? Context.getOption(providedServices, ExerciseTemplateCatalogService)
+		: Option.none();
+	const providedObserver = providedServices
+		? Context.getOption(providedServices, ToolObserverService)
+		: Option.none();
+	const effectiveObserver = observer ?? Option.getOrUndefined(providedObserver);
+	const rawClient =
+		baseClient ??
+		(Option.isSome(providedClient) ? providedClient.value : client);
+	const resolvedOperations = Option.isSome(providedOperations)
+		? providedOperations.value
+		: (operations ?? (rawClient ? createOperations(rawClient) : null));
 	const effectiveExecutionDeadline = executionDeadline ?? execution?.deadline;
-	const effectiveClient =
-		execution && rawClient
+	const effectiveClient = Option.isSome(providedClient)
+		? providedClient.value
+		: execution && rawClient
 			? bindClientExecution(requireClient(rawClient), execution)
 			: client;
 	const effectiveCatalog = execution
-		? {
-				effect: (options = {}) => catalog.effect({ ...options, execution }),
-				get: (options = {}) => catalog.get({ ...options, execution }),
-				reset: () => catalog.reset(),
-			}
-		: catalog;
+		? Option.isSome(providedCatalog)
+			? providedCatalog.value
+			: {
+					effect: (options = {}) => catalog.effect({ ...options, execution }),
+					get: (options = {}) => catalog.get({ ...options, execution }),
+					reset: () => catalog.reset(),
+				}
+		: Option.isSome(providedCatalog)
+			? providedCatalog.value
+			: catalog;
 	const coreLayer =
 		effectiveClient && resolvedOperations
 			? (createCoreServiceLayer({
@@ -257,15 +290,25 @@ export function createToolRuntime({
 						ExerciseTemplateCatalogService,
 						effectiveCatalog,
 					) as ToolRuntimeServiceLayer);
-	const layer = observer
+	const layer = effectiveObserver
 		? coreLayer
 			? (Layer.merge(
 					coreLayer,
-					createToolObserverLayer(observer),
+					createToolObserverLayer(effectiveObserver),
 				) as ToolRuntimeServiceLayer)
-			: (createToolObserverLayer(observer) as ToolRuntimeServiceLayer)
+			: (createToolObserverLayer(effectiveObserver) as ToolRuntimeServiceLayer)
 		: coreLayer;
-	const services = layer ? buildServiceContext(layer) : undefined;
+	const services =
+		providedServices ??
+		(layer
+			? createCoreServiceContext({
+					client: effectiveClient ?? undefined,
+					catalog: effectiveCatalog,
+					execution,
+					operations: resolvedOperations ?? undefined,
+					observer: effectiveObserver,
+				})
+			: undefined);
 	const effectHandlerFactory: ToolHandlerFactory =
 		createHandler ??
 		(<TParams extends object>(
@@ -274,8 +317,18 @@ export function createToolRuntime({
 		) =>
 			withErrorHandling(
 				(args: TParams, requestContext?: ToolExecutionContext) =>
-					runToolEffect(fn, args, requestContext, services),
+					runToolEffect(
+						fn,
+						args,
+						requestContext,
+						services,
+						lifecycleSignal,
+						executionTimeoutMs,
+						effectiveExecutionDeadline,
+					),
 				context,
+				undefined,
+				logger,
 			) as ToolHandler);
 	const getService = <I extends ToolRuntimeServiceIdentifiers, S>(
 		service: Context.Key<I, S>,
@@ -303,13 +356,23 @@ export function createToolRuntime({
 		) => Promise<McpToolResponse> = createHandler
 			? createHandler(fn, context, metadata)
 			: (args, requestContext) =>
-					runToolEffect(fn, args, requestContext, services);
+					runToolEffect(
+						fn,
+						args,
+						requestContext,
+						services,
+						lifecycleSignal,
+						executionTimeoutMs,
+						effectiveExecutionDeadline,
+					);
 		return withErrorHandling(
 			async (args: TParams, requestContext?: ToolExecutionContext) => {
 				let scope;
 				try {
 					scope = memoizeObservationScope(
-						observer?.start(createSafeInvocation(context, args, metadata)),
+						effectiveObserver?.start(
+							createSafeInvocation(context, args, metadata),
+						),
 					);
 				} catch {
 					scope = undefined;
@@ -325,13 +388,25 @@ export function createToolRuntime({
 					if (scope) {
 						try {
 							runPromise = scope.run(invokeHandler);
-						} catch {
+						} catch (observerError) {
+							logCoreError(
+								"MCP tool observer failure",
+								resolveErrorPolicy(observerError, "").diagnostic,
+								logger,
+							);
 							runPromise = invokeHandler();
 						}
 					} else {
 						runPromise = invokeHandler();
 					}
-					const result = await runPromise.catch(invokeHandler);
+					const result = await runPromise.catch((observerError) => {
+						logCoreError(
+							"MCP tool observer failure",
+							resolveErrorPolicy(observerError, "").diagnostic,
+							logger,
+						);
+						return invokeHandler();
+					});
 					const telemetry = {
 						outcome: result.isError ? "returned_error" : "success",
 						durationMs: Date.now() - startedAt,
@@ -357,9 +432,11 @@ export function createToolRuntime({
 				}
 			},
 			context,
+			undefined,
+			logger,
 		) as ToolHandler;
 	};
-	const observedHandlerFactory = observer
+	const observedHandlerFactory = effectiveObserver
 		? createObservedHandler
 		: effectHandlerFactory;
 	const runtime: ToolRuntime = {
@@ -385,36 +462,66 @@ export function createToolRuntime({
 				: (resolvedOperations ??
 					createOperations(requireClient(effectiveClient))),
 		forExecution: (nextExecution) =>
-			createToolRuntime({
-				client: rawClient,
-				baseClient: rawClient,
-				operations: resolvedOperations ?? undefined,
-				catalog,
-				logger,
-				createHandler,
-				observer,
-				execution: (() => {
-					const nested: {
-						-readonly [
-							K in keyof ToolExecutionContext
-						]?: ToolExecutionContext[K];
-					} = {};
-					if (nextExecution) Object.assign(nested, nextExecution);
-					nested.signal = mergeAbortSignals(
-						lifecycleSignal,
-						nextExecution?.signal,
-					);
-					nested.deadline =
-						nextExecution?.deadline ??
-						effectiveExecutionDeadline ??
-						Date.now() + executionTimeoutMs;
-					return nested as ToolExecutionContext;
-				})(),
-				executionTimeoutMs,
-				executionDeadline:
-					nextExecution?.deadline ?? effectiveExecutionDeadline,
-				lifecycleSignal,
-			}),
+			(() => {
+				const nested: {
+					-readonly [K in keyof ToolExecutionContext]?: ToolExecutionContext[K];
+				} = {};
+				if (nextExecution) Object.assign(nested, nextExecution);
+				nested.signal = mergeAbortSignals(
+					lifecycleSignal,
+					nextExecution?.signal,
+				);
+				nested.deadline = nextExecution?.deadline ?? effectiveExecutionDeadline;
+				const nestedExecution = nested as ToolExecutionContext;
+				const nestedBaseClient = rawClient;
+				const contextCatalog = services
+					? Context.getOption(services, ExerciseTemplateCatalogService)
+					: Option.none();
+				const nestedBaseCatalog = Option.isSome(contextCatalog)
+					? contextCatalog.value
+					: catalog;
+				const nestedClient =
+					nestedExecution && nestedBaseClient
+						? bindClientExecution(
+								requireClient(nestedBaseClient),
+								nestedExecution,
+							)
+						: effectiveClient;
+				const nestedCatalog = {
+					effect: (options = {}) =>
+						nestedBaseCatalog.effect({
+							...options,
+							execution: nestedExecution,
+						}),
+					get: (options = {}) =>
+						nestedBaseCatalog.get({
+							...options,
+							execution: nestedExecution,
+						}),
+					reset: () => nestedBaseCatalog.reset(),
+				};
+				return createToolRuntime({
+					client: nestedBaseClient,
+					baseClient: nestedBaseClient,
+					operations: resolvedOperations ?? undefined,
+					catalog,
+					logger,
+					createHandler,
+					observer: effectiveObserver,
+					services: services
+						? overlayCoreServiceContext(services, {
+								client: nestedClient ?? undefined,
+								catalog: nestedCatalog,
+								execution: nestedExecution,
+							})
+						: undefined,
+					execution: nestedExecution,
+					executionTimeoutMs,
+					executionDeadline:
+						nextExecution?.deadline ?? effectiveExecutionDeadline,
+					lifecycleSignal,
+				});
+			})(),
 	};
 	return runtime;
 }

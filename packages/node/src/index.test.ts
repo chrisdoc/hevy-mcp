@@ -66,4 +66,18 @@ describe("Node embedding entry", () => {
 		expect(testDoubles.createHevyClient).not.toHaveBeenCalled();
 		expect(testDoubles.createHevyMcpServer).not.toHaveBeenCalled();
 	});
+
+	it("forwards the embedding lifecycle signal without connecting", async () => {
+		const lifecycleSignal = new AbortController().signal;
+
+		await createNodeMcpServer(
+			{ apiKey: "programmatic-key" },
+			"stdio",
+			lifecycleSignal,
+		);
+
+		expect(testDoubles.createHevyMcpServer).toHaveBeenCalledWith(
+			expect.objectContaining({ lifecycleSignal }),
+		);
+	});
 });

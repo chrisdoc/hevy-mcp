@@ -9,6 +9,7 @@ const doubles = vi.hoisted(() => ({
 	schedule: vi.fn(),
 	shutdown: vi.fn(),
 	termination: vi.fn(),
+	exceptionInstall: vi.fn(),
 	span: {
 		addEvent: vi.fn(),
 		setStatus: vi.fn(),
@@ -19,7 +20,8 @@ const doubles = vi.hoisted(() => ({
 vi.mock("./telemetry.js", () => ({
 	captureFailure: doubles.capture,
 	flushTelemetry: doubles.flush,
-	installProcessExceptionTracking: vi.fn(() => doubles.cleanup),
+	installProcessExceptionTracking: doubles.exceptionInstall,
+	telemetryLayer: undefined,
 	serviceName: "hevy-mcp",
 	serviceVersion: "test-version",
 	tracer: {
@@ -49,7 +51,11 @@ const target = {
 afterEach(() => {
 	vi.clearAllMocks();
 	target.close.mockImplementation(() => Promise.resolve());
+	doubles.exceptionInstall.mockImplementation(() => doubles.cleanup);
+	doubles.shutdown.mockImplementation(() => undefined);
 });
+
+doubles.exceptionInstall.mockImplementation(() => doubles.cleanup);
 
 describe("Node lifecycle runner", () => {
 	it("starts, schedules updates, and installs shutdown ownership", async () => {
@@ -94,6 +100,23 @@ describe("Node lifecycle runner", () => {
 			expect.objectContaining({ kind: "lifecycle" }),
 		);
 		expect(doubles.cleanup).toHaveBeenCalledOnce();
+	});
+
+	it("closes a partially adopted target when startup fails", async () => {
+		const partial = { close: vi.fn().mockResolvedValue(undefined) };
+		const error = new Error("listen failed");
+
+		await expect(
+			runNodeLifecycle({
+				transport: "http",
+				start: (context) => {
+					context.adoptTarget(partial);
+					return Promise.reject(error);
+				},
+			}),
+		).rejects.toBe(error);
+
+		expect(partial.close).toHaveBeenCalledOnce();
 	});
 
 	it("classifies a runtime failure after HTTP listening", async () => {
@@ -198,5 +221,47 @@ describe("Node lifecycle runner", () => {
 		expect(doubles.termination).toHaveBeenCalledWith("clean");
 		expect(doubles.cleanup).toHaveBeenCalledOnce();
 		expect(doubles.flush).toHaveBeenCalledOnce();
+	});
+
+	it("preserves a shutdown registration failure and cleans prior acquisitions once", async () => {
+		const registrationError = new Error("shutdown registration failed");
+		const partial = { close: vi.fn().mockResolvedValue(undefined) };
+		doubles.shutdown.mockImplementation(() => {
+			throw registrationError;
+		});
+
+		await expect(
+			runNodeLifecycle({
+				transport: "http",
+				start: (context) => {
+					context.adoptTarget(partial);
+					context.markListening();
+					return Promise.resolve({ target: partial });
+				},
+			}),
+		).rejects.toBe(registrationError);
+
+		expect(partial.close).toHaveBeenCalledOnce();
+		expect(doubles.cleanup).toHaveBeenCalledOnce();
+		expect(doubles.schedule).toHaveBeenCalledOnce();
+	});
+
+	it("preserves an exception-listener registration failure", async () => {
+		const registrationError = new Error(
+			"unhandledRejection registration failed",
+		);
+		doubles.exceptionInstall.mockImplementation(() => {
+			throw registrationError;
+		});
+
+		await expect(
+			runNodeLifecycle({
+				transport: "http",
+				start: () => Promise.resolve({ target }),
+			}),
+		).rejects.toBe(registrationError);
+
+		expect(doubles.schedule).not.toHaveBeenCalled();
+		expect(target.close).not.toHaveBeenCalled();
 	});
 });

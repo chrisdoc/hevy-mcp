@@ -4,8 +4,6 @@
  * The client owns this vocabulary so adapters can only present the same
  * outcome; they cannot accidentally grow incompatible retry/error taxonomies.
  */
-import { Effect, Exit } from "effect";
-
 export type HevyOperationSafety =
 	| "read"
 	| "idempotent-write"
@@ -97,85 +95,6 @@ export function commitStateFor(
 	if (safety === "read") return confirmed ? "confirmed" : "not_sent";
 	if (confirmed) return "confirmed";
 	return phase === "before-dispatch" ? "not_sent" : "unknown";
-}
-
-export interface HevyExecutionSignal {
-	readonly signal: AbortSignal;
-	readonly abort: (reason?: Error | string | DOMException) => void;
-	readonly cleanup: () => void;
-	readonly deadlineTriggered: () => boolean;
-}
-
-/**
- * Build a signal that follows both caller cancellation and one absolute
- * deadline. The returned cleanup function must be called when the operation
- * completes so a long-lived server does not retain timers/listeners.
- */
-export function createExecutionSignal(
-	control: HevyExecutionControl,
-): HevyExecutionSignal {
-	const controller = new AbortController();
-	let deadlineTriggered = false;
-	let cleaned = false;
-	const abortFromCaller = () => {
-		if (!controller.signal.aborted) controller.abort(control.signal?.reason);
-	};
-	if (control.signal?.aborted) abortFromCaller();
-	else
-		control.signal?.addEventListener("abort", abortFromCaller, { once: true });
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	if (control.deadline !== undefined) {
-		const delay = Math.max(0, control.deadline - Date.now());
-		timer = setTimeout(() => {
-			// Preserve a caller cancellation already observed at this
-			// checkpoint. Otherwise a later deadline callback could
-			// reclassify the request after cancellation won the race.
-			if (controller.signal.aborted) return;
-			deadlineTriggered = true;
-			controller.abort(
-				new DOMException("Operation deadline exceeded", "TimeoutError"),
-			);
-		}, delay);
-	}
-	return {
-		signal: controller.signal,
-		abort: (reason?: Error | string | DOMException) => {
-			if (!controller.signal.aborted) controller.abort(reason);
-		},
-		cleanup: () => {
-			if (cleaned) return;
-			cleaned = true;
-			if (timer !== undefined) clearTimeout(timer);
-			control.signal?.removeEventListener("abort", abortFromCaller);
-		},
-		deadlineTriggered: () => deadlineTriggered,
-	};
-}
-
-/**
- * Run a Promise-free execution boundary with guaranteed signal cleanup.
- *
- * The existing client remains Promise-based for compatibility. New Effect
- * integrations can use this helper to ensure deadline timers and caller
- * listeners are released on success, failure, or interruption.
- */
-export function withExecutionSignal<A, E, R>(
-	control: HevyExecutionControl,
-	use: (execution: HevyExecutionSignal) => Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> {
-	return Effect.acquireUseRelease(
-		Effect.sync(() => createExecutionSignal(control)),
-		use,
-		(execution, exit) =>
-			Effect.sync(() => {
-				if (!Exit.isSuccess(exit) && Exit.hasInterrupts(exit)) {
-					execution.abort(
-						new DOMException("Execution interrupted", "AbortError"),
-					);
-				}
-				execution.cleanup();
-			}),
-	);
 }
 
 export function isAbortLike<T>(error: T): boolean {

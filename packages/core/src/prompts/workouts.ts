@@ -5,6 +5,8 @@ import { memoizeObservationScope, type ToolObserver } from "../observation.js";
 import { bucketCount } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";
 import { isString } from "../utils/type-predicates.js";
+import { logCoreError } from "../utils/core-logger.js";
+import type { McpClientLogger } from "../utils/mcp-client-logger-types.js";
 
 type PromptResult = {
 	messages: Array<{
@@ -17,6 +19,7 @@ function withPromptObservation<TArgs extends object>(
 	name: string,
 	observer: ToolObserver | undefined,
 	handler: (args: TArgs) => Promise<PromptResult> | PromptResult,
+	logger?: McpClientLogger,
 ) {
 	return async (args: TArgs): Promise<PromptResult> => {
 		const startedAt = Date.now();
@@ -43,8 +46,24 @@ function withPromptObservation<TArgs extends object>(
 		}
 
 		try {
-			const invoke = () => Promise.resolve(handler(args));
-			const result = await (scope ? scope.run(invoke) : invoke());
+			let handlerPromise: Promise<PromptResult> | undefined;
+			const invoke = () => {
+				handlerPromise ??= Promise.resolve(handler(args));
+				return handlerPromise;
+			};
+			let result: PromptResult;
+			try {
+				result = await (scope ? scope.run(invoke) : invoke());
+			} catch (observerError) {
+				// A scope may reject after invoking the handler. Reuse the
+				// memoized handler promise rather than executing a prompt twice.
+				logCoreError(
+					"MCP prompt observer failure",
+					resolveErrorPolicy(observerError, "").diagnostic,
+					logger,
+				);
+				result = await (handlerPromise ?? invoke());
+			}
 			void scope?.finish({
 				outcome: "success",
 				durationMs: Date.now() - startedAt,
@@ -63,7 +82,7 @@ function withPromptObservation<TArgs extends object>(
 				errorType: policy.type,
 				error: policy.diagnostic,
 			});
-			console.error("MCP prompt failure", policy.diagnostic);
+			logCoreError("MCP prompt failure", policy.diagnostic, logger);
 			throw error;
 		}
 	};
@@ -73,6 +92,7 @@ function withPromptObservation<TArgs extends object>(
 export function registerWorkoutPrompts(
 	server: McpServer,
 	observer?: ToolObserver,
+	logger?: McpClientLogger,
 ) {
 	server.registerPrompt(
 		"analyze-workout-progress",
@@ -110,6 +130,7 @@ export function registerWorkoutPrompts(
 					},
 				],
 			}),
+			logger,
 		),
 	);
 
@@ -169,6 +190,7 @@ export function registerWorkoutPrompts(
 					},
 				],
 			}),
+			logger,
 		),
 	);
 }

@@ -496,8 +496,8 @@ describe("real stateless SDK transport", () => {
 		const createValidationClient = vi.fn(() => createMockClient());
 		const createRequestClient = vi.fn(() => createMockClient());
 		const createServer = vi.fn(
-			(createClient: CreateHevyMcpServerOptions["createClient"]) =>
-				createHevyMcpServer({ createClient }),
+			async (createClient: CreateHevyMcpServerOptions["createClient"]) =>
+				await createHevyMcpServer({ createClient }),
 		);
 		const createTransport = vi.fn(
 			() =>
@@ -606,12 +606,12 @@ describe("real stateless SDK transport", () => {
 			return observer;
 		});
 		const createServer = vi.fn(
-			(
+			async (
 				createClient: CreateHevyMcpServerOptions["createClient"],
 				_signal: AbortSignal | undefined,
 				_deadline: number | undefined,
 				observer: CreateHevyMcpServerOptions["observer"],
-			) => createHevyMcpServer({ createClient, observer }),
+			) => await createHevyMcpServer({ createClient, observer }),
 		);
 		const handler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
@@ -786,8 +786,8 @@ describe("real stateless SDK transport", () => {
 		);
 		const sendLoggingMessage = vi.fn().mockResolvedValue(undefined);
 		const createServer = vi.fn(
-			(createClient: CreateHevyMcpServerOptions["createClient"]) => {
-				const server = createHevyMcpServer({ createClient });
+			async (createClient: CreateHevyMcpServerOptions["createClient"]) => {
+				const server = await createHevyMcpServer({ createClient });
 				vi.spyOn(server, "sendLoggingMessage").mockImplementation(
 					sendLoggingMessage,
 				);

@@ -7,3 +7,4 @@ export {
 	type HevyRequestEffectError,
 	type NativeRequestEffect,
 } from "./internal-request-effect.js";
+export { interruptOnAbortSignal } from "./abort-signal.js";

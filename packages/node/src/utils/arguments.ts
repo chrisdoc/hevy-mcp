@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { NodeCliArgumentError } from "./startup-errors.js";
 
 export type NodeTransport = "stdio" | "http";
 
@@ -14,7 +15,7 @@ const DEFAULT_PORT = 3000;
 function valueAfter(args: string[], index: number, option: string): string {
 	const value = args[index + 1];
 	if (!value || value.startsWith("-")) {
-		throw new Error(`${option} requires a value.`);
+		throw new NodeCliArgumentError(`${option} requires a value.`);
 	}
 	return value;
 }
@@ -40,7 +41,7 @@ function parseHost(value: string): string {
 		host.includes("@") ||
 		host.includes("://")
 	) {
-		throw new Error(
+		throw new NodeCliArgumentError(
 			`Invalid host: ${value}. Provide a hostname or IP address.`,
 		);
 	}
@@ -49,11 +50,15 @@ function parseHost(value: string): string {
 
 function parsePort(value: string): number {
 	if (!/^[0-9]+$/u.test(value)) {
-		throw new Error(`Invalid port: ${value}. Use an integer from 1 to 65535.`);
+		throw new NodeCliArgumentError(
+			`Invalid port: ${value}. Use an integer from 1 to 65535.`,
+		);
 	}
 	const port = Number(value);
 	if (!Number.isSafeInteger(port) || port < 1 || port > 65535) {
-		throw new Error(`Invalid port: ${value}. Use an integer from 1 to 65535.`);
+		throw new NodeCliArgumentError(
+			`Invalid port: ${value}. Use an integer from 1 to 65535.`,
+		);
 	}
 	return port;
 }
@@ -76,7 +81,7 @@ export function parseNodeCliOptions(args: string[]): NodeCliOptions {
 				const value = valueAfter(args, index, arg);
 				index += 1;
 				if (value !== "stdio" && value !== "http") {
-					throw new Error(
+					throw new NodeCliArgumentError(
 						`Invalid transport: ${value}. Use either stdio or http.`,
 					);
 				}
@@ -95,12 +100,12 @@ export function parseNodeCliOptions(args: string[]): NodeCliOptions {
 				index += 1;
 				break;
 			default:
-				throw new Error(`Unknown option: ${arg}`);
+				throw new NodeCliArgumentError(`Unknown option: ${arg}`);
 		}
 	}
 
 	if (transport === "stdio" && (hostExplicit || portExplicit)) {
-		throw new Error(
+		throw new NodeCliArgumentError(
 			"--host and --port can only be used with --transport http.",
 		);
 	}

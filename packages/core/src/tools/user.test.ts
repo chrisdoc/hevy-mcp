@@ -61,7 +61,9 @@ describe("userToolDefinitions", () => {
 			content: [
 				{
 					type: "text",
-					text: expect.stringContaining("request failed unexpectedly"),
+					text: expect.stringContaining(
+						"API client not initialized. Please provide HEVY_API_KEY.",
+					),
 				},
 			],
 		});

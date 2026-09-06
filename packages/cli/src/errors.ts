@@ -25,6 +25,7 @@ export const EXIT = { configuration: 1, usage: 2, api: 3, network: 4 } as const;
 export interface CliDiagnostic {
 	code: number;
 	message: string;
+	error_code?: string;
 	outcome?: string;
 	phase?: string;
 	operation_safety?: string;
@@ -77,11 +78,13 @@ function executionFields(
 ): Omit<CliDiagnostic, "code" | "message"> {
 	if (!isHevyHttpError(error) && !isTaggedClientError(error)) return {};
 	const {
-		code: _code,
 		status: _status,
+		code: errorCode,
 		...execution
 	} = createExecutionErrorProjection(error);
-	return execution;
+	return errorCode === undefined
+		? execution
+		: { ...execution, error_code: errorCode };
 }
 
 export function diagnostic(error: Error | string): CliDiagnostic {

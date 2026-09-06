@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseNodeCliOptions } from "./arguments.js";
+import { NodeCliArgumentError } from "./startup-errors.js";
 
 describe("parseNodeCliOptions", () => {
 	it("defaults to stdio without binding HTTP", () => {
@@ -38,9 +39,16 @@ describe("parseNodeCliOptions", () => {
 	});
 
 	it("rejects HTTP-only options in stdio mode", () => {
-		expect(() => parseNodeCliOptions(["--port", "3001"])).toThrow(
-			"only be used with --transport http",
-		);
+		try {
+			parseNodeCliOptions(["--port", "3001"]);
+			throw new Error("expected parser to reject HTTP-only options");
+		} catch (error) {
+			expect(error).toBeInstanceOf(NodeCliArgumentError);
+			expect(error).toHaveProperty(
+				"message",
+				"--host and --port can only be used with --transport http.",
+			);
+		}
 	});
 
 	it("rejects invalid ports", () => {

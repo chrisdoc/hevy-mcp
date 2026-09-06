@@ -23,6 +23,7 @@ import type {
 	FormattedWorkoutSummary,
 } from "./output-schemas.js";
 import { createSafeErrorDiagnostic } from "./error-policy.js";
+import { logCoreError } from "./core-logger.js";
 
 type ExerciseWithSupersetVariants = {
 	supersets_id?: number | null;
@@ -203,7 +204,7 @@ export function calculateDuration(
 		const seconds = Math.floor((durationMs % (1000 * 60)) / 1000);
 		return `${hours}h ${minutes}m ${seconds}s`;
 	} catch (error) {
-		console.error(
+		logCoreError(
 			"Error calculating duration",
 			createSafeErrorDiagnostic(error),
 		);

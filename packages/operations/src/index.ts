@@ -1,4 +1,4 @@
-import type { HevyClient } from "@hevy-mcp/hevy-client";
+import type { HevyClient, HevyOperationSafety } from "@hevy-mcp/hevy-client";
 import {
 	getRequestEffectClient,
 	type HevyRequestEffectClient,
@@ -390,96 +390,96 @@ export function createOperations(
 	client: HevyClient,
 	options: CreateOperationsOptions = {},
 ): HevyOperations {
-	let requestEffectClient: HevyRequestEffectClient | undefined;
-	const getRequestEffectClientOnce = (): HevyRequestEffectClient => {
-		requestEffectClient ??= getRequestEffectClient(client);
-		return requestEffectClient;
+	const requestEffectClients = new Map<
+		HevyOperationSafety,
+		HevyRequestEffectClient
+	>();
+	const getRequestEffectClientOnce = (
+		safety: HevyOperationSafety,
+	): HevyRequestEffectClient => {
+		const existing = requestEffectClients.get(safety);
+		if (existing !== undefined) return existing;
+		const created = getRequestEffectClient(client, safety);
+		requestEffectClients.set(safety, created);
+		return created;
 	};
-	const lazyRequestEffectClient: ExistingRequestEffectClient = {
-		createWorkout: (...args) =>
-			getRequestEffectClientOnce().createWorkout(...args),
-		getBodyMeasurements: (...args) =>
-			getRequestEffectClientOnce().getBodyMeasurements(...args),
-		getBodyMeasurement: (...args) =>
-			getRequestEffectClientOnce().getBodyMeasurement(...args),
-		createBodyMeasurement: (...args) =>
-			getRequestEffectClientOnce().createBodyMeasurement(...args),
-		updateBodyMeasurement: (...args) =>
-			getRequestEffectClientOnce().updateBodyMeasurement(...args),
-		getExerciseTemplate: (...args) =>
-			getRequestEffectClientOnce().getExerciseTemplate(...args),
-		getExerciseHistory: (...args) =>
-			getRequestEffectClientOnce().getExerciseHistory(...args),
-		createExerciseTemplate: (...args) =>
-			getRequestEffectClientOnce().createExerciseTemplate(...args),
-		getExerciseTemplates: (...args) =>
-			getRequestEffectClientOnce().getExerciseTemplates(...args),
-		getRoutineFolder: (...args) =>
-			getRequestEffectClientOnce().getRoutineFolder(...args),
-		createRoutineFolder: (...args) =>
-			getRequestEffectClientOnce().createRoutineFolder(...args),
-		getRoutineFolders: (...args) =>
-			getRequestEffectClientOnce().getRoutineFolders(...args),
-		getUserInfo: (...args) => getRequestEffectClientOnce().getUserInfo(...args),
-		getWorkoutEvents: (...args) =>
-			getRequestEffectClientOnce().getWorkoutEvents(...args),
-		getWorkouts: (...args) => getRequestEffectClientOnce().getWorkouts(...args),
-		getWorkout: (...args) => getRequestEffectClientOnce().getWorkout(...args),
-		getWorkoutCount: (...args) =>
-			getRequestEffectClientOnce().getWorkoutCount(...args),
-		getRoutines: (...args) => getRequestEffectClientOnce().getRoutines(...args),
-		getRoutineById: (...args) =>
-			getRequestEffectClientOnce().getRoutineById(...args),
-		createRoutine: (...args) =>
-			getRequestEffectClientOnce().createRoutine(...args),
-		updateRoutine: (...args) =>
-			getRequestEffectClientOnce().updateRoutine(...args),
-		updateWorkout: (...args) =>
-			getRequestEffectClientOnce().updateWorkout(...args),
+	const createLazyRequestEffectClient = (
+		safety: HevyOperationSafety,
+	): ExistingRequestEffectClient => {
+		const get = () => getRequestEffectClientOnce(safety);
+		return {
+			createWorkout: (...args) => get().createWorkout(...args),
+			getBodyMeasurements: (...args) => get().getBodyMeasurements(...args),
+			getBodyMeasurement: (...args) => get().getBodyMeasurement(...args),
+			createBodyMeasurement: (...args) => get().createBodyMeasurement(...args),
+			updateBodyMeasurement: (...args) => get().updateBodyMeasurement(...args),
+			getExerciseTemplate: (...args) => get().getExerciseTemplate(...args),
+			getExerciseHistory: (...args) => get().getExerciseHistory(...args),
+			createExerciseTemplate: (...args) =>
+				get().createExerciseTemplate(...args),
+			getExerciseTemplates: (...args) => get().getExerciseTemplates(...args),
+			getRoutineFolder: (...args) => get().getRoutineFolder(...args),
+			createRoutineFolder: (...args) => get().createRoutineFolder(...args),
+			getRoutineFolders: (...args) => get().getRoutineFolders(...args),
+			getUserInfo: (...args) => get().getUserInfo(...args),
+			getWorkoutEvents: (...args) => get().getWorkoutEvents(...args),
+			getWorkouts: (...args) => get().getWorkouts(...args),
+			getWorkout: (...args) => get().getWorkout(...args),
+			getWorkoutCount: (...args) => get().getWorkoutCount(...args),
+			getRoutines: (...args) => get().getRoutines(...args),
+			getRoutineById: (...args) => get().getRoutineById(...args),
+			createRoutine: (...args) => get().createRoutine(...args),
+			updateRoutine: (...args) => get().updateRoutine(...args),
+			updateWorkout: (...args) => get().updateWorkout(...args),
+		};
 	};
-	const workoutsList = createWorkoutsListOperation(lazyRequestEffectClient);
-	const bodyMeasurementsList = createBodyMeasurementsListOperation(
-		lazyRequestEffectClient,
+	const readClient = createLazyRequestEffectClient("read");
+	const idempotentWriteClient =
+		createLazyRequestEffectClient("idempotent-write");
+	const nonIdempotentWriteClient = createLazyRequestEffectClient(
+		"non-idempotent-write",
 	);
+	const workoutsList = createWorkoutsListOperation(readClient);
+	const bodyMeasurementsList = createBodyMeasurementsListOperation(readClient);
 	return {
 		routines: {
-			create: createRoutinesCreateOperation(lazyRequestEffectClient),
-			get: createRoutinesGetOperation(lazyRequestEffectClient),
-			list: createRoutinesListOperation(lazyRequestEffectClient),
-			search: createRoutinesSearchOperation(lazyRequestEffectClient),
-			update: createRoutinesUpdateOperation(lazyRequestEffectClient),
+			create: createRoutinesCreateOperation(nonIdempotentWriteClient),
+			get: createRoutinesGetOperation(readClient),
+			list: createRoutinesListOperation(readClient),
+			search: createRoutinesSearchOperation(readClient),
+			update: createRoutinesUpdateOperation(idempotentWriteClient),
 		},
 		workouts: {
-			count: createWorkoutsCountOperation(lazyRequestEffectClient),
-			create: createWorkoutsCreateOperation(lazyRequestEffectClient),
-			events: createWorkoutsEventsOperation(lazyRequestEffectClient),
-			get: createWorkoutsGetOperation(lazyRequestEffectClient),
+			count: createWorkoutsCountOperation(readClient),
+			create: createWorkoutsCreateOperation(nonIdempotentWriteClient),
+			events: createWorkoutsEventsOperation(readClient),
+			get: createWorkoutsGetOperation(readClient),
 			list: workoutsList,
 			replaceExercises: createWorkoutsReplaceExercisesOperation(
-				lazyRequestEffectClient,
+				idempotentWriteClient,
 			),
-			update: createWorkoutsUpdateOperation(lazyRequestEffectClient),
+			update: createWorkoutsUpdateOperation(idempotentWriteClient),
 		},
 		bodyMeasurements: {
-			create: createBodyMeasurementsCreateOperation(lazyRequestEffectClient),
-			get: createBodyMeasurementsGetOperation(lazyRequestEffectClient),
+			create: createBodyMeasurementsCreateOperation(nonIdempotentWriteClient),
+			get: createBodyMeasurementsGetOperation(readClient),
 			list: bodyMeasurementsList,
-			update: createBodyMeasurementsUpdateOperation(lazyRequestEffectClient),
+			update: createBodyMeasurementsUpdateOperation(idempotentWriteClient),
 		},
 		folders: {
-			create: createFoldersCreateOperation(lazyRequestEffectClient),
-			get: createFoldersGetOperation(lazyRequestEffectClient),
-			listAll: createFoldersListAllOperation(lazyRequestEffectClient),
+			create: createFoldersCreateOperation(nonIdempotentWriteClient),
+			get: createFoldersGetOperation(readClient),
+			listAll: createFoldersListAllOperation(readClient),
 		},
 		templates: {
-			create: createTemplatesCreateOperation(lazyRequestEffectClient),
-			get: createTemplatesGetOperation(lazyRequestEffectClient),
-			history: createTemplatesHistoryOperation(lazyRequestEffectClient),
-			listAll: createTemplatesListAllOperation(lazyRequestEffectClient),
-			search: createTemplatesSearchOperation(lazyRequestEffectClient),
+			create: createTemplatesCreateOperation(nonIdempotentWriteClient),
+			get: createTemplatesGetOperation(readClient),
+			history: createTemplatesHistoryOperation(readClient),
+			listAll: createTemplatesListAllOperation(readClient),
+			search: createTemplatesSearchOperation(readClient),
 		},
 		user: {
-			get: createUserGetOperation(lazyRequestEffectClient),
+			get: createUserGetOperation(readClient),
 		},
 		workflows: {
 			trainingSummary: createWorkflowsTrainingSummaryOperation(

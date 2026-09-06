@@ -135,6 +135,25 @@ if (packedManifest.bin?.["hevy-mcp"] !== "dist/cli.mjs") {
 	throw new Error("package.json must expose hevy-mcp from dist/cli.mjs");
 }
 
+const packageExports = packedManifest.exports?.["."];
+if (
+	packageExports?.import !== "./dist/index.mjs" ||
+	packageExports?.types !== "./dist/index.d.mts"
+) {
+	throw new Error(
+		"package.json must expose the embedding API from dist/index.mjs and dist/index.d.mts",
+	);
+}
+
+if (
+	!isString(packedManifest.dependencies?.effect) ||
+	packedManifest.dependencies.effect.length === 0
+) {
+	throw new Error(
+		"package.json must declare effect as a runtime dependency for emitted Effect imports",
+	);
+}
+
 for (const section of [
 	"dependencies",
 	"optionalDependencies",

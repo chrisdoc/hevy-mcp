@@ -44,6 +44,7 @@
 		"@opentelemetry/sdk-trace-base": "^2.11.0",
 		"@opentelemetry/sdk-trace-node": "^2.11.0",
 		"@sentry/node": "^10.73.0",
+		"effect": "^4.0.0-rc.112",
 		"semver": "^7.8.5",
 		"zod": "^4.5.4"
 	},

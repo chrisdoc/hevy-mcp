@@ -1,4 +1,4 @@
-import { Data, Duration, Effect } from "effect";
+import { Cause, Data, Duration, Effect } from "effect";
 
 import type { HevyOperationSafety } from "./execution.js";
 
@@ -73,6 +73,7 @@ export function customPromiseSleep(
 	delayMs: number,
 	signal: AbortSignal,
 	sleep: (milliseconds: number, signal?: AbortSignal) => Promise<void>,
+	deadline?: number,
 ): Effect.Effect<void, unknown> {
 	return Effect.tryPromise({
 		try: (interruptionSignal) => {
@@ -111,6 +112,12 @@ export function customPromiseSleep(
 				try {
 					Promise.resolve(sleep(delayMs, signal)).then(() => {
 						if (settled) return;
+						if (deadline !== undefined && Date.now() >= deadline) {
+							settleReject(
+								new Cause.TimeoutError("Retry backoff deadline exceeded"),
+							);
+							return;
+						}
 						settled = true;
 						cleanup();
 						resolve();
@@ -135,7 +142,12 @@ export function retryBackoff(
 	},
 ): Effect.Effect<void, BackoffFailure> {
 	const wait = options.sleep
-		? customPromiseSleep(options.delayMs, options.signal, options.sleep)
+		? customPromiseSleep(
+				options.delayMs,
+				options.signal,
+				options.sleep,
+				options.deadline,
+			)
 		: effectClockSleep(options.delayMs, options.signal);
 	return wait.pipe(
 		Effect.mapError(

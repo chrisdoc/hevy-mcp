@@ -13,6 +13,11 @@ import { projectRoutineFolder } from "../utils/formatters.js";
 import { createExecutionErrorProjection } from "../utils/error-handler.js";
 import { requireOperation } from "../tools/operation-helpers.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
+import {
+	mergeAbortSignals,
+	runBoundedExecution,
+	type ToolExecutionContext,
+} from "../execution.js";
 
 const JSON_MIME_TYPE = "application/json";
 
@@ -42,10 +47,22 @@ function createResourceErrorResult(
 
 async function readResource(
 	uri: URL,
+	signal: AbortSignal | undefined,
+	execution: ToolExecutionContext | undefined,
+	executionTimeoutMs: number,
+	executionDeadline: number | undefined,
 	read: () => Effect.Effect<ReadResourceResult, unknown, never>,
 ): Promise<ReadResourceResult> {
 	try {
-		return await Effect.runPromise(Effect.suspend(read));
+		const program = Effect.try({
+			try: read,
+			catch: (error) => error,
+		}).pipe(Effect.flatten);
+		return await runBoundedExecution(program, {
+			signal,
+			timeoutMs: executionTimeoutMs,
+			deadline: execution?.deadline ?? executionDeadline,
+		});
 	} catch (error) {
 		return createResourceErrorResult(uri, error);
 	}
@@ -63,19 +80,25 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, () => {
-				const scoped = runtime.forExecution({
-					signal: context.mcpReq.signal,
-				});
-				return requireOperation(
-					scoped.service(HevyOperationsService).user?.get,
-					"user.get",
-				)
-					.effect(scoped.execution)
-					.pipe(
+			readResource(
+				uri,
+				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
+				() => {
+					const scoped = runtime.forExecution({
+						signal: context.mcpReq.signal,
+					});
+					return requireOperation(
+						scoped.service(HevyOperationsService).user?.get,
+						"user.get",
+					).pipe(
+						Effect.flatMap((operation) => operation.effect(scoped.execution)),
 						Effect.map((user) => createJsonResourceResult(uri, user ?? null)),
 					);
-			}),
+				},
+			),
 	);
 
 	server.registerResource(
@@ -86,23 +109,29 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, () => {
-				const scoped = runtime.forExecution({
-					signal: context.mcpReq.signal,
-				});
-				return requireOperation(
-					scoped.service(HevyOperationsService).workouts.count,
-					"workouts.count",
-				)
-					.effect(scoped.execution)
-					.pipe(
+			readResource(
+				uri,
+				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
+				() => {
+					const scoped = runtime.forExecution({
+						signal: context.mcpReq.signal,
+					});
+					return requireOperation(
+						scoped.service(HevyOperationsService).workouts.count,
+						"workouts.count",
+					).pipe(
+						Effect.flatMap((operation) => operation.effect(scoped.execution)),
 						Effect.map((workoutCount) =>
 							createJsonResourceResult(uri, {
 								workout_count: workoutCount,
 							}),
 						),
 					);
-			}),
+				},
+			),
 	);
 
 	server.registerResource(
@@ -113,17 +142,26 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, () => {
-				const scoped = runtime.forExecution({
-					signal: context.mcpReq.signal,
-				});
-				return scoped
-					.service(ExerciseTemplateCatalogService)
-					.effect()
-					.pipe(
-						Effect.map((templates) => createJsonResourceResult(uri, templates)),
-					);
-			}),
+			readResource(
+				uri,
+				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
+				() => {
+					const scoped = runtime.forExecution({
+						signal: context.mcpReq.signal,
+					});
+					return scoped
+						.service(ExerciseTemplateCatalogService)
+						.effect({ execution: scoped.execution })
+						.pipe(
+							Effect.map((templates) =>
+								createJsonResourceResult(uri, templates),
+							),
+						);
+				},
+			),
 	);
 
 	server.registerResource(
@@ -134,20 +172,26 @@ export function registerHevyResources(
 			mimeType: JSON_MIME_TYPE,
 		},
 		async (uri, context: ServerContext) =>
-			readResource(uri, () => {
-				const scoped = runtime.forExecution({
-					signal: context.mcpReq.signal,
-				});
-				return requireOperation(
-					scoped.service(HevyOperationsService).folders?.listAll,
-					"folders.listAll",
-				)
-					.effect(scoped.execution)
-					.pipe(
+			readResource(
+				uri,
+				mergeAbortSignals(runtime.lifecycleSignal, context.mcpReq.signal),
+				undefined,
+				runtime.executionTimeoutMs,
+				runtime.executionDeadline,
+				() => {
+					const scoped = runtime.forExecution({
+						signal: context.mcpReq.signal,
+					});
+					return requireOperation(
+						scoped.service(HevyOperationsService).folders?.listAll,
+						"folders.listAll",
+					).pipe(
+						Effect.flatMap((operation) => operation.effect(scoped.execution)),
 						Effect.map((folders) =>
 							createJsonResourceResult(uri, folders.map(projectRoutineFolder)),
 						),
 					);
-			}),
+				},
+			),
 	);
 }
