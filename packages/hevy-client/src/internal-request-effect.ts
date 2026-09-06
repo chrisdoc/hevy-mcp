@@ -254,7 +254,10 @@ function retryAfterSeconds(error: HevyHttpError): number | undefined {
 
 function requestPage(config: RequestConfig<unknown>): number | undefined {
 	const query = config.query ?? config.params;
-	return Predicate.isObject(query) && Predicate.isNumber(query.page)
+	// Zod's number schema rejected NaN and infinities; keep that semantics.
+	return Predicate.isObject(query) &&
+		Predicate.isNumber(query.page) &&
+		Number.isFinite(query.page)
 		? query.page
 		: undefined;
 }

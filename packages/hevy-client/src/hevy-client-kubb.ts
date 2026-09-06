@@ -2,8 +2,9 @@ import { Cause, Duration, Effect, Option, Predicate } from "effect";
 
 const isObject = <T>(value: T): value is T & object =>
 	Predicate.isObject(value);
+// Zod's number schema rejected NaN and infinities; keep that semantics.
 const isNumber = <T>(value: T): value is T & number =>
-	Predicate.isNumber(value);
+	Predicate.isNumber(value) && Number.isFinite(value);
 const isString = <T>(value: T): value is T & string =>
 	Predicate.isString(value);
 
