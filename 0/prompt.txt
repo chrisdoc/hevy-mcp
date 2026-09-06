@@ -1,0 +1,38 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review ops-mutation-builders
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "ops-mutation-builders" for milestone "ops-complete".
+
+Feature details:
+- ID: ops-mutation-builders
+- Description: Move canonical mutation payload builders and quirks from packages/core (mutation-semantics.ts / hevy-quirks.ts) into @hevy-mcp/operations so tools and CLI share one implementation.
+- Worker session: f965d2fb-277a-4d18-97cb-27c99f562221
+
+Expected behavior:
+- buildWorkoutUpdatePayload, buildRoutinePayload, buildMeasurementPayload, mergeMeasurementPayload live in @hevy-mcp/operations
+- Workout quirks: metadata-only requires is_private; preserves fetched exercises; fetched timestamps → second-precision Z; caller timestamps stay strict; malformed fetched timestamps rejected; omitted patch fields reuse fetched metadata; replace uses replacement array including []; malformed fetched exercises copied
+- Routine quirks: create sends rep_range null when absent; update omits rep_range; equal start/end derives fixed reps and usesRepRanges false; true range keeps reps null and usesRepRanges true; create vs update envelope (folder_id, notes defaults, snake_case)
+- Measurement quirks: omit null/undefined; merge skips null changes and cannot clear; documented numeric keys only; date is not a mutable omit-nulls field
+- Existing core tests for these quirks are moved or re-exported so behavior does not regress
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+Implementation worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, 11 commits ahead of origin/main)
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/scrutiny/reviews/ops-mutation-builders.json
+
+Your report must be valid JSON with this shape:
+{
+  "featureId": "ops-mutation-builders",
+  "status": "pass" | "fail",
+  "issues": [{ "severity": "blocking" | "non_blocking", "description": "..." }],
+  "notes": "..."
+}
+---END TASK FROM PARENT AGENT---
