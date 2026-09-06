@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Final validation contract review
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only final review, do not write files. Review mission.md, architecture.md, and the updated validation-contract.md in `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4` against the approved mission scope. Verify: every stated requirement is covered; no important retry/lifecycle/observation/compatibility flow is missing; assertions are finite, testable, non-duplicative, and behavior-based; no assertion improperly expands scope into Node20/CLI/core pagination/new external infrastructure; IDs/tools/evidence are valid. Inspect repository code only as needed. Return blockers, exact necessary edits if any, assertion count, and filepaths inspected. Return analysis inline only.
+---END TASK FROM PARENT AGENT---
