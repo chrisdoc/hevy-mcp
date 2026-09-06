@@ -1,0 +1,25 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Retry second-pass core review
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Second review pass of CORE RUNTIME (VAL-CORE-*) AFTER first-pass additions VAL-CORE-033 through 037 and wording cleanups.
+
+READ the full updated contract:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md
+and architecture.md in the same missionDir.
+
+WRITE to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review2-core.md
+
+Find remaining missing MCP user flows (tools/resources/prompts/cancel/catalog/close/errors/telemetry) that 001-037 still miss. Propose full new assertions only for real gaps. If none, say "no further IDs".
+
+Keep the review concise. Return the filepath.
+---END TASK FROM PARENT AGENT---
