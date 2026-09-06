@@ -1,0 +1,1 @@
+setup a github issue bug review agent that uses `diagnosing-bugs` skill
