@@ -1,0 +1,35 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Draft client seam contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You write a VALIDATION CONTRACT DRAFT only. Do not implement product code.
+
+Write file:
+/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/client-seam.md
+
+Read architecture.md and mission.md in /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/
+
+## Your area: Internal Hevy client Effect seam
+
+Assertions covering:
+- Public HevyClient type/API remains Promise-only (no requestEffect on public type)
+- Internal requestEffect (or equivalent) is a stable importable seam operations can use without deep-importing generated files
+- Promise getX() and the Effect seam share one request interpreter (same retry/schedule path)
+- Generated Kubb output is not hand-edited
+- Curated public exports unchanged for MCP/CLI consumers
+
+IDs: VAL-CLIENT-001, VAL-CLIENT-002, ...
+
+Tool: vitest / tsc as appropriate
+Evidence: terminal output
+
+Mocked only. Return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
