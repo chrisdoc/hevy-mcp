@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Verify final worktree and README
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only check. Do not modify files. Return findings inline.
+
+Worktree: /root/hevy-mcp-effect-retry-interpreter
+Mission dir: /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4
+
+1. git status --short --branch and git log --oneline -8
+2. Confirm commits exist: 4c50934, 13454e0, d6b481b
+3. Does README.md mention Effect, retry interpreter, or request-local schedules? If not, is that expected because this is an internal client change with no user-facing setup change?
+4. Any dirty/untracked files?
+
+OUTPUT:
+- HEAD SHA, branch, dirty?
+- The three commits exist? yes/no
+- README needs a user-facing update? yes/no with one-sentence reason
+- One-line overall verdict: mission worktree ready / not ready
+---END TASK FROM PARENT AGENT---
