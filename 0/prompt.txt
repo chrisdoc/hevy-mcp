@@ -1,0 +1,36 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Verify typed error collapse findings
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are verifying scrutiny findings against CURRENT code in /home/ubuntu/hevy-mcp-effect-deepening. Commit for this feature is b6fa080.
+
+Scrutiny blocking claims for core-typed-error-policy:
+1. Missing-client tagged errors are lost across Effect.runPromise and return generic unexpected-error text rather than the established HEVY_API_KEY initialization guidance (VAL-CORE-010).
+2. Tool/resource/operation Effect error channels remain unknown and the collapse boundary does not match Cause/tag failures as required.
+
+Investigate:
+- packages/core/src/tools/tool-runtime.ts (runPromise collapse)
+- packages/core/src/utils/error-handler.ts
+- packages/core/src/utils/error-policy.ts
+- tagged error classes
+- requireClient / requireOperation
+- Zod invalid path
+
+Answer:
+1. Are both findings still true? Quote file+lines.
+2. What happens on missing client at MCP tools/call today (message text)?
+3. Does collapse use catchTags / Cause matching, or does runPromise throw and get treated as unknown?
+4. Which part of "unknown error channel" is TypeScript-only vs runtime classification?
+5. Tests covering VAL-CORE-010 / missing client / invalid args?
+6. Concrete recommended fix at the collapse boundary. Do NOT start an operations typing migration. Observable MCP messages and SafeErrorDiagnostic matter.
+
+Do NOT edit files. Analysis only.
+---END TASK FROM PARENT AGENT---
