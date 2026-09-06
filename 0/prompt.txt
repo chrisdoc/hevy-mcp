@@ -1,0 +1,35 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Verify logger isolation findings
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are verifying scrutiny findings against CURRENT code in /home/ubuntu/hevy-mcp-effect-deepening.
+
+Scrutiny blocking claims for core-logger-metrics-isolation:
+1. A prompt observer rejection before invocation escapes and changes prompts/get instead of preserving prompt text (VAL-CORE-028).
+2. No production logging call supplies the MCP logger sink, so required Logger fan-out never reaches MCP logging.
+3. Async catalog onRefreshed rejections are unhandled, allowing callback failures to escape after a successful catalog load (VAL-CORE-027).
+
+Investigate:
+- packages/core/src/utils/core-logger.ts
+- prompt observer wiring
+- MCP sendLoggingMessage / logger sink
+- catalog onRefreshed / cache callbacks
+- tool observation isolation
+
+Answer:
+1. Which of the 3 findings are still true on HEAD? Quote file+lines.
+2. How is the Logger supposed to fan out to MCP sendLoggingMessage AND stderr?
+3. Is there any production path that actually provides the MCP logger?
+4. Tests covering prompt observer throw, onRefreshed throw, logging failure isolation?
+5. Concrete recommended fixes that keep telemetry from flipping tool/resource/prompt outcomes.
+
+Do NOT edit files. Analysis only.
+---END TASK FROM PARENT AGENT---
