@@ -1,0 +1,18 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "cli-collapse-and-exports",
+  "description": "Collapse Effect once per CLI command handler. Keep @chrisdoc/hevy-cli from exporting Effect types. CLI may import operations; must not import node, worker, or hevy-client/internal.",
+  "skillName": "cli-worker",
+  "milestone": "cli-hygiene",
+  "preconditions": [
+    "CLI commands already call operation.effect"
+  ],
+  "expectedBehavior": [
+    "Each CLI command execute path has exactly one Effect.runPromise / runPromiseExit",
+    "@chrisdoc/hevy-cli remains bin-oriented and does not export Effect types",
+    "CLI may import @hevy-mcp/operations; must not import hevy-mcp node package, @hevy-mcp/worker, or @hevy-mcp/hevy-client/internal"
+  ]
+}
+```
