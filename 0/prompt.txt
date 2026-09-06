@@ -1,0 +1,77 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Draft live-e2e contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting the LIVE E2E / CLI / DOCS section of a mission validation contract. Black-box, behavior-based. Investigate how live lanes, CLI, and docs currently work.
+
+WRITE a file. Do not only return analysis.
+
+Write to this exact path:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/live-e2e.md
+
+In your FINAL RESPONSE, return that filepath and a short summary of assertion IDs.
+
+## Mission context
+
+Repo (read-only): /home/ubuntu/hevy-mcp-effect-deepening
+Architecture: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+Mission: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+Test lanes: /home/ubuntu/hevy-mcp-effect-deepening/docs/test-lanes.md
+
+Milestone 4 — live-e2e:
+- Full PR baseline plus live lanes (test:live, test:integration) against real Hevy API with HEVY_API_KEY
+- README/docs updates reflecting deepened Effect architecture
+- CLI still works as Promise adapter
+- Worker live HTTP is NOT required unless already part of test:integration; architecture says live lanes test:live and test:integration. Do NOT require HEVY_RUN_LIVE_WORKER_TESTS unless you find it is already in those commands.
+
+Credentials: HEVY_API_KEY in worktree .env (gitignored). Never log the key. Deterministic lanes use fake credentials.
+
+## What to investigate
+
+- docs/test-lanes.md, CONTRIBUTING.md live sections
+- packages/cli public execute path
+- tests/integration/** and how test:live / test:integration are defined in package.json / repository/validation-lanes.json
+- README.md current architecture claims
+- Whether missing HEVY_API_KEY fails before Vitest starts
+
+## Output format
+
+```markdown
+# Area: Live E2E, CLI, Docs
+
+## Surface
+...
+
+## Interactions enumerated
+- ...
+
+## Assertions
+
+### VAL-LIVE-001: ...
+Tool: pnpm (test:live / test:integration) | vitest | Read
+Evidence: terminal output (redact secrets), command exit code
+```
+
+Also VAL-CLI-*, VAL-DOCS-* if needed. Keep IDs unique with those prefixes.
+
+Cover:
+- Live read canary succeeds with valid key
+- Missing key fails closed (no accidental live calls)
+- Integration lane against real API
+- CLI mocked and (if already in live suite) live
+- README/docs describe scope hierarchy / Effect control structure without claiming Worker-wide Effect or Schema/Config migrations that are out of scope
+- Secrets never appear in live-diagnostics artifacts
+- Existing Promise APIs still documented/usable
+
+8–20 assertions. Exhaustive for this last-mile area, not padded.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
