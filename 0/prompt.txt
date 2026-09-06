@@ -1,0 +1,63 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Verify mocked validation path
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are the mission validation-readiness checker for a Hevy MCP “operations collapse” mission.
+
+Do NOT modify the dirty checkout at /root/hevy-mcp (it has uncommitted changeset work). Do NOT push. Do NOT start long-running servers.
+
+## Context
+User opted out of live Hevy (no HEVY_API_KEY). Validation is mocked unit/PR only:
+- Milestone gate: `mise exec -- pnpm run check`, `mise exec -- pnpm run check:types`, `mise exec -- pnpm run test:unit`
+- User-testing validators re-run mocked tests (no browser, no MCP inspector)
+- No new ports/services
+
+origin/main = afb18b01fb9390585d6284f8f1446707adcbb2a1
+
+## Inventory to verify
+
+1. **test:unit** — exercise the real validation path. Prefer a throwaway worktree:
+   ```
+   git -C /root/hevy-mcp fetch origin main
+   git -C /root/hevy-mcp worktree add /tmp/hevy-mcp-ops-collapse-readiness origin/main
+   ```
+   If that worktree already exists, reuse it. Then `cd /tmp/hevy-mcp-ops-collapse-readiness`, `mise install` if needed, `mise exec -- pnpm install` ONLY if node_modules is missing. Then run:
+   `mise exec -- pnpm run test:unit`
+   with a generous timeout (this can take several minutes).
+
+   If creating the worktree fails due to disk, you MAY run `mise exec -- pnpm run test:unit` in /root/hevy-mcp-effect-retry-interpreter instead, and note that HEAD is not origin/main.
+
+2. **vitest scoped to operations** — from the same tree, run a focused operations test, e.g.
+   `mise exec -- pnpm exec vitest run packages/operations/src/workouts.test.ts packages/operations/src/routines.test.ts packages/operations/src/operation-errors.test.ts`
+   (use the repo’s usual vitest invocation if scripts/run-vitest-lane is required)
+
+3. **Confirm no HEVY_API_KEY needed** — unit tests should pass without it.
+
+4. **Measure resources** before and after the test:unit run:
+   - `free -h` / `nproc` / `uptime` / process count (`ps -e --no-headers | wc -l`)
+   Report numbers.
+
+5. **Do NOT run** test:live, inspect, worker live, or start `pnpm run dev`.
+
+6. After tests, you may leave the throwaway worktree in place (orchestrator may reuse it) OR remove it with `git -C /root/hevy-mcp worktree remove --force /tmp/hevy-mcp-ops-collapse-readiness` if you created it and want to clean up. Prefer LEAVING it if tests passed so later workers can inspect. Do not delete other worktrees.
+
+## Report (inline, do not write mission files)
+
+- each validation tool/command and status
+- test:unit exit code, duration, pass/fail summary
+- focused operations tests exit code
+- resource measurements before/after
+- blockers
+- surprises (flakes, missing node_modules, worktree issues)
+- filepaths inspected
+
+If test:unit fails, capture the failing test names. Do not “fix” product code.
+---END TASK FROM PARENT AGENT---
