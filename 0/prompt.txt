@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task complexity: heavy
+Task description: Review core tool wiring
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the implementation for assigned feature core-tools-via-operations in /root/hevy-mcp-effect-ops-layer branch feat/effect-ops-layer. Focus only VAL-CORE-002, 003, 004, 005, 006, 007, 008, and 027. Inspect production packages/core/src/tools and relevant tests. Identify concrete behavioral or hidden-test gaps, especially whether all 22 registered tools use HevyOperationsService, operation input mapping/options forwarding, response projections, and prohibited client/RMW/loop code. Do not modify files. Return prioritized findings with file/line evidence and recommended fixes. Existing branch commits include prior cache/runtime work; do not compare against origin/main as implementation is ahead there.
+---END TASK FROM PARENT AGENT---
