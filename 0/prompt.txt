@@ -1,0 +1,38 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Cache lifetime and topology
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Investigate /root/hevy-mcp for two architectural questions. Read-only, no file writes.
+
+1. Exercise template catalog / AsyncTtlCache lifetime:
+- Read packages/core/src/utils/cache.ts and exercise-template-catalog.ts
+- How is the catalog constructed and shared? Process-wide singleton vs per-request?
+- Who constructs it (server.ts, node, worker)?
+- Would replacing with Effect Cache in a request-local Layer break cross-call caching?
+- Recommend where Effect Cache should live so TTL sharing is preserved.
+
+2. Package topology constraints:
+- Read repository/topology.json and any depcruise / check-package-boundaries notes
+- Confirm: can operations import @hevy-mcp/hevy-client/internal?
+- Can core import hevy-client/internal? Can core depend on operations?
+- Can CLI depend on operations?
+- Can node/worker depend on operations directly?
+- Any export map constraints for operations public API becoming Effect-returning?
+
+3. CLI command surface that should switch to operations:
+- packages/cli/src/commands — list commands and current client vs ops usage
+
+4. Existing effect-collapse.test.ts contract — what invariant would break if ops return Effect and handlers runPromise?
+
+5. Staged changeset .changeset/amber-rivers-heal.md — what is it about? Do not modify.
+
+Return a concise structured report with file paths.
+---END TASK FROM PARENT AGENT---
