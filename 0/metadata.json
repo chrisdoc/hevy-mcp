@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "c9cbe1dd4b82",
+  "session_id": "019fe72a-54a3-7032-92f0-6c61ddc7d64d",
+  "strategy": "import",
+  "created_at": "2026-08-09T16:26:13.893Z",
+  "commit_sha": "abbb38575160386d841f52c89414ac215ee668ef",
+  "checkpoints_count": 1,
+  "files_touched": null,
+  "agent": "Pi",
+  "model": "gpt-5.6-luna",
+  "checkpoint_transcript_start": 340,
+  "transcript_lines_at_start": 340,
+  "compact_transcript_start": 164,
+  "token_usage": {
+    "input_tokens": 59006,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 2630656,
+    "output_tokens": 3266,
+    "api_call_count": 22
+  },
+  "kind": "imported"
+}

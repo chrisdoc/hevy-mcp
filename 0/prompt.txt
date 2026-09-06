@@ -1,0 +1,1 @@
+this is failing docker build https://github.com/chrisdoc/hevy-mcp/actions/runs/31323561628/job/93270226945?pr=964
