@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Assess Effect v4 primitives
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only analysis only, do not write files. In /root/hevy-mcp-effect-pure-operations, inspect the installed Effect v4 rc.112 declarations/source and current client code to recommend the correct primitives for a full retry execution interpreter. Compare Effect.retry + Schedule, Schedule.toStepWithSleep/manual driver, Effect.async/tryPromise, interruption from AbortSignal, ensuring/finalizers, Clock/TestClock, and preserving custom sleep hooks. Flag APIs that do not exist in v4 or type hazards already seen. Return concrete API signatures/patterns, recommended design, filepaths inspected, and analysis inline only.
+---END TASK FROM PARENT AGENT---
