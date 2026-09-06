@@ -1,0 +1,22 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Strengthen remediation assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write only the mission contract files; no repository implementation and no commits. Update /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md and validation-state.json. Read the current files and apply the following review feedback to existing VAL-REMEDIATION-001 through 012 without changing their IDs or resetting any old passed assertions. Keep all 12 remediation statuses pending.
+
+Core: VAL-REMEDIATION-001 must cover construction failure after partial long-lived acquisition, exact-once release/no escaped server, and failed/aborted requests not prematurely releasing context. VAL-REMEDIATION-002 must require exact handler error union (ToolInputValidationError, ClientNotInitializedError, OperationUnavailableError, ApiError, NetworkError, NotFoundError, RateLimitError, ValidationError), reject unknown/any/catch-all members, treat interruption/deadline at collapse, distinguish hostile seam defects from typed failures, and prove normal observer/error path once. VAL-REMEDIATION-003 must route invalid nested/union inputs through typed collapse once without raw Zod/value leak, and typecheck two heterogeneous real registrations including required/defaulted/optional and cross-schema negatives.
+
+Node: VAL-REMEDIATION-004 failure injection after each acquisition boundary (transport create/connect/listen, shutdown handlers), partial transport closure, update-check cancellation, original public error, no delayed callbacks. VAL-005 define direct close as public lifecycle-owned handle; test close/signal ordering, simultaneous signals, close rejection, one shared completion/lifecycle abort/finalization and preserved exit projection. VAL-006 add abrupt GET/SSE close, multiple concurrent responses, close rejection, registry removal before async completion, same completion observed, capacity only after ownership release, sibling SSE/in-flight survives. VAL-007 add exact-expiry activity, rapid resets, only latest generation, active response deferral/rearm, close during callback; prefer injected scheduler/fiber counters. VAL-008 add request-vs-DELETE, initialize-vs-shutdown, SSE-vs-sibling-close, unknown session without body consumption, exactly one terminal response/no reset or double write.
+
+Cross/testing: VAL-009 add abort reason, abort-vs-success/retry-boundary races, listener cleanup after all outcomes, signal reuse, and a minimal compile-time permitted internal import check explicitly secondary to behavior so duplicated bridges cannot pass. VAL-010 execute actual production script/runner, cover .env absent/present/malformed/unreadable and explicit env precedence, cwd isolation, never observe repo .env. VAL-011 add env/.env precedence, whitespace key, downstream nonzero propagation, no fake-key echo, and markers proving downstream modules were not loaded. VAL-012 clarify success has no error_code; cover ApiError, NetworkError, NotFoundError, RateLimitError, ValidationError, HevyHttpError, three execution codes, Error/string/hostile secret values; assert exact presence/absence, exit family, human output, redaction, no Effect internals.
+
+Maintain behavior-based wording; structural/type evidence supplements behavior. Validate JSON and exact contract/state ID equality (174 IDs). Return assertions modified, status changes (should be none), ambiguities, and every filepath written.
+---END TASK FROM PARENT AGENT---
