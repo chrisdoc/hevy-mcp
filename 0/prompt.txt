@@ -1,0 +1,39 @@
+setup the following pi plugins  𝗣𝗼𝗻𝘆𝘁𝗮𝗶𝗹
+Pushes the agent to reuse existing code, stdlib, and dependencies first, avoiding duplicate work and overengineering.
+https://pi.dev/packages/@dietrichgebert/ponytail
+
+• 𝗽𝗶-𝘄𝗲𝗯-𝗮𝗰𝗰𝗲𝘀𝘀
+Adds web search and access to pages, GitHub repos, PDFs, and videos. You can also connect your own SearXNG instance.
+https://pi.dev/packages/pi-web-access
+
+• 𝗽𝗶-𝘀𝘂𝗯𝗮𝗴𝗲𝗻𝘁𝘀
+Delegates focused research or reviews to different models in parallel, then returns the results to the parent session.
+https://pi.dev/packages/pi-subagents
+
+• 𝗽𝗶-𝗳𝗳𝗳
+Pre-indexes files and their contents, then uses fuzzy matching, frecency, and Git status to speed up search in large repos.
+https://pi.dev/packages/@ff-labs/pi-fff
+
+• 𝗽𝗶-𝗰𝗼𝗻𝘁𝗲𝘅𝘁-𝘃𝗶𝗲𝘄
+Estimates how much context is being used by the base prompt, tool definitions, extensions, and messages.
+https://pi.dev/packages/pi-context-view
+
+• 𝗽𝗶-𝗺𝗰𝗽-𝗮𝗱𝗮𝗽𝘁𝗲𝗿
+Discovers MCP tools and starts their servers only when needed, so Pi doesn't load every tool schema at startup.
+https://pi.dev/packages/pi-mcp-adapter
+
+• 𝗽𝗶-𝗯𝘁𝘄
+Lets you ask a side question while the agent keeps working, without adding that detour to the main conversation.
+https://pi.dev/packages/@narumitw/pi-btw
+
+• 𝗣𝗹𝗮𝗻𝗻𝗼𝘁𝗮𝘁𝗼𝗿
+Lets the agent draft a plan, then gives you a browser UI to annotate and approve it before execution.
+https://pi.dev/packages/@plannotator/pi-extension
+
+• 𝗽𝗶-𝗴𝗼𝗮𝗹
+Keeps one goal running across turns until it completes, pauses, or reaches a safety limit.
+https://pi.dev/packages/@narumitw/pi-goal
+
+• 𝗽𝗶-𝗱𝘆𝗻𝗮𝗺𝗶𝗰-𝘄𝗼𝗿𝗸𝗳𝗹𝗼𝘄𝘀
+Lets you orchestrate model routing, parallel subagents, worktree isolation, cross-checks, and recovery in JavaScript.
+https://pi.dev/packages/@quintinshaw/pi-dynamic-workflows
