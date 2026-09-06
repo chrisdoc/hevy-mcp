@@ -1,0 +1,50 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task complexity: medium
+Task description: Test shared interpreter assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are a user-testing flow validator for mission milestone "client-seam" (hevy-mcp repository, Effect TS adoption mission).
+
+Assigned assertions (test ALL of them):
+- VAL-CLIENT-009: Shared client config — createHevyClient({ fetch, apiKey, maxGetRetries, ... }) is what Effect methods use. A custom fetch, maxGetRetries: 0 (or 2), and fake apiKey ("test-key") change Effect attempt count and the api-key header the same way they change Promise.
+- VAL-CLIENT-010: GET retry-then-success parity — with maxGetRetries: 1 and mocked 503 then 200, Promise and Effect each fetch twice then succeed with the same payload. Coverage must include at least one existing read (getWorkout / getWorkouts / getRoutines / getRoutineById) and one new GET added this mission (getWorkoutEvents, getWorkoutCount, or a new list such as getExerciseTemplates / getRoutineFolders / getBodyMeasurements).
+- VAL-CLIENT-011: GET retry exhaustion — with maxGetRetries: 1 and every fetch 503, Promise and Effect GET methods each attempt twice and fail; attempt counts must not diverge.
+- VAL-CLIENT-012: POST mutations fetch once on 503 for both Promise and Effect; PUT attempt count equals Promise under the same 503 + maxGetRetries.
+- VAL-CLIENT-013: Mocked 404 and 400 each produce exactly one fetch call on both Promise and Effect (no retry of client errors).
+- VAL-CLIENT-014: Every Effect method accepts trailing HevyRequestOptions (signal?, deadline?, timeoutMs?). Passing an already-aborted signal, { timeoutMs: 1 }, or a past deadline fails with the same abort/deadline outcome family as the Promise method (HEVY_REQUEST_ABORTED / HEVY_DEADLINE_EXCEEDED or the tagged NetworkError projection).
+- VAL-CLIENT-015: Effect GET retry delays advance under TestClock.layer() from effect/testing with no wall-clock sleep; fail if Effect methods reintroduce Promise sleep that ignores TestClock.
+
+Isolation context:
+- All testing happens in the feature worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer). Run all commands from there.
+- Relevant test files: packages/hevy-client/src/internal-request-effect.test.ts, packages/hevy-client/src/request-effect.test.ts, packages/hevy-client/src/hevy-client.test.ts.
+- Test command pattern: cd /root/hevy-mcp-effect-ops-layer && mise exec -- pnpm vitest run <file> [--reporter=verbose]
+- You may inspect source under packages/hevy-client/src (read-only) to confirm options are forwarded rather than dropped, but your primary evidence must be executed tests, not grep alone.
+
+STRICT BOUNDARIES:
+- Never run git commands. Never modify, create, or delete any file inside /root/hevy-mcp-effect-ops-layer. Never make network calls to anything remote; everything must be mocked/local.
+- Do not touch the original checkout /root/hevy-mcp.
+
+For each assigned assertion ID, determine status: "pass" (behavior confirmed by terminal evidence), "fail" (behavior contradicts the contract), or "blocked" (prerequisite broken, cannot test).
+
+Write your flow report as JSON to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/client-seam/user-testing/flows/client-interpreter.json
+Save raw evidence (terminal excerpts you relied on) to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/client-seam/client-interpreter/
+
+Report JSON schema:
+{
+  "groupId": "client-interpreter",
+  "milestone": "client-seam",
+  "assertions": [ { "id": "VAL-CLIENT-009", "status": "pass|fail|blocked", "evidence": "concise terminal-evidence summary", "notes": "optional" } ],
+  "toolsUsed": ["vitest", "..."],
+  "frictions": [ { "description": "...", "rootCause": "..." } ],
+  "blockers": [ { "assertionId": "...", "reason": "..." } ]
+}
+
+Then reply with a compact summary: per-assertion statuses and any systemic issues found.
+---END TASK FROM PARENT AGENT---
