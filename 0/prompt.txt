@@ -1,0 +1,35 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Review client-runtime contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing the CLIENT RUNTIME + WORKER VALIDATION-CACHE sections of a mission validation contract for gaps.
+
+READ:
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md (Area: Client Runtime, VAL-CLIENT-* and VAL-WORKER-*)
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+Optionally inspect /home/ubuntu/hevy-mcp-effect-deepening/packages/hevy-client and packages/worker/src/validation-cache.ts if you need to verify a missing flow.
+
+WRITE your review to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review-client.md
+
+Focus:
+- Is the full topology of user/consumer flows captured?
+- Missing interactions, transitions, states?
+- Assertions that are implementation-shaped ("uses Effect.retry") rather than behavioral?
+- Duplicate or overlapping IDs?
+- Ambiguous pass/fail?
+
+Propose concrete new assertions (full VAL-CLIENT-XXX or VAL-WORKER-XXX text) only for real gaps. If the section is complete, say so and list residual nits that do NOT require new IDs.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
