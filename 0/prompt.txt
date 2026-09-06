@@ -1,0 +1,1 @@
+add to AGENTS.md to never write tests that use git or execute git, also to not create new git identities
