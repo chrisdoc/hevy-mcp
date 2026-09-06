@@ -1,0 +1,3 @@
+can you make sure we support CIMD in workers i saw repository: stderr | packages/worker/src/worker.test.ts
+repository: CIMD (Client ID Metadata Document) is disabled: add '"compatibility_flags": ["global_fetch_strictly_public"]' to your wrangler.jsonc to enable. See: https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
+repository: stderr | packages/worker/src/worker.test.ts > Cloudflare Worker routes and CORS > allows configured browser origins and rejects unconfigured origins, then create a PR for it
