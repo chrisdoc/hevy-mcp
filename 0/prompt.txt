@@ -1,0 +1,1 @@
+help me set EXA_API_KEY=REDACTED in .zshrc and also REDACTED
