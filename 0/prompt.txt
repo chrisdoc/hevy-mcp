@@ -1,0 +1,1 @@
+we did fix 1027 can you check if the routine creation now works when using the hosted mcp server mcp.hevy-mcp.dev/mcp
