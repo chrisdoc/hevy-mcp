@@ -1,0 +1,1 @@
+what i want is that we have actually usefull types that would have helped find this issue earlier with type checking and not late with a test
