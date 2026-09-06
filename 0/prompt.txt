@@ -1,0 +1,24 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "core-tools-via-operations",
+  "description": "Route all 22 registered MCP tools through HevyOperationsService. get-training-summary and search-routines become thin wrappers. Remove leftover client RMW, payload builders, while(true) pagination, Date arithmetic, and Promise.all from tool sources.",
+  "skillName": "core-runtime-worker",
+  "milestone": "core-runtime",
+  "preconditions": [
+    "All domain operations exist including workflows.trainingSummary and routines.search",
+    "ToolRuntime collapses Effect at createHandler"
+  ],
+  "expectedBehavior": [
+    "Every registered tool reads HevyOperationsService, not HevyClientService / getClient()",
+    "Workout tools map to workouts.* including replaceExercises",
+    "Routine tools map to routines.*; create/update output schema unchanged",
+    "Template tools map to templates.* + catalog; search does not use the Promise client",
+    "Folder and body-measurement tools map to folders.* / bodyMeasurements.* (measurements.*)",
+    "get-training-summary is a thin wrapper over workflows.trainingSummary (MCP projection only)",
+    "search-routines is a thin wrapper over routines.search",
+    "No leftover client RMW, payload builders, or workflow loops in tools"
+  ]
+}
+```
