@@ -1,0 +1,39 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Inspect retry worktree state
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only investigation of /root/hevy-mcp-effect-retry-interpreter. Do not modify anything. Return findings inline.
+
+GOAL: Determine what actually landed in this worktree versus what the mission features required.
+
+Check:
+1. `git status --short --branch` and `git log --oneline -15` in /root/hevy-mcp-effect-retry-interpreter
+2. Whether these files exist and what they contain at a high level:
+   - packages/hevy-client/src/retry-schedule.ts
+   - packages/hevy-client/src/retry-schedule.test.ts
+   - packages/hevy-client/src/attempt.ts
+   - packages/hevy-client/src/backoff.ts
+   - packages/hevy-client/src/execution.ts
+   - packages/hevy-client/src/hevy-http-error.ts
+   - packages/hevy-client/src/fetch.ts
+   - packages/hevy-client/src/fetch.test.ts
+   Also glob for attempt.ts, backoff.ts, execution.ts, primitives.ts, response-error.ts, endpoint-policy.ts under packages/
+3. What commit f7a2c91 actually changed (`git show --stat f7a2c91` and a short summary of the diff). If that commit does not exist, say so.
+4. Whether request-local retry-schedule characterization tests exist and pass conceptually (file names/test titles only).
+5. Whether Effect primitives claimed by the primitives worker exist, or whether that worker invented files that were never committed.
+
+OUTPUT:
+- Branch, HEAD SHA, dirty files
+- Commit f7a2c91: exists? what did it change?
+- Characterization coverage: present / missing, with file paths
+- Primitive modules: present / missing, with file paths
+- One-line verdict: did the completed characterization feature actually implement request-local retry state, or did it implement something else?
+---END TASK FROM PARENT AGENT---
