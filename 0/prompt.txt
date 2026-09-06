@@ -1,0 +1,36 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Update README for Effect collapse
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Update README(s) in /tmp/hevy-mcp-ops-collapse-readiness to reflect the completed operations Effect collapse and core layer wiring. Then commit on the existing feature branch (not main). Do not push unless gh stack is already the branch's publish path and a follow-up stack commit is expected; prefer commit locally and report whether push is needed.
+
+## Context
+Branch: test/characterize-operations-execute-matrix, ahead 8 of origin/main, published as GitHub PR #1116 via gh stack.
+Worktree: /tmp/hevy-mcp-ops-collapse-readiness
+Never touch /root/hevy-mcp.
+
+What was built:
+- Internal `@hevy-mcp/hevy-client/internal` request Effect seam (`getRequestEffectClient` / requestEffect). Public `HevyClient` stays Promise-only.
+- Four operations (`workouts.get/list`, `routines.get/list`) compose that seam; public `execute()` is still Promise with a single `Effect.runPromise`.
+- `createCoreServiceLayer` is wired into ToolRuntime; all 22 MCP tools take HevyClientService (18) or HevyOperationsService (4). MCP JSON unchanged. `get-user-info` still unregistered.
+
+## README work
+1. Read existing `/tmp/hevy-mcp-ops-collapse-readiness/README.md` and any packages/{hevy-client,operations,core}/README.md if they exist.
+2. Update the repository-root README so it reflects final project state: what was built (Effect internal, Promise public), setup/run/test (`mise`, `pnpm run test:unit`), and that live Hevy is not required for unit tests.
+3. If package READMEs exist and are now wrong about operations wrapping Promise client or unused Effect layer, update them. Do not invent large new docs. Match surrounding style.
+4. If README already accurately describes this, make a small accurate addition rather than a no-op (the mission README gate requires a README operation).
+5. Changeset: README-only is typically no-release. Do not add an empty changeset. Run `mise exec -- pnpm run check:changeset` if you commit.
+6. Conventional commit, hooks on, no --no-verify. Co-author:
+   `Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>`
+7. Do not push to main. You MAY `gh stack submit` / push the feature branch if that is how #1116 is updated; if unsure, commit only and report.
+
+Return: commit SHA, files changed, whether pushed, PR number if updated.
+---END TASK FROM PARENT AGENT---
