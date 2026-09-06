@@ -1,0 +1,1 @@
+for the websearch, can we not have it open a new chrome tab
