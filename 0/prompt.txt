@@ -1,0 +1,126 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Write final validation contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write the FINAL mission validation contract to this exact path (overwrite if needed):
+
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation-contract.md
+
+This is the authoritative black-box behavioral contract. Use the reviewed ID lists below. Do NOT use the 140-ops draft IDs. Do NOT invent extra IDs.
+
+Read for context (do not copy the 140-id draft):
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/architecture.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/mission.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/review-client.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/review-ops.md
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/contract-work/review-core-cli-cross.md
+
+Also skim original drafts only if you need behavioral detail for a recommended ID:
+- contract-work/client-seam.md
+- contract-work/operations.md
+- contract-work/core-runtime.md
+- contract-work/cli.md
+- contract-work/cross-area.md
+
+## Document structure
+
+```markdown
+# Validation Contract
+
+Black-box behavioral assertions. Deterministic / mocked only except VAL-CROSS-008 (GitHub PR via gh). Fake API keys. No live Hevy. No browser.
+
+## Area: Client Seam
+### VAL-CLIENT-001: ...
+<1-4 sentence behavioral pass/fail>
+Tool: vitest
+Evidence: terminal output of <files>
+
+## Area: Operations
+...
+
+## Area: Core Runtime
+...
+
+## Area: CLI
+...
+
+## Cross-Area Flows
+...
+```
+
+Every assertion MUST have: `### VAL-*-NNN: title`, behavioral description, `Tool:`, `Evidence:`.
+
+## REQUIRED ID LISTS (use these IDs and titles; expand behavior from reviews)
+
+### VAL-CLIENT-001..024 (from review-client.md recommended table)
+VAL-CLIENT-001 Public HevyClient stays Promise-shaped at runtime and in types
+VAL-CLIENT-002 Main / types / schemas exports do not leak the Effect client or internal symbols
+VAL-CLIENT-003 `@hevy-mcp/hevy-client/internal` still exports the Effect seam factories and types
+VAL-CLIENT-004 NATIVE_REQUEST_EFFECT is a hidden attachment recoverable via getNativeRequestEffect
+VAL-CLIENT-005 getNativeRequestEffect throws TypeError on clients without the seam
+VAL-CLIENT-006 Effect client exposes exactly the 22 Promise methods, each Effect-valued
+VAL-CLIENT-007 Effect vs Promise HTTP matrix matches for all 22 methods
+VAL-CLIENT-008 Promise createRoutine empty JSON {} → undefined; Effect returns native payload and does not call Promise method
+VAL-CLIENT-009 Shared client config: custom fetch, apiKey, maxGetRetries apply equally to Effect methods
+VAL-CLIENT-010 GET retry-then-success parity (include existing read AND one new GET: events, count, or list)
+VAL-CLIENT-011 GET retry exhaustion: same attempt count as Promise then failure
+VAL-CLIENT-012 POST mutations fetch once on 503; PUT attempt count matches Promise
+VAL-CLIENT-013 400 and 404 are a single fetch on both surfaces
+VAL-CLIENT-014 HevyRequestOptions accepted on every Effect method; abort/deadline fail like Promise
+VAL-CLIENT-015 Effect GET retry delays controllable with TestClock.layer()
+VAL-CLIENT-016 Effect 404 → NotFoundError
+VAL-CLIENT-017 Effect 400 → ValidationError
+VAL-CLIENT-018 Effect 429 → RateLimitError with attempt count matching Promise
+VAL-CLIENT-019 Other HTTP (401/403/409/500) → ApiError
+VAL-CLIENT-020 Transport/fetch rejection → NetworkError
+VAL-CLIENT-021 Effect failures are catchTag-discriminated tagged errors
+VAL-CLIENT-022 Public Promise methods still reject HevyHttpError, not tagged Effect errors
+VAL-CLIENT-023 Encoding parity for path/query/body/api-key
+VAL-CLIENT-024 Invoking Effect method and Promise twin produces two interpreter fetches
+
+### VAL-OPS-001..038 (from review-ops.md recommended list)
+Use the 38 IDs exactly as in review-ops.md (VAL-OPS-001 through VAL-OPS-038).
+
+### VAL-CORE-001..028 (from review-core-cli-cross.md keep list)
+Use VAL-CORE-001 through VAL-CORE-028 as listed.
+
+### VAL-CLI-001..009
+Use VAL-CLI-001 through VAL-CLI-009 as listed.
+
+### VAL-CROSS (11 IDs — skip 005 and 012)
+VAL-CROSS-001 MCP tools and CLI share one operations implementation for mutations
+VAL-CROSS-002 MCP tool and resource share the same Node catalog/cache instance
+VAL-CROSS-003 Public hevy-mcp and @chrisdoc/hevy-cli do not export Effect types
+VAL-CROSS-004 Topology import edges hold (check:boundaries on the worktree)
+VAL-CROSS-006 One Effect→Promise collapse per user invocation
+VAL-CROSS-007 Changeset cascade names every shipped consumer
+VAL-CROSS-008 GitHub PR opened against main from a feature branch
+VAL-CROSS-009 No live Hevy; fake keys only
+VAL-CROSS-010 Generated client is not hand-edited
+VAL-CROSS-011 Original checkout left untouched; work happens in a worktree
+VAL-CROSS-013 Node stdio and Worker HTTP/OAuth are not rewritten in Effect
+
+Do NOT include VAL-CROSS-005 or VAL-CROSS-012.
+
+## Writing rules
+- Behavioral, pass/fail unambiguous.
+- Tools: vitest for almost all; `pnpm run check:boundaries` for VAL-CROSS-004; `gh` for VAL-CROSS-008; nx check:exports/publint for VAL-CROSS-003; `pnpm run test:cli` for CLI; `pnpm run check:changeset` for VAL-CROSS-007.
+- Do not require live Hevy.
+- Expand each ID with enough detail that a validator can pass/fail without reading architecture.
+- For VAL-CLIENT-007, include the 22-method HTTP table (from client-seam.md).
+- For VAL-OPS-004, include the soft-404 policy matrix.
+- For VAL-OPS-032, include training summary window/aggregation rules.
+- For VAL-CLI-004, include the command→operation table.
+- Keep the file complete but not padded with source-grep-only assertions.
+
+After writing, verify every required ID appears exactly once as a heading `### VAL-...`.
+In your final response: filepath, total assertion count, and the list of ID prefixes with counts.
+---END TASK FROM PARENT AGENT---
