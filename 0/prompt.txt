@@ -1,0 +1,1 @@
+add to it that i tested this with the preview deployment on claude.ai and it worked, i will merge the PR asap
