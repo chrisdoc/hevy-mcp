@@ -1,0 +1,49 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature ops-effect-first-api
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "ops-effect-first-api" for milestone "ops-foundation".
+
+Feature details:
+- ID: ops-effect-first-api
+- Description: Make @hevy-mcp/operations Effect-first: operation.effect(input, options) is the primary API authored with Effect.fn. Domain map/catch live in the Effect program. Optional execute is a trivial single runPromise. Rewrite effect-collapse.test.ts for the new boundary. createOperations lazily binds hevy-client/internal. Keep the package runtime-neutral and forward HevyExecutionOptions.
+- Worker session: 4d4f9364-49da-4a43-ae51-d2126a498a29
+- Status: completed
+- Milestone: ops-foundation
+- Fulfills assertions: VAL-OPS-001, VAL-OPS-002, VAL-OPS-006, VAL-OPS-007, VAL-OPS-008, VAL-OPS-037, VAL-OPS-038
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Implementation evidence (all in the feature worktree /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer, ahead of origin/main by 5 commits):
+- Commit 7cb44b7 "feat(hevy-client): expand native Effect request client" and commit daf1038 "feat(operations): expose Effect-first read programs" belong to this feature (inspect with: git -C /root/hevy-mcp-effect-ops-layer show 7cb44b7 --stat, git -C /root/hevy-mcp-effect-ops-layer show daf1038 --stat, and full diffs with git show).
+- Worker transcript skeleton: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/worker-transcripts.jsonl (JSONL; locate entries whose sessionId == 4d4f9364-49da-4a43-ae51-d2126a498a29).
+- Validators already passed for this milestone: mise exec -- pnpm install (exit 0), mise exec -- pnpm run check:types (exit 0), mise exec -- pnpm run test:unit (exit 0, 97 files / 1046 passed / 1 skipped). Lint command is the no-op "true" placeholder per services.yaml.
+
+Your review must verify:
+1. The Effect-first operations boundary: operation.effect() programs authored with Effect.fn, domain map/catch inside the Effect program, optional execute as a single Effect.runPromise, effect-collapse.test.ts rewritten for the new boundary, createOperations lazily binding hevy-client/internal.
+2. That the package stays runtime-neutral: no node:/fs/path/process/cloudflare imports under packages/operations/src (excluding tests), and no imports of @hevy-mcp/core, hevy-mcp, @hevy-mcp/worker, @chrisdoc/hevy-cli, or @hevy-mcp/node from operations.
+3. That the commits and transcript skeleton actually correspond to this feature's work.
+4. Whether the feature adequately satisfies the assertions it claims to fulfill (VAL-OPS-001, VAL-OPS-002, VAL-OPS-006, VAL-OPS-007, VAL-OPS-008, VAL-OPS-037, VAL-OPS-038) - read those assertion definitions in /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation-contract.md.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-foundation/scrutiny/reviews/ops-effect-first-api.json
+
+Report JSON shape (write it yourself when done):
+{
+  "featureId": "ops-effect-first-api",
+  "milestone": "ops-foundation",
+  "workerSessionId": "4d4f9364-49da-4a43-ae51-d2126a498a29",
+  "verdict": "pass" | "fail",
+  "blockingIssues": [ { "severity": "blocking"|"non_blocking", "description": "...", "evidence": "..." } ],
+  "assertionFindings": [ { "assertionId": "VAL-OPS-001", "satisfied": true|false, "evidence": "..." }, ... for each fulfills id ],
+  "boundaryFindings": { "runtimeNeutral": true|false, "forbiddenImportsFound": ["..."], "notes": "..." },
+  "commitsReviewed": ["7cb44b7", "daf1038"],
+  "notes": "free-form review notes"
+}
+---END TASK FROM PARENT AGENT---
