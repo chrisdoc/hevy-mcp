@@ -1,0 +1,30 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Review node-adapter contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing the NODE ADAPTER section of a mission validation contract for gaps.
+
+READ:
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md (Area: Node Adapter, VAL-NODE-*)
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+Optionally inspect packages/node in /home/ubuntu/hevy-mcp-effect-deepening.
+
+WRITE your review to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review-node.md
+
+Focus: embedding, CLI, stdio, HTTP session graph, shutdown, telemetry-as-layer (no import-time init), pack, secrets. Missing flows? Implementation-shaped assertions?
+
+Propose concrete new VAL-NODE-XXX only for real gaps.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
