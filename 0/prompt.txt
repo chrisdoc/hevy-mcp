@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Verify node review findings
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only analysis only. Do not modify files. In /home/ubuntu/hevy-mcp-effect-deepening, verify these PR #1123 findings against current HEAD and accepted architecture: (1) runNodeLifecycle is not Effect.scoped and retains string taxonomy; trace actual scope lifetime, finalizers, public behavior, and whether typed errors are required. (2) streamable-http still uses mutable maps/sets, setTimeout idle timers, and Promise.allSettled instead of Scope-per-session/scheduled fibers/finalizer shutdown; determine which pieces are genuine unmet requirements versus acceptable edge adapters. Use mission.md, architecture.md, and validation contract under /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0. Return confirmed/false-positive status, exact evidence, remediation design, tests, and migration risk. Do not write files. Explicitly return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
