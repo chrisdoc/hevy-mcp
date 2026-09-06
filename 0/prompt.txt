@@ -1,0 +1,16 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Synthesize validation contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write only `/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-contract.md`. Read mission.md, architecture.md, and all four markdown drafts under contract-work. Synthesize a finite exhaustive black-box contract organized exactly as: `# Validation Contract`, `## Surface: Hevy Client Promise API`, then areas `Retry State and Policy`, `Lifecycle and Timing`, `Observations and Public Errors`; `## Surface: Runtime Adapters and Repository`, area `Compatibility`; and `## Cross-Area Flows`. Preserve stable assertion IDs unless merging exact duplicates; every assertion must follow:
+`### ID: Title\nBehavioral pass/fail description.\nTool: specific command/tool\nEvidence: exact evidence required`
+Deduplicate implementation-specific or overlapping assertions, but retain all mission requirements including per-request schedule state, sequential/concurrent isolation, actual client TestClock path, custom sleep, deadline behavior, approved explicit-deadline lifecycle fix, exactly-once observations/finalizers, public Promise/errors, Worker compatibility, package boundaries, generated stability, and changeset. Do not write validation-state yet and do not edit any other file. Return filepath, final assertion count, IDs removed/merged, and any ambiguity.
+---END TASK FROM PARENT AGENT---
