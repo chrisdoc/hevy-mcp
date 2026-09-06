@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Review core remediation contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review; write no files. Read the full mission.md, architecture.md, and validation-contract.md in /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0, focusing on new VAL-REMEDIATION assertions for core scope ownership, typed tool errors, and Zod typing. Inspect current repository integration points in /home/ubuntu/hevy-mcp-effect-deepening as needed. Identify missing user-observable transitions, failure cases, lifecycle states, or evidence requirements. Ensure assertions are behavior-based and collectively catch the confirmed PR review defects without overfitting implementation. Return concrete additions/modifications by assertion ID, or state complete. Do not write files. Return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
