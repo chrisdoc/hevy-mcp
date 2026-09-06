@@ -1,0 +1,10 @@
+<environment_context>
+  <current_date>2026-08-08</current_date>
+  <timezone>Europe/Amsterdam</timezone>
+  <filesystem><workspace_roots><root>/root/hevy-mcp</root></workspace_roots><permission_profile type="disabled"><file_system type="unrestricted" /></permission_profile></filesystem>
+  <subagents>
+    - operations_minimal_design: Mencius
+    - package_scripts_standards_review: Sartre
+    - runtime_architecture_explore: Wegener
+  </subagents>
+</environment_context>
