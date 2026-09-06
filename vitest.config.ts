@@ -36,6 +36,7 @@ export default defineConfig({
 			exclude: [
 				...(configDefaults.coverage.exclude ?? []),
 				"tests/performance/**",
+				"tests/fixtures/**",
 				"packages/hevy-client/src/generated/**",
 			],
 		},
