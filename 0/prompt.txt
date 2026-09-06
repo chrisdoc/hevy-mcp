@@ -1,0 +1,15 @@
+NX   Running targets test:unit, check:types, check, check:boundaries, test:worker-http, test:mcp, test:contract, test:cli, worker:dry-run, check:control-plane, check:exports, test:worker for project repository failed
+
+Failed tasks:
+
+- repository:check
+
+  Run duration:      45.2s
+  Cache:             2/11 hit (18%)
+  Critical path:     40.0s (1 task)
+  Recoverable time:  5.2s (12% of the run)
+
+  Recommendations:
+    - Speed up or split the longest tasks on the critical path:
+        repository:test:unit    40.0s
+Error: Process completed with exit code 1.
