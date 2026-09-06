@@ -1,0 +1,29 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Map core server Effect gaps
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are investigating the repository at /home/ubuntu/hevy-mcp-effect-deepening (a git worktree on branch feat/effect-deepening, based on PR #1120 "Effect-first Hevy operations layer"). This is a pnpm monorepo using the Effect TypeScript library.
+
+First read these guidance files completely and follow them:
+- /home/ubuntu/hevy-mcp-effect-deepening/AGENTS.md
+- /home/ubuntu/hevy-mcp-effect-deepening/.entire/graph-agent.md (if present — explains resolution-first code-graph retrieval; use it)
+- /home/ubuntu/hevy-mcp-effect-deepening/node_modules/effect/AGENTS.md (if node_modules missing, note that)
+
+Your task: produce a deep map of `packages/core` server internals to identify where Effect adoption can deepen, focusing on:
+1. `packages/core/src/server.ts` — server construction: how layers/services are built (createCoreServiceLayer), how the exercise-template catalog Effect cache is constructed (there is a known review finding that cache construction uses Effect.runSync at server init and that cache lookups fire without deadline/abort signal), lifecycle of the cache and scoped resources.
+2. `packages/core/src/tools/tool-runtime.ts` and `packages/core/src/tools/define-tool.ts`, `operation-helpers.ts`, `register.ts` — how tools execute Effect programs, how errors flow (ToolRuntime error/observation path), where untyped errors or Promise boundaries remain.
+3. `packages/core/src/utils/error-policy.ts` — the error policy mechanism: how errors are classified/mapped today, whether it uses Effect Cause/Exit/tagged errors or ad-hoc logic, where untyped throws can escape.
+4. `packages/core/src/mutations.ts`, `utils/cache.ts`, `resources/hevy.ts` — current Effect usage and remaining Promise-style code.
+5. Observability: any logging/metrics in core; ad-hoc console/diagnostics usage; "safe diagnostics" mentioned in repo docs.
+6. How packages/core is tested (relevant test files, lanes, fixtures like test-fixtures/mock-hevy.ts).
+
+Return an inline report (do not write files) with: a per-file inventory with current style (Effect vs Promise/imperative), concrete candidate refactor points for deepening Effect (Layers, Scope, Schedule, interruption/deadlines, Logger/Metrics, typed error channels), any existing untyped-throw escape hatches, and the test commands/lanes relevant to packages/core. Include precise file paths and line ranges.
+---END TASK FROM PARENT AGENT---
