@@ -1,0 +1,43 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Inspect PRs 1105 and 1109
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. Do not push, do not edit git, do not modify PRs.
+
+Investigate GitHub PRs #1105 and #1109 in chrisdoc/hevy-mcp and how they relate to the new linear stack:
+
+Stack now:
+- #1104 feat/effect-pure-operations → main
+- #1110 test/isolate-client-retry-schedule → feat/effect-pure-operations
+- #1111 feat/effect-request-primitives → test/isolate-client-retry-schedule
+- #1112 feat/effect-retry-interpreter → feat/effect-request-primitives
+
+Also still open:
+- #1105 test/request-local-retry-state → main
+- #1109 test/fetch-config-merge → main
+
+Use `gh` from /root/hevy-mcp or /root/hevy-mcp-effect-retry-interpreter:
+
+1. gh pr view 1105 --json number,title,headRefName,baseRefName,state,mergeable,commits,files,body,url
+2. Same for 1109, 1110, 1112
+3. git log --oneline origin/feat/effect-pure-operations..origin/test/request-local-retry-state
+4. git log --oneline origin/feat/effect-pure-operations..origin/test/fetch-config-merge
+5. git log --oneline origin/feat/effect-retry-interpreter..origin/test/fetch-config-merge  (and reverse)
+6. Summarize unique commits on 1105/1109 that are NOT already in 1110-1112
+7. Are 1105 and 1109 the same remote tip? Previous report said both at 1c976a1.
+
+OUTPUT inline:
+- Unique content of 1105 vs 1109 vs 1110
+- Recommended linear placement (e.g. retarget 1109 onto 1112 if it is only fetch-config tests; close 1105 as superseded by 1110 if characterization is duplicate)
+- Whether cherry-pick onto feat/effect-retry-interpreter is clean in principle
+- Any merge conflicts expected
+Do not write files.
+---END TASK FROM PARENT AGENT---
