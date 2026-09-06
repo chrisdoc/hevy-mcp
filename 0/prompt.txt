@@ -1,0 +1,69 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Restack push and open PRs
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are publishing the completed Effect retry-interpreter work as a LINEAR stacked PR series. The user lifted the no-push rule: always push and open PRs. Do not push to main. Do not use --no-verify. Prefer GitHub MCP tools if available in your session; otherwise use `gh`. Keep hooks enabled.
+
+CONTEXT
+Repo: https://github.com/chrisdoc/hevy-mcp
+Original checkout (DO NOT dirty further if avoidable): /root/hevy-mcp on test/request-local-retry-state (ahead 6 behind 2; staged changeset; untracked .pi-subagents/). Leave that user state alone.
+Mission worktree: /root/hevy-mcp-effect-retry-interpreter
+  branch feat/effect-retry-interpreter (NO upstream, NOT pushed)
+  HEAD d6b481b refactor: complete Effect retry interpreter
+  unique commits on top of rewritten 1073abb:
+    4c50934 test: isolate client retry schedule state
+    13454e0 feat: add Effect request primitives
+    d6b481b refactor: complete Effect retry interpreter
+  untracked VALIDATION_REPORT.md — do not commit it unless it is clearly intended product docs (it is not; leave untracked or delete only if you created it).
+
+Currently OPEN parallel PRs, all targeting main (this is the problem):
+- #1104 feat/effect-pure-operations → main  (Effect foundation; remote in sync at e2cc2a6)
+- #1105 test/request-local-retry-state → main
+- #1109 test/fetch-config-merge → main
+1105 and 1109 overlap. feat/effect-retry-interpreter has NO PR.
+
+GOAL
+Produce a linear stack of PRs, each PR's base is the previous PR's head (except the bottom which bases on main). After you finish, `gh pr list` should show a chain, not three PRs all into main plus a missing interpreter PR.
+
+RECOMMENDED STACK (adjust only if investigation shows a cleaner equivalent; explain if you change it):
+1. Bottom: existing #1104 feat/effect-pure-operations → main (leave as the foundation if its content is the Effect schedule work). If #1104's remote head is e2cc2a6 and the interpreter worktree rewrote that as 1073abb, DO NOT force-push #1104 unless the histories are equivalent and a restack cannot be done by stacking new branches ON TOP of origin/feat/effect-pure-operations. Prefer stacking the three new commits onto origin/feat/effect-pure-operations (or origin/main if #1104 is the wrong base) rather than rewriting #1104.
+2. Next PR(s) for the three mission commits, each on its own branch, each basing on the previous:
+   - test/isolate-client-retry-schedule (4c50934) base = previous head
+   - feat/effect-request-primitives (13454e0) base = previous
+   - feat/effect-retry-interpreter (d6b481b) base = previous
+3. Do not silently merge 1105/1109 into this stack if they are overlapping/divergent. If they cannot be restacked cleanly onto the new chain, leave them open, report the conflict, and do not force-push them. You MAY retarget a PR's base with `gh pr edit` if that makes the stack linear WITHOUT rewriting published history.
+
+HARD RULES
+- Never push to main.
+- Never force-push main.
+- Avoid force-push of already-published branches (#1104, #1105, #1109) unless the only alternative is a broken stack AND you can prove it is a fast-forward or content-identical restack. If unsure, stack NEW branches on top instead of rewriting published ones.
+- All node/pnpm via mise if you run checks. Conventional Commits already exist; do not rewrite commit messages unless rebase onto a new base requires it.
+- Include Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com> only if you create NEW commits.
+- After push, open PRs with gh:
+  gh pr create --base <previous-branch> --head <this-branch> --title "..." --body "..."
+  For existing PRs that should change base: gh pr edit <n> --base <branch>
+- Fill PR bodies: what changed, stack position, test commands (mise exec -- pnpm run test:unit etc.).
+- Do not approve or merge.
+
+VERIFY BEFORE REPORTING
+- git status in the mission worktree
+- gh pr list --state open
+- For each new PR: number, url, head, base
+- Confirm none of the new PRs target main except the intentional bottom of the stack (likely still #1104)
+
+OUTPUT (mandatory in final response)
+- Exact PR numbers, titles, head→base, URLs
+- Whether you force-pushed anything (branch + why)
+- What you left alone (#1105/#1109 if not restacked)
+- Filepaths of any local notes you wrote (none required; prefer inline)
+
+Work in /root/hevy-mcp-effect-retry-interpreter or a fresh worktree from origin. Do not destroy uncommitted user files in /root/hevy-mcp.
+---END TASK FROM PARENT AGENT---
