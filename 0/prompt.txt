@@ -1,0 +1,22 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "cli-collapse-once-test",
+  "description": "Add a durable static single-collapse assertion for packages/cli/src/commands/index.ts mirroring operations' assertExecuteAdapter in packages/operations/src/effect-collapse.test.ts. Prove Effect.runPromise appears exactly once (the collapse() helper), each execute path calls that helper once, and there is no nested runPromise in argument mapping, pagination loops, or stdout formatting. Keep production command behavior unchanged. Work only in /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer. TDD in the CLI test lane. Do not add a new Changeset (test-only; the existing cascade Changeset already covers the branch). After commit, push only the feature branch so PR #1120 updates; never push main. Do not touch /root/hevy-mcp.",
+  "skillName": "cli-worker",
+  "milestone": "cli-hygiene",
+  "preconditions": [
+    "CLI commands already collapse once via collapse() in packages/cli/src/commands/index.ts",
+    "PR #1120 is OPEN from feat/effect-ops-layer to main",
+    "Mission worktree is /root/hevy-mcp-effect-ops-layer"
+  ],
+  "expectedBehavior": [
+    "A committed CLI test (index.test.ts or sibling) statically asserts exactly one Effect.runPromise in packages/cli/src/commands/index.ts",
+    "mise exec -- pnpm run test:cli exits 0 including the new assertion",
+    "No production command-handler behavior change",
+    "No new Changeset file",
+    "Commit is on feat/effect-ops-layer; only that branch is pushed; PR #1120 updates; /root/hevy-mcp remains untouched"
+  ]
+}
+```
