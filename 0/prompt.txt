@@ -1,0 +1,36 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review ops-measurements
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "ops-measurements" for milestone "ops-complete".
+
+Feature details:
+- ID: ops-measurements
+- Description: Add bodyMeasurements.get/create/update Effect operations using omit-nulls builders. List envelope already covered by ops-read-policy.
+- Worker session: ca22ab32-49ca-4441-93d6-223adad2f717
+
+Expected behavior:
+- bodyMeasurements.get returns { bodyMeasurement, date }; member 404 → not_found; collection-path 404 fails
+- bodyMeasurements.create omits nullish fields then Effect createBodyMeasurement
+- bodyMeasurements.update omits nullish fields then Effect updateBodyMeasurement; empty numeric payload → tagged domain error (no PUT {})
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+Implementation worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, 11 commits ahead of origin/main)
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/scrutiny/reviews/ops-measurements.json
+
+Your report must be valid JSON with this shape:
+{
+  "featureId": "ops-measurements",
+  "status": "pass" | "fail",
+  "issues": [{ "severity": "blocking" | "non_blocking", "description": "..." }],
+  "notes": "..."
+}
+---END TASK FROM PARENT AGENT---
