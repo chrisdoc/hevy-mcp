@@ -1,0 +1,49 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task complexity: medium
+Task description: Validate G4 measurements + G5 training-summary
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are a user-testing flow validator for milestone "ops-complete" of the hevy-mcp repository (Effect TS adoption mission).
+
+MISSION DIR: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+YOUR GROUP IDS: measurements AND training-summary
+YOUR REPORT PATHS:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/measurements.json
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/training-summary.json
+YOUR EVIDENCE DIRS:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/measurements/
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/training-summary/
+
+ASSIGNED ASSERTIONS (all currently "pending" in validation-state.json):
+Group measurements:
+- VAL-OPS-027: bodyMeasurements.get maps Effect getBodyMeasurement(date) → { bodyMeasurement, date }; member 404 → not_found; collection-path 404 fails
+- VAL-OPS-028: bodyMeasurements.create omit-nulls payload then Effect createBodyMeasurement; explicit nulls never sent; date not a mutable omit-nulls field
+- VAL-OPS-029: bodyMeasurements.update omit-nulls then Effect updateBodyMeasurement; empty numeric payload → tagged domain error (no PUT {})
+
+Group training-summary:
+- VAL-OPS-031: trainingSummary loader is an operations composite: Stream.paginate (not paginateEffect/while(true)), yield* DateTime.now (Effect value, not function; no new Date()/Date.now fallback), dual scan via Effect.all with finite concurrency, TestClock.layer() for frozen instants, in-memory adapters only
+- VAL-OPS-032: behavior matrix — weeks 1–12 (0/13 fail validation); window = last weeks*7 UTC days inclusive; pageSize 10; in-window keep vs scanned-only; measurement sort/earliest/latest/weight_change_kg; workout aggregation (count, total_duration_seconds, exercise_count, set_count, unique_exercise_template_ids, compact sessions); scan evidence (pages loaded, itemsScanned); unparseable window → empty loader; stop on empty page/pageCount boundary; later-page 404 ends a loader; page 1 404 fails
+
+CONTEXT FROM PRIOR VALIDATORS (G1, G2+G3) — IMPORTANT:
+- Validated worktree: /root/hevy-mcp-ut-ops-complete (branch test/user-testing-ops-complete, based on origin/main @ a750250). Node v24.19.0, pnpm 12.0.0 via mise, vitest 4.1.11, deps installed. Commands: cd /root/hevy-mcp-ut-ops-complete && mise exec -- pnpm vitest run <files>
+- At this ref, packages/operations/src/ contains ONLY: workouts.test.ts (list/get 404 semantics), effect-collapse.test.ts, public-client-injection.test.ts. Core-side: packages/core/src/tools/mutation-semantics.test.ts (11 tests).
+- The following DO NOT EXIST at this ref: body-measurements.test.ts, workflows.test.ts, templates.test.ts, folders.test.ts, user.test.ts, hevy-operations.test.ts, and any routines write/search tests beyond routines.test.ts (which exists, 33/33 pass, but covers only routines.get/list and backs NO assigned assertion).
+- The bodyMeasurements/workflows/trainingSummary Effect operations under test are implemented only on branch feat/effect-ops-layer @ 578bacf (scrutiny-validated there, 112 operations tests), NOT merged into the ref you validate.
+
+YOUR TASK:
+1. For each assigned group, check whether its backing test files exist in packages/operations/src/ of the validation worktree (body-measurements.test.ts for G4; workflows.test.ts for G5).
+2. If a file exists: run it scoped (mise exec -- pnpm vitest run <file>), save terminal output to the group's evidence dir as vitest-run.log, score its assertions from behavioral results (tagged Schema.TaggedError domain faults in the Effect channel; omit-nulls payload semantics; Stream.paginate pagination; TestClock determinism; Effect.all bounded concurrency; no Promise hops; no soft-404 on page 1; 404 policy matrix).
+3. If a file does NOT exist: mark the group's assertions BLOCKED (never silently pass), blockingReason "backing test file not present at validated ref origin/main @ a750250; operations implemented on feat/effect-ops-layer @ 578bacf, not merged here". Do NOT run tests in any other worktree to compensate.
+4. Write one flow report per group at the exact report paths above, schema:
+   { "groupId": "...", "milestone": "ops-complete", "surface": "operations-unit-vitest", "assertions": [ { "id": "VAL-OPS-0NN", "status": "pass|fail|blocked", "evidence": "...", "notes": "...", "blockingReason": "..." } ], "frictions": [...], "blockers": [...], "toolsUsed": ["vitest","mise"] }
+5. Final message: per-assertion status for both groups, frictions, blockers. Do not fix code, do not edit source, do not update validation-state.json — orchestrator's job.
+
+ISOLATION RULES (MANDATORY): sequential only; no parallel vitest; no browser; no live Hevy API; no network beyond local vitest; fake API keys only (HEVY_API_KEY=test-key if ever needed); work only inside /root/hevy-mcp-ut-ops-complete; never modify /root/hevy-mcp, git config, hooks, refs, or any other worktree; no commits, no pushes.
+---END TASK FROM PARENT AGENT---
