@@ -1,0 +1,21 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "cli-commands-via-operations",
+  "description": "Point remaining CLI domain commands at HevyOperations. Keep --help/--version credential-free. Keep workouts list and routines list on operations. Preserve flags, stdout/stderr, exit codes. Forward abort/deadline into operation.effect.",
+  "skillName": "cli-worker",
+  "milestone": "cli-hygiene",
+  "preconditions": [
+    "HevyOperations covers all CLI domain methods",
+    "CLI currently uses operations only for workouts list and routines list"
+  ],
+  "expectedBehavior": [
+    "hevy --help / --version / -h / -v exit 0 without credentials, client, or Effect collapse",
+    "workouts list uses operations.workouts.list; routines list uses operations.routines.list",
+    "Remaining commands use operations (user, workouts get/create/update/count/events, routines get/create/update, exercises create/get/history/search, measurements list/get/create/update, folders create, summary) and do not call HevyClient domain methods",
+    "CLI flags, confirmation --yes, stdout/stderr, and exit codes stay compatible",
+    "Command execution options (abort/deadline) forward into operation.effect"
+  ]
+}
+```
