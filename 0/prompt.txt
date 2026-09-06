@@ -1,0 +1,24 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Map ops and tools surface
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Investigate /root/hevy-mcp to inventory the full domain surface that should be covered by an Effect operations layer, and how MCP tools map to it.
+
+Specifically:
+1. List all Hevy client methods/resources (workouts, routines, templates, folders, body measurements, workout events, mutations, etc.) from hevy-client and generated API.
+2. List all MCP tools in packages/core/src/tools/ and what each does (read/write, pagination, multi-step).
+3. Map tool -> current data path (direct client, operations, catalog/cache, hand-rolled loops).
+4. Identify high-complexity hand-rolled logic: pagination loops, date arithmetic, concurrency (Promise.all), custom caches, retry, abort handling.
+5. Note existing response contracts, error policies, ToolRuntime patterns workers must preserve.
+6. Note test patterns for tools and operations (file locations, mocking style).
+
+Return a structured inventory with file paths. Do NOT modify anything.
+---END TASK FROM PARENT AGENT---
