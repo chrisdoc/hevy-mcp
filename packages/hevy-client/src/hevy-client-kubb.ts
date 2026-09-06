@@ -1,15 +1,11 @@
-import { z } from "zod";
-import { Cause, Duration, Effect, Option } from "effect";
+import { Cause, Duration, Effect, Option, Predicate } from "effect";
 
-const objectSchema = z.object({}).passthrough();
-const numberSchema = z.number();
-const stringSchema = z.string();
 const isObject = <T>(value: T): value is T & object =>
-	objectSchema.safeParse(value).success;
+	Predicate.isObject(value);
 const isNumber = <T>(value: T): value is T & number =>
-	numberSchema.safeParse(value).success;
+	Predicate.isNumber(value);
 const isString = <T>(value: T): value is T & string =>
-	stringSchema.safeParse(value).success;
+	Predicate.isString(value);
 
 import type { RequestConfig, ResponseConfig } from "./fetch.ts";
 import * as api from "./generated/client/api/index.js";
