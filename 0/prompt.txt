@@ -1,0 +1,49 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Clean stale worktree files
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Clean up exactly two stale untracked files in the git worktree /root/hevy-mcp-effect-retry-interpreter (branch `feat/effect-retry-interpreter`). This is a bounded deletion task — nothing else in the worktree may change.
+
+THE TWO FILES
+1. /root/hevy-mcp-effect-retry-interpreter/packages/hevy-client/src/fetch.test.ts
+   - Known-broken characterization draft: it calls `createConfig()` / `createConfig({ baseURL: ... })`, but `fetch.ts` has no `createConfig` export (it exports `getConfig`, `setConfig`, `mergeConfig`, `fetch`). Every test in it fails at import/run time.
+   - It is untracked, never committed, and fully superseded by stacked PR 2 (branch `test/fetch-config-merge` in /root/hevy-mcp), which contains a correct, green rewrite of the same coverage.
+
+VERIFICATION BEFORE DELETION (do both; if either check fails, STOP, delete nothing, and report exactly what you found):
+1. Confirm the file is the broken draft: `grep -n "createConfig" /root/hevy-mcp-effect-retry-interpreter/packages/hevy-client/src/fetch.test.ts` must produce matches (proving it targets the nonexistent export). If there are NO matches, stop and report.
+2. Confirm the replacement exists and is green in the main checkout: `test -f /root/hevy-mcp/packages/hevy-client/src/fetch.test.ts` must succeed, and `cd /root/hevy-mcp && git log --oneline -1 test/fetch-config-merge` must show a commit (the rewrite landing via stacked PR 2). If either fails, stop and report.
+
+2. /root/hevy-mcp-effect-retry-interpreter/packages/hevy-client/src/request-local-retry-state.test.ts
+   - Redundant duplicate of the delivered file /root/hevy-mcp/packages/hevy-client/src/request-local-retry-state.test.ts (same content, shipped via PR #1105, commit `fa3fc92`).
+
+VERIFICATION BEFORE DELETION (mandatory): run
+`diff /root/hevy-mcp-effect-retry-interpreter/packages/hevy-client/src/request-local-retry-state.test.ts /root/hevy-mcp/packages/hevy-client/src/request-local-retry-state.test.ts`
+- If the files are identical (no output, exit 0): safe to delete the worktree copy.
+- If they DIFFER: STOP. Delete nothing. Report the full diff output inline — the worktree copy may contain unique work that must not be lost.
+
+DELETION
+Only after both verifications pass, delete exactly these two paths (use `rm` with the exact absolute paths; never `rm -rf` on directories, never wildcards):
+- rm /root/hevy-mcp-effect-retry-interpreter/packages/hevy-client/src/fetch.test.ts
+- rm /root/hevy-mcp-effect-retry-interpreter/packages/hevy-client/src/request-local-retry-state.test.ts
+
+BOUNDARIES
+- Do not touch anything else in the worktree: the branch `feat/effect-retry-interpreter`, its 3 commits (`1073abb`, `580b0ac`, `e9ce8d8`), untracked `.pi-subagents/` and `.worktrees/` directories, and all other files stay exactly as they are.
+- No git operations in the worktree: no staging, no commits, no branch changes, no push, no changeset creation or edits.
+- Do not modify the main checkout /root/hevy-mcp or any of its branches/PRs (#1104, #1105, #1102, #1096).
+- Keep any tokens/credentials out of all commands and output.
+
+REPORT BACK (inline)
+- The grep matches from fetch.test.ts (proving it was the broken draft)
+- The diff result for request-local-retry-state.test.ts (identical / differed — include the diff if it differed)
+- Exact deletion commands run and their exit statuses
+- Final `git status --short` of the worktree (should be unchanged apart from the two deletions, which are untracked-file removals and thus invisible to git status)
+- Every filepath deleted
+---END TASK FROM PARENT AGENT---
