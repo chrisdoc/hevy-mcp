@@ -1,0 +1,1 @@
+tests for everything that is part of a package is fine
