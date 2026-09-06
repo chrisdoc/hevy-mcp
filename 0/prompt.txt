@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature client-worktree-and-effect-surface
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "client-worktree-and-effect-surface" for milestone "client-seam".
+
+Feature details:
+- ID: client-worktree-and-effect-surface
+- Description: Create the mission worktree from origin/main (feat/effect-ops-layer at ../hevy-mcp-effect-ops-layer). Expand HevyRequestEffectClient to all 22 public HevyClient methods as first-class Effects sharing the native request interpreter. Keep public HevyClient Promise-shaped. Preserve hidden NATIVE_REQUEST_EFFECT, internal export path, HTTP matrix parity, encoding, Promise createRoutine empty-body quirk, and independent Effect vs Promise fetches.
+- Worker session: 34aa3b74-fbb5-4720-88e8-c5d250d8bb82
+- Commit: 7cb44b7261a9bd3f37223410d323101cb4ddba12 (repo: /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer, commit message "feat(hevy-client): expand native Effect request client")
+- Worker handoff: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/handoffs/REDACTED.json
+
+Repo root for the implementation diff: /root/hevy-mcp-effect-ops-layer (worktree of /root/hevy-mcp). Review the diff of this feature's commit (7cb44b7) against its parent.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Relevant validation contract assertions for this milestone are in /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation-contract.md, area "Client Seam" (VAL-CLIENT-001 through VAL-CLIENT-024). Programmatic validators (typecheck, test:unit) already pass: tsc clean, 95 test files / 1032 tests passed.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/client-seam/scrutiny/reviews/client-worktree-and-effect-surface.json
+---END TASK FROM PARENT AGENT---
