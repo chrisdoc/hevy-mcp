@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: light
+Task description: Review live-e2e contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing the LIVE E2E / CLI / DOCS section of a mission validation contract for gaps.
+
+READ:
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md (Area: Live E2E, CLI, Docs — VAL-LIVE-*, VAL-CLI-*, VAL-DOCS-*)
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+WRITE your review to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review-live.md
+
+Focus: missing live/docs/cli flows, over-scoping (do not require worker-http:live), secret handling.
+
+Propose concrete new assertions only for real gaps.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
