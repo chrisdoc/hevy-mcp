@@ -1,0 +1,1 @@
+https://github.com/chrisdoc/hevy-mcp/pull/1099/changes why do we have 		new DOMException("Execution interrupted", "AbortError"), here? We are not doing a website with a dom
