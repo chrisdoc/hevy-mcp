@@ -1,0 +1,82 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft node-adapter contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting the NODE ADAPTER section of a mission validation contract. This is black-box, behavior-based TDD for a mission that deepens Effect adoption in hevy-mcp. Investigate current behavior, then enumerate EVERY user-facing interaction for this area.
+
+WRITE a file. Do not only return analysis.
+
+Write to this exact path:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/node-adapter.md
+
+In your FINAL RESPONSE, return that filepath and a short summary of assertion IDs.
+
+## Mission context
+
+Repo (read-only): /home/ubuntu/hevy-mcp-effect-deepening
+Architecture: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+Mission: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+Track 3 — Node adapter (packages/node currently zero Effect):
+1. Lifecycle + shutdown (node-lifecycle, graceful-shutdown, runtime runStdioServer/runServer). Forced-exit via Effect.race with 5s, not hand-rolled setTimeout. Failure taxonomy becomes tagged errors.
+2. Telemetry Layer: OTel/Sentry init NOT at import time. flush is Layer finalizer with timeout. packages/node/src/index.ts MUST stay side-effect-free (embedding contract).
+3. Streamable HTTP: per-session Scope, Semaphore admission (maxInitializing/maxSessions), readBody timeout → 408, close fans out session finalizers.
+4. Observability bridges may become Layers. Do NOT rewrite stdio-observability.ts or sdk-observability.ts beyond compile needs.
+
+Public Promise APIs stay: createNodeMcpServer, runStdioServer, runServer. Effect-typed variants additive. Embedding: importing hevy-mcp does not start servers or telemetry.
+
+## What to investigate
+
+- packages/node/src/index.ts, index.test.ts (side-effect-free)
+- packages/node/src/runtime.ts, runtime.test.ts, cli.ts
+- packages/node/src/utils/node-lifecycle.ts, graceful-shutdown.ts (+ child-process tests)
+- packages/node/src/utils/streamable-http.ts + streamable-http.test.ts (real node:http ephemeral ports)
+- packages/node/src/utils/telemetry.ts, metrics.ts, tool-observer.ts
+- packages/node/src/utils/config.ts, arguments.ts (OUT of scope for Effect Config — stay throwing parsers)
+- packages/node/README.md --help / transport http
+- test:stdio, test:pack lanes
+
+Enumerate user/embedder interactions:
+- Import package (no side effects)
+- CLI default stdio; --transport http; --help
+- SIGINT/SIGTERM graceful shutdown; forced exit after 5s if hung
+- HTTP: initialize session, subsequent requests, idle eviction, admission rejection when max sessions, body timeout 408, close
+- createNodeMcpServer Promise API
+- Telemetry flush on shutdown; telemetry failure never crashes server
+- Pack/install tarball still exposes bin and side-effect-free index
+
+## Output format
+
+```markdown
+# Area: Node Adapter
+
+## Surface
+...
+
+## Interactions enumerated
+- ...
+
+## Assertions
+
+### VAL-NODE-001: Short title
+...
+Tool: vitest | node (spawned process) | curl
+Evidence: ...
+```
+
+IDs VAL-NODE-001+.
+
+Black-box. Cover embedding, stdio, HTTP session lifecycle, shutdown, admission, 408, no leaked listeners after close, pack smoke, no secrets in logs. Do not assert "uses Effect.makeSemaphore"; assert admission rejects over-capacity with the current observable status/body.
+
+15–30 assertions, exhaustive.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
