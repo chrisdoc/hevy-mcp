@@ -1,0 +1,40 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Add review-fix contract IDs
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Update ONLY these mission files (do not commit, do not touch the hevy-mcp repo):
+
+1. /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-contract.md
+2. /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-state.json
+
+Add new assertions for review comments on PR #1116. Do NOT remove or modify existing assertions. Do NOT reset any "passed" statuses.
+
+Add these IDs (exact):
+
+### VAL-LAYER-008: Null-client HevyClientService lookup uses canonical not-initialized error
+When ToolRuntime is constructed with client: null (operations-only is allowed), runtime.service(HevyClientService) and tools that look up HevyClientService must fail with the existing HEVY_CLIENT_NOT_INITIALIZED_ERROR / requireClient path, not a generic "Core service layer is unavailable" or Effect Context missing-service error. getClient() and service(HevyClientService) must agree.
+Tool: vitest (packages/core/src/tools/tool-runtime.test.ts)
+Evidence: terminal output, error is the canonical client-not-initialized error
+
+### VAL-OPS-038: createOperations works with public HevyClient injection
+createOperations(createHevyClient(...)) and createHevyMcpServer/CLI clientFactory injection points that return a real createHevyClient instance must successfully execute workouts/routines reads. A structurally typed HevyClient mock that lacks the internal Effect seam must not throw an unintelligible symbol/Context error; either the seam is attached through the public factory, or execute rejects with a clear error. Production path must not Effect.tryPromise a Promise getX() (VAL-COLLAPSE still holds for createHevyClient instances).
+Tool: vitest (packages/operations and/or packages/core)
+Evidence: terminal output
+
+### VAL-CLI-001: CLI read routes forward execution options
+CLI route handlers that call HevyClient or operations reads (including getWorkout, getUserInfo, and other supported reads, not only list operations) pass context.execution / HevyExecutionOptions through. Abort/deadline/signal from CommandContext reach the request.
+Tool: vitest (packages/cli/src/routes.ts tests / commands tests)
+Evidence: terminal output, execution options recorded on the client/operations call
+
+Add VAL-LAYER-008, VAL-OPS-038, VAL-CLI-001 to validation-state.json as {"status":"pending"} only. Leave all existing IDs unchanged.
+
+Return: list of IDs added. Filepaths written.
+---END TASK FROM PARENT AGENT---
