@@ -1,0 +1,11 @@
+## Issue description
+`preloadHevyToolSchemas()` populates the configuration cache but does not invoke the lazy Standard Schema JSON converters. Force the same input/output conversions consumed by `registerTool` during preload so first-request server registration only reads already-converted schemas.
+
+## Issue Context
+`compactJsonSchema()` stores `z.toJSONSchema()` behind memoized `jsonSchema.input` and `jsonSchema.output` closures. Add a regression test that verifies preload performs conversion before any server is built and that repeated preload/server construction does not repeat it.
+
+## Fix Focus Areas
+- packages/core/src/tools/register.ts[25-39]
+- packages/core/src/tools/define-tool.ts[73-87]
+- packages/core/src/utils/compact-json-schema.ts[101-119]
+- packages/core/src/tools/register.test.ts[277-326]
