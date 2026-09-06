@@ -1,0 +1,74 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task complexity: medium
+Task description: Validate G1 workout-writes-collapse
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are a user-testing flow validator for milestone "ops-complete" of the hevy-mcp repository (Effect TS adoption mission).
+
+MISSION DIR: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+YOUR GROUP ID: workout-writes-collapse
+YOUR REPORT PATH: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/workout-writes-collapse.json
+YOUR EVIDENCE DIR: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/workout-writes-collapse/
+
+ASSIGNED ASSERTIONS (all currently "pending" in validation-state.json):
+- VAL-OPS-011: workouts.create posts the caller body, no GET/RMW, is_private not required
+- VAL-OPS-012: workouts.update is GET-then-PUT; GET 404 fails (not update success)
+- VAL-OPS-013: workouts.replaceExercises PUTs replacement array incl [] with explicit is_private
+- VAL-OPS-014: workouts.events forwards page/pageSize/since; page>1 404 → end_of_list; page 1 404 fails
+- VAL-OPS-015: workouts.count numeric workoutCount (missing → 0), no pagination of workouts
+
+VALIDATION WORKTREE (already set up for you):
+- Path: /root/hevy-mcp-ut-ops-complete
+- Branch: test/user-testing-ops-complete (based on origin/main @ a750250)
+- Node v24.19.0 + pnpm 12.0.0 via mise; dependencies ALREADY installed (vitest 4.1.11). Do NOT run pnpm install again.
+- All commands MUST go through mise: `cd /root/hevy-mcp-ut-ops-complete && mise exec -- pnpm vitest run <files>`
+
+TEST FILES FOR YOUR ASSERTIONS (scope vitest to EXACTLY these 5 files, in packages/operations/src/):
+1. workouts.test.ts            → VAL-OPS-011, 012, 013, 014, 015
+2. mutation-semantics.test.ts  → payload quirks evidence for 011/012/013
+3. hevy-operations.test.ts     → createOperations lazy seam binding evidence (VAL-OPS-006 semantics)
+4. effect-collapse.test.ts     → single runPromise boundary at the test edge (VAL-OPS-002 evidence)
+5. public-client-injection.test.ts → mocked createHevyClient injection works (VAL-OPS-006 evidence)
+
+RUN COMMAND (single scoped lane, ~15s):
+cd /root/hevy-mcp-ut-ops-complete && mise exec -- pnpm vitest run packages/operations/src/workouts.test.ts packages/operations/src/mutation-semantics.test.ts packages/operations/src/hevy-operations.test.ts packages/operations/src/effect-collapse.test.ts packages/operations/src/public-client-injection.test.ts
+
+ISOLATION RULES (MANDATORY):
+- Sequential only. No other validator is running; do not launch parallel vitest lanes.
+- No browser, no live Hevy API, no network beyond the local vitest run. Tests use in-memory Effect adapters / mocked fetch with fake API keys only. If a test needs HEVY_API_KEY, set HEVY_API_KEY=test-key (fake) — never a real key.
+- Work ONLY inside /root/hevy-mcp-ut-ops-complete. Never modify /root/hevy-mcp (original checkout with a staged changeset), any other worktree, git config, hooks, or refs. Do not commit, do not push, do not run git write commands.
+- Do not start dev servers, MCP inspector, wrangler, or anything listening on a port.
+
+OUTPUT CONTRACT:
+1. Run the scoped vitest command above. Capture full terminal output.
+2. Save the raw terminal output as your evidence file:
+   /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/workout-writes-collapse/vitest-run.log
+3. From the per-file results, determine pass/fail per assertion:
+   - A file's tests passing with the expected behavioral shape (tagged errors in the Effect channel, no soft-404 success on page-1, no Promise hop, no RMW for create) marks its assertions pass.
+   - Any test failure, unexpected error, or missing file → mark the corresponding assertions FAIL with the reason, or BLOCKED if you could not run them (say exactly why).
+4. Write your flow report to EXACTLY this path (create parent dirs if needed):
+   /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/workout-writes-collapse.json
+   Report schema:
+   {
+     "groupId": "workout-writes-collapse",
+     "milestone": "ops-complete",
+     "surface": "operations-unit-vitest",
+     "assertions": [
+       { "id": "VAL-OPS-011", "status": "pass|fail|blocked", "evidence": "vitest-run.log#...", "notes": "..." },
+       ... one entry per assigned assertion ...
+     ],
+     "frictions": ["..."],
+     "blockers": ["..."],
+     "toolsUsed": ["vitest", "mise"]
+   }
+5. Your final message must state per-assertion status and any friction/blocker discovered. Do not fix code, do not edit source, do not update validation-state.json — that is the orchestrator's job.
+
+IMPORTANT: Stay within your isolation boundary (this worktree, these 5 files, this one vitest lane). Write only your own report and evidence files.
+---END TASK FROM PARENT AGENT---
