@@ -1,0 +1,21 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "ops-mutation-builders",
+  "description": "Move canonical mutation payload builders and quirks from packages/core (mutation-semantics.ts / hevy-quirks.ts) into @hevy-mcp/operations so tools and CLI share one implementation: workout RMW/is_private/timestamps, routine rep_range create vs update, measurement omit-nulls and merge.",
+  "skillName": "operations-worker",
+  "milestone": "ops-complete",
+  "preconditions": [
+    "Effect-first operations API exists",
+    "Core currently owns mutation-semantics.ts and hevy-quirks.ts"
+  ],
+  "expectedBehavior": [
+    "buildWorkoutUpdatePayload, buildRoutinePayload, buildMeasurementPayload, mergeMeasurementPayload live in @hevy-mcp/operations",
+    "Workout quirks: metadata-only requires is_private; preserves fetched exercises; fetched timestamps → second-precision Z; caller timestamps stay strict; malformed fetched timestamps rejected; omitted patch fields reuse fetched metadata; replace uses replacement array including []; malformed fetched exercises copied; missing fetched start_time fails",
+    "Routine quirks: create sends rep_range null when absent; update omits rep_range; equal start/end derives fixed reps and usesRepRanges false; true range keeps reps null and usesRepRanges true; create vs update envelope (folder_id, notes defaults, snake_case)",
+    "Measurement quirks: omit null/undefined; merge skips null changes and cannot clear; documented numeric keys only; date is not a mutable omit-nulls field",
+    "Existing core tests for these quirks are moved or re-exported so behavior does not regress"
+  ]
+}
+```
