@@ -1,0 +1,10 @@
+add oxlint rule
+
+{
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "typescript/require-await": "error"
+  }
+}
