@@ -1,0 +1,19 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "user-testing-validator-ops-complete",
+  "description": "User testing validation for milestone \"ops-complete\". Determines testable assertions from features' fulfills field, sets up environment, spawns flow validator subagents, synthesizes results. Always returns to orchestrator. Orchestrator note after round 1: Do NOT validate against origin/main. The implementation lives on /root/hevy-mcp-effect-ops-layer (feat/effect-ops-layer). Round 1 failed because a throwaway worktree was created from origin/main @ a750250, so write/search/template/folder/measurement/user/summary operations appeared missing. Re-run in /root/hevy-mcp-effect-ops-layer. Reread library/user-testing.md. Reset VAL-OPS-011..015 and VAL-OPS-017..032 to pending; they were blocked, not behavior-failed.",
+  "skillName": "user-testing-validator",
+  "milestone": "ops-complete",
+  "preconditions": [
+    "All implementation features for milestone \"ops-complete\" are complete"
+  ],
+  "expectedBehavior": [
+    "Testable assertions determined from fulfills mapping",
+    "Environment set up (services started, data seeded)",
+    "Flow validator subagents spawned and completed",
+    "Results synthesized, validation-state.json updated"
+  ]
+}
+```
