@@ -1,0 +1,1 @@
+i think this was fixed https://github.com/dmmulroy/anti-slop/pull/32
