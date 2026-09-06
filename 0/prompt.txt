@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Recheck remediation consistency
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only final recheck; write no files. Re-read the corrected architecture.md, AGENTS.md, library/effect-patterns.md, mission.md, features.json, validation-contract.md, and validation-state.json in /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0. Confirm the previous AbortSignal wording contradiction and incomplete library guidance are resolved, all 174 assertions have exactly one fulfills claim, 162 old statuses are passed and 12 remediation statuses pending, and six review-remediation features remain ordered/valid. Return PASS or exact remaining corrections. Return `Filepaths written: []`.
+---END TASK FROM PARENT AGENT---
