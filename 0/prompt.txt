@@ -1,0 +1,10 @@
+i can see 
+Issue
+origin cutover smoke test
+origin cutover smoke test
+ID: 96ef47dd261647f38d34e3ce3e12c150
+Aug. 9, 2026, 7:23:48 p.m. UTC
+Project    hevy-mcp
+Level    error
+Message
+origin cutover smoke test
