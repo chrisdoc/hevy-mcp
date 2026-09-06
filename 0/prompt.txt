@@ -1,0 +1,1 @@
+do a thorough review of the usefullness of the scripts and their tests in scripts, we should only keep scripts that have a hugh usefullness and not nice to haves!
