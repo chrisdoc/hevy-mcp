@@ -306,13 +306,17 @@ describe("generated client closure checks", () => {
 		}
 	});
 
-	it("keeps the curated barrels closed over generated output", async () => {
-		expect(
-			await findCuratedBarrelDrift(
-				resolve(import.meta.dirname, "../packages/hevy-client"),
-			),
-		).toEqual([]);
-	});
+	it.skipIf(process.env.HEVY_UNIT_LANE === "1")(
+		"keeps the curated barrels closed over generated output",
+		async () => {
+			// Redundant with `check:generated` (npm run check); skipped in unit lane.
+			expect(
+				await findCuratedBarrelDrift(
+					resolve(import.meta.dirname, "../packages/hevy-client"),
+				),
+			).toEqual([]);
+		},
+	);
 
 	it("reports missing curated barrels and traversal targets", async () => {
 		const root = await mkdtemp(
