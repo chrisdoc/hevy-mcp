@@ -1,0 +1,63 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task complexity: medium
+Task description: Validate G2 routines + G3 templates/folders/user
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are a user-testing flow validator for milestone "ops-complete" of the hevy-mcp repository (Effect TS adoption mission).
+
+MISSION DIR: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+YOUR GROUP IDS: routine-writes-search AND templates-folders-user
+YOUR REPORT PATHS:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/routine-writes-search.json
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/templates-folders-user.json
+YOUR EVIDENCE DIRS:
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/routine-writes-search/
+- /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/templates-folders-user/
+
+ASSIGNED ASSERTIONS (all currently "pending" in validation-state.json):
+Group routine-writes-search:
+- VAL-OPS-017: routines.create create-mode payload quirks (rep_range: null when absent, notes default "", folder_id included) then Effect createRoutine; returns { routine, usesRepRanges }
+- VAL-OPS-018: routines.update direct Effect updateRoutine, NO GET-then-RMW; update-mode quirks (rep_range omitted, notes default null, no folder_id); returns { routine, usesRepRanges }
+- VAL-OPS-019: routines.search Stream.paginate, case-insensitive title filter, limit default 20 max 100, stop on last/empty/missing pageCount, later-page 404 ends scan, domain result no MCP text
+
+Group templates-folders-user:
+- VAL-OPS-020: templates.get member 404 → not_found; collection/unrelated 404 fail
+- VAL-OPS-021: templates.history forwards only provided date bounds + id; 404 not soft-success
+- VAL-OPS-022: templates.create Effect createExerciseTemplate with create body, no Promise hop
+- VAL-OPS-023: templates.listAll Stream.paginate pageSize 100; later-page 404 ends; page 1 404 fails
+- VAL-OPS-024: folders.get member 404 → not_found; collection-path 404 fails
+- VAL-OPS-025: folders.create Effect createRoutineFolder, no Promise hop
+- VAL-OPS-026: folders.listAll Stream.paginate pageSize 10; later-page 404 ends; page 1 404 fails
+- VAL-OPS-030: user.get Effect getUserInfo profile data; 404 pinned as tagged failure; other HTTP stays tagged
+
+CONTEXT FROM PRIOR VALIDATOR (G1, workout-writes-collapse) — IMPORTANT:
+The validated worktree /root/hevy-mcp-ut-ops-complete (branch test/user-testing-ops-complete, based on origin/main @ a750250) implements ONLY:
+- packages/operations/src/workouts.test.ts (list/get 404 semantics, tagged VAL-OPS-011/013/015 — a tag collision; those tags do NOT cover write behaviors)
+- packages/core/src/tools/mutation-semantics.test.ts (11 tests, passing)
+- packages/operations/src/effect-collapse.test.ts
+- packages/operations/src/public-client-injection.test.ts
+The following test files DO NOT EXIST in this worktree: routines.test.ts, templates.test.ts, folders.test.ts, body-measurements.test.ts, user.test.ts, workflows.test.ts, hevy-operations.test.ts.
+The write operations under test (createRoutine, updateRoutine, search routines, template/folder/measurement writes, user.get, trainingSummary composite) are implemented on a DIFFERENT branch/worktree (feat/effect-ops-layer @ 578bacf, scrutiny-validated there with 112 operations tests passing) — NOT merged into the ref you are validating.
+
+VALIDATION WORKTREE (same as G1):
+- Path: /root/hevy-mcp-ut-ops-complete — run everything here. Do NOT touch /root/hevy-mcp-effect-ops-layer or any other worktree.
+- Commands via mise: cd /root/hevy-mcp-ut-ops-complete && mise exec -- pnpm vitest run <files>
+- Dependencies already installed (vitest 4.1.11). Do NOT run pnpm install.
+
+YOUR TASK:
+1. For each assigned group, check whether its backing test files exist in packages/operations/src/ of the validation worktree.
+2. If a file exists: run it scoped (vitest run <file>), capture terminal output to the group's evidence dir as vitest-run.log, and score its assertions from the behavioral results (tagged errors in the Effect channel; 404 policy matrix per the contract; no Promise hops; no soft-404 on page 1; Stream.paginate semantics; limit defaults).
+3. If a file does NOT exist: mark the group's assertions BLOCKED (do not silently pass them), with blockingReason "backing test file not present at validated ref origin/main @ a750250; feature implemented on feat/effect-ops-layer @ 578bacf, not merged here". Do NOT run tests in any other worktree to compensate.
+4. Write one flow report per group at the exact report paths above, schema:
+   { "groupId": "...", "milestone": "ops-complete", "surface": "operations-unit-vitest", "assertions": [ { "id": "VAL-OPS-0NN", "status": "pass|fail|blocked", "evidence": "...", "notes": "...", "blockingReason": "..." } ], "frictions": [...], "blockers": [...], "toolsUsed": ["vitest","mise"] }
+5. Final message: per-assertion status for both groups, frictions, blockers. Do not fix code, do not edit source, do not update validation-state.json — orchestrator's job.
+
+ISOLATION RULES (MANDATORY): sequential only; no parallel vitest; no browser; no live Hevy; no network beyond local vitest; fake API keys only (HEVY_API_KEY=test-key if ever needed); work only inside /root/hevy-mcp-ut-ops-complete; never modify git config, hooks, refs, or any worktree other than reading your assigned one; no commits, no pushes.
+---END TASK FROM PARENT AGENT---
