@@ -1,0 +1,127 @@
+create a github issue for 
+
+## Summary
+
+The `create-routine` MCP tool appears to expose a schema that does not match what the runtime accepts.
+
+Read-only Hevy MCP operations work correctly, including:
+
+- `get-training-summary`
+- `search-exercise-templates`
+- routine/exercise discovery
+
+However, when attempting to create a routine using the documented `create-routine` schema, the write invocation is rejected before the routine is created.
+
+This suggests a mismatch between:
+
+1. the MCP schema exposed to the client, and
+2. the payload shape or wrapper expected by the runtime/handler.
+
+## What I was trying to do
+
+Create a new 3-day full-body routine in Hevy based on an existing workout analysis.
+
+The routine was designed for:
+
+- 3 sessions/week
+- ~45–55 minutes/session
+- 2 working sets per exercise
+- mostly 1–3 RIR
+- controlled ROM
+- low-back friendly exercise selection
+- hypermobility-aware execution
+- ADHD-friendly "minimum viable workout" structure where the first 4 exercises are the essential portion
+
+## Successful MCP calls before the failure
+
+The connector successfully resolved the following Hevy exercise templates:
+
+| Exercise | Hevy template | Template ID |
+|---|---|---|
+| Pendulum Squat | Pendulum Squat (Machine) | `30E293E3` |
+| Machine Chest Press | Chest Press (Machine) | `7EB3F7C3` |
+| Lat Pulldown | Lat Pulldown (Cable) | `6A6C31A5` |
+| Seated Leg Curl | Seated Leg Curl (Machine) | `11A123F3` |
+| Cable Lateral Raise | Lateral Raise (Cable) | `BE289E45` |
+| Cable Crunch | Cable Crunch | `23A48484` |
+| Romanian Deadlift | Romanian Deadlift (Barbell) | `2B4B7310` |
+| Incline Bench Press | Incline Bench Press (Barbell) | `50DFDFAB` |
+| Row | existing row variant / machine row | existing Hevy template |
+| Single-Leg Press | Single Leg Press (Machine) | `3FD83744` |
+| Overhead Triceps Extension | Overhead Triceps Extension (Cable) | `B5EFBF9C` |
+| Pallof Press | Cable Core Pallof Press | `CC55119B` |
+| Hip Thrust | Hip Thrust machine/barbell variant | existing Hevy template |
+| Seated Shoulder Press | Seated Shoulder Press (Machine) | `9237BAD1` |
+| Leg Extension | Leg Extension (Machine) | `75A4F6C4` |
+| Cable Fly | Cable Fly Crossovers | `651F844C` |
+
+This confirms that the MCP connection and exercise template discovery were functioning.
+
+## Intended routine
+
+### Full Body A
+
+| Exercise | Sets | Reps | Target RIR | Notes |
+|---|---:|---:|---:|---|
+| Pendulum Squat | 2 | 6–10 | 2 | Controlled active ROM; do not force end range |
+| Machine Chest Press | 2 | 6–10 | 2 | Stable setup; consistent seat position |
+| Lat Pulldown | 2 | 8–12 | 2 | Avoid passive hanging at the top |
+| Seated Leg Curl | 2 | 8–15 | 1–2 | Controlled eccentric |
+| Cable Lateral Raise | 2 | 12–20 | 1–2 | Stop before unstable end range |
+| Cable Crunch | 2 | 8–15 | 1–2 | Keep pelvis/trunk controlled |
+
+Minimum viable workout: first 4 exercises.
+
+### Full Body B
+
+| Exercise | Sets | Reps | Target RIR | Notes |
+|---|---:|---:|---:|---|
+| Barbell Romanian Deadlift | 2 | 6–10 | 2–3 | ROM limited by active trunk/pelvic control, not maximum depth |
+| Incline Bench Press | 2 | 6–10 | 2 | Same setup and ROM each session |
+| Machine / Low Row | 2 | 8–12 | 2 | Prefer stable/chest-supported setup if available |
+| Single-Leg Press | 2 | 8–12 | 2 | Controlled knee/hip tracking |
+| Overhead Triceps Extension | 2 | 10–15 | 1–2 | Controlled shoulder position |
+| Pallof Press | 2 | 8–15 | 2 | Anti-rotation core work |
+
+Minimum viable workout: first 4 exercises.
+
+### Full Body C
+
+| Exercise | Sets | Reps | Target RIR | Notes |
+|---|---:|---:|---:|---|
+| Hip Thrust | 2 | 6–10 | 2 | Controlled lockout; avoid excessive lumbar extension |
+| Seated Shoulder Press | 2 | 6–10 | 2 | Stable seated setup |
+| Lat Pulldown or Machine Row | 2 | 8–12 | 2 | Use controlled active ROM |
+| Leg Extension | 2 | 10–15 | 1–2 | Smooth controlled reps |
+| Cable Fly | 2 | 10–15 | 1–2 | Avoid forcing shoulder into maximal stretch |
+| Cable Lateral Raise | 2 | 12–20 | 1–2 | Controlled ROM |
+
+Minimum viable workout: first 4 exercises.
+
+## Exposed MCP schema
+
+The tool advertises a shape similar to:
+
+```json
+{
+  "title": "string",
+  "folderId": 123,
+  "notes": "string",
+  "exercises": [
+    {
+      "exerciseTemplateId": "string",
+      "supersetId": null,
+      "restSeconds": 120,
+      "notes": "string",
+      "sets": [
+        {
+          "type": "normal",
+          "repRange": {
+            "start": 6,
+            "end": 10
+          }
+        }
+      ]
+    }
+  ]
+}
