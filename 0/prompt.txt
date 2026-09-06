@@ -1,0 +1,1 @@
+help me add what i have in .env to bashrc with export
