@@ -1,0 +1,33 @@
+why does sentry only show
+
+Stack Trace
+
+Display
+
+Copy as
+Error
+Tool get-workout-workout_id=51161e48-01c5-4d95-b2b0-583e274b9b0f not found
+~/dist/mcp-DXXb3Vv3.mjs:1396:21
+
+Hide 9 frames
+~/dist/src-CX2iR2pK.mjs:6766:28
+in
+stored
+~/dist/mcp-DXXb3Vv3.mjs:887:19
+in
+Server._invokeInputRequiredCapableHandler
+~/dist/mcp-DXXb3Vv3.mjs:838:30
+~/dist/runtime-D_9Jylpe.mjs:1901:26
+node:internal/async_local_storage/async_context_frame:66:14
+in
+AsyncLocalStorage.run
+~/.npm/_npx/6a6c5a5bcf3ab58b/node_modules/@opentelemetry/context-async-hooks/build/src/AsyncLocalStorageContextManager.js:22:40
+in
+AsyncLocalStorageContextManager.with
+~/.npm/_npx/6a6c5a5bcf3ab58b/node_modules/@opentelemetry/api/build/src/api/context.js:51:46
+in
+ContextAPI.with
+~/.npm/_npx/6a6c5a5bcf3ab58b/node_modules/@opentelemetry/sdk-trace/build/src/Tracer.js:132:32
+in
+Tracer.startActiveSpan
+~/dist/runtime-D_9Jylpe.mjs:1899:93
