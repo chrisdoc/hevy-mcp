@@ -1,0 +1,21 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "ops-workout-writes",
+  "description": "Add workouts.create, workouts.update (RMW), workouts.replaceExercises, workouts.events, and workouts.count Effect operations using the Effect client and operations-owned mutation semantics. While touching packages/operations/src/workouts.test.ts, rename any leftover '[VAL-OPS-015]' labels from the prototype branch so they match the assertion they actually exercise (VAL-OPS-015 is workouts.count); drop the bracketed prefix if the case is not count.",
+  "skillName": "operations-worker",
+  "milestone": "ops-complete",
+  "preconditions": [
+    "Effect client has createWorkout, updateWorkout, getWorkoutEvents, getWorkoutCount",
+    "Workout mutation builders live in operations"
+  ],
+  "expectedBehavior": [
+    "workouts.create posts caller body through Effect createWorkout; no GET/RMW; is_private not required",
+    "workouts.update is GET-then-PUT RMW; GET 404 fails (not update success)",
+    "workouts.replaceExercises RMW PUTs replacement array including [] with explicit request is_private; GET 404 fails",
+    "workouts.events forwards page/pageSize/since; page>1 404 → end_of_list; page 1 404 fails; mismatch is PaginationMismatchError",
+    "workouts.count uses Effect getWorkoutCount; numeric workoutCount (missing → 0); does not paginate workouts"
+  ]
+}
+```
