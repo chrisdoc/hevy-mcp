@@ -1,0 +1,25 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Second-pass node contract review
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Second review pass of NODE ADAPTER (VAL-NODE-*) AFTER first-pass additions VAL-NODE-029 through 034 and wording cleanups.
+
+READ the full updated contract:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md
+and architecture.md in the same missionDir.
+
+WRITE to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review2-node.md
+
+Find remaining missing embedding/CLI/stdio/HTTP/shutdown/telemetry/pack flows. Propose full new assertions only for real gaps. If none, say "no further IDs".
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
