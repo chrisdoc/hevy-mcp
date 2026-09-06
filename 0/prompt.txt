@@ -1,0 +1,1 @@
+i lift the push rule, always push and open prs
