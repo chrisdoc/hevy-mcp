@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Review LAYER TOOLS MCP contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the validation contract for MISSING flows in VAL-LAYER-*, VAL-TOOLS-*, VAL-MCP-*.
+
+Read:
+- /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/validation-contract.md
+- /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/architecture.md
+- /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/mission.md
+
+Think like a user of the MCP server: listTools, callTool, 22 tools, get-user-info not registered, forExecution, observer, catalog search.
+
+Return:
+1. Missing assertions
+2. Duplicates
+3. Verdict
+
+Do not write files. Return analysis inline.
+---END TASK FROM PARENT AGENT---
