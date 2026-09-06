@@ -1,0 +1,36 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review ops-routine-writes-search
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "ops-routine-writes-search" for milestone "ops-complete".
+
+Feature details:
+- ID: ops-routine-writes-search
+- Description: Add routines.create, routines.update (direct PUT, no RMW), and routines.search using Stream.paginate, title filter, limit, and later-page 404 end-of-scan.
+- Worker session: d37d93ba-5189-43f0-ab55-7850a329a8cc
+
+Expected behavior:
+- routines.create applies create-mode payload quirks then Effect createRoutine; returns { routine, usesRepRanges }
+- routines.update calls Effect updateRoutine directly (no GET); update-mode payload quirks; { routine, usesRepRanges }
+- routines.search uses Stream.paginate (not paginateEffect / while true); case-insensitive title filter; limit default 20 max 100; stops on last/empty/missing pageCount; later-page 404 ends scan; domain result, no MCP text
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+Implementation worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, 11 commits ahead of origin/main)
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/scrutiny/reviews/ops-routine-writes-search.json
+
+Your report must be valid JSON with this shape:
+{
+  "featureId": "ops-routine-writes-search",
+  "status": "pass" | "fail",
+  "issues": [{ "severity": "blocking" | "non_blocking", "description": "..." }],
+  "notes": "..."
+}
+---END TASK FROM PARENT AGENT---
