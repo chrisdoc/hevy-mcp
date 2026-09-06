@@ -1,0 +1,1 @@
+/review all open prs on hevy-mcp
