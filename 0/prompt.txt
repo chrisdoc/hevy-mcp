@@ -1,0 +1,51 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Stack open Effect PRs with gh CLI
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Reorganize the three open Effect-related PRs in /root/hevy-mcp (remote: https://github.com/chrisdoc/hevy-mcp.git) into one linear stack, using the gh CLI for all PR operations.
+
+CURRENT STATE (verify, don't assume):
+- #1104 "feat: adopt Effect for pure operations and retries" — head branch `feat/effect-pure-operations` (commits 1073abb, 580b0ac, e9ce8d8), state OPEN
+- #1105 "feat(hevy-client): add request-local retry schedule module" — head branch `test/request-local-retry-state` (commit fa3fc92), state OPEN
+- #1109 "test(hevy-client): characterize fetch config merging" — head branch `test/fetch-config-merge` (commit 1c976a1, created from test/request-local-retry-state), state OPEN
+All three currently have base `main`.
+
+TASK:
+1. Inspect first, change nothing yet:
+   gh pr list --state open --limit 20
+   gh pr view 1104 --json number,headRefName,baseRefName,mergeable,state
+   gh pr view 1105 --json number,headRefName,baseRefName,mergeable,state
+   gh pr view 1109 --json number,headRefName,baseRefName,mergeable,state
+   Also inspect branch ancestry in the local checkout /root/hevy-mcp:
+   git fetch origin && git merge-base --is-ancestor origin/main origin/feat/effect-pure-operations; echo $?
+   git log --oneline origin/main..origin/feat/effect-pure-operations
+   git log --oneline origin/feat/effect-pure-operations..origin/test/request-local-retry-state
+   git log --oneline origin/test/request-local-retry-state..origin/test/fetch-config-merge
+2. Rebase the branches into a linear chain (bottom to top: feat/effect-pure-operations → test/request-local-retry-state → test/fetch-config-merge):
+   - If test/request-local-retry-state is NOT already based on feat/effect-pure-operations, rebase it: git switch test/request-local-retry-state && git rebase feat/effect-pure-operations && git push --force-with-lease origin test/request-local-retry-state
+   - If test/fetch-config-merge is NOT already based on the (rebased) test/request-local-retry-state, rebase it the same way and push with --force-with-lease.
+   - NEVER force-push to main. --force-with-lease is permitted ONLY on the three feature branches. If a rebase has conflicts you cannot resolve mechanically, STOP and report the conflicting files — do not hand-resolve and do not drop commits.
+3. Update PR bases so the stack is explicit (gh CLI):
+   gh pr edit 1105 --base feat/effect-pure-operations
+   gh pr edit 1109 --base test/request-local-retry-state
+   (#1104 already has base main — verify with gh pr view 1104 --json baseRefName and only change it if wrong.)
+4. Verify each PR's diff now contains only its own changes:
+   gh pr diff 1104 --name-only; gh pr diff 1105 --name-only; gh pr diff 1109 --name-only
+   If any PR shows commits/files belonging to a PR below it in the stack, the rebase in step 2 was incomplete — fix the branch and re-verify.
+5. Confirm mergeability in stack order and report: gh pr view 1104,1105,1109 --json number,headRefName,baseRefName,mergeable,state
+
+BOUNDARIES:
+- Do not merge any PR. Do not modify PR titles or bodies (adding a "stacks on #XXXX" note to a body is allowed if a PR's dependency isn't otherwise visible, but ask-by-reporting first if you find you need to change anything beyond --base).
+- No force-push to main; no changes to generated files under packages/hevy-client/src/generated/; no changesets created or edited in this task (the changeset situation is already handled by existing commits — if check:changeset fails on a branch, report the exact output, do not improvise a new changeset).
+- Keep credentials/tokens out of all command output.
+
+REPORT BACK (inline): the ancestry findings from step 1, any rebases performed (with before/after head commits), the gh pr edit results, the three per-PR file lists from step 4, and the final base/head/mergeable table.
+---END TASK FROM PARENT AGENT---
