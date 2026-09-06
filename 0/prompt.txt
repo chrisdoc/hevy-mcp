@@ -1,0 +1,61 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Test API surface and collapse assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "ops-foundation" of the hevy-mcp Effect-adoption mission.
+
+Assigned assertions (5):
+- VAL-OPS-001: Effect-first HevyOperations shape
+- VAL-OPS-002: Collapse boundary: domain map/catch/quirks live in effect(); optional execute is a single runPromise; tests collapse at the edge
+- VAL-OPS-006: createOperations lazily binds hevy-client/internal; public mocked createHevyClient works; Promise-only mocks fail; no tryPromise on public Promise methods
+- VAL-OPS-007: No Node/CF APIs; may import hevy-client/internal; must not import core/node/worker/cli; domain objects only
+- VAL-OPS-037: Domain faults use Schema.TaggedError in the Effect channel; Schema imported from effect, not @effect/schema
+
+Your isolation context:
+- Implementation worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer). Work ONLY here.
+- Package under test: packages/operations (source in packages/operations/src/)
+- Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+- Relevant source files: packages/operations/src/ (index.ts, workouts.ts, routines.ts, templates.ts or similar, folders.ts, body-measurements.ts, user.ts, operation-errors.ts, effect-collapse.test.ts, hevy-operations.test.ts, mutation-semantics.test.ts, public-client-injection.test.ts)
+
+What each assertion requires (from validation-contract.md):
+
+VAL-OPS-001: `createOperations(client)` returns `HevyOperations` with `workouts` (`list`, `get`, `create`, `update`, `replaceExercises`, `events`, `count`), `routines` (`list`, `get`, `create`, `update`, `search`), `templates` (`get`, `history`, `create`, `listAll`), `folders` (`get`, `create`, `listAll`), `bodyMeasurements` (`list`, `get`, `create`, `update`), `user` (`get`), `workflows` (`trainingSummary`). Every domain method exposes `effect(input, options?)` that returns an Effect (not a native Promise), is authored with `Effect.fn("operations.<domain>.<op>")` plus a generator (never `const f = () => Effect.gen(...)`), and has `descriptor: { id, safety }` with unique ids. Reads (`list`/`get`/`events`/`count`/`search`/`history`/`listAll`/`trainingSummary`) are `safety: "read"`; creates are non-idempotent writes; `update`/`replaceExercises` are writes.
+
+VAL-OPS-002: Normalize, tagged-error recovery, pagination mismatch, mutation quirks, and composite scans execute inside `effect()`, not inside an `async execute` body. If `execute` exists it is a single `Effect.runPromise(this.effect(input, options))` with the same arguments and contains no `catchIf` / `map` / page-normalize / payload-build / `while (` pagination. Domain modules do not `runPromise` around map/catch. `effect-collapse.test.ts` no longer requires `execute.toString()` to contain `Effect.runPromise` AND `Effect.catchIf` together.
+
+VAL-OPS-006: `createOperations(public HevyClient)` uses `getRequestEffectClient` lazily (first `effect()` call). With mocked fetch (not live Hevy), `createOperations(createHevyClient({ apiKey: "test-key", fetch, maxGetRetries: 0 }))` can run at least one read per domain the mock implements. A client that only has Promise methods (no native request Effect) fails on first `effect()` / `execute()` with an error mentioning the internal request Effect seam. Fail if construction eagerly requires every Effect method, if operations silently `Effect.tryPromise` public Promise methods.
+
+VAL-OPS-007: Source under `packages/operations/src/` (excluding tests) does not import `node:`, `fs`, `path`, `process`, `child_process`, `cloudflare:`, or Worker bindings. Operations may import `@hevy-mcp/hevy-client`, `@hevy-mcp/hevy-client/internal`, and `effect`. Fail if they import `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`, `@hevy-mcp/node`, or core `response-contracts`, produce MCP JSON-RPC envelopes, or embed user-facing markdown/tool text besides domain error messages.
+
+VAL-OPS-037: Pagination mismatch, empty measurement update, and workout privacy requirement fail via `Schema.TaggedError` in the Effect channel (return yield* new Err(...) or equivalent typed fail). Fail if those paths `throw new Error(...)` inside generators, or if operations import `@effect/schema`.
+
+Testing procedure:
+1. cd /root/hevy-mcp-effect-ops-layer
+2. Run vitest scoped to the relevant operations test files, e.g.:
+   mise exec -- pnpm vitest run packages/operations/src/effect-collapse.test.ts packages/operations/src/hevy-operations.test.ts packages/operations/src/operation-errors.test.ts packages/operations/src/public-client-injection.test.ts
+   (adjust file names to what exists; also inspect the actual operations source files to verify VAL-OPS-001/002/007 claims where tests do not cover them)
+3. For source-level assertions (VAL-OPS-001, VAL-OPS-007) inspect packages/operations/src/*.ts directly in addition to running tests.
+4. Record per-assertion verdict: pass | fail | blocked, with a one-sentence reason and the evidence (command + key output lines).
+
+Write your test report to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-foundation/user-testing/flows/group-a-api-surface-collapse.json
+Save evidence files to: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-foundation/group-a-api-surface-collapse/
+
+Report JSON shape:
+{
+  "group": "group-a-api-surface-collapse",
+  "milestone": "ops-foundation",
+  "assertions": [
+    { "id": "VAL-OPS-001", "status": "pass|fail|blocked", "reason": "...", "evidence": "commands run + key output" }
+  ],
+  "notes": "optional frictions/blockers observed"
+}
+
+IMPORTANT: Stay within your isolation boundary (packages/operations in this worktree). Do not modify any source files. Do not run git write operations.
+---END TASK FROM PARENT AGENT---
