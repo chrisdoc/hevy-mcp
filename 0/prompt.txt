@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Review cross-area contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing the CROSS-AREA FLOWS section of a mission validation contract for gaps.
+
+READ:
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/validation-contract.md (especially Cross-Area Flows VAL-CROSS-* AND skim other areas so you can detect missing composed flows that no area covers)
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+- /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+WRITE your review to:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/review-cross.md
+
+Focus: first-visit, cancellation across layers, shutdown stopping Hevy work, write no-retry, worker 429 divergence, boundaries, pack, changeset, PR baseline, secret leakage, Promise façades.
+
+Propose concrete new VAL-CROSS-XXX only for real composed-flow gaps that are not already covered by area assertions. Note overlaps that are fine vs true duplicates that should be dropped.
+
+Return the filepath.
+---END TASK FROM PARENT AGENT---
