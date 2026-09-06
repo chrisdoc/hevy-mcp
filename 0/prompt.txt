@@ -1,0 +1,38 @@
+# Task Tool Invocation
+
+Subagent type: user-testing-flow-validator
+Task description: Validate resources-via-operations assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are testing validation contract assertions for milestone "core-runtime".
+
+Assigned assertions: VAL-CORE-009, VAL-CORE-010, VAL-CORE-011, VAL-CORE-012
+
+Your isolation context:
+- Mission worktree (the ONLY directory you may work in): /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer. Dependencies are installed; do not run pnpm install.
+- Never modify /root/hevy-mcp (original checkout, has a staged changeset) or any other worktree.
+- Read-only over source: run vitest and capture terminal output as evidence. Do not modify production or test source files.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Testing tool: vitest via mise (pnpm exec vitest run <files>). Run each of these test files in the mission worktree, one command per file, capturing output:
+  mise exec -- pnpm exec vitest run packages/core/src/resources/hevy.test.ts
+Scope: only the files listed above. Do not run the whole unit suite.
+
+Evidence to collect per assertion:
+- VAL-CORE-009: hevy://user stays registered (name user-profile, URI hevy://user, mimeType application/json) and reads user.get via runtime.forExecution({ signal }) then HevyOperationsService -> user.get (not scoped.getClient().getUserInfo()); success payload remains { id, name, url } JSON (the data object, not the UserInfoResponse envelope); uninitialized client / thrown errors still return { error: createExecutionErrorProjection(...) } and must not leak the raw exception string; the get-user-info tool stays unregistered (VAL-CORE-001) while this resource still works. Evidence: resources/hevy.test.ts output.
+- VAL-CORE-010: hevy://workout-count stays registered and reads workouts.count via workouts.count, not getWorkoutCount(); success body remains { workout_count: number } with missing count treated as 0; HTTP 503-style failures still project { error: { status, outcome, phase, operation_safety, commit_state, safe_to_retry } } without the Hevy message text. Evidence: resources/hevy.test.ts output.
+- VAL-CORE-011: hevy://exercise-templates stays registered; reader uses scoped.catalog.get() (or ExerciseTemplateCatalogService) whose lookup is operations templates.listAll / equivalent through the server-scoped Effect Cache; must not call fetchAllPages or Promise getExerciseTemplates; returned JSON is the formatted catalog array; concurrent resource + search-exercise-templates callers share completed catalog values; controlled in-flight calls with per-request abort/deadline remain isolated (one aborted MCP request cannot cancel another catalog load). Evidence: resources/hevy.test.ts + utils/exercise-template-catalog.test.ts output.
+- VAL-CORE-012: hevy://routine-folders stays registered and reads folders.listAll, not fetchAllRoutineFolders / fetchAllPages / client.getRoutineFolders; success JSON is folders.map(projectRoutineFolder) (no "index" field); all four resources remain registered exactly once with URIs hevy://user, hevy://workout-count, hevy://exercise-templates, hevy://routine-folders and application/json. Evidence: resources/hevy.test.ts output.
+
+IMPORTANT: Stay within your isolation boundary. Do not access or create resources outside what is assigned to you.
+Write your test report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/user-testing/flows/core-resources-via-operations.json
+Save evidence files to this directory: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/core-runtime/core-resources-via-operations/
+
+Flow validator guidance section: "Flow Validator Guidance: core-runtime"
+---END TASK FROM PARENT AGENT---
