@@ -1,0 +1,54 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Draft ops execute contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You write a VALIDATION CONTRACT DRAFT only. Do not implement product code.
+
+Write file:
+/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/contract-work/ops-execute.md
+
+Overwrite if that directory has leftover files from a previous mission. Create contract-work if needed.
+
+## Mission
+Collapse nested Effect.runPromise in @hevy-mcp/operations. Public execute() stays Promise. Architecture is at:
+/root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/architecture.md
+Also read mission.md in the same directory.
+
+## Your area: Operations public execute() behavior
+
+Enumerate black-box behavioral assertions for the four read operations:
+workouts.get, workouts.list, routines.get, routines.list
+
+Walk every user-visible interaction of execute():
+- success with entity
+- missing body field (200, no entity) → null/empty WITHOUT expected404Outcome
+- canonical resource GET 404 → resolve not_found
+- list GET 404 page>1 → resolve end_of_list
+- first-page list 404 rejects
+- unrelated endpoint 404 rejects with identity-preserved error
+- mutation/POST 404 rejects
+- page mismatch rejects
+- options passthrough (execution options)
+- page normalization if that is existing public behavior
+- Promise API (not Effect returned to callers)
+
+Use IDs VAL-OPS-001, VAL-OPS-002, ... sequential.
+
+Each assertion:
+### VAL-OPS-NNN: Title
+Behavioral description with clear pass/fail.
+Tool: vitest (mise exec -- pnpm exec vitest run …)
+Evidence: terminal output of the named tests
+
+Do not invent live Hevy assertions. Mocked unit tests only.
+
+Return the filepath you wrote.
+---END TASK FROM PARENT AGENT---
