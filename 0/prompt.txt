@@ -1,0 +1,28 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature client-tagged-errors
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "client-tagged-errors" for milestone "client-seam".
+
+Feature details:
+- ID: client-tagged-errors
+- Description: Map Effect HTTP/transport failures to Schema.TaggedError classes (NotFoundError, ValidationError, RateLimitError, ApiError, NetworkError) that catchTag can discriminate. Keep public Promise methods rejecting HevyHttpError. Do not hand-edit generated client files.
+- Worker session: 9bacf08c-a71d-4b07-938c-408a4a5c3646
+- Commit: f2843e4386a56569f8725caea3c2c8ce0f9b0052 (repo: /root/hevy-mcp-effect-ops-layer, branch feat/effect-ops-layer, commit message "feat(hevy-client): tag Effect client errors")
+- Worker handoff: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/handoffs/2026-09-03T10-48-37-592Z__client-tagged-errors__9bacf08c-a71d-4b07-938c-408a4a5c3646.json
+
+Repo root for the implementation diff: /root/hevy-mcp-effect-ops-layer (worktree of /root/hevy-mcp). Review the diff of this feature's commit (f2843e4) against its parent.
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Relevant validation contract assertions for this milestone are in /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation-contract.md, area "Client Seam" (VAL-CLIENT-001 through VAL-CLIENT-024; especially VAL-CLIENT-016 through VAL-CLIENT-023 for this feature). Programmatic validators (typecheck, test:unit) already pass: tsc clean, 95 test files / 1032 tests passed.
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/client-seam/scrutiny/reviews/client-tagged-errors.json
+---END TASK FROM PARENT AGENT---
