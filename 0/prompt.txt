@@ -1,0 +1,44 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Rebase stack to clear 1111
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Clear GitHub merge conflicts on https://github.com/chrisdoc/hevy-mcp/pull/1111 (and #1112 if still DIRTY). Work in /root/hevy-mcp-effect-retry-interpreter. Do not dirty /root/hevy-mcp user state.
+
+FACTS
+- Stack #1113: #1104 → #1110 → #1111 → #1112 → #1114
+- GitHub currently: 1110 MERGEABLE/CLEAN; 1111 CONFLICTING/DIRTY; 1112 CONFLICTING/DIRTY; 1114 MERGEABLE/CLEAN
+- Local after fetch: origin/feat/effect-request-primitives already contains 1110 tip 476d5d5; merge-tree of 1110+1111 has NO file conflicts. GitHub is likely stale vs an older 1110 tip before the changeset commit 476d5d5.
+- gh stack is installed (github/gh-stack v0.1.0)
+
+DO THIS
+1. cd /root/hevy-mcp-effect-retry-interpreter
+2. git fetch origin
+3. gh stack checkout 1113  (or 1111) so local stack tracking exists. Non-interactive.
+4. gh stack rebase (or rebase --no-trunk if trunk/main should not move). If conflicts appear, resolve them properly — do not invent code. Prefer the later stack layer for interpreter files, keep 1110 changeset.
+5. gh stack push  (force-with-lease on stack branches is allowed; never main; never --no-verify)
+6. Re-check: gh pr view 1111 --json mergeable,mergeStateStatus,baseRefName,headRefName
+   same for 1110, 1112, 1114
+
+If GitHub still DIRTY after a no-op rebase, empty-commit is NOT allowed as a fake fix. Instead ensure bases are correct (`gh pr view` base = previous branch) and push so GitHub re-evaluates. You may `gh stack sync` if that is non-interactive.
+
+HARD RULES
+- Never push main
+- Never --no-verify
+- Do not merge PRs
+- Do not close PRs
+- mise if you run tests; only needed if you resolve real content conflicts
+
+OUTPUT
+- mergeable/mergeStateStatus for 1110, 1111, 1112, 1114 after
+- whether rebase actually replayed commits or was already linear
+- any conflict files you resolved
+- push result
+---END TASK FROM PARENT AGENT---
