@@ -1,0 +1,42 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature core-effect-cache
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "core-effect-cache" for milestone "core-runtime".
+
+Feature details:
+- ID: core-effect-cache
+- Description: Replace AsyncTtlCache with effect Cache.make constructed once in createHevyMcpServer. Provide the same instance via request-local Layer.succeed. Catalog lookup uses operations.templates.listAll. Preserve Node TTL hits across tool calls, in-flight dedupe, refresh, and failed-lookup isolation. Public cache observer types stay stable.
+- Milestone: core-runtime
+- Worker session: 41ca53e1-43b0-4317-956e-5df79304d348
+- Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Transcript evidence: the worker's transcript skeleton for this feature is the JSONL line whose "featureId" equals "core-effect-cache" in /tmp/core-transcripts.jsonl. Extract it yourself, e.g.:
+  jq -r 'select(.featureId == "core-effect-cache")' /tmp/core-transcripts.jsonl
+
+Review that transcript skeleton against the feature's expectedBehavior above. Assess: (1) does the worker transcript show the claimed behavior was actually implemented and verified; (2) any code review findings, with severity (blocking / non_blocking / suggestion); (3) sharedStateObservations: facts about shared state (files, caches, services, env) other workers must know; (4) whether any blocking issue must be fixed before user testing.
+
+Write your review report as JSON to this exact path (create parent dirs if needed):
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/scrutiny/reviews/core-effect-cache.json
+
+Report shape:
+{
+  "featureId": "core-effect-cache",
+  "milestone": "core-runtime",
+  "workerSessionId": "41ca53e1-43b0-4317-956e-5df79304d348",
+  "verdict": "pass" | "fail",
+  "findings": [{ "severity": "blocking|non_blocking|suggestion", "description": "..." }],
+  "blockingIssues": ["..."],
+  "sharedStateObservations": ["..."],
+  "recommendedGuidanceUpdates": ["..."]
+}
+
+Then return a short summary of your verdict and findings.
+---END TASK FROM PARENT AGENT---
