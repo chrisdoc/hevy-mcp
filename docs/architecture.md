@@ -19,14 +19,14 @@ This is achieved by keeping the tool implementations and API client runtime-neut
 
 The six workspaces and their roles at a glance:
 
-| Workspace              | Package name            | Role                                                        |
-| ---------------------- | ----------------------- | ----------------------------------------------------------- |
-| `packages/hevy-client` | `@hevy-mcp/hevy-client` | Runtime-neutral API client (Kubb-generated)                 |
-| `packages/operations`  | `@hevy-mcp/operations`  | Runtime-neutral shared operations layer                     |
-| `packages/core`        | `@hevy-mcp/core`        | Runtime-neutral MCP tools and server construction           |
-| `packages/node`        | `hevy-mcp`              | Node.js stdio/HTTP adapter — the only publishable workspace |
-| `packages/worker`      | `@hevy-mcp/worker`      | Private Cloudflare Worker HTTP/OAuth adapter                |
-| `packages/cli`         | `@chrisdoc/hevy-cli`    | Public Hevy command-line client                             |
+| Workspace              | Package name            | Role                                              |
+| ---------------------- | ----------------------- | ------------------------------------------------- |
+| `packages/hevy-client` | `@hevy-mcp/hevy-client` | Runtime-neutral API client (Kubb-generated)       |
+| `packages/operations`  | `@hevy-mcp/operations`  | Runtime-neutral shared operations layer           |
+| `packages/core`        | `@hevy-mcp/core`        | Runtime-neutral MCP tools and server construction |
+| `packages/node`        | `hevy-mcp`              | Public Node.js stdio/HTTP adapter                 |
+| `packages/worker`      | `@hevy-mcp/worker`      | Private Cloudflare Worker HTTP/OAuth adapter      |
+| `packages/cli`         | `@chrisdoc/hevy-cli`    | Public Hevy command-line client                   |
 
 [[5]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6)
 
@@ -112,7 +112,7 @@ Bundling Node.js code (anything that imports `process`, `fs`, `os`, etc.) into a
 
 ### Clean published surface
 
-Only one workspace is publishable to npm: `hevy-mcp` (the Node adapter). Everything else is either a private internal package or a separate public package:
+Two workspaces are publishable to npm: `hevy-mcp` (the Node adapter) and `@chrisdoc/hevy-cli` (the standalone CLI). The remaining workspaces are private packages or are deployed directly:
 
 | Package                 | Published? | Why                                     |
 | ----------------------- | ---------- | --------------------------------------- |
