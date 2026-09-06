@@ -1,0 +1,1 @@
+have a look at the review comments https://github.com/chrisdoc/hevy-mcp/pull/960
