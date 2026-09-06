@@ -1,0 +1,1 @@
+I authorize Authorize a one-off bypass: if you explicitly tell me to push this single branch with --no-verify, I'll do exactly that and nothing more
