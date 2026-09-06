@@ -1,0 +1,1 @@
+fix the failing ci https://github.com/chrisdoc/hevy-mcp/actions/runs/31312599387/job/93242610662?pr=943
