@@ -1,0 +1,35 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review ops-training-summary
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "ops-training-summary" for milestone "ops-complete".
+
+Feature details:
+- ID: ops-training-summary
+- Description: Implement workflows.trainingSummary as an operations composite: Stream.paginate, DateTime UTC windows, dual scan via Effect.all with bounded concurrency, TestClock-deterministic tests, matching current aggregation/scan evidence contracts.
+- Worker session: 8794f023-0418-4aed-8224-f79d5f006686
+
+Expected behavior:
+- trainingSummary is an operations composite using Stream.paginate, yield* DateTime.now (not DateTime.now() / new Date()), Effect.all bounded concurrency, TestClock.layer(), in-memory adapters only
+- weeks 1–12; last weeks*7 UTC days; pageSize 10; in-window keep vs scanned-only; measurement sort/earliest/latest/weight_change_kg; workout aggregation matches current contract; scan evidence returned; unparseable window → empty loader; stop on empty/pageCount; later-page 404 ends a loader; page 1 404 fails
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+Implementation worktree: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, 11 commits ahead of origin/main)
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/scrutiny/reviews/ops-training-summary.json
+
+Your report must be valid JSON with this shape:
+{
+  "featureId": "ops-training-summary",
+  "status": "pass" | "fail",
+  "issues": [{ "severity": "blocking" | "non_blocking", "description": "..." }],
+  "notes": "..."
+}
+---END TASK FROM PARENT AGENT---
