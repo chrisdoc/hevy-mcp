@@ -1,0 +1,26 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Map testing and validation infra
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Investigate testing and validation infrastructure for /root/hevy-mcp relevant to an Effect adoption mission (deterministic only, no live Hevy API).
+
+Return:
+1. How to run tools via mise/npm (from AGENTS.md, CONTRIBUTING.md, package.json, docs/test-lanes.md)
+2. Named test lanes and which apply to hevy-client, operations, core
+3. Boundary checks, typecheck, lint commands
+4. Changeset requirements for package changes
+5. Existing fixtures/mocks for Hevy client
+6. Whether agent-browser/CLI/user-surface testing is needed for this kind of internal refactor
+7. Machine-relevant: any services that need starting for unit/PR tests
+8. Worktree policy from AGENTS.md (workers must use feature worktrees)
+
+Do not modify files. Be concrete with commands.
+---END TASK FROM PARENT AGENT---
