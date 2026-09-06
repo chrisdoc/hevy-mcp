@@ -1,0 +1,54 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Add PR-review contract assertions
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Update mission validation artifacts for follow-up PR-review fixes. Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Context: hevy-mcp repo, PR #1120 (branch feat/effect-ops-layer in /root/hevy-mcp-effect-ops-layer) received bot review findings. The user wants 6 fixes implemented. A completed milestone is sealed, so we are adding a follow-up milestone `pr-review-fixes`. You must add new assertions to the validation contract so the fixes are verifiable, following the EXISTING format in validation-contract.md (read it first — assertion format: stable ID, title, behavioral description with pass/fail, Tool, Evidence).
+
+Read these files first (do not rewrite them wholesale):
+- {missionDir}/validation-contract.md (append new assertions in the right area sections)
+- {missionDir}/validation-state.json (add new IDs as "pending")
+
+ADD these 6 assertions (behavioral, black-box, deterministic/vitest tools, evidence = named test files + lane command like the surrounding assertions):
+
+1. VAL-CLI-010: CLI operations receive the execution-bound client
+   When CLI startup configures an execution bag (signal/deadline binding), the HevyOperations instance passed into command context is built from the execution-bound client proxy (the same client exposed as context.client), not the raw unbound client. Test via packages/cli tests (packages/cli/src/main.test.ts) asserting createOperations receives the proxied client when options.execution is set.
+   Tool: vitest (`pnpm run test:cli`). Evidence: terminal output of packages/cli/src/main.test.ts.
+
+2. VAL-CORE-029: Observer composes with custom handler factories
+   When both `observer` and `createHandler` are provided to createToolRuntime, the observer wraps the handler produced by the caller-supplied createHandler factory; the factory IS invoked and its instrumentation/wrapping behavior is visible. Adding an observer must not silently bypass custom handler wrapping.
+   Tool: vitest (`pnpm run test:unit` / scoped core tests). Evidence: terminal output of packages/core/src/tools/tool-runtime.test.ts.
+
+3. VAL-OPS-039: Workout update PUT preserves explicit-null description semantics
+   buildWorkoutUpdatePayload, when neither the patch nor the fetched workout provides a description, emits `description: null` in the PUT payload (matching origin/main behavior), rather than omitting the field. Patched description values are used when present.
+   Tool: vitest. Evidence: packages/operations/src/mutation-semantics.test.ts (or workouts.test.ts).
+
+4. VAL-OPS-040: Replacement workout patches preserve fetched metadata
+   createWorkoutsUpdateOperation's replacement-exercises branch obtains current workout metadata (title, start_time, end_time, description) the same way origin/main did (fetch the existing workout and merge patch values over it), so a replacement patch omitting metadata does not throw WorkoutPayloadError and does not send undefined metadata. Missing-ID or genuinely invalid values still fail loudly.
+   Tool: vitest. Evidence: packages/operations/src/workouts.test.ts / mutation-semantics.test.ts.
+
+5. VAL-CLIENT-025: NetworkError preserves sanitized request identity
+   When a statusless HevyHttpError (DNS/connection failure) maps to NetworkError, the error carries the sanitized HTTP method and canonical endpoint (same identity data used by other tagged errors), so safe diagnostics show the failing request. No real URLs beyond canonical endpoints; no keys.
+   Tool: vitest. Evidence: packages/hevy-client/src/request-effect.test.ts / internal-request-effect.test.ts and packages/core/src/utils/error-policy.ts behavior.
+
+6. VAL-OPS-041: Template pagination policy is uniform
+   createTemplatesListAllOperation applies the same page_count validation policy as createTemplatesSearchOperation for the exercise-templates endpoint: an omitted/invalid page_count in a non-final page response is rejected with PaginationMismatchError (or a shared validated helper), never silently treated as end-of-list (which would truncate results). Valid present page_count values keep working in both.
+   Tool: vitest. Evidence: packages/operations/src/templates.test.ts.
+
+Rules for the edits:
+- Insert each assertion into the appropriate existing area section of validation-contract.md (VAL-CLI-* into the CLI area, VAL-CORE-* into the Core area, VAL-OPS-* into the Operations area, VAL-CLIENT-* into the Client Seam area). Match surrounding formatting exactly.
+- Add all 6 IDs to validation-state.json as {"status": "pending"} (keep existing entries untouched; preserve JSON validity).
+- Do NOT touch features.json. Do NOT commit anything. Do NOT modify any repo files.
+- Note: VAL-CLI-005 and other existing assertions remain unchanged.
+
+RETURN: a summary listing each added assertion ID + the exact one-line behavioral spec you wrote, plus confirmation that validation-state.json has all previous IDs intact and the 6 new IDs pending. Include the filepaths you edited.
+---END TASK FROM PARENT AGENT---
