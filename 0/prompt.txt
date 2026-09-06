@@ -1,0 +1,1 @@
+I think a fix is https://github.com/cloudflare/workers-oauth-provider/releases/tag/v0.10.2
