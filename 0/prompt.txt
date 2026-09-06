@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Trace retry execution flow
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only analysis only, do not write files. In /root/hevy-mcp-effect-pure-operations, trace the full retry/deadline/cancellation execution flow centered on packages/hevy-client/src/hevy-client-kubb.ts and packages/hevy-client/src/retry-schedule.ts. Goal: identify the smallest robust architecture that moves the complete retry execution lifecycle into Effect v4 while preserving the Promise-facing API and every existing behavior. Cover attempt execution, typed failure representation, retry eligibility, schedule input/output, deadline retry special case, backoff cancellation, custom sleep compatibility, observation scope ordering, cleanup/finalization, and error metadata/exhaustion. Identify exact symbols and filepaths, coupling risks, and recommended feature decomposition. Return analysis inline only and list every filepath inspected in the final response.
+---END TASK FROM PARENT AGENT---
