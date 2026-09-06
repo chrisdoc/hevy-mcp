@@ -1,0 +1,24 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "ops-effect-first-api",
+  "description": "Make @hevy-mcp/operations Effect-first: operation.effect(input, options) is the primary API authored with Effect.fn. Domain map/catch live in the Effect program. Optional execute is a trivial single runPromise. Rewrite effect-collapse.test.ts for the new boundary. createOperations lazily binds hevy-client/internal. Keep the package runtime-neutral and forward HevyExecutionOptions.",
+  "skillName": "operations-worker",
+  "milestone": "ops-foundation",
+  "preconditions": [
+    "HevyRequestEffectClient covers remaining resources from client-seam",
+    "Existing workouts/routines operations still collapse with runPromise inside execute"
+  ],
+  "expectedBehavior": [
+    "HevyOperations domain methods expose effect() returning Effect, named Effect.fn(\"operations.<domain>.<op>\") with descriptors and read/write safety",
+    "Domain map/catch/quirk logic is not inside execute; execute if present is a single runPromise of effect()",
+    "effect-collapse.test.ts no longer requires execute.toString() to contain both runPromise and catchIf",
+    "createOperations lazily uses getRequestEffectClient; public mocked createHevyClient works; Promise-only mocks fail; no Effect.tryPromise around public Promise methods",
+    "operations does not import Node/CF/core/node/worker/cli; may import hevy-client/internal; returns domain objects not MCP text",
+    "HevyExecutionOptions are forwarded identically, omitted when absent, inputs immutable, abort is not soft-404, sequential/concurrent calls are request-local",
+    "Domain faults use Schema.TaggedError; Schema imported from effect",
+    "Unit tests use in-memory Effect.succeed/fail or mocked fetch; no live Hevy; no Git"
+  ]
+}
+```
