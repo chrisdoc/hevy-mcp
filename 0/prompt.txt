@@ -1,0 +1,30 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Map retry/timeout/interruption landscape
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are investigating the repository at /home/ubuntu/hevy-mcp-effect-deepening (a git worktree on branch feat/effect-deepening, based on PR #1120 "Effect-first Hevy operations layer"). This is a pnpm monorepo using the Effect TypeScript library.
+
+First read these guidance files completely and follow them:
+- /home/ubuntu/hevy-mcp-effect-deepening/AGENTS.md
+- /home/ubuntu/hevy-mcp-effect-deepening/.entire/graph-agent.md (if present — use the code-graph retrieval guidance)
+- /home/ubuntu/hevy-mcp-effect-deepening/node_modules/effect/AGENTS.md (if node_modules missing, note that)
+
+Context: A recent commit on main was "refactor: complete Effect retry interpreter (#1112)". We want to assess retry/timeout/interruption semantics across the codebase for deeper Effect Schedule/interruption adoption.
+
+Your task:
+1. Find the retry interpreter (likely in packages/hevy-client or packages/operations) and explain exactly how retries are decided and executed today: schedule definition, jitter/backoff, which errors retry, max attempts, how it interacts with Effect Schedule (or not).
+2. Map deadline/timeout/signal handling: search for `deadline`, `timeoutMs`, `signal`, `AbortController`, `bindClientExecution`, `execution` options across packages/hevy-client, packages/operations, packages/core, packages/node, packages/cli. Explain the model: how timeouts are enforced, how abort signals propagate, where they DON'T propagate (e.g. known gap: Effect cache lookup in core server fires without deadline/signal).
+3. Identify ad-hoc timeout/retry/cancellation implementations that could be replaced by Effect primitives (Schedule, Effect.timeout, Effect.interruptible, fiber interruption, Effect.race).
+4. Check operation "safety" descriptors (read / non-idempotent-write / idempotent-write) in packages/operations — how safety classification is used (does it affect retry policy? should it?).
+5. Inventory the current Effect idioms in use across the repo: Effect.gen vs pipe, Layer usage, Context.Tag services, how runPromise boundaries are placed, whether Effect ManagedRuntime/Scope is used anywhere.
+
+Return an inline report (do not write files) with precise file paths and line ranges: the current retry/timeout/interruption architecture, gaps and hazards (uninterruptible work, missing deadlines, retry on non-idempotent writes if any), and a concrete list of adoption opportunities for Effect Schedule/interruption/timeout with their blast radius.
+---END TASK FROM PARENT AGENT---
