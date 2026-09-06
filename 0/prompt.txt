@@ -1,0 +1,18 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "core-adapter-boundaries",
+  "description": "Keep packages/core runtime-neutral: no hevy-client/internal import, no Node/CF APIs. Node and Worker stay Promise bridges with no Effect rewrite in this feature.",
+  "skillName": "core-runtime-worker",
+  "milestone": "core-runtime",
+  "preconditions": [
+    "Tools and resources already consume operations"
+  ],
+  "expectedBehavior": [
+    "packages/core does not import @hevy-mcp/hevy-client/internal or Node/CF APIs",
+    "packages/node and packages/worker stay Promise consumers of core; this feature does not rewrite stdio or Worker HTTP/OAuth in Effect",
+    "check:boundaries still allows core → operations and forbids core → hevy-client/internal"
+  ]
+}
+```
