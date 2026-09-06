@@ -1,0 +1,35 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Verify two completed feature commits
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only verification in /root/hevy-mcp-effect-retry-interpreter. Do not modify anything. Return findings inline.
+
+CONTEXT: Two mission features just claimed success:
+1. characterize-request-local-retry-state — handoff c031ef7f. Claim: client now constructs Effect retry schedule inside each request; five public Promise-level characterization tests covering retry index resets, concurrent endpoint isolation, retry option normalization, independent cancellation.
+2. build-effect-attempt-backoff-primitives — handoff 5e12908c. Claim: typed AttemptFailure and BackoffFailure channels, interruptible Effect Clock and custom Promise sleep adapters, idempotent finalization helpers, request-local Schedule.toStep, Effect.ensuring cleanup, internal createNativeClient.requestEffect seam. Public Promise client runs the request Effect once at the outer boundary.
+
+VERIFY:
+- git status --short --branch
+- git log --oneline -10
+- For each of the two handoff files, extract commitId if present:
+  /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/handoffs/2026-09-02T13-25-26-226Z__characterize-request-local-retry-state__c031ef7f-e406-4c4e-a8b1-942eb406e479.json
+  /root/.factory/missions/d22b834c-f82b-425b-961d-6061bb5a9cd4/handoffs/REDACTED.json
+- If commitIds exist, `git show --stat <commit>` and summarize whether the claimed files/tests exist.
+- Glob/search for requestEffect, AttemptFailure, BackoffFailure, Schedule.toStep, characterization tests.
+- Note dirty/untracked files.
+
+OUTPUT:
+- HEAD SHA and branch
+- Whether each claimed commit exists and what it changed
+- Whether claimed tests/modules exist on disk
+- Verdict per feature: REAL / PARTIAL / FALSE
+- Any leftover uncommitted invented files that should be cleaned by a later worker (do not clean them yourself)
+---END TASK FROM PARENT AGENT---
