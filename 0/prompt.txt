@@ -1,0 +1,15 @@
+<skill name="implement" location="/Users/chrisdoc/.pi/agent/skills/implement/SKILL.md">
+References are relative to /Users/chrisdoc/.pi/agent/skills/implement.
+
+Implement the work described by the user in the spec or tickets.
+
+Use /tdd where possible, at pre-agreed seams.
+
+Run typechecking regularly, single test files regularly, and the full test suite once at the end.
+
+Once done, use /code-review to review the work.
+
+Commit your work to the current branch.
+</skill>
+
+all 6 recommendations, create 1 stacked pr per fix
