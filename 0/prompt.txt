@@ -1,0 +1,4 @@
+what about  Forbidden non-null assertion
+ 
+
+Using non-null assertions cancels out the benefits of strict null-checking, and introduces the possibility of runtime errors. Avoid non-null assertions unless absolutely necessary. If you still need to use one, write a skipcq comment to explain why it is safe.
