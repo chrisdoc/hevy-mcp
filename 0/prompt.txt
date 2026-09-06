@@ -1,0 +1,1 @@
+https://github.com/haydenbleasel/ultracite/blob/963292a8957dbfeefd00d83a4a0763005bd19d85/apps/docs/docs/provider/oxlint.mdx#L111 shouldn't it be the same?
