@@ -64,10 +64,34 @@ hooks {
             }
         }
     }
+    ["prepare-commit-msg"] {
+        steps {
+            ["entire"] {
+                check = #"command -v entire >/dev/null 2>&1 && entire hooks git prepare-commit-msg {{commit_msg_file}} || true"#
+            }
+        }
+    }
     ["commit-msg"] {
         steps {
+            ["entire"] {
+                check = #"command -v entire >/dev/null 2>&1 && entire hooks git commit-msg {{commit_msg_file}} || true"#
+            }
             ["commitlint"] {
                 check = "npx commitlint --edit {{commit_msg_file}}"
+            }
+        }
+    }
+    ["post-commit"] {
+        steps {
+            ["entire"] {
+                check = #"command -v entire >/dev/null 2>&1 && entire hooks git post-commit || true"#
+            }
+        }
+    }
+    ["post-rewrite"] {
+        steps {
+            ["entire"] {
+                check = #"command -v entire >/dev/null 2>&1 && entire hooks git post-rewrite {{hook_args}} || true"#
             }
         }
     }
@@ -75,6 +99,9 @@ hooks {
         steps {
             ["repository-control-plane"] {
                 check = "npx nx run repository:pre-push"
+            }
+            ["entire"] {
+                check = #"command -v entire >/dev/null 2>&1 && sh -c 'entire hooks git pre-push "$1"' -- {{hook_args}} || true"#
             }
         }
     }
