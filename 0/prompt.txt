@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: heavy
+Task description: Review compatibility cross flows
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only review, do not write files. Review full mission.md, architecture.md, and validation-contract.md plus repository configs and Worker tests. Focus on Compatibility and Cross-Area Flows, including navigation/reachability analogues for library/adapters, Worker projection, package boundaries, generated output, changesets, and multi-feature flows. Report exact additions/modifications/removals and proposed IDs. Return analysis and filepaths inspected.
+---END TASK FROM PARENT AGENT---
