@@ -21,6 +21,7 @@ export function runCommand(
 	options?: {
 		timeout?: number;
 		killSignal?: NodeJS.Signals | number;
+		gracePeriodMs?: number;
 	},
 ): Promise<void>;
 

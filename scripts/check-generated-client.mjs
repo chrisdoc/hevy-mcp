@@ -250,6 +250,7 @@ export function runCommand(
 	{
 		timeout = DEFAULT_COMMAND_TIMEOUT_MS,
 		killSignal = DEFAULT_COMMAND_KILL_SIGNAL,
+		gracePeriodMs = SIGKILL_GRACE_PERIOD_MS,
 	} = {},
 ) {
 	const commandTimeout =
@@ -313,7 +314,7 @@ export function runCommand(
 							if (child.exitCode === null && child.signalCode === null) {
 								child.kill("SIGKILL");
 							}
-						}, SIGKILL_GRACE_PERIOD_MS);
+						}, gracePeriodMs);
 					}
 				}
 			},
