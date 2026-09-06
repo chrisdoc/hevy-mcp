@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task complexity: heavy
+Task description: Re-review final compatibility fixes
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Review the current working tree in /root/hevy-mcp-effect-ops-layer for feature cli-commands-via-operations against VAL-CLI-001, 002, 003, 004, 007, and 009. This includes the latest fixes: CLI operations configured with trainingSummaryMaxWeeks 520 and strict pagination, TrainingSummaryDataError mapped as API, full workout replacement exercises handled inside operations.workouts.update, strict body measurement validation, strict list/search metadata, summary volume, envelopes, and max-pages. Check code and tests for any remaining blocking or non-blocking regressions. Do not modify files. Report pass or concrete issues with file/line references. Ignore missing transcript metadata as an infrastructure observation unless code otherwise passes.
+---END TASK FROM PARENT AGENT---
