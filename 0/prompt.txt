@@ -1,0 +1,90 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Draft core-runtime contract
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are drafting the CORE RUNTIME section of a mission validation contract. This is black-box, behavior-based TDD for a mission that deepens Effect adoption in hevy-mcp. You investigate current behavior, then enumerate EVERY user-facing interaction for this area.
+
+WRITE a file. Do not only return analysis.
+
+Write to this exact path:
+/home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/contract-work/core-runtime.md
+
+In your FINAL RESPONSE, return that filepath and a short summary of assertion IDs.
+
+## Mission context
+
+Repo (read-only): /home/ubuntu/hevy-mcp-effect-deepening
+Architecture (authoritative): /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/architecture.md
+Mission: /home/ubuntu/.factory/missions/e72a5d77-6224-4410-843a-cdc45baa65a0/mission.md
+
+This area is Track 2 — Core runtime (packages/core):
+- Scoped server construction; exercise-template Cache in server Scope; interruptible cache-miss loads
+- Interruptible tool runs wired to mcpReq.signal
+- Typed error channel; catchTags classification; SafeErrorDiagnostic output stays compatible
+- Logger/Metrics instead of console.error; telemetry never affects tool outcome
+- exercise-templates resource must pass scoped.execution
+- Zod parse / requireOperation / requireClient become typed failures
+- Deadline via Clock
+
+Out of scope: replacing Zod with Effect Schema for tool contracts; Worker OAuth; Node lifecycle (that's another area).
+
+## What to investigate
+
+Read thoroughly:
+- packages/core/src/server.ts
+- packages/core/src/tools/tool-runtime.ts, define-tool.ts, register.ts, operation-helpers.ts
+- packages/core/src/utils/error-policy.ts, error-handler.ts, hevy-error-policy.ts, safe-user-error.ts
+- packages/core/src/utils/exercise-template-catalog.ts, cache.ts
+- packages/core/src/resources/hevy.ts
+- packages/core/src/execution.ts, effect-services.ts, effect-layer.ts, effect-errors.ts
+- packages/core/src/observation.ts, utils/mcp-client-logger.ts
+- corresponding *.test.ts and tests/integration/mocked/**
+
+Enumerate user interactions:
+- MCP client: tools/list, tools/call (reads and writes), resources/list, resources/read (especially exercise-templates), prompts
+- Cancellation of an in-flight tool/resource via request abort
+- Server close / lifecycleSignal interrupting in-flight cache loads
+- Error responses: MCP isError, codes, user-facing messages, no secrets
+- Catalog cache: hit, miss, TTL, bypassCache, concurrent waiters (canceller is only waiter vs one of several)
+- Invalid tool args (Zod)
+- Missing operation/client
+- Observer/telemetry failure must not fail the tool
+
+## Output format (strict)
+
+```markdown
+# Area: Core Runtime
+
+## Surface
+...
+
+## Interactions enumerated
+- ...
+
+## Assertions
+
+### VAL-CORE-001: Short title
+Behavioral description with unambiguous pass/fail.
+Tool: vitest | mcp-client (in-process mocked MCP via test:mcp)
+Evidence: ...
+```
+
+IDs: VAL-CORE-001+ sequential.
+
+Rules:
+- Black-box. Do not assert "uses ManagedRuntime". Assert: after server close, cache loads stop; aborting mcpReq cancels the Hevy fetch; tool error shape; concurrent waiter policy (architecture says decide explicitly — write assertions for BOTH "canceller is the only waiter" AND "canceller is one of several waiters" and note the intended policy: joining waiters get their own interruption without cancelling a still-needed load, unless you find existing tests that already lock a simpler policy).
+- Keep SafeErrorDiagnostic / no-secret leakage assertions.
+- MCP response compatibility (isError, structured content) unless improvement flagged.
+- Include first-visit / registration: tools still register, output schemas still present (contract lane).
+- 15–35 assertions, exhaustive not padded.
+
+Return the filepath of the file you wrote.
+---END TASK FROM PARENT AGENT---
