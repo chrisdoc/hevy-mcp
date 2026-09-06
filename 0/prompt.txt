@@ -1,0 +1,20 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: heavy
+Task description: Replay remediation commits safely
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Write task in repository /home/ubuntu/hevy-mcp-effect-deepening. Do not push or modify any remote. The user approved replaying seven remediation commits onto updated origin/feat/effect-deepening. Current worktree is clean; local feat/effect-deepening preserves the old history at f0136b6. Perform:
+1. Fetch origin feat/effect-deepening and verify remote head is still 9b69474f8a3041d876cf51095dba2615861d9a71 (if changed, stop and report).
+2. Create/switch a new local branch `fix/effect-deepening-remediations` from origin/feat/effect-deepening. Do not delete or rewrite local feat/effect-deepening.
+3. Cherry-pick in order these exact commits: 1ec3910195679e4b4e9791ba8b2d3dc6192cdf08, b52ae44b89a5a302307f5c67350bad7e2c6091a0, ec76e06dad3f0604d9b482758d2a17d4a124dd32, de133695dcc9684030ae477fe459c528a9a1b349, 5d0da009911147a05befccb8bd2385c6aa765055, 8285ad56175d38b30cd71a2323ab37b359734cc1, f0136b60fb3fef9beb3d5c2a75eafaaeb8cb6bc3. Resolve only straightforward conflicts while preserving both remote changes and remediation intent; if ambiguous, abort cherry-pick and report.
+4. Validate with MISE_AUTO_INSTALL=false: pnpm run check, check:types, test:unit, check:changeset, check:boundaries. Also run focused core/node/worker/CLI tests affected by any conflict. Keep hooks enabled and do not amend commits unless conflict resolution requires a new resolution commit; do not force anything.
+5. Confirm `origin/feat/effect-deepening` is an ancestor of HEAD, worktree clean, and list new commit SHAs.
+Do not inspect or print HEVY_API_KEY. State files written/modified (repository paths) and return validation results. No push.
+---END TASK FROM PARENT AGENT---
