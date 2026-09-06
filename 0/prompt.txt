@@ -1,0 +1,25 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Inspect core layer and tools DI
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. origin/main of hevy-mcp. Checkouts /root/hevy-mcp-effect-retry-interpreter or git show origin/main:path.
+
+Goal: how ToolRuntime currently injects client/operations/catalog/observer into all 22 tools, and how createCoreServiceLayer / effect-services.ts map onto that.
+
+Report:
+1. ToolRuntime fields and getters (getClient, getOperations, catalog, observer)
+2. Full list of hevyToolDefinitions and which runtime dependency each tool uses (client, operations, catalog, observer, context)
+3. effect-services.ts service tags and effect-layer.ts createCoreServiceLayer / createToolObserverLayer signatures with file:line
+4. Whether a handler could stay Promise-facing while internally Effect.provide(layer) + runPromise once
+5. Any tool that would break if getClient() were removed vs if both getters and layer coexist during migration
+
+Inline, concrete paths. Do not modify.
+---END TASK FROM PARENT AGENT---
