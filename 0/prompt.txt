@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Verify retry validation path
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Validation readiness verification only. Working directory: /root/hevy-mcp-effect-pure-operations. Do not edit source or documentation. Transient test/build outputs are allowed, but return the worktree to a clean source state and do not delete any pre-existing user files. Verify the planned validation surface by actually running: focused hevy-client retry tests, test:unit, test:worker, test:worker-http, worker:dry-run, and check:types (use mise as repository guidance requires). Confirm tests can exercise the client retry path without HEVY_API_KEY. Measure total/available memory, CPU cores/load, and relevant process count before and after. Recommend max concurrent validators using 70% of available headroom and account for Vitest/Workerd/Nx load; cap at 5. Report exact commands, exit codes, durations if available, surface/tool status, resource numbers, blockers, and every filepath inspected. Return analysis inline only and state whether any files were written or left modified.
+---END TASK FROM PARENT AGENT---
