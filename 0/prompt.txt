@@ -1,0 +1,1 @@
+skills/hevy-workouts/SKILL.md lets add there also the MCP server? since it is otherwise not clear how to use it?
