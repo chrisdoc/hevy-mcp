@@ -1,0 +1,27 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: List open Effect-related PRs
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only. Do not modify git state, do not push, do not create PRs.
+
+In /root/hevy-mcp, use `gh` (not git write) to answer:
+
+1. `gh pr list --state open --limit 30` for chrisdoc/hevy-mcp, focusing on Effect / retry / fetch-config / request-local titles. Include number, title, head branch, base branch, mergeable if available.
+2. Specifically inspect PRs around #1104, #1105, #1109 if they exist: `gh pr view <n> --json number,title,headRefName,baseRefName,state,mergeable,url,commits`
+3. Confirm whether a PR exists for branch feat/effect-retry-interpreter.
+
+Return a compact table:
+- PR number, title, head -> base, state
+- Whether the mission branch feat/effect-retry-interpreter has a PR (yes/no)
+- Whether the open PRs form a linear stack (A base main, B base A, C base B) or are parallel
+
+Do not write files. Inline report only.
+---END TASK FROM PARENT AGENT---
