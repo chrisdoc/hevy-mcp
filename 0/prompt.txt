@@ -1,0 +1,1 @@
+make sure to upgrade all dependencies and then check why the build is failing https://github.com/chrisdoc/hevy-mcp/actions/runs/33731040335/job/100570797356?pr=1117
