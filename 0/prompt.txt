@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task complexity: heavy
+Task description: Re-review CLI compatibility fixes
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Re-review feature cli-commands-via-operations in /root/hevy-mcp-effect-ops-layer including the uncommitted fixes after commit b2ba0e8. Compare the full diff from origin/main/current worktree against VAL-CLI-001, 002, 003, 004, 007, and 009. Confirm whether prior blockers are resolved: summary total volume, measurement update merge/output, user/routine envelopes, exercise --max-pages operation scan, and operation-domain error diagnostics. Also inspect for new regressions or boundary/collapse issues. Do not modify files or use external services. Report concrete remaining blockers with file/line references, or pass.
+---END TASK FROM PARENT AGENT---
