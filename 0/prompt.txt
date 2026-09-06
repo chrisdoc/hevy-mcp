@@ -1,0 +1,21 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "fix-workout-update-payload-fidelity",
+  "description": "PR #1120 review fixes (CodeRabbit + gitar), two related regressions vs origin/main in workout updates: (a) packages/operations/src/mutation-semantics.ts buildWorkoutUpdatePayload omits `description` when neither patch nor fetched workout has one; origin/main sent `description: null` (old builder at packages/core/src/tools/mutation-semantics.ts:281-286). Restore the null default. (b) packages/operations/src/workouts.ts ~418-431 replacement-exercises branch builds metadata from the patch without fetching the current workout, so a replacement patch missing title/start_time/end_time throws WorkoutPayloadError; origin/main always fetched the workout and merged. Restore fetch-and-merge for the replacement branch. TDD in packages/operations/src/mutation-semantics.test.ts and workouts.test.ts. Work only in /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer. Conventional Commit. Run scoped vitest + check:types; run check:changeset and add/adjust a changeset only if it fails. Do not touch /root/hevy-mcp; do not push.",
+  "skillName": "operations-worker",
+  "milestone": "pr-review-fixes",
+  "preconditions": [
+    "Mission worktree /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer is clean",
+    "origin/main builder behavior confirmed: description ?? null always present; replacement branch fetched the workout"
+  ],
+  "expectedBehavior": [
+    "PUT payload includes description: null when neither patch nor fetched workout provides a description",
+    "Patched or fetched description values are used when present; explicit null in a patch still clears",
+    "Replacement patch omitting title/start_time/end_time fetches the current workout and merges patch values over fetched metadata instead of throwing",
+    "Missing workout ID or invalid fetched values still fail loudly with WorkoutPayloadError",
+    "mise exec -- pnpm exec vitest run packages/operations/src/mutation-semantics.test.ts packages/operations/src/workouts.test.ts exits 0"
+  ]
+}
+```
