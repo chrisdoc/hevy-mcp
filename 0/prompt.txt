@@ -1,0 +1,85 @@
+Background task completed.
+task_id: 9fb33611-e17a-4d4c-ba16-4ba007c6f690
+type: explorer
+reason: completed
+description: Triage PR 1120 review findings
+output: Root has no effect dependency — deep import is deliberate workaround. Fragile but functional for a dev-only script run via tsx. Classify VALID-NIT (hazard: duplicate module instance vs workspace effect; recommended: add `effect` to root devDependencies and import bare).
+
+Done. Write report.
+All findings triaged. Report below.
+
+---
+
+## PR 1120 Review Findings Triage
+
+**1. gitstream — cli/main.ts operations built from `createdClient` — REAL (medium)**
+Evidence: `packages/cli/src/main.ts:55-63` — `const client = options.execution ? bindClientExecution(createdClient, options.execution) : createdClient;` then `context.operations = createOperations(createdClient, ...)`. The execution-bound proxy is only assigned to `context.client`; operations always get the raw client. The effect seam itself still works (the native-request-effect seam lives on the raw client and `getNativeRequestEffect` recovers it there), but operations calls lose the bound execution defaults (lifecycle signal, deadline, request binding) unless every call site threads `execution` options explicitly (which `runOperation` does for its own calls, but any options-less call bypasses binding).
+Fix: pass `client` (the proxied client) to `createOperations` in `main.ts`.
+
+**2. gitstream — scripts/measure-token-cost.ts deep effect import — VALID-NIT (hazard, low)**
+Evidence: `scripts/measure-token-cost.ts:4` — `import { Effect } from "../packages/core/node_modules/effect/dist/index.js"`. Root `package.json` has no `effect` dependency, so this is a deliberate workaround for the workspace constraint (bare `import "effect"` would fail from `scripts/` under pnpm's isolated node_modules). It works today under tsx but creates a second Effect module instance relative to workspace packages and breaks if pnpm layout/hoisting changes.
+Fix: add `effect` to root `devDependencies` and use a bare `import { Effect } from "effect"`.
+
+**3. qodo — createToolRuntime ignores caller `createHandler` when `observer` set — REAL**
+Evidence: `packages/core/src/tools/tool-runtime.ts:~269-296` — `const effectHandlerFactory = createHandler ?? (default withErrorHandling wrapper)` but `const observedHandlerFactory = observer ? createObservedHandler : effectHandlerFactory`. When `observer` is configured, `createObservedHandler` (which calls `withErrorHandling` directly) is used and the caller-supplied `createHandler` factory is never invoked.
+Fix: have `createObservedHandler` delegate to the resolved `effectHandlerFactory` for the underlying invocation (or compose observer wrapping around `createHandler`).
+
+**4. qodo — NetworkError loses request identity — REAL (minor)**
+Evidence: `packages/hevy-client/src/effect-errors.ts:77-85` — `NetworkError` schema has only `code`, executionFields, retryCount/retryExhausted; no `method`/`endpoint`. `internal-request-effect.ts:~282-296` — `mapRequestError` computes `identity` (method/endpoint/page) but `networkError(cause)` (line ~283) doesn't receive or store it, so a statusless `HevyHttpError` collapses to a NetworkError with no request identity for safe diagnostics.
+Fix: add optional `method`/`endpoint` fields to NetworkError and pass `identity` into `networkError()`.
+
+**5. coderabbit — templates search vs listAll page_count divergence — REAL (low)**
+Evidence: `packages/operations/src/templates.ts` — `createTemplatesSearchOperation` (~line 465-480) fails with `PaginationMismatchError` when `page_count` is missing/non-number; `createTemplatesListAllOperation` (~line 355-365) just passes `response?.page_count` to `hasNextTemplatesPage`, treating undefined as no-next-page → silent truncation. Inconsistent handling of the same upstream response shape.
+Fix: share one pagination-validation helper so listAll applies the same page_count contract as search.
+
+**6. coderabbit+gitar — workout update payload semantics — REAL (two parts)**
+(a) Behavior change confirmed: origin/main `packages/core/src/tools/mutation-semantics.ts:281-286` always set `description: patch.description !== undefined ? patch.description : (current.description ?? null)`; the new `buildWorkoutUpdatePayload` (`packages/operations/src/mutation-semantics.ts:~382-396`) keeps `description = patch.description !== undefined ? patch.description : current.description` and only includes it `if (description !== undefined)`. So when both are undefined, main sent `description: null` (clearing) while the new code omits the field entirely (API may preserve existing description). Semantic difference on the PUT.
+(b) Replacement branch confirmed: `packages/operations/src/workouts.ts:~424-431` — for a replacement patch, `current` is built from `patch.title/start_time/end_time` directly (no GET fetch, unlike origin/main which always fetched). `WorkoutReplacementPatch = WorkoutMetadataPatchInput & { exercises }` with all metadata optional, so missing title → `Predicate.isString(title)` fails and missing timestamps → `normalizeFetchedWorkoutTimestamp(undefined)` throws `WorkoutPayloadError` (`mutation-semantics.ts:~360-366`). It fails loudly rather than corrupting, but it's a regression vs main where fetched values were preserved.
+Fix: (a) restore the `?? null` default for omitted description; (b) either require title/start_time/end_time on the replacement input schema or fetch the current workout in the replacement branch as main did.
+
+**7. gitar — `measurementResult` dead code — FALSE POSITIVE**
+Evidence: `packages/cli/src/commands/index.ts` — `measurementResult` is defined at ~105 and called at the measurement-create return site: `return { body_measurement: measurementResult(body(input), createdDate) };`.
+No fix needed.
+
+**8. gitar — executeRoutineGet double nesting — FALSE POSITIVE / PRE-EXISTING**
+Evidence: origin/main `executeRoutineGet` (main:292-301) returned `{ routine: await client.getRoutineById(id) }` where the client response is `{ routine }` — final stdout shape `{ routine: { routine: <entity> } }`. New code (`commands/index.ts:~410`) `{ routine: { routine: result.routine } }` produces the identical final shape (operations.routines.get unwraps one layer, then re-wraps). Consistent with main; the smoke test doesn't pin routines-get shape.
+No fix needed.
+
+**9. coderabbit — effect-collapse.test raw substring counts — VALID-NIT**
+Evidence: `packages/cli/src/commands/effect-collapse.test.ts:10-13` — asserts regex match counts (`Effect.runPromise` exactly 1, `collapse(` exactly 4) and absence of `Effect.catch*`/`while (` against source text. Any comment or string containing those tokens would skew counts; it's a weak but intentional structural guard, not a correctness bug.
+Fix (optional): count only in code contexts or normalize comments before matching.
+
+**10. coderabbit — missing [VAL-OPS-005]-style tag — VALID-NIT**
+Evidence: `packages/operations/src/workouts.test.ts:195` — `it("rejects an unrelated GET 404 with the original error", ...)` lacks the identifier used by neighbors (e.g., `[VAL-OPS-010]` at :184, `[VAL-OPS-005]` at :205).
+Fix: add the appropriate VAL-OPS identifier to the test title.
+
+**11. DeepSource — async without await in resources — VALID-NIT**
+Evidence: `packages/core/src/resources/hevy.ts:~78/105/126/151` — the `async (uri, context)` registration callbacks contain no `await`; they return the Effect pipe result synchronously (the promise comes from `Effect.runPromise` inside `readResource`). Removing `async` would still work (readResource handles the returned value), so it's purely cosmetic.
+Fix (optional): drop the redundant `async` keyword or leave as-is for uniform signature.
+
+**12. Codecov — patch coverage / bundle size — NOTED**
+Evidence: `codecov.yml` sets `coverage.status.project: off` and `patch: off` with no explicit 5% threshold, so the reported threshold comes from Codecov defaults/UI, not repo config. Informational only.
+
+---
+
+## Suggested priority order
+
+**Must-fix before merge:**
+1. Finding 1 — CLI operations bypass execution proxy (correctness of execution binding).
+2. Finding 3 — observer silently discards caller `createHandler` (API contract violation).
+3. Finding 6a — description omitted vs `null` changes PUT semantics (behavior regression vs main).
+4. Finding 6b — replacement branch no longer fetches current workout; missing metadata throws (regression vs main).
+
+**Should-fix (low risk):**
+5. Finding 4 — preserve method/endpoint on NetworkError for diagnostics.
+6. Finding 5 — unify page_count validation between search and listAll.
+
+**Optional / nits:**
+7. Finding 2 — root devDependency for effect instead of deep import.
+8. Findings 9, 10, 11 — labeling/test-strength nits.
+
+**No action:** 7 (false positive), 8 (consistent with main), 12 (informational).
+
+Files read for evidence: `packages/cli/src/main.ts`, `packages/cli/src/commands/index.ts`, `packages/cli/src/commands/effect-collapse.test.ts`, `packages/cli/tests/npm-pack-smoke.mjs`, `packages/core/src/tools/tool-runtime.ts`, `packages/core/src/resources/hevy.ts`, `packages/core/src/execution.ts`, `packages/hevy-client/src/internal-request-effect.ts`, `packages/hevy-client/src/effect-errors.ts`, `packages/operations/src/templates.ts`, `packages/operations/src/mutation-semantics.ts`, `packages/operations/src/workouts.ts`, `packages/operations/src/workouts.test.ts`, `scripts/measure-token-cost.ts`, `codecov.yml`, `package.json`, plus `git show origin/main` for `commands/index.ts` and `mutation-semantics.ts`/`tools/workouts.ts`.
+
+Background task "Triage PR 1120 review findings" (9fb33611-e17a-4d4c-ba16-4ba007c6f690) just completed. This is a new asynchronous completion event, not a repeat of the launch request. Do not repeat the earlier launch acknowledgement. Briefly report this task's terminal outcome or use its result for any necessary follow-up.
