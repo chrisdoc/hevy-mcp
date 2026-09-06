@@ -1,0 +1,76 @@
+# Plan: High-Leverage Effect TS Adoption in hevy-mcp
+
+## Context
+
+The repository already uses Effect (`effect@^4.0.0-rc.112`) across several packages (`hevy-client`, `operations`, `core`, and `cli`), but adoption is uneven and currently in a transitional state:
+1. `packages/hevy-client` contains an internal Effect retry interpreter and schema-based tagged errors (`effect-errors.ts`), but only 4 read methods (`getWorkouts`, `getWorkout`, `getRoutines`, `getRoutineById`) are exposed via `HevyRequestEffectClient`.
+2. `packages/operations` was created as the runtime-neutral domain operations layer powered by Effect, but only implements read operations for `workouts` and `routines`. All other domain areas (templates, folders, body measurements, workout events, and mutations) remain unmigrated.
+3. `packages/core` features Effect service tags and layer wiring (`effect-services.ts`, `effect-layer.ts`), but tools frequently bypass it or hand-roll complex asynchronous state machines:
+   - Workflows (`packages/core/src/tools/workflows.ts`) and discovery (`routine-discovery.ts`) manually implement paginated fetch loops (`while (true)`), manual date arithmetic with `Date`, and manual concurrency.
+   - `packages/core/src/utils/cache.ts` maintains a custom 250+ line `AsyncTtlCache` dealing with in-flight promise deduplication, TTL eviction, and `AbortSignal` listeners—logic that Effect's native `Cache` handles out of the box.
+
+The goal of this initiative is to identify the highest-leverage areas for Effect in `hevy-mcp`—maximizing correctness, resiliency, and code deletion while avoiding unnecessary churn at boundary adapters (Node stdio, Cloudflare Worker).
+
+## Approach
+
+Focus Effect adoption strictly on **domain operations**, **concurrency/streaming**, and **state caching**, while keeping external adapters (MCP SDK, Node stdio, Worker HTTP) as thin consumer boundaries:
+
+1. **High-Leverage Area 1: Deepen & Complete the Domain Operations Layer (`packages/operations`)**
+   - **Deepen existing operations (`workouts`, `routines`)**:
+     - Provide a composable Effect interface (e.g. `effect(input, options)`) alongside the Promise `execute(input, options)` so multi-step workflows and tools can compose them natively without boundary jumping.
+     - Refactor to `Effect.fn` (as recommended in `node_modules/effect/AGENTS.md`) for better tracing spans and generator ergonomics.
+     - Replace defect-throwing `throw new Error(...)` page mismatch guards with typed `Schema.TaggedError` (e.g., `PaginationMismatchError`).
+     - Tighten error handling to use typed `NotFoundError` and `NetworkError` from `@hevy-mcp/hevy-client` instead of untyped `classifyReadError` heuristics.
+   - **Complete missing operations**:
+     - Expand `HevyRequestEffectClient` in `packages/hevy-client/src/internal-request-effect.ts` to cover all remaining resources (`exerciseTemplates`, `routineFolders`, `bodyMeasurements`, `workoutEvents`, and mutations).
+     - Implement typed domain operations in `packages/operations` for templates, folders, measurements, events, and mutations.
+     - Migrate tool definitions in `packages/core/src/tools/` to consume `HevyOperationsService` consistently instead of making ad-hoc client calls.
+
+2. **High-Leverage Area 2: Paginated Workflows & Date Logic (`packages/core/src/tools/workflows.ts`, `routine-discovery.ts`)**
+   - Replace manual `while (true)` pagination loops with `Stream.paginateEffect` or `Effect.paginate`.
+   - Replace brittle `new Date()` and `Date.parse()` manipulation with Effect's `DateTime` module for timezone safety, testability (via `TestClock`), and cleaner interval windowing.
+   - Replace raw `Promise.all` with `Effect.all` with bounded concurrency and automatic fiber interruption on cancellation.
+
+3. **High-Leverage Area 3: Replace Hand-Rolled `AsyncTtlCache` with Effect `Cache` (`packages/core/src/utils/cache.ts`, `exercise-template-catalog.ts`)**
+   - Replace `AsyncTtlCache` with `effect/Cache` (or `Effect.cachedWithTTL`), gaining interruption-safe in-flight deduplication, TTL eviction, and resource safety with ~80% less code.
+
+4. **Deliberately Kept As-Is (Non-Goals / Low-Leverage):**
+   - Do NOT rewrite the `@modelcontextprotocol/server` SDK integration or transport adapters (`packages/node`, `packages/worker`) into Effect. Keep the MCP tool handler contract as a clean Promise bridge (`ToolRuntime.createHandler`).
+   - Do NOT expose Effect types in public package exports (`hevy-mcp`, `@chrisdoc/hevy-cli`).
+
+## Files to modify
+
+- `packages/hevy-client/src/internal-request-effect.ts` — extend `HevyRequestEffectClient` for remaining endpoints
+- `packages/operations/src/` — add operations for `templates.ts`, `folders.ts`, `body-measurements.ts`, `events.ts`, `mutations.ts`
+- `packages/operations/src/index.ts` — export complete `HevyOperations` interface
+- `packages/core/src/tools/workflows.ts` — refactor `getTrainingSummary` to use `Stream` and `DateTime`
+- `packages/core/src/tools/routine-discovery.ts` — refactor `discoverRoutines` to use `Stream`
+- `packages/core/src/utils/cache.ts` — replace `AsyncTtlCache` with `effect/Cache`
+- `packages/core/src/utils/exercise-template-catalog.ts` — integrate with Effect `Cache`
+- `packages/core/src/tools/*.ts` — route remaining tools through `HevyOperationsService`
+
+## Reuse
+
+- `packages/hevy-client/src/internal-request-effect.ts`: `getNativeRequestEffect` and `readEffect`
+- `packages/hevy-client/src/effect-errors.ts`: `NotFoundError`, `ValidationError`, `NetworkError`, `ApiError`, `RateLimitError`
+- `packages/core/src/effect-services.ts`: `HevyOperationsService`, `HevyClientService`, `ExerciseTemplateCatalogService`
+- `packages/core/src/effect-layer.ts`: `createCoreServiceLayer`
+- `packages/operations/src/operation-errors.ts`: `isExpectedReadNotFound`, `isExpectedReadEndOfList`
+
+## Steps
+
+- [ ] Step 1: Upgrade existing operations (`workouts`, `routines`) in `packages/operations` to expose composable Effect accessors, use `Effect.fn`, and eliminate thrown defects.
+- [ ] Step 2: Expand `HevyRequestEffectClient` in `hevy-client` to support exercise templates, folders, body measurements, and mutations.
+- [ ] Step 3: Implement missing operations in `packages/operations` (templates, folders, measurements, events, mutations) with typed errors.
+- [ ] Step 4: Refactor `packages/core/src/utils/cache.ts` and `exercise-template-catalog.ts` to use `effect/Cache`.
+- [ ] Step 5: Refactor `packages/core/src/tools/workflows.ts` and `routine-discovery.ts` using `Stream.paginateEffect` and `DateTime`.
+- [ ] Step 6: Wire MCP tools in `packages/core/src/tools/*.ts` to execute via `HevyOperationsService`.
+- [ ] Step 7: Validate with unit tests, PR lane (`pnpm run test:pr`), boundary checks (`pnpm run check:boundaries`), and changeset.
+
+## Verification
+
+- `pnpm run check`: Linter and formatter verification
+- `pnpm run check:types`: Workspace-wide TypeScript validation
+- `pnpm run check:boundaries`: Verify runtime neutrality of `hevy-client`, `operations`, and `core`
+- `pnpm run test:unit`: Deterministic unit suite across all workspaces
+- `pnpm run test:pr`: Full PR validation suite
