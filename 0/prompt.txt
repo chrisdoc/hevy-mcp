@@ -1,0 +1,33 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature release-hygiene-and-changeset
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "release-hygiene-and-changeset" for milestone "cli-hygiene".
+
+Feature details:
+- ID: release-hygiene-and-changeset
+- Description: Final hygiene: MCP tools and CLI share operations mutation implementations; public hevy-mcp and CLI do not export Effect types; topology/check:boundaries pass; one collapse per user invocation across tool/resource/CLI; cascade Changeset; no live Hevy; Node/Worker not rewritten in Effect. Update README to describe Effect-first operations without leaking Effect from public packages. Run full check + test:pr. Also rename leftover '[VAL-OPS-037]' (and any other drifted bracketed VAL-OPS prefixes) in packages/operations/src/workouts.test.ts and routines.test.ts so test titles match the assertion they actually exercise. Also update validation-contract.md evidence citations for VAL-OPS-001/006/007: packages/operations/src/hevy-operations.test.ts does not exist; point at workouts.test.ts (VAL-OPS-001 describe) and public-client-injection.test.ts instead, or add hevy-operations.test.ts.
+- Worker session: 8ebba719-7725-4157-b755-c8431c591fb8
+- repoPath: /root/hevy-mcp-effect-ops-layer (branch feat/effect-ops-layer, HEAD 70e139b)
+- Feature commit from handoff: 70e139b ("chore: finalize Effect release hygiene")
+- Fulfills assertions: VAL-CROSS-001, VAL-CROSS-003, VAL-CROSS-004, VAL-CROSS-006, VAL-CROSS-007, VAL-CROSS-009, VAL-CROSS-013
+
+Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Write your review report to this path: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/cli-hygiene/scrutiny/reviews/release-hygiene-and-changeset.json
+
+Context you should know:
+- Read the feature entry, handoff, transcript skeleton, worker skill, architecture doc, and validation-contract.md per your standard procedure. The relevant contract area is "Cross-Area Flows" (VAL-CROSS-001 shared mutation implementations, VAL-CROSS-003 public exports stay Promise-shaped, VAL-CROSS-004 topology edges, VAL-CROSS-006 one collapse per invocation, VAL-CROSS-007 changeset cascade, VAL-CROSS-009 fake keys only, VAL-CROSS-013 adapters not rewritten).
+- The commit 70e139b ("chore: finalize Effect release hygiene") covers: README Effect-first documentation, test-title VAL-OPS label corrections in packages/operations/src/workouts.test.ts and routines.test.ts, validation-contract.md evidence path corrections for VAL-OPS-001/006/007, and the six-package cascade Changeset (.changeset/*). The earlier commits in the branch (CLI migration 27510e1, CLI collapse fix 8c744a5, core commits) established the cross-area properties; your review should verify the end state at HEAD satisfies the fulfills assertions: single source of truth for mutation payload builders in @hevy-mcp/operations (core tools and CLI both go through operations), public hevy-mcp and @chrisdoc/hevy-cli do not export Effect types, changeset names the full cascade per repository/topology.json, no live Hevy keys in tests/fixtures, node/worker adapters gained no Effect rewrite.
+- Do NOT re-run validators (test suites, typecheck, lint, check:boundaries, check:changeset, test:pr) — the scrutiny validator already ran them all green on this exact commit (all exit 0, including check:changeset which listed patch bumps for all six packages). You may read files and use read-only git commands.
+- Note the repo AGENTS.md exists at the repoPath root if you need repo conventions.
+
+Stay in scope: review only this feature, write the report, and complete.
+---END TASK FROM PARENT AGENT---
