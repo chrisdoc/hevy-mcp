@@ -1,0 +1,42 @@
+# Task Tool Invocation
+
+Subagent type: scrutiny-feature-reviewer
+Task description: Review feature core-adapter-boundaries
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are reviewing feature "core-adapter-boundaries" for milestone "core-runtime".
+
+Feature details:
+- ID: core-adapter-boundaries
+- Description: Keep packages/core runtime-neutral: no hevy-client/internal import, no Node/CF APIs. Node and Worker stay Promise bridges with no Effect rewrite in this feature.
+- Milestone: core-runtime
+- Worker session: 127f2d54-4a41-42bc-8548-40fa4521dbb0
+- Mission dir: /root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb
+
+Transcript evidence: the worker's transcript skeleton for this feature is the JSONL line whose "featureId" equals "core-adapter-boundaries" in /tmp/core-transcripts.jsonl. Extract it yourself, e.g.:
+  jq -r 'select(.featureId == "core-adapter-boundaries")' /tmp/core-transcripts.jsonl
+
+Review that transcript skeleton against the feature's expectedBehavior above. Assess: (1) does the worker transcript show the claimed behavior was actually implemented and verified; (2) any code review findings, with severity (blocking / non_blocking / suggestion); (3) sharedStateObservations: facts about shared state (files, caches, services, env) other workers must know; (4) whether any blocking issue must be fixed before user testing.
+
+Write your review report as JSON to this exact path (create parent dirs if needed):
+/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/core-runtime/scrutiny/reviews/core-adapter-boundaries.json
+
+Report shape:
+{
+  "featureId": "core-adapter-boundaries",
+  "milestone": "core-runtime",
+  "workerSessionId": "127f2d54-4a41-42bc-8548-40fa4521dbb0",
+  "verdict": "pass" | "fail",
+  "findings": [{ "severity": "blocking|non_blocking|suggestion", "description": "..." }],
+  "blockingIssues": ["..."],
+  "sharedStateObservations": ["..."],
+  "recommendedGuidanceUpdates": ["..."]
+}
+
+Then return a short summary of your verdict and findings.
+---END TASK FROM PARENT AGENT---
