@@ -1,0 +1,23 @@
+Background task completed.
+task_id: c652bdd6-5eaf-4134-a719-a55e32dbbb9c
+type: user-testing-flow-validator
+reason: completed
+description: Validate VAL-OPS-001..008, 011..015, 017..019
+output: Validation complete. All 16 assigned assertions pass; report written.
+
+**Results: VAL-OPS-001..008, 011..015, 017..019 — all PASS (16/16)**, tested in `/root/hevy-mcp-effect-ops-layer` (branch `feat/effect-ops-layer`) via file-scoped Vitest through mise. 7 owned test files, 115 tests, 0 failures, no source modifications.
+
+**Report:** `/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/validation/ops-complete/user-testing/flows/ops-writes-routines.json`
+
+**Evidence:** `/root/.factory/missions/6541b952-3805-47ac-bff2-326204464ffb/evidence/ops-complete/ops-writes-routines/` (per-file vitest output + `source-grep-imports.txt`)
+
+**Key observations**
+- **VAL-OPS-001**: contract cites `hevy-operations.test.ts`, which doesn't exist; `effect-collapse.test.ts` + `workouts.test.ts`/`routines.test.ts` cover the same cases (mapped per task instructions).
+- **VAL-OPS-003**: `PaginationMismatchError` is `Schema.TaggedError` (`operation-errors.ts:30`) with `requested`/`received`/`collection`; mismatch tests assert the tag, not messages.
+- **VAL-OPS-007**: grep finds zero `node:`, cloudflare, core/node/worker/cli imports in operations non-test sources; `hevy-client/internal` used as allowed.
+- **Canonical builders (033..036)**: all four (`buildWorkoutUpdatePayload`, `buildRoutinePayload`, `buildMeasurementPayload`, `mergeMeasurementPayload`) defined once in `mutation-semantics.ts` and re-exported from `index.ts:279-285`.
+- **Frictions**: (1) missing `hevy-operations.test.ts` mapped to existing files; (2) many stale `[VAL-OPS-NNN]` test-name prefixes no longer matching contract IDs — assertions were matched by behavior; implementation worker should renumber before the final PR.
+
+No blockers.
+
+Background task "Validate VAL-OPS-001..008, 011..015, 017..019" (c652bdd6-5eaf-4134-a719-a55e32dbbb9c) just completed. This is a new asynchronous completion event, not a repeat of the launch request. Do not repeat the earlier launch acknowledgement. Briefly report this task's terminal outcome or use its result for any necessary follow-up.
