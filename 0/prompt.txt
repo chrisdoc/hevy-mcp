@@ -1,0 +1,1 @@
+also use what makes sense from here https://github.com/emdash-cms/emdash/blob/main/.oxlintrc.json
