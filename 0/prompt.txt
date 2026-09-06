@@ -1,0 +1,25 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "release-hygiene-and-changeset",
+  "description": "Final hygiene: MCP tools and CLI share operations mutation implementations; public hevy-mcp and CLI do not export Effect types; topology/check:boundaries pass; one collapse per user invocation across tool/resource/CLI; cascade Changeset; no live Hevy; Node/Worker not rewritten in Effect. Update README to describe Effect-first operations without leaking Effect from public packages. Run full check + test:pr. Also rename leftover '[VAL-OPS-037]' (and any other drifted bracketed VAL-OPS prefixes) in packages/operations/src/workouts.test.ts and routines.test.ts so test titles match the assertion they actually exercise. Also update validation-contract.md evidence citations for VAL-OPS-001/006/007: packages/operations/src/hevy-operations.test.ts does not exist; point at workouts.test.ts (VAL-OPS-001 describe) and public-client-injection.test.ts instead, or add hevy-operations.test.ts.",
+  "skillName": "cli-worker",
+  "milestone": "cli-hygiene",
+  "preconditions": [
+    "Core tools/resources and CLI already consume operations",
+    "Worktree feat/effect-ops-layer contains the implementation"
+  ],
+  "expectedBehavior": [
+    "A representative mutation (routine rep_range) is implemented once in operations and used by both MCP tools and CLI",
+    "hevy-mcp and @chrisdoc/hevy-cli public surfaces do not export Effect types",
+    "mise exec -- pnpm run check:boundaries exits 0; node/worker still cannot import operations or hevy-client/internal; core cannot import internal",
+    "One Effect.runPromise per MCP tool, resource reader, and CLI command invocation",
+    "Non-empty Changeset names hevy-client, operations, core, hevy-mcp, worker, and @chrisdoc/hevy-cli as required by topology cascade",
+    "No live HEVY_API_KEY usage; fake keys only in tests",
+    "packages/node and packages/worker are not rewritten in Effect (stdio/HTTP/OAuth stay Promise)",
+    "README documents the Effect-first operations layer and Promise public adapters",
+    "mise exec -- pnpm run check, check:types, test:pr, and check:changeset pass"
+  ]
+}
+```
