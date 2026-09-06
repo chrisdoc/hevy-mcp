@@ -1,0 +1,27 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: medium
+Task description: Map core layer and 22 tools
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Investigate Hevy MCP core Effect layer and all MCP tools. Prefer /root/hevy-mcp-effect-retry-interpreter (includes merged retry stack, origin/main tip afb18b0 is in that history) or git show origin/main.
+
+Goal: map unused/partial Effect layer vs ToolRuntime vs 22 tools for a mission that will wire createCoreServiceLayer for ALL 22 tools.
+
+Find and report:
+1. Location and exports of createCoreServiceLayer / effect-layer.ts (is it unused?).
+2. HevyClientService, HevyOperationsService, catalog/observer services if they exist.
+3. How ToolRuntime currently gives tools a client (getters vs layer).
+4. Complete list of 22 tools: file, whether they call operations or hevy-client directly.
+5. Which 4 tools are operations-backed vs 18 client-backed.
+6. MCP JSON / handler signatures that must remain unchanged.
+7. Existing tests that would catch layer wiring (register.test, tool tests).
+
+Return a concise structured report with file paths. Do not write files. Read-only.
+---END TASK FROM PARENT AGENT---
