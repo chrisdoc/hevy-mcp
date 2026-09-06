@@ -1,4 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { z } from "zod";
 import {
 	WebStandardStreamableHTTPServerTransport,
@@ -37,6 +45,20 @@ const validHeaders = {
 	"content-type": "application/json",
 	authorization: "Bearer test-key",
 };
+
+const originalRetryDelays = process.env.HEVY_VALIDATION_RETRY_DELAYS_MS;
+
+beforeAll(() => {
+	process.env.HEVY_VALIDATION_RETRY_DELAYS_MS = "1,2";
+});
+
+afterAll(() => {
+	if (originalRetryDelays === undefined) {
+		delete process.env.HEVY_VALIDATION_RETRY_DELAYS_MS;
+	} else {
+		process.env.HEVY_VALIDATION_RETRY_DELAYS_MS = originalRetryDelays;
+	}
+});
 
 afterEach(() => {
 	vi.restoreAllMocks();

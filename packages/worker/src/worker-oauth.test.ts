@@ -2,7 +2,16 @@ import type {
 	AuthRequest,
 	OAuthHelpers,
 } from "@cloudflare/workers-oauth-provider";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { z } from "zod";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
@@ -63,6 +72,20 @@ const testExecutionContext = {
 		Span: TestExecutionSpan,
 	},
 } satisfies ExecutionContext;
+
+const originalRetryDelays = process.env.HEVY_VALIDATION_RETRY_DELAYS_MS;
+
+beforeAll(() => {
+	process.env.HEVY_VALIDATION_RETRY_DELAYS_MS = "1,2";
+});
+
+afterAll(() => {
+	if (originalRetryDelays === undefined) {
+		delete process.env.HEVY_VALIDATION_RETRY_DELAYS_MS;
+	} else {
+		process.env.HEVY_VALIDATION_RETRY_DELAYS_MS = originalRetryDelays;
+	}
+});
 
 beforeEach(() => {
 	vi.stubGlobal("Cloudflare", {

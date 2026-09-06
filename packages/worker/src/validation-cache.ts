@@ -22,6 +22,7 @@ export const MEMORY_CACHE_MAX_ENTRIES = 256;
 /** Structural env shape this module needs; kept independent of `WorkerEnv`. */
 export interface ValidationCacheEnv {
 	OAUTH_KV?: unknown;
+	HEVY_VALIDATION_RETRY_DELAYS_MS?: string;
 }
 
 interface ValidationCacheKvNamespace {
@@ -135,8 +136,31 @@ export type HevyKeyValidator = (
 	options?: HevyRequestOptions,
 ) => Promise<HevyApiKeyValidation>;
 
-const VALIDATION_RETRY_MAX_ATTEMPTS = 3;
-const VALIDATION_RETRY_DELAYS_MS = [300, 600];
+export const DEFAULT_VALIDATION_RETRY_DELAYS_MS = [300, 600] as const;
+
+export function parseValidationRetryDelays(raw?: string): readonly number[] {
+	if (!raw) return DEFAULT_VALIDATION_RETRY_DELAYS_MS;
+	const parsed = raw
+		.split(",")
+		.map((s) => Number.parseInt(s.trim(), 10))
+		.filter((n) => Number.isFinite(n) && n >= 0);
+	return parsed.length > 0 ? parsed : DEFAULT_VALIDATION_RETRY_DELAYS_MS;
+}
+
+declare const process:
+	| {
+			readonly env?: Record<string, string | undefined>;
+	  }
+	| undefined;
+
+function resolveValidationRetryDelays(
+	env?: ValidationCacheEnv,
+): readonly number[] {
+	const raw =
+		env?.HEVY_VALIDATION_RETRY_DELAYS_MS ??
+		process?.env?.HEVY_VALIDATION_RETRY_DELAYS_MS;
+	return parseValidationRetryDelays(raw);
+}
 
 /**
  * Whether a failed validation attempt is worth retrying.
@@ -185,10 +209,12 @@ export interface WaitUntilHandle {
 
 function validationRetrySchedule(
 	options: HevyRequestOptions | undefined,
+	retryDelaysMs: readonly number[],
 ): Schedule.Schedule<number, unknown, never> {
-	return Schedule.recurs(VALIDATION_RETRY_MAX_ATTEMPTS - 1).pipe(
+	const maxAttempts = retryDelaysMs.length + 1;
+	return Schedule.recurs(retryDelaysMs.length).pipe(
 		Schedule.while((metadata: Schedule.Metadata<number, unknown>) => {
-			const delayMs = VALIDATION_RETRY_DELAYS_MS[metadata.attempt - 1];
+			const delayMs = retryDelaysMs[metadata.attempt - 1];
 			if (
 				delayMs === undefined ||
 				!isRetryableValidationFailure(metadata.input)
@@ -203,14 +229,14 @@ function validationRetrySchedule(
 			}
 			logValidationRetry(
 				metadata.attempt,
-				VALIDATION_RETRY_MAX_ATTEMPTS,
+				maxAttempts,
 				delayMs,
 				metadata.input,
 			);
 			return true;
 		}),
 		Schedule.addDelay((metadata) => {
-			const delayMs = VALIDATION_RETRY_DELAYS_MS[metadata.attempt - 1];
+			const delayMs = retryDelaysMs[metadata.attempt - 1];
 			return Effect.succeed(
 				Duration.millis(delayMs === undefined ? 0 : delayMs),
 			);
@@ -246,13 +272,14 @@ export async function validateHevyApiKeyResilient(
 	}
 	if (await hasCachedValidation(apiKey, env)) return "valid";
 
+	const retryDelaysMs = resolveValidationRetryDelays(env);
 	const validationProgram = Effect.retry(
 		Effect.tryPromise({
 			try: () =>
 				validate(apiKey, hevyApiBaseUrl, createValidationClient, options),
 			catch: (error) => error,
 		}),
-		validationRetrySchedule(options),
+		validationRetrySchedule(options, retryDelaysMs),
 	);
 	const cancellableProgram = options?.signal
 		? Effect.raceFirst(

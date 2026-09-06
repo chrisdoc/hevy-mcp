@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HevyHttpError, type HevyClient } from "@hevy-mcp/hevy-client";
 import {
+	DEFAULT_VALIDATION_RETRY_DELAYS_MS,
 	cacheValidation,
 	hasCachedValidation,
 	MEMORY_CACHE_MAX_ENTRIES,
+	parseValidationRetryDelays,
 	resetMemoryValidationCacheForTests,
 	validateHevyApiKeyResilient,
 	VALIDATION_CACHE_TTL_SECONDS,
@@ -415,5 +417,43 @@ describe("validateHevyApiKeyResilient", () => {
 
 		expect(result).toBe("valid");
 		expect(waitUntil).toHaveBeenCalledTimes(1);
+	});
+
+	it("respects custom validation retry delays from env", async () => {
+		vi.useFakeTimers();
+		const env = { HEVY_VALIDATION_RETRY_DELAYS_MS: "200,400" };
+		const validate = rejectingValidator(503, 1);
+
+		const pending = validateHevyApiKeyResilient(
+			"custom-delay-key",
+			"https://api.hevyapp.com",
+			createValidationClient,
+			validate,
+			env,
+		);
+
+		await vi.waitFor(() => expect(validate).toHaveBeenCalledOnce());
+		await vi.advanceTimersByTimeAsync(200);
+		await expect(pending).resolves.toBe("valid");
+		expect(validate).toHaveBeenCalledTimes(2);
+		vi.useRealTimers();
+	});
+});
+
+describe("parseValidationRetryDelays", () => {
+	it("returns default delays when unset or invalid", () => {
+		expect(parseValidationRetryDelays(undefined)).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
+		expect(parseValidationRetryDelays("")).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
+		expect(parseValidationRetryDelays("abc")).toBe(
+			DEFAULT_VALIDATION_RETRY_DELAYS_MS,
+		);
+	});
+
+	it("parses valid comma-separated positive integer delays", () => {
+		expect(parseValidationRetryDelays("10, 20, 30")).toEqual([10, 20, 30]);
 	});
 });
