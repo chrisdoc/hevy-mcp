@@ -1,0 +1,18 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "scrutiny-validator-client-seam",
+  "description": "Scrutiny validation for milestone \"client-seam\". Runs test suite, typecheck, and lint. Spawns review subagents for each completed feature. Synthesizes findings. Always returns to orchestrator.",
+  "skillName": "scrutiny-validator",
+  "milestone": "client-seam",
+  "preconditions": [
+    "All implementation features for milestone \"client-seam\" are complete"
+  ],
+  "expectedBehavior": [
+    "Validators pass (test, typecheck, lint)",
+    "Review subagents spawned for each feature",
+    "Findings synthesized into scrutiny report"
+  ]
+}
+```
