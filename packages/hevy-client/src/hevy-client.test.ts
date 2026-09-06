@@ -1353,3 +1353,36 @@ describe("@hevy-mcp/hevy-client", () => {
 		}
 	});
 });
+
+describe("non-finite page handling", () => {
+	it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+		"does not classify a 404 for non-finite page %s as end_of_list",
+		async (badPage) => {
+			const observations: Array<{
+				expectedReason?: "not_found" | "end_of_list";
+			}> = [];
+			const fetchMock = vi.fn().mockResolvedValue(
+				new Response("{}", {
+					status: 404,
+					headers: { "content-type": "application/json" },
+				}),
+			);
+			const client = createHevyClient({
+				apiKey: "secret-key",
+				fetch: fetchMock,
+				maxGetRetries: 0,
+				onRequestComplete: (observation) => observations.push(observation),
+			});
+
+			await expect(
+				// Deliberately invalid runtime value for a runtime-valid field.
+				client.getWorkouts({ page: badPage, pageSize: 5 }),
+			).rejects.toThrow();
+			expect(observations).toHaveLength(1);
+			// Zod rejected non-finite pages; the predicate must too, so the
+			// 404 classifier never sees a non-finite page as `page > 1`
+			// (which would mislabel the failure as an expected end of list).
+			expect(observations[0]?.expectedReason).toBeUndefined();
+		},
+	);
+});
