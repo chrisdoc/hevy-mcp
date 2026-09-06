@@ -1,0 +1,29 @@
+# Task Tool Invocation
+
+Subagent type: explorer
+Task complexity: light
+Task description: Map Node adapter Effect gaps
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+You are investigating the repository at /home/ubuntu/hevy-mcp-effect-deepening (a git worktree on branch feat/effect-deepening, based on PR #1120 "Effect-first Hevy operations layer"). This is a pnpm monorepo using the Effect TypeScript library.
+
+First read these guidance files completely and follow them:
+- /home/ubuntu/hevy-mcp-effect-deepening/AGENTS.md
+- /home/ubuntu/hevy-mcp-effect-deepening/.entire/graph-agent.md (if present — it explains resolution-first code-graph retrieval; use it)
+- /home/ubuntu/hevy-mcp-effect-deepening/node_modules/effect/AGENTS.md (Effect idioms guidance; if node_modules missing, note that)
+
+Your task: produce a deep map of `packages/node` (the public Node package "hevy-mcp": Node lifecycle, stdio and local Streamable HTTP transports, telemetry, Node built-ins) to identify every place that is still Promise/imperative-style and could adopt Effect. Cover:
+1. Entry points and lifecycle: main.ts/bin, startup, shutdown, signal handling (SIGINT/SIGTERM), error paths on boot. How is teardown/cleanup done today? Any acquire/release patterns or leaks?
+2. Transports: stdio transport wiring and local Streamable HTTP server (how the HTTP server is created, session management, request handling, shutdown). Where are streams/listeners managed manually?
+3. Telemetry/observability: what telemetry exists, how it's initialized and flushed, ad-hoc logging (console usage), where Effect Logger/Metrics could slot in.
+4. Existing Effect usage in packages/node: what's already Effect-based (services, layers, runtimes), how the Promise boundary is crossed (runPromise call sites), and how packages/node consumes @hevy-mcp/core.
+5. Error handling: untyped throws, process.exit call sites, error reporting paths.
+6. How packages/node is tested today (test files, lanes, mocks/fixtures relevant to node adapter).
+
+Return an inline report (do not write files) with: a file-by-file inventory of packages/node with the current style per file (Promise/imperative vs Effect), concrete candidate refactor points for deeper Effect adoption (Layers, Scope/acquireRelease, Schedule/retry, interruption, Logger/Metrics), the public export surface that currently hides Effect types, and the test commands/lanes relevant to packages/node. Include precise file paths and line ranges.
+---END TASK FROM PARENT AGENT---
