@@ -1,0 +1,20 @@
+## Your Assigned Feature
+
+```json
+{
+  "id": "fix-cli-execution-proxy",
+  "description": "PR #1120 review fix (gitStream): packages/cli/src/main.ts:55-63 passes createdClient (raw) instead of the execution-bound proxy `client` to createOperations, so operations calls lose bound execution defaults (signal, deadline). Change createOperations to receive the proxied client when options.execution is set. TDD in packages/cli/src/main.test.ts. Work only in /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer. Conventional Commit. Run scoped vitest + check:types; run check:changeset and add/adjust a changeset only if it fails. Do not touch /root/hevy-mcp; do not push.",
+  "skillName": "cli-worker",
+  "milestone": "pr-review-fixes",
+  "preconditions": [
+    "Mission worktree /root/hevy-mcp-effect-ops-layer on feat/effect-ops-layer is clean",
+    "main.ts binds execution via bindClientExecution into `client` but passes createdClient to createOperations"
+  ],
+  "expectedBehavior": [
+    "When options.execution is set, createOperations receives the execution-bound client proxy (same object as context.client)",
+    "When options.execution is unset, behavior is unchanged",
+    "mise exec -- pnpm exec vitest run packages/cli/src/main.test.ts exits 0",
+    "mise exec -- pnpm run test:cli exits 0"
+  ]
+}
+```
