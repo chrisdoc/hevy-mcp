@@ -1,0 +1,2 @@
+it has some strange assertions expect(packageBuild).toContain(
+            "OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}",
