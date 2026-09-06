@@ -1,0 +1,14 @@
+# Task Tool Invocation
+
+Subagent type: worker
+Task complexity: medium
+Task description: Verify Effect dependencies
+
+## Context
+Use supplied context as authoritative. Do not repeat completed work or re-read supplied files unless writing them.
+Stay within this assignment; if blocked, report the gap.
+
+## Task
+---BEGIN TASK FROM PARENT AGENT---
+Read-only readiness verification, do not write repository files. Working directory: /root/hevy-mcp-effect-pure-operations. Verify these mission dependencies by actually executing minimal commands: mise, pinned Node 24, pnpm 12, installed effect@4.0.0-rc.112 importability and required APIs (Effect.tryPromise, Effect.callback, Effect.ensuring, Effect.sleep, Clock.currentTimeMillis, Schedule.toStep, TestClock.layer/adjust), TypeScript, Vitest, Nx, Wrangler/workerd, oxfmt, oxlint, changesets, and git branch/worktree state. Also verify no live HEVY_API_KEY or external service is required for deterministic implementation and PR validation. Do not expose any credential values. Return a structured readiness report inline only with each dependency status, commands executed and exit status, blockers, constraints, and every filepath inspected. Do not write files; state that explicitly in the final report.
+---END TASK FROM PARENT AGENT---
