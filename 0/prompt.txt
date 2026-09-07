@@ -27,3 +27,15 @@ create a plan to work on effect_improvements.md
 3. Fix it
 4. keep as one off
 5. yes changeset per phase
+
+---
+
+Continue with the approved plan.
+
+---
+
+what is next?
+
+---
+
+yes go ahead, don't stop till you are done
