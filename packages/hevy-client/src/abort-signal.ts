@@ -42,10 +42,6 @@ export function failOnAbortSignal<E = unknown>(
 ): Effect.Effect<never, E> {
 	const bridge = Effect.callback<never, unknown>(
 		(resume, interruptionSignal) => {
-			const cleanup = () => {
-				signal.removeEventListener("abort", fail);
-				interruptionSignal.removeEventListener("abort", cleanup);
-			};
 			const fail = () =>
 				resume(
 					Effect.fail(
@@ -53,6 +49,10 @@ export function failOnAbortSignal<E = unknown>(
 							new DOMException("Operation canceled", "AbortError"),
 					),
 				);
+			const cleanup = () => {
+				signal.removeEventListener("abort", fail);
+				interruptionSignal.removeEventListener("abort", cleanup);
+			};
 			if (signal.aborted) {
 				fail();
 				return;

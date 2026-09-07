@@ -61,7 +61,7 @@ function isCoreToolError(error: RuntimeValue): error is CoreToolError {
 		isObject(error) &&
 		"_tag" in error &&
 		isString(error._tag) &&
-		error._tag in CORE_TOOL_ERROR_TAGS
+		Object.hasOwn(CORE_TOOL_ERROR_TAGS, error._tag)
 	);
 }
 

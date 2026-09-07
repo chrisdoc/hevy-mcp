@@ -279,8 +279,6 @@ export function createToolRuntime({
 	// construction, layer tests) pay for construction, and nested
 	// forExecution scopes never rebuild it unless read.
 	let cachedLayer: ToolRuntimeServiceLayer | undefined;
-	const getLayer = (): ToolRuntimeServiceLayer =>
-		(cachedLayer ??= buildLayer());
 	const buildLayer = (): ToolRuntimeServiceLayer => {
 		const coreLayer =
 			effectiveClient && resolvedOperations
@@ -307,6 +305,8 @@ export function createToolRuntime({
 			: coreLayer;
 		return layer;
 	};
+	const getLayer = (): ToolRuntimeServiceLayer =>
+		(cachedLayer ??= buildLayer());
 	const services =
 		providedServices ??
 		createCoreServiceContext({
