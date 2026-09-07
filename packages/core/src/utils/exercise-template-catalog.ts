@@ -16,7 +16,6 @@ import { bucketCount } from "./result-telemetry.js";
 export const EXERCISE_TEMPLATE_CATALOG_CACHE_KEY = "exercise-template-catalog";
 export const EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
 export const EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE = 1;
-const EXERCISE_TEMPLATE_CATALOG_PAGE_SIZE = 100;
 
 export type ExerciseTemplateCatalogRefreshReason =
 	| "explicit-refresh"
@@ -37,7 +36,7 @@ type TemplateListAllError = Effect.Error<
 >;
 export type ExerciseTemplateCatalogCache = Cache.Cache<
 	string,
-	ExerciseTemplate[],
+	TemplatesListAllResult,
 	TemplateListAllError
 >;
 export interface ExerciseTemplateCatalog {
@@ -92,13 +91,6 @@ function notifyRefreshed(
 		// Callbacks are best effort.
 	}
 }
-function catalogPageCount(catalog: readonly ExerciseTemplate[]): number {
-	return Math.max(
-		1,
-		Math.ceil(catalog.length / EXERCISE_TEMPLATE_CATALOG_PAGE_SIZE),
-	);
-}
-
 export function createExerciseTemplateCatalog(
 	operations: CatalogOperations,
 	cache: ExerciseTemplateCatalogCache,
@@ -172,20 +164,16 @@ export function createExerciseTemplateCatalog(
 		const load = Effect.gen(function* () {
 			if (refresh) {
 				const result = yield* listAll.effect();
-				yield* Cache.set(
-					cache,
-					EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
-					result.items,
-				);
+				yield* Cache.set(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY, result);
 				hasLoadedValue = true;
 				return result;
 			}
-			const catalog = yield* Cache.get(
+			const result = yield* Cache.get(
 				cache,
 				EXERCISE_TEMPLATE_CATALOG_CACHE_KEY,
 			);
 			hasLoadedValue = true;
-			return { items: catalog, pageCount: catalogPageCount(catalog) };
+			return result;
 		});
 		let shared =
 			inFlight && (!refresh || inFlight.refresh) ? inFlight : undefined;

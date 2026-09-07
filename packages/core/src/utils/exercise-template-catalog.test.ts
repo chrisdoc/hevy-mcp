@@ -28,8 +28,7 @@ function createCatalog(
 			Cache.make({
 				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 				timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-				lookup: (_key: string) =>
-					Effect.map(listAll.effect(), (result) => result.items),
+				lookup: (_key: string) => listAll.effect(),
 			}),
 		);
 	return createExerciseTemplateCatalog({ templates: { listAll } }, serverCache);
@@ -146,6 +145,43 @@ describe("exercise template catalog", () => {
 		await expect(first).rejects.toMatchObject({ name: "AbortError" });
 		await expect(second).resolves.toMatchObject([{ id: "shared" }]);
 		expect(listAll).toHaveBeenCalledTimes(1);
+	});
+
+	it("preserves the fetched pageCount through the cache", async () => {
+		const finished: Array<{
+			pageCountBucket?: string;
+			itemCountBucket?: string;
+		}> = [];
+		const listAll = vi
+			.fn<ListAll["effect"]>()
+			.mockReturnValue(
+				Effect.succeed({ items: [{ id: "only" }], pageCount: 2 }),
+			);
+		const serverCache = Effect.runSync(
+			Cache.make({
+				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
+				timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
+				lookup: (_key: string) => listAll(),
+			}),
+		);
+		const catalog = createExerciseTemplateCatalog(
+			{ templates: { listAll: operation(listAll) } },
+			serverCache,
+			{
+				start: () => ({
+					finish: (metadata) => {
+						finished.push({ ...metadata });
+					},
+				}),
+			},
+		);
+
+		await expect(catalog.get()).resolves.toMatchObject([{ id: "only" }]);
+		expect(listAll).toHaveBeenCalledOnce();
+		// One item fetched across two pages (empty terminal page) must not be
+		// recomputed from the item count.
+		expect(finished[0]?.pageCountBucket).toBe("2-10");
+		expect(finished[0]?.itemCountBucket).toBe("1");
 	});
 
 	it("uses templates.listAll rather than a Promise client for lookup", async () => {

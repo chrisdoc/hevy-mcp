@@ -58,8 +58,7 @@ function createTestRuntime(
 		Cache.make({
 			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 			timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-			lookup: (_key: string) =>
-				Effect.map(listAll.effect(), (result) => result.items),
+			lookup: (_key: string) => listAll.effect(),
 		}),
 	);
 	return createToolRuntime({
@@ -297,13 +296,12 @@ describe("registerHevyResources", () => {
 		const cache: ExerciseTemplateCatalogCache = Effect.runSync(
 			Cache.make<
 				string,
-				ExerciseTemplate[],
+				TemplatesListAllResult,
 				Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
 			>({
 				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 				timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-				lookup: (_key: string) =>
-					Effect.map(templateListAll(), (result) => result.items),
+				lookup: (_key: string) => templateListAll(),
 			}),
 		);
 		const catalog = createExerciseTemplateCatalog(operations, cache);
@@ -475,8 +473,7 @@ describe("registerHevyResources", () => {
 			Cache.make({
 				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 				timeToLive: EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
-				lookup: (_key: string) =>
-					Effect.map(listAll(), (result) => result.items),
+				lookup: (_key: string) => listAll(),
 			}),
 		);
 		const catalog = createExerciseTemplateCatalog(operations, cache);
