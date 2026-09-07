@@ -1,5 +1,6 @@
 import { Cache, Clock, Deferred, Effect, Fiber, Option } from "effect";
 import type { HevyRequestOptions } from "@hevy-mcp/hevy-client";
+import { failOnAbortSignal } from "@hevy-mcp/hevy-client/internal";
 import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
 import type {
 	TemplatesListAllOperation,
@@ -44,8 +45,8 @@ export interface ExerciseTemplateCatalog {
 		options?: ExerciseTemplateCatalogOptions,
 	): Effect.Effect<ExerciseTemplate[], TemplateListAllError>;
 	get(options?: ExerciseTemplateCatalogOptions): Promise<ExerciseTemplate[]>;
-	reset(): void;
-	close?(): void;
+	reset(): Effect.Effect<void>;
+	close(): Effect.Effect<void>;
 }
 
 type CatalogOperations = {
@@ -133,19 +134,11 @@ export function createExerciseTemplateCatalog(
 		},
 	);
 
+	// The shared abort bridge owns listener lifecycle; the channel
+	// instantiation documents that aborts escape through the catalog's
+	// Promise edge rather than its typed Effect channel.
 	const awaitAbort = (signal: AbortSignal) =>
-		Effect.callback<never, TemplateListAllError>((resume) => {
-			const abort = () =>
-				resume(
-					Effect.fail(
-						signal.reason ??
-							new DOMException("Operation canceled", "AbortError"),
-					) as Effect.Effect<never, TemplateListAllError>,
-				);
-			if (signal.aborted) abort();
-			else signal.addEventListener("abort", abort, { once: true });
-			return Effect.sync(() => signal.removeEventListener("abort", abort));
-		});
+		failOnAbortSignal<TemplateListAllError>(signal);
 
 	const effect = Effect.fn("core.exerciseTemplateCatalog.get")(function* (
 		options: ExerciseTemplateCatalogOptions = {},
@@ -205,12 +198,13 @@ export function createExerciseTemplateCatalog(
 							: Effect.never,
 					),
 				),
-				Effect.sync(() => {
+				Effect.suspend(() => {
 					shared.waiters -= 1;
 					if (shared.waiters === 0 && inFlight === shared) {
 						inFlight = undefined;
-						void Effect.runPromise(Fiber.interrupt(shared.fiber));
+						return Effect.asVoid(Fiber.interrupt(shared.fiber));
 					}
+					return Effect.void;
 				}),
 			);
 		});
@@ -247,19 +241,27 @@ export function createExerciseTemplateCatalog(
 	return {
 		effect,
 		get: (options) => Effect.runPromise(effect(options)),
-		reset() {
-			hasLoadedValue = false;
-			generation += 1;
-			if (inFlight) void Effect.runPromise(Fiber.interrupt(inFlight.fiber));
-			inFlight = undefined;
-			Effect.runSync(
-				Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY),
-			);
-		},
-		close() {
-			if (inFlight) void Effect.runPromise(Fiber.interrupt(inFlight.fiber));
-			inFlight = undefined;
-		},
+		reset: () =>
+			Effect.suspend(() => {
+				hasLoadedValue = false;
+				generation += 1;
+				const fiber = inFlight?.fiber;
+				inFlight = undefined;
+				return (
+					fiber ? Effect.asVoid(Fiber.interrupt(fiber)) : Effect.void
+				).pipe(
+					Effect.andThen(
+						Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY),
+					),
+					Effect.asVoid,
+				);
+			}),
+		close: () =>
+			Effect.suspend(() => {
+				const fiber = inFlight?.fiber;
+				inFlight = undefined;
+				return fiber ? Effect.asVoid(Fiber.interrupt(fiber)) : Effect.void;
+			}),
 	};
 }
 

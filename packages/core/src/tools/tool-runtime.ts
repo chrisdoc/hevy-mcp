@@ -269,46 +269,53 @@ export function createToolRuntime({
 					effect: (options = {}) => catalog.effect({ ...options, execution }),
 					get: (options = {}) => catalog.get({ ...options, execution }),
 					reset: () => catalog.reset(),
+					close: () => catalog.close(),
 				}
 		: Option.isSome(providedCatalog)
 			? providedCatalog.value
 			: catalog;
-	const coreLayer =
-		effectiveClient && resolvedOperations
-			? (createCoreServiceLayer({
-					client: effectiveClient,
-					catalog: effectiveCatalog,
-					execution: execution ?? {},
-					operations: resolvedOperations,
-				}) as ToolRuntimeServiceLayer)
-			: resolvedOperations
-				? (Layer.mergeAll(
-						Layer.succeed(HevyOperationsService, resolvedOperations),
-						Layer.succeed(ExerciseTemplateCatalogService, effectiveCatalog),
-					) as ToolRuntimeServiceLayer)
-				: (Layer.succeed(
-						ExerciseTemplateCatalogService,
-						effectiveCatalog,
-					) as ToolRuntimeServiceLayer);
-	const layer = effectiveObserver
-		? coreLayer
+	// The layer is built lazily: production request flow provides the
+	// services Context directly, so only Scope-based consumers (server
+	// construction, layer tests) pay for construction, and nested
+	// forExecution scopes never rebuild it unless read.
+	let cachedLayer: ToolRuntimeServiceLayer | undefined;
+	const getLayer = (): ToolRuntimeServiceLayer =>
+		(cachedLayer ??= buildLayer());
+	const buildLayer = (): ToolRuntimeServiceLayer => {
+		const coreLayer =
+			effectiveClient && resolvedOperations
+				? (createCoreServiceLayer({
+						client: effectiveClient,
+						catalog: effectiveCatalog,
+						execution: execution ?? {},
+						operations: resolvedOperations,
+					}) as ToolRuntimeServiceLayer)
+				: resolvedOperations
+					? (Layer.mergeAll(
+							Layer.succeed(HevyOperationsService, resolvedOperations),
+							Layer.succeed(ExerciseTemplateCatalogService, effectiveCatalog),
+						) as ToolRuntimeServiceLayer)
+					: (Layer.succeed(
+							ExerciseTemplateCatalogService,
+							effectiveCatalog,
+						) as ToolRuntimeServiceLayer);
+		const layer = effectiveObserver
 			? (Layer.merge(
 					coreLayer,
 					createToolObserverLayer(effectiveObserver),
 				) as ToolRuntimeServiceLayer)
-			: (createToolObserverLayer(effectiveObserver) as ToolRuntimeServiceLayer)
-		: coreLayer;
+			: coreLayer;
+		return layer;
+	};
 	const services =
 		providedServices ??
-		(layer
-			? createCoreServiceContext({
-					client: effectiveClient ?? undefined,
-					catalog: effectiveCatalog,
-					execution,
-					operations: resolvedOperations ?? undefined,
-					observer: effectiveObserver,
-				})
-			: undefined);
+		createCoreServiceContext({
+			client: effectiveClient ?? undefined,
+			catalog: effectiveCatalog,
+			execution,
+			operations: resolvedOperations ?? undefined,
+			observer: effectiveObserver,
+		});
 	const effectHandlerFactory: ToolHandlerFactory =
 		createHandler ??
 		(<TParams extends object>(
@@ -442,7 +449,9 @@ export function createToolRuntime({
 	const runtime: ToolRuntime = {
 		client: effectiveClient,
 		catalog: effectiveCatalog,
-		layer,
+		get layer() {
+			return getLayer();
+		},
 		services,
 		logger,
 		execution,
@@ -499,6 +508,7 @@ export function createToolRuntime({
 							execution: nestedExecution,
 						}),
 					reset: () => nestedBaseCatalog.reset(),
+					close: () => nestedBaseCatalog.close(),
 				};
 				return createToolRuntime({
 					client: nestedBaseClient,

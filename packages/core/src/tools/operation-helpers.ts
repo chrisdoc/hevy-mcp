@@ -1,23 +1,13 @@
 import { Cause, Context, Effect } from "effect";
 import {
-	ApiError,
-	ClientNotInitializedError,
-	EmptyMeasurementUpdateError,
-	NetworkError,
-	NotFoundError,
 	OperationUnavailableError,
-	PaginationMismatchError,
-	RateLimitError,
-	TemplatesSearchValidationError,
-	ToolInputValidationError,
-	TrainingSummaryDataError,
-	TrainingSummaryValidationError,
-	ValidationError,
-	WorkoutPayloadError,
-	WorkoutPrivacyError,
 	type CoreToolError,
 } from "../effect-errors.js";
-import type { RuntimeValue } from "../utils/type-predicates.js";
+import {
+	isObject,
+	isString,
+	type RuntimeValue,
+} from "../utils/type-predicates.js";
 
 type EffectOperation<TArgs extends readonly unknown[], TResult> = {
 	readonly effect: (...args: TArgs) => Effect.Effect<TResult, unknown, never>;
@@ -40,23 +30,38 @@ export function requireOperation<T>(
 		: Effect.succeed(operation);
 }
 
+type CoreToolTag = CoreToolError["_tag"];
+
+/**
+ * The failure tags that survive the core boundary. `satisfies` keeps the
+ * table complete at compile time: adding a member to `CoreToolError` without
+ * listing its tag here is a type error, so the guard cannot drift from the
+ * vocabulary the way the previous `instanceof` chain could.
+ */
+const CORE_TOOL_ERROR_TAGS = {
+	ToolInputValidationError: true,
+	ClientNotInitializedError: true,
+	OperationUnavailableError: true,
+	ApiError: true,
+	NetworkError: true,
+	NotFoundError: true,
+	RateLimitError: true,
+	ValidationError: true,
+	EmptyMeasurementUpdateError: true,
+	PaginationMismatchError: true,
+	TemplatesSearchValidationError: true,
+	TrainingSummaryDataError: true,
+	TrainingSummaryValidationError: true,
+	WorkoutPayloadError: true,
+	WorkoutPrivacyError: true,
+} as const satisfies Record<CoreToolTag, true>;
+
 function isCoreToolError(error: RuntimeValue): error is CoreToolError {
 	return (
-		error instanceof ToolInputValidationError ||
-		error instanceof ClientNotInitializedError ||
-		error instanceof OperationUnavailableError ||
-		error instanceof ApiError ||
-		error instanceof NetworkError ||
-		error instanceof NotFoundError ||
-		error instanceof RateLimitError ||
-		error instanceof ValidationError ||
-		error instanceof EmptyMeasurementUpdateError ||
-		error instanceof PaginationMismatchError ||
-		error instanceof TemplatesSearchValidationError ||
-		error instanceof TrainingSummaryDataError ||
-		error instanceof TrainingSummaryValidationError ||
-		error instanceof WorkoutPayloadError ||
-		error instanceof WorkoutPrivacyError
+		isObject(error) &&
+		"_tag" in error &&
+		isString(error._tag) &&
+		error._tag in CORE_TOOL_ERROR_TAGS
 	);
 }
 

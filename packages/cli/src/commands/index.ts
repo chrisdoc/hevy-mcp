@@ -734,13 +734,7 @@ async function executeSummary({
 		{ weeks },
 		execution,
 	);
-	const totalVolumeKg =
-		z
-			.number()
-			.safeParse(
-				(result.workouts as { readonly total_volume_kg?: unknown })
-					.total_volume_kg,
-			).data ?? 0;
+	const totalVolumeKg = result.workouts.total_volume_kg ?? 0;
 	return {
 		weeks,
 		start_date: from.toISOString(),

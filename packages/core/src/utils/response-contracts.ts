@@ -178,6 +178,15 @@ export type PaginatedToolResult<T> = {
 	expected404Outcome?: "not_found" | "end_of_list";
 };
 type PaginatedInput<T> = PaginatedToolResult<T> | readonly T[] | undefined;
+/** Shared pagination footer so every paginated contract computes it once. */
+function toPaginationFields(page: number, pageCount: number | undefined) {
+	return {
+		page,
+		page_count: pageCount,
+		has_next_page: pageCount === undefined ? undefined : page < pageCount,
+	};
+}
+
 function normalizePaginatedInput<T>(
 	data: PaginatedInput<T>,
 ): PaginatedToolResult<T> {
@@ -351,10 +360,7 @@ export const workoutsResponse = defineStructuredResponseContract({
 		const data = normalizePaginatedInput(input);
 		return {
 			workouts: data.items.map(summarizeWorkout),
-			page: data.page,
-			page_count: data.pageCount,
-			has_next_page:
-				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+			...toPaginationFields(data.page, data.pageCount),
 		};
 	},
 	legacyJson: ({ workouts }) => workouts,
@@ -403,10 +409,7 @@ export const workoutEventsResponse = defineStructuredResponseContract({
 		expected404Outcome?: "end_of_list";
 	}) => ({
 		events: data.events?.map(projectWorkoutEvent) ?? [],
-		page: data.page,
-		page_count: data.pageCount,
-		has_next_page:
-			data.pageCount === undefined ? undefined : data.page < data.pageCount,
+		...toPaginationFields(data.page, data.pageCount),
 	}),
 	legacyJson: ({ events }) => events,
 	text: ({ since }, { events }) =>
@@ -425,10 +428,7 @@ export const routinesResponse = defineStructuredResponseContract({
 		const data = normalizePaginatedInput(input);
 		return {
 			routines: data.items.map(summarizeRoutine),
-			page: data.page,
-			page_count: data.pageCount,
-			has_next_page:
-				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+			...toPaginationFields(data.page, data.pageCount),
 		};
 	},
 	legacyJson: ({ routines }) => routines,
@@ -466,10 +466,7 @@ export const exerciseTemplatesResponse = defineStructuredResponseContract({
 		const data = normalizePaginatedInput(input);
 		return {
 			exercise_templates: data.items,
-			page: data.page,
-			page_count: data.pageCount,
-			has_next_page:
-				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+			...toPaginationFields(data.page, data.pageCount),
 		};
 	},
 	legacyJson: ({ exercise_templates }) => exercise_templates,
@@ -549,10 +546,7 @@ export const routineFoldersResponse = defineStructuredResponseContract({
 		const data = normalizePaginatedInput(input);
 		return {
 			routine_folders: data.items.map(projectRoutineFolder),
-			page: data.page,
-			page_count: data.pageCount,
-			has_next_page:
-				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+			...toPaginationFields(data.page, data.pageCount),
 		};
 	},
 	legacyJson: ({ routine_folders }) => routine_folders,
@@ -594,10 +588,7 @@ export const bodyMeasurementsResponse = defineStructuredResponseContract({
 		const data = normalizePaginatedInput(input);
 		return {
 			body_measurements: data.items.map(normalizeBodyMeasurement),
-			page: data.page,
-			page_count: data.pageCount,
-			has_next_page:
-				data.pageCount === undefined ? undefined : data.page < data.pageCount,
+			...toPaginationFields(data.page, data.pageCount),
 		};
 	},
 	legacyJson: ({ body_measurements }) => body_measurements,

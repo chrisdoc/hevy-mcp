@@ -301,7 +301,8 @@ export async function listRegisteredTools(): Promise<Tool[]> {
 			catalog: {
 				effect: () => Effect.succeed([]),
 				get: () => Promise.resolve([]),
-				reset: () => {},
+				reset: () => Effect.void,
+				close: () => Effect.void,
 			} satisfies ExerciseTemplateCatalog,
 		}),
 	);

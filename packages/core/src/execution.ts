@@ -70,6 +70,13 @@ export function createExecutionProjection(
 	return projection;
 }
 
+/**
+ * Compose request and lifecycle abort signals for the fetch edge.
+ *
+ * Only the native fetch call needs the composed signal: in-flight Effect
+ * waits (retry delays, cache lookups) are already interrupted by the fiber,
+ * so this helper must not be repurposed as general cancellation plumbing.
+ */
 export function mergeAbortSignals(
 	...signals: Array<AbortSignal | undefined>
 ): AbortSignal | undefined {

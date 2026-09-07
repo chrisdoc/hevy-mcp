@@ -52,7 +52,7 @@ describe("exercise template catalog", () => {
 
 		await expect(catalog.get()).resolves.toMatchObject([{ id: "first" }]);
 		await expect(catalog.get()).resolves.toMatchObject([{ id: "first" }]);
-		catalog.reset();
+		await Effect.runPromise(catalog.reset());
 		await expect(catalog.get()).resolves.toMatchObject([{ id: "second" }]);
 		expect(listAll).toHaveBeenCalledTimes(2);
 	});

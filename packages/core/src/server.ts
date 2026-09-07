@@ -139,8 +139,7 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 		const services = yield* Layer.build(serviceLayer);
 		yield* Effect.addFinalizer(() => {
 			shutdown.abort(new DOMException("Server closed", "AbortError"));
-			catalog.close?.();
-			return Cache.invalidateAll(cache);
+			return catalog.close().pipe(Effect.andThen(Cache.invalidateAll(cache)));
 		});
 		const runtime = createToolRuntime({
 			client,
