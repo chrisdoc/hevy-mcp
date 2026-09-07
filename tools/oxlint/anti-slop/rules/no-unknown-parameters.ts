@@ -72,6 +72,35 @@ function isNameReference(node: ESTree.Node, name: string): boolean {
 	return node.type === "Identifier" && node.name === name;
 }
 
+function isAssertionName(name: string | null): boolean {
+	return name !== null && /^(assert|ensure)[A-Z0-9_]/u.test(name);
+}
+
+/**
+ * A guard call whose result is discarded narrows nothing: `isError(error);
+ * return error` still leaves `error` unknown. Assertion-style calls
+ * (`assertX`, `ensureX`) narrow past the statement by convention; anything
+ * else must feed a condition, an assignment, or a return to count.
+ */
+function isDiscardedCall(node: ESTree.Node): boolean {
+	let parent: ESTree.Node | null | undefined = node.parent;
+	while (parent) {
+		if (parent.type === "ExpressionStatement") return true;
+		if (
+			parent.type === "AwaitExpression" ||
+			parent.type === "YieldExpression" ||
+			parent.type === "UnaryExpression" ||
+			parent.type === "ParenthesizedExpression" ||
+			parent.type === "ChainExpression"
+		) {
+			parent = parent.parent;
+			continue;
+		}
+		return false;
+	}
+	return false;
+}
+
 function isSyntaxNode(value: unknown): value is ESTree.Node {
 	return value instanceof Object && "type" in value;
 }
@@ -119,7 +148,8 @@ function bodyNarrowsParameter(
 			node.arguments.some(
 				(argument) =>
 					argument.type !== "SpreadElement" && isNameReference(argument, name),
-			)
+			) &&
+			(!isDiscardedCall(node) || isAssertionName(calleeName(node.callee)))
 		) {
 			return true;
 		}
@@ -160,7 +190,9 @@ function isNarrowedInBody(node: ParameterOwner, parameter: Parameter): boolean {
  * Rationale: `unknown` parameters push validation onto every caller. Name the
  * failure cause `cause`, or narrow an `error` parameter in the body with
  * `instanceof` / `in` / guard calls — the exemption recognizes genuine
- * narrowing so classifiers are not forced into dishonest names.
+ * narrowing (a discarded guard call does not narrow, except `assert*` /
+ * `ensure*` by convention) so classifiers are not forced into dishonest
+ * names.
  */
 export const noUnknownParametersRule = defineRule({
 	meta: {
