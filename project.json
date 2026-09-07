@@ -188,7 +188,8 @@
 				"check:publint",
 				"test:integration",
 				"test:nightly",
-				"test:worker-http:live"
+				"test:worker-http:live",
+				"test:performance"
 			],
 			"inputs": ["validationInputs"]
 		},

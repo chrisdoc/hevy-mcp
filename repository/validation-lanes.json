@@ -519,7 +519,8 @@
 				"package-publint",
 				"release-integration",
 				"nightly",
-				"worker-http-live"
+				"worker-http-live",
+				"performance"
 			],
 			"workflowRuntimes": {
 				"build": ["node-24"],
