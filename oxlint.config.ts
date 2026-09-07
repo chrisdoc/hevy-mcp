@@ -79,6 +79,29 @@ export default defineConfig({
 		"anti-slop/no-unknown-type-aliases": "error",
 		"anti-slop/no-unsafe-dictionary-type": "error",
 		"anti-slop/no-widen-then-assert": "error",
-		"vitest/no-focused-tests": "error",
 	},
+	overrides: [
+		{
+			files: [
+				"**/*.{test,spec,test-d,spec-d}.{ts,tsx,js,jsx}",
+				"**/__tests__/**/*.{ts,tsx,js,jsx}",
+			],
+			plugins: ["vitest"],
+			rules: {
+				// Minimal vitest set: `categories.correctness` would otherwise
+				// enable every vitest correctness rule (835 existing
+				// violations). Adopting the full vitest preset is a separate
+				// migration; here only focused tests are enforced.
+				"vitest/expect-expect": "off",
+				"vitest/no-conditional-expect": "off",
+				"vitest/no-focused-tests": "error",
+				"vitest/no-standalone-expect": "off",
+				"vitest/require-mock-type-parameters": "off",
+				"vitest/require-to-throw-message": "off",
+				"vitest/valid-describe-callback": "off",
+				"vitest/valid-expect": "off",
+				"vitest/valid-title": "off",
+			},
+		},
+	],
 });
