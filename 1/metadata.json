@@ -1,0 +1,192 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "01M1XHMVBXVE3BGMHKK5QWE6WS",
+  "session_id": "01a0781e-de76-7115-96bd-d502d357cfa6",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-07T09:02:06.588027Z",
+  "branch": "chore/rules-review-gates-docs",
+  "checkpoints_count": 9,
+  "save_step_count": 15,
+  "files_touched": [],
+  "agent": "Pi",
+  "model": "muse-spark-1.3-contributor-free",
+  "turn_id": "f790b5440f54",
+  "checkpoint_transcript_start": 1528,
+  "transcript_lines_at_start": 1528,
+  "compact_transcript_start": 730,
+  "token_usage": {
+    "input_tokens": 1643029,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 18663321,
+    "output_tokens": 13258,
+    "api_call_count": 50
+  },
+  "session_metrics": {
+    "turn_count": 28
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 162,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 350,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 407,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 488,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 498,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 90,
+      "user_lines_removed": 5,
+      "agent_lines_added": 540,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85,
+        "PLAN.md": 5
+      },
+      "user_removed_per_file": {
+        "PLAN.md": 5
+      }
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 90,
+      "user_lines_removed": 5,
+      "agent_lines_added": 717,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85,
+        "PLAN.md": 5
+      },
+      "user_removed_per_file": {
+        "PLAN.md": 5
+      }
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 90,
+      "user_lines_removed": 5,
+      "agent_lines_added": 775,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85,
+        "PLAN.md": 5
+      },
+      "user_removed_per_file": {
+        "PLAN.md": 5
+      }
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 95,
+      "user_lines_removed": 10,
+      "agent_lines_added": 784,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85,
+        "PLAN.md": 5,
+        "plans/rules-review.md": 5
+      },
+      "user_removed_per_file": {
+        "PLAN.md": 5,
+        "plans/rules-review.md": 5
+      }
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 13,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 14,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 15,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 16,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 784,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    }
+  ]
+}
