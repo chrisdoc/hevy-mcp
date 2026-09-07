@@ -88,7 +88,7 @@ describe("folders.create operation", () => {
 		await expect(Effect.runPromise(operation.effect(body))).resolves.toEqual(
 			created,
 		);
-		expect(createRoutineFolder).toHaveBeenCalledWith(body);
+		expect(createRoutineFolder).toHaveBeenCalledWith(body, undefined);
 	});
 });
 

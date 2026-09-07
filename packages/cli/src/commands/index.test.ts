@@ -259,7 +259,10 @@ describe("execute command/operation mappings", () => {
 			page_count: 3,
 			routines: [{ id: "r1", title: "Push", exercises: [] }],
 		});
-		expect(listEffect).toHaveBeenCalledWith({ page: 2, pageSize: 5 });
+		expect(listEffect).toHaveBeenCalledWith(
+			{ page: 2, pageSize: 5 },
+			undefined,
+		);
 		expect(injected.routines.list.execute).not.toHaveBeenCalled();
 		expect(api.getRoutines).not.toHaveBeenCalled();
 
@@ -292,10 +295,10 @@ describe("execute command/operation mappings", () => {
 			undefined,
 			injected,
 		);
-		expect(injected.workouts.list.effect).toHaveBeenCalledWith({
-			page: 1,
-			pageSize: 10,
-		});
+		expect(injected.workouts.list.effect).toHaveBeenCalledWith(
+			{ page: 1, pageSize: 10 },
+			undefined,
+		);
 		expect(injected.workouts.list.execute).not.toHaveBeenCalled();
 		expect(api.getWorkouts).not.toHaveBeenCalled();
 	});
@@ -575,7 +578,10 @@ describe("execute command/operation mappings", () => {
 
 		for (const command of commands) {
 			await execute(command.args, api, undefined, undefined, injected);
-			expect(command.operation?.effect).toHaveBeenCalledWith(command.input);
+			expect(command.operation?.effect).toHaveBeenCalledWith(
+				command.input,
+				undefined,
+			);
 			expect(command.operation?.execute).not.toHaveBeenCalled();
 			expect(api[command.clientMethod]).not.toHaveBeenCalled();
 		}
@@ -665,14 +671,14 @@ describe("execute command/operation mappings", () => {
 				fat_percent: 20,
 			},
 		});
-		expect(injected.bodyMeasurements?.get.effect).toHaveBeenCalledWith({
-			date: "2024-01-01",
-		});
-		expect(injected.bodyMeasurements?.update.effect).toHaveBeenCalledWith({
-			date: "2024-01-01",
-			weight_kg: 81,
-			fat_percent: 20,
-		});
+		expect(injected.bodyMeasurements?.get.effect).toHaveBeenCalledWith(
+			{ date: "2024-01-01" },
+			undefined,
+		);
+		expect(injected.bodyMeasurements?.update.effect).toHaveBeenCalledWith(
+			{ date: "2024-01-01", weight_kg: 81, fat_percent: 20 },
+			undefined,
+		);
 	});
 
 	it("rejects malformed existing measurements before updating", async () => {

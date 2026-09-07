@@ -9,7 +9,7 @@ import type {
 	PutV1WorkoutsWorkoutidStatus200,
 } from "@hevy-mcp/hevy-client/types";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	createWorkoutsCountOperation,
 	createWorkoutsCreateOperation,
@@ -234,14 +234,14 @@ describe("workouts.get operation", () => {
 		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-008] omits the options argument when workouts.get options are absent", async () => {
+	it("[VAL-OPS-008] forwards options through to the adapter when workouts.get options are absent", async () => {
 		const adapter = createInMemoryGetAdapter({ id: "w1" });
 		const operation = createWorkoutsGetOperation(adapter);
 
 		await expect(operation.execute({ workoutId: "w1" })).resolves.toEqual({
 			workout: { id: "w1" },
 		});
-		expect(adapter.argumentCounts).toEqual([1]);
+		expect(adapter.argumentCounts).toEqual([2]);
 	});
 });
 
@@ -414,7 +414,7 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-008] omits the options argument when workouts.list options are absent", async () => {
+	it("[VAL-OPS-008] forwards options through to the adapter when workouts.list options are absent", async () => {
 		const adapter = createInMemoryAdapter([{ page: 1, workouts: [] }]);
 		const operation = createWorkoutsListOperation(adapter);
 
@@ -423,7 +423,7 @@ describe("workouts.list operation", () => {
 			page: 1,
 			pageCount: undefined,
 		});
-		expect(adapter.argumentCounts).toEqual([1]);
+		expect(adapter.argumentCounts).toEqual([2]);
 	});
 
 	it("[VAL-OPS-003] rejects when response page differs from requested page", async () => {
@@ -783,6 +783,32 @@ describe("workouts write operations", () => {
 		expect(adapter.createRequests).toEqual([
 			{ data: { workout }, options: undefined },
 		]);
+	});
+
+	it("[VAL-OPS-005] lets unexpected builder defects escape instead of mislabeling them", async () => {
+		const malformed = {
+			...currentWorkoutForMutation,
+			exercises: {} as NonNullable<WorkoutMutationCurrent["exercises"]>,
+		};
+		const updateWorkout = vi.fn(() => Effect.succeed({ id: "w1" }));
+		const operation = createWorkoutsUpdateOperation({
+			getWorkout: () => Effect.succeed(malformed),
+			updateWorkout,
+		});
+
+		const failure = await Effect.runPromise(
+			operation.effect({
+				workoutId: "w1",
+				patch: { title: "Renamed", is_private: false },
+			}),
+		).then(
+			() => {
+				throw new Error("expected the malformed workout to defect");
+			},
+			(error) => error,
+		);
+		expect(failure).toBeInstanceOf(TypeError);
+		expect(updateWorkout).not.toHaveBeenCalled();
 	});
 
 	it("[VAL-OPS-012] updates with GET-then-PUT payload semantics", async () => {

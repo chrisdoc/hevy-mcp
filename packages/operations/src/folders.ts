@@ -1,4 +1,5 @@
-import { Effect, Option, Predicate, Stream } from "effect";
+import { Effect, Option, Stream } from "effect";
+import { defineOperation } from "./define-operation.js";
 import type {
 	HevyExecutionOptions,
 	HevyOperationSafety,
@@ -14,8 +15,11 @@ import type {
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import {
-	isExpectedReadEndOfList,
-	isExpectedReadNotFound,
+	assertPageEcho,
+	hasNextPage,
+	isEmptyResponse,
+	withExpectedEndOfList,
+	withExpectedNotFound,
 	PaginationMismatchError,
 } from "./operation-errors.js";
 
@@ -124,148 +128,77 @@ type FoldersListPage = {
 	readonly folders: RoutineFolder[];
 };
 
-function hasNextFoldersPage(
-	pageCount: number | undefined,
-	page: number,
-	folders: readonly RoutineFolder[],
-): boolean {
-	return (
-		folders.length > 0 &&
-		Predicate.isNumber(pageCount) &&
-		Number.isSafeInteger(pageCount) &&
-		pageCount > page
-	);
-}
-
 export function createFoldersGetOperation(
 	adapter: FoldersGetAdapter,
 ): FoldersGetOperation {
-	const effect = Effect.fn("operations.folders.get")(function* (
-		input: FoldersGetInput,
-		options?: HevyExecutionOptions,
-	) {
-		const request =
-			options === undefined
-				? adapter.getRoutineFolder(input.folderId)
-				: adapter.getRoutineFolder(input.folderId, options);
-		return yield* request.pipe(
-			Effect.map((routineFolder) => ({
-				routineFolder: isEmptyResponse(routineFolder)
-					? null
-					: (routineFolder ?? null),
-				folderId: input.folderId,
-			})),
-			Effect.catchIf(
-				(error) => isExpectedReadNotFound(error, "/v1/routine_folders"),
-				() =>
-					Effect.succeed({
-						routineFolder: null,
-						folderId: input.folderId,
-						expected404Outcome: "not_found" as const,
-					}),
-			),
-		);
-	});
-
-	const operation: FoldersGetOperation = {
-		descriptor: foldersGetDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		foldersGetDescriptor,
+		function* (input: FoldersGetInput, options?: HevyExecutionOptions) {
+			const request = adapter.getRoutineFolder(input.folderId, options);
+			return yield* request.pipe(
+				Effect.map((routineFolder) => ({
+					routineFolder: isEmptyResponse(routineFolder)
+						? null
+						: (routineFolder ?? null),
+					folderId: input.folderId,
+				})),
+				withExpectedNotFound("/v1/routine_folders", {
+					routineFolder: null,
+					folderId: input.folderId,
+					expected404Outcome: "not_found" as const,
+				}),
+			);
 		},
-	};
-	return operation;
+	);
 }
 
 export function createFoldersCreateOperation(
 	adapter: FoldersCreateAdapter,
 ): FoldersCreateOperation {
-	const effect = Effect.fn("operations.folders.create")(function* (
-		input: FoldersCreateInput,
-		options?: HevyExecutionOptions,
-	) {
-		const request =
-			options === undefined
-				? adapter.createRoutineFolder(input)
-				: adapter.createRoutineFolder(input, options);
-		const response = yield* request;
-		return isEmptyResponse(response) ? undefined : response;
-	});
-
-	const operation: FoldersCreateOperation = {
-		descriptor: foldersCreateDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		foldersCreateDescriptor,
+		function* (input: FoldersCreateInput, options?: HevyExecutionOptions) {
+			const request = adapter.createRoutineFolder(input, options);
+			const response = yield* request;
+			return isEmptyResponse(response) ? undefined : response;
 		},
-	};
-	return operation;
-}
-
-function isEmptyResponse<T extends object>(
-	response: T | null | undefined,
-): response is T & Record<never, never> {
-	return (
-		response !== null &&
-		response !== undefined &&
-		Object.keys(response).length === 0
 	);
 }
 
 export function createFoldersListAllOperation(
 	adapter: FoldersListAllAdapter,
 ): FoldersListAllOperation {
-	const effect = Effect.fn("operations.folders.listAll")(function* (
-		options?: HevyExecutionOptions,
-	) {
-		const pageStream = Stream.paginate<
-			FoldersListCursor,
-			FoldersListPage,
-			HevyRequestEffectError | PaginationMismatchError
-		>({ page: 1 }, (cursor) => {
-			const params = { page: cursor.page, pageSize: FOLDERS_PAGE_SIZE };
-			const request =
-				options === undefined
-					? adapter.getRoutineFolders(params)
-					: adapter.getRoutineFolders(params, options);
-			return request.pipe(
-				Effect.flatMap((response: GetV1RoutineFolders200) => {
-					if (response?.page !== undefined && response.page !== cursor.page) {
-						return Effect.fail(
-							new PaginationMismatchError({
-								requested: cursor.page,
-								received: response.page,
-								collection: "routineFolders",
-								message: `Routine folders page mismatch: requested page ${cursor.page} but received page ${response.page}`,
-							}),
-						);
-					}
-
-					const folders = response?.routine_folders ?? [];
-					return Effect.succeed([
-						[{ folders }],
-						hasNextFoldersPage(response?.page_count, cursor.page, folders)
-							? Option.some({ page: cursor.page + 1 })
-							: Option.none(),
-					] as const);
-				}),
-				Effect.catchIf(
-					(error) =>
-						isExpectedReadEndOfList(error, "/v1/routine_folders", cursor.page),
-					() => Effect.succeed([[], Option.none<FoldersListCursor>()] as const),
-				),
-			);
-		});
-		const pages = yield* Stream.runCollect(pageStream);
-		return pages.flatMap((page) => page.folders);
-	});
-
-	const operation: FoldersListAllOperation = {
-		descriptor: foldersListAllDescriptor,
-		effect,
-		execute(options) {
-			return Effect.runPromise(operation.effect(options));
+	return defineOperation(
+		foldersListAllDescriptor,
+		function* (options?: HevyExecutionOptions) {
+			const pageStream = Stream.paginate<
+				FoldersListCursor,
+				FoldersListPage,
+				HevyRequestEffectError | PaginationMismatchError
+			>({ page: 1 }, (cursor) => {
+				const params = { page: cursor.page, pageSize: FOLDERS_PAGE_SIZE };
+				const request = adapter.getRoutineFolders(params, options);
+				return request.pipe(
+					Effect.tap((response) =>
+						assertPageEcho(response, cursor.page, "routineFolders"),
+					),
+					Effect.map((response: GetV1RoutineFolders200) => {
+						const folders = response?.routine_folders ?? [];
+						return [
+							[{ folders }],
+							hasNextPage(response?.page_count, cursor.page, folders.length)
+								? Option.some({ page: cursor.page + 1 })
+								: Option.none(),
+						] as const;
+					}),
+					withExpectedEndOfList("/v1/routine_folders", cursor.page, [
+						[],
+						Option.none<FoldersListCursor>(),
+					] as const),
+				);
+			});
+			const pages = yield* Stream.runCollect(pageStream);
+			return pages.flatMap((page) => page.folders);
 		},
-	};
-	return operation;
+	);
 }

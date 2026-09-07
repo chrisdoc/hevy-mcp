@@ -4,7 +4,7 @@ import {
 	isHevyHttpError,
 	NotFoundError,
 } from "@hevy-mcp/hevy-client";
-import { Schema } from "effect";
+import { Effect, Predicate, Schema } from "effect";
 
 export type ExpectedReadError = "not_found" | "end_of_list";
 export type ReadCollectionEndpoint = Extract<
@@ -179,4 +179,94 @@ export function isExpectedReadEndOfList(
 	page: number,
 ): boolean {
 	return page > 1 && classifyReadError(cause, endpoint, page) === "end_of_list";
+}
+
+/**
+ * Detect the Hevy API's empty-object responses, which signal "no entity"
+ * where a 404 would be expected. Shared so the shape check cannot drift
+ * between operation modules.
+ */
+export function isEmptyResponse<T extends object>(
+	response: T | null | undefined,
+): response is T & Record<never, never> {
+	return (
+		response !== null &&
+		response !== undefined &&
+		Object.keys(response).length === 0
+	);
+}
+
+/**
+ * Recover a documented read-side 404 as a successful absence value.
+ * Pipeable so get-style operations keep one outcome-mapping shape.
+ */
+export function withExpectedNotFound<A, E, Absent>(
+	endpoint: ReadEndpoint,
+	absent: Absent,
+): (effect: Effect.Effect<A, E>) => Effect.Effect<A | Absent, E> {
+	return (effect) =>
+		effect.pipe(
+			Effect.catchIf(
+				(cause) => isExpectedReadNotFound(cause, endpoint),
+				() => Effect.succeed(absent),
+			),
+		);
+}
+
+/**
+ * Recover a documented later-page 404 as a successful end-of-list value.
+ * Pipeable so list-style operations keep one outcome-mapping shape.
+ */
+export function withExpectedEndOfList<A, E, Absent>(
+	endpoint: ReadCollectionEndpoint,
+	page: number,
+	absent: Absent,
+): (effect: Effect.Effect<A, E>) => Effect.Effect<A | Absent, E> {
+	return (effect) =>
+		effect.pipe(
+			Effect.catchIf(
+				(cause) => isExpectedReadEndOfList(cause, endpoint, page),
+				() => Effect.succeed(absent),
+			),
+		);
+}
+
+/**
+ * Fail when the API echoes a different page than requested. Compose with
+ * `Effect.tap` ahead of response projection so list operations share one
+ * page-echo policy.
+ */
+export function assertPageEcho(
+	response: { readonly page?: number | undefined } | null | undefined,
+	requestedPage: number,
+	collection: string,
+): Effect.Effect<void, PaginationMismatchError> {
+	if (response?.page !== undefined && response.page !== requestedPage) {
+		return Effect.fail(
+			new PaginationMismatchError({
+				requested: requestedPage,
+				received: response.page,
+				collection,
+				message: `Page mismatch for ${collection}: requested page ${requestedPage} but received page ${response.page}`,
+			}),
+		);
+	}
+	return Effect.void;
+}
+
+/**
+ * Decide whether pagination continues: the page was non-empty and the API
+ * reports more pages. Shared so every collection applies the same policy.
+ */
+export function hasNextPage(
+	pageCount: number | undefined,
+	page: number,
+	itemCount: number,
+): boolean {
+	return (
+		itemCount > 0 &&
+		Predicate.isNumber(pageCount) &&
+		Number.isSafeInteger(pageCount) &&
+		pageCount > page
+	);
 }

@@ -1,4 +1,5 @@
-import { Effect } from "effect";
+import type { Effect } from "effect";
+import { defineOperation } from "./define-operation.js";
 import type {
 	HevyExecutionOptions,
 	HevyOperationSafety,
@@ -32,23 +33,11 @@ export interface UserGetOperation {
 export function createUserGetOperation(
 	adapter: UserGetAdapter,
 ): UserGetOperation {
-	const effect = Effect.fn("operations.user.get")(function* (
-		options?: HevyExecutionOptions,
-	) {
-		const request =
-			options === undefined
-				? adapter.getUserInfo()
-				: adapter.getUserInfo(options);
-		const response = yield* request;
-		return response?.data;
-	});
-
-	const operation: UserGetOperation = {
-		descriptor: userGetDescriptor,
-		effect,
-		execute(options) {
-			return Effect.runPromise(operation.effect(options));
+	return defineOperation(
+		userGetDescriptor,
+		function* (options?: HevyExecutionOptions) {
+			const response = yield* adapter.getUserInfo(options);
+			return response?.data;
 		},
-	};
-	return operation;
+	);
 }

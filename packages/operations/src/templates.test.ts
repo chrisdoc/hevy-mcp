@@ -147,7 +147,11 @@ describe("templates.history operation", () => {
 			exerciseHistory: [],
 			exerciseTemplateId: "template-1",
 		});
-		expect(getExerciseHistory).toHaveBeenCalledWith("template-1", {});
+		expect(getExerciseHistory).toHaveBeenCalledWith(
+			"template-1",
+			{},
+			undefined,
+		);
 	});
 
 	it("does not turn a history 404 into a successful absence", async () => {
@@ -175,7 +179,7 @@ describe("templates.create operation", () => {
 		await expect(Effect.runPromise(operation.effect(body))).resolves.toEqual(
 			created,
 		);
-		expect(createExerciseTemplate).toHaveBeenCalledWith(body);
+		expect(createExerciseTemplate).toHaveBeenCalledWith(body, undefined);
 	});
 });
 
