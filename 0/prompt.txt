@@ -1,0 +1,21 @@
+we merged a lot of changes into main, how can i make sure i don't break our clients and disappoint our users
+
+---
+
+you have in .env my hevy key, can you use the cli to test that things work
+
+---
+
+do a more in depth test, full exploration of the cli, you can even fuzz it
+
+---
+
+do a more in depth test, full exploration of the cli, you can even fuzz it
+
+---
+
+yes do that
+
+---
+
+create a PR for me
