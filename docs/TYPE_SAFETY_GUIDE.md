@@ -185,6 +185,28 @@ After running `pnpm run build:client`:
 2. Update type annotations in tool handlers if needed
 3. Run tests to verify behavior: `npx vitest run --exclude tests/integration/**`
 
+### Compiler-enforced vocabulary completeness
+
+When a tagged-error union must stay in sync with a runtime table (e.g. an
+error-tag allowlist), derive the table from the union so additions fail
+closed:
+
+```typescript
+type CoreToolTag = CoreToolError["_tag"];
+
+const ERROR_TAGS = {
+	ToolInputValidationError: true,
+	// ... every member
+} as const satisfies Record<CoreToolTag, true>;
+```
+
+Adding a member to the union without listing its tag is a type error, and a
+misspelled tag is an excess-key error. Prefer this over `instanceof` chains,
+which drift silently. The table enforces vocabulary completeness at compile
+time only: the runtime guard must still verify each value (for example with
+an own-property tag check), because a plain object carrying a matching
+`_tag` is not a valid union member.
+
 ### Code Review Checklist
 
 When reviewing PRs that add/modify API calls:

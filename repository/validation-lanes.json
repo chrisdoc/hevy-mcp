@@ -531,7 +531,13 @@
 			"mappingStatus": "mapped"
 		},
 		"pre-push": {
-			"lanes": ["types", "changeset-status", "pull-request"],
+			"lanes": [
+				"check",
+				"types",
+				"repository-control-plane",
+				"changeset-status",
+				"pull-request"
+			],
 			"nxTarget": "pre-push",
 			"mappingStatus": "mapped"
 		}
