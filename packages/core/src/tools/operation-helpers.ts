@@ -8,6 +8,7 @@ import {
 	OperationUnavailableError,
 	PaginationMismatchError,
 	RateLimitError,
+	TemplatesSearchValidationError,
 	ToolInputValidationError,
 	TrainingSummaryDataError,
 	TrainingSummaryValidationError,
@@ -51,6 +52,7 @@ function isCoreToolError(error: RuntimeValue): error is CoreToolError {
 		error instanceof ValidationError ||
 		error instanceof EmptyMeasurementUpdateError ||
 		error instanceof PaginationMismatchError ||
+		error instanceof TemplatesSearchValidationError ||
 		error instanceof TrainingSummaryDataError ||
 		error instanceof TrainingSummaryValidationError ||
 		error instanceof WorkoutPayloadError ||

@@ -82,6 +82,7 @@ export {
 	OperationUnavailableError,
 	PaginationMismatchError,
 	RateLimitError,
+	TemplatesSearchValidationError,
 	ToolInputValidationError,
 	TrainingSummaryDataError,
 	TrainingSummaryValidationError,

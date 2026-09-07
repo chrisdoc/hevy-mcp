@@ -269,11 +269,11 @@ describe("routine tools", () => {
 			routines: {
 				get: {
 					...layerOperations.routines.get,
-					effect: vi.fn(() => Effect.fail(new Error("wrong source"))),
+					effect: vi.fn(() => Effect.die(new Error("wrong source"))),
 				},
 				list: {
 					...layerOperations.routines.list,
-					effect: vi.fn(() => Effect.fail(new Error("wrong source"))),
+					effect: vi.fn(() => Effect.die(new Error("wrong source"))),
 				},
 			},
 		};

@@ -232,11 +232,11 @@ describe("workout tools", () => {
 			workouts: {
 				get: {
 					...layerOperations.workouts.get,
-					effect: vi.fn(() => Effect.fail(new Error("wrong source"))),
+					effect: vi.fn(() => Effect.die(new Error("wrong source"))),
 				},
 				list: {
 					...layerOperations.workouts.list,
-					effect: vi.fn(() => Effect.fail(new Error("wrong source"))),
+					effect: vi.fn(() => Effect.die(new Error("wrong source"))),
 				},
 			},
 		};

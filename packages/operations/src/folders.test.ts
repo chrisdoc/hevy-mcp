@@ -1,4 +1,4 @@
-import { HevyHttpError, NotFoundError } from "@hevy-mcp/hevy-client";
+import { NotFoundError } from "@hevy-mcp/hevy-client";
 import type {
 	GetV1RoutineFolders200,
 	PostRoutineFolderRequestBody,
@@ -189,10 +189,11 @@ describe("folders.listAll operation", () => {
 	});
 
 	it("does not recover a member-path 404 while listing", async () => {
-		const error = new HevyHttpError("not found", {
+		const error = new NotFoundError({
 			status: 404,
 			method: "GET",
 			endpoint: "/v1/routine_folders/42",
+			expected: false,
 		});
 		const operation = createFoldersListAllOperation({
 			getRoutineFolders: vi

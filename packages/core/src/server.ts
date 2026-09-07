@@ -2,8 +2,10 @@ import { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
 import { Cache, Effect, Exit, Layer, Schema, Scope } from "effect";
 import { createOperations } from "@hevy-mcp/operations";
-import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
-import type { TemplatesListAllOperation } from "@hevy-mcp/operations";
+import type {
+	TemplatesListAllOperation,
+	TemplatesListAllResult,
+} from "@hevy-mcp/operations";
 import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerHevyResources } from "./resources/hevy.js";
 import {
@@ -103,7 +105,7 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 			: shutdown.signal;
 		const cache = yield* Cache.make<
 			string,
-			ExerciseTemplate[],
+			TemplatesListAllResult,
 			Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
 		>({
 			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
