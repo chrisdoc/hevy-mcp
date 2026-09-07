@@ -14,7 +14,15 @@ function referencedAliasName(type: ESTree.TSType): string | null {
 		: null;
 }
 
-/** Ban named aliases that merely conceal TypeScript's unknown top type. */
+/**
+ * Ban aliases that only rename `unknown` (`type Foo = unknown`).
+ *
+ * Rationale: the alias suggests a contract where none exists. Write `unknown`
+ * explicitly at the boundary, or define the real owner type.
+ *
+ * Good: `function f(error: unknown)`, `type Payload = {...}`
+ * Bad: `type Anything = unknown`
+ */
 export const noUnknownTypeAliasesRule = defineRule({
 	meta: {
 		type: "problem",

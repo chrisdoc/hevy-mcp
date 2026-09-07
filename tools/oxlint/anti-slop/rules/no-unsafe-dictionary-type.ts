@@ -72,7 +72,15 @@ function shouldReportType(
 	return true;
 }
 
-/** Disallow object-dictionary contracts whose direct value type is an unsafe escape hatch. */
+/**
+ * Disallow `Record<string, unknown>`-style dictionary contracts.
+ *
+ * Rationale: dictionaries with escape-hatch values push validation onto every
+ * reader. Model known keys explicitly or decode values at the boundary.
+ *
+ * Good: `{ [id: string]: ToolResult }`, explicit interfaces
+ * Bad: `Record<string, unknown>`, `{ [k: string]: any }`
+ */
 export const noUnsafeDictionaryTypeRule = defineRule({
 	meta: {
 		type: "problem",

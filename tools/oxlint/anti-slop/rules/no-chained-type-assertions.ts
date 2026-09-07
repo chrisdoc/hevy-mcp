@@ -57,7 +57,16 @@ function isForbiddenAssertionChain(node: TypeAssertionExpression): boolean {
 	return assertionCount > 1 && hasNonConstAssertion;
 }
 
-/** Disallow nested TypeScript type assertions, while permitting chains made only of const assertions. */
+/**
+ * Disallow chained `as` assertions (`x as unknown as T`).
+ *
+ * Rationale: each link discards the previous type evidence; the final type is
+ * fabricated, not checked. A single assertion (or `satisfies`) keeps one
+ * checkable step.
+ *
+ * Good: `value as ToolInput`, `x satisfies T`
+ * Bad: `value as unknown as ToolInput`
+ */
 export const noChainedTypeAssertionsRule = defineRule({
 	meta: {
 		type: "problem",

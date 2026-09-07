@@ -1,6 +1,15 @@
 import { defineRule } from "@oxlint/plugins";
 
-/** Disallow runtime typeof checks that narrow unparsed values instead of decoding them. */
+/**
+ * Disallow runtime `typeof` narrowing in favor of decoders and predicates.
+ *
+ * Rationale: `typeof x === "string"` proves little and composes poorly;
+ * `Predicate.isString` / schema decoders carry the contract. Use the
+ * `Effect` `Predicate` module or a Zod/Schema parse at the boundary.
+ *
+ * Good: `Predicate.isString(value)`, `Schema.decode(...)`
+ * Bad: `typeof value === "string" ? value.toUpperCase() : ...`
+ */
 export const noRuntimeTypeofRule = defineRule({
 	meta: {
 		type: "problem",

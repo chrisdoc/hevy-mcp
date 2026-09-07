@@ -154,7 +154,16 @@ function hasParentAssertion(node: ESTree.Node): boolean {
 	);
 }
 
-/** Detect sound syntactic cases where a known value is explicitly widened and loses evidence. */
+/**
+ * Detect literals flowing into explicitly broad annotations.
+ *
+ * Rationale: writing `"x"` then widening to `string` (or `[]` to `any[]`)
+ * throws away information the author just provided. Keep the narrow type and
+ * widen at the use site if needed.
+ *
+ * Good: `const ids: Array<string | undefined> = [...]`
+ * Bad: `const x: string = "literal"` where the literal type was wanted
+ */
 export const noKnownValueWideningRule = defineRule({
 	meta: {
 		type: "problem",
