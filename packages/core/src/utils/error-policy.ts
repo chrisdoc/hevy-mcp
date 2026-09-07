@@ -123,6 +123,7 @@ type ErrorTag =
 	| "WorkoutPayloadError"
 	| "PaginationMismatchError"
 	| "EmptyMeasurementUpdateError"
+	| "TemplatesSearchValidationError"
 	| "TrainingSummaryValidationError"
 	| "TrainingSummaryDataError";
 type TaggedValue = {
@@ -405,12 +406,19 @@ export function determineErrorType(error: RuntimeValue): ErrorType {
 		tag === "WorkoutPrivacyError" ||
 		tag === "WorkoutPayloadError" ||
 		tag === "EmptyMeasurementUpdateError" ||
+		tag === "TemplatesSearchValidationError" ||
 		tag === "TrainingSummaryValidationError"
 	) {
 		return ErrorType.VALIDATION_ERROR;
 	}
 	if (tag === "PaginationMismatchError" || tag === "TrainingSummaryDataError") {
 		return ErrorType.API_ERROR;
+	}
+	// Bounded-execution and transport timeouts share the client-timeout
+	// taxonomy: the request never got an answer, like other network failures.
+	// Name-based (not _tag) so DOMException timeouts classify identically.
+	if (getAbortTimeoutErrorMetadata(error)?.name === "TimeoutError") {
+		return ErrorType.NETWORK_ERROR;
 	}
 	if (isRetryExhausted(error)) return ErrorType.NETWORK_ERROR;
 	const status = extractErrorStatus(error);
@@ -623,6 +631,7 @@ export function resolveErrorPolicy(
 		tag === "WorkoutPayloadError" ||
 		tag === "PaginationMismatchError" ||
 		tag === "EmptyMeasurementUpdateError" ||
+		tag === "TemplatesSearchValidationError" ||
 		tag === "TrainingSummaryValidationError" ||
 		tag === "TrainingSummaryDataError"
 	) {
@@ -652,6 +661,10 @@ export function resolveErrorPolicy(
 		// This code is emitted only for caller cancellation. Keep its explicit
 		// client-facing message instead of falling back to the generic error text.
 		message = "The request was canceled by the client.";
+	} else if (diagnostic.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE) {
+		// Same treatment for bounded-execution timeouts: the diagnostic code is
+		// emitted only for deadline expiry, so name the outcome explicitly.
+		message = "The request exceeded its time limit before completing.";
 	} else if (isRetryExhausted(error)) {
 		message = getRetryExhaustedMessage(error);
 	} else if (diagnostic.status === 429) {

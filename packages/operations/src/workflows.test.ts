@@ -1,4 +1,5 @@
 import { NotFoundError } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
 import type {
 	BodyMeasurement,
 	GetV1BodyMeasurements200,
@@ -56,8 +57,11 @@ type ListOperationsFixture = {
 };
 
 function createListOperations(
-	workoutResponses: readonly (GetV1Workouts200 | Error)[],
-	measurementResponses: readonly (GetV1BodyMeasurements200 | Error)[],
+	workoutResponses: readonly (GetV1Workouts200 | HevyRequestEffectError)[],
+	measurementResponses: readonly (
+		| GetV1BodyMeasurements200
+		| HevyRequestEffectError
+	)[],
 ): ListOperationsFixture {
 	let workoutResponseIndex = 0;
 	let measurementResponseIndex = 0;
@@ -82,7 +86,7 @@ function createListOperations(
 			const response = workoutResponses[workoutResponseIndex++] ?? {
 				workouts: [],
 			};
-			return response instanceof Error
+			return "_tag" in response
 				? Effect.fail(response)
 				: Effect.succeed(response);
 		},
@@ -97,7 +101,7 @@ function createListOperations(
 			const response = measurementResponses[measurementResponseIndex++] ?? {
 				body_measurements: [],
 			};
-			return response instanceof Error
+			return "_tag" in response
 				? Effect.fail(response)
 				: Effect.succeed(response);
 		},
@@ -331,7 +335,7 @@ describe("workflows.trainingSummary operation", () => {
 		).rejects.toBeInstanceOf(NotFoundError);
 	});
 
-	it("returns an empty scan without loading when a window cannot be parsed", async () => {
+	it("fails without loading when a window cannot be parsed", async () => {
 		const loader = vi.fn(() =>
 			Effect.succeed({
 				items: [{ id: "unexpected" }],
@@ -351,10 +355,9 @@ describe("workflows.trainingSummary operation", () => {
 					(item: { id: string }) => item.id,
 				),
 			),
-		).resolves.toEqual({
-			items: [],
-			pages: 0,
-			itemsScanned: 0,
+		).rejects.toMatchObject({
+			_tag: "TrainingSummaryDataError",
+			message: "The training summary window contains an invalid date",
 		});
 		expect(loader).not.toHaveBeenCalled();
 	});

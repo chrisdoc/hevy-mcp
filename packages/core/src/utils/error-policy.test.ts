@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Cause } from "effect";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 
 import {
@@ -196,6 +197,18 @@ describe("createSafeErrorDiagnostic", () => {
 			commit_state: "unknown",
 			safe_to_retry: false,
 		});
+	});
+
+	it("resolves bounded timeouts to a network error with a timeout message", () => {
+		for (const error of [
+			new Cause.TimeoutError(),
+			new DOMException("deadline", "TimeoutError"),
+		]) {
+			const policy = resolveErrorPolicy(error, "fallback");
+			expect(policy.type).toBe(ErrorType.NETWORK_ERROR);
+			expect(policy.message).toMatch(/time limit/i);
+			expect(policy.diagnostic.code).toBe("HEVY_DEADLINE_EXCEEDED");
+		}
 	});
 
 	it("classifies and resolves operation domain errors with their messages", () => {

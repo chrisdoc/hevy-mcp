@@ -1,5 +1,11 @@
 import type { HevyClient, HevyExecutionOptions } from "@hevy-mcp/hevy-client";
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
+import {
+	ApiError,
+	NetworkError,
+	NotFoundError,
+	RateLimitError,
+} from "@hevy-mcp/hevy-client";
 import type {
 	GetV1Routines200,
 	GetV1RoutinesRoutineid200,
@@ -31,7 +37,7 @@ interface InMemoryRoutinesAdapter extends RoutinesListAdapter {
 }
 
 function createInMemoryAdapter(
-	responses: readonly (GetV1Routines200 | Error)[],
+	responses: readonly (GetV1Routines200 | HevyRequestEffectError)[],
 ): InMemoryRoutinesAdapter {
 	let responseIndex = 0;
 	const requests: InMemoryRoutinesAdapter["requests"] = [];
@@ -43,27 +49,24 @@ function createInMemoryAdapter(
 			argumentCounts.push(arguments.length);
 			requests.push({ params, options });
 			const response = responses[responseIndex++] ?? { routines: [] };
-			if (response instanceof Error) return Effect.fail(response);
+			if ("_tag" in response) return Effect.fail(response);
 			return Effect.succeed(response);
 		},
 	};
 }
 
-function httpError(
-	status: number,
-	method: string,
-	endpoint: string,
-	message = "request failed",
-) {
-	return new HevyHttpError(message, {
-		status,
-		method,
-		endpoint,
-	});
+function httpError(status: number, method: string, endpoint: string) {
+	if (status === 404) {
+		return new NotFoundError({ status, method, endpoint, expected: true });
+	}
+	if (status === 429) {
+		return new RateLimitError({ status, method, endpoint });
+	}
+	return new ApiError({ status, method, endpoint });
 }
 
 function notFound(endpoint = "/v1/routines", method = "GET") {
-	return httpError(404, method, endpoint, "not found");
+	return httpError(404, method, endpoint);
 }
 
 interface InMemoryRoutinesGetAdapter extends RoutinesGetAdapter {
@@ -77,14 +80,14 @@ interface InMemoryRoutinesGetAdapter extends RoutinesGetAdapter {
 function abortable<T>(
 	options: HevyExecutionOptions | undefined,
 	error: Error,
-): Effect.Effect<T, Error> {
+): Effect.Effect<T> {
 	const signal = options?.signal;
-	if (signal === undefined) return Effect.fail(error);
+	if (signal === undefined) return Effect.die(error);
 	return Effect.callback((resume) => {
 		const rejectOnAbort = () => {
 			signal.removeEventListener("abort", rejectOnAbort);
 			const reason = signal.reason;
-			resume(Effect.fail(reason instanceof Error ? reason : error));
+			resume(Effect.die(reason instanceof Error ? reason : error));
 		};
 		if (signal.aborted) {
 			rejectOnAbort();
@@ -100,8 +103,12 @@ function abortable<T>(
 function createInMemoryGetAdapter(
 	responses:
 		| GetV1RoutinesRoutineid200
-		| Error
-		| readonly (GetV1RoutinesRoutineid200 | Error | undefined)[],
+		| HevyRequestEffectError
+		| readonly (
+				| GetV1RoutinesRoutineid200
+				| HevyRequestEffectError
+				| undefined
+		  )[],
 ): InMemoryRoutinesGetAdapter {
 	const requests: InMemoryRoutinesGetAdapter["requests"] = [];
 	const argumentCounts: InMemoryRoutinesGetAdapter["argumentCounts"] = [];
@@ -114,7 +121,8 @@ function createInMemoryGetAdapter(
 			argumentCounts.push(arguments.length);
 			requests.push({ routineId, options });
 			const response = responseSequence[responseIndex++];
-			if (response instanceof Error) return Effect.fail(response);
+			if (response !== undefined && "_tag" in response)
+				return Effect.fail(response);
 			return Effect.succeed(response ?? {});
 		},
 	};
@@ -162,7 +170,7 @@ function createRoutineWriteAdapter(
 }
 
 function createSearchAdapter(
-	responses: readonly (GetV1Routines200 | Error)[],
+	responses: readonly (GetV1Routines200 | HevyRequestEffectError)[],
 ): RoutinesSearchAdapter & {
 	readonly requests: Array<{
 		readonly params: Parameters<HevyClient["getRoutines"]>[0];
@@ -179,7 +187,7 @@ function createSearchAdapter(
 		getRoutines(params, options) {
 			requests.push({ params, options });
 			const response = responses[responseIndex++] ?? { routines: [] };
-			if (response instanceof Error) return Effect.fail(response);
+			if ("_tag" in response) return Effect.fail(response);
 			return Effect.succeed(response);
 		},
 	};
@@ -248,7 +256,7 @@ describe("routines.get operation", () => {
 	});
 
 	it("[VAL-OPS-005] preserves non-404 error identity for routines.get", async () => {
-		const error = httpError(401, "GET", "/v1/routines/r1", "unauthorized");
+		const error = httpError(401, "GET", "/v1/routines/r1");
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(error),
 		);
@@ -265,14 +273,14 @@ describe("routines.get operation", () => {
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-008] omits the options argument when routines.get options are absent", async () => {
+	it("[VAL-OPS-008] forwards options through to the adapter when routines.get options are absent", async () => {
 		const adapter = createInMemoryGetAdapter({ routine: { id: "r1" } });
 		const operation = createRoutinesGetOperation(adapter);
 
 		await expect(operation.execute({ routineId: "r1" })).resolves.toEqual({
 			routine: { id: "r1" },
 		});
-		expect(adapter.argumentCounts).toEqual([1]);
+		expect(adapter.argumentCounts).toEqual([2]);
 	});
 });
 
@@ -372,7 +380,7 @@ describe("routines.update operation", () => {
 		const adapter = {
 			...createRoutineWriteAdapter(),
 			getRoutineById: vi.fn(() =>
-				Effect.fail(new Error("update must not read first")),
+				Effect.die(new Error("update must not read first")),
 			),
 		};
 		const operation = createRoutinesUpdateOperation(adapter);
@@ -760,7 +768,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-008] omits the options argument when routines.list options are absent", async () => {
+	it("[VAL-OPS-008] forwards options through to the adapter when routines.list options are absent", async () => {
 		const adapter = createInMemoryAdapter([{ page: 1, routines: [] }]);
 		const operation = createRoutinesListOperation(adapter);
 
@@ -769,7 +777,7 @@ describe("routines.list operation", () => {
 			page: 1,
 			pageCount: undefined,
 		});
-		expect(adapter.argumentCounts).toEqual([1]);
+		expect(adapter.argumentCounts).toEqual([2]);
 	});
 
 	it("[VAL-OPS-002] exposes routines.get as a native Promise, not an Effect", async () => {
@@ -805,7 +813,12 @@ describe("routines.list operation", () => {
 	});
 
 	it("[VAL-OPS-005] preserves a plain network error for routines.get", async () => {
-		const error = new Error("network failure");
+		const error = new NetworkError({
+			code: "ERR_NETWORK",
+			endpoint: "/v1/routines/r1",
+			method: "GET",
+			retryExhausted: false,
+		});
 		const operation = createRoutinesGetOperation(
 			createInMemoryGetAdapter(error),
 		);
@@ -814,7 +827,7 @@ describe("routines.list operation", () => {
 	});
 
 	it("[VAL-OPS-005] preserves a non-404 HTTP error for routines.list", async () => {
-		const error = httpError(503, "GET", "/v1/routines", "upstream failure");
+		const error = httpError(503, "GET", "/v1/routines");
 		const operation = createRoutinesListOperation(
 			createInMemoryAdapter([error]),
 		);
@@ -971,7 +984,7 @@ describe("routines.list operation", () => {
 		const adapter: RoutinesListAdapter = {
 			getRoutines(params) {
 				if (params === undefined) {
-					return Effect.fail(new Error("params are required"));
+					return Effect.die(new Error("params are required"));
 				}
 				return params.page === 2
 					? Effect.fail(error)

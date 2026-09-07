@@ -1,4 +1,5 @@
 import { NotFoundError } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
 import type { GetV1WorkoutsEvents200 } from "@hevy-mcp/hevy-client/types";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
@@ -16,7 +17,9 @@ function notFound(endpoint = "/v1/workouts/events") {
 	});
 }
 
-function createAdapter(responses: readonly (GetV1WorkoutsEvents200 | Error)[]) {
+function createAdapter(
+	responses: readonly (GetV1WorkoutsEvents200 | HevyRequestEffectError)[],
+) {
 	let responseIndex = 0;
 	const requests: Array<{
 		readonly params: Parameters<WorkoutsEventsAdapter["getWorkoutEvents"]>[0];
@@ -30,7 +33,7 @@ function createAdapter(responses: readonly (GetV1WorkoutsEvents200 | Error)[]) {
 				page_count: 1,
 				events: [],
 			};
-			return response instanceof Error
+			return "_tag" in response
 				? Effect.fail(response)
 				: Effect.succeed(response);
 		},

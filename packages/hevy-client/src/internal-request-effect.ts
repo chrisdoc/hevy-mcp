@@ -1,5 +1,4 @@
 import { Effect, Predicate } from "effect";
-import { z } from "zod";
 import type {
 	BodyMeasurement,
 	CreateCustomExerciseRequestBody,
@@ -72,8 +71,7 @@ export type HevyRequestEffectError =
 	| ValidationError
 	| RateLimitError
 	| ApiError
-	| NetworkError
-	| Error;
+	| NetworkError;
 
 export interface HevyRequestEffectClient {
 	getWorkouts(
@@ -199,12 +197,10 @@ type RequestEffectOwner =
 	| RequestEffectAttachment
 	| CuratedClientWithNativeRequestEffect;
 
-const functionSchema = z.function();
-
 function isNativeRequestEffect(
 	value: NativeRequestEffect | undefined,
 ): value is NativeRequestEffect {
-	return functionSchema.safeParse(value).success;
+	return Predicate.isFunction(value);
 }
 
 /**

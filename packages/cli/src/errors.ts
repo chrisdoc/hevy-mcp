@@ -11,6 +11,7 @@ import {
 import {
 	EmptyMeasurementUpdateError,
 	PaginationMismatchError,
+	TemplatesSearchValidationError,
 	TrainingSummaryDataError,
 	TrainingSummaryValidationError,
 	WorkoutPayloadError,
@@ -43,6 +44,7 @@ type TaggedClientError =
 type OperationDomainError =
 	| EmptyMeasurementUpdateError
 	| PaginationMismatchError
+	| TemplatesSearchValidationError
 	| TrainingSummaryDataError
 	| TrainingSummaryValidationError
 	| WorkoutPayloadError
@@ -67,6 +69,7 @@ function isOperationDomainError(
 		error instanceof EmptyMeasurementUpdateError ||
 		error instanceof TrainingSummaryDataError ||
 		error instanceof PaginationMismatchError ||
+		error instanceof TemplatesSearchValidationError ||
 		error instanceof TrainingSummaryValidationError ||
 		error instanceof WorkoutPayloadError ||
 		error instanceof WorkoutPrivacyError

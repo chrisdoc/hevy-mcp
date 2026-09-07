@@ -123,12 +123,14 @@ describe("exercise template tools", () => {
 				Effect.succeed([{ id: "layer-template", title: "Layer Template" }]),
 			),
 			get: vi.fn(),
-			reset: vi.fn(),
+			reset: vi.fn(() => Effect.void),
+			close: vi.fn(() => Effect.void),
 		};
 		const getterCatalog: ExerciseTemplateCatalog = {
 			effect: vi.fn(() => Effect.succeed([])),
 			get: vi.fn().mockRejectedValue(new Error("wrong catalog source")),
-			reset: vi.fn(),
+			reset: vi.fn(() => Effect.void),
+			close: vi.fn(() => Effect.void),
 		};
 		const runtime = createToolRuntime({
 			client: layerClient,
@@ -178,7 +180,8 @@ describe("exercise template tools", () => {
 				Effect.succeed([{ id: "template-1", title: "Bench Press" }]),
 			),
 			get: vi.fn(),
-			reset: vi.fn(),
+			reset: vi.fn(() => Effect.void),
+			close: vi.fn(() => Effect.void),
 		};
 		const runtime = createToolRuntime({
 			client: null,

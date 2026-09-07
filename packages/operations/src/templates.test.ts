@@ -1,4 +1,5 @@
-import { HevyHttpError, NotFoundError } from "@hevy-mcp/hevy-client";
+import { NotFoundError } from "@hevy-mcp/hevy-client";
+import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
 import type {
 	CreateCustomExerciseRequestBody,
 	ExerciseHistoryEntry,
@@ -29,15 +30,12 @@ function notFound(endpoint: string): NotFoundError {
 }
 
 function createGetAdapter(
-	response: ExerciseTemplate | Error,
+	response: ExerciseTemplate | HevyRequestEffectError,
 ): TemplatesGetAdapter {
 	const getExerciseTemplate: TemplatesGetAdapter["getExerciseTemplate"] = (
 		_id,
 		_options,
-	) =>
-		response instanceof Error
-			? Effect.fail(response)
-			: Effect.succeed(response);
+	) => ("_tag" in response ? Effect.fail(response) : Effect.succeed(response));
 	return { getExerciseTemplate };
 }
 
@@ -149,7 +147,11 @@ describe("templates.history operation", () => {
 			exerciseHistory: [],
 			exerciseTemplateId: "template-1",
 		});
-		expect(getExerciseHistory).toHaveBeenCalledWith("template-1", {});
+		expect(getExerciseHistory).toHaveBeenCalledWith(
+			"template-1",
+			{},
+			undefined,
+		);
 	});
 
 	it("does not turn a history 404 into a successful absence", async () => {
@@ -177,7 +179,7 @@ describe("templates.create operation", () => {
 		await expect(Effect.runPromise(operation.effect(body))).resolves.toEqual(
 			created,
 		);
-		expect(createExerciseTemplate).toHaveBeenCalledWith(body);
+		expect(createExerciseTemplate).toHaveBeenCalledWith(body, undefined);
 	});
 });
 
@@ -218,12 +220,10 @@ describe("templates.listAll operation", () => {
 		});
 
 		const templates = await Effect.runPromise(operation.effect(options));
-		expect(templates).toEqual([
-			{ id: "template-1" },
-			{ id: "template-2" },
-			{ id: "template-3" },
-		]);
-		expect(templates.pageCount).toBe(3);
+		expect(templates).toEqual({
+			items: [{ id: "template-1" }, { id: "template-2" }, { id: "template-3" }],
+			pageCount: 3,
+		});
 		expect(requests).toEqual([
 			{ params: { page: 1, pageSize: 100 }, options },
 			{ params: { page: 2, pageSize: 100 }, options },
@@ -249,9 +249,10 @@ describe("templates.listAll operation", () => {
 			getExerciseTemplates,
 		});
 
-		await expect(Effect.runPromise(operation.effect())).resolves.toEqual([
-			{ id: "template-1" },
-		]);
+		await expect(Effect.runPromise(operation.effect())).resolves.toEqual({
+			items: [{ id: "template-1" }],
+			pageCount: 2,
+		});
 		expect(getExerciseTemplates).toHaveBeenCalledTimes(2);
 	});
 
@@ -275,7 +276,7 @@ describe("templates.listAll operation", () => {
 
 		await expect(
 			Effect.runPromise(laterPageOperation.effect()),
-		).resolves.toEqual([{ id: "template-1" }]);
+		).resolves.toEqual({ items: [{ id: "template-1" }], pageCount: 1 });
 		expect(laterPageAdapter.getExerciseTemplates).toHaveBeenCalledTimes(2);
 
 		const firstPageError = notFound("/v1/exercise_templates");
@@ -348,10 +349,11 @@ describe("templates.listAll operation", () => {
 	});
 
 	it("does not recover a member-path 404 while listing", async () => {
-		const error = new HevyHttpError("not found", {
+		const error = new NotFoundError({
 			status: 404,
 			method: "GET",
 			endpoint: "/v1/exercise_templates/template-1",
+			expected: false,
 		});
 		const operation = createTemplatesListAllOperation({
 			getExerciseTemplates: vi
@@ -462,5 +464,27 @@ describe("templates.search operation", () => {
 			_tag: "PaginationMismatchError",
 			message: "The API returned invalid pagination metadata",
 		});
+	});
+
+	it("fails typed on out-of-range maxPages instead of silently returning empty", async () => {
+		const getExerciseTemplates = vi.fn(() =>
+			Effect.succeed({
+				page: 1,
+				page_count: 1,
+				exercise_templates: [{ id: "template-1", title: "Bench" }],
+			}),
+		);
+		const operation = createTemplatesSearchOperation({
+			getExerciseTemplates,
+		});
+		for (const maxPages of [0, -1, 101, 1.5, Number.NaN]) {
+			await expect(
+				Effect.runPromise(operation.effect({ query: "bench", maxPages })),
+			).rejects.toMatchObject({
+				_tag: "TemplatesSearchValidationError",
+				maxPages,
+			});
+		}
+		expect(getExerciseTemplates).not.toHaveBeenCalled();
 	});
 });

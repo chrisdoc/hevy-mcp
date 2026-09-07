@@ -20,7 +20,8 @@ function registerUserDefinition(
 	const catalog: ExerciseTemplateCatalog = {
 		effect: () => Effect.succeed([]),
 		get: vi.fn(),
-		reset: vi.fn(),
+		reset: vi.fn(() => Effect.void),
+		close: vi.fn(() => Effect.void),
 	};
 	registerToolDefinition(
 		server,

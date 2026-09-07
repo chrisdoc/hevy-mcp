@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { defineOperation } from "./define-operation.js";
 import type {
 	HevyExecutionOptions,
 	HevyOperationSafety,
@@ -21,11 +22,13 @@ import {
 	type WorkoutExerciseInput,
 } from "./mutation-semantics.js";
 import {
-	isExpectedReadEndOfList,
-	isExpectedReadNotFound,
+	assertPageEcho,
+	isEmptyResponse,
+	withExpectedEndOfList,
+	withExpectedNotFound,
+	PaginationMismatchError,
 	WorkoutPayloadError,
 	WorkoutPrivacyError,
-	PaginationMismatchError,
 } from "./operation-errors.js";
 
 export interface WorkoutsListInput {
@@ -290,301 +293,190 @@ function workoutPayloadEffect(
 	ReturnType<typeof buildWorkoutUpdatePayload>,
 	WorkoutPrivacyError | WorkoutPayloadError
 > {
-	return Effect.try({
-		try: () => buildWorkoutUpdatePayload(current, patch, replacementExercises),
-		catch: (error) => {
+	// Only the builder's documented validation tags stay in the failure
+	// channel. Anything else (e.g. a TypeError from a programming bug) is a
+	// defect and must stay loud instead of being mislabeled a payload error.
+	return Effect.suspend(() => {
+		try {
+			return Effect.succeed(
+				buildWorkoutUpdatePayload(current, patch, replacementExercises),
+			);
+		} catch (cause) {
 			if (
-				error instanceof WorkoutPrivacyError ||
-				error instanceof WorkoutPayloadError
+				cause instanceof WorkoutPrivacyError ||
+				cause instanceof WorkoutPayloadError
 			) {
-				return error;
+				return Effect.fail(cause);
 			}
-			return new WorkoutPayloadError({
-				message: "The workout metadata is invalid for an update",
-			});
-		},
+			return Effect.die(cause);
+		}
 	});
-}
-
-function isEmptyResponse<T extends object>(
-	response: T | null | undefined,
-): response is T & Record<never, never> {
-	return (
-		response !== null &&
-		response !== undefined &&
-		Object.keys(response).length === 0
-	);
 }
 
 export function createWorkoutsCreateOperation(
 	adapter: WorkoutsCreateAdapter,
 ): WorkoutsCreateOperation {
-	const effect = Effect.fn("operations.workouts.create")(function* (
-		input: WorkoutsCreateInput,
-		options?: HevyExecutionOptions,
-	) {
-		const request =
-			options === undefined
-				? adapter.createWorkout({ workout: input.workout })
-				: adapter.createWorkout({ workout: input.workout }, options);
-		const response = yield* request;
-		return isEmptyResponse(response) ? undefined : response;
-	});
-
-	const operation: WorkoutsCreateOperation = {
-		descriptor: workoutsCreateDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		workoutsCreateDescriptor,
+		function* (input: WorkoutsCreateInput, options?: HevyExecutionOptions) {
+			const request = adapter.createWorkout(
+				{ workout: input.workout },
+				options,
+			);
+			const response = yield* request;
+			return isEmptyResponse(response) ? undefined : response;
 		},
-	};
-	return operation;
+	);
 }
 
 export function createWorkoutsEventsOperation(
 	adapter: WorkoutsEventsAdapter,
 ): WorkoutsEventsOperation {
-	const effect = Effect.fn("operations.workouts.events")(function* (
-		input: WorkoutsEventsInput,
-		options?: HevyExecutionOptions,
-	) {
-		const params =
-			input.since === undefined
-				? { page: input.page, pageSize: input.pageSize }
-				: {
-						page: input.page,
-						pageSize: input.pageSize,
-						since: input.since,
-					};
-		const request =
-			options === undefined
-				? adapter.getWorkoutEvents(params)
-				: adapter.getWorkoutEvents(params, options);
-		return yield* request.pipe(
-			Effect.flatMap((response: GetV1WorkoutsEvents200) => {
-				if (response?.page !== undefined && response.page !== input.page) {
-					return Effect.fail(
-						new PaginationMismatchError({
-							requested: input.page,
-							received: response.page,
-							collection: "workoutEvents",
-							message: `Workout events page mismatch: requested page ${input.page} but received page ${response.page}`,
-						}),
-					);
-				}
-				return Effect.succeed({
+	return defineOperation(
+		workoutsEventsDescriptor,
+		function* (input: WorkoutsEventsInput, options?: HevyExecutionOptions) {
+			const params =
+				input.since === undefined
+					? { page: input.page, pageSize: input.pageSize }
+					: {
+							page: input.page,
+							pageSize: input.pageSize,
+							since: input.since,
+						};
+			const request = adapter.getWorkoutEvents(params, options);
+			return yield* request.pipe(
+				Effect.tap((response) =>
+					assertPageEcho(response, input.page, "workoutEvents"),
+				),
+				Effect.map((response: GetV1WorkoutsEvents200) => ({
 					events: response?.events ?? [],
 					page: response?.page ?? input.page,
 					pageCount: response?.page_count,
 					since: input.since,
-				});
-			}),
-			Effect.catchIf(
-				(error) =>
-					isExpectedReadEndOfList(error, "/v1/workouts/events", input.page),
-				() =>
-					Effect.succeed({
-						events: [],
-						page: input.page,
-						pageCount: undefined,
-						since: input.since,
-						expected404Outcome: "end_of_list" as const,
-					}),
-			),
-		);
-	});
-
-	const operation: WorkoutsEventsOperation = {
-		descriptor: workoutsEventsDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+				})),
+				withExpectedEndOfList("/v1/workouts/events", input.page, {
+					events: [],
+					page: input.page,
+					pageCount: undefined,
+					since: input.since,
+					expected404Outcome: "end_of_list" as const,
+				}),
+			);
 		},
-	};
-	return operation;
+	);
 }
 
 export function createWorkoutsUpdateOperation(
 	adapter: WorkoutsUpdateAdapter,
 ): WorkoutsUpdateOperation {
-	const effect = Effect.fn("operations.workouts.update")(function* (
-		input: WorkoutsUpdateInput,
-		options?: HevyExecutionOptions,
-	) {
-		const patch = "patch" in input ? input.patch : input.workout;
-		const replacementExercises = isWorkoutReplacementPatch(patch)
-			? patch.exercises
-			: undefined;
-		const current = yield* options === undefined
-			? adapter.getWorkout(input.workoutId)
-			: adapter.getWorkout(input.workoutId, options);
-		const payload = yield* workoutPayloadEffect(
-			current,
-			patch,
-			replacementExercises,
-		);
-		const updateRequest =
-			options === undefined
-				? adapter.updateWorkout(input.workoutId, { workout: payload })
-				: adapter.updateWorkout(input.workoutId, { workout: payload }, options);
-		const response = yield* updateRequest;
-		return isEmptyResponse(response) ? undefined : response;
-	});
-
-	const operation: WorkoutsUpdateOperation = {
-		descriptor: workoutsUpdateDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		workoutsUpdateDescriptor,
+		function* (input: WorkoutsUpdateInput, options?: HevyExecutionOptions) {
+			const patch = "patch" in input ? input.patch : input.workout;
+			const replacementExercises = isWorkoutReplacementPatch(patch)
+				? patch.exercises
+				: undefined;
+			const current = yield* adapter.getWorkout(input.workoutId, options);
+			const payload = yield* workoutPayloadEffect(
+				current,
+				patch,
+				replacementExercises,
+			);
+			const updateRequest = adapter.updateWorkout(
+				input.workoutId,
+				{ workout: payload },
+				options,
+			);
+			const response = yield* updateRequest;
+			return isEmptyResponse(response) ? undefined : response;
 		},
-	};
-	return operation;
+	);
 }
 
 export function createWorkoutsReplaceExercisesOperation(
 	adapter: WorkoutsReplaceExercisesAdapter,
 ): WorkoutsReplaceExercisesOperation {
-	const effect = Effect.fn("operations.workouts.replaceExercises")(function* (
-		input: WorkoutsReplaceExercisesInput,
-		options?: HevyExecutionOptions,
-	) {
-		const getRequest =
-			options === undefined
-				? adapter.getWorkout(input.workoutId)
-				: adapter.getWorkout(input.workoutId, options);
-		const current = yield* getRequest;
-		const payload = yield* workoutPayloadEffect(
-			current,
-			{ is_private: input.is_private },
-			input.exercises,
-		);
-		const updateRequest =
-			options === undefined
-				? adapter.updateWorkout(input.workoutId, { workout: payload })
-				: adapter.updateWorkout(input.workoutId, { workout: payload }, options);
-		const response = yield* updateRequest;
-		return isEmptyResponse(response) ? undefined : response;
-	});
-
-	const operation: WorkoutsReplaceExercisesOperation = {
-		descriptor: workoutsReplaceExercisesDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		workoutsReplaceExercisesDescriptor,
+		function* (
+			input: WorkoutsReplaceExercisesInput,
+			options?: HevyExecutionOptions,
+		) {
+			const getRequest = adapter.getWorkout(input.workoutId, options);
+			const current = yield* getRequest;
+			const payload = yield* workoutPayloadEffect(
+				current,
+				{ is_private: input.is_private },
+				input.exercises,
+			);
+			const updateRequest = adapter.updateWorkout(
+				input.workoutId,
+				{ workout: payload },
+				options,
+			);
+			const response = yield* updateRequest;
+			return isEmptyResponse(response) ? undefined : response;
 		},
-	};
-	return operation;
+	);
 }
 
 export function createWorkoutsCountOperation(
 	adapter: WorkoutsCountAdapter,
 ): WorkoutsCountOperation {
-	const effect = Effect.fn("operations.workouts.count")(function* (
-		options?: HevyExecutionOptions,
-	) {
-		const request =
-			options === undefined
-				? adapter.getWorkoutCount()
-				: adapter.getWorkoutCount(options);
-		const response = yield* request;
-		return response?.workout_count ?? 0;
-	});
-
-	const operation: WorkoutsCountOperation = {
-		descriptor: workoutsCountDescriptor,
-		effect,
-		execute(options) {
-			return Effect.runPromise(operation.effect(options));
+	return defineOperation(
+		workoutsCountDescriptor,
+		function* (options?: HevyExecutionOptions) {
+			const request = adapter.getWorkoutCount(options);
+			const response = yield* request;
+			return response?.workout_count ?? 0;
 		},
-	};
-	return operation;
+	);
 }
 
 export function createWorkoutsGetOperation(
 	adapter: WorkoutsGetAdapter,
 ): WorkoutsGetOperation {
-	const effect = Effect.fn("operations.workouts.get")(function* (
-		input: WorkoutsGetInput,
-		options?: HevyExecutionOptions,
-	) {
-		const request =
-			options === undefined
-				? adapter.getWorkout(input.workoutId)
-				: adapter.getWorkout(input.workoutId, options);
-		return yield* request.pipe(
-			Effect.map((response) => ({
-				workout: isEmptyResponse(response) ? null : (response ?? null),
-			})),
-			Effect.catchIf(
-				(error) => isExpectedReadNotFound(error, "/v1/workouts"),
-				() =>
-					Effect.succeed({
-						workout: null,
-						expected404Outcome: "not_found" as const,
-					}),
-			),
-		);
-	});
-
-	const operation: WorkoutsGetOperation = {
-		descriptor: workoutsGetDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		workoutsGetDescriptor,
+		function* (input: WorkoutsGetInput, options?: HevyExecutionOptions) {
+			const request = adapter.getWorkout(input.workoutId, options);
+			return yield* request.pipe(
+				Effect.map((response) => ({
+					workout: isEmptyResponse(response) ? null : (response ?? null),
+				})),
+				withExpectedNotFound("/v1/workouts", {
+					workout: null,
+					expected404Outcome: "not_found" as const,
+				}),
+			);
 		},
-	};
-	return operation;
+	);
 }
 
 export function createWorkoutsListOperation(
 	adapter: WorkoutsListAdapter,
 ): WorkoutsListOperation {
-	const effect = Effect.fn("operations.workouts.list")(function* (
-		input: WorkoutsListInput,
-		options?: HevyExecutionOptions,
-	) {
-		const params = { page: input.page, pageSize: input.pageSize };
-		const request =
-			options === undefined
-				? adapter.getWorkouts(params)
-				: adapter.getWorkouts(params, options);
-		return yield* request.pipe(
-			Effect.flatMap((response: GetV1Workouts200) => {
-				if (response?.page !== undefined && response.page !== input.page) {
-					return Effect.fail(
-						new PaginationMismatchError({
-							requested: input.page,
-							received: response.page,
-							collection: "workouts",
-							message: `Workouts page mismatch: requested page ${input.page} but received page ${response.page}`,
-						}),
-					);
-				}
-				return Effect.succeed({
+	return defineOperation(
+		workoutsListDescriptor,
+		function* (input: WorkoutsListInput, options?: HevyExecutionOptions) {
+			const params = { page: input.page, pageSize: input.pageSize };
+			const request = adapter.getWorkouts(params, options);
+			return yield* request.pipe(
+				Effect.tap((response) =>
+					assertPageEcho(response, input.page, "workouts"),
+				),
+				Effect.map((response: GetV1Workouts200) => ({
 					items: response?.workouts ?? [],
 					page: response?.page ?? input.page,
 					pageCount: response?.page_count,
-				});
-			}),
-			Effect.catchIf(
-				(error) => isExpectedReadEndOfList(error, "/v1/workouts", input.page),
-				() =>
-					Effect.succeed({
-						items: [],
-						page: input.page,
-						pageCount: undefined,
-						expected404Outcome: "end_of_list" as const,
-					}),
-			),
-		);
-	});
-
-	const operation: WorkoutsListOperation = {
-		descriptor: workoutsListDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+				})),
+				withExpectedEndOfList("/v1/workouts", input.page, {
+					items: [],
+					page: input.page,
+					pageCount: undefined,
+					expected404Outcome: "end_of_list" as const,
+				}),
+			);
 		},
-	};
-	return operation;
+	);
 }

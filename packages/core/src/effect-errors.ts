@@ -13,6 +13,7 @@ import {
 	TrainingSummaryValidationError,
 	WorkoutPayloadError,
 	WorkoutPrivacyError,
+	TemplatesSearchValidationError,
 } from "@hevy-mcp/operations";
 
 /** Errors raised by core before an operation reaches the Hevy client. */
@@ -47,6 +48,7 @@ export {
 	ValidationError,
 	EmptyMeasurementUpdateError,
 	PaginationMismatchError,
+	TemplatesSearchValidationError,
 	TrainingSummaryDataError,
 	TrainingSummaryValidationError,
 	WorkoutPayloadError,
@@ -56,6 +58,7 @@ export {
 export type OperationDomainError =
 	| EmptyMeasurementUpdateError
 	| PaginationMismatchError
+	| TemplatesSearchValidationError
 	| TrainingSummaryDataError
 	| TrainingSummaryValidationError
 	| WorkoutPayloadError

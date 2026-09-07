@@ -1,4 +1,6 @@
 import type { HevyClient, HevyOperationSafety } from "@hevy-mcp/hevy-client";
+export { defineOperation } from "./define-operation.js";
+export type { DefinedOperation } from "./define-operation.js";
 import {
 	getRequestEffectClient,
 	type HevyRequestEffectClient,
@@ -274,6 +276,7 @@ export type {
 export { PaginationMismatchError } from "./operation-errors.js";
 export {
 	EmptyMeasurementUpdateError,
+	TemplatesSearchValidationError,
 	TrainingSummaryDataError,
 	TrainingSummaryValidationError,
 	WorkoutPayloadError,
@@ -284,7 +287,6 @@ export type {
 	ReadCollectionEndpoint,
 	ReadEndpoint,
 	ReadMemberEndpoint,
-	ReadOperationError,
 } from "./operation-errors.js";
 export { WORKOUT_PUT_REQUIRES_IS_PRIVATE } from "./hevy-quirks.js";
 export {

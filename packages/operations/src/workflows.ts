@@ -1,4 +1,5 @@
 import { DateTime, Effect, Option, Predicate, Stream } from "effect";
+import { defineOperation } from "./define-operation.js";
 import type {
 	HevyExecutionOptions,
 	HevyOperationSafety,
@@ -9,6 +10,7 @@ import {
 	PaginationMismatchError,
 	TrainingSummaryDataError,
 	TrainingSummaryValidationError,
+	hasNextPage,
 	isExpectedReadEndOfList,
 } from "./operation-errors.js";
 import type {
@@ -180,14 +182,6 @@ function parseUtcDate(value: string | undefined): DateTime.Utc | undefined {
 	return Option.isSome(parsed) ? parsed.value : undefined;
 }
 
-function hasNextPage(pageCount: number | undefined, page: number): boolean {
-	return (
-		Predicate.isNumber(pageCount) &&
-		Number.isSafeInteger(pageCount) &&
-		pageCount > page
-	);
-}
-
 function hasInvalidPageCount(
 	pageCount: number | undefined,
 	page: number,
@@ -226,7 +220,10 @@ export const scanPagesInWindow = Effect.fn(
 	const start = parseUtcDate(startDate);
 	const end = parseUtcDate(endDate);
 	if (start === undefined || end === undefined) {
-		return { items: [], pages: 0, itemsScanned: 0 };
+		return yield* new TrainingSummaryDataError({
+			collection: "training-summary",
+			message: "The training summary window contains an invalid date",
+		});
 	}
 
 	const startMillis = DateTime.toEpochMillis(start);
@@ -238,10 +235,7 @@ export const scanPagesInWindow = Effect.fn(
 		TrainingSummaryPage<T>,
 		HevyRequestEffectError | PaginationMismatchError
 	>({ page: 1 }, (cursor) => {
-		const request =
-			options === undefined
-				? loader(cursor.page, pageSize)
-				: loader(cursor.page, pageSize, options);
+		const request = loader(cursor.page, pageSize, options);
 		return request.pipe(
 			Effect.flatMap(
 				(
@@ -279,11 +273,13 @@ export const scanPagesInWindow = Effect.fn(
 							}),
 						);
 					}
-					const nextPage =
-						pageResult.items.length > 0 &&
-						hasNextPage(pageResult.pageCount, cursor.page)
-							? Option.some({ page: cursor.page + 1 })
-							: Option.none<{ readonly page: number }>();
+					const nextPage = hasNextPage(
+						pageResult.pageCount,
+						cursor.page,
+						pageResult.items.length,
+					)
+						? Option.some({ page: cursor.page + 1 })
+						: Option.none<{ readonly page: number }>();
 					return Effect.succeed([
 						[pageResult] as ReadonlyArray<TrainingSummaryPage<T>>,
 						nextPage,
@@ -396,10 +392,7 @@ function loadWorkoutsPage(
 	operation: WorkoutsListOperation,
 ): TrainingSummaryPageLoader<Workout> {
 	return (page, pageSize, options) => {
-		const result =
-			options === undefined
-				? operation.effect({ page, pageSize })
-				: operation.effect({ page, pageSize }, options);
+		const result = operation.effect({ page, pageSize }, options);
 		return result.pipe(
 			Effect.map((response: WorkoutsListOutput) => ({
 				items: response.items,
@@ -418,10 +411,7 @@ function loadMeasurementsPage(
 	operation: BodyMeasurementsListOperation,
 ): TrainingSummaryPageLoader<BodyMeasurement> {
 	return (page, pageSize, options) => {
-		const result =
-			options === undefined
-				? operation.effect({ page, pageSize })
-				: operation.effect({ page, pageSize }, options);
+		const result = operation.effect({ page, pageSize }, options);
 		return result.pipe(
 			Effect.map((response: BodyMeasurementsListOutput) => ({
 				items: response.items,
@@ -443,143 +433,133 @@ export function createWorkflowsTrainingSummaryOperation(
 ): WorkflowsTrainingSummaryOperation {
 	const maxWeeks = options.maxWeeks ?? MAX_TRAINING_SUMMARY_WEEKS;
 	const strictPagination = options.strictPagination ?? false;
-	const effect = Effect.fn("operations.workflows.trainingSummary")(function* (
-		input: TrainingSummaryInput,
-		options?: HevyExecutionOptions,
-	): Effect.fn.Return<
-		TrainingSummaryResult,
-		| HevyRequestEffectError
-		| PaginationMismatchError
-		| TrainingSummaryDataError
-		| TrainingSummaryValidationError
-	> {
-		if (
-			!Number.isInteger(input.weeks) ||
-			input.weeks < MIN_TRAINING_SUMMARY_WEEKS ||
-			input.weeks > maxWeeks
-		) {
-			return yield* new TrainingSummaryValidationError({
+	return defineOperation(
+		workflowsTrainingSummaryDescriptor,
+		function* (
+			input: TrainingSummaryInput,
+			options?: HevyExecutionOptions,
+		): Effect.fn.Return<
+			TrainingSummaryResult,
+			| HevyRequestEffectError
+			| PaginationMismatchError
+			| TrainingSummaryDataError
+			| TrainingSummaryValidationError
+		> {
+			if (
+				!Number.isInteger(input.weeks) ||
+				input.weeks < MIN_TRAINING_SUMMARY_WEEKS ||
+				input.weeks > maxWeeks
+			) {
+				return yield* new TrainingSummaryValidationError({
+					weeks: input.weeks,
+					message: `Training summary weeks must be an integer from ${MIN_TRAINING_SUMMARY_WEEKS} through ${maxWeeks}`,
+				});
+			}
+
+			const now = yield* DateTime.now;
+			const end = DateTime.startOf(now, "day");
+			const start = DateTime.subtract(end, { days: input.weeks * 7 });
+			const period = {
+				start_date: DateTime.formatIsoDateUtc(start),
+				end_date: DateTime.formatIsoDateUtc(end),
 				weeks: input.weeks,
-				message: `Training summary weeks must be an integer from ${MIN_TRAINING_SUMMARY_WEEKS} through ${maxWeeks}`,
-			});
-		}
+			};
+			const workoutLoader = loadWorkoutsPage(workoutListOperation(operations));
+			const measurementLoader = loadMeasurementsPage(
+				measurementListOperation(operations),
+			);
+			const [workoutScan, measurementScan] = yield* Effect.all(
+				[
+					scanPagesInWindow(
+						workoutLoader,
+						TRAINING_SUMMARY_PAGE_SIZE,
+						period.start_date,
+						period.end_date,
+						(workout) => workout.start_time,
+						options,
+						strictPagination,
+					),
+					scanPagesInWindow(
+						measurementLoader,
+						TRAINING_SUMMARY_PAGE_SIZE,
+						period.start_date,
+						period.end_date,
+						(measurement) => measurement.date,
+						options,
+						strictPagination,
+					),
+				],
+				{ concurrency: SCAN_CONCURRENCY },
+			);
 
-		const now = yield* DateTime.now;
-		const end = DateTime.startOf(now, "day");
-		const start = DateTime.subtract(end, { days: input.weeks * 7 });
-		const period = {
-			start_date: DateTime.formatIsoDateUtc(start),
-			end_date: DateTime.formatIsoDateUtc(end),
-			weeks: input.weeks,
-		};
-		const workoutLoader = loadWorkoutsPage(workoutListOperation(operations));
-		const measurementLoader = loadMeasurementsPage(
-			measurementListOperation(operations),
-		);
-		const [workoutScan, measurementScan] = yield* Effect.all(
-			[
-				scanPagesInWindow(
-					workoutLoader,
-					TRAINING_SUMMARY_PAGE_SIZE,
-					period.start_date,
-					period.end_date,
-					(workout) => workout.start_time,
-					options,
-					strictPagination,
-				),
-				scanPagesInWindow(
-					measurementLoader,
-					TRAINING_SUMMARY_PAGE_SIZE,
-					period.start_date,
-					period.end_date,
-					(measurement) => measurement.date,
-					options,
-					strictPagination,
-				),
-			],
-			{ concurrency: SCAN_CONCURRENCY },
-		);
-
-		const workouts = workoutScan.items;
-		const sessions = workouts.map(compactSession);
-		const uniqueExerciseTemplateIds = [
-			...new Set(
-				workouts.flatMap((workout) =>
-					(workout.exercises ?? [])
-						.map((exercise) => exercise.exercise_template_id)
-						.filter((id): id is string => Boolean(id)),
-				),
-			),
-		];
-		const measurements = [...measurementScan.items].sort((left, right) =>
-			left.date.localeCompare(right.date),
-		);
-		const earliestMeasurement = measurements[0];
-		const latestMeasurement = measurements.at(-1);
-		const earliest =
-			earliestMeasurement === undefined
-				? undefined
-				: compactMeasurement(earliestMeasurement);
-		const latest =
-			latestMeasurement === undefined
-				? undefined
-				: compactMeasurement(latestMeasurement);
-		const weightChange =
-			latest?.weight_kg !== undefined && earliest?.weight_kg !== undefined
-				? latest.weight_kg - earliest.weight_kg
-				: undefined;
-		const bodyMeasurements: MutableTrainingSummaryBodyMeasurements = {
-			count: measurements.length,
-		};
-		if (latest !== undefined) bodyMeasurements.latest = latest;
-		if (earliest !== undefined) bodyMeasurements.earliest = earliest;
-		if (weightChange !== undefined) {
-			bodyMeasurements.weight_change_kg = weightChange;
-		}
-		return {
-			period,
-			workouts: {
-				count: workouts.length,
-				total_duration_seconds: sessions.reduce(
-					(total, session) => total + (session.duration_seconds ?? 0),
-					0,
-				),
-				exercise_count: sessions.reduce(
-					(total, session) => total + session.exercise_count,
-					0,
-				),
-				set_count: sessions.reduce(
-					(total, session) => total + session.set_count,
-					0,
-				),
-				total_volume_kg: workouts.reduce(
-					(total, workout) => total + workoutVolume(workout),
-					0,
-				),
-				unique_exercise_template_ids: uniqueExerciseTemplateIds,
-				sessions,
-			},
-			body_measurements: bodyMeasurements,
-			workflow: {
-				name: "training-summary" as const,
-				pagination: {
-					workouts: workoutScan.pages,
-					body_measurements: measurementScan.pages,
+			const sessions: TrainingSummarySession[] = [];
+			const uniqueExerciseTemplateIds = new Set<string>();
+			let totalDurationSeconds = 0;
+			let totalExerciseCount = 0;
+			let totalSetCount = 0;
+			let totalVolumeKg = 0;
+			for (const workout of workoutScan.items) {
+				const session = compactSession(workout);
+				sessions.push(session);
+				totalDurationSeconds += session.duration_seconds ?? 0;
+				totalExerciseCount += session.exercise_count;
+				totalSetCount += session.set_count;
+				totalVolumeKg += workoutVolume(workout);
+				for (const exercise of workout.exercises ?? []) {
+					if (exercise.exercise_template_id) {
+						uniqueExerciseTemplateIds.add(exercise.exercise_template_id);
+					}
+				}
+			}
+			const measurements = [...measurementScan.items].sort((left, right) =>
+				left.date.localeCompare(right.date),
+			);
+			const earliestMeasurement = measurements[0];
+			const latestMeasurement = measurements.at(-1);
+			const earliest =
+				earliestMeasurement === undefined
+					? undefined
+					: compactMeasurement(earliestMeasurement);
+			const latest =
+				latestMeasurement === undefined
+					? undefined
+					: compactMeasurement(latestMeasurement);
+			const weightChange =
+				latest?.weight_kg !== undefined && earliest?.weight_kg !== undefined
+					? latest.weight_kg - earliest.weight_kg
+					: undefined;
+			const bodyMeasurements: MutableTrainingSummaryBodyMeasurements = {
+				count: measurements.length,
+			};
+			if (latest !== undefined) bodyMeasurements.latest = latest;
+			if (earliest !== undefined) bodyMeasurements.earliest = earliest;
+			if (weightChange !== undefined) {
+				bodyMeasurements.weight_change_kg = weightChange;
+			}
+			return {
+				period,
+				workouts: {
+					count: sessions.length,
+					total_duration_seconds: totalDurationSeconds,
+					exercise_count: totalExerciseCount,
+					set_count: totalSetCount,
+					total_volume_kg: totalVolumeKg,
+					unique_exercise_template_ids: [...uniqueExerciseTemplateIds],
+					sessions,
 				},
-				cacheStatus: "not-used",
-				itemsScanned: workoutScan.itemsScanned + measurementScan.itemsScanned,
-			},
-		};
-	});
-
-	const operation: WorkflowsTrainingSummaryOperation = {
-		descriptor: workflowsTrainingSummaryDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+				body_measurements: bodyMeasurements,
+				workflow: {
+					name: "training-summary" as const,
+					pagination: {
+						workouts: workoutScan.pages,
+						body_measurements: measurementScan.pages,
+					},
+					cacheStatus: "not-used",
+					itemsScanned: workoutScan.itemsScanned + measurementScan.itemsScanned,
+				},
+			};
 		},
-	};
-	return operation;
+	);
 }
 
 export const createTrainingSummaryOperation =

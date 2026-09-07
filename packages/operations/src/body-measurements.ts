@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { defineOperation } from "./define-operation.js";
 import type {
 	HevyExecutionOptions,
 	HevyOperationSafety,
@@ -13,8 +14,10 @@ import type {
 	PutBodyMeasurement,
 } from "@hevy-mcp/hevy-client/types";
 import {
-	isExpectedReadEndOfList,
-	isExpectedReadNotFound,
+	assertPageEcho,
+	isEmptyResponse,
+	withExpectedEndOfList,
+	withExpectedNotFound,
 	EmptyMeasurementUpdateError,
 	PaginationMismatchError,
 } from "./operation-errors.js";
@@ -173,165 +176,105 @@ export interface BodyMeasurementsUpdateOperation {
 export function createBodyMeasurementsListOperation(
 	adapter: BodyMeasurementsListAdapter,
 ): BodyMeasurementsListOperation {
-	const effect = Effect.fn("operations.bodyMeasurements.list")(function* (
-		input: BodyMeasurementsListInput,
-		options?: HevyExecutionOptions,
-	) {
-		const params = { page: input.page, pageSize: input.pageSize };
-		const request =
-			options === undefined
-				? adapter.getBodyMeasurements(params)
-				: adapter.getBodyMeasurements(params, options);
-		return yield* request.pipe(
-			Effect.flatMap((response: GetV1BodyMeasurements200) => {
-				if (response?.page !== undefined && response.page !== input.page) {
-					return Effect.fail(
-						new PaginationMismatchError({
-							requested: input.page,
-							received: response.page,
-							collection: "bodyMeasurements",
-							message: `Body measurements page mismatch: requested page ${input.page} but received page ${response.page}`,
-						}),
-					);
-				}
-				return Effect.succeed({
+	return defineOperation(
+		bodyMeasurementsListDescriptor,
+		function* (
+			input: BodyMeasurementsListInput,
+			options?: HevyExecutionOptions,
+		) {
+			const params = { page: input.page, pageSize: input.pageSize };
+			const request = adapter.getBodyMeasurements(params, options);
+			return yield* request.pipe(
+				Effect.tap((response) =>
+					assertPageEcho(response, input.page, "bodyMeasurements"),
+				),
+				Effect.map((response: GetV1BodyMeasurements200) => ({
 					items: response?.body_measurements ?? [],
 					page: response?.page ?? input.page,
 					pageCount: response?.page_count,
-				});
-			}),
-			Effect.catchIf(
-				(error) =>
-					isExpectedReadEndOfList(error, "/v1/body_measurements", input.page),
-				() =>
-					Effect.succeed({
-						items: [],
-						page: input.page,
-						pageCount: undefined,
-						expected404Outcome: "end_of_list" as const,
-					}),
-			),
-		);
-	});
-
-	const operation: BodyMeasurementsListOperation = {
-		descriptor: bodyMeasurementsListDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+				})),
+				withExpectedEndOfList("/v1/body_measurements", input.page, {
+					items: [],
+					page: input.page,
+					pageCount: undefined,
+					expected404Outcome: "end_of_list" as const,
+				}),
+			);
 		},
-	};
-	return operation;
+	);
 }
 
 export function createBodyMeasurementsGetOperation(
 	adapter: BodyMeasurementsGetAdapter,
 ): BodyMeasurementsGetOperation {
-	const effect = Effect.fn("operations.bodyMeasurements.get")(function* (
-		input: BodyMeasurementsGetInput,
-		options?: HevyExecutionOptions,
-	) {
-		const request =
-			options === undefined
-				? adapter.getBodyMeasurement(input.date)
-				: adapter.getBodyMeasurement(input.date, options);
-		return yield* request.pipe(
-			Effect.map((bodyMeasurement) => ({
-				bodyMeasurement: isEmptyResponse(bodyMeasurement)
-					? null
-					: (bodyMeasurement ?? null),
-				date: input.date,
-			})),
-			Effect.catchIf(
-				(error) => isExpectedReadNotFound(error, "/v1/body_measurements"),
-				() =>
-					Effect.succeed({
-						bodyMeasurement: null,
-						date: input.date,
-						expected404Outcome: "not_found" as const,
-					}),
-			),
-		);
-	});
-
-	const operation: BodyMeasurementsGetOperation = {
-		descriptor: bodyMeasurementsGetDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		bodyMeasurementsGetDescriptor,
+		function* (
+			input: BodyMeasurementsGetInput,
+			options?: HevyExecutionOptions,
+		) {
+			const request = adapter.getBodyMeasurement(input.date, options);
+			return yield* request.pipe(
+				Effect.map((bodyMeasurement) => ({
+					bodyMeasurement: isEmptyResponse(bodyMeasurement)
+						? null
+						: (bodyMeasurement ?? null),
+					date: input.date,
+				})),
+				withExpectedNotFound("/v1/body_measurements", {
+					bodyMeasurement: null,
+					date: input.date,
+					expected404Outcome: "not_found" as const,
+				}),
+			);
 		},
-	};
-	return operation;
-}
-
-function isEmptyResponse<T extends object>(
-	response: T | null | undefined,
-): response is T & Record<never, Record<string, never>> {
-	return (
-		response !== null &&
-		response !== undefined &&
-		Object.keys(response).length === 0
 	);
 }
 
 export function createBodyMeasurementsCreateOperation(
 	adapter: BodyMeasurementsCreateAdapter,
 ): BodyMeasurementsCreateOperation {
-	const effect = Effect.fn("operations.bodyMeasurements.create")(function* (
-		input: BodyMeasurementsCreateInput,
-		options?: HevyExecutionOptions,
-	) {
-		const payload: MeasurementPayload = buildMeasurementPayload(input);
-		const data: BodyMeasurement = {
-			date: input.date,
-			...payload,
-		};
-		const request =
-			options === undefined
-				? adapter.createBodyMeasurement(data)
-				: adapter.createBodyMeasurement(data, options);
-		yield* request;
-		return input.date;
-	});
-
-	const operation: BodyMeasurementsCreateOperation = {
-		descriptor: bodyMeasurementsCreateDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		bodyMeasurementsCreateDescriptor,
+		function* (
+			input: BodyMeasurementsCreateInput,
+			options?: HevyExecutionOptions,
+		) {
+			const payload: MeasurementPayload = buildMeasurementPayload(input);
+			const data: BodyMeasurement = {
+				date: input.date,
+				...payload,
+			};
+			const request = adapter.createBodyMeasurement(data, options);
+			yield* request;
+			return input.date;
 		},
-	};
-	return operation;
+	);
 }
 
 export function createBodyMeasurementsUpdateOperation(
 	adapter: BodyMeasurementsUpdateAdapter,
 ): BodyMeasurementsUpdateOperation {
-	const effect = Effect.fn("operations.bodyMeasurements.update")(function* (
-		input: BodyMeasurementsUpdateInput,
-		options?: HevyExecutionOptions,
-	) {
-		const payload: PutBodyMeasurement = buildMeasurementPayload(input);
-		if (Object.keys(payload).length === 0) {
-			return yield* new EmptyMeasurementUpdateError({
-				message:
-					"No measurement fields provided. Include at least one numeric measurement field (e.g. weight_kg) to update.",
-			});
-		}
-		const request =
-			options === undefined
-				? adapter.updateBodyMeasurement(input.date, payload)
-				: adapter.updateBodyMeasurement(input.date, payload, options);
-		yield* request;
-		return input.date;
-	});
-
-	const operation: BodyMeasurementsUpdateOperation = {
-		descriptor: bodyMeasurementsUpdateDescriptor,
-		effect,
-		execute(input, options) {
-			return Effect.runPromise(operation.effect(input, options));
+	return defineOperation(
+		bodyMeasurementsUpdateDescriptor,
+		function* (
+			input: BodyMeasurementsUpdateInput,
+			options?: HevyExecutionOptions,
+		) {
+			const payload: PutBodyMeasurement = buildMeasurementPayload(input);
+			if (Object.keys(payload).length === 0) {
+				return yield* new EmptyMeasurementUpdateError({
+					message:
+						"No measurement fields provided. Include at least one numeric measurement field (e.g. weight_kg) to update.",
+				});
+			}
+			const request = adapter.updateBodyMeasurement(
+				input.date,
+				payload,
+				options,
+			);
+			yield* request;
+			return input.date;
 		},
-	};
-	return operation;
+	);
 }

@@ -3,8 +3,10 @@ import {
 	Effect,
 } from "../../packages/core/node_modules/effect/dist/index.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
-import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
-import type { TemplatesListAllOperation } from "@hevy-mcp/operations";
+import type {
+	TemplatesListAllOperation,
+	TemplatesListAllResult,
+} from "@hevy-mcp/operations";
 import { createOperations } from "@hevy-mcp/operations";
 import {
 	createExerciseTemplateCatalog,
@@ -21,7 +23,7 @@ export function createIntegrationCatalog(hevyClient: HevyClient) {
 	const cache = Effect.runSync(
 		Cache.make<
 			string,
-			ExerciseTemplate[],
+			TemplatesListAllResult,
 			Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
 		>({
 			capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,

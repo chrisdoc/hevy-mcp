@@ -16,6 +16,7 @@ import {
 	createOperations,
 	foldersListAllDescriptor,
 	type TemplatesListAllOperation,
+	type TemplatesListAllResult,
 	templatesListAllDescriptor,
 	userGetDescriptor,
 	workoutsCountDescriptor,
@@ -50,8 +51,8 @@ function createTestRuntime(
 			id: "templates.listAll",
 			safety: "read",
 		},
-		effect: () => Effect.succeed([]),
-		execute: () => Promise.resolve([]),
+		effect: () => Effect.succeed({ items: [], pageCount: 0 }),
+		execute: () => Promise.resolve({ items: [], pageCount: 0 }),
 	};
 	const cache: ExerciseTemplateCatalogCache = Effect.runSync(
 		Cache.make({
@@ -254,7 +255,9 @@ describe("registerHevyResources", () => {
 		];
 		const userGet = vi.fn(() => Effect.succeed(user));
 		const workoutCount = vi.fn(() => Effect.succeed(7));
-		const templateListAll = vi.fn(() => Effect.succeed(templates));
+		const templateListAll = vi.fn(() =>
+			Effect.succeed({ items: templates, pageCount: 1 }),
+		);
 		const folderListAll = vi.fn(() => Effect.succeed(folders));
 		const operations: HevyOperations = {
 			...baseOperations,
@@ -293,7 +296,7 @@ describe("registerHevyResources", () => {
 		const cache: ExerciseTemplateCatalogCache = Effect.runSync(
 			Cache.make<
 				string,
-				ExerciseTemplate[],
+				TemplatesListAllResult,
 				Effect.Error<ReturnType<TemplatesListAllOperation["effect"]>>
 			>({
 				capacity: EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
@@ -446,11 +449,11 @@ describe("registerHevyResources", () => {
 	it("shares completed and controlled in-flight catalog values", async () => {
 		const { registerResource, server, tool } = createMockServer();
 		const hevyClient = createMockHevyClient();
-		const pendingLookups: Array<(value: ExerciseTemplate[]) => void> = [];
+		const pendingLookups: Array<(value: TemplatesListAllResult) => void> = [];
 		const listAll = vi
 			.fn<TemplatesListAllOperation["effect"]>()
 			.mockImplementation(() =>
-				Effect.callback<ExerciseTemplate[]>((resume) => {
+				Effect.callback<TemplatesListAllResult>((resume) => {
 					pendingLookups.push((value) => resume(Effect.succeed(value)));
 				}),
 			);
@@ -462,7 +465,7 @@ describe("registerHevyResources", () => {
 						safety: "read" as const,
 					},
 					effect: listAll,
-					execute: () => Promise.resolve([]),
+					execute: () => Promise.resolve({ items: [], pageCount: 0 }),
 				},
 			},
 		};
@@ -496,7 +499,7 @@ describe("registerHevyResources", () => {
 
 		await vi.waitFor(() => expect(listAll).toHaveBeenCalledOnce());
 		for (const resolveCatalog of pendingLookups) {
-			resolveCatalog([benchTemplate]);
+			resolveCatalog({ items: [benchTemplate], pageCount: 1 });
 		}
 
 		const [resourceResult, searchResult] = await Promise.all([

@@ -4,7 +4,7 @@ import {
 	isHevyHttpError,
 	NotFoundError,
 } from "@hevy-mcp/hevy-client";
-import { Schema } from "effect";
+import { Effect, Predicate, Schema } from "effect";
 
 export type ExpectedReadError = "not_found" | "end_of_list";
 export type ReadCollectionEndpoint = Extract<
@@ -25,7 +25,6 @@ export type ReadMemberEndpoint = Extract<
 	| "/v1/workouts/:workoutId"
 >;
 export type ReadEndpoint = HevyEndpointTemplate;
-export type ReadOperationError = Error;
 
 export class PaginationMismatchError extends Schema.TaggedError<PaginationMismatchError>()(
 	"PaginationMismatchError",
@@ -74,6 +73,14 @@ export class TrainingSummaryDataError extends Schema.TaggedError<TrainingSummary
 	},
 ) {}
 
+export class TemplatesSearchValidationError extends Schema.TaggedError<TemplatesSearchValidationError>()(
+	"TemplatesSearchValidationError",
+	{
+		maxPages: Schema.Number,
+		message: Schema.String,
+	},
+) {}
+
 const collectionMemberEndpoints = {
 	"/v1/body_measurements": "/v1/body_measurements/:date",
 	"/v1/exercise_templates": "/v1/exercise_templates/:exerciseTemplateId",
@@ -86,18 +93,18 @@ const collectionMemberEndpoints = {
 	ReadMemberEndpoint | undefined
 >;
 
-function errorIdentity(error: ReadOperationError):
+function errorIdentity(cause: unknown):
 	| {
 			readonly status?: number;
 			readonly method: string;
 			readonly endpoint: string;
 	  }
 	| undefined {
-	if (isHevyHttpError(error) || error instanceof NotFoundError) {
+	if (isHevyHttpError(cause) || cause instanceof NotFoundError) {
 		return {
-			status: error.status,
-			method: error.method,
-			endpoint: error.endpoint,
+			status: cause.status,
+			method: cause.method,
+			endpoint: cause.endpoint,
 		};
 	}
 	return undefined;
@@ -111,11 +118,11 @@ function errorIdentity(error: ReadOperationError):
  * request state, so unexpected errors remain in the Effect channel.
  */
 export function classifyReadError(
-	error: ReadOperationError,
+	cause: unknown,
 	endpoint: ReadEndpoint,
 	page?: number,
 ): ExpectedReadError | undefined {
-	const identity = errorIdentity(error);
+	const identity = errorIdentity(cause);
 	if (
 		identity === undefined ||
 		identity.status !== 404 ||
@@ -160,16 +167,106 @@ export function classifyReadError(
 }
 
 export function isExpectedReadNotFound(
-	error: ReadOperationError,
+	cause: unknown,
 	endpoint: ReadEndpoint,
 ): boolean {
-	return classifyReadError(error, endpoint) === "not_found";
+	return classifyReadError(cause, endpoint) === "not_found";
 }
 
 export function isExpectedReadEndOfList(
-	error: ReadOperationError,
+	cause: unknown,
 	endpoint: ReadCollectionEndpoint,
 	page: number,
 ): boolean {
-	return page > 1 && classifyReadError(error, endpoint, page) === "end_of_list";
+	return page > 1 && classifyReadError(cause, endpoint, page) === "end_of_list";
+}
+
+/**
+ * Detect the Hevy API's empty-object responses, which signal "no entity"
+ * where a 404 would be expected. Shared so the shape check cannot drift
+ * between operation modules.
+ */
+export function isEmptyResponse<T extends object>(
+	response: T | null | undefined,
+): response is T & Record<never, never> {
+	return (
+		response !== null &&
+		response !== undefined &&
+		Object.keys(response).length === 0
+	);
+}
+
+/**
+ * Recover a documented read-side 404 as a successful absence value.
+ * Pipeable so get-style operations keep one outcome-mapping shape.
+ */
+export function withExpectedNotFound<A, E, Absent>(
+	endpoint: ReadEndpoint,
+	absent: Absent,
+): (effect: Effect.Effect<A, E>) => Effect.Effect<A | Absent, E> {
+	return (effect) =>
+		effect.pipe(
+			Effect.catchIf(
+				(cause) => isExpectedReadNotFound(cause, endpoint),
+				() => Effect.succeed(absent),
+			),
+		);
+}
+
+/**
+ * Recover a documented later-page 404 as a successful end-of-list value.
+ * Pipeable so list-style operations keep one outcome-mapping shape.
+ */
+export function withExpectedEndOfList<A, E, Absent>(
+	endpoint: ReadCollectionEndpoint,
+	page: number,
+	absent: Absent,
+): (effect: Effect.Effect<A, E>) => Effect.Effect<A | Absent, E> {
+	return (effect) =>
+		effect.pipe(
+			Effect.catchIf(
+				(cause) => isExpectedReadEndOfList(cause, endpoint, page),
+				() => Effect.succeed(absent),
+			),
+		);
+}
+
+/**
+ * Fail when the API echoes a different page than requested. Compose with
+ * `Effect.tap` ahead of response projection so list operations share one
+ * page-echo policy.
+ */
+export function assertPageEcho(
+	response: { readonly page?: number | undefined } | null | undefined,
+	requestedPage: number,
+	collection: string,
+): Effect.Effect<void, PaginationMismatchError> {
+	if (response?.page !== undefined && response.page !== requestedPage) {
+		return Effect.fail(
+			new PaginationMismatchError({
+				requested: requestedPage,
+				received: response.page,
+				collection,
+				message: `Page mismatch for ${collection}: requested page ${requestedPage} but received page ${response.page}`,
+			}),
+		);
+	}
+	return Effect.void;
+}
+
+/**
+ * Decide whether pagination continues: the page was non-empty and the API
+ * reports more pages. Shared so every collection applies the same policy.
+ */
+export function hasNextPage(
+	pageCount: number | undefined,
+	page: number,
+	itemCount: number,
+): boolean {
+	return (
+		itemCount > 0 &&
+		Predicate.isNumber(pageCount) &&
+		Number.isSafeInteger(pageCount) &&
+		pageCount > page
+	);
 }

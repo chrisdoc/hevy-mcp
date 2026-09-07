@@ -14,7 +14,8 @@ import {
 const catalog: ExerciseTemplateCatalog = {
 	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
-	reset: () => {},
+	reset: () => Effect.void,
+	close: () => Effect.void,
 };
 
 /**

@@ -160,11 +160,7 @@ function runOperation<TInput, TOutput>(
 	execution: HevyExecutionOptions | undefined,
 ): Promise<TOutput> {
 	const resolved = requireOperation(operation, id);
-	return collapse(
-		execution === undefined
-			? resolved.effect(input)
-			: resolved.effect(input, execution),
-	);
+	return collapse(resolved.effect(input, execution));
 }
 
 function runOperationWithoutInput<TOutput>(
@@ -173,9 +169,7 @@ function runOperationWithoutInput<TOutput>(
 	execution: HevyExecutionOptions | undefined,
 ): Promise<TOutput> {
 	const resolved = requireOperation(operation, id);
-	return collapse(
-		execution === undefined ? resolved.effect() : resolved.effect(execution),
-	);
+	return collapse(resolved.effect(execution));
 }
 
 function updateMeasurement(
@@ -193,10 +187,7 @@ function updateMeasurement(
 		"bodyMeasurements.update",
 	);
 	const effect = Effect.fn("cli.measurements.update")(function* () {
-		const existing =
-			execution === undefined
-				? yield* getOperation.effect({ date })
-				: yield* getOperation.effect({ date }, execution);
+		const existing = yield* getOperation.effect({ date }, execution);
 		const parsed = existingBodyMeasurementSchema.safeParse(
 			existing.bodyMeasurement,
 		);
@@ -206,8 +197,7 @@ function updateMeasurement(
 			);
 		}
 		const { measurement } = mergeMeasurementPayload(parsed.data, input);
-		if (execution === undefined) yield* updateOperation.effect(measurement);
-		else yield* updateOperation.effect(measurement, execution);
+		yield* updateOperation.effect(measurement, execution);
 		return measurement;
 	});
 	return collapse(effect());
@@ -744,13 +734,7 @@ async function executeSummary({
 		{ weeks },
 		execution,
 	);
-	const totalVolumeKg =
-		z
-			.number()
-			.safeParse(
-				(result.workouts as { readonly total_volume_kg?: unknown })
-					.total_volume_kg,
-			).data ?? 0;
+	const totalVolumeKg = result.workouts.total_volume_kg ?? 0;
 	return {
 		weeks,
 		start_date: from.toISOString(),

@@ -28,7 +28,8 @@ import { workoutToolDefinitions } from "./workouts.js";
 const catalog: ExerciseTemplateCatalog = {
 	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
-	reset: () => undefined,
+	reset: () => Effect.void,
+	close: () => Effect.void,
 };
 
 function createSoft404Operations() {
@@ -241,7 +242,7 @@ describe("cross-package core invariants", () => {
 				...layerOperations.workouts,
 				get: {
 					...layerOperations.workouts.get,
-					effect: vi.fn(() => Effect.fail(new Error("wrong source"))),
+					effect: vi.fn(() => Effect.die(new Error("wrong source"))),
 				},
 			},
 		};
@@ -330,7 +331,7 @@ describe("cross-package core invariants", () => {
 				},
 				listAll: {
 					descriptor: templatesListAllDescriptor,
-					effect: vi.fn(() => Effect.succeed([])),
+					effect: vi.fn(() => Effect.succeed({ items: [], pageCount: 0 })),
 					execute: vi.fn(),
 				},
 			},

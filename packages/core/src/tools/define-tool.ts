@@ -13,7 +13,6 @@ import {
 	ToolInputValidationError,
 	type CoreToolError,
 } from "../effect-errors.js";
-import { normalizeCoreCause } from "./operation-helpers.js";
 
 type ToolDefinitionBase<
 	TSchema extends Record<string, z.ZodTypeAny>,
@@ -145,15 +144,16 @@ export function registerToolDefinition(
 					return Effect.fail(new ClientNotInitializedError());
 				}
 			}
-			return Effect.catchCause(
-				Effect.suspend(() =>
-					definition
-						.execute(scopedRuntime, args)
-						.pipe(
-							Effect.map((data) => respond(definition.responseContract, data)),
-						),
-				),
-				(cause) => Effect.failCause(normalizeCoreCause(cause)),
+			// The operation seam (operationEffect/normalizeCoreEffect) is the
+			// single normalization boundary: every tool execute() already runs
+			// typed CoreToolError effects, so a second collapse here would only
+			// re-traverse identical causes. Defects pass through either way.
+			return Effect.suspend(() =>
+				definition
+					.execute(scopedRuntime, args)
+					.pipe(
+						Effect.map((data) => respond(definition.responseContract, data)),
+					),
 			);
 		});
 	const handler = runtime.createHandler(directHandler, definition.name, {

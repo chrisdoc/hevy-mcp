@@ -45,6 +45,30 @@ describe("Effect retry backoff primitives", () => {
 		expect(result._tag).toBe("Failure");
 	});
 
+	it("fails a custom sleep whose deadline passed via the Effect Clock", async () => {
+		const controller = new AbortController();
+		await expect(
+			Effect.runPromise(
+				customPromiseSleep(
+					5,
+					controller.signal,
+					() => Promise.resolve(),
+					Date.now() - 1,
+				),
+			),
+		).rejects.toMatchObject({ _tag: "TimeoutError" });
+		await expect(
+			Effect.runPromise(
+				customPromiseSleep(
+					5,
+					controller.signal,
+					() => Promise.resolve(),
+					Date.now() + 60_000,
+				),
+			),
+		).resolves.toBeUndefined();
+	});
+
 	it("keeps a non-cooperative custom sleep interruptible", async () => {
 		const controller = new AbortController();
 		const fiber = await Effect.runPromise(
