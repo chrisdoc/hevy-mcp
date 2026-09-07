@@ -133,6 +133,10 @@
 			"cache": true,
 			"inputs": ["cliTests"]
 		},
+		"test:cli:safe": {
+			"cache": false,
+			"inputs": ["validationInputs"]
+		},
 		"test:pack:cli": {
 			"executor": "nx:run-commands",
 			"cache": false,

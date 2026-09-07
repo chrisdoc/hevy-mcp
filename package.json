@@ -51,6 +51,7 @@
 		"test:worker-http:live": "mise exec -- node scripts/run-live-vitest.mjs HEVY_RUN_LIVE_WORKER_TESTS=1,HEVY_API_KEY tests/integration/worker-http.live.integration.test.ts",
 		"test:pack": "mise exec -- npx nx run repository:test:pack",
 		"test:cli": "pnpm --filter @chrisdoc/hevy-cli run test",
+		"test:cli:safe": "mise exec -- node scripts/cli-safe-validation.mjs",
 		"test:pack:cli": "mise exec -- npx nx run repository:test:pack:cli",
 		"test:live": "mise exec -- node scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 		"test:nightly": "mise exec -- node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
