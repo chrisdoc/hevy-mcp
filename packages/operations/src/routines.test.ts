@@ -273,14 +273,14 @@ describe("routines.get operation", () => {
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
 	});
 
-	it("[VAL-OPS-008] omits the options argument when routines.get options are absent", async () => {
+	it("[VAL-OPS-008] forwards options through to the adapter when routines.get options are absent", async () => {
 		const adapter = createInMemoryGetAdapter({ routine: { id: "r1" } });
 		const operation = createRoutinesGetOperation(adapter);
 
 		await expect(operation.execute({ routineId: "r1" })).resolves.toEqual({
 			routine: { id: "r1" },
 		});
-		expect(adapter.argumentCounts).toEqual([1]);
+		expect(adapter.argumentCounts).toEqual([2]);
 	});
 });
 
@@ -768,7 +768,7 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-008] omits the options argument when routines.list options are absent", async () => {
+	it("[VAL-OPS-008] forwards options through to the adapter when routines.list options are absent", async () => {
 		const adapter = createInMemoryAdapter([{ page: 1, routines: [] }]);
 		const operation = createRoutinesListOperation(adapter);
 
@@ -777,7 +777,7 @@ describe("routines.list operation", () => {
 			page: 1,
 			pageCount: undefined,
 		});
-		expect(adapter.argumentCounts).toEqual([1]);
+		expect(adapter.argumentCounts).toEqual([2]);
 	});
 
 	it("[VAL-OPS-002] exposes routines.get as a native Promise, not an Effect", async () => {

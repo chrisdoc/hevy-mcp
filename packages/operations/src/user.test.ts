@@ -39,13 +39,15 @@ describe("user.get operation", () => {
 		await expect(Effect.runPromise(operation.effect())).rejects.toBe(error);
 	});
 
-	it("omits options when no execution options are supplied", async () => {
+	it("forwards options through to the request client", async () => {
 		const getUserInfo = vi.fn(() => Effect.succeed({ data: undefined }));
 		const operation = createUserGetOperation({ getUserInfo });
 
 		await expect(
 			Effect.runPromise(operation.effect()),
 		).resolves.toBeUndefined();
-		expect(getUserInfo).toHaveBeenCalledWith();
+		// Explicit undefined is identical to omission for optional request
+		// options, and keeps every operation on one calling convention.
+		expect(getUserInfo).toHaveBeenCalledWith(undefined);
 	});
 });

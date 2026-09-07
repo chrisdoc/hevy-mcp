@@ -1,4 +1,6 @@
 import type { HevyClient, HevyOperationSafety } from "@hevy-mcp/hevy-client";
+export { defineOperation } from "./define-operation.js";
+export type { DefinedOperation } from "./define-operation.js";
 import {
 	getRequestEffectClient,
 	type HevyRequestEffectClient,
