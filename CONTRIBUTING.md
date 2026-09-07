@@ -211,6 +211,10 @@ Also run the narrow checks related to your change. In particular:
   diagnostics, or the MCP TypeScript SDK.
 - Run `pnpm run test:pack` after package entry point, binary, manifest, or
   published-file changes.
+- Run `pnpm run test:cli:safe` after CLI argument, validation, or output
+  changes. It is a manual helper, not a PR lane: deterministic with a fake
+  key by default, with bounded read-only live checks behind
+  `HEVY_RUN_CLI_SAFE_LIVE=1`. It never runs a valid mutation with `--yes`.
 - Run `pnpm run check:server-manifest` after server metadata changes.
 - Run `pnpm run measure:tokens` when tool descriptions or schemas materially
   change; see [docs/token-cost-tracking.md](./docs/token-cost-tracking.md).
