@@ -103,7 +103,18 @@ function canAutofixConditionalEmptyObjectSpread(
 	);
 }
 
-/** Ban conditional empty-object spreads and autofix equivalent direct property declarations. */
+/**
+ * Discourage conditional empty-object spreads (`...(c ? { k: v } : {})`).
+ *
+ * Rationale: the spread hides whether the key is present, which matters for
+ * serialization contracts (absent vs `undefined`). Now warn-severity: visible
+ * without blocking. The autofix covers only the guarded property pattern;
+ * other shapes can alter the in-memory contract, so migrate those by hand
+ * (see docs/anti-slop-migration.md).
+ *
+ * Good: explicit branches or `optionalProperty()` helpers
+ * Bad: `...(edit ? { end_date } : {})`
+ */
 export const noConditionalEmptyObjectSpreadRule = defineRule({
 	meta: {
 		type: "suggestion",

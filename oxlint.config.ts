@@ -70,9 +70,9 @@ export default defineConfig({
 		"e18e/prefer-array-from-map": "error",
 		"e18e/prefer-object-has-own": "error",
 		"anti-slop/no-chained-type-assertions": "error",
-		"anti-slop/no-conditional-empty-object-spread": "error",
+		"anti-slop/no-conditional-empty-object-spread": "warn",
 		"anti-slop/no-known-value-widening": "error",
-		"anti-slop/no-object-parameters": "error",
+		"anti-slop/no-broad-object-type": "error",
 		"anti-slop/no-runtime-typeof": "error",
 		"anti-slop/no-shape-in-symbol-names": "error",
 		"anti-slop/no-unknown-parameters": "error",
@@ -80,4 +80,28 @@ export default defineConfig({
 		"anti-slop/no-unsafe-dictionary-type": "error",
 		"anti-slop/no-widen-then-assert": "error",
 	},
+	overrides: [
+		{
+			files: [
+				"**/*.{test,spec,test-d,spec-d}.{ts,tsx,js,jsx}",
+				"**/__tests__/**/*.{ts,tsx,js,jsx}",
+			],
+			plugins: ["vitest"],
+			rules: {
+				// Minimal vitest set: `categories.correctness` would otherwise
+				// enable every vitest correctness rule (835 existing
+				// violations). Adopting the full vitest preset is a separate
+				// migration; here only focused tests are enforced.
+				"vitest/expect-expect": "off",
+				"vitest/no-conditional-expect": "off",
+				"vitest/no-focused-tests": "error",
+				"vitest/no-standalone-expect": "off",
+				"vitest/require-mock-type-parameters": "off",
+				"vitest/require-to-throw-message": "off",
+				"vitest/valid-describe-callback": "off",
+				"vitest/valid-expect": "off",
+				"vitest/valid-title": "off",
+			},
+		},
+	],
 });

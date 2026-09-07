@@ -34,7 +34,18 @@ function parameterName(parameter: Parameter, sourceCode: SourceCode): string {
 }
 
 /** Ban the broad object type on function inputs, including local aliases to object. */
-export const noObjectParametersRule = defineRule({
+/**
+ * Ban the broad `object` type on function inputs (not precise options bags).
+ *
+ * Rationale: `object` accepts anything while promising nothing; callers get
+ * no autocomplete and no checking. Precise options-bag types are the
+ * preferred pattern — this rule only fires on the bare `object` keyword
+ * (or aliases resolving to it).
+ *
+ * Good: `function f(input: ToolInput)`
+ * Bad: `function f(input: object)`
+ */
+export const noBroadObjectTypeRule = defineRule({
 	meta: {
 		type: "problem",
 		docs: {

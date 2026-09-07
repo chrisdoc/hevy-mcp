@@ -362,7 +362,15 @@ function assertionIsNarrower(
 	return isDefinitelyNarrowerRecordType(assertedType);
 }
 
-/** Detect immutable local bindings that erase a known type and are later asserted back to a narrower type. */
+/**
+ * Detect widen-then-assert flows (`const x: T = narrow; ... x as Narrow`).
+ *
+ * Rationale: the widening destroys evidence the assertion then fabricates.
+ * Keep the narrow binding and widen only where a broad type is required.
+ *
+ * Good: `const ids = [...] as const` used directly
+ * Bad: `const x: object = { a: 1 }; (x as { a: number }).a`
+ */
 export const noWidenThenAssertRule = defineRule({
 	meta: {
 		type: "problem",
