@@ -333,9 +333,9 @@ is a production-affecting operation. Prefer `worker:dry-run` for local bundle
 verification unless deployment is explicitly intended.
 
 Worker API-key validation retries can use the optional
-`HEVY_VALIDATION_RETRY_DELAYS_MS` environment binding. Set it to a comma-separated
+`HEVY_VALIDATION_RETRY_DELAYS_MS` environment variable. Set it to a comma-separated
 sequence of non-negative integer delays in milliseconds, such as `300,600`.
-When the binding is unset, empty, or invalid, the Worker uses the default
+When the variable is unset, empty, or invalid, the Worker uses the default
 `300,600` schedule. For Wrangler-backed local tests, pass a shorter schedule
 with a variable override, for example
 `--var HEVY_VALIDATION_RETRY_DELAYS_MS:1,2`.
