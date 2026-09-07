@@ -350,6 +350,14 @@ MISE_AUTO_INSTALL=false mise exec -- npx nx run repository:worker:deploy
 is a production-affecting operation. Prefer `worker:dry-run` for local bundle
 verification unless deployment is explicitly intended.
 
+Worker API-key validation retries can use the optional
+`HEVY_VALIDATION_RETRY_DELAYS_MS` environment variable. Set it to a comma-separated
+sequence of non-negative integer delays in milliseconds, such as `300,600`.
+When the variable is unset, empty, or invalid, the Worker uses the default
+`300,600` schedule. For Wrangler-backed local tests, pass a shorter schedule
+with a variable override, for example
+`--var HEVY_VALIDATION_RETRY_DELAYS_MS:1,2`.
+
 `cloudflare.config.ts` is the Worker configuration used by Wrangler's
 experimental TypeScript config mode. Commands must include `--x-new-config`;
 the mode is selected inside the config using `WRANGLER_MODE` and the GitHub
