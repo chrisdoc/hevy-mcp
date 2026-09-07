@@ -1,0 +1,29 @@
+We have recently added effect 4 rc to this repo, your job is to validate that we are using effect in the best way possible to improve type safety and developer ergonimics. You are not allowed to change any of the code, you are only allowed to create a markdown file effect_improvements.md and add all that needs to be done better! Confirm that you understand that before reading and investigating
+
+---
+
+We have recently added effect 4 rc to this repo, your job is to validate that we are using effect in the best way possible to improve type safety and developer ergonimics. You are not allowed to change any of the code, you are only allowed to create a markdown file effect_improvements.md and add all that needs to be done better! Confirm that you understand that before reading and investigating
+
+---
+
+Go
+
+---
+
+Great now do another check and see how we can use Effect to remove duplication, simplify the code base and leverage more of the built in functionality from effect, we want effect to the maxium. Add those also to effect_improvemenets.md
+
+---
+
+Now setup https://github.com/sgb-io/fta and check for cycolmatic complexity
+
+---
+
+create a plan to work on effect_improvements.md
+
+---
+
+1. all
+2. a few prs and use the new gh stacked pr feature to stack them
+3. Fix it
+4. keep as one off
+5. yes changeset per phase
