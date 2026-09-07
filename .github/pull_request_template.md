@@ -4,7 +4,7 @@
 
 ## Validation
 
-- [ ] `pnpm run check`, `check:types`, `build`, `test:pr`, `test:performance`, `check:changeset`
+- [ ] `pnpm run check`, `check:types`, `check:boundaries`, `build`, `test:pr`, `test:performance`, `check:changeset`
 - [ ] Narrow lanes for the touched area (see CONTRIBUTING.md)
 
 ## Release impact

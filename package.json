@@ -63,7 +63,7 @@
 		"prepack": "pnpm run check:server-manifest && pnpm run build",
 		"start": "node --env-file .env packages/node/dist/cli.mjs",
 		"dev": "tsx watch --env-file .env --clear-screen=false packages/node/src/cli.ts",
-		"check": "pnpm run check:openapi && pnpm run check:generated && oxlint . --type-aware --type-check && oxfmt . --check",
+		"check": "pnpm run check:openapi && pnpm run check:generated && oxlint . --type-aware --type-check && oxfmt . --check && pnpm run knip",
 		"check:fix": "oxlint --fix . --type-aware --type-check && oxfmt . --write",
 		"check:types": "tsc --noEmit && pnpm -r run check:types",
 		"check:control-plane": "node scripts/check-control-plane.mjs",
