@@ -86,6 +86,17 @@ jobs:
           HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
           HEVY_RUN_LIVE_WORKER_TESTS: "1"
 
+      - name: Enforce MCP tool token budget
+        run: npx nx run repository:measure:tokens -- --enforce-budget
+
+      - name: Run performance suite for release record
+        run: npx nx run repository:test:performance
+
+      - name: Publish release quality report
+        run: |
+          npx -y fta-cli@3 packages --json > /tmp/fta.json
+          node scripts/release-quality-report.mjs /tmp/fta.json test-results/performance/summary.json >> "$GITHUB_STEP_SUMMARY"
+
       - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1

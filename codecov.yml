@@ -4,7 +4,9 @@ codecov:
 coverage:
   status:
     project: off
-    patch: off
+    patch:
+      default:
+        target: 75%
 
 ignore:
   - "packages/hevy-client/src/generated/**/*" # Ignore generated API output
