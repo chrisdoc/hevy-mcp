@@ -1,5 +1,117 @@
 # hevy-mcp
 
+## 6.1.11
+
+### Patch Changes
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose the complete native Effect request client through the internal seam while preserving the public Promise client.
+
+- [#1116](https://github.com/chrisdoc/hevy-mcp/pull/1116) [`62320b0`](https://github.com/chrisdoc/hevy-mcp/commit/62320b06e6f49fce6e1999b5b1955e5b5342671c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Route operations-only MCP runtimes through the shared catalog service.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add an Effect-first training summary workflow with deterministic UTC scans.
+
+- [#1120](https://github.com/chrisdoc/hevy-mcp/pull/1120) [`82ca0c9`](https://github.com/chrisdoc/hevy-mcp/commit/82ca0c95d033e593588f894b555bee7ada6cdb68) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Route CLI domain commands through the shared Effect-first Hevy operations and
+  preserve summary and search behavior across the operations boundary.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Move shared mutation payload builders and Hevy mutation quirks into operations.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Document the scoped Effect runtime and preserve the Promise-based Node entry points.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Document the Effect-first operations layer while keeping the public Node and CLI adapters Promise-shaped.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use Effect scheduling as the typed retry timing seam for the Hevy client.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Keep exercise-template catalog lookups in a server-scoped Effect cache.
+
+- [#1126](https://github.com/chrisdoc/hevy-mcp/pull/1126) [`abbb385`](https://github.com/chrisdoc/hevy-mcp/commit/abbb38575160386d841f52c89414ac215ee668ef) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Streamline CLI startup error handling and tests to run in-process without process-spawn overhead.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Optimize test suite execution by using fake timers for retry backoff delays.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Fix Streamable HTTP session lifecycle: interrupt idle-eviction fibers asynchronously instead of blocking synchronously, remove graceful-shutdown signal listeners after a close timeout, and record the "unknown" termination metric when session cleanup fails with no session established.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Isolate Effect retry schedule state so concurrent and sequential requests keep independent retry indexes.
+
+- [#1116](https://github.com/chrisdoc/hevy-mcp/pull/1116) [`62320b0`](https://github.com/chrisdoc/hevy-mcp/commit/62320b06e6f49fce6e1999b5b1955e5b5342671c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Provide the core Effect service layer through request-local MCP tool runtimes.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose the Hevy request Effect through a curated internal client subpath while
+  keeping the public client Promise-only.
+
+- [#1136](https://github.com/chrisdoc/hevy-mcp/pull/1136) [`affc598`](https://github.com/chrisdoc/hevy-mcp/commit/affc5986a82be7d8db8400f925032c9449efc501) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Reduce idle session eviction timeout in streamable HTTP test to improve test execution speed.
+
+- [#1141](https://github.com/chrisdoc/hevy-mcp/pull/1141) [`cebd280`](https://github.com/chrisdoc/hevy-mcp/commit/cebd280fafda0e11b51354c34d96c662e51c2c57) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Deduplicate operation construction: one operation factory with derived tracing spans, unconditional options passthrough, and shared read-outcome, page-echo, and pagination helpers.
+
+- [#1137](https://github.com/chrisdoc/hevy-mcp/pull/1137) [`4cc3d2b`](https://github.com/chrisdoc/hevy-mcp/commit/4cc3d2b78442d130e55f5c98e43eb7490ac07f91) Thanks [@chrisdoc](https://github.com/chrisdoc)! - fix(core): preserve operation domain errors in failure channel instead of converting them to unhandled defects. Domain errors from `@hevy-mcp/operations` (`WorkoutPrivacyError`, `WorkoutPayloadError`, `PaginationMismatchError`, `EmptyMeasurementUpdateError`, `TrainingSummaryValidationError`, `TrainingSummaryDataError`) are now included in `CoreToolError` and recognized by `isCoreToolError`, allowing tool error handlers to surface typed domain messages. In `runBoundedExecution`, unexpected defects are logged and re-thrown with their message rather than generic failure text.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Move typed Effect HTTP errors to the client package and centralize pure read-error classification.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add Effect-first workout writes, events, and count operations.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add Effect-first body measurement read and write operations.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Compose read operations directly from the internal request Effect while
+  preserving their public Promise API.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Let Effect schedules own Hevy client retry backoff waits.
+
+- [#1138](https://github.com/chrisdoc/hevy-mcp/pull/1138) [`a40d322`](https://github.com/chrisdoc/hevy-mcp/commit/a40d3222c5c579b8b6c80b3c848f843ec9ce45c7) Thanks [@chrisdoc](https://github.com/chrisdoc)! - perf(core, hevy-client): replace Zod safeParse runtime predicates with Effect Predicate module. Replaced custom Zod schemas and safeParse calls in `packages/core/src/utils/type-predicates.ts` and `packages/hevy-client/src/hevy-client-kubb.ts` with Effect's native `Predicate` module (`isString`, `isNumber`, `isBoolean`, `isObject`, `isFunction`), eliminating repeated parsing allocations in the hot request path.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Preserve sanitized request identity (method and canonical endpoint) on tagged
+  NetworkError diagnostics for statusless fetch failures.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Preserve approved CLI argument and invalid API-key startup messages while keeping unexpected errors behind safe diagnostics.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Scope core server construction and finalize the exercise-template catalog with the server lifecycle.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use Effect callback interruption for HTTP request bodies and semaphore-backed session initialization admission.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Own Node startup and shutdown resources with one scoped lifecycle owner while preserving Promise startup and direct close behavior.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Share the internal AbortSignal-to-fiber interruption bridge between the
+  runtime-neutral client and Worker validation cache.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Share in-flight exercise-template catalog loads while keeping individual request cancellation isolated.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Normalize paginated operations, recover only endpoint-scoped expected 404s, and report page mismatches as tagged errors.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Complete the request-local Effect retry interpreter while preserving client and adapter behavior.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Own Streamable HTTP sessions with server and child Effect scopes while preserving
+  session admission, disconnect, idle eviction, and shutdown behavior.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add Effect-first routine creation, updates, and paginated title search.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Map internal Effect client HTTP and transport failures to discriminable tagged errors while preserving the public Promise client error behavior.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Make telemetry initialization best-effort so provider failures do not prevent Node transports from starting.
+
+- [#1116](https://github.com/chrisdoc/hevy-mcp/pull/1116) [`62320b0`](https://github.com/chrisdoc/hevy-mcp/commit/62320b06e6f49fce6e1999b5b1955e5b5342671c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Preserve typed deadline and cancellation failures while loading exercise templates.
+
+- [#1140](https://github.com/chrisdoc/hevy-mcp/pull/1140) [`18d2949`](https://github.com/chrisdoc/hevy-mcp/commit/18d2949a36d26c0716369b24309d1970fb7bcc9d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Harden Effect type safety: narrow the request error channel to tagged errors, surface bounded-execution timeouts as typed deadline failures, validate template search pagination, and return template list results as an explicit struct.
+
+- [#1145](https://github.com/chrisdoc/hevy-mcp/pull/1145) [`1080685`](https://github.com/chrisdoc/hevy-mcp/commit/10806857abab7ddcb2d8dd5611a8bcd627d233ce) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Governance pass: rebalance hooks (cached unit lane on pre-commit, full check on pre-push), enforce knip, drop the dead client primitives barrel, and document boundaries and PR expectations.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Adopt Effect-scoped process lifecycle and bounded graceful shutdown for the Node adapter.
+
+- [#1151](https://github.com/chrisdoc/hevy-mcp/pull/1151) [`131da8e`](https://github.com/chrisdoc/hevy-mcp/commit/131da8eeb0041b54eb00a479493772f280af73a0) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Restore the fresh-budget deadline retry for timed-out reads. The Effect runtime
+  migration dropped the extended operation deadline, so a read whose first attempt
+  overshot its timeout could starve the retry before dispatch and skip the second
+  fetch.
+
+- [#1116](https://github.com/chrisdoc/hevy-mcp/pull/1116) [`62320b0`](https://github.com/chrisdoc/hevy-mcp/commit/62320b06e6f49fce6e1999b5b1955e5b5342671c) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Preserve tagged Effect failures through MCP tool and resource boundaries.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add Effect-first template, folder, and user operations with paginated catalogs.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Make Node process listener acquisition transactional and preserve startup errors during rollback.
+
+- [#1123](https://github.com/chrisdoc/hevy-mcp/pull/1123) [`e60f5b5`](https://github.com/chrisdoc/hevy-mcp/commit/e60f5b5435776429ec630610321122ef0786e493) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Use tagged core errors at the MCP tool collapse boundary, including bounded
+  invalid-argument, missing-client, and unavailable-operation failures.
+
+- [#1104](https://github.com/chrisdoc/hevy-mcp/pull/1104) [`99f2e43`](https://github.com/chrisdoc/hevy-mcp/commit/99f2e43476a0f7699460136da2d45780d83e5219) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Upgrade workspace dependencies and regenerate client with Kubb.
+
+- [#1140](https://github.com/chrisdoc/hevy-mcp/pull/1140) [`18d2949`](https://github.com/chrisdoc/hevy-mcp/commit/18d2949a36d26c0716369b24309d1970fb7bcc9d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Preserve the fetched template page count through the exercise catalog cache instead of recomputing it from the cached item count.
+
+- [#1142](https://github.com/chrisdoc/hevy-mcp/pull/1142) [`7969bd8`](https://github.com/chrisdoc/hevy-mcp/commit/7969bd8e7095c0ec3bd12b6170dd5310594ce9a3) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Simplify Effect runtime usage: one abort-signal bridge, compiler-checked error vocabulary, a single cause-normalization boundary, lazy service layers, Effect-native catalog lifecycle, and shared response pagination.
+
 ## 6.1.10
 
 ### Patch Changes
