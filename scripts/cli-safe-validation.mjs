@@ -457,7 +457,8 @@ if (process.env[LIVE_FLAG] === "1") {
 		"live-oob-page-is-empty-success",
 		oob.status === 0 &&
 			isJson(oob.stdout) &&
-			oob.stdout.includes('"workouts":[]'),
+			oob.stdout.includes('"workouts":[]') &&
+			leakFree(oob.stdout + oob.stderr),
 		`exit=${oob.status}`,
 	);
 } else {
