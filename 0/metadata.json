@@ -3,7 +3,7 @@
   "checkpoint_id": "01M1XAWRPCVF5HXXT90XG1KW5R",
   "session_id": "01a077d0-f954-707b-a5b6-29ba3817f749",
   "strategy": "manual-commit",
-  "created_at": "2026-09-07T07:04:05.605366Z",
+  "created_at": "2026-09-07T07:04:06.834087Z",
   "branch": "chore/rules-review-gates-docs",
   "checkpoints_count": 2,
   "save_step_count": 2,
@@ -13,21 +13,21 @@
   "agent": "Pi",
   "model": "hermes-merge-glm-5-3-flash",
   "turn_id": "ffdefd39afd9",
-  "checkpoint_transcript_start": 288,
-  "transcript_lines_at_start": 288,
-  "compact_transcript_start": 144,
+  "checkpoint_transcript_start": 302,
+  "transcript_lines_at_start": 302,
+  "compact_transcript_start": 152,
   "token_usage": {
-    "input_tokens": 500834,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
     "cache_read_tokens": 0,
-    "output_tokens": 1287,
-    "api_call_count": 7
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "session_metrics": {
     "turn_count": 2
   },
   "initial_attribution": {
-    "calculated_at": "2026-09-07T07:04:05.570794Z",
+    "calculated_at": "2026-09-07T07:04:06.800422Z",
     "agent_lines": 0,
     "agent_removed": 0,
     "human_added": 15,
