@@ -925,9 +925,14 @@ export function createNativeClient(
 		let currentPhase: HevyRequestPhase = "before-dispatch";
 		const requestEffect = Effect.suspend(() => {
 			const operationStartedAt = Date.now();
-			const deadline =
+			let deadline =
 				normalized.hevyDeadline ??
 				operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
+			// A timed-out read gets one fresh attempt budget on retry, bounded
+			// by the extended operation deadline. An explicit caller deadline
+			// stays authoritative and is never extended.
+			const operationDeadline =
+				normalized.hevyDeadline ?? deadline + operationTimeoutMs;
 			let retryCount = 0;
 			let freeDeadlineRetryUsed = false;
 			let activeRetryWaitScope: HevyRetryWaitScope | undefined;
@@ -1225,8 +1230,17 @@ export function createNativeClient(
 						normalized.hevyDeadline === undefined &&
 						attempt === 1 &&
 						!freeDeadlineRetryUsed;
-					if (freeRetry) freeDeadlineRetryUsed = true;
-					if (freeRetry) retryCount = attempt;
+					if (freeRetry) {
+						freeDeadlineRetryUsed = true;
+						retryCount = attempt;
+						// Grant the retry a fresh attempt budget so timer
+						// overshoot on the timed-out attempt cannot starve it
+						// before dispatch, bounded by the operation deadline.
+						deadline = Math.min(
+							Date.now() + operationTimeoutMs,
+							operationDeadline,
+						);
+					}
 					return freeRetry;
 				}
 				if (freeDeadlineRetryUsed) return false;
