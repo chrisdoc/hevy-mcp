@@ -202,7 +202,10 @@ const ERROR_TAGS = {
 
 Adding a member to the union without listing its tag is a type error, and a
 misspelled tag is an excess-key error. Prefer this over `instanceof` chains,
-which drift silently.
+which drift silently. The table enforces vocabulary completeness at compile
+time only: the runtime guard must still verify each value (for example with
+an own-property tag check), because a plain object carrying a matching
+`_tag` is not a valid union member.
 
 ### Code Review Checklist
 

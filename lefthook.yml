@@ -8,19 +8,18 @@ pre-commit:
     oxlint:
       # Type-aware lint runs on staged files only here; the full-repo pass
       # moved to pre-push (repository:pre-push now depends on `check`).
+      # `{staged_files}` is already glob-filtered and shell-escaped by
+      # lefthook, and the command is skipped when nothing matches.
       glob: "**/*.{js,ts,cjs,mjs,cts,mts,d.cts,d.mts,jsx,tsx}"
-      run: |
-        staged=$(echo "{staged_files}" | tr ' ' '\n' | grep -E '\.(js|ts|cjs|mjs|cts|mts|d\.cts|d\.mts|jsx|tsx)$' || true)
-        [ -z "$staged" ] && exit 0
-        mise exec -- npx oxlint --type-aware --type-check $staged
+      run: mise exec -- npx oxlint --type-aware --type-check {staged_files}
     oxfmt:
-      # lefthook ignores `exclude` when computing the implicit file list, so filter
-      # the generated .pi extension here; exit 0 when nothing formatable remains.
+      # `{staged_files}` is glob/exclude-filtered and shell-escaped by
+      # lefthook, so each path (including spaces) arrives intact; the command
+      # is skipped when nothing formatable remains.
       glob: "**/*.{js,ts,cjs,mjs,cts,mts,d.cts,d.mts,jsx,tsx,json,jsonc,md}"
-      run: |
-        staged=$(echo "{staged_files}" | tr ' ' '\n' | grep -v '^\.pi/' || true)
-        [ -z "$staged" ] && exit 0
-        mise exec -- npx oxfmt --write $staged
+      exclude:
+        - .pi/**
+      run: mise exec -- npx oxfmt --write {staged_files}
       stage_fixed: true
     actionlint:
       glob:
