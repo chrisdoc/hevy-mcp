@@ -3,7 +3,7 @@
   "checkpoint_id": "01M1X8BFHKJYJ9F6H0GMDD8E7A",
   "session_id": "01a0781e-de76-7115-96bd-d502d357cfa6",
   "strategy": "manual-commit",
-  "created_at": "2026-09-07T06:19:41.885094Z",
+  "created_at": "2026-09-07T06:19:42.519151Z",
   "branch": "refactor/effect-runtime",
   "checkpoints_count": 3,
   "save_step_count": 6,
@@ -11,15 +11,15 @@
   "agent": "Pi",
   "model": "meta/muse-spark-1.3-contributor",
   "turn_id": "dbc7c73e84c3",
-  "checkpoint_transcript_start": 1147,
-  "transcript_lines_at_start": 1147,
-  "compact_transcript_start": 543,
+  "checkpoint_transcript_start": 1249,
+  "transcript_lines_at_start": 1249,
+  "compact_transcript_start": 593,
   "token_usage": {
-    "input_tokens": 33982,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 21836095,
-    "output_tokens": 16516,
-    "api_call_count": 47
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "session_metrics": {
     "turn_count": 14
