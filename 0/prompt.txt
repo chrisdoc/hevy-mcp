@@ -1,0 +1,82 @@
+We have recently added effect 4 rc to this repo, your job is to validate that we are using effect in the best way possible to improve type safety and developer ergonimics. You are not allowed to change any of the code, you are only allowed to create a markdown file effect_improvements.md and add all that needs to be done better! Confirm that you understand that before reading and investigating
+
+---
+
+We have recently added effect 4 rc to this repo, your job is to validate that we are using effect in the best way possible to improve type safety and developer ergonimics. You are not allowed to change any of the code, you are only allowed to create a markdown file effect_improvements.md and add all that needs to be done better! Confirm that you understand that before reading and investigating
+
+---
+
+Go
+
+---
+
+Great now do another check and see how we can use Effect to remove duplication, simplify the code base and leverage more of the built in functionality from effect, we want effect to the maxium. Add those also to effect_improvemenets.md
+
+---
+
+Now setup https://github.com/sgb-io/fta and check for cycolmatic complexity
+
+---
+
+create a plan to work on effect_improvements.md
+
+---
+
+1. all
+2. a few prs and use the new gh stacked pr feature to stack them
+3. Fix it
+4. keep as one off
+5. yes changeset per phase
+
+---
+
+Continue with the approved plan.
+
+---
+
+what is next?
+
+---
+
+yes go ahead, don't stop till you are done
+
+---
+
+what is a good and fast tool to measuer loc
+
+---
+
+what is our ratio between code loc and test loc
+
+---
+
+this PR is red https://github.com/chrisdoc/hevy-mcp/pull/1142
+
+---
+
+what was the mandate?
+
+---
+
+i want you to the challenge all rules and mandates that are currently in the repo, give me a pro and con for each and also think about mandates we should add. this codebase has evolved over the last years and I want your fresh eyes on it
+
+---
+
+create a proper plan for the rules_review.md work
+
+---
+
+1. yes all
+2. lets enfore 75%
+3. N5,N6 we can do only for a new release as part of the release workflow
+4. yes batch
+5. later
+
+---
+[workflows mode armed. Decide first: if this message is a question, a trivial task, or
+just talk (about workflows, this repo, or the tool itself), answer it directly and stay
+conversational — arming authorizes the tool, it does not force it. If it is a real,
+decomposable request to do work, handle it by calling the `workflow` tool: write a script
+that fans the task out across subagents via agent()/parallel()/pipeline().
+Why this turn is armed: you typed the workflow trigger word, which counts as an explicit opt-in to multi-agent orchestration.
+If you do call `workflow`, it runs in the background by default: this turn will end and the result is delivered back into the conversation automatically when it finishes — that's expected, not a stall, so you do not need to stay and block. Only pass background:false if the user is waiting for the result inline in this same turn.]
