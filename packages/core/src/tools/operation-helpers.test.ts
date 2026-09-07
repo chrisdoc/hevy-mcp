@@ -82,6 +82,23 @@ describe("operation error normalization", () => {
 		}
 	});
 
+	it("treats inherited tag names as defects", async () => {
+		for (const tag of ["constructor", "toString", "hasOwnProperty"]) {
+			const operation = {
+				effect: () => Effect.fail({ _tag: tag }),
+			};
+
+			const exit = await Effect.runPromiseExit(
+				operationEffect(Effect.succeed(operation)),
+			);
+
+			expect(Exit.isFailure(exit)).toBe(true);
+			if (Exit.isFailure(exit)) {
+				expect(Cause.hasDies(exit.cause)).toBe(true);
+			}
+		}
+	});
+
 	it("preserves operation domain errors in failure channel", async () => {
 		const domainErrors = [
 			new WorkoutPrivacyError({

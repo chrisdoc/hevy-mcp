@@ -1,4 +1,5 @@
-import { Cause, Data, Duration, Effect } from "effect";
+import { Cause, Clock, Data, Duration, Effect } from "effect";
+import { failOnAbortSignal } from "./abort-signal.js";
 
 import type { HevyOperationSafety } from "./execution.js";
 
@@ -21,30 +22,6 @@ export class BackoffFailure extends Data.TaggedError("BackoffFailure")<{
 	readonly deadline?: number;
 }> {}
 
-function interruptionEffect(
-	signal: AbortSignal,
-): Effect.Effect<never, unknown> {
-	return Effect.callback<never, unknown>((resume, interruptionSignal) => {
-		const cleanup = () => {
-			signal.removeEventListener("abort", fail);
-			interruptionSignal.removeEventListener("abort", cleanup);
-		};
-		const fail = () =>
-			resume(
-				Effect.fail(
-					signal.reason ?? new DOMException("Operation canceled", "AbortError"),
-				),
-			);
-		if (signal.aborted) {
-			fail();
-			return;
-		}
-		signal.addEventListener("abort", fail, { once: true });
-		interruptionSignal.addEventListener("abort", cleanup, { once: true });
-		return Effect.sync(cleanup);
-	}).pipe(Effect.interruptible);
-}
-
 /**
  * Wait using the Effect Clock while still observing the operation signal.
  * This is deliberately separate from the Promise adapter so TestClock can
@@ -60,9 +37,7 @@ export function effectClockSleep(
 		);
 	}
 	const sleep = Effect.sleep(Duration.millis(Math.max(0, delayMs)));
-	return Effect.raceFirst(sleep, interruptionEffect(signal)).pipe(
-		Effect.asVoid,
-	);
+	return Effect.raceFirst(sleep, failOnAbortSignal(signal)).pipe(Effect.asVoid);
 }
 
 /**
@@ -112,12 +87,6 @@ export function customPromiseSleep(
 				try {
 					Promise.resolve(sleep(delayMs, signal)).then(() => {
 						if (settled) return;
-						if (deadline !== undefined && Date.now() >= deadline) {
-							settleReject(
-								new Cause.TimeoutError("Retry backoff deadline exceeded"),
-							);
-							return;
-						}
 						settled = true;
 						cleanup();
 						resolve();
@@ -128,7 +97,19 @@ export function customPromiseSleep(
 			});
 		},
 		catch: (cause) => cause,
-	});
+	}).pipe(
+		Effect.flatMap(() =>
+			deadline === undefined
+				? Effect.void
+				: Effect.flatMap(Clock.currentTimeMillis, (now) =>
+						now >= deadline
+							? Effect.fail(
+									new Cause.TimeoutError("Retry backoff deadline exceeded"),
+								)
+							: Effect.void,
+					),
+		),
+	);
 }
 
 export function retryBackoff(

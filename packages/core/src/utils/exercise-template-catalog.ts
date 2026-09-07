@@ -44,8 +44,8 @@ export interface ExerciseTemplateCatalog {
 		options?: ExerciseTemplateCatalogOptions,
 	): Effect.Effect<ExerciseTemplate[], TemplateListAllError>;
 	get(options?: ExerciseTemplateCatalogOptions): Promise<ExerciseTemplate[]>;
-	reset(): void;
-	close?(): void;
+	reset(): Effect.Effect<void>;
+	close(): Effect.Effect<void>;
 }
 
 type CatalogOperations = {
@@ -133,19 +133,35 @@ export function createExerciseTemplateCatalog(
 		},
 	);
 
+	// Local abort bridge: core must not import the client Effect seam
+	// (@hevy-mcp/hevy-client/internal per repository/topology.json), and the
+	// public entry stays Effect-seam-free (see hevy-client-internal-export
+	// test). Mirrors failOnAbortSignal's branch structure by convention.
+	// The channel instantiation documents that aborts escape through the
+	// catalog's Promise edge rather than its typed Effect channel.
 	const awaitAbort = (signal: AbortSignal) =>
-		Effect.callback<never, TemplateListAllError>((resume) => {
-			const abort = () =>
-				resume(
-					Effect.fail(
-						signal.reason ??
-							new DOMException("Operation canceled", "AbortError"),
-					) as Effect.Effect<never, TemplateListAllError>,
-				);
-			if (signal.aborted) abort();
-			else signal.addEventListener("abort", abort, { once: true });
-			return Effect.sync(() => signal.removeEventListener("abort", abort));
-		});
+		Effect.callback<never, TemplateListAllError>(
+			(resume, interruptionSignal) => {
+				const fail = () =>
+					resume(
+						Effect.fail(
+							signal.reason ??
+								new DOMException("Operation canceled", "AbortError"),
+						) as Effect.Effect<never, TemplateListAllError>,
+					);
+				const cleanup = () => {
+					signal.removeEventListener("abort", fail);
+					interruptionSignal.removeEventListener("abort", cleanup);
+				};
+				if (signal.aborted) {
+					fail();
+					return;
+				}
+				signal.addEventListener("abort", fail, { once: true });
+				interruptionSignal.addEventListener("abort", cleanup, { once: true });
+				return Effect.sync(cleanup);
+			},
+		).pipe(Effect.interruptible);
 
 	const effect = Effect.fn("core.exerciseTemplateCatalog.get")(function* (
 		options: ExerciseTemplateCatalogOptions = {},
@@ -205,12 +221,13 @@ export function createExerciseTemplateCatalog(
 							: Effect.never,
 					),
 				),
-				Effect.sync(() => {
+				Effect.suspend(() => {
 					shared.waiters -= 1;
 					if (shared.waiters === 0 && inFlight === shared) {
 						inFlight = undefined;
-						void Effect.runPromise(Fiber.interrupt(shared.fiber));
+						return Effect.asVoid(Fiber.interrupt(shared.fiber));
 					}
+					return Effect.void;
 				}),
 			);
 		});
@@ -247,19 +264,27 @@ export function createExerciseTemplateCatalog(
 	return {
 		effect,
 		get: (options) => Effect.runPromise(effect(options)),
-		reset() {
-			hasLoadedValue = false;
-			generation += 1;
-			if (inFlight) void Effect.runPromise(Fiber.interrupt(inFlight.fiber));
-			inFlight = undefined;
-			Effect.runSync(
-				Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY),
-			);
-		},
-		close() {
-			if (inFlight) void Effect.runPromise(Fiber.interrupt(inFlight.fiber));
-			inFlight = undefined;
-		},
+		reset: () =>
+			Effect.suspend(() => {
+				hasLoadedValue = false;
+				generation += 1;
+				const fiber = inFlight?.fiber;
+				inFlight = undefined;
+				return (
+					fiber ? Effect.asVoid(Fiber.interrupt(fiber)) : Effect.void
+				).pipe(
+					Effect.andThen(
+						Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY),
+					),
+					Effect.asVoid,
+				);
+			}),
+		close: () =>
+			Effect.suspend(() => {
+				const fiber = inFlight?.fiber;
+				inFlight = undefined;
+				return fiber ? Effect.asVoid(Fiber.interrupt(fiber)) : Effect.void;
+			}),
 	};
 }
 

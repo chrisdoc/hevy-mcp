@@ -359,7 +359,8 @@ describe("registerHevyTools", () => {
 		const catalog: ExerciseTemplateCatalog = {
 			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
-			reset: () => {},
+			reset: () => Effect.void,
+			close: () => Effect.void,
 		};
 		registerHevyTools(
 			server,
@@ -412,7 +413,8 @@ describe("registerHevyTools", () => {
 		const catalog: ExerciseTemplateCatalog = {
 			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
-			reset: () => {},
+			reset: () => Effect.void,
+			close: () => Effect.void,
 		};
 		registerHevyTools(
 			productionServer,
@@ -451,7 +453,8 @@ describe("registerHevyTools", () => {
 			const catalog: ExerciseTemplateCatalog = {
 				effect: () => Effect.succeed([]),
 				get: () => Promise.resolve([]),
-				reset: () => {},
+				reset: () => Effect.void,
+				close: () => Effect.void,
 			};
 			registerHevyTools(
 				server,
@@ -505,7 +508,8 @@ describe("registerHevyTools", () => {
 		const catalog: ExerciseTemplateCatalog = {
 			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
-			reset: () => {},
+			reset: () => Effect.void,
+			close: () => Effect.void,
 		};
 		const buildPair = (name: string) => {
 			const rebuilt = new McpServer({
@@ -576,7 +580,8 @@ describe("registerHevyTools", () => {
 		const catalog: ExerciseTemplateCatalog = {
 			effect: () => Effect.succeed([]),
 			get: () => Promise.resolve([]),
-			reset: () => {},
+			reset: () => Effect.void,
+			close: () => Effect.void,
 		};
 		registerHevyTools(
 			productionServer,

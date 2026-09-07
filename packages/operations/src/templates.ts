@@ -75,19 +75,12 @@ type ExerciseHistoryQuery = {
 function exerciseHistoryQuery(
 	input: TemplatesHistoryInput,
 ): ExerciseHistoryQuery {
-	if (input.startDate === undefined && input.endDate === undefined) {
-		return {};
-	}
 	if (input.startDate === undefined) {
+		if (input.endDate === undefined) return {};
 		return { end_date: input.endDate };
 	}
-	if (input.endDate === undefined) {
-		return { start_date: input.startDate };
-	}
-	return {
-		start_date: input.startDate,
-		end_date: input.endDate,
-	};
+	if (input.endDate === undefined) return { start_date: input.startDate };
+	return { start_date: input.startDate, end_date: input.endDate };
 }
 
 export interface TemplatesHistoryOutput {

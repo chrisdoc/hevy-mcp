@@ -28,7 +28,8 @@ import { workoutToolDefinitions } from "./workouts.js";
 const catalog: ExerciseTemplateCatalog = {
 	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
-	reset: () => undefined,
+	reset: () => Effect.void,
+	close: () => Effect.void,
 };
 
 function createSoft404Operations() {

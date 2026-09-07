@@ -23,7 +23,8 @@ const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>
 const catalog = {
 	effect: () => Effect.succeed([]),
 	get: () => Promise.resolve([]),
-	reset: () => undefined,
+	reset: () => Effect.void,
+	close: () => Effect.void,
 };
 
 function resolveRuntimeServices(runtime: ReturnType<typeof createToolRuntime>) {

@@ -35,7 +35,9 @@ export interface RetryScheduleOptions<ScheduleError = never> {
  *
  * The schedule owns retry timing, recurrence, and the input predicate. The
  * client supplies the safety predicate and optional delay adapter for
- * observation or deadline bounding.
+ * observation or deadline bounding. Jitter stays behind the injectable
+ * `randomInt` seam (tests pass `() => 0`); it is deliberately sync so the
+ * pure `getRetryDelayMs` policy needs no Effect context.
  */
 export function createRetrySchedule<ScheduleError = never>(
 	maxRetries: number,
@@ -46,21 +48,16 @@ export function createRetrySchedule<ScheduleError = never>(
 ): Schedule.Schedule<number, RetryScheduleInput, ScheduleError> {
 	return Schedule.recurs(Math.max(0, maxRetries)).pipe(
 		Schedule.while(
-			(metadata: Schedule.Metadata<number, RetryScheduleInput>) =>
-				options.whileInput?.(metadata.input, metadata.attempt) ?? true,
+			({ input, attempt }: Schedule.Metadata<number, RetryScheduleInput>) =>
+				options.whileInput?.(input, attempt) ?? true,
 		),
-		Schedule.addDelay((metadata) =>
-			Effect.gen(function* () {
-				const delayMs = getRetryDelayMs(
-					metadata.input,
-					metadata.attempt,
-					policy,
-					randomInt,
-				);
-				return yield* options.delay
-					? options.delay(metadata.input, metadata.attempt, delayMs)
+		Schedule.addDelay(
+			({ input, attempt }: Schedule.Metadata<number, RetryScheduleInput>) => {
+				const delayMs = getRetryDelayMs(input, attempt, policy, randomInt);
+				return options.delay
+					? options.delay(input, attempt, delayMs)
 					: Effect.succeed(Duration.millis(delayMs));
-			}),
+			},
 		),
 	);
 }
