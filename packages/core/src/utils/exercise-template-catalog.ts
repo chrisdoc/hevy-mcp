@@ -1,6 +1,5 @@
 import { Cache, Clock, Deferred, Effect, Fiber, Option } from "effect";
 import type { HevyRequestOptions } from "@hevy-mcp/hevy-client";
-import { failOnAbortSignal } from "@hevy-mcp/hevy-client/internal";
 import type { ExerciseTemplate } from "@hevy-mcp/hevy-client/types";
 import type {
 	TemplatesListAllOperation,
@@ -134,11 +133,35 @@ export function createExerciseTemplateCatalog(
 		},
 	);
 
-	// The shared abort bridge owns listener lifecycle; the channel
-	// instantiation documents that aborts escape through the catalog's
-	// Promise edge rather than its typed Effect channel.
+	// Local abort bridge: core must not import the client Effect seam
+	// (@hevy-mcp/hevy-client/internal per repository/topology.json), and the
+	// public entry stays Effect-seam-free (see hevy-client-internal-export
+	// test). Kept textually identical to failOnAbortSignal by convention.
+	// The channel instantiation documents that aborts escape through the
+	// catalog's Promise edge rather than its typed Effect channel.
 	const awaitAbort = (signal: AbortSignal) =>
-		failOnAbortSignal<TemplateListAllError>(signal);
+		Effect.callback<never, TemplateListAllError>(
+			(resume, interruptionSignal) => {
+				const cleanup = () => {
+					signal.removeEventListener("abort", fail);
+					interruptionSignal.removeEventListener("abort", cleanup);
+				};
+				const fail = () =>
+					resume(
+						Effect.fail(
+							signal.reason ??
+								new DOMException("Operation canceled", "AbortError"),
+						) as Effect.Effect<never, TemplateListAllError>,
+					);
+				if (signal.aborted) {
+					fail();
+				} else {
+					signal.addEventListener("abort", fail, { once: true });
+				}
+				interruptionSignal.addEventListener("abort", cleanup, { once: true });
+				return Effect.sync(cleanup);
+			},
+		).pipe(Effect.interruptible);
 
 	const effect = Effect.fn("core.exerciseTemplateCatalog.get")(function* (
 		options: ExerciseTemplateCatalogOptions = {},
