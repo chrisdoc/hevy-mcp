@@ -93,9 +93,12 @@ jobs:
         run: npx nx run repository:test:performance
 
       - name: Publish release quality report
+        # Advisory only: fta-cli is lockfile-pinned (see package.json) and this
+        # step must never block the release.
+        continue-on-error: true
         run: |
-          npx -y fta-cli@3 packages --json > /tmp/fta.json
-          node scripts/release-quality-report.mjs /tmp/fta.json test-results/performance/summary.json >> "$GITHUB_STEP_SUMMARY"
+          pnpm exec fta packages --json > /tmp/fta.json || true
+          node scripts/release-quality-report.mjs /tmp/fta.json test-results/performance/summary.json >> "$GITHUB_STEP_SUMMARY" || true
 
       - name: Create Release PR or Publish
         id: changesets

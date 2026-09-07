@@ -4,7 +4,7 @@
  * Reads fta complexity JSON and the performance summary, then prints Markdown
  * tables for the GitHub job summary. Run after the performance lane:
  *
- *   npx -y fta-cli@3 packages --json > /tmp/fta.json
+ *   pnpm exec fta packages --json > /tmp/fta.json
  *   node scripts/release-quality-report.mjs /tmp/fta.json test-results/performance/summary.json
  */
 import { readFile } from "node:fs/promises";
@@ -20,7 +20,7 @@ function table(headers, rows) {
 	return lines.join("\n");
 }
 
-let sections = ["## Release quality report", ""];
+const sections = ["## Release quality report", ""];
 
 /* Complexity: worst non-generated files by cyclomatic complexity. */
 try {
@@ -56,10 +56,14 @@ try {
 	const perf = JSON.parse(
 		await readFile(perfPath ?? "test-results/performance/summary.json", "utf8"),
 	);
+	const formatDuration = (value) =>
+		value === null || value === undefined || Number.isNaN(value)
+			? "\u2013"
+			: String(Math.round(value));
 	const rows = (perf.scenarios ?? []).map((scenario) => [
 		scenario.name,
-		String(Math.round(scenario.durationsMs?.p50 ?? Number.NaN)),
-		String(Math.round(scenario.durationsMs?.p95 ?? Number.NaN)),
+		formatDuration(scenario.durationsMs?.p50),
+		formatDuration(scenario.durationsMs?.p95),
 		String(scenario.correctness?.failureCount ?? "?"),
 	]);
 	sections.push(
