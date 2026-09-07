@@ -3,7 +3,7 @@
   "checkpoint_id": "01M1X53DYVAA59WWPH7JMMSSQQ",
   "session_id": "01a0781e-de76-7115-96bd-d502d357cfa6",
   "strategy": "manual-commit",
-  "created_at": "2026-09-07T05:23:27.641541Z",
+  "created_at": "2026-09-07T05:23:28.156806Z",
   "branch": "refactor/operations-dedup",
   "checkpoints_count": 2,
   "save_step_count": 5,
@@ -11,15 +11,15 @@
   "agent": "Pi",
   "model": "meta/muse-spark-1.3-contributor",
   "turn_id": "7aaca158c8af",
-  "checkpoint_transcript_start": 573,
-  "transcript_lines_at_start": 573,
-  "compact_transcript_start": 256,
+  "checkpoint_transcript_start": 891,
+  "transcript_lines_at_start": 891,
+  "compact_transcript_start": 415,
   "token_usage": {
-    "input_tokens": 1092216,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 47689210,
-    "output_tokens": 84792,
-    "api_call_count": 157
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "session_metrics": {
     "turn_count": 11
