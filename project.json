@@ -194,7 +194,7 @@
 		},
 		"pre-push": {
 			"executor": "nx:noop",
-			"dependsOn": ["check:types", "check:changeset", "test:pr"],
+			"dependsOn": ["check", "check:types", "check:changeset", "test:pr"],
 			"inputs": ["validationInputs"]
 		},
 		"sync:server-manifest": {

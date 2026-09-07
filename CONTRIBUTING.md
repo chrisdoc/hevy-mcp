@@ -221,7 +221,10 @@ Also run the narrow checks related to your change. In particular:
 dependencies. The project uses the Oxc tools for fast, consistent type-aware
 linting and formatting. Fix reported code warnings rather than assuming they
 are harmless. Use `pnpm run check:fix` for automated fixes, then inspect the
-resulting diff. Git hooks run the same tools for pre-commit validation.
+resulting diff. Git hooks run the same tools for pre-commit validation. Note that
+`stage_fixed` folds hook fixes into your commit: the committed content may
+differ by formatting bytes from what you staged, so `git show` after
+committing when that matters.
 
 Git hooks are managed by [Lefthook](https://lefthook.dev), replacing the former
 hk setup. The `lefthook.yml` configuration runs formatting and unit tests on
@@ -273,6 +276,21 @@ both runtimes. `packages/hevy-client` owns the native-fetch Hevy client:
   runtime-neutral client and core but does not depend on either runtime adapter.
 - `packages/core` and `packages/hevy-client` must remain safe in both Node.js
   and Cloudflare Workers.
+
+Three systems enforce boundaries; each owns a different axis:
+
+- `repository/topology.json` declares the package allowlists (which workspace
+  may import which subpath, e.g. core may use `@hevy-mcp/hevy-client` but not
+  its `/internal` seam).
+- `scripts/check-package-boundaries.mjs` enforces those allowlists plus the
+  builtin/dynamic-import bans (`pnpm run check:boundaries`).
+- `.dependency-cruiser.cjs` enforces structural direction (no cycles,
+  neutral packages never depend on adapters).
+
+When topology forces duplication (e.g. an Effect helper needed on both sides
+of a forbidden seam), do not work around the boundary: keep the copies
+textually identical and cite the rule in a comment at each copy.
+
 - The shipped composition graph is `hevy-client → core → node/worker/CLI`;
   adapters may depend directly on either runtime-neutral package but must not
   import one another.

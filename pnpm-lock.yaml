@@ -142,9 +142,6 @@ importers:
       '@hevy-mcp/operations':
         specifier: workspace:*
         version: link:packages/operations
-      '@hevy-mcp/worker':
-        specifier: workspace:*
-        version: link:packages/worker
       '@kubb/adapter-oas':
         specifier: ^5.0.6
         version: 5.0.6(openapi-types@12.1.3)

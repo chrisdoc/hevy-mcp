@@ -19,5 +19,9 @@
 		}
 	},
 	"ignoreBinaries": ["mise"],
-	"ignore": ["packages/hevy-client/src/generated/**", "tests/fixtures/**"]
+	"ignore": [
+		"packages/hevy-client/src/generated/**",
+		"tests/fixtures/**",
+		".pi/**/*.ts"
+	]
 }
