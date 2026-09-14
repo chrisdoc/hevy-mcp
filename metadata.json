@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "01M2GPS3TQ0F7P0SG9SDQSFMB6",
+  "strategy": "manual-commit",
+  "branch": "chore/manual-deps-upgrade",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".changeset/tidy-pandas-upgrade.md",
+    "package.json",
+    "packages/cli/package.json",
+    "packages/core/package.json",
+    "packages/hevy-client/package.json",
+    "packages/node/package.json",
+    "packages/operations/package.json",
+    "packages/worker/package.json",
+    "packages/worker/src/worker-oauth.test.ts",
+    "packages/worker/src/worker-observer.test.ts",
+    "packages/worker/src/worker.ts",
+    "pnpm-lock.yaml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 346690,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 16256943,
+    "output_tokens": 44647,
+    "api_call_count": 161
+  }
+}
