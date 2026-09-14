@@ -1,0 +1,5 @@
+help me figure out why dependabot is broken https://github.com/chrisdoc/hevy-mcp/actions/runs/34826098788/job/103918513858
+
+---
+
+can you do a manual upgrade of dependencies and creae a PR
