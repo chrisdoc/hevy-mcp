@@ -78,6 +78,29 @@ class FallbackSpan implements Span {
 		return this;
 	}
 
+	recordException(
+		_exception:
+			| string
+			| {
+					code: string | number;
+					name?: string;
+					message?: string;
+					stack?: string;
+			  }
+			| {
+					code?: string | number;
+					name: string;
+					message?: string;
+					stack?: string;
+			  }
+			| {
+					code?: string | number;
+					name?: string;
+					message: string;
+					stack?: string;
+			  },
+	): void {}
+
 	end(): void {}
 }
 
@@ -104,6 +127,9 @@ const FALLBACK_EXECUTION_CONTEXT = {
 		},
 		startSpan(_name: string): Span {
 			return new FallbackSpan();
+		},
+		getActiveSpan(): Span | undefined {
+			return undefined;
 		},
 		Span: FallbackSpan,
 	},

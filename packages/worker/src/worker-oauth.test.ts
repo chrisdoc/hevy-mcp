@@ -42,6 +42,29 @@ class TestExecutionSpan implements Span {
 		return this;
 	}
 
+	recordException(
+		_exception:
+			| string
+			| {
+					code: string | number;
+					name?: string;
+					message?: string;
+					stack?: string;
+			  }
+			| {
+					code?: string | number;
+					name: string;
+					message?: string;
+					stack?: string;
+			  }
+			| {
+					code?: string | number;
+					name?: string;
+					message: string;
+					stack?: string;
+			  },
+	): void {}
+
 	end(): void {}
 }
 
@@ -68,6 +91,9 @@ const testExecutionContext = {
 		},
 		startSpan(_name: string): Span {
 			return new TestExecutionSpan();
+		},
+		getActiveSpan(): Span | undefined {
+			return undefined;
 		},
 		Span: TestExecutionSpan,
 	},
