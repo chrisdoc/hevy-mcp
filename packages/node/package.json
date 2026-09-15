@@ -43,18 +43,18 @@
 		"@opentelemetry/sdk-metrics": "^2.11.0",
 		"@opentelemetry/sdk-trace-base": "^2.11.0",
 		"@opentelemetry/sdk-trace-node": "^2.11.0",
-		"@sentry/node": "^10.73.0",
-		"effect": "^4.0.0-rc.112",
+		"@sentry/node": "^10.74.0",
+		"effect": "^4.0.0-rc.115",
 		"semver": "^7.8.5",
-		"zod": "^4.5.4"
+		"zod": "^4.6.5"
 	},
 	"devDependencies": {
 		"@hevy-mcp/core": "workspace:*",
 		"@hevy-mcp/hevy-client": "workspace:*",
-		"@sentry/core": "^10.73.0",
-		"@types/node": "^26.4.1",
+		"@sentry/core": "^10.74.0",
+		"@types/node": "^26.5.1",
 		"cross-env": "^10.1.0",
-		"tsdown": "^0.22.14",
+		"tsdown": "^0.23.0",
 		"typescript": "^7.0.2"
 	},
 	"engines": {

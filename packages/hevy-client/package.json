@@ -26,7 +26,7 @@
 		"check:types": "tsc --noEmit -p tsconfig.json"
 	},
 	"dependencies": {
-		"effect": "^4.0.0-rc.112",
-		"zod": "^4.5.4"
+		"effect": "^4.0.0-rc.115",
+		"zod": "^4.6.5"
 	}
 }
