@@ -503,6 +503,7 @@ describe("registerHevyTools", () => {
 	});
 
 	it("registers feedback through the unobserved path", async () => {
+		const rawMessage = "feedback-raw-message-sentinel";
 		const start = vi.fn(() => ({
 			run: <T>(operation: () => Promise<T>) => operation(),
 			finish: vi.fn(),
@@ -533,7 +534,7 @@ describe("registerHevyTools", () => {
 		try {
 			const result = await pair.protocolClient.callTool({
 				name: "feedback",
-				arguments: { message: "technical feedback" },
+				arguments: { message: rawMessage },
 			});
 			expect(result).toMatchObject({
 				structuredContent: {
@@ -541,6 +542,7 @@ describe("registerHevyTools", () => {
 					reason: "telemetry_unavailable",
 				},
 			});
+			expect(JSON.stringify(result)).not.toContain(rawMessage);
 			expect(start).not.toHaveBeenCalled();
 		} finally {
 			await Promise.all([pair.protocolClient.close(), pair.server.close()]);

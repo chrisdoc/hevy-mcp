@@ -1,5 +1,9 @@
 import { ROOT_CONTEXT } from "@opentelemetry/api";
-import type { AgentFeedbackRecorder } from "@hevy-mcp/core";
+import {
+	FEEDBACK_MAX_MESSAGE_LENGTH,
+	sanitizeDiagnosticText,
+	type AgentFeedbackRecorder,
+} from "@hevy-mcp/core";
 import { getTelemetryAvailability, tracer } from "./telemetry.js";
 
 /** Record feedback on a detached root span without request identity context. */
@@ -12,12 +16,17 @@ export function createNodeFeedbackRecorder(): AgentFeedbackRecorder {
 			}
 
 			try {
+				const scrubbedMessage = sanitizeDiagnosticText(
+					message,
+					FEEDBACK_MAX_MESSAGE_LENGTH,
+					process.env.HOME,
+				);
 				const span = tracer.startSpan(
 					"hevy_mcp.feedback",
 					{
 						root: true,
 						attributes: {
-							"feedback.message": message,
+							"feedback.message": scrubbedMessage,
 							"feedback.source": "agent",
 						},
 					},

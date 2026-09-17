@@ -67,6 +67,32 @@ describe("Node feedback recorder", () => {
 		);
 	});
 
+	it("redacts a configured nonstandard HOME before export", () => {
+		testDoubles.getTelemetryAvailability.mockReturnValue("available");
+		testDoubles.startSpan.mockReturnValue({
+			isRecording: testDoubles.isRecording,
+			end: testDoubles.end,
+		});
+		const originalHome = process.env.HOME;
+		process.env.HOME = "/workspace/alice";
+
+		try {
+			const rawMessage =
+				"feedback-raw-message-sentinel from /workspace/alice/project";
+			expect(createNodeFeedbackRecorder().record(rawMessage)).toEqual({
+				accepted: true,
+			});
+			const attributes = testDoubles.startSpan.mock.calls[0]?.[1].attributes;
+			expect(attributes).toMatchObject({
+				"feedback.message": "feedback-raw-message-sentinel from ~/project",
+			});
+			expect(JSON.stringify(attributes)).not.toContain("/workspace/alice");
+		} finally {
+			if (originalHome === undefined) delete process.env.HOME;
+			else process.env.HOME = originalHome;
+		}
+	});
+
 	it.each(["telemetry_disabled", "telemetry_unavailable"] as const)(
 		"returns %s without creating a span",
 		(reason) => {
