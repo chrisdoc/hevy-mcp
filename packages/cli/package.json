@@ -1,6 +1,6 @@
 {
 	"name": "@chrisdoc/hevy-cli",
-	"version": "1.2.10",
+	"version": "1.2.11",
 	"description": "Command-line client for the Hevy API",
 	"license": "MIT",
 	"repository": {
