@@ -2,6 +2,7 @@ import { preloadCompactJsonSchema } from "../utils/compact-json-schema.js";
 import {
 	getRegisteredToolConfig,
 	registerToolDefinition,
+	registerUnobservedToolDefinition,
 	type ToolRegistrar,
 } from "./define-tool.js";
 import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
@@ -12,6 +13,7 @@ import { routineDiscoveryToolDefinitions } from "./routine-discovery.js";
 import { workflowToolDefinitions } from "./workflows.js";
 import { workoutToolDefinitions } from "./workouts.js";
 import type { ToolRuntime } from "./tool-runtime.js";
+import { feedbackToolDefinition } from "../feedback.js";
 
 export const hevyToolDefinitions = [
 	...workoutToolDefinitions,
@@ -21,6 +23,11 @@ export const hevyToolDefinitions = [
 	...bodyMeasurementToolDefinitions,
 	...workflowToolDefinitions,
 	...routineDiscoveryToolDefinitions,
+] as const;
+
+export const registeredToolDefinitions = [
+	...hevyToolDefinitions,
+	feedbackToolDefinition,
 ] as const;
 
 /**
@@ -40,7 +47,7 @@ export const hevyToolDefinitions = [
  * and a no-op after every conversion has been computed once.
  */
 export function preloadHevyToolSchemas(): void {
-	for (const definition of hevyToolDefinitions) {
+	for (const definition of registeredToolDefinitions) {
 		const config = getRegisteredToolConfig(definition);
 		preloadCompactJsonSchema(config.inputSchema, "input");
 		if (config.outputSchema) {
@@ -57,4 +64,5 @@ export function registerHevyTools(
 	for (const definition of hevyToolDefinitions) {
 		registerToolDefinition(server, runtime, definition);
 	}
+	registerUnobservedToolDefinition(server, runtime, feedbackToolDefinition);
 }

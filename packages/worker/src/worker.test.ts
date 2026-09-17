@@ -633,7 +633,13 @@ describe("real stateless SDK transport", () => {
 				_signal: AbortSignal | undefined,
 				_deadline: number | undefined,
 				observer: CreateHevyMcpServerOptions["observer"],
-			) => await createHevyMcpServer({ createClient, observer }),
+				feedbackRecorder: CreateHevyMcpServerOptions["feedbackRecorder"],
+			) =>
+				await createHevyMcpServer({
+					createClient,
+					observer,
+					feedbackRecorder,
+				}),
 		);
 		const handler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
@@ -660,6 +666,14 @@ describe("real stateless SDK transport", () => {
 		expect(observers[0]).not.toBe(observers[1]);
 		expect(createServer.mock.calls[0]?.[3]).toBe(observers[0]);
 		expect(createServer.mock.calls[1]?.[3]).toBe(observers[1]);
+		expect(createServer.mock.calls[0]?.[4]?.record("feedback")).toEqual({
+			accepted: false,
+			reason: "telemetry_unavailable",
+		});
+		expect(createServer.mock.calls[1]?.[4]?.record("feedback")).toEqual({
+			accepted: false,
+			reason: "telemetry_unavailable",
+		});
 	});
 
 	it("shares one absolute deadline across validation and MCP execution", async () => {

@@ -43,6 +43,33 @@ the on-call operator for at most 24 hours; it must not appear in saved
 product or reliability dashboards, queries, or exports. It is not a product
 taxonomy dimension.
 
+## Feedback telemetry exception
+
+The `feedback` MCP tool is the only exception to the normal rule that tool
+arguments and result text are excluded from telemetry. It records one bounded,
+agent-composed free-text field only after the shared runtime-neutral scrubber
+removes credentials, emails, URLs, control characters, and home-directory
+paths:
+
+| Field              | Allowed value                                                                                        | Applies to                |
+| ------------------ | ---------------------------------------------------------------------------------------------------- | ------------------------- |
+| Span name          | `hevy_mcp.feedback`                                                                                  | Feedback diagnostic spans |
+| `feedback.message` | Scrubbed text, trimmed to 2,000 characters, supplied by the agent in response to the feedback prompt | Feedback diagnostic spans |
+| `feedback.source`  | `agent`                                                                                              | Feedback diagnostic spans |
+
+Feedback spans are detached root spans and must not inherit or add user,
+session, request, baggage, geographic, API-key, or other identity context.
+The scrubber is defense in depth, not permission to include PII, secrets,
+fitness data, raw tool arguments/results, conversation content, or raw errors.
+For example, an agent may report `create-workout returned a validation error`
+but must not copy the workout payload, account identifier, or error stack.
+The feedback recorder is best effort: disabled or unavailable telemetry is
+reported synchronously and recorder/export failures must not affect the MCP
+request. The Node adapter emits this span when its OTLP provider is available.
+The Worker adapter currently exposes the tool but returns
+`telemetry_unavailable` because the installed Cloudflare tracing API cannot
+create a detached root span without its request context.
+
 ## Structural fields
 
 The tool wrapper may record argument key names from the fixed schema, total
@@ -89,9 +116,10 @@ Sentry events to connect an issue to its Honeycomb trace.
 
 ## Explicitly prohibited fields
 
-Never send or inspect for telemetry:
+Never send or inspect for telemetry, except for the bounded scrubbed
+`feedback.message` exception above:
 
-- MCP prompts, prompt arguments, tool arguments, or tool result text;
+- MCP prompts, prompt arguments, ordinary tool arguments, or tool result text;
 - API keys, bearer tokens, authorization headers, request bodies, or response
   bodies;
 - raw queries, workout/routine/folder/exercise-template IDs, request IDs, or
@@ -105,6 +133,10 @@ Never send or inspect for telemetry:
   codes;
 - arbitrary client metadata or unnormalized endpoint paths.
 
+The `feedback.message` exception does not permit any of the prohibited values
+above; it is limited to scrubbed, agent-composed diagnostic text and the
+`feedback.source=agent` value.
+
 ## Regression guard
 
 `packages/node/src/index.test.ts`,
@@ -113,6 +145,7 @@ Never send or inspect for telemetry:
 `packages/node/src/utils/tool-observer.test.ts`,
 `packages/node/src/utils/stdio-observability.test.ts`, and
 `packages/node/src/utils/mcp-session-observability.test.ts` assert provider
-configuration, allowlisted attributes, sanitized client metadata, one-event
-ownership, and secret-sentinel absence. Any telemetry field change must update
-this dictionary and its regression tests in the same change.
+configuration, allowlisted attributes, sanitized client metadata, detached
+feedback-span attributes, one-event ownership, and secret-sentinel absence.
+Any telemetry field change must update this dictionary and its regression tests
+in the same change.

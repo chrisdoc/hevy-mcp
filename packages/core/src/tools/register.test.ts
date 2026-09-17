@@ -2,7 +2,7 @@ import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
 import { Effect } from "effect";
 import type { Routine } from "@hevy-mcp/hevy-client/types";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
@@ -236,6 +236,7 @@ const EXPECTED_TOOL_NAMES = [
 
 	"get-training-summary",
 	"search-routines",
+	"feedback",
 ] as const;
 
 const validRoutine = {
@@ -292,6 +293,7 @@ const VALID_CALL_ARGUMENTS = {
 	"update-body-measurement": { date: "2026-01-01", weight_kg: 81 },
 	"get-training-summary": {},
 	"search-routines": { query: "test" },
+	feedback: { message: "technical feedback" },
 } as const;
 
 const completeWorkout = {
@@ -383,15 +385,15 @@ describe("registerHevyTools", () => {
 		await Promise.all([client.close(), server.close()]);
 	});
 
-	it("[VAL-MCP-001] advertises exactly 22 production tools without an API client", async () => {
+	it("[VAL-MCP-001] advertises exactly 23 production tools without an API client", async () => {
 		const { tools } = await client.listTools();
 
-		expect(EXPECTED_TOOL_NAMES).toHaveLength(22);
+		expect(EXPECTED_TOOL_NAMES).toHaveLength(23);
 		expect(tools).toHaveLength(EXPECTED_TOOL_NAMES.length);
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
 	});
 
-	it("[VAL-MCP-005] keeps the protocol catalog at 22 tools and excludes get-user-info", async () => {
+	it("[VAL-MCP-005] keeps the protocol catalog at 23 tools and excludes get-user-info", async () => {
 		const { tools } = await client.listTools();
 
 		expect(tools.map(({ name }) => name)).toEqual(EXPECTED_TOOL_NAMES);
@@ -497,6 +499,51 @@ describe("registerHevyTools", () => {
 				withObserver.protocolClient.close(),
 				withObserver.server.close(),
 			]);
+		}
+	});
+
+	it("registers feedback through the unobserved path", async () => {
+		const start = vi.fn(() => ({
+			run: <T>(operation: () => Promise<T>) => operation(),
+			finish: vi.fn(),
+		}));
+		const observer: ToolObserver = { start };
+		const feedbackServer = new McpServer({
+			name: "feedback-unobserved-server",
+			version: "1.0.0",
+		});
+		registerHevyTools(
+			feedbackServer,
+			createToolRuntime({
+				client: null,
+				catalog: {
+					effect: () => Effect.succeed([]),
+					get: () => Promise.resolve([]),
+					reset: () => Effect.void,
+					close: () => Effect.void,
+				},
+				observer,
+			}),
+		);
+		const pair = await connectToolProtocol(
+			feedbackServer,
+			"feedback-unobserved",
+		);
+
+		try {
+			const result = await pair.protocolClient.callTool({
+				name: "feedback",
+				arguments: { message: "technical feedback" },
+			});
+			expect(result).toMatchObject({
+				structuredContent: {
+					accepted: false,
+					reason: "telemetry_unavailable",
+				},
+			});
+			expect(start).not.toHaveBeenCalled();
+		} finally {
+			await Promise.all([pair.protocolClient.close(), pair.server.close()]);
 		}
 	});
 
@@ -690,7 +737,7 @@ describe("registerHevyTools", () => {
 	});
 
 	it("declares bounded feature, kind, and operation metadata for every tool", () => {
-		expect(hevyToolDefinitions).toHaveLength(EXPECTED_TOOL_NAMES.length);
+		expect(hevyToolDefinitions).toHaveLength(22);
 		for (const definition of hevyToolDefinitions) {
 			expect([
 				"workouts",

@@ -194,6 +194,11 @@ let tracerProvider: NodeTracerProvider | undefined;
 let meterProvider: MeterProvider | undefined;
 let telemetryInitialized = false;
 
+export type TelemetryAvailability =
+	| "telemetry_disabled"
+	| "telemetry_unavailable"
+	| "available";
+
 function initializeTelemetry(): void {
 	if (telemetryInitialized || !telemetryEnabled) return;
 	try {
@@ -320,6 +325,14 @@ export async function flushTelemetry(timeoutMs = 1_000): Promise<void> {
 	} finally {
 		clearTimeout(timeout);
 	}
+}
+
+export function getTelemetryAvailability(): TelemetryAvailability {
+	if (!telemetryEnabled) return "telemetry_disabled";
+	if (!telemetryInitialized || !tracerProvider || !collectorToken) {
+		return "telemetry_unavailable";
+	}
+	return "available";
 }
 
 // --- Shared instances for the rest of the codebase ---
