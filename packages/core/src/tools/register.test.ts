@@ -671,7 +671,16 @@ describe("registerHevyTools", () => {
 							supersetId: 1,
 							restSeconds: 60,
 							notes: "8–15 reps",
-							sets: [{ reps: 15 }, { reps: 15 }],
+							sets: [
+								{
+									reps: 15,
+									weight: null,
+									distance: null,
+									duration: null,
+									customMetric: null,
+								},
+								{ reps: 15, weightKg: 0 },
+							],
 						},
 						{
 							exerciseTemplateId: "B5EFBF9C",
@@ -713,6 +722,19 @@ describe("registerHevyTools", () => {
 					],
 				},
 			});
+			const firstConnectedSet =
+				mockClient.createRoutine.mock.calls[2]?.[0].routine?.exercises?.[0]
+					?.sets?.[0];
+			expect(firstConnectedSet).toMatchObject({
+				weight_kg: null,
+				distance_meters: null,
+				duration_seconds: null,
+				custom_metric: null,
+			});
+			expect(
+				mockClient.createRoutine.mock.calls[2]?.[0].routine?.exercises?.[0]
+					?.sets?.[1]?.weight_kg,
+			).toBe(0);
 
 			mockClient.createRoutine.mockResolvedValue(undefined);
 			const emptyResult = await protocolClient.callTool({

@@ -32,7 +32,7 @@ const jsonObjectSchema: z.ZodType<JSONObject> = z.record(
 	jsonValueSchema,
 );
 
-function isString(value: JSONValue | null): value is string {
+function isString(value: JSONValue | null | undefined): value is string {
 	return stringSchema.safeParse(value).success;
 }
 
@@ -52,6 +52,7 @@ interface RecordedHevyRequest {
 	authorization: string | undefined;
 	method: string;
 	url: string;
+	body?: JSONValue;
 }
 
 let fakeHevyServer: Server;
@@ -65,6 +66,7 @@ let wranglerLogs = "";
 let wranglerSpawnError: Error | undefined;
 const hevyRequests: RecordedHevyRequest[] = [];
 const redirectRequests: RecordedHevyRequest[] = [];
+let createdRoutine: JSONObject | undefined;
 
 function appendWranglerLog(chunk: Buffer): void {
 	wranglerLogs = `${wranglerLogs}${chunk.toString()}`.slice(
@@ -186,11 +188,15 @@ function isRecord(
 	return jsonObjectSchema.safeParse(value).success;
 }
 
-function requireRecord(value: JSONValue, label: string): JSONObject {
-	if (!isRecord(value)) {
+function requireRecord(
+	value: JSONValue | undefined,
+	label: string,
+): JSONObject {
+	const parsed = jsonObjectSchema.safeParse(value);
+	if (!parsed.success) {
 		throw new Error(`Expected ${label} to be an object`);
 	}
-	return value;
+	return parsed.data;
 }
 
 function requireJsonObject(
@@ -422,19 +428,48 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 			redirectDestinationUrl = `http://${localNetworkAddress()}:${redirectRecorderPort}/redirect-target`;
 
 			fakeHevyServer = createServer((request, response) => {
-				hevyRequests.push({
+				const recordedRequest: RecordedHevyRequest = {
 					apiKey: request.headers["api-key"] as string | undefined,
 					authorization: request.headers.authorization,
 					method: request.method ?? "",
 					url: request.url ?? "",
-				});
+				};
+				hevyRequests.push(recordedRequest);
+				const apiKey = request.headers["api-key"];
+				const pathname = new URL(request.url ?? "/", "http://fake-hevy.local")
+					.pathname;
+				if (request.method === "POST" && pathname === "/v1/routines") {
+					if (apiKey !== VALID_API_KEY) {
+						writeJson(response, 403, { error: "forbidden" });
+						return;
+					}
+					let body = "";
+					request.on("data", (chunk: Buffer) => {
+						body += chunk.toString();
+					});
+					request.on("end", () => {
+						try {
+							const parsed = jsonObjectSchema.parse(JSON.parse(body));
+							recordedRequest.body = parsed;
+							const routine = requireRecord(parsed.routine, "posted routine");
+							createdRoutine = {
+								id: "worker-created-routine",
+								title: routine.title,
+								created_at: "2026-09-18T12:00:00Z",
+								updated_at: "2026-09-18T12:00:00Z",
+								exercises: [],
+							};
+							writeJson(response, 201, createdRoutine);
+						} catch {
+							writeJson(response, 400, { error: "invalid routine payload" });
+						}
+					});
+					return;
+				}
 				if (request.method !== "GET") {
 					writeJson(response, 404, { error: "not found" });
 					return;
 				}
-				const apiKey = request.headers["api-key"];
-				const pathname = new URL(request.url ?? "/", "http://fake-hevy.local")
-					.pathname;
 				if (pathname === "/v1/user/info" && apiKey === INVALID_API_KEY) {
 					writeJson(response, 401, { error: "invalid key" });
 					return;
@@ -456,6 +491,15 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 					return;
 				}
 				switch (pathname) {
+					case "/v1/routines/worker-created-routine":
+						writeJson(
+							response,
+							createdRoutine === undefined ? 404 : 200,
+							createdRoutine === undefined
+								? { error: "not found" }
+								: { routine: createdRoutine },
+						);
+						return;
 					case "/v1/user/info":
 						writeJson(response, 200, {
 							data: {
@@ -566,6 +610,7 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 	beforeEach(() => {
 		hevyRequests.length = 0;
 		redirectRequests.length = 0;
+		createdRoutine = undefined;
 	});
 
 	it("routes requests and returns stateless SSE initialize responses", async () => {
@@ -663,6 +708,159 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 						!request.url.includes(VALID_API_KEY),
 				),
 			).toBe(true);
+		} finally {
+			await client.close();
+		}
+	});
+
+	it("creates and retrieves routines through discovered Worker HTTP tools", async () => {
+		const client = new Client({
+			name: "worker-http-create-routine-client",
+			version: "1.0.0",
+		});
+		const transport = new StreamableHTTPClientTransport(
+			new URL(`${workerBaseUrl}/mcp`),
+			{
+				requestInit: {
+					headers: { authorization: `Bearer ${VALID_API_KEY}` },
+				},
+			},
+		);
+		try {
+			await client.connect(transport);
+			const { tools } = await client.listTools();
+			const createTool = tools.find((tool) => tool.name === "create-routine");
+			if (!createTool) throw new Error("create-routine is not advertised");
+			const schema = requireRecord(
+				jsonValueSchema.parse(createTool.inputSchema),
+				"create-routine input schema",
+			);
+			const properties = requireRecord(schema.properties, "root properties");
+			const required = schema.required;
+			expect(required).toEqual(["routine"]);
+			const routineField = Array.isArray(required) ? required[0] : undefined;
+			if (!isString(routineField)) {
+				throw new Error("No routine field in the discovered schema");
+			}
+			const routineSchema = requireRecord(
+				properties[routineField],
+				"routine schema",
+			);
+			const routineProperties = requireRecord(
+				routineSchema.properties,
+				"routine properties",
+			);
+			expect(routineSchema.required).toEqual(
+				expect.arrayContaining(["title", "exercises"]),
+			);
+			const exercisesSchema = requireRecord(
+				routineProperties.exercises,
+				"exercises schema",
+			);
+			const exerciseSchema = requireRecord(
+				exercisesSchema.items,
+				"exercise schema",
+			);
+			const exerciseProperties = requireRecord(
+				exerciseSchema.properties,
+				"exercise properties",
+			);
+			expect(exerciseProperties).toHaveProperty("exercise_template_id");
+			expect(exerciseProperties).toHaveProperty("rest_seconds");
+			expect(exerciseProperties).toHaveProperty("superset_id");
+			const setSchema = requireRecord(
+				requireRecord(exerciseProperties.sets, "sets schema").items,
+				"set schema",
+			);
+			expect(
+				requireRecord(setSchema.properties, "set properties"),
+			).toHaveProperty("rep_range");
+
+			const routine = {
+				title: "Worker create contract",
+				notes: "Increase load after both working sets reach the target.",
+				exercises: [
+					{
+						exercise_template_id: "234897AB",
+						superset_id: 1,
+						rest_seconds: 60,
+						notes: "Controlled curl, 8–15 reps",
+						sets: [
+							{ type: "normal", reps: 15 },
+							{ type: "normal", reps: 15 },
+						],
+					},
+					{
+						exercise_template_id: "B5EFBF9C",
+						superset_id: 1,
+						rest_seconds: 90,
+						notes: "Controlled extension, 8–15 reps",
+						sets: [
+							{ type: "normal", rep_range: { start: 8, end: 15 } },
+							{ type: "normal", rep_range: { start: 8, end: 15 } },
+						],
+					},
+				],
+			};
+			const canonicalResult = await client.callTool({
+				name: "create-routine",
+				arguments: { [routineField]: routine },
+			});
+			expect(canonicalResult.isError).not.toBe(true);
+			expect(
+				requireJsonObject(canonicalResult.structuredContent, "create result")
+					.routine_id,
+			).toBe("worker-created-routine");
+
+			const connectedResult = await client.callTool({
+				name: "create-routine",
+				arguments: {
+					title: routine.title,
+					notes: routine.notes,
+					exercises: [
+						{
+							exerciseTemplateId: "234897AB",
+							supersetId: 1,
+							restSeconds: 60,
+							notes: "Controlled curl, 8–15 reps",
+							sets: [{ reps: 15 }, { reps: 15 }],
+						},
+						{
+							exerciseTemplateId: "B5EFBF9C",
+							supersetId: 1,
+							restSeconds: 90,
+							notes: "Controlled extension, 8–15 reps",
+							sets: [
+								{ repRange: { start: 8, end: 15 } },
+								{ repRange: { start: 8, end: 15 } },
+							],
+						},
+					],
+				},
+			});
+			expect(connectedResult.isError).not.toBe(true);
+			const createRequests = hevyRequests.filter(
+				(request) =>
+					request.method === "POST" && request.url === "/v1/routines",
+			);
+			expect(createRequests).toHaveLength(2);
+			for (const request of createRequests) {
+				const postedRoutine = requireRecord(
+					requireRecord(request.body, "create request").routine,
+					"posted routine",
+				);
+				expect(postedRoutine).toMatchObject(routine);
+				expect(request.apiKey).toBe(VALID_API_KEY);
+				expect(request.authorization).toBeUndefined();
+			}
+			const readResult = await client.callTool({
+				name: "get-routine",
+				arguments: { routine_id: "worker-created-routine" },
+			});
+			expect(readResult.isError).not.toBe(true);
+			expect(
+				requireJsonObject(readResult.structuredContent, "read result").routine,
+			).toMatchObject({ id: "worker-created-routine", title: routine.title });
 		} finally {
 			await client.close();
 		}

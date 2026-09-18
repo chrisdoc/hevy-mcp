@@ -236,15 +236,15 @@ export const createRoutineInputFields = createRoutineInputSchema.shape;
 // for create-routine; the nested snake_case shape remains the public contract.
 const legacyRoutineSetSchema = z.strictObject({
 	type: setTypeEnum.optional(),
-	weight: z.coerce.number().optional(),
-	weightKg: z.coerce.number().optional(),
+	weight: zNullableNumber,
+	weightKg: zNullableNumber,
 	reps: zNullableInt.optional(),
-	distance: z.coerce.number().int().optional(),
-	distanceMeters: z.coerce.number().int().optional(),
-	duration: z.coerce.number().int().optional(),
-	durationSeconds: z.coerce.number().int().optional(),
+	distance: zNullableInt,
+	distanceMeters: zNullableInt,
+	duration: zNullableInt,
+	durationSeconds: zNullableInt,
 	repRange: zStrictOptionalRepRange,
-	customMetric: z.coerce.number().optional(),
+	customMetric: zNullableNumber,
 });
 
 const legacyCreateRoutineInputSchema = z.strictObject({
@@ -280,12 +280,12 @@ export const createRoutineInputParser = z.preprocess((input) => {
 				notes: exercise.notes,
 				sets: exercise.sets.map((set) => ({
 					type: set.type ?? "normal",
-					weight_kg: set.weightKg ?? set.weight,
+					weight_kg: set.weightKg ?? set.weight ?? undefined,
 					reps: set.reps,
-					distance_meters: set.distanceMeters ?? set.distance,
-					duration_seconds: set.durationSeconds ?? set.duration,
+					distance_meters: set.distanceMeters ?? set.distance ?? undefined,
+					duration_seconds: set.durationSeconds ?? set.duration ?? undefined,
 					rep_range: set.repRange,
-					custom_metric: set.customMetric,
+					custom_metric: set.customMetric ?? undefined,
 				})),
 			})),
 		},

@@ -154,20 +154,22 @@ describe("response contracts", () => {
 	});
 
 	it("does not present an identity-less create response as a routine", () => {
-		const response = respond(createRoutineResponse, {
-			routine: {},
-			usesRepRanges: false,
-		});
+		for (const routine of [{}, { title: "Created without ID" }]) {
+			const response = respond(createRoutineResponse, {
+				routine,
+				usesRepRanges: false,
+			});
 
-		expect(response.structuredContent).toMatchObject({
-			created: true,
-			commit_state: "confirmed",
-			routine: null,
-			routine_id: null,
-		});
-		expect(response.content.map(({ text }) => text).join(" ")).toContain(
-			"Search routines before retrying",
-		);
+			expect(response.structuredContent).toMatchObject({
+				created: true,
+				commit_state: "confirmed",
+				routine: null,
+				routine_id: null,
+			});
+			expect(response.content.map(({ text }) => text).join(" ")).toContain(
+				"Search routines before retrying",
+			);
+		}
 	});
 
 	it("renders workflow scan evidence from internal workflow metadata", () => {

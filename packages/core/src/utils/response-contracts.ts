@@ -734,8 +734,7 @@ export const createRoutineResponse = defineStructuredResponseContract({
 		usesRepRanges: boolean;
 	}) => {
 		const projected = data.routine ? projectRoutine(data.routine) : null;
-		const routine =
-			projected && Object.keys(projected).length > 0 ? projected : null;
+		const routine = projected?.id ? projected : null;
 		return {
 			created: true as const,
 			commit_state: "confirmed" as const,
@@ -754,7 +753,8 @@ export const createRoutineResponse = defineStructuredResponseContract({
 		}
 		return messages;
 	},
-	telemetry: (data) => routineResultTelemetry(data.routine),
+	telemetry: (data) =>
+		routineResultTelemetry(data.routine?.id ? data.routine : null),
 });
 
 export const updateRoutineResponse = defineJsonResponseContract(
