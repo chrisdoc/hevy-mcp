@@ -638,6 +638,104 @@ describe("registerHevyTools", () => {
 				expectedCreateRoutineRequest,
 			);
 
+			const legacyResult = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: {
+					title: "Full Body A",
+					folderId: 123,
+					notes: "First four exercises are the minimum viable workout",
+					exercises: [
+						{
+							exerciseTemplateId: "30E293E3",
+							supersetId: null,
+							restSeconds: 120,
+							notes: "Controlled active ROM",
+							sets: [{ type: "normal", repRange: { start: 6, end: 10 } }],
+						},
+					],
+				},
+			});
+			expect(legacyResult).not.toMatchObject({ isError: true });
+			expect(mockClient.createRoutine.mock.calls[1]?.[0]).toEqual(
+				expectedCreateRoutineRequest,
+			);
+			const connectedResult = await protocolClient.callTool({
+				name: "create-routine",
+				arguments: {
+					title: "Tuesday — Full Body Hypertrophy",
+					notes:
+						"Increase weight after all working sets reach the top of the range.",
+					exercises: [
+						{
+							exerciseTemplateId: "234897AB",
+							supersetId: 1,
+							restSeconds: 60,
+							notes: "8–15 reps",
+							sets: [
+								{
+									reps: 15,
+									weight: null,
+									distance: null,
+									duration: null,
+									customMetric: null,
+								},
+								{ reps: 15, weightKg: 0 },
+							],
+						},
+						{
+							exerciseTemplateId: "B5EFBF9C",
+							supersetId: 1,
+							restSeconds: 90,
+							notes: "8–15 reps",
+							sets: [{ reps: 15 }, { reps: 15 }],
+						},
+					],
+				},
+			});
+			expect(connectedResult).not.toMatchObject({ isError: true });
+			expect(mockClient.createRoutine.mock.calls[2]?.[0]).toMatchObject({
+				routine: {
+					title: "Tuesday — Full Body Hypertrophy",
+					notes:
+						"Increase weight after all working sets reach the top of the range.",
+					exercises: [
+						{
+							exercise_template_id: "234897AB",
+							superset_id: 1,
+							rest_seconds: 60,
+							notes: "8–15 reps",
+							sets: [
+								{ type: "normal", reps: 15 },
+								{ type: "normal", reps: 15 },
+							],
+						},
+						{
+							exercise_template_id: "B5EFBF9C",
+							superset_id: 1,
+							rest_seconds: 90,
+							notes: "8–15 reps",
+							sets: [
+								{ type: "normal", reps: 15 },
+								{ type: "normal", reps: 15 },
+							],
+						},
+					],
+				},
+			});
+			const firstConnectedSet =
+				mockClient.createRoutine.mock.calls[2]?.[0].routine?.exercises?.[0]
+					?.sets?.[0];
+			expect(firstConnectedSet).toMatchObject({
+				weight_kg: null,
+				distance_meters: null,
+				duration_seconds: null,
+				custom_metric: null,
+			});
+			expect(
+				mockClient.createRoutine.mock.calls[2]?.[0].routine?.exercises?.[0]
+					?.sets?.[1]?.weight_kg,
+			).toBe(0);
+
 			mockClient.createRoutine.mockResolvedValue(undefined);
 			const emptyResult = await protocolClient.callTool({
 				name: "create-routine",
@@ -674,7 +772,7 @@ describe("registerHevyTools", () => {
 			expect(invalidText).not.toContain("SECRET-TITLE-SENTINEL");
 			expect(invalidText).not.toContain("SECRET-NOTES-SENTINEL");
 			expect(invalidText).not.toContain("SECRET-TEMPLATE-SENTINEL");
-			expect(mockClient.createRoutine).toHaveBeenCalledTimes(2);
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(4);
 
 			const missingExercisesResult = await protocolClient.callTool({
 				name: "create-routine",
@@ -683,7 +781,7 @@ describe("registerHevyTools", () => {
 			const missingExercisesText = JSON.stringify(missingExercisesResult);
 			expect(missingExercisesResult).toMatchObject({ isError: true });
 			expect(missingExercisesText).toContain("routine.exercises");
-			expect(mockClient.createRoutine).toHaveBeenCalledTimes(2);
+			expect(mockClient.createRoutine).toHaveBeenCalledTimes(4);
 		} finally {
 			await Promise.all([protocolClient.close(), productionServer.close()]);
 		}

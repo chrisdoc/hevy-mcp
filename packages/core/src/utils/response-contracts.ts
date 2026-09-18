@@ -732,17 +732,29 @@ export const createRoutineResponse = defineStructuredResponseContract({
 	normalize: (data: {
 		routine: Routine | null | undefined;
 		usesRepRanges: boolean;
-	}) => ({
-		created: true as const,
-		commit_state: "confirmed" as const,
-		routine: data.routine ? projectRoutine(data.routine) : null,
-		routine_id: data.routine?.id ?? null,
-		uses_rep_ranges: data.usesRepRanges,
-	}),
+	}) => {
+		const projected = data.routine ? projectRoutine(data.routine) : null;
+		const routine = projected?.id ? projected : null;
+		return {
+			created: true as const,
+			commit_state: "confirmed" as const,
+			routine,
+			routine_id: routine?.id ?? null,
+			uses_rep_ranges: data.usesRepRanges,
+		};
+	},
 	legacyJson: (output) => output,
-	additionalText: (_data, output) =>
-		output.uses_rep_ranges ? [repRangeDisplayWarningText] : [],
-	telemetry: (data) => routineResultTelemetry(data.routine),
+	additionalText: (_data, output) => {
+		const messages = output.uses_rep_ranges ? [repRangeDisplayWarningText] : [];
+		if (output.routine_id === null) {
+			messages.push(
+				"Hevy confirmed routine creation but did not return an ID. Search routines before retrying to avoid duplicates.",
+			);
+		}
+		return messages;
+	},
+	telemetry: (data) =>
+		routineResultTelemetry(data.routine?.id ? data.routine : null),
 });
 
 export const updateRoutineResponse = defineJsonResponseContract(

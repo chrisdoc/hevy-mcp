@@ -103,6 +103,7 @@ function convertSchema(
  */
 export function compactJsonSchema<TSchema extends z.ZodTypeAny>(
 	schema: TSchema,
+	advertisedSchema: z.ZodTypeAny = schema,
 ): TSchema {
 	let inputSchema: JsonSchema | undefined;
 	let outputSchema: JsonSchema | undefined;
@@ -110,7 +111,7 @@ export function compactJsonSchema<TSchema extends z.ZodTypeAny>(
 		configurable: true,
 		value: {
 			input: () => {
-				inputSchema ??= convertSchema(schema, "input");
+				inputSchema ??= convertSchema(advertisedSchema, "input");
 				return inputSchema;
 			},
 			output: () => {

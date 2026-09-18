@@ -232,6 +232,66 @@ export const createRoutineInputSchema = z.strictObject({
 });
 export const createRoutineInputFields = createRoutineInputSchema.shape;
 
+// Older connected clients still send this flat camelCase shape. Parse it only
+// for create-routine; the nested snake_case shape remains the public contract.
+const legacyRoutineSetSchema = z.strictObject({
+	type: setTypeEnum.optional(),
+	weight: zNullableNumber,
+	weightKg: zNullableNumber,
+	reps: zNullableInt.optional(),
+	distance: zNullableInt,
+	distanceMeters: zNullableInt,
+	duration: zNullableInt,
+	durationSeconds: zNullableInt,
+	repRange: zStrictOptionalRepRange,
+	customMetric: zNullableNumber,
+});
+
+const legacyCreateRoutineInputSchema = z.strictObject({
+	title: z.string().min(1),
+	folderId: z.coerce.number().nullable().optional(),
+	notes: z.string().optional(),
+	exercises: z
+		.array(
+			z.strictObject({
+				exerciseTemplateId: nonEmptyId,
+				supersetId: z.coerce.number().nullable().optional(),
+				restSeconds: z.coerce.number().int().min(0).optional(),
+				notes: z.string().optional(),
+				sets: z.array(legacyRoutineSetSchema).min(1),
+			}),
+		)
+		.min(1),
+});
+
+export const createRoutineInputParser = z.preprocess((input) => {
+	const legacy = legacyCreateRoutineInputSchema.safeParse(input);
+	if (!legacy.success) return input;
+	const { title, folderId, notes, exercises } = legacy.data;
+	return {
+		routine: {
+			title,
+			folder_id: folderId,
+			notes,
+			exercises: exercises.map((exercise) => ({
+				exercise_template_id: exercise.exerciseTemplateId,
+				superset_id: exercise.supersetId,
+				rest_seconds: exercise.restSeconds,
+				notes: exercise.notes,
+				sets: exercise.sets.map((set) => ({
+					type: set.type ?? "normal",
+					weight_kg: set.weightKg ?? set.weight ?? undefined,
+					reps: set.reps,
+					distance_meters: set.distanceMeters ?? set.distance ?? undefined,
+					duration_seconds: set.durationSeconds ?? set.duration ?? undefined,
+					rep_range: set.repRange,
+					custom_metric: set.customMetric ?? undefined,
+				})),
+			})),
+		},
+	};
+}, createRoutineInputSchema);
+
 const routineUpdatePayloadFields = {
 	title: z.string().min(1),
 	notes: z.string().optional(),
