@@ -153,6 +153,23 @@ describe("response contracts", () => {
 		).toMatchObject({ itemCountBucket: "1" });
 	});
 
+	it("does not present an identity-less create response as a routine", () => {
+		const response = respond(createRoutineResponse, {
+			routine: {},
+			usesRepRanges: false,
+		});
+
+		expect(response.structuredContent).toMatchObject({
+			created: true,
+			commit_state: "confirmed",
+			routine: null,
+			routine_id: null,
+		});
+		expect(response.content.map(({ text }) => text).join(" ")).toContain(
+			"Search routines before retrying",
+		);
+	});
+
 	it("renders workflow scan evidence from internal workflow metadata", () => {
 		const empty: TrainingSummaryResult = {
 			period: { start_date: "2026-07-01", end_date: "2026-07-16", weeks: 2 },

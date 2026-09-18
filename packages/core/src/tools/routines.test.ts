@@ -372,6 +372,21 @@ describe("routine tools", () => {
 		});
 	});
 
+	it("does not expose an unrecognized create response as an empty routine", async () => {
+		const client = createMockHevyClient();
+		client.createRoutine.mockResolvedValue({ routine: {} } as never);
+		const tool = register(client);
+
+		const response = await handler(tool, "create-routine")(routineInput);
+
+		expect(response.structuredContent).toMatchObject({
+			created: true,
+			commit_state: "confirmed",
+			routine: null,
+			routine_id: null,
+		});
+	});
+
 	it("returns the authoritative routine and ID when creation has a body", async () => {
 		const client = createMockHevyClient();
 		client.createRoutine.mockResolvedValue({
