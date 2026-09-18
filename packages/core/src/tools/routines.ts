@@ -17,6 +17,7 @@ import {
 	nonEmptyId,
 	paginationFields,
 	createRoutineInputFields,
+	createRoutineInputParser,
 	updateRoutineInputFields,
 } from "./input-schemas.js";
 import type { ToolDefinition } from "./define-tool.js";
@@ -104,6 +105,7 @@ const createRoutineDefinition: ToolDefinition<
 	description:
 		"Writes a reusable routine; use create-workout for completed sessions. Retries can create duplicates.",
 	inputSchema: createRoutineSchema,
+	inputParser: createRoutineInputParser,
 	kind: "write",
 	outputSchema: createRoutineOutputSchema,
 	annotations: createAnnotations("Create Routine"),

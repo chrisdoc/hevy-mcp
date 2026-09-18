@@ -5,4 +5,4 @@
 "@chrisdoc/hevy-cli": patch
 ---
 
-Present identity-less routine creation responses as confirmed acknowledgements without an empty routine, and advise discovery before retrying.
+Accept legacy flat camelCase create-routine calls from connected clients while advertising the canonical nested schema. Present identity-less routine creation responses as confirmed acknowledgements without an empty routine, and advise discovery before retrying.

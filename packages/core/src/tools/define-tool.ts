@@ -21,6 +21,8 @@ type ToolDefinitionBase<
 	readonly name: string;
 	readonly description: string;
 	readonly inputSchema: TSchema;
+	/** Accept an older wire shape while continuing to advertise inputSchema. */
+	readonly inputParser?: z.ZodType<InferToolParams<TSchema>>;
 	readonly annotations: ToolAnnotations;
 	readonly responseContract: ResponseContract<TResult>;
 	execute(
@@ -57,6 +59,7 @@ type ToolDefinitionMetadata = {
 	readonly name: string;
 	readonly description: string;
 	readonly inputSchema: Record<string, z.ZodTypeAny>;
+	readonly inputParser?: z.ZodTypeAny;
 	readonly annotations: ToolAnnotations;
 	readonly outputSchema?: z.ZodRawShape;
 };
@@ -97,9 +100,13 @@ export function getRegisteredToolConfig(
 ): RegisteredToolConfig {
 	const cached = registeredToolConfigCache.get(definition);
 	if (cached) return cached;
+	const advertisedInputSchema = z.strictObject(definition.inputSchema);
 	const config: RegisteredToolConfig = {
 		description: definition.description,
-		inputSchema: compactJsonSchema(z.strictObject(definition.inputSchema)),
+		inputSchema: compactJsonSchema(
+			definition.inputParser ?? advertisedInputSchema,
+			advertisedInputSchema,
+		),
 		annotations: definition.annotations,
 	};
 	if (definition.outputSchema) {
@@ -176,7 +183,10 @@ export function registerToolDefinition(
 	server.registerTool(definition.name, config, (args, context) => {
 		let parsed: RegistrationArgs;
 		try {
-			parsed = z.strictObject(definition.inputSchema).parse(args ?? {});
+			const normalized = definition.inputParser
+				? definition.inputParser.parse(args ?? {})
+				: (args ?? {});
+			parsed = z.strictObject(definition.inputSchema).parse(normalized);
 		} catch (error) {
 			const path =
 				error instanceof z.ZodError
