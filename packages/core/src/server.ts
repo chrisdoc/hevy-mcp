@@ -23,6 +23,7 @@ import {
 import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
 import type { CacheObserver } from "./utils/cache.js";
 import type { ToolObserver } from "./observation.js";
+import type { AgentFeedbackRecorder } from "./feedback-recorder.js";
 import { mergeAbortSignals } from "./execution.js";
 import {
 	createCoreServiceLayer,
@@ -36,6 +37,7 @@ export interface HevyClientFactoryContext {
 export interface CreateHevyMcpServerOptions {
 	readonly createClient: (context: HevyClientFactoryContext) => HevyClient;
 	readonly observer?: ToolObserver;
+	readonly feedbackRecorder?: AgentFeedbackRecorder;
 	readonly cacheObserver?: CacheObserver;
 	readonly decorateServer?: (server: McpServer) => McpServer;
 	readonly onToolsRegistered?: (count: number) => void;
@@ -151,6 +153,7 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 			executionDeadline: options.executionDeadline,
 			lifecycleSignal,
 			services,
+			feedbackRecorder: options.feedbackRecorder,
 		});
 		const counting = createCountingServer(server);
 		registerHevyTools(counting.server, runtime);

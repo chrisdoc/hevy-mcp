@@ -36,6 +36,8 @@ type RegisteredToolConfig = {
 	outputSchema?: ReturnType<typeof compactJsonSchema>;
 };
 
+type OutputSchema = z.ZodRawShape | z.ZodTypeAny;
+
 export type ToolRegistrar = Pick<McpServer, "registerTool">;
 
 export type ToolDefinition<
@@ -53,12 +55,28 @@ export type ToolDefinition<
 		  }
 	);
 
+export type UnobservedToolDefinition<
+	TSchema extends Record<string, z.ZodTypeAny>,
+	TResult,
+> = {
+	readonly name: string;
+	readonly description: string;
+	readonly inputSchema: TSchema;
+	readonly annotations: ToolAnnotations;
+	readonly outputSchema: OutputSchema;
+	readonly responseContract: ResponseContract<TResult>;
+	execute(
+		runtime: ToolRuntime,
+		args: InferToolParams<TSchema>,
+	): Effect.Effect<TResult, CoreToolError, never>;
+};
+
 type ToolDefinitionMetadata = {
 	readonly name: string;
 	readonly description: string;
 	readonly inputSchema: Record<string, z.ZodTypeAny>;
 	readonly annotations: ToolAnnotations;
-	readonly outputSchema?: z.ZodRawShape;
+	readonly outputSchema?: OutputSchema;
 };
 type RegistrationArgs = z.output<z.ZodObject<Record<string, z.ZodTypeAny>>>;
 
@@ -71,6 +89,14 @@ type UntypedToolDefinition = ToolDefinitionMetadata &
 			args: RegistrationArgs,
 		): Effect.Effect<unknown, CoreToolError, never>;
 	};
+
+type UntypedUnobservedToolDefinition = ToolDefinitionMetadata & {
+	readonly responseContract: ResponseContract<unknown>;
+	execute(
+		runtime: ToolRuntime,
+		args: RegistrationArgs,
+	): Effect.Effect<unknown, CoreToolError, never>;
+};
 
 /**
  * One-time-per-isolate registration metadata for each tool definition.
@@ -103,7 +129,11 @@ export function getRegisteredToolConfig(
 		annotations: definition.annotations,
 	};
 	if (definition.outputSchema) {
-		config.outputSchema = compactJsonSchema(z.object(definition.outputSchema));
+		const outputSchema =
+			definition.outputSchema instanceof z.ZodType
+				? definition.outputSchema
+				: z.object(definition.outputSchema);
+		config.outputSchema = compactJsonSchema(outputSchema);
 	}
 	registeredToolConfigCache.set(definition, config);
 	return config;
@@ -172,6 +202,80 @@ export function registerToolDefinition(
 		},
 	);
 
+	const config = getRegisteredToolConfig(definition);
+	server.registerTool(definition.name, config, (args, context) => {
+		let parsed: RegistrationArgs;
+		try {
+			parsed = z.strictObject(definition.inputSchema).parse(args ?? {});
+		} catch (error) {
+			const path =
+				error instanceof z.ZodError
+					? error.issues[0]?.path
+							?.map((segment) => String(segment))
+							.join(".") || "arguments"
+					: "arguments";
+			if (context) {
+				return invalidInputHandler(
+					{ path },
+					{
+						signal: context.mcpReq.signal,
+						requestId: String(context.mcpReq.id),
+					},
+				);
+			}
+			throw new ToolInputValidationError({ path });
+		}
+		return handler(
+			parsed,
+			context
+				? {
+						signal: context.mcpReq.signal,
+						requestId: String(context.mcpReq.id),
+					}
+				: undefined,
+		);
+	});
+}
+
+/** Register a shared tool without the normal identity-bearing observer path. */
+export function registerUnobservedToolDefinition<
+	TSchema extends Record<string, z.ZodTypeAny>,
+	TResult,
+>(
+	server: ToolRegistrar,
+	runtime: ToolRuntime,
+	definition: UnobservedToolDefinition<TSchema, TResult>,
+): void;
+export function registerUnobservedToolDefinition(
+	server: ToolRegistrar,
+	runtime: ToolRuntime,
+	definition: UntypedUnobservedToolDefinition,
+): void;
+export function registerUnobservedToolDefinition(
+	server: ToolRegistrar,
+	runtime: ToolRuntime,
+	definition: UntypedUnobservedToolDefinition,
+): void {
+	const directHandler = (
+		args: RegistrationArgs,
+		requestContext?: ToolExecutionContext,
+	) => {
+		const scopedRuntime = requestContext
+			? runtime.forExecution(requestContext)
+			: runtime;
+		return definition
+			.execute(scopedRuntime, args)
+			.pipe(Effect.map((data) => respond(definition.responseContract, data)));
+	};
+	const handler = runtime.createUnobservedHandler(
+		directHandler,
+		definition.name,
+	);
+	const invalidInputHandler = runtime.createUnobservedHandler(
+		(args: { path: string }) =>
+			Effect.fail(new ToolInputValidationError({ path: args.path })),
+		definition.name,
+	);
 	const config = getRegisteredToolConfig(definition);
 	server.registerTool(definition.name, config, (args, context) => {
 		let parsed: RegistrationArgs;

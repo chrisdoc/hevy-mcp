@@ -5,6 +5,7 @@ import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools } from "./register.js";
 import type { ToolRegistrar } from "./define-tool.js";
+import { FEEDBACK_TOOL_DESCRIPTION } from "./feedback.js";
 
 const READ_ONLY_TOOLS = [
 	"get-workouts",
@@ -142,8 +143,20 @@ describe("tool annotations", () => {
 			...CREATE_TOOLS,
 			...UPDATE_TOOLS,
 			...DESTRUCTIVE_TOOLS,
+			"feedback",
 		].sort(byName);
 		expect(registered).toEqual(expected);
+	});
+
+	it("keeps feedback metadata diagnostic and privacy-specific", () => {
+		expect(getAnnotations(spies, "feedback")).toEqual({
+			title: "Report Feedback",
+			readOnlyHint: false,
+			destructiveHint: false,
+			idempotentHint: false,
+			openWorldHint: false,
+		});
+		expect(getDescription(spies, "feedback")).toBe(FEEDBACK_TOOL_DESCRIPTION);
 	});
 
 	it("every tool has a title and closed-world hint", () => {

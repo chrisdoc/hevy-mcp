@@ -5,6 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import {
 	createHevyMcpServer,
 	createSafeErrorDiagnostic,
+	createUnavailableAgentFeedbackRecorder,
 	preloadHevyToolSchemas,
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
@@ -171,6 +172,7 @@ interface WorkerDependencies {
 		lifecycleSignal?: AbortSignal,
 		executionDeadline?: number,
 		observer?: CreateHevyMcpServerOptions["observer"],
+		feedbackRecorder?: CreateHevyMcpServerOptions["feedbackRecorder"],
 	) => Promise<McpServer>;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
 	createObserver?: (
@@ -336,12 +338,14 @@ async function createDefaultServer(
 	lifecycleSignal?: AbortSignal,
 	executionDeadline?: number,
 	observer?: CreateHevyMcpServerOptions["observer"],
+	feedbackRecorder?: CreateHevyMcpServerOptions["feedbackRecorder"],
 ): Promise<McpServer> {
 	return await createHevyMcpServer({
 		createClient,
 		observer,
 		lifecycleSignal,
 		executionDeadline,
+		feedbackRecorder,
 	});
 }
 
@@ -453,6 +457,7 @@ async function serveMcpRequest(
 			request.signal,
 			deadline,
 			observer,
+			createUnavailableAgentFeedbackRecorder(),
 		);
 		const transport = dependencies.createTransport();
 		transport.onerror = (error) => {

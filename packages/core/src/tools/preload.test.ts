@@ -6,9 +6,9 @@ import { getCompactJsonSchemaConversionCount } from "../utils/compact-json-schem
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
-	hevyToolDefinitions,
 	preloadHevyToolSchemas,
 	registerHevyTools,
+	registeredToolDefinitions,
 } from "./register.js";
 
 const catalog: ExerciseTemplateCatalog = {
@@ -57,7 +57,7 @@ describe("preloadHevyToolSchemas", () => {
 		]);
 		try {
 			const { tools } = await protocolClient.listTools();
-			expect(tools).toHaveLength(hevyToolDefinitions.length);
+			expect(tools).toHaveLength(registeredToolDefinitions.length);
 			expect(getCompactJsonSchemaConversionCount()).toBe(afterFirstPreload);
 		} finally {
 			await Promise.all([protocolClient.close(), server.close()]);

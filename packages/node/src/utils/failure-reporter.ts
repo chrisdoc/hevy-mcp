@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import {
+	createSafeErrorDiagnostic,
+	sanitizeDiagnosticText as sanitizeDiagnosticTextValue,
+} from "@hevy-mcp/core";
 import { z } from "zod";
 import { isHevyHttpError } from "@hevy-mcp/hevy-client";
 import * as Sentry from "@sentry/node";
@@ -99,6 +102,10 @@ function isString<T>(value: T): value is T & string {
 	return z.string().safeParse(value).success;
 }
 
+function truncate(value: string, length: number): string {
+	return value.length > length ? `${value.slice(0, length - 1)}…` : value;
+}
+
 function isNumber<T>(value: T): value is T & number {
 	return z.number().safeParse(value).success;
 }
@@ -107,68 +114,16 @@ function isBoolean<T>(value: T): value is T & boolean {
 	return z.boolean().safeParse(value).success;
 }
 
-function truncate(value: string, length: number): string {
-	return value.length > length ? `${value.slice(0, length - 1)}…` : value;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function removeHomePath(value: string): string {
-	const home = process.env.HOME?.trim();
-	const withConfiguredHome = home
-		? value.replace(new RegExp(escapeRegExp(home), "g"), "~")
-		: value;
-	return withConfiguredHome.replace(/\/(?:Users|home)\/[^/\s]+/g, "~");
-}
-
-const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
-
-function removeControlCharacters(value: string): string {
-	let output = "";
-	let inEscapeSequence = false;
-	for (const character of value) {
-		const codePoint = character.codePointAt(0) ?? 0;
-		if (inEscapeSequence) {
-			if (codePoint >= 0x40 && codePoint <= 0x7e) {
-				inEscapeSequence = false;
-			}
-			continue;
-		}
-		if (codePoint === 0x1b) {
-			inEscapeSequence = true;
-			continue;
-		}
-		if (
-			codePoint <= 0x1f &&
-			codePoint !== 0x09 &&
-			codePoint !== 0x0a &&
-			codePoint !== 0x0d
-		) {
-			continue;
-		}
-		if (codePoint === 0x7f) continue;
-		output += character;
-	}
-	return output;
-}
-
 /** Remove common credentials and URL payloads without inspecting object fields. */
 export function sanitizeDiagnosticText(
 	value: string,
 	maxLength = MAX_MESSAGE_LENGTH,
 ): string {
-	const withoutControlCharacters = removeControlCharacters(value);
-	const withoutSecrets = withoutControlCharacters
-		.replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [REDACTED]")
-		.replace(
-			/\b(api[-_ ]?key|authorization|password|secret|token)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,
-			"$1=[REDACTED]",
-		)
-		.replace(EMAIL, "[EMAIL_REDACTED]")
-		.replace(/\bhttps?:\/\/[^\s)<>]+/gi, "[URL]");
-	return truncate(removeHomePath(withoutSecrets).trim(), maxLength);
+	return sanitizeDiagnosticTextValue(
+		value,
+		maxLength,
+		process.env.HOME ?? process.env.USERPROFILE,
+	);
 }
 
 function sanitizeAttributeValue(
@@ -380,9 +335,7 @@ function sanitizeSentryTags(tags: ErrorEvent["tags"]): ErrorEvent["tags"] {
 function normalizeStackFilename(value: string): string {
 	const sanitized = sanitizeDiagnosticText(value, MAX_ATTRIBUTE_LENGTH);
 	const distMarker = sanitized.lastIndexOf("/dist/");
-	return distMarker >= 0
-		? `~${sanitized.slice(distMarker)}`
-		: removeHomePath(sanitized);
+	return distMarker >= 0 ? `~${sanitized.slice(distMarker)}` : sanitized;
 }
 
 function sanitizeSentryExceptionValues(
