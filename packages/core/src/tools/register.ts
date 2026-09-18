@@ -13,7 +13,7 @@ import { routineDiscoveryToolDefinitions } from "./routine-discovery.js";
 import { workflowToolDefinitions } from "./workflows.js";
 import { workoutToolDefinitions } from "./workouts.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import { feedbackToolDefinition } from "../feedback.js";
+import { feedbackToolDefinition } from "./feedback.js";
 
 export const hevyToolDefinitions = [
 	...workoutToolDefinitions,

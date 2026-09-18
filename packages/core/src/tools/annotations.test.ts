@@ -5,7 +5,7 @@ import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerHevyTools } from "./register.js";
 import type { ToolRegistrar } from "./define-tool.js";
-import { FEEDBACK_TOOL_DESCRIPTION } from "../feedback.js";
+import { FEEDBACK_TOOL_DESCRIPTION } from "./feedback.js";
 
 const READ_ONLY_TOOLS = [
 	"get-workouts",

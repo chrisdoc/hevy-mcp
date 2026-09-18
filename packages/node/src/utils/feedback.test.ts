@@ -93,6 +93,35 @@ describe("Node feedback recorder", () => {
 		}
 	});
 
+	it("redacts a Windows USERPROFILE when HOME is unavailable", () => {
+		testDoubles.getTelemetryAvailability.mockReturnValue("available");
+		testDoubles.startSpan.mockReturnValue({
+			isRecording: testDoubles.isRecording,
+			end: testDoubles.end,
+		});
+		const originalHome = process.env.HOME;
+		const originalUserProfile = process.env.USERPROFILE;
+		delete process.env.HOME;
+		process.env.USERPROFILE = "C:\\Users\\Alice";
+
+		try {
+			expect(
+				createNodeFeedbackRecorder().record(
+					"feedback from C:\\Users\\Alice\\project",
+				),
+			).toEqual({ accepted: true });
+			const attributes = testDoubles.startSpan.mock.calls[0]?.[1].attributes;
+			expect(attributes).toMatchObject({
+				"feedback.message": "feedback from ~\\project",
+			});
+		} finally {
+			if (originalHome === undefined) delete process.env.HOME;
+			else process.env.HOME = originalHome;
+			if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+			else process.env.USERPROFILE = originalUserProfile;
+		}
+	});
+
 	it.each(["telemetry_disabled", "telemetry_unavailable"] as const)(
 		"returns %s without creating a span",
 		(reason) => {

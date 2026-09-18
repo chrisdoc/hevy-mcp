@@ -119,7 +119,11 @@ export function sanitizeDiagnosticText(
 	value: string,
 	maxLength = MAX_MESSAGE_LENGTH,
 ): string {
-	return sanitizeDiagnosticTextValue(value, maxLength, process.env.HOME);
+	return sanitizeDiagnosticTextValue(
+		value,
+		maxLength,
+		process.env.HOME ?? process.env.USERPROFILE,
+	);
 }
 
 function sanitizeAttributeValue(

@@ -19,7 +19,7 @@ export function createNodeFeedbackRecorder(): AgentFeedbackRecorder {
 				const scrubbedMessage = sanitizeDiagnosticText(
 					message,
 					FEEDBACK_MAX_MESSAGE_LENGTH,
-					process.env.HOME,
+					process.env.HOME ?? process.env.USERPROFILE,
 				);
 				const span = tracer.startSpan(
 					"hevy_mcp.feedback",

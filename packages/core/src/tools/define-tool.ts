@@ -36,6 +36,8 @@ type RegisteredToolConfig = {
 	outputSchema?: ReturnType<typeof compactJsonSchema>;
 };
 
+type OutputSchema = z.ZodRawShape | z.ZodTypeAny;
+
 export type ToolRegistrar = Pick<McpServer, "registerTool">;
 
 export type ToolDefinition<
@@ -61,7 +63,7 @@ export type UnobservedToolDefinition<
 	readonly description: string;
 	readonly inputSchema: TSchema;
 	readonly annotations: ToolAnnotations;
-	readonly outputSchema: z.ZodRawShape;
+	readonly outputSchema: OutputSchema;
 	readonly responseContract: ResponseContract<TResult>;
 	execute(
 		runtime: ToolRuntime,
@@ -74,7 +76,7 @@ type ToolDefinitionMetadata = {
 	readonly description: string;
 	readonly inputSchema: Record<string, z.ZodTypeAny>;
 	readonly annotations: ToolAnnotations;
-	readonly outputSchema?: z.ZodRawShape;
+	readonly outputSchema?: OutputSchema;
 };
 type RegistrationArgs = z.output<z.ZodObject<Record<string, z.ZodTypeAny>>>;
 
@@ -127,7 +129,11 @@ export function getRegisteredToolConfig(
 		annotations: definition.annotations,
 	};
 	if (definition.outputSchema) {
-		config.outputSchema = compactJsonSchema(z.object(definition.outputSchema));
+		const outputSchema =
+			definition.outputSchema instanceof z.ZodType
+				? definition.outputSchema
+				: z.object(definition.outputSchema);
+		config.outputSchema = compactJsonSchema(outputSchema);
 	}
 	registeredToolConfigCache.set(definition, config);
 	return config;

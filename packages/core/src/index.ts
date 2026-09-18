@@ -28,7 +28,7 @@ export { preloadHevyToolSchemas } from "./tools/register.js";
 export {
 	FEEDBACK_MAX_MESSAGE_LENGTH,
 	FEEDBACK_TOOL_DESCRIPTION,
-} from "./feedback.js";
+} from "./feedback-metadata.js";
 export {
 	createUnavailableAgentFeedbackRecorder,
 	type AgentFeedbackRecorder,

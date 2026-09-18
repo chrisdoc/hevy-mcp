@@ -193,6 +193,27 @@ const server = await createNodeMcpServer({ apiKey: process.env.HEVY_API_KEY! });
 // Connect `server` to the transport owned by your application.
 ```
 
+Embedding applications can opt into the privacy-safe `feedback` tool by
+supplying their own `AgentFeedbackRecorder`. The recorder owns telemetry setup
+and should return `{ accepted: true }` only after it has accepted the bounded,
+sanitized message; omit it when feedback should remain unavailable:
+
+```ts
+const server = await createNodeMcpServer({
+	apiKey: process.env.HEVY_API_KEY!,
+	feedbackRecorder: {
+		record: (message) => {
+			// Send `message` through the embedding application's approved pipeline.
+			return { accepted: true };
+		},
+	},
+});
+```
+
+`createNodeMcpServer` remains side-effect-free: it does not initialize project
+telemetry or create a recorder automatically. Without `feedbackRecorder`, the
+tool returns `telemetry_unavailable`.
+
 For the CLI-owned stdio process, use the executable instead of creating an
 embedded server:
 
