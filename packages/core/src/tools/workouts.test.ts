@@ -16,7 +16,10 @@ import {
 import type { ToolExecutionContext } from "../execution.js";
 import { describe, expect, it, vi } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
-import { registerToolDefinition } from "./define-tool.js";
+import {
+	getRegisteredToolConfig,
+	registerToolDefinition,
+} from "./define-tool.js";
 import { workoutToolDefinitions } from "./workouts.js";
 import { workoutInputSchema } from "./input-schemas.js";
 import { HevyOperationsService } from "../effect-services.js";
@@ -462,5 +465,90 @@ describe("workout tools", () => {
 		expect(response).toMatchObject({ isError: true });
 		expect(client.getWorkout).toHaveBeenCalledTimes(1);
 		expect(client.updateWorkout).toHaveBeenCalledTimes(1);
+	});
+
+	it("accepts string RPE in create-workout and casts it to numeric RPE for downstream Hevy client", async () => {
+		const client = createMockHevyClient();
+		client.createWorkout.mockResolvedValue({ id: "w-rpe-test" });
+		const tool = register(client);
+
+		const input = workoutInputSchema.parse({
+			workout: {
+				title: "Strength with RPE",
+				start_time: "2026-07-29T08:00:00Z",
+				end_time: "2026-07-29T09:00:00Z",
+				is_private: false,
+				exercises: [
+					{
+						exercise_template_id: "bench",
+						sets: [
+							{ type: "normal", reps: 8, weight_kg: 80, rpe: "8.5" },
+							{ type: "normal", reps: 8, weight_kg: 80, rpe: 9 },
+						],
+					},
+				],
+			},
+		});
+
+		const response = await toolHandler(tool, "create-workout")(input);
+
+		expect(response).not.toMatchObject({ isError: true });
+		expect(client.createWorkout).toHaveBeenCalledWith({
+			workout: expect.objectContaining({
+				exercises: [
+					expect.objectContaining({
+						sets: [
+							expect.objectContaining({ rpe: 8.5 }),
+							expect.objectContaining({ rpe: 9 }),
+						],
+					}),
+				],
+			}),
+		});
+	});
+
+	it("ensures create-workout input schema advertises string enums for RPE to satisfy Gemini/Vertex AI", () => {
+		const def = workoutToolDefinitions.find((d) => d.name === "create-workout");
+		expect(def).toBeDefined();
+		if (!def) throw new Error("create-workout definition not found");
+		const config = getRegisteredToolConfig(def);
+		const jsonSchema = config.inputSchema["~standard"].jsonSchema.input({
+			target: "draft-2020-12",
+		});
+
+		expect(jsonSchema).toMatchObject({
+			type: "object",
+			properties: {
+				workout: {
+					properties: {
+						exercises: {
+							items: {
+								properties: {
+									sets: {
+										items: {
+											properties: {
+												rpe: {
+													type: ["string", "null"],
+													enum: expect.arrayContaining([
+														"6",
+														"7",
+														"7.5",
+														"8",
+														"8.5",
+														"9",
+														"9.5",
+														"10",
+													]),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		});
 	});
 });

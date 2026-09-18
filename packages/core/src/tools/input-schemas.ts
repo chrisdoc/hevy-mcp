@@ -4,10 +4,12 @@ import type {
 	PostRoutinesRequestSet,
 	PostWorkoutsRequestBody,
 	PostWorkoutsRequestSet,
+	PostWorkoutsRequestSetRpeEnumKey,
 	PutRoutinesRequestBody,
 } from "@hevy-mcp/hevy-client/types";
 import { z } from "zod";
 import { parseJsonArray } from "../utils/json-parser.js";
+import { isFiniteNumber } from "../utils/type-predicates.js";
 import {
 	equipmentCategoryEnum,
 	exerciseTypeEnum,
@@ -78,16 +80,25 @@ export const calendarDate = z
 		);
 	}, CALENDAR_DATE_MESSAGE);
 
-const rpeEnum = z.union([
-	z.literal(6),
-	z.literal(7),
-	z.literal(7.5),
-	z.literal(8),
-	z.literal(8.5),
-	z.literal(9),
-	z.literal(9.5),
-	z.literal(10),
-]);
+export const RPE_VALUES = [
+	"6",
+	"7",
+	"7.5",
+	"8",
+	"8.5",
+	"9",
+	"9.5",
+	"10",
+] as const;
+
+export type RpeStringValue = (typeof RPE_VALUES)[number];
+
+const rpeEnum = z
+	.preprocess(
+		(val) => (isFiniteNumber(val) ? String(val) : val),
+		z.enum(RPE_VALUES),
+	)
+	.transform((val) => Number(val) as PostWorkoutsRequestSetRpeEnumKey);
 
 export const workoutSetFields = {
 	type: setTypeEnum,
