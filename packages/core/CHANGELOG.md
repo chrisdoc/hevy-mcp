@@ -1,5 +1,11 @@
 # @hevy-mcp/core
 
+## 0.2.12
+
+### Patch Changes
+
+- [#1162](https://github.com/chrisdoc/hevy-mcp/pull/1162) [`01a1a5e`](https://github.com/chrisdoc/hevy-mcp/commit/01a1a5e9d253dc4c0192929248a8dd92162dd176) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Accept legacy flat camelCase create-routine calls from connected clients while advertising the canonical nested schema. Present identity-less routine creation responses as confirmed acknowledgements without an empty routine, and advise discovery before retrying.
+
 ## 0.2.11
 
 ### Patch Changes
