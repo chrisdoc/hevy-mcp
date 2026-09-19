@@ -1,0 +1,2317 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`package export: real MCP with explicit zero retries > create-routine: 401 > create-routine: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-routine: 403 > create-routine: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-routine: 429 > create-routine: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: Rate limited by Hevy (HTTP 429). Please wait about 0 seconds before retrying.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-routine: 503 > create-routine: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-routine: connection-reset > create-routine: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: The request failed unexpectedly. Please try again.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "ERR_NETWORK",
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-routine: success > create-routine: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "created": true,
+  "commit_state": "confirmed",
+  "routine": {
+    "id": "synthetic-id",
+    "title": "Synthetic routine",
+    "exercises": [
+      {
+        "exercise_template_id": "synthetic-template",
+        "sets": [
+          {
+            "type": "normal",
+            "reps": 5
+          }
+        ]
+      }
+    ]
+  },
+  "routine_id": "synthetic-id",
+  "uses_rep_ranges": false
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "commit_state": "confirmed",
+    "created": true,
+    "routine": {
+      "exercises": [
+        {
+          "exercise_template_id": "synthetic-template",
+          "sets": [
+            {
+              "reps": 5,
+              "type": "normal",
+            },
+          ],
+        },
+      ],
+      "id": "synthetic-id",
+      "title": "Synthetic routine",
+    },
+    "routine_id": "synthetic-id",
+    "uses_rep_ranges": false,
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-workout: 401 > create-workout: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-workout: 403 > create-workout: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-workout: 429 > create-workout: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: Rate limited by Hevy (HTTP 429). Please wait about 0 seconds before retrying.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-workout: 503 > create-workout: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-workout: connection-reset > create-workout: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: The request failed unexpectedly. Please try again.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "ERR_NETWORK",
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > create-workout: success > create-workout: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "duration": "1h 0m 0s",
+  "id": "synthetic-id",
+  "title": "Synthetic workout",
+  "description": "",
+  "start_time": "2026-01-01T10:00:00Z",
+  "end_time": "2026-01-01T11:00:00Z",
+  "exercises": []
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": undefined,
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routine: 401 > get-routine: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routine: 403 > get-routine: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routine: 429 > get-routine: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routine: 503 > get-routine: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routine: connection-reset > get-routine: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routine: success > get-routine: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "id": "synthetic-id",
+  "title": "Synthetic routine",
+  "exercises": [
+    {
+      "exercise_template_id": "synthetic-template",
+      "sets": [
+        {
+          "type": "normal",
+          "reps": 5
+        }
+      ]
+    }
+  ]
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "routine": {
+      "exercises": [
+        {
+          "exercise_template_id": "synthetic-template",
+          "sets": [
+            {
+              "reps": 5,
+              "type": "normal",
+            },
+          ],
+        },
+      ],
+      "id": "synthetic-id",
+      "title": "Synthetic routine",
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routines: 401 > get-routines: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routines: 403 > get-routines: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routines: 429 > get-routines: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routines: 503 > get-routines: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routines: connection-reset > get-routines: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-routines: success > get-routines: success 1`] = `
+{
+  "content": [
+    {
+      "text": "[
+  {
+    "id": "synthetic-id",
+    "title": "Synthetic routine",
+    "exercise_count": 1,
+    "set_count": 1
+  }
+]",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "has_next_page": false,
+    "page": 1,
+    "page_count": 1,
+    "routines": [
+      {
+        "exercise_count": 1,
+        "id": "synthetic-id",
+        "set_count": 1,
+        "title": "Synthetic routine",
+      },
+    ],
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workout: 401 > get-workout: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workout: 403 > get-workout: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workout: 429 > get-workout: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workout: 503 > get-workout: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workout: connection-reset > get-workout: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workout: success > get-workout: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "id": "synthetic-id",
+  "title": "Synthetic workout",
+  "description": "",
+  "start_time": "2026-01-01T10:00:00Z",
+  "end_time": "2026-01-01T11:00:00Z",
+  "duration": "1h 0m 0s",
+  "exercises": []
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "workout": {
+      "description": "",
+      "duration": "1h 0m 0s",
+      "end_time": "2026-01-01T11:00:00Z",
+      "exercises": [],
+      "id": "synthetic-id",
+      "start_time": "2026-01-01T10:00:00Z",
+      "title": "Synthetic workout",
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workouts: 401 > get-workouts: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workouts: 403 > get-workouts: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workouts: 429 > get-workouts: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workouts: 503 > get-workouts: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workouts: connection-reset > get-workouts: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > get-workouts: success > get-workouts: success 1`] = `
+{
+  "content": [
+    {
+      "text": "[
+  {
+    "id": "synthetic-id",
+    "title": "Synthetic workout",
+    "start_time": "2026-01-01T10:00:00Z",
+    "end_time": "2026-01-01T11:00:00Z",
+    "duration": "1h 0m 0s",
+    "exercise_count": 0,
+    "set_count": 0
+  }
+]",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "has_next_page": false,
+    "page": 1,
+    "page_count": 1,
+    "workouts": [
+      {
+        "duration": "1h 0m 0s",
+        "end_time": "2026-01-01T11:00:00Z",
+        "exercise_count": 0,
+        "id": "synthetic-id",
+        "set_count": 0,
+        "start_time": "2026-01-01T10:00:00Z",
+        "title": "Synthetic workout",
+      },
+    ],
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-routine: 401 > update-routine: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-routine: 403 > update-routine: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-routine: 429 > update-routine: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-routine: 503 > update-routine: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-routine: connection-reset > update-routine: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-routine: success > update-routine: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "id": "synthetic-id",
+  "title": "Synthetic routine",
+  "exercises": [
+    {
+      "exercise_template_id": "synthetic-template",
+      "sets": [
+        {
+          "type": "normal",
+          "reps": 5
+        }
+      ]
+    }
+  ]
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": undefined,
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-workout: 401 > update-workout: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-workout: 403 > update-workout: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-workout: 429 > update-workout: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-workout: 503 > update-workout: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-workout: connection-reset > update-workout: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`package export: real MCP with explicit zero retries > update-workout: success > update-workout: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "duration": "1h 0m 0s",
+  "id": "synthetic-id",
+  "title": "Synthetic workout",
+  "description": "",
+  "start_time": "2026-01-01T10:00:00Z",
+  "end_time": "2026-01-01T11:00:00Z",
+  "exercises": []
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": undefined,
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-routine: 401 > create-routine: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-routine: 403 > create-routine: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-routine: 429 > create-routine: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: Rate limited by Hevy (HTTP 429). Please wait about 0 seconds before retrying.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-routine: 503 > create-routine: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-routine: connection-reset > create-routine: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-routine] Error: The request failed unexpectedly. Please try again.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "ERR_NETWORK",
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-routine: success > create-routine: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "created": true,
+  "commit_state": "confirmed",
+  "routine": {
+    "id": "synthetic-id",
+    "title": "Synthetic routine",
+    "exercises": [
+      {
+        "exercise_template_id": "synthetic-template",
+        "sets": [
+          {
+            "type": "normal",
+            "reps": 5
+          }
+        ]
+      }
+    ]
+  },
+  "routine_id": "synthetic-id",
+  "uses_rep_ranges": false
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "commit_state": "confirmed",
+    "created": true,
+    "routine": {
+      "exercises": [
+        {
+          "exercise_template_id": "synthetic-template",
+          "sets": [
+            {
+              "reps": 5,
+              "type": "normal",
+            },
+          ],
+        },
+      ],
+      "id": "synthetic-id",
+      "title": "Synthetic routine",
+    },
+    "routine_id": "synthetic-id",
+    "uses_rep_ranges": false,
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-workout: 401 > create-workout: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-workout: 403 > create-workout: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-workout: 429 > create-workout: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: Rate limited by Hevy (HTTP 429). Please wait about 0 seconds before retrying.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-workout: 503 > create-workout: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-workout: connection-reset > create-workout: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[create-workout] Error: The request failed unexpectedly. Please try again.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "ERR_NETWORK",
+      "commit_state": "unknown",
+      "operation_safety": "non-idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > create-workout: success > create-workout: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "duration": "1h 0m 0s",
+  "id": "synthetic-id",
+  "title": "Synthetic workout",
+  "description": "",
+  "start_time": "2026-01-01T10:00:00Z",
+  "end_time": "2026-01-01T11:00:00Z",
+  "exercises": []
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": undefined,
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routine: 401 > get-routine: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routine: 403 > get-routine: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routine: 429 > get-routine: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routine: 503 > get-routine: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routine: connection-reset > get-routine: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routine: success > get-routine: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "id": "synthetic-id",
+  "title": "Synthetic routine",
+  "exercises": [
+    {
+      "exercise_template_id": "synthetic-template",
+      "sets": [
+        {
+          "type": "normal",
+          "reps": 5
+        }
+      ]
+    }
+  ]
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "routine": {
+      "exercises": [
+        {
+          "exercise_template_id": "synthetic-template",
+          "sets": [
+            {
+              "reps": 5,
+              "type": "normal",
+            },
+          ],
+        },
+      ],
+      "id": "synthetic-id",
+      "title": "Synthetic routine",
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routines: 401 > get-routines: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routines: 403 > get-routines: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routines: 429 > get-routines: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routines: 503 > get-routines: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routines: connection-reset > get-routines: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-routines] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-routines: success > get-routines: success 1`] = `
+{
+  "content": [
+    {
+      "text": "[
+  {
+    "id": "synthetic-id",
+    "title": "Synthetic routine",
+    "exercise_count": 1,
+    "set_count": 1
+  }
+]",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "has_next_page": false,
+    "page": 1,
+    "page_count": 1,
+    "routines": [
+      {
+        "exercise_count": 1,
+        "id": "synthetic-id",
+        "set_count": 1,
+        "title": "Synthetic routine",
+      },
+    ],
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workout: 401 > get-workout: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workout: 403 > get-workout: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workout: 429 > get-workout: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workout: 503 > get-workout: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workout: connection-reset > get-workout: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workout: success > get-workout: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "id": "synthetic-id",
+  "title": "Synthetic workout",
+  "description": "",
+  "start_time": "2026-01-01T10:00:00Z",
+  "end_time": "2026-01-01T11:00:00Z",
+  "duration": "1h 0m 0s",
+  "exercises": []
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "workout": {
+      "description": "",
+      "duration": "1h 0m 0s",
+      "end_time": "2026-01-01T11:00:00Z",
+      "exercises": [],
+      "id": "synthetic-id",
+      "start_time": "2026-01-01T10:00:00Z",
+      "title": "Synthetic workout",
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workouts: 401 > get-workouts: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workouts: 403 > get-workouts: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workouts: 429 > get-workouts: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workouts: 503 > get-workouts: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workouts: connection-reset > get-workouts: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[get-workouts] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "not_sent",
+      "operation_safety": "read",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > get-workouts: success > get-workouts: success 1`] = `
+{
+  "content": [
+    {
+      "text": "[
+  {
+    "id": "synthetic-id",
+    "title": "Synthetic workout",
+    "start_time": "2026-01-01T10:00:00Z",
+    "end_time": "2026-01-01T11:00:00Z",
+    "duration": "1h 0m 0s",
+    "exercise_count": 0,
+    "set_count": 0
+  }
+]",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": {
+    "has_next_page": false,
+    "page": 1,
+    "page_count": 1,
+    "workouts": [
+      {
+        "duration": "1h 0m 0s",
+        "end_time": "2026-01-01T11:00:00Z",
+        "exercise_count": 0,
+        "id": "synthetic-id",
+        "set_count": 0,
+        "start_time": "2026-01-01T10:00:00Z",
+        "title": "Synthetic workout",
+      },
+    ],
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-routine: 401 > update-routine: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-routine: 403 > update-routine: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-routine: 429 > update-routine: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-routine: 503 > update-routine: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-routine: connection-reset > update-routine: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-routine] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-routine: success > update-routine: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "id": "synthetic-id",
+  "title": "Synthetic routine",
+  "exercises": [
+    {
+      "exercise_template_id": "synthetic-template",
+      "sets": [
+        {
+          "type": "normal",
+          "reps": 5
+        }
+      ]
+    }
+  ]
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": undefined,
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-workout: 401 > update-workout: 401 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 401,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-workout: 403 > update-workout: 403 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: The Hevy API key is invalid or has expired. Check HEVY_API_KEY.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 403,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-workout: 429 > update-workout: 429 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 429,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-workout: 503 > update-workout: 503 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: Hevy API experienced an error. Please retry later.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "response-content",
+      "safe_to_retry": false,
+      "status": 503,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-workout: connection-reset > update-workout: connection-reset 1`] = `
+{
+  "content": [
+    {
+      "text": "[update-workout] Error: Unable to complete the request after 1 attempts to the Hevy API due to transient failures. Please try again shortly.",
+      "type": "text",
+    },
+  ],
+  "isError": true,
+  "structuredContent": {
+    "error": {
+      "code": "HEVY_RETRY_EXHAUSTED",
+      "commit_state": "unknown",
+      "operation_safety": "idempotent-write",
+      "outcome": "terminal_failure",
+      "phase": "dispatch",
+      "safe_to_retry": false,
+    },
+  },
+}
+`;
+
+exports[`source: real MCP with explicit zero retries > update-workout: success > update-workout: success 1`] = `
+{
+  "content": [
+    {
+      "text": "{
+  "duration": "1h 0m 0s",
+  "id": "synthetic-id",
+  "title": "Synthetic workout",
+  "description": "",
+  "start_time": "2026-01-01T10:00:00Z",
+  "end_time": "2026-01-01T11:00:00Z",
+  "exercises": []
+}",
+      "type": "text",
+    },
+  ],
+  "isError": undefined,
+  "structuredContent": undefined,
+}
+`;
