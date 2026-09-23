@@ -1,0 +1,5 @@
+work on the dependabot PR and replace the current cloudflare vitest plugin with the newer one @cloudflare/vitest-plugin@1.2.3
+
+---
+
+try again
