@@ -10,10 +10,12 @@ import type {
   HeadersInit,
   PathParamStyle,
   PathSerializer,
+  RequestBody,
   Serializers,
   Styles,
 } from "./serializers";
 import {
+  ParseError,
   type StandardSchemaValidator,
   validateStandardSchema,
 } from "./standardSchema";
@@ -189,6 +191,37 @@ export function withUnwrap<T extends { data: unknown; error: unknown }>(
 }
 
 /**
+ * The shape a generated operation returns when `returnType: 'data'` is set: the bare success body
+ * once `throwOnError` (on by default) narrows away the error branch, falling back to the full
+ * `RequestResult` when a call sets `throwOnError: false` and still needs `error` to discriminate a
+ * failed response.
+ */
+export type UnwrappedResult<
+  TResponses,
+  ThrowOnError extends boolean = true,
+  TRequest = Request,
+  TResponse = Response,
+> = ThrowOnError extends true
+  ? RequestResult<TResponses, true, TRequest, TResponse>["data"]
+  : RequestResult<TResponses, ThrowOnError, TRequest, TResponse>;
+
+/**
+ * Narrows a resolved call down to its success body once `throwOnError` (on by default) rules out
+ * the error branch, the same default the runtime itself applies. Falls back to the full result for
+ * a call that sets `throwOnError: false`, since that path still needs `error` to discriminate a
+ * failed response. Backs `returnType: 'data'`, mirroring how `toEventStream` centralizes the
+ * post-processing for `text/event-stream` operations.
+ */
+export function unwrapResult<T extends { data: unknown; error: unknown }>(
+  promise: Promise<T>,
+  throwOnError: boolean | undefined,
+): Promise<T | T["data"]> {
+  return promise.then((result) =>
+    (throwOnError ?? true) ? result.data : result,
+  );
+}
+
+/**
  * The data-shaped keys of the grouped options object, which `Options` re-adds typed per operation.
  */
 export type DataShape = {
@@ -222,7 +255,7 @@ export type Deserializer<T = unknown> = (
 export type ContentBodySerializer = (
   body: unknown,
   contentType?: string,
-) => BodyInit | undefined;
+) => RequestBody | undefined;
 
 /**
  * A per-content-type codec registered on `codecs`, keyed by content type. `serialize` encodes the
@@ -246,6 +279,28 @@ export type ContentType = string | { request?: string; response?: string };
  * non-2xx call does not throw).
  */
 export type Validator<T = unknown> = StandardSchemaValidator<T>;
+
+/**
+ * The failing body and the call it came from, handed to `onValidationError` alongside the `ParseError`.
+ * `direction` says which slot rejected it: the request body, the success body, or the error body.
+ */
+export type ValidationErrorContext = {
+  value: unknown;
+  direction: "request" | "response" | "error";
+  method?: string;
+  url?: string;
+  status?: number;
+};
+
+/**
+ * Decides what a failed validation does. Returning nothing rethrows the `ParseError`; returning
+ * `{ value }` resolves the call with that value instead, so a drifted body can be reported and still
+ * delivered. The box keeps an explicit `{ value: undefined }` substitution distinct from declining.
+ */
+export type ValidationErrorHandler = (
+  error: ParseError,
+  context: ValidationErrorContext,
+) => { value: unknown } | void | Promise<{ value: unknown } | void>;
 
 /**
  * A resolved security scheme carried on each generated call's `security` array and passed to the `auth` resolver.
@@ -285,12 +340,12 @@ export type RequestConfig<
   baseURL?: string;
   url?: string;
   method?: "GET" | "PUT" | "PATCH" | "POST" | "DELETE" | "OPTIONS" | "HEAD";
-  path?: Record<string, unknown>;
+  path?: unknown;
   query?: unknown;
   params?: unknown;
-  cookies?: Record<string, unknown>;
+  cookies?: unknown;
   body?: TBody;
-  headers?: HeadersInit;
+  headers?: unknown;
   styles?: Styles;
   signal?: AbortSignal;
   credentials?: RequestCredentials;
@@ -303,6 +358,7 @@ export type RequestConfig<
   serializer?: Serializers;
   codecs?: Record<string, Codec>;
   validator?: { request?: Validator; response?: Validator; error?: Validator };
+  onValidationError?: ValidationErrorHandler;
   security?: Array<Auth>;
   auth?: AuthResolver;
 };
@@ -334,6 +390,7 @@ export type ClientConfig<TRequest = Request, TResponse = Response> = {
   transport?: Transport<TRequest, TResponse>;
   serializer?: Serializers;
   codecs?: Record<string, Codec>;
+  onValidationError?: ValidationErrorHandler;
   auth?: AuthResolver;
 };
 
@@ -344,7 +401,7 @@ export type ResolvedRequest = {
   url: string;
   method: string;
   headers: Record<string, string>;
-  body?: BodyInit;
+  body?: RequestBody;
   signal?: AbortSignal;
   credentials?: RequestCredentials;
   options?: FetchOptions;
@@ -600,12 +657,26 @@ export async function resolveAuth(params: {
   }
 }
 
-async function runValidator<T>(
-  validator: Validator<T> | undefined,
-  value: T,
-): Promise<T> {
+async function runValidator<T>({
+  validator,
+  value,
+  context,
+  onValidationError,
+}: {
+  validator: Validator<T> | undefined;
+  value: T;
+  context: Omit<ValidationErrorContext, "value">;
+  onValidationError: ValidationErrorHandler | undefined;
+}): Promise<T> {
   if (!validator) return value;
-  return validateStandardSchema(validator, value);
+  try {
+    return await validateStandardSchema(validator, value);
+  } catch (error) {
+    if (!onValidationError || !(error instanceof ParseError)) throw error;
+    const handled = await onValidationError(error, { ...context, value });
+    if (!handled) throw error;
+    return handled.value as T;
+  }
 }
 
 /**
@@ -686,7 +757,10 @@ async function resolveRequest<TBody, TRequest, TResponse>({
 
   const headers = mergeHeaders(
     config.headers,
-    applyHeaderStyles(requestConfig.headers, requestConfig.styles?.header),
+    applyHeaderStyles(
+      requestConfig.headers as HeadersInit | undefined,
+      requestConfig.styles?.header,
+    ),
   );
   const { request: requestContentTypeOption, response: responseContentType } =
     resolveContentType(requestConfig.contentType);
@@ -711,7 +785,7 @@ async function resolveRequest<TBody, TRequest, TResponse>({
 
   if (requestConfig.cookies) {
     const cookie = serializeCookies(
-      requestConfig.cookies,
+      requestConfig.cookies as Record<string, unknown>,
       requestConfig.styles?.cookie,
     );
     if (cookie)
@@ -720,10 +794,17 @@ async function resolveRequest<TBody, TRequest, TResponse>({
         .join("; ");
   }
 
-  const validatedBody = await runValidator(
-    requestConfig.validator?.request,
-    requestConfig.body,
-  );
+  const validatedBody = await runValidator({
+    validator: requestConfig.validator?.request,
+    value: requestConfig.body,
+    context: {
+      direction: "request",
+      method: requestConfig.method,
+      url: requestConfig.url,
+    },
+    onValidationError:
+      requestConfig.onValidationError ?? config.onValidationError,
+  });
   const requestContentTypeBase = baseContentType(requestContentType);
   const contentCodec = requestContentTypeBase
     ? codecs[requestContentTypeBase]
@@ -754,7 +835,7 @@ async function resolveRequest<TBody, TRequest, TResponse>({
 
   const url = serializeUrl({
     parts: [requestConfig.baseURL ?? config.baseURL, requestConfig.url],
-    pathParams: requestConfig.path ?? {},
+    pathParams: (requestConfig.path ?? {}) as Record<string, unknown>,
     search: querySerializer(query, requestConfig.styles?.query),
     pathSerializer,
     pathStyles: requestConfig.styles?.path,
@@ -787,15 +868,19 @@ async function resolveRequest<TBody, TRequest, TResponse>({
  */
 async function settleResult<TRequest, TResponse>({
   result,
+  request,
   codecs,
   throwOnError,
   validator,
+  onValidationError,
   errorInterceptors,
 }: {
   result: TransportResult<unknown, TRequest, TResponse>;
+  request: ResolvedRequest;
   codecs: Record<string, Codec>;
   throwOnError: boolean;
   validator: { response?: Validator; error?: Validator } | undefined;
+  onValidationError: ValidationErrorHandler | undefined;
   errorInterceptors: InterceptorStack<
     ResponseError<unknown, TRequest, TResponse>
   >;
@@ -810,8 +895,19 @@ async function settleResult<TRequest, TResponse>({
       decoded = await codec.deserialize(result.data, contentType);
   }
 
+  const validationContext = {
+    method: request.method,
+    url: request.url,
+    status: result.status,
+  };
+
   if (isSuccess) {
-    const data = await runValidator(validator?.response, decoded);
+    const data = await runValidator({
+      validator: validator?.response,
+      value: decoded,
+      context: { direction: "response", ...validationContext },
+      onValidationError,
+    });
     return {
       status: result.status,
       data,
@@ -822,7 +918,12 @@ async function settleResult<TRequest, TResponse>({
     };
   }
 
-  const error = await runValidator(validator?.error, decoded);
+  const error = await runValidator({
+    validator: validator?.error,
+    value: decoded,
+    context: { direction: "error", ...validationContext },
+    onValidationError,
+  });
   if (throwOnError) {
     const responseError = new ResponseError({
       data: error,
@@ -879,9 +980,12 @@ export function createClientCore<TRequest = Request, TResponse = Response>(
 
     return settleResult({
       result,
+      request: resolvedRequest,
       codecs,
       throwOnError: requestConfig.throwOnError ?? config.throwOnError ?? true,
       validator: requestConfig.validator,
+      onValidationError:
+        requestConfig.onValidationError ?? config.onValidationError,
       errorInterceptors: interceptors.error,
     });
   }) as ClientInstance<TRequest, TResponse>;
@@ -910,7 +1014,7 @@ export function createClientCore<TRequest = Request, TResponse = Response>(
     };
     return serializeUrl({
       parts: [requestConfig.baseURL ?? config.baseURL, requestConfig.url],
-      pathParams: requestConfig.path ?? {},
+      pathParams: (requestConfig.path ?? {}) as Record<string, unknown>,
       search: querySerializer(query, requestConfig.styles?.query),
       pathSerializer,
       pathStyles: requestConfig.styles?.path,
