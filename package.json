@@ -123,7 +123,7 @@
 		"typescript": "^7.0.2",
 		"ultracite": "7.11.1",
 		"vitest": "^4.1.11",
-		"wrangler": "^4.131.2",
+		"wrangler": "4.131.2",
 		"zod": "^4.6.5"
 	},
 	"engines": {
