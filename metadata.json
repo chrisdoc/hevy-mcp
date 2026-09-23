@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "01M36DY3D95WEJ8BZ6EXD1RPRT",
+  "strategy": "manual-commit",
+  "branch": "fix/cloudflare-vitest-plugin",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".changeset/kubb-generated-client.md",
+    "package.json",
+    "packages/hevy-client/src/generated/.kubb/client.ts",
+    "packages/hevy-client/src/generated/.kubb/serializers.ts",
+    "pnpm-lock.yaml",
+    "tests/cloudflare/worker.integration.test.ts",
+    "vitest.workers.config.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 182162,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 4328960,
+    "output_tokens": 42554,
+    "api_call_count": 45
+  }
+}

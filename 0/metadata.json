@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "01M36DY3D95WEJ8BZ6EXD1RPRT",
+  "session_id": "01a0ccb1-9920-724a-992f-af45da8bd164",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-23T06:06:06.817271Z",
+  "branch": "fix/cloudflare-vitest-plugin",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".changeset/kubb-generated-client.md",
+    "package.json",
+    "packages/hevy-client/src/generated/.kubb/client.ts",
+    "packages/hevy-client/src/generated/.kubb/serializers.ts",
+    "pnpm-lock.yaml",
+    "tests/cloudflare/worker.integration.test.ts",
+    "vitest.workers.config.ts"
+  ],
+  "agent": "Pi",
+  "model": "gpt-6-luna",
+  "turn_id": "010f93aa39ae",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 182162,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 4328960,
+    "output_tokens": 42554,
+    "api_call_count": 45
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-23T06:06:06.765006Z",
+    "agent_lines": 591,
+    "agent_removed": 629,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 591,
+    "total_lines_changed": 1220,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 869,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85,
+        "PLAN.md": 91,
+        "RULES_REVIEW.md": 177,
+        "effect_improvements.md": 449,
+        "plans/rules-review.md": 67
+      }
+    }
+  ]
+}
