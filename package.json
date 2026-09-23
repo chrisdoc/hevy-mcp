@@ -81,8 +81,8 @@
 	"devDependencies": {
 		"@changesets/changelog-github": "^1.0.1",
 		"@changesets/cli": "3.0.3",
-		"@cloudflare/vitest-pool-workers": "^0.22.0",
-		"@cloudflare/workers-types": "5.20260914.1",
+		"@cloudflare/vitest-plugin": "1.2.3",
+		"@cloudflare/workers-types": "5.20260921.1",
 		"@codecov/rollup-plugin": "^2.0.1",
 		"@commitlint/cli": "^21.2.2",
 		"@commitlint/config-conventional": "^21.2.2",
@@ -102,7 +102,7 @@
 		"@swc/core": "^1.16.2",
 		"@types/node": "^26.5.1",
 		"@types/semver": "^7.8.0",
-		"@vitest/coverage-v8": "^5.0.0",
+		"@vitest/coverage-v8": "^4.1.11",
 		"abstract-syntax-tree": "^2.25.0",
 		"cross-env": "^10.1.0",
 		"dependency-cruiser": "^18.3.0",
@@ -122,7 +122,7 @@
 		"tsx": "^4.23.13",
 		"typescript": "^7.0.2",
 		"ultracite": "7.11.1",
-		"vitest": "^5.0.0",
+		"vitest": "^4.1.11",
 		"wrangler": "^4.131.2",
 		"zod": "^4.6.5"
 	},
