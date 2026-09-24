@@ -90,6 +90,7 @@
 			"inputs": ["releaseUnitTests"]
 		},
 		"test:mcp": {
+			"dependsOn": ["build"],
 			"cache": true,
 			"inputs": ["mockedTests", { "env": "HEVY_TEST_REPORT_MODE" }],
 			"outputs": ["{workspaceRoot}/coverage/mocked"]
