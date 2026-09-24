@@ -21,15 +21,15 @@ the remaining `files` and `dependencies` categories.
 Running the same pinned Knip version against the parent configuration with all
 issue types enabled produced this fuller baseline:
 
-| Issue type                             | Findings | Baseline detail                                                                                                                                                                                            |
-| -------------------------------------- | -------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unused files                           |        0 | —                                                                                                                                                                                                          |
-| Unused dependencies                    |        0 | —                                                                                                                                                                                                          |
-| Unlisted dependencies                  |        4 | `cloudflare` in `packages/worker/src/worker-observer.ts` and `tests/cloudflare/worker.integration.test.ts`; `effect` in `scripts/metrics/measure-token-cost.ts` and `tests/integration/catalog-fixture.ts` |
-| Unused value exports                   |       26 | Visibility candidates; not proof that implementations are dead                                                                                                                                             |
-| Unused exported types                  |       23 | Visibility candidates; not proof that types are safe to remove                                                                                                                                             |
-| Duplicate exports                      |        4 | Two compatibility-alias pairs in three files                                                                                                                                                               |
-| Unlisted binaries / unresolved imports |        0 | —                                                                                                                                                                                                          |
+| Issue type                             | Findings | Baseline detail                                                                                                                                                                                    |
+| -------------------------------------- | -------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unused files                           |        0 | —                                                                                                                                                                                                  |
+| Unused dependencies                    |        0 | —                                                                                                                                                                                                  |
+| Unlisted dependencies                  |        4 | `cloudflare` in `packages/worker/src/worker-observer.ts` and `tests/cloudflare/worker.integration.test.ts`; `effect` in `scripts/measure-token-cost.ts` and `tests/integration/catalog-fixture.ts` |
+| Unused value exports                   |       26 | Visibility candidates; not proof that implementations are dead                                                                                                                                     |
+| Unused exported types                  |       23 | Visibility candidates; not proof that types are safe to remove                                                                                                                                     |
+| Duplicate exports                      |        4 | Two compatibility-alias pairs in three files                                                                                                                                                       |
+| Unlisted binaries / unresolved imports |        0 | —                                                                                                                                                                                                  |
 
 At the baseline, the legacy `pnpm run knip` gate exits 0; the full command
 below exits 1 because these advisory diagnostics are present. Both outcomes
