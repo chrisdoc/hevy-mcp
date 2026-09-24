@@ -190,6 +190,9 @@ importers:
       dependency-cruiser:
         specifier: ^18.3.0
         version: 18.3.0
+      effect:
+        specifier: 4.0.0-rc.115
+        version: 4.0.0-rc.115
       fta-cli:
         specifier: 3.0.1
         version: 3.0.1
