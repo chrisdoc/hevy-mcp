@@ -1,226 +1,72 @@
-# Type Safety Guide for hevyClient API Responses
+# Type safety guide
 
-## Overview
+The repository uses two related type boundaries: the typed Hevy client and
+schema-derived MCP inputs. TypeScript checks these contracts at compile time;
+it does not validate network payloads at runtime.
 
-This project uses a generated API client from the Hevy OpenAPI specification. To ensure type safety and prevent runtime errors, **all API responses from `hevyClient` methods MUST use explicit type annotations from the generated types**.
+## Hevy client responses
 
-## The Pattern
+`HevyClient` methods declare their Promise response types, so ordinary calls
+are already inferred. For example, `getWorkouts()` returns the generated
+workouts response type:
 
-### ✅ **CORRECT: Use Generated Types**
+```ts
+import type { HevyClient } from "@hevy-mcp/hevy-client";
 
-```typescript
-import type {
-  GetV1Workouts200,
-  PostV1Workouts201,
-} from "@hevy-mcp/hevy-client/types";
-
-// Explicit type annotation using generated type
-const data: GetV1Workouts200 = await hevyClient.getWorkouts({
-  page,
-  pageSize,
-});
-
-// TypeScript validates property access
-const workouts = data?.workouts?.map(...) || [];
-```
-
-### ❌ **INCORRECT: Manual Type Assertion**
-
-```typescript
-// DO NOT DO THIS - bypasses TypeScript's type checking
-const data = await hevyClient.getWorkouts({ page, pageSize });
-const count = (data as { workout_count?: number }).workout_count || 0;
-```
-
-### ❌ **INCORRECT: Implicit Any**
-
-```typescript
-// DO NOT DO THIS - loses all type information
-const data = await hevyClient.getWorkouts({ page, pageSize });
-// data is implicitly 'any'
-```
-
-## Why This Matters
-
-1. **Compile-Time Safety**: TypeScript catches property name mismatches (e.g., `workoutCount` vs `workout_count`)
-2. **IDE Support**: Full autocomplete and type hints
-3. **Refactoring Safety**: If the API changes, TypeScript immediately flags incompatibilities
-4. **Documentation**: Types serve as inline documentation
-
-## How to Find the Correct Type
-
-### Step 1: Identify the API Method
-
-Look at the `hevyClient` method you're calling:
-
-```typescript
-const data = await hevyClient.getWorkouts({ page, pageSize });
-```
-
-### Step 2: Check the Client Wrapper
-
-Open `packages/hevy-client/src/hevy-client-kubb.ts` and find the method:
-
-```typescript
-getWorkouts: (params?: GetV1WorkoutsQueryParams): ReturnType<typeof api.getV1Workouts> =>
-  wrapApi(api.getV1Workouts)(headers, params, { client }),
-```
-
-The return type is `ReturnType<typeof api.getV1Workouts>`.
-
-### Step 3: Check the Generated API Function
-
-Open `packages/hevy-client/src/generated/client/api/getV1Workouts.ts`:
-
-```typescript
-export async function getV1Workouts(...) {
-  const res = await request<
-    GetV1WorkoutsQueryResponse,  // ← This is what's returned
-    ResponseErrorConfig<Error>,
-    unknown
-  >(...);
-  return res.data;
+async function readWorkouts(client: HevyClient) {
+	const response = await client.getWorkouts();
+	return response.workouts ?? [];
 }
 ```
 
-### Step 4: Find the Response Type
+Add an explicit annotation when it clarifies a boundary or contract; do not add
+one merely because the value came from an API call. The curated
+`@hevy-mcp/hevy-client/types` export includes the friendly `GetV1Workouts200`
+alias when a named response type is useful:
 
-Open `packages/hevy-client/src/generated/client/types/GetV1Workouts.ts`:
+```ts
+import type { GetV1Workouts200 } from "@hevy-mcp/hevy-client/types";
+import type { HevyClient } from "@hevy-mcp/hevy-client";
 
-```typescript
-export type GetV1WorkoutsQueryResponse = GetV1Workouts200;
-
-export type GetV1Workouts200 = {
-	page?: number;
-	page_count?: number;
-	workouts?: Workout[];
-};
+declare const client: HevyClient;
+const response: GetV1Workouts200 = await client.getWorkouts();
 ```
 
-Use `GetV1Workouts200` as the type annotation.
+These types describe the expected Hevy response shape. They are not runtime
+validation. Validate untrusted values at the boundary where they enter the
+application, using the owning Zod schema when runtime validation is required.
 
-## Quick Reference: Response Type Naming Conventions
+Import public client types from `@hevy-mcp/hevy-client/types` and schemas from
+`@hevy-mcp/hevy-client/schemas`. Do not import Kubb-generated implementation
+files or edit `packages/hevy-client/src/generated/` by hand. See the
+[generated client workflow in CONTRIBUTING](../CONTRIBUTING.md#generated-api-client)
+for regeneration and validation.
 
-| HTTP Method | Status | Example Type Name            |
-| ----------- | ------ | ---------------------------- |
-| GET         | 200    | `GetV1Workouts200`           |
-| POST        | 200    | `PostV1ExerciseTemplates200` |
-| POST        | 201    | `PostV1Workouts201`          |
-| PUT         | 200    | `PutV1WorkoutsWorkoutid200`  |
-| DELETE      | 204    | Usually no response type     |
+## MCP tool inputs
 
-## Common Response Types by Endpoint
+For MCP handlers, define the Zod input shape once and derive the TypeScript
+argument type with `InferToolParams`. In a module under
+`packages/core/src/tools/`:
 
-### Workouts
+```ts
+import { z } from "zod";
+import type { InferToolParams } from "../utils/tool-helpers.js";
 
-- `getWorkouts()` → `GetV1Workouts200`
-- `getWorkout(id)` → `GetV1WorkoutsWorkoutid200`
-- `getWorkoutCount()` → `GetV1WorkoutsCount200`
-- `getWorkoutEvents()` → `GetV1WorkoutsEvents200`
-- `createWorkout()` → `PostV1Workouts201`
-- `updateWorkout()` → `PutV1WorkoutsWorkoutid200`
+const inputSchema = {
+	page: z.coerce.number().int().gte(1).default(1),
+	pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+} as const;
 
-### Routines
-
-- `getRoutines()` → `GetV1Routines200`
-- `getRoutineById(id)` → `GetV1RoutinesRoutineid200`
-- `createRoutine()` → `PostV1Routines201`
-- `updateRoutine()` → `PutV1RoutinesRoutineid200`
-
-### Exercise Templates
-
-- `getExerciseTemplates()` → `GetV1ExerciseTemplates200`
-- `getExerciseTemplate(id)` → `GetV1ExerciseTemplatesExercisetemplateid200`
-- `getExerciseHistory()` → `GetV1ExerciseHistoryExercisetemplateid200`
-- `createExerciseTemplate()` → `PostV1ExerciseTemplates200`
-
-### Routine Folders
-
-- `getRoutineFolders()` → `GetV1RoutineFolders200`
-- `getRoutineFolder(id)` → `GetV1RoutineFoldersFolderid200`
-- `createRoutineFolder()` → `PostV1RoutineFolders201`
-
-## Implementation Checklist
-
-When adding a new tool or handler:
-
-- [ ] Import the response type from `@hevy-mcp/hevy-client/types`
-- [ ] Add explicit type annotation: `const data: ResponseType = await hevyClient.method()`
-- [ ] Verify type checking passes: `pnpm run check:types`
-- [ ] Verify tests pass: `npx vitest run --exclude tests/integration/**`
-
-## Troubleshooting
-
-### "Property does not exist on type"
-
-If you get an error like:
-
-```
-Property 'workoutCount' does not exist on type 'GetV1WorkoutsCount200'
+type Input = InferToolParams<typeof inputSchema>;
 ```
 
-This means:
+Follow the existing tool-definition pattern so the schema remains the single
+source of truth for validation and handler types. Avoid handwritten parallel
+interfaces, `args as { ... }` casts, and `Record<string, unknown>` handler
+arguments. For response schemas and registration conventions, see
+[AGENTS.md](../AGENTS.md#mcp-and-type-safety-conventions) and
+[architecture.md](./architecture.md#zod-schema-inference-for-type-safe-tool-parameters).
 
-1. You're accessing a property that doesn't exist in the API response
-2. Check the generated type to see the correct property name (likely `workout_count`)
-3. The Hevy API uses snake_case, not camelCase
-
-### "Type X is not assignable to type Y"
-
-If the hevyClient method returns a different type than expected:
-
-1. Check `packages/hevy-client/src/hevy-client-kubb.ts` for the actual return type
-2. Verify you're using the `QueryResponse` or `MutationResponse` type, not the `Query` or `Mutation` type
-3. The response types usually end in `200`, `201`, etc. (HTTP status codes)
-
-## Maintaining Type Safety
-
-### When Regenerating the API Client
-
-If you need to refresh the checked-in spec first, run `pnpm run openapi`.
-
-After running `pnpm run build:client`:
-
-1. Run `pnpm run check:types` to catch any breaking changes
-2. Update type annotations in tool handlers if needed
-3. Run tests to verify behavior: `npx vitest run --exclude tests/integration/**`
-
-### Compiler-enforced vocabulary completeness
-
-When a tagged-error union must stay in sync with a runtime table (e.g. an
-error-tag allowlist), derive the table from the union so additions fail
-closed:
-
-```typescript
-type CoreToolTag = CoreToolError["_tag"];
-
-const ERROR_TAGS = {
-	ToolInputValidationError: true,
-	// ... every member
-} as const satisfies Record<CoreToolTag, true>;
-```
-
-Adding a member to the union without listing its tag is a type error, and a
-misspelled tag is an excess-key error. Prefer this over `instanceof` chains,
-which drift silently. The table enforces vocabulary completeness at compile
-time only: the runtime guard must still verify each value (for example with
-an own-property tag check), because a plain object carrying a matching
-`_tag` is not a valid union member.
-
-### Code Review Checklist
-
-When reviewing PRs that add/modify API calls:
-
-- [ ] All `await hevyClient.*()` calls have explicit type annotations
-- [ ] Type imports are from `@hevy-mcp/hevy-client/types`
-- [ ] No manual type assertions (`as { ... }`)
-- [ ] TypeScript checks pass
-- [ ] Tests pass
-
-## Benefits Recap
-
-✅ **Type Safety**: Compile-time property validation  
-✅ **Maintainability**: Changes to API are caught immediately  
-✅ **Developer Experience**: Full IDE autocomplete  
-✅ **Documentation**: Types document the API response structure  
-✅ **Consistency**: Same pattern across the entire codebase
+Run the type and test checks required by
+[CONTRIBUTING.md](../CONTRIBUTING.md#required-validation); select focused test
+lanes from [test-lanes.md](./test-lanes.md).

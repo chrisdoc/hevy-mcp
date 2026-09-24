@@ -1,22 +1,17 @@
 # Test lanes and performance baseline
 
-This document owns the stable public commands introduced by testing-strategy
-ticket TS-06. Contributors and CI should use these names instead of copying raw
-Vitest selectors.
+This is the contributor-facing reference for current test-lane commands,
+coverage, and ownership. `package.json` owns command names, while
+[`repository/validation-lanes.json`](../repository/validation-lanes.json) is
+the machine-readable lane registry checked by `pnpm run check:control-plane`.
+Use these named lanes instead of copying raw Vitest selectors. Setup and the
+required pull-request baseline are owned by [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-Use the pinned Node.js and pnpm versions through mise. On this linux/arm64
-environment, set `MISE_AUTO_INSTALL=false` on every `mise` invocation because
-the pinned `kiota` tool has no linux/arm64 build:
+For installation of the pinned Node.js and pnpm versions, see
+[Prerequisites in CONTRIBUTING.md](../CONTRIBUTING.md#prerequisites).
 
-```sh
-MISE_AUTO_INSTALL=false mise install
-MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit
-```
-
-The lane and aggregate registry below mirrors
-[`repository/validation-lanes.json`](../repository/validation-lanes.json). The
-canonical model is validated by `pnpm run check:control-plane`; use the named
-commands below instead of copying raw selectors into automation.
+The lane and aggregate registry below is a human-readable view of the canonical
+model and is validated by `pnpm run check:control-plane`.
 
 | Lane ID                    | Command / integration                                                 | Gate          | Runtime ownership | Credentials                                        | Artifacts                                                         | Purpose                                                                                                                                                                                                                                                                |
 | -------------------------- | --------------------------------------------------------------------- | ------------- | ----------------- | -------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
