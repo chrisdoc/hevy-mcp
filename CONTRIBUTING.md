@@ -99,6 +99,15 @@ npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest
 The inspector can require an environment with an MCP-capable browser/client and
 may time out in restricted environments.
 
+## Repository tooling
+
+Repository-level executable scripts live under `scripts/`, grouped by purpose
+when organized (for example, token-budget measurement is in `scripts/metrics/`).
+Reusable tooling implementations live under `tools/`, while `repository/`
+contains canonical machine-readable topology and control-plane policy. Keep
+tool-specific configuration files at the repository root when their consumers
+expect to discover them there.
+
 ## Test lanes
 
 Use [docs/test-lanes.md](./docs/test-lanes.md) to choose a named test lane and

@@ -1,7 +1,7 @@
 # MCP tool token budget
 
-`scripts/measure-token-cost.ts` measures the complete JSON-serialized MCP
-`tools/list` result using the `o200k_base` encoding.
+`scripts/metrics/measure-token-cost.ts` measures the complete JSON-serialized
+MCP `tools/list` result using the `o200k_base` encoding.
 
 The only enforced policy is the total catalog budget:
 
