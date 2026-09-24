@@ -2,6 +2,10 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadControlPlane, repositoryRoot } from "./control-plane-models.mjs";
 import {
+	hasVitestLaneRunner,
+	isVitestSelector,
+} from "./vitest-lane-execution.mjs";
+import {
 	isBoolean,
 	isObjectLike,
 	isString,
@@ -856,6 +860,22 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				lane.id + " alias recurses through the dispatcher",
 			);
 			aliases.add(lane.alias);
+		}
+		if (lane.mappingStatus === "mapped" && isVitestSelector(lane.selector)) {
+			const target = project.targets?.[lane.nxTarget] || {};
+			const commands = [
+				packageJson.scripts[lane.alias],
+				target.options?.command,
+				...(target.options?.commands || []),
+				target.metadata?.scriptContent,
+				target.metadata?.runCommand,
+			].filter(isString);
+			assert(
+				hasVitestLaneRunner(lane, commands),
+				lane.id +
+					" selector must run through scripts/run-vitest-lane.mjs " +
+					lane.id,
+			);
 		}
 		for (const runtime of lane.runtimes)
 			assert(
