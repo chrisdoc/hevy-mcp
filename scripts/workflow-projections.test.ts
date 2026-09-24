@@ -1,5 +1,15 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateWorkflowAggregate } from "./workflow-projections.mjs";
+
+const repositoryRoot = resolve(import.meta.dirname, "..");
+const pullRequestWorkflows = [
+	".github/workflows/build-and-test.yml",
+	".github/workflows/workflow-lint.yml",
+	".github/workflows/codeql.yml",
+	".github/workflows/token-cost.yml",
+];
 
 const lanes = {
 	lanes: [
@@ -34,6 +44,32 @@ const changesetLanes = {
 function workflow(step: string, jobOptions = ""): string {
 	return `jobs:\n  release:\n${jobOptions}    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24.x"\n      - name: Validate lane\n${step}`;
 }
+
+function pullRequestConfiguration(source: string): string {
+	const lines = source.split(/\r?\n/);
+	const eventIndex = lines.indexOf("  pull_request:");
+	if (eventIndex < 0) return "";
+
+	const configuration: string[] = [];
+	for (const line of lines.slice(eventIndex + 1)) {
+		if (line.length > 0 && !line.startsWith("    ")) break;
+		configuration.push(line);
+	}
+	return configuration.join("\n");
+}
+
+describe("stacked pull request workflow triggers", () => {
+	it.each(pullRequestWorkflows)(
+		"runs %s for pull requests targeting stack parent branches",
+		(path) => {
+			const source = readFileSync(resolve(repositoryRoot, path), "utf8");
+			const configuration = pullRequestConfiguration(source);
+
+			expect(configuration).not.toBe("");
+			expect(configuration).not.toMatch(/^\s+branches:/m);
+		},
+	);
+});
 
 describe("release workflow projections", () => {
 	it("resolves package-script aliases to their Nx validation lanes", () => {
