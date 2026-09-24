@@ -1,5 +1,16 @@
 # @hevy-mcp/core
 
+## 0.2.13
+
+### Patch Changes
+
+- [#1168](https://github.com/chrisdoc/hevy-mcp/pull/1168) [`6e61a84`](https://github.com/chrisdoc/hevy-mcp/commit/6e61a8439bf21bd74e74ee848c8ae5fdac78a52f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose string enum values for workout set RPE in tool input schemas to support Google Gemini and Vertex AI FunctionDeclaration validation, casting back to numeric values for downstream API calls.
+
+- [#1165](https://github.com/chrisdoc/hevy-mcp/pull/1165) [`f35465e`](https://github.com/chrisdoc/hevy-mcp/commit/f35465e55023b9d77af993d674e5e218a3424785) Thanks [@dependabot](https://github.com/apps/dependabot)! - Regenerate the Hevy client with the updated Kubb toolchain.
+- Updated dependencies [[`f35465e`](https://github.com/chrisdoc/hevy-mcp/commit/f35465e55023b9d77af993d674e5e218a3424785)]:
+  - @hevy-mcp/hevy-client@0.2.9
+  - @hevy-mcp/operations@0.1.10
+
 ## 0.2.12
 
 ### Patch Changes

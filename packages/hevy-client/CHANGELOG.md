@@ -1,5 +1,11 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.9
+
+### Patch Changes
+
+- [#1165](https://github.com/chrisdoc/hevy-mcp/pull/1165) [`f35465e`](https://github.com/chrisdoc/hevy-mcp/commit/f35465e55023b9d77af993d674e5e218a3424785) Thanks [@dependabot](https://github.com/apps/dependabot)! - Regenerate the Hevy client with the updated Kubb toolchain.
+
 ## 0.2.8
 
 ### Patch Changes

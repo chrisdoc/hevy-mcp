@@ -1,5 +1,15 @@
 # hevy-mcp
 
+## 6.1.14
+
+### Patch Changes
+
+- [#1168](https://github.com/chrisdoc/hevy-mcp/pull/1168) [`6e61a84`](https://github.com/chrisdoc/hevy-mcp/commit/6e61a8439bf21bd74e74ee848c8ae5fdac78a52f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose string enum values for workout set RPE in tool input schemas to support Google Gemini and Vertex AI FunctionDeclaration validation, casting back to numeric values for downstream API calls.
+
+- [#1165](https://github.com/chrisdoc/hevy-mcp/pull/1165) [`f35465e`](https://github.com/chrisdoc/hevy-mcp/commit/f35465e55023b9d77af993d674e5e218a3424785) Thanks [@dependabot](https://github.com/apps/dependabot)! - Regenerate the Hevy client with the updated Kubb toolchain.
+
+- [#1168](https://github.com/chrisdoc/hevy-mcp/pull/1168) [`6e61a84`](https://github.com/chrisdoc/hevy-mcp/commit/6e61a8439bf21bd74e74ee848c8ae5fdac78a52f) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose the client's maxGetRetries option through createNodeMcpServer. Embedders can set it to zero to disable automatic request retries, including PUT retries, and reconcile uncertain writes explicitly. Omitting the option preserves the existing client policy.
+
 ## 6.1.13
 
 ### Patch Changes
