@@ -133,7 +133,7 @@
 			"dependencies": ["hevy-client", "operations"],
 			"boundary": {
 				"allowed": {
-					"@hevy-mcp/hevy-client": ["", "schemas"],
+					"@hevy-mcp/hevy-client": ["", "types", "schemas"],
 					"@hevy-mcp/operations": ["", "schemas"]
 				},
 				"forbidden": ["@cloudflare/", "cloudflare:"],
