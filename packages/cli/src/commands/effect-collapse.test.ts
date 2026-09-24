@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const commandSource = readFileSync(
-	new URL("./index.ts", import.meta.url),
-	"utf8",
-);
+const commandSource = ["context.ts", "measurements.ts"]
+	.map((path) => readFileSync(new URL(`./${path}`, import.meta.url), "utf8"))
+	.join("\n");
 
 function assertExecuteAdapter(source: string): void {
 	expect(source.match(/Effect\.runPromise/g)).toHaveLength(1);
@@ -14,7 +13,7 @@ function assertExecuteAdapter(source: string): void {
 }
 
 describe("CLI Effect collapse", () => {
-	it("keeps one collapse helper for every command execution path", () => {
+	it("keeps one collapse helper at the Effect-to-Promise command boundary", () => {
 		assertExecuteAdapter(commandSource);
 	});
 });
