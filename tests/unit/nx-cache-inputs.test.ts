@@ -137,6 +137,7 @@ it("tracks Worker sources and shared Node Vitest setup dependencies", () => {
 		"test:mcp",
 		"test:contract",
 		"test:stdio",
+		"test:cli",
 	]) {
 		expect(
 			targetTracksFile(targetName, "tests/setup/cloudflare-runtime.ts"),
@@ -149,6 +150,7 @@ it("tracks Worker sources and shared Node Vitest setup dependencies", () => {
 		"test:release-unit",
 		"test:mcp",
 		"test:contract",
+		"test:cli",
 	]) {
 		expect(
 			targetTracksFile(targetName, "tests/shims/cloudflare-workers.ts"),
@@ -198,6 +200,19 @@ it("detects missing Worker, setup, and shim inputs in configuration fixtures", (
 			missingSetup,
 		),
 	).toBe(false);
+	const missingCliSetup = structuredClone(nxConfiguration);
+	missingCliSetup.namedInputs.cliTests =
+		missingCliSetup.namedInputs.cliTests.filter(
+			(input) =>
+				input.kind !== "pattern" || input.pattern !== "nodeVitestInputs",
+		);
+	expect(
+		targetTracksFile(
+			"test:cli",
+			"tests/setup/cloudflare-runtime.ts",
+			missingCliSetup,
+		),
+	).toBe(false);
 
 	const missingShim = structuredClone(nxConfiguration);
 	missingShim.namedInputs.unitTests = missingShim.namedInputs.unitTests.filter(
@@ -208,6 +223,18 @@ it("detects missing Worker, setup, and shim inputs in configuration fixtures", (
 			"test:unit",
 			"tests/shims/cloudflare-workers.ts",
 			missingShim,
+		),
+	).toBe(false);
+	const missingCliShim = structuredClone(nxConfiguration);
+	missingCliShim.namedInputs.cliTests =
+		missingCliShim.namedInputs.cliTests.filter(
+			(input) => input.kind !== "pattern" || input.pattern !== "testShims",
+		);
+	expect(
+		targetTracksFile(
+			"test:cli",
+			"tests/shims/cloudflare-workers.ts",
+			missingCliShim,
 		),
 	).toBe(false);
 });
@@ -242,8 +269,8 @@ it("does not hash unrelated documentation for focused test lanes", () => {
 	expect(targetTracksFile("test:contract", "docs/architecture.md")).toBe(false);
 	expect(targetTracksFile("test:unit", "vitest.workers.config.ts")).toBe(false);
 	expect(targetTracksFile("test:worker", "vitest.config.ts")).toBe(false);
-	expect(targetTracksFile("test:cli", "vitest.config.ts")).toBe(false);
+	expect(targetTracksFile("test:cli", "vitest.config.ts")).toBe(true);
 	expect(
 		targetTracksFile("test:cli", "tests/setup/cloudflare-runtime.ts"),
-	).toBe(false);
+	).toBe(true);
 });

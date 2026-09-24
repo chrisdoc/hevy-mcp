@@ -164,6 +164,8 @@
 			"nodeMajor",
 			"repositoryConfig",
 			"packageConfigs",
+			"nodeVitestInputs",
+			"testShims",
 			"{workspaceRoot}/packages/cli/src/**/*",
 			"{workspaceRoot}/packages/core/src/**/*",
 			"{workspaceRoot}/packages/hevy-client/src/**/*",
