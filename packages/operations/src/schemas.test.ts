@@ -9,6 +9,7 @@ import {
 	muscleGroupEnum,
 	replaceWorkoutInputSchema,
 	routineFolderInputSchema,
+	routineExercisesSchema,
 	setTypeEnum,
 	updateBodyMeasurementInputSchema,
 	updateRoutineInputSchema,
@@ -153,6 +154,16 @@ describe("transport-neutral mutation schemas", () => {
 				workout: { ...workout, title: "Replaced" },
 			}).success,
 		).toBe(true);
+	});
+
+	it("keeps the shared routine exercises schema array-only", () => {
+		expect(routineExercisesSchema.safeParse(routine.exercises).success).toBe(
+			true,
+		);
+		expect(
+			routineExercisesSchema.safeParse(JSON.stringify(routine.exercises))
+				.success,
+		).toBe(false);
 	});
 
 	it("validates measurement dates and nullable fields", () => {

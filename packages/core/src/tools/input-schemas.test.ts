@@ -230,6 +230,24 @@ describe("snake_case mutation schemas", () => {
 		}
 	});
 
+	it("parses JSON-stringified routine exercises at the Core boundary", () => {
+		const routine = {
+			title: "Push",
+			exercises: JSON.stringify([
+				{
+					exercise_template_id: "bench",
+					sets: [{ type: "normal", rep_range: { start: 8, end: 10 } }],
+				},
+			]),
+		};
+
+		expect(createRoutineInputSchema.safeParse({ routine }).success).toBe(true);
+		expect(
+			updateRoutineInputSchema.safeParse({ routine_id: "routine-1", routine })
+				.success,
+		).toBe(true);
+	});
+
 	it("accepts API rep_range and rejects unsupported range or RPE values", () => {
 		expect(
 			createRoutineInputSchema.safeParse({

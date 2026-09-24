@@ -291,8 +291,7 @@ export const routineExerciseSchema = z.strictObject({
 
 export const routineExercisesSchema = z
 	.array(routineExerciseSchema)
-	.min(1, "A routine must contain at least one exercise")
-	.nonoptional();
+	.min(1, "A routine must contain at least one exercise");
 
 export const routinePayloadFields = {
 	title: z.string().min(1),
@@ -348,10 +347,6 @@ export const bodyMeasurementFieldsSchema = {
 	[K in Exclude<keyof BodyMeasurement, "date">]: z.ZodTypeAny;
 };
 
-const bodyMeasurementFieldsObjectSchema = z.strictObject(
-	bodyMeasurementFieldsSchema,
-);
-
 export const createBodyMeasurementInputSchema = z.strictObject({
 	date: calendarDate,
 	...bodyMeasurementFieldsSchema,
@@ -377,8 +372,9 @@ export type RoutinePayloadInput = z.infer<typeof routinePayloadSchema>;
 export type RoutineUpdatePayloadInput = z.infer<
 	typeof routineUpdatePayloadSchema
 >;
-export type MeasurementFields = z.infer<
-	typeof bodyMeasurementFieldsObjectSchema
+export type MeasurementFields = Omit<
+	z.infer<typeof createBodyMeasurementInputSchema>,
+	"date"
 >;
 export type ExerciseTemplateInput = z.infer<typeof exerciseTemplateInputSchema>;
 export type RoutineFolderInput = z.infer<typeof routineFolderInputSchema>;
