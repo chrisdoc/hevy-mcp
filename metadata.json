@@ -1,5 +1,5 @@
 {
-  "cli_version": "0.11.2",
+  "cli_version": "0.10.5",
   "checkpoint_id": "01M38VKTC72G8FSYB0PRKJEE3B",
   "strategy": "manual-commit",
   "branch": "fix/cherry-pick-pr-1160-1164",
@@ -15,10 +15,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 210676,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 2417152,
-    "output_tokens": 24071,
-    "api_call_count": 33
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   }
 }

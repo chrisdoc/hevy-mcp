@@ -1,9 +1,9 @@
 {
-  "cli_version": "0.11.2",
+  "cli_version": "0.10.5",
   "checkpoint_id": "01M38VKTC72G8FSYB0PRKJEE3B",
   "session_id": "01a0d1ab-af88-7193-b8dd-004f47e56e93",
   "strategy": "manual-commit",
-  "created_at": "2026-09-24T04:43:39.05338Z",
+  "created_at": "2026-09-24T04:43:39.845099Z",
   "branch": "fix/cherry-pick-pr-1160-1164",
   "checkpoints_count": 1,
   "save_step_count": 1,
@@ -11,13 +11,15 @@
   "agent": "Pi",
   "model": "gpt-6-luna",
   "turn_id": "7fafb77a1e40",
-  "compact_transcript_start": 0,
+  "checkpoint_transcript_start": 98,
+  "transcript_lines_at_start": 98,
+  "compact_transcript_start": 35,
   "token_usage": {
-    "input_tokens": 210676,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 2417152,
-    "output_tokens": 24071,
-    "api_call_count": 33
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "session_metrics": {
     "turn_count": 1
