@@ -97,7 +97,7 @@ describe("createSafeErrorDiagnostic", () => {
 			`HevyHttpError: ${SECRET}`,
 			"    at request (/home/user/hevy-mcp/packages/hevy-client/src/hevy-client-kubb.ts:271:17)",
 			"    at /home/user/hevy-mcp/packages/worker/src/worker.ts:219:9",
-			"    at named (/home/user/hevy-mcp/packages/core/src/utils/error-handler.ts:199:3)",
+			"    at named (/home/user/hevy-mcp/packages/core/src/diagnostics/error-handler.ts:199:3)",
 			"    at ignored (/home/user/hevy-mcp/packages/core/src/index.ts:42:1)",
 		].join("\n");
 

@@ -34,7 +34,7 @@ export {
 	type ToolObservationScope,
 	type ToolObserver,
 	type ToolResultObservation,
-} from "./observation.js";
+} from "./diagnostics/observation.js";
 export {
 	type AsyncCacheOptions,
 	type CacheGetOptions,
@@ -50,19 +50,19 @@ export {
 	SAFE_ERROR_CODES,
 	SAFE_HTTP_METHODS,
 	SAFE_STACK_SOURCES,
-} from "./utils/error-policy.js";
+} from "./diagnostics/error-policy.js";
 export {
 	SAFE_USER_HASH_PATTERN,
 	TELEMETRY_ARGUMENT_KEYS,
 	USER_HASH_CONTEXT,
 	USER_HASH_LENGTH,
-} from "./utils/telemetry-contract.js";
+} from "./diagnostics/telemetry-contract.js";
 export {
 	createMcpToolFailureEvent,
 	createExecutionErrorProjection,
 	type McpToolFailureEvent,
-} from "./utils/error-handler.js";
-export { ErrorType } from "./utils/error-policy.js";
+} from "./diagnostics/error-handler.js";
+export { ErrorType } from "./diagnostics/error-policy.js";
 export {
 	bucketCount,
 	type ResultCountBucket,

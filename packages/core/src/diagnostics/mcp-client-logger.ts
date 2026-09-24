@@ -1,6 +1,6 @@
 import { createSafeErrorDiagnostic } from "./error-policy.js";
 import { logCoreError } from "./core-logger.js";
-import type { RuntimeValue } from "./type-predicates.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 
 import type {
 	McpClientLogMessage,

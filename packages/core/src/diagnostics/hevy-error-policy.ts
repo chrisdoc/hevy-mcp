@@ -4,7 +4,7 @@ import {
 	isExpectedMutation404 as isExpectedMutation404Policy,
 	isHevyHttpError,
 } from "@hevy-mcp/hevy-client";
-import type { RuntimeValue } from "./type-predicates.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 
 export type HevyReadOperation = "get" | "list";
 export type Expected404Outcome = "not_found" | "end_of_list";

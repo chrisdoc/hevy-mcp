@@ -16,8 +16,8 @@ import {
 	isFunction,
 	isObject,
 	isString,
-} from "./type-predicates.js";
-import type { RuntimeValue } from "./type-predicates.js";
+} from "../utils/type-predicates.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 import { SafeUserError } from "./safe-user-error.js";
 import type {
 	HevyCommitState,
@@ -211,7 +211,7 @@ export const SAFE_HTTP_METHODS: ReadonlySet<string> = Object.freeze(
 );
 
 const SAFE_SOURCE_SUFFIXES: ReadonlyArray<readonly [string, SafeSourceId]> = [
-	["/packages/core/src/utils/error-handler.ts", "error-handler"],
+	["/packages/core/src/diagnostics/error-handler.ts", "error-handler"],
 	["/packages/hevy-client/src/hevy-client-kubb.ts", "hevy-client"],
 	["/packages/node/src/index.ts", "index"],
 	["/packages/core/src/server.ts", "server"],

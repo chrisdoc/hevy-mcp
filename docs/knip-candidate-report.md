@@ -4,6 +4,11 @@ This report captures the first full analysis after narrowing Knip roots for
 issue #1172. It is evidence for follow-up review, not authorization to delete
 code or change package contracts.
 
+The source paths in the findings below describe the layout at the recorded
+analysis revision. The Core diagnostic modules were subsequently grouped under
+`packages/core/src/diagnostics/` by the responsibility refactor in #1175; this
+move does not change the candidate decisions or their evidence.
+
 ## Pre-change baseline
 
 The baseline is the parent of the Knip configuration change,

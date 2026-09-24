@@ -12,7 +12,7 @@ import {
 } from "./register.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
-import type { ToolObserver } from "../observation.js";
+import type { ToolObserver } from "../diagnostics/observation.js";
 
 type SchemaObject = {
 	readonly type?: string | readonly string[];
