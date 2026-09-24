@@ -109,7 +109,17 @@ CPU-intensive PR lanes on small local runners; the documented `test:pr`
 command remains parallel where safe and needs no manual `--parallel=1`
 override.
 
-CI selects its reporters and coverage outputs through the same lane wrappers,
+### Generate coverage reports
+
+Run the unit and mocked MCP lanes with explicit coverage output when reviewing
+coverage locally:
+
+```sh
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit -- --coverage --coverage.reportsDirectory=coverage/unit
+MISE_AUTO_INSTALL=false mise exec -- pnpm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
+```
+
+CI selects the same reporters and coverage outputs through the lane wrappers,
 so selectors do not drift between local and hosted runs:
 
 ```sh

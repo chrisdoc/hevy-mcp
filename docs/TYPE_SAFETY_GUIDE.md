@@ -64,7 +64,7 @@ Follow the existing tool-definition pattern so the schema remains the single
 source of truth for validation and handler types. Avoid handwritten parallel
 interfaces, `args as { ... }` casts, and `Record<string, unknown>` handler
 arguments. For response schemas and registration conventions, see
-[AGENTS.md](../AGENTS.md#mcp-and-type-safety-conventions) and
+[AGENTS.md](../AGENTS.md#mcp-contracts) and
 [architecture.md](./architecture.md#zod-schema-inference-for-type-safe-tool-parameters).
 
 Run the type and test checks required by
