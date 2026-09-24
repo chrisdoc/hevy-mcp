@@ -1,0 +1,9 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"ignoreFiles": ["src/**/*.d.mts"],
+	"workspaces": {
+		".": {
+			"entry": [".pi/extensions/host-plugin.mjs"]
+		}
+	}
+}

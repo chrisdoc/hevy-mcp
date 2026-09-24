@@ -1,7 +1,4 @@
-import {
-	Cache,
-	Effect,
-} from "../../packages/core/node_modules/effect/dist/index.js";
+import { Cache, Effect } from "effect";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import type {
 	TemplatesListAllOperation,
