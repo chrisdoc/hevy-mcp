@@ -1,13 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
+	calendarDate,
 	createBodyMeasurementInputSchema,
 	createRoutineInputSchema,
+	equipmentCategoryEnum,
 	exerciseTemplateInputSchema,
+	exerciseTypeEnum,
+	muscleGroupEnum,
 	replaceWorkoutInputSchema,
 	routineFolderInputSchema,
+	setTypeEnum,
 	updateBodyMeasurementInputSchema,
 	updateRoutineInputSchema,
+	utcSecondTimestamp,
 	workoutInputSchema,
+	zNullableInt,
+	zNullableNumber,
+	zOptionalRepRange,
+	zStrictOptionalRepRange,
 } from "./schemas.js";
 
 const workout = {
@@ -184,5 +194,56 @@ describe("transport-neutral mutation schemas", () => {
 				routine_folder: { title: "Strength", extra: true },
 			}).success,
 		).toBe(false);
+	});
+});
+
+describe("shared operation schema helpers", () => {
+	it("normalizes nullable integer and number inputs", () => {
+		expect(zNullableInt.parse(null)).toBeNull();
+		expect(zNullableInt.parse(4)).toBe(4);
+		expect(zNullableInt.parse(" 42 ")).toBe(42);
+		expect(zNullableInt.parse("")).toBeUndefined();
+		expect(zNullableInt.parse(" NULL ")).toBeNull();
+		expect(zNullableInt.parse("undefined")).toBeUndefined();
+		expect(zNullableInt.safeParse("not-a-number").success).toBe(false);
+
+		expect(zNullableNumber.parse("")).toBeUndefined();
+		expect(zNullableNumber.parse("3.5")).toBe(3.5);
+		expect(zNullableNumber.parse(null)).toBeNull();
+		expect(zNullableNumber.parse(undefined)).toBeUndefined();
+	});
+
+	it("normalizes optional repetition ranges and rejects unknown keys", () => {
+		expect(zOptionalRepRange.parse(null)).toBeUndefined();
+		expect(zOptionalRepRange.parse({ start: "5", end: " 8 " })).toEqual({
+			start: 5,
+			end: 8,
+		});
+		expect(
+			zStrictOptionalRepRange.safeParse({ start: 5, end: 8, extra: true })
+				.success,
+		).toBe(false);
+	});
+
+	it("validates enum defaults and calendar date boundaries", () => {
+		expect(setTypeEnum.parse(undefined)).toBe("normal");
+		expect(setTypeEnum.parse("warmup")).toBe("warmup");
+		expect(muscleGroupEnum.parse("chest")).toBe("chest");
+		expect(exerciseTypeEnum.parse("weight_reps")).toBe("weight_reps");
+		expect(equipmentCategoryEnum.parse("dumbbell")).toBe("dumbbell");
+		expect(calendarDate.safeParse("2026-02-29").success).toBe(false);
+		expect(calendarDate.safeParse("2026-07-16").success).toBe(true);
+	});
+
+	it("reports one issue for invalid UTC timestamps", () => {
+		for (const value of [
+			"2026-07-16T12:00Z",
+			"2026-07-16T12:00:00+05:30",
+			"2026-02-29T12:00:00Z",
+		]) {
+			const result = utcSecondTimestamp.safeParse(value);
+			expect(result.success).toBe(false);
+			if (!result.success) expect(result.error.issues).toHaveLength(1);
+		}
 	});
 });

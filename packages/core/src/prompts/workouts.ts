@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/server";
+import { utcSecondTimestamp } from "@hevy-mcp/operations/schemas";
 import { z } from "zod";
-import { utcSecondTimestamp } from "../utils/schemas.js";
 import { memoizeObservationScope, type ToolObserver } from "../observation.js";
 import { bucketCount } from "../utils/result-telemetry.js";
 import { resolveErrorPolicy } from "../utils/error-policy.js";

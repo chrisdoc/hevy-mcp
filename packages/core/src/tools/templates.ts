@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { muscleGroupEnum } from "@hevy-mcp/operations/schemas";
 import { z } from "zod";
 import type { TemplatesHistoryInput } from "@hevy-mcp/operations";
 import type { ToolRuntime } from "./tool-runtime.js";
@@ -16,7 +17,6 @@ import {
 } from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { exerciseTemplateInputFields, nonEmptyId } from "./input-schemas.js";
-import { muscleGroupEnum } from "../utils/schemas.js";
 import {
 	ExerciseTemplateCatalogService,
 	HevyOperationsService,
