@@ -68,7 +68,7 @@ jobs:
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           # pull_request.base.sha freezes at PR-open time, so after main moves
           # the range re-lints already-merged history; lint from merge-base instead.
@@ -81,7 +81,7 @@ jobs:
           github.actor != 'dependabot[bot]' &&
           github.head_ref != 'changeset-release/main'
         env:
-          CHANGESET_BASE_REF: origin/${{ github.base_ref }}
+          CHANGESET_BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: pnpm run check:changeset
 
       - name: Build package before Node 24 validation

@@ -69,6 +69,20 @@ describe("stacked pull request workflow triggers", () => {
 			expect(configuration).not.toMatch(/^\s+branches:/m);
 		},
 	);
+
+	it("uses the PR event's target branch for base-sensitive checks", () => {
+		const source = readFileSync(
+			resolve(repositoryRoot, ".github/workflows/build-and-test.yml"),
+			"utf8",
+		);
+
+		expect(source).toContain(
+			"BASE_REF: ${{ github.event.pull_request.base.ref }}",
+		);
+		expect(source).toContain(
+			"CHANGESET_BASE_REF: origin/${{ github.event.pull_request.base.ref }}",
+		);
+	});
 });
 
 describe("release workflow projections", () => {
