@@ -1,5 +1,13 @@
 # New Testing Strategy for hevy-mcp
 
+> [!NOTE]
+> Historical design proposal and audit snapshot from July 2026. The measured
+> baselines, lane names, ticket status, and recommendations below are not the
+> current procedure. For active commands and lane ownership, see
+> [test-lanes.md](./test-lanes.md); the canonical machine registry is
+> [`repository/validation-lanes.json`](../repository/validation-lanes.json).
+> [CONTRIBUTING.md](../CONTRIBUTING.md) owns setup and required validation.
+
 ## Executive summary
 
 `hevy-mcp` already has substantial testing foundations: a fast Vitest suite,
