@@ -553,11 +553,21 @@ Production Worker deployment occurs only when a Changesets version commit
 changes `packages/worker/package.json`. Public Node- or CLI-only releases do not
 deploy the Worker; Worker-only private releases still do.
 
-Validate the branch against `origin/main`:
+Validate the branch against `origin/main` by default:
 
 ```bash
 pnpm run check:changeset
 ```
+
+For local validation of a stacked PR, set `CHANGESET_BASE_REF` to the branch's
+actual target (a local branch or remote-tracking ref), so only that layer's
+changes are checked:
+
+```bash
+CHANGESET_BASE_REF=docs/issue-1173-contributor-guidance pnpm run check:changeset
+```
+
+Pull-request CI supplies the base ref automatically from the PR target.
 
 CI also checks that every changed workspace directory has a changeset naming
 that same package, then applies the transitive composition matrix. For example,

@@ -71,7 +71,7 @@
 		"check:generated": "node ./scripts/check-generated-client.mjs",
 		"check:boundaries": "node scripts/check-package-boundaries.mjs && depcruise --config .dependency-cruiser.cjs packages",
 		"build:packages": "pnpm -r --if-present run build",
-		"check:changeset": "env -u GIT_DIR -u GIT_WORK_TREE changeset status --since=origin/main && env -u GIT_DIR -u GIT_WORK_TREE node scripts/check-package-changesets.mjs --since origin/main",
+		"check:changeset": "env -u GIT_DIR -u GIT_WORK_TREE changeset status --since=\"${CHANGESET_BASE_REF:-origin/${GITHUB_BASE_REF:-main}}\" && env -u GIT_DIR -u GIT_WORK_TREE nx run repository:check:package-changesets -- --since \"${CHANGESET_BASE_REF:-origin/${GITHUB_BASE_REF:-main}}\"",
 		"check:server-manifest": "node scripts/server-manifest.mjs check",
 		"version": "node scripts/server-manifest.mjs sync && git add server.json packages/node/server.json",
 		"worker:dev": "wrangler dev --x-new-config",

@@ -82,10 +82,8 @@ jobs:
           github.actor != 'dependabot[bot]' &&
           github.head_ref != 'changeset-release/main'
         env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          npx changeset status --since="origin/${BASE_REF}"
-          npx nx run repository:check:package-changesets -- --since "origin/${BASE_REF}"
+          CHANGESET_BASE_REF: origin/${{ github.base_ref }}
+        run: pnpm run check:changeset
 
       - name: Build package before Node 24 validation
         if: matrix.node-version == '24.x'

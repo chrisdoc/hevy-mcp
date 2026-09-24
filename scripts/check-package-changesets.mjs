@@ -14,6 +14,17 @@ import { isString } from "./runtime-value-predicates.mjs";
 const execFileAsync = promisify(execFile);
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+export function resolveChangesetBaseRef({
+	changesetBaseRef,
+	githubBaseRef,
+} = {}) {
+	const configuredBaseRef = changesetBaseRef?.trim();
+	if (configuredBaseRef) return configuredBaseRef;
+
+	const githubBase = githubBaseRef?.trim();
+	return githubBase ? `origin/${githubBase}` : "origin/main";
+}
+
 /**
  * Evaluate package-changeset coverage for a set of changed files.
  *
@@ -202,9 +213,19 @@ const isMain =
 
 if (isMain) {
 	const sinceIndex = process.argv.indexOf("--since");
-	const since = sinceIndex >= 0 ? process.argv[sinceIndex + 1] : "origin/main";
+	const explicitSince =
+		sinceIndex >= 0 ? process.argv[sinceIndex + 1] : undefined;
 
-	if (!since) throw new Error("Missing value for --since");
+	if (sinceIndex >= 0 && !explicitSince) {
+		throw new Error("Missing value for --since");
+	}
+
+	const since =
+		explicitSince ??
+		resolveChangesetBaseRef({
+			changesetBaseRef: process.env.CHANGESET_BASE_REF,
+			githubBaseRef: process.env.GITHUB_BASE_REF,
+		});
 
 	const { stdout } = await execFileAsync(
 		"git",

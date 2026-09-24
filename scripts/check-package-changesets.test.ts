@@ -2,7 +2,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { packageChangesetCoverage } from "./check-package-changesets.mjs";
+import {
+	packageChangesetCoverage,
+	resolveChangesetBaseRef,
+} from "./check-package-changesets.mjs";
 
 const fixtureDirectories = new Set<string>();
 const repositoryRoot = resolve(import.meta.dirname, "..");
@@ -107,6 +110,29 @@ function runCheck(
 		readManifestFromBase: fixture.readManifestFromBase,
 	});
 }
+
+describe("Changeset comparison base", () => {
+	it("defaults to origin/main for standalone local validation", () => {
+		expect(resolveChangesetBaseRef({})).toBe("origin/main");
+	});
+
+	it("uses an explicit local or remote base ref unchanged", () => {
+		expect(
+			resolveChangesetBaseRef({ changesetBaseRef: "review/parent-layer" }),
+		).toBe("review/parent-layer");
+		expect(
+			resolveChangesetBaseRef({
+				changesetBaseRef: "origin/review/parent-layer",
+			}),
+		).toBe("origin/review/parent-layer");
+	});
+
+	it("uses the GitHub PR target branch when no explicit base is configured", () => {
+		expect(
+			resolveChangesetBaseRef({ githubBaseRef: "review/parent-layer" }),
+		).toBe("origin/review/parent-layer");
+	});
+});
 
 describe("package changeset coverage", () => {
 	it("does not let a base-branch changeset cover a PR package change", async () => {
