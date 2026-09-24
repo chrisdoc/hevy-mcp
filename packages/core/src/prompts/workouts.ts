@@ -1,12 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { utcSecondTimestamp } from "@hevy-mcp/operations/schemas";
 import { z } from "zod";
-import { memoizeObservationScope, type ToolObserver } from "../observation.js";
+import {
+	memoizeObservationScope,
+	type ToolObserver,
+} from "../diagnostics/observation.js";
 import { bucketCount } from "../utils/result-telemetry.js";
-import { resolveErrorPolicy } from "../utils/error-policy.js";
+import { resolveErrorPolicy } from "../diagnostics/error-policy.js";
 import { isString } from "../utils/type-predicates.js";
-import { logCoreError } from "../utils/core-logger.js";
-import type { McpClientLogger } from "../utils/mcp-client-logger-types.js";
+import { logCoreError } from "../diagnostics/core-logger.js";
+import type { McpClientLogger } from "../diagnostics/mcp-client-logger-types.js";
 
 type PromptResult = {
 	messages: Array<{

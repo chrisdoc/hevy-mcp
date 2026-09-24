@@ -75,6 +75,19 @@ Key constraints to observe in this diagram [[7]](https://app.dosu.dev/documents/
 > [!IMPORTANT]
 > The adapter packages (`hevy-mcp` and `@hevy-mcp/worker`) must never import one another. Violating this constraint would pull Node-specific or Cloudflare-specific code into the wrong runtime bundle and cause hard failures at runtime.
 
+### Core source responsibilities
+
+`packages/core` remains transport-neutral. Its source layout groups domain tool
+definitions and their tests under `src/tools/`, prompts under `src/prompts/`,
+and resource implementations under `src/resources/`. Cross-cutting safe error
+mapping, logging, and observation contracts live under `src/diagnostics/`; the
+package's public `src/index.ts` continues to own the supported export surface.
+`src/server.ts`, `src/execution.ts`, `src/effect-layer.ts`, and
+`src/effect-services.ts` compose the server and request runtime. Keep Node and
+Cloudflare concerns in their respective adapter workspaces. When extending
+Core, place new code with the responsibility that owns its behavior rather
+than defaulting to `src/utils/`.
+
 ## Runtime-Neutral vs. Platform Adapters
 
 ### What "runtime-neutral" means
@@ -269,7 +282,7 @@ See [TYPE_SAFETY_GUIDE.md](./TYPE_SAFETY_GUIDE.md) for the concise guide to type
 
 ### Centralized error handling via `withErrorHandling`
 
-Every MCP tool handler is wrapped with `withErrorHandling` from `packages/core/src/utils/error-handler.ts`. This utility:
+Every MCP tool handler is wrapped with `withErrorHandling` from `packages/core/src/diagnostics/error-handler.ts`. This utility:
 
 - Catches all handler errors and converts them to standardized `isError: true` MCP responses.
 - Preserves the full TypeScript parameter types of the wrapped function.

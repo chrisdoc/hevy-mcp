@@ -12,8 +12,8 @@ import {
 	isString,
 	type RuntimeValue,
 } from "./utils/type-predicates.js";
-import { logCoreError } from "./utils/core-logger.js";
-import { createSafeErrorDiagnostic } from "./utils/error-policy.js";
+import { logCoreError } from "./diagnostics/core-logger.js";
+import { createSafeErrorDiagnostic } from "./diagnostics/error-policy.js";
 
 /** Per-request control supplied by MCP, HTTP, CLI, or a lifecycle owner. */
 export interface ToolExecutionContext extends HevyRequestOptions {

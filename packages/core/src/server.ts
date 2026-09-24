@@ -20,9 +20,9 @@ import {
 	EXERCISE_TEMPLATE_CATALOG_CACHE_MAX_SIZE,
 	EXERCISE_TEMPLATE_CATALOG_CACHE_TTL_MS,
 } from "./utils/exercise-template-catalog.js";
-import { createMcpClientLogger } from "./utils/mcp-client-logger.js";
+import { createMcpClientLogger } from "./diagnostics/mcp-client-logger.js";
 import type { CacheObserver } from "./utils/cache.js";
-import type { ToolObserver } from "./observation.js";
+import type { ToolObserver } from "./diagnostics/observation.js";
 import { mergeAbortSignals } from "./execution.js";
 import {
 	createCoreServiceLayer,

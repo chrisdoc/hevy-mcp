@@ -34,7 +34,8 @@ final defense-in-depth scrubber.
 
 API error categories and codes are emitted only after
 `createSafeErrorDiagnostic` normalization. Categories are the finite
-`SafeErrorCategory` union; codes are the finite allowlist in `error-policy.ts`.
+`SafeErrorCategory` union; codes are the finite allowlist in
+`packages/core/src/diagnostics/error-policy.ts`.
 Diagnostic messages and stacks are separate Sentry/trace detail fields and are
 scrubbed by the Node failure reporter before export.
 The exact tool name remains available as `mcp.tool.name` / `tool_name` only

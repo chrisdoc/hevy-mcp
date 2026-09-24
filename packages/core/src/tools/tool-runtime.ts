@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Option } from "effect";
-import type { McpClientLogger } from "../utils/mcp-client-logger-types.js";
+import type { McpClientLogger } from "../diagnostics/mcp-client-logger-types.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import type { CoreToolError } from "../effect-errors.js";
@@ -20,7 +20,7 @@ import {
 	HEVY_CLIENT_NOT_INITIALIZED_ERROR,
 	requireClient,
 } from "../utils/tool-helpers.js";
-import { withErrorHandling } from "../utils/error-handler.js";
+import { withErrorHandling } from "../diagnostics/error-handler.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import type { McpToolResponse } from "../utils/response-contracts.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
@@ -29,10 +29,10 @@ import {
 	type SafeToolArgumentKey,
 	type ToolObserver,
 	type ToolCompletionObservation,
-} from "../observation.js";
+} from "../diagnostics/observation.js";
 import { bucketCount, getResultTelemetry } from "../utils/result-telemetry.js";
-import { resolveErrorPolicy } from "../utils/error-policy.js";
-import { logCoreError } from "../utils/core-logger.js";
+import { resolveErrorPolicy } from "../diagnostics/error-policy.js";
+import { logCoreError } from "../diagnostics/core-logger.js";
 import {
 	bindClientExecution,
 	mergeAbortSignals,
@@ -40,7 +40,7 @@ import {
 	type ToolExecutionContext,
 } from "../execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
-import { TELEMETRY_ARGUMENT_KEYS } from "../utils/telemetry-contract.js";
+import { TELEMETRY_ARGUMENT_KEYS } from "../diagnostics/telemetry-contract.js";
 import { isBoolean, isFiniteNumber } from "../utils/type-predicates.js";
 
 interface ArgumentKeySet {

@@ -9,7 +9,7 @@ import {
 	ToolObserverService,
 } from "./effect-services.js";
 import type { ToolExecutionContext } from "./execution.js";
-import type { ToolObserver } from "./observation.js";
+import type { ToolObserver } from "./diagnostics/observation.js";
 import type { ExerciseTemplateCatalog } from "./utils/exercise-template-catalog.js";
 
 export interface CoreServiceLayerOptions {

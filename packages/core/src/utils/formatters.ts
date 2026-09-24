@@ -22,8 +22,8 @@ import type {
 	FormattedWorkoutSet,
 	FormattedWorkoutSummary,
 } from "./output-schemas.js";
-import { createSafeErrorDiagnostic } from "./error-policy.js";
-import { logCoreError } from "./core-logger.js";
+import { createSafeErrorDiagnostic } from "../diagnostics/error-policy.js";
+import { logCoreError } from "../diagnostics/core-logger.js";
 
 type ExerciseWithSupersetVariants = {
 	supersets_id?: number | null;

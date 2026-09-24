@@ -376,7 +376,7 @@ achievable without excluding difficult production code.
 Risk-heavy modules should have stronger behavioral expectations than the global
 percentage: `packages/node/src/index.ts`, `packages/node/src/cli.ts`,
 `packages/hevy-client/src/hevy-client-kubb.ts`,
-`packages/core/src/utils/error-handler.ts`,
+`packages/core/src/diagnostics/error-handler.ts`,
 `packages/core/src/utils/output-schemas.ts`,
 `packages/core/src/utils/formatters.ts`,
 `packages/core/src/utils/response-contracts.ts`,

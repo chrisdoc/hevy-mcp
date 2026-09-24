@@ -1,10 +1,10 @@
-import type { ErrorType, SafeErrorDiagnostic } from "./utils/error-policy.js";
-import type { StructuredExecutionProjection } from "./execution.js";
+import type { ErrorType, SafeErrorDiagnostic } from "./error-policy.js";
+import type { StructuredExecutionProjection } from "../execution.js";
 import type {
 	ResultCountBucket,
 	ToolResultTelemetry,
-} from "./utils/result-telemetry.js";
-import type { ToolTelemetryMetadata } from "./utils/tool-taxonomy.js";
+} from "../utils/result-telemetry.js";
+import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 
 export type SafeToolArgumentKey =
 	| "date"

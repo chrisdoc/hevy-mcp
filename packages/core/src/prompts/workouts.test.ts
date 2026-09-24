@@ -1,7 +1,7 @@
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ToolObserver } from "../observation.js";
+import type { ToolObserver } from "../diagnostics/observation.js";
 import { registerWorkoutPrompts } from "./workouts.js";
 
 describe("workout prompts", () => {
