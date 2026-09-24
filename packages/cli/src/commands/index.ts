@@ -7,6 +7,7 @@ import {
 	type HevyOperations,
 } from "@hevy-mcp/operations";
 import {
+	bodyMeasurementSchema,
 	getV1BodyMeasurementsQueryParamsSchema,
 	getV1RoutinesQueryParamsSchema,
 } from "@hevy-mcp/hevy-client/schemas";
@@ -14,13 +15,12 @@ import {
 	createBodyMeasurementInputSchema,
 	createRoutineInputSchema,
 	exerciseTemplateInputSchema,
-	existingBodyMeasurementSchema,
 	routineFolderInputSchema,
 	updateBodyMeasurementInputSchema,
 	updateRoutineInputSchema,
 	replaceWorkoutInputSchema,
 	workoutInputSchema,
-} from "@hevy-mcp/core/mutations";
+} from "@hevy-mcp/operations/schemas";
 import {
 	parseExerciseHistoryId,
 	parseExerciseHistoryOptions,
@@ -50,6 +50,8 @@ import {
 } from "../output/contracts.js";
 
 type Body = ApiObject;
+const existingBodyMeasurementSchema = bodyMeasurementSchema.strict();
+
 function body(value: ApiValue): Body {
 	const parsed = z.object({}).passthrough().safeParse(value);
 	if (!parsed.success) return {};

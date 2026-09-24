@@ -182,10 +182,10 @@ future refresh reapplies them before the spec is written. Run
 `pnpm run check:openapi` to verify the repository-owned compatibility invariants
 before committing a refreshed spec.
 
-The Node package, Worker, and CLI ship bundled compositions of the shared core
-and Hevy client. Changesets for shared runtime packages must therefore include
-every affected shipped consumer. The package-changeset check enforces the
-release matrix documented below.
+The Node package and Worker ship bundled compositions of Core and the Hevy
+client. The CLI bundles the Hevy client and Operations directly, without a Core
+dependency. Changesets for shared packages must include every affected shipped
+consumer; the package-changeset check enforces the release matrix below.
 
 ## Runtime architecture boundaries
 
@@ -197,9 +197,10 @@ both runtimes. `packages/hevy-client` owns the native-fetch Hevy client:
 - `packages/worker` is the Cloudflare Worker Streamable HTTP and OAuth entry
   point. It must not import Node-only code.
 - `packages/cli` is the public Node.js command-line client. It bundles the
-  runtime-neutral client and core but does not depend on either runtime adapter.
-- `packages/core` and `packages/hevy-client` must remain safe in both Node.js
-  and Cloudflare Workers.
+  runtime-neutral client and operations, but does not depend on MCP Core or
+  either runtime adapter.
+- `packages/operations`, `packages/core`, and `packages/hevy-client` must
+  remain safe in both Node.js and Cloudflare Workers.
 
 Three systems enforce boundaries; each owns a different axis:
 
@@ -215,9 +216,9 @@ When topology forces duplication (e.g. an Effect helper needed on both sides
 of a forbidden seam), do not work around the boundary: keep the copies
 textually identical and cite the rule in a comment at each copy.
 
-- The shipped composition graph is `hevy-client → core → node/worker/CLI`;
-  adapters may depend directly on either runtime-neutral package but must not
-  import one another.
+- The Node and Worker adapters consume the Hevy client and Core; Core consumes
+  the client and Operations. The CLI consumes the client and Operations
+  directly, with no Core dependency. Node and Worker must not import one another.
 
 `packages/node/src/utils/stdio-observability.ts` instruments private MCP SDK
 stdio fields such as `_ondata` and `_readBuffer`. After every
@@ -454,13 +455,14 @@ Describe the internal runtime change here.
 Every package listed below must receive at least a patch bump. Larger bumps are
 allowed when warranted by that package's own impact:
 
-| Changed composition     | Required Changeset packages                                                                         |
-| ----------------------- | --------------------------------------------------------------------------------------------------- |
-| `@hevy-mcp/hevy-client` | `@hevy-mcp/hevy-client`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli` |
-| `@hevy-mcp/core`        | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`                          |
-| Node adapter only       | `hevy-mcp` only                                                                                     |
-| Worker only             | `@hevy-mcp/worker` only                                                                             |
-| CLI only                | `@chrisdoc/hevy-cli` only                                                                           |
+| Changed composition     | Required Changeset packages                                                                                                 |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `@hevy-mcp/hevy-client` | `@hevy-mcp/hevy-client`, `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli` |
+| `@hevy-mcp/operations`  | `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`                          |
+| `@hevy-mcp/core`        | `@hevy-mcp/core`, `hevy-mcp`, and `@hevy-mcp/worker`                                                                        |
+| Node adapter only       | `hevy-mcp` only                                                                                                             |
+| Worker only             | `@hevy-mcp/worker` only                                                                                                     |
+| CLI only                | `@chrisdoc/hevy-cli` only                                                                                                   |
 
 Do not couple unrelated package versions. Core, the Hevy client, and Worker
 remain private. Changesets version them for internal release/deployment

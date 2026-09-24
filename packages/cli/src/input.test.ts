@@ -13,7 +13,7 @@ import {
 	createRoutineInputSchema,
 	routineFolderInputSchema,
 	workoutInputSchema,
-} from "@hevy-mcp/core/mutations";
+} from "@hevy-mcp/operations/schemas";
 
 const workout = {
 	workout: {

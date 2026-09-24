@@ -416,9 +416,7 @@ describe("package changeset coverage", () => {
 				changedFiles: ["packages/core/src/index.js"],
 				changesetDiffLines: ["A\t.changeset/new.md"],
 			}),
-		).rejects.toThrow(
-			/@hevy-mcp\/worker[\s\S]*@chrisdoc\/hevy-cli|@chrisdoc\/hevy-cli[\s\S]*@hevy-mcp\/worker/,
-		);
+		).rejects.toThrow("@hevy-mcp/core -> missing @hevy-mcp/worker");
 	});
 
 	it("accepts the complete core release cascade", async () => {
@@ -435,7 +433,6 @@ describe("package changeset coverage", () => {
 			"@hevy-mcp/core",
 			"hevy-mcp",
 			"@hevy-mcp/worker",
-			"@chrisdoc/hevy-cli",
 		]);
 
 		await expect(
@@ -444,6 +441,31 @@ describe("package changeset coverage", () => {
 				changesetDiffLines: ["A\t.changeset/new.md"],
 			}),
 		).resolves.toEqual({ changedPackageCount: 1 });
+	});
+
+	it("requires the CLI for an Operations release", async () => {
+		const fixture = await createFixture({
+			packageName: "@hevy-mcp/operations",
+			packagePath: "packages/operations",
+		});
+		await writeFixtureFile(
+			fixture.root,
+			"packages/operations/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeChangeset(fixture.root, [
+			"@hevy-mcp/operations",
+			"@hevy-mcp/core",
+			"hevy-mcp",
+			"@hevy-mcp/worker",
+		]);
+
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/operations/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).rejects.toThrow("@hevy-mcp/operations -> missing @chrisdoc/hevy-cli");
 	});
 
 	it.each([

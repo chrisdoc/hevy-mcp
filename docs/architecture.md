@@ -45,10 +45,13 @@ graph TD
 
     HC --> OPS
     HC --> CORE
+    HC --> NODE
+    HC --> WORKER
+    HC --> CLI
     OPS --> CORE
+    OPS --> CLI
     CORE --> NODE
     CORE --> WORKER
-    CORE --> CLI
 
     style HC fill:#d4edda,stroke:#28a745
     style OPS fill:#d4edda,stroke:#28a745
@@ -64,8 +67,10 @@ Key constraints to observe in this diagram [[7]](https://app.dosu.dev/documents/
 
 - `hevy-client`, `operations`, and `core` are **runtime-neutral**: they contain no Node.js built-ins and no Cloudflare-specific bindings, making them safe to import and execute in either runtime.
 - `hevy-mcp` (Node) and `@hevy-mcp/worker` (Cloudflare) both consume `core` but **must never import each other**. This boundary is enforced by the `package-boundaries` validation lane [[8]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L209-L227).
-- `@chrisdoc/hevy-cli` bundles the runtime-neutral packages directly and does **not** depend on either adapter.
-- `@hevy-mcp/core` depends on both `@hevy-mcp/hevy-client` and `@hevy-mcp/operations` [[9]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/packages/core/package.json#L20-L24); `@hevy-mcp/operations` depends on `@hevy-mcp/hevy-client` [[10]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/packages/operations/package.json#L16-L18).
+- `@chrisdoc/hevy-cli` bundles the runtime-neutral client and Operations directly; it does **not** depend on MCP Core or either runtime adapter.
+- `operations` owns transport-neutral mutation schemas and payload semantics; `core` keeps MCP-specific input preprocessing, compatibility parsing, and protocol presentation.
+- The private `@hevy-mcp/core/mutations` subpath was retired after its CLI and internal test consumers migrated; shared validation now uses `@hevy-mcp/operations/schemas`.
+- `@hevy-mcp/core` depends on both `@hevy-mcp/hevy-client` and `@hevy-mcp/operations`; the CLI depends on the client and Operations, but not Core.
 
 > [!IMPORTANT]
 > The adapter packages (`hevy-mcp` and `@hevy-mcp/worker`) must never import one another. Violating this constraint would pull Node-specific or Cloudflare-specific code into the wrong runtime bundle and cause hard failures at runtime.
@@ -80,7 +85,7 @@ A package is **runtime-neutral** when it makes no assumptions about the JavaScri
 - **No Cloudflare-specific bindings**: KV namespaces, Durable Objects, environment secrets injected via `env` object, and Worker-specific globals are forbidden.
 - **Standard Web APIs only**: `fetch`, `URL`, `TextEncoder`, `crypto` (Web Crypto), and the rest of the [WinterCG](https://wintercg.org/) baseline.
 
-The two packages that must satisfy this constraint are `packages/hevy-client` and `packages/core` [[11]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae). The `packages/operations` layer also sits in this neutral zone — it depends only on `hevy-client` and adds no platform imports [[10]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/packages/operations/package.json#L16-L18).
+The runtime-neutral packages are `packages/hevy-client`, `packages/operations`, and `packages/core`; they use no Node built-ins or Cloudflare bindings. Operations depends on the Hevy client, and Core depends on both Operations and the Hevy client.
 
 ### The adapter pattern
 
@@ -114,14 +119,14 @@ Bundling Node.js code (anything that imports `process`, `fs`, `os`, etc.) into a
 
 Two workspaces are publishable to npm: `hevy-mcp` (the Node adapter) and `@chrisdoc/hevy-cli` (the standalone CLI). The remaining workspaces are private packages or are deployed directly:
 
-| Package                 | Published? | Why                                     |
-| ----------------------- | ---------- | --------------------------------------- |
-| `hevy-mcp`              | ✅ npm     | The user-facing Node.js MCP server      |
-| `@chrisdoc/hevy-cli`    | ✅ npm     | Public standalone CLI                   |
-| `@hevy-mcp/core`        | ❌ private | Internal; bundled into both adapters    |
-| `@hevy-mcp/hevy-client` | ❌ private | Internal; bundled into both adapters    |
-| `@hevy-mcp/operations`  | ❌ private | Internal; bundled into both adapters    |
-| `@hevy-mcp/worker`      | ❌ private | Deployed directly to Cloudflare Workers |
+| Package                 | Published? | Why                                                 |
+| ----------------------- | ---------- | --------------------------------------------------- |
+| `hevy-mcp`              | ✅ npm     | The user-facing Node.js MCP server                  |
+| `@chrisdoc/hevy-cli`    | ✅ npm     | Public standalone CLI                               |
+| `@hevy-mcp/core`        | ❌ private | Internal; bundled into the Node and Worker adapters |
+| `@hevy-mcp/hevy-client` | ❌ private | Internal; bundled into Node, Worker, and CLI        |
+| `@hevy-mcp/operations`  | ❌ private | Internal; bundled into Node, Worker, and CLI        |
+| `@hevy-mcp/worker`      | ❌ private | Deployed directly to Cloudflare Workers             |
 
 [[14]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-3476b4dbb3ae)
 
@@ -134,7 +139,7 @@ The private workspaces (`core`, `hevy-client`, `operations`, `worker`) are still
 
 ## Changeset Cascade
 
-Because the private packages are bundled into the published adapters, a change in a shared package must version-bump every downstream consumer. This "cascade" is enforced by the `package-changesets` CI lane (`pnpm run check:changeset`), which uses the `release-cascade` comparison from `repository/validation-lanes.json` as its machine-readable source of truth [[16]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L259-L273).
+Because private packages are bundled into the compositions that consume them, a shared-package change must version-bump every downstream consumer. This cascade is enforced by `pnpm run check:changeset`; `repository/topology.json` owns the machine-readable release bundles.
 
 ### Cascade rules
 
@@ -151,7 +156,7 @@ flowchart TD
 
     HC --> HC_BUMPS["Bump: hevy-client,<br/>operations, core,<br/>hevy-mcp, worker, CLI"]
     OPS --> OPS_BUMPS["Bump: operations,<br/>core, hevy-mcp,<br/>worker, CLI"]
-    CORE --> CORE_BUMPS["Bump: core,<br/>hevy-mcp, worker, CLI"]
+    CORE --> CORE_BUMPS["Bump: core,<br/>hevy-mcp, worker"]
     NODE --> NODE_BUMPS["Bump: hevy-mcp only"]
     WORKER --> WORKER_BUMPS["Bump: @hevy-mcp/worker only"]
     CLI --> CLI_BUMPS["Bump: @chrisdoc/hevy-cli only"]
@@ -170,24 +175,24 @@ The full matrix [[17]](https://app.dosu.dev/documents/52dd122f-29f8-46dd-9513-34
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `@hevy-mcp/hevy-client`                 | `@hevy-mcp/hevy-client`, `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
 | `@hevy-mcp/operations`                  | `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`                          |
-| `@hevy-mcp/core`                        | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli`                                                  |
+| `@hevy-mcp/core`                        | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`                                                                        |
 | Node adapter only                       | `hevy-mcp` only                                                                                                         |
 | Worker only (or `cloudflare.config.ts`) | `@hevy-mcp/worker` only                                                                                                 |
 | CLI only                                | `@chrisdoc/hevy-cli` only                                                                                               |
 
 ### Concrete examples
 
-| Change                                  | Packages touched               | Required changeset packages                                            |
-| --------------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
-| Adding a new MCP tool                   | `packages/core`                | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, `@chrisdoc/hevy-cli` |
-| Fixing a bug in the Hevy client wrapper | `packages/hevy-client`         | All six packages                                                       |
-| Updating Worker OAuth logic             | `packages/worker`              | `@hevy-mcp/worker` only                                                |
-| Adding a CLI subcommand                 | `packages/cli`                 | `@chrisdoc/hevy-cli` only                                              |
-| Updating `cloudflare.config.ts`         | (root, Worker release trigger) | `@hevy-mcp/worker` only                                                |
+| Change                                  | Packages touched               | Required changeset packages                      |
+| --------------------------------------- | ------------------------------ | ------------------------------------------------ |
+| Adding a new MCP tool                   | `packages/core`                | `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker` |
+| Fixing a bug in the Hevy client wrapper | `packages/hevy-client`         | All six packages                                 |
+| Updating Worker OAuth logic             | `packages/worker`              | `@hevy-mcp/worker` only                          |
+| Adding a CLI subcommand                 | `packages/cli`                 | `@chrisdoc/hevy-cli` only                        |
+| Updating `cloudflare.config.ts`         | (root, Worker release trigger) | `@hevy-mcp/worker` only                          |
 
 ### How it is enforced
 
-CI runs `pnpm run check:changeset` (`npx changeset status --since=origin/<base_branch>`) as a blocking gate on every pull request [[19]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6). The `package-changesets` lane checks that every changed workspace directory has a changeset file that names that package, then applies the transitive composition matrix. The `release-cascade` comparison label in `repository/validation-lanes.json` is the machine-readable definition driving this check [[20]](https://github.com/chrisdoc/hevy-mcp/blob/c4ac07dbe84a7e83ba88a5073f0a83ab34af5c86/repository/validation-lanes.json#L259-L287).
+CI runs `pnpm run check:changeset` as a blocking gate on every pull request. The `package-changesets` lane checks that every changed workspace directory has a changeset file naming that package, then applies the transitive composition matrix from `repository/topology.json`.
 
 > [!IMPORTANT]
 > The Conventional Commit type (`chore:`, `docs:`, etc.) does **not** determine changeset eligibility. What matters is whether the change touches a file under `packages/*`, modifies runtime-visible behaviour, changes a workspace dependency, or updates an explicit release trigger like `cloudflare.config.ts` [[21]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).

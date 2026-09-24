@@ -5,7 +5,7 @@ import {
 	updateRoutineInputSchema,
 	updateWorkoutInputSchema,
 	workoutInputSchema,
-} from "../mutations.js";
+} from "./input-schemas.js";
 
 describe("snake_case mutation schemas", () => {
 	it("parses an API-shaped workout envelope and materializes defaults", () => {
