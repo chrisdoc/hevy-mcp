@@ -87,6 +87,10 @@ jobs:
           npx changeset status --since="origin/${BASE_REF}"
           npx nx run repository:check:package-changesets -- --since "origin/${BASE_REF}"
 
+      - name: Build package before Node 24 validation
+        if: matrix.node-version == '24.x'
+        run: npx nx run repository:build
+
       - name: Run Node 26 build
         if: matrix.node-version == '26.x'
         run: npx nx run repository:build

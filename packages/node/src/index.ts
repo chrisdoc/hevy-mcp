@@ -13,7 +13,18 @@ import type { NodeLifecycleHandle } from "./utils/node-lifecycle.js";
  * concerns and the transport lifecycle.
  */
 export async function createNodeMcpServer(
-	{ apiKey }: { apiKey: string },
+	{
+		apiKey,
+		maxGetRetries,
+	}: {
+		apiKey: string;
+		/**
+		 * Client retry budget (also applies to PUT). Set to 0 to disable all
+		 * automatic request retries; reconcile uncertain writes before retrying.
+		 * Omit to retain the client's existing retry policy.
+		 */
+		maxGetRetries?: number;
+	},
 	_transport: NodeTransport = "stdio",
 	lifecycleSignal?: AbortSignal,
 ) {
@@ -23,6 +34,7 @@ export async function createNodeMcpServer(
 			createHevyClient({
 				apiKey,
 				onLog,
+				...(maxGetRetries === undefined ? {} : { maxGetRetries }),
 			}),
 		lifecycleSignal,
 	});

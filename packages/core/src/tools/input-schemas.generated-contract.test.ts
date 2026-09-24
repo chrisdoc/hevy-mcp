@@ -14,20 +14,29 @@ import { routineSetFields, workoutSetFields } from "./input-schemas.js";
  */
 
 const ACCEPTED_RPE = [6, 7, 7.5, 8, 8.5, 9, 9.5, 10] as const;
-const REJECTED_RPE = [0, 5.5, 6.4, 11, "7", null];
+const REJECTED_RPE = [0, 5.5, 6.4, 11, "0", "5.5", "6.4", "11", "invalid"];
 
 describe("input schema enums match the generated client", () => {
-	it("workout set RPE accepts exactly what the generated client accepts", () => {
+	it("workout set RPE accepts string enums (and numeric equivalents) and casts to number", () => {
 		for (const value of ACCEPTED_RPE) {
-			expect(workoutSetFields.rpe.safeParse(value).success).toBe(true);
+			const numResult = workoutSetFields.rpe.safeParse(value);
+			expect(numResult.success).toBe(true);
+			if (numResult.success) {
+				expect(numResult.data).toBe(value);
+			}
+
+			const strResult = workoutSetFields.rpe.safeParse(String(value));
+			expect(strResult.success).toBe(true);
+			if (strResult.success) {
+				expect(strResult.data).toBe(value);
+			}
+
 			expect(
 				postWorkoutsRequestSetSchema.shape.rpe.safeParse(value).success,
 			).toBe(true);
 		}
 		for (const value of REJECTED_RPE) {
-			expect(workoutSetFields.rpe.safeParse(value).success).toBe(
-				postWorkoutsRequestSetSchema.shape.rpe.safeParse(value).success,
-			);
+			expect(workoutSetFields.rpe.safeParse(value).success).toBe(false);
 		}
 	});
 
