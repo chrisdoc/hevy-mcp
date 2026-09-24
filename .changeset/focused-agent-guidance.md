@@ -1,5 +1,4 @@
 ---
-
 ---
 
 Clarify agent-only workflows, MCP contract safeguards, and code-discovery
