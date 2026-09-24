@@ -4,6 +4,12 @@ export type HeadersInit =
   | Record<string, HeaderValue>;
 
 /**
+ * The request body type `fetch` accepts, derived from `RequestInit` instead of the global `BodyInit`
+ * name, which a Node-only project (`@types/node` without the `dom` lib) does not declare.
+ */
+export type RequestBody = NonNullable<RequestInit["body"]>;
+
+/**
  * The OpenAPI query-parameter serialization style. `form` is the default; `spaceDelimited` and
  * `pipeDelimited` join arrays with a space or pipe, and `deepObject` renders objects as
  * `key[prop]=value`.
@@ -80,7 +86,7 @@ export type BodySerializer = (args: {
   body: unknown;
   contentType?: string;
   encoding?: Record<string, BodyEncoding>;
-}) => BodyInit | undefined;
+}) => RequestBody | undefined;
 
 /**
  * The OpenAPI path-parameter serialization style. `simple` is the default and emits the bare value;
@@ -128,7 +134,7 @@ export type Styles = {
   body?: Record<string, BodyEncoding>;
 };
 
-function isFormBody(body: unknown): body is BodyInit {
+function isFormBody(body: unknown): body is RequestBody {
   return (
     body instanceof FormData ||
     body instanceof URLSearchParams ||
@@ -199,7 +205,7 @@ export const defaultBodySerializer: BodySerializer = ({
   encoding,
 }) => {
   if (body === undefined || body === null) return undefined;
-  if (isFormBody(body)) return body as BodyInit;
+  if (isFormBody(body)) return body as RequestBody;
   if (contentType?.includes("multipart/form-data")) {
     const formData = new FormData();
     for (const [key, value] of Object.entries(

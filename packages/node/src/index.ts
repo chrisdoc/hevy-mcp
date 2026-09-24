@@ -28,12 +28,18 @@ export interface AgentFeedbackRecorder {
  */
 export interface CreateNodeMcpServerOptions {
 	readonly apiKey: string;
+	/**
+	 * Client retry budget (also applies to PUT). Set to 0 to disable all
+	 * automatic request retries; reconcile uncertain writes before retrying.
+	 * Omit to retain the client's existing retry policy.
+	 */
+	readonly maxGetRetries?: number;
 	/** Optional caller-owned recorder for the privacy-safe feedback tool. */
 	readonly feedbackRecorder?: AgentFeedbackRecorder;
 }
 
 export async function createNodeMcpServer(
-	{ apiKey, feedbackRecorder }: CreateNodeMcpServerOptions,
+	{ apiKey, maxGetRetries, feedbackRecorder }: CreateNodeMcpServerOptions,
 	_transport: NodeTransport = "stdio",
 	lifecycleSignal?: AbortSignal,
 ) {
@@ -43,6 +49,7 @@ export async function createNodeMcpServer(
 			createHevyClient({
 				apiKey,
 				onLog,
+				...(maxGetRetries === undefined ? {} : { maxGetRetries }),
 			}),
 		lifecycleSignal,
 		feedbackRecorder,
