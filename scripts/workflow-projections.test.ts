@@ -16,11 +16,44 @@ const lanes = {
 	},
 };
 
+const changesetLanes = {
+	lanes: [
+		{
+			id: "package-changesets",
+			nxTarget: "check:package-changesets",
+			mappingStatus: "mapped" as const,
+			runtimes: ["node-24"],
+			workflowRuntimes: ["node-24"],
+		},
+	],
+	aggregates: {
+		release: { lanes: ["package-changesets"] },
+	},
+};
+
 function workflow(step: string, jobOptions = ""): string {
 	return `jobs:\n  release:\n${jobOptions}    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24.x"\n      - name: Validate lane\n${step}`;
 }
 
 describe("release workflow projections", () => {
+	it("resolves package-script aliases to their Nx validation lanes", () => {
+		const result = validateWorkflowAggregate(
+			workflow("        run: pnpm run check:changeset\n"),
+			{
+				lanes: changesetLanes,
+				aggregate: "release",
+				expectedJobs: "release",
+			},
+		);
+
+		expect(result.executions).toEqual([
+			expect.objectContaining({
+				lane: "package-changesets",
+				target: "check:package-changesets",
+			}),
+		]);
+	});
+
 	it("maps a release lane to its declared runtime and job", () => {
 		const result = validateWorkflowAggregate(
 			workflow("        run: npx nx run repository:test:worker-http:live\n"),
