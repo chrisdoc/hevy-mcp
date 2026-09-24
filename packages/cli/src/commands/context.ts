@@ -1,4 +1,4 @@
-import type { HevyExecutionOptions } from "@hevy-mcp/hevy-client";
+import type { HevyExecutionOptions } from "@hevy-mcp/hevy-client/types";
 import type { HevyOperations } from "@hevy-mcp/operations";
 import { Effect } from "effect";
 import { z } from "zod";
