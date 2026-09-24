@@ -166,10 +166,14 @@ function optionValue(tokens, longName, shortName) {
 	return null;
 }
 
-function parseNxRunCommands(line) {
+function parseNxRunCommands(
+	line,
+	rootDir = process.cwd(),
+	packageScriptStack = new Set(),
+) {
 	const normalized = line.trim().replace(/\s+/g, " ");
 	const direct =
-		/^npx nx run repository:([A-Za-z0-9][A-Za-z0-9:_-]*)(?: (.*?))?$/.exec(
+		/^(?:npx )?nx run repository:([A-Za-z0-9][A-Za-z0-9:_-]*)(?: (.*?))?$/.exec(
 			normalized,
 		);
 	if (direct) {
@@ -184,27 +188,47 @@ function parseNxRunCommands(line) {
 	}
 
 	const aggregate = /^npx nx run-many(?: (.*?))?$/.exec(normalized);
-	if (!aggregate) return [];
-	const args = aggregate[1] ?? "";
-	const tokens = args ? args.split(" ") : [];
-	const targetList = optionValue(tokens, "--targets", "-t");
-	if (targetList === null) return [];
-	const projectList = optionValue(tokens, "--projects", "-p");
-	assert(
-		projectList === "repository",
-		"Nx run-many must target only the repository project for workflow projection",
+	if (aggregate) {
+		const args = aggregate[1] ?? "";
+		const tokens = args ? args.split(" ") : [];
+		const targetList = optionValue(tokens, "--targets", "-t");
+		if (targetList === null) return [];
+		const projectList = optionValue(tokens, "--projects", "-p");
+		assert(
+			projectList === "repository",
+			"Nx run-many must target only the repository project for workflow projection",
+		);
+		const targets = targetList.split(",").filter(Boolean);
+		assert(targets.length > 0, "Nx run-many must declare at least one target");
+		assert(
+			new Set(targets).size === targets.length,
+			"Nx run-many must not repeat targets",
+		);
+		return targets.map((target) => ({
+			target,
+			args,
+			command: `npx nx run-many ${args}`,
+		}));
+	}
+
+	const packageScript = /^pnpm run ([A-Za-z0-9:_-]+)$/.exec(normalized);
+	if (!packageScript) return [];
+
+	const scriptName = packageScript[1];
+	if (packageScriptStack.has(scriptName)) return [];
+	const packageManifest = JSON.parse(
+		readFileSync(resolve(rootDir, "package.json"), "utf8"),
 	);
-	const targets = targetList.split(",").filter(Boolean);
-	assert(targets.length > 0, "Nx run-many must declare at least one target");
-	assert(
-		new Set(targets).size === targets.length,
-		"Nx run-many must not repeat targets",
-	);
-	return targets.map((target) => ({
-		target,
-		args,
-		command: `npx nx run-many ${args}`,
-	}));
+	const script = packageManifest.scripts?.[scriptName];
+	if (!isString(script)) return [];
+
+	const nestedScriptStack = new Set(packageScriptStack).add(scriptName);
+	return script.split(/\s*&&\s*/).flatMap((command) => {
+		const unwrapped = command
+			.trim()
+			.replace(/^env(?:\s+-u\s+[A-Za-z_][A-Za-z0-9_]*)+\s+/, "");
+		return parseNxRunCommands(unwrapped, rootDir, nestedScriptStack);
+	});
 }
 
 function normalizeLaneTargets(laneTargets) {
@@ -290,7 +314,7 @@ export function parseWorkflowLaneExecutions(
 		walkJobSteps(steps, (step) => {
 			if (!isString(step.run)) return;
 			for (const line of step.run.split(/\r?\n/)) {
-				for (const command of parseNxRunCommands(line)) {
+				for (const command of parseNxRunCommands(line, rootDir)) {
 					if (mappedTargets.has(command.target)) hasMappedCommand = true;
 				}
 			}
@@ -326,7 +350,7 @@ export function parseWorkflowLaneExecutions(
 			}
 			if (!isString(step.run)) return;
 			for (const line of step.run.split(/\r?\n/)) {
-				for (const command of parseNxRunCommands(line)) {
+				for (const command of parseNxRunCommands(line, rootDir)) {
 					if (!mappedTargets.has(command.target)) continue;
 					if (rejectContinueOnError) {
 						const continueOnError = step["continue-on-error"];

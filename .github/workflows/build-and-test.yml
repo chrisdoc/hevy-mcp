@@ -5,8 +5,7 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
+    # Stacked PRs target their parent branch, not only main.
 
 permissions:
   contents: read
@@ -69,7 +68,7 @@ jobs:
       - name: Verify commit messages
         if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           # pull_request.base.sha freezes at PR-open time, so after main moves
           # the range re-lints already-merged history; lint from merge-base instead.
@@ -82,10 +81,8 @@ jobs:
           github.actor != 'dependabot[bot]' &&
           github.head_ref != 'changeset-release/main'
         env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          npx changeset status --since="origin/${BASE_REF}"
-          npx nx run repository:check:package-changesets -- --since "origin/${BASE_REF}"
+          CHANGESET_BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: pnpm run check:changeset
 
       - name: Build package before Node 24 validation
         if: matrix.node-version == '24.x'
