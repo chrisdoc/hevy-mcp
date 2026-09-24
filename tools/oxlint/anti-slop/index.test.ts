@@ -4,8 +4,8 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
 
-const rootDir = resolve(import.meta.dirname, "../..");
-const testDir = join(rootDir, "tests", "unit");
+const rootDir = resolve(import.meta.dirname, "../../..");
+const testDir = import.meta.dirname;
 const oxlintPath = join(rootDir, "node_modules", "oxlint", "bin", "oxlint");
 const configPath = join(rootDir, "oxlint.config.ts");
 
@@ -81,6 +81,25 @@ export function shape(value: string): string {
 }
 `,
 			"accepted.ts",
+		);
+
+		expect(result.status).toBe(0);
+		expect(result.diagnostics).toEqual([]);
+	});
+
+	it("accepts discriminated-union narrowing", () => {
+		const result = lintFixture(
+			`type Lookup =
+	| { kind: "by-id"; id: string }
+	| { kind: "by-name"; name: string };
+
+export function describeLookup(value: Lookup): string {
+	if (value.kind === "by-id") return value.id;
+	return value.name;
+}
+`,
+			"discriminated-union.ts",
+			["--type-aware", "--type-check"],
 		);
 
 		expect(result.status).toBe(0);

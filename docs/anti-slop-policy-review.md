@@ -5,6 +5,22 @@ the evidence-based decisions for the three rules reviewed in issue #1179. The
 plugin is not itself a goal: keep a custom rule only when it enforces a useful
 invariant that is not already covered by a more direct check.
 
+## Adoption and evidence history
+
+The custom rules were introduced on 2026-08-13 in PR #1015. On 2026-09-07,
+PR #1144 refined the policy and added a body-narrowing exemption to
+`no-unknown-parameters`. That change is verifiable evidence that treating all
+`unknown` parameters alike did not fit the intended use cases. The commit does
+not identify a specific blocked call site or quantify false positives, so it
+should not be read as an incident count.
+
+This 2026-09-24 review (#1179) adds concrete accepted/rejected fixtures and
+compares the rules with current repository examples. The history inspected for
+this review contains no dedicated false-positive or incident ledger and no
+measured false-positive rate. Accordingly, the clean base-commit scan below
+means only that the rules had no current findings at that point; it does not
+show that the rules had never rejected valid code.
+
 ## Targeted decisions
 
 The audit ran `mise exec -- pnpm exec oxlint .` on the review's base commit
