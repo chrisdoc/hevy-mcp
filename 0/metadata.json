@@ -1,0 +1,57 @@
+{
+  "cli_version": "0.11.2",
+  "checkpoint_id": "01M38VKTC72G8FSYB0PRKJEE3B",
+  "session_id": "01a0d1ab-af88-7193-b8dd-004f47e56e93",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-24T04:43:39.05338Z",
+  "branch": "fix/cherry-pick-pr-1160-1164",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [],
+  "agent": "Pi",
+  "model": "gpt-6-luna",
+  "turn_id": "7fafb77a1e40",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 210676,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 2417152,
+    "output_tokens": 24071,
+    "api_call_count": 33
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 998,
+      "user_lines_removed": 132,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".factory/settings.json": 85,
+        "PLAN.md": 91,
+        "RULES_REVIEW.md": 177,
+        "effect_improvements.md": 449,
+        "mise.lock": 127,
+        "mise.toml": 2,
+        "plans/rules-review.md": 67
+      },
+      "user_removed_per_file": {
+        "mise.lock": 130,
+        "mise.toml": 2
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 85,
+      "user_lines_removed": 0,
+      "agent_lines_added": 913,
+      "agent_lines_removed": 132,
+      "user_added_per_file": {
+        ".factory/settings.json": 85
+      }
+    }
+  ]
+}
