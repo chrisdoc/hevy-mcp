@@ -7,6 +7,8 @@ export function resolveChangesetBaseRef(options?: {
 	githubBaseRef?: string;
 }): string;
 
+export function explicitChangesetBaseRef(args: string[]): string | undefined;
+
 export function packageChangesetCoverage(options: {
 	root: string;
 	changedFiles: string[];

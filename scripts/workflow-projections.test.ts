@@ -45,10 +45,10 @@ function workflow(step: string, jobOptions = ""): string {
 	return `jobs:\n  release:\n${jobOptions}    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24.x"\n      - name: Validate lane\n${step}`;
 }
 
-function pullRequestConfiguration(source: string): string {
+function pullRequestConfiguration(source: string): string | undefined {
 	const lines = source.split(/\r?\n/);
 	const eventIndex = lines.indexOf("  pull_request:");
-	if (eventIndex < 0) return "";
+	if (eventIndex < 0) return undefined;
 
 	const configuration: string[] = [];
 	for (const line of lines.slice(eventIndex + 1)) {
@@ -65,10 +65,14 @@ describe("stacked pull request workflow triggers", () => {
 			const source = readFileSync(resolve(repositoryRoot, path), "utf8");
 			const configuration = pullRequestConfiguration(source);
 
-			expect(configuration).not.toBe("");
-			expect(configuration).not.toMatch(/^\s+branches:/m);
+			expect(configuration).toBeDefined();
+			if (configuration) expect(configuration).not.toMatch(/^\s+branches:/m);
 		},
 	);
+
+	it("accepts an unfiltered pull_request event with no event options", () => {
+		expect(pullRequestConfiguration("on:\n  pull_request:\n")).toBe("");
+	});
 
 	it("uses the PR event's target branch for base-sensitive checks", () => {
 		const source = readFileSync(

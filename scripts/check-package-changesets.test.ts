@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+	explicitChangesetBaseRef,
 	packageChangesetCoverage,
 	resolveChangesetBaseRef,
 } from "./check-package-changesets.mjs";
@@ -112,6 +113,29 @@ function runCheck(
 }
 
 describe("Changeset comparison base", () => {
+	it("requires a value after --since", () => {
+		expect(() =>
+			explicitChangesetBaseRef(["node", "script", "--since"]),
+		).toThrow("Missing value for --since");
+	});
+
+	it("does not treat a following option as the --since value", () => {
+		expect(() =>
+			explicitChangesetBaseRef(["node", "script", "--since", "--dry-run"]),
+		).toThrow("Missing value for --since");
+	});
+
+	it("preserves an explicit comparison base", () => {
+		expect(
+			explicitChangesetBaseRef([
+				"node",
+				"script",
+				"--since",
+				"origin/review/parent-layer",
+			]),
+		).toBe("origin/review/parent-layer");
+	});
+
 	it("defaults to origin/main for standalone local validation", () => {
 		expect(resolveChangesetBaseRef({})).toBe("origin/main");
 	});
