@@ -1,7 +1,29 @@
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath, URL } from "node:url";
 import { expect, it } from "vitest";
 import { z } from "zod";
+
+const rootDir = fileURLToPath(new URL("../../", import.meta.url));
+const require = createRequire(import.meta.url);
+const nxCliPath = join(
+	dirname(require.resolve("nx/package.json")),
+	"dist",
+	"bin",
+	"nx.js",
+);
 
 const nxInputSchema = z.union([
 	z.string().transform((pattern) => ({ kind: "pattern" as const, pattern })),
@@ -28,23 +50,45 @@ const projectConfigurationSchema = z.object({
 
 type NxInput = z.infer<typeof nxInputSchema>;
 type NxConfiguration = z.infer<typeof nxConfigurationSchema>;
+type ProjectConfiguration = z.infer<typeof projectConfigurationSchema>;
 
-const [nxSource, projectSource] = await Promise.all([
-	readConfigurationSource("nx.json"),
-	readConfigurationSource("project.json"),
-]);
+function serializeNxInput(
+	input: NxInput,
+): string | { runtime: string } | { env: string } {
+	if (input.kind === "pattern") return input.pattern;
+	if (input.kind === "runtime") return { runtime: input.command };
+	return { env: input.name };
+}
+
+const nxSource = await readConfigurationSource("nx.json");
 const nxConfigurationValue: unknown = JSON.parse(nxSource);
-const projectConfigurationValue: unknown = JSON.parse(projectSource);
 const nxConfiguration = nxConfigurationSchema.parse(nxConfigurationValue);
-const projectConfiguration = projectConfigurationSchema.parse(
-	projectConfigurationValue,
-);
+const projectConfiguration = readEffectiveProjectConfiguration();
 
-async function readConfigurationSource(fileName: string): Promise<string> {
+function readConfigurationSource(fileName: string): Promise<string> {
 	return readFile(
 		fileURLToPath(new URL(`../../${fileName}`, import.meta.url)),
 		"utf8",
 	);
+}
+
+function readEffectiveProjectConfiguration(): ProjectConfiguration {
+	const result = spawnSync(
+		process.execPath,
+		[nxCliPath, "show", "project", "repository", "--json"],
+		{
+			cwd: rootDir,
+			encoding: "utf8",
+			env: { ...process.env, NX_DAEMON: "false" },
+		},
+	);
+	if (result.error) throw result.error;
+	if (result.status !== 0) {
+		throw new Error(
+			result.stderr || "Nx could not resolve the repository project",
+		);
+	}
+	return projectConfigurationSchema.parse(JSON.parse(result.stdout));
 }
 
 function resolveInputs(
@@ -116,6 +160,115 @@ function targetTracksFile(
 			input.kind === "pattern" &&
 			globPatternMatchesFile(input.pattern, filePath),
 	);
+}
+
+type NxCacheFixture = {
+	readonly cacheDirectory: string;
+	readonly markerPath: string;
+	readonly rootDirectory: string;
+};
+
+function createNxCacheFixture(): NxCacheFixture {
+	const fixtureDirectory = mkdtempSync(join(tmpdir(), "hevy-nx-cache-inputs-"));
+	const rootDirectory = join(fixtureDirectory, "workspace");
+	const cacheDirectory = join(fixtureDirectory, "nx-cache");
+	const markerPath = join(fixtureDirectory, "executions.log");
+	mkdirSync(rootDirectory, { recursive: true });
+
+	const workerPath = join(rootDirectory, "packages/worker/src/worker.ts");
+	const setupPath = join(rootDirectory, "tests/setup/cloudflare-runtime.ts");
+	const unrelatedPath = join(rootDirectory, "docs/test-lanes.md");
+	for (const [path, contents] of [
+		[workerPath, "export const workerFixture = 1;\n"],
+		[setupPath, "export const setupFixture = 1;\n"],
+		[unrelatedPath, "# Test lanes\n"],
+	] as const) {
+		mkdirSync(dirname(path), { recursive: true });
+		writeFileSync(path, contents, "utf8");
+	}
+
+	const runnerPath = join(rootDirectory, "record-execution.mjs");
+	writeFileSync(
+		runnerPath,
+		'import { appendFileSync } from "node:fs";\nappendFileSync(process.argv[2], "x");\n',
+		"utf8",
+	);
+	writeFileSync(
+		join(rootDirectory, "package.json"),
+		JSON.stringify({ name: "nx-cache-input-fixture", version: "0.0.0" }),
+		"utf8",
+	);
+	writeFileSync(
+		join(rootDirectory, "nx.json"),
+		JSON.stringify({
+			namedInputs: Object.fromEntries(
+				Object.entries(nxConfiguration.namedInputs).map(([name, inputs]) => [
+					name,
+					inputs.map(serializeNxInput),
+				]),
+			),
+		}),
+		"utf8",
+	);
+	const contractInputs = projectConfiguration.targets["test:contract"]?.inputs;
+	if (!contractInputs)
+		throw new Error("Missing effective contract target inputs");
+	const command = `${JSON.stringify(process.execPath)} ${JSON.stringify(runnerPath)} ${JSON.stringify(markerPath)}`;
+	writeFileSync(
+		join(rootDirectory, "project.json"),
+		JSON.stringify({
+			name: "repository",
+			root: ".",
+			targets: {
+				"cache-probe": {
+					executor: "nx:run-commands",
+					cache: true,
+					inputs: contractInputs.map(serializeNxInput),
+					options: { command },
+				},
+			},
+		}),
+		"utf8",
+	);
+	symlinkSync(
+		join(rootDir, "node_modules"),
+		join(rootDirectory, "node_modules"),
+		"dir",
+	);
+
+	return { cacheDirectory, markerPath, rootDirectory };
+}
+
+function runNxCacheFixtureTarget(fixture: NxCacheFixture): void {
+	const result = spawnSync(
+		process.execPath,
+		[
+			nxCliPath,
+			"run",
+			"repository:cache-probe",
+			"--outputStyle=static",
+			"--skipRemoteCache",
+		],
+		{
+			cwd: fixture.rootDirectory,
+			encoding: "utf8",
+			env: {
+				...process.env,
+				NX_CACHE_DIRECTORY: fixture.cacheDirectory,
+				NX_DAEMON: "false",
+			},
+		},
+	);
+	if (result.error) throw result.error;
+	if (result.status !== 0) {
+		throw new Error(
+			result.stderr || result.stdout || "Nx cache fixture target failed",
+		);
+	}
+}
+
+function executionCount(markerPath: string): number {
+	return existsSync(markerPath) ? readFileSync(markerPath, "utf8").length : 0;
 }
 
 it("tracks Worker sources and shared Node Vitest setup dependencies", () => {
@@ -274,3 +427,42 @@ it("does not hash unrelated documentation for focused test lanes", () => {
 		targetTracksFile("test:cli", "tests/setup/cloudflare-runtime.ts"),
 	).toBe(true);
 });
+
+it("uses Nx cache hashing for Worker and setup changes but ignores unrelated docs", () => {
+	const fixture = createNxCacheFixture();
+	const workerPath = join(
+		fixture.rootDirectory,
+		"packages/worker/src/worker.ts",
+	);
+	const setupPath = join(
+		fixture.rootDirectory,
+		"tests/setup/cloudflare-runtime.ts",
+	);
+	const unrelatedPath = join(fixture.rootDirectory, "docs/test-lanes.md");
+	try {
+		runNxCacheFixtureTarget(fixture);
+		expect(executionCount(fixture.markerPath)).toBe(1);
+		runNxCacheFixtureTarget(fixture);
+		expect(executionCount(fixture.markerPath)).toBe(1);
+
+		writeFileSync(workerPath, "export const workerFixture = 2;\n", "utf8");
+		runNxCacheFixtureTarget(fixture);
+		expect(executionCount(fixture.markerPath)).toBe(2);
+		writeFileSync(workerPath, "export const workerFixture = 1;\n", "utf8");
+		runNxCacheFixtureTarget(fixture);
+		expect(executionCount(fixture.markerPath)).toBe(2);
+
+		writeFileSync(setupPath, "export const setupFixture = 2;\n", "utf8");
+		runNxCacheFixtureTarget(fixture);
+		expect(executionCount(fixture.markerPath)).toBe(3);
+		writeFileSync(setupPath, "export const setupFixture = 1;\n", "utf8");
+		runNxCacheFixtureTarget(fixture);
+		expect(executionCount(fixture.markerPath)).toBe(3);
+
+		writeFileSync(unrelatedPath, "# Unrelated documentation change\n", "utf8");
+		runNxCacheFixtureTarget(fixture);
+		expect(executionCount(fixture.markerPath)).toBe(3);
+	} finally {
+		rmSync(dirname(fixture.rootDirectory), { force: true, recursive: true });
+	}
+}, 30_000);
