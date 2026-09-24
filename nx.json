@@ -167,7 +167,6 @@
 			"nodeVitestInputs",
 			"testShims",
 			"{workspaceRoot}/packages/cli/src/**/*",
-			"{workspaceRoot}/packages/core/src/**/*",
 			"{workspaceRoot}/packages/hevy-client/src/**/*",
 			"{workspaceRoot}/packages/operations/src/**/*"
 		],

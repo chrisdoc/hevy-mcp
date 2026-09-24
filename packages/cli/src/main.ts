@@ -3,7 +3,6 @@ import {
 	type HevyClient,
 	type HevyExecutionOptions,
 } from "@hevy-mcp/hevy-client";
-import { bindClientExecution, type ToolExecutionContext } from "@hevy-mcp/core";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
 import { getApiKey } from "./auth.js";
 import { diagnostic, EXIT } from "./errors.js";
@@ -17,7 +16,7 @@ export interface RunCliOptions {
 	now?: () => Date;
 	readDataSource?: DataSourceReader;
 	streams?: Streams;
-	execution?: ToolExecutionContext;
+	execution?: HevyExecutionOptions;
 }
 
 export async function runCli(options: RunCliOptions): Promise<number> {
@@ -38,7 +37,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		readDataSource: options.readDataSource ?? readDataSource,
 		client: undefined as HevyClient | undefined,
 		operations: undefined as HevyOperations | undefined,
-		execution: options.execution as HevyExecutionOptions | undefined,
+		execution: options.execution,
 	};
 	const metaCommand = options.argv.some((value) =>
 		["--help", "-h", "--version", "-v"].includes(value),
@@ -49,11 +48,8 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 			const createdClient = (
 				options.clientFactory ?? ((apiKey) => createHevyClient({ apiKey }))
 			)(key);
-			const client = options.execution
-				? bindClientExecution(createdClient, options.execution)
-				: createdClient;
-			context.client = client;
-			context.operations = createOperations(client, {
+			context.client = createdClient;
+			context.operations = createOperations(createdClient, {
 				trainingSummaryMaxWeeks: 520,
 				trainingSummaryStrictPagination: true,
 			});

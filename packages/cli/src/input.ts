@@ -2,6 +2,32 @@ import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import { UsageError } from "./arguments.js";
 
+const jsonValueSchema = z.json();
+const stringifiedJsonSchema = z.string().transform((value) => {
+	try {
+		return jsonValueSchema.parse(JSON.parse(value));
+	} catch {
+		// Preserve invalid values so the owning schema reports the field path.
+		return value;
+	}
+});
+const exercisesInputSchema = z.union([stringifiedJsonSchema, z.unknown()]);
+const workoutExercisesInputSchema = z
+	.object({
+		workout: z.object({ exercises: exercisesInputSchema }).passthrough(),
+	})
+	.passthrough();
+const routineExercisesInputSchema = z
+	.object({
+		routine: z.object({ exercises: exercisesInputSchema }).passthrough(),
+	})
+	.passthrough();
+const mutationInputBoundarySchema = z.union([
+	workoutExercisesInputSchema,
+	routineExercisesInputSchema,
+	z.unknown(),
+]);
+
 export type DataSourceReader = (source: string) => Promise<string>;
 
 async function readStdin(): Promise<string> {
@@ -48,7 +74,9 @@ export async function loadMutationInput<T>(
 	}
 
 	try {
-		return schema.parse(parsed);
+		// Keep the CLI's existing --data input contract at this adapter boundary;
+		// Operations schemas remain transport-neutral and require real arrays.
+		return schema.parse(mutationInputBoundarySchema.parse(parsed));
 	} catch (error) {
 		if (error instanceof z.ZodError)
 			throw new UsageError(schemaDiagnostic(error));

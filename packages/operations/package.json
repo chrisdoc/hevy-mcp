@@ -7,6 +7,10 @@
 		".": {
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
+		},
+		"./schemas": {
+			"types": "./src/schemas.ts",
+			"import": "./src/schemas.ts"
 		}
 	},
 	"scripts": {
@@ -15,6 +19,7 @@
 	},
 	"dependencies": {
 		"@hevy-mcp/hevy-client": "workspace:*",
-		"effect": "^4.0.0-rc.115"
+		"effect": "^4.0.0-rc.115",
+		"zod": "^4.6.5"
 	}
 }
