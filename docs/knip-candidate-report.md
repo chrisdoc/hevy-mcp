@@ -4,6 +4,48 @@ This report captures the first full analysis after narrowing Knip roots for
 issue #1172. It is evidence for follow-up review, not authorization to delete
 code or change package contracts.
 
+## Pre-change baseline
+
+The baseline is the parent of the Knip configuration change,
+`d4a984cdb8aad0ab4090a24f7e4e4de2ec198b09`. It used the broad `.agents`,
+`.github/workers`, config-file, and `scripts/**/*` entry patterns. The lockfile
+pins Knip 6.35.1. At that revision, `pnpm run knip` excluded
+`unlisted,unresolved,exports,types,duplicates` and exited 0 with no findings in
+the remaining `files` and `dependencies` categories.
+
+Running the same pinned Knip version against the parent configuration with all
+issue types enabled produced this fuller baseline:
+
+| Issue type                             | Findings | Baseline detail                                                                                                                                                                                    |
+| -------------------------------------- | -------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unused files                           |        0 | —                                                                                                                                                                                                  |
+| Unused dependencies                    |        0 | —                                                                                                                                                                                                  |
+| Unlisted dependencies                  |        4 | `cloudflare` in `packages/worker/src/worker-observer.ts` and `tests/cloudflare/worker.integration.test.ts`; `effect` in `scripts/measure-token-cost.ts` and `tests/integration/catalog-fixture.ts` |
+| Unused value exports                   |       26 | Visibility candidates; not proof that implementations are dead                                                                                                                                     |
+| Unused exported types                  |       23 | Visibility candidates; not proof that types are safe to remove                                                                                                                                     |
+| Duplicate exports                      |        4 | Two compatibility-alias pairs in three files                                                                                                                                                       |
+| Unlisted binaries / unresolved imports |        0 | —                                                                                                                                                                                                  |
+
+At the baseline, the legacy `pnpm run knip` gate exits 0; the full command
+below exits 1 because these advisory diagnostics are present. Both outcomes
+are expected at that revision.
+
+To reproduce from a checkout with the pinned toolchain and dependencies, use
+that revision's unmodified config:
+
+```sh
+git worktree add --detach ../hevy-mcp-knip-baseline d4a984cdb8aad0ab4090a24f7e4e4de2ec198b09
+cd ../hevy-mcp-knip-baseline
+mise install
+mise exec -- pnpm install --frozen-lockfile
+mise exec -- pnpm run knip
+mise exec -- pnpm exec knip --reporter compact --no-progress
+```
+
+This baseline is not directly comparable to the post-change count: the narrowed
+entry graph changes which files and exports Knip can prove reachable. It does
+show which diagnostics the old default command concealed.
+
 ## Run and outcome
 
 - Tool: Knip 6.35.1, pinned through the repository lockfile.
@@ -55,6 +97,18 @@ this analysis alone. Reflection, source-checkout consumers, and undocumented
 conventions need separate confirmation. The existing table records every
 symbol-level visibility candidate; no symbol or implementation was removed in
 this configuration pass.
+
+## Configuration semantics reviewed
+
+The [Knip v6 configuration reference](https://knip.dev/reference/configuration),
+[entry-file guidance](https://knip.dev/explanations/entry-files), and
+[issue-type reference](https://knip.dev/reference/issue-types) were checked
+against the installed Knip 6.35.1 CLI and lockfile. In particular, `entry`
+defines graph roots; `ignoreFiles` suppresses only unused-file findings;
+`ignoreIssues` is limited to named issue types and paths; and `ignore` would
+suppress every issue type for matching files. The generated-client exclusion
+remains the only broad all-issue file exclusion. The script declaration
+exceptions are now explicit paths rather than a `scripts/**/*.d.mts` glob.
 
 | Source module                                          | Unused value exports                                                                                                                                                                                       |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -117,15 +171,19 @@ this configuration pass.
 
 ## Retained exceptions
 
-- `mise` is an externally installed toolchain manager, not an npm dependency.
-- `cloudflare` is Cloudflare's virtual `cloudflare:workers` / `cloudflare:test`
-  runtime module, scoped to the Worker and root test workspaces.
-- `@earendil-works/pi-coding-agent` provides the Pi host's `ExtensionAPI` type
-  to `.pi/extensions/entire/index.ts`; Pi loads that extension externally.
-- The `duplicates` issue is suppressed only in three files containing deliberate
-  compatibility aliases: `packages/hevy-client/src/fetch.ts`,
-  `packages/hevy-client/src/internal-request-effect.ts`, and
-  `packages/operations/src/workflows.ts`. Other duplicate exports remain errors.
-- Generated Hevy-client files are excluded from analysis. Test fixtures and
-  authored `.d.mts` script companions are excluded only from the unused-file
-  report; other issue types remain analyzable.
+Each exception below has a current consumer, a named owner, and a check to run
+when that consumer or its configuration changes.
+
+| Exception and config path                                                                                                                         | Why it remains                                                                                                                                                                                                                                                                                                                  | Owner                                                            | Continued-use check                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mise` — root `ignoreBinaries` in `knip.json`                                                                                                     | Toolchain manager is installed outside npm and pinned in `mise.toml`; setup and CI continue to invoke it.                                                                                                                                                                                                                       | Repository toolchain maintainers                                 | Review `mise.toml`, `CONTRIBUTING.md`, and the mise setup steps in `.github/workflows/`; `mise exec -- pnpm run check`.                                                                                |
+| `cloudflare` — root and `packages/worker` `ignoreDependencies`                                                                                    | `cloudflare:workers` and `cloudflare:test` are runtime-provided virtual modules, not installable npm packages.                                                                                                                                                                                                                  | Worker and test-harness maintainers                              | `mise exec -- pnpm run test:worker`, `mise exec -- pnpm run test:worker-http`, and `mise exec -- pnpm run check`.                                                                                      |
+| `@earendil-works/pi-coding-agent` — root `ignoreDependencies`                                                                                     | Supplies the host `ExtensionAPI` type imported by `.pi/extensions/entire/index.ts`; Pi loads the extension externally.                                                                                                                                                                                                          | Entire/Pi extension maintainers                                  | `mise exec -- pnpm run check:types`; re-check the host integration if the extension or its type import moves.                                                                                          |
+| `duplicates` — `packages/hevy-client/src/fetch.ts`, `packages/hevy-client/src/internal-request-effect.ts`, `packages/operations/src/workflows.ts` | These files intentionally retain compatibility aliases; no other file is exempted.                                                                                                                                                                                                                                              | Hevy-client and Operations maintainers                           | `mise exec -- pnpm run check` keeps duplicate-export diagnostics enabled outside these paths.                                                                                                          |
+| Generated output — `packages/hevy-client/src/generated/**` in `knip.json`                                                                         | Kubb-generated API files are governed by their source spec and generator, not manual dead-code cleanup.                                                                                                                                                                                                                         | Hevy-client maintainers                                          | `mise exec -- pnpm run check:openapi` and `mise exec -- pnpm run check:generated`.                                                                                                                     |
+| Test assets — `tests/fixtures/**` in `knip.json` `ignoreFiles`                                                                                    | Knip does not infer all file-copy and fixture-directory consumers. This affects unused-file reporting only. Current consumers are `scripts/check-generated-client.test.ts`, `tests/unit/knip-analysis.test.ts`, `tests/unit/package-boundaries.test.ts`, and `packages/node/src/utils/graceful-shutdown.child-process.test.ts`. | Owners of those tests: Hevy-client, repository quality, and Node | `mise exec -- pnpm run test:unit`, plus `mise exec -- pnpm run check:generated`, `mise exec -- pnpm run check:boundaries`, and `mise exec -- pnpm run test:stdio` for their respective fixture groups. |
+| Script declaration sidecars — the nine explicit `scripts/*.d.mts` paths in `knip.json` `ignoreFiles`                                              | Each declaration accompanies a same-name `.mjs` script for TypeScript callers; these are not runtime entry files.                                                                                                                                                                                                               | Maintainers of the paired scripts                                | `mise exec -- pnpm run check:types`; when adding or removing a sidecar, update the explicit list and verify its `.mjs` consumer.                                                                       |
+
+The fixture and declaration exceptions remain deliberately visible in the
+configuration rather than being widened to a whole-tree `ignore`. Revisit each
+row when its listed consumer, owner, or validation lane changes.

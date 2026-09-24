@@ -40,5 +40,16 @@
 	},
 	"ignoreBinaries": ["mise"],
 	"ignore": ["packages/hevy-client/src/generated/**"],
-	"ignoreFiles": ["tests/fixtures/**", "scripts/**/*.d.mts"]
+	"ignoreFiles": [
+		"tests/fixtures/**",
+		"scripts/check-generated-client.d.mts",
+		"scripts/check-package-boundaries.d.mts",
+		"scripts/check-package-changesets.d.mts",
+		"scripts/release-candidate-artifacts.d.mts",
+		"scripts/release-outputs.d.mts",
+		"scripts/resolve-worker-version.d.mts",
+		"scripts/runtime-value-predicates.d.mts",
+		"scripts/server-manifest.d.mts",
+		"scripts/workflow-projections.d.mts"
+	]
 }
