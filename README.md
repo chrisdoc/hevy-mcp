@@ -253,6 +253,12 @@ There are two ways to configure the Hevy MCP server for Google Antigravity (`agy
 
 This utilizes the built-in plugin system:
 
+The plugin reads the repository-root `mcp_config.json` to start the local
+stdio server. That configuration intentionally contains no API key; the server
+inherits `HEVY_API_KEY` from the host environment as described below. This is
+separate from the manual, user-global configuration described below and from
+the repository's `.mcp.json`, which configures hosted HTTP/OAuth.
+
 1. Install the plugin:
 
    ```bash
