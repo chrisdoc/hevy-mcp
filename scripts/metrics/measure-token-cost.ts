@@ -5,9 +5,9 @@ import { Effect } from "effect";
 import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { get_encoding } from "tiktoken";
-import { registerHevyTools } from "../packages/core/src/tools/register.js";
-import { createToolRuntime } from "../packages/core/src/tools/tool-runtime.js";
-import type { ExerciseTemplateCatalog } from "../packages/core/src/utils/exercise-template-catalog.js";
+import { registerHevyTools } from "../../packages/core/src/tools/register.js";
+import { createToolRuntime } from "../../packages/core/src/tools/tool-runtime.js";
+import type { ExerciseTemplateCatalog } from "../../packages/core/src/utils/exercise-template-catalog.js";
 
 export const TOKEN_COST_SCHEMA_VERSION = 3;
 export const TOKEN_ENCODING = "o200k_base";
@@ -105,7 +105,7 @@ const OPTION_TOKENS = new Set([
 export function parseArgs(args: string[]): CliOptions {
 	const options: CliOptions = { help: false, enforceBudget: false };
 
-	for (let index = 0; index < args.length; index += 1) {
+	for (let index = args[0] === "--" ? 1 : 0; index < args.length; index += 1) {
 		const argument = args[index];
 		if (argument === "--help" || argument === "-h") {
 			options.help = true;
@@ -351,7 +351,7 @@ function helpText(): string {
 	return [
 		"Measure the serialized MCP tool-definition token cost.",
 		"",
-		"Usage: npm run measure:tokens -- [options]",
+		"Usage: pnpm run measure:tokens -- [options]",
 		"",
 		"Options:",
 		"  -o, --output <path>   Write schema-versioned JSON results",

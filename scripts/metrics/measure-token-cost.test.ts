@@ -56,6 +56,14 @@ describe("parseArgs", () => {
 		});
 	});
 
+	it("accepts pnpm's argument separator before script options", () => {
+		expect(parseArgs(["--", "--output", "result.json"])).toEqual({
+			help: false,
+			enforceBudget: false,
+			outputPath: "result.json",
+		});
+	});
+
 	it("rejects unknown options and missing values", () => {
 		expect(() => parseArgs(["--wat"])).toThrow("Unknown option: --wat");
 		expect(() => parseArgs(["--output"])).toThrow("Missing value for --output");
@@ -152,7 +160,7 @@ describe("run", () => {
 		await run(["--help"], { log, measureTools });
 
 		expect(log).toHaveBeenCalledWith(
-			expect.stringContaining("Usage: npm run measure:tokens -- [options]"),
+			expect.stringContaining("Usage: pnpm run measure:tokens -- [options]"),
 		);
 		expect(measureTools).not.toHaveBeenCalled();
 	});
