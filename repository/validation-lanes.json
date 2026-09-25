@@ -503,6 +503,54 @@
 			"workflowRuntimes": {
 				"worker": ["node-24"]
 			},
+			"workflowEnvironment": {
+				"unit": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"types": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"check": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"worker-bundle": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"worker-http": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"contract": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"cli": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"worker": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"mocked-mcp": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"repository-control-plane": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"package-exports": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"package-boundaries": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"server-manifest": {
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				}
+			},
 			"integration": "github-actions",
 			"nxTarget": null,
 			"mappingStatus": "external"

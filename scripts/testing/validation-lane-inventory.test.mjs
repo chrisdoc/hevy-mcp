@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	aggregateLaneRuns,
 	findMissingVitestCases,
 	parseVitestList,
 	selectVitestCases,
@@ -31,11 +32,54 @@ describe("validation lane inventory helpers", () => {
 			parseVitestList(
 				"tests/cloudflare/worker.test.ts > Worker > returns a response\n",
 				"/repo",
+				{ json: false },
 			),
 		).toEqual([
 			{
 				file: "tests/cloudflare/worker.test.ts",
 				fullName: "Worker > returns a response",
+			},
+		]);
+	});
+
+	it("rejects malformed JSON listings instead of fabricating test identities", () => {
+		expect(() =>
+			parseVitestList(
+				'[{"file":"/repo/tests/a.test.ts","name":"suite > real"},\ntests/fake.test.ts > fabricated\n',
+				"/repo",
+			),
+		).toThrow(SyntaxError);
+	});
+
+	it("uses explicit lane runtime environment metadata, not aggregate membership", () => {
+		const aggregates = {
+			"pull-request-ci": {
+				lanes: ["unit", "performance"],
+				workflowRuntimes: { unit: ["node-24", "node-26"] },
+				workflowEnvironment: {
+					unit: {
+						"node-24": { HEVY_TEST_REPORT_MODE: "ci" },
+						"node-26": { HEVY_TEST_REPORT_MODE: "ci" },
+					},
+				},
+			},
+		};
+
+		expect(aggregateLaneRuns(aggregates, "unit")).toEqual([
+			{
+				aggregate: "pull-request-ci",
+				workflowRuntimes: ["node-24", "node-26"],
+				workflowEnvironment: {
+					"node-24": { HEVY_TEST_REPORT_MODE: "ci" },
+					"node-26": { HEVY_TEST_REPORT_MODE: "ci" },
+				},
+			},
+		]);
+		expect(aggregateLaneRuns(aggregates, "performance")).toEqual([
+			{
+				aggregate: "pull-request-ci",
+				workflowRuntimes: undefined,
+				workflowEnvironment: {},
 			},
 		]);
 	});

@@ -1,10 +1,7 @@
 import { isAbsolute, relative, sep } from "node:path";
 
-export function parseVitestList(output, rootDirectory) {
-	let entries;
-	try {
-		entries = JSON.parse(output);
-	} catch {
+export function parseVitestList(output, rootDirectory, { json = true } = {}) {
+	if (!json) {
 		return output.split(/\r?\n/).flatMap((line) => {
 			const separator = line.indexOf(" > ");
 			if (separator < 0) return [];
@@ -17,6 +14,7 @@ export function parseVitestList(output, rootDirectory) {
 			return [{ file: file.split(sep).join("/"), fullName }];
 		});
 	}
+	const entries = JSON.parse(output);
 	if (!Array.isArray(entries)) {
 		throw new Error("Vitest test listing must be a JSON array");
 	}
@@ -43,6 +41,24 @@ export function selectVitestCases(selector, cases) {
 				matchesPath(pattern, testCase.file),
 			) ?? false;
 		return included && !excluded;
+	});
+}
+
+export function aggregateLaneRuns(aggregates, laneId) {
+	return Object.entries(aggregates).flatMap(([aggregateId, aggregate]) => {
+		if (!aggregate.lanes.includes(laneId)) return [];
+		const workflowRuntimes =
+			aggregate.workflowRuntimes?.[laneId] ??
+			(aggregate.workflowRuntimes && !Array.isArray(aggregate.workflowRuntimes)
+				? undefined
+				: aggregate.workflowRuntimes);
+		return [
+			{
+				aggregate: aggregateId,
+				workflowRuntimes,
+				workflowEnvironment: aggregate.workflowEnvironment?.[laneId] ?? {},
+			},
+		];
 	});
 }
 

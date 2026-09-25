@@ -4,6 +4,7 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildVitestArgs } from "./vitest-lane-execution.mjs";
 import {
+	aggregateLaneRuns,
 	findMissingVitestCases,
 	parseVitestList,
 	selectVitestCases,
@@ -37,20 +38,6 @@ const workspaces = readdirSync(resolve(root, "packages"), {
 		);
 		return { directory, manifest };
 	});
-const aggregateRuns = Object.entries(registry.aggregates).flatMap(
-	([aggregateId, aggregate]) =>
-		aggregate.lanes.map((laneId) => ({
-			aggregate: aggregateId,
-			workflowRuntimes:
-				aggregate.workflowRuntimes?.[laneId] ??
-				(aggregate.workflowRuntimes &&
-				!Array.isArray(aggregate.workflowRuntimes)
-					? undefined
-					: aggregate.workflowRuntimes),
-			laneId,
-		})),
-);
-
 function safeEnvironment(laneId) {
 	const env = { ...process.env };
 	for (const credentialName of credentialNames) delete env[credentialName];
@@ -62,9 +49,9 @@ function safeEnvironment(laneId) {
 }
 
 function runVitestList(args, cwd, env, { json = true } = {}) {
-	args[0] = "list";
-	if (json) args.push("--json");
-	const result = spawnSync(process.execPath, [vitest, ...args], {
+	const listArgs = ["list", ...args.slice(1)];
+	if (json) listArgs.push("--json");
+	const result = spawnSync(process.execPath, [vitest, ...listArgs], {
 		cwd,
 		env,
 		encoding: "utf8",
@@ -76,7 +63,7 @@ function runVitestList(args, cwd, env, { json = true } = {}) {
 			`Vitest list failed in ${relative(root, cwd) || "."}: ${result.stderr || result.stdout}`,
 		);
 	}
-	return parseVitestList(result.stdout, root);
+	return parseVitestList(result.stdout, root, { json });
 }
 
 function requireCases(laneId, cases) {
@@ -234,6 +221,7 @@ function describeSetup(lane) {
 
 const lanes = registry.lanes.map((lane) => {
 	const discovery = discoverLane(lane);
+	const laneAggregateRuns = aggregateLaneRuns(registry.aggregates, lane.id);
 	return {
 		id: lane.id,
 		alias: lane.alias ?? null,
@@ -251,12 +239,14 @@ const lanes = registry.lanes.map((lane) => {
 		artifacts: lane.artifacts,
 		selector: lane.selector,
 		setup: describeSetup(lane),
-		aggregateRuns: aggregateRuns.filter((run) => run.laneId === lane.id),
-		workflowEnvironment: aggregateRuns.some(
-			(run) => run.laneId === lane.id && run.aggregate === "pull-request-ci",
-		)
-			? { HEVY_TEST_REPORT_MODE: "ci" }
-			: {},
+		aggregateRuns: laneAggregateRuns,
+		workflowEnvironment: laneAggregateRuns.flatMap((run) =>
+			Object.entries(run.workflowEnvironment).map(([runtime, values]) => ({
+				aggregate: run.aggregate,
+				runtime,
+				values,
+			})),
+		),
 		runnerEnvironment: lane.id === "unit" ? { HEVY_UNIT_LANE: "1" } : {},
 		discovery,
 	};
@@ -283,8 +273,8 @@ if (format === "json") {
 		"",
 		"## Lane inventory",
 		"",
-		"| Lane | Aggregate | Execution runtime matrix | CI runner override | Discovery | Cases / files | Credentials | Artifacts |",
-		"| --- | --- | --- | --- | --- | ---: | --- | --- |",
+		"| Lane | Aggregate | Execution runtime matrix | Workflow runtime override | CI environment override | Discovery | Cases / files | Credentials | Artifacts |",
+		"| --- | --- | --- | --- | --- | --- | ---: | --- | --- |",
 	];
 	for (const lane of lanes) {
 		const runs =
@@ -301,6 +291,14 @@ if (format === "json") {
 				(runtime, index, all) => index === 0 || runtime !== all[index - 1],
 			)
 			.join(", ");
+		const workflowEnvironment = lane.workflowEnvironment
+			.map(({ aggregate, runtime, values }) => {
+				const variables = Object.entries(values)
+					.map(([name, value]) => `${name}=${value}`)
+					.join(", ");
+				return `${aggregate} ${runtime}: ${variables}`;
+			})
+			.join("<br>");
 		const discovery = lane.discovery.status;
 		const count =
 			lane.discovery.status === "enumerated"
@@ -309,14 +307,14 @@ if (format === "json") {
 					? lane.discovery.files.length
 					: "—";
 		lines.push(
-			`| \`${lane.id}\` | ${runs} | ${runtimes} | ${workflowRuntimes || "—"} | ${discovery} | ${count} | ${lane.credentials.join(", ") || "—"} | ${lane.artifacts.join(", ") || "—"} |`,
+			`| \`${lane.id}\` | ${runs} | ${runtimes} | ${workflowRuntimes || "—"} | ${workflowEnvironment || "—"} | ${discovery} | ${count} | ${lane.credentials.join(", ") || "—"} | ${lane.artifacts.join(", ") || "—"} |`,
 		);
 	}
 	lines.push(
 		"",
 		"## Setup, environment, and interpretation",
 		"",
-		"Root Vitest lanes use `vitest.config.ts`, including `tests/setup/cloudflare-runtime.ts` and the `cloudflare:workers` shim. The Workerd lane uses `vitest.workers.config.ts`. The CLI lane runs `vitest run` from its workspace. Unit sets `HEVY_UNIT_LANE=1`; CI also sets `HEVY_TEST_REPORT_MODE=ci`, which enables unit JUnit/coverage and mocked coverage output on Node 24. Artifact IDs are copied from the lane registry; output paths and task dependencies are owned by `project.json` and the lane runner.",
+		"Root Vitest lanes use `vitest.config.ts`, including `tests/setup/cloudflare-runtime.ts` and the `cloudflare:workers` shim. The Workerd lane uses `vitest.workers.config.ts`. The CLI lane runs `vitest run` from its workspace. Unit sets `HEVY_UNIT_LANE=1`; explicit per-lane, per-runtime `workflowEnvironment` metadata records workflow overrides such as `HEVY_TEST_REPORT_MODE=ci`. Artifact IDs are copied from the lane registry; output paths and task dependencies are owned by `project.json` and the lane runner.",
 		"",
 		`Test names were registered on the current Node version shown above. Runtime matrices are configured coverage, not an assertion that this inventory command executed Node 26 or Workerd tests. Vitest loads test modules to register exact names, but does not execute test bodies or report their pass/skip state. Unit lists ${unitLane?.discovery.cases.length ?? 0} identities under HEVY_UNIT_LANE=1 and separately records ${unitLane?.discovery.skippedCases?.length ?? 0} identities only listed when that flag is unset. Credential-gated lanes are not loaded and receive no credentials. Non-Vitest checks are recorded at lane/file identity only.`,
 		"",
@@ -335,7 +333,7 @@ if (format === "json") {
 	if (overlapReport.pairs.length === 0) lines.push("| None | 0 |\n");
 	lines.push(
 		"",
-		"Credential-gated integration lanes are intentionally not discovered. Discovery may require the same built outputs as the lane. For the complete test identities, lane selectors, runtime/setup/artifact metadata, and exact overlap cases, run `mise exec -- pnpm run report:test-lanes -- --format=json`.",
+		"Credential-gated integration lanes are intentionally not discovered. Discovery may require the same built outputs as the lane. For the complete test identities, lane selectors, runtime/setup/artifact metadata, and exact overlap cases, run `mise exec -- pnpm --silent run report:test-lanes -- --format=json`.",
 		"",
 	);
 	process.stdout.write(lines.join("\n"));

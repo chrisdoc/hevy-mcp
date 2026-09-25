@@ -58,7 +58,7 @@
 		"test:nightly": "mise exec -- node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
 		"test:performance": "mise exec -- npx nx run repository:test:performance",
 		"test:pr": "nx run repository:test:pr",
-		"report:test-lanes": "mise exec -- pnpm run build && mise exec -- node scripts/testing/collect-validation-lane-inventory.mjs",
+		"report:test-lanes": "mise exec -- pnpm run build 1>&2 && mise exec -- node scripts/testing/collect-validation-lane-inventory.mjs",
 		"openapi": "node ./scripts/openapi-spec.js",
 		"check:openapi": "node ./scripts/check-openapi-spec.js",
 		"build": "pnpm --filter hevy-mcp run build",
