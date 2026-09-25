@@ -2,6 +2,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadControlPlane, repositoryRoot } from "./control-plane-models.mjs";
 import {
+	hasValidVitestLaneAlias,
+	hasValidVitestLaneNxCommands,
 	hasVitestLaneRunner,
 	isVitestSelector,
 } from "./vitest-lane-execution.mjs";
@@ -863,18 +865,24 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 		}
 		if (lane.mappingStatus === "mapped" && isVitestSelector(lane.selector)) {
 			const target = project.targets?.[lane.nxTarget] || {};
-			const commands = [
-				packageJson.scripts[lane.alias],
+			const aliasCommand = packageJson.scripts[lane.alias];
+			const aliasUsesLane = hasVitestLaneRunner(lane, [aliasCommand]);
+			assert(
+				hasValidVitestLaneAlias(lane, aliasCommand),
+				lane.id +
+					" alias must run its registry lane or delegate to its Nx target",
+			);
+			const targetCommands = [
 				target.options?.command,
 				...(target.options?.commands || []),
 				target.metadata?.scriptContent,
 				target.metadata?.runCommand,
 			].filter(isString);
 			assert(
-				hasVitestLaneRunner(lane, commands),
+				hasValidVitestLaneNxCommands(lane, targetCommands, aliasUsesLane),
 				lane.id +
-					" selector must run through scripts/run-vitest-lane.mjs " +
-					lane.id,
+					" Nx commands must run its registry lane or delegate to " +
+					lane.alias,
 			);
 		}
 		for (const runtime of lane.runtimes)

@@ -299,9 +299,9 @@ these names rather than duplicating selectors:
 ```json
 {
 	"test:unit": "node scripts/run-vitest-lane.mjs unit",
-	"test:mcp": "node scripts/run-vitest-lane.mjs mocked",
-	"test:contract": "vitest run <current contract baseline>",
-	"test:stdio": "vitest run <current stdio/process baseline>",
+	"test:mcp": "node scripts/run-vitest-lane.mjs mocked-mcp",
+	"test:contract": "node scripts/run-vitest-lane.mjs contract",
+	"test:stdio": "node scripts/run-vitest-lane.mjs stdio",
 	"test:pack": "nx run repository:test:pack",
 	"test:live": "mise exec -- node scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",

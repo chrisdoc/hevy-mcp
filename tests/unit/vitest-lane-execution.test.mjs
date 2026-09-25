@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildVitestArgs,
+	commandInvokesPackageScript,
 	hasVitestLaneRunner,
+	hasValidVitestLaneAlias,
+	hasValidVitestLaneNxCommands,
 } from "../../scripts/vitest-lane-execution.mjs";
 
 describe("Vitest lane execution", () => {
@@ -28,7 +31,7 @@ describe("Vitest lane execution", () => {
 				kind: "vitest",
 				include: ["tests/integration/mocked/**"],
 			}),
-		).toEqual(["run", "tests/integration/mocked"]);
+		).toEqual(["run", "tests/integration/mocked/"]);
 	});
 
 	it("uses the configured Vitest project for Worker selectors", () => {
@@ -57,5 +60,59 @@ describe("Vitest lane execution", () => {
 				"mise exec -- vitest run tests/contract/runtime.test.ts",
 			]),
 		).toBe(false);
+		expect(
+			hasVitestLaneRunner(lane, [
+				"mise exec -- node ./packages/scripts/run-vitest-lane.mjs contract",
+			]),
+		).toBe(true);
+		expect(
+			hasVitestLaneRunner(lane, [
+				"node scripts/run-vitest-lane.mjs contract",
+				"mise exec -- vitest run tests/contract/runtime.test.ts",
+			]),
+		).toBe(false);
+	});
+
+	it("validates the alias and Nx execution routes independently", () => {
+		const lane = {
+			alias: "test:contract",
+			id: "contract",
+			nxTarget: "test:contract",
+			selector: { kind: "vitest" },
+		};
+		const alias = "mise exec -- node scripts/run-vitest-lane.mjs contract";
+		expect(hasValidVitestLaneAlias(lane, alias)).toBe(true);
+		expect(
+			hasValidVitestLaneNxCommands(lane, ["pnpm run test:contract"], true),
+		).toBe(true);
+		expect(
+			hasValidVitestLaneNxCommands(
+				lane,
+				["node scripts/run-vitest-lane.mjs stdio"],
+				true,
+			),
+		).toBe(false);
+		expect(
+			hasValidVitestLaneNxCommands(
+				lane,
+				[
+					"node scripts/run-vitest-lane.mjs contract",
+					"vitest run tests/contract/runtime.test.ts",
+				],
+				true,
+			),
+		).toBe(false);
+		expect(
+			hasValidVitestLaneAlias(
+				lane,
+				"mise exec -- nx run repository:test:contract",
+			),
+		).toBe(true);
+		expect(
+			commandInvokesPackageScript(
+				"mise exec -- pnpm run test:contract",
+				"test:contract",
+			),
+		).toBe(true);
 	});
 });
