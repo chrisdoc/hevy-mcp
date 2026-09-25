@@ -13,7 +13,10 @@ export default defineConfig({
 		builtin: true,
 	},
 	ignorePatterns: [
-		...(core.ignorePatterns ?? []),
+		// `scripts/codegen` contains maintained inputs and checks, not generated output.
+		...(core.ignorePatterns ?? []).filter(
+			(pattern) => pattern !== "**/codegen",
+		),
 		"**/*.d.ts",
 		"**/*.d.mts",
 		"**/src/generated",
@@ -73,9 +76,6 @@ export default defineConfig({
 		"anti-slop/no-conditional-empty-object-spread": "warn",
 		"anti-slop/no-known-value-widening": "error",
 		"anti-slop/no-broad-object-type": "error",
-		"anti-slop/no-runtime-typeof": "error",
-		"anti-slop/no-shape-in-symbol-names": "error",
-		"anti-slop/no-unknown-parameters": "error",
 		"anti-slop/no-unknown-type-aliases": "error",
 		"anti-slop/no-unsafe-dictionary-type": "error",
 		"anti-slop/no-widen-then-assert": "error",

@@ -1,4 +1,3 @@
-import { createExecutionErrorProjection } from "@hevy-mcp/core";
 import {
 	ApiError,
 	HevyHttpError,
@@ -6,6 +5,7 @@ import {
 	NetworkError,
 	NotFoundError,
 	RateLimitError,
+	SAFE_OBSERVATION_CODES,
 	ValidationError,
 } from "@hevy-mcp/hevy-client";
 import {
@@ -40,6 +40,11 @@ type TaggedClientError =
 	| NotFoundError
 	| RateLimitError
 	| ValidationError;
+
+const SAFE_ERROR_CODES = new Set([
+	...SAFE_OBSERVATION_CODES,
+	"HEVY_INVALID_ENDPOINT",
+]);
 
 type OperationDomainError =
 	| EmptyMeasurementUpdateError
@@ -76,18 +81,54 @@ function isOperationDomainError(
 	);
 }
 
-function executionFields(
-	error: Error | string,
-): Omit<CliDiagnostic, "code" | "message"> {
-	if (!isHevyHttpError(error) && !isTaggedClientError(error)) return {};
-	const {
-		status: _status,
-		code: errorCode,
-		...execution
-	} = createExecutionErrorProjection(error);
+function projectExecutionFields(fields: {
+	outcome?: CliDiagnostic["outcome"];
+	phase?: CliDiagnostic["phase"];
+	operationSafety?: CliDiagnostic["operation_safety"];
+	commitState?: CliDiagnostic["commit_state"];
+	safeToRetry?: CliDiagnostic["safe_to_retry"];
+	code?: string;
+}): Omit<CliDiagnostic, "code" | "message"> {
+	const execution = {
+		outcome: fields.outcome ?? "terminal_failure",
+		phase: fields.phase ?? "before-dispatch",
+		operation_safety: fields.operationSafety ?? "read",
+		commit_state: fields.commitState ?? "not_sent",
+		safe_to_retry: fields.safeToRetry ?? false,
+	};
+	const errorCode =
+		fields.code !== undefined && SAFE_ERROR_CODES.has(fields.code)
+			? fields.code
+			: undefined;
 	return errorCode === undefined
 		? execution
 		: { ...execution, error_code: errorCode };
+}
+
+function executionFields(
+	error: Error | string,
+): Omit<CliDiagnostic, "code" | "message"> {
+	if (isHevyHttpError(error)) {
+		return projectExecutionFields({
+			outcome: error.outcome,
+			phase: error.phase_name,
+			operationSafety: error.operation_safety,
+			commitState: error.commit_state,
+			safeToRetry: error.safe_to_retry,
+			code: error.code,
+		});
+	}
+	if (isTaggedClientError(error)) {
+		return projectExecutionFields({
+			outcome: error.outcome,
+			phase: error.phase,
+			operationSafety: error.operationSafety,
+			commitState: error.commitState,
+			safeToRetry: error.safeToRetry,
+			code: error.code,
+		});
+	}
+	return {};
 }
 
 export function diagnostic(error: Error | string): CliDiagnostic {

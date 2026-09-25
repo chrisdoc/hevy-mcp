@@ -1,5 +1,13 @@
 # New Testing Strategy for hevy-mcp
 
+> [!NOTE]
+> Historical design proposal and audit snapshot from July 2026. The measured
+> baselines, lane names, ticket status, and recommendations below are not the
+> current procedure. For active commands and lane ownership, see
+> [test-lanes.md](./test-lanes.md); the canonical machine registry is
+> [`repository/validation-lanes.json`](../repository/validation-lanes.json).
+> [CONTRIBUTING.md](../CONTRIBUTING.md) owns setup and required validation.
+
 ## Executive summary
 
 `hevy-mcp` already has substantial testing foundations: a fast Vitest suite,
@@ -290,12 +298,12 @@ these names rather than duplicating selectors:
 
 ```json
 {
-	"test:unit": "node scripts/run-vitest-lane.mjs unit",
-	"test:mcp": "node scripts/run-vitest-lane.mjs mocked",
-	"test:contract": "vitest run <current contract baseline>",
-	"test:stdio": "vitest run <current stdio/process baseline>",
+	"test:unit": "node scripts/testing/run-vitest-lane.mjs unit",
+	"test:mcp": "node scripts/testing/run-vitest-lane.mjs mocked-mcp",
+	"test:contract": "node scripts/testing/run-vitest-lane.mjs contract",
+	"test:stdio": "node scripts/testing/run-vitest-lane.mjs stdio",
 	"test:pack": "nx run repository:test:pack",
-	"test:live": "mise exec -- node scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
+	"test:live": "mise exec -- node scripts/testing/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
 	"test:performance": "nx run repository:test:performance",
 	"test:pr": "nx run repository:test:pr"
@@ -368,7 +376,7 @@ achievable without excluding difficult production code.
 Risk-heavy modules should have stronger behavioral expectations than the global
 percentage: `packages/node/src/index.ts`, `packages/node/src/cli.ts`,
 `packages/hevy-client/src/hevy-client-kubb.ts`,
-`packages/core/src/utils/error-handler.ts`,
+`packages/core/src/diagnostics/error-handler.ts`,
 `packages/core/src/utils/output-schemas.ts`,
 `packages/core/src/utils/formatters.ts`,
 `packages/core/src/utils/response-contracts.ts`,

@@ -1,3 +1,5 @@
+export type { HevyExecutionOptions } from "./execution.js";
+
 export type {
 	BodyMeasurement,
 	CreateCustomExerciseRequestBody,

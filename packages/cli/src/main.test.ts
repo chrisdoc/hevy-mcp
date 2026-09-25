@@ -284,7 +284,7 @@ describe("CLI process contract", () => {
 		});
 	});
 
-	it("builds operations from the execution-bound client proxy", async () => {
+	it("builds operations from the raw client and forwards execution options", async () => {
 		const io = streams();
 		const signal = new AbortController().signal;
 		const deadline = Date.now() + 1_000;
@@ -306,9 +306,7 @@ describe("CLI process contract", () => {
 		expect(code).toBe(0);
 		expect(spy).toHaveBeenCalledTimes(1);
 		const [operationsClient] = spy.mock.calls[0];
-		expect(operationsClient).not.toBe(rawClient);
-		getWorkouts.mockClear();
-		await operationsClient.getWorkouts({ page: 1, pageSize: 5 });
+		expect(operationsClient).toBe(rawClient);
 		expect(getWorkouts).toHaveBeenCalledWith(
 			{ page: 1, pageSize: 5 },
 			expect.objectContaining({ signal, deadline }),

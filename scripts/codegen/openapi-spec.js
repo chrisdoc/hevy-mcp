@@ -1,0 +1,416 @@
+#!/usr/bin/env node
+/**
+ * OpenAPI Spec Script
+ *
+ * Fetches the OpenAPI spec from Hevy's API and applies fixes for known issues.
+ * Run with: pnpm run openapi
+ */
+import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import pkg from "abstract-syntax-tree";
+import {
+	isNumber,
+	isObjectLike,
+	isString,
+} from "../runtime-value-predicates.mjs";
+
+const SPEC_FILE = "openapi-spec.json";
+const HEVY_SWAGGER_URL = "https://api.hevyapp.com/docs/swagger-ui-init.js";
+
+/**
+ * Fix known OpenAPI spec issues from the upstream Hevy API.
+ */
+export function fixOpenAPISpec(spec) {
+	const fixed = JSON.parse(JSON.stringify(spec));
+
+	console.log("Applying fixes...\n");
+
+	fixInvalidRequiredProperties(fixed.components?.schemas || {});
+	fixInvalidEnumTypes(fixed.components?.schemas || {});
+	fixRefSiblings(fixed.components?.schemas || {});
+	fixMissingParameterSchemas(fixed.paths || {});
+	fixInvalidExamples(fixed.components?.schemas || {});
+	fixRoutineRestSecondsType(fixed.components?.schemas || {});
+	fixOptionalRoutineCreationResponse(fixed.paths || {});
+
+	if (!fixed.servers || fixed.servers.length === 0) {
+		fixed.servers = [
+			{ url: "https://api.hevyapp.com", description: "Hevy API" },
+		];
+		console.log("  Fixed: Added missing servers array");
+	}
+
+	fixMissingGlobalTags(fixed);
+	generateOperationIds(fixed.paths || {});
+
+	return fixed;
+}
+
+/**
+ * Keep the repository-owned Routine read contract aligned with the API.
+ * Upstream currently describes this field inconsistently as a string even
+ * though responses contain an integer and the write schemas already use one.
+ */
+/**
+ * Hevy may acknowledge routine creation with HTTP 201 and no response body.
+ * Keep that live behavior in the generated client contract while retaining the
+ * authoritative Routine body when the API returns one.
+ */
+function fixOptionalRoutineCreationResponse(paths) {
+	const response = paths["/v1/routines"]?.post?.responses?.["201"];
+	const schema = response?.content?.["application/json"]?.schema;
+	if (!schema || schema.oneOf) return;
+	response.content["application/json"].schema = {
+		oneOf: [
+			schema,
+			{
+				type: "object",
+				properties: {},
+				additionalProperties: false,
+			},
+		],
+	};
+	console.log(
+		"  Fixed: POST /v1/routines 201 - allowed an empty successful response body",
+	);
+}
+
+function fixRoutineRestSecondsType(schemas) {
+	const restSeconds =
+		schemas.Routine?.properties?.exercises?.items?.properties?.rest_seconds;
+	if (!restSeconds) return;
+
+	const previousType = restSeconds.type;
+	const previousExample = restSeconds.example;
+	restSeconds.type = "integer";
+
+	if (isString(restSeconds.example) && /^-?\d+$/.test(restSeconds.example)) {
+		restSeconds.example = Number(restSeconds.example);
+	} else if (
+		restSeconds.example !== undefined &&
+		(!Number.isInteger(restSeconds.example) || !isNumber(restSeconds.example))
+	) {
+		delete restSeconds.example;
+	}
+
+	if (
+		previousType !== restSeconds.type ||
+		previousExample !== restSeconds.example
+	) {
+		console.log(
+			"  Fixed: schemas.Routine...rest_seconds - enforced integer type and numeric example",
+		);
+	}
+}
+
+export function validateOpenAPISpec(spec) {
+	const restSeconds =
+		spec.components?.schemas?.Routine?.properties?.exercises?.items?.properties
+			?.rest_seconds;
+	if (!restSeconds) {
+		throw new Error(
+			"Routine.exercises[].rest_seconds field is missing from the OpenAPI spec",
+		);
+	}
+	const routineCreateSchema =
+		spec.paths?.["/v1/routines"]?.post?.responses?.["201"]?.content?.[
+			"application/json"
+		]?.schema;
+	if (
+		routineCreateSchema &&
+		(!Array.isArray(routineCreateSchema.oneOf) ||
+			!routineCreateSchema.oneOf.some(
+				(entry) =>
+					entry?.type === "object" && entry?.additionalProperties === false,
+			))
+	) {
+		throw new Error(
+			"POST /v1/routines 201 must allow an empty successful response body",
+		);
+	}
+	if (restSeconds.type !== "integer") {
+		throw new Error(
+			"Routine.exercises[].rest_seconds must remain an OpenAPI integer",
+		);
+	}
+	if (
+		restSeconds.example !== undefined &&
+		(!isNumber(restSeconds.example) || !Number.isInteger(restSeconds.example))
+	) {
+		throw new Error(
+			"Routine.exercises[].rest_seconds.example must be an integer when present",
+		);
+	}
+}
+
+/**
+ * Fix schemas with "required": true on properties.
+ */
+function fixInvalidRequiredProperties(schemas, path = "schemas") {
+	for (const [schemaName, schema] of Object.entries(schemas)) {
+		if (schema && isObjectLike(schema)) {
+			fixSchemaRequired(schema, `${path}.${schemaName}`);
+		}
+	}
+}
+
+function fixSchemaRequired(schema, path = "") {
+	if (!isObjectLike(schema)) return;
+
+	if (schema.properties && isObjectLike(schema.properties)) {
+		const requiredProps = [];
+
+		for (const [propName, propSchema] of Object.entries(schema.properties)) {
+			if (propSchema && isObjectLike(propSchema)) {
+				if (propSchema.required === true) {
+					requiredProps.push(propName);
+					delete propSchema.required;
+					console.log(
+						`  Fixed: ${path}.properties.${propName} - moved "required: true" to schema level`,
+					);
+				}
+				fixSchemaRequired(propSchema, `${path}.properties.${propName}`);
+			}
+		}
+
+		if (requiredProps.length > 0) {
+			if (!schema.required) schema.required = [];
+			schema.required.push(...requiredProps);
+			schema.required = [...new Set(schema.required)];
+		}
+	}
+
+	if (schema.items) fixSchemaRequired(schema.items, `${path}.items`);
+
+	for (const keyword of ["allOf", "oneOf", "anyOf"]) {
+		if (Array.isArray(schema[keyword])) {
+			schema[keyword].forEach((subSchema, i) => {
+				fixSchemaRequired(subSchema, `${path}.${keyword}[${i}]`);
+			});
+		}
+	}
+
+	if (
+		schema.additionalProperties &&
+		isObjectLike(schema.additionalProperties)
+	) {
+		fixSchemaRequired(
+			schema.additionalProperties,
+			`${path}.additionalProperties`,
+		);
+	}
+}
+
+/**
+ * Fix invalid "type": "enum" schemas.
+ */
+function fixInvalidEnumTypes(schemas) {
+	for (const [schemaName, schema] of Object.entries(schemas)) {
+		if (schema && schema.type === "enum" && Array.isArray(schema.enum)) {
+			const firstValue = schema.enum[0];
+			const inferredType = isNumber(firstValue) ? "number" : "string";
+			schema.type = inferredType;
+			console.log(
+				`  Fixed: schemas.${schemaName} - changed "type": "enum" to "type": "${inferredType}"`,
+			);
+		}
+	}
+}
+
+/**
+ * Fix $ref siblings - wrap in allOf.
+ */
+function fixRefSiblings(schemas) {
+	for (const [schemaName, schema] of Object.entries(schemas)) {
+		if (schema && isObjectLike(schema)) {
+			fixRefSiblingsRecursive(schema, `schemas.${schemaName}`);
+		}
+	}
+}
+
+function fixRefSiblingsRecursive(obj, path = "") {
+	if (!isObjectLike(obj)) return;
+
+	if (obj.properties) {
+		for (const [propName, propSchema] of Object.entries(obj.properties)) {
+			if (propSchema && isObjectLike(propSchema)) {
+				if (propSchema.$ref && Object.keys(propSchema).length > 1) {
+					const ref = propSchema.$ref;
+					const otherProps = Object.assign({}, propSchema);
+					delete otherProps.$ref;
+					obj.properties[propName] = { allOf: [{ $ref: ref }, otherProps] };
+					console.log(
+						`  Fixed: ${path}.properties.${propName} - wrapped $ref with siblings in allOf`,
+					);
+				} else {
+					fixRefSiblingsRecursive(propSchema, `${path}.properties.${propName}`);
+				}
+			}
+		}
+	}
+
+	if (obj.items) fixRefSiblingsRecursive(obj.items, `${path}.items`);
+
+	for (const keyword of ["allOf", "oneOf", "anyOf"]) {
+		if (Array.isArray(obj[keyword])) {
+			obj[keyword].forEach((subSchema, i) => {
+				fixRefSiblingsRecursive(subSchema, `${path}.${keyword}[${i}]`);
+			});
+		}
+	}
+}
+
+/**
+ * Fix missing schema on parameters.
+ */
+function fixMissingParameterSchemas(paths) {
+	for (const [pathName, pathItem] of Object.entries(paths)) {
+		for (const method of ["get", "post", "put", "patch", "delete"]) {
+			const operation = pathItem[method];
+			if (!operation?.parameters) continue;
+
+			for (const param of operation.parameters) {
+				if (!param.schema && !param.content) {
+					if (param.in === "header") {
+						param.schema = { type: "string", format: "uuid" };
+					} else {
+						param.schema = { type: "string" };
+					}
+					console.log(
+						`  Fixed: paths.${pathName}.${method}.parameters - added missing schema to "${param.name}" ${param.in} param`,
+					);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Fix invalid examples in schemas.
+ */
+function fixInvalidExamples(schemas) {
+	const postWorkoutsSet = schemas.PostWorkoutsRequestSet;
+	if (postWorkoutsSet?.properties?.rpe?.example === null) {
+		delete postWorkoutsSet.properties.rpe.example;
+		console.log(
+			"  Fixed: schemas.PostWorkoutsRequestSet.properties.rpe - removed invalid null example",
+		);
+	}
+}
+
+/**
+ * Add missing global tags from operations.
+ */
+function fixMissingGlobalTags(spec) {
+	const usedTags = new Set();
+
+	for (const pathItem of Object.values(spec.paths || {})) {
+		for (const method of ["get", "post", "put", "patch", "delete"]) {
+			const operation = pathItem[method];
+			if (operation?.tags) {
+				for (const tag of operation.tags) usedTags.add(tag);
+			}
+		}
+	}
+
+	if (!spec.tags) spec.tags = [];
+	const existingTags = new Set(spec.tags.map((t) => t.name));
+
+	for (const tag of usedTags) {
+		if (!isString(tag)) {
+			console.warn(
+				`  Warning: Skipping invalid non-string tag: ${JSON.stringify(tag)}`,
+			);
+			continue;
+		}
+		if (!existingTags.has(tag)) {
+			spec.tags.push({ name: tag, description: `${tag} operations` });
+			console.log(`  Fixed: Added missing global tag "${tag}"`);
+		}
+	}
+}
+
+/**
+ * Generate operationIds matching Kubb's expected format.
+ * e.g., GET /v1/workouts/{workoutId} -> getV1WorkoutsWorkoutid
+ */
+function generateOperationIds(paths) {
+	for (const [pathName, pathItem] of Object.entries(paths)) {
+		for (const method of ["get", "post", "put", "patch", "delete"]) {
+			const operation = pathItem[method];
+			if (!operation || operation.operationId) continue;
+
+			const pathParts = pathName
+				.replace(/^\//, "")
+				.replace(/\{(\w+)\}/g, (_, param) => param.toLowerCase())
+				.split("/")
+				.map((part, i) => {
+					const camelCase = part.replace(/_(\w)/g, (_, c) => c.toUpperCase());
+					return i === 0
+						? camelCase
+						: camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+				})
+				.join("");
+
+			operation.operationId =
+				method + pathParts.charAt(0).toUpperCase() + pathParts.slice(1);
+			console.log(
+				`  Fixed: paths.${pathName}.${method} - generated operationId "${operation.operationId}"`,
+			);
+		}
+	}
+}
+
+/**
+ * Fetch the OpenAPI spec from Hevy's swagger-ui-init.js file
+ */
+async function fetchSpecFromHevy() {
+	console.log("Fetching OpenAPI spec from Hevy API...\n");
+
+	const response = await fetch(HEVY_SWAGGER_URL);
+	if (!response.ok) {
+		throw new Error(`HTTP error! Status: ${response.status}`);
+	}
+
+	const jsContent = await response.text();
+	const ast = pkg.parse(jsContent);
+
+	const optionsNode = pkg.find(ast, 'VariableDeclarator[id.name="options"]')[0];
+	if (!optionsNode?.init?.properties) {
+		throw new Error("options variable not found in swagger-ui-init.js");
+	}
+
+	const swaggerDocProperty = optionsNode.init.properties.find(
+		(prop) => prop.key.value === "swaggerDoc",
+	);
+	if (!swaggerDocProperty) {
+		throw new Error("swaggerDoc property not found in options");
+	}
+
+	const swaggerDocCode = pkg.generate(swaggerDocProperty.value, {
+		tabs: true,
+	});
+	return JSON.parse(swaggerDocCode);
+}
+
+async function main() {
+	try {
+		const spec = await fetchSpecFromHevy();
+		const fixedSpec = fixOpenAPISpec(spec);
+		validateOpenAPISpec(fixedSpec);
+
+		writeFileSync(SPEC_FILE, JSON.stringify(fixedSpec, null, "\t"));
+		console.log(`\n✓ OpenAPI spec saved to ${SPEC_FILE}`);
+	} catch (error) {
+		console.error("Error:", error.message);
+		process.exit(1);
+	}
+}
+
+if (
+	process.argv[1] &&
+	fileURLToPath(import.meta.url) === resolve(process.argv[1])
+) {
+	void main();
+}

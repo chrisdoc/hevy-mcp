@@ -2,7 +2,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { packageChangesetCoverage } from "./check-package-changesets.mjs";
+import {
+	explicitChangesetBaseRef,
+	packageChangesetCoverage,
+	resolveChangesetBaseRef,
+} from "./check-package-changesets.mjs";
 
 const fixtureDirectories = new Set<string>();
 const repositoryRoot = resolve(import.meta.dirname, "..");
@@ -107,6 +111,52 @@ function runCheck(
 		readManifestFromBase: fixture.readManifestFromBase,
 	});
 }
+
+describe("Changeset comparison base", () => {
+	it("requires a value after --since", () => {
+		expect(() =>
+			explicitChangesetBaseRef(["node", "script", "--since"]),
+		).toThrow("Missing value for --since");
+	});
+
+	it("does not treat a following option as the --since value", () => {
+		expect(() =>
+			explicitChangesetBaseRef(["node", "script", "--since", "--dry-run"]),
+		).toThrow("Missing value for --since");
+	});
+
+	it("preserves an explicit comparison base", () => {
+		expect(
+			explicitChangesetBaseRef([
+				"node",
+				"script",
+				"--since",
+				"origin/review/parent-layer",
+			]),
+		).toBe("origin/review/parent-layer");
+	});
+
+	it("defaults to origin/main for standalone local validation", () => {
+		expect(resolveChangesetBaseRef({})).toBe("origin/main");
+	});
+
+	it("uses an explicit local or remote base ref unchanged", () => {
+		expect(
+			resolveChangesetBaseRef({ changesetBaseRef: "review/parent-layer" }),
+		).toBe("review/parent-layer");
+		expect(
+			resolveChangesetBaseRef({
+				changesetBaseRef: "origin/review/parent-layer",
+			}),
+		).toBe("origin/review/parent-layer");
+	});
+
+	it("uses the GitHub PR target branch when no explicit base is configured", () => {
+		expect(
+			resolveChangesetBaseRef({ githubBaseRef: "review/parent-layer" }),
+		).toBe("origin/review/parent-layer");
+	});
+});
 
 describe("package changeset coverage", () => {
 	it("does not let a base-branch changeset cover a PR package change", async () => {
@@ -366,9 +416,7 @@ describe("package changeset coverage", () => {
 				changedFiles: ["packages/core/src/index.js"],
 				changesetDiffLines: ["A\t.changeset/new.md"],
 			}),
-		).rejects.toThrow(
-			/@hevy-mcp\/worker[\s\S]*@chrisdoc\/hevy-cli|@chrisdoc\/hevy-cli[\s\S]*@hevy-mcp\/worker/,
-		);
+		).rejects.toThrow("@hevy-mcp/core -> missing @hevy-mcp/worker");
 	});
 
 	it("accepts the complete core release cascade", async () => {
@@ -385,7 +433,6 @@ describe("package changeset coverage", () => {
 			"@hevy-mcp/core",
 			"hevy-mcp",
 			"@hevy-mcp/worker",
-			"@chrisdoc/hevy-cli",
 		]);
 
 		await expect(
@@ -394,6 +441,31 @@ describe("package changeset coverage", () => {
 				changesetDiffLines: ["A\t.changeset/new.md"],
 			}),
 		).resolves.toEqual({ changedPackageCount: 1 });
+	});
+
+	it("requires the CLI for an Operations release", async () => {
+		const fixture = await createFixture({
+			packageName: "@hevy-mcp/operations",
+			packagePath: "packages/operations",
+		});
+		await writeFixtureFile(
+			fixture.root,
+			"packages/operations/src/index.js",
+			'export const value = "changed";\n',
+		);
+		await writeChangeset(fixture.root, [
+			"@hevy-mcp/operations",
+			"@hevy-mcp/core",
+			"hevy-mcp",
+			"@hevy-mcp/worker",
+		]);
+
+		await expect(
+			runCheck(fixture, {
+				changedFiles: ["packages/operations/src/index.js"],
+				changesetDiffLines: ["A\t.changeset/new.md"],
+			}),
+		).rejects.toThrow("@hevy-mcp/operations -> missing @chrisdoc/hevy-cli");
 	});
 
 	it.each([

@@ -1,5 +1,12 @@
 # Nx and dependency-cruiser control-plane migration
 
+> Historical migration record retained for its rationale and review evidence;
+> this is not current contributor setup or validation guidance. The command
+> examples below describe the earlier spike and may no longer match the current
+> checkout. Use [CONTRIBUTING.md](../CONTRIBUTING.md#required-validation) and
+> [docs/test-lanes.md](./test-lanes.md) for current checks, and
+> [docs/architecture.md](./architecture.md) for current workspace boundaries.
+
 This stacked follow-up targets PR #890 and moves local repository orchestration
 onto Nx plus dependency-cruiser. The canonical repository models own policy
 facts; Nx owns project discovery, target invocation, dependency ordering,

@@ -1,0 +1,43 @@
+import { createSafeErrorDiagnostic } from "./error-policy.js";
+import { logCoreError } from "./core-logger.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
+
+import type {
+	McpClientLogMessage,
+	McpClientLogger,
+} from "./mcp-client-logger-types.js";
+export type {
+	McpClientLogMessage,
+	McpClientLogger,
+} from "./mcp-client-logger-types.js";
+
+interface LoggingServer {
+	isConnected(): boolean;
+	sendLoggingMessage(message: McpClientLogMessage): Promise<void>;
+}
+
+const SEND_FAILURE_MESSAGE =
+	"Failed to send structured log message to MCP client";
+const DISCONNECTED_MESSAGE =
+	"Skipped structured MCP client log because the server is not connected";
+
+/**
+ * Create a best-effort, fire-and-forget logger for an MCP server connection.
+ * Logging failures are reported to stderr and never escape into tool behavior.
+ */
+export function createMcpClientLogger(server: LoggingServer): McpClientLogger {
+	return (message) => {
+		try {
+			if (!server.isConnected()) {
+				logCoreError(DISCONNECTED_MESSAGE);
+				return;
+			}
+
+			void server.sendLoggingMessage(message).catch((error: RuntimeValue) => {
+				logCoreError(SEND_FAILURE_MESSAGE, createSafeErrorDiagnostic(error));
+			});
+		} catch (error) {
+			logCoreError(SEND_FAILURE_MESSAGE, createSafeErrorDiagnostic(error));
+		}
+	};
+}

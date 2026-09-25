@@ -1,16 +1,12 @@
 {
 	"name": "@hevy-mcp/core",
-	"version": "0.2.12",
+	"version": "0.2.13",
 	"private": true,
 	"type": "module",
 	"exports": {
 		".": {
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
-		},
-		"./mutations": {
-			"types": "./src/mutations.ts",
-			"import": "./src/mutations.ts"
 		}
 	},
 	"scripts": {

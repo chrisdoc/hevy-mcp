@@ -10,7 +10,7 @@ import {
 	HevyOperationsService,
 } from "../effect-services.js";
 import { projectRoutineFolder } from "../utils/formatters.js";
-import { createExecutionErrorProjection } from "../utils/error-handler.js";
+import { createExecutionErrorProjection } from "../diagnostics/error-handler.js";
 import { requireOperation } from "../tools/operation-helpers.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
 import {

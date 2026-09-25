@@ -11,9 +11,11 @@ import {
 import { UsageError } from "./arguments.js";
 import {
 	createRoutineInputSchema,
+	replaceWorkoutInputSchema,
 	routineFolderInputSchema,
+	updateRoutineInputSchema,
 	workoutInputSchema,
-} from "@hevy-mcp/core/mutations";
+} from "@hevy-mcp/operations/schemas";
 
 const workout = {
 	workout: {
@@ -57,6 +59,80 @@ describe("mutation input sources", () => {
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
+	});
+
+	it("accepts JSON-stringified workout exercises in CLI data", async () => {
+		const input = {
+			workout: {
+				...workout.workout,
+				exercises: JSON.stringify(workout.workout.exercises),
+			},
+		};
+
+		await expect(
+			loadMutationInput(JSON.stringify(input), workoutInputSchema),
+		).resolves.toMatchObject(workout);
+	});
+
+	it("accepts JSON-stringified replacement workout exercises in CLI data", async () => {
+		const input = {
+			workout_id: "workout-1",
+			workout: {
+				...workout.workout,
+				exercises: JSON.stringify(workout.workout.exercises),
+			},
+		};
+
+		const parsed = await loadMutationInput(
+			JSON.stringify(input),
+			replaceWorkoutInputSchema,
+		);
+		expect(parsed.workout.exercises).toEqual(workout.workout.exercises);
+	});
+
+	it("accepts JSON-stringified routine exercises in CLI data", async () => {
+		const routine = {
+			routine: {
+				title: "Routine",
+				exercises: [
+					{
+						exercise_template_id: "exercise-1",
+						sets: [{ type: "normal", weight_kg: 40, reps: 5 }],
+					},
+				],
+			},
+		};
+		const input = {
+			routine: {
+				...routine.routine,
+				exercises: JSON.stringify(routine.routine.exercises),
+			},
+		};
+
+		await expect(
+			loadMutationInput(JSON.stringify(input), createRoutineInputSchema),
+		).resolves.toEqual(routine);
+	});
+
+	it("accepts JSON-stringified routine update exercises in CLI data", async () => {
+		const input = {
+			routine_id: "routine-1",
+			routine: {
+				title: "Routine",
+				exercises: JSON.stringify([
+					{
+						exercise_template_id: "exercise-1",
+						sets: [{ type: "normal", weight_kg: 40, reps: 5 }],
+					},
+				]),
+			},
+		};
+
+		const parsed = await loadMutationInput(
+			JSON.stringify(input),
+			updateRoutineInputSchema,
+		);
+		expect(parsed.routine.exercises).toHaveLength(1);
 	});
 
 	it("reports source, JSON, and schema failures as usage errors", async () => {

@@ -2,6 +2,12 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadControlPlane, repositoryRoot } from "./control-plane-models.mjs";
 import {
+	hasValidVitestLaneAlias,
+	hasValidVitestLaneNxCommands,
+	hasVitestLaneRunner,
+	isVitestSelector,
+} from "./testing/vitest-lane-execution.mjs";
+import {
 	isBoolean,
 	isObjectLike,
 	isString,
@@ -857,6 +863,32 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			);
 			aliases.add(lane.alias);
 		}
+		if (lane.mappingStatus === "mapped" && isVitestSelector(lane.selector)) {
+			const target = project.targets?.[lane.nxTarget] || {};
+			const aliasCommand = packageJson.scripts[lane.alias];
+			const aliasUsesLane = hasVitestLaneRunner(lane, [aliasCommand]);
+			assert(
+				hasValidVitestLaneAlias(lane, aliasCommand),
+				lane.id +
+					" alias must run its registry lane or delegate to its Nx target",
+			);
+			const targetCommands = [
+				target.options?.command,
+				...(target.options?.commands || []),
+				target.metadata?.scriptContent,
+				target.metadata?.runCommand,
+			].filter(isString);
+			if (targetCommands.length === 0 && target.executor === undefined) {
+				// Root package-script targets are inferred by Nx rather than declared here.
+				targetCommands.push(aliasCommand);
+			}
+			assert(
+				hasValidVitestLaneNxCommands(lane, targetCommands, aliasUsesLane),
+				lane.id +
+					" Nx commands must run its registry lane or delegate to " +
+					lane.alias,
+			);
+		}
 		for (const runtime of lane.runtimes)
 			assert(
 				lanes.runtimeMatrix[runtime],
@@ -961,34 +993,93 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 			);
 	}
 	for (const [id, aggregate] of Object.entries(aggregates)) {
-		if (aggregate.workflowRuntimes === undefined) continue;
-		assert(
-			aggregate.workflowRuntimes &&
-				isObjectLike(aggregate.workflowRuntimes) &&
-				!Array.isArray(aggregate.workflowRuntimes),
-			id + ".workflowRuntimes must be an object",
-		);
 		const members = new Set(flattenAggregateLanes(aggregates, laneIds, id));
-		for (const [laneId, runtimes] of Object.entries(
-			aggregate.workflowRuntimes,
+		if (aggregate.workflowRuntimes !== undefined) {
+			assert(
+				aggregate.workflowRuntimes &&
+					isObjectLike(aggregate.workflowRuntimes) &&
+					!Array.isArray(aggregate.workflowRuntimes),
+				id + ".workflowRuntimes must be an object",
+			);
+			for (const [laneId, runtimes] of Object.entries(
+				aggregate.workflowRuntimes,
+			)) {
+				assert(
+					members.has(laneId),
+					id +
+						".workflowRuntimes references a lane outside the aggregate: " +
+						laneId,
+				);
+				assertArray(runtimes, id + ".workflowRuntimes." + laneId);
+				assert(
+					runtimes.length > 0 &&
+						runtimes.every(
+							(runtime) =>
+								isString(runtime) &&
+								runtime.length > 0 &&
+								lanes.runtimeMatrix[runtime],
+						),
+					id + ".workflowRuntimes." + laneId + " references an unknown runtime",
+				);
+			}
+		}
+		if (aggregate.workflowEnvironment === undefined) continue;
+		assert(
+			isObjectLike(aggregate.workflowEnvironment) &&
+				!Array.isArray(aggregate.workflowEnvironment),
+			id + ".workflowEnvironment must be an object",
+		);
+		for (const [laneId, environments] of Object.entries(
+			aggregate.workflowEnvironment,
 		)) {
 			assert(
 				members.has(laneId),
 				id +
-					".workflowRuntimes references a lane outside the aggregate: " +
+					".workflowEnvironment references a lane outside the aggregate: " +
 					laneId,
 			);
-			assertArray(runtimes, id + ".workflowRuntimes." + laneId);
 			assert(
-				runtimes.length > 0 &&
-					runtimes.every(
-						(runtime) =>
-							isString(runtime) &&
-							runtime.length > 0 &&
-							lanes.runtimeMatrix[runtime],
-					),
-				id + ".workflowRuntimes." + laneId + " references an unknown runtime",
+				isObjectLike(environments) && !Array.isArray(environments),
+				id + ".workflowEnvironment." + laneId + " must be an object",
 			);
+			const lane = lanes.lanes.find((entry) => entry.id === laneId);
+			const laneRuntimes =
+				aggregate.workflowRuntimes?.[laneId] ??
+				lane.workflowRuntimes ??
+				lane.hostRuntimes ??
+				lane.runtimes;
+			for (const [runtime, environment] of Object.entries(environments)) {
+				assert(
+					laneRuntimes.includes(runtime),
+					id +
+						".workflowEnvironment." +
+						laneId +
+						" references a runtime outside the lane: " +
+						runtime,
+				);
+				assert(
+					isObjectLike(environment) && !Array.isArray(environment),
+					id +
+						".workflowEnvironment." +
+						laneId +
+						"." +
+						runtime +
+						" must be an object",
+				);
+				for (const [name, value] of Object.entries(environment)) {
+					assert(
+						/^[A-Z_][A-Z0-9_]*$/.test(name) &&
+							isString(value) &&
+							value.length > 0,
+						id +
+							".workflowEnvironment." +
+							laneId +
+							"." +
+							runtime +
+							" contains an invalid environment entry",
+					);
+				}
+			}
 		}
 	}
 	for (const entry of lanes.unresolvedMappings) {

@@ -90,6 +90,7 @@
 			"inputs": ["releaseUnitTests"]
 		},
 		"test:mcp": {
+			"dependsOn": ["build"],
 			"cache": true,
 			"inputs": ["mockedTests", { "env": "HEVY_TEST_REPORT_MODE" }],
 			"outputs": ["{workspaceRoot}/coverage/mocked"]
@@ -226,7 +227,7 @@
 			"cache": false,
 			"dependsOn": ["build"],
 			"options": {
-				"command": "mise exec -- vitest run tests/performance/performance.test.ts"
+				"command": "mise exec -- node scripts/testing/run-vitest-lane.mjs performance"
 			},
 			"outputs": ["{workspaceRoot}/test-results/performance/summary.json"],
 			"inputs": ["validationInputs"]

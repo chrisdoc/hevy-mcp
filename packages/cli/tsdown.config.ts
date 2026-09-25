@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { readFileSync } from "node:fs";
 import { defineConfig } from "tsdown";
 
@@ -16,7 +17,6 @@ export default defineConfig({
 	deps: {
 		alwaysBundle: [
 			"@hevy-mcp/hevy-client",
-			"@hevy-mcp/core",
 			"@hevy-mcp/operations",
 			"@stricli/core",
 			"zod",
