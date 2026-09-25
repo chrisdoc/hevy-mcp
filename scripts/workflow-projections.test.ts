@@ -41,6 +41,25 @@ const changesetLanes = {
 	},
 };
 
+const reportModeLanes = {
+	lanes: [
+		{
+			id: "unit",
+			nxTarget: "test:unit",
+			mappingStatus: "mapped" as const,
+			runtimes: ["node-24"],
+		},
+	],
+	aggregates: {
+		"pull-request-ci": {
+			lanes: ["unit"],
+			workflowEnvironment: {
+				unit: { "node-24": { HEVY_TEST_REPORT_MODE: "ci" } },
+			},
+		},
+	},
+};
+
 function workflow(step: string, jobOptions = ""): string {
 	return `jobs:\n  release:\n${jobOptions}    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24.x"\n      - name: Validate lane\n${step}`;
 }
@@ -150,4 +169,31 @@ describe("release workflow projections", () => {
 			).toThrow("must not use continue-on-error");
 		},
 	);
+});
+
+describe("workflow environment projections", () => {
+	it("checks lane-runtime overrides against the invoking workflow step", () => {
+		const source = workflow(
+			"        env:\n          HEVY_TEST_REPORT_MODE: ci\n        run: npx nx run repository:test:unit\n",
+		);
+		const projection = validateWorkflowAggregate(source, {
+			lanes: reportModeLanes,
+			aggregate: "pull-request-ci",
+			expectedJobs: "release",
+		});
+
+		expect(projection.executions[0]?.environment).toEqual({
+			HEVY_TEST_REPORT_MODE: "ci",
+		});
+		expect(() =>
+			validateWorkflowAggregate(
+				workflow("        run: npx nx run repository:test:unit\n"),
+				{
+					lanes: reportModeLanes,
+					aggregate: "pull-request-ci",
+					expectedJobs: "release",
+				},
+			),
+		).toThrow("environment drift for unit/node-24");
+	});
 });

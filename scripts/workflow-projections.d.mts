@@ -10,6 +10,7 @@ export interface ValidationLane {
 export interface ValidationAggregate {
 	lanes: string[];
 	workflowRuntimes?: Record<string, string[]>;
+	workflowEnvironment?: Record<string, Record<string, Record<string, string>>>;
 }
 
 export interface ValidationLanes {
@@ -21,6 +22,7 @@ export interface WorkflowExecution {
 	lane: string;
 	job: string;
 	runtimes: string[];
+	environment: Record<string, unknown>;
 	condition: string | null;
 	jobCondition: string | null;
 	stepCondition: string | null;

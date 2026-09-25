@@ -8,6 +8,7 @@
 				".github/workers/preview-bootstrap.ts",
 				"cloudflare.config.ts",
 				"scripts/check-candidate-publint.mjs",
+				"scripts/testing/collect-validation-lane-inventory.mjs",
 				"scripts/testing/cli-safe-validation.mjs",
 				"scripts/pack-release-candidates.mjs",
 				"scripts/testing/run-integration-vitest.mjs",

@@ -397,6 +397,11 @@ export function parseWorkflowLaneExecutions(
 						lane: mappedTargets.get(command.target),
 						job: jobId,
 						runtimes,
+						environment: {
+							...(workflow.env ?? {}),
+							...(job.env ?? {}),
+							...(step.env ?? {}),
+						},
 						condition: effectiveCondition(jobCondition, stepCondition),
 						jobCondition,
 						stepCondition,
@@ -532,6 +537,14 @@ export function validateWorkflowAggregate(
 	const expectedMembers = new Set(memberIds);
 	const actualRuntimes = new Map();
 	const executionIdentities = new Set();
+	const workflowEnvironmentNames = new Set(
+		Object.values(selectedAggregate.workflowEnvironment ?? {}).flatMap(
+			(environments) =>
+				Object.values(environments).flatMap((environment) =>
+					Object.keys(environment),
+				),
+		),
+	);
 	const expectedJobSelection = expectedJobs ?? job;
 	for (const execution of actual) {
 		if (expectedJobSelection !== undefined) {
@@ -549,6 +562,16 @@ export function validateWorkflowAggregate(
 		}
 		const identityPrefix = `${execution.lane}|${execution.target}|${execution.job}`;
 		for (const runtime of execution.runtimes) {
+			const expectedEnvironment =
+				selectedAggregate.workflowEnvironment?.[execution.lane]?.[runtime] ??
+				{};
+			for (const name of workflowEnvironmentNames) {
+				assert(
+					(execution.environment[name] ?? null) ===
+						(expectedEnvironment[name] ?? null),
+					`${label} environment drift for ${execution.lane}/${runtime}: ${name}`,
+				);
+			}
 			const identity = `${identityPrefix}|${runtime}`;
 			assert(
 				!executionIdentities.has(identity),
