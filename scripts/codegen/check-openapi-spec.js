@@ -6,8 +6,8 @@ import { validateOpenAPISpec } from "./openapi-spec.js";
 import {
 	loadArtifactProvenance,
 	repositoryRoot,
-} from "./repository-control-plane.mjs";
-import { isString } from "./runtime-value-predicates.mjs";
+} from "../repository-control-plane.mjs";
+import { isString } from "../runtime-value-predicates.mjs";
 
 function assert(condition, message) {
 	if (!condition) throw new Error(message);

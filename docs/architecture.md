@@ -255,7 +255,7 @@ pnpm run build:client  # run Kubb → packages/hevy-client/src/generated/
 ```
 
 > [!WARNING]
-> **Never edit files in `packages/hevy-client/src/generated/` by hand.** All generated TypeScript errors in that directory are expected and should be ignored. Fixes belong in `scripts/openapi-spec.js` (applied before spec write) so they survive future regenerations [[23]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
+> **Never edit files in `packages/hevy-client/src/generated/` by hand.** All generated TypeScript errors in that directory are expected and should be ignored. Fixes belong in `scripts/codegen/openapi-spec.js` (applied before spec write) so they survive future regenerations [[23]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
 
 Only the curated package barrels (`@hevy-mcp/hevy-client/types` and `@hevy-mcp/hevy-client/schemas`) are the public API of the client package. Kubb itself, generated API functions, and `.kubb` internals are not public API [[24]](https://app.dosu.dev/documents/947ebc0f-60be-4a4e-b227-238f01cd75a6).
 

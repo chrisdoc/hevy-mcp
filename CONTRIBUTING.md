@@ -102,11 +102,12 @@ may time out in restricted environments.
 ## Repository tooling
 
 Repository-level executable scripts live under `scripts/`, grouped by purpose
-when organized (for example, token-budget measurement is in `scripts/metrics/`).
-Reusable tooling implementations live under `tools/`, while `repository/`
-contains canonical machine-readable topology and control-plane policy. Keep
-tool-specific configuration files at the repository root when their consumers
-expect to discover them there.
+when organized (for example, client generation is in `scripts/codegen/`, test
+launchers in `scripts/testing/`, and token-budget measurement in
+`scripts/metrics/`). Reusable tooling implementations live under `tools/`, while
+`repository/` contains canonical machine-readable topology and control-plane
+policy. Keep tool-specific configuration files at the repository root when
+their consumers expect to discover them there.
 
 ## Test lanes
 
@@ -186,7 +187,7 @@ pnpm run build:client
 `openapi-spec.json` changes, regenerate the client and review the complete
 generated diff. Do not patch generated TypeScript errors by hand.
 
-Known upstream schema corrections belong in `scripts/openapi-spec.js`, so a
+Known upstream schema corrections belong in `scripts/codegen/openapi-spec.js`, so a
 future refresh reapplies them before the spec is written. Run
 `pnpm run check:openapi` to verify the repository-owned compatibility invariants
 before committing a refreshed spec.
