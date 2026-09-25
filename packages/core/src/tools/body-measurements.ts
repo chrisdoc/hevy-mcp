@@ -6,7 +6,7 @@ import {
 	createBodyMeasurementResponse,
 	updateBodyMeasurementResponse,
 	type PaginatedToolResult,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import {
 	readOnlyAnnotations,
 	createAnnotations,

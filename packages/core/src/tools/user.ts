@@ -1,7 +1,7 @@
 import type { UserInfo } from "@hevy-mcp/hevy-client/types";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import { userResponse } from "../utils/response-contracts.js";
+import { userResponse } from "../protocol/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 import { HevyOperationsService } from "../runtime/effect-services.js";
 import { operationEffect, requireOperation } from "./operation-helpers.js";

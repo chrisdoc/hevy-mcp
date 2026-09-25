@@ -29,7 +29,7 @@ import {
 	zStrictOptionalRepRange,
 } from "@hevy-mcp/operations/schemas";
 import { z } from "zod";
-import { parseJsonArray } from "../utils/json-parser.js";
+import { parseJsonArray } from "../protocol/json-parser.js";
 
 export interface PaginationSchemaOptions {
 	defaultPageSize: number;

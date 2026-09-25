@@ -13,7 +13,7 @@ import {
 	type HevyOperations,
 } from "@hevy-mcp/operations";
 import type { ToolExecutionContext } from "../runtime/execution.js";
-import type { McpToolResponse } from "../utils/response-contracts.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Effect } from "effect";
-import { compactRoutinesResponse } from "../utils/response-contracts.js";
-import { summarizeRoutine } from "../utils/formatters.js";
+import { compactRoutinesResponse } from "../protocol/response-contracts.js";
+import { summarizeRoutine } from "../protocol/formatters.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";

@@ -22,7 +22,7 @@ import {
 } from "../utils/tool-helpers.js";
 import { withErrorHandling } from "../diagnostics/error-handler.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
-import type { McpToolResponse } from "../utils/response-contracts.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 import {
 	memoizeObservationScope,

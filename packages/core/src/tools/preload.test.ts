@@ -2,7 +2,7 @@ import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { getCompactJsonSchemaConversionCount } from "../utils/compact-json-schema.js";
+import { getCompactJsonSchemaConversionCount } from "../protocol/compact-json-schema.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import {

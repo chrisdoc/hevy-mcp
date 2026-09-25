@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import type { McpToolResponse } from "./response-contracts.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
 import type { ToolExecutionContext } from "../runtime/execution.js";
 import { ClientNotInitializedError } from "../effect-errors.js";
 

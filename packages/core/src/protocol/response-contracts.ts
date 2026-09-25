@@ -19,7 +19,7 @@ import {
 	attachResultTelemetry,
 	bucketCount,
 	type ToolResultTelemetry,
-} from "./result-telemetry.js";
+} from "../utils/result-telemetry.js";
 import {
 	createRoutineOutputSchema,
 	optionalNumber,

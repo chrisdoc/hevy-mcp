@@ -69,7 +69,7 @@
 					"packages/node/src/index.test.ts",
 					"packages/node/src/utils/config.test.ts",
 					"packages/core/src/tools/register.test.ts",
-					"packages/core/src/utils/output-schemas.test.ts",
+					"packages/core/src/protocol/output-schemas.test.ts",
 					"tests/unit/server-manifest.test.ts",
 					"tests/contract/runtime-contract-matrix.test.ts"
 				]
