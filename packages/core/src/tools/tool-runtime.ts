@@ -9,13 +9,13 @@ import {
 	createCoreServiceContext,
 	overlayCoreServiceContext,
 	type CoreServiceIdentifiers,
-} from "../effect-layer.js";
+} from "../runtime/effect-layer.js";
 import {
 	ExerciseTemplateCatalogService,
 	HevyClientService,
 	HevyOperationsService,
 	ToolObserverService,
-} from "../effect-services.js";
+} from "../runtime/effect-services.js";
 import {
 	HEVY_CLIENT_NOT_INITIALIZED_ERROR,
 	requireClient,
@@ -38,7 +38,7 @@ import {
 	mergeAbortSignals,
 	runBoundedExecution,
 	type ToolExecutionContext,
-} from "../execution.js";
+} from "../runtime/execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
 import { TELEMETRY_ARGUMENT_KEYS } from "../diagnostics/telemetry-contract.js";
 import { isBoolean, isFiniteNumber } from "../utils/type-predicates.js";

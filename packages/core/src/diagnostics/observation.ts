@@ -1,5 +1,5 @@
 import type { ErrorType, SafeErrorDiagnostic } from "./error-policy.js";
-import type { StructuredExecutionProjection } from "../execution.js";
+import type { StructuredExecutionProjection } from "../runtime/execution.js";
 import type {
 	ResultCountBucket,
 	ToolResultTelemetry,

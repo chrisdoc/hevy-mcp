@@ -6,7 +6,7 @@ import {
 	HevyOperationsService,
 	ToolExecutionContextService,
 	ToolObserverService,
-} from "../effect-services.js";
+} from "../runtime/effect-services.js";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import {
 	createToolRuntime,

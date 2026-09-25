@@ -10,14 +10,14 @@ import {
 	createExecutionProjection,
 	type StructuredExecutionProjection,
 	type ToolExecutionContext,
-} from "../execution.js";
+} from "../runtime/execution.js";
 import { createSafeErrorDiagnostic } from "./error-policy.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
 import { logCoreError } from "./core-logger.js";
 import type { McpClientLogger } from "./mcp-client-logger-types.js";
 
 export { ErrorType } from "./error-policy.js";
-export type { StructuredExecutionError } from "../execution.js";
+export type { StructuredExecutionError } from "../runtime/execution.js";
 
 /**
  * Standard error response interface
