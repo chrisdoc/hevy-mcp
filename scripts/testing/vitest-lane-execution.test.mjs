@@ -5,7 +5,7 @@ import {
 	hasVitestLaneRunner,
 	hasValidVitestLaneAlias,
 	hasValidVitestLaneNxCommands,
-} from "../../scripts/vitest-lane-execution.mjs";
+} from "./vitest-lane-execution.mjs";
 
 describe("Vitest lane execution", () => {
 	it("builds include and exclude arguments from the registry selector", () => {
@@ -47,12 +47,12 @@ describe("Vitest lane execution", () => {
 		const lane = { id: "contract", selector: { kind: "vitest" } };
 		expect(
 			hasVitestLaneRunner(lane, [
-				"mise exec -- node scripts/run-vitest-lane.mjs contract",
+				"mise exec -- node scripts/testing/run-vitest-lane.mjs contract",
 			]),
 		).toBe(true);
 		expect(
 			hasVitestLaneRunner(lane, [
-				"mise exec -- node scripts/run-vitest-lane.mjs stdio",
+				"mise exec -- node scripts/testing/run-vitest-lane.mjs stdio",
 			]),
 		).toBe(false);
 		expect(
@@ -62,12 +62,12 @@ describe("Vitest lane execution", () => {
 		).toBe(false);
 		expect(
 			hasVitestLaneRunner(lane, [
-				"mise exec -- node ./packages/scripts/run-vitest-lane.mjs contract",
+				"mise exec -- node ./packages/scripts/testing/run-vitest-lane.mjs contract",
 			]),
 		).toBe(true);
 		expect(
 			hasVitestLaneRunner(lane, [
-				"node scripts/run-vitest-lane.mjs contract",
+				"node scripts/testing/run-vitest-lane.mjs contract",
 				"mise exec -- vitest run tests/contract/runtime.test.ts",
 			]),
 		).toBe(false);
@@ -80,7 +80,8 @@ describe("Vitest lane execution", () => {
 			nxTarget: "test:contract",
 			selector: { kind: "vitest" },
 		};
-		const alias = "mise exec -- node scripts/run-vitest-lane.mjs contract";
+		const alias =
+			"mise exec -- node scripts/testing/run-vitest-lane.mjs contract";
 		expect(hasValidVitestLaneAlias(lane, alias)).toBe(true);
 		expect(
 			hasValidVitestLaneNxCommands(lane, ["pnpm run test:contract"], true),
@@ -89,7 +90,7 @@ describe("Vitest lane execution", () => {
 		expect(
 			hasValidVitestLaneNxCommands(
 				lane,
-				["node scripts/run-vitest-lane.mjs stdio"],
+				["node scripts/testing/run-vitest-lane.mjs stdio"],
 				true,
 			),
 		).toBe(false);
@@ -97,7 +98,7 @@ describe("Vitest lane execution", () => {
 			hasValidVitestLaneNxCommands(
 				lane,
 				[
-					"node scripts/run-vitest-lane.mjs contract",
+					"node scripts/testing/run-vitest-lane.mjs contract",
 					"vitest run tests/contract/runtime.test.ts",
 				],
 				true,

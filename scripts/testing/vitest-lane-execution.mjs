@@ -44,7 +44,7 @@ function commandInvokesLane(command, laneId) {
 				.replace(/^\.\//, ""),
 		);
 	const runnerIndex = tokens.findIndex((token) =>
-		token.endsWith("scripts/run-vitest-lane.mjs"),
+		token.endsWith("scripts/testing/run-vitest-lane.mjs"),
 	);
 	return runnerIndex >= 0 && tokens[runnerIndex + 1] === laneId;
 }

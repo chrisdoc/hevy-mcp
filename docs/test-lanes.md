@@ -5,7 +5,7 @@ coverage, and ownership. `package.json` owns stable command names, while
 [`repository/validation-lanes.json`](../repository/validation-lanes.json) owns
 root Vitest lane selectors and the machine-readable lane policy checked by
 `pnpm run check:control-plane`. Root Vitest aliases dispatch by lane ID through
-`scripts/run-vitest-lane.mjs`; Nx owns scheduling and cache inputs. Use these
+`scripts/testing/run-vitest-lane.mjs`; Nx owns scheduling and cache inputs. Use these
 named lanes instead of copying raw Vitest selectors. Setup and the required
 pull-request baseline are owned by [CONTRIBUTING.md](../CONTRIBUTING.md).
 

@@ -298,12 +298,12 @@ these names rather than duplicating selectors:
 
 ```json
 {
-	"test:unit": "node scripts/run-vitest-lane.mjs unit",
-	"test:mcp": "node scripts/run-vitest-lane.mjs mocked-mcp",
-	"test:contract": "node scripts/run-vitest-lane.mjs contract",
-	"test:stdio": "node scripts/run-vitest-lane.mjs stdio",
+	"test:unit": "node scripts/testing/run-vitest-lane.mjs unit",
+	"test:mcp": "node scripts/testing/run-vitest-lane.mjs mocked-mcp",
+	"test:contract": "node scripts/testing/run-vitest-lane.mjs contract",
+	"test:stdio": "node scripts/testing/run-vitest-lane.mjs stdio",
 	"test:pack": "nx run repository:test:pack",
-	"test:live": "mise exec -- node scripts/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
+	"test:live": "mise exec -- node scripts/testing/run-live-vitest.mjs HEVY_API_KEY tests/integration/hevy-mcp.integration.test.ts",
 	"test:nightly": "node --env-file-if-exists=.env tests/nightly/test_hevy_mcp.mjs",
 	"test:performance": "nx run repository:test:performance",
 	"test:pr": "nx run repository:test:pr"
