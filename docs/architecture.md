@@ -79,14 +79,15 @@ Key constraints to observe in this diagram [[7]](https://app.dosu.dev/documents/
 
 `packages/core` remains transport-neutral. Its source layout groups domain tool
 definitions and their tests under `src/tools/`, prompts under `src/prompts/`,
-and resource implementations under `src/resources/`. Cross-cutting safe error
-mapping, logging, and observation contracts live under `src/diagnostics/`; the
-package's public `src/index.ts` continues to own the supported export surface.
-`src/runtime/` owns request execution controls and Effect service composition;
-`src/server.ts` is the server construction entry point. Keep Node and Cloudflare
-concerns in their respective adapter workspaces. When extending Core, place new
-code with the responsibility that owns its behavior rather than defaulting to
-`src/utils/`.
+and resource implementations under `src/resources/`. MCP registration, wire
+schema conversion, compatibility preprocessing, output projections, and response assembly live
+under `src/protocol/`; cross-cutting safe error mapping, logging, and observation
+contracts live under `src/diagnostics/`. The package's public `src/index.ts`
+continues to own the supported export surface. `src/runtime/` owns request
+execution controls and Effect service composition; `src/server.ts` is the server
+construction entry point. Keep Node and Cloudflare concerns in their respective
+adapter workspaces. When extending Core, place new code with the responsibility
+that owns its behavior rather than defaulting to `src/utils/`.
 
 ## Runtime-Neutral vs. Platform Adapters
 

@@ -16,7 +16,7 @@ import {
 	workoutEventsResponse,
 	workoutResponse,
 	workoutsResponse,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,

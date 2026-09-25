@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createHevyClient } from "../../packages/hevy-client/src/hevy-client.js";
 import { createToolRuntime } from "../../packages/core/src/tools/tool-runtime.js";
-import { registerHevyTools } from "../../packages/core/src/tools/register.js";
+import { registerHevyTools } from "../../packages/core/src/protocol/register.js";
 import { createIntegrationCatalog } from "./catalog-fixture.js";
 
 const HEVY_API_BASEURL = "https://api.hevyapp.com";

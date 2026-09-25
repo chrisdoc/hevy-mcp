@@ -21,7 +21,7 @@ import {
 	type CompactRoutinesResult,
 	type TrainingSummaryResult,
 } from "./response-contracts.js";
-import { getResultTelemetry } from "./result-telemetry.js";
+import { getResultTelemetry } from "../utils/result-telemetry.js";
 
 describe("response contracts", () => {
 	it("validates normalized structured output and strips unknown fields", () => {

@@ -4,7 +4,7 @@
 
 import { ErrorType, resolveErrorPolicy } from "./error-policy.js";
 import type { JSONObject } from "@modelcontextprotocol/server";
-import type { McpToolResponse } from "../utils/response-contracts.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
 import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "../utils/tool-helpers.js";
 import {
 	createExecutionProjection,

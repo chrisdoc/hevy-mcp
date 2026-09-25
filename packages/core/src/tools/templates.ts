@@ -8,7 +8,7 @@ import {
 	exerciseHistoryResponse,
 	exerciseTemplateResponse,
 	searchExerciseTemplatesResponse,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import { createSafeErrorDiagnostic } from "../diagnostics/error-policy.js";
 import { logCoreError } from "../diagnostics/core-logger.js";
 import {

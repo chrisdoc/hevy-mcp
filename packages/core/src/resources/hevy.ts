@@ -9,7 +9,7 @@ import {
 	ExerciseTemplateCatalogService,
 	HevyOperationsService,
 } from "../runtime/effect-services.js";
-import { projectRoutineFolder } from "../utils/formatters.js";
+import { projectRoutineFolder } from "../protocol/formatters.js";
 import { createExecutionErrorProjection } from "../diagnostics/error-handler.js";
 import { requireOperation } from "../tools/operation-helpers.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";

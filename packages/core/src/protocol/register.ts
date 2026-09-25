@@ -1,17 +1,17 @@
-import { preloadCompactJsonSchema } from "../utils/compact-json-schema.js";
+import { preloadCompactJsonSchema } from "./compact-json-schema.js";
 import {
 	getRegisteredToolConfig,
 	registerToolDefinition,
 	type ToolRegistrar,
-} from "./define-tool.js";
-import { bodyMeasurementToolDefinitions } from "./body-measurements.js";
-import { folderToolDefinitions } from "./folders.js";
-import { routineToolDefinitions } from "./routines.js";
-import { templateToolDefinitions } from "./templates.js";
-import { routineDiscoveryToolDefinitions } from "./routine-discovery.js";
-import { workflowToolDefinitions } from "./workflows.js";
-import { workoutToolDefinitions } from "./workouts.js";
-import type { ToolRuntime } from "./tool-runtime.js";
+} from "../tools/define-tool.js";
+import { bodyMeasurementToolDefinitions } from "../tools/body-measurements.js";
+import { folderToolDefinitions } from "../tools/folders.js";
+import { routineToolDefinitions } from "../tools/routines.js";
+import { templateToolDefinitions } from "../tools/templates.js";
+import { routineDiscoveryToolDefinitions } from "../tools/routine-discovery.js";
+import { workflowToolDefinitions } from "../tools/workflows.js";
+import { workoutToolDefinitions } from "../tools/workouts.js";
+import type { ToolRuntime } from "../tools/tool-runtime.js";
 
 export const hevyToolDefinitions = [
 	...workoutToolDefinitions,

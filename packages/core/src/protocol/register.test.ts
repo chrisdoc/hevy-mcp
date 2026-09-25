@@ -4,7 +4,7 @@ import { Effect } from "effect";
 import type { Routine } from "@hevy-mcp/hevy-client/types";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createToolRuntime } from "./tool-runtime.js";
+import { createToolRuntime } from "../tools/tool-runtime.js";
 import {
 	registerHevyTools,
 	hevyToolDefinitions,

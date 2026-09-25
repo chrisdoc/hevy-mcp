@@ -5,7 +5,7 @@ import { Effect } from "effect";
 import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { get_encoding } from "tiktoken";
-import { registerHevyTools } from "../../packages/core/src/tools/register.js";
+import { registerHevyTools } from "../../packages/core/src/protocol/register.js";
 import { createToolRuntime } from "../../packages/core/src/tools/tool-runtime.js";
 import type { ExerciseTemplateCatalog } from "../../packages/core/src/utils/exercise-template-catalog.js";
 

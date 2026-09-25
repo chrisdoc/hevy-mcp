@@ -1,12 +1,12 @@
 import { Effect } from "effect";
 import type { Routine } from "@hevy-mcp/hevy-client/types";
-import { createRoutineOutputSchema } from "../utils/output-schemas.js";
+import { createRoutineOutputSchema } from "../protocol/output-schemas.js";
 import {
 	createRoutineResponse,
 	routineResponse,
 	routinesResponse,
 	updateRoutineResponse,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
@@ -22,7 +22,7 @@ import {
 } from "./input-schemas.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import type { PaginatedToolResult } from "../utils/response-contracts.js";
+import type { PaginatedToolResult } from "../protocol/response-contracts.js";
 import { HevyOperationsService } from "../runtime/effect-services.js";
 import { operationEffect, requireOperation } from "./operation-helpers.js";
 

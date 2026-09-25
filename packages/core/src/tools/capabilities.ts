@@ -4,7 +4,7 @@ import type {
 	HevyToolFeature,
 	McpToolOperation,
 } from "../utils/tool-taxonomy.js";
-import { hevyToolDefinitions } from "./register.js";
+import { hevyToolDefinitions } from "../protocol/register.js";
 
 /** The MCP revision used by the initial, deliberately bounded contract matrix. */
 export const CONTRACT_MATRIX_PROTOCOL_VERSION = "2025-11-25" as const;

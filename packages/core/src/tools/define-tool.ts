@@ -3,8 +3,11 @@ import { Effect } from "effect";
 import { z } from "zod";
 import { ClientNotInitializedError } from "../effect-errors.js";
 import { HevyOperationsService } from "../runtime/effect-services.js";
-import { respond, type ResponseContract } from "../utils/response-contracts.js";
-import { compactJsonSchema } from "../utils/compact-json-schema.js";
+import {
+	respond,
+	type ResponseContract,
+} from "../protocol/response-contracts.js";
+import { compactJsonSchema } from "../protocol/compact-json-schema.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 import type { ToolRuntime } from "./tool-runtime.js";

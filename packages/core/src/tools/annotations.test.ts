@@ -3,7 +3,7 @@ import { ZodObject } from "zod";
 import { describe, expect, it, vi } from "vitest";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
-import { registerHevyTools } from "./register.js";
+import { registerHevyTools } from "../protocol/register.js";
 import type { ToolRegistrar } from "./define-tool.js";
 
 const READ_ONLY_TOOLS = [
