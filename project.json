@@ -227,7 +227,7 @@
 			"cache": false,
 			"dependsOn": ["build"],
 			"options": {
-				"command": "mise exec -- vitest run tests/performance/performance.test.ts"
+				"command": "mise exec -- node scripts/run-vitest-lane.mjs performance"
 			},
 			"outputs": ["{workspaceRoot}/test-results/performance/summary.json"],
 			"inputs": ["validationInputs"]

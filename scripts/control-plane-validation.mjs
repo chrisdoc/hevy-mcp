@@ -2,6 +2,12 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadControlPlane, repositoryRoot } from "./control-plane-models.mjs";
 import {
+	hasValidVitestLaneAlias,
+	hasValidVitestLaneNxCommands,
+	hasVitestLaneRunner,
+	isVitestSelector,
+} from "./vitest-lane-execution.mjs";
+import {
 	isBoolean,
 	isObjectLike,
 	isString,
@@ -856,6 +862,32 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				lane.id + " alias recurses through the dispatcher",
 			);
 			aliases.add(lane.alias);
+		}
+		if (lane.mappingStatus === "mapped" && isVitestSelector(lane.selector)) {
+			const target = project.targets?.[lane.nxTarget] || {};
+			const aliasCommand = packageJson.scripts[lane.alias];
+			const aliasUsesLane = hasVitestLaneRunner(lane, [aliasCommand]);
+			assert(
+				hasValidVitestLaneAlias(lane, aliasCommand),
+				lane.id +
+					" alias must run its registry lane or delegate to its Nx target",
+			);
+			const targetCommands = [
+				target.options?.command,
+				...(target.options?.commands || []),
+				target.metadata?.scriptContent,
+				target.metadata?.runCommand,
+			].filter(isString);
+			if (targetCommands.length === 0 && target.executor === undefined) {
+				// Root package-script targets are inferred by Nx rather than declared here.
+				targetCommands.push(aliasCommand);
+			}
+			assert(
+				hasValidVitestLaneNxCommands(lane, targetCommands, aliasUsesLane),
+				lane.id +
+					" Nx commands must run its registry lane or delegate to " +
+					lane.alias,
+			);
 		}
 		for (const runtime of lane.runtimes)
 			assert(
