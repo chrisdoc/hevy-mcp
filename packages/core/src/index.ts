@@ -26,6 +26,15 @@ export {
 } from "./server.js";
 export { preloadHevyToolSchemas } from "./tools/register.js";
 export {
+	FEEDBACK_MAX_MESSAGE_LENGTH,
+	FEEDBACK_TOOL_DESCRIPTION,
+} from "./feedback-metadata.js";
+export {
+	createUnavailableAgentFeedbackRecorder,
+	type AgentFeedbackRecorder,
+	type FeedbackResult,
+} from "./feedback-recorder.js";
+export {
 	memoizeObservationScope,
 	type ToolCompletionObservation,
 	type ToolInvocationObservation,
@@ -73,6 +82,7 @@ export {
 	MCP_SPAN_CATEGORIES,
 	type McpSpanCategory,
 } from "./utils/tool-taxonomy.js";
+export { sanitizeDiagnosticText } from "./utils/sanitize-diagnostic-text.js";
 export {
 	ApiError,
 	ClientNotInitializedError,

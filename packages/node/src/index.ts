@@ -4,6 +4,20 @@ import type { NodeTransport } from "./utils/arguments.js";
 import { assertApiKey } from "./utils/config.js";
 import type { NodeLifecycleHandle } from "./utils/node-lifecycle.js";
 
+export type FeedbackResult =
+	| { readonly accepted: true }
+	| {
+			readonly accepted: false;
+			readonly reason:
+				| "telemetry_disabled"
+				| "telemetry_unavailable"
+				| "rejected";
+	  };
+
+export interface AgentFeedbackRecorder {
+	record(message: string): FeedbackResult;
+}
+
 /**
  * Create an unconnected MCP server for embedding in a Node application.
  *
@@ -12,19 +26,20 @@ import type { NodeLifecycleHandle } from "./utils/node-lifecycle.js";
  * telemetry, or connect a transport. The embedding application owns those
  * concerns and the transport lifecycle.
  */
+export interface CreateNodeMcpServerOptions {
+	readonly apiKey: string;
+	/**
+	 * Client retry budget (also applies to PUT). Set to 0 to disable all
+	 * automatic request retries; reconcile uncertain writes before retrying.
+	 * Omit to retain the client's existing retry policy.
+	 */
+	readonly maxGetRetries?: number;
+	/** Optional caller-owned recorder for the privacy-safe feedback tool. */
+	readonly feedbackRecorder?: AgentFeedbackRecorder;
+}
+
 export async function createNodeMcpServer(
-	{
-		apiKey,
-		maxGetRetries,
-	}: {
-		apiKey: string;
-		/**
-		 * Client retry budget (also applies to PUT). Set to 0 to disable all
-		 * automatic request retries; reconcile uncertain writes before retrying.
-		 * Omit to retain the client's existing retry policy.
-		 */
-		maxGetRetries?: number;
-	},
+	{ apiKey, maxGetRetries, feedbackRecorder }: CreateNodeMcpServerOptions,
 	_transport: NodeTransport = "stdio",
 	lifecycleSignal?: AbortSignal,
 ) {
@@ -37,6 +52,7 @@ export async function createNodeMcpServer(
 				...(maxGetRetries === undefined ? {} : { maxGetRetries }),
 			}),
 		lifecycleSignal,
+		feedbackRecorder,
 	});
 }
 

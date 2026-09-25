@@ -12,7 +12,7 @@
 [![Hosted on Cloudflare](https://img.shields.io/badge/Hosted_on-Cloudflare-F38020?logo=cloudflare&logoColor=white)](#hosted-cloudflare-endpoint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 22 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 23 tools](#tools)
 
 </div>
 
@@ -193,6 +193,27 @@ const server = await createNodeMcpServer({ apiKey: process.env.HEVY_API_KEY! });
 // Connect `server` to the transport owned by your application.
 ```
 
+Embedding applications can opt into the privacy-safe `feedback` tool by
+supplying their own `AgentFeedbackRecorder`. The recorder owns telemetry setup
+and should return `{ accepted: true }` only after it has accepted the bounded,
+sanitized message; omit it when feedback should remain unavailable:
+
+```ts
+const server = await createNodeMcpServer({
+	apiKey: process.env.HEVY_API_KEY!,
+	feedbackRecorder: {
+		record: (message) => {
+			// Send `message` through the embedding application's approved pipeline.
+			return { accepted: true };
+		},
+	},
+});
+```
+
+`createNodeMcpServer` remains side-effect-free: it does not initialize project
+telemetry or create a recorder automatically. Without `feedbackRecorder`, the
+tool returns `telemetry_unavailable`.
+
 For the CLI-owned stdio process, use the executable instead of creating an
 embedded server:
 
@@ -338,7 +359,7 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 
 ## Tools
 
-`hevy-mcp` registers 22 tools. Read-only tools are safe for exploration; create
+`hevy-mcp` registers 23 tools. Read-only tools are safe for exploration; create
 and update tools are exposed with MCP mutation annotations so compatible clients
 can request confirmation.
 
@@ -366,6 +387,7 @@ can request confirmation.
 | Body measurements  | `get-body-measurement`      | Get the body measurement entry for one date.                                                                           |
 | Body measurements  | `create-body-measurement`   | Create a dated body measurement.                                                                                       |
 | Body measurements  | `update-body-measurement`   | Update the body measurement for an existing date.                                                                      |
+| Diagnostics        | `feedback`                  | Report a concise, privacy-safe description of an issue or unexpected behavior.                                         |
 
 `create-routine` and `update-routine` require a top-level `routine` envelope with a non-empty `exercises` array; each exercise must contain at least one set, and fields use snake_case at every level:
 
@@ -418,7 +440,7 @@ https://mcp.hevy-mcp.dev/mcp
 ```
 
 It is the quickest way to use `hevy-mcp`: there is nothing to install or keep
-running locally, and it exposes the same 22 tools as the npm package and Docker
+running locally, and it exposes the same 23 tools as the npm package and Docker
 image.
 
 The Cloudflare Worker uses stateless **Streamable HTTP** at `POST /mcp`.

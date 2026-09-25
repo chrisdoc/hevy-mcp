@@ -574,6 +574,68 @@ describe("real stateless SDK transport", () => {
 		);
 	});
 
+	it("returns unavailable feedback without echoing the message", async () => {
+		const rawMessage = "feedback-raw-message-sentinel";
+		const start = vi.fn();
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient: () => createMockClient(),
+			createObserver: () => ({ start }),
+		});
+
+		const response = await handler(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 1,
+				method: "tools/call",
+				params: {
+					name: "feedback",
+					arguments: { message: rawMessage },
+				},
+			}),
+			{},
+		);
+		const payload = await parseMcpResponse(response);
+		const unavailable = {
+			accepted: false,
+			reason: "telemetry_unavailable",
+		};
+		const payloadResult = payload as {
+			readonly result?: {
+				readonly structuredContent?: unknown;
+				readonly content?: ReadonlyArray<{
+					readonly type?: string;
+					readonly text?: string;
+				}>;
+			};
+		};
+
+		expect(response.status).toBe(200);
+		expect(payload).toMatchObject({
+			id: 1,
+			result: {
+				structuredContent: unavailable,
+			},
+		});
+		expect(payloadResult.result?.structuredContent).toEqual(unavailable);
+		const textContent = payloadResult.result?.content?.find(
+			(content) => content.type === "text",
+		)?.text;
+		expect(JSON.parse(z.string().parse(textContent))).toEqual(unavailable);
+		expect(JSON.stringify(payload)).not.toContain(rawMessage);
+		expect(
+			JSON.stringify([
+				...logSpy.mock.calls,
+				...warnSpy.mock.calls,
+				...errorSpy.mock.calls,
+			]),
+		).not.toContain(rawMessage);
+		expect(start).not.toHaveBeenCalled();
+	});
+
 	it("passes the user hash and Cloudflare colo to activity observation", async () => {
 		let observerOptions:
 			| {
@@ -633,7 +695,13 @@ describe("real stateless SDK transport", () => {
 				_signal: AbortSignal | undefined,
 				_deadline: number | undefined,
 				observer: CreateHevyMcpServerOptions["observer"],
-			) => await createHevyMcpServer({ createClient, observer }),
+				feedbackRecorder: CreateHevyMcpServerOptions["feedbackRecorder"],
+			) =>
+				await createHevyMcpServer({
+					createClient,
+					observer,
+					feedbackRecorder,
+				}),
 		);
 		const handler = createWorkerHandler({
 			createValidationClient: () => createMockClient(),
@@ -660,6 +728,14 @@ describe("real stateless SDK transport", () => {
 		expect(observers[0]).not.toBe(observers[1]);
 		expect(createServer.mock.calls[0]?.[3]).toBe(observers[0]);
 		expect(createServer.mock.calls[1]?.[3]).toBe(observers[1]);
+		expect(createServer.mock.calls[0]?.[4]?.record("feedback")).toEqual({
+			accepted: false,
+			reason: "telemetry_unavailable",
+		});
+		expect(createServer.mock.calls[1]?.[4]?.record("feedback")).toEqual({
+			accepted: false,
+			reason: "telemetry_unavailable",
+		});
 	});
 
 	it("shares one absolute deadline across validation and MCP execution", async () => {
