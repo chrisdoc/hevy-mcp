@@ -13,7 +13,7 @@ import {
 	isNumber,
 	isObjectLike,
 	isString,
-} from "./runtime-value-predicates.mjs";
+} from "../runtime-value-predicates.mjs";
 
 const SPEC_FILE = "openapi-spec.json";
 const HEVY_SWAGGER_URL = "https://api.hevyapp.com/docs/swagger-ui-init.js";

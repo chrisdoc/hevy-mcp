@@ -14,7 +14,7 @@ import {
 
 const fixtureRoot = resolve(
 	import.meta.dirname,
-	"../tests/fixtures/generated-client",
+	"../../tests/fixtures/generated-client",
 );
 
 // Keep the intentionally invalid sources inert for repository-wide checks.
@@ -312,7 +312,7 @@ describe("generated client closure checks", () => {
 			// Redundant with `check:generated` (npm run check); skipped in unit lane.
 			expect(
 				await findCuratedBarrelDrift(
-					resolve(import.meta.dirname, "../packages/hevy-client"),
+					resolve(import.meta.dirname, "../../packages/hevy-client"),
 				),
 			).toEqual([]);
 		},

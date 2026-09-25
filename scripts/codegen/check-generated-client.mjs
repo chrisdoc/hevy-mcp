@@ -15,10 +15,13 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fixOpenAPISpec, validateOpenAPISpec } from "./openapi-spec.js";
-import { isString } from "./runtime-value-predicates.mjs";
+import { isString } from "../runtime-value-predicates.mjs";
 
 const require = createRequire(import.meta.url);
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repositoryRoot = resolve(
+	dirname(fileURLToPath(import.meta.url)),
+	"../..",
+);
 const clientRoot = resolve(repositoryRoot, "packages/hevy-client");
 const generatedRelative = "src/generated";
 const generatedRoot = resolve(clientRoot, generatedRelative);

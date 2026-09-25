@@ -43,7 +43,7 @@
 	"ignore": ["packages/hevy-client/src/generated/**"],
 	"ignoreFiles": [
 		"tests/fixtures/**",
-		"scripts/check-generated-client.d.mts",
+		"scripts/codegen/check-generated-client.d.mts",
 		"scripts/check-package-boundaries.d.mts",
 		"scripts/check-package-changesets.d.mts",
 		"scripts/release-candidate-artifacts.d.mts",

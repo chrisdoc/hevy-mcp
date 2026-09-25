@@ -13,7 +13,10 @@ export default defineConfig({
 		builtin: true,
 	},
 	ignorePatterns: [
-		...(core.ignorePatterns ?? []),
+		// `scripts/codegen` contains maintained inputs and checks, not generated output.
+		...(core.ignorePatterns ?? []).filter(
+			(pattern) => pattern !== "**/codegen",
+		),
 		"**/*.d.ts",
 		"**/*.d.mts",
 		"**/src/generated",

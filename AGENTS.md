@@ -145,7 +145,7 @@ and investigate unexpected changes.
 Refresh upstream only when the task intentionally updates the API contract;
 `mise exec -- pnpm run openapi` needs network access and is not a prerequisite
 for unrelated regeneration. Reproducible upstream corrections belong in
-`scripts/openapi-spec.js`. Follow the generated-client checks in
+`scripts/codegen/openapi-spec.js`. Follow the generated-client checks in
 `CONTRIBUTING.md`, including `check:openapi` and `check:generated`.
 
 Consumers use curated package exports allowed by the topology; generated API
