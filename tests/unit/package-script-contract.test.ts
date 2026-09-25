@@ -157,7 +157,7 @@ function runIntegrationRunner(
 	return runProcess(
 		process.execPath,
 		[
-			resolve(repositoryRoot, "scripts/run-integration-vitest.mjs"),
+			resolve(repositoryRoot, "scripts/testing/run-integration-vitest.mjs"),
 			"fixture.test.mjs",
 		],
 		{ cwd: fixture.directory, env: childEnv },
@@ -183,7 +183,7 @@ function runLiveRunner(
 	return runProcess(
 		process.execPath,
 		[
-			resolve(repositoryRoot, "scripts/run-live-vitest.mjs"),
+			resolve(repositoryRoot, "scripts/testing/run-live-vitest.mjs"),
 			"HEVY_API_KEY",
 			"fixture.test.mjs",
 		],

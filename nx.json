@@ -80,8 +80,8 @@
 		"testScripts": ["{workspaceRoot}/scripts/**/*"],
 		"vitestLaneExecution": [
 			"{workspaceRoot}/repository/validation-lanes.json",
-			"{workspaceRoot}/scripts/run-vitest-lane.mjs",
-			"{workspaceRoot}/scripts/vitest-lane-execution.mjs"
+			"{workspaceRoot}/scripts/testing/run-vitest-lane.mjs",
+			"{workspaceRoot}/scripts/testing/vitest-lane-execution.mjs"
 		],
 		"controlPlaneModels": ["{workspaceRoot}/repository/**/*"],
 		"unitSpecialInputs": [

@@ -21,9 +21,9 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadOptionalEnvFile } from "./load-optional-env.mjs";
-import { isString } from "./runtime-value-predicates.mjs";
+import { isString } from "../runtime-value-predicates.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const cli = resolve(root, "packages/cli/dist/cli.mjs");
 if (!existsSync(cli)) {
 	console.error(

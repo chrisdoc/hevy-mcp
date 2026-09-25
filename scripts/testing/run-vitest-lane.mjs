@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildVitestArgs, isVitestSelector } from "./vitest-lane-execution.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const vitest = resolve(root, "node_modules/vitest/vitest.mjs");
 const [laneId, ...forwardedArgs] = process.argv.slice(2);
 const registry = JSON.parse(

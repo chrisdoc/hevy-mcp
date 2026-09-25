@@ -6,7 +6,7 @@ import {
 	hasValidVitestLaneNxCommands,
 	hasVitestLaneRunner,
 	isVitestSelector,
-} from "./vitest-lane-execution.mjs";
+} from "./testing/vitest-lane-execution.mjs";
 import {
 	isBoolean,
 	isObjectLike,
