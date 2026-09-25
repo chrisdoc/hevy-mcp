@@ -23,12 +23,12 @@ import {
 import { createMcpClientLogger } from "./diagnostics/mcp-client-logger.js";
 import type { CacheObserver } from "./utils/cache.js";
 import type { ToolObserver } from "./diagnostics/observation.js";
-import { mergeAbortSignals } from "./execution.js";
+import { mergeAbortSignals } from "./runtime/execution.js";
 import {
 	createCoreServiceLayer,
 	createToolObserverLayer,
 	type CoreServiceLayer,
-} from "./effect-layer.js";
+} from "./runtime/effect-layer.js";
 export interface HevyClientFactoryContext {
 	readonly onLog: (event: HevyClientLogEvent) => void;
 }

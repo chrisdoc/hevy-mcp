@@ -82,11 +82,11 @@ definitions and their tests under `src/tools/`, prompts under `src/prompts/`,
 and resource implementations under `src/resources/`. Cross-cutting safe error
 mapping, logging, and observation contracts live under `src/diagnostics/`; the
 package's public `src/index.ts` continues to own the supported export surface.
-`src/server.ts`, `src/execution.ts`, `src/effect-layer.ts`, and
-`src/effect-services.ts` compose the server and request runtime. Keep Node and
-Cloudflare concerns in their respective adapter workspaces. When extending
-Core, place new code with the responsibility that owns its behavior rather
-than defaulting to `src/utils/`.
+`src/runtime/` owns request execution controls and Effect service composition;
+`src/server.ts` is the server construction entry point. Keep Node and Cloudflare
+concerns in their respective adapter workspaces. When extending Core, place new
+code with the responsibility that owns its behavior rather than defaulting to
+`src/utils/`.
 
 ## Runtime-Neutral vs. Platform Adapters
 

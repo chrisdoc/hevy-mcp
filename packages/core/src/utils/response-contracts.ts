@@ -14,7 +14,7 @@ import type {
 	UserInfo,
 	Workout,
 } from "@hevy-mcp/hevy-client/types";
-import type { StructuredExecutionError } from "../execution.js";
+import type { StructuredExecutionError } from "../runtime/execution.js";
 import {
 	attachResultTelemetry,
 	bucketCount,

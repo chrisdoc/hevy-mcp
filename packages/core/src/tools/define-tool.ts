@@ -2,13 +2,13 @@ import type { McpServer, ToolAnnotations } from "@modelcontextprotocol/server";
 import { Effect } from "effect";
 import { z } from "zod";
 import { ClientNotInitializedError } from "../effect-errors.js";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 import { respond, type ResponseContract } from "../utils/response-contracts.js";
 import { compactJsonSchema } from "../utils/compact-json-schema.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolTelemetryMetadata } from "../utils/tool-taxonomy.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import type { ToolExecutionContext } from "../execution.js";
+import type { ToolExecutionContext } from "../runtime/execution.js";
 import {
 	ToolInputValidationError,
 	type CoreToolError,

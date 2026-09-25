@@ -13,7 +13,7 @@ import {
 	workoutsGetDescriptor,
 	workoutsListDescriptor,
 } from "@hevy-mcp/operations";
-import type { ToolExecutionContext } from "../execution.js";
+import type { ToolExecutionContext } from "../runtime/execution.js";
 import { describe, expect, it, vi } from "vitest";
 import { createToolRuntime } from "./tool-runtime.js";
 import {
@@ -22,7 +22,7 @@ import {
 } from "./define-tool.js";
 import { workoutToolDefinitions } from "./workouts.js";
 import { workoutInputSchema } from "./input-schemas.js";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 type WorkoutToolArgs = Parameters<
 	(typeof workoutToolDefinitions)[number]["execute"]
 >[1];

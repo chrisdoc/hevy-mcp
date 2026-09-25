@@ -7,9 +7,9 @@ import {
 	HevyClientService,
 	HevyOperationsService,
 	ToolObserverService,
-} from "./effect-services.js";
+} from "./runtime/effect-services.js";
 import { createOperations } from "@hevy-mcp/operations";
-import type { CoreServiceLayer } from "./effect-layer.js";
+import type { CoreServiceLayer } from "./runtime/effect-layer.js";
 
 describe("createHevyMcpServer", () => {
 	const servers: Array<{ close(): Promise<void> }> = [];

@@ -17,7 +17,7 @@ import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import {
 	HevyClientService,
 	HevyOperationsService,
-} from "../effect-services.js";
+} from "../runtime/effect-services.js";
 import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 import { trainingSummaryResponse } from "../utils/response-contracts.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";

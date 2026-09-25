@@ -23,7 +23,7 @@ import {
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 import type { PaginatedToolResult } from "../utils/response-contracts.js";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 import { operationEffect, requireOperation } from "./operation-helpers.js";
 
 const getRoutinesSchema = paginationFields({
