@@ -8,6 +8,13 @@ root Vitest lane selectors and the machine-readable lane policy checked by
 `scripts/testing/run-vitest-lane.mjs`; Nx owns scheduling and cache inputs. Use these
 named lanes instead of copying raw Vitest selectors. Setup and the required
 pull-request baseline are owned by [CONTRIBUTING.md](../CONTRIBUTING.md).
+For the current full-name inventory and exact cross-lane overlaps, see the
+[validation-lane inventory](test-lane-inventory.md). Regenerate it with
+`mise exec -- pnpm run report:test-lanes`; use
+`mise exec -- pnpm run report:test-lanes -- --format=json` for every registered
+test identity and its lane/runtime/artifact metadata. Discovery loads test
+modules to register names but does not execute test bodies or credential-gated
+lanes.
 
 For installation of the pinned Node.js and pnpm versions, see
 [Prerequisites in CONTRIBUTING.md](../CONTRIBUTING.md#prerequisites).
