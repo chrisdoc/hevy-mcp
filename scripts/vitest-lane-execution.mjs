@@ -68,6 +68,7 @@ export function hasValidVitestLaneAlias(lane, command) {
 export function hasValidVitestLaneNxCommands(lane, commands, aliasUsesLane) {
 	return (
 		Array.isArray(commands) &&
+		commands.length > 0 &&
 		commands.every(
 			(command) =>
 				hasVitestLaneRunner(lane, [command]) ||

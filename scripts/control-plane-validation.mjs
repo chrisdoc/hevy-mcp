@@ -878,6 +878,10 @@ export function validateValidationLanes(rootDir, lanes, topology, provenance) {
 				target.metadata?.scriptContent,
 				target.metadata?.runCommand,
 			].filter(isString);
+			if (targetCommands.length === 0 && target.executor === undefined) {
+				// Root package-script targets are inferred by Nx rather than declared here.
+				targetCommands.push(aliasCommand);
+			}
 			assert(
 				hasValidVitestLaneNxCommands(lane, targetCommands, aliasUsesLane),
 				lane.id +

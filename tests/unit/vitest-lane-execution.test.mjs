@@ -85,6 +85,7 @@ describe("Vitest lane execution", () => {
 		expect(
 			hasValidVitestLaneNxCommands(lane, ["pnpm run test:contract"], true),
 		).toBe(true);
+		expect(hasValidVitestLaneNxCommands(lane, [], true)).toBe(false);
 		expect(
 			hasValidVitestLaneNxCommands(
 				lane,
