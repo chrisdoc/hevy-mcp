@@ -16,7 +16,7 @@ import {
 	vi,
 } from "vitest";
 import { registerHevyResources } from "../../../packages/core/src/resources/hevy.js";
-import { registerHevyTools } from "../../../packages/core/src/protocol/register.js";
+import { registerHevyTools } from "../../../packages/core/src/tools/register.js";
 import { createToolRuntime } from "../../../packages/core/src/tools/tool-runtime.js";
 import { createHevyClient } from "../../../packages/hevy-client/src/hevy-client.js";
 import { z } from "zod";

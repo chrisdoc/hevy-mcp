@@ -116,7 +116,7 @@ Automated guards that must remain green:
       `packages/node/src/utils/failure-reporter.test.ts` asserts that request,
       breadcrumb, extra, and untrusted context fields are removed.
 - [x] Metric dimensions have fixed taxonomies or bounded sanitization;
-      `packages/core/src/protocol/register.test.ts` and `packages/node/src/utils/tool-observer.test.ts`
+      `packages/core/src/tools/register.test.ts` and `packages/node/src/utils/tool-observer.test.ts`
       cover the declared fields.
 - [x] Raw queries, IDs, dates, titles, notes, descriptions, and measurements
       are excluded; privacy regression tests assert secret-sentinel absence.

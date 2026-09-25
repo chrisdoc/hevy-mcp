@@ -13,7 +13,7 @@ import {
 	SERVER_NAME,
 	SERVER_VERSION,
 } from "./server-metadata.js";
-import { registerHevyTools } from "./protocol/register.js";
+import { registerHevyTools } from "./tools/register.js";
 import { createToolRuntime } from "./tools/tool-runtime.js";
 import {
 	createExerciseTemplateCatalog,

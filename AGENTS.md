@@ -117,7 +117,7 @@ and Effect-returning `execute`:
 2. Reuse the contracts in `protocol/response-contracts.ts` and schemas in
    `protocol/output-schemas.ts`. Read tools require an output schema; preserve
    declared write-tool output schemas too.
-3. Register through the existing `protocol/register.ts` and `tools/define-tool.ts`
+3. Register through the existing `tools/register.ts` and `tools/define-tool.ts`
    pipeline. Reuse `ToolRuntime`, the error policy, `withErrorHandling`, and
    safe diagnostics rather than introducing parallel response/error formats.
 4. Add a co-located test. For input, output, registration, or compatibility
