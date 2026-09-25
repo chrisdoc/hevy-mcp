@@ -65,7 +65,9 @@ describe("validation lane inventory helpers", () => {
 			},
 		};
 
-		expect(aggregateLaneRuns(aggregates, "unit")).toEqual([
+		expect(
+			aggregateLaneRuns(aggregates, "unit", new Set(["unit", "performance"])),
+		).toEqual([
 			{
 				aggregate: "pull-request-ci",
 				workflowRuntimes: ["node-24", "node-26"],
@@ -75,9 +77,36 @@ describe("validation lane inventory helpers", () => {
 				},
 			},
 		]);
-		expect(aggregateLaneRuns(aggregates, "performance")).toEqual([
+		expect(
+			aggregateLaneRuns(
+				aggregates,
+				"performance",
+				new Set(["unit", "performance"]),
+			),
+		).toEqual([
 			{
 				aggregate: "pull-request-ci",
+				workflowRuntimes: undefined,
+				workflowEnvironment: {},
+			},
+		]);
+	});
+
+	it("includes nested aggregate membership", () => {
+		const aggregates = {
+			"pull-request": { lanes: ["unit"] },
+			"pre-push": { lanes: ["pull-request", "types"] },
+		};
+		const laneIds = new Set(["unit", "types"]);
+
+		expect(aggregateLaneRuns(aggregates, "unit", laneIds)).toEqual([
+			{
+				aggregate: "pull-request",
+				workflowRuntimes: undefined,
+				workflowEnvironment: {},
+			},
+			{
+				aggregate: "pre-push",
 				workflowRuntimes: undefined,
 				workflowEnvironment: {},
 			},

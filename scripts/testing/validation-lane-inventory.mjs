@@ -1,4 +1,5 @@
 import { isAbsolute, relative, sep } from "node:path";
+import { flattenAggregateLanes } from "../control-plane-validation.mjs";
 
 export function parseVitestList(output, rootDirectory, { json = true } = {}) {
 	if (!json) {
@@ -44,9 +45,13 @@ export function selectVitestCases(selector, cases) {
 	});
 }
 
-export function aggregateLaneRuns(aggregates, laneId) {
+export function aggregateLaneRuns(aggregates, laneId, laneIds) {
 	return Object.entries(aggregates).flatMap(([aggregateId, aggregate]) => {
-		if (!aggregate.lanes.includes(laneId)) return [];
+		if (
+			!flattenAggregateLanes(aggregates, laneIds, aggregateId).includes(laneId)
+		) {
+			return [];
+		}
 		const workflowRuntimes =
 			aggregate.workflowRuntimes?.[laneId] ??
 			(aggregate.workflowRuntimes && !Array.isArray(aggregate.workflowRuntimes)

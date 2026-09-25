@@ -16,6 +16,7 @@ const vitest = resolve(root, "node_modules/vitest/vitest.mjs");
 const registry = JSON.parse(
 	readFileSync(resolve(root, "repository/validation-lanes.json"), "utf8"),
 );
+const laneIds = new Set(registry.lanes.map((lane) => lane.id));
 const credentialNames = new Set(
 	registry.lanes.flatMap((lane) => lane.credentials ?? []),
 );
@@ -221,7 +222,11 @@ function describeSetup(lane) {
 
 const lanes = registry.lanes.map((lane) => {
 	const discovery = discoverLane(lane);
-	const laneAggregateRuns = aggregateLaneRuns(registry.aggregates, lane.id);
+	const laneAggregateRuns = aggregateLaneRuns(
+		registry.aggregates,
+		lane.id,
+		laneIds,
+	);
 	return {
 		id: lane.id,
 		alias: lane.alias ?? null,
