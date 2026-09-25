@@ -1,7 +1,7 @@
 import type { JSONSchema } from "zod/v4/core";
 import { z } from "zod";
-import { isObject, isString } from "./type-predicates.js";
-import type { RuntimeValue } from "./type-predicates.js";
+import { isObject, isString } from "../utils/type-predicates.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 
 type JsonSchema = Omit<JSONSchema.JSONSchema, "type"> & {
 	type?: JSONSchema.JSONSchema["type"] | string[];

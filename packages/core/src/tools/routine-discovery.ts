@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { Effect } from "effect";
-import { compactRoutinesResponse } from "../utils/response-contracts.js";
-import { summarizeRoutine } from "../utils/formatters.js";
+import { compactRoutinesResponse } from "../protocol/response-contracts.js";
+import { summarizeRoutine } from "../protocol/formatters.js";
 import { readOnlyAnnotations } from "../utils/tool-annotations.js";
 
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 import { operationEffect, requireOperation } from "./operation-helpers.js";
 
 const routineDiscoverySchema = {

@@ -6,7 +6,7 @@ import {
 	createBodyMeasurementResponse,
 	updateBodyMeasurementResponse,
 	type PaginatedToolResult,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import {
 	readOnlyAnnotations,
 	createAnnotations,
@@ -20,7 +20,7 @@ import {
 	paginationFields,
 	updateBodyMeasurementInputFields,
 } from "./input-schemas.js";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 import { operationEffect, requireOperation } from "./operation-helpers.js";
 
 const getBodyMeasurementsSchema = {

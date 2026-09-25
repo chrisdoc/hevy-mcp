@@ -1,4 +1,4 @@
-import { preloadCompactJsonSchema } from "../utils/compact-json-schema.js";
+import { preloadCompactJsonSchema } from "../protocol/compact-json-schema.js";
 import {
 	getRegisteredToolConfig,
 	registerToolDefinition,

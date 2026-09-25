@@ -2,7 +2,7 @@ import { Effect } from "effect";
 import { expectTypeOf, it } from "vitest";
 import { z } from "zod";
 import type { CoreToolError } from "../effect-errors.js";
-import type { ResponseContract } from "../utils/response-contracts.js";
+import type { ResponseContract } from "../protocol/response-contracts.js";
 import type { ToolEffectHandler } from "./tool-runtime.js";
 import type { ToolRegistrar, ToolDefinition } from "./define-tool.js";
 import { registerToolDefinition } from "./define-tool.js";

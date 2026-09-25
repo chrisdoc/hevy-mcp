@@ -22,7 +22,7 @@ import {
 	workoutsCountDescriptor,
 } from "@hevy-mcp/operations";
 import type { HevyOperations } from "@hevy-mcp/operations";
-import { projectRoutineFolder } from "../utils/formatters.js";
+import { projectRoutineFolder } from "../protocol/formatters.js";
 import {
 	createExerciseTemplateCatalog,
 	type ExerciseTemplateCatalog,

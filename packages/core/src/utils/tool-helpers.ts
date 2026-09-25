@@ -3,8 +3,8 @@
  */
 
 import { z } from "zod";
-import type { McpToolResponse } from "./response-contracts.js";
-import type { ToolExecutionContext } from "../execution.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
+import type { ToolExecutionContext } from "../runtime/execution.js";
 import { ClientNotInitializedError } from "../effect-errors.js";
 
 export const HEVY_CLIENT_NOT_INITIALIZED_ERROR =

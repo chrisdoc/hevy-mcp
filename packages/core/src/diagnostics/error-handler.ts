@@ -4,20 +4,20 @@
 
 import { ErrorType, resolveErrorPolicy } from "./error-policy.js";
 import type { JSONObject } from "@modelcontextprotocol/server";
-import type { McpToolResponse } from "../utils/response-contracts.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
 import { HEVY_CLIENT_NOT_INITIALIZED_ERROR } from "../utils/tool-helpers.js";
 import {
 	createExecutionProjection,
 	type StructuredExecutionProjection,
 	type ToolExecutionContext,
-} from "../execution.js";
+} from "../runtime/execution.js";
 import { createSafeErrorDiagnostic } from "./error-policy.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
 import { logCoreError } from "./core-logger.js";
 import type { McpClientLogger } from "./mcp-client-logger-types.js";
 
 export { ErrorType } from "./error-policy.js";
-export type { StructuredExecutionError } from "../execution.js";
+export type { StructuredExecutionError } from "../runtime/execution.js";
 
 /**
  * Standard error response interface

@@ -8,7 +8,7 @@ import {
 	exerciseHistoryResponse,
 	exerciseTemplateResponse,
 	searchExerciseTemplatesResponse,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import { createSafeErrorDiagnostic } from "../diagnostics/error-policy.js";
 import { logCoreError } from "../diagnostics/core-logger.js";
 import {
@@ -20,7 +20,7 @@ import { exerciseTemplateInputFields, nonEmptyId } from "./input-schemas.js";
 import {
 	ExerciseTemplateCatalogService,
 	HevyOperationsService,
-} from "../effect-services.js";
+} from "../runtime/effect-services.js";
 import {
 	normalizeCoreEffect,
 	operationEffect,

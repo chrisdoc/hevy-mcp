@@ -6,7 +6,7 @@ import {
 	HevyOperationsService,
 	ToolExecutionContextService,
 	ToolObserverService,
-} from "../effect-services.js";
+} from "../runtime/effect-services.js";
 import { createMockHevyClient } from "../../test-fixtures/mock-hevy.js";
 import {
 	createToolRuntime,
@@ -14,7 +14,7 @@ import {
 	type ToolHandler,
 	type ToolHandlerFactory,
 } from "./tool-runtime.js";
-import type { McpToolResponse } from "../utils/response-contracts.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
 import { createOperations } from "@hevy-mcp/operations";
 
 const runImmediately = <T>(operation: () => Promise<T>): Promise<T> =>

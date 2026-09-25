@@ -3,14 +3,14 @@ import type { RoutineFolder } from "@hevy-mcp/hevy-client/types";
 import {
 	createRoutineFolderResponse,
 	routineFolderResponse,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import {
 	createAnnotations,
 	readOnlyAnnotations,
 } from "../utils/tool-annotations.js";
 import type { ToolDefinition } from "./define-tool.js";
 import type { ToolRuntime } from "./tool-runtime.js";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import { nonEmptyId, routineFolderInputFields } from "./input-schemas.js";
 import { operationEffect, requireOperation } from "./operation-helpers.js";

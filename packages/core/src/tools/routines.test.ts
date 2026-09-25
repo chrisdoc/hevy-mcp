@@ -12,8 +12,8 @@ import {
 	workoutsListDescriptor,
 	type HevyOperations,
 } from "@hevy-mcp/operations";
-import type { ToolExecutionContext } from "../execution.js";
-import type { McpToolResponse } from "../utils/response-contracts.js";
+import type { ToolExecutionContext } from "../runtime/execution.js";
+import type { McpToolResponse } from "../protocol/response-contracts.js";
 import { HevyHttpError } from "@hevy-mcp/hevy-client";
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
@@ -22,7 +22,7 @@ import { getResultTelemetry } from "../utils/result-telemetry.js";
 import { createToolRuntime } from "./tool-runtime.js";
 import { registerToolDefinition } from "./define-tool.js";
 import { routineToolDefinitions } from "./routines.js";
-import { HevyOperationsService } from "../effect-services.js";
+import { HevyOperationsService } from "../runtime/effect-services.js";
 
 function register(
 	client: HevyClient | null,

@@ -1,5 +1,5 @@
-import { isString } from "./type-predicates.js";
-import type { RuntimeValue } from "./type-predicates.js";
+import { isString } from "../utils/type-predicates.js";
+import type { RuntimeValue } from "../utils/type-predicates.js";
 
 /**
  * Preprocessor to handle MCP clients that send JSON-stringified arrays

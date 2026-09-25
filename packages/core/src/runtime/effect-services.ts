@@ -2,8 +2,8 @@ import { Context } from "effect";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import type { HevyOperations } from "@hevy-mcp/operations";
 import type { ToolExecutionContext } from "./execution.js";
-import type { ToolObserver } from "./diagnostics/observation.js";
-import type { ExerciseTemplateCatalog } from "./utils/exercise-template-catalog.js";
+import type { ToolObserver } from "../diagnostics/observation.js";
+import type { ExerciseTemplateCatalog } from "../utils/exercise-template-catalog.js";
 
 /**
  * Effect service tags for the runtime dependencies used by MCP execution.

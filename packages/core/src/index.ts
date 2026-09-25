@@ -15,7 +15,7 @@ export {
 	type StructuredExecutionError,
 	type StructuredExecutionProjection,
 	type ToolExecutionContext,
-} from "./execution.js";
+} from "./runtime/execution.js";
 
 export {
 	createHevyMcpServer,
@@ -108,11 +108,11 @@ export {
 	HevyOperationsService,
 	ToolExecutionContextService,
 	ToolObserverService,
-} from "./effect-services.js";
+} from "./runtime/effect-services.js";
 export {
 	createCoreServiceLayer,
 	createToolObserverLayer,
 	type CoreServiceLayerOptions,
 	type CoreServiceIdentifiers,
 	type CoreServiceLayer,
-} from "./effect-layer.js";
+} from "./runtime/effect-layer.js";

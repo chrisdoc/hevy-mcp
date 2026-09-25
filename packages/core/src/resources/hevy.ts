@@ -8,8 +8,8 @@ import type { ToolRuntime } from "../tools/tool-runtime.js";
 import {
 	ExerciseTemplateCatalogService,
 	HevyOperationsService,
-} from "../effect-services.js";
-import { projectRoutineFolder } from "../utils/formatters.js";
+} from "../runtime/effect-services.js";
+import { projectRoutineFolder } from "../protocol/formatters.js";
 import { createExecutionErrorProjection } from "../diagnostics/error-handler.js";
 import { requireOperation } from "../tools/operation-helpers.js";
 import type { RuntimeValue } from "../utils/type-predicates.js";
@@ -17,7 +17,7 @@ import {
 	mergeAbortSignals,
 	runBoundedExecution,
 	type ToolExecutionContext,
-} from "../execution.js";
+} from "../runtime/execution.js";
 
 const JSON_MIME_TYPE = "application/json";
 

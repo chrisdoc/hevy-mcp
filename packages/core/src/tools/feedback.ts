@@ -10,7 +10,7 @@ import { sanitizeDiagnosticText } from "../utils/sanitize-diagnostic-text.js";
 import type {
 	McpToolResponse,
 	ResponseContract,
-} from "../utils/response-contracts.js";
+} from "../protocol/response-contracts.js";
 import type { InferToolParams } from "../utils/tool-helpers.js";
 import type { ToolRuntime } from "./tool-runtime.js";
 
