@@ -143,4 +143,12 @@ worker-configuration.d.ts
 .env
 .env.sentry-build-plugin
 .aider*
+
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
 .dev.vars

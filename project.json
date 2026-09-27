@@ -21,6 +21,12 @@
 			"cache": true,
 			"inputs": ["boundaryInputs", "controlPlaneInputs"]
 		},
+		"check:duplication": {
+			"executor": "nx:run-commands",
+			"cache": true,
+			"options": { "command": "pnpm run check:duplication" },
+			"inputs": ["duplicationInputs"]
+		},
 		"check:exports": {
 			"executor": "nx:run-commands",
 			"cache": true,

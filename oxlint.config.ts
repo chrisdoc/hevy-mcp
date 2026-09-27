@@ -82,12 +82,28 @@ export default defineConfig({
 	},
 	overrides: [
 		{
+			files: ["**/packages/*/src/**/*"],
+			rules: {
+				// Current production-source maximum is 36 in error-policy.ts.
+				complexity: ["error", { max: 40 }],
+				"max-depth": ["error", { max: 4 }],
+				"max-lines": [
+					"error",
+					{ max: 700, skipBlankLines: true, skipComments: true },
+				],
+			},
+		},
+		{
 			files: [
 				"**/*.{test,spec,test-d,spec-d}.{ts,tsx,js,jsx}",
 				"**/__tests__/**/*.{ts,tsx,js,jsx}",
 			],
 			plugins: ["vitest"],
 			rules: {
+				"max-lines": [
+					"error",
+					{ max: 1800, skipBlankLines: true, skipComments: true },
+				],
 				// Minimal vitest set: `categories.correctness` would otherwise
 				// enable every vitest correctness rule (835 existing
 				// violations). Adopting the full vitest preset is a separate
@@ -101,6 +117,33 @@ export default defineConfig({
 				"vitest/valid-describe-callback": "off",
 				"vitest/valid-expect": "off",
 				"vitest/valid-title": "off",
+			},
+		},
+		{
+			files: ["**/test-fixtures/**"],
+			rules: { complexity: "off" },
+		},
+		{
+			// Keep these existing large modules capped while splitting them stays out of scope.
+			files: [
+				"**/packages/core/src/protocol/response-contracts.ts",
+				"**/packages/node/src/utils/streamable-http.ts",
+			],
+			rules: {
+				"max-lines": [
+					"error",
+					{ max: 1100, skipBlankLines: true, skipComments: true },
+				],
+			},
+		},
+		{
+			// Hand-maintained adapter is larger than the general source ceiling.
+			files: ["**/packages/hevy-client/src/hevy-client-kubb.ts"],
+			rules: {
+				"max-lines": [
+					"error",
+					{ max: 1800, skipBlankLines: true, skipComments: true },
+				],
 			},
 		},
 	],

@@ -19,7 +19,59 @@ export interface RunCliOptions {
 	execution?: HevyExecutionOptions;
 }
 
+const cliCommands = new Set([
+	"user",
+	"workouts",
+	"routines",
+	"exercises",
+	"folders",
+	"measurements",
+	"summary",
+]);
+const cliSubcommands = new Set([
+	"list",
+	"get",
+	"count",
+	"events",
+	"search",
+	"history",
+	"create",
+	"update",
+]);
+
+function writeCliEvent(
+	streams: Streams,
+	argv: string[],
+	startedAt: number,
+	result: {
+		outcome: "success" | "failure";
+		exitCode: number;
+		errorCode?: string;
+	},
+): void {
+	const command = cliCommands.has(argv[0] ?? "") ? argv[0] : undefined;
+	const subcommand = cliSubcommands.has(argv[1] ?? "") ? argv[1] : undefined;
+	try {
+		streams.stderr(
+			`${JSON.stringify({
+				timestamp: new Date().toISOString(),
+				level: result.outcome === "success" ? "info" : "error",
+				event: "cli.command",
+				outcome: result.outcome,
+				exit_code: result.exitCode,
+				duration_ms: Math.round(performance.now() - startedAt),
+				command: command ?? "unknown",
+				subcommand: subcommand ?? "unknown",
+				error_code: result.errorCode ?? null,
+			})}\n`,
+		);
+	} catch {
+		// Optional CLI logging must not change the command result.
+	}
+}
+
 export async function runCli(options: RunCliOptions): Promise<number> {
+	const env = options.env ?? globalThis.process.env;
 	const streams = options.streams ?? {
 		stdout: (text) => process.stdout.write(text),
 		stderr: (text) => process.stderr.write(text),
@@ -42,9 +94,11 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 	const metaCommand = options.argv.some((value) =>
 		["--help", "-h", "--version", "-v"].includes(value),
 	);
+	const logEnabled = !metaCommand && env.HEVY_CLI_LOG === "true";
+	const startedAt = performance.now();
 	try {
 		if (!metaCommand) {
-			const key = getApiKey(options.env ?? globalThis.process.env);
+			const key = getApiKey(env);
 			const createdClient = (
 				options.clientFactory ?? ((apiKey) => createHevyClient({ apiKey }))
 			)(key);
@@ -56,15 +110,33 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 		}
 		const exitCode = await runRoutes(options.argv, context);
 		if (state.error !== undefined) throw state.error;
-		if (exitCode !== 0) return EXIT.usage;
+		if (exitCode !== 0) {
+			if (logEnabled)
+				writeCliEvent(streams, options.argv, startedAt, {
+					outcome: "failure",
+					exitCode: EXIT.usage,
+				});
+			return EXIT.usage;
+		}
 		if (state.result !== undefined) {
 			const json = options.argv.includes("--json");
 			writeResult(state.result, json, streams);
 		}
+		if (logEnabled)
+			writeCliEvent(streams, options.argv, startedAt, {
+				outcome: "success",
+				exitCode: 0,
+			});
 		return 0;
 	} catch (error) {
 		const normalizedError = error instanceof Error ? error : String(error);
 		const failure = diagnostic(normalizedError);
+		if (logEnabled)
+			writeCliEvent(streams, options.argv, startedAt, {
+				outcome: "failure",
+				exitCode: failure.code,
+				errorCode: failure.error_code,
+			});
 		if (options.argv.includes("--json")) {
 			streams.stderr(`${JSON.stringify(failure)}\n`);
 		} else {

@@ -129,8 +129,10 @@ checks up to 10 API pages, with 100 templates per page; `--max-pages` accepts
 up to 100.
 
 Add `--json` to any command for machine-readable output. Successful commands
-write one JSON value followed by a newline to stdout. Errors write one
-sanitized line to stderr.
+write one JSON value followed by a newline to stdout. Errors write a sanitized
+message to stderr. Set `HEVY_CLI_LOG=true` to add a structured command outcome
+event to stderr; these logs omit raw arguments, API data, and credentials.
+Logging is disabled by default and does not change stdout.
 
 | Exit code | Meaning                                  |
 | --------- | ---------------------------------------- |
