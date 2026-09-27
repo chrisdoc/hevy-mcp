@@ -9,7 +9,7 @@ export type FeedbackResult =
 	  };
 
 export interface AgentFeedbackRecorder {
-	record(message: string): FeedbackResult;
+	record(message: string): FeedbackResult | Promise<FeedbackResult>;
 }
 
 export function createUnavailableAgentFeedbackRecorder(): AgentFeedbackRecorder {

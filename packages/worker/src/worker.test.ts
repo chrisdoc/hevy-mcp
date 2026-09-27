@@ -636,6 +636,64 @@ describe("real stateless SDK transport", () => {
 		expect(start).not.toHaveBeenCalled();
 	});
 
+	it("uses cached authorization for feedback without a fresh Hevy check", async () => {
+		const getUserInfo = vi.fn().mockResolvedValue({ data: { id: "user" } });
+		const createValidationClient = vi.fn(() =>
+			createMockClient({ getUserInfo }),
+		);
+		const record = vi.fn(() => Promise.resolve({ accepted: true as const }));
+		const createFeedbackRecorder = vi.fn(() => ({ record }));
+		const createObserver = vi.fn(() => ({ start: vi.fn() }));
+		const handler = createWorkerHandler({
+			createValidationClient,
+			createRequestClient: () => createMockClient(),
+			createFeedbackRecorder,
+			createObserver,
+		});
+
+		const initialized = await handler(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 1,
+				method: "initialize",
+				params: {
+					protocolVersion: "2025-11-25",
+					capabilities: {},
+					clientInfo: { name: "feedback-outage-test", version: "1" },
+				},
+			}),
+			{},
+		);
+		expect(initialized.status).toBe(200);
+		expect(getUserInfo).toHaveBeenCalledOnce();
+
+		getUserInfo.mockRejectedValue(new Error("Hevy must not be called again"));
+		const feedback = await handler(
+			mcpRequest({
+				jsonrpc: "2.0",
+				id: 2,
+				method: "tools/call",
+				params: {
+					name: "feedback",
+					arguments: { message: "Hevy call failed after initialization" },
+				},
+			}),
+			{},
+		);
+
+		expect(feedback.status).toBe(200);
+		expect(await parseMcpResponse(feedback)).toMatchObject({
+			id: 2,
+			result: { structuredContent: { accepted: true } },
+		});
+		expect(getUserInfo).toHaveBeenCalledOnce();
+		expect(createObserver).toHaveBeenCalledOnce();
+		expect(createFeedbackRecorder).toHaveBeenCalledTimes(2);
+		expect(record).toHaveBeenCalledWith(
+			"Hevy call failed after initialization",
+		);
+	});
+
 	it("passes the user hash and Cloudflare colo to activity observation", async () => {
 		let observerOptions:
 			| {

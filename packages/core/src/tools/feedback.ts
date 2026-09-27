@@ -78,7 +78,7 @@ export const feedbackToolDefinition = {
 		runtime: ToolRuntime,
 		args: FeedbackParams,
 	): Effect.Effect<FeedbackResult, CoreToolError, never> =>
-		Effect.sync(() => {
+		Effect.promise(async () => {
 			const scrubbedMessage = sanitizeDiagnosticText(
 				args.message,
 				FEEDBACK_MAX_MESSAGE_LENGTH,
@@ -90,7 +90,7 @@ export const feedbackToolDefinition = {
 				return { accepted: false, reason: "telemetry_unavailable" };
 			}
 			try {
-				return runtime.feedbackRecorder.record(scrubbedMessage);
+				return await runtime.feedbackRecorder.record(scrubbedMessage);
 			} catch {
 				return { accepted: false, reason: "telemetry_unavailable" };
 			}

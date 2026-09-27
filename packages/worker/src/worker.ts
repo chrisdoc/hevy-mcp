@@ -2,10 +2,10 @@
 
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { Predicate } from "effect";
 import {
 	createHevyMcpServer,
 	createSafeErrorDiagnostic,
-	createUnavailableAgentFeedbackRecorder,
 	preloadHevyToolSchemas,
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
@@ -34,6 +34,8 @@ import {
 	getCloudflareColo,
 	getCloudflareGeography,
 } from "./worker-telemetry.js";
+import { createWorkerFeedbackRecorder } from "./worker-feedback.js";
+import { hasCachedValidation } from "./validation-cache.js";
 import { validateHevyApiKeyResilient } from "./validation-cache.js";
 
 const MCP_PATH = "/mcp";
@@ -158,6 +160,10 @@ export interface WorkerEnv {
 	// Optional comma-separated retry delay sequence (ms) for validation backoff.
 	// Defaults to 300,600.
 	HEVY_VALIDATION_RETRY_DELAYS_MS?: string;
+	// Cloudflare secret used to submit detached feedback spans to the OTLP collector.
+	OTEL_COLLECTOR_TOKEN?: string;
+	// Set to exactly "0" to disable project feedback telemetry.
+	HEVY_MCP_TELEMETRY?: string;
 }
 
 interface WorkerDependencies {
@@ -178,6 +184,9 @@ interface WorkerDependencies {
 	createObserver?: (
 		options: WorkerToolObserverOptions,
 	) => CreateHevyMcpServerOptions["observer"];
+	createFeedbackRecorder?: (
+		env: WorkerEnv,
+	) => CreateHevyMcpServerOptions["feedbackRecorder"];
 }
 
 type ResolvedWorkerDependencies = Required<WorkerDependencies>;
@@ -401,7 +410,37 @@ function resolveWorkerDependencies(
 		createObserver:
 			dependencies.createObserver ??
 			((options) => createWorkerToolObserver(options)),
+		createFeedbackRecorder:
+			dependencies.createFeedbackRecorder ??
+			((env) =>
+				createWorkerFeedbackRecorder(
+					env.OTEL_COLLECTOR_TOKEN,
+					fetch,
+					env.HEVY_MCP_TELEMETRY !== "0",
+				)),
 	};
+}
+
+/** Identify one feedback call so a recently validated key can report during an outage. */
+async function isFeedbackToolCall(request: Request): Promise<boolean> {
+	if (!request.headers.get("content-type")?.includes("application/json")) {
+		return false;
+	}
+	try {
+		const payload: unknown = await request.clone().json();
+		if (
+			!Predicate.isObject(payload) ||
+			payload.jsonrpc !== "2.0" ||
+			payload.method !== "tools/call" ||
+			(typeof payload.id !== "string" && typeof payload.id !== "number") ||
+			!Predicate.isObject(payload.params)
+		) {
+			return false;
+		}
+		return payload.params.name === "feedback";
+	} catch {
+		return false;
+	}
 }
 
 async function validateHevyApiKey(
@@ -441,23 +480,28 @@ async function serveMcpRequest(
 	hevyApiBaseUrl: string,
 	dependencies: ResolvedWorkerDependencies,
 	deadline: number,
+	env: WorkerEnv,
+	feedbackOnly: boolean,
 ): Promise<Response> {
 	try {
-		const geography = getCloudflareGeography(request);
-		const observer = dependencies.createObserver({
-			userHash: await createWorkerUserHash(apiKey),
-			cloudflareColo: getCloudflareColo(request),
-			geoLocalityName: geography.localityName,
-			geoLocalityRegion: geography.localityRegion,
-			geoCountryCode: geography.countryCode,
-		});
+		let observer: CreateHevyMcpServerOptions["observer"];
+		if (!feedbackOnly) {
+			const geography = getCloudflareGeography(request);
+			observer = dependencies.createObserver({
+				userHash: await createWorkerUserHash(apiKey),
+				cloudflareColo: getCloudflareColo(request),
+				geoLocalityName: geography.localityName,
+				geoLocalityRegion: geography.localityRegion,
+				geoCountryCode: geography.countryCode,
+			});
+		}
 		const server = await dependencies.createServer(
 			({ onLog }) =>
 				dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),
 			request.signal,
 			deadline,
 			observer,
-			createUnavailableAgentFeedbackRecorder(),
+			dependencies.createFeedbackRecorder(env),
 		);
 		const transport = dependencies.createTransport();
 		transport.onerror = (error) => {
@@ -521,41 +565,50 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		}
 
 		const deadline = Date.now() + WORKER_INVOCATION_TIMEOUT_MS;
+		const feedbackOnly = await isFeedbackToolCall(request);
+		const cachedFeedbackAuthorization =
+			feedbackOnly && (await hasCachedValidation(apiKey, env));
 		let validation: HevyApiKeyValidation;
-		try {
-			validation = await validateHevyApiKeyResilient(
-				apiKey,
-				hevyApiBaseUrl,
-				resolved.createValidationClient,
-				validateHevyApiKey,
-				env,
-				{
-					signal: request.signal,
-					// One absolute deadline for the whole validation phase, shared
-					// across the wrapper's retries. Passing the full invocation
-					// deadline instead would let each retry's inner validateHevyApiKey
-					// re-anchor its own now+WORKER_VALIDATION_TIMEOUT_MS window, so
-					// three attempts could consume ~3x the budget this cap reserves
-					// for MCP execution.
-					deadline: Math.min(
-						deadline,
-						Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
-					),
-				},
-				// Pass the context through as-is: when it's absent (direct callers),
-				// the wrapper awaits the cache write inline rather than handing it to
-				// a no-op waitUntil that would drop it.
-				ctx,
-			);
-		} catch (error) {
-			const normalizedError = error instanceof Error ? error : String(error);
-			logWorkerFailure("hevy-key-validation", normalizedError);
-			return executionHttpResponse(
-				normalizedError,
-				"Unable to validate the Hevy API key",
-				502,
-				origin,
-			);
+		if (cachedFeedbackAuthorization) {
+			// This key was confirmed valid by a prior request. Feedback does not
+			// call Hevy, so it can still be reported when the upstream is down.
+			validation = "valid";
+		} else {
+			try {
+				validation = await validateHevyApiKeyResilient(
+					apiKey,
+					hevyApiBaseUrl,
+					resolved.createValidationClient,
+					validateHevyApiKey,
+					env,
+					{
+						signal: request.signal,
+						// One absolute deadline for the whole validation phase, shared
+						// across the wrapper's retries. Passing the full invocation
+						// deadline instead would let each retry's inner validateHevyApiKey
+						// re-anchor its own now+WORKER_VALIDATION_TIMEOUT_MS window, so
+						// three attempts could consume ~3x the budget this cap reserves
+						// for MCP execution.
+						deadline: Math.min(
+							deadline,
+							Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
+						),
+					},
+					// Pass the context through as-is: when it's absent (direct callers),
+					// the wrapper awaits the cache write inline rather than handing it to
+					// a no-op waitUntil that would drop it.
+					ctx,
+				);
+			} catch (error) {
+				const normalizedError = error instanceof Error ? error : String(error);
+				logWorkerFailure("hevy-key-validation", normalizedError);
+				return executionHttpResponse(
+					normalizedError,
+					"Unable to validate the Hevy API key",
+					502,
+					origin,
+				);
+			}
 		}
 		if (validation === "invalid") {
 			return response("Unauthorized", 401, origin, {
@@ -570,6 +623,8 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 				hevyApiBaseUrl,
 				resolved,
 				deadline,
+				env,
+				feedbackOnly,
 			),
 			origin,
 		);
@@ -621,6 +676,8 @@ function createWorkerOAuthProvider(
 				hevyApiBaseUrl,
 				resolved,
 				deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+				env,
+				await isFeedbackToolCall(request),
 			);
 		},
 	});

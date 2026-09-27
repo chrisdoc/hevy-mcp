@@ -102,6 +102,8 @@ jobs:
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         env:
           HEVY_API_KEY: ""
+          SENTRY_DSN: ""
+          OTEL_COLLECTOR_TOKEN: ""
           HEVY_TEST_REPORT_MODE: ci
         run: >-
           npx nx run-many --projects=repository --targets=test:unit,check:types,check,worker:dry-run,test:worker-http,test:contract,test:cli,test:worker,test:mcp,check:control-plane,check:exports,check:boundaries --parallel=4 --outputStyle=stream --excludeTaskDependencies
@@ -110,6 +112,8 @@ jobs:
         if: ${{ !cancelled() && matrix.node-version == '26.x' }}
         env:
           HEVY_TEST_REPORT_MODE: ci
+          SENTRY_DSN: ""
+          OTEL_COLLECTOR_TOKEN: ""
         run: >-
           npx nx run-many --projects=repository --targets=test:unit,check:types,check,check:server-manifest,test:mcp,check:control-plane,check:boundaries,check:exports --parallel=4 --outputStyle=stream
 
@@ -188,12 +192,16 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           HEVY_API_KEY: ""
+          SENTRY_DSN: ""
+          OTEL_COLLECTOR_TOKEN: ""
         run: npx nx run repository:test:performance --excludeTaskDependencies
 
       - name: Run package validation graph
         if: ${{ !cancelled() }}
         env:
           HEVY_API_KEY: ""
+          SENTRY_DSN: ""
+          OTEL_COLLECTOR_TOKEN: ""
         run: >-
           npx nx run-many --projects=repository --targets=test:diagnostics,test:stdio,test:pack,test:pack:cli,check:publint --parallel=3 --outputStyle=stream --excludeTaskDependencies
 

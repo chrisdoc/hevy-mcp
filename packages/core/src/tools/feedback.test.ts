@@ -95,6 +95,17 @@ describe("feedback contract", () => {
 		expect(message).not.toContain("https://example.test");
 	});
 
+	it("awaits an asynchronous recorder before returning acceptance", async () => {
+		const result = await executeFeedback("technical feedback", {
+			record: async () => {
+				await Promise.resolve();
+				return { accepted: true };
+			},
+		});
+
+		expect(result).toEqual({ accepted: true });
+	});
+
 	it("redacts generic URLs, labeled secrets, Unicode emails, and Windows home paths", async () => {
 		const record = vi.fn((_message: string) => ({ accepted: true as const }));
 		await expect(

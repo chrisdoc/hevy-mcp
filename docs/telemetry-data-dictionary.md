@@ -65,11 +65,19 @@ fitness data, raw tool arguments/results, conversation content, or raw errors.
 For example, an agent may report `create-workout returned a validation error`
 but must not copy the workout payload, account identifier, or error stack.
 The feedback recorder is best effort: disabled or unavailable telemetry is
-reported synchronously and recorder/export failures must not affect the MCP
-request. The Node adapter emits this span when its OTLP provider is available.
-The Worker adapter currently exposes the tool but returns
-`telemetry_unavailable` because the installed Cloudflare tracing API cannot
-create a detached root span without its request context.
+reported without affecting other tools. The Node adapter emits this span through
+its OTLP provider. The Worker sends a detached OTLP span directly to the same
+collector with a fresh trace ID; it does not use Cloudflare's span API, which
+adds platform and request attributes automatically. Worker delivery requires
+the `OTEL_COLLECTOR_TOKEN` secret. A missing secret, a disabled telemetry
+setting, or a collector failure returns `telemetry_unavailable` or
+`telemetry_disabled` without logging or echoing the message.
+
+Hosted Worker feedback requests reuse a recently confirmed API-key validation
+for up to 15 minutes. That lets an already-connected agent report an issue
+during a transient Hevy outage without validating the key against Hevy again.
+Authentication remains required; a key that has not been confirmed recently
+still follows the normal validation path.
 
 ## Structural fields
 

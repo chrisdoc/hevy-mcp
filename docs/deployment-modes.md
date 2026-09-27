@@ -239,6 +239,12 @@ Set `HEVY_MCP_DEBUG=1` (exactly `1`) for privacy-bounded diagnostics [[41]](http
 
 Telemetry is enabled by default. Set `HEVY_MCP_TELEMETRY=0` (exactly `0`) before startup or import to disable all project telemetry, including Sentry error reporting and OTLP traces/metrics [[42]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L498).
 
+The hosted Worker sends privacy-bounded feedback through the existing OTLP
+collector when its `OTEL_COLLECTOR_TOKEN` secret is configured. The release
+workflow provisions this from the repository secret of the same name. Set the
+Worker variable `HEVY_MCP_TELEMETRY=0` to disable feedback telemetry; without a
+collector token, `feedback` returns `telemetry_unavailable`.
+
 The update check cache is stored at `$XDG_CACHE_HOME/hevy-mcp/update-check.json`, defaulting to `~/.cache/hevy-mcp/update-check.json` when `XDG_CACHE_HOME` is unset [[43]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L499).
 
 ## Local Node HTTP Mode
