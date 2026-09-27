@@ -9,12 +9,7 @@ import {
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
 } from "@hevy-mcp/core";
-import {
-	createHevyClient,
-	isHevyHttpError,
-	type HevyClient,
-	type HevyRequestOptions,
-} from "@hevy-mcp/hevy-client";
+import { createHevyClient, type HevyClient } from "@hevy-mcp/hevy-client";
 import {
 	createHevyOAuthProvider,
 	hasOAuthAccessTokenFormat,
@@ -33,7 +28,16 @@ import {
 	getCloudflareColo,
 	getCloudflareGeography,
 } from "./worker-telemetry.js";
-import { validateHevyApiKeyResilient } from "./validation-cache.js";
+import {
+	createWorkerFeedbackRecorder,
+	isFeedbackToolCall,
+} from "./worker-feedback.js";
+import {
+	hasCachedValidation,
+	validateHevyApiKey,
+	validateHevyApiKeyResilient,
+	WORKER_VALIDATION_TIMEOUT_MS,
+} from "./validation-cache.js";
 
 const MCP_PATH = "/mcp";
 const HEALTH_PATH = "/health";
@@ -60,9 +64,6 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 	"https://vscode.dev", // VS Code for the Web
 	"https://github.dev", // github.dev web editor
 ] as const;
-
-/** Reserve most of the invocation budget for MCP execution after validation. */
-const WORKER_VALIDATION_TIMEOUT_MS = 5_000;
 
 class FallbackSpan implements Span {
 	get isTraced(): boolean {
@@ -158,6 +159,10 @@ export interface WorkerEnv {
 	// Optional comma-separated retry delay sequence (ms) for validation backoff.
 	// Defaults to 300,600.
 	HEVY_VALIDATION_RETRY_DELAYS_MS?: string;
+	// Cloudflare secret used to submit detached feedback spans to the OTLP collector.
+	OTEL_COLLECTOR_TOKEN?: string;
+	// Set to exactly "0" to disable project feedback telemetry.
+	HEVY_MCP_TELEMETRY?: string;
 }
 
 interface WorkerDependencies {
@@ -172,11 +177,15 @@ interface WorkerDependencies {
 		lifecycleSignal?: AbortSignal,
 		executionDeadline?: number,
 		observer?: CreateHevyMcpServerOptions["observer"],
+		feedbackRecorder?: CreateHevyMcpServerOptions["feedbackRecorder"],
 	) => Promise<McpServer>;
 	createTransport?: () => WebStandardStreamableHTTPServerTransport;
 	createObserver?: (
 		options: WorkerToolObserverOptions,
 	) => CreateHevyMcpServerOptions["observer"];
+	createFeedbackRecorder?: (
+		env: WorkerEnv,
+	) => CreateHevyMcpServerOptions["feedbackRecorder"];
 }
 
 type ResolvedWorkerDependencies = Required<WorkerDependencies>;
@@ -370,12 +379,14 @@ async function createDefaultServer(
 	lifecycleSignal?: AbortSignal,
 	executionDeadline?: number,
 	observer?: CreateHevyMcpServerOptions["observer"],
+	feedbackRecorder?: CreateHevyMcpServerOptions["feedbackRecorder"],
 ): Promise<McpServer> {
 	return await createHevyMcpServer({
 		createClient,
 		observer,
 		lifecycleSignal,
 		executionDeadline,
+		feedbackRecorder,
 	});
 }
 
@@ -399,13 +410,13 @@ function logWorkerFailure(
 }
 function logOAuthResponse(
 	context: WorkerRequestLogContext,
-	status: number,
+	statusCode: number,
 ): void {
-	if (status < 400) return;
+	if (statusCode < 400) return;
 	console.warn({
 		event: "worker.oauth_response",
 		...context,
-		status,
+		status: statusCode,
 	});
 }
 
@@ -431,38 +442,15 @@ function resolveWorkerDependencies(
 		createObserver:
 			dependencies.createObserver ??
 			((options) => createWorkerToolObserver(options)),
+		createFeedbackRecorder:
+			dependencies.createFeedbackRecorder ??
+			((env) =>
+				createWorkerFeedbackRecorder(
+					env.OTEL_COLLECTOR_TOKEN,
+					fetch,
+					env.HEVY_MCP_TELEMETRY !== "0",
+				)),
 	};
-}
-
-async function validateHevyApiKey(
-	apiKey: string,
-	hevyApiBaseUrl: string,
-	createValidationClient: ResolvedWorkerDependencies["createValidationClient"],
-	options?: HevyRequestOptions,
-): Promise<HevyApiKeyValidation> {
-	try {
-		const validationDeadline = Math.min(
-			options?.deadline ?? Number.POSITIVE_INFINITY,
-			Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
-		);
-		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo({
-			...options,
-			deadline: validationDeadline,
-		});
-		return "valid";
-	} catch (error) {
-		if (options?.signal?.aborted) throw error;
-		if (isHevyHttpError(error) && error.outcome === "deadline_exceeded") {
-			throw error;
-		}
-		if (
-			isHevyHttpError(error) &&
-			(error.status === 401 || error.status === 403)
-		) {
-			return "invalid";
-		}
-		throw error;
-	}
 }
 
 async function serveMcpRequest(
@@ -471,22 +459,28 @@ async function serveMcpRequest(
 	hevyApiBaseUrl: string,
 	dependencies: ResolvedWorkerDependencies,
 	deadline: number,
+	env: WorkerEnv,
+	feedbackOnly: boolean,
 ): Promise<Response> {
 	try {
-		const geography = getCloudflareGeography(request);
-		const observer = dependencies.createObserver({
-			userHash: await createWorkerUserHash(apiKey),
-			cloudflareColo: getCloudflareColo(request),
-			geoLocalityName: geography.localityName,
-			geoLocalityRegion: geography.localityRegion,
-			geoCountryCode: geography.countryCode,
-		});
+		let observer: CreateHevyMcpServerOptions["observer"];
+		if (!feedbackOnly) {
+			const geography = getCloudflareGeography(request);
+			observer = dependencies.createObserver({
+				userHash: await createWorkerUserHash(apiKey),
+				cloudflareColo: getCloudflareColo(request),
+				geoLocalityName: geography.localityName,
+				geoLocalityRegion: geography.localityRegion,
+				geoCountryCode: geography.countryCode,
+			});
+		}
 		const server = await dependencies.createServer(
 			({ onLog }) =>
 				dependencies.createRequestClient(apiKey, hevyApiBaseUrl, onLog),
 			request.signal,
 			deadline,
 			observer,
+			dependencies.createFeedbackRecorder(env),
 		);
 		const transport = dependencies.createTransport();
 		transport.onerror = (error) => {
@@ -552,41 +546,50 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		}
 
 		const deadline = Date.now() + WORKER_INVOCATION_TIMEOUT_MS;
+		const feedbackOnly = await isFeedbackToolCall(request);
+		const cachedFeedbackAuthorization =
+			feedbackOnly && (await hasCachedValidation(apiKey, env));
 		let validation: HevyApiKeyValidation;
-		try {
-			validation = await validateHevyApiKeyResilient(
-				apiKey,
-				hevyApiBaseUrl,
-				resolved.createValidationClient,
-				validateHevyApiKey,
-				env,
-				{
-					signal: request.signal,
-					// One absolute deadline for the whole validation phase, shared
-					// across the wrapper's retries. Passing the full invocation
-					// deadline instead would let each retry's inner validateHevyApiKey
-					// re-anchor its own now+WORKER_VALIDATION_TIMEOUT_MS window, so
-					// three attempts could consume ~3x the budget this cap reserves
-					// for MCP execution.
-					deadline: Math.min(
-						deadline,
-						Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
-					),
-				},
-				// Pass the context through as-is: when it's absent (direct callers),
-				// the wrapper awaits the cache write inline rather than handing it to
-				// a no-op waitUntil that would drop it.
-				ctx,
-			);
-		} catch (error) {
-			const normalizedError = error instanceof Error ? error : String(error);
-			logWorkerFailure("hevy-key-validation", normalizedError);
-			return executionHttpResponse(
-				normalizedError,
-				"Unable to validate the Hevy API key",
-				502,
-				origin,
-			);
+		if (cachedFeedbackAuthorization) {
+			// This key was confirmed valid by a prior request. Feedback does not
+			// call Hevy, so it can still be reported when the upstream is down.
+			validation = "valid";
+		} else {
+			try {
+				validation = await validateHevyApiKeyResilient(
+					apiKey,
+					hevyApiBaseUrl,
+					resolved.createValidationClient,
+					validateHevyApiKey,
+					env,
+					{
+						signal: request.signal,
+						// One absolute deadline for the whole validation phase, shared
+						// across the wrapper's retries. Passing the full invocation
+						// deadline instead would let each retry's inner validateHevyApiKey
+						// re-anchor its own now+WORKER_VALIDATION_TIMEOUT_MS window, so
+						// three attempts could consume ~3x the budget this cap reserves
+						// for MCP execution.
+						deadline: Math.min(
+							deadline,
+							Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
+						),
+					},
+					// Pass the context through as-is: when it's absent (direct callers),
+					// the wrapper awaits the cache write inline rather than handing it to
+					// a no-op waitUntil that would drop it.
+					ctx,
+				);
+			} catch (error) {
+				const normalizedError = error instanceof Error ? error : String(error);
+				logWorkerFailure("hevy-key-validation", normalizedError);
+				return executionHttpResponse(
+					normalizedError,
+					"Unable to validate the Hevy API key",
+					502,
+					origin,
+				);
+			}
 		}
 		if (validation === "invalid") {
 			return response("Unauthorized", 401, origin, {
@@ -601,6 +604,8 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 				hevyApiBaseUrl,
 				resolved,
 				deadline,
+				env,
+				feedbackOnly,
 			),
 			origin,
 		);
@@ -652,6 +657,8 @@ function createWorkerOAuthProvider(
 				hevyApiBaseUrl,
 				resolved,
 				deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+				env,
+				await isFeedbackToolCall(request),
 			);
 		},
 	});
@@ -721,23 +728,23 @@ export function createWorkerFetchHandler(
 					responseStatus = legacyResponse.status;
 					return legacyResponse;
 				}
-				const oauthResponse = await oauthProvider.fetch(
+				const providerResponse = await oauthProvider.fetch(
 					request,
 					env,
 					requireExecutionContext(ctx),
 				);
-				responseStatus = oauthResponse.status;
+				responseStatus = providerResponse.status;
 				logOAuthResponse(logContext, responseStatus);
-				return withCors(oauthResponse, origin);
+				return withCors(providerResponse, origin);
 			}
-			const oauthResponse = await oauthProvider.fetch(
+			const providerResponse = await oauthProvider.fetch(
 				request,
 				env,
 				requireExecutionContext(ctx),
 			);
-			responseStatus = oauthResponse.status;
+			responseStatus = providerResponse.status;
 			logOAuthResponse(logContext, responseStatus);
-			return withCors(oauthResponse, origin);
+			return withCors(providerResponse, origin);
 		} catch (error) {
 			const normalizedError = error instanceof Error ? error : String(error);
 			logWorkerFailure("request", normalizedError, logContext);

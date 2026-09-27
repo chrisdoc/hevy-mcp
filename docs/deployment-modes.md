@@ -1,6 +1,6 @@
 # Deployment Modes
 
-`hevy-mcp` supports three distinct deployment modes — Hosted Cloudflare Worker, Local Node stdio, and Local Node HTTP — each suited to different infrastructure requirements and client capabilities. All three modes expose the same [22 MCP tools](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L370-L403) and follow the same tool contract; only the adapter layer and transport mechanism differ [[1]](https://app.dosu.dev/documents/26a6ed7f-f9b9-4bce-bc57-e7b1c60b6278). Choose the mode that matches how your MCP client connects and whether you need OAuth support, a persistent session, or zero local dependencies.
+`hevy-mcp` supports three distinct deployment modes — Hosted Cloudflare Worker, Local Node stdio, and Local Node HTTP — each suited to different infrastructure requirements and client capabilities. All three modes expose the same [23 MCP tools](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L370-L403) and follow the same tool contract; only the adapter layer and transport mechanism differ [[1]](https://app.dosu.dev/documents/26a6ed7f-f9b9-4bce-bc57-e7b1c60b6278). Choose the mode that matches how your MCP client connects and whether you need OAuth support, a persistent session, or zero local dependencies.
 
 ## Side-by-Side Comparison Table
 
@@ -19,7 +19,7 @@
 
 ## Hosted Cloudflare Worker Mode
 
-The production Hevy MCP server runs as a stateless Cloudflare Worker at `https://mcp.hevy-mcp.dev/mcp` [[2]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L420-L424). This mode requires no installation—no Node.js, Bun, or Docker—and exposes the same 22 tools as the npm package and Docker image [[3]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L426-L428).
+The production Hevy MCP server runs as a stateless Cloudflare Worker at `https://mcp.hevy-mcp.dev/mcp` [[2]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L420-L424). This mode requires no installation—no Node.js, Bun, or Docker—and exposes the same 23 tools as the npm package and Docker image [[3]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L426-L428).
 
 ### How It Works
 
@@ -238,6 +238,12 @@ Set `HEVY_MCP_DEBUG=1` (exactly `1`) for privacy-bounded diagnostics [[41]](http
 > stdout remains reserved for MCP JSON-RPC. All debug output goes to stderr to avoid interfering with the protocol.
 
 Telemetry is enabled by default. Set `HEVY_MCP_TELEMETRY=0` (exactly `0`) before startup or import to disable all project telemetry, including Sentry error reporting and OTLP traces/metrics [[42]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L498).
+
+The hosted Worker sends privacy-bounded feedback through the existing OTLP
+collector when its `OTEL_COLLECTOR_TOKEN` secret is configured. The release
+workflow provisions this from the repository secret of the same name. Set the
+Worker variable `HEVY_MCP_TELEMETRY=0` to disable feedback telemetry; without a
+collector token, `feedback` returns `telemetry_unavailable`.
 
 The update check cache is stored at `$XDG_CACHE_HOME/hevy-mcp/update-check.json`, defaulting to `~/.cache/hevy-mcp/update-check.json` when `XDG_CACHE_HOME` is unset [[43]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L499).
 

@@ -43,6 +43,7 @@ import {
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
 import { TELEMETRY_ARGUMENT_KEYS } from "../diagnostics/telemetry-contract.js";
 import { isBoolean, isFiniteNumber } from "../utils/type-predicates.js";
+import type { AgentFeedbackRecorder } from "../feedback-recorder.js";
 
 interface ArgumentKeySet {
 	readonly [key: string]: true;
@@ -165,6 +166,8 @@ export interface ToolRuntime {
 	readonly effectParentSpan?: () => Tracer.AnySpan | undefined;
 	readonly operations: HevyOperations | null;
 	readonly createHandler: ToolHandlerFactory;
+	readonly createUnobservedHandler: ToolHandlerFactory;
+	readonly feedbackRecorder?: AgentFeedbackRecorder;
 	service<I extends ToolRuntimeServiceIdentifiers, S>(
 		service: Context.Key<I, S>,
 	): S;
@@ -188,6 +191,7 @@ export interface CreateToolRuntimeOptions {
 	executionTimeoutMs?: number;
 	executionDeadline?: number;
 	lifecycleSignal?: AbortSignal;
+	feedbackRecorder?: AgentFeedbackRecorder;
 	effectTracer?: Tracer.Tracer;
 	effectParentSpan?: () => Tracer.AnySpan | undefined;
 }
@@ -245,6 +249,7 @@ export function createToolRuntime({
 	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
 	executionDeadline,
 	lifecycleSignal,
+	feedbackRecorder,
 	effectTracer,
 	effectParentSpan,
 }: CreateToolRuntimeOptions): ToolRuntime {
@@ -477,6 +482,8 @@ export function createToolRuntime({
 		effectParentSpan,
 		operations: resolvedOperations,
 		createHandler: observedHandlerFactory,
+		createUnobservedHandler: effectHandlerFactory,
+		feedbackRecorder,
 		service: getService,
 		getClient: () =>
 			effectiveClient && services
@@ -547,6 +554,7 @@ export function createToolRuntime({
 					executionDeadline:
 						nextExecution?.deadline ?? effectiveExecutionDeadline,
 					lifecycleSignal,
+					feedbackRecorder,
 					effectTracer,
 					effectParentSpan,
 				});

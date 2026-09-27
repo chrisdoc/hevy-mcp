@@ -124,7 +124,7 @@ The `package-boundaries` lane (blocking, runs on Node 24 and 26) uses dependency
 
 ### One tool contract, two runtimes
 
-The primary motivation is to expose the same 22 MCP tools to users regardless of whether they run the server locally via npm or connect to the hosted Cloudflare endpoint. Splitting implementation into runtime-neutral packages and thin adapters is the only way to achieve this without duplicating logic [[13]](https://app.dosu.dev/documents/86385d8b-fd28-42af-bebd-e017cd533d92).
+The primary motivation is to expose the same 23 MCP tools to users regardless of whether they run the server locally via npm or connect to the hosted Cloudflare endpoint. Splitting implementation into runtime-neutral packages and thin adapters is the only way to achieve this without duplicating logic [[13]](https://app.dosu.dev/documents/86385d8b-fd28-42af-bebd-e017cd533d92).
 
 ### Preventing invalid bundles
 

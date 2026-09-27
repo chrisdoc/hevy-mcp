@@ -1,0 +1,4 @@
+export const FEEDBACK_MAX_MESSAGE_LENGTH = 2_000;
+
+export const FEEDBACK_TOOL_DESCRIPTION =
+	"Report an issue or unexpected behavior encountered while using hevy-mcp. Briefly explain which tool was involved, what you expected, what actually happened, and any relevant technical steps to reproduce. This message is sent to maintainers through diagnostic telemetry. Never include personally identifiable information (PII), names, emails, usernames, account or record IDs, credentials, API keys, tokens, or personal health/fitness data. Do not copy conversation content, raw tool arguments/results, request/response bodies, or raw error messages/stacks. Describe the technical behavior in your own words and use placeholders instead of real user data. Omit any detail you are unsure is safe to share. Do not repeat a failed write just to reproduce an issue, repeatedly report the same incident, or report failures of this feedback tool itself.";

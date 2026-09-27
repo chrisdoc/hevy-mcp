@@ -12,6 +12,8 @@ import { isOAuthEnabled, type HevyApiKeyValidation } from "./worker-oauth.js";
 
 /** How long a successful Hevy key validation is trusted before re-checking upstream. */
 export const VALIDATION_CACHE_TTL_SECONDS = 900;
+/** Reserve most of the invocation budget for MCP execution after validation. */
+export const WORKER_VALIDATION_TIMEOUT_MS = 5_000;
 
 const VALIDATION_CACHE_KEY_PREFIX = "keyvalid:";
 /** The only value `cacheValidation` ever writes; a KV read must match it exactly. */
@@ -135,6 +137,37 @@ export type HevyKeyValidator = (
 	createValidationClient: (apiKey: string, baseUrl: string) => HevyClient,
 	options?: HevyRequestOptions,
 ) => Promise<HevyApiKeyValidation>;
+
+export async function validateHevyApiKey(
+	apiKey: string,
+	hevyApiBaseUrl: string,
+	createValidationClient: (apiKey: string, baseUrl: string) => HevyClient,
+	options?: HevyRequestOptions,
+): Promise<HevyApiKeyValidation> {
+	try {
+		const validationDeadline = Math.min(
+			options?.deadline ?? Number.POSITIVE_INFINITY,
+			Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
+		);
+		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo({
+			...options,
+			deadline: validationDeadline,
+		});
+		return "valid";
+	} catch (error) {
+		if (options?.signal?.aborted) throw error;
+		if (isHevyHttpError(error) && error.outcome === "deadline_exceeded") {
+			throw error;
+		}
+		if (
+			isHevyHttpError(error) &&
+			(error.status === 401 || error.status === 403)
+		) {
+			return "invalid";
+		}
+		throw error;
+	}
+}
 
 export const DEFAULT_VALIDATION_RETRY_DELAYS_MS = [300, 600] as const;
 

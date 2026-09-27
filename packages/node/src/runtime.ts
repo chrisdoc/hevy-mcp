@@ -33,6 +33,7 @@ import {
 	type NodeLifecycleHandle,
 } from "./utils/node-lifecycle.js";
 import { InvalidHevyApiKeyError } from "./utils/startup-errors.js";
+import { createNodeFeedbackRecorder } from "./utils/feedback.js";
 
 const objectSchema = z.object({}).passthrough();
 const stringSchema = z.string();
@@ -230,6 +231,7 @@ function buildServer(
 					observer: createNodeToolObserver({
 						userHash: createNodeUserHash(apiKey),
 					}),
+					feedbackRecorder: createNodeFeedbackRecorder(),
 					cacheObserver: createNodeCacheObserver(),
 				});
 				installSdkErrorTracking(server, transport);
