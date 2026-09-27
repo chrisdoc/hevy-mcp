@@ -9,10 +9,7 @@ import {
 	type CreateHevyMcpServerOptions,
 	type HevyClientFactoryContext,
 } from "@hevy-mcp/core";
-import {
-	createHevyClient,
-	type HevyClient,
-} from "@hevy-mcp/hevy-client";
+import { createHevyClient, type HevyClient } from "@hevy-mcp/hevy-client";
 import {
 	createHevyOAuthProvider,
 	hasOAuthAccessTokenFormat,
