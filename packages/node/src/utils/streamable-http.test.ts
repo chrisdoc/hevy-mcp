@@ -1,5 +1,5 @@
 import { request, type Server } from "node:http";
-import type { AddressInfo } from "node:net";
+import { connect, type AddressInfo } from "node:net";
 import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -246,6 +246,13 @@ describe("Streamable HTTP server", () => {
 		const { port } = await startTestServer();
 		const healthy = await call(port, "GET", undefined, {}, "/health");
 		const wrongMethod = await call(port, "POST", undefined, {}, "/health");
+		const invalidHost = await call(
+			port,
+			"GET",
+			undefined,
+			{ host: "untrusted.example" },
+			"/health",
+		);
 
 		expect(healthy).toMatchObject({
 			statusCode: 200,
@@ -254,6 +261,52 @@ describe("Streamable HTTP server", () => {
 		expect(healthy.headers["cache-control"]).toBe("no-store");
 		expect(wrongMethod.statusCode).toBe(405);
 		expect(wrongMethod.headers.allow).toBe("GET");
+		expect(invalidHost.statusCode).toBe(403);
+	});
+
+	it.each([
+		{ method: "GET", status: "200 OK" },
+		{ method: "POST", status: "405 Method Not Allowed" },
+	])("bounds incomplete $method /health bodies", async ({ method, status }) => {
+		const handle = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"test-key",
+			createMcpServer,
+			{ bodyTimeoutMs: 50 },
+		);
+		handles.push(handle);
+		const port = serverPort(handle);
+		const socket = connect(port, "127.0.0.1");
+		let responseText = "";
+		let resolveResponse!: () => void;
+		const response = new Promise<void>((resolve) => {
+			resolveResponse = resolve;
+		});
+		const closed = new Promise<void>((resolve) => {
+			socket.once("close", resolve);
+		});
+		socket.on("error", () => {});
+		socket.on("data", (chunk) => {
+			responseText += chunk.toString();
+			if (responseText.includes("\r\n\r\n")) resolveResponse();
+		});
+		socket.once("connect", () =>
+			socket.write(
+				`${method} /health HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nContent-Length: 100\r\n\r\nx`,
+			),
+		);
+		await response;
+		expect(responseText).toContain(status);
+		await new Promise<void>((resolve, reject) => {
+			const timeout = setTimeout(
+				() => reject(new Error("Incomplete health body was not bounded")),
+				1_000,
+			);
+			void closed.then(() => {
+				clearTimeout(timeout);
+				resolve();
+			});
+		});
 	});
 
 	it("returns 429 at established-session capacity", async () => {

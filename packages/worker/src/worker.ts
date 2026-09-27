@@ -291,10 +291,21 @@ function response(
 }
 
 function healthResponse(request: Request): Response {
+	if (request.method === "OPTIONS") {
+		return new Response(null, {
+			status: 204,
+			headers: {
+				Allow: "GET, OPTIONS",
+				"Access-Control-Allow-Methods": "GET, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type",
+				"Access-Control-Max-Age": "86400",
+			},
+		});
+	}
 	if (request.method !== "GET") {
 		return new Response("Method not allowed", {
 			status: 405,
-			headers: { Allow: "GET" },
+			headers: { Allow: "GET, OPTIONS" },
 		});
 	}
 	return new Response(JSON.stringify({ status: "ok" }), {
@@ -303,6 +314,13 @@ function healthResponse(request: Request): Response {
 			"Content-Type": "application/json; charset=utf-8",
 		},
 	});
+}
+
+function healthResponseWithCors(request: Request, env: WorkerEnv): Response {
+	const origin = validateOrigin(request, env);
+	return origin instanceof Response
+		? origin
+		: withCors(healthResponse(request), origin);
 }
 
 function resolveHevyApiBaseUrl(value: string | undefined): string {
@@ -497,7 +515,8 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		ctx?: ExecutionContext,
 	): Promise<Response> {
 		const url = new URL(request.url);
-		if (url.pathname === HEALTH_PATH) return healthResponse(request);
+		if (url.pathname === HEALTH_PATH)
+			return healthResponseWithCors(request, env);
 		if (url.pathname !== MCP_PATH)
 			return new Response("Not found", { status: 404 });
 
@@ -664,7 +683,7 @@ export function createWorkerFetchHandler(
 		let responseStatus: number | null = null;
 		try {
 			if (new URL(request.url).pathname === HEALTH_PATH) {
-				const health = healthResponse(request);
+				const health = healthResponseWithCors(request, env);
 				responseStatus = health.status;
 				return health;
 			}

@@ -32,10 +32,11 @@ versions. For combined trace views and Worker-specific filters, see
   supports logs and traces, not Worker or custom metrics. This is a permanent
   exception to Node metric parity. Use Cloudflare's built-in request and CPU
   metrics in its dashboard. Do not add a custom metrics exporter.
-- **CLI:** is a one-shot local command, not a long-running service. It writes
-  results to stdout and bounded diagnostics to stderr (`--json` emits structured
-  error fields). It has no persistent logger. A logger would add another path
-  for user data without an operational log sink.
+- **CLI:** is a one-shot local command, not a long-running service. Set
+  `HEVY_CLI_LOG=true` to write structured command outcome events to stderr.
+  Events use allowlisted command names and omit raw arguments, API data, and
+  credentials. Logging is disabled by default; the CLI has no persistent log
+  sink or remote telemetry exporter.
 
 The nightly published-package lane opens one deduplicated GitHub issue on a
 scheduled failure. It includes only the workflow link, not API responses or

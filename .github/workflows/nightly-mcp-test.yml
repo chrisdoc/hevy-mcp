@@ -91,6 +91,9 @@ jobs:
   report-nightly-failure:
     name: Alert on nightly failure
     if: ${{ always() && github.event_name == 'schedule' && needs.mcp-integration-test.result == 'failure' }}
+    concurrency:
+      group: nightly-failure-tracker
+      cancel-in-progress: false
     needs: [mcp-integration-test]
     runs-on: ubuntu-latest
     permissions:
@@ -101,13 +104,14 @@ jobs:
         with:
           script: |
             const title = "Nightly MCP integration failure";
+            const marker = "<!-- hevy-mcp-nightly-failure -->";
             const openIssues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "open",
               per_page: 100,
             });
-            if (openIssues.some((issue) => !issue.pull_request && issue.title === title)) {
+            if (openIssues.some((issue) => !issue.pull_request && issue.body?.includes(marker))) {
               core.info("An open nightly failure issue already exists.");
               return;
             }
@@ -117,6 +121,8 @@ jobs:
               repo: context.repo.repo,
               title,
               body: [
+                marker,
+                "",
                 "The scheduled npx/bunx/source integration matrix failed.",
                 "",
                 `Workflow run: ${runUrl}`,

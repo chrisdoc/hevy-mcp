@@ -499,7 +499,6 @@
 				"types",
 				"server-manifest",
 				"check",
-				"duplication",
 				"package-changesets",
 				"diagnostics",
 				"build",
@@ -528,10 +527,6 @@
 					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
 				},
 				"check": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
-				},
-				"duplication": {
 					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
 					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
 				},

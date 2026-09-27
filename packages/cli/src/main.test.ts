@@ -91,6 +91,53 @@ describe("CLI process contract", () => {
 		expect(io.err).toContain("HEVY_API_KEY");
 	});
 
+	it("writes opt-in structured command events to stderr", async () => {
+		const io = streams();
+		const getWorkouts = vi.fn().mockResolvedValue({
+			page: 1,
+			page_count: 1,
+			workouts: [],
+		});
+		const code = await runCli({
+			argv: ["workouts", "list", "--json"],
+			env: { HEVY_API_KEY: "key", HEVY_CLI_LOG: "true" },
+			streams: io.streams,
+			clientFactory: () => mockClient(getWorkouts),
+		});
+
+		expect(code).toBe(0);
+		expect(JSON.parse(io.err)).toMatchObject({
+			event: "cli.command",
+			outcome: "success",
+			command: "workouts",
+			subcommand: "list",
+			exit_code: 0,
+		});
+		expect(io.out).toContain('"workouts":[]');
+	});
+
+	it("does not include raw arguments in structured CLI error logs", async () => {
+		const io = streams();
+		const privateValue = "private-workout-reference";
+		const code = await runCli({
+			argv: ["workouts", "list", "--page", privateValue],
+			env: { HEVY_API_KEY: "key", HEVY_CLI_LOG: "true" },
+			streams: io.streams,
+			clientFactory: () => mockClient(vi.fn()),
+		});
+		const event = JSON.parse(io.err.split("\n", 1)[0] ?? "{}");
+
+		expect(code).toBe(2);
+		expect(event).toMatchObject({
+			event: "cli.command",
+			outcome: "failure",
+			command: "workouts",
+			subcommand: "list",
+			exit_code: 2,
+		});
+		expect(io.err).not.toContain(privateValue);
+	});
+
 	it("returns a concise semantic error without calling the API", async () => {
 		const io = streams();
 		const getWorkouts = vi.fn();

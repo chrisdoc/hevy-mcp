@@ -264,10 +264,6 @@ interface ReadBodyHandlers {
 	onTimeout: () => void;
 }
 
-interface RejectBeforeBodyHandlers {
-	onError: () => void;
-}
-
 function readBody(
 	request: IncomingMessage,
 	timeoutMs: number,
@@ -444,6 +440,21 @@ function recordHttpSessionEviction(): void {
 	}
 }
 
+function drainRequestBody(request: IncomingMessage, timeoutMs: number): void {
+	const cleanup = () => {
+		clearTimeout(timer);
+		request.removeListener("end", cleanup);
+		request.removeListener("error", cleanup);
+		request.removeListener("close", cleanup);
+	};
+	const timer = setTimeout(() => request.destroy(), timeoutMs);
+	request.once("end", cleanup);
+	request.once("error", cleanup);
+	request.once("close", cleanup);
+	timer.unref?.();
+	request.resume();
+}
+
 function rejectBeforeBody(
 	request: IncomingMessage,
 	response: ServerResponse,
@@ -451,18 +462,7 @@ function rejectBeforeBody(
 	message: string,
 	timeoutMs: number,
 ): void {
-	const handlers: RejectBeforeBodyHandlers = { onError: () => {} };
-	const timer = setTimeout(() => request.destroy(), timeoutMs);
-	const cleanup = () => {
-		clearTimeout(timer);
-		request.removeListener("error", handlers.onError);
-		request.removeListener("close", cleanup);
-	};
-	handlers.onError = () => cleanup();
-	request.once("error", handlers.onError);
-	request.once("close", cleanup);
-	timer.unref?.();
-	request.resume();
+	drainRequestBody(request, timeoutMs);
 	writeJson(response, status, message);
 }
 
@@ -965,6 +965,8 @@ export async function startStreamableHttpServer(
 		let releaseInitialization: (() => void) | undefined;
 		try {
 			if (request.url?.split("?", 1)[0] === HEALTH_PATH) {
+				drainRequestBody(request, config.bodyTimeoutMs);
+				if (response.headersSent || response.destroyed) return;
 				if (
 					!validateHostHeader(
 						request,

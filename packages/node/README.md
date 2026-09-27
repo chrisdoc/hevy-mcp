@@ -85,8 +85,8 @@ https://mcp.hevy-mcp.dev/mcp
 
 The endpoint uses Streamable HTTP. Send your Hevy API key as a bearer token on
 every MCP request. The Worker also exposes unauthenticated `GET /health` as a
-liveness probe. It returns only `{"status":"ok"}`. It does not validate a Hevy
-account.
+liveness probe. It returns only `{"status":"ok"}` and does not validate a Hevy
+account. Browser CORS is limited to configured allowed origins.
 
 ##### Codex
 
