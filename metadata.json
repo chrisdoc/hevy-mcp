@@ -1,5 +1,5 @@
 {
-  "cli_version": "0.11.3",
+  "cli_version": "0.10.5",
   "checkpoint_id": "01M3GZN2WQXDDQ0MSY624BGSAA",
   "strategy": "manual-commit",
   "branch": "chore/issue-1103-readiness",
@@ -15,10 +15,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 7021,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 153088,
-    "output_tokens": 193,
-    "api_call_count": 1
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   }
 }
