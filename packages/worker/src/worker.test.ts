@@ -140,6 +140,59 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(result.status).toBe(404);
 	});
 
+	it("serves a public health endpoint with allowlisted browser CORS", async () => {
+		const healthRequest = () =>
+			new Request("https://worker.example/health", {
+				headers: { origin: "https://chatgpt.com" },
+			});
+		const direct = await handler(healthRequest(), {});
+		const composed = await createWorkerFetchHandler()(healthRequest(), {
+			OAUTH_KV: {
+				get: vi.fn().mockResolvedValue(null),
+				put: vi.fn(),
+				delete: vi.fn(),
+				list: vi.fn().mockResolvedValue({ keys: [], list_complete: true }),
+			},
+		});
+		const preflight = await handler(
+			new Request("https://worker.example/health", {
+				method: "OPTIONS",
+				headers: { origin: "https://chatgpt.com" },
+			}),
+			{},
+		);
+		const rejected = await handler(
+			new Request("https://worker.example/health", {
+				headers: { origin: "https://browser.example" },
+			}),
+			{},
+		);
+		const wrongMethod = await createWorkerFetchHandler()(
+			new Request("https://worker.example/health", { method: "POST" }),
+			{},
+		);
+
+		for (const result of [direct, composed]) {
+			expect(result.status).toBe(200);
+			expect(await result.json()).toEqual({ status: "ok" });
+			expect(result.headers.get("cache-control")).toBe("no-store");
+			expect(result.headers.get("access-control-allow-origin")).toBe(
+				"https://chatgpt.com",
+			);
+		}
+		expect(createValidationClient).not.toHaveBeenCalled();
+		expect(preflight.status).toBe(204);
+		expect(preflight.headers.get("access-control-allow-methods")).toBe(
+			"GET, OPTIONS",
+		);
+		expect(preflight.headers.get("access-control-allow-headers")).toBe(
+			"Content-Type",
+		);
+		expect(rejected.status).toBe(403);
+		expect(wrongMethod.status).toBe(405);
+		expect(wrongMethod.headers.get("allow")).toBe("GET, OPTIONS");
+	});
+
 	it("allows configured browser origins and rejects unconfigured origins", async () => {
 		const noOrigin = await handler(
 			new Request("https://worker.example/mcp"),

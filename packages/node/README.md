@@ -84,7 +84,9 @@ https://mcp.hevy-mcp.dev/mcp
 ```
 
 The endpoint uses Streamable HTTP. Send your Hevy API key as a bearer token on
-every request.
+every MCP request. The Worker also exposes unauthenticated `GET /health` as a
+liveness probe. It returns only `{"status":"ok"}` and does not validate a Hevy
+account. Browser CORS is limited to configured allowed origins.
 
 ##### Codex
 
@@ -495,11 +497,15 @@ The local executable uses stdio by default. To opt into Streamable HTTP, run:
 HEVY_API_KEY=your-hevy-api-key npx hevy-mcp --transport http --host 127.0.0.1 --port 3000
 ```
 
-The MCP endpoint is `http://127.0.0.1:3000/mcp`. For a specific bind host,
-HTTP mode validates the Host header and configured port to protect against DNS
-rebinding. Loopback is the default. Wildcard binds (`0.0.0.0` or `::`) accept
-any hostname so they can be used behind Docker port mappings or a reverse
-proxy; they require `HEVY_MCP_HTTP_BEARER_TOKEN` and rely on that separate
+The MCP endpoint is `http://127.0.0.1:3000/mcp`. The unauthenticated
+`GET /health` endpoint at `http://127.0.0.1:3000/health` is a liveness probe.
+It returns `{"status":"ok"}` while the server accepts requests. It returns
+`503` during shutdown. The probe does not validate Hevy availability. The Docker
+image uses stdio by default, so it has no HTTP health probe in that mode. Pass
+`--transport http` to expose one. For a specific bind host, HTTP mode validates
+the Host header and configured port to protect against DNS rebinding. Loopback
+is the default. Wildcard binds (`0.0.0.0` or `::`) accept any hostname so they
+can be used behind Docker port mappings or a reverse proxy; they require `HEVY_MCP_HTTP_BEARER_TOKEN` and rely on that separate
 authentication token. Do not expose an unprotected shared Hevy account to the
 public internet. For Docker HTTP mode, publish the port explicitly:
 

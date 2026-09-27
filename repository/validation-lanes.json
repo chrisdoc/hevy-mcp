@@ -313,6 +313,20 @@
 			"mappingStatus": "mapped"
 		},
 		{
+			"id": "duplication",
+			"alias": "check:duplication",
+			"selector": {
+				"kind": "repository-check"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "duplication-threshold",
+			"nxTarget": "check:duplication",
+			"mappingStatus": "mapped"
+		},
+		{
 			"id": "build",
 			"alias": "build",
 			"selector": {
