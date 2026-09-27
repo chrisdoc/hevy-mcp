@@ -1,0 +1,17 @@
+work on the open issue in hevy-mcp
+
+---
+
+work on all
+
+---
+
+create PRs
+
+---
+
+check the review comments https://github.com/chrisdoc/hevy-mcp/pull/1204
+
+---
+
+work on those fixes
