@@ -61,6 +61,8 @@ const testDoubles = vi.hoisted(() => {
 		captureFailure: vi.fn(),
 		installProcessExceptionTracking: vi.fn(() => vi.fn()),
 		flushTelemetry: vi.fn().mockImplementation(() => Promise.resolve()),
+		createEffectTracer: vi.fn().mockResolvedValue({}),
+		getActiveEffectParentSpan: vi.fn(),
 		serverStartups: { add: vi.fn() },
 		installGracefulShutdown: vi.fn(),
 		instrumentTransport: vi.fn(() => ({ kind: "stdio-transport" })),
@@ -77,6 +79,8 @@ const testDoubles = vi.hoisted(() => {
 
 vi.mock("./utils/telemetry.js", () => ({
 	captureFailure: testDoubles.captureFailure,
+	createEffectTracer: testDoubles.createEffectTracer,
+	getActiveEffectParentSpan: testDoubles.getActiveEffectParentSpan,
 	flushTelemetry: testDoubles.flushTelemetry,
 	tracer: {
 		startActiveSpan: vi.fn((...args: unknown[]) => {
@@ -244,6 +248,13 @@ describe("Node package entrypoint", () => {
 		expect(testDoubles.createNodeToolObserver).toHaveBeenCalledWith({
 			userHash: "0b633a8f53",
 		});
+		expect(testDoubles.createEffectTracer).toHaveBeenCalledOnce();
+		expect(testDoubles.createHevyMcpServer).toHaveBeenCalledWith(
+			expect.objectContaining({
+				effectTracer: {},
+				effectParentSpan: testDoubles.getActiveEffectParentSpan,
+			}),
+		);
 		expect(
 			JSON.stringify(testDoubles.createNodeToolObserver.mock.calls),
 		).not.toContain("programmatic-key");

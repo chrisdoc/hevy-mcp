@@ -11,8 +11,11 @@
 import { randomBytes, randomUUID as nodeRandomUUID } from "node:crypto";
 import { z } from "zod";
 import { Effect, Layer } from "effect";
+import type { Tracer as EffectTracer } from "effect";
+import * as OtelResource from "@effect/opentelemetry/Resource";
+import * as OtelTracer from "@effect/opentelemetry/OtelTracer";
 import * as Sentry from "@sentry/node";
-import { metrics, trace } from "@opentelemetry/api";
+import { context, metrics, trace } from "@opentelemetry/api";
 
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import {
@@ -290,6 +293,24 @@ export const initializeTelemetryEffect = Effect.try({
 	try: initializeTelemetry,
 	catch: (error) => error,
 });
+
+export function createEffectTracer(): Promise<EffectTracer.Tracer> {
+	const effectTracerLayer = OtelTracer.layerGlobal.pipe(
+		Layer.provide(
+			OtelResource.layer({ serviceName: name, serviceVersion: version }),
+		),
+	);
+	return Effect.runPromise(Effect.provide(OtelTracer.make, effectTracerLayer));
+}
+
+export function getActiveEffectParentSpan(): EffectTracer.AnySpan | undefined {
+	const activeSpan = trace.getSpan(context.active());
+	if (!activeSpan) return undefined;
+	const spanContext = activeSpan.spanContext();
+	return trace.isSpanContextValid(spanContext)
+		? OtelTracer.makeExternalSpan(spanContext)
+		: undefined;
+}
 
 export const telemetryLayer = Layer.effectDiscard(
 	initializeTelemetryEffect.pipe(

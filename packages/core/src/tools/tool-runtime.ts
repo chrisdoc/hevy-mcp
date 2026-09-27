@@ -1,4 +1,5 @@
 import { Context, Effect, Layer, Option } from "effect";
+import type { Tracer } from "effect";
 import type { McpClientLogger } from "../diagnostics/mcp-client-logger-types.js";
 import type { HevyClient } from "@hevy-mcp/hevy-client";
 import { createOperations, type HevyOperations } from "@hevy-mcp/operations";
@@ -161,6 +162,8 @@ export interface ToolRuntime {
 	readonly executionTimeoutMs: number;
 	readonly executionDeadline?: number;
 	readonly lifecycleSignal?: AbortSignal;
+	readonly effectTracer?: Tracer.Tracer;
+	readonly effectParentSpan?: () => Tracer.AnySpan | undefined;
 	readonly operations: HevyOperations | null;
 	readonly createHandler: ToolHandlerFactory;
 	readonly createUnobservedHandler: ToolHandlerFactory;
@@ -189,6 +192,8 @@ export interface CreateToolRuntimeOptions {
 	executionDeadline?: number;
 	lifecycleSignal?: AbortSignal;
 	feedbackRecorder?: AgentFeedbackRecorder;
+	effectTracer?: Tracer.Tracer;
+	effectParentSpan?: () => Tracer.AnySpan | undefined;
 }
 
 function runToolEffect<TParams extends object>(
@@ -199,6 +204,8 @@ function runToolEffect<TParams extends object>(
 	lifecycleSignal?: AbortSignal,
 	executionTimeoutMs = DEFAULT_API_TIMEOUT_MS,
 	executionDeadline?: number,
+	effectTracer?: Tracer.Tracer,
+	effectParentSpan?: () => Tracer.AnySpan | undefined,
 ): Promise<McpToolResponse> {
 	const program = Effect.suspend(() => fn(args, requestContext));
 	const provided = services ? Effect.provide(program, services) : program;
@@ -210,6 +217,8 @@ function runToolEffect<TParams extends object>(
 		signal: mergeAbortSignals(lifecycleSignal, requestContext?.signal),
 		timeoutMs: executionTimeoutMs,
 		deadline: requestContext?.deadline ?? executionDeadline,
+		effectTracer,
+		effectParentSpan,
 	});
 }
 
@@ -241,6 +250,8 @@ export function createToolRuntime({
 	executionDeadline,
 	lifecycleSignal,
 	feedbackRecorder,
+	effectTracer,
+	effectParentSpan,
 }: CreateToolRuntimeOptions): ToolRuntime {
 	const providedClient = providedServices
 		? Context.getOption(providedServices, HevyClientService)
@@ -337,6 +348,8 @@ export function createToolRuntime({
 						lifecycleSignal,
 						executionTimeoutMs,
 						effectiveExecutionDeadline,
+						effectTracer,
+						effectParentSpan,
 					),
 				context,
 				undefined,
@@ -376,6 +389,8 @@ export function createToolRuntime({
 						lifecycleSignal,
 						executionTimeoutMs,
 						effectiveExecutionDeadline,
+						effectTracer,
+						effectParentSpan,
 					);
 		return withErrorHandling(
 			async (args: TParams, requestContext?: ToolExecutionContext) => {
@@ -463,6 +478,8 @@ export function createToolRuntime({
 		executionTimeoutMs,
 		executionDeadline: effectiveExecutionDeadline,
 		lifecycleSignal,
+		effectTracer,
+		effectParentSpan,
 		operations: resolvedOperations,
 		createHandler: observedHandlerFactory,
 		createUnobservedHandler: effectHandlerFactory,
@@ -538,6 +555,8 @@ export function createToolRuntime({
 						nextExecution?.deadline ?? effectiveExecutionDeadline,
 					lifecycleSignal,
 					feedbackRecorder,
+					effectTracer,
+					effectParentSpan,
 				});
 			})(),
 	};

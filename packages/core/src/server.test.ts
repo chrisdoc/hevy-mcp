@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Tracer } from "effect";
 import { createHevyMcpServer } from "./server.js";
 import { createMockHevyClient } from "../test-fixtures/mock-hevy.js";
 import {
@@ -20,6 +20,35 @@ describe("createHevyMcpServer", () => {
 				await server.close();
 			}),
 		);
+	});
+
+	it("records server construction with the supplied Effect tracer", async () => {
+		const spans: Tracer.NativeSpan[] = [];
+		const effectTracer = Tracer.make({
+			span: (options) => {
+				const span = new Tracer.NativeSpan(options);
+				spans.push(span);
+				return span;
+			},
+		});
+		const parentSpan = Tracer.externalSpan({
+			traceId: "0123456789abcdef0123456789abcdef",
+			spanId: "0123456789abcdef",
+		});
+		const server = await createHevyMcpServer({
+			createClient: () => createMockHevyClient(),
+			effectTracer,
+			effectParentSpan: () => parentSpan,
+		});
+		servers.push(server);
+
+		const constructionSpan = spans.find(
+			(span) => span.name === "core.createHevyMcpServer",
+		);
+		expect(constructionSpan?.parent).toMatchObject({
+			_tag: "Some",
+			value: { spanId: parentSpan.spanId },
+		});
 	});
 
 	it("keeps the Promise-compatible close façade idempotent", async () => {

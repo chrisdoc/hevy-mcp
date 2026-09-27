@@ -34,6 +34,7 @@
 		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown -c tsdown.config.ts"
 	},
 	"dependencies": {
+		"@effect/opentelemetry": "4.0.0-rc.115",
 		"@modelcontextprotocol/node": "^2.0.0",
 		"@modelcontextprotocol/server": "^2.0.0",
 		"@opentelemetry/api": "^1.9.1",
