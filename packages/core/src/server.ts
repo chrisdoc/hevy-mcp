@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import type { HevyClient, HevyClientLogEvent } from "@hevy-mcp/hevy-client";
 import { Cache, Effect, Exit, Layer, Schema, Scope } from "effect";
+import type { Tracer } from "effect";
 import { createOperations } from "@hevy-mcp/operations";
 import type {
 	TemplatesListAllOperation,
@@ -44,6 +45,9 @@ export interface CreateHevyMcpServerOptions {
 	/** Absolute deadline shared by validation and every tool call in one invocation. */
 	readonly executionDeadline?: number;
 	readonly lifecycleSignal?: AbortSignal;
+	/** Effect tracer supplied by a runtime adapter with tracing enabled. */
+	readonly effectTracer?: Tracer.Tracer;
+	readonly effectParentSpan?: () => Tracer.AnySpan | undefined;
 	/**
 	 * Optional additional server-owned services. The layer is built in the
 	 * construction Scope and can replace the default service implementations.
@@ -150,6 +154,8 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 			executionTimeoutMs: options.executionTimeoutMs,
 			executionDeadline: options.executionDeadline,
 			lifecycleSignal,
+			effectTracer: options.effectTracer,
+			effectParentSpan: options.effectParentSpan,
 			services,
 		});
 		const counting = createCountingServer(server);
@@ -167,8 +173,15 @@ export async function createHevyMcpServer(
 	const scope = Effect.runSync(Scope.make());
 	let server: McpServer;
 	try {
+		const construction = Scope.provide(scope)(
+			createHevyMcpServerEffect(options),
+		);
+		const traced = options.effectTracer
+			? Effect.withTracer(construction, options.effectTracer)
+			: construction;
+		const parentSpan = options.effectParentSpan?.();
 		server = Effect.runSync(
-			Scope.provide(scope)(createHevyMcpServerEffect(options)),
+			parentSpan ? Effect.withParentSpan(traced, parentSpan) : traced,
 		);
 	} catch (error) {
 		// Construction can acquire several scoped services before a later

@@ -7,6 +7,7 @@ import type {
 	HevyRequestPhase,
 } from "@hevy-mcp/hevy-client";
 import { Cause, Clock, Effect, Exit, Option } from "effect";
+import type { Tracer } from "effect";
 import {
 	isFunction,
 	isString,
@@ -146,6 +147,8 @@ export async function runBoundedExecution<A, E>(
 		readonly signal?: AbortSignal;
 		readonly timeoutMs: number;
 		readonly deadline?: number;
+		readonly effectTracer?: Tracer.Tracer;
+		readonly effectParentSpan?: () => Tracer.AnySpan | undefined;
 	},
 ): Promise<A> {
 	const bounded = Effect.gen(function* () {
@@ -154,7 +157,14 @@ export async function runBoundedExecution<A, E>(
 		const remaining = Math.max(0, deadline - now);
 		return yield* Effect.timeout(effect, remaining);
 	});
-	const exit = await Effect.runPromiseExit(bounded, {
+	const traced = options.effectTracer
+		? Effect.withTracer(bounded, options.effectTracer)
+		: bounded;
+	const parentSpan = options.effectParentSpan?.();
+	const program = parentSpan
+		? Effect.withParentSpan(traced, parentSpan)
+		: traced;
+	const exit = await Effect.runPromiseExit(program, {
 		signal: options.signal,
 	});
 	if (Exit.isSuccess(exit)) return exit.value;

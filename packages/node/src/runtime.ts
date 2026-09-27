@@ -1,6 +1,12 @@
 // Telemetry is acquired by the scoped Node lifecycle Layer; imports stay
 // side-effect-free for embedders.
-import { tracer, serviceName, serviceVersion } from "./utils/telemetry.js";
+import {
+	createEffectTracer,
+	getActiveEffectParentSpan,
+	tracer,
+	serviceName,
+	serviceVersion,
+} from "./utils/telemetry.js";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { z } from "zod";
@@ -217,6 +223,8 @@ function buildServer(
 							onLog,
 						}),
 					lifecycleSignal,
+					effectTracer: await createEffectTracer(),
+					effectParentSpan: getActiveEffectParentSpan,
 					onToolsRegistered: (count) =>
 						span.setAttribute("mcp.tools.count", count),
 					observer: createNodeToolObserver({

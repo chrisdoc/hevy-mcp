@@ -43,6 +43,12 @@ const testDoubles = vi.hoisted(() => ({
 	nodeTracerProviderOptions: undefined as TracerConfig | undefined,
 }));
 
+vi.mock("@effect/opentelemetry/OtelTracer", () => ({
+	layerGlobal: {},
+	make: {},
+}));
+vi.mock("@effect/opentelemetry/Resource", () => ({ layer: vi.fn() }));
+
 vi.mock("@sentry/node", () => ({
 	init: testDoubles.sentryInit,
 	flush: testDoubles.sentryFlush,
