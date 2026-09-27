@@ -15,3 +15,7 @@ check the review comments https://github.com/chrisdoc/hevy-mcp/pull/1204
 ---
 
 work on those fixes
+
+---
+
+always commit and push
