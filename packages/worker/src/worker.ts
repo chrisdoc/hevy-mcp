@@ -410,13 +410,13 @@ function logWorkerFailure(
 }
 function logOAuthResponse(
 	context: WorkerRequestLogContext,
-	status: number,
+	statusCode: number,
 ): void {
-	if (status < 400) return;
+	if (statusCode < 400) return;
 	console.warn({
 		event: "worker.oauth_response",
 		...context,
-		status,
+		status: statusCode,
 	});
 }
 
@@ -728,23 +728,23 @@ export function createWorkerFetchHandler(
 					responseStatus = legacyResponse.status;
 					return legacyResponse;
 				}
-				const oauthResponse = await oauthProvider.fetch(
+				const providerResponse = await oauthProvider.fetch(
 					request,
 					env,
 					requireExecutionContext(ctx),
 				);
-				responseStatus = oauthResponse.status;
+				responseStatus = providerResponse.status;
 				logOAuthResponse(logContext, responseStatus);
-				return withCors(oauthResponse, origin);
+				return withCors(providerResponse, origin);
 			}
-			const oauthResponse = await oauthProvider.fetch(
+			const providerResponse = await oauthProvider.fetch(
 				request,
 				env,
 				requireExecutionContext(ctx),
 			);
-			responseStatus = oauthResponse.status;
+			responseStatus = providerResponse.status;
 			logOAuthResponse(logContext, responseStatus);
-			return withCors(oauthResponse, origin);
+			return withCors(providerResponse, origin);
 		} catch (error) {
 			const normalizedError = error instanceof Error ? error : String(error);
 			logWorkerFailure("request", normalizedError, logContext);

@@ -49,7 +49,7 @@ export async function createNodeMcpServer(
 			createHevyClient({
 				apiKey,
 				onLog,
-				...(maxGetRetries === undefined ? {} : { maxGetRetries }),
+				maxGetRetries,
 			}),
 		lifecycleSignal,
 		feedbackRecorder,
