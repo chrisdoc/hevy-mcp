@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cause, Effect } from "effect";
+import { Cause, Effect, Tracer } from "effect";
 import type { HevyClient, HevyRequestOptions } from "@hevy-mcp/hevy-client";
 import {
 	bindClientExecution,
@@ -257,6 +257,39 @@ describe("runBoundedExecution", () => {
 			timeoutMs: 1000,
 		});
 		expect(result).toBe("hello");
+	});
+
+	it("records Effect.fn spans with the supplied tracer", async () => {
+		const spans: Tracer.NativeSpan[] = [];
+		const effectTracer = Tracer.make({
+			span: (options) => {
+				const span = new Tracer.NativeSpan(options);
+				spans.push(span);
+				return span;
+			},
+		});
+		const parentSpan = Tracer.externalSpan({
+			traceId: "0123456789abcdef0123456789abcdef",
+			spanId: "0123456789abcdef",
+		});
+		const operation = Effect.fn("operations.workouts.create")(function* () {
+			return yield* Effect.succeed("created");
+		});
+
+		await expect(
+			runBoundedExecution(operation(), {
+				timeoutMs: 1000,
+				effectTracer,
+				effectParentSpan: () => parentSpan,
+			}),
+		).resolves.toBe("created");
+		expect(spans.map((span) => span.name)).toContain(
+			"operations.workouts.create",
+		);
+		expect(spans[0]?.parent).toMatchObject({
+			_tag: "Some",
+			value: { spanId: parentSpan.spanId },
+		});
 	});
 
 	it("re-throws typed failures directly", async () => {
