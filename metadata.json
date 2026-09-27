@@ -1,5 +1,5 @@
 {
-  "cli_version": "0.11.3",
+  "cli_version": "0.10.5",
   "checkpoint_id": "01M3GZMGSVH5QS5APBWB4C9QR4",
   "strategy": "manual-commit",
   "branch": "feat/issue-1133-effect-otel",
@@ -15,10 +15,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 908478,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 36805632,
-    "output_tokens": 203181,
-    "api_call_count": 242
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   }
 }
