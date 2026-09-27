@@ -40,6 +40,7 @@ function isObject<T>(value: T): value is T & object {
 }
 
 const MCP_PATH = "/mcp";
+const HEALTH_PATH = "/health";
 const MAX_BODY_BYTES = 1_048_576;
 const HTTP_BEARER_TOKEN = "HEVY_MCP_HTTP_BEARER_TOKEN";
 
@@ -963,6 +964,31 @@ export async function startStreamableHttpServer(
 	): Promise<void> {
 		let releaseInitialization: (() => void) | undefined;
 		try {
+			if (request.url?.split("?", 1)[0] === HEALTH_PATH) {
+				if (
+					!validateHostHeader(
+						request,
+						hostNamesFor(options),
+						listeningPort,
+						wildcard,
+					)
+				) {
+					writeJson(response, 403, "Invalid Host header");
+					return;
+				}
+				if (request.method !== "GET") {
+					response.setHeader("Allow", "GET");
+					writeJson(response, 405, "Method not allowed");
+					return;
+				}
+				response.statusCode = shuttingDown ? 503 : 200;
+				response.setHeader("Content-Type", "application/json");
+				response.setHeader("Cache-Control", "no-store");
+				response.end(
+					JSON.stringify({ status: shuttingDown ? "shutting_down" : "ok" }),
+				);
+				return;
+			}
 			const resolution = resolveRequestSession(request, response);
 			if (!resolution) return;
 			const requiresInitialization =

@@ -313,6 +313,20 @@
 			"mappingStatus": "mapped"
 		},
 		{
+			"id": "duplication",
+			"alias": "check:duplication",
+			"selector": {
+				"kind": "repository-check"
+			},
+			"runtimes": ["node-24", "node-26"],
+			"credentials": [],
+			"artifacts": [],
+			"gate": "blocking",
+			"comparison": "duplication-threshold",
+			"nxTarget": "check:duplication",
+			"mappingStatus": "mapped"
+		},
+		{
 			"id": "build",
 			"alias": "build",
 			"selector": {
@@ -485,6 +499,7 @@
 				"types",
 				"server-manifest",
 				"check",
+				"duplication",
 				"package-changesets",
 				"diagnostics",
 				"build",
@@ -513,6 +528,10 @@
 					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
 				},
 				"check": {
+					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
+					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+				},
+				"duplication": {
 					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
 					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
 				},

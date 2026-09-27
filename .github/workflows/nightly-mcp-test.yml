@@ -87,3 +87,40 @@ jobs:
           path: ${{ matrix.launcher.diagnostics_path }}
           if-no-files-found: warn
           retention-days: 7
+
+  report-nightly-failure:
+    name: Alert on nightly failure
+    if: ${{ always() && github.event_name == 'schedule' && needs.mcp-integration-test.result == 'failure' }}
+    needs: [mcp-integration-test]
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create one tracking issue per failure incident
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const title = "Nightly MCP integration failure";
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            if (openIssues.some((issue) => !issue.pull_request && issue.title === title)) {
+              core.info("An open nightly failure issue already exists.");
+              return;
+            }
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body: [
+                "The scheduled npx/bunx/source integration matrix failed.",
+                "",
+                `Workflow run: ${runUrl}`,
+                "",
+                "Review the redacted diagnostics artifacts in the run. Do not copy API keys, authorization headers, or workout data into this issue.",
+              ].join("\n"),
+            });

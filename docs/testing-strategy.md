@@ -340,6 +340,11 @@ as ambient workflow configuration for PR tests.
 
 ## Coverage policy
 
+The unit lane now enforces 82% statements, 76% branches, 85% functions, and
+84% lines. Codecov project (80%) and patch (75%) statuses are informational
+while the merged baseline is assessed. The all-source denominator remains a
+follow-up.
+
 ### Step 1: fix the denominator
 
 - Define `coverage.include` for repository-owned production TypeScript, for

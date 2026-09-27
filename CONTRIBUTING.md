@@ -261,8 +261,10 @@ internals are private.
 
 ## Cloudflare Worker development
 
-The Worker exposes stateless Streamable HTTP at `POST /mcp`. It accepts the
-caller's Hevy key per request:
+The Worker exposes stateless Streamable HTTP at `POST /mcp` and a public
+liveness probe at `GET /health`. The health response contains only the service
+status. It does not validate a Hevy account. MCP requests accept the caller's
+Hevy key per request:
 
 ```http
 Authorization: Bearer YOUR_HEVY_API_KEY

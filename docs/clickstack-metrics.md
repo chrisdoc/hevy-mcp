@@ -19,6 +19,28 @@ native telemetry is span-based and the Node and Worker packages have independent
 versions. For combined trace views and Worker-specific filters, see
 [Cloudflare Worker version attribution](./cloudflare-worker-version-attribution.md).
 
+## Runtime observability boundaries
+
+- **Node:** owns application counters, histograms, and Sentry exception events.
+- **Worker:** uses [Cloudflare Workers Observability](https://developers.cloudflare.com/workers/observability/)
+  for platform logs and traces. `cloudflare.config.ts` enables it and accepts
+  account-owned OTLP destinations. The Worker emits structured request
+  outcomes and safe error diagnostics. Cloudflare sends platform logs and
+  traces to those destinations. The project does not load `@sentry/cloudflare`;
+  it uses this existing error path instead.
+- **Worker metrics:** [Cloudflare's OTLP export](https://developers.cloudflare.com/workers/observability/exporting-opentelemetry-data/)
+  supports logs and traces, not Worker or custom metrics. This is a permanent
+  exception to Node metric parity. Use Cloudflare's built-in request and CPU
+  metrics in its dashboard. Do not add a custom metrics exporter.
+- **CLI:** is a one-shot local command, not a long-running service. It writes
+  results to stdout and bounded diagnostics to stderr (`--json` emits structured
+  error fields). It has no persistent logger. A logger would add another path
+  for user data without an operational log sink.
+
+The nightly published-package lane opens one deduplicated GitHub issue on a
+scheduled failure. It includes only the workflow link, not API responses or
+logs.
+
 ## Common release filter
 
 Use this predicate in each panel to scope a release:

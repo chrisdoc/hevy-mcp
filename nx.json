@@ -222,6 +222,7 @@
 			"{workspaceRoot}/.dependency-cruiser.cjs",
 			"{workspaceRoot}/scripts/check-package-boundaries.mjs"
 		],
+		"duplicationInputs": ["runtimeSources", "repositoryConfig"],
 		"validationInputs": [
 			"repositoryConfig",
 			"packageConfigs",

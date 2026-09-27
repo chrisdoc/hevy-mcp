@@ -77,6 +77,7 @@ function call(
 	method: string,
 	body?: HttpJsonObject | string,
 	extraHeaders: Record<string, string> = {},
+	path = "/mcp",
 ): Promise<HttpResult> {
 	return new Promise((resolve, reject) => {
 		const payload = body === undefined ? undefined : JSON.stringify(body);
@@ -89,7 +90,7 @@ function call(
 			{
 				host: "127.0.0.1",
 				port,
-				path: "/mcp",
+				path,
 				method,
 				headers,
 			},
@@ -239,6 +240,20 @@ describe("Streamable HTTP server", () => {
 			delete process.env.HEVY_MCP_HTTP_IDLE_TIMEOUT_MS;
 			delete process.env.HEVY_MCP_HTTP_BODY_TIMEOUT_MS;
 		}
+	});
+
+	it("serves a public health endpoint without opening an MCP session", async () => {
+		const { port } = await startTestServer();
+		const healthy = await call(port, "GET", undefined, {}, "/health");
+		const wrongMethod = await call(port, "POST", undefined, {}, "/health");
+
+		expect(healthy).toMatchObject({
+			statusCode: 200,
+			body: '{"status":"ok"}',
+		});
+		expect(healthy.headers["cache-control"]).toBe("no-store");
+		expect(wrongMethod.statusCode).toBe(405);
+		expect(wrongMethod.headers.allow).toBe("GET");
 	});
 
 	it("returns 429 at established-session capacity", async () => {

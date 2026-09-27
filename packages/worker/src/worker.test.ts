@@ -140,6 +140,32 @@ describe("Cloudflare Worker routes and CORS", () => {
 		expect(result.status).toBe(404);
 	});
 
+	it("serves a public health endpoint without checking MCP credentials", async () => {
+		const healthRequest = () => new Request("https://worker.example/health");
+		const direct = await handler(healthRequest(), {});
+		const composed = await createWorkerFetchHandler()(healthRequest(), {
+			OAUTH_KV: {
+				get: vi.fn().mockResolvedValue(null),
+				put: vi.fn(),
+				delete: vi.fn(),
+				list: vi.fn().mockResolvedValue({ keys: [], list_complete: true }),
+			},
+		});
+		const wrongMethod = await createWorkerFetchHandler()(
+			new Request("https://worker.example/health", { method: "POST" }),
+			{},
+		);
+
+		for (const result of [direct, composed]) {
+			expect(result.status).toBe(200);
+			expect(await result.json()).toEqual({ status: "ok" });
+			expect(result.headers.get("cache-control")).toBe("no-store");
+		}
+		expect(createValidationClient).not.toHaveBeenCalled();
+		expect(wrongMethod.status).toBe(405);
+		expect(wrongMethod.headers.get("allow")).toBe("GET");
+	});
+
 	it("allows configured browser origins and rejects unconfigured origins", async () => {
 		const noOrigin = await handler(
 			new Request("https://worker.example/mcp"),

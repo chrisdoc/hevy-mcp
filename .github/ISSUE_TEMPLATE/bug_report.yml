@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible defect
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Remove API keys, authorization headers, Hevy IDs, and personal workout data
+        from all examples and logs before submitting.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest safe set of steps that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - MCP server
+        - Cloudflare Worker
+        - CLI
+        - Hevy client or API
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Environment and safe diagnostics
+      description: Include versions and redacted diagnostics only.
+    validations:
+      required: false

@@ -36,6 +36,7 @@ import {
 import { validateHevyApiKeyResilient } from "./validation-cache.js";
 
 const MCP_PATH = "/mcp";
+const HEALTH_PATH = "/health";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
 const HEVY_API_BASE_URL = "https://api.hevyapp.com";
 
@@ -289,6 +290,21 @@ function response(
 	return withCors(new Response(message, { status, headers }), origin);
 }
 
+function healthResponse(request: Request): Response {
+	if (request.method !== "GET") {
+		return new Response("Method not allowed", {
+			status: 405,
+			headers: { Allow: "GET" },
+		});
+	}
+	return new Response(JSON.stringify({ status: "ok" }), {
+		headers: {
+			"Cache-Control": "no-store",
+			"Content-Type": "application/json; charset=utf-8",
+		},
+	});
+}
+
 function resolveHevyApiBaseUrl(value: string | undefined): string {
 	if (value === undefined) return HEVY_API_BASE_URL;
 
@@ -481,6 +497,7 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 		ctx?: ExecutionContext,
 	): Promise<Response> {
 		const url = new URL(request.url);
+		if (url.pathname === HEALTH_PATH) return healthResponse(request);
 		if (url.pathname !== MCP_PATH)
 			return new Response("Not found", { status: 404 });
 
@@ -646,6 +663,11 @@ export function createWorkerFetchHandler(
 		const startedAt = Date.now();
 		let responseStatus: number | null = null;
 		try {
+			if (new URL(request.url).pathname === HEALTH_PATH) {
+				const health = healthResponse(request);
+				responseStatus = health.status;
+				return health;
+			}
 			if (!isOAuthEnabled(env)) {
 				if (env.OAUTH_KV != null) {
 					logWorkerFailure(
