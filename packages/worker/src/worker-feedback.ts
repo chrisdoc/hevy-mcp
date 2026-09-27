@@ -3,6 +3,7 @@ import {
 	sanitizeDiagnosticText,
 	type AgentFeedbackRecorder,
 } from "@hevy-mcp/core";
+import { Predicate } from "effect";
 
 const OTLP_TRACES_ENDPOINT = "https://otel.chrisdoc.dev/v1/traces";
 const FEEDBACK_SCOPE_NAME = "hevy-mcp.worker.feedback";
@@ -35,6 +36,28 @@ interface OtlpFeedbackRequest {
 			];
 		},
 	];
+}
+
+/** Identify one feedback call so a recently validated key can report during an outage. */
+export async function isFeedbackToolCall(request: Request): Promise<boolean> {
+	if (!request.headers.get("content-type")?.includes("application/json")) {
+		return false;
+	}
+	try {
+		const payload: unknown = await request.clone().json();
+		if (
+			!Predicate.isObject(payload) ||
+			payload.jsonrpc !== "2.0" ||
+			payload.method !== "tools/call" ||
+			(typeof payload.id !== "string" && typeof payload.id !== "number") ||
+			!Predicate.isObject(payload.params)
+		) {
+			return false;
+		}
+		return payload.params.name === "feedback";
+	} catch {
+		return false;
+	}
 }
 
 function randomHex(byteLength: number): string {

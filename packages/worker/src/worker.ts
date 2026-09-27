@@ -2,7 +2,6 @@
 
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import type { McpServer } from "@modelcontextprotocol/server";
-import { Predicate } from "effect";
 import {
 	createHevyMcpServer,
 	createSafeErrorDiagnostic,
@@ -12,9 +11,7 @@ import {
 } from "@hevy-mcp/core";
 import {
 	createHevyClient,
-	isHevyHttpError,
 	type HevyClient,
-	type HevyRequestOptions,
 } from "@hevy-mcp/hevy-client";
 import {
 	createHevyOAuthProvider,
@@ -34,9 +31,16 @@ import {
 	getCloudflareColo,
 	getCloudflareGeography,
 } from "./worker-telemetry.js";
-import { createWorkerFeedbackRecorder } from "./worker-feedback.js";
-import { hasCachedValidation } from "./validation-cache.js";
-import { validateHevyApiKeyResilient } from "./validation-cache.js";
+import {
+	createWorkerFeedbackRecorder,
+	isFeedbackToolCall,
+} from "./worker-feedback.js";
+import {
+	hasCachedValidation,
+	validateHevyApiKey,
+	validateHevyApiKeyResilient,
+	WORKER_VALIDATION_TIMEOUT_MS,
+} from "./validation-cache.js";
 
 const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
@@ -62,9 +66,6 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 	"https://vscode.dev", // VS Code for the Web
 	"https://github.dev", // github.dev web editor
 ] as const;
-
-/** Reserve most of the invocation budget for MCP execution after validation. */
-const WORKER_VALIDATION_TIMEOUT_MS = 5_000;
 
 class FallbackSpan implements Span {
 	get isTraced(): boolean {
@@ -419,59 +420,6 @@ function resolveWorkerDependencies(
 					env.HEVY_MCP_TELEMETRY !== "0",
 				)),
 	};
-}
-
-/** Identify one feedback call so a recently validated key can report during an outage. */
-async function isFeedbackToolCall(request: Request): Promise<boolean> {
-	if (!request.headers.get("content-type")?.includes("application/json")) {
-		return false;
-	}
-	try {
-		const payload: unknown = await request.clone().json();
-		if (
-			!Predicate.isObject(payload) ||
-			payload.jsonrpc !== "2.0" ||
-			payload.method !== "tools/call" ||
-			(typeof payload.id !== "string" && typeof payload.id !== "number") ||
-			!Predicate.isObject(payload.params)
-		) {
-			return false;
-		}
-		return payload.params.name === "feedback";
-	} catch {
-		return false;
-	}
-}
-
-async function validateHevyApiKey(
-	apiKey: string,
-	hevyApiBaseUrl: string,
-	createValidationClient: ResolvedWorkerDependencies["createValidationClient"],
-	options?: HevyRequestOptions,
-): Promise<HevyApiKeyValidation> {
-	try {
-		const validationDeadline = Math.min(
-			options?.deadline ?? Number.POSITIVE_INFINITY,
-			Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
-		);
-		await createValidationClient(apiKey, hevyApiBaseUrl).getUserInfo({
-			...options,
-			deadline: validationDeadline,
-		});
-		return "valid";
-	} catch (error) {
-		if (options?.signal?.aborted) throw error;
-		if (isHevyHttpError(error) && error.outcome === "deadline_exceeded") {
-			throw error;
-		}
-		if (
-			isHevyHttpError(error) &&
-			(error.status === 401 || error.status === 403)
-		) {
-			return "invalid";
-		}
-		throw error;
-	}
 }
 
 async function serveMcpRequest(
