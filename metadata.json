@@ -1,5 +1,5 @@
 {
-  "cli_version": "0.11.3",
+  "cli_version": "0.10.5",
   "checkpoint_id": "01M3MQFM1STQB5N4335BXHH1P9",
   "strategy": "manual-commit",
   "branch": "chore/workers-oauth-provider-1x",
@@ -15,10 +15,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 274649,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 12454400,
-    "output_tokens": 70266,
-    "api_call_count": 104
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   }
 }
