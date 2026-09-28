@@ -614,7 +614,10 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			createRequestClient: () => createMockClient(),
 			...dependencies,
 		});
-		const env = { OAUTH_KV: createMemoryKV() };
+		const env = {
+			OAUTH_KV: createMemoryKV(),
+			OAUTH_RESOURCE: undefined as string | undefined,
+		};
 		return { handler, env };
 	}
 
@@ -648,6 +651,36 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(await resource.json()).toMatchObject({
 			resource: OAUTH_RESOURCE,
 		});
+	});
+
+	it("uses the configured OAuth resource for metadata and challenges", async () => {
+		const resource = "https://mcp.fork.example/mcp";
+		const { handler, env } = createHandlerWithEnv();
+		env.OAUTH_RESOURCE = resource;
+
+		const metadata = await handler(
+			new Request(
+				"https://mcp.fork.example/.well-known/oauth-protected-resource/mcp",
+			),
+			env,
+			testExecutionContext,
+		);
+		expect(metadata.status).toBe(200);
+		expect(await metadata.json()).toMatchObject({ resource });
+
+		const challenge = await handler(
+			new Request(resource, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: "{}",
+			}),
+			env,
+			testExecutionContext,
+		);
+		expect(challenge.status).toBe(401);
+		expect(challenge.headers.get("www-authenticate")).toContain(
+			'resource_metadata="https://mcp.fork.example/.well-known/oauth-protected-resource/mcp"',
+		);
 	});
 
 	it("keeps discovery paths returning 404 without OAUTH_KV", async () => {

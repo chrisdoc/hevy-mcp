@@ -316,6 +316,9 @@ these values in each GitHub Environment:
 - Production-only variable `CLOUDFLARE_WORKER_ROUTE`: the custom-domain
   hostname or route pattern. Preview deployments intentionally leave routes
   unset because they use PR version aliases.
+- Production-only variable `CLOUDFLARE_OAUTH_RESOURCE`: the full canonical
+  MCP resource URL, including `/mcp`. Leave it unset to use this repository's
+  production URL; forks should set their own deployment URL.
 - Optional variable `CLOUDFLARE_OTEL_LOGS_DESTINATIONS`: comma-separated
   Cloudflare Workers Observability log destination names.
 - Optional variable `CLOUDFLARE_OTEL_TRACES_DESTINATIONS`: comma-separated
@@ -335,6 +338,9 @@ fork configuration:
 
 - To enable OAuth, create a KV namespace and bind its ID with the binding name
   `OAUTH_KV`.
+- Set `CLOUDFLARE_OAUTH_RESOURCE` to the full canonical MCP endpoint, including
+  `/mcp` (for example, `https://mcp.example.com/mcp`). OAuth clients use this
+  value as the token audience. The default is this repository's production URL.
 - Add `routes` or a custom domain only if the hostname belongs to your account;
   the portable default uses `workers.dev` instead.
 - Add observability destination names through the optional

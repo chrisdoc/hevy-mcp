@@ -524,6 +524,7 @@ async function handleAuthorizedMcpRequest<Env>(
  */
 export function createHevyOAuthProvider<Env extends object>(
 	dependencies: HevyOAuthDependencies<Env>,
+	resource = "https://mcp.hevy-mcp.dev/mcp",
 ): HevyOAuthWorker<Env> {
 	const provider = new OAuthProvider({
 		apiRoute: MCP_PATH,
@@ -562,7 +563,7 @@ export function createHevyOAuthProvider<Env extends object>(
 		refreshTokenTTL: OAUTH_REFRESH_TOKEN_TTL_SECONDS,
 		clientIdMetadataDocumentEnabled: true,
 		resourceMetadata: {
-			resource: "https://mcp.hevy-mcp.dev/mcp",
+			resource,
 			resource_name: "Hevy MCP Server",
 		},
 	});
