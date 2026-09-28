@@ -1,9 +1,9 @@
 {
-  "cli_version": "0.11.3",
+  "cli_version": "0.10.5",
   "checkpoint_id": "01M3MRXJQAM0F2RE7T888PNWX5",
   "session_id": "01a0e958-f1d5-70dc-9502-5c24e11aecbc",
   "strategy": "manual-commit",
-  "created_at": "2026-09-28T19:47:26.108135Z",
+  "created_at": "2026-09-28T19:47:27.01659Z",
   "branch": "chore/workers-oauth-provider-1x",
   "checkpoints_count": 3,
   "save_step_count": 5,
@@ -11,15 +11,15 @@
   "agent": "Pi",
   "model": "gpt-6-luna",
   "turn_id": "c1ac085d4a2d",
-  "checkpoint_transcript_start": 268,
-  "transcript_lines_at_start": 268,
-  "compact_transcript_start": 107,
+  "checkpoint_transcript_start": 405,
+  "transcript_lines_at_start": 405,
+  "compact_transcript_start": 156,
   "token_usage": {
-    "input_tokens": 168586,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 6081024,
-    "output_tokens": 43938,
-    "api_call_count": 45
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "session_metrics": {
     "turn_count": 5
