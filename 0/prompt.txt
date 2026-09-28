@@ -38,3 +38,7 @@ curl http://localhost:8787/.well-known/oauth-authorization-server<issuer path>: 
 ---
 
 https://mcp.hevy-mcp.dev/mcp check what the current oauth provider does
+
+---
+
+create a PR
