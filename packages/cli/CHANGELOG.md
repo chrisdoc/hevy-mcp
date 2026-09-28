@@ -1,5 +1,17 @@
 # @chrisdoc/hevy-cli
 
+## 1.2.14
+
+### Patch Changes
+
+- [#1184](https://github.com/chrisdoc/hevy-mcp/pull/1184) [`47d9248`](https://github.com/chrisdoc/hevy-mcp/commit/47d92489250c7d3f4fabd151cc0b248305611063) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Move shared mutation schemas into Operations, remove the CLI's dependency on MCP Core, and preserve stringified exercise-array compatibility at the CLI input boundary.
+
+- [#1204](https://github.com/chrisdoc/hevy-mcp/pull/1204) [`d4013a1`](https://github.com/chrisdoc/hevy-mcp/commit/d4013a10072129a4c489e3a21f0b57103cc63687) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Add opt-in structured command logs to stderr.
+
+- [#1193](https://github.com/chrisdoc/hevy-mcp/pull/1193) [`4cd00b1`](https://github.com/chrisdoc/hevy-mcp/commit/4cd00b17724792de7d80040d6dbc7f5c8c0fdbf2) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose execution options through the client type barrel for the CLI.
+
+- [#1193](https://github.com/chrisdoc/hevy-mcp/pull/1193) [`4cd00b1`](https://github.com/chrisdoc/hevy-mcp/commit/4cd00b17724792de7d80040d6dbc7f5c8c0fdbf2) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Split CLI command execution into domain-focused modules without changing the supported command behavior.
+
 ## 1.2.13
 
 ### Patch Changes

@@ -1,5 +1,26 @@
 # @hevy-mcp/core
 
+## 0.2.14
+
+### Patch Changes
+
+- [#1184](https://github.com/chrisdoc/hevy-mcp/pull/1184) [`47d9248`](https://github.com/chrisdoc/hevy-mcp/commit/47d92489250c7d3f4fabd151cc0b248305611063) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Move shared mutation schemas into Operations, remove the CLI's dependency on MCP Core, and preserve stringified exercise-array compatibility at the CLI input boundary.
+
+- [#1203](https://github.com/chrisdoc/hevy-mcp/pull/1203) [`da0dfd6`](https://github.com/chrisdoc/hevy-mcp/commit/da0dfd6257ffc1350d9bcc184b4fc168243beabd) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Bridge Effect spans into Node OpenTelemetry traces and preserve active parent spans through tool, resource, and server-construction execution.
+
+- [#1191](https://github.com/chrisdoc/hevy-mcp/pull/1191) [`61dd96c`](https://github.com/chrisdoc/hevy-mcp/commit/61dd96cd24c06c889ae1fea86c1264e0b557b970) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Organize Core safe diagnostics, error mapping, logging, and observation contracts under a dedicated responsibility folder.
+
+- [#1201](https://github.com/chrisdoc/hevy-mcp/pull/1201) [`959f90d`](https://github.com/chrisdoc/hevy-mcp/commit/959f90d68c7957cd559df971b612b80f8a58c417) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Group MCP registration, schema conversion, and response assembly under the Core protocol responsibility.
+
+- [#1200](https://github.com/chrisdoc/hevy-mcp/pull/1200) [`efb5712`](https://github.com/chrisdoc/hevy-mcp/commit/efb5712fd2e8b57ab659576075aab1ad257c0ce4) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Group Core request execution and Effect service composition under the runtime responsibility.
+
+- [#1193](https://github.com/chrisdoc/hevy-mcp/pull/1193) [`4cd00b1`](https://github.com/chrisdoc/hevy-mcp/commit/4cd00b17724792de7d80040d6dbc7f5c8c0fdbf2) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Expose execution options through the client type barrel for the CLI.
+
+- [#1158](https://github.com/chrisdoc/hevy-mcp/pull/1158) [`15b6fa6`](https://github.com/chrisdoc/hevy-mcp/commit/15b6fa678a6b44ee132483325eee82b47e6f8df1) Thanks [@charliecreates](https://github.com/apps/charliecreates)! - Add the privacy-safe `feedback` MCP tool and detached Node and Worker telemetry recorders.
+- Updated dependencies [[`47d9248`](https://github.com/chrisdoc/hevy-mcp/commit/47d92489250c7d3f4fabd151cc0b248305611063), [`4cd00b1`](https://github.com/chrisdoc/hevy-mcp/commit/4cd00b17724792de7d80040d6dbc7f5c8c0fdbf2)]:
+  - @hevy-mcp/operations@0.1.11
+  - @hevy-mcp/hevy-client@0.2.10
+
 ## 0.2.13
 
 ### Patch Changes
