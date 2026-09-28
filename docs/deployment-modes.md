@@ -290,6 +290,16 @@ The server maintains a server-scoped in-memory cache for `search-exercise-templa
 - Paginated `get-exercise-templates` calls always fetch their requested page.
 - Unlike the hosted Worker, which gets a fresh cache per request, the Node server shares the cache across all sessions in the same running process [[52]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L534).
 
+### Liveness Health Probes
+
+The hosted Worker and Local Node HTTP modes expose an unauthenticated `GET /health` liveness probe. The probe reports service status only; it does not validate a Hevy account or open an MCP session [[60]](https://github.com/chrisdoc/hevy-mcp/blob/main/packages/worker/src/worker.ts#L302-L325) [[61]](https://github.com/chrisdoc/hevy-mcp/blob/main/packages/node/src/utils/streamable-http.ts#L983-L992).
+
+| Mode                     | Endpoint                          | Response                                                                              |
+| ------------------------ | --------------------------------- | ------------------------------------------------------------------------------------- |
+| Hosted Cloudflare Worker | `https://mcp.hevy-mcp.dev/health` | `200` with `{"status":"ok"}`                                                          |
+| Local Node HTTP          | `http://127.0.0.1:3000/health`    | `200` with `{"status":"ok"}`; `503` with `{"status":"shutting_down"}` during shutdown |
+| Local Node stdio         | No HTTP endpoint                  | The stdio process has no HTTP health probe                                            |
+
 ## Do I Need OAuth? Decision Tree
 
 Use this flowchart to decide whether you need OAuth 2.1 or can use a simpler direct bearer configuration.
