@@ -59,3 +59,7 @@ it is more for people who forked my repo
 ---
 
 yes make it
+
+---
+
+downgrade vitest to 4.x
