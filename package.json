@@ -109,7 +109,7 @@
 		"abstract-syntax-tree": "^2.25.0",
 		"cross-env": "^10.1.0",
 		"dependency-cruiser": "^18.3.0",
-		"effect": "4.0.0-rc.115",
+		"effect": "4.0.0-rc.117",
 		"fta-cli": "3.0.1",
 		"js-yaml": "^5.4.2",
 		"jscpd": "^5.3.2",
