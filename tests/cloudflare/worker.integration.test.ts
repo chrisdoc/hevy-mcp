@@ -20,14 +20,14 @@ describe("Cloudflare Worker integration", () => {
 	});
 
 	it("returns an OAuth challenge for an unauthenticated MCP request", async () => {
-		const response = await SELF.fetch("https://worker.example/mcp", {
+		const response = await SELF.fetch("https://mcp.hevy-mcp.dev/mcp", {
 			method: "POST",
 			body: "{}",
 		});
 
 		expect(response.status).toBe(401);
 		expect(response.headers.get("www-authenticate")).toContain(
-			'resource_metadata="https://worker.example/.well-known/oauth-protected-resource/mcp"',
+			'resource_metadata="https://mcp.hevy-mcp.dev/.well-known/oauth-protected-resource/mcp"',
 		);
 	});
 });

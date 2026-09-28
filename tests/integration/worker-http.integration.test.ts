@@ -933,7 +933,11 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 
 		expect(missing.status).toBe(401);
 		expect(missing.headers.get("www-authenticate")).toContain(
-			`resource_metadata="${workerBaseUrl}/.well-known/oauth-protected-resource/mcp"`,
+			'Bearer realm="OAuth"',
+		);
+		// The local Wrangler origin is not the configured production resource origin.
+		expect(missing.headers.get("www-authenticate")).not.toContain(
+			"resource_metadata=",
 		);
 		expect(malformed.status).toBe(401);
 		expect(hevyRequests).toHaveLength(0);
@@ -1037,6 +1041,9 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 			const response = await fetch(`${workerBaseUrl}/mcp`, { method });
 			expect(response.status).toBe(401);
 			expect(response.headers.get("www-authenticate")).toContain(
+				'Bearer realm="OAuth"',
+			);
+			expect(response.headers.get("www-authenticate")).not.toContain(
 				"resource_metadata=",
 			);
 			expect(hevyRequests).toHaveLength(0);

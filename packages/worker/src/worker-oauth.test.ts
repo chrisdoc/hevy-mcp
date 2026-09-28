@@ -27,6 +27,8 @@ import {
 import { createWorkerFetchHandler } from "./worker.js";
 import { resetMemoryValidationCacheForTests } from "./validation-cache.js";
 
+const OAUTH_RESOURCE = "https://mcp.hevy-mcp.dev/mcp";
+
 class TestExecutionSpan implements Span {
 	get isTraced(): boolean {
 		return false;
@@ -148,6 +150,7 @@ const sampleAuthRequest: AuthRequest = {
 	redirectUri: "https://claude.ai/api/mcp/auth_callback",
 	scope: [],
 	state: "state-xyz",
+	resource: OAUTH_RESOURCE,
 	codeChallenge: "challenge",
 	codeChallengeMethod: "S256",
 };
@@ -222,6 +225,15 @@ describe("OAuth helpers", () => {
 				JSON.stringify({
 					...sampleAuthRequest,
 					scope: [42],
+				}),
+			),
+		],
+		[
+			"array resource",
+			btoa(
+				JSON.stringify({
+					...sampleAuthRequest,
+					resource: [OAUTH_RESOURCE],
 				}),
 			),
 		],
@@ -627,14 +639,14 @@ describe("OAuth-enabled Worker fetch handler", () => {
 
 		const resource = await handler(
 			new Request(
-				"https://worker.example/.well-known/oauth-protected-resource/mcp",
+				"https://mcp.hevy-mcp.dev/.well-known/oauth-protected-resource/mcp",
 			),
 			env,
 			testExecutionContext,
 		);
 		expect(resource.status).toBe(200);
 		expect(await resource.json()).toMatchObject({
-			resource: "https://worker.example/mcp",
+			resource: OAUTH_RESOURCE,
 		});
 	});
 
@@ -687,7 +699,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 	it("challenges unauthenticated /mcp requests with resource metadata", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: "{}",
@@ -697,7 +709,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		);
 		expect(result.status).toBe(401);
 		expect(result.headers.get("www-authenticate")).toContain(
-			'resource_metadata="https://worker.example/.well-known/oauth-protected-resource/mcp"',
+			'resource_metadata="https://mcp.hevy-mcp.dev/.well-known/oauth-protected-resource/mcp"',
 		);
 	});
 
@@ -737,20 +749,20 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		);
 
 		const get = await handler(
-			new Request("https://worker.example/mcp", { method: "GET" }),
+			new Request(OAUTH_RESOURCE, { method: "GET" }),
 			env,
 			testExecutionContext,
 		);
 		expect(get.status).toBe(401);
 		expect(get.headers.get("www-authenticate")).toContain(
-			'resource_metadata="https://worker.example/.well-known/oauth-protected-resource/mcp"',
+			'resource_metadata="https://mcp.hevy-mcp.dev/.well-known/oauth-protected-resource/mcp"',
 		);
 	});
 
 	it("allows browser origins to reach the OAuth provider", async () => {
 		const { handler, env } = createHandlerWithEnv();
 		const result = await handler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: {
 					origin: "https://claude.ai",
@@ -960,7 +972,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			},
 		});
 		const mcpResult = await mcpHandler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: {
 					accept: "application/json, text/event-stream",
@@ -995,7 +1007,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			access_token: string;
 		};
 		const refreshedMcpResult = await mcpHandler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: {
 					accept: "application/json, text/event-stream",
@@ -1015,7 +1027,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 
 		// 7. A bogus OAuth-shaped token is rejected with a challenge.
 		const rejected = await mcpHandler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
@@ -1068,7 +1080,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		authorizeUrl.searchParams.set("code_challenge_method", "S256");
 		authorizeUrl.searchParams.set("state", "claude-state");
 		authorizeUrl.searchParams.set("scope", "mcp");
-		authorizeUrl.searchParams.set("resource", "https://worker.example/mcp");
+		authorizeUrl.searchParams.set("resource", OAUTH_RESOURCE);
 
 		const result = await handler(
 			new Request(authorizeUrl),
@@ -1117,7 +1129,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 				),
 			),
 		);
-		const resource = "https://worker.example/mcp";
+		const resource = OAUTH_RESOURCE;
 		const authorizeUrl = new URL("https://worker.example/authorize");
 		authorizeUrl.searchParams.set("response_type", "code");
 		authorizeUrl.searchParams.set("client_id", clientId);
@@ -1193,7 +1205,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 			},
 		});
 		const mcpResult = await mcpHandler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: {
 					accept: "application/json, text/event-stream",
@@ -1351,7 +1363,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		}
 		validationFactory = revokedValidation;
 		const result = await handler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
@@ -1463,7 +1475,7 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		validationFactory = throwingValidation;
 		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const result = await handler(
-			new Request("https://worker.example/mcp", {
+			new Request(OAUTH_RESOURCE, {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
