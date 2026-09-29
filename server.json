@@ -7,12 +7,12 @@
 		"url": "https://github.com/chrisdoc/hevy-mcp",
 		"source": "github"
 	},
-	"version": "6.1.15",
+	"version": "6.1.16",
 	"packages": [
 		{
 			"registryType": "npm",
 			"identifier": "hevy-mcp",
-			"version": "6.1.15",
+			"version": "6.1.16",
 			"transport": {
 				"type": "stdio"
 			},

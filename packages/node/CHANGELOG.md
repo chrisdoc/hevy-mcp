@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 6.1.16
+
+### Patch Changes
+
+- [#1211](https://github.com/chrisdoc/hevy-mcp/pull/1211) [`06dd910`](https://github.com/chrisdoc/hevy-mcp/commit/06dd910bb53fb817289e00fb21cedcd081e86e58) Thanks [@HugeFanOfElon](https://github.com/HugeFanOfElon)! - Fix broken API settings link in README
+
 ## 6.1.15
 
 ### Patch Changes
