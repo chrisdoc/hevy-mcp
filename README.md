@@ -153,7 +153,7 @@ data handling details.
 
 ### 1. Get your Hevy API key
 
-Create an API key in [Hevy's API settings](https://www.hevyapp.com/api), then
+Create an API key in [Hevy's API settings](https://hevy.com/settings?developer), then
 keep it somewhere secure. API access currently requires a Hevy PRO subscription.
 
 ### 2. Connect `hevy-mcp` to your client
@@ -697,7 +697,7 @@ metadata, and unnormalized endpoint paths remain prohibited.
   session after confirming the `hevy` entry exists.
 - **Hevy API returns 401:** the key is invalid, expired, revoked, or
   misconfigured. Verify or create an active key at
-  [Hevy's API settings](https://www.hevyapp.com/api), then restart the client.
+  [Hevy's API settings](https://hevy.com/settings?developer), then restart the client.
 - **Hosted authentication fails:** confirm the key belongs to a Hevy PRO
   account and is sent as `Authorization: Bearer <HEVY_API_KEY>`.
 - **Local authentication fails:** confirm the key is active and available to the
