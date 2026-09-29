@@ -25,6 +25,7 @@ export default defineWorker((ctx) => {
 		process.env.CLOUDFLARE_WORKER_NAME?.trim() ??
 		(environment === "preview" ? "hevy-mcp-preview" : "hevy-mcp");
 	const kvNamespaceId = process.env.CLOUDFLARE_OAUTH_KV_NAMESPACE_ID?.trim();
+	const oauthResource = process.env.CLOUDFLARE_OAUTH_RESOURCE?.trim();
 	const parseDestinations = (value: string | undefined) =>
 		value
 			?.split(",")
@@ -53,6 +54,7 @@ export default defineWorker((ctx) => {
 	const env: WorkerEnvironmentBindings = {
 		OAUTH_KV: bindings.kv(kvNamespaceId ? { id: kvNamespaceId } : undefined),
 	};
+	if (oauthResource) env.OAUTH_RESOURCE = bindings.text(oauthResource);
 	if (environment === "preview")
 		env.MCP_DISABLE_ORIGIN_CHECK = bindings.text("true");
 	return {

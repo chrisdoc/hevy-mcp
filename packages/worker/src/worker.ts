@@ -156,6 +156,9 @@ export interface WorkerEnv {
 	// exposes OAuth 2.1 endpoints for remote MCP clients such as Claude.ai.
 	// When absent, behavior is identical to the pre-OAuth Worker.
 	OAUTH_KV?: unknown;
+	// Optional canonical MCP resource URL, including /mcp. Defaults to this
+	// repository's production URL; set it for a fork's deployment.
+	OAUTH_RESOURCE?: string;
 	// Optional comma-separated retry delay sequence (ms) for validation backoff.
 	// Defaults to 300,600.
 	HEVY_VALIDATION_RETRY_DELAYS_MS?: string;
@@ -614,54 +617,58 @@ export function createWorkerHandler(dependencies: WorkerDependencies = {}) {
 
 function createWorkerOAuthProvider(
 	resolved: ResolvedWorkerDependencies,
+	resource?: string,
 ): HevyOAuthWorker<WorkerEnv> {
-	return createHevyOAuthProvider<WorkerEnv>({
-		validateApiKey: async (apiKey, env, signal, deadline) => {
-			let hevyApiBaseUrl: string;
-			try {
-				hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
-			} catch {
-				return "config-error";
-			}
-			// No ExecutionContext reaches this dependency today (the
-			// HevyOAuthDependencies.validateApiKey interface doesn't thread one),
-			// so the cache write stays awaited here rather than deferred via
-			// waitUntil.
-			return validateHevyApiKeyResilient(
-				apiKey,
-				hevyApiBaseUrl,
-				resolved.createValidationClient,
-				validateHevyApiKey,
-				env,
-				{
-					signal,
-					// Cap the whole validation phase (see the bearer path) so the
-					// wrapper's retries share one deadline instead of re-anchoring.
-					deadline: Math.min(
-						deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
-						Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
-					),
-				},
-			);
+	return createHevyOAuthProvider<WorkerEnv>(
+		{
+			validateApiKey: async (apiKey, env, signal, deadline) => {
+				let hevyApiBaseUrl: string;
+				try {
+					hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
+				} catch {
+					return "config-error";
+				}
+				// No ExecutionContext reaches this dependency today (the
+				// HevyOAuthDependencies.validateApiKey interface doesn't thread one),
+				// so the cache write stays awaited here rather than deferred via
+				// waitUntil.
+				return validateHevyApiKeyResilient(
+					apiKey,
+					hevyApiBaseUrl,
+					resolved.createValidationClient,
+					validateHevyApiKey,
+					env,
+					{
+						signal,
+						// Cap the whole validation phase (see the bearer path) so the
+						// wrapper's retries share one deadline instead of re-anchoring.
+						deadline: Math.min(
+							deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+							Date.now() + WORKER_VALIDATION_TIMEOUT_MS,
+						),
+					},
+				);
+			},
+			serveMcp: async (request, env, apiKey, deadline) => {
+				let hevyApiBaseUrl: string;
+				try {
+					hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
+				} catch {
+					return new Response("Worker configuration error", { status: 500 });
+				}
+				return serveMcpRequest(
+					request,
+					apiKey,
+					hevyApiBaseUrl,
+					resolved,
+					deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
+					env,
+					await isFeedbackToolCall(request),
+				);
+			},
 		},
-		serveMcp: async (request, env, apiKey, deadline) => {
-			let hevyApiBaseUrl: string;
-			try {
-				hevyApiBaseUrl = resolveHevyApiBaseUrl(env.HEVY_API_BASE_URL);
-			} catch {
-				return new Response("Worker configuration error", { status: 500 });
-			}
-			return serveMcpRequest(
-				request,
-				apiKey,
-				hevyApiBaseUrl,
-				resolved,
-				deadline ?? Date.now() + WORKER_INVOCATION_TIMEOUT_MS,
-				env,
-				await isFeedbackToolCall(request),
-			);
-		},
-	});
+		resource,
+	);
 }
 
 /**
@@ -678,7 +685,16 @@ export function createWorkerFetchHandler(
 ) {
 	const resolved = resolveWorkerDependencies(dependencies);
 	const legacyHandler = createWorkerHandler(dependencies);
-	const oauthProvider = createWorkerOAuthProvider(resolved);
+	let oauthProvider: HevyOAuthWorker<WorkerEnv> | undefined;
+	const getOAuthProvider = (env: WorkerEnv): HevyOAuthWorker<WorkerEnv> => {
+		// Runtime bindings are available on fetch; the deployment value is stable
+		// for the isolate, so keep one provider instance.
+		oauthProvider ??= createWorkerOAuthProvider(
+			resolved,
+			env.OAUTH_RESOURCE?.trim() || undefined,
+		);
+		return oauthProvider;
+	};
 
 	return async function handleWorkerFetch(
 		request: Request,
@@ -728,7 +744,7 @@ export function createWorkerFetchHandler(
 					responseStatus = legacyResponse.status;
 					return legacyResponse;
 				}
-				const providerResponse = await oauthProvider.fetch(
+				const providerResponse = await getOAuthProvider(env).fetch(
 					request,
 					env,
 					requireExecutionContext(ctx),
@@ -737,7 +753,7 @@ export function createWorkerFetchHandler(
 				logOAuthResponse(logContext, responseStatus);
 				return withCors(providerResponse, origin);
 			}
-			const providerResponse = await oauthProvider.fetch(
+			const providerResponse = await getOAuthProvider(env).fetch(
 				request,
 				env,
 				requireExecutionContext(ctx),

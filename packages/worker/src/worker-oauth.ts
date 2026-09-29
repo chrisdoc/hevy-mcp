@@ -148,7 +148,7 @@ const authRequestSchema = z.looseObject({
 	state: z.string(),
 	codeChallenge: z.string().min(1),
 	codeChallengeMethod: z.literal("S256"),
-	resource: z.union([z.string(), z.array(z.string())]).optional(),
+	resource: z.string().optional(),
 });
 
 export function validateAuthRequest<T>(value: T): AuthRequest | null {
@@ -524,6 +524,7 @@ async function handleAuthorizedMcpRequest<Env>(
  */
 export function createHevyOAuthProvider<Env extends object>(
 	dependencies: HevyOAuthDependencies<Env>,
+	resource = "https://mcp.hevy-mcp.dev/mcp",
 ): HevyOAuthWorker<Env> {
 	const provider = new OAuthProvider({
 		apiRoute: MCP_PATH,
@@ -561,8 +562,10 @@ export function createHevyOAuthProvider<Env extends object>(
 		accessTokenTTL: OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 		refreshTokenTTL: OAUTH_REFRESH_TOKEN_TTL_SECONDS,
 		clientIdMetadataDocumentEnabled: true,
-		allowPlainPKCE: false,
-		resourceMetadata: { resource_name: "Hevy MCP Server" },
+		resourceMetadata: {
+			resource,
+			resource_name: "Hevy MCP Server",
+		},
 	});
 	return provider satisfies HevyOAuthWorker<Env>;
 }
