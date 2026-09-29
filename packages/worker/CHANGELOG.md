@@ -1,5 +1,11 @@
 # @hevy-mcp/worker
 
+## 0.2.16
+
+### Patch Changes
+
+- [#1209](https://github.com/chrisdoc/hevy-mcp/pull/1209) [`147fce9`](https://github.com/chrisdoc/hevy-mcp/commit/147fce9e9504b44623aee8b963873de963b6b2a7) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Upgrade the OAuth provider to 1.x, align the Worker OAuth configuration, and allow forks to configure their canonical resource URL.
+
 ## 0.2.15
 
 ### Patch Changes
