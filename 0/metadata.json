@@ -1,9 +1,9 @@
 {
-  "cli_version": "0.11.3",
+  "cli_version": "0.10.5",
   "checkpoint_id": "01M3Q6HAGKBMBV4ZJ9G5JBXCF3",
   "session_id": "01a0ee59-24a9-753d-ab35-c2cc4fe8606f",
   "strategy": "manual-commit",
-  "created_at": "2026-09-29T18:23:53.689344Z",
+  "created_at": "2026-09-29T18:23:54.618021Z",
   "branch": "fix/pr-1189-checks",
   "checkpoints_count": 1,
   "files_touched": [
@@ -13,16 +13,18 @@
   "agent": "Pi",
   "model": "gpt-6-luna",
   "turn_id": "b6e6cae85ec3",
-  "compact_transcript_start": 0,
+  "checkpoint_transcript_start": 147,
+  "transcript_lines_at_start": 147,
+  "compact_transcript_start": 63,
   "token_usage": {
-    "input_tokens": 227939,
+    "input_tokens": 0,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 7770624,
-    "output_tokens": 37095,
-    "api_call_count": 62
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "initial_attribution": {
-    "calculated_at": "2026-09-29T18:23:53.660735Z",
+    "calculated_at": "2026-09-29T18:23:54.555253Z",
     "agent_lines": 0,
     "agent_removed": 0,
     "human_added": 39,
