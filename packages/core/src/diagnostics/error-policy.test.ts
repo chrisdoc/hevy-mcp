@@ -6,15 +6,17 @@ import {
 	createSafeErrorDiagnostic,
 	determineErrorType,
 	ErrorType,
-	formatSafeErrorLogMessage,
-	isClientTransportError,
-	isSafeErrorMessage,
 	resolveErrorPolicy,
 	SAFE_ERROR_CATEGORIES,
 	SAFE_ERROR_CODES,
 	SAFE_HTTP_METHODS,
 	SAFE_STACK_SOURCES,
 } from "./error-policy.js";
+import {
+	formatSafeErrorLogMessage,
+	isClientTransportError,
+	isSafeErrorMessage,
+} from "./safe-log-message.js";
 import {
 	EmptyMeasurementUpdateError,
 	PaginationMismatchError,

@@ -679,9 +679,3 @@ export function resolveErrorPolicy(
 	}
 	return { type: determineErrorType(error), message, diagnostic };
 }
-
-export {
-	formatSafeErrorLogMessage,
-	isClientTransportError,
-	isSafeErrorMessage,
-} from "./safe-log-message.js";
