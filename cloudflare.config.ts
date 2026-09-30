@@ -3,6 +3,7 @@ import * as entrypoint from "./packages/worker/src/worker.ts" with { type: "cf-w
 
 interface WorkerObservability {
 	enabled: true;
+	issues?: { enabled: boolean };
 	traces?: { enabled: true; destinations: string[] };
 	logs?: { enabled: true; destinations: string[] };
 }
@@ -39,6 +40,7 @@ export default defineWorker((ctx) => {
 	);
 	const observability: WorkerObservability = {
 		enabled: true,
+		issues: { enabled: true },
 	};
 	if (traceDestinations.length > 0)
 		observability.traces = {
