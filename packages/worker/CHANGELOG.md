@@ -1,5 +1,11 @@
 # @hevy-mcp/worker
 
+## 0.3.0
+
+### Minor Changes
+
+- [#1214](https://github.com/chrisdoc/hevy-mcp/pull/1214) [`a99563c`](https://github.com/chrisdoc/hevy-mcp/commit/a99563c87a1e698af35161aa7dfe5fb7db4ecf32) Thanks [@chrisdoc](https://github.com/chrisdoc)! - feat: enable real-time issue detection in Worker observability configuration
+
 ## 0.2.16
 
 ### Patch Changes
