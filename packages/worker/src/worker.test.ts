@@ -1254,7 +1254,7 @@ describe("real stateless SDK transport", () => {
 				},
 				{
 					...validHeaders,
-					"mcp-protocol-version": "unsupported-draft-version",
+					"mcp-protocol-version": "2020-01-01",
 				},
 			),
 			{},
@@ -1272,7 +1272,53 @@ describe("real stateless SDK transport", () => {
 			context: "streamable-http-transport",
 		});
 		expect((warning as { message?: string })?.message).toContain(
-			"Bad Request: Unsupported protocol version: unsupported-draft-version",
+			"Bad Request: Unsupported protocol version: 2020-01-01",
+		);
+		stderrSpy.mockRestore();
+		warnSpy.mockRestore();
+	});
+
+	it("sanitizes credential-shaped and query-bearing protocol versions in transport warnings", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const transport = new WebStandardStreamableHTTPServerTransport({
+			sessionIdGenerator: undefined,
+		});
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient: () => createMockClient(),
+			createTransport: () => transport,
+		});
+
+		const secret = "secret_key_123456";
+		const result = await handler(
+			mcpRequest(
+				{ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+				{
+					...validHeaders,
+					"mcp-protocol-version": `/mcp?session_id=${secret}`,
+				},
+			),
+			{},
+		);
+
+		expect(result.status).toBe(400);
+		expect(stderrSpy).not.toHaveBeenCalled();
+		const warning = warnSpy.mock.calls.find(
+			(call) =>
+				(call[0] as { context?: string } | undefined)?.context ===
+				"streamable-http-transport",
+		)?.[0];
+		expect(warning).toMatchObject({
+			event: "worker.warning",
+			context: "streamable-http-transport",
+		});
+		expect((warning as { message?: string })?.message).not.toContain(secret);
+		expect((warning as { message?: string })?.message).not.toContain(
+			"session_id",
+		);
+		expect((warning as { message?: string })?.message).toContain(
+			"Bad Request: Unsupported protocol version: [invalid-or-unsupported]",
 		);
 		stderrSpy.mockRestore();
 		warnSpy.mockRestore();

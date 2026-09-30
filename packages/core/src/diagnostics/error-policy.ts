@@ -126,6 +126,19 @@ type ErrorTag =
 	| "TemplatesSearchValidationError"
 	| "TrainingSummaryValidationError"
 	| "TrainingSummaryDataError";
+
+export const SAFE_DOMAIN_ERROR_TAGS: ReadonlySet<string> = Object.freeze(
+	new Set<string>([
+		"WorkoutPrivacyError",
+		"WorkoutPayloadError",
+		"PaginationMismatchError",
+		"EmptyMeasurementUpdateError",
+		"TemplatesSearchValidationError",
+		"TrainingSummaryValidationError",
+		"TrainingSummaryDataError",
+		"ToolInputValidationError",
+	]),
+);
 type TaggedValue = {
 	readonly _tag?: ErrorTag;
 	readonly path?: unknown;
@@ -626,15 +639,7 @@ export function resolveErrorPolicy(
 				? "API client not initialized. Please provide HEVY_API_KEY."
 				: "The requested Hevy operation is unavailable.";
 	}
-	if (
-		tag === "WorkoutPrivacyError" ||
-		tag === "WorkoutPayloadError" ||
-		tag === "PaginationMismatchError" ||
-		tag === "EmptyMeasurementUpdateError" ||
-		tag === "TemplatesSearchValidationError" ||
-		tag === "TrainingSummaryValidationError" ||
-		tag === "TrainingSummaryDataError"
-	) {
+	if (tag && SAFE_DOMAIN_ERROR_TAGS.has(tag)) {
 		if (error instanceof Error && error.message) {
 			message = error.message;
 		}
