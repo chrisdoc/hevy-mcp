@@ -79,6 +79,19 @@ describe("safe-log-message", () => {
 			expect(formattedValid).toBe(
 				"transport: Bad Request: Unsupported protocol version: 2024-10-07 (supported versions: 2025-11-25)",
 			);
+
+			// Malformed or repetitive patterns that previously triggered ReDoS in polynomial regexes
+			const repeatedMarker = new Error(
+				"Bad Request: Unsupported protocol version: " +
+					" (supported versions: a".repeat(50),
+			);
+			const formattedRepeated = formatSafeErrorLogMessage(
+				"transport",
+				repeatedMarker,
+			);
+			expect(formattedRepeated).toBe(
+				"transport: Bad Request: Unsupported protocol version",
+			);
 		});
 
 		it("does not expose credentials placed inside error.name", () => {

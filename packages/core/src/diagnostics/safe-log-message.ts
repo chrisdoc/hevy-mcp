@@ -57,28 +57,45 @@ const SAFE_ERROR_MESSAGE_PATTERNS = [
 	/^Maximum call stack size exceeded/i,
 ];
 
+const PROTOCOL_VERSION_PREFIX = "bad request: unsupported protocol version: ";
+const SUPPORTED_VERSIONS_MARKER = " (supported versions: ";
+
 function isSafeProtocolVersionMessage(message: string): boolean {
-	return /^Bad Request: Unsupported protocol version: /i.test(message);
+	return message.toLowerCase().startsWith(PROTOCOL_VERSION_PREFIX);
 }
 
 function sanitizeProtocolVersionMessage(message: string): string {
-	const match =
-		/^Bad Request: Unsupported protocol version: (.*?) \(supported versions: (.*?)\)$/i.exec(
-			message,
-		);
-	if (!match) {
+	const lower = message.toLowerCase();
+	if (!lower.startsWith(PROTOCOL_VERSION_PREFIX)) {
 		return "Bad Request: Unsupported protocol version";
 	}
-	const [, rawVersion, supported] = match;
+
+	const afterPrefix = message.slice(PROTOCOL_VERSION_PREFIX.length);
+	const lowerAfterPrefix = lower.slice(PROTOCOL_VERSION_PREFIX.length);
+
+	const markerIndex = lowerAfterPrefix.lastIndexOf(SUPPORTED_VERSIONS_MARKER);
+	if (markerIndex === -1 || !message.endsWith(")")) {
+		return "Bad Request: Unsupported protocol version";
+	}
+
+	const rawVersion = afterPrefix.slice(0, markerIndex).trim();
+	const supported = afterPrefix.slice(
+		markerIndex + SUPPORTED_VERSIONS_MARKER.length,
+		-1,
+	);
+
 	// Validate version string against standard MCP protocol versions (ISO date format YYYY-MM-DD, semver, or 'draft')
 	const isSafe =
+		rawVersion.length <= 32 &&
 		/^(?:\d{4}-\d{2}-\d{2}|v?\d+\.\d+(?:\.\d+)?|draft)$/i.test(rawVersion) &&
 		!rawVersion.includes("?") &&
 		!rawVersion.includes("=") &&
 		!rawVersion.includes("/") &&
 		!rawVersion.includes("&");
+
 	const version = isSafe ? rawVersion : "[invalid-or-unsupported]";
-	return `Bad Request: Unsupported protocol version: ${version} (supported versions: ${supported})`;
+	const safeSupported = sanitizeDiagnosticText(supported, 128);
+	return `Bad Request: Unsupported protocol version: ${version} (supported versions: ${safeSupported})`;
 }
 
 /** Check if an error message matches a known safe error template. */
