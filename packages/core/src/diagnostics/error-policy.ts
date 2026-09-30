@@ -639,7 +639,11 @@ export function resolveErrorPolicy(
 				? "API client not initialized. Please provide HEVY_API_KEY."
 				: "The requested Hevy operation is unavailable.";
 	}
-	if (tag && SAFE_DOMAIN_ERROR_TAGS.has(tag)) {
+	if (
+		tag &&
+		tag !== "ToolInputValidationError" &&
+		SAFE_DOMAIN_ERROR_TAGS.has(tag)
+	) {
 		if (error instanceof Error && error.message) {
 			message = error.message;
 		}

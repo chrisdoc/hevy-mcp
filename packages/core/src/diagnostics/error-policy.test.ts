@@ -20,6 +20,7 @@ import {
 	WorkoutPayloadError,
 	WorkoutPrivacyError,
 } from "@hevy-mcp/operations";
+import { ToolInputValidationError } from "../effect-errors.js";
 
 /** A category with no corresponding JS constructor (produced by fallthrough). */
 const LAST_RESORT_CATEGORY = "UnknownError" as const;
@@ -252,5 +253,15 @@ describe("createSafeErrorDiagnostic", () => {
 			expect(policy.type).toBe(ErrorType.API_ERROR);
 			expect(policy.message).toBe(err.message);
 		}
+	});
+
+	it("preserves dedicated message for ToolInputValidationError instead of overriding with error.message", () => {
+		const toolInputError = new ToolInputValidationError({
+			path: "workout.title",
+		});
+		expect(determineErrorType(toolInputError)).toBe(ErrorType.VALIDATION_ERROR);
+		const policy = resolveErrorPolicy(toolInputError, "fallback");
+		expect(policy.type).toBe(ErrorType.VALIDATION_ERROR);
+		expect(policy.message).toBe("Invalid tool arguments. Check workout.title.");
 	});
 });
