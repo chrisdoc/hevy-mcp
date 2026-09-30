@@ -1,5 +1,11 @@
 # @hevy-mcp/core
 
+## 0.2.15
+
+### Patch Changes
+
+- [#1216](https://github.com/chrisdoc/hevy-mcp/pull/1216) [`4c454dd`](https://github.com/chrisdoc/hevy-mcp/commit/4c454ddbf18af52fd65ea75b931deb6895d7e4f2) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Improve worker error logging and classify transport client rejections as warnings to prevent false-positive alerts in Cloudflare Real-Time Issue Detection while preserving safe diagnostic sanitization.
+
 ## 0.2.14
 
 ### Patch Changes
