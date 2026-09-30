@@ -126,6 +126,19 @@ npx wrangler kv namespace create OAUTH_KV
 
 Bind the namespace ID as `OAUTH_KV` in your Wrangler environment [[29]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L391-L400).
 
+For a fork or custom domain, set `CLOUDFLARE_OAUTH_RESOURCE` to the full
+canonical MCP endpoint, including `/mcp`:
+
+```text
+CLOUDFLARE_OAUTH_RESOURCE=https://mcp.example.com/mcp
+```
+
+The Worker publishes this URL in protected-resource metadata and uses it as
+the OAuth token audience ([Worker configuration](https://github.com/chrisdoc/hevy-mcp/blob/main/packages/worker/src/worker.ts#L159-L161),
+[provider setup](https://github.com/chrisdoc/hevy-mcp/blob/main/packages/worker/src/worker-oauth.ts#L525-L568)). If the variable is unset, it defaults to the hosted
+production URL, so self-hosted deployments should set it to their own public
+MCP endpoint ([self-hosting configuration](https://github.com/chrisdoc/hevy-mcp/blob/main/CONTRIBUTING.md#L319-L343)).
+
 Custom domains, routes, and observability destinations are optional account-owned settings [[30]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L481-L482). See [CONTRIBUTING.md](https://github.com/chrisdoc/hevy-mcp/blob/main/CONTRIBUTING.md#cloudflare-worker-development) [[31]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L282-L355) for full setup details and the distinction between self-hosting and the maintainer-only named environments.
 
 > [!NOTE]
