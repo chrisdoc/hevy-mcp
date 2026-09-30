@@ -61,6 +61,11 @@ export {
 	SAFE_STACK_SOURCES,
 } from "./diagnostics/error-policy.js";
 export {
+	formatSafeErrorLogMessage,
+	isClientTransportError,
+	isSafeErrorMessage,
+} from "./diagnostics/safe-log-message.js";
+export {
 	SAFE_USER_HASH_PATTERN,
 	TELEMETRY_ARGUMENT_KEYS,
 	USER_HASH_CONTEXT,
