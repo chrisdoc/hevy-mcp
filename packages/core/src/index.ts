@@ -55,6 +55,9 @@ export {
 } from "./utils/cache.js";
 export {
 	createSafeErrorDiagnostic,
+	formatSafeErrorLogMessage,
+	isClientTransportError,
+	isSafeErrorMessage,
 	SAFE_ERROR_CATEGORIES,
 	SAFE_ERROR_CODES,
 	SAFE_HTTP_METHODS,

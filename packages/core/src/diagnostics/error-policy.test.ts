@@ -6,6 +6,9 @@ import {
 	createSafeErrorDiagnostic,
 	determineErrorType,
 	ErrorType,
+	formatSafeErrorLogMessage,
+	isClientTransportError,
+	isSafeErrorMessage,
 	resolveErrorPolicy,
 	SAFE_ERROR_CATEGORIES,
 	SAFE_ERROR_CODES,
@@ -252,5 +255,78 @@ describe("createSafeErrorDiagnostic", () => {
 			expect(policy.type).toBe(ErrorType.API_ERROR);
 			expect(policy.message).toBe(err.message);
 		}
+	});
+
+	describe("isSafeErrorMessage and isClientTransportError", () => {
+		it("identifies MCP transport protocol rejections as safe and client errors", () => {
+			const unsupported = new Error(
+				"Bad Request: Unsupported protocol version: 1.0 (supported versions: 2025-11-25)",
+			);
+			expect(isSafeErrorMessage(unsupported.message)).toBe(true);
+			expect(isClientTransportError(unsupported)).toBe(true);
+
+			const parseErr = new Error("Parse error: Invalid JSON-RPC message");
+			expect(isSafeErrorMessage(parseErr.message)).toBe(true);
+			expect(isClientTransportError(parseErr)).toBe(true);
+
+			const notAcceptable = new Error(
+				"Not Acceptable: Client must accept both application/json and text/event-stream",
+			);
+			expect(isSafeErrorMessage(notAcceptable.message)).toBe(true);
+			expect(isClientTransportError(notAcceptable)).toBe(true);
+
+			const syntax = new SyntaxError("Unexpected token in JSON at position 0");
+			expect(isClientTransportError(syntax)).toBe(true);
+		});
+
+		it("rejects untrusted or secret-bearing messages", () => {
+			const hostile = new Error(`secret key ${SECRET}`);
+			expect(isSafeErrorMessage(hostile.message)).toBe(false);
+			expect(isClientTransportError(hostile)).toBe(false);
+		});
+	});
+
+	describe("formatSafeErrorLogMessage", () => {
+		it("preserves actionable descriptions for known safe templates", () => {
+			const error = new Error(
+				"Bad Request: Unsupported protocol version: 1.0 (supported versions: 2025-11-25)",
+			);
+			const formatted = formatSafeErrorLogMessage(
+				"streamable-http-transport",
+				error,
+			);
+			expect(formatted).toBe(
+				"streamable-http-transport: Bad Request: Unsupported protocol version: 1.0 (supported versions: 2025-11-25)",
+			);
+		});
+
+		it("includes HTTP status and endpoint for HevyHttpError while never leaking secrets", () => {
+			const error = new HevyHttpError(`Bearer ${SECRET}`, {
+				status: 429,
+				code: "HEVY_RETRY_EXHAUSTED",
+				method: "GET",
+				endpoint: "/v1/user/info",
+			});
+			const formatted = formatSafeErrorLogMessage("hevy-key-validation", error);
+			expect(formatted).toBe(
+				"hevy-key-validation: HevyHttpError (HEVY_RETRY_EXHAUSTED) (HTTP 429) on GET /v1/user/info",
+			);
+			expect(formatted).not.toContain(SECRET);
+		});
+
+		it("falls back to category when an arbitrary untrusted error is thrown", () => {
+			const error = new Error(SECRET);
+			const formatted = formatSafeErrorLogMessage("worker", error);
+			expect(formatted).toBe("worker: Error");
+			expect(formatted).not.toContain(SECRET);
+		});
+
+		it("includes domain error messages after scrubbing", () => {
+			const error = new WorkoutPrivacyError({
+				message: "Workout privacy is required.",
+			});
+			const formatted = formatSafeErrorLogMessage("tool", error);
+			expect(formatted).toBe("tool: Workout privacy is required.");
+		});
 	});
 });

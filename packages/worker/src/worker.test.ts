@@ -1232,6 +1232,80 @@ describe("real stateless SDK transport", () => {
 		stderrSpy.mockRestore();
 	});
 
+	it("logs client transport rejections as warnings without emitting errors", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const transport = new WebStandardStreamableHTTPServerTransport({
+			sessionIdGenerator: undefined,
+		});
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient: () => createMockClient(),
+			createTransport: () => transport,
+		});
+
+		const result = await handler(
+			mcpRequest(
+				{
+					jsonrpc: "2.0",
+					id: 1,
+					method: "tools/list",
+					params: {},
+				},
+				{
+					...validHeaders,
+					"mcp-protocol-version": "unsupported-draft-version",
+				},
+			),
+			{},
+		);
+
+		expect(result.status).toBe(400);
+		expect(stderrSpy).not.toHaveBeenCalled();
+		const warning = warnSpy.mock.calls.find(
+			(call) =>
+				(call[0] as { context?: string } | undefined)?.context ===
+				"streamable-http-transport",
+		)?.[0];
+		expect(warning).toMatchObject({
+			event: "worker.warning",
+			context: "streamable-http-transport",
+		});
+		expect((warning as { message?: string })?.message).toContain(
+			"Bad Request: Unsupported protocol version: unsupported-draft-version",
+		);
+		stderrSpy.mockRestore();
+		warnSpy.mockRestore();
+	});
+
+	it("includes actionable messages in worker error logs for unexpected failures", async () => {
+		const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const handler = createWorkerHandler({
+			createValidationClient: () => createMockClient(),
+			createRequestClient: () => createMockClient(),
+			createServer: () => {
+				throw new TypeError("Cannot read properties of undefined");
+			},
+		});
+
+		const result = await handler(mcpRequest({}, validHeaders), {});
+		expect(result.status).toBe(500);
+		const errorLog = stderrSpy.mock.calls.find(
+			(call) =>
+				(call[0] as { context?: string } | undefined)?.context ===
+				"mcp-request-processing",
+		)?.[0];
+		expect(errorLog).toMatchObject({
+			event: "worker.error",
+			context: "mcp-request-processing",
+			category: "TypeError",
+		});
+		expect((errorLog as { message?: string })?.message).toBe(
+			"mcp-request-processing: TypeError: Cannot read properties of undefined",
+		);
+		stderrSpy.mockRestore();
+	});
+
 	it("uses Worker-safe default factories through the default export", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
 			new Response(JSON.stringify({ id: "user" }), {

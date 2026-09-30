@@ -6,7 +6,10 @@ import {
 	type OAuthHelpers,
 } from "@cloudflare/workers-oauth-provider";
 import { z } from "zod";
-import { createSafeErrorDiagnostic } from "@hevy-mcp/core";
+import {
+	createSafeErrorDiagnostic,
+	formatSafeErrorLogMessage,
+} from "@hevy-mcp/core";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
 import { executionOutcome, executionResponse } from "./execution-response.js";
 
@@ -333,10 +336,12 @@ function jsonValidationFailure<T>(error: T, request: Request): Response {
 
 /** Settle "what did Hevy actually return" for a validation failure incident. */
 function logOAuthValidationFailure<T>(context: string, error: T): void {
+	const diagnostic = createSafeErrorDiagnostic(error);
 	console.error({
 		event: "worker.error",
+		message: formatSafeErrorLogMessage(context, error, diagnostic),
 		context,
-		...createSafeErrorDiagnostic(error),
+		...diagnostic,
 	});
 }
 
@@ -458,10 +463,16 @@ export async function handleAuthorizePost<Env>(
 			headers: { Location: redirectTo, "Cache-Control": "no-store" },
 		});
 	} catch (error) {
+		const diagnostic = createSafeErrorDiagnostic(error);
 		console.error({
 			event: "worker.error",
+			message: formatSafeErrorLogMessage(
+				"oauth-complete-authorization",
+				error,
+				diagnostic,
+			),
 			context: "oauth-complete-authorization",
-			...createSafeErrorDiagnostic(error),
+			...diagnostic,
 		});
 		return authorizeErrorResponse(
 			"Authorization could not be completed. Please try again.",
