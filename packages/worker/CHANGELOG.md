@@ -1,5 +1,11 @@
 # @hevy-mcp/worker
 
+## 0.3.2
+
+### Patch Changes
+
+- [#1218](https://github.com/chrisdoc/hevy-mcp/pull/1218) [`4d4f39e`](https://github.com/chrisdoc/hevy-mcp/commit/4d4f39e28d4144bbb589d663c78b33e4efe2becb) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Preserve dedicated user message for ToolInputValidationError in resolveErrorPolicy.
+
 ## 0.3.1
 
 ### Patch Changes
