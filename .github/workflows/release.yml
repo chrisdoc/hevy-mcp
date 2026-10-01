@@ -235,7 +235,7 @@ jobs:
           fi
 
           printf '%s' "$OTEL_COLLECTOR_TOKEN" |
-            npx wrangler secret put OTEL_COLLECTOR_TOKEN --x-new-config --env production
+            npx wrangler secret put OTEL_COLLECTOR_TOKEN --name "${CLOUDFLARE_WORKER_NAME:-hevy-mcp}"
 
       - name: Deploy published version
         env:
