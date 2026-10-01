@@ -28,6 +28,21 @@ versions. For combined trace views and Worker-specific filters, see
   outcomes and safe error diagnostics. Cloudflare sends platform logs and
   traces to those destinations. The project does not load `@sentry/cloudflare`;
   it uses this existing error path instead.
+
+### Cloudflare Worker issue detection
+
+Cloudflare Real-Time Issue Detection is enabled with
+`observability.issues.enabled: true` in both the generated production
+configuration (`cloudflare.config.ts`) and the test Worker configuration
+(`wrangler.test.jsonc`). This is a Cloudflare-native issue signal separate from
+the optional OTLP destinations above. The Worker error path formats known
+protocol, HTTP, runtime, and domain failures into privacy-safe messages for
+issue grouping; expected client-side transport rejections are warnings, while
+server-side failures remain errors. The current formatting and classification
+rules are implemented in
+[`packages/core/src/diagnostics/safe-log-message.ts`](../packages/core/src/diagnostics/safe-log-message.ts)
+and [`packages/worker/src/worker.ts`](../packages/worker/src/worker.ts).
+
 - **Worker metrics:** [Cloudflare's OTLP export](https://developers.cloudflare.com/workers/observability/exporting-opentelemetry-data/)
   supports logs and traces, not Worker or custom metrics. This is a permanent
   exception to Node metric parity. Use Cloudflare's built-in request and CPU
