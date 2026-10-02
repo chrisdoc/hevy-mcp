@@ -1,5 +1,13 @@
 # @hevy-mcp/operations
 
+## 0.1.12
+
+### Patch Changes
+
+- [#1223](https://github.com/chrisdoc/hevy-mcp/pull/1223) [`c8a1092`](https://github.com/chrisdoc/hevy-mcp/commit/c8a109237ee2df27dbedc19d02637ce253b4cf2d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Refresh the generated Hevy client and runtime dependency resolutions for the updated toolchain.
+- Updated dependencies [[`c8a1092`](https://github.com/chrisdoc/hevy-mcp/commit/c8a109237ee2df27dbedc19d02637ce253b4cf2d)]:
+  - @hevy-mcp/hevy-client@0.2.11
+
 ## 0.1.11
 
 ### Patch Changes
