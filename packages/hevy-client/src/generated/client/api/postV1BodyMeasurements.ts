@@ -24,6 +24,7 @@ export function postV1BodyMeasurements<ThrowOnError extends boolean = true>(
       method: "POST",
       url: "/v1/body_measurements",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<PostV1BodyMeasurementsResponses, ThrowOnError>>,
   );
 }

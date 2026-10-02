@@ -25,6 +25,7 @@ export function getV1WorkoutsEvents<ThrowOnError extends boolean = true>(
       method: "GET",
       url: "/v1/workouts/events",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<GetV1WorkoutsEventsResponses, ThrowOnError>>,
   );
 }

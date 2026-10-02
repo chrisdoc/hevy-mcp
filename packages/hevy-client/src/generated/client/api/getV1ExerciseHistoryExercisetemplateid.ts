@@ -28,6 +28,7 @@ export function getV1ExerciseHistoryExercisetemplateid<
       method: "GET",
       url: "/v1/exercise_history/{exerciseTemplateId}",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<
       RequestResult<
         GetV1ExerciseHistoryExercisetemplateidResponses,

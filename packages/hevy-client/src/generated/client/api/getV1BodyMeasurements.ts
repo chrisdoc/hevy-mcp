@@ -24,6 +24,7 @@ export function getV1BodyMeasurements<ThrowOnError extends boolean = true>(
       method: "GET",
       url: "/v1/body_measurements",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<GetV1BodyMeasurementsResponses, ThrowOnError>>,
   );
 }

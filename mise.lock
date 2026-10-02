@@ -2,6 +2,32 @@
 
 lockfile_version = 1
 
+[[tools.1password]]
+version = "2.39.0"
+backend = "vfox:mise-plugins/vfox-1password"
+specifiers = ["latest"]
+
+[tools.1password."platforms.linux-arm64"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_arm64_v2.39.0.zip"
+
+[tools.1password."platforms.linux-arm64-musl"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_arm64_v2.39.0.zip"
+
+[tools.1password."platforms.linux-x64"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_amd64_v2.39.0.zip"
+
+[tools.1password."platforms.linux-x64-musl"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_amd64_v2.39.0.zip"
+
+[tools.1password."platforms.macos-arm64"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_darwin_arm64_v2.39.0.zip"
+
+[tools.1password."platforms.macos-x64"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_darwin_amd64_v2.39.0.zip"
+
+[tools.1password."platforms.windows-x64"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_windows_amd64_v2.39.0.zip"
+
 [[tools.actionlint]]
 version = "1.7.12"
 backend = "aqua:rhysd/actionlint"
@@ -258,6 +284,12 @@ provenance = "github-attestations"
 checksum = "sha256:c31f5abe796dfc8489ea980cb438844053ad6b402bb4f3eb9abd71086279d75b"
 url = "https://github.com/pnpm/pnpm/releases/download/v12.0.0/pnpm-darwin-arm64.tar.gz"
 url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/530962213"
+provenance = "github-attestations"
+
+[tools.pnpm."platforms.macos-x64"]
+checksum = "sha256:7fd809ea70a20e0911da456a533731deb530dbde7f3c97a030c97da143ed7466"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.0.0/pnpm-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/530962209"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.windows-x64"]

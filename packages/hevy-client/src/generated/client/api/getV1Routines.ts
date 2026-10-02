@@ -20,8 +20,11 @@ export function getV1Routines<ThrowOnError extends boolean = true>(
   const { client: request = client, ...config } = options;
 
   return withUnwrap(
-    request({ method: "GET", url: "/v1/routines", ...config }) as Promise<
-      RequestResult<GetV1RoutinesResponses, ThrowOnError>
-    >,
+    request({
+      method: "GET",
+      url: "/v1/routines",
+      ...config,
+      throwOnError: config.throwOnError ?? true,
+    }) as Promise<RequestResult<GetV1RoutinesResponses, ThrowOnError>>,
   );
 }

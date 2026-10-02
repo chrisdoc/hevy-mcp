@@ -24,6 +24,7 @@ export function putV1RoutinesRoutineid<ThrowOnError extends boolean = true>(
       method: "PUT",
       url: "/v1/routines/{routineId}",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>>,
   );
 }
