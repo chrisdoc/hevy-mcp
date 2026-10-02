@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "01M3Z1FGEXWWRFKPVDDCSJATXT",
+  "strategy": "manual-commit",
+  "branch": "chore/upgrade-dependencies",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".changeset/odd-tools-upgrade.md",
+    "lefthook.yml",
+    "mise.lock",
+    "mise.toml",
+    "package.json",
+    "packages/core/package.json",
+    "packages/hevy-client/src/generated/.kubb/client.ts",
+    "packages/hevy-client/src/generated/client/api/getV1BodyMeasurements.ts",
+    "packages/hevy-client/src/generated/client/api/getV1BodyMeasurementsDate.ts",
+    "packages/hevy-client/src/generated/client/api/getV1ExerciseHistoryExercisetemplateid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1ExerciseTemplates.ts",
+    "packages/hevy-client/src/generated/client/api/getV1ExerciseTemplatesExercisetemplateid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1RoutineFolders.ts",
+    "packages/hevy-client/src/generated/client/api/getV1RoutineFoldersFolderid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1Routines.ts",
+    "packages/hevy-client/src/generated/client/api/getV1RoutinesRoutineid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1UserInfo.ts",
+    "packages/hevy-client/src/generated/client/api/getV1Workouts.ts",
+    "packages/hevy-client/src/generated/client/api/getV1WorkoutsCount.ts",
+    "packages/hevy-client/src/generated/client/api/getV1WorkoutsEvents.ts",
+    "packages/hevy-client/src/generated/client/api/getV1WorkoutsWorkoutid.ts",
+    "packages/hevy-client/src/generated/client/api/postV1BodyMeasurements.ts",
+    "packages/hevy-client/src/generated/client/api/postV1ExerciseTemplates.ts",
+    "packages/hevy-client/src/generated/client/api/postV1RoutineFolders.ts",
+    "packages/hevy-client/src/generated/client/api/postV1Routines.ts",
+    "packages/hevy-client/src/generated/client/api/postV1Workouts.ts",
+    "packages/hevy-client/src/generated/client/api/putV1BodyMeasurementsDate.ts",
+    "packages/hevy-client/src/generated/client/api/putV1RoutinesRoutineid.ts",
+    "packages/hevy-client/src/generated/client/api/putV1WorkoutsWorkoutid.ts",
+    "packages/hevy-client/src/generated/client/schemas/postV1RoutinesSchema.ts",
+    "packages/node/package.json",
+    "packages/worker/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 323643,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 5471232,
+    "output_tokens": 33950,
+    "api_call_count": 56
+  }
+}

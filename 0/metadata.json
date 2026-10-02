@@ -1,0 +1,86 @@
+{
+  "cli_version": "0.10.5",
+  "checkpoint_id": "01M3Z1FGEXWWRFKPVDDCSJATXT",
+  "session_id": "01a0fe00-46e9-7057-866a-69ce75f9561c",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-02T19:29:27.342722877Z",
+  "branch": "chore/upgrade-dependencies",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".changeset/odd-tools-upgrade.md",
+    "lefthook.yml",
+    "mise.lock",
+    "mise.toml",
+    "package.json",
+    "packages/core/package.json",
+    "packages/hevy-client/src/generated/.kubb/client.ts",
+    "packages/hevy-client/src/generated/client/api/getV1BodyMeasurements.ts",
+    "packages/hevy-client/src/generated/client/api/getV1BodyMeasurementsDate.ts",
+    "packages/hevy-client/src/generated/client/api/getV1ExerciseHistoryExercisetemplateid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1ExerciseTemplates.ts",
+    "packages/hevy-client/src/generated/client/api/getV1ExerciseTemplatesExercisetemplateid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1RoutineFolders.ts",
+    "packages/hevy-client/src/generated/client/api/getV1RoutineFoldersFolderid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1Routines.ts",
+    "packages/hevy-client/src/generated/client/api/getV1RoutinesRoutineid.ts",
+    "packages/hevy-client/src/generated/client/api/getV1UserInfo.ts",
+    "packages/hevy-client/src/generated/client/api/getV1Workouts.ts",
+    "packages/hevy-client/src/generated/client/api/getV1WorkoutsCount.ts",
+    "packages/hevy-client/src/generated/client/api/getV1WorkoutsEvents.ts",
+    "packages/hevy-client/src/generated/client/api/getV1WorkoutsWorkoutid.ts",
+    "packages/hevy-client/src/generated/client/api/postV1BodyMeasurements.ts",
+    "packages/hevy-client/src/generated/client/api/postV1ExerciseTemplates.ts",
+    "packages/hevy-client/src/generated/client/api/postV1RoutineFolders.ts",
+    "packages/hevy-client/src/generated/client/api/postV1Routines.ts",
+    "packages/hevy-client/src/generated/client/api/postV1Workouts.ts",
+    "packages/hevy-client/src/generated/client/api/putV1BodyMeasurementsDate.ts",
+    "packages/hevy-client/src/generated/client/api/putV1RoutinesRoutineid.ts",
+    "packages/hevy-client/src/generated/client/api/putV1WorkoutsWorkoutid.ts",
+    "packages/hevy-client/src/generated/client/schemas/postV1RoutinesSchema.ts",
+    "packages/node/package.json",
+    "packages/worker/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "agent": "Pi",
+  "model": "gpt-6-luna",
+  "turn_id": "fa6d2fdb44ee",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 323643,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 5471232,
+    "output_tokens": 33950,
+    "api_call_count": 56
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-02T19:29:27.218116971Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 1736,
+    "total_committed": 154,
+    "total_lines_changed": 1736,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 1269,
+      "user_lines_removed": 1736,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "mise.lock": 32,
+        "mise.toml": 1,
+        "package.json": 21,
+        "pnpm-lock.yaml": 1215
+      },
+      "user_removed_per_file": {
+        "package.json": 21,
+        "pnpm-lock.yaml": 1715
+      }
+    }
+  ]
+}
