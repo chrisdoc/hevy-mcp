@@ -24,6 +24,7 @@ export function getV1ExerciseTemplates<ThrowOnError extends boolean = true>(
       method: "GET",
       url: "/v1/exercise_templates",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<GetV1ExerciseTemplatesResponses, ThrowOnError>>,
   );
 }

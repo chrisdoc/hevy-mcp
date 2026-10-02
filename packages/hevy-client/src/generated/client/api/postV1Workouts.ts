@@ -20,8 +20,11 @@ export function postV1Workouts<ThrowOnError extends boolean = true>(
   const { client: request = client, ...config } = options;
 
   return withUnwrap(
-    request({ method: "POST", url: "/v1/workouts", ...config }) as Promise<
-      RequestResult<PostV1WorkoutsResponses, ThrowOnError>
-    >,
+    request({
+      method: "POST",
+      url: "/v1/workouts",
+      ...config,
+      throwOnError: config.throwOnError ?? true,
+    }) as Promise<RequestResult<PostV1WorkoutsResponses, ThrowOnError>>,
   );
 }

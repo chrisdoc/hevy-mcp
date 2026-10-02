@@ -28,6 +28,7 @@ export function getV1RoutineFoldersFolderid<
       method: "GET",
       url: "/v1/routine_folders/{folderId}",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<
       RequestResult<GetV1RoutineFoldersFolderidResponses, ThrowOnError>
     >,

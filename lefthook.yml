@@ -11,6 +11,8 @@ pre-commit:
       # `{staged_files}` is already glob-filtered and shell-escaped by
       # lefthook, and the command is skipped when nothing matches.
       glob: "**/*.{js,ts,cjs,mjs,cts,mts,d.cts,d.mts,jsx,tsx}"
+      exclude:
+        - packages/hevy-client/src/generated/**
       run: mise exec -- npx oxlint --type-aware --type-check {staged_files}
     oxfmt:
       # `{staged_files}` is glob/exclude-filtered and shell-escaped by

@@ -475,7 +475,8 @@ describe("@hevy-mcp/hevy-client", () => {
 				return { finish: vi.fn() };
 			},
 		});
-		const deadline = Date.now() + 10;
+		// Leave scheduling headroom; the 10 ms attempt timeout triggers the failure.
+		const deadline = Date.now() + 1_000;
 
 		await expect(
 			client.getWorkout("workout-1", { deadline }),

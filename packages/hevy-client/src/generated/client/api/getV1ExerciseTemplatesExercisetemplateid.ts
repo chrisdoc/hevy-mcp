@@ -31,6 +31,7 @@ export function getV1ExerciseTemplatesExercisetemplateid<
       method: "GET",
       url: "/v1/exercise_templates/{exerciseTemplateId}",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<
       RequestResult<
         GetV1ExerciseTemplatesExercisetemplateidResponses,

@@ -24,6 +24,7 @@ export function getV1RoutineFolders<ThrowOnError extends boolean = true>(
       method: "GET",
       url: "/v1/routine_folders",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<GetV1RoutineFoldersResponses, ThrowOnError>>,
   );
 }

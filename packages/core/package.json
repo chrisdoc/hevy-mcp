@@ -16,11 +16,11 @@
 	"dependencies": {
 		"@hevy-mcp/hevy-client": "workspace:*",
 		"@hevy-mcp/operations": "workspace:*",
-		"@modelcontextprotocol/server": "^2.0.0",
-		"effect": "^4.0.0-rc.117",
+		"@modelcontextprotocol/server": "2.3.0",
+		"effect": "^4.0.0",
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
-		"@modelcontextprotocol/client": "^2.0.0"
+		"@modelcontextprotocol/client": "^2.3.0"
 	}
 }

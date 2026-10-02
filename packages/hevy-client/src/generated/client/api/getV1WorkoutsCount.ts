@@ -20,8 +20,11 @@ export function getV1WorkoutsCount<ThrowOnError extends boolean = true>(
   const { client: request = client, ...config } = options;
 
   return withUnwrap(
-    request({ method: "GET", url: "/v1/workouts/count", ...config }) as Promise<
-      RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>
-    >,
+    request({
+      method: "GET",
+      url: "/v1/workouts/count",
+      ...config,
+      throwOnError: config.throwOnError ?? true,
+    }) as Promise<RequestResult<GetV1WorkoutsCountResponses, ThrowOnError>>,
   );
 }

@@ -20,8 +20,11 @@ export function getV1UserInfo<ThrowOnError extends boolean = true>(
   const { client: request = client, ...config } = options;
 
   return withUnwrap(
-    request({ method: "GET", url: "/v1/user/info", ...config }) as Promise<
-      RequestResult<GetV1UserInfoResponses, ThrowOnError>
-    >,
+    request({
+      method: "GET",
+      url: "/v1/user/info",
+      ...config,
+      throwOnError: config.throwOnError ?? true,
+    }) as Promise<RequestResult<GetV1UserInfoResponses, ThrowOnError>>,
   );
 }

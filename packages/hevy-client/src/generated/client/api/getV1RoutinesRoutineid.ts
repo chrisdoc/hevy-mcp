@@ -24,6 +24,7 @@ export function getV1RoutinesRoutineid<ThrowOnError extends boolean = true>(
       method: "GET",
       url: "/v1/routines/{routineId}",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<GetV1RoutinesRoutineidResponses, ThrowOnError>>,
   );
 }

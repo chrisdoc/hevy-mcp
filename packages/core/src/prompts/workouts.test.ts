@@ -97,10 +97,16 @@ describe("workout prompts", () => {
 		);
 	});
 
-	it("rejects omitting the entire arguments object at the SDK boundary", async () => {
-		await expect(
-			client.getPrompt({ name: "analyze-workout-progress" }),
-		).rejects.toThrow(/arguments/i);
+	it("uses the default week count when omitting the arguments object", async () => {
+		const result = await client.getPrompt({
+			name: "analyze-workout-progress",
+		});
+
+		expect(result.messages[0]?.content).toEqual(
+			expect.objectContaining({
+				text: expect.stringContaining("last 4 weeks"),
+			}),
+		);
 	});
 
 	it.each(["0", "13", "2.5", "not-a-number"])(

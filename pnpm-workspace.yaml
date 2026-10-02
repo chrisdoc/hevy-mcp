@@ -8,4 +8,8 @@ virtualStoreType: global
 # npm never gated on this, so disable it.
 minimumReleaseAge: 0
 
+# Keep the transitive brace-expansion 5.x resolution on the patched release.
+overrides:
+  "brace-expansion@^5.0.0": 5.0.12
+
 dangerouslyAllowAllBuilds: true

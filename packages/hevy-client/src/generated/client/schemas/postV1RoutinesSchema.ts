@@ -11,7 +11,7 @@ export const postV1RoutinesHeaderApiKeySchema = z.uuid();
 
 export const postV1RoutinesStatus201Schema = z.union([
   routineSchema.strict(),
-  z.object({}).strict(),
+  z.strictObject({}),
 ]);
 
 export const postV1RoutinesStatus400Schema = z.object({

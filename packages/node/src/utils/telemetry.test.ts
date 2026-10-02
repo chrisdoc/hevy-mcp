@@ -214,13 +214,12 @@ describe("telemetry initialization", () => {
 
 		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
 			expect.objectContaining({
-				sendDefaultPii: false,
+				dataCollection: { userInfo: false },
 				release: "hevy-mcp@dev",
 				dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
 				tracesSampleRate: 0.0,
 				sendClientReports: false,
-				skipOpenTelemetrySetup: true,
-				registerEsmLoaderHooks: false,
+				enableOpenTelemetrySetup: false,
 				ignoreErrors: ["EPIPE", "broken pipe"],
 				beforeSend: expect.any(Function),
 				integrations: expect.any(Function),

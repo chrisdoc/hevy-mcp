@@ -26,6 +26,7 @@ export function putV1BodyMeasurementsDate<ThrowOnError extends boolean = true>(
       method: "PUT",
       url: "/v1/body_measurements/{date}",
       ...config,
+      throwOnError: config.throwOnError ?? true,
     }) as Promise<
       RequestResult<PutV1BodyMeasurementsDateResponses, ThrowOnError>
     >,
