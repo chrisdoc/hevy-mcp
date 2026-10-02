@@ -217,7 +217,7 @@ function initializeTelemetry(): void {
 			release: sentryRelease,
 			tracesSampleRate: 0.0,
 			sendClientReports: false,
-			sendDefaultPii: false,
+			dataCollection: { userInfo: false },
 			beforeSend: sanitizeSentryEvent,
 			integrations: (integrations) =>
 				integrations.filter(
@@ -225,8 +225,7 @@ function initializeTelemetry(): void {
 						integration.name !== "OnUncaughtException" &&
 						integration.name !== "OnUnhandledRejection",
 				),
-			skipOpenTelemetrySetup: true,
-			registerEsmLoaderHooks: false,
+			enableOpenTelemetrySetup: false,
 			ignoreErrors: ["EPIPE", "broken pipe"],
 		});
 

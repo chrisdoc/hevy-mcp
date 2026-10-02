@@ -98,7 +98,7 @@
 		"@kubb/plugin-ts": "5.0.2",
 		"@kubb/plugin-zod": "5.4.1",
 		"@modelcontextprotocol/client": "^2.3.0",
-		"@modelcontextprotocol/server": "2.0.0",
+		"@modelcontextprotocol/server": "2.3.0",
 		"@opentelemetry/api": "^1.9.1",
 		"@oxlint/plugins": "^1.86.0",
 		"@sentry/rollup-plugin": "^5.4.0",
