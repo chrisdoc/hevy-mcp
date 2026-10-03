@@ -220,7 +220,6 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          WRANGLER_MODE: production
           CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
           CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
           CLOUDFLARE_OTEL_LOGS_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_LOGS_DESTINATIONS }}
@@ -234,14 +233,19 @@ jobs:
             exit 0
           fi
 
-          printf '%s' "$OTEL_COLLECTOR_TOKEN" |
-            npx wrangler secret put OTEL_COLLECTOR_TOKEN --name "${CLOUDFLARE_WORKER_NAME:-hevy-mcp}"
+          node -e '
+            process.stdout.write(JSON.stringify({
+              name: "OTEL_COLLECTOR_TOKEN",
+              type: "secret_text",
+              text: process.env.OTEL_COLLECTOR_TOKEN,
+            }));
+          ' | pnpm --dir packages/worker exec cf workers secrets update OTEL_COLLECTOR_TOKEN \
+            --worker "${CLOUDFLARE_WORKER_NAME:-hevy-mcp}" --body @/dev/stdin
 
       - name: Deploy published version
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          WRANGLER_MODE: production
           CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
           CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
           CLOUDFLARE_OTEL_LOGS_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_LOGS_DESTINATIONS }}
@@ -251,9 +255,8 @@ jobs:
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
           WORKER_VERSION: ${{ needs.release.outputs.worker_version }}
         run: >-
-          npx wrangler deploy
-          --x-new-config
-          --env production
+          pnpm --dir packages/worker exec cf deploy
+          --mode production
           --tag "$WORKER_VERSION"
           --message "Changesets release at $RELEASE_COMMIT"
 

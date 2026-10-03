@@ -4,18 +4,18 @@
 
 ## Side-by-Side Comparison Table
 
-| Aspect              | Hosted Cloudflare Worker                                                                              | Local Node stdio                                       | Local Node HTTP                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| **Command / Setup** | Public endpoint at `https://mcp.hevy-mcp.dev/mcp`; self-host via `npx wrangler deploy --x-new-config` | `npx hevy-mcp` (spawned by MCP client)                 | `npx hevy-mcp --transport http --host 127.0.0.1 --port 3000`                    |
-| **Transport**       | Streamable HTTP                                                                                       | stdio (stdin/stdout)                                   | Streamable HTTP                                                                 |
-| **Endpoint**        | `https://mcp.hevy-mcp.dev/mcp` (or custom domain)                                                     | N/A — piped                                            | `http://127.0.0.1:3000/mcp`                                                     |
-| **Statefulness**    | Stateless — fresh MCP server and Hevy client per request                                              | Stateful — persistent session for process lifetime     | Stateful — persistent client sessions                                           |
-| **Authentication**  | Bearer header with Hevy API key OR OAuth 2.1                                                          | `HEVY_API_KEY` env var on child process                | `HEVY_API_KEY` env var + optional `HEVY_MCP_HTTP_BEARER_TOKEN` for non-loopback |
-| **OAuth Support**   | Yes (with `OAUTH_KV` binding)                                                                         | No                                                     | No                                                                              |
-| **Cache behavior**  | Fresh cache per request — no cross-key sharing                                                        | Server-scoped in-memory cache (5 min TTL)              | Server-scoped in-memory cache (5 min TTL)                                       |
-| **Telemetry**       | No Node telemetry                                                                                     | Enabled by default (`HEVY_MCP_TELEMETRY=0` to disable) | Enabled by default                                                              |
-| **Best for**        | Claude.ai, remote clients, shared/hosted access                                                       | Claude Desktop, Cursor, Codex, local AI tools          | Local network testing, Docker, non-loopback access                              |
-| **Security note**   | Origin allowlist enforced for browser requests                                                        | Key in child process env only                          | Non-loopback binds require separate `HEVY_MCP_HTTP_BEARER_TOKEN`                |
+| Aspect              | Hosted Cloudflare Worker                                                                                     | Local Node stdio                                       | Local Node HTTP                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| **Command / Setup** | Public endpoint at `https://mcp.hevy-mcp.dev/mcp`; self-host via `pnpm --dir packages/worker exec cf deploy` | `npx hevy-mcp` (spawned by MCP client)                 | `npx hevy-mcp --transport http --host 127.0.0.1 --port 3000`                    |
+| **Transport**       | Streamable HTTP                                                                                              | stdio (stdin/stdout)                                   | Streamable HTTP                                                                 |
+| **Endpoint**        | `https://mcp.hevy-mcp.dev/mcp` (or custom domain)                                                            | N/A — piped                                            | `http://127.0.0.1:3000/mcp`                                                     |
+| **Statefulness**    | Stateless — fresh MCP server and Hevy client per request                                                     | Stateful — persistent session for process lifetime     | Stateful — persistent client sessions                                           |
+| **Authentication**  | Bearer header with Hevy API key OR OAuth 2.1                                                                 | `HEVY_API_KEY` env var on child process                | `HEVY_API_KEY` env var + optional `HEVY_MCP_HTTP_BEARER_TOKEN` for non-loopback |
+| **OAuth Support**   | Yes (with `OAUTH_KV` binding)                                                                                | No                                                     | No                                                                              |
+| **Cache behavior**  | Fresh cache per request — no cross-key sharing                                                               | Server-scoped in-memory cache (5 min TTL)              | Server-scoped in-memory cache (5 min TTL)                                       |
+| **Telemetry**       | No Node telemetry                                                                                            | Enabled by default (`HEVY_MCP_TELEMETRY=0` to disable) | Enabled by default                                                              |
+| **Best for**        | Claude.ai, remote clients, shared/hosted access                                                              | Claude Desktop, Cursor, Codex, local AI tools          | Local network testing, Docker, non-loopback access                              |
+| **Security note**   | Origin allowlist enforced for browser requests                                                               | Key in child process env only                          | Non-loopback binds require separate `HEVY_MCP_HTTP_BEARER_TOKEN`                |
 
 ## Hosted Cloudflare Worker Mode
 
@@ -110,10 +110,10 @@ Wildcards are unsupported; browser requests with an unmatched `Origin` receive `
 
 ### Self-Hosting
 
-A clean clone can deploy the portable TypeScript Wrangler configuration with [[25]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L479-L480) [[26]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L298-L312):
+A clean clone can deploy the portable TypeScript Cloudflare configuration with [[25]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L479-L480) [[26]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L298-L312):
 
 ```bash
-npx wrangler deploy --x-new-config
+pnpm --dir packages/worker exec cf deploy
 ```
 
 This command deploys to a `workers.dev` URL [[27]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L480-L481).
@@ -121,10 +121,10 @@ This command deploys to a `workers.dev` URL [[27]](https://github.com/chrisdoc/h
 **OAuth requires your own `OAUTH_KV` namespace** [[28]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L481):
 
 ```bash
-npx wrangler kv namespace create OAUTH_KV
+pnpm --dir packages/worker exec cf kv namespaces create --title OAUTH_KV
 ```
 
-Bind the namespace ID as `OAUTH_KV` in your Wrangler environment [[29]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L391-L400).
+Bind the namespace ID as `OAUTH_KV` through `CLOUDFLARE_OAUTH_KV_NAMESPACE_ID` in your Cloudflare configuration [[29]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/CONTRIBUTING.md#L391-L400).
 
 For a fork or custom domain, set `CLOUDFLARE_OAUTH_RESOURCE` to the full
 canonical MCP endpoint, including `/mcp`:
@@ -385,7 +385,7 @@ OAuth access tokens last **7 days** and refresh tokens last **30 days** [[16]](h
 | **I'm using Claude.ai in the browser**  | [Hosted Cloudflare Worker](#hosted-cloudflare-worker-mode) — the public Worker at `https://mcp.hevy-mcp.dev/mcp` supports OAuth 2.1, enabling Claude.ai custom connectors without a fixed header.                           |
 | **I'm using Cursor**                    | [Local Node stdio](#local-node-stdio-mode-default) — add the `mcpServers` entry to `~/.cursor/mcp.json`.                                                                                                                    |
 | **I'm using Codex**                     | Either mode works. Use the hosted endpoint for zero local setup (`codex mcp add hevy --url ... --bearer-token-env-var HEVY_API_KEY`) or local stdio for air-gapped use.                                                     |
-| **I want to share access with my team** | [Hosted Cloudflare Worker](#hosted-cloudflare-worker-mode) — use the public endpoint or self-host your own Worker via `npx wrangler deploy --x-new-config`.                                                                 |
+| **I want to share access with my team** | [Hosted Cloudflare Worker](#hosted-cloudflare-worker-mode) — use the public endpoint or self-host your own Worker via `pnpm --dir packages/worker exec cf deploy`.                                                          |
 | **I'm running in Docker**               | [Local Node HTTP](#local-node-http-mode) — publish the port explicitly and use `--host 0.0.0.0`. See the Docker example in that section.                                                                                    |
 | **I'm developing or testing locally**   | [Local Node stdio](#local-node-stdio-mode-default) or [Local Node HTTP](#local-node-http-mode) — stdio is simpler; HTTP mode is useful when you need an HTTP endpoint for testing or a non-stdio client.                    |
 | **I need zero local installs**          | [Hosted Cloudflare Worker](#hosted-cloudflare-worker-mode) — no Node.js, Docker, or package download required [[57]](https://github.com/chrisdoc/hevy-mcp/blob/47eac6bd864bbfc1d66bbd48881df895e1a4214e/README.md#L74-L78). |

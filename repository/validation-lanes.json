@@ -345,7 +345,7 @@
 			"id": "worker-bundle",
 			"alias": "worker:dry-run",
 			"selector": {
-				"kind": "wrangler-dry-run"
+				"kind": "cf-dry-run"
 			},
 			"runtimes": ["workerd"],
 			"workflowRuntimes": ["node-24"],

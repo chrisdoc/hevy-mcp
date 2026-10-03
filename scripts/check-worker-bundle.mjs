@@ -101,7 +101,7 @@ export async function checkWorkerBundle({ rootDir = repositoryRoot } = {}) {
 	if (!existsSync(outputDir)) {
 		throw new Error(
 			`Worker bundle output directory does not exist: ${outputDir}. ` +
-				"Run the worker bundle build step first (e.g., npm run worker:dry-run).",
+				"Run the worker bundle build step first (e.g., pnpm run worker:dry-run).",
 		);
 	}
 	const failures = [];

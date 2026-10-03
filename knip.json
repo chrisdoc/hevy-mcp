@@ -18,10 +18,14 @@
 				"tests/performance/child-fixture.mjs",
 				"vitest.workers.config.ts"
 			],
-			"ignoreDependencies": ["@earendil-works/pi-coding-agent", "cloudflare"]
+			"ignoreDependencies": [
+				"@earendil-works/pi-coding-agent",
+				"cloudflare",
+				"wrangler"
+			]
 		},
 		"packages/worker": {
-			"ignoreDependencies": ["cloudflare"]
+			"ignoreDependencies": ["cloudflare", "wrangler"]
 		},
 		"packages/hevy-client": {
 			"entry": ["kubb.config.ts"],

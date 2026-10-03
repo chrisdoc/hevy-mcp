@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -43,10 +44,10 @@ const REQUIRED_READ_TOOLS = [
 	...DISCOVERY_ONLY_READ_TOOLS,
 ] as const;
 
-let wrangler: ChildProcessWithoutNullStreams | undefined;
+let cf: ChildProcessWithoutNullStreams | undefined;
 let workerBaseUrl = "";
-let wranglerLogs = "";
-let wranglerSpawnError: Error | undefined;
+let cfLogs = "";
+let cfSpawnError: Error | undefined;
 
 function assertCondition(
 	condition: boolean | string | undefined,
@@ -86,14 +87,12 @@ function sanitizeDiagnostic(value: string | Error): string {
 	return diagnostic.replaceAll(/Bearer\s+\S+/gi, "Bearer [REDACTED]");
 }
 
-function appendWranglerLog(chunk: Buffer): void {
-	wranglerLogs = `${wranglerLogs}${chunk.toString()}`.slice(
-		-MAX_CAPTURED_LOG_LENGTH,
-	);
+function appendCfLog(chunk: Buffer): void {
+	cfLogs = `${cfLogs}${chunk.toString()}`.slice(-MAX_CAPTURED_LOG_LENGTH);
 }
 
-function redactedWranglerLogs(): string {
-	return sanitizeDiagnostic(wranglerLogs);
+function redactedCfLogs(): string {
+	return sanitizeDiagnostic(cfLogs);
 }
 
 function listen(server: Server): Promise<number> {
@@ -114,77 +113,56 @@ function close(server: Server): Promise<void> {
 	});
 }
 
-async function allocateWranglerPorts(): Promise<{
-	inspectorPort: number;
-	workerPort: number;
-}> {
-	const workerReservation = createServer();
-	const inspectorReservation = createServer();
+async function allocateCfPort(): Promise<number> {
+	const reservation = createServer();
 	try {
-		const [workerPort, inspectorPort] = await Promise.all([
-			listen(workerReservation),
-			listen(inspectorReservation),
-		]);
-		return { inspectorPort, workerPort };
+		return await listen(reservation);
 	} finally {
-		await Promise.all([close(workerReservation), close(inspectorReservation)]);
+		await close(reservation);
 	}
 }
 
-function spawnWrangler(workerPort: number, inspectorPort: number): void {
+function spawnCf(workerPort: number): void {
 	workerBaseUrl = `http://${LOOPBACK}:${workerPort}`;
-	wranglerSpawnError = undefined;
+	cfSpawnError = undefined;
 	const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 	const childEnv = { ...process.env };
 	delete childEnv.HEVY_API_BASE_URL;
 	delete childEnv.HEVY_API_KEY;
 
-	wrangler = spawn(
+	cf = spawn(
 		npmCommand,
 		[
 			"exec",
 			"--",
-			"wrangler",
+			"cf",
 			"dev",
-			"--x-new-config",
-			"--local",
-			"--ip",
+			"--host",
 			LOOPBACK,
 			"--port",
 			String(workerPort),
-			"--inspector-ip",
-			LOOPBACK,
-			"--inspector-port",
-			String(inspectorPort),
-			"--local-protocol",
-			"http",
-			"--show-interactive-dev-session=false",
-			"--log-level",
-			"warn",
 		],
 		{
-			cwd: process.cwd(),
+			cwd: resolve(process.cwd(), "packages/worker"),
 			detached: process.platform !== "win32",
 			env: { ...childEnv, CI: "true", NO_COLOR: "1" },
 			stdio: "pipe",
 		},
 	);
-	wrangler.stdout.on("data", appendWranglerLog);
-	wrangler.stderr.on("data", appendWranglerLog);
-	wrangler.once("error", (error) => {
-		wranglerSpawnError = error;
+	cf.stdout.on("data", appendCfLog);
+	cf.stderr.on("data", appendCfLog);
+	cf.once("error", (error) => {
+		cfSpawnError = error;
 	});
 }
 
-async function waitForWranglerReady(): Promise<void> {
+async function waitForCfReady(): Promise<void> {
 	const deadline = Date.now() + STARTUP_TIMEOUT_MS;
 	let lastError = "not ready";
 	while (Date.now() < deadline) {
-		if (wranglerSpawnError) throw wranglerSpawnError;
-		if (wrangler?.exitCode !== null) {
-			throw new Error(
-				`Wrangler exited before readiness.\n${redactedWranglerLogs()}`,
-			);
+		if (cfSpawnError) throw cfSpawnError;
+		if (cf?.exitCode !== null) {
+			throw new Error(`Cf exited before readiness.\n${redactedCfLogs()}`);
 		}
 		try {
 			const response = await fetch(`${workerBaseUrl}/ready`, {
@@ -201,12 +179,12 @@ async function waitForWranglerReady(): Promise<void> {
 		await delay(100);
 	}
 	throw new Error(
-		`Wrangler was not ready within ${STARTUP_TIMEOUT_MS}ms (${lastError}).\n${redactedWranglerLogs()}`,
+		`Cf was not ready within ${STARTUP_TIMEOUT_MS}ms (${lastError}).\n${redactedCfLogs()}`,
 	);
 }
 
-async function stopWrangler(): Promise<void> {
-	const child = wrangler;
+async function stopCf(): Promise<void> {
+	const child = cf;
 	if (!child || child.exitCode !== null || child.pid === undefined) return;
 	const pid = child.pid;
 
@@ -235,30 +213,28 @@ async function stopWrangler(): Promise<void> {
 		delay(SHUTDOWN_TIMEOUT_MS).then(() => false),
 	]);
 	if (!killed) {
-		throw new Error(
-			`Wrangler did not exit after SIGKILL.\n${redactedWranglerLogs()}`,
-		);
+		throw new Error(`Cf did not exit after SIGKILL.\n${redactedCfLogs()}`);
 	}
 }
 
-async function startWrangler(): Promise<void> {
+async function startCf(): Promise<void> {
 	const failures: string[] = [];
 	for (let attempt = 1; attempt <= MAX_STARTUP_ATTEMPTS; attempt += 1) {
-		const { inspectorPort, workerPort } = await allocateWranglerPorts();
-		wranglerLogs = "";
-		spawnWrangler(workerPort, inspectorPort);
+		const workerPort = await allocateCfPort();
+		cfLogs = "";
+		spawnCf(workerPort);
 		try {
-			await waitForWranglerReady();
+			await waitForCfReady();
 			return;
 		} catch (error) {
 			failures.push(
 				`Attempt ${attempt}: ${sanitizeDiagnostic(error instanceof Error ? error : String(error))}`,
 			);
-			await stopWrangler();
+			await stopCf();
 		}
 	}
 	throw new Error(
-		`Wrangler failed to start after ${MAX_STARTUP_ATTEMPTS} attempts.\n${failures.join("\n")}`,
+		`Cf failed to start after ${MAX_STARTUP_ATTEMPTS} attempts.\n${failures.join("\n")}`,
 	);
 }
 
@@ -304,12 +280,12 @@ function optionalStringId(
 	return String(id);
 }
 
-describeLive("live Wrangler Worker HTTP integration", () => {
+describeLive("live Cf Worker HTTP integration", () => {
 	let client: Client;
 
 	beforeAll(
 		async () => {
-			await startWrangler();
+			await startCf();
 			const apiKey = process.env.HEVY_API_KEY;
 			assertCondition(apiKey, "configuration/HEVY_API_KEY");
 			client = new Client({
@@ -328,7 +304,7 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 				await client.connect(transport, { timeout: REQUEST_TIMEOUT_MS });
 			} catch {
 				throw new Error(
-					`Live Worker initialization failed.\n${redactedWranglerLogs()}`,
+					`Live Worker initialization failed.\n${redactedCfLogs()}`,
 				);
 			}
 		},
@@ -339,7 +315,7 @@ describeLive("live Wrangler Worker HTTP integration", () => {
 		try {
 			await client?.close();
 		} finally {
-			await stopWrangler();
+			await stopCf();
 		}
 	}, 10_000);
 

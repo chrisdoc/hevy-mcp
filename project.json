@@ -279,7 +279,7 @@
 		"worker:deploy": {
 			"executor": "nx:run-commands",
 			"options": {
-				"command": "cross-env WRANGLER_MODE=production wrangler deploy --x-new-config --env production"
+				"command": "pnpm --dir packages/worker exec cf deploy --mode production"
 			},
 			"cache": false,
 			"inputs": ["validationInputs"]

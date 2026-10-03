@@ -570,8 +570,8 @@ the fixed custom header above.
 
 ### Self-host the Worker
 
-A clean clone can deploy the portable TypeScript Wrangler configuration with
-`npx wrangler deploy --x-new-config` and receive a `workers.dev` URL. OAuth
+A clean clone can deploy the portable TypeScript Cloudflare configuration with
+`pnpm --dir packages/worker exec cf deploy` and receive a `workers.dev` URL. OAuth
 requires your own `OAUTH_KV` namespace; custom domains, routes, and
 observability destinations are optional account-owned settings. See
 [CONTRIBUTING.md](./CONTRIBUTING.md#cloudflare-worker-development) for setup and
@@ -653,8 +653,10 @@ stacks are bounded and scrubbed before export. Set
 suppressing those details. Traces and metrics continue to be sent to the
 collector at
 <https://otel.chrisdoc.dev/v1/traces> and
-<https://otel.chrisdoc.dev/v1/metrics>, which forward to Honeycomb. Metrics
-export every 30 seconds.
+<https://otel.chrisdoc.dev/v1/metrics>. The project uses its own OpenTelemetry
+Collector; downstream destinations are configured in that infrastructure.
+Metrics export every 30 seconds. See [observability documentation](./docs/observability.md)
+for Cloudflare OTLP export and domain tracing.
 
 The API key is never exported and is not used to derive a user identity. A
 per-failure diagnostic ID and OTel trace ID may be attached to actionable

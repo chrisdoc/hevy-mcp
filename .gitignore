@@ -118,6 +118,7 @@ dist
 # Serverless directories
 .serverless/
 .wrangler/
+.cloudflare/
 worker-configuration.d.ts
 
 # FuseBox cache
