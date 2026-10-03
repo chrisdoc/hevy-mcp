@@ -681,10 +681,12 @@ describe("Hevy MCP Server Mocked Integration Tests", () => {
 				},
 			})
 			.reply(201, {
-				id: 99,
-				title: "Created Folder",
-				created_at: "2025-03-29T10:00:00Z",
-				updated_at: "2025-03-29T10:00:00Z",
+				routine_folder: {
+					id: 99,
+					title: "Created Folder",
+					created_at: "2025-03-29T10:00:00Z",
+					updated_at: "2025-03-29T10:00:00Z",
+				},
 			});
 
 		const result = await callTool(client, "create-routine-folder", {

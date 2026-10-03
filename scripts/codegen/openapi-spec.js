@@ -32,6 +32,7 @@ export function fixOpenAPISpec(spec) {
 	fixMissingParameterSchemas(fixed.paths || {});
 	fixInvalidExamples(fixed.components?.schemas || {});
 	fixRoutineRestSecondsType(fixed.components?.schemas || {});
+	fixWriteResponseEnvelopes(fixed.paths || {});
 	fixOptionalRoutineCreationResponse(fixed.paths || {});
 
 	if (!fixed.servers || fixed.servers.length === 0) {
@@ -47,11 +48,69 @@ export function fixOpenAPISpec(spec) {
 	return fixed;
 }
 
+const WRITE_RESPONSE_ENVELOPES = [
+	{
+		path: "/v1/routines",
+		method: "post",
+		status: "201",
+		property: "routine",
+		ref: "#/components/schemas/Routine",
+	},
+	{
+		path: "/v1/routines/{routineId}",
+		method: "put",
+		status: "200",
+		property: "routine",
+		ref: "#/components/schemas/Routine",
+	},
+	{
+		path: "/v1/routine_folders",
+		method: "post",
+		status: "201",
+		property: "routine_folder",
+		ref: "#/components/schemas/RoutineFolder",
+	},
+];
+
+function writeResponseContent(paths, envelope) {
+	return paths?.[envelope.path]?.[envelope.method]?.responses?.[
+		envelope.status
+	]?.content?.["application/json"];
+}
+
+function describeWriteResponse(envelope) {
+	return `${envelope.method.toUpperCase()} ${envelope.path} ${envelope.status}`;
+}
+
 /**
- * Keep the repository-owned Routine read contract aligned with the API.
- * Upstream currently describes this field inconsistently as a string even
- * though responses contain an integer and the write schemas already use one.
+ * Hevy wraps routine and folder write responses in the same envelope as the
+ * corresponding read endpoints, while upstream describes a bare object.
  */
+function fixWriteResponseEnvelopes(paths) {
+	for (const envelope of WRITE_RESPONSE_ENVELOPES) {
+		const content = writeResponseContent(paths, envelope);
+		if (!content?.schema) continue;
+		const wrap = (schema) =>
+			schema?.$ref === envelope.ref
+				? {
+						type: "object",
+						properties: { [envelope.property]: { $ref: envelope.ref } },
+					}
+				: schema;
+		const previous = JSON.stringify(content.schema);
+		if (Array.isArray(content.schema.oneOf)) {
+			content.schema.oneOf = content.schema.oneOf.map(wrap);
+		} else {
+			content.schema = wrap(content.schema);
+		}
+		if (JSON.stringify(content.schema) !== previous) {
+			console.log(
+				`  Fixed: ${describeWriteResponse(envelope)} - wrapped the response in its "${envelope.property}" envelope`,
+			);
+		}
+	}
+}
+
 /**
  * Hevy may acknowledge routine creation with HTTP 201 and no response body.
  * Keep that live behavior in the generated client contract while retaining the
@@ -76,6 +135,11 @@ function fixOptionalRoutineCreationResponse(paths) {
 	);
 }
 
+/**
+ * Keep the repository-owned Routine read contract aligned with the API.
+ * Upstream currently describes this field inconsistently as a string even
+ * though responses contain an integer and the write schemas already use one.
+ */
 function fixRoutineRestSecondsType(schemas) {
 	const restSeconds =
 		schemas.Routine?.properties?.exercises?.items?.properties?.rest_seconds;
@@ -128,6 +192,21 @@ export function validateOpenAPISpec(spec) {
 		throw new Error(
 			"POST /v1/routines 201 must allow an empty successful response body",
 		);
+	}
+	for (const envelope of WRITE_RESPONSE_ENVELOPES) {
+		const schema = writeResponseContent(spec.paths, envelope)?.schema;
+		const branches = schema?.oneOf ?? [schema];
+		if (
+			schema &&
+			!branches.some(
+				(branch) =>
+					branch?.properties?.[envelope.property]?.$ref === envelope.ref,
+			)
+		) {
+			throw new Error(
+				`${describeWriteResponse(envelope)} must use the ${envelope.property} envelope`,
+			);
+		}
 	}
 	if (restSeconds.type !== "integer") {
 		throw new Error(

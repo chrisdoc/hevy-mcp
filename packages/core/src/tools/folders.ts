@@ -78,6 +78,7 @@ const createRoutineFolderDefinition = {
 	inputSchema: createRoutineFolderSchema,
 	annotations: createAnnotations("Create Routine Folder"),
 	kind: "write" as const,
+	outputSchema: createRoutineFolderResponse.outputSchema,
 	responseContract: createRoutineFolderResponse,
 	execute: (runtime: ToolRuntime, args: CreateRoutineFolderParams) =>
 		operationEffect(

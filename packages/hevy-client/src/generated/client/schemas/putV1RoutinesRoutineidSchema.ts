@@ -13,7 +13,9 @@ export const putV1RoutinesRoutineidPathRoutineIdSchema = z
   .string()
   .describe("The id of the routine");
 
-export const putV1RoutinesRoutineidStatus200Schema = routineSchema;
+export const putV1RoutinesRoutineidStatus200Schema = z.object({
+  routine: routineSchema.optional(),
+});
 
 export const putV1RoutinesRoutineidStatus400Schema = z.object({
   error: z.string().optional().describe("Error message"),

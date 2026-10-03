@@ -39,7 +39,9 @@ describe("routine folder tools", () => {
 
 	it("wraps folder creation in the generated request envelope", async () => {
 		const client = createMockHevyClient();
-		client.createRoutineFolder.mockResolvedValue({ id: 4, title: "Strength" });
+		client.createRoutineFolder.mockResolvedValue({
+			routine_folder: { id: 4, title: "Strength" },
+		});
 		const tool = register(client);
 		await handler(
 			tool,
@@ -47,6 +49,22 @@ describe("routine folder tools", () => {
 		)({ routine_folder: { title: "Strength" } });
 		expect(client.createRoutineFolder).toHaveBeenCalledWith({
 			routine_folder: { title: "Strength" },
+		});
+	});
+
+	it("confirms folder creation without an ID when the response has no body", async () => {
+		const client = createMockHevyClient();
+		client.createRoutineFolder.mockResolvedValue(undefined as never);
+		const tool = register(client);
+
+		const response = await handler(
+			tool,
+			"create-routine-folder",
+		)({ routine_folder: { title: "Strength" } });
+
+		expect(response).not.toMatchObject({ isError: true });
+		expect(response).toMatchObject({
+			structuredContent: { created: true, folder_id: null },
 		});
 	});
 });

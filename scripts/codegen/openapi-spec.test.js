@@ -102,6 +102,87 @@ describe("OpenAPI compatibility fixes", () => {
 		).toMatchObject({ type: "integer", example: 60 });
 	});
 
+	it("wraps routine and folder write responses in their API envelopes", () => {
+		const jsonResponse = (schema) => ({
+			content: { "application/json": { schema } },
+		});
+		const spec = upstreamSpec({ type: "integer", example: 60 });
+		spec.paths = {
+			"/v1/routines": {
+				post: {
+					responses: {
+						201: jsonResponse({ $ref: "#/components/schemas/Routine" }),
+					},
+				},
+			},
+			"/v1/routines/{routineId}": {
+				put: {
+					responses: {
+						200: jsonResponse({ $ref: "#/components/schemas/Routine" }),
+					},
+				},
+			},
+			"/v1/routine_folders": {
+				post: {
+					responses: {
+						201: jsonResponse({ $ref: "#/components/schemas/RoutineFolder" }),
+					},
+				},
+			},
+		};
+		const schemaOf = (fixedSpec, path, method, status) =>
+			fixedSpec.paths[path][method].responses[status].content[
+				"application/json"
+			].schema;
+		const routineEnvelope = {
+			type: "object",
+			properties: { routine: { $ref: "#/components/schemas/Routine" } },
+		};
+
+		const fixed = fixOpenAPISpec(spec);
+
+		expect(schemaOf(fixed, "/v1/routines", "post", "201")).toEqual({
+			oneOf: [
+				routineEnvelope,
+				{ type: "object", properties: {}, additionalProperties: false },
+			],
+		});
+		expect(schemaOf(fixed, "/v1/routines/{routineId}", "put", "200")).toEqual(
+			routineEnvelope,
+		);
+		expect(schemaOf(fixed, "/v1/routine_folders", "post", "201")).toEqual({
+			type: "object",
+			properties: {
+				routine_folder: { $ref: "#/components/schemas/RoutineFolder" },
+			},
+		});
+		expect(() => validateOpenAPISpec(fixed)).not.toThrow();
+		expect(fixOpenAPISpec(fixed).paths).toEqual(fixed.paths);
+	});
+
+	it("rejects a bare Routine routine update response", () => {
+		const spec = upstreamSpec({ type: "integer", example: 60 });
+		spec.paths = {
+			"/v1/routines/{routineId}": {
+				put: {
+					responses: {
+						200: {
+							content: {
+								"application/json": {
+									schema: { $ref: "#/components/schemas/Routine" },
+								},
+							},
+						},
+					},
+				},
+			},
+		};
+
+		expect(() => validateOpenAPISpec(spec)).toThrow(
+			/PUT \/v1\/routines\/\{routineId\} 200 must use the routine envelope/,
+		);
+	});
+
 	it("rejects a non-integer Routine rest_seconds contract", () => {
 		expect(() =>
 			validateOpenAPISpec(upstreamSpec({ type: "number", example: 60.5 })),

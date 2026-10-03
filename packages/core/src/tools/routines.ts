@@ -140,6 +140,7 @@ const updateRoutineDefinition: ToolDefinition<
 	inputSchema: updateRoutineSchema,
 	kind: "write",
 	annotations: updateAnnotations("Update Routine"),
+	outputSchema: updateRoutineResponse.outputSchema,
 	responseContract: updateRoutineResponse,
 	execute: (runtime, args) =>
 		operationEffect(

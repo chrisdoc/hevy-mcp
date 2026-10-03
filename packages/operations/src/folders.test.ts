@@ -81,14 +81,27 @@ describe("folders.create operation", () => {
 		const body: PostRoutineFolderRequestBody = {
 			routine_folder: { title: "Push" },
 		};
-		const created: PostV1RoutineFolders201 = { id: 42, title: "Push" };
+		const created: PostV1RoutineFolders201 = {
+			routine_folder: { id: 42, title: "Push" },
+		};
 		const createRoutineFolder = vi.fn(() => Effect.succeed(created));
 		const operation = createFoldersCreateOperation({ createRoutineFolder });
 
-		await expect(Effect.runPromise(operation.effect(body))).resolves.toEqual(
-			created,
-		);
+		await expect(Effect.runPromise(operation.effect(body))).resolves.toEqual({
+			id: 42,
+			title: "Push",
+		});
 		expect(createRoutineFolder).toHaveBeenCalledWith(body, undefined);
+	});
+
+	it("returns no folder when Hevy acknowledges the create with an empty body", async () => {
+		const operation = createFoldersCreateOperation({
+			createRoutineFolder: () => Effect.succeed({}),
+		});
+
+		await expect(
+			operation.execute({ routine_folder: { title: "Push" } }),
+		).resolves.toBeUndefined();
 	});
 });
 

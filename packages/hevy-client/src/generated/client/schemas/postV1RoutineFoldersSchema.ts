@@ -9,7 +9,9 @@ import { routineFolderSchema } from "./routineFolderSchema";
 
 export const postV1RoutineFoldersHeaderApiKeySchema = z.uuid();
 
-export const postV1RoutineFoldersStatus201Schema = routineFolderSchema;
+export const postV1RoutineFoldersStatus201Schema = z.object({
+  routine_folder: routineFolderSchema.optional(),
+});
 
 export const postV1RoutineFoldersStatus400Schema = z.object({
   error: z.string().optional().describe("Error message"),

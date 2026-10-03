@@ -135,7 +135,7 @@ const routes: Route[] = [
 		path: "/v1/routines",
 		args: { routine },
 		body: { routine: routinePost },
-		response: routineResponse,
+		response: { routine: routineResponse },
 	},
 	{
 		name: "update-routine",
@@ -143,7 +143,7 @@ const routes: Route[] = [
 		path: "/v1/routines/synthetic-id",
 		args: { routine_id: "synthetic-id", routine },
 		body: { routine: routinePut },
-		response: routineResponse,
+		response: { routine: routineResponse },
 	},
 ];
 let server: McpServer | undefined;
