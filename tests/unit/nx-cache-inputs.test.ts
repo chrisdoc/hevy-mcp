@@ -323,7 +323,12 @@ it("tracks Worker sources and shared Node Vitest setup dependencies", () => {
 	expect(
 		targetTracksFile("test:worker", "tests/setup/cloudflare-runtime.ts"),
 	).toBe(false);
-	expect(targetTracksFile("test:worker", "wrangler.test.jsonc")).toBe(true);
+	expect(
+		targetTracksFile("test:worker", "packages/worker/cloudflare.config.ts"),
+	).toBe(true);
+	expect(
+		targetTracksFile("test:worker", "packages/worker/vite.config.ts"),
+	).toBe(true);
 });
 
 it("detects missing Worker, setup, and shim inputs in configuration fixtures", () => {

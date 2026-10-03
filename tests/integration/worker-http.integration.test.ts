@@ -59,19 +59,28 @@ let fakeHevyServer: Server;
 let fakeHevyBaseUrl: string;
 let redirectRecorderServer: Server;
 let redirectDestinationUrl: string;
-let wrangler: ChildProcessWithoutNullStreams;
-let wranglerPersistDir: string | undefined;
+let cfDevProcess: ChildProcessWithoutNullStreams;
+let workerPersistDir: string | undefined;
 let workerBaseUrl: string;
-let wranglerLogs = "";
-let wranglerSpawnError: Error | undefined;
+let cfLogs = "";
+let cfSpawnError: Error | undefined;
 const hevyRequests: RecordedHevyRequest[] = [];
 const redirectRequests: RecordedHevyRequest[] = [];
 let createdRoutine: JSONObject | undefined;
 
-function appendWranglerLog(chunk: Buffer): void {
-	wranglerLogs = `${wranglerLogs}${chunk.toString()}`.slice(
-		-MAX_CAPTURED_LOG_LENGTH,
-	);
+function appendCfLog(chunk: Buffer): void {
+	let text = chunk.toString();
+	for (const secret of [
+		VALID_API_KEY,
+		INVALID_API_KEY,
+		UPSTREAM_FAILURE_API_KEY,
+		REDIRECT_API_KEY,
+		fakeHevyBaseUrl,
+		redirectDestinationUrl,
+	]) {
+		if (secret) text = text.replaceAll(secret, "[REDACTED]");
+	}
+	cfLogs = `${cfLogs}${text}`.slice(-MAX_CAPTURED_LOG_LENGTH);
 }
 
 function listen(server: Server, host = LOOPBACK): Promise<number> {
@@ -102,7 +111,7 @@ function close(server: Server): Promise<void> {
 	});
 }
 
-async function allocateWranglerPorts(): Promise<{
+async function allocateCfDevPorts(): Promise<{
 	inspectorPort: number;
 	workerPort: number;
 }> {
@@ -119,57 +128,45 @@ async function allocateWranglerPorts(): Promise<{
 	}
 }
 
-function spawnWrangler(workerPort: number, inspectorPort: number): void {
-	if (wranglerPersistDir === undefined) {
+function spawnCfDev(workerPort: number, inspectorPort: number): void {
+	if (workerPersistDir === undefined) {
 		throw new Error(
-			"spawnWrangler called before the persistence directory was created",
+			"spawnCfDev called before the persistence directory was created",
 		);
 	}
 	workerBaseUrl = `http://${LOOPBACK}:${workerPort}`;
-	wranglerSpawnError = undefined;
-	const wranglerBin = resolve(
-		process.cwd(),
-		"node_modules/wrangler/bin/wrangler.js",
-	);
-	wrangler = spawn(
-		process.execPath,
-		[
-			wranglerBin,
-			"dev",
-			"--config",
-			"wrangler.test.jsonc",
-			"--local",
-			"--ip",
-			LOOPBACK,
-			"--port",
-			String(workerPort),
-			"--inspector-ip",
-			LOOPBACK,
-			"--inspector-port",
-			String(inspectorPort),
-			"--local-protocol",
-			"http",
-			"--show-interactive-dev-session=false",
-			"--log-level",
-			"warn",
-			"--persist-to",
-			wranglerPersistDir,
-			"--var",
-			`HEVY_API_BASE_URL:${fakeHevyBaseUrl}`,
-			"--var",
-			"HEVY_VALIDATION_RETRY_DELAYS_MS:1,2",
-		],
-		{
-			cwd: process.cwd(),
-			detached: process.platform !== "win32",
-			env: { ...process.env, CI: "true", NO_COLOR: "1" },
-			stdio: "pipe",
-		},
-	);
-	wrangler.stdout.on("data", appendWranglerLog);
-	wrangler.stderr.on("data", appendWranglerLog);
-	wrangler.once("error", (error) => {
-		wranglerSpawnError = error;
+	cfSpawnError = undefined;
+	const cfBin = resolve(process.cwd(), "node_modules/cf/bin/cf");
+	const workerEnv: NodeJS.ProcessEnv = {
+		...process.env,
+		CI: "true",
+		NO_COLOR: "1",
+		HEVY_WORKER_TEST_MODE: "true",
+		HEVY_WORKER_PERSIST_DIR: workerPersistDir,
+		HEVY_WORKER_DEV_HOST: LOOPBACK,
+		HEVY_WORKER_DEV_PORT: String(workerPort),
+		HEVY_WORKER_INSPECTOR_PORT: String(inspectorPort),
+		HEVY_API_BASE_URL: fakeHevyBaseUrl,
+		HEVY_VALIDATION_RETRY_DELAYS_MS: "1,2",
+	};
+	for (const name of [
+		"CLOUDFLARE_API_TOKEN",
+		"CLOUDFLARE_API_KEY",
+		"CLOUDFLARE_EMAIL",
+		"HEVY_API_KEY",
+	]) {
+		delete workerEnv[name];
+	}
+	cfDevProcess = spawn(process.execPath, [cfBin, "dev"], {
+		cwd: resolve(process.cwd(), "packages/worker"),
+		detached: process.platform !== "win32",
+		env: workerEnv,
+		stdio: "pipe",
+	});
+	cfDevProcess.stdout.on("data", appendCfLog);
+	cfDevProcess.stderr.on("data", appendCfLog);
+	cfDevProcess.once("error", (error) => {
+		cfSpawnError = error;
 	});
 }
 
@@ -242,14 +239,14 @@ function requireToolListPayload(
 	return { firstItem, items, text: firstContent.text };
 }
 
-async function waitForWranglerReady(): Promise<void> {
+async function waitForCfReady(): Promise<void> {
 	const deadline = Date.now() + STARTUP_TIMEOUT_MS;
 	let lastError: Error | string | undefined;
 	while (Date.now() < deadline) {
-		if (wranglerSpawnError) throw wranglerSpawnError;
-		if (wrangler.exitCode !== null) {
+		if (cfSpawnError) throw cfSpawnError;
+		if (cfDevProcess.exitCode !== null) {
 			throw new Error(
-				`Wrangler exited with code ${wrangler.exitCode}.\n${wranglerLogs}`,
+				`cf dev exited with code ${cfDevProcess.exitCode}.\n${cfLogs}`,
 			);
 		}
 		try {
@@ -265,12 +262,12 @@ async function waitForWranglerReady(): Promise<void> {
 		await delay(100);
 	}
 	throw new Error(
-		`Wrangler was not ready within ${STARTUP_TIMEOUT_MS}ms: ${String(lastError)}\n${wranglerLogs}`,
+		`cf dev was not ready within ${STARTUP_TIMEOUT_MS}ms: ${String(lastError)}\n${cfLogs}`,
 	);
 }
 
-async function stopWrangler(): Promise<void> {
-	const child = wrangler;
+async function stopCfDev(): Promise<void> {
+	const child = cfDevProcess;
 	if (!child || child.exitCode !== null || child.pid === undefined) return;
 	const pid = child.pid;
 
@@ -299,28 +296,28 @@ async function stopWrangler(): Promise<void> {
 		delay(SHUTDOWN_TIMEOUT_MS).then(() => false),
 	]);
 	if (!killed) {
-		throw new Error(`Wrangler did not exit after SIGKILL.\n${wranglerLogs}`);
+		throw new Error(`cf dev did not exit after SIGKILL.\n${cfLogs}`);
 	}
 }
 
-async function startWrangler(): Promise<void> {
+async function startCfDev(): Promise<void> {
 	const failures: string[] = [];
 	for (let attempt = 1; attempt <= MAX_STARTUP_ATTEMPTS; attempt += 1) {
-		const { inspectorPort, workerPort } = await allocateWranglerPorts();
-		wranglerLogs = "";
-		spawnWrangler(workerPort, inspectorPort);
+		const { inspectorPort, workerPort } = await allocateCfDevPorts();
+		cfLogs = "";
+		spawnCfDev(workerPort, inspectorPort);
 		try {
-			await waitForWranglerReady();
+			await waitForCfReady();
 			return;
 		} catch (error) {
 			failures.push(
 				`Attempt ${attempt} (${workerPort}/${inspectorPort}): ${String(error)}`,
 			);
-			await stopWrangler();
+			await stopCfDev();
 		}
 	}
 	throw new Error(
-		`Wrangler failed to start after ${MAX_STARTUP_ATTEMPTS} attempts.\n${failures.join("\n\n")}`,
+		`cf dev failed to start after ${MAX_STARTUP_ATTEMPTS} attempts.\n${failures.join("\n\n")}`,
 	);
 }
 
@@ -401,15 +398,13 @@ async function parseSseMessage(response: Response): Promise<{
 	};
 }
 
-describe.sequential("Wrangler-backed Worker HTTP integration", () => {
+describe.sequential("Cloudflare Vite Worker HTTP integration", () => {
 	beforeAll(
 		async () => {
-			// A fresh, isolated Miniflare persistence directory per run: without
-			// this, local KV (including the Hevy key validation cache) survives
-			// across separate `wrangler dev` invocations via `.wrangler/state`,
-			// so a previous run's cached "valid" verdict for a fixed test API key
-			// would silently short-circuit this run's Hevy request assertions.
-			wranglerPersistDir = await mkdtemp(
+			// Keep local KV across startup retries while isolating it from other
+			// runs. The Vite plugin persists this state across separate `cf dev`
+			// invocations, so use a new directory for each test run.
+			workerPersistDir = await mkdtemp(
 				join(tmpdir(), "hevy-mcp-worker-http-test-"),
 			);
 			redirectRecorderServer = createServer((request, response) => {
@@ -581,9 +576,9 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 			fakeHevyBaseUrl = `http://${localNetworkAddress()}:${fakeHevyPort}`;
 
 			try {
-				await startWrangler();
+				await startCfDev();
 			} catch (error) {
-				await stopWrangler();
+				await stopCfDev();
 				await Promise.all([
 					close(fakeHevyServer),
 					close(redirectRecorderServer),
@@ -596,13 +591,13 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 
 	afterAll(async () => {
 		try {
-			await stopWrangler();
+			await stopCfDev();
 		} finally {
 			await Promise.all([close(fakeHevyServer), close(redirectRecorderServer)]);
 			// Guard against a failed mkdtemp (undefined dir): rm(undefined) would
 			// throw and mask whatever error made beforeAll fail in the first place.
-			if (wranglerPersistDir) {
-				await rm(wranglerPersistDir, { recursive: true, force: true });
+			if (workerPersistDir) {
+				await rm(workerPersistDir, { recursive: true, force: true });
 			}
 		}
 	}, 10_000);
@@ -666,8 +661,12 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(
 			hevyRequests.some((request) => request.url.includes(REDIRECT_API_KEY)),
 		).toBe(false);
-		expect(wranglerLogs).not.toContain(REDIRECT_API_KEY);
-		expect(wranglerLogs).not.toContain(redirectDestinationUrl);
+		expect(cfLogs).not.toContain(VALID_API_KEY);
+		expect(cfLogs).not.toContain(INVALID_API_KEY);
+		expect(cfLogs).not.toContain(UPSTREAM_FAILURE_API_KEY);
+		expect(cfLogs).not.toContain(REDIRECT_API_KEY);
+		expect(cfLogs).not.toContain(fakeHevyBaseUrl);
+		expect(cfLogs).not.toContain(redirectDestinationUrl);
 	});
 
 	it("supports SDK tool discovery and a real tool call through the override", async () => {
@@ -935,7 +934,7 @@ describe.sequential("Wrangler-backed Worker HTTP integration", () => {
 		expect(missing.headers.get("www-authenticate")).toContain(
 			'Bearer realm="OAuth"',
 		);
-		// The local Wrangler origin is not the configured production resource origin.
+		// The local Worker origin is not the configured production resource origin.
 		expect(missing.headers.get("www-authenticate")).not.toContain(
 			"resource_metadata=",
 		);

@@ -25,7 +25,8 @@ own deployment rather than assuming their versions match.
   it has no persistent log sink or remote telemetry exporter.
 
 Cloudflare Real-Time Issue Detection is enabled with
-`observability.issues.enabled: true`, including in `wrangler.test.jsonc`.
+`observability.issues.enabled: true` in the typed Worker configuration used by
+both Vite development and the Workerd test pool.
 It is a Cloudflare-native signal separate from OTLP export. Known failures
 use privacy-safe messages for grouping; expected client-side transport
 rejections are warnings, while server-side failures are errors. See

@@ -21,8 +21,9 @@
 	},
 	"devDependencies": {
 		"@cloudflare/config": "0.23.0",
+		"@cloudflare/vite-plugin": "1.62.5",
 		"@hevy-mcp/core": "workspace:*",
 		"@hevy-mcp/hevy-client": "workspace:*",
-		"wrangler": "4.147.0"
+		"vite": "8.3.2"
 	}
 }

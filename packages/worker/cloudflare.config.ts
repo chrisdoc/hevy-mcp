@@ -54,6 +54,16 @@ export default defineConfig({
 		const env: WorkerEnvironmentBindings = {
 			OAUTH_KV: bindings.kv(kvNamespaceId ? { id: kvNamespaceId } : undefined),
 		};
+		if (process.env.HEVY_WORKER_TEST_MODE === "true") {
+			const hevyApiBaseUrl = process.env.HEVY_API_BASE_URL?.trim();
+			const validationRetryDelays =
+				process.env.HEVY_VALIDATION_RETRY_DELAYS_MS?.trim();
+			if (hevyApiBaseUrl) env.HEVY_API_BASE_URL = bindings.text(hevyApiBaseUrl);
+			if (validationRetryDelays)
+				env.HEVY_VALIDATION_RETRY_DELAYS_MS = bindings.text(
+					validationRetryDelays,
+				);
+		}
 		if (oauthResource) env.OAUTH_RESOURCE = bindings.text(oauthResource);
 		if (environment === "preview")
 			env.MCP_DISABLE_ORIGIN_CHECK = bindings.text("true");

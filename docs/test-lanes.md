@@ -69,7 +69,7 @@ model and is validated by `pnpm run check:control-plane`.
 Nx remote caching is enabled for deterministic checks, client generation, and
 the Workerd test lane when their named inputs include the source files, test
 files, and runtime configuration they consume. The live Hevy, release
-integration, nightly, live Worker, Wrangler-backed HTTP Worker, packaging, and
+integration, nightly, live Worker, Vite-backed HTTP Worker, packaging, and
 publish-oriented lanes stay uncached so a cache hit cannot hide an
 external-service or environment failure.
 Use `--skip-nx-cache` when a fresh execution of a cacheable lane is required.
@@ -84,7 +84,7 @@ Use `--skip-nx-cache` when a fresh execution of a cacheable lane is required.
 | `pnpm run test:stdio`            | Current stdio instrumentation and graceful-shutdown/process regression baseline.                              | Deterministic. Issue #609 owns full spawned built-stdio coverage.                  |
 | `pnpm run test:pack`             | Builds the shared package candidates once, then inspects, installs, and spawns the same Node tarball.         | Deterministic; the candidate producer is the only task that writes package output. |
 | `pnpm run test:live`             | Read-only source canary against Hevy.                                                                         | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.                   |
-| `pnpm run test:worker-http:live` | Local Wrangler Worker canary with comprehensive bounded representative reads against Hevy.                    | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.       |
+| `pnpm run test:worker-http:live` | Local `cf dev` Worker canary with comprehensive bounded representative reads against Hevy.                    | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.       |
 | `pnpm run test:nightly`          | Published/source launcher canary configured by the nightly or release workflow.                               | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.       |
 | `pnpm run test:performance`      | Reuses the shared Node build, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline. | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.                |
 | `pnpm run test:pr`               | Deterministic named lanes expected on every pull request.                                                     | No live credentials or live network.                                               |

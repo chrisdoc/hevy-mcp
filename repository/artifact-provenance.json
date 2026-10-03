@@ -202,7 +202,7 @@
 		},
 		{
 			"id": "worker-dry-run",
-			"paths": ["packages/worker/.cloudflare/output/**"],
+			"paths": ["packages/worker/.cloudflare/output/v0/**"],
 			"kind": "worker-bundle",
 			"owners": ["worker-bundle"],
 			"producers": [

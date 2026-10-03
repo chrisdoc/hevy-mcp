@@ -23,6 +23,29 @@ it("defaults to a portable development Worker with local OAuth KV", async () => 
 	expect(worker?.env?.MCP_DISABLE_ORIGIN_CHECK).toBeUndefined();
 });
 
+it("exposes fake Hevy bindings only to the deterministic HTTP harness", async () => {
+	vi.stubEnv("HEVY_WORKER_TEST_MODE", "true");
+	vi.stubEnv("HEVY_API_BASE_URL", "http://127.0.0.1:12345");
+	vi.stubEnv("HEVY_VALIDATION_RETRY_DELAYS_MS", "1,2");
+	const worker = await workerConfig();
+	expect(worker?.env?.HEVY_API_BASE_URL).toEqual({
+		type: "text",
+		value: "http://127.0.0.1:12345",
+	});
+	expect(worker?.env?.HEVY_VALIDATION_RETRY_DELAYS_MS).toEqual({
+		type: "text",
+		value: "1,2",
+	});
+});
+
+it("does not expose test bindings in deployment modes", async () => {
+	vi.stubEnv("HEVY_API_BASE_URL", "http://127.0.0.1:12345");
+	vi.stubEnv("HEVY_VALIDATION_RETRY_DELAYS_MS", "1,2");
+	const worker = await workerConfig("production");
+	expect(worker?.env?.HEVY_API_BASE_URL).toBeUndefined();
+	expect(worker?.env?.HEVY_VALIDATION_RETRY_DELAYS_MS).toBeUndefined();
+});
+
 it("keeps preview variables and secrets and enables PR aliases", async () => {
 	const worker = await workerConfig("preview");
 	expect(worker?.name).toBe("hevy-mcp-preview");
