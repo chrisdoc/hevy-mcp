@@ -20,7 +20,9 @@
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
+		"@cloudflare/config": "0.23.0",
 		"@hevy-mcp/core": "workspace:*",
-		"@hevy-mcp/hevy-client": "workspace:*"
+		"@hevy-mcp/hevy-client": "workspace:*",
+		"wrangler": "4.147.0"
 	}
 }

@@ -7,7 +7,8 @@ Cloudflare's native Worker spans expose the deployed Worker tag as
 bounded prerelease tag in the form `<worker-version>-pr.<number>.<short-sha>`.
 The inert bootstrap and cleanup versions intentionally remain untagged.
 
-Wrangler supports version tags for both [`deploy` and `versions upload`](https://developers.cloudflare.com/workers/wrangler/commands/workers/#versions-upload).
+The Cloudflare `cf` CLI supports `--tag` for both `cf deploy` and
+`cf workers versions create`.
 No Worker-side OpenTelemetry SDK is required.
 
 The collector changes the telemetry resource name from `hevy-mcp` to

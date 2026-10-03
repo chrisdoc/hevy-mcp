@@ -77,13 +77,14 @@
 		"check:changeset": "env -u GIT_DIR -u GIT_WORK_TREE changeset status --since=\"${CHANGESET_BASE_REF:-origin/${GITHUB_BASE_REF:-main}}\" && env -u GIT_DIR -u GIT_WORK_TREE nx run repository:check:package-changesets -- --since \"${CHANGESET_BASE_REF:-origin/${GITHUB_BASE_REF:-main}}\"",
 		"check:server-manifest": "node scripts/server-manifest.mjs check",
 		"version": "node scripts/server-manifest.mjs sync && git add server.json packages/node/server.json",
-		"worker:dev": "wrangler dev --x-new-config",
-		"worker:dry-run": "wrangler deploy --x-new-config --dry-run --outdir .wrangler/dry-run && node scripts/check-worker-bundle.mjs",
+		"worker:dev": "pnpm --dir packages/worker exec cf dev",
+		"worker:dry-run": "pnpm --dir packages/worker exec cf deploy --dry-run && node scripts/check-worker-bundle.mjs",
 		"fix": "oxlint --fix . --type-aware --type-check && oxfmt . --write"
 	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^1.0.1",
 		"@changesets/cli": "3.0.3",
+		"@cloudflare/config": "0.23.0",
 		"@cloudflare/vitest-plugin": "1.3.6",
 		"@cloudflare/workers-types": "5.20260921.1",
 		"@codecov/rollup-plugin": "^2.0.1",
@@ -107,6 +108,7 @@
 		"@types/semver": "^7.8.0",
 		"@vitest/coverage-v8": "^4.1.11",
 		"abstract-syntax-tree": "^2.25.0",
+		"cf": "1.0.0-beta.12",
 		"cross-env": "^10.1.0",
 		"dependency-cruiser": "^18.5.0",
 		"effect": "4.0.0",
@@ -128,7 +130,7 @@
 		"typescript": "^7.0.2",
 		"ultracite": "7.12.2",
 		"vitest": "^4.1.11",
-		"wrangler": "4.135.0",
+		"wrangler": "4.147.0",
 		"zod": "^4.6.5"
 	},
 	"engines": {

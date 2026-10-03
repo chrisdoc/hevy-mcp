@@ -23,7 +23,7 @@ const selectorKinds = new Set([
 	"typescript",
 	"repository-check",
 	"package-build",
-	"wrangler-dry-run",
+	"cf-dry-run",
 	"manifest-drift",
 	"vitest-live",
 	"worker-live",

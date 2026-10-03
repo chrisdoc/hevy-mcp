@@ -570,8 +570,8 @@ the fixed custom header above.
 
 ### Self-host the Worker
 
-A clean clone can deploy the portable TypeScript Wrangler configuration with
-`npx wrangler deploy --x-new-config` and receive a `workers.dev` URL. OAuth
+A clean clone can deploy the portable TypeScript Cloudflare configuration with
+`pnpm --dir packages/worker exec cf deploy` and receive a `workers.dev` URL. OAuth
 requires your own `OAUTH_KV` namespace; custom domains, routes, and
 observability destinations are optional account-owned settings. See
 [CONTRIBUTING.md](./CONTRIBUTING.md#cloudflare-worker-development) for setup and

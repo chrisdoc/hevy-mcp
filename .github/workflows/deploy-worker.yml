@@ -35,7 +35,6 @@ jobs:
       name: preview
       url: ${{ steps.preview_url.outputs.url }}
     env:
-      WRANGLER_MODE: preview
       CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
       CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
       CLOUDFLARE_OTEL_LOGS_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_LOGS_DESTINATIONS }}
@@ -111,13 +110,12 @@ jobs:
       - name: Bootstrap dedicated preview Worker
         if: steps.preview_worker.outputs.bootstrap == 'true'
         env:
+          CLOUDFLARE_PREVIEW_INERT: "true"
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: >-
-          npx wrangler deploy .github/workers/preview-bootstrap.ts
-          --x-new-config
-          --env preview
-          --keep-vars
+          pnpm --dir packages/worker exec cf deploy
+          --mode preview
           --message "Bootstrap inert ${CLOUDFLARE_WORKER_NAME} Worker for GitHub PR versions"
 
       - name: Resolve preview Worker version tag
@@ -138,18 +136,18 @@ jobs:
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
           WORKER_VERSION_TAG: ${{ steps.worker_version.outputs.tag }}
         run: |
-          # Truncate to prevent stale entries from a prior run polluting version ID extraction
+          # cf upload uses deploy-helpers' Wrangler-compatible NDJSON output.
+          # Truncate to prevent stale entries from polluting version ID extraction
           : > "${WRANGLER_OUTPUT_FILE_PATH}"
-          npx wrangler versions upload \
-            --x-new-config \
-            --env preview \
-            --keep-vars \
+          pnpm --dir packages/worker exec cf workers versions create \
+            --mode preview \
             --preview-alias "${PREVIEW_ALIAS}" \
             --tag "${WORKER_VERSION_TAG}" \
             --message "GitHub PR #${PR_NUMBER} at ${HEAD_SHA}"
 
       - name: Activate preview version
         env:
+          DEPLOYMENT_MESSAGE: "Activate GitHub PR #${{ github.event.pull_request.number }} preview"
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
@@ -170,26 +168,31 @@ jobs:
 
           if (!versionId) {
             throw new Error(
-              "Wrangler did not return version_id; verify the preview version upload completed successfully",
+              "cf did not return version_id; verify the preview version upload completed successfully",
             );
           }
 
           process.stdout.write(versionId);
           NODE
           )"
+          deployment_body="$(VERSION_ID="$version_id" node -e '
+            process.stdout.write(JSON.stringify({
+              annotations: { "workers/message": process.env.DEPLOYMENT_MESSAGE },
+              strategy: "percentage",
+              versions: [{ version_id: process.env.VERSION_ID, percentage: 100 }],
+            }));
+          ')"
           for attempt in 1 2 3; do
-            if npx wrangler versions deploy "$version_id" \
-              --x-new-config \
-              --env preview \
-              --yes \
-              --message "Activate GitHub PR #${{ github.event.pull_request.number }} preview"; then
+            if pnpm --dir packages/worker exec cf workers deployments create \
+              --worker "${CLOUDFLARE_WORKER_NAME}" \
+              --body "${deployment_body}"; then
               break
             fi
             if [ "$attempt" -lt 3 ]; then
-              echo "::warning::wrangler versions deploy attempt ${attempt} failed, retrying in 15s..."
+              echo "::warning::cf workers deployments create attempt ${attempt} failed, retrying in 15s..."
               sleep 15
             else
-              echo "::error::All 3 wrangler versions deploy attempts failed."
+              echo "::error::All 3 cf workers deployments create attempts failed."
               exit 1
             fi
           done
@@ -216,7 +219,7 @@ jobs:
 
           if (!previewAliasUrl) {
             throw new Error(
-              "Wrangler did not return preview_alias_url; verify the preview alias upload completed successfully",
+              "cf did not return preview_alias_url; verify the preview alias upload completed successfully",
             );
           }
 
@@ -227,7 +230,7 @@ jobs:
             !previewUrl.hostname.startsWith(process.env.EXPECTED_PREFIX) ||
             !previewUrl.hostname.endsWith(".workers.dev")
           ) {
-            throw new Error("Wrangler did not return the expected preview alias URL");
+            throw new Error("cf did not return the expected preview alias URL");
           }
 
           const mcpUrl = new URL("/mcp", previewUrl);
@@ -309,7 +312,6 @@ jobs:
       cancel-in-progress: false
     environment: preview
     env:
-      WRANGLER_MODE: preview
       CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
       CLOUDFLARE_WORKER_ROUTE: ${{ vars.CLOUDFLARE_WORKER_ROUTE }}
       CLOUDFLARE_OTEL_LOGS_DESTINATIONS: ${{ vars.CLOUDFLARE_OTEL_LOGS_DESTINATIONS }}
@@ -338,21 +340,22 @@ jobs:
 
       - name: Replace preview alias with inert Worker
         env:
+          CLOUDFLARE_PREVIEW_INERT: "true"
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-cleanup-output.ndjson
         run: |
-          # Truncate to prevent stale entries from a prior run polluting version ID extraction
+          # cf upload uses deploy-helpers' Wrangler-compatible NDJSON output.
+          # Truncate to prevent stale entries from polluting version ID extraction
           : > "${WRANGLER_OUTPUT_FILE_PATH}"
-          npx wrangler versions upload .github/workers/preview-bootstrap.ts \
-            --x-new-config \
-            --env preview \
-            --keep-vars \
+          pnpm --dir packages/worker exec cf workers versions create \
+            --mode preview \
             --preview-alias pr-${{ github.event.pull_request.number }} \
             --message "Cleanup GitHub PR #${{ github.event.pull_request.number }} after merge"
 
       - name: Activate inert cleanup version
         env:
+          DEPLOYMENT_MESSAGE: "Activate inert cleanup for GitHub PR #${{ github.event.pull_request.number }}"
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-cleanup-output.ndjson
@@ -373,26 +376,31 @@ jobs:
 
           if (!versionId) {
             throw new Error(
-              "Wrangler did not return version_id; verify the cleanup version upload completed successfully",
+              "cf did not return version_id; verify the cleanup version upload completed successfully",
             );
           }
 
           process.stdout.write(versionId);
           NODE
           )"
+          deployment_body="$(VERSION_ID="$version_id" node -e '
+            process.stdout.write(JSON.stringify({
+              annotations: { "workers/message": process.env.DEPLOYMENT_MESSAGE },
+              strategy: "percentage",
+              versions: [{ version_id: process.env.VERSION_ID, percentage: 100 }],
+            }));
+          ')"
           for attempt in 1 2 3; do
-            if npx wrangler versions deploy "$version_id" \
-              --x-new-config \
-              --env preview \
-              --yes \
-              --message "Activate inert cleanup for GitHub PR #${{ github.event.pull_request.number }}"; then
+            if pnpm --dir packages/worker exec cf workers deployments create \
+              --worker "${CLOUDFLARE_WORKER_NAME}" \
+              --body "${deployment_body}"; then
               break
             fi
             if [ "$attempt" -lt 3 ]; then
-              echo "::warning::wrangler versions deploy attempt ${attempt} failed, retrying in 15s..."
+              echo "::warning::cf workers deployments create attempt ${attempt} failed, retrying in 15s..."
               sleep 15
             else
-              echo "::error::All 3 wrangler versions deploy attempts failed."
+              echo "::error::All 3 cf workers deployments create attempts failed."
               exit 1
             fi
           done

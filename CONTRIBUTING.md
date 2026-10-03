@@ -283,7 +283,7 @@ MISE_AUTO_INSTALL=false mise exec -- pnpm run worker:dry-run
 MISE_AUTO_INSTALL=false mise exec -- npx nx run repository:worker:deploy
 ```
 
-`worker:deploy` requires an authenticated Wrangler/Cloudflare environment and
+`worker:deploy` requires an authenticated Cloudflare environment and
 is a production-affecting operation. Prefer `worker:dry-run` for local bundle
 verification unless deployment is explicitly intended.
 
@@ -295,15 +295,19 @@ When the variable is unset, empty, or invalid, the Worker uses the default
 with a variable override, for example
 `--var HEVY_VALIDATION_RETRY_DELAYS_MS:1,2`.
 
-`cloudflare.config.ts` is the Worker configuration used by Wrangler's
-experimental TypeScript config mode. Commands must include `--x-new-config`;
-the mode is selected inside the config using `WRANGLER_MODE` and the GitHub
-Environment values. A clean clone without those values defaults to a
-`workers.dev` development Worker.
+`packages/worker/cloudflare.config.ts` is the Worker configuration used by
+Cloudflare's `cf` CLI, with typed helpers from `@cloudflare/config`. The root
+`cloudflare.config.ts` re-exports it for repository tooling. Worker commands
+run from `packages/worker` because `cf` does not support application detection
+at the root of this workspace. Select the configuration mode with `--mode`;
+without a mode or deployment values, it defaults to a `workers.dev`
+development Worker.
 
-This Wrangler configuration format is experimental. The repository pins a
-Wrangler version that includes the feature, but the `--x-new-config` flag and
-`wrangler/experimental-config` API may change in future releases.
+The repository pins the beta `cf` CLI and retains Wrangler as its build and
+local development backend. The Workerd Vitest plugin and deterministic HTTP
+test harness still use `wrangler.test.jsonc`; the credential-gated live HTTP
+lane starts `cf dev`. Backend-specific test flags such as `--persist-to` and
+`--var` are not currently supported by the `cf dev` delegate.
 
 The GitHub `production` and `preview` Environments provide the account-owned
 deployment settings; they are not committed to this repository. Configure
@@ -324,14 +328,22 @@ these values in each GitHub Environment:
 - Optional variable `CLOUDFLARE_OTEL_TRACES_DESTINATIONS`: comma-separated
   Cloudflare Workers Observability trace destination names.
 
-The workflows pass these values to `cloudflare.config.ts`. Namespace IDs and
-routes therefore do not need to be hardcoded in a committed Wrangler config.
+The workflows pass these values to `packages/worker/cloudflare.config.ts`.
+Namespace IDs and domains therefore do not need to be hardcoded in the config.
 
-`worker:deploy` runs `wrangler deploy --x-new-config --env production`, so it
-intentionally targets a production environment named `production`. In CI, the
-TypeScript config supplies that environment's Worker name, route, and KV binding.
-`worker:dev` and `worker:dry-run` use the same portable TypeScript
-configuration with development defaults.
+`worker:deploy` runs `cf deploy --mode production` in `packages/worker`. In CI,
+the TypeScript config supplies the production Worker's name, domain, and KV
+binding. `worker:dev` and `worker:dry-run` use development defaults. Build
+output is written to `packages/worker/.cloudflare/output`; the bundle check
+scans that output for unresolved private workspace imports.
+
+PR previews use `cf workers versions create --mode preview --preview-alias`
+and activate the uploaded version with `cf workers deployments create` at
+100% traffic. Bootstrap and cleanup set `CLOUDFLARE_PREVIEW_INERT=true` to use
+an inert 404 entrypoint. Preview uploads preserve dashboard variables and
+secrets through `unsafe.metadata.keep_bindings`. The beta upload path still
+writes Wrangler-compatible NDJSON via `WRANGLER_OUTPUT_FILE_PATH`; the workflow
+uses its `version_id` and `preview_alias_url`, rather than parsing console logs.
 
 Self-hosters can add account-owned settings to their own environment block or
 fork configuration:
@@ -384,11 +396,11 @@ and bearer-auth behavior when changing Worker request handling.
 Clients that cannot send a fixed `Authorization` header (for example Claude.ai
 custom connectors) can use OAuth 2.1 instead. The layer is opt-in per
 deployment: create a KV namespace and bind it as `OAUTH_KV` in the relevant
-Wrangler environment. For example, a fork can provide the namespace ID through
+Cloudflare configuration. For example, a fork can provide the namespace ID through
 `CLOUDFLARE_OAUTH_KV_NAMESPACE_ID`:
 
 ```bash
-npx wrangler kv namespace create OAUTH_KV
+pnpm --dir packages/worker exec cf kv namespaces create --title OAUTH_KV
 ```
 
 ```jsonc
@@ -487,8 +499,9 @@ remain private. Changesets version them for internal release/deployment
 identity but do not create npm tags for them because
 `privatePackages.tag=false`. The public Node and CLI packages publish normally.
 
-`cloudflare.config.ts` is production Worker configuration, so changing it also
-requires a Worker changeset even though it is outside `packages/worker`.
+Changing either `cloudflare.config.ts` or
+`packages/worker/cloudflare.config.ts` requires a Worker changeset because both
+participate in production Worker configuration.
 Production Worker deployment occurs only when a Changesets version commit
 changes `packages/worker/package.json`. Public Node- or CLI-only releases do not
 deploy the Worker; Worker-only private releases still do.
