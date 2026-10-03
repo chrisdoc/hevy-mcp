@@ -1,61 +1,56 @@
-# Agent Instructions for hevy-mcp
+# Working in hevy-mcp
 
-Read this file before changing the repository. Keep it focused on agent-only
-rules; use the sources below for detailed procedures and changing facts.
+Use this file for agent decisions and project invariants. Read the relevant
+source below for implementation details; do not copy changing tool versions,
+command inventories, or release cascades into this file.
 
-## Working tree and Git safety
+## Start with the task
 
-Inspect `git status --short --branch` and the existing worktrees before making
-changes. Choose the checkout according to the task:
+1. Inspect `git status --short --branch` and `git worktree list`. Preserve
+   unrelated changes and other checkouts.
+2. For an existing branch or PR, continue there. For new implementation work,
+   fetch the intended base (normally `origin/main`) and create a feature branch
+   in an isolated worktree. Read-only work needs no branch or dependency install.
+3. Read the applicable sources, then inspect the exact code involved. Install
+   tools/dependencies only when execution requires them.
+4. Complete authorized work through validation and a reviewable result. Carry
+   forward the user's corrections and existing authorization. Ask only for
+   missing information that blocks progress or an action outside that scope.
 
-- For new implementation work, use a dedicated feature branch and isolated
-  worktree based on the intended target branch, normally `origin/main`.
-  Fetch the target branch before creating the worktree.
-- For an existing PR or branch, work from that branch rather than starting
-  over from `main`. Reuse a suitable isolated worktree supplied by the user
-  or agent environment.
-- Read-only reviews do not require a new branch, worktree, or dependency install.
+Never reset, discard, or overwrite user changes. If a conflict risks those
+changes, stop and explain it. Never commit/push to `main` or force-push without
+explicit authorization. Use Conventional Commits and keep Git hooks enabled;
+investigate hook failures rather than bypassing them.
 
-Preserve unrelated changes and leave other checkouts untouched. Never reset,
-discard, or overwrite user changes. Stop and ask when proceeding would risk
-those changes. Never commit or push directly to `main`, and do not force-push
-without explicit authorization. Use Conventional Commits and keep Git hooks
-enabled; investigate failures instead of bypassing them.
+## Sources to consult
 
-### Git safety in tests
+| Task                                                      | Source of truth                                                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Setup, Node policy, required checks, release policy       | [CONTRIBUTING.md](./CONTRIBUTING.md)                                                                                            |
+| Commands and pinned development tools                     | [package.json](./package.json), [mise.toml](./mise.toml)                                                                        |
+| Workspace ownership, allowed imports, release propagation | [repository/topology.json](./repository/topology.json)                                                                          |
+| Test selection                                            | [docs/test-lanes.md](./docs/test-lanes.md), [repository/validation-lanes.json](./repository/validation-lanes.json)              |
+| Node transports and lifecycle                             | [packages/node/README.md](./packages/node/README.md)                                                                            |
+| Worker deployment, origins, authentication, OAuth         | Cloudflare Worker section of [CONTRIBUTING.md](./CONTRIBUTING.md)                                                               |
+| Telemetry and collector integration                       | [docs/observability.md](./docs/observability.md), [Worker version attribution](./docs/cloudflare-worker-version-attribution.md) |
+| Generated API client                                      | Generated API client section of [CONTRIBUTING.md](./CONTRIBUTING.md)                                                            |
 
-- Never write tests that invoke Git, execute `git` commands, or mutate Git
-  repositories or Git configuration. Use pure logic and ordinary filesystem
-  fixtures instead.
-- Never create, configure, or persist test Git identities such as
-  `user.name`, `user.email`, `GIT_AUTHOR_*`, or `GIT_COMMITTER_*`.
+Use mise's pinned Node, pnpm, and other tools for development commands:
+`mise exec -- pnpm ...`, `mise exec -- node ...`, or `mise exec -- npx ...`.
+Follow contributor setup and enable Lefthook in the working clone. Report
+unavailable tooling; do not silently substitute system versions.
 
-## Setup and sources of truth
+Prefer GitHub MCP for GitHub operations. Use an authenticated alternative such
+as `gh` when the connector cannot perform the operation. If Git transport fails,
+API publication may publish the validated commit without bypassing hooks or
+required pre-push checks. Preserve the verified tree and commit where possible,
+and update only the intended feature branch without forcing its ref.
 
-- [CONTRIBUTING.md](./CONTRIBUTING.md) owns development setup, Node policy,
-  Worker operations, release policy, and the required validation baseline.
-  Read the relevant section before that class of change.
-- [docs/test-lanes.md](./docs/test-lanes.md) describes named test lanes;
-  [repository/validation-lanes.json](./repository/validation-lanes.json)
-  defines the canonical lane registry. Prefer named aliases to raw selectors.
-- [repository/topology.json](./repository/topology.json) owns workspace
-  boundaries, allowed imports, and release propagation. Do not duplicate the
-  package/version cascade here.
-- [package.json](./package.json) owns command names, and
-  [mise.toml](./mise.toml) owns development tool versions. Inspect them rather
-  than copying versions or command lists into new documentation.
+## Discover code efficiently
 
-Use mise for Node.js and pnpm. Follow the contributor setup to install the
-pinned tools, install dependencies in the working checkout, and enable Lefthook.
-Run development commands through mise, for example `mise exec -- pnpm ...`,
-`mise exec -- npx ...`, and `mise exec -- node ...`; do not silently fall back
-to system tool versions. Report unavailable setup or tools as a limitation.
-
-Prefer GitHub MCP for GitHub operations. If it is unavailable or cannot perform
-the required operation, use an available authenticated alternative such as
-`gh`, with the same authorization and safety boundaries.
-
-## Code discovery
+Read exact named files directly. Use focused `rg` searches and batch independent
+reads; expand the search when imports, generated code, or sibling adapters make
+the initial result incomplete. Verify findings against source.
 
 <!-- entire-graph:begin -->
 
@@ -66,141 +61,125 @@ unavailable or inconclusive. Verify graph findings against source.
 @.entire/graph-agent.md
 <!-- entire-graph:end -->
 
-## Architecture boundaries
+Optional graph tooling must not block useful work. Treat missing graph results
+as inconclusive, not proof that code is absent.
 
-The root is a private workspace orchestrator, not a runtime `src/` tree.
+## Respect workspace boundaries
 
-- `packages/hevy-client` owns the runtime-neutral native-fetch client and
-  generated API types/schemas.
-- `packages/operations` owns runtime-neutral reusable Hevy domain operations.
-- `packages/core` owns runtime-neutral MCP construction, tools, prompts,
-  resources, execution, and safe diagnostics.
-- `packages/node` owns the Node server, lifecycle, transports, and telemetry.
-- `packages/worker` owns Cloudflare bindings, request handling, and OAuth.
-- `packages/cli` owns the standalone Node command-line client.
+The root is a private orchestrator; runtime code belongs under `packages/*`.
+
+| Workspace     | Owns                                                                           |
+| ------------- | ------------------------------------------------------------------------------ |
+| `hevy-client` | Runtime-neutral native-fetch client and generated API types/schemas            |
+| `operations`  | Runtime-neutral reusable Hevy domain operations                                |
+| `core`        | Runtime-neutral MCP tools, prompts, resources, execution, and safe diagnostics |
+| `node`        | Node server, lifecycle, transports, and telemetry                              |
+| `worker`      | Cloudflare bindings, request handling, OAuth, and Worker configuration         |
+| `cli`         | Standalone Node command-line client                                            |
 
 `operations` depends on `hevy-client`; `core` depends on both. Adapters consume
-runtime-neutral packages and do not import one another. Keep Node built-ins
-and Cloudflare bindings out of `hevy-client`, `operations`, and `core`.
-Respect the import allowlists in the topology; do not work around them with
-private paths or duplicate runtime implementations in adapters.
+these shared packages and do not import one another. Keep Node built-ins and
+Cloudflare bindings out of shared runtime-neutral packages. Use topology-approved
+exports; do not evade boundaries with private paths or duplicate implementations.
 
-## Effect and coding conventions
+## Apply the existing implementation contracts
+
+### Effect and boundary types
 
 Before writing Effect code, read the installed Effect package's `AGENTS.md`
-completely and follow its relevant links. Resolve it from the workspace being
-changed rather than assuming `node_modules/effect` exists at the root. If the
-guide is absent, inspect that installed package's source and version-matched
-official documentation. Do not use examples from a different Effect version.
+completely and follow relevant links. Resolve it from the affected workspace.
+If absent, use installed source and version-matched official documentation.
+Follow CONTRIBUTING's Effect control structure and existing Promise facades.
 
-Follow the existing Effect control structure in `CONTRIBUTING.md`.
-`ToolDefinition.execute` returns an Effect; preserve typed errors,
-cancellation, deadlines, and the existing runtime execution boundary. Do not
-introduce separate Effect runners inside tool implementations. Preserve the
-supported Promise facades and Promise-based adapter code rather than converting
-them as part of unrelated work.
+`ToolDefinition.execute` returns an Effect. Preserve typed errors, cancellation,
+deadlines, and the existing execution boundary; do not add separate runners
+inside tool implementations or convert unrelated Promise-based adapter code.
+Infer handler arguments from schemas. Keep untrusted data `unknown` until
+validated; do not bypass schemas with manual casts or `any`.
 
-Handler arguments are schema-inferred. Treat untrusted boundary data as
-`unknown` until validated; do not bypass validation with manual argument casts
-or `any`. Follow the repository's linting and formatting configuration instead
-of duplicating generic language or framework rules here. Inspect formatting
-changes and exclude unrelated churn.
+### MCP changes
 
-## MCP contracts
+Tools live in `packages/core/src/tools/`. Follow `ToolDefinition`, including
+`kind`, annotations, `responseContract`, and Effect-returning `execute`.
 
-MCP tools live in `packages/core/src/tools/`. Follow the existing
-`ToolDefinition` pattern, including `kind`, annotations, `responseContract`,
-and Effect-returning `execute`:
+- Define Zod input shapes in the tool or `tools/input-schemas.ts`; derive
+  arguments using `InferToolParams<typeof schema>`.
+- Reuse `protocol/response-contracts.ts` and `protocol/output-schemas.ts`.
+  Read tools require output schemas; preserve declared write-tool schemas.
+- Use `tools/register.ts`, `tools/define-tool.ts`, `ToolRuntime`, the existing
+  error policy, `withErrorHandling`, and safe diagnostics.
+- Add a co-located test. Input/output, registration, or compatibility changes
+  also require a protocol regression through `tools/list` and `tools/call`.
+- Verify advertised canonical inputs, supported legacy inputs, and returned
+  `structuredContent` against the declared schemas. Keep compatibility parsing
+  separate from the advertised schema.
 
-1. Define the Zod input shape in the tool file or `tools/input-schemas.ts`;
-   derive arguments with `InferToolParams<typeof schema>`.
-2. Reuse the contracts in `protocol/response-contracts.ts` and schemas in
-   `protocol/output-schemas.ts`. Read tools require an output schema; preserve
-   declared write-tool output schemas too.
-3. Register through the existing `tools/register.ts` and `tools/define-tool.ts`
-   pipeline. Reuse `ToolRuntime`, the error policy, `withErrorHandling`, and
-   safe diagnostics rather than introducing parallel response/error formats.
-4. Add a co-located test. For input, output, registration, or compatibility
-   changes, also add a protocol-level regression through `tools/list` and
-   `tools/call`; a direct handler test alone is insufficient.
-
-Verify that canonical inputs advertised by `tools/list` are accepted by
-`tools/call`, supported legacy inputs remain covered, and declared output
-schemas match returned `structuredContent`. Keep compatibility parsing
-separate from the canonical advertised schema. Preserve tool names,
-annotations, response contracts, and error behavior unless the task explicitly
-changes them. Reuse the existing runtime contract matrix and adapter test lanes
-for the affected paths; do not build a parallel test harness.
-
-Measure token cost when tool descriptions or schemas materially change with
+Preserve names, annotations, response contracts, and error behavior unless the
+task changes them. Reuse the runtime contract matrix and adapter test lanes.
+Measure token cost when descriptions/schemas materially change using
 `mise exec -- pnpm run measure:tokens`.
 
-## Generated client
+### Generated client
 
-Never hand-edit `packages/hevy-client/src/generated/`. Change the OpenAPI
-source or Kubb configuration, then regenerate using the checked-in specification
-with `mise exec -- pnpm run build:client`. Review the complete generated diff
-and investigate unexpected changes.
+Never hand-edit `packages/hevy-client/src/generated/`. Change the OpenAPI source
+or Kubb configuration and run `mise exec -- pnpm run build:client` against the
+checked-in specification. Review the complete diff and run the contributor
+checks, including `check:openapi` and `check:generated`.
 
-Refresh upstream only when the task intentionally updates the API contract;
-`mise exec -- pnpm run openapi` needs network access and is not a prerequisite
-for unrelated regeneration. Reproducible upstream corrections belong in
-`scripts/codegen/openapi-spec.js`. Follow the generated-client checks in
-`CONTRIBUTING.md`, including `check:openapi` and `check:generated`.
+Refresh upstream with `openapi` only for intentional API-contract updates.
+Reproducible upstream corrections belong in `scripts/codegen/openapi-spec.js`.
+Generated API functions and `.kubb` internals remain private.
 
-Consumers use curated package exports allowed by the topology; generated API
-functions and `.kubb` internals remain private.
+## Protect credentials and runtime behavior
 
-## Credentials and external side effects
+Use `.env` or process environment for `HEVY_API_KEY` in local/live lanes.
+Never commit real keys or expose them through arguments, URLs, logs, fixtures,
+screenshots, or errors. Keep personal workout data and sensitive API responses
+out of diagnostics and fixtures. Deterministic tests use fake credentials.
 
-Use `HEVY_API_KEY` through `.env` or the process environment for Node/local live
-lanes. Never commit `.env` or real keys, or expose keys in arguments, URLs,
-logs, fixtures, screenshots, or errors. Do not copy personal workout data or
-sensitive response bodies into fixtures or diagnostics. Deterministic lanes
-use fake credentials and do not need a live key.
+Credentials alone do not authorize live mutations. Use mocks for mutation
+tests; create/update/delete live Hevy records only when explicitly authorized.
+Do not deploy, publish releases, merge release PRs, or change repository settings
+unless the task or an authorized workflow permits it. Prepare and validate the
+concrete change before requesting any required final approval.
 
-Credentials are not permission to modify live data. Do not create, update, or
-delete live Hevy records during development/testing unless explicitly authorized
-for the task. Use mocked services for mutation tests. Do not deploy, publish,
-merge release PRs, or change repository settings unless the task or an explicitly
-authorized workflow permits it. Follow the contributor guide for bounded,
-read-only live canaries when appropriate.
+Ambiguous create outcomes must not trigger blind retries. Routine updates
+replace content: omitted exercises are not an unchanged partial update.
+Keep stdio stdout reserved for MCP JSON-RPC and use the safe diagnostic path.
+Preserve per-request Worker credential isolation.
 
-Preserve mutation semantics: ambiguous create outcomes must not trigger blind
-retries that can create duplicates. Routine updates replace content, so omitted
-exercises must not be treated as an unchanged partial update.
+Worker telemetry exports over OTLP to the project's own OpenTelemetry
+Collector. Downstream routing is infrastructure-owned; do not infer a deployed
+storage backend from example documentation. Domain-level Cloudflare tracing
+and Worker tracing have separate configuration. Distinguish available APIs
+from announced features before implementing telemetry changes.
 
-Keep stdio stdout reserved for MCP JSON-RPC; send diagnostics through the
-existing safe logging path. Before changing transport behavior, read
-`packages/node/README.md`. Before changing Worker deployment, origins,
-authentication, or OAuth, read the Worker section of `CONTRIBUTING.md` and
-preserve per-request credential isolation.
+## Validate and finish
 
-## Validation and release requirements
+- Source changes: run the narrow relevant deterministic lane and the unit suite.
+  Use named lanes instead of broad discovery or a parallel test harness.
+- Before opening a PR: run CONTRIBUTING's full required baseline, including
+  boundary checks, and the checks specific to changed paths. After MCP SDK
+  upgrades, inspect `packages/node/src/utils/stdio-observability.ts` and run
+  the stdio lane.
+- Documentation-only changes: check formatting, relative links, and consistency
+  with source. Do not invent runtime tests for prose; required hooks and PR
+  checks still apply.
+- Never focus/disable tests, weaken assertions, or change checks to hide a
+  failure. Keep credential-gated lanes explicit. Distinguish failures, blocked
+  checks, and unrun checks from successful validation.
+- Tests must not invoke Git or mutate repositories, Git configuration, or Git
+  identities. Use pure logic and ordinary filesystem fixtures.
 
-For source changes, run the narrow relevant deterministic lane and the unit
-suite. Before opening a PR, run the full required validation baseline from
-`CONTRIBUTING.md`, including boundary checks, plus the checks for the changed
-paths. Use `docs/test-lanes.md` to select lanes; broad test discovery is not a
-substitute. After MCP SDK upgrades, inspect the private SDK assumptions in
-`packages/node/src/utils/stdio-observability.ts` and run the stdio lane.
+Before every commit, classify the diff using CONTRIBUTING's release policy and
+topology propagation. Stage the required Changeset and run
+`mise exec -- pnpm run check:changeset`. Empty Changesets are allowed only when
+the entire PR is no-release; do not pair one with a release trigger. Worker
+configuration changes require Worker release coverage. Do not merge the
+automated version PR just because implementation is complete.
 
-Do not focus or disable tests, weaken assertions, or change checks to hide
-failures. Keep intentional credential-gated lanes explicit. Investigate check
-failures; distinguish failed, blocked, and unrun checks in the PR rather than
-claiming they passed.
-
-Before each commit, classify the diff using the release policy in
-`CONTRIBUTING.md` and propagation in `repository/topology.json`. Include the
-required Changeset and stage it before committing. Use an empty Changeset only
-when the entire PR qualifies as no-release; never pair one with a release
-trigger. Run `mise exec -- pnpm run check:changeset`. Do not merge the automated
-version PR merely because a change is complete.
-
-## Completion
-
-Confirm the diff contains only intended changes, relevant generated output is
-synchronized, and release requirements are satisfied. Check
-`git status --short --branch` in the working checkout. Report the change,
-validation results and limitations, and any remaining risks; never describe
-unrun checks or an unverified deployment as successful.
+Inspect hook formatting changes and exclude unrelated churn. Finish with the
+intended diff, synchronized generated output where applicable, and
+`git status --short --branch`. Report what changed, validation, remaining limits,
+and the review link or local result. Never claim an unrun check or unverified
+live deployment succeeded.
