@@ -653,8 +653,10 @@ stacks are bounded and scrubbed before export. Set
 suppressing those details. Traces and metrics continue to be sent to the
 collector at
 <https://otel.chrisdoc.dev/v1/traces> and
-<https://otel.chrisdoc.dev/v1/metrics>, which forward to Honeycomb. Metrics
-export every 30 seconds.
+<https://otel.chrisdoc.dev/v1/metrics>. The project uses its own OpenTelemetry
+Collector; downstream destinations are configured in that infrastructure.
+Metrics export every 30 seconds. See [observability documentation](./docs/observability.md)
+for Cloudflare OTLP export and domain tracing.
 
 The API key is never exported and is not used to derive a user identity. A
 per-failure diagnostic ID and OTel trace ID may be attached to actionable
