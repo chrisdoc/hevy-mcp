@@ -1,5 +1,11 @@
 # @hevy-mcp/worker
 
+## 0.3.4
+
+### Patch Changes
+
+- [#1225](https://github.com/chrisdoc/hevy-mcp/pull/1225) [`24a12df`](https://github.com/chrisdoc/hevy-mcp/commit/24a12df862cde00403a688f42bb93d03856ce83d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Migrate Worker development and deployment to the Cloudflare cf CLI and its typed configuration, preserving PR preview aliases and inert cleanup versions.
+
 ## 0.3.3
 
 ### Patch Changes
