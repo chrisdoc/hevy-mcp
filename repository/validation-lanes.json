@@ -11,7 +11,7 @@
 		},
 		"workerd": {
 			"kind": "workerd",
-			"version": "wrangler-local"
+			"version": "cloudflare-vite-plugin-local"
 		}
 	},
 	"lanes": [

@@ -291,9 +291,8 @@ Worker API-key validation retries can use the optional
 `HEVY_VALIDATION_RETRY_DELAYS_MS` environment variable. Set it to a comma-separated
 sequence of non-negative integer delays in milliseconds, such as `300,600`.
 When the variable is unset, empty, or invalid, the Worker uses the default
-`300,600` schedule. For Wrangler-backed local tests, pass a shorter schedule
-with a variable override, for example
-`--var HEVY_VALIDATION_RETRY_DELAYS_MS:1,2`.
+`300,600` schedule. The deterministic HTTP test harness binds the shorter
+`1,2` schedule through its isolated local configuration.
 
 `packages/worker/cloudflare.config.ts` is the Worker configuration used by
 Cloudflare's `cf` CLI, with typed helpers from `@cloudflare/config`. The root
@@ -303,11 +302,26 @@ at the root of this workspace. Select the configuration mode with `--mode`;
 without a mode or deployment values, it defaults to a `workers.dev`
 development Worker.
 
-The repository pins the beta `cf` CLI and retains Wrangler as its build and
-local development backend. The Workerd Vitest plugin and deterministic HTTP
-test harness still use `wrangler.test.jsonc`; the credential-gated live HTTP
-lane starts `cf dev`. Backend-specific test flags such as `--persist-to` and
-`--var` are not currently supported by the `cf dev` delegate.
+The Worker workspace uses `@cloudflare/vite-plugin` with Vite for local
+development and builds. `cf dev` and `cf build` select that backend, which
+emits the Cloudflare Build Output consumed by `cf deploy`; `worker:dry-run`
+builds first, then runs a deployment dry run against that output. The Workerd
+Vitest pool loads `packages/worker/cloudflare.config.ts` through the plugin's
+`experimental.newConfig` option, so unit tests and local development use the
+same typed Worker settings.
+
+The deterministic HTTP test starts `cf dev` with an isolated persistence
+directory and dynamically allocated host, Worker port, and inspector port. Its
+child process sets `HEVY_WORKER_TEST_MODE=true`,
+`HEVY_API_BASE_URL`, and `HEVY_VALIDATION_RETRY_DELAYS_MS`; the typed config
+only binds the fake Hevy endpoint and retry schedule when that test marker is
+present. It also sets `HEVY_WORKER_PERSIST_DIR`,
+`HEVY_WORKER_DEV_HOST`, `HEVY_WORKER_DEV_PORT`, and
+`HEVY_WORKER_INSPECTOR_PORT` for the local harness.
+
+The root and Worker workspace no longer declare Wrangler directly. Wrangler
+remains in the lockfile as a transitive dependency of Cloudflare's Vite and
+Vitest plugins.
 
 The GitHub `production` and `preview` Environments provide the account-owned
 deployment settings; they are not committed to this repository. Configure
@@ -333,9 +347,10 @@ Namespace IDs and domains therefore do not need to be hardcoded in the config.
 
 `worker:deploy` runs `cf deploy --mode production` in `packages/worker`. In CI,
 the TypeScript config supplies the production Worker's name, domain, and KV
-binding. `worker:dev` and `worker:dry-run` use development defaults. Build
-output is written to `packages/worker/.cloudflare/output`; the bundle check
-scans that output for unresolved private workspace imports.
+binding. `worker:dev` and `worker:dry-run` use development defaults. Vite's
+Cloudflare Build Output is written to
+`packages/worker/.cloudflare/output/v0`; the bundle check scans that output for
+unresolved private workspace imports.
 
 PR previews use `cf workers versions create --mode preview --preview-alias`
 and activate the uploaded version with `cf workers deployments create` at

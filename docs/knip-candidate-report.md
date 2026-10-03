@@ -66,8 +66,8 @@ show which diagnostics the old default command concealed.
   unused files, 3 unlisted binaries, 95 unused value exports, and 58 unused
   exported types. This mode excludes test/dev-only consumers, so its additional
   findings are not removal candidates; notably, the binary findings are
-  `cross-env`, `changeset`, and `wrangler` referenced by Nx targets in
-  `project.json` and declared as root devDependencies.
+  `cross-env` and `changeset` referenced by Nx targets in `project.json` and
+  declared as root devDependencies.
 
 The package manifests and [`repository/topology.json`](../repository/topology.json)
 define the supported surfaces. Knip's entry/export analysis retains those

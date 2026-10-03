@@ -253,7 +253,8 @@
 			"{workspaceRoot}/packages/hevy-client/src/**/*",
 			"{workspaceRoot}/packages/operations/src/**/*",
 			"{workspaceRoot}/tests/cloudflare/**/*",
-			"{workspaceRoot}/wrangler.test.jsonc"
+			"{workspaceRoot}/packages/worker/cloudflare.config.ts",
+			"{workspaceRoot}/packages/worker/vite.config.ts"
 		]
 	},
 	"plugins": ["./scripts/nx-project-metadata.cjs"],

@@ -112,6 +112,14 @@ class FallbackSpan implements Span {
 			  },
 	): void {}
 
+	updateName(_name: string): this {
+		return this;
+	}
+
+	setStatus(_status: TracingSpanStatus): this {
+		return this;
+	}
+
 	end(): void {}
 }
 
