@@ -11,7 +11,6 @@ import type {
 import type {
 	GetV1RoutineFolders200,
 	PostRoutineFolderRequestBody,
-	PostV1RoutineFolders201,
 	RoutineFolder,
 } from "@hevy-mcp/hevy-client/types";
 import {
@@ -82,14 +81,11 @@ export interface FoldersCreateOperation {
 	readonly effect: (
 		input: FoldersCreateInput,
 		options?: HevyExecutionOptions,
-	) => Effect.Effect<
-		PostV1RoutineFolders201 | undefined,
-		HevyRequestEffectError
-	>;
+	) => Effect.Effect<RoutineFolder | undefined, HevyRequestEffectError>;
 	execute(
 		input: FoldersCreateInput,
 		options?: HevyExecutionOptions,
-	): Promise<PostV1RoutineFolders201 | undefined>;
+	): Promise<RoutineFolder | undefined>;
 }
 
 export type FoldersListAllAdapter = Pick<
@@ -160,7 +156,7 @@ export function createFoldersCreateOperation(
 		function* (input: FoldersCreateInput, options?: HevyExecutionOptions) {
 			const request = adapter.createRoutineFolder(input, options);
 			const response = yield* request;
-			return isEmptyResponse(response) ? undefined : response;
+			return response.routine_folder;
 		},
 	);
 }

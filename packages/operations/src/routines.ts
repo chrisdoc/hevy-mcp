@@ -21,7 +21,6 @@ import {
 import {
 	assertPageEcho,
 	hasNextPage,
-	isEmptyResponse,
 	withExpectedEndOfList,
 	withExpectedNotFound,
 	PaginationMismatchError,
@@ -228,10 +227,7 @@ const ROUTINE_SEARCH_PAGE_SIZE = 10;
 function normalizeRoutineResponse(
 	response: PostV1Routines201 | PutV1RoutinesRoutineid200,
 ): Routine | undefined {
-	if (isEmptyResponse(response)) {
-		return undefined;
-	}
-	return response as Routine;
+	return "routine" in response ? response.routine : undefined;
 }
 
 export function createRoutinesCreateOperation(

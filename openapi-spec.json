@@ -464,7 +464,12 @@
 								"schema": {
 									"oneOf": [
 										{
-											"$ref": "#/components/schemas/Routine"
+											"type": "object",
+											"properties": {
+												"routine": {
+													"$ref": "#/components/schemas/Routine"
+												}
+											}
 										},
 										{
 											"type": "object",
@@ -610,7 +615,12 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Routine"
+									"type": "object",
+									"properties": {
+										"routine": {
+											"$ref": "#/components/schemas/Routine"
+										}
+									}
 								}
 							}
 						}
@@ -940,7 +950,12 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/RoutineFolder"
+									"type": "object",
+									"properties": {
+										"routine_folder": {
+											"$ref": "#/components/schemas/RoutineFolder"
+										}
+									}
 								}
 							}
 						}

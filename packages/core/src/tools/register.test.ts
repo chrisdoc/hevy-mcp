@@ -620,6 +620,111 @@ describe("registerHevyTools", () => {
 			}),
 		);
 	});
+	it("returns saved folders and routines from enveloped write responses", async () => {
+		const mockClient = createMockHevyClient();
+		mockClient.createRoutineFolder
+			.mockResolvedValueOnce({ routine_folder: { id: 7, title: "Strength" } })
+			.mockResolvedValueOnce({});
+		mockClient.updateRoutine
+			.mockResolvedValueOnce({
+				routine: { id: "routine-1", title: "Push", exercises: [] },
+			})
+			.mockResolvedValueOnce({});
+		const writeServer = new McpServer({
+			name: "write-envelope-server",
+			version: "1.0.0",
+		});
+		registerHevyTools(
+			writeServer,
+			createToolRuntime({
+				client: mockClient,
+				catalog: {
+					effect: () => Effect.succeed([]),
+					get: () => Promise.resolve([]),
+					reset: () => Effect.void,
+					close: () => Effect.void,
+				},
+			}),
+		);
+		const { protocolClient } = await connectToolProtocol(
+			writeServer,
+			"write-envelopes",
+		);
+		const createFolder = () =>
+			protocolClient.callTool({
+				name: "create-routine-folder",
+				arguments: { routine_folder: { title: "Strength" } },
+			});
+		const updateRoutine = () =>
+			protocolClient.callTool({
+				name: "update-routine",
+				arguments: {
+					routine_id: "routine-1",
+					routine: {
+						title: "Push",
+						exercises: [
+							{ exercise_template_id: "bench", sets: [{ type: "normal" }] },
+						],
+					},
+				},
+			});
+
+		try {
+			const { tools } = await protocolClient.listTools();
+			const outputSchemaOf = (name: string) =>
+				tools.find((tool) => tool.name === name)?.outputSchema;
+			expect(outputSchemaOf("create-routine-folder")).toMatchObject({
+				properties: { created: { const: true } },
+			});
+			expect(outputSchemaOf("update-routine")).toMatchObject({
+				properties: { updated: { const: true } },
+			});
+
+			const createdFolder = await createFolder();
+			expect(createdFolder).not.toMatchObject({ isError: true });
+			expect(createdFolder.structuredContent).toEqual({
+				created: true,
+				commit_state: "confirmed",
+				routine_folder: { id: 7, title: "Strength" },
+				folder_id: 7,
+			});
+
+			const unconfirmedFolder = await createFolder();
+			expect(unconfirmedFolder).not.toMatchObject({ isError: true });
+			expect(unconfirmedFolder.structuredContent).toEqual({
+				created: true,
+				commit_state: "confirmed",
+				routine_folder: null,
+				folder_id: null,
+			});
+			expect(JSON.stringify(unconfirmedFolder.content)).toContain(
+				"before retrying",
+			);
+
+			const updated = await updateRoutine();
+			expect(updated).not.toMatchObject({ isError: true });
+			expect(updated.structuredContent).toEqual({
+				updated: true,
+				commit_state: "confirmed",
+				routine: { id: "routine-1", title: "Push", exercises: [] },
+				routine_id: "routine-1",
+				uses_rep_ranges: false,
+			});
+
+			const updatedWithoutBody = await updateRoutine();
+			expect(updatedWithoutBody).not.toMatchObject({ isError: true });
+			expect(updatedWithoutBody.structuredContent).toEqual({
+				updated: true,
+				commit_state: "confirmed",
+				routine: null,
+				routine_id: "routine-1",
+				uses_rep_ranges: false,
+			});
+		} finally {
+			await Promise.all([protocolClient.close(), writeServer.close()]);
+		}
+	});
+
 	it("keeps the serialized create-routine contract aligned with dispatch", async () => {
 		const mockClient = createMockHevyClient();
 		const productionServer = new McpServer({
@@ -668,7 +773,9 @@ describe("registerHevyTools", () => {
 			});
 
 			const payload = createRoutinePayload;
-			mockClient.createRoutine.mockResolvedValue(createdRoutineResponse);
+			mockClient.createRoutine.mockResolvedValue({
+				routine: createdRoutineResponse,
+			});
 
 			const result = await protocolClient.callTool({
 				name: "create-routine",

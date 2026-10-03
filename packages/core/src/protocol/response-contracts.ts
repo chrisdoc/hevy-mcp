@@ -21,7 +21,9 @@ import {
 	type ToolResultTelemetry,
 } from "../utils/result-telemetry.js";
 import {
+	createRoutineFolderOutputSchema,
 	createRoutineOutputSchema,
+	updateRoutineOutputSchema,
 	optionalNumber,
 	formattedBodyMeasurementSchema,
 	formattedDeletedWorkoutSchema,
@@ -757,22 +759,28 @@ export const createRoutineResponse = defineStructuredResponseContract({
 		routineResultTelemetry(data.routine?.id ? data.routine : null),
 });
 
-export const updateRoutineResponse = defineJsonResponseContract(
-	(data: {
+export const updateRoutineResponse = defineStructuredResponseContract({
+	outputSchema: updateRoutineOutputSchema,
+	normalize: (data: {
 		routine: Routine | null | undefined;
 		routine_id: string;
 		usesRepRanges: boolean;
-	}) =>
-		data.routine
-			? {
-					json: projectRoutine(data.routine),
-					additionalText: data.usesRepRanges
-						? [repRangeDisplayWarningText]
-						: [],
-				}
-			: { text: `Failed to update routine with ID ${data.routine_id}` },
-	(data) => routineResultTelemetry(data.routine),
-);
+	}) => ({
+		updated: true as const,
+		commit_state: "confirmed" as const,
+		routine: data.routine ? projectRoutine(data.routine) : null,
+		routine_id: data.routine_id,
+		uses_rep_ranges: data.usesRepRanges,
+	}),
+	legacyJson: (output) => output.routine,
+	text: (_data, output) =>
+		output.routine === null
+			? `Hevy confirmed the update to routine ${output.routine_id} but did not return the routine.`
+			: undefined,
+	additionalText: (_data, output) =>
+		output.uses_rep_ranges ? [repRangeDisplayWarningText] : [],
+	telemetry: (data) => routineResultTelemetry(data.routine),
+});
 
 export const createExerciseTemplateResponse = defineJsonResponseContract(
 	(response: PostV1ExerciseTemplates200 | null | undefined) => ({
@@ -783,15 +791,24 @@ export const createExerciseTemplateResponse = defineJsonResponseContract(
 	}),
 );
 
-export const createRoutineFolderResponse = defineJsonResponseContract(
-	(folder: RoutineFolder | null | undefined) =>
-		folder
-			? { json: projectRoutineFolder(folder) }
-			: {
-					text: "Failed to create routine folder: Server returned no data",
-				},
-	(folder) => ({ itemCountBucket: bucketCount(folder ? 1 : 0) }),
-);
+export const createRoutineFolderResponse = defineStructuredResponseContract({
+	outputSchema: createRoutineFolderOutputSchema,
+	normalize: (folder: RoutineFolder | null | undefined) => {
+		const routineFolder = folder ? projectRoutineFolder(folder) : null;
+		return {
+			created: true as const,
+			commit_state: "confirmed" as const,
+			routine_folder: routineFolder,
+			folder_id: routineFolder?.id ?? null,
+		};
+	},
+	legacyJson: (output) => output.routine_folder,
+	text: (_data, output) =>
+		output.folder_id === null
+			? "Hevy confirmed routine folder creation but did not return an ID. Check routine folders before retrying to avoid duplicates."
+			: undefined,
+	telemetry: (folder) => ({ itemCountBucket: bucketCount(folder ? 1 : 0) }),
+});
 
 export const createBodyMeasurementResponse = defineJsonResponseContract(
 	(date: string) => ({

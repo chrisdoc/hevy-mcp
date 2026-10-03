@@ -10,7 +10,9 @@ import { routineSchema } from "./routineSchema";
 export const postV1RoutinesHeaderApiKeySchema = z.uuid();
 
 export const postV1RoutinesStatus201Schema = z.union([
-  routineSchema.strict(),
+  z.strictObject({
+    routine: routineSchema.optional(),
+  }),
   z.strictObject({}),
 ]);
 

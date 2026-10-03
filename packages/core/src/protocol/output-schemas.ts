@@ -84,12 +84,27 @@ export const createRoutineOutputSchema = {
 	uses_rep_ranges: z.boolean(),
 } as const;
 
+export const updateRoutineOutputSchema = {
+	updated: z.literal(true),
+	commit_state: z.literal("confirmed"),
+	routine: formattedRoutineSchema.nullable(),
+	routine_id: z.string(),
+	uses_rep_ranges: z.boolean(),
+} as const;
+
 export const formattedRoutineFolderSchema = z.object({
 	id: z.number().optional(),
 	title: z.string().optional(),
 	created_at: z.string().optional(),
 	updated_at: z.string().optional(),
 });
+
+export const createRoutineFolderOutputSchema = {
+	created: z.literal(true),
+	commit_state: z.literal("confirmed"),
+	routine_folder: formattedRoutineFolderSchema.nullable(),
+	folder_id: z.number().nullable(),
+} as const;
 
 export const formattedExerciseTemplateSchema = z.object({
 	id: z.string().optional(),

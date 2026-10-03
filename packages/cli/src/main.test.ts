@@ -395,10 +395,12 @@ function mutationClient(): HevyClient {
 		}),
 		createWorkout: vi.fn().mockResolvedValue({ id: "workout-1" }),
 		updateWorkout: vi.fn().mockResolvedValue({ id: "workout-1" }),
-		createRoutine: vi.fn().mockResolvedValue({ id: "routine-1" }),
-		updateRoutine: vi.fn().mockResolvedValue({ id: "routine-1" }),
+		createRoutine: vi.fn().mockResolvedValue({ routine: { id: "routine-1" } }),
+		updateRoutine: vi.fn().mockResolvedValue({ routine: { id: "routine-1" } }),
 		createExerciseTemplate: vi.fn().mockResolvedValue({ id: 2 }),
-		createRoutineFolder: vi.fn().mockResolvedValue({ id: 3 }),
+		createRoutineFolder: vi
+			.fn()
+			.mockResolvedValue({ routine_folder: { id: 3 } }),
 		createBodyMeasurement: vi.fn().mockResolvedValue({
 			date: "2024-01-02",
 			weight_kg: 80,

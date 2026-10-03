@@ -79,7 +79,7 @@ globalThis.fetch = async (input, init = {}) => {
 	const pathname = new URL(request.url).pathname;
 	const response =
 		request.method === "POST" && pathname === "/v1/routine_folders"
-			? { status: 201, body: { id: 3 } }
+			? { status: 201, body: { routine_folder: { id: 3 } } }
 			: request.method === "GET" && pathname === "/v1/workouts/workout-1"
 				? {
 						status: 200,

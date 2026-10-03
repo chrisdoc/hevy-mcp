@@ -158,9 +158,7 @@ function createAbortAwareListAdapter(error: Error): InMemoryRoutinesAdapter {
 
 function createRoutineWriteAdapter(
 	response: PostV1Routines201 | PutV1RoutinesRoutineid200 = {
-		id: "routine-1",
-		title: "Push",
-		exercises: [],
+		routine: { id: "routine-1", title: "Push", exercises: [] },
 	},
 ): RoutinesCreateAdapter & RoutinesUpdateAdapter {
 	return {
@@ -372,6 +370,23 @@ describe("routines.create operation", () => {
 			id: "routines.create",
 			safety: "non-idempotent-write",
 		});
+	});
+});
+
+describe("routine write responses", () => {
+	it("returns no routine when Hevy acknowledges a write with an empty body", async () => {
+		const adapter = createRoutineWriteAdapter({});
+		const routine = { title: "Push", exercises: [] };
+
+		await expect(
+			createRoutinesCreateOperation(adapter).execute({ routine }),
+		).resolves.toEqual({ routine: undefined, usesRepRanges: false });
+		await expect(
+			createRoutinesUpdateOperation(adapter).execute({
+				routineId: "routine-1",
+				routine,
+			}),
+		).resolves.toEqual({ routine: undefined, usesRepRanges: false });
 	});
 });
 
