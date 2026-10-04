@@ -1,5 +1,15 @@
 # @hevy-mcp/worker
 
+## 0.3.4
+
+### Patch Changes
+
+- [#1225](https://github.com/chrisdoc/hevy-mcp/pull/1225) [`24a12df`](https://github.com/chrisdoc/hevy-mcp/commit/24a12df862cde00403a688f42bb93d03856ce83d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Migrate Worker development and deployment to the Cloudflare cf CLI and its typed configuration, preserving PR preview aliases and inert cleanup versions.
+
+- [#1228](https://github.com/chrisdoc/hevy-mcp/pull/1228) [`fe523d8`](https://github.com/chrisdoc/hevy-mcp/commit/fe523d8a112514c2862d2d0e1a7a6996de386ab9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Move Worker development and builds to Cloudflare's Vite plugin and use the typed Worker configuration across local tests.
+
+- [#1229](https://github.com/chrisdoc/hevy-mcp/pull/1229) [`0cab669`](https://github.com/chrisdoc/hevy-mcp/commit/0cab669918477f2e4d1d82d7cfec89faa066be30) Thanks [@codebeetl](https://github.com/codebeetl)! - Return the saved routine or folder from create-routine, update-routine, and create-routine-folder by unwrapping Hevy's `routine`/`routine_folder` response envelopes, and declare structured output schemas for update-routine and create-routine-folder. The public client's `createRoutine()` also returns the unwrapped routine.
+
 ## 0.3.3
 
 ### Patch Changes
