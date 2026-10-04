@@ -130,25 +130,18 @@ function spawnCf(workerPort: number): void {
 	delete childEnv.HEVY_API_BASE_URL;
 	delete childEnv.HEVY_API_KEY;
 
-	cf = spawn(
-		npmCommand,
-		[
-			"exec",
-			"--",
-			"cf",
-			"dev",
-			"--host",
-			LOOPBACK,
-			"--port",
-			String(workerPort),
-		],
-		{
-			cwd: resolve(process.cwd(), "packages/worker"),
-			detached: process.platform !== "win32",
-			env: { ...childEnv, CI: "true", NO_COLOR: "1" },
-			stdio: "pipe",
+	cf = spawn(npmCommand, ["exec", "--", "cf", "dev"], {
+		cwd: resolve(process.cwd(), "packages/worker"),
+		detached: process.platform !== "win32",
+		env: {
+			...childEnv,
+			CI: "true",
+			NO_COLOR: "1",
+			HEVY_WORKER_DEV_HOST: LOOPBACK,
+			HEVY_WORKER_DEV_PORT: String(workerPort),
 		},
-	);
+		stdio: "pipe",
+	});
 	cf.stdout.on("data", appendCfLog);
 	cf.stderr.on("data", appendCfLog);
 	cf.once("error", (error) => {
