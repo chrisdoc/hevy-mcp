@@ -1318,6 +1318,38 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(22);
 	});
 
+	it("unwraps the routine envelope returned by createRoutine", async () => {
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: vi
+				.fn()
+				.mockResolvedValue(
+					response({ routine: { id: "routine-1", title: "Push" } }, 201),
+				),
+			maxGetRetries: 0,
+		});
+
+		await expect(client.createRoutine({} as never)).resolves.toEqual({
+			id: "routine-1",
+			title: "Push",
+		});
+	});
+
+	it("returns a bare routine reply from createRoutine unchanged", async () => {
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: vi
+				.fn()
+				.mockResolvedValue(response({ id: "routine-1", title: "Push" }, 201)),
+			maxGetRetries: 0,
+		});
+
+		await expect(client.createRoutine({} as never)).resolves.toEqual({
+			id: "routine-1",
+			title: "Push",
+		});
+	});
+
 	it("bounds an over-budget Retry-After by the absolute deadline", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-03T12:00:00.000Z"));

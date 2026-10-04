@@ -7,4 +7,4 @@
 "@chrisdoc/hevy-cli": patch
 ---
 
-Return the saved routine or folder from create-routine, update-routine, and create-routine-folder by unwrapping Hevy's `routine`/`routine_folder` response envelopes, and declare structured output schemas for update-routine and create-routine-folder.
+Return the saved routine or folder from create-routine, update-routine, and create-routine-folder by unwrapping Hevy's `routine`/`routine_folder` response envelopes, and declare structured output schemas for update-routine and create-routine-folder. The public client's `createRoutine()` also returns the unwrapped routine.
