@@ -1021,7 +1021,27 @@ exports[`package export: real MCP with explicit zero retries > update-routine: s
     },
   ],
   "isError": undefined,
-  "structuredContent": undefined,
+  "structuredContent": {
+    "commit_state": "confirmed",
+    "routine": {
+      "exercises": [
+        {
+          "exercise_template_id": "synthetic-template",
+          "sets": [
+            {
+              "reps": 5,
+              "type": "normal",
+            },
+          ],
+        },
+      ],
+      "id": "synthetic-id",
+      "title": "Synthetic routine",
+    },
+    "routine_id": "synthetic-id",
+    "updated": true,
+    "uses_rep_ranges": false,
+  },
 }
 `;
 
@@ -2179,7 +2199,27 @@ exports[`source: real MCP with explicit zero retries > update-routine: success >
     },
   ],
   "isError": undefined,
-  "structuredContent": undefined,
+  "structuredContent": {
+    "commit_state": "confirmed",
+    "routine": {
+      "exercises": [
+        {
+          "exercise_template_id": "synthetic-template",
+          "sets": [
+            {
+              "reps": 5,
+              "type": "normal",
+            },
+          ],
+        },
+      ],
+      "id": "synthetic-id",
+      "title": "Synthetic routine",
+    },
+    "routine_id": "synthetic-id",
+    "updated": true,
+    "uses_rep_ranges": false,
+  },
 }
 `;
 

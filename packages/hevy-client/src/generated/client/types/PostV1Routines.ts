@@ -15,7 +15,11 @@ export type PostV1RoutinesHeaders = {
   "api-key": string;
 };
 
-export type PostV1RoutinesStatus201 = Routine | object;
+export type PostV1RoutinesStatus201 =
+  | {
+      routine?: Routine;
+    }
+  | object;
 
 export type PostV1RoutinesStatus400 = {
   /**

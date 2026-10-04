@@ -1504,6 +1504,9 @@ export function createClient(
 				...(requestOptions(options, client) as any),
 			});
 			const response = res.data;
+			if ("routine" in response) {
+				return response.routine;
+			}
 			return Object.keys(response).length === 0
 				? undefined
 				: (response as Routine);

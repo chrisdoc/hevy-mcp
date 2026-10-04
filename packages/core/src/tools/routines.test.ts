@@ -374,7 +374,7 @@ describe("routine tools", () => {
 
 	it("does not expose an unrecognized create response as an empty routine", async () => {
 		const client = createMockHevyClient();
-		client.createRoutine.mockResolvedValue({ routine: {} } as never);
+		client.createRoutine.mockResolvedValue({ routine: {} });
 		const tool = register(client);
 
 		const response = await handler(tool, "create-routine")(routineInput);
@@ -390,9 +390,7 @@ describe("routine tools", () => {
 	it("returns the authoritative routine and ID when creation has a body", async () => {
 		const client = createMockHevyClient();
 		client.createRoutine.mockResolvedValue({
-			id: "routine-1",
-			title: "Push",
-			exercises: [],
+			routine: { id: "routine-1", title: "Push", exercises: [] },
 		});
 		const tool = register(client);
 
@@ -408,8 +406,8 @@ describe("routine tools", () => {
 
 	it("passes nested snake_case routine payloads to create and update", async () => {
 		const client = createMockHevyClient();
-		client.createRoutine.mockResolvedValue(routineInput.routine);
-		client.updateRoutine.mockResolvedValue(routineInput.routine);
+		client.createRoutine.mockResolvedValue({ routine: routineInput.routine });
+		client.updateRoutine.mockResolvedValue({ routine: routineInput.routine });
 		const tool = register(client);
 
 		await handler(tool, "create-routine")(routineInput);

@@ -15,7 +15,9 @@ export type PostV1RoutineFoldersHeaders = {
   "api-key": string;
 };
 
-export type PostV1RoutineFoldersStatus201 = RoutineFolder;
+export type PostV1RoutineFoldersStatus201 = {
+  routine_folder?: RoutineFolder;
+};
 
 export type PostV1RoutineFoldersStatus400 = {
   /**

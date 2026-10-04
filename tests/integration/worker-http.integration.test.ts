@@ -454,7 +454,7 @@ describe.sequential("Cloudflare Vite Worker HTTP integration", () => {
 								updated_at: "2026-09-18T12:00:00Z",
 								exercises: [],
 							};
-							writeJson(response, 201, createdRoutine);
+							writeJson(response, 201, { routine: createdRoutine });
 						} catch {
 							writeJson(response, 400, { error: "invalid routine payload" });
 						}
