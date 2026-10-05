@@ -10,12 +10,16 @@ command inventories, or release cascades into this file.
    unrelated changes and other checkouts.
 2. For an existing branch or PR, continue there. For new implementation work,
    fetch the intended base (normally `origin/main`) and create a feature branch
-   in an isolated worktree. Read-only work needs no branch or dependency install.
+   in an isolated worktree under `/root/worktrees/hevy-mcp-<topic>`. Read-only work
+   needs no branch or dependency install.
 3. Read the applicable sources, then inspect the exact code involved. Install
    tools/dependencies only when execution requires them.
 4. Complete authorized work through validation and a reviewable result. Carry
    forward the user's corrections and existing authorization. Ask only for
    missing information that blocks progress or an action outside that scope.
+5. Mandatory local pre-push checks: Never push unverified changes to remote CI.
+   Always run `CI=true NX_INTERACTIVE=false mise exec -- pnpm run check` and
+   `pnpm run fix` before committing and pushing.
 
 Never reset, discard, or overwrite user changes. If a conflict risks those
 changes, stop and explain it. Never commit/push to `main` or force-push without
