@@ -1,5 +1,14 @@
 # @hevy-mcp/core
 
+## 0.2.19
+
+### Patch Changes
+
+- [#1235](https://github.com/chrisdoc/hevy-mcp/pull/1235) [`6698ef1`](https://github.com/chrisdoc/hevy-mcp/commit/6698ef1e06db8f0305991e2082614dc4d5ef71cd) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Update runtime workspace dependencies and patch vulnerable Nx transitive dependencies.
+- Updated dependencies [[`6698ef1`](https://github.com/chrisdoc/hevy-mcp/commit/6698ef1e06db8f0305991e2082614dc4d5ef71cd)]:
+  - @hevy-mcp/hevy-client@0.2.13
+  - @hevy-mcp/operations@0.1.14
+
 ## 0.2.18
 
 ### Patch Changes
