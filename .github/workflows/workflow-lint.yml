@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up actionlint
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
         with:
           install_args: actionlint
 
@@ -46,7 +46,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up zizmor
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
         with:
           install_args: zizmor
 
@@ -59,6 +59,6 @@ jobs:
 
       - name: Upload zizmor report
         if: ${{ !cancelled() }}
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: zizmor.sarif
