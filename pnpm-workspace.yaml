@@ -8,8 +8,10 @@ virtualStoreType: global
 # npm never gated on this, so disable it.
 minimumReleaseAge: 0
 
-# Keep the transitive brace-expansion 5.x resolution on the patched release.
+# Keep vulnerable transitive dependency ranges on patched releases.
 overrides:
   "brace-expansion@^5.0.0": 5.0.12
+  "axios@1.18.1": 1.20.0
+  "smol-toml@1.6.1": 1.7.1
 
 dangerouslyAllowAllBuilds: true
