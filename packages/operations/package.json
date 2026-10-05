@@ -19,7 +19,7 @@
 	},
 	"dependencies": {
 		"@hevy-mcp/hevy-client": "workspace:*",
-		"effect": "^4.0.0",
+		"effect": "^4.0.1",
 		"zod": "^4.6.5"
 	}
 }
