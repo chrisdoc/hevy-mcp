@@ -1,5 +1,11 @@
 # @chrisdoc/hevy-cli
 
+## 1.2.17
+
+### Patch Changes
+
+- [#1235](https://github.com/chrisdoc/hevy-mcp/pull/1235) [`6698ef1`](https://github.com/chrisdoc/hevy-mcp/commit/6698ef1e06db8f0305991e2082614dc4d5ef71cd) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Update runtime workspace dependencies and patch vulnerable Nx transitive dependencies.
+
 ## 1.2.16
 
 ### Patch Changes
