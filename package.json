@@ -106,7 +106,7 @@
 		"@swc/core": "^1.16.13",
 		"@types/node": "^26.6.4",
 		"@types/semver": "^7.8.0",
-		"@vitest/coverage-v8": "^4.1.11",
+		"@vitest/coverage-v8": "^5.0.2",
 		"abstract-syntax-tree": "^2.25.0",
 		"cf": "1.0.0-beta.12",
 		"cross-env": "^10.1.0",
@@ -129,7 +129,7 @@
 		"tsx": "^4.23.15",
 		"typescript": "^7.0.2",
 		"ultracite": "7.12.4",
-		"vitest": "^4.1.11",
+		"vitest": "^5.0.2",
 		"zod": "^4.6.5"
 	},
 	"engines": {
