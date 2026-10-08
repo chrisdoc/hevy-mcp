@@ -47,8 +47,8 @@ jobs:
 
       - name: Verify compatibility runtime
         run: |
-          node -e 'if (process.versions.node.split(".")[0] !== "26") throw new Error(`Expected Node 26, got ${process.version}`); console.log(process.version)'
-          mise exec -- mise exec -- node -e 'if (process.versions.node.split(".")[0] !== "26") throw new Error(`Expected Node 26 in mise, got ${process.version}`); console.log(process.version)'
+          node -e 'if (process.versions.node.split(".")[0] !== "26") throw new Error("Expected Node 26, got " + process.version); console.log(process.version)'
+          mise exec -- mise exec -- node -e 'if (process.versions.node.split(".")[0] !== "26") throw new Error("Expected Node 26 in mise, got " + process.version); console.log(process.version)'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
