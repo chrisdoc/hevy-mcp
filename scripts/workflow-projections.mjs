@@ -621,6 +621,7 @@ export function validateWorkflowProjections(
 		rootDir = process.cwd(),
 		workflows = {
 			"pull-request-ci": ".github/workflows/build-and-test.yml",
+			"node-compatibility-ci": ".github/workflows/node-compatibility.yml",
 			release: ".github/workflows/release.yml",
 		},
 		aggregates = {},

@@ -1,0 +1,75 @@
+name: Node compatibility
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  HEVY_API_KEY: ""
+  SENTRY_DSN: ""
+  OTEL_COLLECTOR_TOKEN: ""
+  HEVY_TEST_REPORT_MODE: ci
+
+jobs:
+  compatibility:
+    name: Compatibility (Node 26.x)
+    runs-on: ubuntu-24.04
+    env:
+      # Let setup-node own Node without adding a Node 26 entry to mise.lock.
+      # Nested mise aliases still use this PATH runtime; other tools stay pinned.
+      MISE_DISABLE_TOOLS: node
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 12.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.x"
+          cache: "pnpm"
+
+      - name: Set up mise
+        uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
+        with:
+          add_shims_to_path: false
+
+      - name: Verify compatibility runtime
+        run: |
+          node -e 'if (process.versions.node.split(".")[0] !== "26") throw new Error(`Expected Node 26, got ${process.version}`); console.log(process.version)'
+          mise exec -- mise exec -- node -e 'if (process.versions.node.split(".")[0] !== "26") throw new Error(`Expected Node 26 in mise, got ${process.version}`); console.log(process.version)'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build compatibility candidate
+        run: npx nx run repository:build
+
+      # Reuse the completed candidate: test:mcp normally rebuilds it, which
+      # would race check:types while the output directory is cleaned.
+      - name: Run Node 26 validation graph
+        if: ${{ !cancelled() }}
+        run: >-
+          npx nx run-many --projects=repository --targets=test:unit,check:types,check,check:server-manifest,test:mcp,check:control-plane,check:boundaries,check:exports --parallel=4 --outputStyle=stream --excludeTaskDependencies
+
+      - name: Upload compatibility results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: node-26-compatibility-results
+          path: |
+            test-results/unit-tests.xml
+            coverage/unit/lcov.info
+            coverage/mocked/lcov.info
+          if-no-files-found: warn

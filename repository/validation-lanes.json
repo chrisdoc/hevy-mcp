@@ -515,54 +515,161 @@
 				"performance"
 			],
 			"workflowRuntimes": {
-				"worker": ["node-24"]
+				"worker": ["node-24"],
+				"repository-control-plane": ["node-24"],
+				"package-boundaries": ["node-24"],
+				"package-exports": ["node-24"],
+				"types": ["node-24"],
+				"server-manifest": ["node-24"],
+				"check": ["node-24"],
+				"build": ["node-24"],
+				"mocked-mcp": ["node-24"],
+				"unit": ["node-24"]
 			},
 			"workflowEnvironment": {
 				"unit": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"types": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"check": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"worker-bundle": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"worker-http": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"contract": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"cli": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"worker": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"mocked-mcp": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"repository-control-plane": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"package-exports": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
 				},
 				"package-boundaries": {
-					"node-24": { "HEVY_TEST_REPORT_MODE": "ci" },
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-24": {
+						"HEVY_TEST_REPORT_MODE": "ci"
+					}
+				}
+			},
+			"integration": "github-actions",
+			"nxTarget": null,
+			"mappingStatus": "external"
+		},
+		"node-compatibility-ci": {
+			"external": true,
+			"lanes": [
+				"build",
+				"unit",
+				"types",
+				"check",
+				"server-manifest",
+				"mocked-mcp",
+				"repository-control-plane",
+				"package-boundaries",
+				"package-exports"
+			],
+			"workflowRuntimes": {
+				"build": ["node-26"],
+				"unit": ["node-26"],
+				"types": ["node-26"],
+				"check": ["node-26"],
+				"server-manifest": ["node-26"],
+				"mocked-mcp": ["node-26"],
+				"repository-control-plane": ["node-26"],
+				"package-boundaries": ["node-26"],
+				"package-exports": ["node-26"]
+			},
+			"workflowEnvironment": {
+				"build": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
+				},
+				"unit": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
+				},
+				"types": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
+				},
+				"check": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
 				},
 				"server-manifest": {
-					"node-26": { "HEVY_TEST_REPORT_MODE": "ci" }
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
+				},
+				"mocked-mcp": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
+				},
+				"repository-control-plane": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
+				},
+				"package-boundaries": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
+				},
+				"package-exports": {
+					"node-26": {
+						"HEVY_TEST_REPORT_MODE": "ci",
+						"MISE_DISABLE_TOOLS": "node"
+					}
 				}
 			},
 			"integration": "github-actions",

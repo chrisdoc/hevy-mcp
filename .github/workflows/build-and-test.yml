@@ -35,7 +35,6 @@ jobs:
       matrix:
         node-version:
           - "24.x"
-          - "26.x"
     # Nx 23 reads these self-hosted names. Require both repository secrets so
     # fork PRs, or partially configured environments, use only local caching.
     env:
@@ -88,16 +87,6 @@ jobs:
         if: matrix.node-version == '24.x'
         run: npx nx run repository:build
 
-      - name: Run Node 26 build
-        if: matrix.node-version == '26.x'
-        run: npx nx run repository:build
-        env:
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
-          CODECOV_TOKEN: ${{ matrix.node-version == '24.x' && secrets.CODECOV_TOKEN || '' }}
-
       - name: Run Node 24 validation graph
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}
         env:
@@ -107,15 +96,6 @@ jobs:
           HEVY_TEST_REPORT_MODE: ci
         run: >-
           npx nx run-many --projects=repository --targets=test:unit,check:types,check,worker:dry-run,test:worker-http,test:contract,test:cli,test:worker,test:mcp,check:control-plane,check:exports,check:boundaries --parallel=4 --outputStyle=stream --excludeTaskDependencies
-
-      - name: Run Node 26 validation graph
-        if: ${{ !cancelled() && matrix.node-version == '26.x' }}
-        env:
-          HEVY_TEST_REPORT_MODE: ci
-          SENTRY_DSN: ""
-          OTEL_COLLECTOR_TOKEN: ""
-        run: >-
-          npx nx run-many --projects=repository --targets=test:unit,check:types,check,check:server-manifest,test:mcp,check:control-plane,check:boundaries,check:exports --parallel=4 --outputStyle=stream
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.node-version == '24.x' }}

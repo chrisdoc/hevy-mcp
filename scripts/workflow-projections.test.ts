@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { load as parseYaml } from "js-yaml";
 import { describe, expect, it } from "vitest";
-import { validateWorkflowAggregate } from "./workflow-projections.mjs";
+import {
+	validateWorkflowAggregate,
+	type ValidationLanes,
+} from "./workflow-projections.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const pullRequestWorkflows = [
@@ -105,6 +109,79 @@ describe("stacked pull request workflow triggers", () => {
 		expect(source).toContain(
 			"CHANGESET_BASE_REF: origin/${{ github.event.pull_request.base.ref }}",
 		);
+	});
+});
+
+describe("CI runtime policy", () => {
+	// The projection validator checks this fixture before observing its fields.
+	const model: ValidationLanes = JSON.parse(
+		readFileSync(
+			resolve(repositoryRoot, "repository/validation-lanes.json"),
+			"utf8",
+		),
+	);
+	const readWorkflow = (name: string) =>
+		readFileSync(
+			resolve(repositoryRoot, `.github/workflows/${name}.yml`),
+			"utf8",
+		);
+
+	it("keeps the required PR graph on Node 24 only", () => {
+		const source = readWorkflow("build-and-test");
+		expect(parseYaml(source)).toMatchObject({
+			jobs: { build: { strategy: { matrix: { "node-version": ["24.x"] } } } },
+		});
+		const result = validateWorkflowAggregate(source, {
+			lanes: model,
+			aggregate: "pull-request-ci",
+			rootDir: repositoryRoot,
+			jobIds: ["build", "package-performance"],
+			rejectContinueOnError: true,
+		});
+		for (const execution of result.executions)
+			expect(execution.runtimes).toEqual(["node-24"]);
+	});
+
+	it("retains the Node 26 graph as a credential-free scheduled check", () => {
+		const source = readWorkflow("node-compatibility");
+		const workflow = parseYaml(source);
+		expect(workflow).toMatchObject({
+			on: { schedule: [{ cron: "23 5 * * *" }], workflow_dispatch: null },
+			permissions: { contents: "read" },
+			jobs: {
+				compatibility: {
+					env: { MISE_DISABLE_TOOLS: "node" },
+					steps: expect.arrayContaining([
+						expect.objectContaining({
+							name: "Set up mise",
+							with: { add_shims_to_path: false },
+						}),
+					]),
+				},
+			},
+			env: {
+				HEVY_API_KEY: "",
+				SENTRY_DSN: "",
+				OTEL_COLLECTOR_TOKEN: "",
+			},
+		});
+		expect(workflow).not.toHaveProperty("on.pull_request");
+		expect(workflow).not.toHaveProperty("on.push");
+		expect(source).toContain('process.versions.node.split(".")[0] !== "26"');
+		expect(source).toContain("mise exec -- mise exec -- node -e");
+		const result = validateWorkflowAggregate(source, {
+			lanes: model,
+			aggregate: "node-compatibility-ci",
+			rootDir: repositoryRoot,
+			expectedJobs: "compatibility",
+			rejectContinueOnError: true,
+		});
+		expect(result.executions[0]?.target).toBe("build");
+		for (const execution of result.executions) {
+			expect(execution.runtimes).toEqual(["node-26"]);
+			if (execution.target !== "build")
+				expect(execution.args).toContain("--excludeTaskDependencies");
+		}
 	});
 });
 

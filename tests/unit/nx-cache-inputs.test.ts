@@ -272,6 +272,34 @@ function executionCount(markerPath: string): number {
 }
 
 it("tracks Worker sources and shared Node Vitest setup dependencies", () => {
+	for (const targetName of ["test:unit", "test:release-unit"]) {
+		for (const path of [
+			"tests/contract/fixtures.ts",
+			"tests/contract/runtime-contract-matrix.test.ts",
+			"packages/core/test-fixtures/mock-hevy.ts",
+			"tools/oxlint/anti-slop/index.ts",
+			"packages/worker/cloudflare.config.ts",
+			"packages/worker/vite.config.ts",
+			".github/workflows/build-and-test.yml",
+			".github/workflows/node-compatibility.yml",
+			".github/workflows/release.yml",
+			"server.json",
+			"plugin.json",
+			"packages/node/server.json",
+		]) {
+			expect(targetTracksFile(targetName, path)).toBe(true);
+		}
+	}
+	expect(
+		targetTracksFile("test:stdio", "packages/core/test-fixtures/mock-hevy.ts"),
+	).toBe(true);
+	expect(
+		targetTracksFile(
+			"check:control-plane",
+			".github/workflows/node-compatibility.yml",
+		),
+	).toBe(true);
+
 	for (const targetName of [
 		"test:unit",
 		"test:release-unit",

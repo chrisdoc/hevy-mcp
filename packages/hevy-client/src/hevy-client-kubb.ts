@@ -10,44 +10,8 @@ const isString = <T>(value: T): value is T & string =>
 
 import type { RequestConfig, ResponseConfig } from "./fetch.ts";
 import * as api from "./generated/client/api/index.js";
-import type {
-	BodyMeasurement,
-	CreateCustomExerciseRequestBody,
-	GetV1BodyMeasurementsQuery,
-	GetV1BodyMeasurementsStatus200,
-	GetV1BodyMeasurementsDateStatus200,
-	GetV1ExerciseHistoryExercisetemplateidQuery,
-	GetV1ExerciseHistoryExercisetemplateidStatus200,
-	GetV1ExerciseTemplatesQuery,
-	GetV1ExerciseTemplatesStatus200,
-	GetV1ExerciseTemplatesExercisetemplateidStatus200,
-	GetV1RoutineFoldersQuery,
-	GetV1RoutineFoldersStatus200,
-	GetV1RoutineFoldersFolderidStatus200,
-	GetV1RoutinesQuery,
-	GetV1RoutinesStatus200,
-	GetV1RoutinesRoutineidStatus200,
-	GetV1UserInfoStatus200,
-	GetV1WorkoutsEventsQuery,
-	GetV1WorkoutsEventsStatus200,
-	GetV1WorkoutsQuery,
-	GetV1WorkoutsStatus200,
-	GetV1WorkoutsCountStatus200,
-	GetV1WorkoutsWorkoutidStatus200,
-	PostRoutineFolderRequestBody,
-	PostRoutinesRequestBody,
-	PostWorkoutsRequestBody,
-	PostV1BodyMeasurementsStatus200,
-	PostV1ExerciseTemplatesStatus200,
-	PostV1RoutineFoldersStatus201,
-	PostV1WorkoutsStatus201,
-	PutBodyMeasurement,
-	PutRoutinesRequestBody,
-	PutV1BodyMeasurementsDateStatus200,
-	PutV1RoutinesRoutineidStatus200,
-	PutV1WorkoutsWorkoutidStatus200,
-	Routine,
-} from "./generated/client/types/index.js";
+import type { HevyClient } from "./hevy-client-contract.js";
+import type { Routine } from "./generated/client/types/index.js";
 import {
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
@@ -1405,259 +1369,118 @@ export function createClient(
 ) {
 	const headers = { "api-key": apiKey };
 	const client = createNativeClient(apiKey, baseUrl, options);
-	const publicClient = {
-		getWorkouts: async (
-			params?: GetV1WorkoutsQuery,
-			options?: HevyRequestOptions,
-		): Promise<GetV1WorkoutsStatus200> => {
-			const res = await api.getV1Workouts({
-				headers,
-				query: params,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getWorkout: async (
-			workoutId: string,
-			options?: HevyRequestOptions,
-		): Promise<GetV1WorkoutsWorkoutidStatus200> => {
-			const res = await api.getV1WorkoutsWorkoutid({
-				headers,
-				path: { workoutId },
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		createWorkout: async (
-			data: PostWorkoutsRequestBody,
-			options?: HevyRequestOptions,
-		): Promise<PostV1WorkoutsStatus201> => {
-			const res = await api.postV1Workouts({
-				headers,
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		updateWorkout: async (
-			workoutId: string,
-			data: PostWorkoutsRequestBody,
-			options?: HevyRequestOptions,
-		): Promise<PutV1WorkoutsWorkoutidStatus200> => {
-			const res = await api.putV1WorkoutsWorkoutid({
-				headers,
-				path: { workoutId },
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getWorkoutCount: async (
-			options?: HevyRequestOptions,
-		): Promise<GetV1WorkoutsCountStatus200> => {
-			const res = await api.getV1WorkoutsCount({
-				headers,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getWorkoutEvents: async (
-			params?: GetV1WorkoutsEventsQuery,
-			options?: HevyRequestOptions,
-		): Promise<GetV1WorkoutsEventsStatus200> => {
-			const res = await api.getV1WorkoutsEvents({
-				headers,
-				query: params,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getRoutines: async (
-			params?: GetV1RoutinesQuery,
-			options?: HevyRequestOptions,
-		): Promise<GetV1RoutinesStatus200> => {
-			const res = await api.getV1Routines({
-				headers,
-				query: params,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getRoutineById: async (
-			routineId: string,
-			options?: HevyRequestOptions,
-		): Promise<GetV1RoutinesRoutineidStatus200> => {
-			const res = await api.getV1RoutinesRoutineid({
-				headers,
-				path: { routineId },
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		createRoutine: async (
-			data: PostRoutinesRequestBody,
-			options?: HevyRequestOptions,
-		): Promise<Routine | undefined> => {
-			const res = await api.postV1Routines({
-				headers,
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			const response = res.data;
+	// Kubb only calls this native transport and reads the result's data/status;
+	// its richer ClientInstance methods and request/response metadata are unused.
+	// Keep this compatibility assertion at the transport seam, never on inputs.
+	type GeneratedClient = NonNullable<
+		Parameters<typeof api.getV1UserInfo>[0]["client"]
+	>;
+	const generatedClient = client as KubbClient & GeneratedClient;
+	const configure = (options: HevyRequestOptions | undefined) => ({
+		headers,
+		...requestOptions(options, client),
+		client: generatedClient,
+	});
+	const request = async <Data>(
+		options: HevyRequestOptions | undefined,
+		operation: (
+			config: ReturnType<typeof configure>,
+		) => Promise<{ data: Data }>,
+	): Promise<Data> => (await operation(configure(options))).data;
+
+	const publicClient: HevyClient = {
+		getWorkouts: (query, options) =>
+			request(options, (config) => api.getV1Workouts({ ...config, query })),
+		getWorkout: (workoutId, options) =>
+			request(options, (config) =>
+				api.getV1WorkoutsWorkoutid({ ...config, path: { workoutId } }),
+			),
+		createWorkout: (body, options) =>
+			request(options, (config) => api.postV1Workouts({ ...config, body })),
+		updateWorkout: (workoutId, body, options) =>
+			request(options, (config) =>
+				api.putV1WorkoutsWorkoutid({ ...config, path: { workoutId }, body }),
+			),
+		getWorkoutCount: (options) =>
+			request(options, (config) => api.getV1WorkoutsCount(config)),
+		getWorkoutEvents: (query, options) =>
+			request(options, (config) =>
+				api.getV1WorkoutsEvents({ ...config, query }),
+			),
+		getRoutines: (query, options) =>
+			request(options, (config) => api.getV1Routines({ ...config, query })),
+		getRoutineById: (routineId, options) =>
+			request(options, (config) =>
+				api.getV1RoutinesRoutineid({ ...config, path: { routineId } }),
+			),
+		createRoutine: async (body, options) => {
+			const response = await request(options, (config) =>
+				api.postV1Routines({ ...config, body }),
+			);
 			if ("routine" in response) {
-				return response.routine;
+				return response.routine as Routine | undefined;
 			}
 			return Object.keys(response).length === 0
 				? undefined
 				: (response as Routine);
 		},
-		updateRoutine: async (
-			routineId: string,
-			data: PutRoutinesRequestBody,
-			options?: HevyRequestOptions,
-		): Promise<PutV1RoutinesRoutineidStatus200> => {
-			const res = await api.putV1RoutinesRoutineid({
-				headers,
-				path: { routineId },
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getExerciseTemplates: async (
-			params?: GetV1ExerciseTemplatesQuery,
-			options?: HevyRequestOptions,
-		): Promise<GetV1ExerciseTemplatesStatus200> => {
-			const res = await api.getV1ExerciseTemplates({
-				headers,
-				query: params,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getExerciseTemplate: async (
-			templateId: string,
-			options?: HevyRequestOptions,
-		): Promise<GetV1ExerciseTemplatesExercisetemplateidStatus200> => {
-			const res = await api.getV1ExerciseTemplatesExercisetemplateid({
-				headers,
-				path: { exerciseTemplateId: templateId },
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getExerciseHistory: async (
-			exerciseTemplateId: string,
-			params?: GetV1ExerciseHistoryExercisetemplateidQuery,
-			options?: HevyRequestOptions,
-		): Promise<GetV1ExerciseHistoryExercisetemplateidStatus200> => {
-			const res = await api.getV1ExerciseHistoryExercisetemplateid({
-				headers,
-				path: { exerciseTemplateId },
-				query: params,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		createExerciseTemplate: async (
-			data: CreateCustomExerciseRequestBody,
-			options?: HevyRequestOptions,
-		): Promise<PostV1ExerciseTemplatesStatus200> => {
-			const res = await api.postV1ExerciseTemplates({
-				headers,
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getRoutineFolders: async (
-			params?: GetV1RoutineFoldersQuery,
-			options?: HevyRequestOptions,
-		): Promise<GetV1RoutineFoldersStatus200> => {
-			const res = await api.getV1RoutineFolders({
-				headers,
-				query: params,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		createRoutineFolder: async (
-			data: PostRoutineFolderRequestBody,
-			options?: HevyRequestOptions,
-		): Promise<PostV1RoutineFoldersStatus201> => {
-			const res = await api.postV1RoutineFolders({
-				headers,
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getRoutineFolder: async (
-			folderId: string,
-			options?: HevyRequestOptions,
-		): Promise<GetV1RoutineFoldersFolderidStatus200> => {
-			const res = await api.getV1RoutineFoldersFolderid({
-				headers,
-				path: { folderId },
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getBodyMeasurements: async (
-			params?: GetV1BodyMeasurementsQuery,
-			options?: HevyRequestOptions,
-		): Promise<GetV1BodyMeasurementsStatus200> => {
-			const res = await api.getV1BodyMeasurements({
-				headers,
-				query: params,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getBodyMeasurement: async (
-			date: string,
-			options?: HevyRequestOptions,
-		): Promise<GetV1BodyMeasurementsDateStatus200> => {
-			const res = await api.getV1BodyMeasurementsDate({
-				headers,
-				path: { date },
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		createBodyMeasurement: async (
-			data: BodyMeasurement,
-			options?: HevyRequestOptions,
-		): Promise<PostV1BodyMeasurementsStatus200> => {
-			const res = await api.postV1BodyMeasurements({
-				headers,
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		updateBodyMeasurement: async (
-			date: string,
-			data: PutBodyMeasurement,
-			options?: HevyRequestOptions,
-		): Promise<PutV1BodyMeasurementsDateStatus200> => {
-			const res = await api.putV1BodyMeasurementsDate({
-				headers,
-				path: { date },
-				body: data,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
-		getUserInfo: async (
-			options?: HevyRequestOptions,
-		): Promise<GetV1UserInfoStatus200> => {
-			const res = await api.getV1UserInfo({
-				headers,
-				...(requestOptions(options, client) as any),
-			});
-			return res.data;
-		},
+		updateRoutine: (routineId, body, options) =>
+			request(options, (config) =>
+				api.putV1RoutinesRoutineid({ ...config, path: { routineId }, body }),
+			),
+		getExerciseTemplates: (query, options) =>
+			request(options, (config) =>
+				api.getV1ExerciseTemplates({ ...config, query }),
+			),
+		getExerciseTemplate: (exerciseTemplateId, options) =>
+			request(options, (config) =>
+				api.getV1ExerciseTemplatesExercisetemplateid({
+					...config,
+					path: { exerciseTemplateId },
+				}),
+			),
+		getExerciseHistory: (exerciseTemplateId, query, options) =>
+			request(options, (config) =>
+				api.getV1ExerciseHistoryExercisetemplateid({
+					...config,
+					path: { exerciseTemplateId },
+					query,
+				}),
+			),
+		createExerciseTemplate: (body, options) =>
+			request(options, (config) =>
+				api.postV1ExerciseTemplates({ ...config, body }),
+			),
+		getRoutineFolders: (query, options) =>
+			request(options, (config) =>
+				api.getV1RoutineFolders({ ...config, query }),
+			),
+		createRoutineFolder: (body, options) =>
+			request(options, (config) =>
+				api.postV1RoutineFolders({ ...config, body }),
+			),
+		getRoutineFolder: (folderId, options) =>
+			request(options, (config) =>
+				api.getV1RoutineFoldersFolderid({ ...config, path: { folderId } }),
+			),
+		getBodyMeasurements: (query, options) =>
+			request(options, (config) =>
+				api.getV1BodyMeasurements({ ...config, query }),
+			),
+		getBodyMeasurement: (date, options) =>
+			request(options, (config) =>
+				api.getV1BodyMeasurementsDate({ ...config, path: { date } }),
+			),
+		createBodyMeasurement: (body, options) =>
+			request(options, (config) =>
+				api.postV1BodyMeasurements({ ...config, body }),
+			),
+		updateBodyMeasurement: (date, body, options) =>
+			request(options, (config) =>
+				api.putV1BodyMeasurementsDate({ ...config, path: { date }, body }),
+			),
+		getUserInfo: (options) =>
+			request(options, (config) => api.getV1UserInfo(config)),
 	};
 	return { client: publicClient, requestEffect: client.requestEffect };
 }

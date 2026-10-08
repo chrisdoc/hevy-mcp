@@ -1350,6 +1350,20 @@ describe("@hevy-mcp/hevy-client", () => {
 		});
 	});
 
+	it.each(["", "{}"])(
+		"returns undefined for an empty createRoutine response (%j)",
+		async (body) => {
+			const client = createHevyClient({
+				apiKey: "test-key",
+				fetch: vi.fn().mockResolvedValue(new Response(body, { status: 201 })),
+				maxGetRetries: 0,
+			});
+			await expect(
+				client.createRoutine({ routine: { title: "Fixture", exercises: [] } }),
+			).resolves.toBeUndefined();
+		},
+	);
+
 	it("bounds an over-budget Retry-After by the absolute deadline", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-03T12:00:00.000Z"));
