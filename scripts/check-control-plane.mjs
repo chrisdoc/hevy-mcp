@@ -10,6 +10,12 @@ validateWorkflowProjections(controlPlane.lanes, {
 			aggregate: "pull-request-ci",
 			jobs: ["build", "package-performance"],
 		},
+		"node-compatibility-ci": {
+			path: ".github/workflows/node-compatibility.yml",
+			aggregate: "node-compatibility-ci",
+			jobs: ["compatibility"],
+			rejectContinueOnError: true,
+		},
 		release: {
 			path: ".github/workflows/release.yml",
 			aggregate: "release",

@@ -17,8 +17,11 @@ The repository currently has a deliberate Node policy difference:
   newer.
 - Repository development guidance uses the versions pinned in `mise.toml`,
   currently Node.js 24 and pnpm 12.
-- CI tests Node.js 24 and 26 at the current base, as configured in
+- Required pull-request and main-branch CI uses Node.js 24, as configured in
   `.github/workflows/build-and-test.yml`.
+- Node.js 26 compatibility runs daily at 05:23 UTC and on manual dispatch in
+  `.github/workflows/node-compatibility.yml`, not as a required PR matrix job.
+  Its mise override keeps nested aliases on Node 26; development stays on 24.
 
 Use mise for development:
 

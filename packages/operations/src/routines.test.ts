@@ -1,11 +1,6 @@
 import type { HevyClient, HevyExecutionOptions } from "@hevy-mcp/hevy-client";
 import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
-import {
-	ApiError,
-	NetworkError,
-	NotFoundError,
-	RateLimitError,
-} from "@hevy-mcp/hevy-client";
+import { NetworkError } from "@hevy-mcp/hevy-client";
 import type {
 	GetV1Routines200,
 	GetV1RoutinesRoutineid200,
@@ -14,6 +9,7 @@ import type {
 } from "@hevy-mcp/hevy-client/types";
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
+import { abortable, httpError } from "./test-fixtures/adapter-effects.js";
 import {
 	createRoutinesCreateOperation,
 	createRoutinesGetOperation,
@@ -23,7 +19,6 @@ import {
 	type RoutinesCreateAdapter,
 	type RoutinesGetAdapter,
 	type RoutinesListAdapter,
-	type RoutinesSearchAdapter,
 	type RoutinesUpdateAdapter,
 } from "./routines.js";
 import { PaginationMismatchError } from "./operation-errors.js";
@@ -55,16 +50,6 @@ function createInMemoryAdapter(
 	};
 }
 
-function httpError(status: number, method: string, endpoint: string) {
-	if (status === 404) {
-		return new NotFoundError({ status, method, endpoint, expected: true });
-	}
-	if (status === 429) {
-		return new RateLimitError({ status, method, endpoint });
-	}
-	return new ApiError({ status, method, endpoint });
-}
-
 function notFound(endpoint = "/v1/routines", method = "GET") {
 	return httpError(404, method, endpoint);
 }
@@ -75,29 +60,6 @@ interface InMemoryRoutinesGetAdapter extends RoutinesGetAdapter {
 		readonly options: Parameters<HevyClient["getRoutineById"]>[1];
 	}>;
 	readonly argumentCounts: number[];
-}
-
-function abortable<T>(
-	options: HevyExecutionOptions | undefined,
-	error: Error,
-): Effect.Effect<T> {
-	const signal = options?.signal;
-	if (signal === undefined) return Effect.die(error);
-	return Effect.callback((resume) => {
-		const rejectOnAbort = () => {
-			signal.removeEventListener("abort", rejectOnAbort);
-			const reason = signal.reason;
-			resume(Effect.die(reason instanceof Error ? reason : error));
-		};
-		if (signal.aborted) {
-			rejectOnAbort();
-		} else {
-			signal.addEventListener("abort", rejectOnAbort, { once: true });
-		}
-		return Effect.sync(() =>
-			signal.removeEventListener("abort", rejectOnAbort),
-		);
-	});
 }
 
 function createInMemoryGetAdapter(
@@ -167,30 +129,6 @@ function createRoutineWriteAdapter(
 	};
 }
 
-function createSearchAdapter(
-	responses: readonly (GetV1Routines200 | HevyRequestEffectError)[],
-): RoutinesSearchAdapter & {
-	readonly requests: Array<{
-		readonly params: Parameters<HevyClient["getRoutines"]>[0];
-		readonly options: Parameters<HevyClient["getRoutines"]>[1];
-	}>;
-} {
-	let responseIndex = 0;
-	const requests: Array<{
-		readonly params: Parameters<HevyClient["getRoutines"]>[0];
-		readonly options: Parameters<HevyClient["getRoutines"]>[1];
-	}> = [];
-	return {
-		requests,
-		getRoutines(params, options) {
-			requests.push({ params, options });
-			const response = responses[responseIndex++] ?? { routines: [] };
-			if ("_tag" in response) return Effect.fail(response);
-			return Effect.succeed(response);
-		},
-	};
-}
-
 describe("routines.get operation", () => {
 	it("[VAL-OPS-016] succeeds with the routine entity and preserves the read descriptor", async () => {
 		const adapter = createInMemoryGetAdapter({
@@ -235,40 +173,37 @@ describe("routines.get operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-005] rejects an unrelated GET 404 with the original error", async () => {
-		const error = notFound("/v1/workouts/w1");
-		const operation = createRoutinesGetOperation(
-			createInMemoryGetAdapter(error),
-		);
+	(
+		[
+			{
+				name: "[VAL-OPS-005] rejects an unrelated GET 404 with the original error",
+				createError: () => notFound("/v1/workouts/w1"),
+			},
+			{
+				name: "[VAL-OPS-005] rejects a mutation 404 with the original error",
+				createError: () => notFound("/v1/routines/r1", "POST"),
+			},
+			{
+				name: "[VAL-OPS-005] preserves non-404 error identity for routines.get",
+				createError: () => httpError(401, "GET", "/v1/routines/r1"),
+			},
+			{
+				name: "[VAL-OPS-016] rejects a collection-path GET 404 for routines.get",
+				createError: () => notFound("/v1/routines"),
+			},
+		] satisfies ReadonlyArray<{
+			name: string;
+			createError: () => HevyRequestEffectError;
+		}>
+	).forEach(({ name, createError }) => {
+		it(name, async () => {
+			const error = createError();
+			const operation = createRoutinesGetOperation(
+				createInMemoryGetAdapter(error),
+			);
 
-		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-005] rejects a mutation 404 with the original error", async () => {
-		const error = notFound("/v1/routines/r1", "POST");
-		const operation = createRoutinesGetOperation(
-			createInMemoryGetAdapter(error),
-		);
-
-		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-005] preserves non-404 error identity for routines.get", async () => {
-		const error = httpError(401, "GET", "/v1/routines/r1");
-		const operation = createRoutinesGetOperation(
-			createInMemoryGetAdapter(error),
-		);
-
-		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-016] rejects a collection-path GET 404 for routines.get", async () => {
-		const error = notFound("/v1/routines");
-		const operation = createRoutinesGetOperation(
-			createInMemoryGetAdapter(error),
-		);
-
-		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
+			await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
+		});
 	});
 
 	it("[VAL-OPS-008] forwards options through to the adapter when routines.get options are absent", async () => {
@@ -459,7 +394,7 @@ describe("routines.update operation", () => {
 
 describe("routines.search operation", () => {
 	it("[VAL-OPS-019] filters titles case-insensitively and stops after the limit", async () => {
-		const adapter = createSearchAdapter([
+		const adapter = createInMemoryAdapter([
 			{
 				page: 1,
 				page_count: 3,
@@ -508,7 +443,7 @@ describe("routines.search operation", () => {
 			id: `routine-${index}`,
 			title: `Routine ${index}`,
 		}));
-		const adapter = createSearchAdapter([
+		const adapter = createInMemoryAdapter([
 			{ page: 1, page_count: 5, routines },
 			{ page: 2, page_count: 5, routines: [] },
 			{ page: 3, page_count: 5, routines: [{ id: "unexpected" }] },
@@ -530,7 +465,7 @@ describe("routines.search operation", () => {
 			id: `routine-${index}`,
 			title: `Routine ${index}`,
 		}));
-		const adapter = createSearchAdapter([
+		const adapter = createInMemoryAdapter([
 			{ page: 1, page_count: 3, routines },
 			{ page: 2, page_count: 3, routines: [{ id: "unexpected" }] },
 		]);
@@ -545,7 +480,7 @@ describe("routines.search operation", () => {
 	});
 
 	it("[VAL-OPS-019] stops when page count is missing or exhausted", async () => {
-		const missingCountAdapter = createSearchAdapter([
+		const missingCountAdapter = createInMemoryAdapter([
 			{ page: 1, routines: [{ id: "r1", title: "One" }] },
 			{ page: 2, routines: [{ id: "unexpected" }] },
 		]);
@@ -560,7 +495,7 @@ describe("routines.search operation", () => {
 		});
 		expect(missingCountAdapter.requests).toHaveLength(1);
 
-		const lastPageAdapter = createSearchAdapter([
+		const lastPageAdapter = createInMemoryAdapter([
 			{ page: 1, page_count: 1, routines: [{ id: "r1", title: "One" }] },
 			{ page: 2, page_count: 1, routines: [{ id: "unexpected" }] },
 		]);
@@ -577,7 +512,7 @@ describe("routines.search operation", () => {
 
 	it("[VAL-OPS-019] ends a later-page 404 scan and fails a first-page 404", async () => {
 		const laterPageError = notFound("/v1/routines");
-		const laterPageAdapter = createSearchAdapter([
+		const laterPageAdapter = createInMemoryAdapter([
 			{
 				page: 1,
 				page_count: 3,
@@ -597,7 +532,7 @@ describe("routines.search operation", () => {
 		expect(laterPageAdapter.requests).toHaveLength(2);
 
 		const firstPageError = notFound("/v1/routines");
-		const firstPageAdapter = createSearchAdapter([firstPageError]);
+		const firstPageAdapter = createInMemoryAdapter([firstPageError]);
 		const firstPageOperation = createRoutinesSearchOperation(firstPageAdapter);
 
 		await expect(
@@ -667,24 +602,54 @@ describe("routines.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-004] rejects a first-page collection 404", async () => {
-		const error = notFound();
-		const firstPageOperation = createRoutinesListOperation(
-			createInMemoryAdapter([error]),
-		);
-		await expect(
-			firstPageOperation.execute({ page: 1, pageSize: 5 }),
-		).rejects.toBe(error);
-	});
+	(
+		[
+			{
+				name: "[VAL-OPS-004] rejects a first-page collection 404",
+				createError: () => notFound(),
+				page: 1,
+			},
+			{
+				name: "[VAL-OPS-004] rejects an unrelated collection 404 with the original error",
+				createError: () => notFound("/v1/workouts"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-004] rejects a mutation 404 for routines.list with the original error",
+				createError: () => notFound("/v1/routines", "POST"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-004] rejects a member-path GET 404 for routines.list",
+				createError: () => notFound("/v1/routines/r1"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-004] rejects a same-prefix sibling collection 404 for routines.list",
+				createError: () => notFound("/v1/routines/count"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-005] preserves a non-404 HTTP error for routines.list",
+				createError: () => httpError(503, "GET", "/v1/routines"),
+				page: 2,
+			},
+		] satisfies ReadonlyArray<{
+			name: string;
+			createError: () => HevyRequestEffectError;
+			page: number;
+		}>
+	).forEach(({ name, createError, page }) => {
+		it(name, async () => {
+			const error = createError();
+			const operation = createRoutinesListOperation(
+				createInMemoryAdapter([error]),
+			);
 
-	it("[VAL-OPS-004] rejects an unrelated collection 404 with the original error", async () => {
-		const error = notFound("/v1/workouts");
-		const unrelatedOperation = createRoutinesListOperation(
-			createInMemoryAdapter([error]),
-		);
-		await expect(
-			unrelatedOperation.execute({ page: 2, pageSize: 5 }),
-		).rejects.toBe(error);
+			await expect(operation.execute({ page, pageSize: 5 })).rejects.toBe(
+				error,
+			);
+		});
 	});
 
 	it("[VAL-OPS-003] rejects when response page differs from requested page", async () => {
@@ -706,39 +671,6 @@ describe("routines.list operation", () => {
 			received: 3,
 			collection: "routines",
 		});
-	});
-
-	it("[VAL-OPS-004] rejects a mutation 404 for routines.list with the original error", async () => {
-		const error = notFound("/v1/routines", "POST");
-		const operation = createRoutinesListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
-	});
-
-	it("[VAL-OPS-004] rejects a member-path GET 404 for routines.list", async () => {
-		const error = notFound("/v1/routines/r1");
-		const operation = createRoutinesListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
-	});
-
-	it("[VAL-OPS-004] rejects a same-prefix sibling collection 404 for routines.list", async () => {
-		const error = notFound("/v1/routines/count");
-		const operation = createRoutinesListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
 	});
 
 	it("[VAL-OPS-009] keeps an empty 200 routines list distinct from end_of_list", async () => {
@@ -839,17 +771,6 @@ describe("routines.list operation", () => {
 		);
 
 		await expect(operation.execute({ routineId: "r1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-005] preserves a non-404 HTTP error for routines.list", async () => {
-		const error = httpError(503, "GET", "/v1/routines");
-		const operation = createRoutinesListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
 	});
 
 	it("[VAL-OPS-008] does not mutate routines.get input or options on success", async () => {

@@ -27,6 +27,11 @@ import {
 } from "./worker.js";
 import worker from "./worker.js";
 import { createEffectClient } from "./test-fixtures/effect-client.js";
+import {
+	initializeMessage,
+	jsonPostRequest,
+	parseMcpResponse,
+} from "./test-fixtures/mcp.js";
 import { resetMemoryValidationCacheForTests } from "./validation-cache.js";
 
 const objectLikeSchema = z.object({}).passthrough();
@@ -71,11 +76,7 @@ function mcpRequest(
 	body: JSONObject,
 	headers: RequestInit["headers"] = validHeaders,
 ) {
-	return new Request("https://worker.example/mcp", {
-		method: "POST",
-		headers,
-		body: JSON.stringify(body),
-	});
+	return jsonPostRequest(body, headers);
 }
 
 function createMockClient(overrides: Partial<HevyClient> = {}): HevyClient {
@@ -88,19 +89,6 @@ function createMockClient(overrides: Partial<HevyClient> = {}): HevyClient {
 		}),
 		...overrides,
 	});
-}
-
-async function parseMcpResponse(response: Response): Promise<unknown> {
-	const text = await response.text();
-	if (response.headers.get("content-type")?.includes("text/event-stream")) {
-		const data = text
-			.split("\n")
-			.find((line) => line.startsWith("data: "))
-			?.slice(6);
-		if (!data) throw new Error(`Missing SSE data: ${text}`);
-		return JSON.parse(data);
-	}
-	return JSON.parse(text);
 }
 
 describe("Worker authentication helpers", () => {
@@ -293,19 +281,10 @@ describe("Cloudflare Worker routes and CORS", () => {
 			createRequestClient: () => createMockClient(),
 		});
 		const result = await corsHandler(
-			mcpRequest(
-				{
-					jsonrpc: "2.0",
-					id: 1,
-					method: "initialize",
-					params: {
-						protocolVersion: "2025-11-25",
-						capabilities: {},
-						clientInfo: { name: "test", version: "1" },
-					},
-				},
-				{ ...validHeaders, origin: "https://github.dev" },
-			),
+			mcpRequest(initializeMessage(1, "test"), {
+				...validHeaders,
+				origin: "https://github.dev",
+			}),
 			{},
 		);
 
@@ -419,16 +398,7 @@ describe("Cloudflare Worker routes and CORS", () => {
 		},
 	);
 	describe("Hevy key validation cache", () => {
-		const initializeBody = {
-			jsonrpc: "2.0",
-			id: 1,
-			method: "initialize",
-			params: {
-				protocolVersion: "2025-11-25",
-				capabilities: {},
-				clientInfo: { name: "validation-cache-test", version: "1" },
-			},
-		};
+		const initializeBody = initializeMessage(1, "validation-cache-test");
 
 		it("skips a second upstream validation for the same key within the TTL", async () => {
 			const createValidationClient = vi.fn(() => createMockClient());
@@ -587,16 +557,7 @@ describe("real stateless SDK transport", () => {
 			createTransport,
 		});
 		const initialize = await handler(
-			mcpRequest({
-				jsonrpc: "2.0",
-				id: 1,
-				method: "initialize",
-				params: {
-					protocolVersion: "2025-11-25",
-					capabilities: {},
-					clientInfo: { name: "test", version: "1" },
-				},
-			}),
+			mcpRequest(initializeMessage(1, "test")),
 			{},
 		);
 		expect(initialize.status).toBe(200);
@@ -705,16 +666,7 @@ describe("real stateless SDK transport", () => {
 		});
 
 		const initialized = await handler(
-			mcpRequest({
-				jsonrpc: "2.0",
-				id: 1,
-				method: "initialize",
-				params: {
-					protocolVersion: "2025-11-25",
-					capabilities: {},
-					clientInfo: { name: "feedback-outage-test", version: "1" },
-				},
-			}),
+			mcpRequest(initializeMessage(1, "feedback-outage-test")),
 			{},
 		);
 		expect(initialized.status).toBe(200);
@@ -757,16 +709,7 @@ describe("real stateless SDK transport", () => {
 					geoCountryCode?: string;
 			  }
 			| undefined;
-		const request = mcpRequest({
-			jsonrpc: "2.0",
-			id: 1,
-			method: "initialize",
-			params: {
-				protocolVersion: "2025-11-25",
-				capabilities: {},
-				clientInfo: { name: "telemetry-context-test", version: "1" },
-			},
-		});
+		const request = mcpRequest(initializeMessage(1, "telemetry-context-test"));
 		Object.defineProperty(request, "cf", {
 			value: {
 				colo: "SFO",
@@ -820,16 +763,7 @@ describe("real stateless SDK transport", () => {
 			createObserver,
 			createServer,
 		});
-		const initialize = {
-			jsonrpc: "2.0",
-			id: 1,
-			method: "initialize",
-			params: {
-				protocolVersion: "2025-11-25",
-				capabilities: {},
-				clientInfo: { name: "fresh-observer-test", version: "1" },
-			},
-		};
+		const initialize = initializeMessage(1, "fresh-observer-test");
 
 		expect((await handler(mcpRequest(initialize), {})).status).toBe(200);
 		expect(
@@ -1010,16 +944,7 @@ describe("real stateless SDK transport", () => {
 		});
 
 		const result = await handler(
-			mcpRequest({
-				jsonrpc: "2.0",
-				id: 3,
-				method: "initialize",
-				params: {
-					protocolVersion: "2025-11-25",
-					capabilities: {},
-					clientInfo: { name: "logging-test", version: "1" },
-				},
-			}),
+			mcpRequest(initializeMessage(3, "logging-test")),
 			{},
 		);
 		requestOnLog?.(event);
@@ -1361,16 +1286,7 @@ describe("real stateless SDK transport", () => {
 		);
 
 		const result = await worker.fetch(
-			mcpRequest({
-				jsonrpc: "2.0",
-				id: 7,
-				method: "initialize",
-				params: {
-					protocolVersion: "2025-11-25",
-					capabilities: {},
-					clientInfo: { name: "default-test", version: "1" },
-				},
-			}),
+			mcpRequest(initializeMessage(7, "default-test")),
 			{},
 		);
 
@@ -1406,16 +1322,7 @@ describe("real stateless SDK transport", () => {
 		});
 
 		const result = await worker.fetch(
-			mcpRequest({
-				jsonrpc: "2.0",
-				id: 11,
-				method: "initialize",
-				params: {
-					protocolVersion: "2025-11-25",
-					capabilities: {},
-					clientInfo: { name: "retry-test", version: "1" },
-				},
-			}),
+			mcpRequest(initializeMessage(11, "retry-test")),
 			{},
 		);
 
@@ -1436,16 +1343,7 @@ describe("real stateless SDK transport", () => {
 			.mockResolvedValue(new Response("Too Many Requests", { status: 429 }));
 
 		const result = await worker.fetch(
-			mcpRequest({
-				jsonrpc: "2.0",
-				id: 12,
-				method: "initialize",
-				params: {
-					protocolVersion: "2025-11-25",
-					capabilities: {},
-					clientInfo: { name: "no-429-retry-test", version: "1" },
-				},
-			}),
+			mcpRequest(initializeMessage(12, "no-429-retry-test")),
 			{},
 		);
 

@@ -9,6 +9,7 @@ const nxProjectSchema = z.object({
 		z.string(),
 		z.object({
 			dependsOn: z.array(z.string()).optional(),
+			parallelism: z.boolean().optional(),
 		}),
 	),
 });
@@ -24,5 +25,9 @@ describe("PR test lane ordering", () => {
 		);
 
 		expect(project.targets["test:mcp"]?.dependsOn).toContain("build");
+		// Spawning test workers must not contend with build/Worker startup.
+		expect(project.targets["test:unit"]?.parallelism).toBe(false);
+		expect(project.targets["test:worker"]?.parallelism).toBe(false);
+		expect(project.targets["test:worker-http"]?.parallelism).toBe(false);
 	});
 });

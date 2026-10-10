@@ -57,12 +57,37 @@ model and is validated by `pnpm run check:control-plane`.
 | `nightly`                  | pnpm run test:nightly (Nx: repository:test:nightly)                   | nightly       | node-24           | HEVY_API_KEY, HEVY_MCP_COMMAND, HEVY_MCP_ARGS_JSON | nightly-diagnostics                                               | launcher-canary                                                                                                                                                                                                                                                           |
 | `diagnostics`              | npx nx run repository:test:diagnostics                                | blocking      | node-24           | —                                                  | —                                                                 | node-test; include: tests/nightly/diagnostics.test.mjs                                                                                                                                                                                                                    |
 
-| Aggregate ID      | Nx target / command                    | Members                                                                                                                                                                                                                                                                                                  | Count | Mapping  |
-| ----------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
-| `pull-request`    | npx nx run repository:test:pr          | `unit`, `mocked-mcp`, `contract`, `stdio`, `worker`, `worker-http`, `pack`, `cli`, `pack-cli`, `package-publint`                                                                                                                                                                                         | 10    | mapped   |
-| `pull-request-ci` | external: github-actions               | `repository-control-plane`, `package-boundaries`, `package-exports`, `package-publint`, `types`, `server-manifest`, `check`, `package-changesets`, `diagnostics`, `build`, `worker-http`, `worker`, `mocked-mcp`, `unit`, `contract`, `stdio`, `pack`, `cli`, `pack-cli`, `worker-bundle`, `performance` | 21    | external |
-| `release`         | npx nx run repository:release:validate | `build`, `server-manifest`, `release-unit`, `worker`, `pack`, `cli`, `pack-cli`, `package-publint`, `release-integration`, `nightly`, `worker-http-live`, `performance`                                                                                                                                  | 12    | mapped   |
-| `pre-push`        | npx nx run repository:pre-push         | `check`, `types`, `repository-control-plane`, `changeset-status`, `pull-request`                                                                                                                                                                                                                         | 5     | mapped   |
+| Aggregate ID            | Nx target / command                    | Members                                                                                                                                                                                                                                                                                                  | Count | Mapping  |
+| ----------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
+| `pull-request`          | npx nx run repository:test:pr          | `unit`, `mocked-mcp`, `contract`, `stdio`, `worker`, `worker-http`, `pack`, `cli`, `pack-cli`, `package-publint`                                                                                                                                                                                         | 10    | mapped   |
+| `pull-request-ci`       | external: github-actions               | `repository-control-plane`, `package-boundaries`, `package-exports`, `package-publint`, `types`, `server-manifest`, `check`, `package-changesets`, `diagnostics`, `build`, `worker-http`, `worker`, `mocked-mcp`, `unit`, `contract`, `stdio`, `pack`, `cli`, `pack-cli`, `worker-bundle`, `performance` | 21    | external |
+| `node-compatibility-ci` | external: github-actions               | `build`, `unit`, `types`, `check`, `server-manifest`, `mocked-mcp`, `repository-control-plane`, `package-boundaries`, `package-exports`                                                                                                                                                                  | 9     | external |
+| `release`               | npx nx run repository:release:validate | `build`, `server-manifest`, `release-unit`, `worker`, `pack`, `cli`, `pack-cli`, `package-publint`, `release-integration`, `nightly`, `worker-http-live`, `performance`                                                                                                                                  | 12    | mapped   |
+| `pre-push`              | npx nx run repository:pre-push         | `check`, `types`, `repository-control-plane`, `changeset-status`, `pull-request`                                                                                                                                                                                                                         | 5     | mapped   |
+
+## CI runtime policy
+
+The required PR/main workflow runs only Node 24. Node 26 runs the same existing
+build, unit, mocked MCP, type, lint/generated, manifest, control-plane, export,
+and boundary checks in a separate credential-free compatibility workflow,
+daily at 05:23 UTC and on manual dispatch. Failures remain visible there; they
+are not ignored with `continue-on-error` and do not block individual PRs. The
+release workflow remains on Node 24. Compatibility builds complete before
+validation; the graph reuses that candidate rather than racing a dependency
+rebuild against typechecking.
+
+Lane runtime ownership lists supported runtimes, not a requirement to execute
+every runtime on every PR. Aggregate `workflowRuntimes` and
+`workflowEnvironment` specify the Node 24 PR and Node 26 scheduled projections.
+The scheduled job uses `MISE_DISABLE_TOOLS=node` and disables mise-action shim
+export so setup-node owns Node, while other tools stay pinned. This avoids
+requesting an unlocked Node 26 version during the action's `mise install --locked`.
+It verifies both PATH Node and twice-nested mise Node, so aliases cannot silently
+fall back to the development pin. Published Node support and development pins are unchanged.
+
+The Node 24 job/check names are retained. If repository branch protection
+explicitly requires the former Node 26 PR check, its requirement must be removed
+by a maintainer; this change does not alter repository settings.
 
 ## Nx cache policy
 
@@ -72,7 +97,13 @@ files, and runtime configuration they consume. The live Hevy, release
 integration, nightly, live Worker, Vite-backed HTTP Worker, packaging, and
 publish-oriented lanes stay uncached so a cache hit cannot hide an
 external-service or environment failure.
-Use `--skip-nx-cache` when a fresh execution of a cacheable lane is required.
+Use `--skip-nx-cache` when a fresh execution of a cacheable lane is required,
+except when executing the unit cache-fixture tests: global CLI/environment
+cache-bypass flags propagate into their nested Nx invocations and defeat the
+cache-hit assertions. For cold aggregate benchmarks, use a unique empty
+`NX_CACHE_DIRECTORY`, disable remote caching, reset only the measured worktree's
+Nx workspace data, and reject any run reporting cached tasks. Record Vite
+optimizer-cache warmth separately from Nx-cache warmth.
 
 ## Lane ownership
 
@@ -115,11 +146,19 @@ npx nx show project repository --json
 npx nx graph --file=.nx/project-graph.html
 ```
 
-The repository `test:unit` target is marked exclusive in `project.json`.
-This keeps its spawned CLI startup tests from competing with other
-CPU-intensive PR lanes on small local runners; the documented `test:pr`
-command remains parallel where safe and needs no manual `--parallel=1`
-override.
+The repository `test:unit`, `test:worker`, and `test:worker-http` targets are
+marked exclusive in `project.json`. This keeps spawned CLI tests and real
+Workerd startup from competing with other CPU-intensive PR lanes on small
+local runners, without changing readiness deadlines or retry counts. The
+documented `test:pr` command remains parallel where safe.
+
+The unit lane uses at most two process-isolated forks, bounded by available
+CPU parallelism. Other root Vitest lanes remain single-worker, including
+`release-unit`, where performance samples and report-cleanup tests share an
+artifact path. Effect and Effect/testing are the only dependencies selected
+for SSR optimization; SDK, Zod, telemetry, and workspace packages keep their
+existing loading and mocking behavior. Re-measure concurrency on larger CI
+runners rather than assuming the local two-CPU results generalize.
 
 ### Generate coverage reports
 
@@ -178,6 +217,10 @@ production Hevy API endpoint. Its production calls are bounded representative re
 it would load the full exercise catalog.
 
 ## Performance scenarios and report
+
+For the measured test-scheduling/import improvements and actual code-size
+changes from `1e0b1f660344`, see the
+[performance and code-reduction report](performance-and-code-reduction.md).
 
 `pnpm run test:performance` depends on the shared Node build, then uses the MCP SDK
 `StdioClientTransport` to spawn the real `dist/cli.mjs` with `process.execPath`.

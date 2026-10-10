@@ -1,6 +1,6 @@
 import type { HevyClient, HevyExecutionOptions } from "@hevy-mcp/hevy-client";
 import type { HevyRequestEffectError } from "@hevy-mcp/hevy-client/internal";
-import { ApiError, NetworkError, RateLimitError } from "@hevy-mcp/hevy-client";
+import { NetworkError } from "@hevy-mcp/hevy-client";
 import type {
 	GetV1Workouts200,
 	GetV1WorkoutsCountStatus200,
@@ -10,6 +10,7 @@ import type {
 } from "@hevy-mcp/hevy-client/types";
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
+import { abortable, httpError } from "./test-fixtures/adapter-effects.js";
 import {
 	createWorkoutsCountOperation,
 	createWorkoutsCreateOperation,
@@ -57,16 +58,6 @@ function createInMemoryAdapter(
 	};
 }
 
-function httpError(status: number, method: string, endpoint: string) {
-	if (status === 404) {
-		return new NotFoundError({ status, method, endpoint, expected: true });
-	}
-	if (status === 429) {
-		return new RateLimitError({ status, method, endpoint });
-	}
-	return new ApiError({ status, method, endpoint });
-}
-
 function notFound(endpoint = "/v1/workouts", method = "GET") {
 	return httpError(404, method, endpoint);
 }
@@ -77,29 +68,6 @@ interface InMemoryWorkoutsGetAdapter extends WorkoutsGetAdapter {
 		readonly options: Parameters<HevyClient["getWorkout"]>[1];
 	}>;
 	readonly argumentCounts: number[];
-}
-
-function abortable<T>(
-	options: HevyExecutionOptions | undefined,
-	error: Error,
-): Effect.Effect<T> {
-	const signal = options?.signal;
-	if (signal === undefined) return Effect.die(error);
-	return Effect.callback((resume) => {
-		const rejectOnAbort = () => {
-			signal.removeEventListener("abort", rejectOnAbort);
-			const reason = signal.reason;
-			resume(Effect.die(reason instanceof Error ? reason : error));
-		};
-		if (signal.aborted) {
-			rejectOnAbort();
-		} else {
-			signal.addEventListener("abort", rejectOnAbort, { once: true });
-		}
-		return Effect.sync(() =>
-			signal.removeEventListener("abort", rejectOnAbort),
-		);
-	});
 }
 
 function createInMemoryGetAdapter(
@@ -198,40 +166,37 @@ describe("workouts.get operation", () => {
 		});
 	});
 
-	it("rejects an unrelated GET 404 with the original error", async () => {
-		const error = notFound("/v1/routines/r1");
-		const operation = createWorkoutsGetOperation(
-			createInMemoryGetAdapter(error),
-		);
+	(
+		[
+			{
+				name: "rejects an unrelated GET 404 with the original error",
+				createError: () => notFound("/v1/routines/r1"),
+			},
+			{
+				name: "[VAL-OPS-005] rejects a mutation 404 with the original error",
+				createError: () => notFound("/v1/workouts/w1", "POST"),
+			},
+			{
+				name: "[VAL-OPS-005] preserves non-404 error identity for workouts.get",
+				createError: () => httpError(503, "GET", "/v1/workouts/w1"),
+			},
+			{
+				name: "[VAL-OPS-010] rejects a collection-path GET 404 for workouts.get",
+				createError: () => notFound("/v1/workouts"),
+			},
+		] satisfies ReadonlyArray<{
+			name: string;
+			createError: () => HevyRequestEffectError;
+		}>
+	).forEach(({ name, createError }) => {
+		it(name, async () => {
+			const error = createError();
+			const operation = createWorkoutsGetOperation(
+				createInMemoryGetAdapter(error),
+			);
 
-		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-005] rejects a mutation 404 with the original error", async () => {
-		const error = notFound("/v1/workouts/w1", "POST");
-		const operation = createWorkoutsGetOperation(
-			createInMemoryGetAdapter(error),
-		);
-
-		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-005] preserves non-404 error identity for workouts.get", async () => {
-		const error = httpError(503, "GET", "/v1/workouts/w1");
-		const operation = createWorkoutsGetOperation(
-			createInMemoryGetAdapter(error),
-		);
-
-		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-010] rejects a collection-path GET 404 for workouts.get", async () => {
-		const error = notFound("/v1/workouts");
-		const operation = createWorkoutsGetOperation(
-			createInMemoryGetAdapter(error),
-		);
-
-		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
+			await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
+		});
 	});
 
 	it("[VAL-OPS-008] forwards options through to the adapter when workouts.get options are absent", async () => {
@@ -293,71 +258,65 @@ describe("workouts.list operation", () => {
 		});
 	});
 
-	it("[VAL-OPS-004] rejects a first-page collection 404", async () => {
-		const error = notFound();
-		const firstPageAdapter = createInMemoryAdapter([error]);
-		const firstPageOperation = createWorkoutsListOperation(firstPageAdapter);
-		await expect(
-			firstPageOperation.execute({ page: 1, pageSize: 5 }),
-		).rejects.toBe(error);
-	});
+	(
+		[
+			{
+				name: "[VAL-OPS-004] rejects a first-page collection 404",
+				createError: () => notFound(),
+				page: 1,
+			},
+			{
+				name: "[VAL-OPS-004] rejects an unrelated collection 404 with the original error",
+				createError: () => notFound("/v1/routines"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-004] rejects a mutation 404 for workouts.list with the original error",
+				createError: () => notFound("/v1/workouts", "POST"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-005] preserves non-404 error identity for workouts.list",
+				createError: () =>
+					new NetworkError({
+						code: "ERR_NETWORK",
+						endpoint: "/v1/workouts",
+						method: "GET",
+						retryExhausted: false,
+					}),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-004] rejects a member-path GET 404 for workouts.list",
+				createError: () => notFound("/v1/workouts/w1"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-004] rejects a same-prefix sibling collection 404 for workouts.list",
+				createError: () => notFound("/v1/workouts/count"),
+				page: 2,
+			},
+			{
+				name: "[VAL-OPS-005] preserves a non-404 HTTP error for workouts.list",
+				createError: () => httpError(429, "GET", "/v1/workouts"),
+				page: 2,
+			},
+		] satisfies ReadonlyArray<{
+			name: string;
+			createError: () => HevyRequestEffectError;
+			page: number;
+		}>
+	).forEach(({ name, createError, page }) => {
+		it(name, async () => {
+			const error = createError();
+			const operation = createWorkoutsListOperation(
+				createInMemoryAdapter([error]),
+			);
 
-	it("[VAL-OPS-004] rejects an unrelated collection 404 with the original error", async () => {
-		const error = notFound("/v1/routines");
-		const unrelatedAdapter = createInMemoryAdapter([error]);
-		const unrelatedOperation = createWorkoutsListOperation(unrelatedAdapter);
-		await expect(
-			unrelatedOperation.execute({ page: 2, pageSize: 5 }),
-		).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-004] rejects a mutation 404 for workouts.list with the original error", async () => {
-		const error = notFound("/v1/workouts", "POST");
-		const operation = createWorkoutsListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
-	});
-
-	it("[VAL-OPS-005] preserves non-404 error identity for workouts.list", async () => {
-		const error = new NetworkError({
-			code: "ERR_NETWORK",
-			endpoint: "/v1/workouts",
-			method: "GET",
-			retryExhausted: false,
+			await expect(operation.execute({ page, pageSize: 5 })).rejects.toBe(
+				error,
+			);
 		});
-		const operation = createWorkoutsListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
-	});
-
-	it("[VAL-OPS-004] rejects a member-path GET 404 for workouts.list", async () => {
-		const error = notFound("/v1/workouts/w1");
-		const operation = createWorkoutsListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
-	});
-
-	it("[VAL-OPS-004] rejects a same-prefix sibling collection 404 for workouts.list", async () => {
-		const error = notFound("/v1/workouts/count");
-		const operation = createWorkoutsListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
 	});
 
 	it("[VAL-OPS-009] keeps an empty 200 workouts list distinct from end_of_list", async () => {
@@ -490,17 +449,6 @@ describe("workouts.list operation", () => {
 		);
 
 		await expect(operation.execute({ workoutId: "w1" })).rejects.toBe(error);
-	});
-
-	it("[VAL-OPS-005] preserves a non-404 HTTP error for workouts.list", async () => {
-		const error = httpError(429, "GET", "/v1/workouts");
-		const operation = createWorkoutsListOperation(
-			createInMemoryAdapter([error]),
-		);
-
-		await expect(operation.execute({ page: 2, pageSize: 5 })).rejects.toBe(
-			error,
-		);
 	});
 
 	it("[VAL-OPS-008] does not mutate workouts.get input or options on success", async () => {

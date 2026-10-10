@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { fileURLToPath } from "node:url";
 import { configDefaults, defineConfig } from "vitest/config";
 
@@ -12,6 +13,25 @@ export default defineConfig({
 		},
 	},
 	test: {
+		pool: "forks",
+		isolate: true,
+		// Only unit opts into two workers. Other lanes stay serial: release-unit
+		// includes performance samples and tests that clean their report path.
+		maxWorkers:
+			process.env.HEVY_UNIT_LANE === "1"
+				? Math.min(2, availableParallelism())
+				: 1,
+		deps: {
+			optimizer: {
+				ssr: {
+					enabled: true,
+					// Bundle the large Effect namespace once rather than loading
+					// its module graph in every isolated test file. Include the
+					// test clock entrypoint so both share the same Effect internals.
+					include: ["effect", "effect/testing"],
+				},
+			},
+		},
 		setupFiles: [
 			fileURLToPath(
 				new URL("./tests/setup/cloudflare-runtime.ts", import.meta.url).href,

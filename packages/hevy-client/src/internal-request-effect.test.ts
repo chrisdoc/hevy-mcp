@@ -9,6 +9,7 @@ import {
 } from "./internal.ts";
 import * as publicClientExports from "./index.ts";
 import {
+	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
 	HEVY_REQUEST_ABORTED_ERROR_CODE,
 	HEVY_RETRY_EXHAUSTED_ERROR_CODE,
 	createHevyClient,
@@ -1303,6 +1304,66 @@ describe("@hevy-mcp/hevy-client/internal", () => {
 			expect(effectFetch).not.toHaveBeenCalled();
 		}
 	});
+
+	it.each(methodCases)(
+		"$name forwards the Promise caller's absolute deadline",
+		async (testCase) => {
+			const fetchMock = vi.fn().mockResolvedValue(response({}));
+			const client = createHevyClient({
+				apiKey: "test-key",
+				fetch: fetchMock,
+				maxGetRetries: 0,
+			});
+			await expect(
+				testCase.invokePromise(client, { deadline: 0 }),
+			).rejects.toMatchObject({
+				code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+				phase: "before-dispatch",
+			});
+			expect(fetchMock).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(methodCases)(
+		"$name forwards the Promise caller's timeout ahead of the client default",
+		async (testCase) => {
+			vi.useFakeTimers();
+			try {
+				let requestSignal: AbortSignal | undefined;
+				const fetchMock = vi.fn(
+					(_input: RequestInfo | URL, init?: RequestInit) =>
+						new Promise<Response>((_resolve, reject) => {
+							requestSignal = init?.signal ?? undefined;
+							init?.signal?.addEventListener(
+								"abort",
+								() => reject(init.signal?.reason),
+								{ once: true },
+							);
+						}),
+				);
+				const client = createHevyClient({
+					apiKey: "test-key",
+					fetch: fetchMock,
+					timeoutMs: 5_000,
+					maxGetRetries: 0,
+				});
+				const rejected = expect(
+					testCase.invokePromise(client, { timeoutMs: 25 }),
+				).rejects.toMatchObject({
+					code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+					phase: "dispatch",
+				});
+				await vi.advanceTimersByTimeAsync(24);
+				expect(requestSignal?.aborted).toBe(false);
+				await vi.advanceTimersByTimeAsync(1);
+				await rejected;
+				expect(requestSignal?.aborted).toBe(true);
+				expect(fetchMock).toHaveBeenCalledOnce();
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
 
 	it("keeps deadline and timeout failures aligned with Promise methods", async () => {
 		const promiseDeadlineFetch = vi.fn();

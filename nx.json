@@ -23,6 +23,7 @@
 			"{workspaceRoot}/pnpm-lock.yaml",
 			"{workspaceRoot}/packages/*/package.json",
 			"{workspaceRoot}/.github/workflows/build-and-test.yml",
+			"{workspaceRoot}/.github/workflows/node-compatibility.yml",
 			"{workspaceRoot}/.github/workflows/release.yml",
 			"{workspaceRoot}/scripts/**/*.mjs",
 			"{workspaceRoot}/scripts/**/*.cjs",
@@ -69,7 +70,10 @@
 			"{workspaceRoot}/tests/**/*.tsx"
 		],
 		"runtimeSources": ["{workspaceRoot}/packages/*/src/**/*"],
-		"testFixtures": ["{workspaceRoot}/tests/fixtures/**/*"],
+		"testFixtures": [
+			"{workspaceRoot}/tests/fixtures/**/*",
+			"{workspaceRoot}/packages/*/test-fixtures/**/*"
+		],
 		"testShims": ["{workspaceRoot}/tests/shims/**/*"],
 		"nodeVitestInputs": [
 			"{workspaceRoot}/vitest.config.ts",
@@ -87,7 +91,11 @@
 		"unitSpecialInputs": [
 			"{workspaceRoot}/.dependency-cruiser.cjs",
 			"{workspaceRoot}/.cm/plugins/filters/findDiffLocation/index.js",
-			"{workspaceRoot}/packages/node/README.md"
+			"{workspaceRoot}/packages/node/README.md",
+			"{workspaceRoot}/tools/oxlint/anti-slop/**/*",
+			"{workspaceRoot}/packages/worker/cloudflare.config.ts",
+			"{workspaceRoot}/packages/worker/vite.config.ts",
+			"{workspaceRoot}/.github/workflows/**/*"
 		],
 		"unitTests": [
 			"nodeMajor",
@@ -100,6 +108,8 @@
 			"testShims",
 			"testScripts",
 			"controlPlaneModels",
+			"manifestInputs",
+			"{workspaceRoot}/tests/contract/**/*",
 			"{workspaceRoot}/tests/unit/**/*",
 			"unitSpecialInputs"
 		],
@@ -113,6 +123,7 @@
 			"testFixtures",
 			"testScripts",
 			"controlPlaneModels",
+			"manifestInputs",
 			"{workspaceRoot}/tests/**/*",
 			"unitSpecialInputs"
 		],
@@ -163,6 +174,7 @@
 			"packageConfigs",
 			"vitestLaneExecution",
 			"compilerConfigs",
+			"testFixtures",
 			"{workspaceRoot}/packages/node/src/**/*",
 			"{workspaceRoot}/packages/core/src/**/*",
 			"{workspaceRoot}/packages/hevy-client/src/**/*",
