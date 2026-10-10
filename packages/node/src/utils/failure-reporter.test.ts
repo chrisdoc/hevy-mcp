@@ -6,13 +6,18 @@ type ScopeDouble = {
 	setContext: typeof testDoubles.setContext;
 	setFingerprint: typeof testDoubles.setFingerprint;
 };
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	captureFailure,
 	normalizeFailure,
 	sanitizeDiagnosticText,
 	sanitizeSentryEvent,
 } from "./failure-reporter.js";
+
+vi.hoisted(() => {
+	vi.stubGlobal("__HEVY_MCP_BUILD__", true);
+});
+afterAll(() => vi.unstubAllGlobals());
 
 const testDoubles = vi.hoisted(() => ({
 	captureException: vi.fn(() => "event-id"),

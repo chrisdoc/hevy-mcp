@@ -583,23 +583,24 @@ self-hosted Streamable HTTP.
 
 ## Advanced configuration
 
-| Setting                          | Default                          | Scope                         | Notes                                                                                                          |
-| -------------------------------- | -------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `HEVY_API_KEY`                   | None; required                   | Local stdio or HTTP           | Hevy API key from the Hevy app. Never pass it in a URL.                                                        |
-| `HEVY_MCP_API_TIMEOUT`           | `60000` ms                       | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 60 seconds.                             |
-| `HEVY_MCP_DEBUG`                 | Disabled                         | Local Node                    | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.        |
-| `HEVY_MCP_HTTP_BEARER_TOKEN`     | None                             | Non-loopback HTTP             | Required when `--host` is not loopback; use a separate token, never the Hevy API key.                          |
-| `HEVY_MCP_HTTP_MAX_SESSIONS`     | `100`                            | Local HTTP                    | Maximum established sessions, including sessions currently initializing; excess requests receive `429`.        |
-| `HEVY_MCP_HTTP_MAX_INITIALIZING` | `10`                             | Local HTTP                    | Maximum concurrent session initializations; excess requests receive `503` and are not queued.                  |
-| `HEVY_MCP_HTTP_IDLE_TIMEOUT_MS`  | `1800000` ms                     | Local HTTP                    | Idle sessions are evicted after 30 minutes; each session request resets the timer.                             |
-| `HEVY_MCP_HTTP_BODY_TIMEOUT_MS`  | `30000` ms                       | Local HTTP                    | Stalled request bodies receive `408`; values are bounded to five minutes.                                      |
-| `HEVY_MCP_TELEMETRY`             | Enabled                          | Local Node                    | Set to exactly `0` before launching Node; the scoped lifecycle Layer reads it. Imports stay side-effect-free.  |
-| `HEVY_MCP_TELEMETRY_DIAGNOSTICS` | Enabled                          | Local Node                    | Set to exactly `0` to keep structural telemetry while suppressing exception messages and stacks.               |
-| `XDG_CACHE_HOME`                 | `~/.cache`                       | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                               |
-| `SENTRY_DSN`                     | Packaged Sentry SaaS project DSN | Optional local Node telemetry | Sentry project DSN override. An empty value disables Sentry export. The Worker does not import Node telemetry. |
-| `SENTRY_RELEASE`                 | `hevy-mcp@<installed-version>`   | Optional local Node telemetry | Overrides the release label attached to local Sentry error events.                                             |
-| `-h`, `--help`                   | N/A                              | Local stdio CLI               | Print supported options and exit.                                                                              |
-| `-v`, `--version`                | N/A                              | Local stdio CLI               | Print the installed version and exit.                                                                          |
+| Setting                          | Default                                    | Scope                         | Notes                                                                                                          |
+| -------------------------------- | ------------------------------------------ | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `HEVY_API_KEY`                   | None; required                             | Local stdio or HTTP           | Hevy API key from the Hevy app. Never pass it in a URL.                                                        |
+| `HEVY_MCP_API_TIMEOUT`           | `60000` ms                                 | Local stdio                   | Positive Hevy API timeout in milliseconds. Invalid values fall back to 60 seconds.                             |
+| `HEVY_MCP_DEBUG`                 | Disabled                                   | Local Node                    | Set to exactly `1` for privacy-bounded diagnostics on stderr. Stdout remains reserved for MCP JSON-RPC.        |
+| `HEVY_MCP_HTTP_BEARER_TOKEN`     | None                                       | Non-loopback HTTP             | Required when `--host` is not loopback; use a separate token, never the Hevy API key.                          |
+| `HEVY_MCP_HTTP_MAX_SESSIONS`     | `100`                                      | Local HTTP                    | Maximum established sessions, including sessions currently initializing; excess requests receive `429`.        |
+| `HEVY_MCP_HTTP_MAX_INITIALIZING` | `10`                                       | Local HTTP                    | Maximum concurrent session initializations; excess requests receive `503` and are not queued.                  |
+| `HEVY_MCP_HTTP_IDLE_TIMEOUT_MS`  | `1800000` ms                               | Local HTTP                    | Idle sessions are evicted after 30 minutes; each session request resets the timer.                             |
+| `HEVY_MCP_HTTP_BODY_TIMEOUT_MS`  | `30000` ms                                 | Local HTTP                    | Stalled request bodies receive `408`; values are bounded to five minutes.                                      |
+| `HEVY_MCP_TELEMETRY`             | Built: on; source: off                     | Local Node                    | Set `0` to disable telemetry or `1` to opt in for source runs. Imports remain side-effect-free.                |
+| `HEVY_MCP_TELEMETRY_DIAGNOSTICS` | Enabled                                    | Local Node                    | Set to exactly `0` to keep structural telemetry while suppressing exception messages and stacks.               |
+| `XDG_CACHE_HOME`                 | `~/.cache`                                 | Local stdio                   | Changes the root for the npm update-check cache at `hevy-mcp/update-check.json`.                               |
+| `SENTRY_DSN`                     | Packaged Sentry SaaS project DSN           | Optional local Node telemetry | Sentry project DSN override. An empty value disables Sentry export. The Worker does not import Node telemetry. |
+| `SENTRY_RELEASE`                 | `hevy-mcp@<installed-version>`             | Optional local Node telemetry | Overrides the release label attached to local Sentry error events.                                             |
+| `SENTRY_ENVIRONMENT`             | Built: `production`; source: `development` | Optional local Node telemetry | Overrides the environment label for enabled Sentry error events.                                               |
+| `-h`, `--help`                   | N/A                                        | Local stdio CLI               | Print supported options and exit.                                                                              |
+| `-v`, `--version`                | N/A                                        | Local stdio CLI               | Print the installed version and exit.                                                                          |
 
 The local Node executable uses stdio by default. Opt into local Streamable
 HTTP with:
@@ -634,13 +635,17 @@ server-scoped in-memory catalog cache:
 
 ### Local Node telemetry and privacy
 
-The local Node package enables project telemetry by default. It is local Node
-behavior only; the Cloudflare Worker does not import Node telemetry. Set
-`HEVY_MCP_TELEMETRY=0` before launching the Node process to disable all project
-telemetry. The scoped Node lifecycle Layer reads this process-launch setting;
-importing the package remains side-effect-free. Only the literal value `0` opts
-out: an unset value, an empty value, `1`, `false`, and every other value remain
-enabled. The master setting takes precedence over `SENTRY_DSN` and packaged or
+Published Node builds enable project telemetry by default. Unbuilt source runs
+(such as development and probe scripts) disable it unless
+`HEVY_MCP_TELEMETRY=1` is set explicitly. This is local Node behavior only; the
+Cloudflare Worker does not import Node telemetry. Set `HEVY_MCP_TELEMETRY=0`
+before launching Node to disable all project telemetry in either mode. In
+published builds, every value except the literal `0` retains the enabled default.
+The scoped Node lifecycle Layer acquires telemetry; importing the package remains
+side-effect-free. Enabled source runs use the Sentry environment `development`;
+published builds use `production`. Set `SENTRY_ENVIRONMENT` to override this
+label, for example to `qa` or `staging`. The master setting takes precedence over
+`SENTRY_DSN` and packaged or
 runtime `OTEL_COLLECTOR_TOKEN` credentials, so the disabled path creates no
 telemetry exporters or periodic metric readers and makes no telemetry network
 requests. `SENTRY_DSN` remains a Sentry-only setting; when telemetry is enabled,
