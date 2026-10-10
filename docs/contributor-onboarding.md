@@ -3,7 +3,9 @@
 Welcome! This page is a map to the current contributor workflow; it deliberately
 does not duplicate setup, validation, or release procedures. Start with
 [CONTRIBUTING.md](../CONTRIBUTING.md) for pinned tool installation, credentials,
-local startup, the required PR checks, and Changesets.
+local startup, the [required PR checks](../CONTRIBUTING.md#required-validation),
+and Changesets. Run development commands through mise as described in
+[Prerequisites](../CONTRIBUTING.md#prerequisites); do not substitute system tools.
 
 ## Find your way around
 
@@ -40,6 +42,8 @@ the machine-readable lane registry lives in
 [`repository/validation-lanes.json`](../repository/validation-lanes.json).
 Deterministic lanes use fake credentials. Live Hevy lanes and their credential
 requirements are listed separately in that reference and in CONTRIBUTING.
+`test:pr` is only the test aggregate, not the full PR validation baseline.
+A live key does not authorize writes; use mocks for mutation tests.
 
 For code changes, follow the existing module and test patterns in the owning
 workspace. Tool input schemas are the source of handler parameter types, and

@@ -54,18 +54,22 @@ import type { InferToolParams } from "../utils/tool-helpers.js";
 
 const inputSchema = {
 	page: z.coerce.number().int().gte(1).default(1),
-	pageSize: z.coerce.number().int().gte(1).lte(10).default(5),
+	page_size: z.coerce.number().int().gte(1).lte(10).default(5),
 } as const;
 
 type Input = InferToolParams<typeof inputSchema>;
 ```
 
-Follow the existing tool-definition pattern so the schema remains the single
-source of truth for validation and handler types. Avoid handwritten parallel
+Reuse shared fields from
+[`tools/input-schemas.ts`](../packages/core/src/tools/input-schemas.ts) where
+applicable (for example, `paginationFields` uses the wire key `page_size`).
+Follow [`ToolDefinition`](../packages/core/src/tools/define-tool.ts): `execute`
+returns an Effect with schema-inferred arguments, not a separate Promise runner.
+The schema remains the single source of truth for validation and handler types. Avoid handwritten parallel
 interfaces, `args as { ... }` casts, and `Record<string, unknown>` handler
 arguments. For response schemas and registration conventions, see
-[AGENTS.md](../AGENTS.md#mcp-contracts) and
-[architecture.md](./architecture.md#zod-schema-inference-for-type-safe-tool-parameters).
+[AGENTS.md](../AGENTS.md#mcp-changes) and
+[architecture.md](./architecture.md#core-construction-and-registration).
 
 Run the type and test checks required by
 [CONTRIBUTING.md](../CONTRIBUTING.md#required-validation); select focused test
