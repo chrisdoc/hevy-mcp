@@ -67,6 +67,7 @@ const HELP_TEXT = [
 	"  HEVY_MCP_DEBUG=1           Enable verbose diagnostics on stderr",
 	"  HEVY_MCP_HTTP_BEARER_TOKEN Protect non-loopback HTTP deployments",
 	"  HEVY_MCP_TELEMETRY=0     Disable all project telemetry",
+	"  HEVY_MCP_TELEMETRY=1     Enable telemetry for unbuilt source runs",
 	"  HEVY_MCP_TELEMETRY_DIAGNOSTICS=0  Suppress exception details",
 	"",
 	"Examples:",
