@@ -354,11 +354,6 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 | `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`    | Calls `get-training-summary`, then analyzes workout activity and body-measurement trends from the returned evidence.   |
 | `create-workout-from-routine` | Required `routine_id` and UTC `start_time` | Loads a routine, collects actual completed-set data and an end time, then creates a workout without inventing results. |
 
-> [!NOTE]
-> With MCP SDK v1.29.0, clients invoking `analyze-workout-progress` with its
-> default value must send `arguments: {}`. Omitting the entire `arguments`
-> object is rejected by that SDK version before the default is applied.
-
 ## Tools
 
 `hevy-mcp` registers 23 tools. Read-only tools are safe for exploration; create
