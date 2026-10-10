@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![MCP Toplist](https://mcptoplist.com/badge/io.github.chrisdoc%2Fhevy-mcp.svg)](https://mcptoplist.com/server/io.github.chrisdoc%2Fhevy-mcp)
 
-[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the Hevy CLI](#hevy-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 23 tools](#tools)
+[Connect to the hosted MCP](#connect-to-the-hosted-endpoint) · [Use the Hevy CLI](#hevy-cli) · [Watch the 18-second demo](https://raw.githubusercontent.com/chrisdoc/hevy-mcp/main/docs/assets/hevy-mcp-demo.mp4) · [Explore all 23 tools](#tools) · [Documentation](./docs/index.md)
 
 </div>
 
@@ -44,42 +44,10 @@ app. It lets AI assistants read, analyze, create, and update your Hevy workouts,
 routines, exercise templates, and body measurements through authenticated Hevy
 API requests.
 
-The repository is organized as a private workspace with explicit runtime
-boundaries: `@hevy-mcp/hevy-client` owns the web-safe Hevy client,
-`@hevy-mcp/operations` owns reusable Hevy domain operations,
-`@hevy-mcp/core` owns MCP tools and server construction, `hevy-mcp` is the
-published Node.js stdio adapter, `@hevy-mcp/worker` is the private Cloudflare
-HTTP/OAuth adapter, and `@chrisdoc/hevy-cli` is the standalone CLI. Node and
-CLI are the public packages.
-
-The public `HevyClient` remains Promise-based, while
-`@hevy-mcp/operations` provides Effect-first domain programs for reads,
-mutations, and composite workflows. Effect is also the control structure for
-the request runtime: `@hevy-mcp/hevy-client` owns retry schedules, per-attempt
-timeouts, and interruption, rather than using Effect only as a delay
-calculator. MCP tools and CLI commands collapse each invocation once at their
-Promise adapter boundary. The MCP catalog contains 23 tools.
-
-The runtime has three nested scopes:
-
-1. **Process Scope:** the Node lifecycle owns telemetry, signal handlers, and
-   transport shutdown.
-2. **Server Scope:** core owns the MCP runtime and the exercise-template cache,
-   including finalization when the server closes.
-3. **Request Scope:** each tool or resource invocation carries its deadline and
-   MCP request signal, so fiber interruption reaches the Hevy request.
-
-These scopes do not change the supported Promise façades. Public
-`HevyClient` methods, `createHevyMcpServer`, `createNodeMcpServer`,
-`runStdioServer` / `runServer`, operation `.execute()`, and CLI
-`execute` / `runCli` remain usable without requiring callers to construct
-Effect programs.
-
-The Worker adapter is not Effect-wide: its OAuth, bindings, and request
-handling remain platform-specific Promise code; only the validation-cache
-retry is Effect-controlled. Tool input and response contracts remain Zod
-contracts, environment and CLI parsing remain throwing parsers, and generated
-Kubb API functions and `.kubb` internals are not public API.
+The Node stdio/HTTP adapter and Cloudflare Worker share the same MCP tools.
+See [deployment modes](./docs/deployment-modes.md) to choose a transport, or
+[architecture](./docs/architecture.md) for workspace ownership, runtime scopes,
+and supported embedding APIs.
 
 > A Hevy API key, available with **Hevy PRO**, is required.
 
@@ -410,9 +378,11 @@ Local:   Your AI assistant  →  MCP over stdio   →  local hevy-mcp     →  H
 ```
 
 The hosted endpoint creates a fresh MCP server and Hevy client for each request.
-It validates the supplied key with Hevy, keeps no shared user session, and does
-not persist the key. The local server follows the same tool contract but runs on
-your machine and receives the key through its child-process environment.
+Direct bearer authentication uses the supplied Hevy key and caches successful
+validation for 15 minutes without persisting the raw key. OAuth instead stores
+the key encrypted in a grant. Neither path creates a shared MCP user session.
+The local server follows the same tool contract but receives the Hevy key
+through its process environment.
 
 In either mode, read tools retrieve data; mutation tools create or replace data
 only when your assistant calls them.
@@ -426,10 +396,8 @@ These server-provided MCP prompts coordinate common multi-step workflows:
 | `analyze-workout-progress`    | Optional `weeks` from 1-12; default `4`    | Calls `get-training-summary`, then analyzes workout activity and body-measurement trends from the returned evidence.   |
 | `create-workout-from-routine` | Required `routine_id` and UTC `start_time` | Loads a routine, collects actual completed-set data and an end time, then creates a workout without inventing results. |
 
-> [!NOTE]
-> With MCP SDK v1.29.0, clients invoking `analyze-workout-progress` with its
-> default value must send `arguments: {}`. Omitting the entire `arguments`
-> object is rejected by that SDK version before the default is applied.
+To use the default `weeks` value for `analyze-workout-progress`, send
+`arguments: {}` in the prompt request.
 
 ## Tools
 
@@ -536,8 +504,9 @@ Clients must send their Hevy API key as a fixed authorization header:
 }
 ```
 
-The bearer value is your Hevy API key, not an OAuth token. The Worker validates
-the key with Hevy on each request, does not store it, and forwards it upstream
+In this configuration the bearer value is your Hevy API key, not an OAuth
+token. The Worker caches successful validation for 15 minutes under a hashed
+key, does not persist the raw key on this direct path, and forwards it upstream
 only as Hevy's required `api-key` header.
 
 ### OAuth for Claude.ai and other remote MCP clients
@@ -556,8 +525,9 @@ following the `OAUTH_KV` setup in [CONTRIBUTING.md](./CONTRIBUTING.md):
 Add the Worker URL ending in `/mcp` as a Claude.ai custom connector and
 complete the authorization flow in the browser. Direct
 `Authorization: Bearer <hevy-api-key>` requests keep working unchanged — the
-OAuth layer is purely additive — and rotating your Hevy API key invalidates
-every OAuth grant created with it.
+OAuth layer is purely additive. Revoking or rotating your Hevy key prevents
+subsequent Hevy API access with that key; it does not itself delete stored
+grants or immediately clear cached validation.
 
 OAuth access tokens last seven days and refresh tokens last 30 days. This
 reduces KV writes from frequent hourly refreshes while preserving automatic
@@ -629,8 +599,9 @@ server-scoped in-memory catalog cache:
 - Entries live for five minutes, and the cache holds at most one catalog.
 - Concurrent catalog requests share an in-flight fetch when possible.
 - `search-exercise-templates` accepts `refresh: true` to invalidate the cache.
-
-- Each hosted Worker request gets a fresh cache, preventing cross-key sharing.
+- Each hosted Worker request gets a fresh catalog cache, preventing cross-key sharing.
+- Each local HTTP session owns its own MCP server and catalog cache; caches are
+  not shared across sessions.
 
 ### Local Node telemetry and privacy
 
@@ -658,11 +629,12 @@ Collector; downstream destinations are configured in that infrastructure.
 Metrics export every 30 seconds. See [observability documentation](./docs/observability.md)
 for Cloudflare OTLP export and domain tracing.
 
-The API key is never exported and is not used to derive a user identity. A
-per-failure diagnostic ID and OTel trace ID may be attached to actionable
-errors for support correlation. Structured telemetry contains only bounded
-service, release, transport, tool, outcome, error, count, retry, duration,
-session, cache, workflow, API method, normalized endpoint, and status fields.
+The raw API key is never exported. Ordinary tool telemetry can include a short,
+deterministic HMAC pseudonym derived from the key for correlation; `feedback`
+uses a separate unobserved path. A per-failure diagnostic ID and OTel trace ID
+may be attached to actionable errors. See
+[telemetry data dictionary](./docs/telemetry-data-dictionary.md) for the bounded
+telemetry fields and privacy contract.
 
 Exception messages and stacks are treated as diagnostic details: they are
 length-limited, scrubbed for credentials, URLs, and local home paths, and
@@ -676,18 +648,23 @@ metadata, and unnormalized endpoint paths remain prohibited.
 
 - Keep `HEVY_API_KEY` out of source control, URLs, logs, and screenshots.
 - Local clients provide the key through the child process environment.
-- Hosted clients send the key only in the `Authorization: Bearer` header. The
-  Worker validates each key with Hevy, does not store it, and sends it upstream
-  only as Hevy's `api-key` header.
-- Browser requests must come from an exact allowlisted origin. The default
-  allowlist includes Claude.ai, ChatGPT, VS Code for the Web, and github.dev;
-  self-hosted deployments can override it with `MCP_ALLOWED_ORIGINS`.
+- Direct hosted clients send the Hevy key only in the `Authorization: Bearer`
+  header; successful validation is cached, but the raw key is not persisted.
+  OAuth grants store the key encrypted. Both paths send it to Hevy only as the
+  `api-key` header.
+- Browser MCP requests must be same-origin or match an exact allowlisted
+  origin. The default allowlist includes Claude.ai, ChatGPT, VS Code for the
+  Web, and github.dev; self-hosted deployments can override it with
+  `MCP_ALLOWED_ORIGINS`. See [deployment modes](./docs/deployment-modes.md#origins-and-self-hosting)
+  for the OAuth authorization-form exception.
 - Local development can copy `.dev.vars.example` to `.dev.vars` to disable
   Origin validation for MCP Inspector. PR preview Workers use the same
   development-only setting because their browser origins are dynamic. Never
   set `MCP_DISABLE_ORIGIN_CHECK=true` on a production Worker.
-- Create operations can produce duplicates when retried. Update operations
-  replace existing records. Review tool inputs and use client confirmations.
+- Create operations can produce duplicates when retried. Routine updates
+  replace content; workout metadata updates preserve omitted fields and
+  exercises, while `replace-workout-exercises` replaces all exercises and sets.
+  Review tool inputs and use client confirmations.
 
 ## Troubleshooting
 
