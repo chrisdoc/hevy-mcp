@@ -65,7 +65,9 @@ Reuse shared fields from
 applicable (for example, `paginationFields` uses the wire key `page_size`).
 Follow [`ToolDefinition`](../packages/core/src/tools/define-tool.ts): `execute`
 returns an Effect with schema-inferred arguments, not a separate Promise runner.
-The schema remains the single source of truth for validation and handler types. Avoid handwritten parallel
+The advertised schema defines canonical validation and handler types. Legacy
+input parsing, such as `inputParser`, remains separate from that schema.
+Avoid handwritten parallel
 interfaces, `args as { ... }` casts, and `Record<string, unknown>` handler
 arguments. For response schemas and registration conventions, see
 [AGENTS.md](../AGENTS.md#mcp-changes) and

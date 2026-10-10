@@ -103,7 +103,7 @@ live failures as provider, network, authentication, schema, or product failures.
 
 The July 10, 2026 audit measured snapshot
 `09859b1672e5408b8ca8d65dd4bb7b2c35a8dd03` and proposed TS-01 through TS-08
-([issues #605–#612](https://github.com/chrisdoc/hevy-mcp/issues/605)). Its
+([issue #605](https://github.com/chrisdoc/hevy-mcp/issues/605)). Its
 measurements, copied scripts, Node-policy concerns, Axios assumptions, and
 30/60/90-day roadmap were historical design inputs, not current procedures or
 verified ticket status. This page now describes the source-backed layering;

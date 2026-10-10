@@ -43,7 +43,7 @@ the machine-readable lane registry lives in
 Deterministic lanes use fake credentials. Live Hevy lanes and their credential
 requirements are listed separately in that reference and in CONTRIBUTING.
 `test:pr` is only the test aggregate, not the full PR validation baseline.
-A live key does not authorize writes; use mocks for mutation tests.
+Mutation tests should use mocked API calls instead of a live key.
 
 For code changes, follow the existing module and test patterns in the owning
 workspace. Tool input schemas are the source of handler parameter types, and
