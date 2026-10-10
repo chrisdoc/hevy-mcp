@@ -1,5 +1,17 @@
 # hevy-mcp
 
+## 6.1.22
+
+### Patch Changes
+
+- [`1f9f918`](https://github.com/chrisdoc/hevy-mcp/commit/1f9f9189883c4f00a752eb27c9f87ee5eefe368c) Thanks [@charliecreates[bot]](https://github.com/charliecreates%5Bbot%5D)! - Remove obsolete MCP SDK v1.29.0 compatibility note from README.
+
+- [#1240](https://github.com/chrisdoc/hevy-mcp/pull/1240) [`8d43dab`](https://github.com/chrisdoc/hevy-mcp/commit/8d43dab9f7a9467cfe1766d727466af7eac0a1e8) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Disable project telemetry by default for unbuilt Node source runs unless HEVY_MCP_TELEMETRY=1 is explicitly set. Preserve published-build opt-out behavior and label enabled source-run Sentry events as development, with SENTRY_ENVIRONMENT available as an override.
+
+- [#1237](https://github.com/chrisdoc/hevy-mcp/pull/1237) [`5b60d44`](https://github.com/chrisdoc/hevy-mcp/commit/5b60d449863ae84bbe282a72e48cd9e977c34799) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Remove `.agents/daemons/` daemon definitions: the Charlie agent that ran them is no longer active, so the daemon specs (docs-drift-maintainer, pr-check-repair, pr-merge-conflict-repair, pr-metadata, triage-sentry-issues) are dead configuration.
+
+- [#1239](https://github.com/chrisdoc/hevy-mcp/pull/1239) [`ca7a5d7`](https://github.com/chrisdoc/hevy-mcp/commit/ca7a5d71c0e41867df4656c86307ab457b23f500) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Consolidate native client request setup and test scaffolding while preserving public signatures, request controls, and test scenarios. Reduce test import overhead and CPU contention without narrowing validation lanes.
+
 ## 6.1.21
 
 ### Patch Changes
