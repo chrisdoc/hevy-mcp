@@ -2,26 +2,30 @@
 
 This guide covers repository setup, architecture, testing, Cloudflare Worker
 development, and pull request expectations. Consumer installation and MCP client
-configuration remain in [README.md](./README.md).
+configuration remain in [README.md](./README.md). Use the
+[documentation index](./docs/index.md) for task-to-source navigation.
 
 ## Prerequisites
 
 - Git
-- mise
-- npm
-- Node.js
+- [mise](https://mise.jdx.dev/) to install the pinned development tools
 
-The repository currently has a deliberate Node policy difference:
+Keep three distinct Node policies in mind:
 
-- `package.json` declares the published package compatible with Node.js 20 or
-  newer.
-- Repository development guidance uses the versions pinned in `mise.toml`,
-  currently Node.js 24 and pnpm 12.
-- Required pull-request and main-branch CI uses Node.js 24, as configured in
-  `.github/workflows/build-and-test.yml`.
-- Node.js 26 compatibility runs daily at 05:23 UTC and on manual dispatch in
-  `.github/workflows/node-compatibility.yml`, not as a required PR matrix job.
-  Its mise override keeps nested aliases on Node 26; development stays on 24.
+- Published compatibility is declared in
+  [packages/node/package.json](./packages/node/package.json) and
+  [packages/cli/package.json](./packages/cli/package.json), not inferred from
+  the private root manifest.
+- Development Node and pnpm versions are pinned in [mise.toml](./mise.toml).
+- Required PR/main CI is defined in
+  [.github/workflows/build-and-test.yml](./.github/workflows/build-and-test.yml).
+  Newer-Node compatibility runs separately on a schedule or manual dispatch in
+  [.github/workflows/node-compatibility.yml](./.github/workflows/node-compatibility.yml),
+  not as a required PR matrix job. Its mise override keeps nested aliases on
+  the compatibility runtime without changing development pins.
+
+Consult those files for current versions and schedules rather than maintaining
+second inventories here.
 
 Use mise for development:
 
@@ -32,8 +36,10 @@ MISE_AUTO_INSTALL=false mise exec -- pnpm install
 ```
 
 Do not silently change the published Node policy as part of unrelated work.
-On this linux/arm64 environment, keep `MISE_AUTO_INSTALL=false` on every
-`mise` command because the pinned `kiota` tool has no linux/arm64 build.
+`MISE_AUTO_INSTALL=false` prevents implicit tool installs during execution;
+install the tools declared in `mise.toml` explicitly first. If a pinned tool is
+unavailable on your platform, report the blocker rather than substituting an
+untracked version.
 
 ## Hevy API key and local environment
 
@@ -70,15 +76,15 @@ separate and optional.
 Install, build, and start the production stdio executable:
 
 ```bash
-pnpm install
-pnpm run build
-npm start
+mise exec -- pnpm install --frozen-lockfile
+mise exec -- pnpm run build
+mise exec -- pnpm start
 ```
 
 For watch mode:
 
 ```bash
-pnpm run dev
+mise exec -- pnpm run dev
 ```
 
 The `start` and `dev` commands load `.env`. The `test:integration` and
@@ -95,8 +101,8 @@ into the terminal.
 Useful inspection commands are:
 
 ```bash
-pnpm run inspect
-npx @modelcontextprotocol/inspector@latest npx hevy-mcp@latest
+mise exec -- pnpm run inspect
+mise exec -- pnpm dlx @modelcontextprotocol/inspector@latest pnpm dlx hevy-mcp@latest
 ```
 
 The inspector can require an environment with an MCP-capable browser/client and
@@ -154,8 +160,9 @@ Also run the narrow checks related to your change. In particular:
 - Run `pnpm run test:live` only when a real Hevy API canary is appropriate and a
   safe credential is available.
 
-`pnpm run check` runs both oxlint and oxfmt in check mode using the local npm
-dependencies. The project uses the Oxc tools for fast, consistent type-aware
+`pnpm run check` validates OpenAPI and generated-client consistency, runs
+oxlint and oxfmt in check mode, then checks duplication and Knip findings.
+[package.json](./package.json) owns the exact composition and order. The project uses the Oxc tools for fast, consistent type-aware
 linting and formatting. Fix reported code warnings rather than assuming they
 are harmless. Use `pnpm run check:fix` for automated fixes, then inspect the
 resulting diff. Git hooks run the same tools for pre-commit validation. Note that
@@ -178,11 +185,19 @@ The Hevy API client, types, and schemas under
 in that directory manually. Generated API functions and `.kubb`
 internals are private; consumers use the curated client package barrels.
 
-To refresh the checked-in OpenAPI specification and generated client:
+To regenerate from the checked-in specification (no upstream refresh):
 
 ```bash
-pnpm run openapi
-pnpm run build:client
+mise exec -- pnpm run build:client
+mise exec -- pnpm run check:openapi
+mise exec -- pnpm run check:generated
+```
+
+Only when intentionally updating the upstream API contract, fetch first:
+
+```bash
+mise exec -- pnpm run openapi
+mise exec -- pnpm run build:client
 ```
 
 `pnpm run openapi` fetches the upstream Hevy specification and can fail with
@@ -198,7 +213,8 @@ before committing a refreshed spec.
 The Node package and Worker ship bundled compositions of Core and the Hevy
 client. The CLI bundles the Hevy client and Operations directly, without a Core
 dependency. Changesets for shared packages must include every affected shipped
-consumer; the package-changeset check enforces the release matrix below.
+consumer; the package-changeset check enforces the topology's transitive
+release propagation described below.
 
 ## Runtime architecture boundaries
 
@@ -309,9 +325,10 @@ The Worker workspace uses `@cloudflare/vite-plugin` with Vite for local
 development and builds. `cf dev` and `cf build` select that backend, which
 emits the Cloudflare Build Output consumed by `cf deploy`; `worker:dry-run`
 builds first, then runs a deployment dry run against that output. The Workerd
-Vitest pool loads `packages/worker/cloudflare.config.ts` through the plugin's
-`experimental.newConfig` option, so unit tests and local development use the
-same typed Worker settings.
+Vitest lane uses `cloudflareTest` from `@cloudflare/vitest-plugin` in
+[vitest.workers.config.ts](./vitest.workers.config.ts). Its
+`experimental.newConfig` option loads `packages/worker/cloudflare.config.ts`,
+so Worker tests and local development use the same typed Worker settings.
 
 The deterministic HTTP test starts `cf dev` with an isolated persistence
 directory and dynamically allocated host, Worker port, and inspector port. Its
@@ -379,18 +396,12 @@ fork configuration:
   account. For the maintainer environment, set these to `otel-logs` and
   `otel`; self-hosters can omit or replace them.
 
-Browser clients must send an exact origin from the Worker's default allowlist:
-
-```text
-https://claude.ai
-https://www.claude.ai
-https://claude.com
-https://www.claude.com
-https://chatgpt.com
-https://chat.openai.com
-https://vscode.dev
-https://github.dev
-```
+Cross-origin MCP browser requests must send an exact origin from the Worker's
+allowlist; same-origin requests and requests without `Origin` are accepted.
+[`DEFAULT_ALLOWED_ORIGINS` and `validateOrigin` in worker-http-helpers.ts](./packages/worker/src/worker-http-helpers.ts)
+own the current list and exceptions. OAuth-enabled `POST /authorize` also
+accepts the opaque `Origin: null` for sandboxed consent forms; this exception
+never applies to `/mcp`.
 
 Self-hosted deployments can replace this list with the optional
 comma-separated Worker variable:
@@ -405,9 +416,9 @@ preview Worker also sets `MCP_DISABLE_ORIGIN_CHECK=true` because preview URLs
 are dynamic. Do not set this variable on production Workers; it disables the
 Origin allowlist while still reflecting CORS headers for the requesting origin.
 
-Wildcards are unsupported. Browser requests with an unmatched `Origin` receive
-`403`; non-browser requests without `Origin` remain accepted. Test both origin
-and bearer-auth behavior when changing Worker request handling.
+Wildcards are unsupported. Other cross-origin requests with an unmatched
+`Origin` receive `403`. Test both origin and bearer-auth behavior when changing
+Worker request handling.
 
 ### Optional OAuth layer for remote MCP clients
 
@@ -500,17 +511,13 @@ deployment tracking, but remain private and are never published to npm:
 Describe the internal runtime change here.
 ```
 
-Every package listed below must receive at least a patch bump. Larger bumps are
-allowed when warranted by that package's own impact:
-
-| Changed composition     | Required Changeset packages                                                                                                 |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `@hevy-mcp/hevy-client` | `@hevy-mcp/hevy-client`, `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli` |
-| `@hevy-mcp/operations`  | `@hevy-mcp/operations`, `@hevy-mcp/core`, `hevy-mcp`, `@hevy-mcp/worker`, and `@chrisdoc/hevy-cli`                          |
-| `@hevy-mcp/core`        | `@hevy-mcp/core`, `hevy-mcp`, and `@hevy-mcp/worker`                                                                        |
-| Node adapter only       | `hevy-mcp` only                                                                                                             |
-| Worker only             | `@hevy-mcp/worker` only                                                                                                     |
-| CLI only                | `@chrisdoc/hevy-cli` only                                                                                                   |
+[repository/topology.json](./repository/topology.json) owns the release
+propagation graph (`release.bundles`) and explicit root release triggers
+(`release.triggers`). Start with every changed workspace, then follow consumer
+edges transitively; include each affected package at least once with at least a
+patch bump. Larger bumps depend on that package's own impact. Use workspace
+names from that file rather than copying a release matrix into documentation.
+`check:changeset` enforces this propagation.
 
 Do not couple unrelated package versions. Core, the Hevy client, and Worker
 remain private. Changesets version them for internal release/deployment

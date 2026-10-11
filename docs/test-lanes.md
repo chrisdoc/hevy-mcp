@@ -107,34 +107,33 @@ optimizer-cache warmth separately from Nx-cache warmth.
 
 ## Lane ownership
 
-| Command                          | Current owner and purpose                                                                                     | Network and credentials                                                            |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `pnpm run test:unit`             | Repository unit/component tests, excluding integration and performance discovery.                             | Deterministic; no network or credentials.                                          |
-| `pnpm run test:mcp`              | Existing Nock-backed, in-memory MCP client/server integration coverage.                                       | Outbound network disabled by the tests; fake API key only.                         |
-| `pnpm run test:contract`         | Current registration, output-schema, server-manifest, and initial runtime-matrix contract coverage.           | Deterministic. Issue #880 owns expansion to the complete MCP contract matrix.      |
-| `pnpm run test:stdio`            | Current stdio instrumentation and graceful-shutdown/process regression baseline.                              | Deterministic. Issue #609 owns full spawned built-stdio coverage.                  |
-| `pnpm run test:pack`             | Builds the shared package candidates once, then inspects, installs, and spawns the same Node tarball.         | Deterministic; the candidate producer is the only task that writes package output. |
-| `pnpm run test:live`             | Read-only source canary against Hevy.                                                                         | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.                   |
-| `pnpm run test:worker-http:live` | Local `cf dev` Worker canary with comprehensive bounded representative reads against Hevy.                    | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.       |
-| `pnpm run test:nightly`          | Published/source launcher canary configured by the nightly or release workflow.                               | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.       |
-| `pnpm run test:performance`      | Reuses the shared Node build, then spawns `dist/cli.mjs` for a mocked performance/correctness trend baseline. | Child-local Nock, fake API key, and child HTTP(S)/`fetch` disabled.                |
-| `pnpm run test:pr`               | Deterministic named lanes expected on every pull request.                                                     | No live credentials or live network.                                               |
+| Command                          | Current owner and purpose                                                                                                   | Network and credentials                                                            |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm run test:unit`             | Repository unit/component tests, excluding integration and performance discovery.                                           | Deterministic; no network or credentials.                                          |
+| `pnpm run test:mcp`              | Existing Nock-backed, in-memory MCP client/server integration coverage.                                                     | Outbound network disabled by the tests; fake API key only.                         |
+| `pnpm run test:contract`         | Current registration, output-schema, server-manifest, and initial runtime-matrix contract coverage.                         | Deterministic; current selectors define the scope.                                 |
+| `pnpm run test:stdio`            | Current stdio instrumentation and graceful-shutdown/process regression baseline.                                            | Deterministic; not a complete process-level matrix.                                |
+| `pnpm run test:pack`             | Builds the shared package candidates once, then inspects, installs, and spawns the same Node tarball.                       | Deterministic; the candidate producer is the only task that writes package output. |
+| `pnpm run test:live`             | Read-only source canary against Hevy.                                                                                       | Requires `HEVY_API_KEY`; fails before Vitest starts when absent.                   |
+| `pnpm run test:worker-http:live` | Local `cf dev` Worker canary with comprehensive bounded representative reads against Hevy.                                  | Requires `HEVY_RUN_LIVE_WORKER_TESTS=1` and `HEVY_API_KEY`; trusted CI only.       |
+| `pnpm run test:nightly`          | Published/source launcher canary configured by the nightly or release workflow.                                             | Requires `HEVY_API_KEY` and launcher variables; preflight fails when absent.       |
+| `pnpm run test:performance`      | Reuses the shared Node build, then spawns `packages/node/dist/cli.mjs` for a mocked performance/correctness trend baseline. | Child-local fetch fixtures, fake API key, and unexpected fetch blocked.            |
+| `pnpm run test:pr`               | Deterministic named lanes expected on every pull request.                                                                   | No live credentials or live network.                                               |
 
 The current contract, stdio, and package commands are intentionally narrow but
-real. They do not claim the complete scope assigned to issues #607 and #609.
+real; inspect the registry selectors and tests before assuming full coverage.
 The package lanes share one immutable tarball per package within a validation
-graph. Changesets still repacks packages during publication; issue #882 owns
-the later handoff needed to make the validated and published tarballs identical.
+graph. Changesets still repacks packages during publication, so validation does
+not guarantee byte-identical published tarballs. Historical expansion/handoff
+references include issues #607, #609, #880, and #882; their current status and
+ownership are not established by this document.
 
 ## Exact commands
 
-Run the pull-request baseline with:
-
-```sh
-MISE_AUTO_INSTALL=false mise exec -- pnpm run test:pr
-MISE_AUTO_INSTALL=false mise exec -- pnpm run test:performance
-MISE_AUTO_INSTALL=false mise exec -- pnpm run check:boundaries
-```
+Run the full pull-request baseline from
+[Required validation in CONTRIBUTING.md](../CONTRIBUTING.md#required-validation).
+`test:pr` is the deterministic test aggregate, not the entire required baseline;
+static, type, build, performance, Changeset, and boundary checks are listed there.
 
 The aggregate table identifies the current Nx targets and direct members. Nx
 owns local aggregate ordering and dependencies; contributor-facing `pnpm run`
@@ -142,15 +141,16 @@ aliases remain compatibility entrypoints, while internal-only lanes use their
 Nx commands directly. Inspect the current target graph with:
 
 ```sh
-npx nx show project repository --json
-npx nx graph --file=.nx/project-graph.html
+MISE_AUTO_INSTALL=false mise exec -- pnpm exec nx show project repository --json
+MISE_AUTO_INSTALL=false mise exec -- pnpm exec nx graph --file=.nx/project-graph.html
 ```
 
 The repository `test:unit`, `test:worker`, and `test:worker-http` targets are
 marked exclusive in `project.json`. This keeps spawned CLI tests and real
 Workerd startup from competing with other CPU-intensive PR lanes on small
 local runners, without changing readiness deadlines or retry counts. The
-documented `test:pr` command remains parallel where safe.
+documented `test:pr` command remains parallel where safe. Nx owns aggregate
+scheduling; do not infer serialization from a lane name.
 
 The unit lane uses at most two process-isolated forks, bounded by available
 CPU parallelism. Other root Vitest lanes remain single-worker, including
@@ -170,20 +170,24 @@ MISE_AUTO_INSTALL=false mise exec -- pnpm run test:unit -- --coverage --coverage
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:mcp -- --coverage --coverage.reportsDirectory=coverage/mocked
 ```
 
-CI selects the same reporters and coverage outputs through the lane wrappers,
-so selectors do not drift between local and hosted runs:
+On Node 24, CI selects these reporters and coverage outputs through the lane
+wrappers. `HEVY_TEST_REPORT_MODE=ci` does not enable coverage on Node 26:
 
 ```sh
 MISE_AUTO_INSTALL=false mise exec -- env HEVY_TEST_REPORT_MODE=ci pnpm run test:unit
 MISE_AUTO_INSTALL=false mise exec -- env HEVY_TEST_REPORT_MODE=ci pnpm run test:mcp
 ```
 
-The build workflow invokes mapped targets per Node runtime with Nx `run-many`:
-Node 24 runs worker, contract, stdio, CLI, and dry-run targets, while Node 26
-runs selected repository checks, unit, and mocked MCP targets. The release
-workflow does the same for its deterministic candidate-validation subset. Nx
-owns dependency ordering and concurrency, while the control-plane projection
-still checks every individual lane and runtime against the canonical aggregate.
+The required build workflow invokes the primary runtime targets with Nx
+`run-many`. The scheduled/manual Node compatibility workflow runs selected
+repository checks, unit, and mocked MCP targets on the compatibility runtime;
+it is not a required PR matrix job. The release workflow has its own
+deterministic candidate-validation subset. See
+[build-and-test.yml](../.github/workflows/build-and-test.yml),
+[node-compatibility.yml](../.github/workflows/node-compatibility.yml), and the
+registry for current runtime assignments. Nx owns dependency ordering and
+concurrency; the control-plane projection checks the lanes and runtimes against
+the canonical aggregates.
 
 Explicit live commands are separate and credential-gated. Keep the key in
 `.env` or the process environment, never in command arguments, URLs, logs, or
@@ -194,7 +198,7 @@ MISE_AUTO_INSTALL=false mise exec -- pnpm run test:live
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:integration
 MISE_AUTO_INSTALL=false mise exec -- pnpm run test:worker-http:live
 MISE_AUTO_INSTALL=false mise exec -- env HEVY_MCP_COMMAND=node \
-	HEVY_MCP_ARGS_JSON='["dist/cli.mjs"]' \
+	HEVY_MCP_ARGS_JSON='["packages/node/dist/cli.mjs"]' \
 	pnpm run test:nightly
 ```
 
@@ -223,14 +227,15 @@ changes from `1e0b1f660344`, see the
 [performance and code-reduction report](performance-and-code-reduction.md).
 
 `pnpm run test:performance` depends on the shared Node build, then uses the MCP SDK
-`StdioClientTransport` to spawn the real `dist/cli.mjs` with `process.execPath`.
-Build time is therefore outside every latency sample. A child-only Node
-`--import` preload installs deterministic Nock fixtures before the CLI loads,
-requires the dedicated fake API key, disables Node HTTP(S) connections, and
-rejects `globalThis.fetch` so the background update check cannot contact npm.
+`StdioClientTransport` to spawn `packages/node/dist/cli.mjs` with `process.execPath`.
+Build time is therefore outside every latency sample. The child-only Node
+`--import` preload in `tests/performance/child-fixture.mjs` requires the dedicated
+fake API key and replaces `globalThis.fetch` with an exact-request fixture
+responder. It is not a Nock preload: expected Hevy reads receive synthetic
+responses, while the background update check is blocked.
 The expected blocked npm-registry URL is recorded; any other fetch target is an
 unexpected request and fails fixture verification. It never contacts live Hevy.
-Issue #609 remains responsible for the broader installed-tarball expansion.
+This performance lane does not establish complete installed-tarball coverage.
 Hosted pull-request CI runs this lane in its own Node 24 job so concurrent unit,
 type, and bundle work cannot distort the latency samples; package smoke checks
 reuse that job's already-built release candidates after the measurements finish.

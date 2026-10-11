@@ -24,6 +24,11 @@ investigate hook failures rather than bypassing them.
 
 ## Sources to consult
 
+[docs/index.md](./docs/index.md) maps tasks to guides and implementation entry
+points, and distinguishes current guidance from historical reports. Use it to
+find the relevant owner; verify changing facts in the linked source rather than
+copying inventories into instructions. `CLAUDE.md` is a symlink to this file.
+
 | Task                                                      | Source of truth                                                                                                                 |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Setup, Node policy, required checks, release policy       | [CONTRIBUTING.md](./CONTRIBUTING.md)                                                                                            |
