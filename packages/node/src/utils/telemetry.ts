@@ -34,6 +34,7 @@ import {
 	PeriodicExportingMetricReader,
 } from "@opentelemetry/sdk-metrics";
 import { captureFailure, sanitizeSentryEvent } from "./failure-reporter.js";
+import { sentryEnvironment, telemetryEnabled } from "./telemetry-config.js";
 export type ProcessExceptionSource = {
 	on(
 		event: "uncaughtExceptionMonitor" | "unhandledRejection",
@@ -136,7 +137,6 @@ function parseBuildString<T>(value: T, fallback: string): string {
 }
 declare const __HEVY_MCP_NAME__: string | undefined;
 declare const __HEVY_MCP_VERSION__: string | undefined;
-declare const __HEVY_MCP_BUILD__: boolean | undefined;
 declare const __OTEL_COLLECTOR_TOKEN__: string | undefined;
 
 const name = parseBuildString(
@@ -147,8 +147,6 @@ const version = parseBuildString(
 	readBuildGlobal(() => __HEVY_MCP_VERSION__),
 	"dev",
 );
-
-const telemetryEnabled = process.env.HEVY_MCP_TELEMETRY !== "0";
 
 // Collector token is injected at build time from the OTEL_COLLECTOR_TOKEN
 // GitHub secret via tsdown.config.ts define. The collector forwards
@@ -215,6 +213,7 @@ function initializeTelemetry(): void {
 		Sentry.init({
 			dsn: isValidDsn ? rawDsn : undefined,
 			release: sentryRelease,
+			environment: sentryEnvironment,
 			tracesSampleRate: 0.0,
 			sendClientReports: false,
 			dataCollection: { userInfo: false },

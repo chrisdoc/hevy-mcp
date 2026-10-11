@@ -112,9 +112,10 @@ Worker and Node HTTP expose an unauthenticated `GET /health` returning
 probes, not checks of Hevy availability or account validity. Stdio has no HTTP
 probe.
 
-The Node executable enables project telemetry by default. Set exactly
-`HEVY_MCP_TELEMETRY=0` before launch to disable it; package imports alone do not
-initialize telemetry. The Worker has its own observability and optional
+Published Node builds enable project telemetry by default. Unbuilt source runs
+disable it unless `HEVY_MCP_TELEMETRY=1` is set explicitly. Set exactly
+`HEVY_MCP_TELEMETRY=0` before launch to disable it in either mode; package imports
+alone do not initialize telemetry. The Worker has its own observability and optional
 collector-backed feedback recorder, not Node telemetry. Its feedback recorder
 requires `OTEL_COLLECTOR_TOKEN` and can be disabled with
 `HEVY_MCP_TELEMETRY=0`; without a token it reports `telemetry_unavailable`.

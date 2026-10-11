@@ -8,6 +8,7 @@ import { isHevyHttpError } from "@hevy-mcp/hevy-client";
 import * as Sentry from "@sentry/node";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import type { ErrorEvent, EventHint } from "@sentry/node";
+import { telemetryEnabled } from "./telemetry-config.js";
 
 type SafeErrorDiagnostic = ReturnType<typeof createSafeErrorDiagnostic>;
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -90,7 +91,6 @@ const SAFE_TAG_PREFIXES = [
 	"otel.",
 	"service.",
 ] as const;
-const TELEMETRY_ENABLED = process.env.HEVY_MCP_TELEMETRY !== "0";
 const DIAGNOSTIC_DETAILS_ENABLED =
 	process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS !== "0";
 
@@ -452,7 +452,7 @@ export function captureFailure<T>(
 	error: T,
 	context: FailureContext,
 ): FailureReceipt | undefined {
-	if (!TELEMETRY_ENABLED) return undefined;
+	if (!telemetryEnabled) return undefined;
 	const span = context.span ?? trace.getActiveSpan() ?? undefined;
 	const record = normalizeFailure(error, context);
 	const traceContext = getTraceContext(span);

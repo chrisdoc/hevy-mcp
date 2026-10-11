@@ -148,6 +148,7 @@ function setTelemetryEnvironment(
 	delete env.HEVY_MCP_TELEMETRY_DIAGNOSTICS;
 	delete env.SENTRY_DSN;
 	delete env.SENTRY_RELEASE;
+	delete env.SENTRY_ENVIRONMENT;
 	delete env.OTEL_COLLECTOR_TOKEN;
 	if (telemetrySetting !== undefined) {
 		env.HEVY_MCP_TELEMETRY = telemetrySetting;
@@ -164,7 +165,7 @@ describe("telemetry initialization", () => {
 	}
 
 	beforeEach(() => {
-		setTelemetryEnvironment();
+		setTelemetryEnvironment("1");
 		testDoubles.nodeTracerProviderOptions = undefined;
 		testDoubles.meterProviderOptions = undefined;
 	});
@@ -173,7 +174,62 @@ describe("telemetry initialization", () => {
 		testDoubles.nodeTracerProviderOptions = undefined;
 		testDoubles.meterProviderOptions = undefined;
 		vi.clearAllMocks();
+		vi.unstubAllGlobals();
 	});
+
+	it.each([undefined, "", "0", "false", "true"])(
+		"disables source-run telemetry without an explicit opt-in (%s)",
+		async (setting) => {
+			setTelemetryEnvironment(setting, {
+				SENTRY_DSN: "https://public-key@example.test/1",
+				OTEL_COLLECTOR_TOKEN: "test-collector-token",
+			});
+			vi.resetModules();
+			const mod = await loadTelemetry();
+
+			expect(testDoubles.sentryInit).not.toHaveBeenCalled();
+			expect(testDoubles.nodeTracerProvider).not.toHaveBeenCalled();
+			expect(mod.getTelemetryAvailability()).toBe("telemetry_disabled");
+			expect(
+				mod.captureFailure(new Error("probe"), { kind: "process" }),
+			).toBeUndefined();
+			expect(testDoubles.sentryCaptureException).not.toHaveBeenCalled();
+			expect(testDoubles.otlpTraceExporter).not.toHaveBeenCalled();
+			expect(testDoubles.otlpMetricExporter).not.toHaveBeenCalled();
+			const processLike = { on: vi.fn(), removeListener: vi.fn() };
+			mod.installProcessExceptionTracking(processLike)();
+			expect(processLike.on).not.toHaveBeenCalled();
+			await mod.flushTelemetry();
+			expect(testDoubles.sentryFlush).not.toHaveBeenCalled();
+		},
+	);
+
+	it("preserves the published release and production environment", async () => {
+		vi.stubGlobal("__HEVY_MCP_BUILD__", true);
+		vi.stubGlobal("__HEVY_MCP_VERSION__", "6.1.21");
+		setTelemetryEnvironment();
+		vi.resetModules();
+		await loadTelemetry();
+		expect(testDoubles.sentryInit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				release: "hevy-mcp@6.1.21",
+				environment: "production",
+			}),
+		);
+	});
+
+	it.each([false, true])(
+		"honors a Sentry environment override (built=%s)",
+		async (built) => {
+			vi.stubGlobal("__HEVY_MCP_BUILD__", built);
+			setTelemetryEnvironment("1", { SENTRY_ENVIRONMENT: "qa" });
+			vi.resetModules();
+			await loadTelemetry();
+			expect(testDoubles.sentryInit).toHaveBeenCalledWith(
+				expect.objectContaining({ environment: "qa" }),
+			);
+		},
+	);
 
 	it("does not initialize providers when imported before the lifecycle layer", async () => {
 		vi.resetModules();
@@ -216,6 +272,7 @@ describe("telemetry initialization", () => {
 			expect.objectContaining({
 				dataCollection: { userInfo: false },
 				release: "hevy-mcp@dev",
+				environment: "development",
 				dsn: "https://ce696d8333b507acbf5203eb877bce0f@o4508975499575296.ingest.de.sentry.io/4509049671647312",
 				tracesSampleRate: 0.0,
 				sendClientReports: false,
@@ -228,7 +285,7 @@ describe("telemetry initialization", () => {
 	});
 
 	it("uses an explicitly configured Sentry DSN", async () => {
-		setTelemetryEnvironment(undefined, {
+		setTelemetryEnvironment("1", {
 			SENTRY_DSN: "https://public-key@example.test/1",
 			SENTRY_RELEASE: "hevy-mcp@test-release",
 		});
@@ -273,7 +330,8 @@ describe("telemetry initialization", () => {
 		["empty", ""],
 		["one", "1"],
 		["false", "false"],
-	])("keeps telemetry enabled for $0", async (_label, setting) => {
+	])("keeps published telemetry enabled for $0", async (_label, setting) => {
+		vi.stubGlobal("__HEVY_MCP_BUILD__", true);
 		setTelemetryEnvironment(setting);
 		vi.resetModules();
 
@@ -395,7 +453,7 @@ describe("telemetry initialization", () => {
 
 	it("configures collector exporters when a token is present", async () => {
 		vi.resetModules();
-		setTelemetryEnvironment(undefined, {
+		setTelemetryEnvironment("1", {
 			OTEL_COLLECTOR_TOKEN: "test-collector-token",
 		});
 
@@ -432,7 +490,7 @@ describe("telemetry initialization", () => {
 	});
 
 	it("keeps collector exports when Sentry DSN is empty", async () => {
-		setTelemetryEnvironment(undefined, {
+		setTelemetryEnvironment("1", {
 			SENTRY_DSN: "",
 			OTEL_COLLECTOR_TOKEN: "test-collector-token",
 		});
@@ -447,30 +505,34 @@ describe("telemetry initialization", () => {
 		expect(testDoubles.otlpMetricExporter).toHaveBeenCalledOnce();
 	});
 
-	it("disables the complete telemetry graph for the exact opt-out value", async () => {
-		setTelemetryEnvironment("0", {
-			SENTRY_DSN: "sentry-sentinel",
-			OTEL_COLLECTOR_TOKEN: "collector-sentinel",
-		});
-		vi.resetModules();
+	it.each([false, true])(
+		"disables the complete telemetry graph for the exact opt-out value (built=%s)",
+		async (built) => {
+			vi.stubGlobal("__HEVY_MCP_BUILD__", built);
+			setTelemetryEnvironment("0", {
+				SENTRY_DSN: "sentry-sentinel",
+				OTEL_COLLECTOR_TOKEN: "collector-sentinel",
+			});
+			vi.resetModules();
 
-		const mod = await loadTelemetry();
+			const mod = await loadTelemetry();
 
-		expect(testDoubles.sentryInit).not.toHaveBeenCalled();
-		expect(testDoubles.nodeTracerProvider).not.toHaveBeenCalled();
-		expect(testDoubles.otlpTraceExporter).not.toHaveBeenCalled();
-		expect(testDoubles.otlpMetricExporter).not.toHaveBeenCalled();
-		expect(testDoubles.setGlobalTracerProvider).not.toHaveBeenCalled();
-		expect(testDoubles.setGlobalMeterProvider).not.toHaveBeenCalled();
-		expect(objectSchema.safeParse(mod.tracer).success).toBe(true);
-		expect(objectSchema.safeParse(mod.meter).success).toBe(true);
-		expect(functionSchema.safeParse(mod.flushTelemetry).success).toBe(true);
+			expect(testDoubles.sentryInit).not.toHaveBeenCalled();
+			expect(testDoubles.nodeTracerProvider).not.toHaveBeenCalled();
+			expect(testDoubles.otlpTraceExporter).not.toHaveBeenCalled();
+			expect(testDoubles.otlpMetricExporter).not.toHaveBeenCalled();
+			expect(testDoubles.setGlobalTracerProvider).not.toHaveBeenCalled();
+			expect(testDoubles.setGlobalMeterProvider).not.toHaveBeenCalled();
+			expect(objectSchema.safeParse(mod.tracer).success).toBe(true);
+			expect(objectSchema.safeParse(mod.meter).success).toBe(true);
+			expect(functionSchema.safeParse(mod.flushTelemetry).success).toBe(true);
 
-		await mod.flushTelemetry();
-		expect(testDoubles.tracerProviderForceFlush).not.toHaveBeenCalled();
-		expect(testDoubles.meterProviderForceFlush).not.toHaveBeenCalled();
-		expect(testDoubles.sentryFlush).not.toHaveBeenCalled();
-	});
+			await mod.flushTelemetry();
+			expect(testDoubles.tracerProviderForceFlush).not.toHaveBeenCalled();
+			expect(testDoubles.meterProviderForceFlush).not.toHaveBeenCalled();
+			expect(testDoubles.sentryFlush).not.toHaveBeenCalled();
+		},
+	);
 
 	it("swallows synchronous flush failures", async () => {
 		vi.resetModules();
