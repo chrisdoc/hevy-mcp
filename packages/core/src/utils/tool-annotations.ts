@@ -7,9 +7,14 @@
  */
 import type { ToolAnnotations } from "@modelcontextprotocol/server";
 
-/** Read-only tools (get-*, search-*): no side effects. */
+/** Read-only tools (get-*, search-*): no side effects, never destructive. */
 export function readOnlyAnnotations(title: string): ToolAnnotations {
-	return { title, readOnlyHint: true, openWorldHint: false };
+	return {
+		title,
+		readOnlyHint: true,
+		destructiveHint: false,
+		openWorldHint: false,
+	};
 }
 
 /** Create tools (create-*): additive writes, repeating creates duplicates. */

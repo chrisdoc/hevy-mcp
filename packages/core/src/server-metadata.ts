@@ -23,6 +23,25 @@ const buildVersion = readBuildGlobal(() => __HEVY_MCP_VERSION__);
 export const SERVER_NAME = readBuildString(buildName, "hevy-mcp");
 export const SERVER_VERSION = readBuildString(buildVersion, "dev");
 
+/**
+ * Server metadata advertised during discovery and initialization.
+ *
+ * `name`/`version` are injected at build time; the remaining fields are the
+ * spec-recommended metadata clients and directories display (MCP schema
+ * `Implementation`): human-readable title, description, public website, and a
+ * scalable vector icon.
+ */
+export const SERVER_TITLE = "Hevy MCP";
+export const SERVER_DESCRIPTION =
+	"Connects AI assistants to the authenticated user's Hevy workout-tracking data — workouts, routines, exercise templates, routine folders, body measurements, and training summaries — for querying, logging, and editing.";
+export const SERVER_WEBSITE_URL = "https://hevy-mcp.dev/";
+export const SERVER_ICONS = [
+	{
+		src: "https://hevy-mcp.dev/favicon.svg",
+		mimeType: "image/svg+xml",
+	},
+] as const;
+
 export const SERVER_INSTRUCTIONS = [
 	"Hevy MCP connects clients to the authenticated user's Hevy workout-tracking data, including workouts, routines, exercise templates, routine folders, body measurements, and profile information. HEVY_API_KEY must contain a valid Hevy API key for local stdio use.",
 	"Safety: all get-* and search-* tools are read-only. create-* and update-* tools mutate Hevy data. Creates are additive and non-idempotent, so repeating one can create duplicates. Updates can overwrite existing data. Delete operations are not available.",

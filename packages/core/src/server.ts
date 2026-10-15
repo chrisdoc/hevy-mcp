@@ -10,9 +10,13 @@ import type {
 import { registerWorkoutPrompts } from "./prompts/workouts.js";
 import { registerHevyResources } from "./resources/hevy.js";
 import {
+	SERVER_ICONS,
 	SERVER_INSTRUCTIONS,
 	SERVER_NAME,
+	SERVER_TITLE,
 	SERVER_VERSION,
+	SERVER_DESCRIPTION,
+	SERVER_WEBSITE_URL,
 } from "./server-metadata.js";
 import { registerHevyTools } from "./tools/register.js";
 import { createToolRuntime } from "./tools/tool-runtime.js";
@@ -92,7 +96,14 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 		options: CreateHevyMcpServerOptions,
 	): Effect.fn.Return<McpServer, HevyMcpServerConstructionError, Scope.Scope> {
 		const baseServer = new McpServer(
-			{ name: SERVER_NAME, version: SERVER_VERSION },
+			{
+				name: SERVER_NAME,
+				title: SERVER_TITLE,
+				description: SERVER_DESCRIPTION,
+				websiteUrl: SERVER_WEBSITE_URL,
+				icons: SERVER_ICONS.map((icon) => ({ ...icon })),
+				version: SERVER_VERSION,
+			},
 			{ capabilities: { logging: {} }, instructions: SERVER_INSTRUCTIONS },
 		);
 		const server = options.decorateServer?.(baseServer) ?? baseServer;

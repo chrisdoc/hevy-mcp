@@ -201,7 +201,22 @@ describe("tool annotations", () => {
 	it.each(READ_ONLY_TOOLS)("%s is read-only", (name) => {
 		const annotations = getAnnotations(spies, name);
 		expect(annotations.readOnlyHint).toBe(true);
+		expect(annotations.destructiveHint).toBe(false);
 	});
+
+	it.each(READ_ONLY_TOOLS)(
+		"%s declares boolean behavior hints for compatibility checks",
+		(name) => {
+			const annotations = getAnnotations(spies, name);
+			for (const hint of [
+				"readOnlyHint",
+				"destructiveHint",
+				"openWorldHint",
+			] as const) {
+				expect(typeof annotations[hint], `${name} ${hint}`).toBe("boolean");
+			}
+		},
+	);
 
 	it.each(READ_ONLY_TOOLS)(
 		"%s uses registerTool with an object output schema",
