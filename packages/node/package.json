@@ -52,7 +52,7 @@
 	"devDependencies": {
 		"@hevy-mcp/core": "workspace:*",
 		"@hevy-mcp/hevy-client": "workspace:*",
-		"@sentry/core": "^11.4.0",
+		"@sentry/core": "^11.6.0",
 		"@types/node": "^26.6.4",
 		"cross-env": "^10.1.0",
 		"tsdown": "^0.23.0",
