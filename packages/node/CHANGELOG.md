@@ -1,5 +1,11 @@
 # hevy-mcp
 
+## 6.2.0
+
+### Minor Changes
+
+- [#1246](https://github.com/chrisdoc/hevy-mcp/pull/1246) [`03b8678`](https://github.com/chrisdoc/hevy-mcp/commit/03b86780bbe5cd08f046dcfe29e4f0d614bc40d2) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Advertise spec-recommended server metadata (title, description, website URL, and a scalable vector icon) during MCP discovery and initialization, and declare boolean `destructiveHint` on every read-only tool for platform compatibility checks.
+
 ## 6.1.22
 
 ### Patch Changes

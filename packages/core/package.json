@@ -1,6 +1,6 @@
 {
 	"name": "@hevy-mcp/core",
-	"version": "0.2.20",
+	"version": "0.2.21",
 	"private": true,
 	"type": "module",
 	"exports": {
