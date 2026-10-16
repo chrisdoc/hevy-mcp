@@ -61,7 +61,4 @@ export type PutV1RoutinesRoutineidResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PutV1RoutinesRoutineidResponse =
-  | PutV1RoutinesRoutineidStatus200
-  | PutV1RoutinesRoutineidStatus400
-  | PutV1RoutinesRoutineidStatus404;
+export type PutV1RoutinesRoutineidResponse = PutV1RoutinesRoutineidStatus200;

@@ -41,6 +41,4 @@ export type GetV1WorkoutsWorkoutidResponses = {
 /**
  * @description Union of all possible responses
  */
-export type GetV1WorkoutsWorkoutidResponse =
-  | GetV1WorkoutsWorkoutidStatus200
-  | GetV1WorkoutsWorkoutidStatus404;
+export type GetV1WorkoutsWorkoutidResponse = GetV1WorkoutsWorkoutidStatus200;

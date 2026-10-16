@@ -44,6 +44,4 @@ export type PostV1RoutineFoldersResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PostV1RoutineFoldersResponse =
-  | PostV1RoutineFoldersStatus201
-  | PostV1RoutineFoldersStatus400;
+export type PostV1RoutineFoldersResponse = PostV1RoutineFoldersStatus201;

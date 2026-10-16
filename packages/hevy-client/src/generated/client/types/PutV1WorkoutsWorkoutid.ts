@@ -50,6 +50,4 @@ export type PutV1WorkoutsWorkoutidResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PutV1WorkoutsWorkoutidResponse =
-  | PutV1WorkoutsWorkoutidStatus200
-  | PutV1WorkoutsWorkoutidStatus400;
+export type PutV1WorkoutsWorkoutidResponse = PutV1WorkoutsWorkoutidStatus200;

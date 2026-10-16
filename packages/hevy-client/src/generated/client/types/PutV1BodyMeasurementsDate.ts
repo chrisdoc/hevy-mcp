@@ -54,6 +54,4 @@ export type PutV1BodyMeasurementsDateResponses = {
  * @description Union of all possible responses
  */
 export type PutV1BodyMeasurementsDateResponse =
-  | PutV1BodyMeasurementsDateStatus200
-  | PutV1BodyMeasurementsDateStatus400
-  | PutV1BodyMeasurementsDateStatus404;
+  PutV1BodyMeasurementsDateStatus200;

@@ -15,6 +15,11 @@ export default defineConfig({
 	test: {
 		pool: "forks",
 		isolate: true,
+		// Vitest 5 defaults clearMocks to true, which wipes call-count state
+		// recorded in earlier tests (for example the shared tool-registration
+		// spies). Tests were written against explicit reset semantics, so keep
+		// the vitest 4 behavior and reset mocks deliberately where needed.
+		clearMocks: false,
 		// Only unit opts into two workers. Other lanes stay serial: release-unit
 		// includes performance samples and tests that clean their report path.
 		maxWorkers:

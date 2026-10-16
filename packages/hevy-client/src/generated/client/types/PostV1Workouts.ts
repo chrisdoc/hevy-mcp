@@ -42,6 +42,4 @@ export type PostV1WorkoutsResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PostV1WorkoutsResponse =
-  | PostV1WorkoutsStatus201
-  | PostV1WorkoutsStatus400;
+export type PostV1WorkoutsResponse = PostV1WorkoutsStatus201;

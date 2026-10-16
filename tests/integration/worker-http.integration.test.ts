@@ -398,654 +398,668 @@ async function parseSseMessage(response: Response): Promise<{
 	};
 }
 
-describe.sequential("Cloudflare Vite Worker HTTP integration", () => {
-	beforeAll(
-		async () => {
-			// Keep local KV across startup retries while isolating it from other
-			// runs. The Vite plugin persists this state across separate `cf dev`
-			// invocations, so use a new directory for each test run.
-			workerPersistDir = await mkdtemp(
-				join(tmpdir(), "hevy-mcp-worker-http-test-"),
-			);
-			redirectRecorderServer = createServer((request, response) => {
-				redirectRequests.push({
-					apiKey: request.headers["api-key"] as string | undefined,
-					authorization: request.headers.authorization,
-					method: request.method ?? "",
-					url: request.url ?? "",
+describe(
+	"Cloudflare Vite Worker HTTP integration",
+	{ concurrent: false },
+	() => {
+		beforeAll(
+			async () => {
+				// Keep local KV across startup retries while isolating it from other
+				// runs. The Vite plugin persists this state across separate `cf dev`
+				// invocations, so use a new directory for each test run.
+				workerPersistDir = await mkdtemp(
+					join(tmpdir(), "hevy-mcp-worker-http-test-"),
+				);
+				redirectRecorderServer = createServer((request, response) => {
+					redirectRequests.push({
+						apiKey: request.headers["api-key"] as string | undefined,
+						authorization: request.headers.authorization,
+						method: request.method ?? "",
+						url: request.url ?? "",
+					});
+					writeJson(response, 200, { data: { id: "redirected-user" } });
 				});
-				writeJson(response, 200, { data: { id: "redirected-user" } });
-			});
-			const redirectRecorderPort = await listen(
-				redirectRecorderServer,
-				"0.0.0.0",
-			);
-			redirectDestinationUrl = `http://${localNetworkAddress()}:${redirectRecorderPort}/redirect-target`;
+				const redirectRecorderPort = await listen(
+					redirectRecorderServer,
+					"0.0.0.0",
+				);
+				redirectDestinationUrl = `http://${localNetworkAddress()}:${redirectRecorderPort}/redirect-target`;
 
-			fakeHevyServer = createServer((request, response) => {
-				const recordedRequest: RecordedHevyRequest = {
-					apiKey: request.headers["api-key"] as string | undefined,
-					authorization: request.headers.authorization,
-					method: request.method ?? "",
-					url: request.url ?? "",
-				};
-				hevyRequests.push(recordedRequest);
-				const apiKey = request.headers["api-key"];
-				const pathname = new URL(request.url ?? "/", "http://fake-hevy.local")
-					.pathname;
-				if (request.method === "POST" && pathname === "/v1/routines") {
+				fakeHevyServer = createServer((request, response) => {
+					const recordedRequest: RecordedHevyRequest = {
+						apiKey: request.headers["api-key"] as string | undefined,
+						authorization: request.headers.authorization,
+						method: request.method ?? "",
+						url: request.url ?? "",
+					};
+					hevyRequests.push(recordedRequest);
+					const apiKey = request.headers["api-key"];
+					const pathname = new URL(request.url ?? "/", "http://fake-hevy.local")
+						.pathname;
+					if (request.method === "POST" && pathname === "/v1/routines") {
+						if (apiKey !== VALID_API_KEY) {
+							writeJson(response, 403, { error: "forbidden" });
+							return;
+						}
+						let body = "";
+						request.on("data", (chunk: Buffer) => {
+							body += chunk.toString();
+						});
+						request.on("end", () => {
+							try {
+								const parsed = jsonObjectSchema.parse(JSON.parse(body));
+								recordedRequest.body = parsed;
+								const routine = requireRecord(parsed.routine, "posted routine");
+								createdRoutine = {
+									id: "worker-created-routine",
+									title: routine.title,
+									created_at: "2026-09-18T12:00:00Z",
+									updated_at: "2026-09-18T12:00:00Z",
+									exercises: [],
+								};
+								writeJson(response, 201, { routine: createdRoutine });
+							} catch {
+								writeJson(response, 400, { error: "invalid routine payload" });
+							}
+						});
+						return;
+					}
+					if (request.method !== "GET") {
+						writeJson(response, 404, { error: "not found" });
+						return;
+					}
+					if (pathname === "/v1/user/info" && apiKey === INVALID_API_KEY) {
+						writeJson(response, 401, { error: "invalid key" });
+						return;
+					}
+					if (
+						pathname === "/v1/user/info" &&
+						apiKey === UPSTREAM_FAILURE_API_KEY
+					) {
+						writeJson(response, 503, { error: "temporarily unavailable" });
+						return;
+					}
+					if (pathname === "/v1/user/info" && apiKey === REDIRECT_API_KEY) {
+						response.writeHead(302, { location: redirectDestinationUrl });
+						response.end();
+						return;
+					}
 					if (apiKey !== VALID_API_KEY) {
 						writeJson(response, 403, { error: "forbidden" });
 						return;
 					}
-					let body = "";
-					request.on("data", (chunk: Buffer) => {
-						body += chunk.toString();
-					});
-					request.on("end", () => {
-						try {
-							const parsed = jsonObjectSchema.parse(JSON.parse(body));
-							recordedRequest.body = parsed;
-							const routine = requireRecord(parsed.routine, "posted routine");
-							createdRoutine = {
-								id: "worker-created-routine",
-								title: routine.title,
-								created_at: "2026-09-18T12:00:00Z",
-								updated_at: "2026-09-18T12:00:00Z",
-								exercises: [],
-							};
-							writeJson(response, 201, { routine: createdRoutine });
-						} catch {
-							writeJson(response, 400, { error: "invalid routine payload" });
-						}
-					});
-					return;
-				}
-				if (request.method !== "GET") {
-					writeJson(response, 404, { error: "not found" });
-					return;
-				}
-				if (pathname === "/v1/user/info" && apiKey === INVALID_API_KEY) {
-					writeJson(response, 401, { error: "invalid key" });
-					return;
-				}
-				if (
-					pathname === "/v1/user/info" &&
-					apiKey === UPSTREAM_FAILURE_API_KEY
-				) {
-					writeJson(response, 503, { error: "temporarily unavailable" });
-					return;
-				}
-				if (pathname === "/v1/user/info" && apiKey === REDIRECT_API_KEY) {
-					response.writeHead(302, { location: redirectDestinationUrl });
-					response.end();
-					return;
-				}
-				if (apiKey !== VALID_API_KEY) {
-					writeJson(response, 403, { error: "forbidden" });
-					return;
-				}
-				switch (pathname) {
-					case "/v1/routines/worker-created-routine":
-						writeJson(
-							response,
-							createdRoutine === undefined ? 404 : 200,
-							createdRoutine === undefined
-								? { error: "not found" }
-								: { routine: createdRoutine },
-						);
-						return;
-					case "/v1/user/info":
-						writeJson(response, 200, {
-							data: {
-								id: "fake-user-id",
-								name: "Fake Hevy User",
-								url: "https://hevy.com/user/fake-user-id",
-							},
-						});
-						return;
-					case "/v1/workouts":
-						writeJson(response, 200, {
-							page: 1,
-							page_count: 1,
-							workouts: [
-								{
-									id: "worker-workout-1",
-									title: "Worker Workout",
-									description: "Worker HTTP contract fixture",
-									start_time: "2025-03-27T07:00:00Z",
-									end_time: "2025-03-27T08:00:00Z",
-									created_at: "2025-03-27T07:00:00Z",
-									updated_at: "2025-03-27T08:00:00Z",
-									exercises: [],
+					switch (pathname) {
+						case "/v1/routines/worker-created-routine":
+							writeJson(
+								response,
+								createdRoutine === undefined ? 404 : 200,
+								createdRoutine === undefined
+									? { error: "not found" }
+									: { routine: createdRoutine },
+							);
+							return;
+						case "/v1/user/info":
+							writeJson(response, 200, {
+								data: {
+									id: "fake-user-id",
+									name: "Fake Hevy User",
+									url: "https://hevy.com/user/fake-user-id",
 								},
-							],
-						});
-						return;
-					case "/v1/routines":
-						writeJson(response, 200, {
-							page: 1,
-							page_count: 1,
-							routines: [
-								{
-									id: "worker-routine-1",
-									title: "Worker Routine",
-									folder_id: 10,
-									created_at: "2025-03-26T19:00:00Z",
-									updated_at: "2025-03-26T19:15:00Z",
-									exercises: [],
-								},
-							],
-						});
-						return;
-					case "/v1/exercise_templates":
-						writeJson(response, 200, {
-							page: 1,
-							page_count: 1,
-							exercise_templates: [
-								{
-									id: "worker-template-1",
-									title: "Worker Bench Press",
-									type: "weight_reps",
-									primary_muscle_group: "chest",
-									secondary_muscle_groups: ["triceps"],
-									is_custom: false,
-								},
-							],
-						});
-						return;
-					case "/v1/routine_folders":
-						writeJson(response, 200, {
-							page: 1,
-							page_count: 1,
-							routine_folders: [
-								{
-									id: 10,
-									title: "Worker Folder",
-									created_at: "2025-03-26T09:00:00Z",
-									updated_at: "2025-03-26T09:00:00Z",
-								},
-							],
-						});
-						return;
-					default:
-						writeJson(response, 404, { error: "not found" });
-				}
-			});
-			const fakeHevyPort = await listen(fakeHevyServer, "0.0.0.0");
-			fakeHevyBaseUrl = `http://${localNetworkAddress()}:${fakeHevyPort}`;
+							});
+							return;
+						case "/v1/workouts":
+							writeJson(response, 200, {
+								page: 1,
+								page_count: 1,
+								workouts: [
+									{
+										id: "worker-workout-1",
+										title: "Worker Workout",
+										description: "Worker HTTP contract fixture",
+										start_time: "2025-03-27T07:00:00Z",
+										end_time: "2025-03-27T08:00:00Z",
+										created_at: "2025-03-27T07:00:00Z",
+										updated_at: "2025-03-27T08:00:00Z",
+										exercises: [],
+									},
+								],
+							});
+							return;
+						case "/v1/routines":
+							writeJson(response, 200, {
+								page: 1,
+								page_count: 1,
+								routines: [
+									{
+										id: "worker-routine-1",
+										title: "Worker Routine",
+										folder_id: 10,
+										created_at: "2025-03-26T19:00:00Z",
+										updated_at: "2025-03-26T19:15:00Z",
+										exercises: [],
+									},
+								],
+							});
+							return;
+						case "/v1/exercise_templates":
+							writeJson(response, 200, {
+								page: 1,
+								page_count: 1,
+								exercise_templates: [
+									{
+										id: "worker-template-1",
+										title: "Worker Bench Press",
+										type: "weight_reps",
+										primary_muscle_group: "chest",
+										secondary_muscle_groups: ["triceps"],
+										is_custom: false,
+									},
+								],
+							});
+							return;
+						case "/v1/routine_folders":
+							writeJson(response, 200, {
+								page: 1,
+								page_count: 1,
+								routine_folders: [
+									{
+										id: 10,
+										title: "Worker Folder",
+										created_at: "2025-03-26T09:00:00Z",
+										updated_at: "2025-03-26T09:00:00Z",
+									},
+								],
+							});
+							return;
+						default:
+							writeJson(response, 404, { error: "not found" });
+					}
+				});
+				const fakeHevyPort = await listen(fakeHevyServer, "0.0.0.0");
+				fakeHevyBaseUrl = `http://${localNetworkAddress()}:${fakeHevyPort}`;
 
+				try {
+					await startCfDev();
+				} catch (error) {
+					await stopCfDev();
+					await Promise.all([
+						close(fakeHevyServer),
+						close(redirectRecorderServer),
+					]);
+					throw error;
+				}
+			},
+			MAX_STARTUP_ATTEMPTS * STARTUP_TIMEOUT_MS + 15_000,
+		);
+
+		afterAll(async () => {
 			try {
-				await startCfDev();
-			} catch (error) {
 				await stopCfDev();
+			} finally {
 				await Promise.all([
 					close(fakeHevyServer),
 					close(redirectRecorderServer),
 				]);
-				throw error;
+				// Guard against a failed mkdtemp (undefined dir): rm(undefined) would
+				// throw and mask whatever error made beforeAll fail in the first place.
+				if (workerPersistDir) {
+					await rm(workerPersistDir, { recursive: true, force: true });
+				}
 			}
-		},
-		MAX_STARTUP_ATTEMPTS * STARTUP_TIMEOUT_MS + 15_000,
-	);
+		}, 10_000);
 
-	afterAll(async () => {
-		try {
-			await stopCfDev();
-		} finally {
-			await Promise.all([close(fakeHevyServer), close(redirectRecorderServer)]);
-			// Guard against a failed mkdtemp (undefined dir): rm(undefined) would
-			// throw and mask whatever error made beforeAll fail in the first place.
-			if (workerPersistDir) {
-				await rm(workerPersistDir, { recursive: true, force: true });
-			}
-		}
-	}, 10_000);
-
-	beforeEach(() => {
-		hevyRequests.length = 0;
-		redirectRequests.length = 0;
-		createdRoutine = undefined;
-	});
-
-	it("routes requests and returns stateless SSE initialize responses", async () => {
-		const notFound = await fetch(`${workerBaseUrl}/unknown`);
-		expect(notFound.status).toBe(404);
-
-		const response = await postMcp(JSON.stringify(initializeRequest()));
-		expect(response.status).toBe(200);
-		expect(response.headers.get("content-type")).toContain("text/event-stream");
-		expect(response.headers.get("mcp-session-id")).toBeNull();
-		const event = await parseSseMessage(response);
-		expect(event.event).toBe("message");
-		expect(event.payload).toMatchObject({
-			jsonrpc: "2.0",
-			id: 1,
-			result: { protocolVersion: LATEST_PROTOCOL_VERSION },
+		beforeEach(() => {
+			hevyRequests.length = 0;
+			redirectRequests.length = 0;
+			createdRoutine = undefined;
 		});
-		expect(hevyRequests).toEqual([
-			expect.objectContaining({
-				apiKey: VALID_API_KEY,
-				authorization: undefined,
-				method: "GET",
-				url: "/v1/user/info",
-			}),
-		]);
-	});
 
-	it("does not follow authentication redirects or leak the API key", async () => {
-		const response = await postMcp(
-			JSON.stringify(initializeRequest()),
-			mcpHeaders(REDIRECT_API_KEY),
-		);
+		it("routes requests and returns stateless SSE initialize responses", async () => {
+			const notFound = await fetch(`${workerBaseUrl}/unknown`);
+			expect(notFound.status).toBe(404);
 
-		expect(response.status).toBe(502);
-		const body = await response.json();
-		expect(body).toMatchObject({
-			error: {
-				outcome: "terminal_failure",
-				phase: "response-content",
-				operation_safety: "read",
-				commit_state: "not_sent",
-				safe_to_retry: false,
-			},
-		});
-		expect(JSON.stringify(body)).not.toContain(REDIRECT_API_KEY);
-		expect(hevyRequests).toEqual([
-			expect.objectContaining({
-				apiKey: REDIRECT_API_KEY,
-				url: "/v1/user/info",
-			}),
-		]);
-		expect(redirectRequests).toHaveLength(0);
-		expect(
-			hevyRequests.some((request) => request.url.includes(REDIRECT_API_KEY)),
-		).toBe(false);
-		expect(cfLogs).not.toContain(VALID_API_KEY);
-		expect(cfLogs).not.toContain(INVALID_API_KEY);
-		expect(cfLogs).not.toContain(UPSTREAM_FAILURE_API_KEY);
-		expect(cfLogs).not.toContain(REDIRECT_API_KEY);
-		expect(cfLogs).not.toContain(fakeHevyBaseUrl);
-		expect(cfLogs).not.toContain(redirectDestinationUrl);
-	});
-
-	it("supports SDK tool discovery and a real tool call through the override", async () => {
-		const client = new Client({
-			name: "worker-http-sdk-client",
-			version: "1.0.0",
-		});
-		const transport = new StreamableHTTPClientTransport(
-			new URL(`${workerBaseUrl}/mcp`),
-			{
-				requestInit: {
-					headers: { authorization: `Bearer ${VALID_API_KEY}` },
-				},
-			},
-		);
-		try {
-			await client.connect(transport);
-			const tools = await client.listTools();
-			expect(tools.tools.map((tool) => tool.name)).toContain("get-workouts");
-
-			const requestsBeforeToolCall = hevyRequests.length;
-			const result = await client.callTool({
-				name: "get-workouts",
-				arguments: { page: 1, page_size: 1 },
+			const response = await postMcp(JSON.stringify(initializeRequest()));
+			expect(response.status).toBe(200);
+			expect(response.headers.get("content-type")).toContain(
+				"text/event-stream",
+			);
+			expect(response.headers.get("mcp-session-id")).toBeNull();
+			const event = await parseSseMessage(response);
+			expect(event.event).toBe("message");
+			expect(event.payload).toMatchObject({
+				jsonrpc: "2.0",
+				id: 1,
+				result: { protocolVersion: LATEST_PROTOCOL_VERSION },
 			});
-			expect(JSON.stringify(result)).toContain("worker-workout-1");
-			// The preceding `connect()` (initialize) call already validated and
-			// cached this key, so the tool call itself skips re-validation.
-			expect(hevyRequests.length - requestsBeforeToolCall).toBe(1);
-			expect(transport.sessionId).toBeUndefined();
-			expect(
-				hevyRequests.every((request) => request.apiKey === VALID_API_KEY),
-			).toBe(true);
-			expect(
-				hevyRequests.every(
-					(request) =>
-						request.authorization === undefined &&
-						!request.url.includes(VALID_API_KEY),
-				),
-			).toBe(true);
-		} finally {
-			await client.close();
-		}
-	});
-
-	it("creates and retrieves routines through discovered Worker HTTP tools", async () => {
-		const client = new Client({
-			name: "worker-http-create-routine-client",
-			version: "1.0.0",
+			expect(hevyRequests).toEqual([
+				expect.objectContaining({
+					apiKey: VALID_API_KEY,
+					authorization: undefined,
+					method: "GET",
+					url: "/v1/user/info",
+				}),
+			]);
 		});
-		const transport = new StreamableHTTPClientTransport(
-			new URL(`${workerBaseUrl}/mcp`),
-			{
-				requestInit: {
-					headers: { authorization: `Bearer ${VALID_API_KEY}` },
+
+		it("does not follow authentication redirects or leak the API key", async () => {
+			const response = await postMcp(
+				JSON.stringify(initializeRequest()),
+				mcpHeaders(REDIRECT_API_KEY),
+			);
+
+			expect(response.status).toBe(502);
+			const body = await response.json();
+			expect(body).toMatchObject({
+				error: {
+					outcome: "terminal_failure",
+					phase: "response-content",
+					operation_safety: "read",
+					commit_state: "not_sent",
+					safe_to_retry: false,
 				},
-			},
-		);
-		try {
-			await client.connect(transport);
-			const { tools } = await client.listTools();
-			const createTool = tools.find((tool) => tool.name === "create-routine");
-			if (!createTool) throw new Error("create-routine is not advertised");
-			const schema = requireRecord(
-				jsonValueSchema.parse(createTool.inputSchema),
-				"create-routine input schema",
-			);
-			const properties = requireRecord(schema.properties, "root properties");
-			const required = schema.required;
-			expect(required).toEqual(["routine"]);
-			const routineField = Array.isArray(required) ? required[0] : undefined;
-			if (!isString(routineField)) {
-				throw new Error("No routine field in the discovered schema");
-			}
-			const routineSchema = requireRecord(
-				properties[routineField],
-				"routine schema",
-			);
-			const routineProperties = requireRecord(
-				routineSchema.properties,
-				"routine properties",
-			);
-			expect(routineSchema.required).toEqual(
-				expect.arrayContaining(["title", "exercises"]),
-			);
-			const exercisesSchema = requireRecord(
-				routineProperties.exercises,
-				"exercises schema",
-			);
-			const exerciseSchema = requireRecord(
-				exercisesSchema.items,
-				"exercise schema",
-			);
-			const exerciseProperties = requireRecord(
-				exerciseSchema.properties,
-				"exercise properties",
-			);
-			expect(exerciseProperties).toHaveProperty("exercise_template_id");
-			expect(exerciseProperties).toHaveProperty("rest_seconds");
-			expect(exerciseProperties).toHaveProperty("superset_id");
-			const setSchema = requireRecord(
-				requireRecord(exerciseProperties.sets, "sets schema").items,
-				"set schema",
-			);
-			expect(
-				requireRecord(setSchema.properties, "set properties"),
-			).toHaveProperty("rep_range");
-
-			const routine = {
-				title: "Worker create contract",
-				notes: "Increase load after both working sets reach the target.",
-				exercises: [
-					{
-						exercise_template_id: "234897AB",
-						superset_id: 1,
-						rest_seconds: 60,
-						notes: "Controlled curl, 8–15 reps",
-						sets: [
-							{ type: "normal", reps: 15 },
-							{ type: "normal", reps: 15 },
-						],
-					},
-					{
-						exercise_template_id: "B5EFBF9C",
-						superset_id: 1,
-						rest_seconds: 90,
-						notes: "Controlled extension, 8–15 reps",
-						sets: [
-							{ type: "normal", rep_range: { start: 8, end: 15 } },
-							{ type: "normal", rep_range: { start: 8, end: 15 } },
-						],
-					},
-				],
-			};
-			const canonicalResult = await client.callTool({
-				name: "create-routine",
-				arguments: { [routineField]: routine },
 			});
-			expect(canonicalResult.isError).not.toBe(true);
+			expect(JSON.stringify(body)).not.toContain(REDIRECT_API_KEY);
+			expect(hevyRequests).toEqual([
+				expect.objectContaining({
+					apiKey: REDIRECT_API_KEY,
+					url: "/v1/user/info",
+				}),
+			]);
+			expect(redirectRequests).toHaveLength(0);
 			expect(
-				requireJsonObject(canonicalResult.structuredContent, "create result")
-					.routine_id,
-			).toBe("worker-created-routine");
+				hevyRequests.some((request) => request.url.includes(REDIRECT_API_KEY)),
+			).toBe(false);
+			expect(cfLogs).not.toContain(VALID_API_KEY);
+			expect(cfLogs).not.toContain(INVALID_API_KEY);
+			expect(cfLogs).not.toContain(UPSTREAM_FAILURE_API_KEY);
+			expect(cfLogs).not.toContain(REDIRECT_API_KEY);
+			expect(cfLogs).not.toContain(fakeHevyBaseUrl);
+			expect(cfLogs).not.toContain(redirectDestinationUrl);
+		});
 
-			const connectedResult = await client.callTool({
-				name: "create-routine",
-				arguments: {
-					title: routine.title,
-					notes: routine.notes,
+		it("supports SDK tool discovery and a real tool call through the override", async () => {
+			const client = new Client({
+				name: "worker-http-sdk-client",
+				version: "1.0.0",
+			});
+			const transport = new StreamableHTTPClientTransport(
+				new URL(`${workerBaseUrl}/mcp`),
+				{
+					requestInit: {
+						headers: { authorization: `Bearer ${VALID_API_KEY}` },
+					},
+				},
+			);
+			try {
+				await client.connect(transport);
+				const tools = await client.listTools();
+				expect(tools.tools.map((tool) => tool.name)).toContain("get-workouts");
+
+				const requestsBeforeToolCall = hevyRequests.length;
+				const result = await client.callTool({
+					name: "get-workouts",
+					arguments: { page: 1, page_size: 1 },
+				});
+				expect(JSON.stringify(result)).toContain("worker-workout-1");
+				// The preceding `connect()` (initialize) call already validated and
+				// cached this key, so the tool call itself skips re-validation.
+				expect(hevyRequests.length - requestsBeforeToolCall).toBe(1);
+				expect(transport.sessionId).toBeUndefined();
+				expect(
+					hevyRequests.every((request) => request.apiKey === VALID_API_KEY),
+				).toBe(true);
+				expect(
+					hevyRequests.every(
+						(request) =>
+							request.authorization === undefined &&
+							!request.url.includes(VALID_API_KEY),
+					),
+				).toBe(true);
+			} finally {
+				await client.close();
+			}
+		});
+
+		it("creates and retrieves routines through discovered Worker HTTP tools", async () => {
+			const client = new Client({
+				name: "worker-http-create-routine-client",
+				version: "1.0.0",
+			});
+			const transport = new StreamableHTTPClientTransport(
+				new URL(`${workerBaseUrl}/mcp`),
+				{
+					requestInit: {
+						headers: { authorization: `Bearer ${VALID_API_KEY}` },
+					},
+				},
+			);
+			try {
+				await client.connect(transport);
+				const { tools } = await client.listTools();
+				const createTool = tools.find((tool) => tool.name === "create-routine");
+				if (!createTool) throw new Error("create-routine is not advertised");
+				const schema = requireRecord(
+					jsonValueSchema.parse(createTool.inputSchema),
+					"create-routine input schema",
+				);
+				const properties = requireRecord(schema.properties, "root properties");
+				const required = schema.required;
+				expect(required).toEqual(["routine"]);
+				const routineField = Array.isArray(required) ? required[0] : undefined;
+				if (!isString(routineField)) {
+					throw new Error("No routine field in the discovered schema");
+				}
+				const routineSchema = requireRecord(
+					properties[routineField],
+					"routine schema",
+				);
+				const routineProperties = requireRecord(
+					routineSchema.properties,
+					"routine properties",
+				);
+				expect(routineSchema.required).toEqual(
+					expect.arrayContaining(["title", "exercises"]),
+				);
+				const exercisesSchema = requireRecord(
+					routineProperties.exercises,
+					"exercises schema",
+				);
+				const exerciseSchema = requireRecord(
+					exercisesSchema.items,
+					"exercise schema",
+				);
+				const exerciseProperties = requireRecord(
+					exerciseSchema.properties,
+					"exercise properties",
+				);
+				expect(exerciseProperties).toHaveProperty("exercise_template_id");
+				expect(exerciseProperties).toHaveProperty("rest_seconds");
+				expect(exerciseProperties).toHaveProperty("superset_id");
+				const setSchema = requireRecord(
+					requireRecord(exerciseProperties.sets, "sets schema").items,
+					"set schema",
+				);
+				expect(
+					requireRecord(setSchema.properties, "set properties"),
+				).toHaveProperty("rep_range");
+
+				const routine = {
+					title: "Worker create contract",
+					notes: "Increase load after both working sets reach the target.",
 					exercises: [
 						{
-							exerciseTemplateId: "234897AB",
-							supersetId: 1,
-							restSeconds: 60,
+							exercise_template_id: "234897AB",
+							superset_id: 1,
+							rest_seconds: 60,
 							notes: "Controlled curl, 8–15 reps",
-							sets: [{ reps: 15 }, { reps: 15 }],
+							sets: [
+								{ type: "normal", reps: 15 },
+								{ type: "normal", reps: 15 },
+							],
 						},
 						{
-							exerciseTemplateId: "B5EFBF9C",
-							supersetId: 1,
-							restSeconds: 90,
+							exercise_template_id: "B5EFBF9C",
+							superset_id: 1,
+							rest_seconds: 90,
 							notes: "Controlled extension, 8–15 reps",
 							sets: [
-								{ repRange: { start: 8, end: 15 } },
-								{ repRange: { start: 8, end: 15 } },
+								{ type: "normal", rep_range: { start: 8, end: 15 } },
+								{ type: "normal", rep_range: { start: 8, end: 15 } },
 							],
 						},
 					],
-				},
-			});
-			expect(connectedResult.isError).not.toBe(true);
-			const createRequests = hevyRequests.filter(
-				(request) =>
-					request.method === "POST" && request.url === "/v1/routines",
-			);
-			expect(createRequests).toHaveLength(2);
-			for (const request of createRequests) {
-				const postedRoutine = requireRecord(
-					requireRecord(request.body, "create request").routine,
-					"posted routine",
-				);
-				expect(postedRoutine).toMatchObject(routine);
-				expect(request.apiKey).toBe(VALID_API_KEY);
-				expect(request.authorization).toBeUndefined();
-			}
-			const readResult = await client.callTool({
-				name: "get-routine",
-				arguments: { routine_id: "worker-created-routine" },
-			});
-			expect(readResult.isError).not.toBe(true);
-			expect(
-				requireJsonObject(readResult.structuredContent, "read result").routine,
-			).toMatchObject({ id: "worker-created-routine", title: routine.title });
-		} finally {
-			await client.close();
-		}
-	});
-
-	it("preserves representative list response shapes through Worker HTTP", async () => {
-		const client = new Client({
-			name: "worker-http-contract-client",
-			version: "1.0.0",
-		});
-		const transport = new StreamableHTTPClientTransport(
-			new URL(`${workerBaseUrl}/mcp`),
-			{
-				requestInit: {
-					headers: { authorization: `Bearer ${VALID_API_KEY}` },
-				},
-			},
-		);
-		try {
-			await client.connect(transport);
-			const calls = [
-				{
-					expectedId: "worker-workout-1",
-					field: "workouts",
-					name: "get-workouts",
-				},
-				{
-					expectedId: "worker-routine-1",
-					field: "routines",
-					name: "get-routines",
-				},
-			] as const;
-
-			for (const call of calls) {
-				const result = await client.callTool({
-					name: call.name,
-					arguments: { page: 1, page_size: 1 },
+				};
+				const canonicalResult = await client.callTool({
+					name: "create-routine",
+					arguments: { [routineField]: routine },
 				});
-				const payload = requireToolListPayload(result, call.field);
-				expect(payload.firstItem.id).toBe(call.expectedId);
-				expect(isString(payload.firstItem.id)).toBe(true);
-				if (call.name === "get-workouts" || call.name === "get-routines") {
-					expect(payload.firstItem.exercise_count).toBe(0);
-					expect(payload.firstItem.set_count).toBe(0);
-					expect(payload.firstItem).not.toHaveProperty("exercises");
+				expect(canonicalResult.isError).not.toBe(true);
+				expect(
+					requireJsonObject(canonicalResult.structuredContent, "create result")
+						.routine_id,
+				).toBe("worker-created-routine");
+
+				const connectedResult = await client.callTool({
+					name: "create-routine",
+					arguments: {
+						title: routine.title,
+						notes: routine.notes,
+						exercises: [
+							{
+								exerciseTemplateId: "234897AB",
+								supersetId: 1,
+								restSeconds: 60,
+								notes: "Controlled curl, 8–15 reps",
+								sets: [{ reps: 15 }, { reps: 15 }],
+							},
+							{
+								exerciseTemplateId: "B5EFBF9C",
+								supersetId: 1,
+								restSeconds: 90,
+								notes: "Controlled extension, 8–15 reps",
+								sets: [
+									{ repRange: { start: 8, end: 15 } },
+									{ repRange: { start: 8, end: 15 } },
+								],
+							},
+						],
+					},
+				});
+				expect(connectedResult.isError).not.toBe(true);
+				const createRequests = hevyRequests.filter(
+					(request) =>
+						request.method === "POST" && request.url === "/v1/routines",
+				);
+				expect(createRequests).toHaveLength(2);
+				for (const request of createRequests) {
+					const postedRoutine = requireRecord(
+						requireRecord(request.body, "create request").routine,
+						"posted routine",
+					);
+					expect(postedRoutine).toMatchObject(routine);
+					expect(request.apiKey).toBe(VALID_API_KEY);
+					expect(request.authorization).toBeUndefined();
 				}
-				expect(JSON.parse(payload.text)).toEqual(payload.items);
+				const readResult = await client.callTool({
+					name: "get-routine",
+					arguments: { routine_id: "worker-created-routine" },
+				});
+				expect(readResult.isError).not.toBe(true);
+				expect(
+					requireJsonObject(readResult.structuredContent, "read result")
+						.routine,
+				).toMatchObject({ id: "worker-created-routine", title: routine.title });
+			} finally {
+				await client.close();
 			}
-
-			expect(transport.sessionId).toBeUndefined();
-		} finally {
-			await client.close();
-		}
-	});
-
-	it("rejects missing and malformed bearer credentials without upstream calls", async () => {
-		const missingHeaders = mcpHeaders();
-		missingHeaders.delete("authorization");
-		const malformedHeaders = mcpHeaders();
-		malformedHeaders.set("authorization", "Bearer key with spaces");
-
-		const missing = await postMcp(
-			JSON.stringify(initializeRequest()),
-			missingHeaders,
-		);
-		const malformed = await postMcp(
-			JSON.stringify(initializeRequest()),
-			malformedHeaders,
-		);
-
-		expect(missing.status).toBe(401);
-		expect(missing.headers.get("www-authenticate")).toContain(
-			'Bearer realm="OAuth"',
-		);
-		// The local Worker origin is not the configured production resource origin.
-		expect(missing.headers.get("www-authenticate")).not.toContain(
-			"resource_metadata=",
-		);
-		expect(malformed.status).toBe(401);
-		expect(hevyRequests).toHaveLength(0);
-	});
-
-	it("maps invalid upstream credentials to 401 and upstream failures to 502", async () => {
-		const invalid = await postMcp(
-			JSON.stringify(initializeRequest()),
-			mcpHeaders(INVALID_API_KEY),
-		);
-		const unavailable = await postMcp(
-			JSON.stringify(initializeRequest()),
-			mcpHeaders(UPSTREAM_FAILURE_API_KEY),
-		);
-
-		expect(invalid.status).toBe(401);
-		expect(invalid.headers.get("www-authenticate")).toBe("Bearer");
-		expect(unavailable.status).toBe(502);
-		const unavailableBody = await unavailable.json();
-		expect(unavailableBody).toEqual({
-			error: {
-				message: "Unable to validate the Hevy API key",
-				outcome: "terminal_failure",
-				phase: "response-content",
-				operation_safety: "read",
-				commit_state: "not_sent",
-				safe_to_retry: false,
-				code: "HEVY_RETRY_EXHAUSTED",
-				status: 503,
-			},
-		});
-		// A 401 is never retried; a 503 is transient and retried twice (three
-		// attempts total) before the validation client gives up.
-		expect(hevyRequests.map((request) => request.apiKey)).toEqual([
-			INVALID_API_KEY,
-			UPSTREAM_FAILURE_API_KEY,
-			UPSTREAM_FAILURE_API_KEY,
-			UPSTREAM_FAILURE_API_KEY,
-		]);
-		expect(JSON.stringify(unavailableBody)).not.toMatch(
-			/data|headers|responseError|cause|stack|Effect|secret/i,
-		);
-	});
-
-	it("returns MCP errors for unacceptable, unsupported, and invalid JSON requests", async () => {
-		const unacceptableHeaders = mcpHeaders();
-		unacceptableHeaders.set("accept", "application/json");
-		const unsupportedHeaders = mcpHeaders();
-		unsupportedHeaders.set("content-type", "text/plain");
-
-		const unacceptable = await postMcp(
-			JSON.stringify(initializeRequest()),
-			unacceptableHeaders,
-		);
-		const unsupported = await postMcp(
-			JSON.stringify(initializeRequest()),
-			unsupportedHeaders,
-		);
-		const invalidJson = await postMcp("{", mcpHeaders());
-
-		expect(unacceptable.status).toBe(406);
-		expect(await unacceptable.json()).toMatchObject({
-			error: { code: -32000 },
-		});
-		expect(unsupported.status).toBe(415);
-		expect(await unsupported.json()).toMatchObject({ error: { code: -32000 } });
-		expect(invalidJson.status).toBe(400);
-		expect(await invalidJson.json()).toMatchObject({ error: { code: -32700 } });
-		// All three requests use the default valid key, and the very first test
-		// in this file ("routes requests and returns stateless SSE initialize
-		// responses") already validated and cached it — so none of these three
-		// need a real Hevy round trip.
-		expect(hevyRequests.length).toBe(0);
-	});
-
-	it("allows configured CORS origins and rejects unconfigured origins", async () => {
-		const first = await fetch(`${workerBaseUrl}/mcp`, {
-			method: "OPTIONS",
-			headers: { origin: BROWSER_ORIGIN },
-		});
-		const second = await fetch(`${workerBaseUrl}/mcp`, {
-			method: "OPTIONS",
-			headers: { origin: "https://another-browser.example" },
 		});
 
-		expect(first.status).toBe(204);
-		expect(first.headers.get("access-control-allow-origin")).toBe(
-			BROWSER_ORIGIN,
-		);
-		expect(first.headers.get("access-control-allow-methods")).toBe(
-			"POST, OPTIONS",
-		);
-		expect(second.status).toBe(403);
-		expect(second.headers.get("access-control-allow-origin")).toBeNull();
-		expect(hevyRequests).toHaveLength(0);
-	});
+		it("preserves representative list response shapes through Worker HTTP", async () => {
+			const client = new Client({
+				name: "worker-http-contract-client",
+				version: "1.0.0",
+			});
+			const transport = new StreamableHTTPClientTransport(
+				new URL(`${workerBaseUrl}/mcp`),
+				{
+					requestInit: {
+						headers: { authorization: `Bearer ${VALID_API_KEY}` },
+					},
+				},
+			);
+			try {
+				await client.connect(transport);
+				const calls = [
+					{
+						expectedId: "worker-workout-1",
+						field: "workouts",
+						name: "get-workouts",
+					},
+					{
+						expectedId: "worker-routine-1",
+						field: "routines",
+						name: "get-routines",
+					},
+				] as const;
 
-	it.each(["GET", "DELETE"])(
-		"returns an OAuth challenge for unauthenticated %s",
-		async (method) => {
-			const response = await fetch(`${workerBaseUrl}/mcp`, { method });
-			expect(response.status).toBe(401);
-			expect(response.headers.get("www-authenticate")).toContain(
+				for (const call of calls) {
+					const result = await client.callTool({
+						name: call.name,
+						arguments: { page: 1, page_size: 1 },
+					});
+					const payload = requireToolListPayload(result, call.field);
+					expect(payload.firstItem.id).toBe(call.expectedId);
+					expect(isString(payload.firstItem.id)).toBe(true);
+					if (call.name === "get-workouts" || call.name === "get-routines") {
+						expect(payload.firstItem.exercise_count).toBe(0);
+						expect(payload.firstItem.set_count).toBe(0);
+						expect(payload.firstItem).not.toHaveProperty("exercises");
+					}
+					expect(JSON.parse(payload.text)).toEqual(payload.items);
+				}
+
+				expect(transport.sessionId).toBeUndefined();
+			} finally {
+				await client.close();
+			}
+		});
+
+		it("rejects missing and malformed bearer credentials without upstream calls", async () => {
+			const missingHeaders = mcpHeaders();
+			missingHeaders.delete("authorization");
+			const malformedHeaders = mcpHeaders();
+			malformedHeaders.set("authorization", "Bearer key with spaces");
+
+			const missing = await postMcp(
+				JSON.stringify(initializeRequest()),
+				missingHeaders,
+			);
+			const malformed = await postMcp(
+				JSON.stringify(initializeRequest()),
+				malformedHeaders,
+			);
+
+			expect(missing.status).toBe(401);
+			expect(missing.headers.get("www-authenticate")).toContain(
 				'Bearer realm="OAuth"',
 			);
-			expect(response.headers.get("www-authenticate")).not.toContain(
+			// The local Worker origin is not the configured production resource origin.
+			expect(missing.headers.get("www-authenticate")).not.toContain(
 				"resource_metadata=",
 			);
+			expect(malformed.status).toBe(401);
 			expect(hevyRequests).toHaveLength(0);
-		},
-	);
-});
+		});
+
+		it("maps invalid upstream credentials to 401 and upstream failures to 502", async () => {
+			const invalid = await postMcp(
+				JSON.stringify(initializeRequest()),
+				mcpHeaders(INVALID_API_KEY),
+			);
+			const unavailable = await postMcp(
+				JSON.stringify(initializeRequest()),
+				mcpHeaders(UPSTREAM_FAILURE_API_KEY),
+			);
+
+			expect(invalid.status).toBe(401);
+			expect(invalid.headers.get("www-authenticate")).toBe("Bearer");
+			expect(unavailable.status).toBe(502);
+			const unavailableBody = await unavailable.json();
+			expect(unavailableBody).toEqual({
+				error: {
+					message: "Unable to validate the Hevy API key",
+					outcome: "terminal_failure",
+					phase: "response-content",
+					operation_safety: "read",
+					commit_state: "not_sent",
+					safe_to_retry: false,
+					code: "HEVY_RETRY_EXHAUSTED",
+					status: 503,
+				},
+			});
+			// A 401 is never retried; a 503 is transient and retried twice (three
+			// attempts total) before the validation client gives up.
+			expect(hevyRequests.map((request) => request.apiKey)).toEqual([
+				INVALID_API_KEY,
+				UPSTREAM_FAILURE_API_KEY,
+				UPSTREAM_FAILURE_API_KEY,
+				UPSTREAM_FAILURE_API_KEY,
+			]);
+			expect(JSON.stringify(unavailableBody)).not.toMatch(
+				/data|headers|responseError|cause|stack|Effect|secret/i,
+			);
+		});
+
+		it("returns MCP errors for unacceptable, unsupported, and invalid JSON requests", async () => {
+			const unacceptableHeaders = mcpHeaders();
+			unacceptableHeaders.set("accept", "application/json");
+			const unsupportedHeaders = mcpHeaders();
+			unsupportedHeaders.set("content-type", "text/plain");
+
+			const unacceptable = await postMcp(
+				JSON.stringify(initializeRequest()),
+				unacceptableHeaders,
+			);
+			const unsupported = await postMcp(
+				JSON.stringify(initializeRequest()),
+				unsupportedHeaders,
+			);
+			const invalidJson = await postMcp("{", mcpHeaders());
+
+			expect(unacceptable.status).toBe(406);
+			expect(await unacceptable.json()).toMatchObject({
+				error: { code: -32000 },
+			});
+			expect(unsupported.status).toBe(415);
+			expect(await unsupported.json()).toMatchObject({
+				error: { code: -32000 },
+			});
+			expect(invalidJson.status).toBe(400);
+			expect(await invalidJson.json()).toMatchObject({
+				error: { code: -32700 },
+			});
+			// All three requests use the default valid key, and the very first test
+			// in this file ("routes requests and returns stateless SSE initialize
+			// responses") already validated and cached it — so none of these three
+			// need a real Hevy round trip.
+			expect(hevyRequests.length).toBe(0);
+		});
+
+		it("allows configured CORS origins and rejects unconfigured origins", async () => {
+			const first = await fetch(`${workerBaseUrl}/mcp`, {
+				method: "OPTIONS",
+				headers: { origin: BROWSER_ORIGIN },
+			});
+			const second = await fetch(`${workerBaseUrl}/mcp`, {
+				method: "OPTIONS",
+				headers: { origin: "https://another-browser.example" },
+			});
+
+			expect(first.status).toBe(204);
+			expect(first.headers.get("access-control-allow-origin")).toBe(
+				BROWSER_ORIGIN,
+			);
+			expect(first.headers.get("access-control-allow-methods")).toBe(
+				"POST, OPTIONS",
+			);
+			expect(second.status).toBe(403);
+			expect(second.headers.get("access-control-allow-origin")).toBeNull();
+			expect(hevyRequests).toHaveLength(0);
+		});
+
+		it.each(["GET", "DELETE"])(
+			"returns an OAuth challenge for unauthenticated %s",
+			async (method) => {
+				const response = await fetch(`${workerBaseUrl}/mcp`, { method });
+				expect(response.status).toBe(401);
+				expect(response.headers.get("www-authenticate")).toContain(
+					'Bearer realm="OAuth"',
+				);
+				expect(response.headers.get("www-authenticate")).not.toContain(
+					"resource_metadata=",
+				);
+				expect(hevyRequests).toHaveLength(0);
+			},
+		);
+	},
+);

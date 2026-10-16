@@ -62,6 +62,4 @@ export type GetV1ExerciseTemplatesResponses = {
 /**
  * @description Union of all possible responses
  */
-export type GetV1ExerciseTemplatesResponse =
-  | GetV1ExerciseTemplatesStatus200
-  | GetV1ExerciseTemplatesStatus400;
+export type GetV1ExerciseTemplatesResponse = GetV1ExerciseTemplatesStatus200;

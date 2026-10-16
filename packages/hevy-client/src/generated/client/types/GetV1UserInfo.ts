@@ -33,6 +33,4 @@ export type GetV1UserInfoResponses = {
 /**
  * @description Union of all possible responses
  */
-export type GetV1UserInfoResponse =
-  | GetV1UserInfoStatus200
-  | GetV1UserInfoStatus404;
+export type GetV1UserInfoResponse = GetV1UserInfoStatus200;

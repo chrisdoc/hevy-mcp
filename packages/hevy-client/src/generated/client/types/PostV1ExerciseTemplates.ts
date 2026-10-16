@@ -63,7 +63,4 @@ export type PostV1ExerciseTemplatesResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PostV1ExerciseTemplatesResponse =
-  | PostV1ExerciseTemplatesStatus200
-  | PostV1ExerciseTemplatesStatus400
-  | PostV1ExerciseTemplatesStatus403;
+export type PostV1ExerciseTemplatesResponse = PostV1ExerciseTemplatesStatus200;

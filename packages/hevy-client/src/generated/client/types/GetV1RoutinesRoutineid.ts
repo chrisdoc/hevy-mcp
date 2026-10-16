@@ -49,6 +49,4 @@ export type GetV1RoutinesRoutineidResponses = {
 /**
  * @description Union of all possible responses
  */
-export type GetV1RoutinesRoutineidResponse =
-  | GetV1RoutinesRoutineidStatus200
-  | GetV1RoutinesRoutineidStatus400;
+export type GetV1RoutinesRoutineidResponse = GetV1RoutinesRoutineidStatus200;

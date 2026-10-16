@@ -39,6 +39,11 @@ class TestExecutionSpan implements Span {
 		return false;
 	}
 
+	/** Workers `Span` requires a span context; the test span stays inert. */
+	spanContext(): TracingSpanContext {
+		return { traceId: "", spanId: "", traceFlags: 0 };
+	}
+
 	setAttribute(_key: string, _value: boolean | number | string): this {
 		return this;
 	}

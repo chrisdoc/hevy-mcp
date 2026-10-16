@@ -42,5 +42,4 @@ export type GetV1RoutineFoldersFolderidResponses = {
  * @description Union of all possible responses
  */
 export type GetV1RoutineFoldersFolderidResponse =
-  | GetV1RoutineFoldersFolderidStatus200
-  | GetV1RoutineFoldersFolderidStatus404;
+  GetV1RoutineFoldersFolderidStatus200;

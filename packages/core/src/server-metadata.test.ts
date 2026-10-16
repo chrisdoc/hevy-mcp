@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe.sequential("server metadata", () => {
+describe("server metadata", { concurrent: false }, () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
 		vi.resetModules();

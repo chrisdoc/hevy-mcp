@@ -62,6 +62,4 @@ export type GetV1RoutineFoldersResponses = {
 /**
  * @description Union of all possible responses
  */
-export type GetV1RoutineFoldersResponse =
-  | GetV1RoutineFoldersStatus200
-  | GetV1RoutineFoldersStatus400;
+export type GetV1RoutineFoldersResponse = GetV1RoutineFoldersStatus200;

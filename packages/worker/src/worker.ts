@@ -79,6 +79,14 @@ class FallbackSpan implements Span {
 		return false;
 	}
 
+	/**
+	 * Workers `Span` requires a span context; the fallback carries no real
+	 * trace identifiers so the canonical empty context keeps it inert.
+	 */
+	spanContext(): TracingSpanContext {
+		return { traceId: "", spanId: "", traceFlags: 0 };
+	}
+
 	setAttribute(_key: string, _value: boolean | number | string): this {
 		return this;
 	}

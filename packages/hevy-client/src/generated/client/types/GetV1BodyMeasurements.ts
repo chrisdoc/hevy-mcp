@@ -63,7 +63,4 @@ export type GetV1BodyMeasurementsResponses = {
 /**
  * @description Union of all possible responses
  */
-export type GetV1BodyMeasurementsResponse =
-  | GetV1BodyMeasurementsStatus200
-  | GetV1BodyMeasurementsStatus400
-  | GetV1BodyMeasurementsStatus404;
+export type GetV1BodyMeasurementsResponse = GetV1BodyMeasurementsStatus200;
