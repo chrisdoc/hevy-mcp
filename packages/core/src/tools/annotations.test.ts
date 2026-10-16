@@ -131,12 +131,17 @@ function getDescription(
 }
 
 describe("tool annotations", () => {
-	const spies = registerAllTools();
+	// Vitest 5 treats describe bodies as statically collectable suites, so
+	// side-effect-producing calls at describe-body level are deferred until a
+	// test runs. Seed the shared spies lazily on first use instead.
+	const seedSpies = () => registerAllTools();
+	let spies: ReturnType<typeof registerAllTools> | undefined;
+	const useSpies = () => (spies ??= seedSpies());
 
 	it("registers all known tools", () => {
 		const byName = (a: string, b: string) => a.localeCompare(b);
-		const registered = spies.registerTool.mock.calls
-			.map(([name]) => name as string)
+		const registered = useSpies()
+			.registerTool.mock.calls.map(([name]) => name as string)
 			.sort(byName);
 		const expected = [
 			...READ_ONLY_TOOLS,
@@ -149,19 +154,21 @@ describe("tool annotations", () => {
 	});
 
 	it("keeps feedback metadata diagnostic and privacy-specific", () => {
-		expect(getAnnotations(spies, "feedback")).toEqual({
+		expect(getAnnotations(useSpies(), "feedback")).toEqual({
 			title: "Report Feedback",
 			readOnlyHint: false,
 			destructiveHint: false,
 			idempotentHint: false,
 			openWorldHint: false,
 		});
-		expect(getDescription(spies, "feedback")).toBe(FEEDBACK_TOOL_DESCRIPTION);
+		expect(getDescription(useSpies(), "feedback")).toBe(
+			FEEDBACK_TOOL_DESCRIPTION,
+		);
 	});
 
 	it("every tool has a title and closed-world hint", () => {
 		for (const name of [...READ_ONLY_TOOLS, ...CREATE_TOOLS, ...UPDATE_TOOLS]) {
-			const annotations = getAnnotations(spies, name);
+			const annotations = getAnnotations(useSpies(), name);
 			expect(annotations.title, `${name} title`).toMatch(/\S/);
 			expect(annotations.openWorldHint, `${name} openWorldHint`).toBe(false);
 		}
@@ -170,12 +177,12 @@ describe("tool annotations", () => {
 	it("uses the exact compact descriptions", () => {
 		const names = [...READ_ONLY_TOOLS, ...CREATE_TOOLS, ...UPDATE_TOOLS];
 		const actual = Object.fromEntries(
-			names.map((name) => [name, getDescription(spies, name)]),
+			names.map((name) => [name, getDescription(useSpies(), name)]),
 		);
 
 		expect(actual).toEqual(EXPECTED_DESCRIPTIONS);
 		for (const name of names) {
-			const description = getDescription(spies, name);
+			const description = getDescription(useSpies(), name);
 			expect(description, `${name} description`).not.toBe("");
 			expect(description, `${name} safety prefix`).toMatch(
 				/^(?:Read-only(?:\.| for)|Writes |Mutates )/,
@@ -187,19 +194,19 @@ describe("tool annotations", () => {
 	});
 
 	it.each(READ_ONLY_TOOLS)("%s description says it is read-only", (name) => {
-		expect(getDescription(spies, name)).toMatch(/^Read-only(?:\.| for)/);
+		expect(getDescription(useSpies(), name)).toMatch(/^Read-only(?:\.| for)/);
 	});
 
 	it.each(CREATE_TOOLS)("%s description says it writes", (name) => {
-		expect(getDescription(spies, name)).toMatch(/^Writes /);
+		expect(getDescription(useSpies(), name)).toMatch(/^Writes /);
 	});
 
 	it.each(UPDATE_TOOLS)("%s description says it mutates", (name) => {
-		expect(getDescription(spies, name)).toMatch(/^Mutates /);
+		expect(getDescription(useSpies(), name)).toMatch(/^Mutates /);
 	});
 
 	it.each(READ_ONLY_TOOLS)("%s is read-only", (name) => {
-		const annotations = getAnnotations(spies, name);
+		const annotations = getAnnotations(useSpies(), name);
 		expect(annotations.readOnlyHint).toBe(true);
 		expect(annotations.destructiveHint).toBe(false);
 	});
@@ -207,7 +214,7 @@ describe("tool annotations", () => {
 	it.each(READ_ONLY_TOOLS)(
 		"%s declares boolean behavior hints for compatibility checks",
 		(name) => {
-			const annotations = getAnnotations(spies, name);
+			const annotations = getAnnotations(useSpies(), name);
 			for (const hint of [
 				"readOnlyHint",
 				"destructiveHint",
@@ -221,7 +228,7 @@ describe("tool annotations", () => {
 	it.each(READ_ONLY_TOOLS)(
 		"%s uses registerTool with an object output schema",
 		(name) => {
-			const match = spies.registerTool.mock.calls.find(
+			const match = useSpies().registerTool.mock.calls.find(
 				([toolName]) => toolName === name,
 			);
 			expect(match, `${name} registerTool call`).toBeTruthy();
@@ -235,7 +242,7 @@ describe("tool annotations", () => {
 	it.each(CREATE_TOOLS)(
 		"%s is a non-destructive, non-idempotent write",
 		(name) => {
-			const annotations = getAnnotations(spies, name);
+			const annotations = getAnnotations(useSpies(), name);
 			expect(annotations.readOnlyHint).toBe(false);
 			expect(annotations.destructiveHint).toBe(false);
 			expect(annotations.idempotentHint).toBe(false);
@@ -245,7 +252,7 @@ describe("tool annotations", () => {
 	it.each([...UPDATE_TOOLS, ...DESTRUCTIVE_TOOLS])(
 		"%s is a destructive, idempotent write",
 		(name) => {
-			const annotations = getAnnotations(spies, name);
+			const annotations = getAnnotations(useSpies(), name);
 			expect(annotations.readOnlyHint).toBe(false);
 			expect(annotations.destructiveHint).toBe(true);
 			expect(annotations.idempotentHint).toBe(true);

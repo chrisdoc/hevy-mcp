@@ -55,7 +55,4 @@ export type PostV1RoutinesResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PostV1RoutinesResponse =
-  | PostV1RoutinesStatus201
-  | PostV1RoutinesStatus400
-  | PostV1RoutinesStatus403;
+export type PostV1RoutinesResponse = PostV1RoutinesStatus201;

@@ -22,7 +22,10 @@ const MAX_CAPTURED_LOG_LENGTH = 32 * 1024;
 const LIVE_TESTS_ENABLED =
 	process.env.HEVY_RUN_LIVE_WORKER_TESTS === "1" &&
 	Boolean(process.env.HEVY_API_KEY);
-const describeLive = LIVE_TESTS_ENABLED ? describe.sequential : describe.skip;
+const describeLive = LIVE_TESTS_ENABLED
+	? (name: Parameters<typeof describe>[0], fn: () => void) =>
+			describe(name, { concurrent: false }, fn)
+	: describe.skip;
 
 const INVOKED_READ_TOOLS = [
 	"get-workouts",

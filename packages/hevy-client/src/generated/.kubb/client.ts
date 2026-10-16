@@ -331,7 +331,15 @@ export type RequestConfig<
 > = {
   baseURL?: string;
   url?: string;
-  method?: "GET" | "PUT" | "PATCH" | "POST" | "DELETE" | "OPTIONS" | "HEAD";
+  method?:
+    | "GET"
+    | "PUT"
+    | "PATCH"
+    | "POST"
+    | "DELETE"
+    | "OPTIONS"
+    | "HEAD"
+    | "QUERY";
   path?: unknown;
   query?: unknown;
   params?: unknown;
@@ -874,7 +882,7 @@ async function resolveRequest<TBody, TRequest, TResponse>({
       headers,
       body,
       signal: requestConfig.signal,
-      credentials: requestConfig.credentials,
+      credentials: requestConfig.credentials ?? config.credentials,
       options,
       responseType: requestConfig.responseType,
     },

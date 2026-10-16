@@ -12,6 +12,8 @@ export default defineConfig({
 		}),
 	],
 	test: {
+		// Keep vitest 4 mock semantics (see vitest.config.ts).
+		clearMocks: false,
 		// Workerd cold starts can exceed Vitest's five-second default on shared
 		// runners; keep the test lane reliable before caching its result.
 		testTimeout: 15_000,

@@ -42,7 +42,4 @@ export type PostV1BodyMeasurementsResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PostV1BodyMeasurementsResponse =
-  | PostV1BodyMeasurementsStatus200
-  | PostV1BodyMeasurementsStatus400
-  | PostV1BodyMeasurementsStatus409;
+export type PostV1BodyMeasurementsResponse = PostV1BodyMeasurementsStatus200;

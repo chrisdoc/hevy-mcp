@@ -47,6 +47,7 @@ function finish(
 function createTracingDouble() {
 	const span = {
 		isTraced: true,
+		spanContext: vi.fn(() => ({ traceId: "", spanId: "", traceFlags: 0 })),
 		setAttribute: vi.fn(),
 		setAttributes: vi.fn(),
 		recordException: vi.fn(),

@@ -47,5 +47,4 @@ export type GetV1BodyMeasurementsDateResponses = {
  * @description Union of all possible responses
  */
 export type GetV1BodyMeasurementsDateResponse =
-  | GetV1BodyMeasurementsDateStatus200
-  | GetV1BodyMeasurementsDateStatus404;
+  GetV1BodyMeasurementsDateStatus200;
