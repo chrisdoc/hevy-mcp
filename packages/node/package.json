@@ -34,10 +34,10 @@
 		"build:standalone": "cross-env HEVY_MCP_BUILD_MODE=standalone tsdown -c tsdown.config.ts"
 	},
 	"dependencies": {
-		"@effect/opentelemetry": "4.0.5",
+		"@effect/opentelemetry": "4.0.6",
 		"@modelcontextprotocol/node": "2.1.1",
 		"@modelcontextprotocol/server": "2.3.1",
-		"@opentelemetry/api": "^1.9.1",
+		"@opentelemetry/api": "1.9.1",
 		"@opentelemetry/exporter-metrics-otlp-http": "^0.223.0",
 		"@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
 		"@opentelemetry/resources": "^2.12.0",
@@ -45,14 +45,14 @@
 		"@opentelemetry/sdk-trace-base": "^2.12.0",
 		"@opentelemetry/sdk-trace-node": "^2.12.0",
 		"@sentry/node": "^11.8.0",
-		"effect": "^4.0.5",
+		"effect": "^4.0.6",
 		"semver": "^7.8.5",
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@hevy-mcp/core": "workspace:*",
 		"@hevy-mcp/hevy-client": "workspace:*",
-		"@sentry/core": "^11.8.0",
+		"@sentry/core": "^11.9.0",
 		"@types/node": "^26.6.5",
 		"cross-env": "^10.1.0",
 		"tsdown": "^0.23.1",

@@ -1,0 +1,6 @@
+# jactionlint replaces actionlint for workflow syntax, expression and input
+# checks. The "correctness" profile is the actionlint-compatible set; zizmor in
+# .github/workflows/workflow-lint.yml owns the security and policy audits, so the
+# broader default profile would duplicate that coverage.
+# https://jactionlint.jdx.dev/config#profiles
+profile: correctness
