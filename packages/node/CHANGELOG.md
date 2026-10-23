@@ -1,5 +1,17 @@
 # hevy-mcp
 
+## 6.2.2
+
+### Patch Changes
+
+- [#1253](https://github.com/chrisdoc/hevy-mcp/pull/1253) [`c65f277`](https://github.com/chrisdoc/hevy-mcp/commit/c65f277b449ea5669ef0a6b7421aaa5fc8dd6dc7) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Upgrade workspace dependencies to their latest compatible releases: Effect 4.0.6, kubb 5.12 codegen, Nx 24, Cloudflare tooling (`@cloudflare/config` 0.28, `cf` beta.20), Sentry 11.9, oxlint 1.89, oxfmt 0.74, and the remaining patch updates.
+  
+  Compatibility notes:
+  
+  - `@cloudflare/vite-plugin` stays on 1.64 because 1.65 removes `cloudflare.config.ts` support from the v1 plugin.
+  - `@opentelemetry/api` stays on 1.9.1 and the OpenTelemetry SDK stays on 2.12/0.223 because the installed `@effect/opentelemetry` peer range caps them below the 3.0/1.10 line.
+  - The kubb upgrade regenerates the client with an exported `defaultTransport` and no other output change.
+
 ## 6.2.1
 
 ### Patch Changes
