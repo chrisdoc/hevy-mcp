@@ -21,7 +21,7 @@ export default defineConfig({
 	},
 	storage: {
 		...baseStorage,
-		async writeItem(key, value) {
+		writeItem(key, value) {
 			if (key.endsWith(".kubb/client.ts") || key.endsWith(".kubb/client.js")) {
 				// Cloudflare Workers RequestInit intentionally does not define `credentials`.
 				// Cast init to any so .kubb/client.ts compiles in Cloudflare Worker environments.

@@ -23,11 +23,13 @@ pre-commit:
         - .pi/**
       run: mise exec -- npx oxfmt --write {staged_files}
       stage_fixed: true
-    actionlint:
+    jactionlint:
       glob:
         - ".github/workflows/**/*.yml"
         - ".github/workflows/**/*.yaml"
-      run: mise exec -- actionlint
+        - "**/action.yml"
+        - "**/action.yaml"
+      run: mise exec -- jactionlint
     zizmor:
       glob:
         - ".github/dependabot.yml"
