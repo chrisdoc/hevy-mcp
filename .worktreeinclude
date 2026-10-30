@@ -1,0 +1,11 @@
+# Gitignored local config and dependencies copied into new worktrees. Keep plain paths: `but worktree new` ignores globs.
+.env
+.env.local
+.dev.vars
+node_modules
+packages/cli/node_modules
+packages/core/node_modules
+packages/hevy-client/node_modules
+packages/node/node_modules
+packages/operations/node_modules
+packages/worker/node_modules
