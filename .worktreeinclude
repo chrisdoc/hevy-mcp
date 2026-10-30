@@ -1,0 +1,4 @@
+# Gitignored local config copied into new worktrees. Keep plain paths: `but worktree new` ignores globs.
+.env
+.env.local
+.dev.vars
