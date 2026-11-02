@@ -15,3 +15,7 @@ export const getV1UserInfoStatus404Schema = z.unknown();
 export const getV1UserInfoResponseSchema = getV1UserInfoStatus200Schema;
 
 export const getV1UserInfoErrorSchema = getV1UserInfoStatus404Schema;
+
+export const getV1UserInfoHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

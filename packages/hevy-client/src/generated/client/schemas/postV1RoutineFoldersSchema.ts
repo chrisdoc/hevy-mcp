@@ -25,3 +25,7 @@ export const postV1RoutineFoldersErrorSchema =
 
 export const postV1RoutineFoldersBodySchema =
   postRoutineFolderRequestBodySchema;
+
+export const postV1RoutineFoldersHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

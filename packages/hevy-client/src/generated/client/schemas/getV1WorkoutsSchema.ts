@@ -43,3 +43,22 @@ export const getV1WorkoutsStatus400Schema = z.unknown();
 export const getV1WorkoutsResponseSchema = getV1WorkoutsStatus200Schema;
 
 export const getV1WorkoutsErrorSchema = getV1WorkoutsStatus400Schema;
+
+export const getV1WorkoutsQuerySchema = z.object({
+  page: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(1)
+    .describe("Page number (Must be 1 or greater)"),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(5)
+    .describe("Number of items on the requested page (Max 10)"),
+});
+
+export const getV1WorkoutsHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

@@ -25,3 +25,11 @@ export const getV1RoutinesRoutineidResponseSchema =
 
 export const getV1RoutinesRoutineidErrorSchema =
   getV1RoutinesRoutineidStatus400Schema;
+
+export const getV1RoutinesRoutineidPathSchema = z.object({
+  routineId: z.string().describe("The id of the routine"),
+});
+
+export const getV1RoutinesRoutineidHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

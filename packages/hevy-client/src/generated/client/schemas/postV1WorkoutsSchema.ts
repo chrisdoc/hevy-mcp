@@ -20,3 +20,7 @@ export const postV1WorkoutsResponseSchema = postV1WorkoutsStatus201Schema;
 export const postV1WorkoutsErrorSchema = postV1WorkoutsStatus400Schema;
 
 export const postV1WorkoutsBodySchema = postWorkoutsRequestBodySchema;
+
+export const postV1WorkoutsHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

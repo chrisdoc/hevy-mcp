@@ -21,3 +21,11 @@ export const getV1RoutineFoldersFolderidResponseSchema =
 
 export const getV1RoutineFoldersFolderidErrorSchema =
   getV1RoutineFoldersFolderidStatus404Schema;
+
+export const getV1RoutineFoldersFolderidPathSchema = z.object({
+  folderId: z.string().describe("The id of the routine folder"),
+});
+
+export const getV1RoutineFoldersFolderidHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

@@ -11,13 +11,13 @@ export type UserInfo = {
    */
   id?: string;
   /**
-   * @description The user\'s display name.
+   * @description The user's display name.
    * @example John doe
    * @type string | undefined
    */
   name?: string;
   /**
-   * @description The user\'s public profile URL.
+   * @description The user's public profile URL.
    * @example https://hevy.com/user/jhon
    * @type string | undefined
    */

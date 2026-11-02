@@ -31,10 +31,15 @@ export type SerializationStyle<TStyle = string> = {
   allowReserved?: boolean;
 };
 
+/** The media type of a parameter described with `content`; JSON sends one JSON-encoded value. */
+export type ParamContentType = {
+  contentType?: string;
+};
+
 /**
  * The per-parameter query serialization metadata carried by the generated request.
  */
-export type QueryParamStyle = SerializationStyle<QueryStyle>;
+export type QueryParamStyle = SerializationStyle<QueryStyle> & ParamContentType;
 
 /**
  * Serializes the query object into a search string. The optional second argument carries the
@@ -50,7 +55,7 @@ export type QuerySerializer = (
  * The per-parameter cookie serialization metadata carried by the generated request. Cookies use the
  * OpenAPI `form` style, so only `explode` is configurable.
  */
-export type CookieParamStyle = {
+export type CookieParamStyle = ParamContentType & {
   explode?: boolean;
 };
 
@@ -64,7 +69,7 @@ export type CookieParamStyle = {
  * // styles.header: { 'X-Filter': { explode: true } }, header { role: 'admin' } -> 'X-Filter: role=admin'
  * ```
  */
-export type HeaderParamStyle = {
+export type HeaderParamStyle = ParamContentType & {
   explode?: boolean;
 };
 
@@ -174,15 +179,20 @@ function appendFormDataValue({
   contentType?: string;
 }): void {
   if (value === undefined || value === null) return;
-  if (value instanceof Blob) formData.append(key, value);
-  else if (typeof value === "object" && !(value instanceof Date)) {
+  if (value instanceof Blob) {
+    formData.append(key, value);
+    return;
+  }
+  if (typeof value === "object" && !(value instanceof Date)) {
     const json = JSON.stringify(value, jsonReplacer);
     // A part's media type can only be set by wrapping the value in a typed Blob.
     formData.append(
       key,
       contentType ? new Blob([json], { type: contentType }) : json,
     );
-  } else formData.append(key, toValue(value));
+    return;
+  }
+  formData.append(key, toValue(value));
 }
 
 /**
@@ -212,7 +222,7 @@ export const defaultBodySerializer: BodySerializer = ({
       body as Record<string, unknown>,
     )) {
       const partContentType = encoding?.[key]?.contentType;
-      if (Array.isArray(value))
+      if (Array.isArray(value)) {
         for (const item of value)
           appendFormDataValue({
             formData,
@@ -220,13 +230,14 @@ export const defaultBodySerializer: BodySerializer = ({
             value: item,
             contentType: partContentType,
           });
-      else
-        appendFormDataValue({
-          formData,
-          key,
-          value,
-          contentType: partContentType,
-        });
+        continue;
+      }
+      appendFormDataValue({
+        formData,
+        key,
+        value,
+        contentType: partContentType,
+      });
     }
     return formData;
   }
@@ -252,6 +263,11 @@ function serializeUrlencodedBody(
     );
   }
   return parts.join("&");
+}
+
+function isJsonMediaType(contentType: string | undefined): boolean {
+  const type = contentType?.split(";")[0]?.trim().toLowerCase();
+  return type === "application/json" || !!type?.endsWith("+json");
 }
 
 function serializeCookie({
@@ -304,12 +320,15 @@ export function serializeCookies(
   const parts: Array<string> = [];
   for (const [name, value] of Object.entries(cookies)) {
     if (value === undefined || value === null) continue;
+    const style = styles?.[name];
+    if (isJsonMediaType(style?.contentType)) {
+      parts.push(
+        `${name}=${encodeURIComponent(JSON.stringify(value, jsonReplacer))}`,
+      );
+      continue;
+    }
     parts.push(
-      serializeCookie({
-        name,
-        value,
-        explode: styles?.[name]?.explode ?? false,
-      }),
+      serializeCookie({ name, value, explode: style?.explode ?? false }),
     );
   }
   return parts.join("; ");
@@ -502,6 +521,12 @@ export const defaultQuerySerializer: QuerySerializer = (params, options) => {
   const parts: Array<string> = [];
   for (const [key, value] of Object.entries(params)) {
     const paramOptions = options?.[key];
+    if (notNullish(value) && isJsonMediaType(paramOptions?.contentType)) {
+      parts.push(
+        `${encodeComponent(key)}=${encodeComponent(JSON.stringify(value, jsonReplacer))}`,
+      );
+      continue;
+    }
     parts.push(
       ...(paramOptions
         ? serializeStyledQueryParam({ key, value, options: paramOptions })
@@ -611,6 +636,14 @@ function serializeHeaderValue(value: unknown, explode: boolean): string {
     .join(",");
 }
 
+/** Header values must be Latin-1, so non-ASCII characters become JSON `\uXXXX` escapes. */
+function toAsciiJson(value: unknown): string {
+  return JSON.stringify(value, jsonReplacer).replace(
+    /[\u007f-\uffff]/g,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
 /**
  * Serializes array and object header parameters with the OpenAPI `simple` style before they are
  * merged. Header values are not URL-encoded. Primitive values and headers without metadata pass
@@ -624,13 +657,11 @@ export function applyHeaderStyles(
   const entries = Array.isArray(headers) ? headers : Object.entries(headers);
   return entries.map(([key, value]) => {
     const style = styles[key];
-    if (
-      !style ||
-      value === undefined ||
-      value === null ||
-      typeof value !== "object"
-    )
+    if (!style || value === undefined || value === null)
       return [key, value] as [string, HeaderValue];
+    if (isJsonMediaType(style.contentType))
+      return [key, toAsciiJson(value)] as [string, HeaderValue];
+    if (typeof value !== "object") return [key, value] as [string, HeaderValue];
     return [key, serializeHeaderValue(value, style.explode ?? false)] as [
       string,
       HeaderValue,

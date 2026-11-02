@@ -32,3 +32,7 @@ export const postV1RoutinesErrorSchema = z.union([
 ]);
 
 export const postV1RoutinesBodySchema = postRoutinesRequestBodySchema;
+
+export const postV1RoutinesHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

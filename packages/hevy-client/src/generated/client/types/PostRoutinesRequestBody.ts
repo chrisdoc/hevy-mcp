@@ -14,7 +14,7 @@ export type PostRoutinesRequestBody = {
      */
     title?: string;
     /**
-     * @description The folder id the routine should be added to. Pass null to insert the routine into default \"My Routines\" folder
+     * @description The folder id the routine should be added to. Pass null to insert the routine into default "My Routines" folder
      * @example null
      * @type number | undefined
      */

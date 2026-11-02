@@ -26,3 +26,11 @@ export const putV1WorkoutsWorkoutidErrorSchema =
   putV1WorkoutsWorkoutidStatus400Schema;
 
 export const putV1WorkoutsWorkoutidBodySchema = postWorkoutsRequestBodySchema;
+
+export const putV1WorkoutsWorkoutidPathSchema = z.object({
+  workoutId: z.string().describe("The id of the workout"),
+});
+
+export const putV1WorkoutsWorkoutidHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

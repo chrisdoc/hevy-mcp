@@ -34,3 +34,11 @@ export const putV1RoutinesRoutineidErrorSchema = z.union([
 ]);
 
 export const putV1RoutinesRoutineidBodySchema = putRoutinesRequestBodySchema;
+
+export const putV1RoutinesRoutineidPathSchema = z.object({
+  routineId: z.string().describe("The id of the routine"),
+});
+
+export const putV1RoutinesRoutineidHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

@@ -45,3 +45,22 @@ export const getV1RoutineFoldersResponseSchema =
 
 export const getV1RoutineFoldersErrorSchema =
   getV1RoutineFoldersStatus400Schema;
+
+export const getV1RoutineFoldersQuerySchema = z.object({
+  page: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(1)
+    .describe("Page number (Must be 1 or greater)"),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(5)
+    .describe("Number of items on the requested page (Max 10)"),
+});
+
+export const getV1RoutineFoldersHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

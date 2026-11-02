@@ -45,3 +45,7 @@ export const postV1ExerciseTemplatesBodySchema =
   createCustomExerciseRequestBodySchema.describe(
     "The exercise template to create.",
   );
+
+export const postV1ExerciseTemplatesHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

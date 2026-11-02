@@ -24,3 +24,14 @@ export const getV1BodyMeasurementsDateResponseSchema =
 
 export const getV1BodyMeasurementsDateErrorSchema =
   getV1BodyMeasurementsDateStatus404Schema;
+
+export const getV1BodyMeasurementsDatePathSchema = z.object({
+  date: z.iso
+    .date()
+    .describe("The date of the body measurement (YYYY-MM-DD)")
+    .meta({ examples: ["2024-01-15"] }),
+});
+
+export const getV1BodyMeasurementsDateHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

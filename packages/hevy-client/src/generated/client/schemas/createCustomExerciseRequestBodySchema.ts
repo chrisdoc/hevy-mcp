@@ -18,8 +18,14 @@ export const createCustomExerciseRequestBodySchema = z.object({
     exercise_type: customExerciseTypeSchema
       .optional()
       .meta({ examples: ["weight_reps"] }),
-    equipment_category: equipmentCategorySchema.and(z.unknown()).optional(),
-    muscle_group: muscleGroupSchema.and(z.unknown()).optional(),
+    equipment_category: equipmentCategorySchema
+      .optional()
+      .describe("The equipment category of the exercise template.")
+      .meta({ examples: ["barbell"] }),
+    muscle_group: muscleGroupSchema
+      .optional()
+      .describe("The muscle group of the exercise template.")
+      .meta({ examples: ["chest"] }),
     other_muscles: z
       .array(muscleGroupSchema)
       .optional()
