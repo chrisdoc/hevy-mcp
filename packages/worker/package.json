@@ -21,7 +21,7 @@
 	},
 	"devDependencies": {
 		"@cloudflare/config": "0.28.0",
-		"@cloudflare/vite-plugin": "1.64.0",
+		"@cloudflare/vite-plugin": "1.65.0",
 		"@hevy-mcp/core": "workspace:*",
 		"@hevy-mcp/hevy-client": "workspace:*",
 		"vite": "8.3.5"
