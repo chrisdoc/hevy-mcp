@@ -23,3 +23,11 @@ export const getV1ExerciseTemplatesExercisetemplateidResponseSchema =
 
 export const getV1ExerciseTemplatesExercisetemplateidErrorSchema =
   getV1ExerciseTemplatesExercisetemplateidStatus404Schema;
+
+export const getV1ExerciseTemplatesExercisetemplateidPathSchema = z.object({
+  exerciseTemplateId: z.string().describe("The id of the exercise template"),
+});
+
+export const getV1ExerciseTemplatesExercisetemplateidHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

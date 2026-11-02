@@ -45,3 +45,22 @@ export const getV1ExerciseTemplatesResponseSchema =
 
 export const getV1ExerciseTemplatesErrorSchema =
   getV1ExerciseTemplatesStatus400Schema;
+
+export const getV1ExerciseTemplatesQuerySchema = z.object({
+  page: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(1)
+    .describe("Page number (Must be 1 or greater)"),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(5)
+    .describe("Number of items on the requested page (Max 100)"),
+});
+
+export const getV1ExerciseTemplatesHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

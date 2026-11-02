@@ -21,3 +21,11 @@ export const getV1WorkoutsWorkoutidResponseSchema =
 
 export const getV1WorkoutsWorkoutidErrorSchema =
   getV1WorkoutsWorkoutidStatus404Schema;
+
+export const getV1WorkoutsWorkoutidPathSchema = z.object({
+  workoutId: z.string().describe("The id of the workout"),
+});
+
+export const getV1WorkoutsWorkoutidHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

@@ -72,6 +72,9 @@ function createTestExecutionContext() {
 		waitUntil(_promise: Promise<unknown>): void {},
 		passThroughOnException(): void {},
 		abort(_reason?: string): void {},
+		mapVirtualHost(_fetcher: Fetcher, _port: number): string {
+			throw new Error("mapVirtualHost is not used by these tests");
+		},
 		exports: {},
 		props: {},
 		tracing: {

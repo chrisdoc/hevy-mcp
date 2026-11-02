@@ -91,7 +91,7 @@ export type Workout = {
        */
       index?: number;
       /**
-       * @description The type of set. This can be one of \'normal\', \'warmup\', \'dropset\', \'failure\'
+       * @description The type of set. This can be one of 'normal', 'warmup', 'dropset', 'failure'
        * @example normal
        * @type string | undefined
        */

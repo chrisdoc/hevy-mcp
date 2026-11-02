@@ -43,3 +43,22 @@ export const getV1RoutinesStatus400Schema = z.unknown();
 export const getV1RoutinesResponseSchema = getV1RoutinesStatus200Schema;
 
 export const getV1RoutinesErrorSchema = getV1RoutinesStatus400Schema;
+
+export const getV1RoutinesQuerySchema = z.object({
+  page: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(1)
+    .describe("Page number (Must be 1 or greater)"),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(5)
+    .describe("Number of items on the requested page (Max 10)"),
+});
+
+export const getV1RoutinesHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

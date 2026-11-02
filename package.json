@@ -125,7 +125,7 @@
 		"publint": "^0.3.25",
 		"semver": "^7.8.5",
 		"tiktoken": "^1.0.22",
-		"tsdown": "^0.23.2",
+		"tsdown": "0.23.1",
 		"tsx": "^4.23.15",
 		"typescript": "^7.0.2",
 		"ultracite": "8.1.0",

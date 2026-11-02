@@ -38,3 +38,26 @@ export const getV1ExerciseHistoryExercisetemplateidResponseSchema =
 
 export const getV1ExerciseHistoryExercisetemplateidErrorSchema =
   getV1ExerciseHistoryExercisetemplateidStatus400Schema;
+
+export const getV1ExerciseHistoryExercisetemplateidPathSchema = z.object({
+  exerciseTemplateId: z.string().describe("The id of the exercise template"),
+});
+
+export const getV1ExerciseHistoryExercisetemplateidQuerySchema = z.object({
+  start_date: z.iso
+    .datetime()
+    .optional()
+    .describe(
+      "Optional start date for filtering exercise history (ISO 8601 format)",
+    ),
+  end_date: z.iso
+    .datetime()
+    .optional()
+    .describe(
+      "Optional end date for filtering exercise history (ISO 8601 format)",
+    ),
+});
+
+export const getV1ExerciseHistoryExercisetemplateidHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

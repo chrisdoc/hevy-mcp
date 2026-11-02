@@ -18,3 +18,7 @@ export const getV1WorkoutsCountStatus200Schema = z.object({
 
 export const getV1WorkoutsCountResponseSchema =
   getV1WorkoutsCountStatus200Schema;
+
+export const getV1WorkoutsCountHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

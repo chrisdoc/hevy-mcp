@@ -32,3 +32,14 @@ export const putV1BodyMeasurementsDateErrorSchema = z.union([
 ]);
 
 export const putV1BodyMeasurementsDateBodySchema = putBodyMeasurementSchema;
+
+export const putV1BodyMeasurementsDatePathSchema = z.object({
+  date: z.iso
+    .date()
+    .describe("The date of the measurement to update (YYYY-MM-DD)")
+    .meta({ examples: ["2024-01-15"] }),
+});
+
+export const putV1BodyMeasurementsDateHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

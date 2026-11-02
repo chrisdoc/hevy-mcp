@@ -47,3 +47,22 @@ export const getV1BodyMeasurementsErrorSchema = z.union([
   getV1BodyMeasurementsStatus400Schema,
   getV1BodyMeasurementsStatus404Schema,
 ]);
+
+export const getV1BodyMeasurementsQuerySchema = z.object({
+  page: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(1)
+    .describe("Page number (Must be 1 or greater)"),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(10)
+    .describe("Number of items per page (Max 10)"),
+});
+
+export const getV1BodyMeasurementsHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

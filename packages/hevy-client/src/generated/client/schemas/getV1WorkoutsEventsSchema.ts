@@ -36,3 +36,23 @@ export const getV1WorkoutsEventsResponseSchema =
 
 export const getV1WorkoutsEventsErrorSchema =
   getV1WorkoutsEventsStatus500Schema;
+
+export const getV1WorkoutsEventsQuerySchema = z.object({
+  page: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(1)
+    .describe("Page number (Must be 1 or greater)"),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .optional()
+    .default(5)
+    .describe("Number of items on the requested page (Max 10)"),
+  since: z.string().optional().default("1970-01-01T00:00:00Z"),
+});
+
+export const getV1WorkoutsEventsHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});

@@ -135,6 +135,11 @@ const FALLBACK_EXECUTION_CONTEXT = {
 	waitUntil(_promise: Promise<unknown>): void {},
 	passThroughOnException(): void {},
 	abort(_reason?: string): void {},
+	mapVirtualHost(_fetcher: Fetcher, _port: number): string {
+		throw new Error(
+			"mapVirtualHost is unavailable without a Workers execution context",
+		);
+	},
 	exports: {},
 	props: {},
 	tracing: {

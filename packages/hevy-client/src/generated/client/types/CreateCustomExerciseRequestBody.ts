@@ -20,8 +20,18 @@ export type CreateCustomExerciseRequestBody = {
      * @type string | undefined
      */
     exercise_type?: CustomExerciseTypeKey;
-    equipment_category?: EquipmentCategoryKey & unknown;
-    muscle_group?: MuscleGroupKey & unknown;
+    /**
+     * @description The equipment category of the exercise template.
+     * @example barbell
+     * @type string | undefined
+     */
+    equipment_category?: EquipmentCategoryKey;
+    /**
+     * @description The muscle group of the exercise template.
+     * @example chest
+     * @type string | undefined
+     */
+    muscle_group?: MuscleGroupKey;
     /**
      * @description The other muscles of the exercise template.
      * @example ["biceps","triceps"]

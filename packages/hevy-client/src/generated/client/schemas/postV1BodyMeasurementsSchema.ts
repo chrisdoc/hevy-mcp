@@ -27,3 +27,7 @@ export const postV1BodyMeasurementsErrorSchema = z.union([
 ]);
 
 export const postV1BodyMeasurementsBodySchema = bodyMeasurementSchema;
+
+export const postV1BodyMeasurementsHeadersSchema = z.object({
+  "api-key": z.uuid(),
+});
