@@ -128,14 +128,24 @@ describe("CI runtime policy", () => {
 
 	it("keeps the required PR graph on Node 24 only", () => {
 		const source = readWorkflow("build-and-test");
-		expect(parseYaml(source)).toMatchObject({
-			jobs: { build: { strategy: { matrix: { "node-version": ["24.x"] } } } },
+		const workflow = parseYaml(source);
+		// `build` is the required-check verdict; its rendered name is the check name.
+		expect(workflow).toMatchObject({
+			jobs: {
+				build: {
+					name: "Build and test (Node ${{ matrix.node-version }})",
+					if: "always()",
+					needs: ["unit", "validate"],
+					strategy: { matrix: { "node-version": ["24.x"] } },
+					steps: [{ run: expect.stringContaining("exit 1") }],
+				},
+			},
 		});
 		const result = validateWorkflowAggregate(source, {
 			lanes: model,
 			aggregate: "pull-request-ci",
 			rootDir: repositoryRoot,
-			jobIds: ["build", "package-performance"],
+			jobIds: ["unit", "validate", "package-performance"],
 			rejectContinueOnError: true,
 		});
 		for (const execution of result.executions)
