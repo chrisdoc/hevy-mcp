@@ -14,6 +14,12 @@ env:
   ROLLUP_SKIP_NODEJS_NATIVE_BUILD: "true"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+# Cancel superseded runs of the same PR only. Other events get a unique
+# group (run_id), so main pushes, schedules, and manual runs never queue or cancel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   upload-source-event:
     name: Upload source event
