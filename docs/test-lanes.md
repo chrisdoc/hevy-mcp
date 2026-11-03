@@ -179,10 +179,12 @@ MISE_AUTO_INSTALL=false mise exec -- env HEVY_TEST_REPORT_MODE=ci pnpm run test:
 ```
 
 The required build workflow invokes the primary runtime targets with Nx
-`run-many`. The PR graph runs `test:unit` in its own `unit` job and the
-remaining lanes in a `validate` job on separate runners, so the exclusive
-`project.json` targets still never share a machine with other lanes; the
-`build` job only aggregates both results under the required check name. The
+`run-many`. The PR graph runs `test:unit` in its own `unit` job, the other
+validation lanes in a `validate` job, and the package and performance lanes in
+a `package-performance` job, each on its own runner, so the exclusive
+`project.json` targets never share a machine with lanes outside their job. The
+`build` job only aggregates the `unit` and `validate` results under the
+required check name. The
 scheduled/manual Node compatibility workflow runs selected repository checks,
 unit, and mocked MCP targets on the compatibility runtime; it is not a required
 PR matrix job. The release workflow has its own
