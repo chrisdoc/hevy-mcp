@@ -8,7 +8,7 @@ validateWorkflowProjections(controlPlane.lanes, {
 		"pull-request-ci": {
 			path: ".github/workflows/build-and-test.yml",
 			aggregate: "pull-request-ci",
-			jobs: ["build", "package-performance"],
+			jobs: ["unit", "validate", "package-performance"],
 		},
 		"node-compatibility-ci": {
 			path: ".github/workflows/node-compatibility.yml",

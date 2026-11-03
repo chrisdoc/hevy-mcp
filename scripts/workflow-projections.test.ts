@@ -128,18 +128,40 @@ describe("CI runtime policy", () => {
 
 	it("keeps the required PR graph on Node 24 only", () => {
 		const source = readWorkflow("build-and-test");
-		expect(parseYaml(source)).toMatchObject({
-			jobs: { build: { strategy: { matrix: { "node-version": ["24.x"] } } } },
+		const workflow = parseYaml(source);
+		// `build` is the required-check verdict; its rendered name is the check name.
+		expect(workflow).toMatchObject({
+			jobs: {
+				build: {
+					name: "Build and test (Node 24.x)",
+					if: "always()",
+					needs: ["unit", "validate"],
+					steps: [{ run: expect.stringContaining("exit 1") }],
+				},
+			},
 		});
 		const result = validateWorkflowAggregate(source, {
 			lanes: model,
 			aggregate: "pull-request-ci",
 			rootDir: repositoryRoot,
-			jobIds: ["build", "package-performance"],
+			jobIds: ["unit", "validate", "package-performance"],
 			rejectContinueOnError: true,
 		});
 		for (const execution of result.executions)
 			expect(execution.runtimes).toEqual(["node-24"]);
+		// Exclusive Nx lanes must keep their runner split: unit alone, the
+		// Worker lanes with the rest of the validation graph.
+		const jobsByLane = new Map<string, Set<string>>();
+		for (const { lane, job } of result.executions)
+			jobsByLane.set(lane, (jobsByLane.get(lane) ?? new Set()).add(job));
+		expect([...(jobsByLane.get("unit") ?? [])]).toEqual(["unit"]);
+		expect([...(jobsByLane.get("worker") ?? [])]).toEqual(["validate"]);
+		expect([...(jobsByLane.get("worker-http") ?? [])]).toEqual(["validate"]);
+		for (const [lane, jobs] of jobsByLane)
+			if (lane !== "build" && lane !== "unit")
+				expect(jobs.has("unit"), `${lane} must not run in the unit job`).toBe(
+					false,
+				);
 	});
 
 	it("retains the Node 26 graph as a credential-free scheduled check", () => {

@@ -27,20 +27,14 @@ jobs:
           path: ${{ github.event_path }}
           if-no-files-found: error
 
-  build:
-    name: Build and test (Node ${{ matrix.node-version }})
+  unit:
+    name: Unit tests (Node 24.x)
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - "24.x"
     # Nx 23 reads these self-hosted names. Require both repository secrets so
     # fork PRs, or partially configured environments, use only local caching.
     env:
       NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_TOKEN || '' }}
       NX_SELF_HOSTED_REMOTE_CACHE_SERVER: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_SERVER || '' }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,7 +49,74 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "24.x"
+          cache: "pnpm"
+
+      - name: Set up mise
+        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package before Node 24 unit tests
+        run: npx nx run repository:build
+
+      - name: Run Node 24 unit tests
+        if: ${{ !cancelled() }}
+        env:
+          HEVY_API_KEY: ""
+          SENTRY_DSN: ""
+          OTEL_COLLECTOR_TOKEN: ""
+          HEVY_TEST_REPORT_MODE: ci
+        run: >-
+          npx nx run-many --projects=repository --targets=test:unit --parallel=4 --outputStyle=stream --excludeTaskDependencies
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./test-results/unit-tests.xml
+          disable_search: true
+          report_type: test_results
+
+      - name: Upload unit test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unit-test-results-node-24
+          path: test-results/unit-tests.xml
+          if-no-files-found: warn
+
+      - name: Upload unit coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/unit/lcov.info
+
+  validate:
+    name: Validation graph (Node 24.x)
+    runs-on: ubuntu-24.04
+    # Nx 23 reads these self-hosted names. Require both repository secrets so
+    # fork PRs, or partially configured environments, use only local caching.
+    env:
+      NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_TOKEN || '' }}
+      NX_SELF_HOSTED_REMOTE_CACHE_SERVER: ${{ secrets.NX_REMOTE_CACHE_TOKEN != '' && secrets.NX_REMOTE_CACHE_SERVER != '' && secrets.NX_REMOTE_CACHE_SERVER || '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 12.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.x"
           cache: "pnpm"
 
       - name: Set up mise
@@ -65,7 +126,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify commit messages
-        if: github.event_name == 'pull_request' && matrix.node-version == '24.x'
+        if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
@@ -76,7 +137,6 @@ jobs:
       - name: Check for changeset
         if: >-
           github.event_name == 'pull_request' &&
-          matrix.node-version == '24.x' &&
           github.actor != 'dependabot[bot]' &&
           github.head_ref != 'changeset-release/main'
         env:
@@ -84,42 +144,43 @@ jobs:
         run: pnpm run check:changeset
 
       - name: Build package before Node 24 validation
-        if: matrix.node-version == '24.x'
         run: npx nx run repository:build
 
       - name: Run Node 24 validation graph
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        if: ${{ !cancelled() }}
         env:
           HEVY_API_KEY: ""
           SENTRY_DSN: ""
           OTEL_COLLECTOR_TOKEN: ""
           HEVY_TEST_REPORT_MODE: ci
         run: >-
-          npx nx run-many --projects=repository --targets=test:unit,check:types,check,worker:dry-run,test:worker-http,test:contract,test:cli,test:worker,test:mcp,check:control-plane,check:exports,check:boundaries --parallel=4 --outputStyle=stream --excludeTaskDependencies
+          npx nx run-many --projects=repository --targets=check:types,check,worker:dry-run,test:worker-http,test:contract,test:cli,test:worker,test:mcp,check:control-plane,check:exports,check:boundaries --parallel=4 --outputStyle=stream --excludeTaskDependencies
 
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+      - name: Upload mocked coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./test-results/unit-tests.xml
-          disable_search: true
-          report_type: test_results
+          files: ./coverage/mocked/lcov.info
 
-      - name: Upload unit test results
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: unit-test-results-node-24
-          path: test-results/unit-tests.xml
-          if-no-files-found: warn
-
-      - name: Upload results to Codecov
-        if: matrix.node-version == '24.x'
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/unit/lcov.info,./coverage/mocked/lcov.info
+  # Required-check verdict. Its rendered name is the branch-protection check,
+  # so it stays "Build and test (Node 24.x)" while the work runs in parallel jobs.
+  build:
+    name: Build and test (Node 24.x)
+    if: always()
+    needs: [unit, validate]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require unit and validation jobs to succeed
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+        run: |
+          echo "unit: ${UNIT_RESULT}"
+          echo "validate: ${VALIDATE_RESULT}"
+          if [ "${UNIT_RESULT}" != "success" ] || [ "${VALIDATE_RESULT}" != "success" ]; then
+            echo "A required job did not succeed." >&2
+            exit 1
+          fi
 
   package-performance:
     name: Package and performance (Node 24.x)
@@ -232,7 +293,7 @@ jobs:
     if: always()
     name: OpenTelemetry Export Trace
     runs-on: ubuntu-latest
-    needs: [build, package-performance, docker]
+    needs: [build, unit, validate, package-performance, docker]
     env:
       OTEL_COLLECTOR_TOKEN: ${{ secrets.OTEL_COLLECTOR_TOKEN }}
     steps:
