@@ -140,7 +140,7 @@
 		"@swc/core@1.16.20": true,
 		"esbuild@0.28.2": true,
 		"fsevents@2.3.3": true,
-		"nx@24.0.0": true,
+		"nx@24.0.1": true,
 		"workerd@1.20261012.1": true,
 		"workerd@1.20261019.1": true
 	},
