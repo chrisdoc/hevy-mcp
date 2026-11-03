@@ -20,7 +20,7 @@
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {
-		"@cloudflare/config": "0.28.0",
+		"@cloudflare/config": "0.28.1",
 		"@cloudflare/vite-plugin": "1.64.0",
 		"@hevy-mcp/core": "workspace:*",
 		"@hevy-mcp/hevy-client": "workspace:*",
