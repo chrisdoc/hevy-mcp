@@ -52,10 +52,10 @@
 	"devDependencies": {
 		"@hevy-mcp/core": "workspace:*",
 		"@hevy-mcp/hevy-client": "workspace:*",
-		"@sentry/core": "^11.9.0",
-		"@types/node": "^26.6.5",
+		"@sentry/core": "^11.10.0",
+		"@types/node": "^26.6.6",
 		"cross-env": "^10.1.0",
-		"tsdown": "0.23.1",
+		"tsdown": "0.23.4",
 		"typescript": "^7.0.2"
 	},
 	"engines": {
