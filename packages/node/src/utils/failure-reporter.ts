@@ -4,7 +4,10 @@ import {
 	sanitizeDiagnosticText as sanitizeDiagnosticTextValue,
 } from "@hevy-mcp/core";
 import { z } from "zod";
-import { isHevyHttpError } from "@hevy-mcp/hevy-client";
+import {
+	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+	isHevyHttpError,
+} from "@hevy-mcp/hevy-client";
 import * as Sentry from "@sentry/node";
 import { SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import type { ErrorEvent, EventHint } from "@sentry/node";
@@ -26,6 +29,7 @@ type NormalizedFailureDraft = {
 	exception: NormalizedException;
 	attributes: TelemetryAttributes;
 	fingerprint: string[];
+	expected: boolean;
 };
 type SentryExceptionValue = NonNullable<
 	NonNullable<ErrorEvent["exception"]>["values"]
@@ -70,6 +74,8 @@ export interface NormalizedFailure {
 	};
 	readonly attributes: TelemetryAttributes;
 	readonly fingerprint: readonly string[];
+	/** Expected failures stay in metrics and traces but never reach Sentry. */
+	readonly expected: boolean;
 }
 
 export interface FailureReceipt {
@@ -91,6 +97,12 @@ const SAFE_TAG_PREFIXES = [
 	"otel.",
 	"service.",
 ] as const;
+const REQUEST_FAILURE_KINDS: ReadonlySet<FailureKind> = new Set([
+	"api",
+	"discovery",
+	"prompt",
+	"tool",
+]);
 const DIAGNOSTIC_DETAILS_ENABLED =
 	process.env.HEVY_MCP_TELEMETRY_DIAGNOSTICS !== "0";
 
@@ -248,11 +260,26 @@ function addExecutionAttributes(
 	}
 }
 
+function isExpectedFailure(
+	context: FailureContext,
+	diagnostic: SafeErrorDiagnostic,
+): boolean {
+	if (context.expected) return true;
+	// A request deadline is the bounded execution working as designed, usually
+	// because Hevy responded slowly. Metrics and traces record the latency, so
+	// a per-tool Sentry error adds noise without identifying a defect.
+	return (
+		REQUEST_FAILURE_KINDS.has(context.kind) &&
+		diagnostic.code === HEVY_DEADLINE_EXCEEDED_ERROR_CODE
+	);
+}
+
 export function normalizeFailure<T>(
 	error: T,
 	context: FailureContext,
 ): NormalizedFailure {
 	const diagnostic = createSafeErrorDiagnostic(error);
+	const expected = isExpectedFailure(context, diagnostic);
 	const attributes = copyAttributes(context.attributes);
 	const exceptionType = diagnostic.category;
 	const text = getExceptionText(error);
@@ -270,7 +297,7 @@ export function normalizeFailure<T>(
 			: undefined;
 
 	attributes["exception.type"] = exceptionType;
-	addErrorAttributes(attributes, diagnostic, context.expected);
+	addErrorAttributes(attributes, diagnostic, expected);
 	addHttpAttributes(attributes, diagnostic);
 	addExecutionAttributes(attributes, diagnostic);
 
@@ -283,6 +310,7 @@ export function normalizeFailure<T>(
 		exception: normalizedException,
 		attributes,
 		fingerprint: getFingerprint(context.kind, attributes, diagnostic),
+		expected,
 	};
 	if (message) {
 		normalized.message = message;
@@ -466,9 +494,10 @@ export function captureFailure<T>(
 	const diagnosticId = getDiagnosticId(error);
 	if (diagnosticId) record.attributes["mcp.failure.id"] = diagnosticId;
 
-	const duplicate = context.expected ? false : hasReportedError(error);
+	const { expected } = record;
+	const duplicate = expected ? false : hasReportedError(error);
 	let eventId: string | undefined;
-	if (!duplicate && !context.expected) {
+	if (!duplicate && !expected) {
 		try {
 			eventId = Sentry.withScope((scope) => {
 				for (const [key, value] of Object.entries(record.attributes)) {
@@ -491,7 +520,7 @@ export function captureFailure<T>(
 
 	if (span) {
 		try {
-			if (!duplicate && !context.expected) {
+			if (!duplicate && !expected) {
 				span.recordException(record.exception);
 				if (record.responseError) {
 					span.addEvent("mcp.failure.detail", {
@@ -500,7 +529,7 @@ export function captureFailure<T>(
 				}
 			}
 			setSpanAttributes(span, record.attributes);
-			if (!context.expected) {
+			if (!expected) {
 				span.setStatus({ code: SpanStatusCode.ERROR });
 			}
 			if (eventId) span.setAttribute("sentry.event_id", eventId);

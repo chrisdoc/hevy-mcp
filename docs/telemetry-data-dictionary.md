@@ -24,7 +24,7 @@ final defense-in-depth scrubber.
 | API method                     | HTTP method from the client allowlist                                                        | API spans and metrics                         |
 | API endpoint                   | Normalized static endpoint or a placeholder path containing no identifier                    | API spans and metrics                         |
 | HTTP status                    | Numeric status code                                                                          | API diagnostics and metrics                   |
-| Error expectedness             | Boolean; expected failures are not sent to Sentry                                            | Failure spans                                 |
+| Error expectedness             | Boolean; expected failures, including request deadline expiry, are not sent to Sentry        | Failure spans                                 |
 | Correlation IDs                | OTel trace/span IDs, Sentry event ID, and opaque per-failure ID; never a user identity       | Failure events and traces                     |
 | `user.hash`                    | Ten-character lowercase HMAC pseudonym; never the raw Hevy API key                           | Node and hosted Worker MCP activity spans     |
 | `cloudflare.colo`              | Three-letter Cloudflare edge colo; a regional proxy, not exact user geography                | Hosted Worker MCP activity spans              |
