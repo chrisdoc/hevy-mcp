@@ -610,9 +610,10 @@ Cloudflare Worker does not import Node telemetry. Set `HEVY_MCP_TELEMETRY=0`
 before launching Node to disable all project telemetry in either mode. In
 published builds, every value except the literal `0` retains the enabled default.
 The scoped Node lifecycle Layer acquires telemetry; importing the package remains
-side-effect-free. Enabled source runs use the Sentry environment `development`;
-published builds use `production`. Set `SENTRY_ENVIRONMENT` to override this
-label, for example to `qa` or `staging`. The master setting takes precedence over
+side-effect-free. Enabled source runs, and any build without an injected
+version (release `hevy-mcp@dev`), use the Sentry environment `development`;
+versioned published builds use `production`. Set `SENTRY_ENVIRONMENT` to
+override this label, for example to `qa` or `staging`. The master setting takes precedence over
 `SENTRY_DSN` and packaged or
 runtime `OTEL_COLLECTOR_TOKEN` credentials, so the disabled path creates no
 telemetry exporters or periodic metric readers and makes no telemetry network

@@ -218,6 +218,25 @@ describe("telemetry initialization", () => {
 		);
 	});
 
+	it.each([undefined, "dev"])(
+		"never reports an unversioned build as production (version=%s)",
+		async (buildVersion) => {
+			vi.stubGlobal("__HEVY_MCP_BUILD__", true);
+			if (buildVersion !== undefined) {
+				vi.stubGlobal("__HEVY_MCP_VERSION__", buildVersion);
+			}
+			setTelemetryEnvironment();
+			vi.resetModules();
+			await loadTelemetry();
+			expect(testDoubles.sentryInit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					release: "hevy-mcp@dev",
+					environment: "development",
+				}),
+			);
+		},
+	);
+
 	it.each([false, true])(
 		"honors a Sentry environment override (built=%s)",
 		async (built) => {
