@@ -1,5 +1,9 @@
 import type { ErrorEvent } from "@sentry/node";
-import { HevyHttpError } from "@hevy-mcp/hevy-client";
+import {
+	HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+	HevyHttpError,
+} from "@hevy-mcp/hevy-client";
+import { Cause } from "effect";
 import type { Span, SpanContext } from "@opentelemetry/api";
 type ScopeDouble = {
 	setTag: typeof testDoubles.setTag;
@@ -304,6 +308,40 @@ describe("failure reporter", () => {
 		expect(spanDoubles.setAttributes).toHaveBeenCalledWith(
 			expect.objectContaining({ "error.expected": true }),
 		);
+	});
+
+	it.each([
+		["tool", new Cause.TimeoutError("Operation timed out after '1m'")],
+		["prompt", new DOMException("Operation deadline exceeded", "TimeoutError")],
+		[
+			"api",
+			new HevyHttpError("deadline", {
+				method: "GET",
+				endpoint: "/v1/workouts",
+				code: HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+			}),
+		],
+	] as const)(
+		"keeps %s request deadline expiry out of Sentry while recording it",
+		(kind, error) => {
+			const receipt = captureFailure(error, { kind, span });
+
+			expect(testDoubles.captureException).not.toHaveBeenCalled();
+			expect(spanDoubles.recordException).not.toHaveBeenCalled();
+			expect(spanDoubles.setAttributes).toHaveBeenCalledWith(
+				expect.objectContaining({
+					"error.expected": true,
+					"error.code": HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+				}),
+			);
+			expect(receipt?.eventId).toBeUndefined();
+		},
+	);
+
+	it("still reports deadline errors that escape to the process", () => {
+		captureFailure(new Cause.TimeoutError("late"), { kind: "process", span });
+
+		expect(testDoubles.captureException).toHaveBeenCalledOnce();
 	});
 
 	it("swallows provider failures without throwing to the caller", () => {

@@ -131,9 +131,9 @@ HTTP transport selection.
 Published Node builds enable project telemetry by default. Unbuilt source runs
 disable it unless `HEVY_MCP_TELEMETRY=1` is set explicitly. Set exactly
 `HEVY_MCP_TELEMETRY=0` **before launch** to disable it in either mode. Imports
-remain side-effect-free. Enabled source runs default to the Sentry environment
-`development`; published builds use `production`. Set `SENTRY_ENVIRONMENT` to
-override that label. Raw API keys and workout content are not exported; ordinary
+remain side-effect-free. Enabled source runs and unversioned `hevy-mcp@dev`
+builds default to the Sentry environment `development`; versioned published
+builds use `production`. Set `SENTRY_ENVIRONMENT` to override that label. Raw API keys and workout content are not exported; ordinary
 tool telemetry can include a deterministic HMAC pseudonym derived from the key.
 `feedback` uses a separate unobserved path.
 
