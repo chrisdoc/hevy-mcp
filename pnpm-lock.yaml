@@ -1193,10 +1193,6 @@ packages:
     resolution: {integrity: sha512-HHoG5frNjGBCQ++uGNMK4+QuDc812OxUamobvJYCTStJ6Qp40lL7DzQBqiN+ssno/IEKmkpeyxkAIBSO2Xp7nQ==}
     engines: {node: '>=22.22'}
 
-  '@kubb/ast@5.15.3':
-    resolution: {integrity: sha512-Gx0OXokvE+LgH7I88bAJsM4jprOx+Co+3Qm0iFq6BPVGbTnyzhkbBHoBuT8bem/QZS8Q1Bmn+rAeJxgKujvnJw==}
-    engines: {node: '>=22.22'}
-
   '@kubb/ast@5.15.4':
     resolution: {integrity: sha512-j926IG264HO79Zdnexe/l9kKTeQ7dJ8eI1Ml8JCMq4LUd+H1OIFlrSVDtKz/RVPaul8uKzAzL65xlqgo1vmlFg==}
     engines: {node: '>=22.22'}
@@ -1216,10 +1212,6 @@ packages:
         optional: true
       '@kubb/studio':
         optional: true
-
-  '@kubb/core@5.15.3':
-    resolution: {integrity: sha512-4GT5thprHbvLYYRYq6cvAxq5NAb4KIPFus3CH6S7TzKGGTlDtWaaeD0D21kOIdQPAQPh2WlxNjbruBJcN5HaIA==}
-    engines: {node: '>=22.22'}
 
   '@kubb/core@5.15.4':
     resolution: {integrity: sha512-i87gwKuoviUHM720QgyINudAQyDi8Uk9BHDUzkG8/PsoRbbpiVopFdK9QG+RGSapqY0vrLJ+Uzf09qDYdKKACg==}
@@ -1277,15 +1269,6 @@ packages:
 
   '@kubb/plugin-zod@5.8.0':
     resolution: {integrity: sha512-9sss7WMm2N2EMUwOapNm3g/5dKsWXcM5+7QTqIw4Ak3tTDWfavGro9ePmPlhjPCKr9GOUz8fFWNba/7Wc41TnQ==}
-    engines: {node: '>=22.22'}
-    peerDependencies:
-      zod: ^4.0.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
-
-  '@kubb/plugin-zod@5.8.1':
-    resolution: {integrity: sha512-comlsCU44PCGelVob8U+zGQ8+jXSlEswFtwMhXiydP2N7vsxF4vvySzmTpVvS3KXOUdMwIGBwysUW71UBKUf9Q==}
     engines: {node: '>=22.22'}
     peerDependencies:
       zod: ^4.0.0
@@ -3087,10 +3070,6 @@ packages:
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
 
-  cac@7.0.0:
-    resolution: {integrity: sha512-tixWYgm5ZoOD+3g6UTea91eow5z6AAHaho3g0V9CNSNb45gM8SmflpAc+GRd1InC4AqN/07Unrgp56Y94N9hJQ==}
-    engines: {node: '>=20.19.0'}
-
   cac@7.1.0:
     resolution: {integrity: sha512-LMDU/U2yA4IPIY8KT0NsNPWEYZvAMkbgyspxJ6btJaYV+WMDOHAZCmB0lsTObiHaRS1V/ztKAl7+TSkTqXyeoA==}
     engines: {node: '>=20.19.0'}
@@ -4880,7 +4859,7 @@ snapshots:
       '@clack/prompts': 1.8.1
       '@manypkg/get-packages': 3.1.0
       '@pnpm/deps.graph-sequencer': 1100.0.1
-      cac: 7.0.0
+      cac: 7.1.0
       import-meta-resolve: 4.2.0
       launch-editor: 2.14.2
       package-manager-detector: 1.9.0
@@ -5479,7 +5458,7 @@ snapshots:
 
   '@kubb/adapter-oas@5.15.2(openapi-types@12.1.3)':
     dependencies:
-      '@kubb/core': 5.15.3
+      '@kubb/core': 5.15.4
       '@kubb/kit': 5.15.2
       '@readme/openapi-parser': 10.0.0(openapi-types@12.1.3)
       '@scalar/openapi-upgrader': 0.4.7
@@ -5488,8 +5467,6 @@ snapshots:
       yaml: 2.9.1
     transitivePeerDependencies:
       - openapi-types
-
-  '@kubb/ast@5.15.3': {}
 
   '@kubb/ast@5.15.4': {}
 
@@ -5510,12 +5487,6 @@ snapshots:
       '@kubb/mcp': 5.15.2(@kubb/renderer-jsx@5.15.2)(openapi-types@12.1.3)(typescript@7.0.2)
       '@kubb/studio': 5.15.2(tsdown@0.23.4(oxc-resolver@11.24.2)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2))
 
-  '@kubb/core@5.15.3':
-    dependencies:
-      '@kubb/ast': 5.15.3
-      tinyexec: 1.3.1
-      verkit: 0.5.0
-
   '@kubb/core@5.15.4':
     dependencies:
       '@kubb/ast': 5.15.4
@@ -5524,8 +5495,8 @@ snapshots:
 
   '@kubb/kit@5.15.2':
     dependencies:
-      '@kubb/ast': 5.15.3
-      '@kubb/core': 5.15.3
+      '@kubb/ast': 5.15.4
+      '@kubb/core': 5.15.4
 
   '@kubb/kit@5.15.4':
     dependencies:
@@ -5571,9 +5542,9 @@ snapshots:
 
   '@kubb/plugin-fetch@5.11.0(@kubb/parser-ts@5.15.3)(@typescript/typescript6@6.0.2)(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
-      '@kubb/kit': 5.15.2
+      '@kubb/kit': 5.15.4
       '@kubb/plugin-ts': 5.4.0(@kubb/parser-ts@5.15.3)(@typescript/typescript6@6.0.2)(typescript@7.0.2)
-      '@kubb/plugin-zod': 5.8.1(zod@4.6.7)
+      '@kubb/plugin-zod': 5.8.0(zod@4.6.7)
       '@kubb/renderer-jsx': 5.15.4
     transitivePeerDependencies:
       - '@kubb/parser-ts'
@@ -5592,13 +5563,6 @@ snapshots:
       typescript: 7.0.2
 
   '@kubb/plugin-zod@5.8.0(zod@4.6.7)':
-    dependencies:
-      '@kubb/kit': 5.15.4
-      '@kubb/renderer-jsx': 5.15.4
-    optionalDependencies:
-      zod: 4.6.7
-
-  '@kubb/plugin-zod@5.8.1(zod@4.6.7)':
     dependencies:
       '@kubb/kit': 5.15.4
       '@kubb/renderer-jsx': 5.15.4
@@ -6849,8 +6813,6 @@ snapshots:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
-
-  cac@7.0.0: {}
 
   cac@7.1.0: {}
 

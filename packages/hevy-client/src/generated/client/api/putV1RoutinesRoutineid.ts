@@ -23,6 +23,7 @@ export function putV1RoutinesRoutineid<ThrowOnError extends boolean = true>(
     request({
       method: "PUT",
       url: "/v1/routines/{routineId}",
+      contentType: { request: "application/json" },
       ...config,
       throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<PutV1RoutinesRoutineidResponses, ThrowOnError>>,

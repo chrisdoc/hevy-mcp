@@ -23,6 +23,7 @@ export function putV1WorkoutsWorkoutid<ThrowOnError extends boolean = true>(
     request({
       method: "PUT",
       url: "/v1/workouts/{workoutId}",
+      contentType: { request: "application/json" },
       ...config,
       throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<PutV1WorkoutsWorkoutidResponses, ThrowOnError>>,
