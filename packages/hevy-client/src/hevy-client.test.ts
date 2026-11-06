@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { createHevyClient } from "./hevy-client.js";
 import {
@@ -8,6 +9,7 @@ import {
 } from "./hevy-http-error.js";
 import { isAbortLike } from "./execution.js";
 import { DEFAULT_API_TIMEOUT_MS } from "./hevy-client-kubb.js";
+import { getRequestEffectClient } from "./internal.ts";
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 type JsonObject = { readonly [key: string]: JsonValue };
@@ -1232,32 +1234,22 @@ describe("@hevy-mcp/hevy-client", () => {
 		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
-	it("does not invoke a custom sleep hook for scheduled backoff", async () => {
-		vi.useFakeTimers();
-		try {
-			const sleep = vi.fn().mockRejectedValue(new Error("sleep failed"));
-			const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
-			const client = createHevyClient({
-				apiKey: "secret-key",
-				fetch: fetchMock,
-				maxGetRetries: 1,
-				sleep,
-			});
+	it("fails the request when the injected sleep hook rejects", async () => {
+		const sleep = vi.fn().mockRejectedValue(new Error("sleep failed"));
+		const fetchMock = vi.fn().mockResolvedValue(response({}, 503));
+		const client = createHevyClient({
+			apiKey: "secret-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep,
+		});
 
-			const request = client.getUserInfo();
-			const result = expect(request).rejects.toMatchObject({
-				code: HEVY_RETRY_EXHAUSTED_ERROR_CODE,
-				phase: "response-content",
-			});
-			await vi.advanceTimersByTimeAsync(0);
-			expect(fetchMock).toHaveBeenCalledOnce();
-			await vi.advanceTimersByTimeAsync(550);
-			await result;
-			expect(fetchMock).toHaveBeenCalledTimes(2);
-			expect(sleep).not.toHaveBeenCalled();
-		} finally {
-			vi.useRealTimers();
-		}
+		await expect(client.getUserInfo()).rejects.toMatchObject({
+			code: "ERR_NETWORK",
+			phase: "backoff",
+		});
+		expect(sleep).toHaveBeenCalledOnce();
+		expect(fetchMock).toHaveBeenCalledOnce();
 	});
 
 	it("rejects before dispatch when the caller deadline is already elapsed", async () => {
@@ -1432,4 +1424,138 @@ describe("non-finite page handling", () => {
 			expect(observations[0]?.expectedReason).toBeUndefined();
 		},
 	);
+});
+
+describe("@hevy-mcp/hevy-client regressions", () => {
+	it("uses the injected sleep option for retry backoff", async () => {
+		const sleep = vi.fn(async (_ms: number, _signal?: AbortSignal) => {});
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(response({}, 503))
+			.mockResolvedValueOnce(response({ ok: true }));
+		const client = createHevyClient({
+			apiKey: "fake-key",
+			fetch: fetchMock,
+			maxGetRetries: 1,
+			sleep,
+		});
+
+		await expect(client.getUserInfo()).resolves.toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(sleep).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([".", "..", ""])(
+		"rejects the path ID %j before any fetch",
+		async (id) => {
+			const fetchMock = vi.fn(() =>
+				Promise.resolve(response({ updated: true })),
+			);
+			const client = createHevyClient({
+				apiKey: "fake-key",
+				fetch: fetchMock,
+				maxGetRetries: 0,
+			});
+
+			await expect(client.getWorkout(id)).rejects.toMatchObject({
+				code: "HEVY_INVALID_ENDPOINT",
+			});
+			await expect(client.updateWorkout(id, {} as never)).rejects.toMatchObject(
+				{ code: "HEVY_INVALID_ENDPOINT" },
+			);
+			expect(fetchMock).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(["null", "7", '"text"'])(
+		"createRoutine treats a %s 201 body like an empty one",
+		async (body) => {
+			const fetchMock = vi.fn().mockResolvedValue(
+				new Response(body, {
+					status: 201,
+					headers: { "content-type": "application/json" },
+				}),
+			);
+			const client = createHevyClient({
+				apiKey: "fake-key",
+				fetch: fetchMock,
+				maxGetRetries: 0,
+			});
+
+			await expect(
+				client.createRoutine({
+					routine: { title: "Fixture", exercises: [] },
+				} as never),
+			).resolves.toBeUndefined();
+		},
+	);
+
+	it("never exposes part of the API key in responseError", async () => {
+		const apiKey = "hevykey-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+		const message = `${" ".repeat(4_080)}${apiKey}`;
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(response({ error: message }, 400));
+		const client = createHevyClient({
+			apiKey,
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+
+		const error = (await client.getUserInfo().catch((e: unknown) => e)) as {
+			responseError?: string;
+		};
+		expect(error.responseError ?? "").not.toContain("hevykey-ABCDEFGH");
+	});
+
+	it("keeps an HTTP-date Retry-After as retryAfterSeconds", async () => {
+		const retryAt = new Date(Date.now() + 30_000).toUTCString();
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response("{}", {
+				status: 429,
+				headers: { "content-type": "application/json", "retry-after": retryAt },
+			}),
+		);
+		const client = createHevyClient({
+			apiKey: "fake-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+
+		const error = await Effect.runPromise(
+			Effect.flip(getRequestEffectClient(client).getUserInfo()),
+		);
+		expect(error).toMatchObject({ _tag: "RateLimitError", status: 429 });
+		expect(
+			(error as { retryAfterSeconds?: number }).retryAfterSeconds,
+		).toBeGreaterThan(25);
+	});
+
+	it("a NaN deadline does not disable the per-attempt timeout", async () => {
+		const fetchMock = vi.fn(
+			(_input: RequestInfo | URL, init?: RequestInit) =>
+				new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener("abort", () =>
+						reject(init.signal?.reason),
+					);
+				}),
+		);
+		const client = createHevyClient({
+			apiKey: "fake-key",
+			fetch: fetchMock,
+			maxGetRetries: 0,
+		});
+		const settled = client
+			.getUserInfo({ deadline: Number.NaN, timeoutMs: 20 })
+			.then(
+				() => "resolved",
+				(error: { code?: string }) => error.code,
+			);
+		const hung = new Promise((resolve) =>
+			setTimeout(() => resolve("hung"), 500),
+		);
+		expect(await Promise.race([settled, hung])).toBe(
+			HEVY_DEADLINE_EXCEEDED_ERROR_CODE,
+		);
+	});
 });

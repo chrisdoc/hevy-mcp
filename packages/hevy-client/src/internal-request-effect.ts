@@ -51,6 +51,7 @@ import {
 	expectedGet404Outcome,
 } from "./endpoint-policy.js";
 import { HevyHttpError } from "./hevy-http-error.js";
+import { parseRetryAfterMs } from "./retry-policy.js";
 
 /**
  * Private attachment used to connect a curated Promise client to its native
@@ -240,12 +241,12 @@ function executionControl(
 }
 
 function retryAfterSeconds(error: HevyHttpError): number | undefined {
-	const value = error.headers?.get("retry-after");
-	if (value === null || value === undefined || value.length === 0) {
-		return undefined;
-	}
-	const seconds = Number(value);
-	return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+	const milliseconds = parseRetryAfterMs(
+		error.headers?.get("retry-after") ?? null,
+	);
+	return milliseconds === undefined
+		? undefined
+		: Math.ceil(milliseconds / 1_000);
 }
 
 function requestPage(config: RequestConfig<unknown>): number | undefined {

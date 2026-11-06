@@ -39,6 +39,7 @@ import {
 import { DEFAULT_RETRY_POLICY } from "./retry-policy.js";
 import { createRetrySchedule } from "./retry-schedule.js";
 import { AttemptFailure, attemptEffect, finalizeOnce } from "./attempt.js";
+import { customPromiseSleep } from "./backoff.js";
 import { interruptOnAbortSignal } from "./abort-signal.js";
 
 export interface HevyClientLogEvent {
@@ -305,9 +306,18 @@ function buildUrl(baseUrl: string, config: RequestConfig<unknown>): URL {
 	if (config.path && isObject(config.path)) {
 		for (const [key, value] of Object.entries(config.path)) {
 			if (value !== undefined) {
+				const segment = value === null ? "null" : String(value);
+				// new URL() collapses dot segments, so these would escape the resource.
+				if (segment === "" || segment === "." || segment === "..") {
+					throw new HevyHttpError("Invalid Hevy API endpoint", {
+						method: config.method ?? "GET",
+						endpoint: "unknown",
+						code: "HEVY_INVALID_ENDPOINT",
+					});
+				}
 				resolvedUrl = resolvedUrl.replaceAll(
 					`{${key}}`,
-					encodeURIComponent(value === null ? "null" : String(value)),
+					encodeURIComponent(segment),
 				);
 			}
 		}
@@ -886,17 +896,20 @@ export function createNativeClient(
 			normalized.hevyTimeoutMs,
 			timeoutMs,
 		);
+		// A non-finite deadline (NaN) would disable every deadline comparison.
+		const callerDeadline = Number.isFinite(normalized.hevyDeadline)
+			? normalized.hevyDeadline
+			: undefined;
 		let currentPhase: HevyRequestPhase = "before-dispatch";
 		const requestEffect = Effect.suspend(() => {
 			const operationStartedAt = Date.now();
 			let deadline =
-				normalized.hevyDeadline ??
+				callerDeadline ??
 				operationStartedAt + operationTimeoutMs * (maxGetRetries + 1);
 			// A timed-out read gets one fresh attempt budget on retry, bounded
 			// by the extended operation deadline. An explicit caller deadline
 			// stays authoritative and is never extended.
-			const operationDeadline =
-				normalized.hevyDeadline ?? deadline + operationTimeoutMs;
+			const operationDeadline = callerDeadline ?? deadline + operationTimeoutMs;
 			let retryCount = 0;
 			let freeDeadlineRetryUsed = false;
 			let activeRetryWaitScope: HevyRetryWaitScope | undefined;
@@ -1123,7 +1136,7 @@ export function createNativeClient(
 							retryCount,
 							maxGetRetries,
 							deadlineRetryActive: freeDeadlineRetryUsed,
-							allowDeadlineRetry: normalized.hevyDeadline === undefined,
+							allowDeadlineRetry: callerDeadline === undefined,
 							startedAt,
 							observationScope,
 							onAttemptComplete: completeAttempt,
@@ -1191,7 +1204,7 @@ export function createNativeClient(
 					const freeRetry =
 						safety === "read" &&
 						maxGetRetries > 0 &&
-						normalized.hevyDeadline === undefined &&
+						callerDeadline === undefined &&
 						attempt === 1 &&
 						!freeDeadlineRetryUsed;
 					if (freeRetry) {
@@ -1262,7 +1275,29 @@ export function createNativeClient(
 							delayMs: boundedDelayMs,
 						});
 						activeRetryWaitScope = retryWaitScope;
-						return Effect.succeed(Duration.millis(boundedDelayMs));
+						const sleep = options.sleep;
+						if (!sleep) return Effect.succeed(Duration.millis(boundedDelayMs));
+						// The injected hook performs the wait; the schedule adds none.
+						return customPromiseSleep(
+							boundedDelayMs,
+							normalized.signal ?? new AbortController().signal,
+							sleep,
+						).pipe(
+							Effect.as(Duration.zero),
+							Effect.mapError((cause) => {
+								const canceled = normalized.signal?.aborted === true;
+								return createExecutionError({
+									method,
+									endpoint,
+									safety,
+									phase: "backoff",
+									deadlineExceeded: false,
+									canceled,
+									callerCanceled: canceled,
+									cause,
+								});
+							}),
+						);
 					},
 				},
 			);
@@ -1417,6 +1452,7 @@ export function createClient(
 			const response = await request(options, (config) =>
 				api.postV1Routines({ ...config, body }),
 			);
+			if (!isObject(response)) return undefined;
 			if ("routine" in response) {
 				return response.routine as Routine | undefined;
 			}
