@@ -81,11 +81,14 @@ describe("exercise template catalog", () => {
 		]);
 	});
 
-	it("cancels the shared load when its only waiter aborts", async () => {
+	it("keeps loading after its only waiter aborts so the next call gets the result", async () => {
 		const controller = new AbortController();
 		let cancelled = false;
+		let finish: (() => void) | undefined;
 		const listAll = vi.fn<ListAll["effect"]>().mockImplementation(() =>
-			Effect.callback<TemplatesListAllResult, ListAllError>(() => {
+			Effect.callback<TemplatesListAllResult, ListAllError>((resume) => {
+				finish = () =>
+					resume(Effect.succeed({ items: [{ id: "late" }], pageCount: 1 }));
 				return Effect.sync(() => {
 					cancelled = true;
 				});
@@ -96,8 +99,32 @@ describe("exercise template catalog", () => {
 		await vi.waitFor(() => expect(listAll).toHaveBeenCalledOnce());
 		controller.abort(new DOMException("cancelled", "AbortError"));
 		await expect(pending).rejects.toMatchObject({ name: "AbortError" });
-		await vi.waitFor(() => expect(cancelled).toBe(true));
+
+		const next = catalog.get();
+		finish?.();
+		await expect(next).resolves.toEqual([{ id: "late" }]);
+		await expect(catalog.get()).resolves.toEqual([{ id: "late" }]);
+		expect(cancelled).toBe(false);
 		expect(listAll).toHaveBeenCalledOnce();
+	});
+
+	it("cancels an abandoned load when the catalog closes", async () => {
+		const controller = new AbortController();
+		let cancelled = false;
+		const listAll = vi.fn<ListAll["effect"]>().mockImplementation(() =>
+			Effect.callback<TemplatesListAllResult, ListAllError>(() =>
+				Effect.sync(() => {
+					cancelled = true;
+				}),
+			),
+		);
+		const catalog = createCatalog(operation(listAll));
+		const pending = catalog.get({ execution: { signal: controller.signal } });
+		await vi.waitFor(() => expect(listAll).toHaveBeenCalledOnce());
+		controller.abort(new DOMException("cancelled", "AbortError"));
+		await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+		await Effect.runPromise(catalog.close());
+		expect(cancelled).toBe(true);
 	});
 
 	it("keeps the shared load when one controlled waiter aborts", async () => {

@@ -109,7 +109,6 @@ export function createExerciseTemplateCatalog(
 					TemplateListAllError
 				>;
 				fiber: Fiber.Fiber<boolean, never>;
-				waiters: number;
 				refresh: boolean;
 		  }
 		| undefined;
@@ -190,7 +189,11 @@ export function createExerciseTemplateCatalog(
 			);
 			hasLoadedValue = true;
 			return result;
-		});
+		}).pipe(
+			Effect.tapError(() =>
+				Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY),
+			),
+		);
 		let shared =
 			inFlight && (!refresh || inFlight.refresh) ? inFlight : undefined;
 		if (!shared) {
@@ -208,29 +211,19 @@ export function createExerciseTemplateCatalog(
 					}),
 				),
 			);
-			shared = { deferred, fiber, waiters: 0, refresh };
+			shared = { deferred, fiber, refresh };
 			inFlight = shared;
 		}
-		const loaded = Effect.gen(function* () {
-			shared.waiters += 1;
-			return yield* Effect.ensuring(
-				Deferred.await(shared.deferred).pipe(
-					Effect.raceFirst(
-						options.execution?.signal
-							? awaitAbort(options.execution.signal)
-							: Effect.never,
-					),
-				),
-				Effect.suspend(() => {
-					shared.waiters -= 1;
-					if (shared.waiters === 0 && inFlight === shared) {
-						inFlight = undefined;
-						return Effect.asVoid(Fiber.interrupt(shared.fiber));
-					}
-					return Effect.void;
-				}),
-			);
-		});
+		// A caller that gives up stops waiting but leaves the shared load running,
+		// so a catalog slower than one call's deadline still lands in the cache
+		// for the next call instead of restarting from page 1 every time.
+		const loaded = Deferred.await(shared.deferred).pipe(
+			Effect.raceFirst(
+				options.execution?.signal
+					? awaitAbort(options.execution.signal)
+					: Effect.never,
+			),
+		);
 		const controlled = options.execution
 			? checkExecution(options.execution).pipe(Effect.flatMap(() => loaded))
 			: loaded;
@@ -248,12 +241,6 @@ export function createExerciseTemplateCatalog(
 								notifyRefreshed(options, catalog, reason);
 						}
 					}),
-				),
-				Effect.catch((error) =>
-					Effect.flatMap(
-						Cache.invalidate(cache, EXERCISE_TEMPLATE_CATALOG_CACHE_KEY),
-						() => Effect.fail(error),
-					),
 				),
 				Effect.map((result) => result.items),
 			),
