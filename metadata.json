@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.12.2",
+  "checkpoint_id": "01M6RQDXXPKY1JGTTFTCDZD3MV",
+  "strategy": "manual-commit",
+  "branch": "fix/bug-hunt-fixes",
+  "checkpoints_count": 5,
+  "files_touched": [
+    ".changeset/fix-operations-bughunt.md",
+    "packages/cli/src/commands/index.test.ts",
+    "packages/cli/src/input.test.ts",
+    "packages/cli/src/main.test.ts",
+    "packages/core/src/tools/body-measurements.test.ts",
+    "packages/core/src/tools/input-schemas.ts",
+    "packages/core/src/tools/register.test.ts",
+    "packages/operations/src/body-measurements.test.ts",
+    "packages/operations/src/body-measurements.ts",
+    "packages/operations/src/effect-collapse.test.ts",
+    "packages/operations/src/mutation-semantics.ts",
+    "packages/operations/src/schemas.test.ts",
+    "packages/operations/src/schemas.ts",
+    "packages/operations/src/workflows.test.ts",
+    "packages/operations/src/workflows.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 1081,
+    "cache_read_tokens": 199851,
+    "output_tokens": 590,
+    "api_call_count": 1
+  },
+  "redaction": {
+    "replacements": 4,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 4,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
