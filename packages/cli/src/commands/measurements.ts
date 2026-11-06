@@ -33,6 +33,7 @@ import {
 	runOperation,
 	type CommandContext,
 	type CommandResult,
+	notFoundError,
 } from "./context.js";
 
 type Body = ApiObject;
@@ -159,6 +160,8 @@ async function executeMeasurementGet({
 		{ date },
 		execution,
 	);
+	if (result.expected404Outcome === "not_found")
+		throw notFoundError("/v1/body_measurements/:date");
 	return { body_measurement: result.bodyMeasurement };
 }
 

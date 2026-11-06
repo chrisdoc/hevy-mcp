@@ -1,6 +1,7 @@
 /* oxlint-disable typescript/unbound-method */
 import {
 	ApiError,
+	createHevyClient,
 	HevyHttpError,
 	NetworkError,
 	NotFoundError,
@@ -9,7 +10,7 @@ import {
 	ValidationError,
 } from "@hevy-mcp/hevy-client";
 import { Effect } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCli } from "./main.js";
 import { createEffectClient } from "./test-fixtures/effect-client.js";
 
@@ -784,4 +785,190 @@ describe("CLI JSON error_code compatibility", () => {
 			}
 		},
 	);
+});
+
+const REGRESSION_KEY = "00000000-0000-4000-8000-000000000000";
+
+type Responder = (request: Request, attempt: number) => Response;
+
+async function runWithFakeFetch(
+	argv: string[],
+	respond: Responder,
+	options: {
+		env?: Record<string, string>;
+		execution?: { signal?: AbortSignal; deadline?: number };
+	} = {},
+) {
+	let out = "";
+	let err = "";
+	const calls: string[] = [];
+	let attempt = 0;
+	const fakeFetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+		const request = new Request(input, init);
+		const url = new URL(request.url);
+		calls.push(`${request.method} ${url.pathname}`);
+		return Promise.resolve(respond(request, attempt++));
+	}) as typeof fetch;
+	const code = await runCli({
+		argv,
+		env: options.env ?? { HEVY_API_KEY: REGRESSION_KEY },
+		execution: options.execution,
+		streams: {
+			stdout: (text) => {
+				out += text;
+			},
+			stderr: (text) => {
+				err += text;
+			},
+		},
+		clientFactory: (apiKey) =>
+			createHevyClient({
+				apiKey,
+				fetch: fakeFetch,
+				sleep: async () => {},
+			}),
+	});
+	return { code, out, err, calls };
+}
+
+const jsonResponse = (body: unknown, status = 200) =>
+	new Response(JSON.stringify(body), {
+		status,
+		headers: { "content-type": "application/json" },
+	});
+
+afterEach(() => {
+	vi.useRealTimers();
+});
+
+describe("CLI regressions", () => {
+	it("honors --json=true, which Stricli accepts as the --json flag", async () => {
+		const result = await runWithFakeFetch(
+			["workouts", "list", "--json=true"],
+			() => jsonResponse({ page: 1, page_count: 1, workouts: [] }),
+		);
+
+		expect(result.code).toBe(0);
+		// README: "Add --json to any command for machine-readable output."
+		expect(result.out).toBe('{"page":1,"page_count":1,"workouts":[]}\n');
+	});
+
+	it("does not leak the internal expected404Outcome field from workouts get", async () => {
+		const result = await runWithFakeFetch(
+			["workouts", "get", "missing-id", "--json"],
+			() => jsonResponse({ error: "Workout not found" }, 404),
+		);
+
+		// The other get commands strip operation internals; workouts get passes
+		// the raw camelCase operation output straight to stdout.
+		expect(result.out).not.toContain("expected404Outcome");
+	});
+
+	it.each([
+		["workouts", "get", "missing-id"],
+		["routines", "get", "missing-id"],
+		["exercises", "get", "missing-id"],
+		["measurements", "get", "2026-01-01"],
+	])(
+		"reports a missing resource from `%s %s` as an API failure (exit 3)",
+		async (...argv) => {
+			const result = await runWithFakeFetch([...argv, "--json"], () =>
+				jsonResponse({ error: "not found" }, 404),
+			);
+
+			// main.test.ts expects NotFoundError on /v1/workouts/:workoutId to map
+			// to exit 3, and `exercises history` 404 already exits 3.
+			expect({ code: result.code, out: result.out }).toEqual({
+				code: 3,
+				out: "",
+			});
+		},
+	);
+
+	it("prints help for a bare `hevy` or route-map invocation without credentials", async () => {
+		for (const argv of [[], ["workouts"]]) {
+			const result = await runWithFakeFetch(argv, () => jsonResponse({}), {
+				env: {},
+			});
+			// Route maps use defaultForRouteMap help; help is credential-free.
+			expect({ argv, code: result.code, err: result.err }).toEqual({
+				argv,
+				code: 0,
+				err: "",
+			});
+		}
+	});
+
+	it("reports user cancellation as a cancelled request", async () => {
+		const result = await runWithFakeFetch(
+			["user", "--json"],
+			() => jsonResponse({}),
+			{
+				execution: {
+					signal: AbortSignal.abort(
+						new DOMException("CLI shutdown requested by SIGINT", "AbortError"),
+					),
+				},
+			},
+		);
+		const failure = JSON.parse(result.err) as { message: string };
+
+		expect(result.calls).toEqual([]);
+		expect(failure.message).toBe("Hevy API request cancelled");
+	});
+
+	it("reports the CLI command deadline as a timeout", async () => {
+		const result = await runWithFakeFetch(
+			["user", "--json"],
+			() => jsonResponse({}),
+			{
+				execution: { deadline: Date.now() - 1 },
+			},
+		);
+		const failure = JSON.parse(result.err) as { message: string };
+
+		expect(failure.message).toBe("Hevy API request timed out");
+	});
+
+	it("prints the training summary window the operation counted", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date("2026-11-06T15:00:00.000Z"));
+		const workoutStart = "2026-10-31T08:00:00Z";
+		const result = await runWithFakeFetch(
+			["summary", "--weeks", "1", "--json"],
+			(request) =>
+				new URL(request.url).pathname === "/v1/workouts"
+					? jsonResponse({
+							page: 1,
+							page_count: 1,
+							workouts: [
+								{
+									id: "w1",
+									title: "Morning",
+									description: null,
+									start_time: workoutStart,
+									end_time: "2026-10-31T09:00:00Z",
+									updated_at: "2026-10-31T09:00:00Z",
+									created_at: "2026-10-31T09:00:00Z",
+									exercises: [],
+								},
+							],
+						})
+					: jsonResponse({ page: 1, page_count: 1, body_measurements: [] }),
+		);
+		const summary = JSON.parse(result.out) as {
+			start_date: string;
+			end_date: string;
+			workout_count: number;
+		};
+		const workoutDay = workoutStart.slice(0, 10);
+
+		expect(summary.workout_count).toBe(1);
+		expect(summary).toMatchObject({
+			start_date: "2026-10-31",
+			end_date: "2026-11-06",
+		});
+		expect(summary.start_date <= workoutDay).toBe(true);
+		expect(workoutDay <= summary.end_date).toBe(true);
+	});
 });

@@ -30,6 +30,7 @@ const cliVersion =
 	).data ?? "0.0.0";
 
 export interface CliState {
+	json?: boolean;
 	result?: unknown;
 	error?: unknown;
 }
@@ -38,8 +39,8 @@ export interface CliRuntimeContext extends CommandContext {
 	readonly process: StricliProcess;
 	client?: HevyClient;
 	operations?: HevyOperations;
+	connect(): void;
 	execution?: HevyExecutionOptions;
-	now: () => Date;
 	readDataSource: DataSourceReader;
 	state: CliState;
 }
@@ -124,14 +125,15 @@ async function invoke(
 	flags: CliFlags,
 	positionals: string[],
 ): Promise<void> {
+	context.state.json = flags.json === true;
 	try {
+		context.connect();
 		if (!context.client) {
 			throw new Error("Hevy API client is not configured");
 		}
 		context.state.result = await execute(
 			toArgs(command, subcommand, flags, positionals),
 			context.client,
-			context.now,
 			context.readDataSource,
 			context.operations,
 			context.execution,

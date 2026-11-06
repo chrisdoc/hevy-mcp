@@ -15,7 +15,6 @@ import { readDataSource as defaultDataSourceReader } from "../input.js";
 export async function execute(
 	args: CliArgs,
 	client: HevyClient,
-	now = () => new Date(),
 	readDataSource: DataSourceReader = defaultDataSourceReader,
 	operations: HevyOperations = createOperations(client, {
 		trainingSummaryMaxWeeks: 520,
@@ -25,7 +24,6 @@ export async function execute(
 ): Promise<unknown> {
 	const context: CommandContext = {
 		args,
-		now,
 		readDataSource,
 		operations,
 		execution,

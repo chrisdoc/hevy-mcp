@@ -19,7 +19,6 @@ describe("folder commands", () => {
 				commandArgs("folders", "create", [], mutationOptions(data)),
 				commandClient(),
 				undefined,
-				undefined,
 				operations,
 			),
 		).resolves.toEqual({ routine_folder: { id: "folder-1" } });

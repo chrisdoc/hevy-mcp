@@ -37,7 +37,6 @@ describe("measurement commands", () => {
 				),
 				commandClient(),
 				undefined,
-				undefined,
 				operations,
 			),
 		).resolves.toEqual({

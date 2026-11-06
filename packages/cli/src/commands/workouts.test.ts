@@ -21,7 +21,6 @@ describe("workout commands", () => {
 				commandArgs("workouts", "list", [], { page: "2", "page-size": "8" }),
 				commandClient(),
 				undefined,
-				undefined,
 				operations,
 			),
 		).resolves.toEqual({

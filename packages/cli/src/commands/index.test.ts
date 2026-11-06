@@ -251,7 +251,6 @@ describe("execute command/operation mappings", () => {
 				args("routines", "list", [], { page: "2" }),
 				api,
 				undefined,
-				undefined,
 				injected,
 			),
 		).resolves.toEqual({
@@ -279,7 +278,6 @@ describe("execute command/operation mappings", () => {
 				args("routines", "list", [], { page: "2" }),
 				api,
 				undefined,
-				undefined,
 				injected,
 			),
 		).resolves.toEqual({ page: 2, page_count: 0, routines: [] });
@@ -291,7 +289,6 @@ describe("execute command/operation mappings", () => {
 		await execute(
 			args("workouts", "list", [], { page: "1", "page-size": "10" }),
 			api,
-			undefined,
 			undefined,
 			injected,
 		);
@@ -375,7 +372,7 @@ describe("execute command/operation mappings", () => {
 		async ({ args: commandArgs, operation: getOperation, clientMethod }) => {
 			const api = client();
 			const injected = operations();
-			await execute(commandArgs, api, undefined, undefined, injected);
+			await execute(commandArgs, api, undefined, injected);
 			expect(getOperation(injected)?.effect).toHaveBeenCalled();
 			expect(getOperation(injected)?.execute).not.toHaveBeenCalled();
 			expect(api[clientMethod]).not.toHaveBeenCalled();
@@ -459,7 +456,7 @@ describe("execute command/operation mappings", () => {
 		];
 
 		for (const call of calls) {
-			await execute(call.args, api, undefined, undefined, injected, execution);
+			await execute(call.args, api, undefined, injected, execution);
 			const effect = call.operation()?.effect;
 			if (call.input === undefined) {
 				expect(effect).toHaveBeenCalledWith(execution);
@@ -580,7 +577,7 @@ describe("execute command/operation mappings", () => {
 		] as const;
 
 		for (const command of commands) {
-			await execute(command.args, api, undefined, undefined, injected);
+			await execute(command.args, api, undefined, injected);
 			expect(command.operation?.effect).toHaveBeenCalledWith(
 				command.input,
 				undefined,
@@ -603,13 +600,7 @@ describe("execute command/operation mappings", () => {
 			}),
 		);
 		await expect(
-			execute(
-				args("exercises", "search", ["bench"]),
-				api,
-				undefined,
-				undefined,
-				injected,
-			),
+			execute(args("exercises", "search", ["bench"]), api, undefined, injected),
 		).resolves.toMatchObject({
 			query: "bench",
 			matches: templates,
@@ -618,13 +609,7 @@ describe("execute command/operation mappings", () => {
 		});
 
 		await expect(
-			execute(
-				args("summary"),
-				api,
-				() => new Date("2024-02-01T00:00:00Z"),
-				undefined,
-				injected,
-			),
+			execute(args("summary"), api, undefined, injected),
 		).resolves.toMatchObject({
 			weeks: 1,
 			workout_count: 1,
@@ -663,7 +648,6 @@ describe("execute command/operation mappings", () => {
 					}),
 				),
 				api,
-				undefined,
 				undefined,
 				injected,
 			),
@@ -709,7 +693,6 @@ describe("execute command/operation mappings", () => {
 					}),
 				),
 				api,
-				undefined,
 				undefined,
 				injected,
 			),

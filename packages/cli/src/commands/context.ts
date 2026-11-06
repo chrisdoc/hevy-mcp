@@ -3,13 +3,13 @@ import type { HevyOperations } from "@hevy-mcp/operations";
 import { Effect } from "effect";
 import { z } from "zod";
 import { UsageError, type CliArgs } from "../arguments.js";
+import { NotFoundError } from "@hevy-mcp/hevy-client";
 import { ApiResponseError } from "../errors.js";
 import type { DataSourceReader } from "../input.js";
 import { pageEnvelope, type ApiObject } from "../output/contracts.js";
 
 export type CommandContext = {
 	args: CliArgs;
-	now: () => Date;
 	readDataSource: DataSourceReader;
 	operations: HevyOperations;
 	execution?: HevyExecutionOptions;
@@ -34,6 +34,15 @@ export function requireOperation<T>(operation: T | undefined, id: string): T {
 	if (operation === undefined)
 		throw new ApiResponseError(`Operation ${id} is not configured`);
 	return operation;
+}
+
+export function notFoundError(endpoint: string): NotFoundError {
+	return new NotFoundError({
+		status: 404,
+		endpoint,
+		method: "GET",
+		expected: false,
+	});
 }
 
 export function collapse<T>(effect: Effect.Effect<T, unknown>): Promise<T> {

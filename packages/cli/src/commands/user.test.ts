@@ -13,13 +13,7 @@ describe("user command", () => {
 		const operations = asCommandOperations({ user: { get } });
 
 		await expect(
-			execute(
-				commandArgs("user"),
-				commandClient(),
-				undefined,
-				undefined,
-				operations,
-			),
+			execute(commandArgs("user"), commandClient(), undefined, operations),
 		).resolves.toEqual({ user: { data: { id: "user-1" } } });
 		expect(get.effect).toHaveBeenCalledWith(undefined);
 	});
