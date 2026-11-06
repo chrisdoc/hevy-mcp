@@ -23,11 +23,11 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 2,
-    "cache_creation_tokens": 786,
-    "cache_read_tokens": 200932,
-    "output_tokens": 962,
-    "api_call_count": 1
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "redaction": {
     "replacements": 4,
