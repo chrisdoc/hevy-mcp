@@ -1,0 +1,25 @@
+{
+	"$schema": "https://opencode.ai/config.json",
+
+	// Project configuration for OpenCode V2.
+	// Docs: https://opencode.ai/v2/docs/config
+	// A project config may live at opencode.json(c) or .opencode/opencode.json(c).
+	//
+	// Nothing here overrides behavior on its own: OpenCode already loads this
+	// repo's AGENTS.md as instructions and auto-discovers the skills in
+	// .agents/skills and .claude/skills. Add only the options this project needs.
+
+	// The repository ships .mcp.json (Claude Code format) for the deployed Hevy
+	// MCP server. OpenCode reads its own config, so mirror it here if you want
+	// this project to reach the remote server too. Remote servers use OAuth by
+	// default; after enabling, run /mcps to sign in.
+	// "mcp": {
+	//   "servers": {
+	//     "hevy": { "type": "remote", "url": "https://mcp.hevy-mcp.dev/mcp" }
+	//   }
+	// },
+
+	// AGENTS.md asks for isolated feature worktrees. Point OpenCode's worktree
+	// creation at a directory of your choosing, e.g. "~/worktrees" or ".lane/trees".
+	// "worktree": { "directory": "~/worktrees" },
+}
