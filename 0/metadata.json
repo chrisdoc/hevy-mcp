@@ -1,0 +1,96 @@
+{
+  "cli_version": "0.12.2",
+  "checkpoint_id": "01M6RQSWG91V00DQPQPS3ZTESF",
+  "session_id": "1b377790-ee39-4228-ab85-8c1299b4cf4a",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-06T15:32:02.479477145Z",
+  "branch": "fix/bug-hunt-fixes",
+  "checkpoints_count": 5,
+  "files_touched": [
+    ".changeset/cli-bughunt-fixes.md",
+    "packages/cli/README.md",
+    "packages/cli/src/commands/context.ts",
+    "packages/cli/src/commands/folders.test.ts",
+    "packages/cli/src/commands/index.test.ts",
+    "packages/cli/src/commands/index.ts",
+    "packages/cli/src/commands/measurements.test.ts",
+    "packages/cli/src/commands/measurements.ts",
+    "packages/cli/src/commands/routines.test.ts",
+    "packages/cli/src/commands/routines.ts",
+    "packages/cli/src/commands/summary.test.ts",
+    "packages/cli/src/commands/summary.ts",
+    "packages/cli/src/commands/templates.test.ts",
+    "packages/cli/src/commands/templates.ts",
+    "packages/cli/src/commands/user.test.ts",
+    "packages/cli/src/commands/workouts.test.ts",
+    "packages/cli/src/commands/workouts.ts",
+    "packages/cli/src/errors.ts",
+    "packages/cli/src/main.test.ts",
+    "packages/cli/src/main.ts",
+    "packages/cli/src/routes.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "5ed66447b70c",
+  "checkpoint_transcript_start": 750,
+  "transcript_lines_at_start": 750,
+  "compact_transcript_start": 78,
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 5578,
+    "cache_read_tokens": 1634718,
+    "output_tokens": 3208,
+    "api_call_count": 8
+  },
+  "redaction": {
+    "replacements": 4,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 4,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_011XdiypgGmYkjLBB7xW4jxM",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "pstack:poteto-mode"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "5ed66447b70c",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 41,
+        "end": 42,
+        "entry_ids": [
+          "bff93dc8-c164-41c9-ab39-61d34be465b8"
+        ],
+        "tool_use_id": "toolu_011XdiypgGmYkjLBB7xW4jxM"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_011XdiypgGmYkjLBB7xW4jxM"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: pstack:poteto-mode",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 5
+  }
+}
