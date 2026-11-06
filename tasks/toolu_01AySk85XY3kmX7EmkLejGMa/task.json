@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_01AySk85XY3kmX7EmkLejGMa",
+  "agent_id": "af69efd23808cfb39",
+  "subagent_type": "general-purpose",
+  "task_description": "Bug hunt: node transports",
+  "token_usage": {
+    "input_tokens": 110,
+    "cache_creation_tokens": 171905,
+    "cache_read_tokens": 6420692,
+    "output_tokens": 27026,
+    "api_call_count": 55
+  },
+  "started_at": "2026-11-06T14:50:54.465156322Z",
+  "completed_at": "2026-11-06T14:57:23.66013427Z"
+}

@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_016cmTbqFhxeHDghcA6j51xM",
+  "agent_id": "a28ecc288247535ac",
+  "subagent_type": "general-purpose",
+  "task_description": "Bug hunt: cli",
+  "token_usage": {
+    "input_tokens": 62,
+    "cache_creation_tokens": 122236,
+    "cache_read_tokens": 2705784,
+    "output_tokens": 24991,
+    "api_call_count": 31
+  },
+  "started_at": "2026-11-06T14:50:54.445739824Z",
+  "completed_at": "2026-11-06T14:55:58.73636261Z"
+}

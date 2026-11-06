@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_01DWs3qNxuZBdjFXEUNbeV9u",
+  "agent_id": "a148630b0d98b894d",
+  "subagent_type": "general-purpose",
+  "task_description": "Bug hunt: hevy-client",
+  "token_usage": {
+    "input_tokens": 58,
+    "cache_creation_tokens": 142707,
+    "cache_read_tokens": 3047006,
+    "output_tokens": 24346,
+    "api_call_count": 29
+  },
+  "started_at": "2026-11-06T14:50:54.463328909Z",
+  "completed_at": "2026-11-06T14:55:43.437652374Z"
+}

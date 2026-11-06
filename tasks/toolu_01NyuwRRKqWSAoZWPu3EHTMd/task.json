@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_01NyuwRRKqWSAoZWPu3EHTMd",
+  "agent_id": "a79175a17db4cd5ca",
+  "subagent_type": "general-purpose",
+  "task_description": "Bug hunt: worker OAuth",
+  "token_usage": {
+    "input_tokens": 60,
+    "cache_creation_tokens": 140281,
+    "cache_read_tokens": 2921527,
+    "output_tokens": 24378,
+    "api_call_count": 30
+  },
+  "started_at": "2026-11-06T14:50:54.488244605Z",
+  "completed_at": "2026-11-06T14:55:50.211386045Z"
+}

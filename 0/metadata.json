@@ -1,0 +1,87 @@
+{
+  "cli_version": "0.12.2",
+  "checkpoint_id": "01M6RQ7AF9V5S9SD98TN0X6ZAP",
+  "session_id": "1b377790-ee39-4228-ab85-8c1299b4cf4a",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-06T15:22:02.938972027Z",
+  "branch": "fix/bug-hunt-fixes",
+  "checkpoints_count": 5,
+  "files_touched": [
+    ".changeset/template-catalog-deadline.md",
+    "packages/core/src/tools/input-schemas.ts",
+    "packages/core/src/tools/templates.slow-catalog.test.ts",
+    "packages/core/src/tools/workouts.page-schema.test.ts",
+    "packages/core/src/tools/workouts.ts",
+    "packages/core/src/utils/exercise-template-catalog.test.ts",
+    "packages/core/src/utils/exercise-template-catalog.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "5ed66447b70c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 138,
+    "cache_creation_tokens": 169906,
+    "cache_read_tokens": 7760724,
+    "output_tokens": 39258,
+    "api_call_count": 63,
+    "subagent_tokens": {
+      "input_tokens": 820,
+      "cache_creation_tokens": 1193743,
+      "cache_read_tokens": 32617857,
+      "output_tokens": 228030,
+      "api_call_count": 410
+    }
+  },
+  "redaction": {
+    "replacements": 4,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 4,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_011XdiypgGmYkjLBB7xW4jxM",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "pstack:poteto-mode"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "5ed66447b70c",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 41,
+        "end": 42,
+        "entry_ids": [
+          "bff93dc8-c164-41c9-ab39-61d34be465b8"
+        ],
+        "tool_use_id": "toolu_011XdiypgGmYkjLBB7xW4jxM"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_011XdiypgGmYkjLBB7xW4jxM"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: pstack:poteto-mode",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 5
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_018HmUKrBHzXdsnT85HMRcSD",
+  "agent_id": "a0b45e26c14df9bdf",
+  "subagent_type": "general-purpose",
+  "task_description": "Bug hunt: core MCP tools",
+  "token_usage": {
+    "input_tokens": 108,
+    "cache_creation_tokens": 133866,
+    "cache_read_tokens": 5120530,
+    "output_tokens": 30034,
+    "api_call_count": 54
+  },
+  "started_at": "2026-11-06T14:50:54.470025116Z",
+  "completed_at": "2026-11-06T14:57:59.17565966Z"
+}

@@ -1,0 +1,53 @@
+{
+  "cli_version": "0.12.2",
+  "checkpoint_id": "01M6RQ7AF9V5S9SD98TN0X6ZAP",
+  "strategy": "manual-commit",
+  "branch": "fix/bug-hunt-fixes",
+  "checkpoints_count": 5,
+  "files_touched": [
+    ".changeset/template-catalog-deadline.md",
+    "packages/core/src/tools/input-schemas.ts",
+    "packages/core/src/tools/templates.slow-catalog.test.ts",
+    "packages/core/src/tools/workouts.page-schema.test.ts",
+    "packages/core/src/tools/workouts.ts",
+    "packages/core/src/utils/exercise-template-catalog.test.ts",
+    "packages/core/src/utils/exercise-template-catalog.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 138,
+    "cache_creation_tokens": 169906,
+    "cache_read_tokens": 7760724,
+    "output_tokens": 39258,
+    "api_call_count": 63,
+    "subagent_tokens": {
+      "input_tokens": 820,
+      "cache_creation_tokens": 1193743,
+      "cache_read_tokens": 32617857,
+      "output_tokens": 228030,
+      "api_call_count": 410
+    }
+  },
+  "redaction": {
+    "replacements": 4,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 4,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
