@@ -96,6 +96,7 @@ describe("operations Effect collapse", () => {
 				getBodyMeasurements: () => Effect.succeed({}),
 			}),
 			createBodyMeasurementsUpdateOperation({
+				getBodyMeasurement: () => Effect.succeed({ date: "2025-01-01" }),
 				updateBodyMeasurement: () => Effect.succeed(undefined),
 			}),
 			createWorkoutsCreateOperation({

@@ -458,7 +458,7 @@ export function createWorkflowsTrainingSummaryOperation(
 
 			const now = yield* DateTime.now;
 			const end = DateTime.startOf(now, "day");
-			const start = DateTime.subtract(end, { days: input.weeks * 7 });
+			const start = DateTime.subtract(end, { days: input.weeks * 7 - 1 });
 			const period = {
 				start_date: DateTime.formatIsoDateUtc(start),
 				end_date: DateTime.formatIsoDateUtc(end),

@@ -325,7 +325,7 @@ console.log("== mutation guards (fake key, never a live write) ==");
 			"update",
 			"workout-1",
 			"--data",
-			'{"workout_id":"other","workout":{"title":"T","start_time":"2024-01-01T10:00:00Z","end_time":"2024-01-01T11:00:00Z","exercises":[]}}',
+			'{"workout_id":"other","workout":{"title":"T","start_time":"2024-01-01T10:00:00Z","end_time":"2024-01-01T11:00:00Z","is_private":false,"exercises":[]}}',
 			"--yes",
 			"--json",
 		],

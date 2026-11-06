@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { NotFoundError } from "@hevy-mcp/hevy-client";
 import { defineOperation } from "./define-operation.js";
 import type {
 	HevyExecutionOptions,
@@ -16,6 +17,7 @@ import type {
 import {
 	assertPageEcho,
 	isEmptyResponse,
+	isExpectedReadNotFound,
 	withExpectedEndOfList,
 	withExpectedNotFound,
 	EmptyMeasurementUpdateError,
@@ -23,6 +25,7 @@ import {
 } from "./operation-errors.js";
 import {
 	buildMeasurementPayload,
+	mergeMeasurementPayload,
 	type MeasurementFields,
 	type MeasurementPayload,
 } from "./mutation-semantics.js";
@@ -144,7 +147,7 @@ export type BodyMeasurementsUpdateInput = {
 
 export type BodyMeasurementsUpdateAdapter = Pick<
 	HevyRequestEffectClient,
-	"updateBodyMeasurement"
+	"getBodyMeasurement" | "updateBodyMeasurement"
 >;
 
 export interface BodyMeasurementsUpdateDescriptor {
@@ -252,6 +255,16 @@ export function createBodyMeasurementsCreateOperation(
 	);
 }
 
+function measurementNotFound(): NotFoundError {
+	return new NotFoundError({
+		status: 404,
+		endpoint: "/v1/body_measurements/:date",
+		method: "GET",
+		expected: false,
+		code: "HEVY_BODY_MEASUREMENT_NOT_FOUND",
+	});
+}
+
 export function createBodyMeasurementsUpdateOperation(
 	adapter: BodyMeasurementsUpdateAdapter,
 ): BodyMeasurementsUpdateOperation {
@@ -268,9 +281,25 @@ export function createBodyMeasurementsUpdateOperation(
 						"No measurement fields provided. Include at least one numeric measurement field (e.g. weight_kg) to update.",
 				});
 			}
+			// Hevy's PUT overwrites the whole measurement and nulls omitted fields,
+			// so unchanged stored values must be sent back with the changes.
+			const existing = yield* adapter
+				.getBodyMeasurement(input.date, options)
+				.pipe(
+					Effect.filterOrFail(
+						(measurement) =>
+							measurement != null && !isEmptyResponse(measurement),
+						() => measurementNotFound(),
+					),
+					Effect.catchIf(
+						(cause) => isExpectedReadNotFound(cause, "/v1/body_measurements"),
+						() => Effect.fail(measurementNotFound()),
+					),
+				);
+			const { payload: merged } = mergeMeasurementPayload(existing, input);
 			const request = adapter.updateBodyMeasurement(
 				input.date,
-				payload,
+				merged,
 				options,
 			);
 			yield* request;

@@ -471,7 +471,10 @@ describe("CLI mutation process contract", () => {
 				"update",
 				"workout-1",
 				"--data",
-				json({ workout_id: "workout-1", ...workout }),
+				json({
+					workout_id: "workout-1",
+					workout: { ...workout.workout, is_private: false },
+				}),
 				"--yes",
 				"--json",
 			],
@@ -550,7 +553,7 @@ describe("CLI mutation process contract", () => {
 		expect(client.createExerciseTemplate).toHaveBeenCalledTimes(1);
 		expect(client.createRoutineFolder).toHaveBeenCalledTimes(1);
 		expect(client.createBodyMeasurement).toHaveBeenCalledTimes(1);
-		expect(client.getBodyMeasurement).toHaveBeenCalledTimes(1);
+		expect(client.getBodyMeasurement).toHaveBeenCalledTimes(2);
 		expect(client.updateBodyMeasurement).toHaveBeenCalledTimes(1);
 	});
 

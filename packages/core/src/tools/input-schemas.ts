@@ -84,7 +84,10 @@ export const replaceWorkoutPayloadFields = {
 const replaceWorkoutPayloadSchema = z.strictObject(replaceWorkoutPayloadFields);
 
 export const workoutInputSchema = z.strictObject({
-	workout: replaceWorkoutPayloadSchema,
+	workout: z.strictObject({
+		...replaceWorkoutPayloadFields,
+		is_private: z.boolean().default(false),
+	}),
 });
 export const workoutInputFields = workoutInputSchema.shape;
 

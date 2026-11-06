@@ -489,7 +489,10 @@ describe("execute command/operation mappings", () => {
 					"workouts",
 					"update",
 					["w1"],
-					mutationOptions({ workout_id: "w1", ...workout }),
+					mutationOptions({
+						workout_id: "w1",
+						workout: { ...workout.workout, is_private: false },
+					}),
 				),
 				operation: injected.workouts.update,
 				input: {

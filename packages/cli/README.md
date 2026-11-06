@@ -87,16 +87,16 @@ The CLI validates the complete payload before making an API request.
 
 ### Create and update
 
-| Command                                                      | Payload                                       |
-| ------------------------------------------------------------ | --------------------------------------------- |
-| `hevy workouts create --data <value> --yes`                  | Complete workout                              |
-| `hevy workouts update <workout-id> --data <value> --yes`     | Complete replacement workout                  |
-| `hevy routines create --data <value> --yes`                  | Complete routine, optionally with `folder_id` |
-| `hevy routines update <routine-id> --data <value> --yes`     | Complete replacement routine                  |
-| `hevy exercises create --data <value> --yes`                 | Custom exercise template                      |
-| `hevy folders create --data <value> --yes`                   | Routine folder                                |
-| `hevy measurements create <YYYY-MM-DD> --data <value> --yes` | New body measurement                          |
-| `hevy measurements update <YYYY-MM-DD> --data <value> --yes` | Measurement patch                             |
+| Command                                                      | Payload                                        |
+| ------------------------------------------------------------ | ---------------------------------------------- |
+| `hevy workouts create --data <value> --yes`                  | Complete workout                               |
+| `hevy workouts update <workout-id> --data <value> --yes`     | Complete replacement workout with `is_private` |
+| `hevy routines create --data <value> --yes`                  | Complete routine, optionally with `folder_id`  |
+| `hevy routines update <routine-id> --data <value> --yes`     | Complete replacement routine                   |
+| `hevy exercises create --data <value> --yes`                 | Custom exercise template                       |
+| `hevy folders create --data <value> --yes`                   | Routine folder                                 |
+| `hevy measurements create <YYYY-MM-DD> --data <value> --yes` | New body measurement                           |
+| `hevy measurements update <YYYY-MM-DD> --data <value> --yes` | Measurement patch                              |
 
 There is no delete command, update-template command, or update-folder command.
 
