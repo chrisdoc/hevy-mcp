@@ -42,6 +42,7 @@
 	"ignoreBinaries": ["mise"],
 	"ignore": ["packages/hevy-client/src/generated/**"],
 	"ignoreFiles": [
+		".opencode/plugins/**",
 		"tests/fixtures/**",
 		"scripts/codegen/check-generated-client.d.mts",
 		"scripts/check-package-boundaries.d.mts",
