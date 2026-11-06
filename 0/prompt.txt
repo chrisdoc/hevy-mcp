@@ -1,0 +1,9 @@
+create PR for the package uprade
+
+---
+
+upgrade all dependencies in sub packages
+
+---
+
+curl -fsSL https://agentsinthecloud.com/install.sh | bash
