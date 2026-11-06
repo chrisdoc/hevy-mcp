@@ -300,6 +300,7 @@ describe("OAuth helpers", () => {
 	it("escapes HTML in the authorization page", () => {
 		const page = renderAuthorizePage({
 			clientName: '<script>alert("x")</script>',
+			redirectUri: 'https://evil.example"><script>x</script>/cb',
 			encodedRequest: 'abc" onmouseover="evil',
 		});
 		expect(page).not.toContain("<script>alert");
@@ -1396,5 +1397,130 @@ describe("OAuth-enabled Worker fetch handler", () => {
 		expect(diagnostic).toContain("503");
 		expect(diagnostic).toContain("HEVY_RETRY_EXHAUSTED");
 		stderrSpy.mockRestore();
+	});
+
+	describe("OAuth /mcp method and path contract matches the legacy path", () => {
+		it("rejects GET /mcp with 405 instead of opening an unbounded SSE stream", async () => {
+			const { handler, env } = createHandlerWithEnv();
+			const tokens = await issueAccessTokenForValidationTest(
+				handler,
+				env,
+				"oauth-get-key",
+			);
+			const result = await handler(
+				new Request(OAUTH_RESOURCE, {
+					method: "GET",
+					headers: {
+						accept: "text/event-stream",
+						authorization: `Bearer ${tokens.access_token}`,
+					},
+				}),
+				env,
+				testExecutionContext,
+			);
+			await result.body?.cancel();
+			expect({
+				status: result.status,
+				contentType: result.headers.get("content-type"),
+			}).toEqual({
+				status: 405,
+				contentType: expect.not.stringContaining("event-stream"),
+			});
+			expect(result.headers.get("allow")).toBe("POST, OPTIONS");
+		});
+
+		it("rejects DELETE /mcp with 405 like the legacy path", async () => {
+			const { handler, env } = createHandlerWithEnv();
+			const tokens = await issueAccessTokenForValidationTest(
+				handler,
+				env,
+				"oauth-delete-key",
+			);
+			const result = await handler(
+				new Request(OAUTH_RESOURCE, {
+					method: "DELETE",
+					headers: { authorization: `Bearer ${tokens.access_token}` },
+				}),
+				env,
+				testExecutionContext,
+			);
+			expect(result.status).toBe(405);
+		});
+
+		it("does not validate the key against Hevy for a rejected method", async () => {
+			const getUserInfo = vi.fn().mockResolvedValue({ data: { id: "user" } });
+			const { handler, env } = createHandlerWithEnv({
+				createValidationClient: () =>
+					createMockClient({ getUserInfo } as Partial<HevyClient>),
+			});
+			const tokens = await issueAccessTokenForValidationTest(
+				handler,
+				env,
+				"oauth-no-validate-key",
+			);
+			getUserInfo.mockClear();
+			resetMemoryValidationCacheForTests();
+			await handler(
+				new Request(OAUTH_RESOURCE, {
+					method: "GET",
+					headers: { authorization: `Bearer ${tokens.access_token}` },
+				}),
+				env,
+				testExecutionContext,
+			);
+			expect(getUserInfo).not.toHaveBeenCalled();
+		});
+
+		it("serves MCP only at exactly /mcp, not at /mcp/<anything>", async () => {
+			const { handler, env } = createHandlerWithEnv();
+			const tokens = await issueAccessTokenForValidationTest(
+				handler,
+				env,
+				"oauth-subpath-key",
+			);
+			const result = await handler(
+				jsonPostRequest(
+					initializeMessage(1, "subpath"),
+					{
+						accept: "application/json, text/event-stream",
+						"content-type": "application/json",
+						authorization: `Bearer ${tokens.access_token}`,
+					},
+					`${OAUTH_RESOURCE}/anything`,
+				),
+				env,
+				testExecutionContext,
+			);
+			await result.body?.cancel();
+			expect(result.status).toBe(404);
+		});
+	});
+
+	it("renders the redirect URI host and marks the client name as self-asserted", async () => {
+		const { handler, env } = createHandlerWithEnv();
+		const evilRedirect = "https://evil.example/callback";
+		const registration = await handler(
+			registerRequest({
+				client_name: "Claude",
+				redirect_uris: [evilRedirect],
+				token_endpoint_auth_method: "none",
+			}),
+			env,
+			testExecutionContext,
+		);
+		const client = (await registration.json()) as { client_id: string };
+		const { challenge } = await createPkcePair();
+		const url = new URL("https://worker.example/authorize");
+		url.searchParams.set("response_type", "code");
+		url.searchParams.set("client_id", client.client_id);
+		url.searchParams.set("redirect_uri", evilRedirect);
+		url.searchParams.set("state", "s");
+		url.searchParams.set("code_challenge", challenge);
+		url.searchParams.set("code_challenge_method", "S256");
+		const page = await handler(new Request(url), env, testExecutionContext);
+		const html = await page.text();
+		expect(page.status).toBe(200);
+		expect(html).toContain("calling itself <strong>Claude</strong>");
+		expect(html).toContain("redirected to <strong>evil.example</strong>");
 	});
 });

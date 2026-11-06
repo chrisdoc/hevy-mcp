@@ -1,6 +1,38 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { isOAuthEnabled } from "./worker-oauth.js";
+import { z } from "zod";
+
+function isObjectLike<T>(value: T): value is T & object {
+	return z.object({}).passthrough().safeParse(value).success;
+}
+
+function isFunction<T>(value: T): value is T & ((...args: never[]) => void) {
+	return z.function().safeParse(value).success;
+}
+
+function isKvNamespaceLike<T>(value: T): boolean {
+	if (!isObjectLike(value)) return false;
+	return (
+		"get" in value &&
+		isFunction(value.get) &&
+		"put" in value &&
+		isFunction(value.put) &&
+		"delete" in value &&
+		isFunction(value.delete) &&
+		"list" in value &&
+		isFunction(value.list)
+	);
+}
+
+/**
+ * OAuth is enabled only when OAUTH_KV is bound to something that actually
+ * looks like a KV namespace. A misconfigured binding (e.g. a plain string
+ * var) must not route requests into the OAuth provider, where it would
+ * fail at runtime.
+ */
+export function isOAuthEnabled(env: { OAUTH_KV?: unknown }): boolean {
+	return isKvNamespaceLike(env.OAUTH_KV);
+}
 
 const HEVY_API_BASE_URL = "https://api.hevyapp.com";
 const OAUTH_AUTHORIZE_PATH = "/authorize";

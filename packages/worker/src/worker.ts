@@ -17,7 +17,6 @@ import {
 	hasOAuthAccessTokenFormat,
 	type HevyApiKeyValidation,
 	type HevyOAuthWorker,
-	isOAuthEnabled,
 	WORKER_INVOCATION_TIMEOUT_MS,
 } from "./worker-oauth.js";
 import { executionResponse } from "./execution-response.js";
@@ -47,6 +46,7 @@ import {
 	corsHeaders,
 	DEFAULT_ALLOWED_ORIGINS,
 	healthResponseWithCors,
+	isOAuthEnabled,
 	parseAllowedOrigins,
 	parseBearerApiKey,
 	resolveHevyApiBaseUrl,
