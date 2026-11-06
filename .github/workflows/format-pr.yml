@@ -3,7 +3,7 @@ name: Format Pull Request
 # A maintainer can comment `/format` on a same-repository PR to apply the
 # repository formatter and commit the result back to that PR.
 on:
-  issue_comment:
+  issue_comment: # zizmor: ignore[dangerous-triggers]
     types: [created]
 
 permissions: {}
