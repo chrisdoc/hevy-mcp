@@ -157,6 +157,29 @@ function markSdkToolFailure(
 	}
 }
 
+// The SDK reports transport-level client mistakes as plain `Error`s with no
+// class or code, so the message prefix is the only stable identity; parse
+// failures arrive as SyntaxError or ZodError.
+const CLIENT_TRANSPORT_ERROR_PREFIXES = [
+	"Not Acceptable:",
+	"Unsupported Media Type:",
+	"Method not allowed",
+	"Bad Request:",
+	"Session not found",
+	"Invalid Request:",
+	"Parse error",
+] as const;
+
+function isClientCausedTransportError(error: Error): boolean {
+	return (
+		error instanceof SyntaxError ||
+		error.name === "ZodError" ||
+		CLIENT_TRANSPORT_ERROR_PREFIXES.some((prefix) =>
+			error.message.startsWith(prefix),
+		)
+	);
+}
+
 function installProtocolErrorTracking(
 	server: { server?: { onerror?: (error: Error) => void } },
 	transport: NodeTransport,
@@ -174,6 +197,7 @@ function installProtocolErrorTracking(
 		);
 		const activeSpan = trace.getActiveSpan();
 		const sessionId = getCurrentMcpSessionId();
+		const expected = isClientCausedTransportError(error) ? true : undefined;
 		if (activeSpan) {
 			activeSpan.addEvent("mcp.tool.failure", {
 				"mcp.tool.name": sdkToolNameStorage.getStore() ?? "unknown",
@@ -183,6 +207,7 @@ function installProtocolErrorTracking(
 				kind: "protocol",
 				attributes,
 				span: activeSpan,
+				expected,
 			});
 		} else {
 			tracer.startActiveSpan(
@@ -202,7 +227,12 @@ function installProtocolErrorTracking(
 						"mcp.tool.name": "unknown",
 						...attributes,
 					});
-					captureFailure(error, { kind: "protocol", attributes, span });
+					captureFailure(error, {
+						kind: "protocol",
+						attributes,
+						span,
+						expected,
+					});
 					span.end();
 				},
 			);

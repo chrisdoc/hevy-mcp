@@ -1,6 +1,9 @@
 import { PassThrough, Writable } from "node:stream";
 import * as ServerPackage from "@modelcontextprotocol/server";
-import type { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import {
+	StdioServerTransport as RealStdioServerTransport,
+	type StdioServerTransport,
+} from "@modelcontextprotocol/server/stdio";
 import type { Span } from "@opentelemetry/api";
 import { z } from "zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -332,22 +335,46 @@ describe("package-local stdio observability", () => {
 
 		expect(() => readBuffer.readMessage()).toThrow(unexpected);
 	});
-	it("defers the message after the malformed-line drain cap", async () => {
-		const { readBuffer, transport } = createTransportDouble();
-		createInstrumentedStdioTransport(asStdioTransport(transport));
-		const malformedLines = Array.from({ length: 100 }, () => "{bad}").join(
-			"\n",
-		);
-		transport._ondata?.(
-			Buffer.from(
-				`${malformedLines}\n{"jsonrpc":"2.0","id":1,"method":"ping"}\n`,
-				"utf8",
-			),
-		);
+	it.each([100, 250])(
+		"delivers a valid request that follows %i malformed lines in the same chunk",
+		async (malformedCount) => {
+			vi.spyOn(console, "error").mockImplementation(() => undefined);
+			const stdin = new PassThrough();
+			const stdout = new PassThrough();
+			const transport = createInstrumentedStdioTransport(
+				new RealStdioServerTransport(stdin, stdout),
+			);
+			const received: unknown[] = [];
+			transport.onmessage = (message) => received.push(message);
+			await transport.start();
 
-		expect(readBuffer.readMessage()).toBeNull();
-		await new Promise((resolve) => setImmediate(resolve));
-		expect(readBuffer.readMessage()).toMatchObject({ id: 1, method: "ping" });
+			const malformed = Array.from({ length: malformedCount }, () => "{bad}");
+			stdin.write(
+				`${malformed.join("\n")}\n{"jsonrpc":"2.0","id":1,"method":"ping"}\n`,
+			);
+			for (let turn = 0; turn < 8; turn += 1) {
+				await new Promise((resolve) => setImmediate(resolve));
+			}
+
+			expect(received).toEqual([{ jsonrpc: "2.0", id: 1, method: "ping" }]);
+			await transport.close();
+		},
+	);
+
+	it("control: the uninstrumented SDK transport delivers the same request", async () => {
+		const stdin = new PassThrough();
+		const stdout = new PassThrough();
+		const transport = new RealStdioServerTransport(stdin, stdout);
+		const received: unknown[] = [];
+		transport.onmessage = (message) => received.push(message);
+		await transport.start();
+		const malformed = Array.from({ length: 100 }, () => "{bad}").join("\n");
+		stdin.write(`${malformed}\n{"jsonrpc":"2.0","id":1,"method":"ping"}\n`);
+		for (let turn = 0; turn < 5; turn += 1) {
+			await new Promise((resolve) => setImmediate(resolve));
+		}
+		expect(received).toEqual([{ jsonrpc: "2.0", id: 1, method: "ping" }]);
+		await transport.close();
 	});
 
 	it("rethrows the original parser error when diagnostics fail", () => {

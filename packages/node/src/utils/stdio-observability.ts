@@ -72,6 +72,8 @@ interface MutableReadBuffer {
 type MutableStdioServerTransport = {
 	_readBuffer?: MutableReadBuffer;
 	_ondata?: (chunk: Buffer) => void;
+	_closed?: boolean;
+	processReadBuffer?: () => void;
 };
 
 interface SdkPrivateStdioAdapter {
@@ -118,14 +120,8 @@ function createSdkPrivateStdioAdapter(
 			if (!readBuffer || !isFunction(readBuffer.readMessage)) {
 				return false;
 			}
-			let deferredMessage: JSONRPCMessage | null = null;
 
 			readBuffer.readMessage = () => {
-				if (deferredMessage) {
-					const message = deferredMessage;
-					deferredMessage = null;
-					return message;
-				}
 				let skippedMalformedLines = 0;
 				while (true) {
 					const buffer = readBuffer._buffer;
@@ -151,9 +147,15 @@ function createSdkPrivateStdioAdapter(
 						}
 						skippedMalformedLines += 1;
 						if (skippedMalformedLines >= MAX_MALFORMED_LINES_PER_READ) {
+							// The SDK read loop stops on null, so re-enter it on a later
+							// turn to deliver whatever is still buffered.
 							setImmediate(() => {
-								const message = readBuffer.readMessage();
-								if (message) deferredMessage = message;
+								if (
+									!mutableTransport._closed &&
+									isFunction(mutableTransport.processReadBuffer)
+								) {
+									mutableTransport.processReadBuffer();
+								}
 							});
 							return null;
 						}

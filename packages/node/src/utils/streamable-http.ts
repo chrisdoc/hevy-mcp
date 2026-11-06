@@ -855,6 +855,12 @@ export async function startStreamableHttpServer(
 			await runWithMcpSessionContext(context, () =>
 				transport.handleRequest(request, response, body),
 			);
+			// The SDK validates the initialize request only after the server is
+			// connected. A rejection (406/415/400) never assigns a session id, so
+			// release the server instead of leaving it pending.
+			if (!currentSession.id) {
+				await closeSession(currentSession, "startup_failure");
+			}
 		} catch (error) {
 			lifecycleController.abort(
 				new DOMException("MCP session startup failed", "AbortError"),
