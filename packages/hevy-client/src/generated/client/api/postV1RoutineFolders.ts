@@ -23,6 +23,7 @@ export function postV1RoutineFolders<ThrowOnError extends boolean = true>(
     request({
       method: "POST",
       url: "/v1/routine_folders",
+      contentType: { request: "application/json" },
       ...config,
       throwOnError: config.throwOnError ?? true,
     }) as Promise<RequestResult<PostV1RoutineFoldersResponses, ThrowOnError>>,

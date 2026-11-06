@@ -25,6 +25,7 @@ export function putV1BodyMeasurementsDate<ThrowOnError extends boolean = true>(
     request({
       method: "PUT",
       url: "/v1/body_measurements/{date}",
+      contentType: { request: "application/json" },
       ...config,
       throwOnError: config.throwOnError ?? true,
     }) as Promise<

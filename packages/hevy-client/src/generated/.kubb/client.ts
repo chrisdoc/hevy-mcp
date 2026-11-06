@@ -665,7 +665,7 @@ export async function resolveAuth(params: {
       if (getHeader(headers, "Authorization") === undefined) {
         headers["Authorization"] =
           scheme.scheme === "basic"
-            ? `Basic ${btoa(token)}`
+            ? `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(token)))}`
             : `Bearer ${token}`;
       }
       return;
