@@ -3,7 +3,7 @@
   "checkpoint_id": "01M6RRCDX449H7M1MVD9NKK0K7",
   "session_id": "1b377790-ee39-4228-ab85-8c1299b4cf4a",
   "strategy": "manual-commit",
-  "created_at": "2026-11-06T15:42:10.203402047Z",
+  "created_at": "2026-11-06T15:42:13.280076456Z",
   "branch": "fix/bug-hunt-fixes",
   "checkpoints_count": 1,
   "files_touched": [
@@ -18,15 +18,15 @@
   "agent": "Claude Code",
   "model": "claude-opus-5-5",
   "turn_id": "02a78ada03ce",
-  "checkpoint_transcript_start": 973,
-  "transcript_lines_at_start": 973,
-  "compact_transcript_start": 115,
+  "checkpoint_transcript_start": 986,
+  "transcript_lines_at_start": 986,
+  "compact_transcript_start": 117,
   "token_usage": {
-    "input_tokens": 4,
-    "cache_creation_tokens": 1458,
-    "cache_read_tokens": 474207,
-    "output_tokens": 694,
-    "api_call_count": 2
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
   },
   "redaction": {
     "replacements": 6,
