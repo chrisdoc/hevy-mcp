@@ -1306,6 +1306,22 @@ describe("real stateless SDK transport", () => {
 		fetchSpy.mockRestore();
 	});
 
+	it("reads the whole body of a request it rejects before parsing", async () => {
+		const request = new Request("https://worker.example/mcp", {
+			method: "POST",
+			headers: {
+				accept: "application/json, text/event-stream",
+				"content-type": "application/json",
+			},
+			body: "{",
+		});
+
+		const result = await worker.fetch(request, {});
+
+		expect(result.status).toBe(401);
+		expect(request.bodyUsed).toBe(true);
+	});
+
 	it("retries a transient (non-429) validation failure and logs the attempt", async () => {
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		let attempt = 0;
