@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_014y3uZPXbqDqVWX3nDLWUqM",
+  "agent_id": "ae63bc55194b87dd2",
+  "subagent_type": "shipper",
+  "task_description": "Push branch and open PR",
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 22102,
+    "cache_read_tokens": 54840,
+    "output_tokens": 2954,
+    "api_call_count": 4
+  },
+  "started_at": "2026-11-06T18:27:51.754349528Z",
+  "completed_at": "2026-11-06T18:28:16.615025573Z"
+}
