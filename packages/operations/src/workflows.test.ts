@@ -190,7 +190,7 @@ describe("workflows.trainingSummary operation", () => {
 			runAtFixedTime(operation.effect({ weeks: 4 }, options)),
 		).resolves.toEqual({
 			period: {
-				start_date: "2026-06-18",
+				start_date: "2026-06-19",
 				end_date: "2026-07-16",
 				weeks: 4,
 			},
@@ -383,6 +383,42 @@ describe("workflows.trainingSummary operation", () => {
 		).rejects.toMatchObject({
 			_tag: "TrainingSummaryDataError",
 			message: "The API returned an item with an invalid date",
+		});
+	});
+});
+
+// get-training-summary: "Summarizes ... for the last 1–12 weeks". One week is
+// seven calendar days; the inclusive [start_date, end_date] window is eight.
+describe("workflows.trainingSummary window", () => {
+	it("covers exactly 7 calendar days for weeks: 1", async () => {
+		const eightDaysAgo: Workout = {
+			id: "w-8d",
+			start_time: "2026-07-09T12:00:00Z",
+			end_time: "2026-07-09T13:00:00Z",
+			exercises: [],
+		};
+		const workouts = createWorkoutsListOperation({
+			getWorkouts: () =>
+				Effect.succeed({ page: 1, page_count: 1, workouts: [eightDaysAgo] }),
+		});
+		const bodyMeasurements = createBodyMeasurementsListOperation({
+			getBodyMeasurements: () =>
+				Effect.succeed({ page: 1, page_count: 1, body_measurements: [] }),
+		});
+		const operation = createWorkflowsTrainingSummaryOperation({
+			workouts,
+			bodyMeasurements,
+		});
+
+		const result = await runAtFixedTime(operation.effect({ weeks: 1 }));
+		const days =
+			(Date.parse(`${result.period.end_date}T00:00:00Z`) -
+				Date.parse(`${result.period.start_date}T00:00:00Z`)) /
+				86_400_000 +
+			1;
+		expect({ days, count: result.workouts.count }).toEqual({
+			days: 7,
+			count: 0,
 		});
 	});
 });

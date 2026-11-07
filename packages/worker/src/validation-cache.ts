@@ -8,7 +8,8 @@ import {
 	type HevyRequestOptions,
 } from "@hevy-mcp/hevy-client";
 import { interruptOnAbortSignal } from "@hevy-mcp/hevy-client/internal";
-import { isOAuthEnabled, type HevyApiKeyValidation } from "./worker-oauth.js";
+import { isOAuthEnabled } from "./worker-http-helpers.js";
+import type { HevyApiKeyValidation } from "./worker-oauth.js";
 
 /** How long a successful Hevy key validation is trusted before re-checking upstream. */
 export const VALIDATION_CACHE_TTL_SECONDS = 900;

@@ -79,6 +79,7 @@ describe("mutation input sources", () => {
 			workout_id: "workout-1",
 			workout: {
 				...workout.workout,
+				is_private: false,
 				exercises: JSON.stringify(workout.workout.exercises),
 			},
 		};

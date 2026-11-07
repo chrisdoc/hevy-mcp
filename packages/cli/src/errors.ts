@@ -174,12 +174,18 @@ export function diagnostic(error: Error | string): CliDiagnostic {
 				message: `Hevy API request failed (HTTP ${status})`,
 				...executionFields(error),
 			};
+		const failureCode = "code" in error ? error.code : undefined;
+		const outcome = "outcome" in error ? error.outcome : undefined;
 		return {
 			code: EXIT.network,
 			message:
-				("code" in error ? error.code : undefined) === "ETIMEDOUT"
+				failureCode === "ETIMEDOUT" ||
+				failureCode === "HEVY_DEADLINE_EXCEEDED" ||
+				outcome === "deadline_exceeded"
 					? "Hevy API request timed out"
-					: "Unable to reach the Hevy API",
+					: failureCode === "HEVY_REQUEST_ABORTED" || outcome === "cancelled"
+						? "Hevy API request cancelled"
+						: "Unable to reach the Hevy API",
 			...executionFields(error),
 		};
 	}

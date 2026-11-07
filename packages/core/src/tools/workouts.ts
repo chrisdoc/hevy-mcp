@@ -30,7 +30,6 @@ import { operationEffect, requireOperation } from "./operation-helpers.js";
 const getWorkoutsSchema = paginationFields({
 	defaultPageSize: 5,
 	maxPageSize: 10,
-	integerPage: false,
 });
 type GetWorkoutsParams = InferToolParams<typeof getWorkoutsSchema>;
 

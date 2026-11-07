@@ -32,7 +32,6 @@ describe("routine commands", () => {
 				commandArgs("routines", "create", [], mutationOptions(data)),
 				commandClient(),
 				undefined,
-				undefined,
 				operations,
 			),
 		).resolves.toEqual({

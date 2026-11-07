@@ -87,16 +87,16 @@ The CLI validates the complete payload before making an API request.
 
 ### Create and update
 
-| Command                                                      | Payload                                       |
-| ------------------------------------------------------------ | --------------------------------------------- |
-| `hevy workouts create --data <value> --yes`                  | Complete workout                              |
-| `hevy workouts update <workout-id> --data <value> --yes`     | Complete replacement workout                  |
-| `hevy routines create --data <value> --yes`                  | Complete routine, optionally with `folder_id` |
-| `hevy routines update <routine-id> --data <value> --yes`     | Complete replacement routine                  |
-| `hevy exercises create --data <value> --yes`                 | Custom exercise template                      |
-| `hevy folders create --data <value> --yes`                   | Routine folder                                |
-| `hevy measurements create <YYYY-MM-DD> --data <value> --yes` | New body measurement                          |
-| `hevy measurements update <YYYY-MM-DD> --data <value> --yes` | Measurement patch                             |
+| Command                                                      | Payload                                        |
+| ------------------------------------------------------------ | ---------------------------------------------- |
+| `hevy workouts create --data <value> --yes`                  | Complete workout                               |
+| `hevy workouts update <workout-id> --data <value> --yes`     | Complete replacement workout with `is_private` |
+| `hevy routines create --data <value> --yes`                  | Complete routine, optionally with `folder_id`  |
+| `hevy routines update <routine-id> --data <value> --yes`     | Complete replacement routine                   |
+| `hevy exercises create --data <value> --yes`                 | Custom exercise template                       |
+| `hevy folders create --data <value> --yes`                   | Routine folder                                 |
+| `hevy measurements create <YYYY-MM-DD> --data <value> --yes` | New body measurement                           |
+| `hevy measurements update <YYYY-MM-DD> --data <value> --yes` | Measurement patch                              |
 
 There is no delete command, update-template command, or update-folder command.
 
@@ -128,7 +128,8 @@ up to 10. Summary defaults to one week and accepts up to 520. Exercise search
 checks up to 10 API pages, with 100 templates per page; `--max-pages` accepts
 up to 100.
 
-Add `--json` to any command for machine-readable output. Successful commands
+Help is available without `HEVY_API_KEY`. `get` commands exit `3` when the
+resource is not found. Add `--json` to any command for machine-readable output. Successful commands
 write one JSON value followed by a newline to stdout. Errors write a sanitized
 message to stderr. Set `HEVY_CLI_LOG=true` to add a structured command outcome
 event to stderr; these logs omit raw arguments, API data, and credentials.
@@ -139,5 +140,5 @@ Logging is disabled by default and does not change stdout.
 | `0`       | Success                                  |
 | `1`       | Missing or invalid configuration         |
 | `2`       | Invalid command, flag, payload, or value |
-| `3`       | Hevy API failure                         |
+| `3`       | Hevy API failure, including not found    |
 | `4`       | Network or timeout failure               |

@@ -12,6 +12,7 @@ import {
 } from "@hevy-mcp/core";
 import { DEFAULT_API_TIMEOUT_MS } from "@hevy-mcp/hevy-client";
 import { executionOutcome, executionResponse } from "./execution-response.js";
+import { CORS_ALLOWED_METHODS, response } from "./worker-http-helpers.js";
 
 const MCP_PATH = "/mcp";
 const AUTHORIZE_PATH = "/authorize";
@@ -78,40 +79,8 @@ export function hasOAuthAccessTokenFormat(token: string): boolean {
 	return /^[^:]+:[^:]+:[^:]+$/.test(token);
 }
 
-function isObjectLike<T>(value: T): value is T & object {
-	return z.object({}).passthrough().safeParse(value).success;
-}
-
-function isFunction<T>(value: T): value is T & ((...args: never[]) => void) {
-	return z.function().safeParse(value).success;
-}
-
 function isString<T>(value: T): value is T & string {
 	return z.string().safeParse(value).success;
-}
-
-function isKvNamespaceLike<T>(value: T): boolean {
-	if (!isObjectLike(value)) return false;
-	return (
-		"get" in value &&
-		isFunction(value.get) &&
-		"put" in value &&
-		isFunction(value.put) &&
-		"delete" in value &&
-		isFunction(value.delete) &&
-		"list" in value &&
-		isFunction(value.list)
-	);
-}
-
-/**
- * OAuth is enabled only when OAUTH_KV is bound to something that actually
- * looks like a KV namespace. A misconfigured binding (e.g. a plain string
- * var) must not route requests into the OAuth provider, where it would
- * fail at runtime.
- */
-export function isOAuthEnabled(env: { OAUTH_KV?: unknown }): boolean {
-	return isKvNamespaceLike(env.OAUTH_KV);
 }
 
 async function deriveUserId(apiKey: string): Promise<string> {
@@ -247,12 +216,22 @@ const AUTHORIZE_PAGE_STYLES = `
 
 export interface AuthorizePageOptions {
 	clientName: string;
+	redirectUri: string;
 	encodedRequest: string;
 	error?: string;
 }
 
+function describeRedirectHost(redirectUri: string): string {
+	try {
+		return new URL(redirectUri).host || redirectUri;
+	} catch {
+		return redirectUri;
+	}
+}
+
 export function renderAuthorizePage(options: AuthorizePageOptions): string {
 	const clientName = escapeHtml(options.clientName);
+	const redirectHost = escapeHtml(describeRedirectHost(options.redirectUri));
 	const encodedRequest = escapeHtml(options.encodedRequest);
 	const errorBanner = options.error
 		? `<div class="error">${escapeHtml(options.error)}</div>`
@@ -268,8 +247,10 @@ export function renderAuthorizePage(options: AuthorizePageOptions): string {
 <body>
 <main>
 <h1>Connect to Hevy</h1>
-<p><strong>${clientName}</strong> is requesting access to your Hevy account
-through the hevy-mcp server.</p>
+<p>An app calling itself <strong>${clientName}</strong> is requesting access
+to your Hevy account through the hevy-mcp server.</p>
+<p>You will be redirected to <strong>${redirectHost}</strong>. Continue only
+if you trust that site.</p>
 ${errorBanner}
 <form method="post" action="${AUTHORIZE_PATH}">
 <input type="hidden" name="oauth_request" value="${encodedRequest}">
@@ -384,6 +365,7 @@ export async function handleAuthorizeGet(
 	return htmlResponse(
 		renderAuthorizePage({
 			clientName: client.clientName?.trim() || client.clientId,
+			redirectUri: authRequest.redirectUri,
 			encodedRequest: encodeAuthRequest(authRequest),
 		}),
 	);
@@ -418,6 +400,7 @@ export async function handleAuthorizePost<Env>(
 		htmlResponse(
 			renderAuthorizePage({
 				clientName,
+				redirectUri: authRequest.redirectUri,
 				encodedRequest: encodedRequest as string,
 				error,
 			}),
@@ -503,6 +486,14 @@ async function handleAuthorizedMcpRequest<Env>(
 	ctx: ExecutionContext,
 	dependencies: HevyOAuthDependencies<Env>,
 ): Promise<Response> {
+	if (new URL(request.url).pathname !== MCP_PATH) {
+		return new Response("Not found", { status: 404 });
+	}
+	if (request.method !== "POST") {
+		return response("Method not allowed", 405, null, {
+			Allow: CORS_ALLOWED_METHODS,
+		});
+	}
 	const deadline = Date.now() + WORKER_INVOCATION_TIMEOUT_MS;
 	const props = (ctx as { props?: Partial<HevyGrantProps> } | null | undefined)
 		?.props;

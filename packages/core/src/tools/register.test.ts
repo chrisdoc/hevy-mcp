@@ -101,7 +101,9 @@ function assertRoutineSchemas(tools: readonly ListedTool[]): void {
 		}),
 	);
 	expect(schemaProperty(exerciseSchema, "rest_seconds")).toEqual(
-		expect.objectContaining({ type: "integer" }),
+		expect.objectContaining({
+			type: expect.arrayContaining(["integer", "null"]),
+		}),
 	);
 	const repRangeSchema = schemaProperty(
 		schemaItems(schemaProperty(exerciseSchema, "sets")),
@@ -312,6 +314,10 @@ function configureRegisterCallClient() {
 		workouts: [],
 	});
 	mockClient.getWorkout.mockResolvedValue(completeWorkout);
+	mockClient.getBodyMeasurement.mockResolvedValue({
+		date: "2026-01-01",
+		weight_kg: 80,
+	});
 	mockClient.getRoutines.mockResolvedValue({
 		page: 1,
 		page_count: 1,

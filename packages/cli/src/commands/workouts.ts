@@ -15,6 +15,7 @@ import { pageEnvelope } from "../output/contracts.js";
 import {
 	list,
 	mutationData,
+	notFoundError,
 	runOperation,
 	runOperationWithoutInput,
 	type CommandContext,
@@ -59,12 +60,15 @@ async function executeWorkoutGet({
 	execution,
 }: CommandContext) {
 	const workoutId = parseWorkoutId(args.positionals[0]);
-	return runOperation(
+	const result = await runOperation(
 		operations.workouts.get,
 		"workouts.get",
 		{ workoutId },
 		execution,
 	);
+	if (result.expected404Outcome === "not_found")
+		throw notFoundError("/v1/workouts/:workoutId");
+	return { workout: result.workout };
 }
 
 async function executeWorkoutCreate({

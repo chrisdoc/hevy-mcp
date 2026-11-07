@@ -35,7 +35,7 @@ export type RoutineSetInput = {
 export type RoutineExerciseInput = {
 	readonly exercise_template_id: string;
 	readonly superset_id?: number | null;
-	readonly rest_seconds?: number;
+	readonly rest_seconds?: number | null;
 	readonly notes?: string;
 	readonly sets: RoutineSetInput[];
 };

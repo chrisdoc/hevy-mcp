@@ -34,18 +34,15 @@ import { parseJsonArray } from "../protocol/json-parser.js";
 export interface PaginationSchemaOptions {
 	defaultPageSize: number;
 	maxPageSize: number;
-	integerPage?: boolean;
 }
 
 /** Build the page and page_size fields shared by paginated tools. */
 export function paginationFields({
 	defaultPageSize,
 	maxPageSize,
-	integerPage = true,
 }: PaginationSchemaOptions) {
-	const pageNumber = z.coerce.number().gte(1);
 	return {
-		page: integerPage ? pageNumber.int() : pageNumber,
+		page: z.coerce.number().int().gte(1),
 		page_size: z.coerce
 			.number()
 			.int()
@@ -87,7 +84,10 @@ export const replaceWorkoutPayloadFields = {
 const replaceWorkoutPayloadSchema = z.strictObject(replaceWorkoutPayloadFields);
 
 export const workoutInputSchema = z.strictObject({
-	workout: replaceWorkoutPayloadSchema,
+	workout: z.strictObject({
+		...replaceWorkoutPayloadFields,
+		is_private: z.boolean().default(false),
+	}),
 });
 export const workoutInputFields = workoutInputSchema.shape;
 

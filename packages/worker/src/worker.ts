@@ -17,7 +17,6 @@ import {
 	hasOAuthAccessTokenFormat,
 	type HevyApiKeyValidation,
 	type HevyOAuthWorker,
-	isOAuthEnabled,
 	WORKER_INVOCATION_TIMEOUT_MS,
 } from "./worker-oauth.js";
 import { executionResponse } from "./execution-response.js";
@@ -47,6 +46,7 @@ import {
 	corsHeaders,
 	DEFAULT_ALLOWED_ORIGINS,
 	healthResponseWithCors,
+	isOAuthEnabled,
 	parseAllowedOrigins,
 	parseBearerApiKey,
 	resolveHevyApiBaseUrl,
@@ -673,12 +673,25 @@ export function createWorkerFetchHandler(
 
 const handleWorkerFetch = createWorkerFetchHandler();
 
+// workerd cannot reuse a keep-alive connection whose request body was never
+// read, so the next request sent on it fails. Rejections such as 401, 406 and
+// 415 answer without reading the body; stream it to nowhere so it is not held
+// in memory.
+async function discardUnreadBody(request: Request): Promise<void> {
+	if (request.body === null || request.bodyUsed) return;
+	await request.body.pipeTo(new WritableStream()).catch(() => undefined);
+}
+
 export default {
-	fetch(
+	async fetch(
 		request: Request,
 		env: WorkerEnv,
 		ctx?: ExecutionContext,
 	): Promise<Response> {
-		return handleWorkerFetch(request, env, ctx);
+		try {
+			return await handleWorkerFetch(request, env, ctx);
+		} finally {
+			await discardUnreadBody(request);
+		}
 	},
 };

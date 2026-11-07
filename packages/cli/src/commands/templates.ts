@@ -14,6 +14,7 @@ import {
 	runOperation,
 	type CommandContext,
 	type CommandResult,
+	notFoundError,
 } from "./context.js";
 
 type CliHistoryInput = {
@@ -56,6 +57,8 @@ async function executeExerciseGet({
 		{ exerciseTemplateId: exerciseId },
 		execution,
 	);
+	if (result.expected404Outcome === "not_found")
+		throw notFoundError("/v1/exercise_templates/:exerciseTemplateId");
 	return { exercise_template: result.exerciseTemplate };
 }
 

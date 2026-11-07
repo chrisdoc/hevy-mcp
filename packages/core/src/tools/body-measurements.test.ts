@@ -55,6 +55,10 @@ describe("body measurement tools", () => {
 	it("creates and updates numeric fields while omitting explicit nulls", async () => {
 		const client = createMockHevyClient();
 		client.createBodyMeasurement.mockImplementation(() => undefined);
+		client.getBodyMeasurement.mockResolvedValue({
+			date: "2025-01-01",
+			weight_kg: 70,
+		});
 		client.updateBodyMeasurement.mockImplementation(() => undefined);
 		const tool = register(client);
 		await handler(
@@ -70,6 +74,7 @@ describe("body measurement tools", () => {
 			weight_kg: 80,
 		});
 		expect(client.updateBodyMeasurement).toHaveBeenCalledWith("2025-01-01", {
+			weight_kg: 70,
 			lean_mass_kg: 60.5,
 		});
 	});

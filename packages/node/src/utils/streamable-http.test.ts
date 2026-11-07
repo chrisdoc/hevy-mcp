@@ -190,6 +190,49 @@ async function initialize(port: number, headers: Record<string, string> = {}) {
 }
 
 describe("Streamable HTTP server", () => {
+	it("closes the per-session MCP server when the SDK rejects initialize", async () => {
+		vi.spyOn(console, "error").mockImplementation(() => undefined);
+		let openServers = 0;
+		const factory = () => {
+			const server = new McpServer({ name: "test-server", version: "1.0.0" });
+			openServers += 1;
+			const close = server.close.bind(server);
+			let closed = false;
+			server.close = async () => {
+				if (!closed) {
+					closed = true;
+					openServers -= 1;
+				}
+				await close();
+			};
+			return Promise.resolve(server);
+		};
+		const handle = await startStreamableHttpServer(
+			{ transport: "http", host: "127.0.0.1", port: 0 },
+			"fake-key",
+			factory,
+			{ maxSessions: 2 },
+		);
+		handles.push(handle);
+		const port = serverPort(handle);
+
+		const results: HttpResult[] = [];
+		for (let attempt = 0; attempt < 5; attempt += 1) {
+			results.push(await initialize(port, { Accept: "application/json" }));
+		}
+		expect(results.map((result) => result.statusCode)).toEqual([
+			406, 406, 406, 406, 406,
+		]);
+		expect(
+			results.every((r) => r.headers["mcp-session-id"] === undefined),
+		).toBe(true);
+		expect(openServers).toBe(0);
+
+		const valid = await initialize(port);
+		expect(valid.statusCode).toBe(200);
+		expect(valid.headers["mcp-session-id"]).toBeDefined();
+	});
+
 	it("uses safe admission defaults and bounded environment overrides", () => {
 		expect(resolveHttpAdmissionConfig()).toEqual({
 			maxSessions: 100,

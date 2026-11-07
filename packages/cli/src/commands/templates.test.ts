@@ -23,7 +23,6 @@ describe("exercise template commands", () => {
 				commandArgs("exercises", "search", ["BENCH"], { "max-pages": "2" }),
 				commandClient(),
 				undefined,
-				undefined,
 				operations,
 			),
 		).resolves.toEqual({

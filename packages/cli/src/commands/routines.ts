@@ -18,6 +18,7 @@ import {
 	runOperation,
 	type CommandContext,
 	type CommandResult,
+	notFoundError,
 } from "./context.js";
 
 async function executeRoutineList({
@@ -67,6 +68,8 @@ async function executeRoutineGet({
 		{ routineId },
 		execution,
 	);
+	if (result.expected404Outcome === "not_found")
+		throw notFoundError("/v1/routines/:routineId");
 	return { routine: { routine: result.routine } };
 }
 

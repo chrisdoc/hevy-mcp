@@ -13,7 +13,6 @@ export interface RunCliOptions {
 	argv: string[];
 	env?: Record<string, string | undefined>;
 	clientFactory?: (key: string) => HevyClient;
-	now?: () => Date;
 	readDataSource?: DataSourceReader;
 	streams?: Streams;
 	execution?: HevyExecutionOptions;
@@ -85,10 +84,20 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 	const context = {
 		process: stricliProcess,
 		state,
-		now: options.now ?? (() => new Date()),
 		readDataSource: options.readDataSource ?? readDataSource,
 		client: undefined as HevyClient | undefined,
 		operations: undefined as HevyOperations | undefined,
+		connect() {
+			if (this.client) return;
+			const createdClient = (
+				options.clientFactory ?? ((apiKey) => createHevyClient({ apiKey }))
+			)(getApiKey(env));
+			this.client = createdClient;
+			this.operations = createOperations(createdClient, {
+				trainingSummaryMaxWeeks: 520,
+				trainingSummaryStrictPagination: true,
+			});
+		},
 		execution: options.execution,
 	};
 	const metaCommand = options.argv.some((value) =>
@@ -97,17 +106,6 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 	const logEnabled = !metaCommand && env.HEVY_CLI_LOG === "true";
 	const startedAt = performance.now();
 	try {
-		if (!metaCommand) {
-			const key = getApiKey(env);
-			const createdClient = (
-				options.clientFactory ?? ((apiKey) => createHevyClient({ apiKey }))
-			)(key);
-			context.client = createdClient;
-			context.operations = createOperations(createdClient, {
-				trainingSummaryMaxWeeks: 520,
-				trainingSummaryStrictPagination: true,
-			});
-		}
 		const exitCode = await runRoutes(options.argv, context);
 		if (state.error !== undefined) throw state.error;
 		if (exitCode !== 0) {
@@ -119,8 +117,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 			return EXIT.usage;
 		}
 		if (state.result !== undefined) {
-			const json = options.argv.includes("--json");
-			writeResult(state.result, json, streams);
+			writeResult(state.result, state.json === true, streams);
 		}
 		if (logEnabled)
 			writeCliEvent(streams, options.argv, startedAt, {
@@ -137,7 +134,7 @@ export async function runCli(options: RunCliOptions): Promise<number> {
 				exitCode: failure.code,
 				errorCode: failure.error_code,
 			});
-		if (options.argv.includes("--json")) {
+		if (state.json === true) {
 			streams.stderr(`${JSON.stringify(failure)}\n`);
 		} else {
 			streams.stderr(`${failure.message}\n`);

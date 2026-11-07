@@ -214,7 +214,12 @@ describe("bodyMeasurements.create operation", () => {
 });
 
 describe("bodyMeasurements.update operation", () => {
-	it("omits nullish fields before calling the Effect adapter", async () => {
+	function updateAdapter(
+		existing: Effect.Effect<BodyMeasurement, HevyRequestEffectError>,
+	) {
+		const getBodyMeasurement = vi.fn(
+			(_date: string, _options?: { timeoutMs?: number }) => existing,
+		);
 		const updateBodyMeasurement = vi.fn(
 			(
 				_date: string,
@@ -222,37 +227,73 @@ describe("bodyMeasurements.update operation", () => {
 				_options?: { timeoutMs?: number },
 			) => Effect.succeed(data),
 		);
-		const operation = createBodyMeasurementsUpdateOperation({
-			updateBodyMeasurement,
-		});
+		return { getBodyMeasurement, updateBodyMeasurement };
+	}
+
+	// OpenAPI PUT /v1/body_measurements/{date}: "All fields are overwritten;
+	// omitted fields are set to null." The update-body-measurement MCP tool
+	// promises "Omitted fields remain unchanged", so stored values are re-sent.
+	it("preserves stored fields the caller omitted on the full-overwrite PUT", async () => {
+		const adapter = updateAdapter(
+			Effect.succeed({
+				date: "2025-01-01",
+				weight_kg: 80,
+				waist: 82,
+				fat_percent: 18,
+			}),
+		);
+		const operation = createBodyMeasurementsUpdateOperation(adapter);
 		const options = { timeoutMs: 1_000 };
 
 		await expect(
 			Effect.runPromise(
 				operation.effect(
-					{
-						date: "2025-01-01",
-						weight_kg: 81,
-						fat_percent: null,
-					},
+					{ date: "2025-01-01", weight_kg: 81, hips: null },
 					options,
 				),
 			),
 		).resolves.toBe("2025-01-01");
-		expect(updateBodyMeasurement).toHaveBeenCalledWith(
+		expect(adapter.getBodyMeasurement).toHaveBeenCalledWith(
 			"2025-01-01",
-			{ weight_kg: 81 },
+			options,
+		);
+		expect(adapter.updateBodyMeasurement).toHaveBeenCalledWith(
+			"2025-01-01",
+			{ weight_kg: 81, waist: 82, fat_percent: 18 },
 			options,
 		);
 	});
 
-	it("fails an empty numeric payload through a tagged domain error", async () => {
-		const updateBodyMeasurement = vi.fn(
-			(_date: string, _data: PutBodyMeasurement) => Effect.succeed(undefined),
+	it("fails with a not-found error instead of creating a missing measurement", async () => {
+		const adapter = updateAdapter(
+			Effect.fail(notFound("/v1/body_measurements/:date")),
 		);
-		const operation = createBodyMeasurementsUpdateOperation({
-			updateBodyMeasurement,
-		});
+		const operation = createBodyMeasurementsUpdateOperation(adapter);
+
+		const error = await Effect.runPromise(
+			Effect.flip(operation.effect({ date: "2025-01-01", weight_kg: 81 })),
+		);
+
+		expect(error).toBeInstanceOf(NotFoundError);
+		expect(error).toMatchObject({ _tag: "NotFoundError", expected: false });
+		expect(adapter.updateBodyMeasurement).not.toHaveBeenCalled();
+	});
+
+	it("treats an empty GET response as not found", async () => {
+		const adapter = updateAdapter(Effect.succeed({} as BodyMeasurement));
+		const operation = createBodyMeasurementsUpdateOperation(adapter);
+
+		const error = await Effect.runPromise(
+			Effect.flip(operation.effect({ date: "2025-01-01", weight_kg: 81 })),
+		);
+
+		expect(error).toBeInstanceOf(NotFoundError);
+		expect(adapter.updateBodyMeasurement).not.toHaveBeenCalled();
+	});
+
+	it("fails an empty numeric payload through a tagged domain error", async () => {
+		const adapter = updateAdapter(Effect.succeed({ date: "2025-01-01" }));
+		const operation = createBodyMeasurementsUpdateOperation(adapter);
 
 		const error = await Effect.runPromise(
 			Effect.flip(
@@ -269,6 +310,6 @@ describe("bodyMeasurements.update operation", () => {
 			_tag: "EmptyMeasurementUpdateError",
 			message: expect.stringContaining("No measurement fields provided"),
 		});
-		expect(updateBodyMeasurement).not.toHaveBeenCalled();
+		expect(adapter.updateBodyMeasurement).not.toHaveBeenCalled();
 	});
 });

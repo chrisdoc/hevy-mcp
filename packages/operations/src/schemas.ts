@@ -205,7 +205,7 @@ export const replaceWorkoutPayloadFields = {
 	description: z.string().optional().nullable(),
 	start_time: utcSecondTimestamp,
 	end_time: utcSecondTimestamp,
-	is_private: z.boolean().default(false),
+	is_private: z.boolean(),
 	exercises: workoutExercisesSchema,
 } as const satisfies {
 	[K in keyof NonNullable<PostWorkoutsRequestBody["workout"]>]: z.ZodTypeAny;
@@ -215,7 +215,10 @@ export const replaceWorkoutPayloadSchema = z.strictObject(
 	replaceWorkoutPayloadFields,
 );
 export const workoutInputSchema = z.strictObject({
-	workout: replaceWorkoutPayloadSchema,
+	workout: z.strictObject({
+		...replaceWorkoutPayloadFields,
+		is_private: z.boolean().default(false),
+	}),
 });
 export const workoutInputFields = workoutInputSchema.shape;
 
@@ -257,12 +260,12 @@ export const replaceWorkoutExercisesInputFields =
 
 export const routineSetFields = {
 	type: setTypeEnum,
-	weight_kg: z.coerce.number().optional(),
+	weight_kg: z.coerce.number().optional().nullable(),
 	reps: zNullableInt,
-	distance_meters: z.coerce.number().int().optional(),
-	duration_seconds: z.coerce.number().int().optional(),
+	distance_meters: z.coerce.number().int().optional().nullable(),
+	duration_seconds: z.coerce.number().int().optional().nullable(),
 	rep_range: zStrictOptionalRepRange,
-	custom_metric: z.coerce.number().optional(),
+	custom_metric: z.coerce.number().optional().nullable(),
 } as const satisfies {
 	[K in keyof PostRoutinesRequestSet]: z.ZodTypeAny;
 };
@@ -271,7 +274,7 @@ export const routineSetSchema = z.strictObject(routineSetFields);
 export const routineExerciseFields = {
 	exercise_template_id: nonEmptyId,
 	superset_id: z.coerce.number().nullable().optional(),
-	rest_seconds: z.coerce.number().int().min(0).optional(),
+	rest_seconds: z.coerce.number().int().min(0).optional().nullable(),
 	notes: z.string().optional(),
 	sets: z.array(routineSetSchema),
 } as const satisfies {

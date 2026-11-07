@@ -134,6 +134,12 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 			cache,
 			options.cacheObserver,
 		);
+		// A caller-owned lifecycle (a Worker request) may end without close(), so
+		// it must also stop a catalog load that outlived its caller.
+		const closeCatalog = () => Effect.runFork(catalog.close());
+		options.lifecycleSignal?.addEventListener("abort", closeCatalog, {
+			once: true,
+		});
 		const defaultServiceLayer = createCoreServiceLayer({
 			client,
 			catalog,
@@ -155,6 +161,7 @@ export const createHevyMcpServerEffect = Effect.fn("core.createHevyMcpServer")(
 		}
 		const services = yield* Layer.build(serviceLayer);
 		yield* Effect.addFinalizer(() => {
+			options.lifecycleSignal?.removeEventListener("abort", closeCatalog);
 			shutdown.abort(new DOMException("Server closed", "AbortError"));
 			return catalog.close().pipe(Effect.andThen(Cache.invalidateAll(cache)));
 		});

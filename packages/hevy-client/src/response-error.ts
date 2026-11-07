@@ -80,8 +80,17 @@ export function sanitizeResponseErrorText(
 	value: string,
 	secrets: readonly string[] = [],
 ): string {
+	// Redact before bounding so a secret straddling the cut cannot leak a prefix.
+	let redacted = value.slice(
+		0,
+		MAX_RESPONSE_ERROR_INPUT_LENGTH +
+			secrets.reduce((longest, secret) => Math.max(longest, secret.length), 0),
+	);
+	for (const secret of secrets) {
+		if (secret.length > 0) redacted = redacted.split(secret).join("[REDACTED]");
+	}
 	const bounded = removeControlCharacters(
-		value.slice(0, MAX_RESPONSE_ERROR_INPUT_LENGTH),
+		redacted.slice(0, MAX_RESPONSE_ERROR_INPUT_LENGTH),
 	);
 	let sanitized = bounded
 		.replace(COOKIE_ASSIGNMENT, "$1[REDACTED]")
