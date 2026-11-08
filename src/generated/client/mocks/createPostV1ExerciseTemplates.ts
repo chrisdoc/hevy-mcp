@@ -4,14 +4,15 @@
  */
 
 import type {
-  PostV1ExerciseTemplatesHeaderParams,
   PostV1ExerciseTemplates200,
   PostV1ExerciseTemplates400,
   PostV1ExerciseTemplates403,
+  PostV1ExerciseTemplatesHeaderParams,
+  PostV1ExerciseTemplatesMutationRequest,
   PostV1ExerciseTemplatesMutationResponse,
 } from "../types/PostV1ExerciseTemplates.ts";
-import { createCreateCustomExerciseRequestBody } from "./createCreateCustomExerciseRequestBody.ts";
 import { faker } from "@faker-js/faker";
+import { createCreateCustomExerciseRequestBody } from "./createCreateCustomExerciseRequestBody.ts";
 
 export function createPostV1ExerciseTemplatesHeaderParams(
   data?: Partial<PostV1ExerciseTemplatesHeaderParams>,
@@ -47,13 +48,13 @@ export function createPostV1ExerciseTemplates400(
 }
 
 /**
- * @description Exceeds custom exercise limit
+ * @description Custom exercise limit exceeded. Free accounts can have up to 7 custom exercises. Upgrade to Hevy Pro to create more.
  */
 export function createPostV1ExerciseTemplates403(
   data?: Partial<PostV1ExerciseTemplates403>,
 ): PostV1ExerciseTemplates403 {
   return {
-    ...{ error: faker.string.alpha() },
+    ...{ error: faker.string.alpha(), message: faker.string.alpha() },
     ...(data || {}),
   };
 }
@@ -61,8 +62,10 @@ export function createPostV1ExerciseTemplates403(
 /**
  * @description The exercise template to create.
  */
-export function createPostV1ExerciseTemplatesMutationRequest() {
-  return createCreateCustomExerciseRequestBody();
+export function createPostV1ExerciseTemplatesMutationRequest(
+  data?: Partial<PostV1ExerciseTemplatesMutationRequest>,
+): PostV1ExerciseTemplatesMutationRequest {
+  return createCreateCustomExerciseRequestBody(data);
 }
 
 export function createPostV1ExerciseTemplatesMutationResponse(

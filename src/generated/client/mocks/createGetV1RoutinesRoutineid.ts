@@ -4,14 +4,14 @@
  */
 
 import type {
-  GetV1RoutinesRoutineidPathParams,
-  GetV1RoutinesRoutineidHeaderParams,
   GetV1RoutinesRoutineid200,
   GetV1RoutinesRoutineid400,
+  GetV1RoutinesRoutineidHeaderParams,
+  GetV1RoutinesRoutineidPathParams,
   GetV1RoutinesRoutineidQueryResponse,
 } from "../types/GetV1RoutinesRoutineid.ts";
-import { createRoutine } from "./createRoutine.ts";
 import { faker } from "@faker-js/faker";
+import { createRoutine } from "./createRoutine.ts";
 
 export function createGetV1RoutinesRoutineidPathParams(
   data?: Partial<GetV1RoutinesRoutineidPathParams>,

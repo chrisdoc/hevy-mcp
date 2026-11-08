@@ -10,6 +10,12 @@ export const putRoutinesRequestBodySchema = z.object({
   routine: z.optional(
     z.object({
       title: z.optional(z.string().describe("The title of the routine.")),
+      folder_id: z
+        .number()
+        .describe(
+          'The folder id the routine should be added to. Pass null to insert the routine into default "My Routines" folder',
+        )
+        .nullish(),
       notes: z.string().describe("Additional notes for the routine.").nullish(),
       get exercises() {
         return z.array(putRoutinesRequestExerciseSchema).optional();

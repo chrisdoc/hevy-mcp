@@ -4,15 +4,17 @@
  */
 
 import type {
-  PutV1RoutinesRoutineidPathParams,
-  PutV1RoutinesRoutineidHeaderParams,
+  PutV1RoutinesRoutineid200,
   PutV1RoutinesRoutineid400,
   PutV1RoutinesRoutineid404,
+  PutV1RoutinesRoutineidHeaderParams,
+  PutV1RoutinesRoutineidMutationRequest,
   PutV1RoutinesRoutineidMutationResponse,
+  PutV1RoutinesRoutineidPathParams,
 } from "../types/PutV1RoutinesRoutineid.ts";
+import { faker } from "@faker-js/faker";
 import { createPutRoutinesRequestBody } from "./createPutRoutinesRequestBody.ts";
 import { createRoutine } from "./createRoutine.ts";
-import { faker } from "@faker-js/faker";
 
 export function createPutV1RoutinesRoutineidPathParams(
   data?: Partial<PutV1RoutinesRoutineidPathParams>,
@@ -35,8 +37,13 @@ export function createPutV1RoutinesRoutineidHeaderParams(
 /**
  * @description The routine was successfully updated
  */
-export function createPutV1RoutinesRoutineid200() {
-  return createRoutine();
+export function createPutV1RoutinesRoutineid200(
+  data?: Partial<PutV1RoutinesRoutineid200>,
+): PutV1RoutinesRoutineid200 {
+  return {
+    ...{ routine: createRoutine() },
+    ...(data || {}),
+  };
 }
 
 /**
@@ -63,8 +70,10 @@ export function createPutV1RoutinesRoutineid404(
   };
 }
 
-export function createPutV1RoutinesRoutineidMutationRequest() {
-  return createPutRoutinesRequestBody();
+export function createPutV1RoutinesRoutineidMutationRequest(
+  data?: Partial<PutV1RoutinesRoutineidMutationRequest>,
+): PutV1RoutinesRoutineidMutationRequest {
+  return createPutRoutinesRequestBody(data);
 }
 
 export function createPutV1RoutinesRoutineidMutationResponse(

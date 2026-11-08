@@ -1,8 +1,10 @@
 {
   "type": "object",
+  "required": ["workout"],
   "properties": {
     "workout": {
       "type": "object",
+      "required": ["title", "start_time", "end_time", "exercises"],
       "properties": {
         "title": {
           "type": "string",
@@ -27,7 +29,8 @@
         },
         "is_private": {
           "type": "boolean",
-          "description": "A boolean indicating if the workout is private.",
+          "description": "A boolean indicating if the workout is private. Optional - defaults to false when omitted.",
+          "default": false,
           "example": false
         },
         "exercises": {

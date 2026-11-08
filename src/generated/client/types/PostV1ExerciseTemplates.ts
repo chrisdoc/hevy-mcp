@@ -35,14 +35,19 @@ export type PostV1ExerciseTemplates400 = {
 };
 
 /**
- * @description Exceeds custom exercise limit
+ * @description Custom exercise limit exceeded. Free accounts can have up to 7 custom exercises. Upgrade to Hevy Pro to create more.
  */
 export type PostV1ExerciseTemplates403 = {
   /**
-   * @description Error message
+   * @description Error code
    * @type string | undefined
    */
   error?: string;
+  /**
+   * @description Human-readable explanation
+   * @type string | undefined
+   */
+  message?: string;
 };
 
 /**

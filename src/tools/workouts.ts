@@ -13,7 +13,7 @@ import type {
 	PutV1WorkoutsWorkoutid200,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
-import { formatWorkout } from "../utils/formatters.js";
+import { formatWorkout, unwrapEntity } from "../utils/formatters.js";
 import type { HevyClient } from "../utils/hevyClient.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
@@ -224,13 +224,17 @@ export function registerWorkoutTools(
 			const data: PostV1Workouts201 =
 				await hevyClient.createWorkout(requestBody);
 
-			if (!data) {
+			const created = unwrapEntity<Parameters<typeof formatWorkout>[0]>(
+				data,
+				"workout",
+			);
+			if (!created) {
 				return createEmptyResponse(
 					"Failed to create workout: Server returned no data",
 				);
 			}
 
-			const workout = formatWorkout(data);
+			const workout = formatWorkout(created);
 			return createJsonResponse(workout, {
 				pretty: true,
 				indent: 2,

@@ -15,7 +15,8 @@ export const getV1WorkoutsEventsQueryParamsSchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
-    .default(5)
+    .max(10)
+    .default(10)
     .describe("Number of items on the requested page (Max 10)"),
   since: z.string().default("1970-01-01T00:00:00Z"),
 });

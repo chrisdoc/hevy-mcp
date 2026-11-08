@@ -16,6 +16,11 @@ export type PutRoutinesRequestBody = {
      */
     title?: string;
     /**
+     * @description The folder id the routine should be added to. Pass null to insert the routine into default \"My Routines\" folder
+     * @type number
+     */
+    folder_id?: number | null;
+    /**
      * @description Additional notes for the routine.
      * @type string
      */

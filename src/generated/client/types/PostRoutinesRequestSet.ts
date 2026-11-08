@@ -51,13 +51,13 @@ export type PostRoutinesRequestSet = {
   rep_range?: {
     /**
      * @description Starting rep count for the range
-     * @type number
+     * @type number | undefined
      */
-    start?: number | null;
+    start?: number;
     /**
      * @description Ending rep count for the range
-     * @type number
+     * @type number | undefined
      */
-    end?: number | null;
+    end?: number;
   } | null;
 };

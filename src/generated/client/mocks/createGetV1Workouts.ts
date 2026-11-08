@@ -4,19 +4,19 @@
  */
 
 import type {
-  GetV1WorkoutsQueryParams,
-  GetV1WorkoutsHeaderParams,
   GetV1Workouts200,
+  GetV1WorkoutsHeaderParams,
+  GetV1WorkoutsQueryParams,
   GetV1WorkoutsQueryResponse,
 } from "../types/GetV1Workouts.ts";
-import { createWorkout } from "./createWorkout.ts";
 import { faker } from "@faker-js/faker";
+import { createWorkout } from "./createWorkout.ts";
 
 export function createGetV1WorkoutsQueryParams(
   data?: Partial<GetV1WorkoutsQueryParams>,
 ): GetV1WorkoutsQueryParams {
   return {
-    ...{ page: faker.number.int(), pageSize: faker.number.int() },
+    ...{ page: faker.number.int(), pageSize: faker.number.int({ max: 10 }) },
     ...(data || {}),
   };
 }

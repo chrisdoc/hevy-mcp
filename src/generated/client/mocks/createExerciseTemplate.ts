@@ -5,6 +5,7 @@
 
 import type { ExerciseTemplate } from "../types/ExerciseTemplate.ts";
 import { faker } from "@faker-js/faker";
+import { createEquipmentCategory } from "./createEquipmentCategory.ts";
 
 export function createExerciseTemplate(
   data?: Partial<ExerciseTemplate>,
@@ -18,7 +19,9 @@ export function createExerciseTemplate(
       secondary_muscle_groups: faker.helpers.multiple(() =>
         faker.string.alpha(),
       ),
+      equipment: createEquipmentCategory(),
       is_custom: faker.datatype.boolean(),
+      thumbnail_url: faker.string.alpha(),
     },
     ...(data || {}),
   };

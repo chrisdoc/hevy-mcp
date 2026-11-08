@@ -15,7 +15,8 @@ export const getV1RoutinesQueryParamsSchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
-    .default(5)
+    .max(10)
+    .default(10)
     .describe("Number of items on the requested page (Max 10)"),
 });
 

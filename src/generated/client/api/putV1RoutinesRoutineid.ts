@@ -5,6 +5,11 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   PutV1RoutinesRoutineidMutationRequest,
   PutV1RoutinesRoutineidMutationResponse,
   PutV1RoutinesRoutineidPathParams,
@@ -12,10 +17,6 @@ import type {
   PutV1RoutinesRoutineid400,
   PutV1RoutinesRoutineid404,
 } from "../types/PutV1RoutinesRoutineid.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getPutV1RoutinesRoutineidUrl(
   routineId: PutV1RoutinesRoutineidPathParams["routineId"],
@@ -30,10 +31,10 @@ function getPutV1RoutinesRoutineidUrl(
  */
 export async function putV1RoutinesRoutineid(
   routineId: PutV1RoutinesRoutineidPathParams["routineId"],
+  data: PutV1RoutinesRoutineidMutationRequest,
   headers: PutV1RoutinesRoutineidHeaderParams,
-  data?: PutV1RoutinesRoutineidMutationRequest,
   config: Partial<RequestConfig<PutV1RoutinesRoutineidMutationRequest>> & {
-    client?: typeof fetch;
+    client?: Client;
   } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;

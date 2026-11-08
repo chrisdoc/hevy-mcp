@@ -27,9 +27,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { registerFolderTools } from "./tools/folders.js";
+import { registerMeasurementTools } from "./tools/measurements.js";
 import { registerRoutineTools } from "./tools/routines.js";
 import { registerTemplateTools } from "./tools/templates.js";
-import { registerWebhookTools } from "./tools/webhooks.js";
+import { registerUserTools } from "./tools/user.js";
 import { registerWorkoutTools } from "./tools/workouts.js";
 import { assertApiKey, parseConfig } from "./utils/config.js";
 import { createClient } from "./utils/hevyClient.js";
@@ -46,14 +47,23 @@ const serverConfigSchema = z.object({
 export const configSchema = serverConfigSchema;
 type ServerConfig = z.infer<typeof serverConfigSchema>;
 
-const description = "An MCP server implementation that interfaces with the Hevy fitness tracking app and its API. The API only does weights in kgs, but keep in mind that the current user is in lbs so always convert to and from where appropriate."
+const description =
+	"An MCP server implementation that interfaces with the Hevy fitness tracking app and its API.";
+
+// Sent to clients during initialization; most clients add this to the model's
+// context, unlike the implementation description.
+const instructions =
+	"The Hevy API always uses kg for weights, meters for distance, and cm for body measurements. Call get-user-info to learn the user's preferred weight and distance units, and convert values to and from those units when talking to the user.";
 
 function buildServer(apiKey: string) {
-	const server = new McpServer({
-		name,
-		version,
-		description
-	});
+	const server = new McpServer(
+		{
+			name,
+			version,
+			description,
+		},
+		{ instructions },
+	);
 
 	const hevyClient = createClient(apiKey, HEVY_API_BASEURL);
 	console.error("Hevy client initialized with API key");
@@ -62,7 +72,8 @@ function buildServer(apiKey: string) {
 	registerRoutineTools(server, hevyClient);
 	registerTemplateTools(server, hevyClient);
 	registerFolderTools(server, hevyClient);
-	registerWebhookTools(server, hevyClient);
+	registerMeasurementTools(server, hevyClient);
+	registerUserTools(server, hevyClient);
 
 	return server;
 }

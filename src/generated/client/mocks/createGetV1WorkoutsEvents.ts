@@ -4,12 +4,13 @@
  */
 
 import type {
-  GetV1WorkoutsEventsQueryParams,
+  GetV1WorkoutsEvents200,
   GetV1WorkoutsEventsHeaderParams,
+  GetV1WorkoutsEventsQueryParams,
   GetV1WorkoutsEventsQueryResponse,
 } from "../types/GetV1WorkoutsEvents.ts";
-import { createPaginatedWorkoutEvents } from "./createPaginatedWorkoutEvents.ts";
 import { faker } from "@faker-js/faker";
+import { createPaginatedWorkoutEvents } from "./createPaginatedWorkoutEvents.ts";
 
 export function createGetV1WorkoutsEventsQueryParams(
   data?: Partial<GetV1WorkoutsEventsQueryParams>,
@@ -17,7 +18,7 @@ export function createGetV1WorkoutsEventsQueryParams(
   return {
     ...{
       page: faker.number.int(),
-      pageSize: faker.number.int(),
+      pageSize: faker.number.int({ max: 10 }),
       since: faker.string.alpha(),
     },
     ...(data || {}),
@@ -36,8 +37,10 @@ export function createGetV1WorkoutsEventsHeaderParams(
 /**
  * @description A paginated list of workout events
  */
-export function createGetV1WorkoutsEvents200() {
-  return createPaginatedWorkoutEvents();
+export function createGetV1WorkoutsEvents200(
+  data?: Partial<GetV1WorkoutsEvents200>,
+): GetV1WorkoutsEvents200 {
+  return createPaginatedWorkoutEvents(data);
 }
 
 /**

@@ -43,12 +43,14 @@
             "example": "Bench Press (Barbell)"
           },
           "rest_seconds": {
-            "type": "string",
+            "type": "integer",
+            "nullable": true,
             "description": "The rest time in seconds between sets of the exercise",
-            "example": "60"
+            "example": 60
           },
           "notes": {
             "type": "string",
+            "nullable": true,
             "description": "Routine notes on the exercise",
             "example": "Focus on form. Go down to 90 degrees."
           },
@@ -57,7 +59,7 @@
             "description": "The id of the exercise template. This can be used to fetch the exercise template.",
             "example": "05293BCA"
           },
-          "supersets_id": {
+          "superset_id": {
             "type": "number",
             "nullable": true,
             "description": "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
@@ -120,12 +122,6 @@
                   "nullable": true,
                   "description": "Number of seconds logged for the set",
                   "example": null
-                },
-                "rpe": {
-                  "type": "number",
-                  "nullable": true,
-                  "description": "RPE (Relative perceived exertion) value logged for the set",
-                  "example": 9.5
                 },
                 "custom_metric": {
                   "type": "number",

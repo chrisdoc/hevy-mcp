@@ -4,8 +4,8 @@
  */
 
 import type {
-  GetV1WorkoutsCountHeaderParams,
   GetV1WorkoutsCount200,
+  GetV1WorkoutsCountHeaderParams,
   GetV1WorkoutsCountQueryResponse,
 } from "../types/GetV1WorkoutsCount.ts";
 import { faker } from "@faker-js/faker";

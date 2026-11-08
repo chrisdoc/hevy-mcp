@@ -6,15 +6,20 @@
 import type { CustomExerciseType } from "../types/CustomExerciseType.ts";
 import { faker } from "@faker-js/faker";
 
-export function createCustomExerciseType() {
-  return faker.helpers.arrayElement<CustomExerciseType>([
-    "weight_reps",
-    "reps_only",
-    "bodyweight_reps",
-    "bodyweight_assisted_reps",
-    "duration",
-    "weight_duration",
-    "distance_duration",
-    "short_distance_weight",
-  ]);
+export function createCustomExerciseType(
+  data?: Partial<CustomExerciseType>,
+): CustomExerciseType {
+  return (
+    data ||
+    faker.helpers.arrayElement<CustomExerciseType>([
+      "weight_reps",
+      "reps_only",
+      "bodyweight_reps",
+      "bodyweight_assisted_reps",
+      "duration",
+      "weight_duration",
+      "distance_duration",
+      "short_distance_weight",
+    ])
+  );
 }

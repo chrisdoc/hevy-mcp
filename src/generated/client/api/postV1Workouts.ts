@@ -5,15 +5,16 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   PostV1WorkoutsMutationRequest,
   PostV1WorkoutsMutationResponse,
   PostV1WorkoutsHeaderParams,
   PostV1Workouts400,
 } from "../types/PostV1Workouts.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getPostV1WorkoutsUrl() {
   const res = { method: "POST", url: `/v1/workouts` as const };
@@ -25,10 +26,10 @@ function getPostV1WorkoutsUrl() {
  * {@link /v1/workouts}
  */
 export async function postV1Workouts(
+  data: PostV1WorkoutsMutationRequest,
   headers: PostV1WorkoutsHeaderParams,
-  data?: PostV1WorkoutsMutationRequest,
   config: Partial<RequestConfig<PostV1WorkoutsMutationRequest>> & {
-    client?: typeof fetch;
+    client?: Client;
   } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;

@@ -96,13 +96,11 @@
                       "properties": {
                         "start": {
                           "type": "number",
-                          "nullable": true,
                           "description": "Starting rep count for the range",
                           "example": 8
                         },
                         "end": {
                           "type": "number",
-                          "nullable": true,
                           "description": "Ending rep count for the range",
                           "example": 12
                         }

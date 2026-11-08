@@ -4,13 +4,15 @@
  */
 
 import type {
-  PostV1RoutineFoldersHeaderParams,
+  PostV1RoutineFolders201,
   PostV1RoutineFolders400,
+  PostV1RoutineFoldersHeaderParams,
+  PostV1RoutineFoldersMutationRequest,
   PostV1RoutineFoldersMutationResponse,
 } from "../types/PostV1RoutineFolders.ts";
+import { faker } from "@faker-js/faker";
 import { createPostRoutineFolderRequestBody } from "./createPostRoutineFolderRequestBody.ts";
 import { createRoutineFolder } from "./createRoutineFolder.ts";
-import { faker } from "@faker-js/faker";
 
 export function createPostV1RoutineFoldersHeaderParams(
   data?: Partial<PostV1RoutineFoldersHeaderParams>,
@@ -24,8 +26,10 @@ export function createPostV1RoutineFoldersHeaderParams(
 /**
  * @description The routine folder was successfully created
  */
-export function createPostV1RoutineFolders201() {
-  return createRoutineFolder();
+export function createPostV1RoutineFolders201(
+  data?: Partial<PostV1RoutineFolders201>,
+): PostV1RoutineFolders201 {
+  return createRoutineFolder(data);
 }
 
 /**
@@ -40,8 +44,10 @@ export function createPostV1RoutineFolders400(
   };
 }
 
-export function createPostV1RoutineFoldersMutationRequest() {
-  return createPostRoutineFolderRequestBody();
+export function createPostV1RoutineFoldersMutationRequest(
+  data?: Partial<PostV1RoutineFoldersMutationRequest>,
+): PostV1RoutineFoldersMutationRequest {
+  return createPostRoutineFolderRequestBody(data);
 }
 
 export function createPostV1RoutineFoldersMutationResponse(

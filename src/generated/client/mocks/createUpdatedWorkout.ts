@@ -4,8 +4,8 @@
  */
 
 import type { UpdatedWorkout } from "../types/UpdatedWorkout.ts";
-import { createWorkout } from "./createWorkout.ts";
 import { faker } from "@faker-js/faker";
+import { createWorkout } from "./createWorkout.ts";
 
 export function createUpdatedWorkout(
   data?: Partial<UpdatedWorkout>,

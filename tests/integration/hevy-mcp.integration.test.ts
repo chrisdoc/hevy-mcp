@@ -15,6 +15,8 @@ import {
 	it,
 } from "vitest";
 import { z } from "zod";
+import { registerMeasurementTools } from "../../src/tools/measurements.js";
+import { registerUserTools } from "../../src/tools/user.js";
 import { registerWorkoutTools } from "../../src/tools/workouts.js";
 import { createClient } from "../../src/utils/hevyClient.js";
 
@@ -89,6 +91,8 @@ describe("Hevy MCP Server Integration Tests", () => {
 
 		// Register tools
 		registerWorkoutTools(server, hevyClient);
+		registerUserTools(server, hevyClient);
+		registerMeasurementTools(server, hevyClient);
 
 		// Create client
 		client = new Client({
@@ -154,6 +158,43 @@ describe("Hevy MCP Server Integration Tests", () => {
 			expect(responseData[0].title).toBeDefined();
 			expect(responseData[0].title.length).toBeGreaterThanOrEqual(3); // title is formatted as title
 			expect(responseData[0].createdAt).toBeDefined(); // start_time is formatted as date
+		});
+	});
+
+	async function callTool(name: string, args: Record<string, unknown> = {}) {
+		if (!client) throw new Error("Client not initialized");
+		const result = await client.request(
+			{ method: "tools/call", params: { name, arguments: args } },
+			CallToolResultSchema,
+		);
+		const firstContent = result.content[0];
+		if (firstContent?.type !== "text") {
+			throw new Error("Expected text content");
+		}
+		expect(result.isError).toBeFalsy();
+		return firstContent.text;
+	}
+
+	describe("Get User Info", () => {
+		it("returns the user's profile and preferred units", async () => {
+			const user = JSON.parse(await callTool("get-user-info"));
+
+			expect(user.id).toBeDefined();
+			expect(user.username).toBeDefined();
+			expect(["kg", "lbs"]).toContain(user.weightUnit);
+			expect(["kilometers", "miles"]).toContain(user.distanceUnit);
+			expect(typeof user.isPro).toBe("boolean");
+		});
+	});
+
+	describe("Get Body Measurements", () => {
+		it("returns a page of measurements or an empty message", async () => {
+			const text = await callTool("get-body-measurements", { pageSize: 2 });
+
+			if (text.startsWith("No body measurements")) return;
+			const data = JSON.parse(text);
+			expect(Array.isArray(data.bodyMeasurements)).toBe(true);
+			expect(data.bodyMeasurements[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 		});
 	});
 });

@@ -4,19 +4,19 @@
  */
 
 import type {
-  GetV1RoutinesQueryParams,
-  GetV1RoutinesHeaderParams,
   GetV1Routines200,
+  GetV1RoutinesHeaderParams,
+  GetV1RoutinesQueryParams,
   GetV1RoutinesQueryResponse,
 } from "../types/GetV1Routines.ts";
-import { createRoutine } from "./createRoutine.ts";
 import { faker } from "@faker-js/faker";
+import { createRoutine } from "./createRoutine.ts";
 
 export function createGetV1RoutinesQueryParams(
   data?: Partial<GetV1RoutinesQueryParams>,
 ): GetV1RoutinesQueryParams {
   return {
-    ...{ page: faker.number.int(), pageSize: faker.number.int() },
+    ...{ page: faker.number.int(), pageSize: faker.number.int({ max: 10 }) },
     ...(data || {}),
   };
 }

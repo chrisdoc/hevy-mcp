@@ -4,12 +4,13 @@
  */
 
 import type {
-  GetV1WorkoutsWorkoutidPathParams,
+  GetV1WorkoutsWorkoutid200,
   GetV1WorkoutsWorkoutidHeaderParams,
+  GetV1WorkoutsWorkoutidPathParams,
   GetV1WorkoutsWorkoutidQueryResponse,
 } from "../types/GetV1WorkoutsWorkoutid.ts";
-import { createWorkout } from "./createWorkout.ts";
 import { faker } from "@faker-js/faker";
+import { createWorkout } from "./createWorkout.ts";
 
 export function createGetV1WorkoutsWorkoutidPathParams(
   data?: Partial<GetV1WorkoutsWorkoutidPathParams>,
@@ -32,8 +33,10 @@ export function createGetV1WorkoutsWorkoutidHeaderParams(
 /**
  * @description Success
  */
-export function createGetV1WorkoutsWorkoutid200() {
-  return createWorkout();
+export function createGetV1WorkoutsWorkoutid200(
+  data?: Partial<GetV1WorkoutsWorkoutid200>,
+): GetV1WorkoutsWorkoutid200 {
+  return createWorkout(data);
 }
 
 /**

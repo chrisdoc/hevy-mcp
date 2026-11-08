@@ -9,6 +9,12 @@
           "description": "The title of the routine.",
           "example": "April Leg Day 🔥"
         },
+        "folder_id": {
+          "type": "number",
+          "nullable": true,
+          "description": "The folder id the routine should be added to. Pass null to insert the routine into default \"My Routines\" folder",
+          "example": null
+        },
         "notes": {
           "type": "string",
           "nullable": true,

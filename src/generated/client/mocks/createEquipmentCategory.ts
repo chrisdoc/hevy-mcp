@@ -6,16 +6,21 @@
 import type { EquipmentCategory } from "../types/EquipmentCategory.ts";
 import { faker } from "@faker-js/faker";
 
-export function createEquipmentCategory() {
-  return faker.helpers.arrayElement<EquipmentCategory>([
-    "none",
-    "barbell",
-    "dumbbell",
-    "kettlebell",
-    "machine",
-    "plate",
-    "resistance_band",
-    "suspension",
-    "other",
-  ]);
+export function createEquipmentCategory(
+  data?: Partial<EquipmentCategory>,
+): EquipmentCategory {
+  return (
+    data ||
+    faker.helpers.arrayElement<EquipmentCategory>([
+      "none",
+      "barbell",
+      "dumbbell",
+      "kettlebell",
+      "machine",
+      "plate",
+      "resistance_band",
+      "suspension",
+      "other",
+    ])
+  );
 }

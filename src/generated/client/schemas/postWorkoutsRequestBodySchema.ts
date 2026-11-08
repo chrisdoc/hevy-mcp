@@ -7,23 +7,24 @@ import { postWorkoutsRequestExerciseSchema } from "./postWorkoutsRequestExercise
 import { z } from "zod/v4";
 
 export const postWorkoutsRequestBodySchema = z.object({
-  workout: z.optional(
-    z.object({
-      title: z.optional(z.string().describe("The title of the workout.")),
-      description: z
-        .string()
-        .describe("A description for the workout workout.")
-        .nullish(),
-      start_time: z.optional(
-        z.string().describe("The time the workout started."),
-      ),
-      end_time: z.optional(z.string().describe("The time the workout ended.")),
-      is_private: z.optional(
-        z.boolean().describe("A boolean indicating if the workout is private."),
-      ),
-      get exercises() {
-        return z.array(postWorkoutsRequestExerciseSchema).optional();
-      },
-    }),
-  ),
+  workout: z.object({
+    title: z.string().describe("The title of the workout."),
+    description: z
+      .string()
+      .describe("A description for the workout workout.")
+      .nullish(),
+    start_time: z.string().describe("The time the workout started."),
+    end_time: z.string().describe("The time the workout ended."),
+    is_private: z.optional(
+      z
+        .boolean()
+        .default(false)
+        .describe(
+          "A boolean indicating if the workout is private. Optional - defaults to false when omitted.",
+        ),
+    ),
+    get exercises() {
+      return z.array(postWorkoutsRequestExerciseSchema);
+    },
+  }),
 });

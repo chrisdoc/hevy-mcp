@@ -4,9 +4,9 @@
  */
 
 import type { PaginatedWorkoutEvents } from "../types/PaginatedWorkoutEvents.ts";
+import { faker } from "@faker-js/faker";
 import { createDeletedWorkout } from "./createDeletedWorkout.ts";
 import { createUpdatedWorkout } from "./createUpdatedWorkout.ts";
-import { faker } from "@faker-js/faker";
 
 export function createPaginatedWorkoutEvents(
   data?: Partial<PaginatedWorkoutEvents>,

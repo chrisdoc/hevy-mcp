@@ -4,14 +4,16 @@
  */
 
 import type {
-  PutV1WorkoutsWorkoutidPathParams,
-  PutV1WorkoutsWorkoutidHeaderParams,
+  PutV1WorkoutsWorkoutid200,
   PutV1WorkoutsWorkoutid400,
+  PutV1WorkoutsWorkoutidHeaderParams,
+  PutV1WorkoutsWorkoutidMutationRequest,
   PutV1WorkoutsWorkoutidMutationResponse,
+  PutV1WorkoutsWorkoutidPathParams,
 } from "../types/PutV1WorkoutsWorkoutid.ts";
+import { faker } from "@faker-js/faker";
 import { createPostWorkoutsRequestBody } from "./createPostWorkoutsRequestBody.ts";
 import { createWorkout } from "./createWorkout.ts";
-import { faker } from "@faker-js/faker";
 
 export function createPutV1WorkoutsWorkoutidPathParams(
   data?: Partial<PutV1WorkoutsWorkoutidPathParams>,
@@ -34,8 +36,10 @@ export function createPutV1WorkoutsWorkoutidHeaderParams(
 /**
  * @description The workout was successfully updated
  */
-export function createPutV1WorkoutsWorkoutid200() {
-  return createWorkout();
+export function createPutV1WorkoutsWorkoutid200(
+  data?: Partial<PutV1WorkoutsWorkoutid200>,
+): PutV1WorkoutsWorkoutid200 {
+  return createWorkout(data);
 }
 
 /**
@@ -50,8 +54,10 @@ export function createPutV1WorkoutsWorkoutid400(
   };
 }
 
-export function createPutV1WorkoutsWorkoutidMutationRequest() {
-  return createPostWorkoutsRequestBody();
+export function createPutV1WorkoutsWorkoutidMutationRequest(
+  data?: Partial<PutV1WorkoutsWorkoutidMutationRequest>,
+): PutV1WorkoutsWorkoutidMutationRequest {
+  return createPostWorkoutsRequestBody(data);
 }
 
 export function createPutV1WorkoutsWorkoutidMutationResponse(

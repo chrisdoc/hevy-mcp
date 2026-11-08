@@ -4,19 +4,19 @@
  */
 
 import type {
-  GetV1ExerciseTemplatesQueryParams,
-  GetV1ExerciseTemplatesHeaderParams,
   GetV1ExerciseTemplates200,
+  GetV1ExerciseTemplatesHeaderParams,
+  GetV1ExerciseTemplatesQueryParams,
   GetV1ExerciseTemplatesQueryResponse,
 } from "../types/GetV1ExerciseTemplates.ts";
-import { createExerciseTemplate } from "./createExerciseTemplate.ts";
 import { faker } from "@faker-js/faker";
+import { createExerciseTemplate } from "./createExerciseTemplate.ts";
 
 export function createGetV1ExerciseTemplatesQueryParams(
   data?: Partial<GetV1ExerciseTemplatesQueryParams>,
 ): GetV1ExerciseTemplatesQueryParams {
   return {
-    ...{ page: faker.number.int(), pageSize: faker.number.int() },
+    ...{ page: faker.number.int(), pageSize: faker.number.int({ max: 100 }) },
     ...(data || {}),
   };
 }

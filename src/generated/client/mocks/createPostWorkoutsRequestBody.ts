@@ -4,8 +4,8 @@
  */
 
 import type { PostWorkoutsRequestBody } from "../types/PostWorkoutsRequestBody.ts";
-import { createPostWorkoutsRequestExercise } from "./createPostWorkoutsRequestExercise.ts";
 import { faker } from "@faker-js/faker";
+import { createPostWorkoutsRequestExercise } from "./createPostWorkoutsRequestExercise.ts";
 
 export function createPostWorkoutsRequestBody(
   data?: Partial<PostWorkoutsRequestBody>,

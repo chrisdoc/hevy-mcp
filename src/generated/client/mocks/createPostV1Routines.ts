@@ -4,14 +4,16 @@
  */
 
 import type {
-  PostV1RoutinesHeaderParams,
+  PostV1Routines201,
   PostV1Routines400,
   PostV1Routines403,
+  PostV1RoutinesHeaderParams,
+  PostV1RoutinesMutationRequest,
   PostV1RoutinesMutationResponse,
 } from "../types/PostV1Routines.ts";
+import { faker } from "@faker-js/faker";
 import { createPostRoutinesRequestBody } from "./createPostRoutinesRequestBody.ts";
 import { createRoutine } from "./createRoutine.ts";
-import { faker } from "@faker-js/faker";
 
 export function createPostV1RoutinesHeaderParams(
   data?: Partial<PostV1RoutinesHeaderParams>,
@@ -25,8 +27,13 @@ export function createPostV1RoutinesHeaderParams(
 /**
  * @description The routine was successfully created
  */
-export function createPostV1Routines201() {
-  return createRoutine();
+export function createPostV1Routines201(
+  data?: Partial<PostV1Routines201>,
+): PostV1Routines201 {
+  return {
+    ...{ routine: createRoutine() },
+    ...(data || {}),
+  };
 }
 
 /**
@@ -42,19 +49,21 @@ export function createPostV1Routines400(
 }
 
 /**
- * @description Routine limit exceeded
+ * @description Routine limit exceeded. Free accounts can have up to 4 routines (routines inside programs don\'t count). Upgrade to Hevy Pro to create more.
  */
 export function createPostV1Routines403(
   data?: Partial<PostV1Routines403>,
 ): PostV1Routines403 {
   return {
-    ...{ error: faker.string.alpha() },
+    ...{ error: faker.string.alpha(), message: faker.string.alpha() },
     ...(data || {}),
   };
 }
 
-export function createPostV1RoutinesMutationRequest() {
-  return createPostRoutinesRequestBody();
+export function createPostV1RoutinesMutationRequest(
+  data?: Partial<PostV1RoutinesMutationRequest>,
+): PostV1RoutinesMutationRequest {
+  return createPostRoutinesRequestBody(data);
 }
 
 export function createPostV1RoutinesMutationResponse(

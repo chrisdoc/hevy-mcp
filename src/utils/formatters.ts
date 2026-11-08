@@ -1,8 +1,11 @@
 import type {
+	BodyMeasurement,
 	ExerciseHistoryEntry,
 	ExerciseTemplate,
+	PutBodyMeasurement,
 	Routine,
 	RoutineFolder,
+	UserInfo,
 	Workout,
 } from "../generated/client/types/index.js";
 
@@ -28,7 +31,7 @@ export interface FormattedWorkoutExercise {
 	name: string | undefined;
 	exerciseTemplateId: string | undefined;
 	notes: string | undefined | null;
-	supersetsId: number | undefined | null;
+	supersetId: number | undefined | null;
 	sets: FormattedWorkoutSet[] | undefined;
 }
 
@@ -71,7 +74,7 @@ export interface FormattedRoutineExercise {
 	exerciseTemplateId: string | undefined;
 	notes: string | undefined | null;
 	supersetId: number | undefined | null;
-	restSeconds: string | undefined;
+	restSeconds: number | undefined | null;
 	sets: FormattedRoutineSet[] | undefined;
 }
 
@@ -107,6 +110,8 @@ export interface FormattedExerciseTemplate {
 	primaryMuscleGroup: string | undefined;
 	secondaryMuscleGroups: string[] | undefined;
 	isCustom: boolean | undefined;
+	equipment: string | undefined;
+	thumbnailUrl: string | undefined | null;
 }
 
 export interface FormattedExerciseHistoryEntry {
@@ -122,6 +127,23 @@ export interface FormattedExerciseHistoryEntry {
 	rpe: number | undefined | null;
 	customMetric: number | undefined | null;
 	setType: string | undefined;
+}
+
+/**
+ * Extract an entity from a mutation response.
+ *
+ * The Hevy API wraps created/updated entities (e.g. `{ workout: [Workout] }`
+ * or `{ routine: Routine }`). The spec has been wrong about response shapes
+ * before, so this also accepts a single-element array or the bare entity.
+ */
+export function unwrapEntity<T extends object>(
+	data: unknown,
+	key: string,
+): T | undefined {
+	if (!data || typeof data !== "object") return undefined;
+	const value = key in data ? (data as Record<string, unknown>)[key] : data;
+	const entity = Array.isArray(value) ? value[0] : value;
+	return entity && typeof entity === "object" ? (entity as T) : undefined;
 }
 
 /**
@@ -146,7 +168,7 @@ export function formatWorkout(workout: Workout): FormattedWorkout {
 				name: exercise.title,
 				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
-				supersetsId: exercise.supersets_id,
+				supersetId: exercise.superset_id,
 				sets: exercise.sets?.map((set) => ({
 					index: set.index,
 					type: set.type,
@@ -181,7 +203,7 @@ export function formatRoutine(routine: Routine): FormattedRoutine {
 				index: exercise.index,
 				exerciseTemplateId: exercise.exercise_template_id,
 				notes: exercise.notes,
-				supersetId: exercise.supersets_id,
+				supersetId: exercise.superset_id,
 				restSeconds: exercise.rest_seconds,
 				sets: exercise.sets?.map((set) => ({
 					index: set.index,
@@ -191,7 +213,8 @@ export function formatRoutine(routine: Routine): FormattedRoutine {
 					...(set.rep_range !== undefined && { repRange: set.rep_range }),
 					distance: set.distance_meters,
 					duration: set.duration_seconds,
-					...(set.rpe !== undefined && { rpe: set.rpe }),
+					...("rpe" in set &&
+						set.rpe !== undefined && { rpe: set.rpe as number | null }),
 					customMetric: set.custom_metric,
 				})),
 			};
@@ -272,6 +295,8 @@ export function formatExerciseTemplate(
 		primaryMuscleGroup: template.primary_muscle_group,
 		secondaryMuscleGroups: template.secondary_muscle_groups,
 		isCustom: template.is_custom,
+		equipment: template.equipment,
+		thumbnailUrl: template.thumbnail_url,
 	};
 }
 
@@ -292,4 +317,70 @@ export function formatExerciseHistoryEntry(
 		customMetric: entry.custom_metric,
 		setType: entry.set_type,
 	};
+}
+
+/**
+ * Formatted user info interface
+ */
+export interface FormattedUserInfo {
+	id: string | undefined;
+	username: string | undefined;
+	name: string | undefined;
+	url: string | undefined;
+	weightUnit: string | undefined;
+	distanceUnit: string | undefined;
+	isPro: boolean | undefined;
+}
+
+export function formatUserInfo(user: UserInfo): FormattedUserInfo {
+	return {
+		id: user.id,
+		username: user.username,
+		name: user.name,
+		url: user.url,
+		weightUnit: user.weight_unit,
+		distanceUnit: user.distance_unit,
+		isPro: user.is_pro,
+	};
+}
+
+/**
+ * Mapping between the camelCase body measurement fields used by the tools and
+ * the snake_case fields used by the Hevy API. Weights are kg, lengths are cm,
+ * fat is a percentage.
+ */
+export const BODY_MEASUREMENT_FIELDS = {
+	weightKg: "weight_kg",
+	leanMassKg: "lean_mass_kg",
+	fatPercent: "fat_percent",
+	neckCm: "neck_cm",
+	shoulderCm: "shoulder_cm",
+	chestCm: "chest_cm",
+	leftBicepCm: "left_bicep_cm",
+	rightBicepCm: "right_bicep_cm",
+	leftForearmCm: "left_forearm_cm",
+	rightForearmCm: "right_forearm_cm",
+	abdomenCm: "abdomen",
+	waistCm: "waist",
+	hipsCm: "hips",
+	leftThighCm: "left_thigh",
+	rightThighCm: "right_thigh",
+	leftCalfCm: "left_calf",
+	rightCalfCm: "right_calf",
+} as const satisfies Record<string, keyof PutBodyMeasurement>;
+
+export type BodyMeasurementField = keyof typeof BODY_MEASUREMENT_FIELDS;
+
+export type FormattedBodyMeasurement = {
+	date: string;
+} & { [K in BodyMeasurementField]: number | null | undefined };
+
+export function formatBodyMeasurement(
+	measurement: BodyMeasurement,
+): FormattedBodyMeasurement {
+	const formatted = { date: measurement.date } as FormattedBodyMeasurement;
+	for (const [field, apiField] of Object.entries(BODY_MEASUREMENT_FIELDS)) {
+		formatted[field as BodyMeasurementField] = measurement[apiField];
+	}
+	return formatted;
 }

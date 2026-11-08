@@ -14,7 +14,11 @@ export const postV1RoutinesHeaderParamsSchema = z.object({
 /**
  * @description The routine was successfully created
  */
-export const postV1Routines201Schema = z.lazy(() => routineSchema);
+export const postV1Routines201Schema = z.object({
+  get routine() {
+    return routineSchema.optional();
+  },
+});
 
 /**
  * @description Invalid request body
@@ -24,10 +28,11 @@ export const postV1Routines400Schema = z.object({
 });
 
 /**
- * @description Routine limit exceeded
+ * @description Routine limit exceeded. Free accounts can have up to 4 routines (routines inside programs don\'t count). Upgrade to Hevy Pro to create more.
  */
 export const postV1Routines403Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
+  error: z.optional(z.string().describe("Error code")),
+  message: z.optional(z.string().describe("Human-readable explanation")),
 });
 
 export const postV1RoutinesMutationRequestSchema = z.lazy(

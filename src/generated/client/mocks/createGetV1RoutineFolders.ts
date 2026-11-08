@@ -4,19 +4,19 @@
  */
 
 import type {
-  GetV1RoutineFoldersQueryParams,
-  GetV1RoutineFoldersHeaderParams,
   GetV1RoutineFolders200,
+  GetV1RoutineFoldersHeaderParams,
+  GetV1RoutineFoldersQueryParams,
   GetV1RoutineFoldersQueryResponse,
 } from "../types/GetV1RoutineFolders.ts";
-import { createRoutineFolder } from "./createRoutineFolder.ts";
 import { faker } from "@faker-js/faker";
+import { createRoutineFolder } from "./createRoutineFolder.ts";
 
 export function createGetV1RoutineFoldersQueryParams(
   data?: Partial<GetV1RoutineFoldersQueryParams>,
 ): GetV1RoutineFoldersQueryParams {
   return {
-    ...{ page: faker.number.int(), pageSize: faker.number.int() },
+    ...{ page: faker.number.int(), pageSize: faker.number.int({ max: 10 }) },
     ...(data || {}),
   };
 }

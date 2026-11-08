@@ -198,7 +198,10 @@ function fixInvalidExamples(schemas) {
 	if (routine?.properties?.exercises?.items?.properties?.rest_seconds) {
 		const restSeconds =
 			routine.properties.exercises.items.properties.rest_seconds;
-		if (typeof restSeconds.example === "number") {
+		if (
+			restSeconds.type === "string" &&
+			typeof restSeconds.example === "number"
+		) {
 			restSeconds.example = String(restSeconds.example);
 			console.log(
 				"  Fixed: schemas.Routine...rest_seconds - converted example to string",

@@ -15,7 +15,7 @@ import type {
 	Routine,
 } from "../generated/client/types/index.js";
 import { withErrorHandling } from "../utils/error-handler.js";
-import { formatRoutine } from "../utils/formatters.js";
+import { formatRoutine, unwrapEntity } from "../utils/formatters.js";
 import { parseJsonArray } from "../utils/json-parser.js";
 import {
 	createEmptyResponse,
@@ -76,18 +76,21 @@ const zOptionalRepRange = z.preprocess(
 function buildRepRange(repRange?: {
 	start?: number | null;
 	end?: number | null;
-}): { start: number | null; end: number | null } | null {
+}): { start?: number; end?: number } | null {
 	if (!repRange) {
 		return null;
 	}
 
-	const start = repRange.start ?? null;
-	const end = repRange.end ?? null;
-	if (start === null && end === null) {
+	const { start, end } = repRange;
+	if (start == null && end == null) {
 		return null;
 	}
 
-	return { start, end };
+	// The API doesn't accept null for start/end, so omit a missing bound.
+	return {
+		...(start != null && { start }),
+		...(end != null && { end }),
+	};
 }
 
 /**
@@ -286,13 +289,14 @@ export function registerRoutineTools(
 				},
 			});
 
-			if (!data) {
+			const created = unwrapEntity<Routine>(data, "routine");
+			if (!created) {
 				return createEmptyResponse(
 					"Failed to create routine: Server returned no data",
 				);
 			}
 
-			const routine = formatRoutine(data);
+			const routine = formatRoutine(created);
 			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,
@@ -313,6 +317,13 @@ export function registerRoutineTools(
 	const updateRoutineSchema = {
 		routineId: z.string().min(1),
 		title: z.string().min(1),
+		folderId: z.coerce
+			.number()
+			.nullable()
+			.optional()
+			.describe(
+				"Move the routine to this folder. Pass null to move it to the default 'My Routines' folder. Omit to leave the folder unchanged.",
+			),
 		notes: z.string().optional(),
 		exercises: z.preprocess(
 			parseJsonArray,
@@ -346,7 +357,7 @@ export function registerRoutineTools(
 
 	server.tool(
 		"update-routine",
-		"Update an existing routine by ID. You can modify the title, notes, and exercise configurations. Returns the updated routine with all changes applied.",
+		"Update an existing routine by ID. You can modify the title, notes, folder, and exercise configurations. Returns the updated routine with all changes applied.",
 		updateRoutineSchema,
 		withErrorHandling(async (args: UpdateRoutineParams) => {
 			if (!hevyClient) {
@@ -354,13 +365,14 @@ export function registerRoutineTools(
 					"API client not initialized. Please provide HEVY_API_KEY.",
 				);
 			}
-			const { routineId, title, notes, exercises } = args;
+			const { routineId, title, folderId, notes, exercises } = args;
 			let usesRepRanges = false;
 			const data: PutV1RoutinesRoutineid200 = await hevyClient.updateRoutine(
 				routineId,
 				{
 					routine: {
 						title,
+						...(folderId !== undefined && { folder_id: folderId }),
 						notes: notes ?? null,
 						exercises: exercises.map((exercise): PutRoutinesRequestExercise => {
 							const sets = exercise.sets.map((set): PutRoutinesRequestSet => {
@@ -401,13 +413,14 @@ export function registerRoutineTools(
 				},
 			);
 
-			if (!data) {
+			const updated = unwrapEntity<Routine>(data, "routine");
+			if (!updated) {
 				return createEmptyResponse(
 					`Failed to update routine with ID ${routineId}`,
 				);
 			}
 
-			const routine = formatRoutine(data);
+			const routine = formatRoutine(updated);
 			const response = createJsonResponse(routine, {
 				pretty: true,
 				indent: 2,

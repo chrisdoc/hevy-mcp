@@ -4,10 +4,10 @@
  */
 
 import type { CreateCustomExerciseRequestBody } from "../types/CreateCustomExerciseRequestBody.ts";
+import { faker } from "@faker-js/faker";
 import { createCustomExerciseType } from "./createCustomExerciseType.ts";
 import { createEquipmentCategory } from "./createEquipmentCategory.ts";
 import { createMuscleGroup } from "./createMuscleGroup.ts";
-import { faker } from "@faker-js/faker";
 
 export function createCreateCustomExerciseRequestBody(
   data?: Partial<CreateCustomExerciseRequestBody>,

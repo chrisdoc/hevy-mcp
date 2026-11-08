@@ -14,7 +14,8 @@ export type GetV1ExerciseTemplatesQueryParams = {
   page?: number;
   /**
    * @description Number of items on the requested page (Max 100)
-   * @default 5
+   * @maxLength 100
+   * @default 100
    * @type integer | undefined
    */
   pageSize?: number;

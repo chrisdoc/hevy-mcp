@@ -3,6 +3,7 @@
  * Do not edit manually.
  */
 
+import { equipmentCategorySchema } from "./equipmentCategorySchema.ts";
 import { z } from "zod/v4";
 
 export const exerciseTemplateSchema = z.object({
@@ -17,6 +18,9 @@ export const exerciseTemplateSchema = z.object({
       .array(z.string())
       .describe("The secondary muscle groups of the exercise."),
   ),
+  get equipment() {
+    return equipmentCategorySchema.optional();
+  },
   is_custom: z.optional(
     z
       .boolean()
@@ -24,4 +28,10 @@ export const exerciseTemplateSchema = z.object({
         "A boolean indicating whether the exercise is a custom exercise.",
       ),
   ),
+  thumbnail_url: z
+    .string()
+    .describe(
+      "URL of the exercise's thumbnail image, or null if the exercise has none.",
+    )
+    .nullish(),
 });

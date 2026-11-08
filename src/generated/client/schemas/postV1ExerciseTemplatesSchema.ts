@@ -25,10 +25,11 @@ export const postV1ExerciseTemplates400Schema = z.object({
 });
 
 /**
- * @description Exceeds custom exercise limit
+ * @description Custom exercise limit exceeded. Free accounts can have up to 7 custom exercises. Upgrade to Hevy Pro to create more.
  */
 export const postV1ExerciseTemplates403Schema = z.object({
-  error: z.optional(z.string().describe("Error message")),
+  error: z.optional(z.string().describe("Error code")),
+  message: z.optional(z.string().describe("Human-readable explanation")),
 });
 
 /**

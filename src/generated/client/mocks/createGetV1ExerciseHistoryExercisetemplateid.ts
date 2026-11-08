@@ -4,14 +4,14 @@
  */
 
 import type {
+  GetV1ExerciseHistoryExercisetemplateid200,
+  GetV1ExerciseHistoryExercisetemplateidHeaderParams,
   GetV1ExerciseHistoryExercisetemplateidPathParams,
   GetV1ExerciseHistoryExercisetemplateidQueryParams,
-  GetV1ExerciseHistoryExercisetemplateidHeaderParams,
-  GetV1ExerciseHistoryExercisetemplateid200,
   GetV1ExerciseHistoryExercisetemplateidQueryResponse,
 } from "../types/GetV1ExerciseHistoryExercisetemplateid.ts";
-import { createExerciseHistoryEntry } from "./createExerciseHistoryEntry.ts";
 import { faker } from "@faker-js/faker";
+import { createExerciseHistoryEntry } from "./createExerciseHistoryEntry.ts";
 
 export function createGetV1ExerciseHistoryExercisetemplateidPathParams(
   data?: Partial<GetV1ExerciseHistoryExercisetemplateidPathParams>,

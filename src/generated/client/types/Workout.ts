@@ -16,14 +16,14 @@ export type Workout = {
   title?: string;
   /**
    * @description The ID of the routine that this workout belongs to.
-   * @type string | undefined
+   * @type string
    */
-  routine_id?: string;
+  routine_id?: string | null;
   /**
    * @description The workout description.
-   * @type string | undefined
+   * @type string
    */
-  description?: string;
+  description?: string | null;
   /**
    * @description ISO 8601 timestamp of when the workout was recorded to have started.
    * @type string | undefined
@@ -60,9 +60,9 @@ export type Workout = {
     title?: string;
     /**
      * @description Notes on the exercise
-     * @type string | undefined
+     * @type string
      */
-    notes?: string;
+    notes?: string | null;
     /**
      * @description The id of the exercise template. This can be used to fetch the exercise template.
      * @type string | undefined
@@ -72,7 +72,7 @@ export type Workout = {
      * @description The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.
      * @type number
      */
-    supersets_id?: number | null;
+    superset_id?: number | null;
     /**
      * @type array | undefined
      */

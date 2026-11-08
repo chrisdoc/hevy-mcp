@@ -10,7 +10,8 @@ A Model Context Protocol (MCP) server implementation that interfaces with the [H
 - **Routine Management**: Access and manage workout routines
 - **Exercise Templates**: Browse available exercise templates
 - **Folder Organization**: Manage routine folders
-- **Webhook Subscriptions**: Create, view, and delete webhook subscriptions for workout events
+- **Body Measurements**: Track body weight, body fat, and circumference measurements
+- **User Info**: Look up the user's profile and preferred weight/distance units
 
 > **Note:** HTTP transport and Docker images are deprecated. The server runs via stdio transport (e.g., `npx hevy-mcp`). Legacy GHCR images remain available but are no longer maintained.
 
@@ -228,23 +229,30 @@ The server implements the following MCP tools for interacting with the Hevy API:
 
 ### Routine Tools
 - `get-routines`: Fetch and format routine data
+- `get-routine`: Get a single routine by ID
 - `create-routine`: Create a new routine
-- `update-routine`: Update an existing routine
-- `get-routine-by-id`: Get a single routine by ID using direct endpoint
+- `update-routine`: Update an existing routine (including moving it to another folder)
 
 ### Exercise Template Tools
 - `get-exercise-templates`: Fetch exercise templates
 - `get-exercise-template`: Get a template by ID
+- `search-exercise-templates`: Search templates by name and muscle group
+- `create-exercise-template`: Create a custom exercise template
+- `get-exercise-history`: Get past sets for an exercise template
 
 ### Routine Folder Tools
 - `get-routine-folders`: Fetch routine folders
 - `create-routine-folder`: Create a new folder
 - `get-routine-folder`: Get a folder by ID
 
-### Webhook Tools
-- `get-webhook-subscription`: Get the current webhook subscription
-- `create-webhook-subscription`: Create a new webhook subscription
-- `delete-webhook-subscription`: Delete the current webhook subscription
+### Body Measurement Tools
+- `get-body-measurements`: Fetch body measurement entries
+- `get-body-measurement`: Get the entry for a date
+- `create-body-measurement`: Create an entry for a date
+- `update-body-measurement`: Update an entry, keeping any values not provided
+
+### User Tools
+- `get-user-info`: Get the user's profile, preferred units, and Pro status
 
 ## Project Structure
 
@@ -258,7 +266,8 @@ hevy-mcp/
 │   │   ├── routines.ts    # Routine-related tools
 │   │   ├── templates.ts   # Exercise template tools
 │   │   ├── folders.ts     # Routine folder tools
-│   │   └── webhooks.ts    # Webhook subscription tools
+│   │   ├── measurements.ts # Body measurement tools
+│   │   └── user.ts        # User info tools
 │   ├── generated/         # API client (generated code)
 │   │   ├── client/        # Kubb-generated client
 │   │   │   ├── api/       # API client methods
@@ -368,9 +377,11 @@ considered acceptable.
 The API client is generated from the OpenAPI specification using [Kubb](https://kubb.dev/):
 
 ```bash
-pnpm run export-specs
-pnpm run build:client
+pnpm run openapi       # fetch the latest spec from Hevy and apply fixes
+pnpm run build:client  # regenerate the client from openapi-spec.json
 ```
+
+`pnpm run openapi` (`scripts/openapi-spec.js`) downloads the spec embedded in Hevy's Swagger UI and fixes known problems in it (invalid enum types, missing path parameter schemas, missing operationIds). Kubb names the generated functions from those operationIds, so always update the spec through this script rather than copying it by hand.
 
 Kubb generates TypeScript types, API clients, Zod schemas, and mock data from the OpenAPI specification.
 

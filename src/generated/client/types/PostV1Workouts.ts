@@ -16,7 +16,13 @@ export type PostV1WorkoutsHeaderParams = {
 /**
  * @description The workout was successfully created
  */
-export type PostV1Workouts201 = Workout;
+export type PostV1Workouts201 = {
+  /**
+   * @description The created workout, returned as a single-element array.
+   * @type array | undefined
+   */
+  workout?: Workout[];
+};
 
 /**
  * @description Invalid request body

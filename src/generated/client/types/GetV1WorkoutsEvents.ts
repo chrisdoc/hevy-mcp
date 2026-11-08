@@ -14,7 +14,8 @@ export type GetV1WorkoutsEventsQueryParams = {
   page?: number;
   /**
    * @description Number of items on the requested page (Max 10)
-   * @default 5
+   * @maxLength 10
+   * @default 10
    * @type integer | undefined
    */
   pageSize?: number;

@@ -5,16 +5,17 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   PostV1RoutinesMutationRequest,
   PostV1RoutinesMutationResponse,
   PostV1RoutinesHeaderParams,
   PostV1Routines400,
   PostV1Routines403,
 } from "../types/PostV1Routines.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getPostV1RoutinesUrl() {
   const res = { method: "POST", url: `/v1/routines` as const };
@@ -26,10 +27,10 @@ function getPostV1RoutinesUrl() {
  * {@link /v1/routines}
  */
 export async function postV1Routines(
+  data: PostV1RoutinesMutationRequest,
   headers: PostV1RoutinesHeaderParams,
-  data?: PostV1RoutinesMutationRequest,
   config: Partial<RequestConfig<PostV1RoutinesMutationRequest>> & {
-    client?: typeof fetch;
+    client?: Client;
   } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;

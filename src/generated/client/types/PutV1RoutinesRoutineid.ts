@@ -24,7 +24,12 @@ export type PutV1RoutinesRoutineidHeaderParams = {
 /**
  * @description The routine was successfully updated
  */
-export type PutV1RoutinesRoutineid200 = Routine;
+export type PutV1RoutinesRoutineid200 = {
+  /**
+   * @type object | undefined
+   */
+  routine?: Routine;
+};
 
 /**
  * @description Invalid request body

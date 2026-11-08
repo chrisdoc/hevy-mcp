@@ -4,12 +4,13 @@
  */
 
 import type {
-  GetV1ExerciseTemplatesExercisetemplateidPathParams,
+  GetV1ExerciseTemplatesExercisetemplateid200,
   GetV1ExerciseTemplatesExercisetemplateidHeaderParams,
+  GetV1ExerciseTemplatesExercisetemplateidPathParams,
   GetV1ExerciseTemplatesExercisetemplateidQueryResponse,
 } from "../types/GetV1ExerciseTemplatesExercisetemplateid.ts";
-import { createExerciseTemplate } from "./createExerciseTemplate.ts";
 import { faker } from "@faker-js/faker";
+import { createExerciseTemplate } from "./createExerciseTemplate.ts";
 
 export function createGetV1ExerciseTemplatesExercisetemplateidPathParams(
   data?: Partial<GetV1ExerciseTemplatesExercisetemplateidPathParams>,
@@ -32,8 +33,10 @@ export function createGetV1ExerciseTemplatesExercisetemplateidHeaderParams(
 /**
  * @description Success
  */
-export function createGetV1ExerciseTemplatesExercisetemplateid200() {
-  return createExerciseTemplate();
+export function createGetV1ExerciseTemplatesExercisetemplateid200(
+  data?: Partial<GetV1ExerciseTemplatesExercisetemplateid200>,
+): GetV1ExerciseTemplatesExercisetemplateid200 {
+  return createExerciseTemplate(data);
 }
 
 /**

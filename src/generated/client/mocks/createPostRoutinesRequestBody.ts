@@ -4,8 +4,8 @@
  */
 
 import type { PostRoutinesRequestBody } from "../types/PostRoutinesRequestBody.ts";
-import { createPostRoutinesRequestExercise } from "./createPostRoutinesRequestExercise.ts";
 import { faker } from "@faker-js/faker";
+import { createPostRoutinesRequestExercise } from "./createPostRoutinesRequestExercise.ts";
 
 export function createPostRoutinesRequestBody(
   data?: Partial<PostRoutinesRequestBody>,

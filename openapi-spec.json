@@ -1,8 +1,8 @@
 {
 	"openapi": "3.0.0",
 	"info": {
-		"title": "Hevy API Docs",
-		"description": "\n      Welcome to Hevy's public API! We're just starting to roll this out and depending on your\n      feedback, we'll be adding more features and endpoints. Also, we make no guarantees that \n      we won't completely change the structure or abandon the project entirely so use it at\n      your own risk. Currently, this API is only available to Hevy Pro users. You can get your \n      key on our web app at https://hevy.com/settings?developer. If you have any questions,\n      please reach out to pedro@hevyapp.com 🤝.\n      ",
+		"title": "Hevy Public API Docs",
+		"description": "\n      Welcome to Hevy's public API! We're just starting to roll this out and depending on your\n      feedback, we'll be adding more features and endpoints. Also, we make no guarantees that \n      we won't completely change the structure or abandon the project entirely so use it at\n      your own risk. Currently, this API is only available to Hevy Pro users. You can get your \n      key on our web app at https://hevy.com/settings?developer. If you have any questions,\n      please reach out to pavel@hevyapp.com 🤝 \n\nNote: if for whatever reason you update data from Hevy hourly or daily, please don't send your requests exactly at xx:00. Put some random minute instead.\n      ",
 		"version": "0.0.1"
 	},
 	"paths": {
@@ -34,7 +34,8 @@
 						"name": "pageSize",
 						"schema": {
 							"type": "integer",
-							"default": 5
+							"default": 10,
+							"maximum": 10
 						},
 						"description": "Number of items on the requested page (Max 10)"
 					}
@@ -104,7 +105,16 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Workout"
+									"type": "object",
+									"properties": {
+										"workout": {
+											"type": "array",
+											"description": "The created workout, returned as a single-element array.",
+											"items": {
+												"$ref": "#/components/schemas/Workout"
+											}
+										}
+									}
 								}
 							}
 						}
@@ -194,7 +204,8 @@
 						"name": "pageSize",
 						"schema": {
 							"type": "integer",
-							"default": 5
+							"default": 10,
+							"maximum": 10
 						},
 						"description": "Number of items on the requested page (Max 10)"
 					},
@@ -331,6 +342,39 @@
 				"operationId": "putV1WorkoutsWorkoutid"
 			}
 		},
+		"/v1/user/info": {
+			"get": {
+				"summary": "Get user info",
+				"tags": ["Users"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The authenticated user's info",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserInfoResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "User not found"
+					}
+				},
+				"operationId": "getV1UserInfo"
+			}
+		},
 		"/v1/routines": {
 			"get": {
 				"summary": "Get a paginated list of routines",
@@ -359,7 +403,8 @@
 						"name": "pageSize",
 						"schema": {
 							"type": "integer",
-							"default": 5
+							"default": 10,
+							"maximum": 10
 						},
 						"description": "Number of items on the requested page (Max 10)"
 					}
@@ -429,7 +474,12 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Routine"
+									"type": "object",
+									"properties": {
+										"routine": {
+											"$ref": "#/components/schemas/Routine"
+										}
+									}
 								}
 							}
 						}
@@ -451,7 +501,7 @@
 						}
 					},
 					"403": {
-						"description": "Routine limit exceeded",
+						"description": "Routine limit exceeded. Free accounts can have up to 4 routines (routines inside programs don't count). Upgrade to Hevy Pro to create more.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -459,7 +509,13 @@
 									"properties": {
 										"error": {
 											"type": "string",
-											"description": "Error message"
+											"description": "Error code",
+											"example": "routine-limit-exceeded"
+										},
+										"message": {
+											"type": "string",
+											"description": "Human-readable explanation",
+											"example": "Free accounts are limited to 4 routines. Upgrade to Hevy Pro (https://hevy.com/plans) to create more."
 										}
 									}
 								}
@@ -568,7 +624,12 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Routine"
+									"type": "object",
+									"properties": {
+										"routine": {
+											"$ref": "#/components/schemas/Routine"
+										}
+									}
 								}
 							}
 						}
@@ -637,7 +698,8 @@
 						"name": "pageSize",
 						"schema": {
 							"type": "integer",
-							"default": 5
+							"default": 100,
+							"maximum": 100
 						},
 						"description": "Number of items on the requested page (Max 100)"
 					}
@@ -738,7 +800,7 @@
 						}
 					},
 					"403": {
-						"description": "Exceeds custom exercise limit",
+						"description": "Custom exercise limit exceeded. Free accounts can have up to 7 custom exercises. Upgrade to Hevy Pro to create more.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -746,8 +808,13 @@
 									"properties": {
 										"error": {
 											"type": "string",
-											"description": "Error message",
+											"description": "Error code",
 											"example": "exceeds-custom-exercise-limit"
+										},
+										"message": {
+											"type": "string",
+											"description": "Human-readable explanation",
+											"example": "Free accounts are limited to 7 custom exercises. Upgrade to Hevy Pro (https://hevy.com/plans) to create more."
 										}
 									}
 								}
@@ -828,7 +895,8 @@
 						"name": "pageSize",
 						"schema": {
 							"type": "integer",
-							"default": 5
+							"default": 10,
+							"maximum": 10
 						},
 						"description": "Number of items on the requested page (Max 10)"
 					}
@@ -1036,6 +1104,263 @@
 				},
 				"operationId": "getV1ExerciseHistoryExercisetemplateid"
 			}
+		},
+		"/v1/body_measurements": {
+			"get": {
+				"summary": "Get a paginated list of body measurements for the authenticated user",
+				"tags": ["Measurements"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					},
+					{
+						"in": "query",
+						"name": "page",
+						"schema": {
+							"type": "integer",
+							"default": 1
+						},
+						"description": "Page number (Must be 1 or greater)"
+					},
+					{
+						"in": "query",
+						"name": "pageSize",
+						"schema": {
+							"type": "integer",
+							"default": 10,
+							"maximum": 10
+						},
+						"description": "Number of items per page (Max 10)"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "A paginated list of body measurements",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"page": {
+											"type": "integer",
+											"example": 1
+										},
+										"page_count": {
+											"type": "integer",
+											"example": 5
+										},
+										"body_measurements": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/BodyMeasurement"
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid page or pageSize"
+					}
+				},
+				"operationId": "getV1BodyMeasurements"
+			},
+			"post": {
+				"summary": "Create a body measurement entry for a given date. Returns 409 if an entry already exists for that date.",
+				"tags": ["Measurements"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/BodyMeasurement"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The measurement was successfully created. The response body is empty."
+					},
+					"400": {
+						"description": "Invalid request body",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "A measurement for this date already exists",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"operationId": "postV1BodyMeasurements"
+			}
+		},
+		"/v1/body_measurements/{date}": {
+			"get": {
+				"summary": "Get a single body measurement by date",
+				"tags": ["Measurements"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					},
+					{
+						"in": "path",
+						"name": "date",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "date",
+							"example": "2024-01-15"
+						},
+						"description": "The date of the body measurement (YYYY-MM-DD)"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The body measurement for the given date",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BodyMeasurement"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Body measurement not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"operationId": "getV1BodyMeasurementsDate"
+			},
+			"put": {
+				"summary": "Update an existing body measurement entry for a given date. All fields are overwritten; omitted fields are set to null.",
+				"tags": ["Measurements"],
+				"parameters": [
+					{
+						"in": "header",
+						"name": "api-key",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						},
+						"required": true
+					},
+					{
+						"in": "path",
+						"name": "date",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "date",
+							"example": "2024-01-15"
+						},
+						"description": "The date of the measurement to update (YYYY-MM-DD)"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PutBodyMeasurement"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "The measurement was successfully updated"
+					},
+					"400": {
+						"description": "Invalid request body",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No measurement found for the given date",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"error": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"operationId": "putV1BodyMeasurementsDate"
+			}
 		}
 	},
 	"components": {
@@ -1117,9 +1442,11 @@
 			},
 			"PostWorkoutsRequestBody": {
 				"type": "object",
+				"required": ["workout"],
 				"properties": {
 					"workout": {
 						"type": "object",
+						"required": ["title", "start_time", "end_time", "exercises"],
 						"properties": {
 							"title": {
 								"type": "string",
@@ -1144,7 +1471,8 @@
 							},
 							"is_private": {
 								"type": "boolean",
-								"description": "A boolean indicating if the workout is private.",
+								"description": "A boolean indicating if the workout is private. Optional - defaults to false when omitted.",
+								"default": false,
 								"example": false
 							},
 							"exercises": {
@@ -1203,13 +1531,11 @@
 						"properties": {
 							"start": {
 								"type": "number",
-								"nullable": true,
 								"description": "Starting rep count for the range",
 								"example": 8
 							},
 							"end": {
 								"type": "number",
-								"nullable": true,
 								"description": "Ending rep count for the range",
 								"example": 12
 							}
@@ -1388,6 +1714,12 @@
 								"description": "The title of the routine.",
 								"example": "April Leg Day 🔥"
 							},
+							"folder_id": {
+								"type": "number",
+								"nullable": true,
+								"description": "The folder id the routine should be added to. Pass null to insert the routine into default \"My Routines\" folder",
+								"example": null
+							},
 							"notes": {
 								"type": "string",
 								"nullable": true,
@@ -1416,6 +1748,192 @@
 								"example": "Push Pull 🏋️‍♂️"
 							}
 						}
+					}
+				}
+			},
+			"BodyMeasurement": {
+				"type": "object",
+				"required": ["date"],
+				"properties": {
+					"date": {
+						"type": "string",
+						"format": "date",
+						"example": "2024-08-14"
+					},
+					"weight_kg": {
+						"type": "number",
+						"nullable": true,
+						"example": 80.5
+					},
+					"lean_mass_kg": {
+						"type": "number",
+						"nullable": true,
+						"example": 65
+					},
+					"fat_percent": {
+						"type": "number",
+						"nullable": true,
+						"example": 18.5
+					},
+					"neck_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 38
+					},
+					"shoulder_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 115
+					},
+					"chest_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 95
+					},
+					"left_bicep_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 35
+					},
+					"right_bicep_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 35.5
+					},
+					"left_forearm_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 28
+					},
+					"right_forearm_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 28.5
+					},
+					"abdomen": {
+						"type": "number",
+						"nullable": true,
+						"example": 85
+					},
+					"waist": {
+						"type": "number",
+						"nullable": true,
+						"example": 80
+					},
+					"hips": {
+						"type": "number",
+						"nullable": true,
+						"example": 95
+					},
+					"left_thigh": {
+						"type": "number",
+						"nullable": true,
+						"example": 55
+					},
+					"right_thigh": {
+						"type": "number",
+						"nullable": true,
+						"example": 55.5
+					},
+					"left_calf": {
+						"type": "number",
+						"nullable": true,
+						"example": 37
+					},
+					"right_calf": {
+						"type": "number",
+						"nullable": true,
+						"example": 37.5
+					}
+				}
+			},
+			"PutBodyMeasurement": {
+				"type": "object",
+				"properties": {
+					"weight_kg": {
+						"type": "number",
+						"nullable": true,
+						"example": 80.5
+					},
+					"lean_mass_kg": {
+						"type": "number",
+						"nullable": true,
+						"example": 65
+					},
+					"fat_percent": {
+						"type": "number",
+						"nullable": true,
+						"example": 18.5
+					},
+					"neck_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 38
+					},
+					"shoulder_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 115
+					},
+					"chest_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 95
+					},
+					"left_bicep_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 35
+					},
+					"right_bicep_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 35.5
+					},
+					"left_forearm_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 28
+					},
+					"right_forearm_cm": {
+						"type": "number",
+						"nullable": true,
+						"example": 28.5
+					},
+					"abdomen": {
+						"type": "number",
+						"nullable": true,
+						"example": 85
+					},
+					"waist": {
+						"type": "number",
+						"nullable": true,
+						"example": 80
+					},
+					"hips": {
+						"type": "number",
+						"nullable": true,
+						"example": 95
+					},
+					"left_thigh": {
+						"type": "number",
+						"nullable": true,
+						"example": 55
+					},
+					"right_thigh": {
+						"type": "number",
+						"nullable": true,
+						"example": 55.5
+					},
+					"left_calf": {
+						"type": "number",
+						"nullable": true,
+						"example": 37
+					},
+					"right_calf": {
+						"type": "number",
+						"nullable": true,
+						"example": 37.5
 					}
 				}
 			},
@@ -1493,7 +2011,7 @@
 						"description": "The id of the exercise template. This can be used to fetch the exercise template.",
 						"example": "05293BCA"
 					},
-					"supersets_id": {
+					"superset_id": {
 						"type": "number",
 						"nullable": true,
 						"description": "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
@@ -1663,10 +2181,19 @@
 							"type": "string"
 						}
 					},
+					"equipment": {
+						"$ref": "#/components/schemas/EquipmentCategory"
+					},
 					"is_custom": {
 						"type": "boolean",
 						"description": "A boolean indicating whether the exercise is a custom exercise.",
 						"example": false
+					},
+					"thumbnail_url": {
+						"type": "string",
+						"nullable": true,
+						"description": "URL of the exercise's thumbnail image, or null if the exercise has none.",
+						"example": null
 					}
 				}
 			},
@@ -1794,12 +2321,14 @@
 									"example": "Bench Press (Barbell)"
 								},
 								"rest_seconds": {
-									"type": "string",
+									"type": "integer",
+									"nullable": true,
 									"description": "The rest time in seconds between sets of the exercise",
-									"example": "60"
+									"example": 60
 								},
 								"notes": {
 									"type": "string",
+									"nullable": true,
 									"description": "Routine notes on the exercise",
 									"example": "Focus on form. Go down to 90 degrees."
 								},
@@ -1808,7 +2337,7 @@
 									"description": "The id of the exercise template. This can be used to fetch the exercise template.",
 									"example": "05293BCA"
 								},
-								"supersets_id": {
+								"superset_id": {
 									"type": "number",
 									"nullable": true,
 									"description": "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
@@ -1872,12 +2401,6 @@
 												"description": "Number of seconds logged for the set",
 												"example": null
 											},
-											"rpe": {
-												"type": "number",
-												"nullable": true,
-												"description": "RPE (Relative perceived exertion) value logged for the set",
-												"example": 9.5
-											},
 											"custom_metric": {
 												"type": "number",
 												"nullable": true,
@@ -1889,6 +2412,56 @@
 								}
 							}
 						}
+					}
+				}
+			},
+			"UserInfo": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "The user ID.",
+						"example": "9c465af3-de7d-42bc-9c7c-f0170396358b"
+					},
+					"username": {
+						"type": "string",
+						"description": "The user's username.",
+						"example": "jhon"
+					},
+					"name": {
+						"type": "string",
+						"description": "The user's display name.",
+						"example": "John doe"
+					},
+					"url": {
+						"type": "string",
+						"description": "The user's public profile URL.",
+						"example": "https://hevy.com/user/jhon"
+					},
+					"weight_unit": {
+						"type": "string",
+						"enum": ["kg", "lbs"],
+						"description": "The user's preferred weight unit. Defaults to kg if unset.",
+						"example": "kg"
+					},
+					"distance_unit": {
+						"type": "string",
+						"enum": ["kilometers", "miles"],
+						"description": "The user's preferred distance unit. Defaults to kilometers if unset.",
+						"example": "kilometers"
+					},
+					"is_pro": {
+						"type": "boolean",
+						"description": "Whether the user has an active Hevy Pro subscription.",
+						"example": true
+					}
+				}
+			},
+			"UserInfoResponse": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"$ref": "#/components/schemas/UserInfo"
 					}
 				}
 			},
@@ -1907,11 +2480,13 @@
 					},
 					"routine_id": {
 						"type": "string",
+						"nullable": true,
 						"description": "The ID of the routine that this workout belongs to.",
 						"example": "b459cba5-cd6d-463c-abd6-54f8eafcadcb"
 					},
 					"description": {
 						"type": "string",
+						"nullable": true,
 						"description": "The workout description.",
 						"example": "Pushed myself to the limit today!"
 					},
@@ -1952,6 +2527,7 @@
 								},
 								"notes": {
 									"type": "string",
+									"nullable": true,
 									"description": "Notes on the exercise",
 									"example": "Paid closer attention to form today. Felt great!"
 								},
@@ -1960,7 +2536,7 @@
 									"description": "The id of the exercise template. This can be used to fetch the exercise template.",
 									"example": "05293BCA"
 								},
-								"supersets_id": {
+								"superset_id": {
 									"type": "number",
 									"nullable": true,
 									"description": "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
@@ -2098,6 +2674,10 @@
 			"description": "Workouts operations"
 		},
 		{
+			"name": "Users",
+			"description": "Users operations"
+		},
+		{
 			"name": "Routines",
 			"description": "Routines operations"
 		},
@@ -2112,6 +2692,10 @@
 		{
 			"name": "ExerciseHistory",
 			"description": "ExerciseHistory operations"
+		},
+		{
+			"name": "Measurements",
+			"description": "Measurements operations"
 		}
 	],
 	"servers": [

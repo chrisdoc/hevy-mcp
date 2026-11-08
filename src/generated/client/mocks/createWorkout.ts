@@ -22,7 +22,7 @@ export function createWorkout(data?: Partial<Workout>): Workout {
         title: faker.string.alpha(),
         notes: faker.string.alpha(),
         exercise_template_id: faker.string.alpha(),
-        supersets_id: faker.number.float(),
+        superset_id: faker.number.float(),
         sets: faker.helpers.multiple(() => ({
           index: faker.number.float(),
           type: faker.string.alpha(),

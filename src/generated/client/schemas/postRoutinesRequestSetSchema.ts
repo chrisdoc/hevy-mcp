@@ -23,8 +23,10 @@ export const postRoutinesRequestSetSchema = z.object({
     .nullish(),
   rep_range: z
     .object({
-      start: z.number().describe("Starting rep count for the range").nullish(),
-      end: z.number().describe("Ending rep count for the range").nullish(),
+      start: z.optional(
+        z.number().describe("Starting rep count for the range"),
+      ),
+      end: z.optional(z.number().describe("Ending rep count for the range")),
     })
     .describe("Range of reps for the set, if applicable")
     .nullish(),

@@ -18,7 +18,11 @@ export const putV1RoutinesRoutineidHeaderParamsSchema = z.object({
 /**
  * @description The routine was successfully updated
  */
-export const putV1RoutinesRoutineid200Schema = z.lazy(() => routineSchema);
+export const putV1RoutinesRoutineid200Schema = z.object({
+  get routine() {
+    return routineSchema.optional();
+  },
+});
 
 /**
  * @description Invalid request body

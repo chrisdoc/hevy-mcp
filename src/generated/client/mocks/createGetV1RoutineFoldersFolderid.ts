@@ -4,12 +4,13 @@
  */
 
 import type {
-  GetV1RoutineFoldersFolderidPathParams,
+  GetV1RoutineFoldersFolderid200,
   GetV1RoutineFoldersFolderidHeaderParams,
+  GetV1RoutineFoldersFolderidPathParams,
   GetV1RoutineFoldersFolderidQueryResponse,
 } from "../types/GetV1RoutineFoldersFolderid.ts";
-import { createRoutineFolder } from "./createRoutineFolder.ts";
 import { faker } from "@faker-js/faker";
+import { createRoutineFolder } from "./createRoutineFolder.ts";
 
 export function createGetV1RoutineFoldersFolderidPathParams(
   data?: Partial<GetV1RoutineFoldersFolderidPathParams>,
@@ -32,8 +33,10 @@ export function createGetV1RoutineFoldersFolderidHeaderParams(
 /**
  * @description Success
  */
-export function createGetV1RoutineFoldersFolderid200() {
-  return createRoutineFolder();
+export function createGetV1RoutineFoldersFolderid200(
+  data?: Partial<GetV1RoutineFoldersFolderid200>,
+): GetV1RoutineFoldersFolderid200 {
+  return createRoutineFolder(data);
 }
 
 /**

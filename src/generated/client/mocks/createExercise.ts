@@ -4,8 +4,8 @@
  */
 
 import type { Exercise } from "../types/Exercise.ts";
-import { createSet } from "./createSet.ts";
 import { faker } from "@faker-js/faker";
+import { createSet } from "./createSet.ts";
 
 export function createExercise(data?: Partial<Exercise>): Exercise {
   return {
@@ -14,7 +14,7 @@ export function createExercise(data?: Partial<Exercise>): Exercise {
       title: faker.string.alpha(),
       notes: faker.string.alpha(),
       exercise_template_id: faker.string.alpha(),
-      supersets_id: faker.number.float(),
+      superset_id: faker.number.float(),
       sets: faker.helpers.multiple(() => createSet()),
     },
     ...(data || {}),

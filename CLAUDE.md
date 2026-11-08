@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API. It provides tools for AI assistants to interact with workouts, routines, exercise templates, folders, and webhook subscriptions through the Hevy API.
+This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API. It provides tools for AI assistants to interact with workouts, routines, exercise templates, folders, body measurements, and user info through the Hevy API.
 
 ## Key Commands
 
@@ -19,7 +19,7 @@ This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API.
 - `pnpm test` - Runs Vitest against all `*.test.ts` files (including `tests/integration/**`). Integration tests will fail by design without `HEVY_API_KEY`. See the "Testing" section in `README.md` for CI requirements and secret configuration.
 
 ### API Client Generation
-- `pnpm run export-specs` - Export OpenAPI specification
+- `pnpm run openapi` - Fetch the latest OpenAPI spec from Hevy into `openapi-spec.json`, applying fixes for known upstream issues (`scripts/openapi-spec.js`)
 - `pnpm run build:client` - Generate API client using Kubb from OpenAPI spec
 
 ### Testing Variants
@@ -36,7 +36,8 @@ This is a Model Context Protocol (MCP) server for the Hevy fitness tracking API.
   - `routines.ts` - Routine management
   - `templates.ts` - Exercise template access
   - `folders.ts` - Routine folder organization
-  - `webhooks.ts` - Webhook subscription management
+  - `measurements.ts` - Body measurement CRUD (update merges with the existing entry because the API's PUT nulls omitted fields)
+  - `user.ts` - User info (preferred weight/distance units)
 - **Utils**: `src/utils/` - Shared utilities for HTTP client, formatting, and error handling
 - **Generated Code**: `src/generated/` - Auto-generated API client from OpenAPI spec
 
@@ -66,9 +67,10 @@ The project uses a generated API client via Kubb that creates:
 
 ### Client Regeneration
 When API changes occur:
-1. Update `openapi-spec.json` with `pnpm run export-specs`
+1. Update `openapi-spec.json` with `pnpm run openapi`. Don't copy the upstream spec by hand: it has no operationIds (Kubb names functions from them) and some invalid OpenAPI, which the script fixes. Add new fixes to `scripts/openapi-spec.js`.
 2. Regenerate client with `pnpm run build:client`
-3. Generated code is automatically formatted via Kubb hooks
+3. Kubb hooks then run Prettier on `src/generated` and `npm run check`
+4. Check `src/utils/hevyClientKubb.ts` still type-checks. Kubb puts a required request body before `headers`, so argument order can change when the spec marks a body as required.
 
 ## Environment Setup
 

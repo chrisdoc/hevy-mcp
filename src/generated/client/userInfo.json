@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "The user ID.",
+      "example": "9c465af3-de7d-42bc-9c7c-f0170396358b"
+    },
+    "username": {
+      "type": "string",
+      "description": "The user's username.",
+      "example": "jhon"
+    },
+    "name": {
+      "type": "string",
+      "description": "The user's display name.",
+      "example": "John doe"
+    },
+    "url": {
+      "type": "string",
+      "description": "The user's public profile URL.",
+      "example": "https://hevy.com/user/jhon"
+    },
+    "weight_unit": {
+      "type": "string",
+      "enum": ["kg", "lbs"],
+      "description": "The user's preferred weight unit. Defaults to kg if unset.",
+      "example": "kg"
+    },
+    "distance_unit": {
+      "type": "string",
+      "enum": ["kilometers", "miles"],
+      "description": "The user's preferred distance unit. Defaults to kilometers if unset.",
+      "example": "kilometers"
+    },
+    "is_pro": {
+      "type": "boolean",
+      "description": "Whether the user has an active Hevy Pro subscription.",
+      "example": true
+    }
+  },
+  "x-readme-ref-name": "UserInfo"
+}

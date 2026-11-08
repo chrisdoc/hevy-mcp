@@ -15,7 +15,8 @@ export const getV1ExerciseTemplatesQueryParamsSchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
-    .default(5)
+    .max(100)
+    .default(100)
     .describe("Number of items on the requested page (Max 100)"),
 });
 

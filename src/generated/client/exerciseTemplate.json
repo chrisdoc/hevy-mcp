@@ -26,10 +26,32 @@
       "description": "The secondary muscle groups of the exercise.",
       "items": { "type": "string" }
     },
+    "equipment": {
+      "type": "string",
+      "enum": [
+        "none",
+        "barbell",
+        "dumbbell",
+        "kettlebell",
+        "machine",
+        "plate",
+        "resistance_band",
+        "suspension",
+        "other"
+      ],
+      "example": "barbell",
+      "x-readme-ref-name": "EquipmentCategory"
+    },
     "is_custom": {
       "type": "boolean",
       "description": "A boolean indicating whether the exercise is a custom exercise.",
       "example": false
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "nullable": true,
+      "description": "URL of the exercise's thumbnail image, or null if the exercise has none.",
+      "example": null
     }
   },
   "x-readme-ref-name": "ExerciseTemplate"

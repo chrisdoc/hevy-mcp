@@ -5,15 +5,16 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   PostV1RoutineFoldersMutationRequest,
   PostV1RoutineFoldersMutationResponse,
   PostV1RoutineFoldersHeaderParams,
   PostV1RoutineFolders400,
 } from "../types/PostV1RoutineFolders.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getPostV1RoutineFoldersUrl() {
   const res = { method: "POST", url: `/v1/routine_folders` as const };
@@ -25,10 +26,10 @@ function getPostV1RoutineFoldersUrl() {
  * {@link /v1/routine_folders}
  */
 export async function postV1RoutineFolders(
+  data: PostV1RoutineFoldersMutationRequest,
   headers: PostV1RoutineFoldersHeaderParams,
-  data?: PostV1RoutineFoldersMutationRequest,
   config: Partial<RequestConfig<PostV1RoutineFoldersMutationRequest>> & {
-    client?: typeof fetch;
+    client?: Client;
   } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;

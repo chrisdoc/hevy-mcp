@@ -21,7 +21,7 @@ export const exerciseSchema = z.object({
         "The id of the exercise template. This can be used to fetch the exercise template.",
       ),
   ),
-  supersets_id: z
+  superset_id: z
     .number()
     .describe(
       "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",

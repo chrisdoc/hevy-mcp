@@ -16,7 +16,12 @@ export type PostV1RoutinesHeaderParams = {
 /**
  * @description The routine was successfully created
  */
-export type PostV1Routines201 = Routine;
+export type PostV1Routines201 = {
+  /**
+   * @type object | undefined
+   */
+  routine?: Routine;
+};
 
 /**
  * @description Invalid request body
@@ -30,14 +35,19 @@ export type PostV1Routines400 = {
 };
 
 /**
- * @description Routine limit exceeded
+ * @description Routine limit exceeded. Free accounts can have up to 4 routines (routines inside programs don\'t count). Upgrade to Hevy Pro to create more.
  */
 export type PostV1Routines403 = {
   /**
-   * @description Error message
+   * @description Error code
    * @type string | undefined
    */
   error?: string;
+  /**
+   * @description Human-readable explanation
+   * @type string | undefined
+   */
+  message?: string;
 };
 
 export type PostV1RoutinesMutationRequest = PostRoutinesRequestBody;

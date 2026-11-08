@@ -17,10 +17,10 @@ export function createRoutine(data?: Partial<Routine>): Routine {
       exercises: faker.helpers.multiple(() => ({
         index: faker.number.float(),
         title: faker.string.alpha(),
-        rest_seconds: faker.string.alpha(),
+        rest_seconds: faker.number.int(),
         notes: faker.string.alpha(),
         exercise_template_id: faker.string.alpha(),
-        supersets_id: faker.number.float(),
+        superset_id: faker.number.float(),
         sets: faker.helpers.multiple(() => ({
           index: faker.number.float(),
           type: faker.string.alpha(),
@@ -29,7 +29,6 @@ export function createRoutine(data?: Partial<Routine>): Routine {
           rep_range: { start: faker.number.float(), end: faker.number.float() },
           distance_meters: faker.number.float(),
           duration_seconds: faker.number.float(),
-          rpe: faker.number.float(),
           custom_metric: faker.number.float(),
         })),
       })),

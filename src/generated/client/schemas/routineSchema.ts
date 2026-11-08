@@ -28,12 +28,11 @@ export const routineSchema = z.object({
             ),
         ),
         title: z.optional(z.string().describe("Title of the exercise")),
-        rest_seconds: z.optional(
-          z
-            .string()
-            .describe("The rest time in seconds between sets of the exercise"),
-        ),
-        notes: z.optional(z.string().describe("Routine notes on the exercise")),
+        rest_seconds: z
+          .int()
+          .describe("The rest time in seconds between sets of the exercise")
+          .nullish(),
+        notes: z.string().describe("Routine notes on the exercise").nullish(),
         exercise_template_id: z.optional(
           z
             .string()
@@ -41,7 +40,7 @@ export const routineSchema = z.object({
               "The id of the exercise template. This can be used to fetch the exercise template.",
             ),
         ),
-        supersets_id: z
+        superset_id: z
           .number()
           .describe(
             "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",
@@ -92,12 +91,6 @@ export const routineSchema = z.object({
               duration_seconds: z
                 .number()
                 .describe("Number of seconds logged for the set")
-                .nullish(),
-              rpe: z
-                .number()
-                .describe(
-                  "RPE (Relative perceived exertion) value logged for the set",
-                )
                 .nullish(),
               custom_metric: z
                 .number()

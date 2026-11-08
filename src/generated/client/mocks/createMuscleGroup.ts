@@ -6,27 +6,30 @@
 import type { MuscleGroup } from "../types/MuscleGroup.ts";
 import { faker } from "@faker-js/faker";
 
-export function createMuscleGroup() {
-  return faker.helpers.arrayElement<MuscleGroup>([
-    "abdominals",
-    "shoulders",
-    "biceps",
-    "triceps",
-    "forearms",
-    "quadriceps",
-    "hamstrings",
-    "calves",
-    "glutes",
-    "abductors",
-    "adductors",
-    "lats",
-    "upper_back",
-    "traps",
-    "lower_back",
-    "chest",
-    "cardio",
-    "neck",
-    "full_body",
-    "other",
-  ]);
+export function createMuscleGroup(data?: Partial<MuscleGroup>): MuscleGroup {
+  return (
+    data ||
+    faker.helpers.arrayElement<MuscleGroup>([
+      "abdominals",
+      "shoulders",
+      "biceps",
+      "triceps",
+      "forearms",
+      "quadriceps",
+      "hamstrings",
+      "calves",
+      "glutes",
+      "abductors",
+      "adductors",
+      "lats",
+      "upper_back",
+      "traps",
+      "lower_back",
+      "chest",
+      "cardio",
+      "neck",
+      "full_body",
+      "other",
+    ])
+  );
 }

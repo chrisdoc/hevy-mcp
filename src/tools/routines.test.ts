@@ -694,3 +694,108 @@ describe("registerRoutineTools", () => {
 		});
 	});
 });
+
+describe("routine mutation response shape and folders", () => {
+	const routine: Routine = {
+		id: "wrapped-routine",
+		title: "Wrapped Routine",
+		folder_id: 42,
+		created_at: "2025-03-26T19:00:00Z",
+		updated_at: "2025-03-26T19:30:00Z",
+		exercises: [],
+	};
+	const exercises = [
+		{
+			exerciseTemplateId: "template-id",
+			sets: [{ type: "normal" as const, weightKg: 100, reps: 5 }],
+		},
+	];
+
+	it("create-routine unwraps the { routine } response returned by the API", async () => {
+		const { server, tool } = createMockServer();
+		const hevyClient = {
+			createRoutine: vi.fn().mockResolvedValue({ routine }),
+		} as unknown as HevyClient;
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-routine");
+
+		const response = await handler({ title: "Wrapped Routine", exercises });
+
+		expect(JSON.parse(response.content[0]?.text ?? "{}")).toEqual(
+			formatRoutine(routine),
+		);
+	});
+
+	it("update-routine unwraps the response and passes folderId when given", async () => {
+		const { server, tool } = createMockServer();
+		const updateRoutine = vi.fn().mockResolvedValue({ routine });
+		const hevyClient = { updateRoutine } as unknown as HevyClient;
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		const response = await handler({
+			routineId: "routine-123",
+			title: "Wrapped Routine",
+			folderId: 42,
+			exercises,
+		});
+
+		expect(updateRoutine.mock.calls[0]?.[1].routine.folder_id).toBe(42);
+		expect(JSON.parse(response.content[0]?.text ?? "{}")).toEqual(
+			formatRoutine(routine),
+		);
+	});
+
+	it("update-routine passes null folderId to move to the default folder", async () => {
+		const { server, tool } = createMockServer();
+		const updateRoutine = vi.fn().mockResolvedValue({ routine });
+		const hevyClient = { updateRoutine } as unknown as HevyClient;
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({
+			routineId: "routine-123",
+			title: "Wrapped Routine",
+			folderId: null,
+			exercises,
+		});
+
+		const body = updateRoutine.mock.calls[0]?.[1].routine;
+		expect(body).toHaveProperty("folder_id", null);
+	});
+
+	it("update-routine leaves folder_id out when folderId is omitted", async () => {
+		const { server, tool } = createMockServer();
+		const updateRoutine = vi.fn().mockResolvedValue({ routine });
+		const hevyClient = { updateRoutine } as unknown as HevyClient;
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "update-routine");
+
+		await handler({ routineId: "routine-123", title: "X", exercises });
+
+		expect(updateRoutine.mock.calls[0]?.[1].routine).not.toHaveProperty(
+			"folder_id",
+		);
+	});
+
+	it("create-routine omits a missing rep range bound instead of sending null", async () => {
+		const { server, tool } = createMockServer();
+		const createRoutine = vi.fn().mockResolvedValue({ routine });
+		const hevyClient = { createRoutine } as unknown as HevyClient;
+		registerRoutineTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-routine");
+
+		await handler({
+			title: "Open range",
+			exercises: [
+				{
+					exerciseTemplateId: "template-id",
+					sets: [{ type: "normal", repRange: { start: 8 } }],
+				},
+			],
+		});
+
+		const set = createRoutine.mock.calls[0]?.[0].routine.exercises[0].sets[0];
+		expect(set.rep_range).toEqual({ start: 8 });
+	});
+});

@@ -13,16 +13,14 @@ export const getV1ExerciseHistoryExercisetemplateidPathParamsSchema = z.object({
 export const getV1ExerciseHistoryExercisetemplateidQueryParamsSchema = z
   .object({
     start_date: z.optional(
-      z
-        .string()
+      z.iso
         .datetime()
         .describe(
           "Optional start date for filtering exercise history (ISO 8601 format)",
         ),
     ),
     end_date: z.optional(
-      z
-        .string()
+      z.iso
         .datetime()
         .describe(
           "Optional end date for filtering exercise history (ISO 8601 format)",

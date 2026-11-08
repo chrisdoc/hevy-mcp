@@ -308,3 +308,42 @@ describe("registerWorkoutTools", () => {
 		});
 	});
 });
+
+describe("create-workout response shape", () => {
+	it("unwraps the { workout: [Workout] } response returned by the API", async () => {
+		const { server, tool } = createMockServer();
+		const created: Workout = {
+			id: "wrapped-workout",
+			title: "Wrapped",
+			start_time: "2025-03-27T07:00:00Z",
+			end_time: "2025-03-27T08:00:00Z",
+			exercises: [
+				{
+					index: 0,
+					title: "Bench Press",
+					exercise_template_id: "template-id",
+					superset_id: 2,
+					sets: [],
+				},
+			],
+		};
+		const hevyClient = {
+			createWorkout: vi.fn().mockResolvedValue({ workout: [created] }),
+		} as unknown as HevyClient;
+
+		registerWorkoutTools(server, hevyClient);
+		const { handler } = getToolRegistration(tool, "create-workout");
+		const response = await handler({
+			title: "Wrapped",
+			startTime: "2025-03-27T07:00:00Z",
+			endTime: "2025-03-27T08:00:00Z",
+			isPrivate: false,
+			exercises: [{ exerciseTemplateId: "template-id", sets: [] }],
+		});
+
+		const parsed = JSON.parse(response.content[0]?.text ?? "{}");
+		expect(parsed).toEqual(formatWorkout(created));
+		expect(parsed.id).toBe("wrapped-workout");
+		expect(parsed.exercises[0].supersetId).toBe(2);
+	});
+});

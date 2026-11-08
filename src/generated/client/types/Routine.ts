@@ -45,14 +45,14 @@ export type Routine = {
     title?: string;
     /**
      * @description The rest time in seconds between sets of the exercise
-     * @type string | undefined
+     * @type integer
      */
-    rest_seconds?: string;
+    rest_seconds?: number | null;
     /**
      * @description Routine notes on the exercise
-     * @type string | undefined
+     * @type string
      */
-    notes?: string;
+    notes?: string | null;
     /**
      * @description The id of the exercise template. This can be used to fetch the exercise template.
      * @type string | undefined
@@ -62,7 +62,7 @@ export type Routine = {
      * @description The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.
      * @type number
      */
-    supersets_id?: number | null;
+    superset_id?: number | null;
     /**
      * @type array | undefined
      */
@@ -113,11 +113,6 @@ export type Routine = {
        * @type number
        */
       duration_seconds?: number | null;
-      /**
-       * @description RPE (Relative perceived exertion) value logged for the set
-       * @type number
-       */
-      rpe?: number | null;
       /**
        * @description Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)
        * @type number

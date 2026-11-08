@@ -5,15 +5,16 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   GetV1RoutineFoldersFolderidQueryResponse,
   GetV1RoutineFoldersFolderidPathParams,
   GetV1RoutineFoldersFolderidHeaderParams,
   GetV1RoutineFoldersFolderid404,
 } from "../types/GetV1RoutineFoldersFolderid.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getGetV1RoutineFoldersFolderidUrl(
   folderId: GetV1RoutineFoldersFolderidPathParams["folderId"],
@@ -32,7 +33,7 @@ function getGetV1RoutineFoldersFolderidUrl(
 export async function getV1RoutineFoldersFolderid(
   folderId: GetV1RoutineFoldersFolderidPathParams["folderId"],
   headers: GetV1RoutineFoldersFolderidHeaderParams,
-  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

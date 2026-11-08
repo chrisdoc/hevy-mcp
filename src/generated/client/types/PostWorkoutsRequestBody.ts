@@ -7,14 +7,14 @@ import type { PostWorkoutsRequestExercise } from "./PostWorkoutsRequestExercise.
 
 export type PostWorkoutsRequestBody = {
   /**
-   * @type object | undefined
+   * @type object
    */
-  workout?: {
+  workout: {
     /**
      * @description The title of the workout.
-     * @type string | undefined
+     * @type string
      */
-    title?: string;
+    title: string;
     /**
      * @description A description for the workout workout.
      * @type string
@@ -22,22 +22,23 @@ export type PostWorkoutsRequestBody = {
     description?: string | null;
     /**
      * @description The time the workout started.
-     * @type string | undefined
+     * @type string
      */
-    start_time?: string;
+    start_time: string;
     /**
      * @description The time the workout ended.
-     * @type string | undefined
+     * @type string
      */
-    end_time?: string;
+    end_time: string;
     /**
-     * @description A boolean indicating if the workout is private.
+     * @description A boolean indicating if the workout is private. Optional - defaults to false when omitted.
+     * @default false
      * @type boolean | undefined
      */
     is_private?: boolean;
     /**
-     * @type array | undefined
+     * @type array
      */
-    exercises?: PostWorkoutsRequestExercise[];
+    exercises: PostWorkoutsRequestExercise[];
   };
 };

@@ -8,10 +8,11 @@ import { z } from "zod/v4";
 export const workoutSchema = z.object({
   id: z.optional(z.string().describe("The workout ID.")),
   title: z.optional(z.string().describe("The workout title.")),
-  routine_id: z.optional(
-    z.string().describe("The ID of the routine that this workout belongs to."),
-  ),
-  description: z.optional(z.string().describe("The workout description.")),
+  routine_id: z
+    .string()
+    .describe("The ID of the routine that this workout belongs to.")
+    .nullish(),
+  description: z.string().describe("The workout description.").nullish(),
   start_time: z.optional(
     z
       .string()
@@ -45,7 +46,7 @@ export const workoutSchema = z.object({
             ),
         ),
         title: z.optional(z.string().describe("Title of the exercise")),
-        notes: z.optional(z.string().describe("Notes on the exercise")),
+        notes: z.string().describe("Notes on the exercise").nullish(),
         exercise_template_id: z.optional(
           z
             .string()
@@ -53,7 +54,7 @@ export const workoutSchema = z.object({
               "The id of the exercise template. This can be used to fetch the exercise template.",
             ),
         ),
-        supersets_id: z
+        superset_id: z
           .number()
           .describe(
             "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",

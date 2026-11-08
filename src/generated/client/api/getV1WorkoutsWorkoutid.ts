@@ -5,15 +5,16 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   GetV1WorkoutsWorkoutidQueryResponse,
   GetV1WorkoutsWorkoutidPathParams,
   GetV1WorkoutsWorkoutidHeaderParams,
   GetV1WorkoutsWorkoutid404,
 } from "../types/GetV1WorkoutsWorkoutid.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getGetV1WorkoutsWorkoutidUrl(
   workoutId: GetV1WorkoutsWorkoutidPathParams["workoutId"],
@@ -29,7 +30,7 @@ function getGetV1WorkoutsWorkoutidUrl(
 export async function getV1WorkoutsWorkoutid(
   workoutId: GetV1WorkoutsWorkoutidPathParams["workoutId"],
   headers: GetV1WorkoutsWorkoutidHeaderParams,
-  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

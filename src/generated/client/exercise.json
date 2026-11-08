@@ -21,7 +21,7 @@
       "description": "The id of the exercise template. This can be used to fetch the exercise template.",
       "example": "05293BCA"
     },
-    "supersets_id": {
+    "superset_id": {
       "type": "number",
       "nullable": true,
       "description": "The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.",

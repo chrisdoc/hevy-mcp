@@ -5,16 +5,17 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   GetV1ExerciseHistoryExercisetemplateidQueryResponse,
   GetV1ExerciseHistoryExercisetemplateidPathParams,
   GetV1ExerciseHistoryExercisetemplateidQueryParams,
   GetV1ExerciseHistoryExercisetemplateidHeaderParams,
   GetV1ExerciseHistoryExercisetemplateid400,
 } from "../types/GetV1ExerciseHistoryExercisetemplateid.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getGetV1ExerciseHistoryExercisetemplateidUrl(
   exerciseTemplateId: GetV1ExerciseHistoryExercisetemplateidPathParams["exerciseTemplateId"],
@@ -34,7 +35,7 @@ export async function getV1ExerciseHistoryExercisetemplateid(
   exerciseTemplateId: GetV1ExerciseHistoryExercisetemplateidPathParams["exerciseTemplateId"],
   headers: GetV1ExerciseHistoryExercisetemplateidHeaderParams,
   params?: GetV1ExerciseHistoryExercisetemplateidQueryParams,
-  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 

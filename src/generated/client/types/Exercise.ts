@@ -30,7 +30,7 @@ export type Exercise = {
    * @description The id of the superset that the exercise belongs to. A value of null indicates the exercise is not part of a superset.
    * @type number
    */
-  supersets_id?: number | null;
+  superset_id?: number | null;
   /**
    * @type array | undefined
    */

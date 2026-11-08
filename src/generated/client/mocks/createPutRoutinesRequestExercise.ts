@@ -4,8 +4,8 @@
  */
 
 import type { PutRoutinesRequestExercise } from "../types/PutRoutinesRequestExercise.ts";
-import { createPutRoutinesRequestSet } from "./createPutRoutinesRequestSet.ts";
 import { faker } from "@faker-js/faker";
+import { createPutRoutinesRequestSet } from "./createPutRoutinesRequestSet.ts";
 
 export function createPutRoutinesRequestExercise(
   data?: Partial<PutRoutinesRequestExercise>,

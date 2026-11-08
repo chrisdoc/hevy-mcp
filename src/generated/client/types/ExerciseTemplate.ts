@@ -3,6 +3,8 @@
  * Do not edit manually.
  */
 
+import type { EquipmentCategory } from "./EquipmentCategory.ts";
+
 export type ExerciseTemplate = {
   /**
    * @description The exercise template ID.
@@ -30,8 +32,17 @@ export type ExerciseTemplate = {
    */
   secondary_muscle_groups?: string[];
   /**
+   * @type string | undefined
+   */
+  equipment?: EquipmentCategory;
+  /**
    * @description A boolean indicating whether the exercise is a custom exercise.
    * @type boolean | undefined
    */
   is_custom?: boolean;
+  /**
+   * @description URL of the exercise\'s thumbnail image, or null if the exercise has none.
+   * @type string
+   */
+  thumbnail_url?: string | null;
 };

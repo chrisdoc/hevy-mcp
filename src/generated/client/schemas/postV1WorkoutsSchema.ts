@@ -14,7 +14,14 @@ export const postV1WorkoutsHeaderParamsSchema = z.object({
 /**
  * @description The workout was successfully created
  */
-export const postV1Workouts201Schema = z.lazy(() => workoutSchema);
+export const postV1Workouts201Schema = z.object({
+  get workout() {
+    return z
+      .array(workoutSchema)
+      .describe("The created workout, returned as a single-element array.")
+      .optional();
+  },
+});
 
 /**
  * @description Invalid request body

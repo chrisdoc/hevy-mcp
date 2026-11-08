@@ -4,8 +4,8 @@
  */
 
 import type { PutRoutinesRequestBody } from "../types/PutRoutinesRequestBody.ts";
-import { createPutRoutinesRequestExercise } from "./createPutRoutinesRequestExercise.ts";
 import { faker } from "@faker-js/faker";
+import { createPutRoutinesRequestExercise } from "./createPutRoutinesRequestExercise.ts";
 
 export function createPutRoutinesRequestBody(
   data?: Partial<PutRoutinesRequestBody>,
@@ -14,6 +14,7 @@ export function createPutRoutinesRequestBody(
     ...{
       routine: {
         title: faker.string.alpha(),
+        folder_id: faker.number.float(),
         notes: faker.string.alpha(),
         exercises: faker.helpers.multiple(() =>
           createPutRoutinesRequestExercise(),

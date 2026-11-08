@@ -13,6 +13,7 @@ import {
 	formatRoutine,
 	formatRoutineFolder,
 	formatWorkout,
+	unwrapEntity,
 } from "./formatters";
 
 describe("Formatters", () => {
@@ -96,7 +97,7 @@ describe("Formatters", () => {
 						name: "Bench Press",
 						exerciseTemplateId: undefined,
 						notes: "Felt strong today",
-						supersetsId: undefined,
+						supersetId: undefined,
 						sets: [
 							{
 								index: undefined,
@@ -165,7 +166,7 @@ describe("Formatters", () => {
 						index: 1,
 						exercise_template_id: templateId,
 						notes: "Focus on form",
-						supersets_id: 1,
+						superset_id: 1,
 						sets: [
 							{
 								index: 1,
@@ -245,7 +246,7 @@ describe("Formatters", () => {
 						index: 1,
 						exercise_template_id: templateId,
 						notes: "Working on consistency",
-						supersets_id: null,
+						superset_id: null,
 						sets: [
 							{
 								index: 1,
@@ -400,5 +401,27 @@ describe("Formatters", () => {
 				setType: "normal",
 			});
 		});
+	});
+});
+
+describe("unwrapEntity", () => {
+	const entity = { id: "abc" };
+
+	it("unwraps an object keyed by the entity name", () => {
+		expect(unwrapEntity({ routine: entity }, "routine")).toBe(entity);
+	});
+
+	it("unwraps a single-element array keyed by the entity name", () => {
+		expect(unwrapEntity({ workout: [entity] }, "workout")).toBe(entity);
+	});
+
+	it("accepts the bare entity", () => {
+		expect(unwrapEntity(entity, "routine")).toBe(entity);
+	});
+
+	it("returns undefined for empty responses", () => {
+		expect(unwrapEntity(undefined, "routine")).toBeUndefined();
+		expect(unwrapEntity({ workout: [] }, "workout")).toBeUndefined();
+		expect(unwrapEntity("", "workout")).toBeUndefined();
 	});
 });

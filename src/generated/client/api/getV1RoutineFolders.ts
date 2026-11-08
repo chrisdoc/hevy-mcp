@@ -5,15 +5,16 @@
 
 import fetch from "@kubb/plugin-client/clients/axios";
 import type {
+  Client,
+  RequestConfig,
+  ResponseErrorConfig,
+} from "@kubb/plugin-client/clients/axios";
+import type {
   GetV1RoutineFoldersQueryResponse,
   GetV1RoutineFoldersQueryParams,
   GetV1RoutineFoldersHeaderParams,
   GetV1RoutineFolders400,
 } from "../types/GetV1RoutineFolders.ts";
-import type {
-  RequestConfig,
-  ResponseErrorConfig,
-} from "@kubb/plugin-client/clients/axios";
 
 function getGetV1RoutineFoldersUrl() {
   const res = { method: "GET", url: `/v1/routine_folders` as const };
@@ -27,7 +28,7 @@ function getGetV1RoutineFoldersUrl() {
 export async function getV1RoutineFolders(
   headers: GetV1RoutineFoldersHeaderParams,
   params?: GetV1RoutineFoldersQueryParams,
-  config: Partial<RequestConfig> & { client?: typeof fetch } = {},
+  config: Partial<RequestConfig> & { client?: Client } = {},
 ) {
   const { client: request = fetch, ...requestConfig } = config;
 
