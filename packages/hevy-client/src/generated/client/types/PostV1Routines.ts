@@ -31,10 +31,17 @@ export type PostV1RoutinesStatus400 = {
 
 export type PostV1RoutinesStatus403 = {
   /**
-   * @description Error message
+   * @description Error code
+   * @example routine-limit-exceeded
    * @type string | undefined
    */
   error?: string;
+  /**
+   * @description Human-readable explanation
+   * @example Free accounts are limited to 4 routines. Upgrade to Hevy Pro (https://hevy.com/plans) to create more.
+   * @type string | undefined
+   */
+  message?: string;
 };
 
 export type PostV1RoutinesBody = PostRoutinesRequestBody;

@@ -14,7 +14,6 @@ export type {
   GetV1BodyMeasurementsResponses,
   GetV1BodyMeasurementsStatus200,
   GetV1BodyMeasurementsStatus400,
-  GetV1BodyMeasurementsStatus404,
 } from "./GetV1BodyMeasurements";
 export type {
   GetV1BodyMeasurementsDateHeaders,
@@ -146,7 +145,7 @@ export type {
   PostV1BodyMeasurementsOptions,
   PostV1BodyMeasurementsResponse,
   PostV1BodyMeasurementsResponses,
-  PostV1BodyMeasurementsStatus200,
+  PostV1BodyMeasurementsStatus201,
   PostV1BodyMeasurementsStatus400,
   PostV1BodyMeasurementsStatus409,
 } from "./PostV1BodyMeasurements";
@@ -238,7 +237,11 @@ export type { Routine } from "./Routine";
 export type { RoutineFolder } from "./RoutineFolder";
 export type { Set } from "./Set";
 export type { UpdatedWorkout } from "./UpdatedWorkout";
-export type { UserInfo } from "./UserInfo";
+export type {
+  UserInfo,
+  UserInfoDistanceUnitEnumKey,
+  UserInfoWeightUnitEnumKey,
+} from "./UserInfo";
 export type { UserInfoResponse } from "./UserInfoResponse";
 export type { Workout } from "./Workout";
 export { customExerciseType } from "./CustomExerciseType";
@@ -250,3 +253,4 @@ export {
   postWorkoutsRequestSetTypeEnum,
 } from "./PostWorkoutsRequestSet";
 export { putRoutinesRequestSetTypeEnum } from "./PutRoutinesRequestSet";
+export { userInfoDistanceUnitEnum, userInfoWeightUnitEnum } from "./UserInfo";

@@ -193,7 +193,7 @@ const createdRoutineResponse = {
 			exercise_template_id: "30E293E3",
 			rest_seconds: 120,
 			notes: "Controlled active ROM",
-			supersets_id: null,
+			superset_id: null,
 			sets: [
 				{
 					index: 0,
@@ -203,7 +203,6 @@ const createdRoutineResponse = {
 					rep_range: { start: 6, end: 10 },
 					distance_meters: null,
 					duration_seconds: null,
-					rpe: null,
 					custom_metric: null,
 				},
 			],

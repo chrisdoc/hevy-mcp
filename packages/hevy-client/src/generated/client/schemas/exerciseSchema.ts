@@ -29,7 +29,7 @@ export const exerciseSchema = z.object({
       "The id of the exercise template. This can be used to fetch the exercise template.",
     )
     .meta({ examples: ["05293BCA"] }),
-  supersets_id: z.coerce
+  superset_id: z.coerce
     .number()
     .nullish()
     .describe(

@@ -14,6 +14,7 @@ export type GetV1BodyMeasurementsQuery = {
   page?: number;
   /**
    * @description Number of items per page (Max 10)
+   * @maximum 10
    * @default 10
    * @type integer | undefined
    */
@@ -45,8 +46,6 @@ export type GetV1BodyMeasurementsStatus200 = {
 
 export type GetV1BodyMeasurementsStatus400 = unknown;
 
-export type GetV1BodyMeasurementsStatus404 = unknown;
-
 export type GetV1BodyMeasurementsOptions = {
   body?: never;
   path?: never;
@@ -57,7 +56,6 @@ export type GetV1BodyMeasurementsOptions = {
 export type GetV1BodyMeasurementsResponses = {
   "200": GetV1BodyMeasurementsStatus200;
   "400": GetV1BodyMeasurementsStatus400;
-  "404": GetV1BodyMeasurementsStatus404;
 };
 
 /**

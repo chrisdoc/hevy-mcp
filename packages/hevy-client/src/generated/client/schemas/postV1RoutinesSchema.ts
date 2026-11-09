@@ -21,7 +21,20 @@ export const postV1RoutinesStatus400Schema = z.object({
 });
 
 export const postV1RoutinesStatus403Schema = z.object({
-  error: z.string().optional().describe("Error message"),
+  error: z
+    .string()
+    .optional()
+    .describe("Error code")
+    .meta({ examples: ["routine-limit-exceeded"] }),
+  message: z
+    .string()
+    .optional()
+    .describe("Human-readable explanation")
+    .meta({
+      examples: [
+        "Free accounts are limited to 4 routines. Upgrade to Hevy Pro (https://hevy.com/plans) to create more.",
+      ],
+    }),
 });
 
 export const postV1RoutinesResponseSchema = postV1RoutinesStatus201Schema;

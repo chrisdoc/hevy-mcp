@@ -21,13 +21,13 @@ export type Workout = {
    * @example b459cba5-cd6d-463c-abd6-54f8eafcadcb
    * @type string | undefined
    */
-  routine_id?: string;
+  routine_id?: string | null;
   /**
    * @description The workout description.
    * @example Pushed myself to the limit today!
    * @type string | undefined
    */
-  description?: string;
+  description?: string | null;
   /**
    * @description ISO 8601 timestamp of when the workout was recorded to have started.
    * @example 2021-09-14T12:00:00Z
@@ -70,7 +70,7 @@ export type Workout = {
      * @example Paid closer attention to form today. Felt great!
      * @type string | undefined
      */
-    notes?: string;
+    notes?: string | null;
     /**
      * @description The id of the exercise template. This can be used to fetch the exercise template.
      * @example 05293BCA
@@ -82,7 +82,7 @@ export type Workout = {
      * @example 0
      * @type number | undefined
      */
-    supersets_id?: number | null;
+    superset_id?: number | null;
     sets?: {
       /**
        * @description Index indicating the order of the set in the workout.

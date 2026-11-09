@@ -52,13 +52,13 @@ export type Routine = {
      * @example 60
      * @type integer | undefined
      */
-    rest_seconds?: number;
+    rest_seconds?: number | null;
     /**
      * @description Routine notes on the exercise
      * @example Focus on form. Go down to 90 degrees.
      * @type string | undefined
      */
-    notes?: string;
+    notes?: string | null;
     /**
      * @description The id of the exercise template. This can be used to fetch the exercise template.
      * @example 05293BCA
@@ -70,7 +70,7 @@ export type Routine = {
      * @example 0
      * @type number | undefined
      */
-    supersets_id?: number | null;
+    superset_id?: number | null;
     sets?: {
       /**
        * @description Index indicating the order of the set in the routine.
@@ -126,12 +126,6 @@ export type Routine = {
        * @type number | undefined
        */
       duration_seconds?: number | null;
-      /**
-       * @description RPE (Relative perceived exertion) value logged for the set
-       * @example 9.5
-       * @type number | undefined
-       */
-      rpe?: number | null;
       /**
        * @description Custom metric logged for the set (Currently only used to log floors or steps for stair machine exercises)
        * @example 50

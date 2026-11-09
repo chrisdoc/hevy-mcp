@@ -25,7 +25,7 @@ import type {
 	PostRoutineFolderRequestBody,
 	PostRoutinesRequestBody,
 	PostWorkoutsRequestBody,
-	PostV1BodyMeasurementsStatus200,
+	PostV1BodyMeasurementsStatus201,
 	PostV1ExerciseTemplatesStatus200,
 	PostV1RoutineFoldersStatus201,
 	PostV1WorkoutsStatus201,
@@ -120,7 +120,7 @@ export interface HevyClient {
 	createBodyMeasurement(
 		data: BodyMeasurement,
 		options?: HevyRequestOptions,
-	): Promise<PostV1BodyMeasurementsStatus200>;
+	): Promise<PostV1BodyMeasurementsStatus201>;
 	updateBodyMeasurement(
 		date: string,
 		data: PutBodyMeasurement,

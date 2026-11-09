@@ -299,8 +299,7 @@ describe("workout tools", () => {
 		};
 		const client = createMockHevyClient();
 		client.createWorkout.mockResolvedValue({
-			id: "w1",
-			...workoutInput.workout,
+			workout: [{ id: "w1", ...workoutInput.workout }],
 		});
 		client.getWorkout.mockImplementation(() => {
 			calls.push("get");
@@ -469,7 +468,7 @@ describe("workout tools", () => {
 
 	it("accepts string RPE in create-workout and casts it to numeric RPE for downstream Hevy client", async () => {
 		const client = createMockHevyClient();
-		client.createWorkout.mockResolvedValue({ id: "w-rpe-test" });
+		client.createWorkout.mockResolvedValue({ workout: [{ id: "w-rpe-test" }] });
 		const tool = register(client);
 
 		const input = workoutInputSchema.parse({
@@ -493,6 +492,11 @@ describe("workout tools", () => {
 		const response = await toolHandler(tool, "create-workout")(input);
 
 		expect(response).not.toMatchObject({ isError: true });
+		expect(response).toMatchObject({
+			content: [
+				{ type: "text", text: expect.stringContaining('"w-rpe-test"') },
+			],
+		});
 		expect(client.createWorkout).toHaveBeenCalledWith({
 			workout: expect.objectContaining({
 				exercises: [

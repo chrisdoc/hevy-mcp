@@ -17,7 +17,6 @@ export type {
   GetV1BodyMeasurementsResponses,
   GetV1BodyMeasurementsStatus200,
   GetV1BodyMeasurementsStatus400,
-  GetV1BodyMeasurementsStatus404,
 } from "./client/types/GetV1BodyMeasurements";
 export type {
   GetV1BodyMeasurementsDateHeaders,
@@ -149,7 +148,7 @@ export type {
   PostV1BodyMeasurementsOptions,
   PostV1BodyMeasurementsResponse,
   PostV1BodyMeasurementsResponses,
-  PostV1BodyMeasurementsStatus200,
+  PostV1BodyMeasurementsStatus201,
   PostV1BodyMeasurementsStatus400,
   PostV1BodyMeasurementsStatus409,
 } from "./client/types/PostV1BodyMeasurements";
@@ -241,7 +240,11 @@ export type { Routine } from "./client/types/Routine";
 export type { RoutineFolder } from "./client/types/RoutineFolder";
 export type { Set } from "./client/types/Set";
 export type { UpdatedWorkout } from "./client/types/UpdatedWorkout";
-export type { UserInfo } from "./client/types/UserInfo";
+export type {
+  UserInfo,
+  UserInfoDistanceUnitEnumKey,
+  UserInfoWeightUnitEnumKey,
+} from "./client/types/UserInfo";
 export type { UserInfoResponse } from "./client/types/UserInfoResponse";
 export type { Workout } from "./client/types/Workout";
 export { getV1BodyMeasurements } from "./client/api/getV1BodyMeasurements";
@@ -294,7 +297,6 @@ export {
   getV1BodyMeasurementsResponseSchema,
   getV1BodyMeasurementsStatus200Schema,
   getV1BodyMeasurementsStatus400Schema,
-  getV1BodyMeasurementsStatus404Schema,
 } from "./client/schemas/getV1BodyMeasurementsSchema";
 export {
   getV1ExerciseHistoryExercisetemplateidErrorSchema,
@@ -431,7 +433,7 @@ export {
   postV1BodyMeasurementsHeaderApiKeySchema,
   postV1BodyMeasurementsHeadersSchema,
   postV1BodyMeasurementsResponseSchema,
-  postV1BodyMeasurementsStatus200Schema,
+  postV1BodyMeasurementsStatus201Schema,
   postV1BodyMeasurementsStatus400Schema,
   postV1BodyMeasurementsStatus409Schema,
 } from "./client/schemas/postV1BodyMeasurementsSchema";
@@ -531,3 +533,7 @@ export {
   postWorkoutsRequestSetTypeEnum,
 } from "./client/types/PostWorkoutsRequestSet";
 export { putRoutinesRequestSetTypeEnum } from "./client/types/PutRoutinesRequestSet";
+export {
+  userInfoDistanceUnitEnum,
+  userInfoWeightUnitEnum,
+} from "./client/types/UserInfo";

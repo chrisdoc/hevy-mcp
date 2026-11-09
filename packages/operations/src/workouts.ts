@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Predicate } from "effect";
 import { defineOperation } from "./define-operation.js";
 import type {
 	HevyExecutionOptions,
@@ -113,11 +113,11 @@ export interface WorkoutsCreateOperation {
 	readonly effect: (
 		input: WorkoutsCreateInput,
 		options?: HevyExecutionOptions,
-	) => Effect.Effect<PostV1Workouts201 | undefined, HevyRequestEffectError>;
+	) => Effect.Effect<Workout | undefined, HevyRequestEffectError>;
 	execute(
 		input: WorkoutsCreateInput,
 		options?: HevyExecutionOptions,
-	): Promise<PostV1Workouts201 | undefined>;
+	): Promise<Workout | undefined>;
 }
 
 export interface WorkoutsGetInput {
@@ -324,9 +324,28 @@ export function createWorkoutsCreateOperation(
 				options,
 			);
 			const response = yield* request;
-			return isEmptyResponse(response) ? undefined : response;
+			return normalizeCreatedWorkout(response);
 		},
 	);
+}
+
+/**
+ * Hevy documents the created workout as a single-element `workout` array.
+ * Earlier API builds returned the workout unwrapped; reporting that as a failed
+ * create would invite a duplicate-creating retry, so both shapes are accepted.
+ */
+function normalizeCreatedWorkout(
+	response: PostV1Workouts201,
+): Workout | undefined {
+	const [created] = response.workout ?? [];
+	if (created !== undefined) return created;
+	return isUnwrappedWorkout(response) ? response : undefined;
+}
+
+function isUnwrappedWorkout(
+	value: PostV1Workouts201,
+): value is PostV1Workouts201 & Workout {
+	return "id" in value && Predicate.isString(value.id);
 }
 
 export function createWorkoutsEventsOperation(

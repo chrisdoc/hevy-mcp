@@ -29,8 +29,17 @@ export const postV1ExerciseTemplatesStatus403Schema = z.object({
   error: z
     .string()
     .optional()
-    .describe("Error message")
+    .describe("Error code")
     .meta({ examples: ["exceeds-custom-exercise-limit"] }),
+  message: z
+    .string()
+    .optional()
+    .describe("Human-readable explanation")
+    .meta({
+      examples: [
+        "Free accounts are limited to 7 custom exercises. Upgrade to Hevy Pro (https://hevy.com/plans) to create more.",
+      ],
+    }),
 });
 
 export const postV1ExerciseTemplatesResponseSchema =

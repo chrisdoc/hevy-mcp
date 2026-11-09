@@ -306,6 +306,16 @@ function normalizeFetchedWorkoutTimestamp(value: string | undefined): string {
 	return `${timestamp.toISOString().slice(0, 19)}Z`;
 }
 
+// Hevy historically returned `supersets_id` on read models; the spec now
+// documents `superset_id`. Accept both so updates never drop a superset.
+function readSupersetId(exercise: {
+	readonly superset_id?: number | null;
+	readonly supersets_id?: number | null;
+}): number | null {
+	if (exercise.superset_id !== undefined) return exercise.superset_id;
+	return exercise.supersets_id ?? null;
+}
+
 /**
  * Map fetched API exercises to the update shape without validating legacy
  * data. Caller-supplied replacement exercises are validated by their input
@@ -317,7 +327,7 @@ function preserveWorkoutExercises(
 	return (
 		current.exercises?.map((exercise) => ({
 			exercise_template_id: exercise.exercise_template_id,
-			superset_id: exercise.supersets_id ?? null,
+			superset_id: readSupersetId(exercise),
 			notes: exercise.notes ?? null,
 			sets:
 				exercise.sets?.map((set) => {
@@ -386,15 +396,15 @@ export function buildWorkoutUpdatePayload(
 
 	const payload: WorkoutUpdatePayload = {
 		title,
+		description,
 		start_time: startTime,
 		end_time: endTime,
+		exercises:
+			replacementExercises === undefined
+				? preserveWorkoutExercises(current)
+				: replacementExercises,
 	};
-	payload.description = description;
 	if (patch.is_private !== undefined) payload.is_private = patch.is_private;
-	payload.exercises =
-		replacementExercises === undefined
-			? preserveWorkoutExercises(current)
-			: replacementExercises;
 	return payload;
 }
 

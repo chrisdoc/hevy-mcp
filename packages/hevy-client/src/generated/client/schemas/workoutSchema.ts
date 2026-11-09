@@ -18,12 +18,12 @@ export const workoutSchema = z.object({
     .meta({ examples: ["Morning Workout 💪"] }),
   routine_id: z
     .string()
-    .optional()
+    .nullish()
     .describe("The ID of the routine that this workout belongs to.")
     .meta({ examples: ["b459cba5-cd6d-463c-abd6-54f8eafcadcb"] }),
   description: z
     .string()
-    .optional()
+    .nullish()
     .describe("The workout description.")
     .meta({ examples: ["Pushed myself to the limit today!"] }),
   start_time: z
@@ -67,7 +67,7 @@ export const workoutSchema = z.object({
           .meta({ examples: ["Bench Press (Barbell)"] }),
         notes: z
           .string()
-          .optional()
+          .nullish()
           .describe("Notes on the exercise")
           .meta({
             examples: ["Paid closer attention to form today. Felt great!"],
@@ -79,7 +79,7 @@ export const workoutSchema = z.object({
             "The id of the exercise template. This can be used to fetch the exercise template.",
           )
           .meta({ examples: ["05293BCA"] }),
-        supersets_id: z.coerce
+        superset_id: z.coerce
           .number()
           .nullish()
           .describe(

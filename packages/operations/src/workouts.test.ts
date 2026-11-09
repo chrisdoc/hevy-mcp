@@ -649,7 +649,7 @@ interface InMemoryWorkoutMutationAdapter
 
 function createInMemoryWorkoutMutationAdapter({
 	current,
-	created = current,
+	created = { workout: [current] },
 	updated = current,
 	count = { workout_count: 0 },
 	getError,
@@ -700,7 +700,7 @@ const currentWorkoutForMutation: WorkoutMutationCurrent = {
 	exercises: [
 		{
 			exercise_template_id: "bench",
-			supersets_id: 4,
+			superset_id: 4,
 			notes: "Existing",
 			sets: [{ type: "normal", reps: 8, weight_kg: 50, rpe: null }],
 		},
@@ -719,7 +719,7 @@ describe("workouts write operations", () => {
 		const created = { id: "created" };
 		const adapter = createInMemoryWorkoutMutationAdapter({
 			current: currentWorkoutForMutation,
-			created,
+			created: { workout: [created] },
 		});
 		const operation = createWorkoutsCreateOperation(adapter);
 
@@ -731,6 +731,24 @@ describe("workouts write operations", () => {
 		expect(adapter.createRequests).toEqual([
 			{ data: { workout }, options: undefined },
 		]);
+	});
+
+	it("returns no workout when Hevy acknowledges a create with an empty envelope", async () => {
+		const adapter = createInMemoryWorkoutMutationAdapter({
+			current: currentWorkoutForMutation,
+			created: {},
+		});
+
+		await expect(
+			createWorkoutsCreateOperation(adapter).execute({
+				workout: {
+					title: "New workout",
+					start_time: "2026-07-29T08:00:00Z",
+					end_time: "2026-07-29T09:00:00Z",
+					exercises: [],
+				},
+			}),
+		).resolves.toBeUndefined();
 	});
 
 	it("[VAL-OPS-005] lets unexpected builder defects escape instead of mislabeling them", async () => {

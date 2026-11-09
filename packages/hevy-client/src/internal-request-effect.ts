@@ -25,7 +25,7 @@ import type {
 	GetV1WorkoutsWorkoutid200,
 	PostRoutinesRequestBody,
 	PostRoutineFolderRequestBody,
-	PostV1BodyMeasurements200,
+	PostV1BodyMeasurements201,
 	PostV1ExerciseTemplates200,
 	PostV1Routines201,
 	PostV1RoutineFolders201,
@@ -162,7 +162,7 @@ export interface HevyRequestEffectClient {
 	createBodyMeasurement(
 		data: BodyMeasurement,
 		options?: HevyRequestOptions,
-	): Effect.Effect<PostV1BodyMeasurements200, HevyRequestEffectError>;
+	): Effect.Effect<PostV1BodyMeasurements201, HevyRequestEffectError>;
 	updateBodyMeasurement(
 		date: string,
 		data: PutBodyMeasurement,
@@ -591,7 +591,7 @@ export function getRequestEffectClient(
 				options,
 			),
 		createBodyMeasurement: (data, options) =>
-			requestDataEffect<PostV1BodyMeasurements200>(
+			requestDataEffect<PostV1BodyMeasurements201>(
 				requestEffect,
 				{
 					method: "POST",

@@ -136,7 +136,6 @@ export function projectRoutine(routine: Routine): FormattedRoutine {
 						projectedSet.distance_meters = set.distance_meters;
 					if (set.duration_seconds != null)
 						projectedSet.duration_seconds = set.duration_seconds;
-					if (set.rpe != null) projectedSet.rpe = set.rpe;
 					if (set.custom_metric != null)
 						projectedSet.custom_metric = set.custom_metric;
 					if (

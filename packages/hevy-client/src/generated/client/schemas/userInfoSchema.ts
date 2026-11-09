@@ -11,6 +11,11 @@ export const userInfoSchema = z.object({
     .optional()
     .describe("The user ID.")
     .meta({ examples: ["9c465af3-de7d-42bc-9c7c-f0170396358b"] }),
+  username: z
+    .string()
+    .optional()
+    .describe("The user's username.")
+    .meta({ examples: ["jhon"] }),
   name: z
     .string()
     .optional()
@@ -21,4 +26,21 @@ export const userInfoSchema = z.object({
     .optional()
     .describe("The user's public profile URL.")
     .meta({ examples: ["https://hevy.com/user/jhon"] }),
+  weight_unit: z
+    .enum(["kg", "lbs"])
+    .optional()
+    .describe("The user's preferred weight unit. Defaults to kg if unset.")
+    .meta({ examples: ["kg"] }),
+  distance_unit: z
+    .enum(["kilometers", "miles"])
+    .optional()
+    .describe(
+      "The user's preferred distance unit. Defaults to kilometers if unset.",
+    )
+    .meta({ examples: ["kilometers"] }),
+  is_pro: z
+    .boolean()
+    .optional()
+    .describe("Whether the user has an active Hevy Pro subscription.")
+    .meta({ examples: [true] }),
 });
