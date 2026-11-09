@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.12.2",
+  "checkpoint_id": "01M712NJ8JV9Y0G3A1JNWZNP7X",
+  "strategy": "manual-commit",
+  "branch": "t3/update-cloudflare-vite-plugin-2-0-0-beta-13",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "nx.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "redaction": {
+    "replacements": 59,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 4,
+      "credentialed_uri": 0,
+      "entropy": 58,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
