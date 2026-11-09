@@ -213,7 +213,9 @@
 		"cliBuildInputs": [
 			"packageBuildInputs",
 			"{projectRoot}/tsdown.config.ts",
+			"{workspaceRoot}/packages/hevy-client/package.json",
 			"{workspaceRoot}/packages/hevy-client/src/**/*",
+			"{workspaceRoot}/packages/operations/package.json",
 			"{workspaceRoot}/packages/operations/src/**/*"
 		],
 		"manifestInputs": [
