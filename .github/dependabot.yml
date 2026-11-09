@@ -24,10 +24,6 @@ updates:
       # TypeScript 7.0 tsgo path and fails declaration builds.
       - dependency-name: "tsdown"
         versions: ["0.23.2"]
-      # Vite plugin 1.65 removes experimental.newConfig (cloudflare.config.ts);
-      # moving past it requires migrating to the v2 plugin.
-      - dependency-name: "@cloudflare/vite-plugin"
-        versions: [">=1.65.0"]
       # @effect/opentelemetry caps the OpenTelemetry SDK below 3.0/0.300.
       - dependency-name: "@opentelemetry/resources"
         versions: [">=3.0.0"]
