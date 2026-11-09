@@ -111,7 +111,7 @@
 		"cf": "1.0.0-beta.25",
 		"cross-env": "^10.1.0",
 		"dependency-cruiser": "^18.7.0",
-		"effect": "4.0.6",
+		"effect": "4.1.2",
 		"fta-cli": "3.1.0",
 		"js-yaml": "^5.5.0",
 		"jscpd": "^5.4.2",
