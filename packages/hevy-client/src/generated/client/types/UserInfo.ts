@@ -3,6 +3,22 @@
  * Do not edit manually.
  */
 
+export const userInfoWeightUnitEnum = {
+  kg: "kg",
+  lbs: "lbs",
+} as const;
+
+export type UserInfoWeightUnitEnumKey =
+  (typeof userInfoWeightUnitEnum)[keyof typeof userInfoWeightUnitEnum];
+
+export const userInfoDistanceUnitEnum = {
+  kilometers: "kilometers",
+  miles: "miles",
+} as const;
+
+export type UserInfoDistanceUnitEnumKey =
+  (typeof userInfoDistanceUnitEnum)[keyof typeof userInfoDistanceUnitEnum];
+
 export type UserInfo = {
   /**
    * @description The user ID.
@@ -10,6 +26,12 @@ export type UserInfo = {
    * @type string | undefined
    */
   id?: string;
+  /**
+   * @description The user's username.
+   * @example jhon
+   * @type string | undefined
+   */
+  username?: string;
   /**
    * @description The user's display name.
    * @example John doe
@@ -22,4 +44,22 @@ export type UserInfo = {
    * @type string | undefined
    */
   url?: string;
+  /**
+   * @description The user's preferred weight unit. Defaults to kg if unset.
+   * @example kg
+   * @type string | undefined
+   */
+  weight_unit?: UserInfoWeightUnitEnumKey;
+  /**
+   * @description The user's preferred distance unit. Defaults to kilometers if unset.
+   * @example kilometers
+   * @type string | undefined
+   */
+  distance_unit?: UserInfoDistanceUnitEnumKey;
+  /**
+   * @description Whether the user has an active Hevy Pro subscription.
+   * @example true
+   * @type boolean | undefined
+   */
+  is_pro?: boolean;
 };

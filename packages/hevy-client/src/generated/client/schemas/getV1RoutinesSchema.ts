@@ -18,8 +18,9 @@ export const getV1RoutinesQueryPageSchema = z.coerce
 export const getV1RoutinesQueryPageSizeSchema = z.coerce
   .number()
   .int()
+  .max(10)
   .optional()
-  .default(5)
+  .default(10)
   .describe("Number of items on the requested page (Max 10)");
 
 export const getV1RoutinesStatus200Schema = z.object({
@@ -54,8 +55,9 @@ export const getV1RoutinesQuerySchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
+    .max(10)
     .optional()
-    .default(5)
+    .default(10)
     .describe("Number of items on the requested page (Max 10)"),
 });
 

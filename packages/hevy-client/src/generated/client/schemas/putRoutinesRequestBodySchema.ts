@@ -14,6 +14,13 @@ export const putRoutinesRequestBodySchema = z.object({
         .optional()
         .describe("The title of the routine.")
         .meta({ examples: ["April Leg Day 🔥"] }),
+      folder_id: z.coerce
+        .number()
+        .nullish()
+        .describe(
+          'The folder id the routine should be added to. Pass null to insert the routine into default "My Routines" folder',
+        )
+        .meta({ examples: [] }),
       notes: z
         .string()
         .nullish()

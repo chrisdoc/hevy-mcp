@@ -20,7 +20,7 @@ describe("snake_case response projections", () => {
 				{
 					title: "Bench Press",
 					exercise_template_id: "bench",
-					supersets_id: 2,
+					superset_id: 2,
 					sets: [{ weight_kg: 80, reps: 8 }],
 				},
 			],

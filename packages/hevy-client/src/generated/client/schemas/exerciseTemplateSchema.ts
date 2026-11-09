@@ -4,6 +4,7 @@
  */
 
 import * as z from "zod";
+import { equipmentCategorySchema } from "./equipmentCategorySchema";
 
 export const exerciseTemplateSchema = z.object({
   id: z
@@ -30,9 +31,17 @@ export const exerciseTemplateSchema = z.object({
     .array(z.string())
     .optional()
     .describe("The secondary muscle groups of the exercise."),
+  equipment: equipmentCategorySchema.optional().meta({ examples: ["barbell"] }),
   is_custom: z
     .boolean()
     .optional()
     .describe("A boolean indicating whether the exercise is a custom exercise.")
     .meta({ examples: [false] }),
+  thumbnail_url: z
+    .string()
+    .nullish()
+    .describe(
+      "URL of the exercise's thumbnail image, or null if the exercise has none.",
+    )
+    .meta({ examples: [] }),
 });

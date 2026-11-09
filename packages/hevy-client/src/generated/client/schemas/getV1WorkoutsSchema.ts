@@ -18,8 +18,9 @@ export const getV1WorkoutsQueryPageSchema = z.coerce
 export const getV1WorkoutsQueryPageSizeSchema = z.coerce
   .number()
   .int()
+  .max(10)
   .optional()
-  .default(5)
+  .default(10)
   .describe("Number of items on the requested page (Max 10)");
 
 export const getV1WorkoutsStatus200Schema = z.object({
@@ -54,8 +55,9 @@ export const getV1WorkoutsQuerySchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
+    .max(10)
     .optional()
-    .default(5)
+    .default(10)
     .describe("Number of items on the requested page (Max 10)"),
 });
 

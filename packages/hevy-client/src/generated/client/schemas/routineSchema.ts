@@ -49,12 +49,12 @@ export const routineSchema = z.object({
         rest_seconds: z.coerce
           .number()
           .int()
-          .optional()
+          .nullish()
           .describe("The rest time in seconds between sets of the exercise")
           .meta({ examples: [60] }),
         notes: z
           .string()
-          .optional()
+          .nullish()
           .describe("Routine notes on the exercise")
           .meta({ examples: ["Focus on form. Go down to 90 degrees."] }),
         exercise_template_id: z
@@ -64,7 +64,7 @@ export const routineSchema = z.object({
             "The id of the exercise template. This can be used to fetch the exercise template.",
           )
           .meta({ examples: ["05293BCA"] }),
-        supersets_id: z.coerce
+        superset_id: z.coerce
           .number()
           .nullish()
           .describe(
@@ -123,13 +123,6 @@ export const routineSchema = z.object({
                 .nullish()
                 .describe("Number of seconds logged for the set")
                 .meta({ examples: [] }),
-              rpe: z.coerce
-                .number()
-                .nullish()
-                .describe(
-                  "RPE (Relative perceived exertion) value logged for the set",
-                )
-                .meta({ examples: [9.5] }),
               custom_metric: z.coerce
                 .number()
                 .nullish()

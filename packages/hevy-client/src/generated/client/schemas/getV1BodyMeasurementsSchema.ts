@@ -18,6 +18,7 @@ export const getV1BodyMeasurementsQueryPageSchema = z.coerce
 export const getV1BodyMeasurementsQueryPageSizeSchema = z.coerce
   .number()
   .int()
+  .max(10)
   .optional()
   .default(10)
   .describe("Number of items per page (Max 10)");
@@ -38,15 +39,11 @@ export const getV1BodyMeasurementsStatus200Schema = z.object({
 
 export const getV1BodyMeasurementsStatus400Schema = z.unknown();
 
-export const getV1BodyMeasurementsStatus404Schema = z.unknown();
-
 export const getV1BodyMeasurementsResponseSchema =
   getV1BodyMeasurementsStatus200Schema;
 
-export const getV1BodyMeasurementsErrorSchema = z.union([
-  getV1BodyMeasurementsStatus400Schema,
-  getV1BodyMeasurementsStatus404Schema,
-]);
+export const getV1BodyMeasurementsErrorSchema =
+  getV1BodyMeasurementsStatus400Schema;
 
 export const getV1BodyMeasurementsQuerySchema = z.object({
   page: z.coerce
@@ -58,6 +55,7 @@ export const getV1BodyMeasurementsQuerySchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
+    .max(10)
     .optional()
     .default(10)
     .describe("Number of items per page (Max 10)"),

@@ -18,8 +18,9 @@ export const getV1WorkoutsEventsQueryPageSchema = z.coerce
 export const getV1WorkoutsEventsQueryPageSizeSchema = z.coerce
   .number()
   .int()
+  .max(10)
   .optional()
-  .default(5)
+  .default(10)
   .describe("Number of items on the requested page (Max 10)");
 
 export const getV1WorkoutsEventsQuerySinceSchema = z
@@ -47,8 +48,9 @@ export const getV1WorkoutsEventsQuerySchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
+    .max(10)
     .optional()
-    .default(5)
+    .default(10)
     .describe("Number of items on the requested page (Max 10)"),
   since: z.string().optional().default("1970-01-01T00:00:00Z"),
 });

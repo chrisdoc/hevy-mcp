@@ -15,7 +15,13 @@ export type PostV1WorkoutsHeaders = {
   "api-key": string;
 };
 
-export type PostV1WorkoutsStatus201 = Workout;
+export type PostV1WorkoutsStatus201 = {
+  /**
+   * @description The created workout, returned as a single-element array.
+   * @type array | undefined
+   */
+  workout?: Workout[];
+};
 
 export type PostV1WorkoutsStatus400 = {
   /**

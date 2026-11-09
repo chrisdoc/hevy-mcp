@@ -6,13 +6,13 @@
 import type { PostWorkoutsRequestExercise } from "./PostWorkoutsRequestExercise";
 
 export type PostWorkoutsRequestBody = {
-  workout?: {
+  workout: {
     /**
      * @description The title of the workout.
      * @example Friday Leg Day 🔥
-     * @type string | undefined
+     * @type string
      */
-    title?: string;
+    title: string;
     /**
      * @description A description for the workout workout.
      * @example Medium intensity leg day focusing on quads.
@@ -22,21 +22,22 @@ export type PostWorkoutsRequestBody = {
     /**
      * @description The time the workout started.
      * @example 2024-08-14T12:00:00Z
-     * @type string | undefined
+     * @type string
      */
-    start_time?: string;
+    start_time: string;
     /**
      * @description The time the workout ended.
      * @example 2024-08-14T12:30:00Z
-     * @type string | undefined
+     * @type string
      */
-    end_time?: string;
+    end_time: string;
     /**
-     * @description A boolean indicating if the workout is private.
+     * @description A boolean indicating if the workout is private. Optional - defaults to false when omitted.
+     * @default false
      * @example false
      * @type boolean | undefined
      */
     is_private?: boolean;
-    exercises?: PostWorkoutsRequestExercise[];
+    exercises: PostWorkoutsRequestExercise[];
   };
 };

@@ -35,6 +35,6 @@ export type Exercise = {
    * @example 0
    * @type number | undefined
    */
-  supersets_id?: number | null;
+  superset_id?: number | null;
   sets?: Set[];
 };

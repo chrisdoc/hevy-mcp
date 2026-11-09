@@ -168,7 +168,7 @@ describe("mutation semantics", () => {
 					index: 8,
 					title: "Row",
 					exercise_template_id: "row",
-					supersets_id: null,
+					superset_id: 3,
 					notes: "Brace hard",
 					sets: [
 						{
@@ -226,7 +226,7 @@ describe("mutation semantics", () => {
 				},
 				{
 					exercise_template_id: "row",
-					superset_id: null,
+					superset_id: 3,
 					notes: "Brace hard",
 					sets: [
 						{

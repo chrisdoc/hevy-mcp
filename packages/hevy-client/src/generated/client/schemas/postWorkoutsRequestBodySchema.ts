@@ -7,34 +7,32 @@ import * as z from "zod";
 import { postWorkoutsRequestExerciseSchema } from "./postWorkoutsRequestExerciseSchema";
 
 export const postWorkoutsRequestBodySchema = z.object({
-  workout: z
-    .object({
-      title: z
-        .string()
-        .optional()
-        .describe("The title of the workout.")
-        .meta({ examples: ["Friday Leg Day 🔥"] }),
-      description: z
-        .string()
-        .nullish()
-        .describe("A description for the workout workout.")
-        .meta({ examples: ["Medium intensity leg day focusing on quads."] }),
-      start_time: z
-        .string()
-        .optional()
-        .describe("The time the workout started.")
-        .meta({ examples: ["2024-08-14T12:00:00Z"] }),
-      end_time: z
-        .string()
-        .optional()
-        .describe("The time the workout ended.")
-        .meta({ examples: ["2024-08-14T12:30:00Z"] }),
-      is_private: z
-        .boolean()
-        .optional()
-        .describe("A boolean indicating if the workout is private.")
-        .meta({ examples: [false] }),
-      exercises: z.array(postWorkoutsRequestExerciseSchema).optional(),
-    })
-    .optional(),
+  workout: z.object({
+    title: z
+      .string()
+      .describe("The title of the workout.")
+      .meta({ examples: ["Friday Leg Day 🔥"] }),
+    description: z
+      .string()
+      .nullish()
+      .describe("A description for the workout workout.")
+      .meta({ examples: ["Medium intensity leg day focusing on quads."] }),
+    start_time: z
+      .string()
+      .describe("The time the workout started.")
+      .meta({ examples: ["2024-08-14T12:00:00Z"] }),
+    end_time: z
+      .string()
+      .describe("The time the workout ended.")
+      .meta({ examples: ["2024-08-14T12:30:00Z"] }),
+    is_private: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "A boolean indicating if the workout is private. Optional - defaults to false when omitted.",
+      )
+      .meta({ examples: [false] }),
+    exercises: z.array(postWorkoutsRequestExerciseSchema),
+  }),
 });

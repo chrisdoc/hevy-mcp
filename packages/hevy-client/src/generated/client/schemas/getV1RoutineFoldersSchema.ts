@@ -18,8 +18,9 @@ export const getV1RoutineFoldersQueryPageSchema = z.coerce
 export const getV1RoutineFoldersQueryPageSizeSchema = z.coerce
   .number()
   .int()
+  .max(10)
   .optional()
-  .default(5)
+  .default(10)
   .describe("Number of items on the requested page (Max 10)");
 
 export const getV1RoutineFoldersStatus200Schema = z.object({
@@ -56,8 +57,9 @@ export const getV1RoutineFoldersQuerySchema = z.object({
   pageSize: z.coerce
     .number()
     .int()
+    .max(10)
     .optional()
-    .default(5)
+    .default(10)
     .describe("Number of items on the requested page (Max 10)"),
 });
 

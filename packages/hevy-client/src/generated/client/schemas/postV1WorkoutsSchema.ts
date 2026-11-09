@@ -9,7 +9,12 @@ import { workoutSchema } from "./workoutSchema";
 
 export const postV1WorkoutsHeaderApiKeySchema = z.uuid();
 
-export const postV1WorkoutsStatus201Schema = workoutSchema;
+export const postV1WorkoutsStatus201Schema = z.object({
+  workout: z
+    .array(workoutSchema)
+    .optional()
+    .describe("The created workout, returned as a single-element array."),
+});
 
 export const postV1WorkoutsStatus400Schema = z.object({
   error: z.string().optional().describe("Error message"),

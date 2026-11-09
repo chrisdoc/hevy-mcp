@@ -26,7 +26,6 @@ export {
   getV1BodyMeasurementsResponseSchema,
   getV1BodyMeasurementsStatus200Schema,
   getV1BodyMeasurementsStatus400Schema,
-  getV1BodyMeasurementsStatus404Schema,
 } from "./getV1BodyMeasurementsSchema";
 export {
   getV1ExerciseHistoryExercisetemplateidErrorSchema,
@@ -163,7 +162,7 @@ export {
   postV1BodyMeasurementsHeaderApiKeySchema,
   postV1BodyMeasurementsHeadersSchema,
   postV1BodyMeasurementsResponseSchema,
-  postV1BodyMeasurementsStatus200Schema,
+  postV1BodyMeasurementsStatus201Schema,
   postV1BodyMeasurementsStatus400Schema,
   postV1BodyMeasurementsStatus409Schema,
 } from "./postV1BodyMeasurementsSchema";

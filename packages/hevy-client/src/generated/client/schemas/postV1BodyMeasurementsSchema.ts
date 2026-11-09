@@ -8,7 +8,7 @@ import { bodyMeasurementSchema } from "./bodyMeasurementSchema";
 
 export const postV1BodyMeasurementsHeaderApiKeySchema = z.uuid();
 
-export const postV1BodyMeasurementsStatus200Schema = z.unknown();
+export const postV1BodyMeasurementsStatus201Schema = z.unknown();
 
 export const postV1BodyMeasurementsStatus400Schema = z.object({
   error: z.string().optional(),
@@ -19,7 +19,7 @@ export const postV1BodyMeasurementsStatus409Schema = z.object({
 });
 
 export const postV1BodyMeasurementsResponseSchema =
-  postV1BodyMeasurementsStatus200Schema;
+  postV1BodyMeasurementsStatus201Schema;
 
 export const postV1BodyMeasurementsErrorSchema = z.union([
   postV1BodyMeasurementsStatus400Schema,

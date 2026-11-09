@@ -14,7 +14,7 @@ export type PostV1BodyMeasurementsHeaders = {
   "api-key": string;
 };
 
-export type PostV1BodyMeasurementsStatus200 = unknown;
+export type PostV1BodyMeasurementsStatus201 = unknown;
 
 export type PostV1BodyMeasurementsStatus400 = {
   error?: string;
@@ -34,7 +34,7 @@ export type PostV1BodyMeasurementsOptions = {
 };
 
 export type PostV1BodyMeasurementsResponses = {
-  "200": PostV1BodyMeasurementsStatus200;
+  "201": PostV1BodyMeasurementsStatus201;
   "400": PostV1BodyMeasurementsStatus400;
   "409": PostV1BodyMeasurementsStatus409;
 };
@@ -42,4 +42,4 @@ export type PostV1BodyMeasurementsResponses = {
 /**
  * @description Union of all possible responses
  */
-export type PostV1BodyMeasurementsResponse = PostV1BodyMeasurementsStatus200;
+export type PostV1BodyMeasurementsResponse = PostV1BodyMeasurementsStatus201;
