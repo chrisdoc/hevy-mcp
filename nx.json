@@ -210,7 +210,12 @@
 			"repositoryBuildInputs",
 			"{workspaceRoot}/packages/node/tsdown.config.ts"
 		],
-		"cliBuildInputs": ["packageBuildInputs", "{projectRoot}/tsdown.config.ts"],
+		"cliBuildInputs": [
+			"packageBuildInputs",
+			"{projectRoot}/tsdown.config.ts",
+			"{workspaceRoot}/packages/hevy-client/src/**/*",
+			"{workspaceRoot}/packages/operations/src/**/*"
+		],
 		"manifestInputs": [
 			"controlPlaneModels",
 			"{workspaceRoot}/package.json",
