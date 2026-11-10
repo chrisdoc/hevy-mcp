@@ -1,5 +1,23 @@
 # @hevy-mcp/operations
 
+## 0.1.18
+
+### Patch Changes
+
+- [#1259](https://github.com/chrisdoc/hevy-mcp/pull/1259) [`2ad799f`](https://github.com/chrisdoc/hevy-mcp/commit/2ad799fed199b937c96a2e3d3776f6ffeec5a63c) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update development dependencies and regenerate the API client with Kubb 5.14, which tightens the custom exercise request types and adds request query/header schemas.
+  
+  Compatibility notes:
+  
+  - `tsdown` stays on 0.23.1 because 0.23.2 ships a `rolldown-plugin-dts` beta that cannot build declarations with TypeScript 7.0.
+  - `@cloudflare/vite-plugin` stays on 1.64 because 1.65 removes `cloudflare.config.ts` support from the v1 plugin.
+  - The Worker fallback execution context implements the new `mapVirtualHost` member from `@cloudflare/workers-types`.
+
+- [#1277](https://github.com/chrisdoc/hevy-mcp/pull/1277) [`249318a`](https://github.com/chrisdoc/hevy-mcp/commit/249318a4691f553d609c9758c62a2e3f684b1bb9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Body measurement updates now keep omitted fields instead of clearing them, and fail with not-found rather than creating a missing entry. Routine sets accept null weight, distance, duration and custom metric, and routine exercises accept null rest time, instead of coercing them to 0. The CLI `workouts update` now requires `is_private` instead of silently making private workouts public. Training summaries cover exactly 7 days per week.
+
+- [#1274](https://github.com/chrisdoc/hevy-mcp/pull/1274) [`8f59f73`](https://github.com/chrisdoc/hevy-mcp/commit/8f59f739442c4195fe50da4f72bde0c55c42a9ac) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update development dependencies and regenerate the API client with Kubb 5.15. The generated write operations now declare an `application/json` request content type, and the generated body serializer matches content types case-insensitively.
+- Updated dependencies [[`2ad799f`](https://github.com/chrisdoc/hevy-mcp/commit/2ad799fed199b937c96a2e3d3776f6ffeec5a63c), [`249318a`](https://github.com/chrisdoc/hevy-mcp/commit/249318a4691f553d609c9758c62a2e3f684b1bb9), [`8f59f73`](https://github.com/chrisdoc/hevy-mcp/commit/8f59f739442c4195fe50da4f72bde0c55c42a9ac)]:
+  - @hevy-mcp/hevy-client@0.2.17
+
 ## 0.1.17
 
 ### Patch Changes

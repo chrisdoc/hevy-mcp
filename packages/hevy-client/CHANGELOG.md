@@ -1,5 +1,21 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.17
+
+### Patch Changes
+
+- [#1259](https://github.com/chrisdoc/hevy-mcp/pull/1259) [`2ad799f`](https://github.com/chrisdoc/hevy-mcp/commit/2ad799fed199b937c96a2e3d3776f6ffeec5a63c) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update development dependencies and regenerate the API client with Kubb 5.14, which tightens the custom exercise request types and adds request query/header schemas.
+  
+  Compatibility notes:
+  
+  - `tsdown` stays on 0.23.1 because 0.23.2 ships a `rolldown-plugin-dts` beta that cannot build declarations with TypeScript 7.0.
+  - `@cloudflare/vite-plugin` stays on 1.64 because 1.65 removes `cloudflare.config.ts` support from the v1 plugin.
+  - The Worker fallback execution context implements the new `mapVirtualHost` member from `@cloudflare/workers-types`.
+
+- [#1277](https://github.com/chrisdoc/hevy-mcp/pull/1277) [`249318a`](https://github.com/chrisdoc/hevy-mcp/commit/249318a4691f553d609c9758c62a2e3f684b1bb9) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Reject "." and ".." path IDs before any request, honor the `sleep` client option for retry waits, keep API keys from leaking at the error-text boundary, accept HTTP-date `Retry-After` for rate-limit errors, ignore a NaN deadline, and stop `createRoutine` crashing on a non-object 201 body.
+
+- [#1274](https://github.com/chrisdoc/hevy-mcp/pull/1274) [`8f59f73`](https://github.com/chrisdoc/hevy-mcp/commit/8f59f739442c4195fe50da4f72bde0c55c42a9ac) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update development dependencies and regenerate the API client with Kubb 5.15. The generated write operations now declare an `application/json` request content type, and the generated body serializer matches content types case-insensitively.
+
 ## 0.2.16
 
 ### Patch Changes
