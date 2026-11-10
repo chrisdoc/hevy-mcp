@@ -7,7 +7,6 @@ const inspectorPort = process.env.HEVY_WORKER_INSPECTOR_PORT;
 export default defineConfig({
 	plugins: [
 		cloudflare({
-			experimental: { newConfig: { cfBuildOutput: true } },
 			inspectorPort: inspectorPort ? Number(inspectorPort) : undefined,
 			persistState: persistencePath ? { path: persistencePath } : true,
 			remoteBindings: false,

@@ -394,17 +394,19 @@ export function buildWorkoutUpdatePayload(
 		});
 	}
 
+	const exercises =
+		replacementExercises === undefined
+			? preserveWorkoutExercises(current)
+			: replacementExercises;
+
 	const payload: WorkoutUpdatePayload = {
 		title,
-		description,
 		start_time: startTime,
 		end_time: endTime,
-		exercises:
-			replacementExercises === undefined
-				? preserveWorkoutExercises(current)
-				: replacementExercises,
+		description,
+		...(patch.is_private !== undefined ? { is_private: patch.is_private } : {}),
+		exercises,
 	};
-	if (patch.is_private !== undefined) payload.is_private = patch.is_private;
 	return payload;
 }
 
