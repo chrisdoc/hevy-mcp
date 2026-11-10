@@ -202,8 +202,8 @@ importers:
         specifier: ^18.7.0
         version: 18.7.0
       effect:
-        specifier: 4.0.6
-        version: 4.0.6
+        specifier: 4.1.2
+        version: 4.1.2
       fta-cli:
         specifier: 3.1.0
         version: 3.1.0
@@ -238,8 +238,8 @@ importers:
         specifier: ^0.3.25
         version: 0.3.25
       semver:
-        specifier: ^7.8.5
-        version: 7.8.5
+        specifier: ^7.8.6
+        version: 7.8.6
       tiktoken:
         specifier: ^1.0.22
         version: 1.0.22
@@ -277,8 +277,8 @@ importers:
         specifier: ^26.6.6
         version: 26.6.6
       effect:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^4.1.2
+        version: 4.1.2
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -295,8 +295,8 @@ importers:
         specifier: 2.4.0
         version: 2.4.0
       effect:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^4.1.2
+        version: 4.1.2
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -308,8 +308,8 @@ importers:
   packages/hevy-client:
     dependencies:
       effect:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^4.1.2
+        version: 4.1.2
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -317,8 +317,8 @@ importers:
   packages/node:
     dependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.6
-        version: 4.0.6(@opentelemetry/api-logs@0.222.0)(@opentelemetry/api@1.10.0)(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.222.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-node@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.6)
+        specifier: 4.1.2
+        version: 4.1.2(@opentelemetry/api-logs@0.222.0)(@opentelemetry/api@1.10.0)(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.222.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-node@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.1.2)
       '@modelcontextprotocol/node':
         specifier: 2.1.2
         version: 2.1.2(@modelcontextprotocol/server@2.4.0)
@@ -347,14 +347,14 @@ importers:
         specifier: ^2.12.0
         version: 2.12.0(@opentelemetry/api@1.10.0)
       '@sentry/node':
-        specifier: ^11.9.0
-        version: 11.9.0(rollup@4.64.0)
+        specifier: ^11.10.0
+        version: 11.10.0(rollup@4.64.0)
       effect:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^4.1.2
+        version: 4.1.2
       semver:
-        specifier: ^7.8.5
-        version: 7.8.5
+        specifier: ^7.8.6
+        version: 7.8.6
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -387,8 +387,8 @@ importers:
         specifier: workspace:*
         version: link:../hevy-client
       effect:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^4.1.2
+        version: 4.1.2
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -402,8 +402,8 @@ importers:
         specifier: 2.4.0
         version: 2.4.0
       effect:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^4.1.2
+        version: 4.1.2
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -782,9 +782,9 @@ packages:
       oxlint:
         optional: true
 
-  '@effect/opentelemetry@4.0.6':
-    resolution: {integrity: sha512-xhLR1EN4ZNaKM7Bx59SCFiRNduFzgH8LZXDrCpPN8MpQ93V0GQcFHTBah5T3EXO2v+5HTEacdTgetIA0Creqvw==}
-    engines: {node: '>=18.0.0'}
+  '@effect/opentelemetry@4.1.2':
+    resolution: {integrity: sha512-FhxQy4I0nKLX0Dh9l6rZ5S/fRAMt7dKdekHtoxgx7N/XBtPP/IFhcJnGPenceuuSeVbcLp1vpZa43wC05qdxng==}
+    engines: {node: '>=22.19.0'}
     peerDependencies:
       '@opentelemetry/api': '>=1.9.0 <2.0.0'
       '@opentelemetry/api-logs': '>=0.203.0 <0.300.0'
@@ -795,7 +795,7 @@ packages:
       '@opentelemetry/sdk-trace-node': '>=2.0.0 <3.0.0'
       '@opentelemetry/sdk-trace-web': '>=2.0.0 <3.0.0'
       '@opentelemetry/semantic-conventions': '>=1.33.0 <2.0.0'
-      effect: ^4.0.6
+      effect: ^4.1.2
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
@@ -2511,22 +2511,6 @@ packages:
       webpack:
         optional: true
 
-  '@sentry/bundler-plugins@11.9.0':
-    resolution: {integrity: sha512-wpz/gcM/6rld/wb4Mhf8kbDN9ngG5myKQSZC+45gzqR1w+GcdfVnYkp3sHL9AV4mrwL8skhTItdUghMwMTknKg==}
-    engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
-    peerDependencies:
-      rollup: '>=3.2.0'
-      webpack: '>=5.1.0'
-    peerDependenciesMeta:
-      rollup:
-        optional: true
-      webpack:
-        optional: true
-
-  '@sentry/conventions@0.27.0':
-    resolution: {integrity: sha512-Mrqd/o7n/z7qWSYfQQA7x4fFTA0IqOG6JNsbBpnC97khPwZk7n6DPtOO7YgaYplSl8R8QLRbBz9Xv2lVhToSAg==}
-    engines: {node: '>=14'}
-
   '@sentry/conventions@0.29.0':
     resolution: {integrity: sha512-kYq9/HJ/l6MYP/srIc20dy1W4mWyJfCF0OWFF+RhBGZwyr/wCmtabRFKyw7kqM+DTwZXQOjSTSZUcJhDowcInQ==}
     engines: {node: '>=14'}
@@ -2535,16 +2519,12 @@ packages:
     resolution: {integrity: sha512-l/OtTo1v+TQgZtHG2Q5N4IX+gFdAE1tZ27K/P21UCzJglWk54TPEm+d9T2lulPqMK06kZcLwDgRAhE2GO4YS5w==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
 
-  '@sentry/core@11.9.0':
-    resolution: {integrity: sha512-t0dZyHILt2XVC4Fe9UmAty6YRfOuQv95cvWeNl+HlW4LphjF5/jkALV3cJCUMdhpblYELgIJC4U/S/GoYuI2bA==}
+  '@sentry/node@11.10.0':
+    resolution: {integrity: sha512-ZsndrSn1NjL9AslpUdxz/kYPcv/i+plVZoyPe1ivlr5XPUpocB8pUL5noYbIUl96Wd/yGvPBw6zqO8d69rRKQQ==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
 
-  '@sentry/node@11.9.0':
-    resolution: {integrity: sha512-cz219PzVaAPTlQ4bRBTRBCOvxbZkXK0KkqyqWPV6OmSn6vWn935CTfOs+MKUc1A+locvB8i9OfBIbO6v03BBuQ==}
-    engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
-
-  '@sentry/opentelemetry@11.9.0':
-    resolution: {integrity: sha512-FMCkAbEfBpFterrkR7k4P8LEabUAEHjZMbu+ycDjbnI1U4pT22tpwcFJOt06orFkacoWNsYT9+EdfmkvaCKtSA==}
+  '@sentry/opentelemetry@11.10.0':
+    resolution: {integrity: sha512-YMV4ZgaRlW7QPCcMScVpSBvYOdvDlY+alqRT3KOTcmPKFZtf8O2hXHWFhl/M33kKDEfqOk2XtEVeHs3mZFOCaw==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
     peerDependencies:
       '@opentelemetry/api': ^1.9.0
@@ -2558,12 +2538,12 @@ packages:
       rollup:
         optional: true
 
-  '@sentry/server-runtime-injection@11.9.0':
-    resolution: {integrity: sha512-Q2G5xaeoiYwGheCZyeqZ/v//SZYjRLlITlanTsZM/fox1qk7cmbDX7+o4q+JkApVV9VuXQZVxppaVCsBglfDKA==}
+  '@sentry/server-runtime-injection@11.10.0':
+    resolution: {integrity: sha512-1nc+HNPldrPEov16sL5m2cOLVgNJ+FsR7QtaWGOOv8qYFJkSp95lyc2qzLnaG2L72UzSMOv10peGRioAKrrZQQ==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
 
-  '@sentry/server-utils@11.9.0':
-    resolution: {integrity: sha512-xHETix5jAjs/4tY+b9RCejEU7O49pNBiGgCWX0KFRMSpWbw9moqQ8i8N62bS7L+/BJnBcZ5SZ1nweXh7w787Qg==}
+  '@sentry/server-utils@11.10.0':
+    resolution: {integrity: sha512-m/MVCvPzQJJZZCTFlVPCrTuoncT7SR80+QKg1K7ul25AsL0byABr5KsHCbXVpOYXLVz04Omk+pOOR5Cv2IAlrA==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
 
   '@simple-libs/child-process-utils@2.0.0':
@@ -3252,8 +3232,8 @@ packages:
       oxc-resolver:
         optional: true
 
-  effect@4.0.6:
-    resolution: {integrity: sha512-Tc3mkzuLR6t6P9dhLt0D2GrxYtmU5td4XEJEiXCmILz53IRIfJyHsKZWjTA3xEjiwpNTtXBgI4iqYPxMztBDrw==}
+  effect@4.1.2:
+    resolution: {integrity: sha512-d3Oah1WyKxFLFh19yWheS5IXIVaITzxZ71JkE1rkUozq/6EcJSU5nPk5bF2QrSygZ3SQoiNQB8TsxFriyMeMaQ==}
 
   ejs@5.0.1:
     resolution: {integrity: sha512-COqBPFMxuPTPspXl2DkVYaDS3HtrD1GpzOGkNTJ1IYkifq/r9h8SVEFrjA3D9/VJGOEoMQcrlhpntcSUrM8k6A==}
@@ -4160,6 +4140,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.8.6:
+    resolution: {integrity: sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   sentry@0.45.0:
     resolution: {integrity: sha512-kgmEbLlC22lL7uneeUm9Sjz65rp5cvwYOMTxXbZCmBum4sbVre/lLT3zTV3kwXHJ9/BM8ZS0/GhZe9Cl1t6WyA==}
     engines: {node: '>=20.0'}
@@ -4832,7 +4817,7 @@ snapshots:
       '@changesets/types': 7.0.0
       import-meta-resolve: 4.2.0
       jsonc-parser: 3.3.1
-      semver: 7.8.5
+      semver: 7.8.6
 
   '@changesets/assemble-release-plan@7.0.0':
     dependencies:
@@ -4840,7 +4825,7 @@ snapshots:
       '@changesets/get-dependents-graph': 3.0.0
       '@changesets/should-skip-package': 1.0.0
       '@changesets/types': 7.0.0
-      semver: 7.8.5
+      semver: 7.8.6
 
   '@changesets/changelog-git@1.0.0':
     dependencies:
@@ -4872,7 +4857,7 @@ snapshots:
       import-meta-resolve: 4.2.0
       launch-editor: 2.14.2
       package-manager-detector: 1.9.0
-      semver: 7.8.5
+      semver: 7.8.6
       tinyexec: 1.3.1
 
   '@changesets/config@4.0.1':
@@ -4893,7 +4878,7 @@ snapshots:
   '@changesets/get-dependents-graph@3.0.0':
     dependencies:
       '@changesets/types': 7.0.0
-      semver: 7.8.5
+      semver: 7.8.6
 
   '@changesets/get-github-info@1.0.1':
     dependencies:
@@ -5079,7 +5064,7 @@ snapshots:
       '@actions/core': 3.0.1
       '@actions/github': 9.1.1
       chalk: 4.1.2
-      semver: 7.8.5
+      semver: 7.8.6
       unplugin: 1.16.1
       zod: 3.25.76
 
@@ -5129,7 +5114,7 @@ snapshots:
   '@commitlint/is-ignored@21.2.3':
     dependencies:
       '@commitlint/types': 21.2.3
-      semver: 7.8.5
+      semver: 7.8.6
 
   '@commitlint/lint@21.2.4':
     dependencies:
@@ -5200,7 +5185,7 @@ snapshots:
     dependencies:
       '@simple-libs/child-process-utils': 2.0.0
       '@simple-libs/stream-utils': 2.0.0
-      semver: 7.8.5
+      semver: 7.8.6
     optionalDependencies:
       conventional-commits-parser: 7.1.2
 
@@ -5218,10 +5203,10 @@ snapshots:
     optionalDependencies:
       oxlint: 1.90.0(oxlint-tsgolint@7.0.2005)
 
-  '@effect/opentelemetry@4.0.6(@opentelemetry/api-logs@0.222.0)(@opentelemetry/api@1.10.0)(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.222.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-node@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.6)':
+  '@effect/opentelemetry@4.1.2(@opentelemetry/api-logs@0.222.0)(@opentelemetry/api@1.10.0)(@opentelemetry/resources@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-logs@0.222.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-base@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace-node@2.12.0(@opentelemetry/api@1.10.0))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.1.2)':
     dependencies:
       '@opentelemetry/semantic-conventions': 1.43.0
-      effect: 4.0.6
+      effect: 4.1.2
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/api-logs': 0.222.0
@@ -6414,48 +6399,30 @@ snapshots:
     optionalDependencies:
       rollup: 4.64.0
 
-  '@sentry/bundler-plugins@11.9.0(rollup@4.64.0)':
-    dependencies:
-      '@sentry/core': 11.9.0
-      dotenv: 17.4.2
-      glob: 13.0.6
-      magic-string: 1.4.3
-      oxc-parser: 0.152.0
-      sentry: 0.45.0
-      supports-color: 8.1.1
-    optionalDependencies:
-      rollup: 4.64.0
-
-  '@sentry/conventions@0.27.0': {}
-
   '@sentry/conventions@0.29.0': {}
 
   '@sentry/core@11.10.0':
     dependencies:
       '@sentry/conventions': 0.29.0
 
-  '@sentry/core@11.9.0':
-    dependencies:
-      '@sentry/conventions': 0.27.0
-
-  '@sentry/node@11.9.0(rollup@4.64.0)':
+  '@sentry/node@11.10.0(rollup@4.64.0)':
     dependencies:
       '@opentelemetry/api': 1.10.0
-      '@sentry/bundler-plugins': 11.9.0(rollup@4.64.0)
-      '@sentry/conventions': 0.27.0
-      '@sentry/core': 11.9.0
-      '@sentry/opentelemetry': 11.9.0(@opentelemetry/api@1.10.0)
-      '@sentry/server-runtime-injection': 11.9.0
-      '@sentry/server-utils': 11.9.0
+      '@sentry/bundler-plugins': 11.10.0(rollup@4.64.0)
+      '@sentry/conventions': 0.29.0
+      '@sentry/core': 11.10.0
+      '@sentry/opentelemetry': 11.10.0(@opentelemetry/api@1.10.0)
+      '@sentry/server-runtime-injection': 11.10.0
+      '@sentry/server-utils': 11.10.0
     transitivePeerDependencies:
       - rollup
       - webpack
 
-  '@sentry/opentelemetry@11.9.0(@opentelemetry/api@1.10.0)':
+  '@sentry/opentelemetry@11.10.0(@opentelemetry/api@1.10.0)':
     dependencies:
       '@opentelemetry/api': 1.10.0
-      '@sentry/conventions': 0.27.0
-      '@sentry/core': 11.9.0
+      '@sentry/conventions': 0.29.0
+      '@sentry/core': 11.10.0
 
   '@sentry/rollup-plugin@11.10.0(rollup@4.64.0)':
     dependencies:
@@ -6465,16 +6432,16 @@ snapshots:
     transitivePeerDependencies:
       - webpack
 
-  '@sentry/server-runtime-injection@11.9.0':
+  '@sentry/server-runtime-injection@11.10.0':
     dependencies:
-      '@sentry/core': 11.9.0
-      '@sentry/server-utils': 11.9.0
+      '@sentry/core': 11.10.0
+      '@sentry/server-utils': 11.10.0
 
-  '@sentry/server-utils@11.9.0':
+  '@sentry/server-utils@11.10.0':
     dependencies:
       '@opentelemetry/api': 1.10.0
-      '@sentry/conventions': 0.27.0
-      '@sentry/core': 11.9.0
+      '@sentry/conventions': 0.29.0
+      '@sentry/core': 11.10.0
 
   '@simple-libs/child-process-utils@2.0.0':
     dependencies:
@@ -7008,7 +6975,7 @@ snapshots:
     optionalDependencies:
       oxc-resolver: 11.24.2
 
-  effect@4.0.6: {}
+  effect@4.1.2: {}
 
   ejs@5.0.1: {}
 
@@ -8067,13 +8034,15 @@ snapshots:
 
   semver@7.8.5: {}
 
+  semver@7.8.6: {}
+
   sentry@0.45.0: {}
 
   sharp@0.35.5(@types/node@26.6.6):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
-      semver: 7.8.5
+      semver: 7.8.6
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.35.5
       '@img/sharp-darwin-x64': 0.35.5
@@ -8316,7 +8285,7 @@ snapshots:
       npm-run-path: 6.0.0
       nypm: 0.6.10
       resolve.exports: 2.0.3
-      semver: 7.8.5
+      semver: 7.8.6
       string-width: 8.3.0
       which-command: 0.1.0
       yaml: 2.9.1
