@@ -1,5 +1,14 @@
 # @chrisdoc/hevy-cli
 
+## 1.2.22
+
+### Patch Changes
+
+- [#1279](https://github.com/chrisdoc/hevy-mcp/pull/1279) [`5452641`](https://github.com/chrisdoc/hevy-mcp/commit/545264110599a42b9abe19819126bb7c343cb931) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Refresh the checked-in Hevy OpenAPI specification and regenerated client. create-workout now unwraps Hevy's documented `workout` response envelope (still accepting an unwrapped workout), workout updates read the documented `superset_id` field while still accepting `supersets_id`, and routine set projections no longer read the `rpe` field that Hevy removed from routine responses.
+
+- [#1282](https://github.com/chrisdoc/hevy-mcp/pull/1282) [`c4a1162`](https://github.com/chrisdoc/hevy-mcp/commit/c4a1162a1ec71cf8842e538de881b8411f5d894d) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Upgrade `@cloudflare/vite-plugin` to 2.0.0-beta.v.13 and remove obsolete `experimental.newConfig` plugin options.
+  Restore workout update payload property ordering so packed request contracts remain consistent.
+
 ## 1.2.21
 
 ### Patch Changes

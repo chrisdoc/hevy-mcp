@@ -1,5 +1,11 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.18
+
+### Patch Changes
+
+- [#1279](https://github.com/chrisdoc/hevy-mcp/pull/1279) [`5452641`](https://github.com/chrisdoc/hevy-mcp/commit/545264110599a42b9abe19819126bb7c343cb931) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Refresh the checked-in Hevy OpenAPI specification and regenerated client. create-workout now unwraps Hevy's documented `workout` response envelope (still accepting an unwrapped workout), workout updates read the documented `superset_id` field while still accepting `supersets_id`, and routine set projections no longer read the `rpe` field that Hevy removed from routine responses.
+
 ## 0.2.17
 
 ### Patch Changes
