@@ -279,6 +279,20 @@ export type ValidationErrorHandler = (
 ) => { value: unknown } | void | Promise<{ value: unknown } | void>;
 
 /**
+ * Turns generated validation on or off. `false` skips every validator, an object skips only the directions set to `false`:
+ * `request` is the body, `params` are path, query, and header params, `response` and `error` are the response bodies.
+ * @default true
+ */
+export type ValidateOption =
+  | boolean
+  | {
+      request?: boolean;
+      params?: boolean;
+      response?: boolean;
+      error?: boolean;
+    };
+
+/**
  * A resolved security scheme carried on each generated call's `security` array and passed to the `auth` resolver.
  */
 export type Auth = {
@@ -348,6 +362,7 @@ export type RequestConfig<
     error?: Validator;
   };
   onValidationError?: ValidationErrorHandler;
+  validate?: ValidateOption;
   security?: Array<Auth>;
   auth?: AuthResolver;
 };
@@ -379,6 +394,7 @@ export type ClientConfig<TRequest = Request, TResponse = Response> = {
   serializer?: Serializers;
   codecs?: Record<string, Codec>;
   onValidationError?: ValidationErrorHandler;
+  validate?: ValidateOption;
   auth?: AuthResolver;
 };
 
@@ -687,6 +703,15 @@ export async function resolveAuth(params: {
   }
 }
 
+function isValidationEnabled(
+  validate: ValidateOption | undefined,
+  direction: "request" | "params" | "response" | "error",
+): boolean {
+  return typeof validate === "object"
+    ? validate[direction] !== false
+    : validate !== false;
+}
+
 async function runValidator<T>({
   validator,
   value,
@@ -754,12 +779,17 @@ async function resolveRequest<TBody, TRequest, TResponse>({
 }: {
   config: ClientConfig<TRequest, TResponse>;
   requestConfig: RequestConfig<TBody, TRequest, TResponse>;
-}): Promise<{ request: ResolvedRequest; codecs: Record<string, Codec> }> {
+}): Promise<{
+  request: ResolvedRequest;
+  codecs: Record<string, Codec>;
+  validate: ValidateOption | undefined;
+}> {
   const { querySerializer, bodySerializer, pathSerializer } =
     resolveSerializers({ config, requestConfig });
   const codecs = { ...config.codecs, ...requestConfig.codecs };
   const onValidationError =
     requestConfig.onValidationError ?? config.onValidationError;
+  const validate = requestConfig.validate ?? config.validate;
   const validationContext = {
     direction: "request",
     method: requestConfig.method,
@@ -782,7 +812,9 @@ async function resolveRequest<TBody, TRequest, TResponse>({
   const [validatedPath, validatedQuery, validatedHeaders] = await Promise.all(
     (["path", "query", "headers"] as const).map((source) =>
       runValidator({
-        validator: requestConfig.validator?.[source],
+        validator: isValidationEnabled(validate, "params")
+          ? requestConfig.validator?.[source]
+          : undefined,
         value: paramValues[source],
         context: { ...validationContext, source },
         onValidationError,
@@ -830,7 +862,9 @@ async function resolveRequest<TBody, TRequest, TResponse>({
   }
 
   const validatedBody = await runValidator({
-    validator: requestConfig.validator?.request,
+    validator: isValidationEnabled(validate, "request")
+      ? requestConfig.validator?.request
+      : undefined,
     value: requestConfig.body,
     context: { ...validationContext, source: "body" },
     onValidationError,
@@ -879,6 +913,7 @@ async function resolveRequest<TBody, TRequest, TResponse>({
 
   return {
     codecs,
+    validate,
     request: {
       url,
       method: (requestConfig.method ?? "GET").toUpperCase(),
@@ -924,7 +959,10 @@ export function createClientCore<TRequest = Request, TResponse = Response>(
   ): Promise<CallResult<TRequest, TResponse>> => {
     const transport =
       requestConfig.transport ?? config.transport ?? defaultTransport;
-    const { request, codecs } = await resolveRequest({ config, requestConfig });
+    const { request, codecs, validate } = await resolveRequest({
+      config,
+      requestConfig,
+    });
 
     const resolvedRequest = await interceptors.request.run(
       request,
@@ -941,6 +979,7 @@ export function createClientCore<TRequest = Request, TResponse = Response>(
     const onValidationError =
       requestConfig.onValidationError ?? config.onValidationError;
     const isSuccess = result.status >= 200 && result.status < 300;
+    const direction = isSuccess ? "response" : "error";
     const contentType =
       result.contentType ?? getResponseContentType(result.headers);
     const codec = contentType ? codecs[contentType] : undefined;
@@ -949,10 +988,12 @@ export function createClientCore<TRequest = Request, TResponse = Response>(
         ? await codec.deserialize(result.data, contentType)
         : result.data;
     const data = await runValidator({
-      validator: isSuccess ? validator?.response : validator?.error,
+      validator: isValidationEnabled(validate, direction)
+        ? validator?.[direction]
+        : undefined,
       value: decoded,
       context: {
-        direction: isSuccess ? "response" : "error",
+        direction,
         source: "body",
         method: resolvedRequest.method,
         url: resolvedRequest.url,

@@ -163,6 +163,13 @@ const FALLBACK_EXECUTION_CONTEXT = {
 		getActiveSpan(): Span | undefined {
 			return undefined;
 		},
+		withActiveSpan<T, A extends unknown[]>(
+			_span: Span,
+			callback: (...args: A) => T,
+			...args: A
+		): T {
+			return callback(...args);
+		},
 		Span: FallbackSpan,
 	},
 } satisfies ExecutionContext;
