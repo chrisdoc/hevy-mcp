@@ -66,7 +66,7 @@
 		"prepack": "pnpm run check:server-manifest && pnpm run build",
 		"start": "node --env-file .env packages/node/dist/cli.mjs",
 		"dev": "tsx watch --env-file .env --clear-screen=false packages/node/src/cli.ts",
-		"check": "pnpm run check:openapi && pnpm run check:generated && oxlint . --type-aware --type-check && oxfmt . --check && pnpm run check:duplication && pnpm run knip && pnpm run knip:exports",
+		"check": "pnpm run check:openapi && pnpm run check:generated && oxlint . --type-aware --type-check --ignore-pattern 'packages/hevy-client/kubb.config.ts' && oxfmt . --check && pnpm run check:duplication && pnpm run knip && pnpm run knip:exports",
 		"check:duplication": "jscpd packages/*/src --min-lines 12 --min-tokens 70 --threshold 2 --ignore '**/*.test.ts,**/*.spec.ts,**/*.test.tsx,**/*.spec.tsx,**/generated/**' --pattern '**/*.{ts,tsx}'",
 		"check:fix": "pnpm run fix",
 		"check:types": "tsc --noEmit && pnpm -r run check:types",
@@ -79,7 +79,7 @@
 		"version": "node scripts/server-manifest.mjs sync && git add server.json packages/node/server.json",
 		"worker:dev": "pnpm --dir packages/worker exec cf dev",
 		"worker:dry-run": "pnpm --dir packages/worker exec cf build && pnpm --dir packages/worker exec cf deploy --dry-run --prebuilt && node scripts/check-worker-bundle.mjs",
-		"fix": "oxlint --fix . --type-aware --type-check && oxfmt . --write"
+		"fix": "oxlint --fix . --type-aware --type-check --ignore-pattern 'packages/hevy-client/kubb.config.ts' && oxfmt . --write"
 	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^1.0.1",
