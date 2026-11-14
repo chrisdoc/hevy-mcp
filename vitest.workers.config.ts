@@ -4,11 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	plugins: [
 		cloudflareTest({
-			experimental: {
-				newConfig: {
-					configPath: "./packages/worker/cloudflare.config.ts",
-				},
-			},
+			config: "./packages/worker/cloudflare.config.ts",
 		}),
 	],
 	test: {

@@ -98,6 +98,13 @@ function createTestExecutionContext() {
 			getActiveSpan(): Span | undefined {
 				return undefined;
 			},
+			withActiveSpan<T, A extends unknown[]>(
+				_span: Span,
+				callback: (...args: A) => T,
+				...args: A
+			): T {
+				return callback(...args);
+			},
 			Span: TestExecutionSpan,
 		},
 	} satisfies ExecutionContext;
