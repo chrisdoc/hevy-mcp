@@ -1,5 +1,13 @@
 # @hevy-mcp/hevy-client
 
+## 0.2.19
+
+### Patch Changes
+
+- [#1289](https://github.com/chrisdoc/hevy-mcp/pull/1289) [`29a9769`](https://github.com/chrisdoc/hevy-mcp/commit/29a97694889ba3160b202fe5c392de3f8681dc49) Thanks [@chrisdoc](https://github.com/chrisdoc)! - Regenerate the Hevy client with Kubb 5.15.4, add the new `withActiveSpan`
+  tracing member to the Worker and test execution-context doubles, and align the
+  type-aware lint exclusion for the Kubb config with the format script.
+
 ## 0.2.18
 
 ### Patch Changes
